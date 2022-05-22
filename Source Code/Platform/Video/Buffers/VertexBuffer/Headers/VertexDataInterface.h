@@ -45,13 +45,26 @@ struct GenericDrawCommand;
 
 struct BufferParams
 {
-    std::pair<bufferPtr, size_t> _initialData = { nullptr, 0 };
-    U32 _elementCount = 0;
-    size_t _elementSize = 0;     ///< Buffer primitive size in bytes
-
-    BufferUpdateFrequency _updateFrequency = BufferUpdateFrequency::COUNT;
-    BufferUpdateUsage _updateUsage = BufferUpdateUsage::COUNT;
+    U32 _elementCount{ 0u };
+    size_t _elementSize{ 0u };     ///< Buffer primitive size in bytes
+    BufferUpdateFrequency _updateFrequency{ BufferUpdateFrequency::COUNT };
+    BufferUpdateUsage _updateUsage{ BufferUpdateUsage::COUNT };
 };
+
+inline bool operator==(const BufferParams& lhs, const BufferParams& rhs) noexcept {
+    return lhs._elementCount == rhs._elementCount &&
+           lhs._elementSize == rhs._elementSize &&
+           lhs._updateFrequency == rhs._updateFrequency &&
+           lhs._updateUsage == rhs._updateUsage;
+}
+
+inline bool operator!=(const BufferParams& lhs, const BufferParams& rhs) noexcept {
+    return lhs._elementCount != rhs._elementCount ||
+           lhs._elementSize != rhs._elementSize ||
+           lhs._updateFrequency != rhs._updateFrequency ||
+           lhs._updateUsage != rhs._updateUsage;
+}
+
 
 enum class BufferLockState : U8 {
     ACTIVE = 0,
@@ -156,7 +169,7 @@ class NOINITVTABLE VertexDataInterface : public GUIDWrapper, public GraphicsReso
     using Handle = PoolHandle;
     static constexpr Handle INVALID_VDI_HANDLE{U16_MAX, 0u};
 
-    explicit VertexDataInterface(GFXDevice& context);
+    explicit VertexDataInterface(GFXDevice& context, const char* name);
     virtual ~VertexDataInterface();
 
     virtual void draw(const GenericDrawCommand& command) = 0;

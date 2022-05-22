@@ -4,6 +4,7 @@
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 
 #include "Core/Headers/StringHelper.h"
+#include "Platform/Headers/PlatformRuntime.h"
 
 namespace Divide {
 namespace GLUtil {
@@ -82,7 +83,9 @@ bool Chunk::allocate(const size_t size, const char* name, const std::pair<buffer
                 memset(block._ptr, 0, requestedSize);
             } else {
                 memcpy(block._ptr, initialData.first, initialData.second);
-                memset(&block._ptr[initialData.second], 0, requestedSize - size);
+                if (requestedSize - size > 0u) {
+                    memset(&block._ptr[initialData.second], 0, requestedSize - size);
+                }
             }
         } else {
             _memory = createAndAllocPersistentBuffer(requestedSize, storageMask(), accessMask(), block._bufferHandle, initialData, name);
@@ -223,6 +226,7 @@ Byte* createAndAllocPersistentBuffer(const size_t bufferSize,
             memset(ptr, 0, bufferSize);
         }
     }
+
     return ptr;
 }
 

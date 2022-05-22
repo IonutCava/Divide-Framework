@@ -110,7 +110,6 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\GLIM\glim.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\GLIM\glimBatch.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\GLIM\glimBatchData.h" />
-    <ClInclude Include="..\..\Source Code\Platform\Video\GLIM\glimInterface.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\Headers\AttributeDescriptor.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\Headers\CommandsImpl.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Buffers\Headers\glFramebuffer.h" />
@@ -218,8 +217,6 @@
     <ClCompile Include="..\..\Source Code\Platform\Video\GLIM\glimBatch.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\GLIM\glimBatchAttributes.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\GLIM\glimBatchData.cpp" />
-    <ClCompile Include="..\..\Source Code\Platform\Video\GLIM\glimD3D11.cpp" />
-    <ClCompile Include="..\..\Source Code\Platform\Video\GLIM\Stuff.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Buffers\glFramebuffer.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Buffers\glGenericVertexData.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Buffers\glShaderBuffer.cpp" />

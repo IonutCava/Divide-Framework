@@ -155,7 +155,6 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         ShaderProgramDescriptor ssaoShaderDescriptor = {};
         ssaoShaderDescriptor._modules.push_back(vertModule);
         ssaoShaderDescriptor._modules.push_back(fragModule);
-        ssaoShaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         ResourceDescriptor ssaoGenerate("SSAOCalc");
         ssaoGenerate.propertyDescriptor(ssaoShaderDescriptor);
@@ -171,7 +170,6 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         ShaderProgramDescriptor ssaoShaderDescriptor = {};
         ssaoShaderDescriptor._modules.push_back(vertModule);
         ssaoShaderDescriptor._modules.push_back(fragModule);
-        ssaoShaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         ResourceDescriptor ssaoGenerateHalfRes("SSAOCalcHalfRes");
         ssaoGenerateHalfRes.propertyDescriptor(ssaoShaderDescriptor);
@@ -187,7 +185,6 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         ShaderProgramDescriptor ssaoShaderDescriptor = {};
         ssaoShaderDescriptor._modules.push_back(vertModule);
         ssaoShaderDescriptor._modules.push_back(fragModule);
-        ssaoShaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         ssaoShaderDescriptor._modules.back()._defines.emplace_back("HORIZONTAL");
         ResourceDescriptor ssaoBlurH("SSAOBlur.Horizontal");
@@ -209,7 +206,6 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         ShaderProgramDescriptor ssaoShaderDescriptor  = {};
         ssaoShaderDescriptor._modules.push_back(vertModule);
         ssaoShaderDescriptor._modules.push_back(fragModule);
-        ssaoShaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         ResourceDescriptor ssaoPassThrough("SSAOPAssThrough");
         ssaoPassThrough.propertyDescriptor(ssaoShaderDescriptor);
@@ -224,7 +220,6 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         ShaderProgramDescriptor ssaoShaderDescriptor = {};
         ssaoShaderDescriptor._modules.push_back(vertModule);
         ssaoShaderDescriptor._modules.push_back(fragModule);
-        ssaoShaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         ResourceDescriptor ssaoDownSample("SSAODownSample");
         ssaoDownSample.propertyDescriptor(ssaoShaderDescriptor);
@@ -262,6 +257,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     WAIT_FOR_CONDITION(ready());
 
     PipelineDescriptor pipelineDescriptor = {};
+    pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
     pipelineDescriptor._stateHash = _context.get2DStateBlock();
     pipelineDescriptor._shaderProgramHandle = _ssaoDownSampleShader->handle();
 

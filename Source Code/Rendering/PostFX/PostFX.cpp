@@ -68,7 +68,6 @@ PostFX::PostFX(PlatformContext& context, ResourceCache* cache)
     ShaderProgramDescriptor postFXShaderDescriptor = {};
     postFXShaderDescriptor._modules.push_back(vertModule);
     postFXShaderDescriptor._modules.push_back(fragModule);
-    postFXShaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
     _drawConstantsCmd._constants.set(_ID("_noiseTile"),   GFX::PushConstantType::FLOAT, 0.1f);
     _drawConstantsCmd._constants.set(_ID("_noiseFactor"), GFX::PushConstantType::FLOAT, 0.02f);
@@ -120,6 +119,7 @@ PostFX::PostFX(PlatformContext& context, ResourceCache* cache)
         PipelineDescriptor pipelineDescriptor;
         pipelineDescriptor._stateHash = context.gfx().get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _postProcessingShader->handle();
+        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         _drawPipeline = context.gfx().newPipeline(pipelineDescriptor);
     });

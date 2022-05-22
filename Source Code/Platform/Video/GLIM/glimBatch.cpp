@@ -9,14 +9,11 @@
 #include "glimBatch.h"
 
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
-
-#define BUFFER_OFFSET(i) ((char *)NULL + (i))
+#include "Platform/Video/Headers/Pipeline.h"
+#include "Platform/Video/Headers/GFXDevice.h"
 
 namespace NS_GLIM
 {
-    // One global GLIM_BATCH is always defined for immediate use.
-    GLIM_BATCH glim;
-
     GLIM_BATCH::GLIM_BATCH ()
     {
         Clear (true, 64 * 3, 1);
@@ -28,144 +25,16 @@ namespace NS_GLIM
         m_Data.Reset (reserveBuffers, vertexCount, attributeCount);
     }
 
-    void GLIM_BATCH::getBatchAABB (float& out_fMinX, float& out_fMaxX, float& out_fMinY, float& out_fMaxY, float& out_fMinZ, float& out_fMaxZ) noexcept
+    bool GLIM_BATCH::PrepareRender ()
     {
-        out_fMinX = m_Data.m_fMinX;
-        out_fMaxX = m_Data.m_fMaxX;
-        out_fMinY = m_Data.m_fMinY;
-        out_fMaxY = m_Data.m_fMaxY;
-        out_fMinZ = m_Data.m_fMinZ;
-        out_fMaxZ = m_Data.m_fMaxZ;
-    }
-
-    void GLIM_BATCH::EndRender (void) noexcept
-    {
-        // disable everything again
-        m_Data.Unbind ();
-    }
-
-    bool GLIM_BATCH::BeginRender (void)
-    {
-#ifdef AE_RENDERAPI_OPENGL
-        return BeginRenderOGL ();
-#else
-        return (BeginRenderD3D11 ());
-#endif
-    }
-
-    void GLIM_BATCH::RenderBatch (bool bWireframe)
-    {
-#ifdef AE_RENDERAPI_OPENGL
-        RenderBatchOGL (bWireframe);
-#else
-        RenderBatchD3D11 (bWireframe);
-#endif
-    }
-
-    void GLIM_BATCH::RenderBatchInstanced (int iInstances, bool bWireframe)
-    {
-#ifdef AE_RENDERAPI_OPENGL
-        RenderBatchInstancedOGL (iInstances, bWireframe);
-#else
-        RenderBatchInstancedD3D11 (iInstances, bWireframe);
-#endif
-    }
-
-
-#ifdef AE_RENDERAPI_OPENGL
-    bool GLIM_BATCH::BeginRenderOGL (void)
-    {
-        if (m_Data.m_State == GLIM_BATCH_STATE::STATE_EMPTY)
+        if (m_Data.m_State == GLIM_BATCH_STATE::STATE_EMPTY) {
             return false;
+        }
 
         GLIM_CHECK (m_Data.m_State == GLIM_BATCH_STATE::STATE_FINISHED_BATCH, "GLIM_BATCH::RenderBatch: This function can only be called after a batch has been created.");
-        
-        // allow the application to apply gl states now
-        if (s_StateChangeCallback)
-            s_StateChangeCallback ();
-
-        // get the currently active shader program
-        GLIM_CHECK (m_Data.m_ShaderProgramHandle != Divide::ShaderProgram::INVALID_HANDLE, "GLIM_BATCH::RenderBatch: Currently no shader is bound or the shader has an error.");
-
-        m_Data.Upload ();
-
-        // if this happens the array is simply empty
-        if (!m_Data.m_bUploadedToGPU)
-            return false;
-
-        // bind all vertex arrays
-        m_Data.Bind ( m_Data.m_ShaderProgramHandle);
 
         return true;
     }
-
-    void GLIM_BATCH::RenderBatchInstancedOGL(int iInstances, bool bWireframe)
-    {
-        if (!BeginRender ())
-            return;
-    
-        bWireframe |= s_bForceWireframe;
-
-        Divide::GenericDrawCommand cmd;
-        cmd._cmd.primCount = iInstances;
-
-        if (!bWireframe)
-        {
-            // render all triangles
-            if (m_Data.m_uiTriangleElements > 0)
-            {
-                Divide::GL_API::GetStateTracker()->_activeTopology = Divide::PrimitiveTopology::TRIANGLES;
-                cmd._cmd.indexCount = m_Data.m_uiTriangleElements;
-                if (Divide::GL_API::GetStateTracker()->setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, m_Data.m_uiElementBufferID_Triangles) == Divide::GLStateTracker::BindResult::FAILED) {
-                    Divide::DIVIDE_UNEXPECTED_CALL();
-                }
-                Divide::GLUtil::SubmitRenderCommand(cmd, false, m_Data.m_uiElementBufferID_Triangles > 0 ? GL_UNSIGNED_INT : GL_NONE);
-            }
-        }
-        else
-        {
-            // render all triangles
-            if (m_Data.m_uiWireframeElements > 0)
-            {
-                Divide::GL_API::GetStateTracker()->_activeTopology = Divide::PrimitiveTopology::LINES;
-                cmd._cmd.indexCount = m_Data.m_uiWireframeElements;
-                if (Divide::GL_API::GetStateTracker()->setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, m_Data.m_uiElementBufferID_Wireframe) == Divide::GLStateTracker::BindResult::FAILED) {
-                    Divide::DIVIDE_UNEXPECTED_CALL();
-                }
-                Divide::GLUtil::SubmitRenderCommand(cmd, false, m_Data.m_uiElementBufferID_Wireframe > 0 ? GL_UNSIGNED_INT : GL_NONE);
-            }
-        }
-        
-        // render all lines
-        if (m_Data.m_uiLineElements > 0)
-        {
-            Divide::GL_API::GetStateTracker()->_activeTopology = Divide::PrimitiveTopology::LINES;
-            cmd._cmd.indexCount = m_Data.m_uiLineElements;
-            if (Divide::GL_API::GetStateTracker()->setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, m_Data.m_uiElementBufferID_Lines) == Divide::GLStateTracker::BindResult::FAILED) {
-                Divide::DIVIDE_UNEXPECTED_CALL();
-            }
-            Divide::GLUtil::SubmitRenderCommand(cmd, false, m_Data.m_uiElementBufferID_Lines > 0 ? GL_UNSIGNED_INT : GL_NONE);
-        }
-
-        // render all points
-        if (m_Data.m_uiPointElements > 0)
-        {
-            Divide::GL_API::GetStateTracker()->_activeTopology = Divide::PrimitiveTopology::POINTS;
-            cmd._cmd.indexCount = m_Data.m_uiPointElements;
-            if (Divide::GL_API::GetStateTracker()->setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, m_Data.m_uiElementBufferID_Points) == Divide::GLStateTracker::BindResult::FAILED) {
-                Divide::DIVIDE_UNEXPECTED_CALL();
-            }
-            Divide::GLUtil::SubmitRenderCommand(cmd, false, m_Data.m_uiElementBufferID_Points > 0 ? GL_UNSIGNED_INT : GL_NONE);
-        }
-
-        EndRender ();
-    }
-
-    void GLIM_BATCH::RenderBatchOGL (const bool bWireframe)
-    {
-        RenderBatchInstancedOGL(1, bWireframe);
-    }
-#endif
 
     void GLIM_BATCH::BeginBatch (bool reserveBuffers, unsigned int vertexCount, unsigned int attributeCount)
     {
@@ -185,10 +54,6 @@ namespace NS_GLIM
 
         // mark this batch as finished
         m_Data.m_State = GLIM_BATCH_STATE::STATE_FINISHED_BATCH;
-
-#ifdef AE_RENDERAPI_D3D11
-        m_Data.GenerateSignature ();
-#endif
     }
 
     void GLIM_BATCH::Begin (GLIM_ENUM eType) noexcept
@@ -204,28 +69,28 @@ namespace NS_GLIM
 
         switch (m_PrimitiveType)
         {
-        case GLIM_ENUM::GLIM_TRIANGLES:
-        case GLIM_ENUM::GLIM_POINTS:
-        case GLIM_ENUM::GLIM_LINES:
-        case GLIM_ENUM::GLIM_LINE_STRIP:
-        case GLIM_ENUM::GLIM_LINE_LOOP:
-        case GLIM_ENUM::GLIM_POLYGON:
-        case GLIM_ENUM::GLIM_TRIANGLE_FAN:
-        case GLIM_ENUM::GLIM_QUADS:
-            // Life is good.
-            break;
+            case GLIM_ENUM::GLIM_TRIANGLES:
+            case GLIM_ENUM::GLIM_POINTS:
+            case GLIM_ENUM::GLIM_LINES:
+            case GLIM_ENUM::GLIM_LINE_STRIP:
+            case GLIM_ENUM::GLIM_LINE_LOOP:
+            case GLIM_ENUM::GLIM_POLYGON:
+            case GLIM_ENUM::GLIM_TRIANGLE_FAN:
+            case GLIM_ENUM::GLIM_QUADS:
+                // Life is good.
+                break;
 
-        case GLIM_ENUM::GLIM_QUAD_STRIP:
-        case GLIM_ENUM::GLIM_TRIANGLE_STRIP:
+            case GLIM_ENUM::GLIM_QUAD_STRIP:
+            case GLIM_ENUM::GLIM_TRIANGLE_STRIP:
         
-            //! \todo Stuff...
+                //! \todo Stuff...
 
-            GLIM_CHECK (false, "GLIM_BATCH::Begin: The given primitive-type is currently not supported.");
-            break;
+                GLIM_CHECK (false, "GLIM_BATCH::Begin: The given primitive-type is currently not supported.");
+                break;
 
-        default:
-            GLIM_CHECK (false, "GLIM_BATCH::Begin: The given primitive-type is unknown.");
-            return;
+            default:
+                GLIM_CHECK (false, "GLIM_BATCH::Begin: The given primitive-type is unknown.");
+                return;
         }
     }
 
@@ -321,16 +186,6 @@ namespace NS_GLIM
             GLIM_CHECK (false, "GLIM_BATCH::End: The given primitive-type is unknown.");
             return;
         }
-    }
-
-    void GLIM_BATCH::SetVertexAttribLocation(unsigned int vertexLocation) noexcept
-    {
-        m_Data.m_VertAttribLocation = vertexLocation;
-    }
-    
-    void GLIM_BATCH::SetShaderProgramHandle(Divide::ShaderProgram::Handle shaderProgramHandle) noexcept
-    {
-        m_Data.m_ShaderProgramHandle = shaderProgramHandle;
     }
 
     void GLIM_BATCH::Vertex (float x, float y, float z)

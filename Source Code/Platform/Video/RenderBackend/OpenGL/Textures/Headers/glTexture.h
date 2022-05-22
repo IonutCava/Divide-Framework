@@ -34,6 +34,7 @@
 #define GL_TEXTURE_H
 
 #include "Platform/Video/RenderBackend/OpenGL/Headers/glResources.h"
+#include "Platform/Video/RenderBackend/OpenGL/Headers/glLockManager.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 
 namespace Divide {
@@ -64,9 +65,10 @@ class glTexture final : public Texture {
     TextureReadbackData readData(U16 mipLevel, GFXDataFormat desiredFormat) const override;
 
    protected:
+    void postLoad() override;
     void reserveStorage(bool fromFile) override;
     void loadDataCompressed(const ImageTools::ImageData& imageData) override;
-    void loadDataUncompressed(const ImageTools::ImageData& imageData) const override;
+    void loadDataUncompressed(const ImageTools::ImageData& imageData) override;
     void prepareTextureData(U16 width, U16 height) override;
     void submitTextureData() override;
 
@@ -83,6 +85,7 @@ class glTexture final : public Texture {
     SamplerAddressCache _cachedAddressForSampler{};
     SamplerAddress _baseTexAddress{ 0u };
     Mutex _gpuAddressesLock;
+    glLockManager _lockManager;
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(glTexture);

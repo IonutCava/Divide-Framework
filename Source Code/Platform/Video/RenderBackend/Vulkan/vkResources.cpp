@@ -15,7 +15,6 @@ std::array<VkImageType, to_base(TextureType::COUNT)> vkTextureTypeTable;
 std::array<VkImageViewType, to_base(TextureType::COUNT)> vkTextureViewTypeTable;
 std::array<VkPrimitiveTopology, to_base(PrimitiveTopology::COUNT)> vkPrimitiveTypeTable;
 std::array<VkSamplerAddressMode, to_base(TextureWrap::COUNT)> vkWrapTable;
-std::array<NS_GLIM::GLIM_ENUM, to_base(PrimitiveTopology::COUNT)> glimPrimitiveType;
 std::array<VkShaderStageFlagBits, to_base(ShaderType::COUNT)> vkShaderStageTable;
 
 namespace Debug {
@@ -107,19 +106,13 @@ namespace VKUtil {
         vkPrimitiveTypeTable[to_base(PrimitiveTopology::TRIANGLES_ADJACENCY)] = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY;
         vkPrimitiveTypeTable[to_base(PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY)] = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY;
         vkPrimitiveTypeTable[to_base(PrimitiveTopology::PATCH)] = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
+        vkPrimitiveTypeTable[to_base(PrimitiveTopology::COMPUTE)] = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
         
         vkWrapTable[to_base(TextureWrap::MIRROR_REPEAT)] = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
         vkWrapTable[to_base(TextureWrap::REPEAT)] = VK_SAMPLER_ADDRESS_MODE_REPEAT;
         vkWrapTable[to_base(TextureWrap::CLAMP_TO_EDGE)] = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         vkWrapTable[to_base(TextureWrap::CLAMP_TO_BORDER)] = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
         vkWrapTable[to_base(TextureWrap::MIRROR_CLAMP_TO_EDGE)] = VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
-        
-        glimPrimitiveType[to_base(PrimitiveTopology::POINTS)] = NS_GLIM::GLIM_ENUM::GLIM_POINTS;
-        glimPrimitiveType[to_base(PrimitiveTopology::LINES)] = NS_GLIM::GLIM_ENUM::GLIM_LINES;
-        glimPrimitiveType[to_base(PrimitiveTopology::LINE_STRIP)] = NS_GLIM::GLIM_ENUM::GLIM_LINE_STRIP;
-        glimPrimitiveType[to_base(PrimitiveTopology::TRIANGLES)] = NS_GLIM::GLIM_ENUM::GLIM_TRIANGLES;
-        glimPrimitiveType[to_base(PrimitiveTopology::TRIANGLE_STRIP)] = NS_GLIM::GLIM_ENUM::GLIM_TRIANGLE_STRIP;
-        glimPrimitiveType[to_base(PrimitiveTopology::TRIANGLE_FAN)] = NS_GLIM::GLIM_ENUM::GLIM_TRIANGLE_FAN;
 
         vkShaderStageTable[to_base(ShaderType::VERTEX)] = VK_SHADER_STAGE_VERTEX_BIT;
         vkShaderStageTable[to_base(ShaderType::FRAGMENT)] = VK_SHADER_STAGE_FRAGMENT_BIT;

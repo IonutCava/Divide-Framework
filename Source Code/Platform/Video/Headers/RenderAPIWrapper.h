@@ -108,6 +108,7 @@ struct DeviceInformation
     VersionInformation _versionInfo = { 4u, 6u };
     U16 _UBOffsetAlignmentBytes = 256u;
     U16 _SSBOffsetAlignmentBytes = 16u;
+    U16 _VBOffsetAlignmentBytes = 4u;
     U8 _maxTextureUnits = 32u;
     U8 _maxRTColourAttachments = 4u;
     U8 _maxAnisotropy = 0u;

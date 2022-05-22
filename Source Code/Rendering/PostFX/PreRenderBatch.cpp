@@ -229,7 +229,6 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         ShaderProgramDescriptor mapDescriptor1 = {};
         mapDescriptor1._modules.push_back(vertModule);
         mapDescriptor1._modules.push_back(fragModule);
-        mapDescriptor1._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         ResourceDescriptor toneMap("toneMap");
         toneMap.waitForReady(false);
@@ -241,7 +240,6 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         ShaderProgramDescriptor toneMapAdaptiveDescriptor{};
         toneMapAdaptiveDescriptor._modules.push_back(vertModule);
         toneMapAdaptiveDescriptor._modules.push_back(fragModule);
-        toneMapAdaptiveDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         ResourceDescriptor toneMapAdaptive("toneMap.Adaptive");
         toneMapAdaptive.waitForReady(false);
@@ -259,7 +257,6 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         {
             computeModule._variant = "Create";
             ShaderProgramDescriptor calcDescriptor = {};
-            calcDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
             calcDescriptor._modules.push_back(computeModule);
 
             ResourceDescriptor histogramCreate("luminanceCalc.HistogramCreate");
@@ -270,7 +267,6 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         {
             computeModule._variant = "Average";
             ShaderProgramDescriptor calcDescriptor = {};
-            calcDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
             calcDescriptor._modules.push_back(computeModule);
 
             ResourceDescriptor histogramAverage("luminanceCalc.HistogramAverage");
@@ -281,7 +277,6 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
     }
     {
         ShaderProgramDescriptor edgeDetectionDescriptor = {};
-        edgeDetectionDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         ShaderModuleDescriptor vertModule = {};
         vertModule._moduleType = ShaderType::VERTEX;
@@ -323,7 +318,6 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
     }
     {
         ShaderProgramDescriptor lineariseDepthBufferDescriptor = {};
-        lineariseDepthBufferDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         ShaderModuleDescriptor vertModule = {};
         vertModule._moduleType = ShaderType::VERTEX;
@@ -336,7 +330,6 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         fragModule._variant = "LineariseDepthBuffer";
 
         lineariseDepthBufferDescriptor._modules = { vertModule, fragModule };
-        lineariseDepthBufferDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         ResourceDescriptor lineariseDepthBuffer("lineariseDepthBuffer");
         lineariseDepthBuffer.waitForReady(false);
@@ -359,6 +352,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
     WAIT_FOR_CONDITION(loadTasks.load() == 0);
 
     PipelineDescriptor pipelineDescriptor{};
+    pipelineDescriptor._primitiveTopology = PrimitiveTopology::COMPUTE;
 
     const size_t stateHash = _context.get2DStateBlock();
     pipelineDescriptor._stateHash = stateHash;
@@ -368,6 +362,8 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
 
     pipelineDescriptor._shaderProgramHandle = _averageHistogram->handle();
     _pipelineLumCalcAverage = _context.newPipeline(pipelineDescriptor);
+
+    pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
     pipelineDescriptor._shaderProgramHandle = _toneMapAdaptive->handle();
     _pipelineToneMapAdaptive = _context.newPipeline(pipelineDescriptor);
@@ -485,6 +481,7 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _lineariseDepthBuffer->handle();
+        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         GFX::BindPipelineCommand bindPipelineCmd{};
         bindPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);

@@ -115,7 +115,6 @@ inline std::string VKErrorString(VkResult errorCode)
     extern std::array<VkImageViewType, to_base(TextureType::COUNT)> vkTextureViewTypeTable;
     extern std::array<VkPrimitiveTopology, to_base(PrimitiveTopology::COUNT)> vkPrimitiveTypeTable;
     extern std::array<VkSamplerAddressMode, to_base(TextureWrap::COUNT)> vkWrapTable;
-    extern std::array<NS_GLIM::GLIM_ENUM, to_base(PrimitiveTopology::COUNT)> glimPrimitiveType;
     extern std::array<VkShaderStageFlagBits, to_base(ShaderType::COUNT)> vkShaderStageTable;
 
 namespace VKUtil {

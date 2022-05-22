@@ -74,7 +74,7 @@ struct GenericDrawCommand {
     PoolHandle _sourceBuffer {};                                          // 12 bytes
     U32 _commandOffset = 0u;                                              // 8  bytes
     U16 _drawCount = 1u;                                                  // 4  bytes
-    U16 _renderOptions = to_base(CmdRenderOptions::RENDER_GEOMETRY);      // 2  bytes
+    U16 _renderOptions = to_base(CmdRenderOptions::RENDER_GEOMETRY); // 2  bytes
 };
 #pragma pack(pop)
 

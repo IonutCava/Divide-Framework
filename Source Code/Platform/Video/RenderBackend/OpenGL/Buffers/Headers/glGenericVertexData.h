@@ -111,12 +111,15 @@ class glGenericVertexData final : public GenericVertexData {
             : _buffer(MOV(other._buffer)),
               _ringSizeFactor(other._ringSizeFactor),
               _writtenRange(other._writtenRange),
-              _bindConfig(other._bindConfig)
+              _bindConfig(other._bindConfig),
+              _elementStride(other._elementStride),
+              _useAutoSyncObjects(other._useAutoSyncObjects)
         {
         }
 
         glBufferImpl_uptr _buffer{ nullptr };
         size_t _ringSizeFactor{ 1u };
+        size_t _elementStride{ 0u };
         BufferRange _writtenRange{};
         SetBufferParams::BufferBindConfig _bindConfig{};
         bool _usedAfterWrite{ false };
@@ -129,6 +132,7 @@ class glGenericVertexData final : public GenericVertexData {
     GLuint _lastDrawCount{ 0u };
     GLuint _lastIndexCount{ 0u };
     GLuint _lastFirstIndex{ 0u };
+    glLockManager _lockManager;
 };
 
 };  // namespace Divide

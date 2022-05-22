@@ -277,6 +277,7 @@ void RenderPassExecutor::postInit(const ShaderProgram_ptr& OITCompositionShader,
 
         PipelineDescriptor pipelineDescriptor;
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
+        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         pipelineDescriptor._shaderProgramHandle = ResolveGBufferShaderMS->handle();
         s_ResolveGBufferPipeline = _context.newPipeline(pipelineDescriptor);

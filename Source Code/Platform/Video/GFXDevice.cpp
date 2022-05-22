@@ -87,7 +87,7 @@ namespace TypeUtil {
 
 namespace {
     /// How many writes we can basically issue per frame to our scratch buffers before we have to sync
-    constexpr size_t TargetBufferSizeCam = 128u;
+    constexpr size_t TargetBufferSizeCam = 256u;
     constexpr size_t TargetBufferSizeRender = 8u;
 
     constexpr U32 GROUP_SIZE_AABB = 64;
@@ -113,7 +113,7 @@ D64 GFXDevice::s_interpolationFactor = 1.0;
 U32 GFXDevice::s_frameCount = 0u;
 
 DeviceInformation GFXDevice::s_deviceInformation{};
-
+GFXDevice::IMPrimitivePool GFXDevice::s_IMPrimitivePool{};
 #pragma region Construction, destruction, initialization
 
 void GFXDevice::GFXDescriptorSets::init() {
@@ -476,7 +476,7 @@ void GFXDevice::resizeGPUBlocks(size_t targetSizeCam, size_t targetSizeCullCount
         bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
         bufferDescriptor._ringBufferLength = to_U32(targetSizeCam);
         bufferDescriptor._bufferParams._elementSize = sizeof(GFXShaderData::CamData);
-        bufferDescriptor._bufferParams._initialData = { (Byte*)&_gpuBlock._camData, bufferDescriptor._bufferParams._elementSize };
+        bufferDescriptor._initialData = { (Byte*)&_gpuBlock._camData, bufferDescriptor._bufferParams._elementSize };
 
         for (U8 i = 0u; i < GFXBuffers::PerFrameBufferCount; ++i) {
             bufferDescriptor._name = Util::StringFormat("DVD_GPU_CAM_DATA_%d", i);
@@ -495,7 +495,7 @@ void GFXDevice::resizeGPUBlocks(size_t targetSizeCam, size_t targetSizeCullCount
         bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
         bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_W_CPU_R;
         bufferDescriptor._separateReadWrite = true;
-        bufferDescriptor._bufferParams._initialData = { (bufferPtr)&VECTOR4_ZERO._v[0], 4 * sizeof(U32) };
+        bufferDescriptor._initialData = { (bufferPtr)&VECTOR4_ZERO._v[0], 4 * sizeof(U32) };
         for (U8 i = 0u; i < GFXBuffers::PerFrameBufferCount; ++i) {
             _gfxBuffers._perFrameBuffers[i]._cullCounter = newSB(bufferDescriptor);
         }
@@ -507,6 +507,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     ResourceCache* cache = parent().resourceCache();
     const Configuration& config = _parent.platformContext().config();
 
+    IMPrimitive::InitStaticData();
     ShaderProgram::InitStaticData();
     Texture::OnStartup(*this);
     RenderPassExecutor::OnStartup(*this);
@@ -854,6 +855,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
             PipelineDescriptor descriptor = {};
             descriptor._shaderProgramHandle = _textRenderShader->handle();
             descriptor._stateHash = get2DStateBlock();
+            descriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
             _textRenderPipeline = newPipeline(descriptor);
         });
     }
@@ -870,7 +872,6 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         ShaderProgramDescriptor shaderDescriptor = {};
         shaderDescriptor._modules.push_back(vertModule);
         shaderDescriptor._modules.push_back(fragModule);
-        shaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         // Initialized our HierarchicalZ construction shader (takes a depth attachment and down-samples it for every mip level)
         ResourceDescriptor descriptor1("HiZConstruct");
@@ -880,6 +881,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         _HIZConstructProgram->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource* res) {
             PipelineDescriptor pipelineDesc;
             pipelineDesc._stateHash = _stateDepthOnlyRenderingHash;
+            pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
             pipelineDesc._shaderProgramHandle = _HIZConstructProgram->handle();
 
             _HIZPipeline = newPipeline(pipelineDesc);
@@ -901,6 +903,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         _HIZCullProgram->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource* res) {
             PipelineDescriptor pipelineDescriptor = {};
             pipelineDescriptor._shaderProgramHandle = _HIZCullProgram->handle();
+            pipelineDescriptor._primitiveTopology = PrimitiveTopology::COMPUTE;
             _HIZCullPipeline = newPipeline(pipelineDescriptor);
         });
     }
@@ -917,7 +920,6 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         ShaderProgramDescriptor shaderDescriptor = {};
         shaderDescriptor._modules.push_back(vertModule);
         shaderDescriptor._modules.push_back(fragModule);
-        shaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
         
         ResourceDescriptor previewRTShader("fbPreview");
         previewRTShader.waitForReady(true);
@@ -961,7 +963,6 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
             ShaderProgramDescriptor shaderDescriptorSingle = {};
             shaderDescriptorSingle._modules.push_back(blurVertModule);
             shaderDescriptorSingle._modules.push_back(fragModule);
-            shaderDescriptorSingle._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
             ResourceDescriptor blur("BoxBlur_Single");
             blur.propertyDescriptor(shaderDescriptorSingle);
@@ -970,6 +971,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 const ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
                 PipelineDescriptor pipelineDescriptor;
                 pipelineDescriptor._stateHash = get2DStateBlock();
+                pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
                 pipelineDescriptor._shaderProgramHandle = blurShader->handle();
                 _blurBoxPipelineSingleCmd._pipeline = newPipeline(pipelineDescriptor);
             });
@@ -980,7 +982,6 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
             shaderDescriptorLayered._modules.push_back(fragModule);
             shaderDescriptorLayered._modules.back()._variant += ".Layered";
             shaderDescriptorLayered._modules.back()._defines.emplace_back("LAYERED");
-            shaderDescriptorLayered._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
             ResourceDescriptor blur("BoxBlur_Layered");
             blur.propertyDescriptor(shaderDescriptorLayered);
@@ -989,6 +990,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 const ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
                 PipelineDescriptor pipelineDescriptor;
                 pipelineDescriptor._stateHash = get2DStateBlock();
+                pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
                 pipelineDescriptor._shaderProgramHandle = blurShader->handle();
                 _blurBoxPipelineLayeredCmd._pipeline = newPipeline(pipelineDescriptor);
             });
@@ -1012,7 +1014,6 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 shaderDescriptorSingle._modules.push_back(geomModule);
                 shaderDescriptorSingle._modules.push_back(fragModule);
                 shaderDescriptorSingle._globalDefines.emplace_back("GS_MAX_INVOCATIONS 1");
-                shaderDescriptorSingle._primitiveTopology = PrimitiveTopology::POINTS;
 
                 ResourceDescriptor blur("GaussBlur_Single");
                 blur.propertyDescriptor(shaderDescriptorSingle);
@@ -1022,8 +1023,9 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                     PipelineDescriptor pipelineDescriptor;
                     pipelineDescriptor._stateHash = get2DStateBlock();
                     pipelineDescriptor._shaderProgramHandle = blurShader->handle();
+                    pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
                     _blurGaussianPipelineSingleCmd._pipeline = newPipeline(pipelineDescriptor);
-                    });
+                });
             }
             {
                 ShaderProgramDescriptor shaderDescriptorLayered = {};
@@ -1033,7 +1035,6 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 shaderDescriptorLayered._modules.back()._variant += ".Layered";
                 shaderDescriptorLayered._modules.back()._defines.emplace_back("LAYERED");
                 shaderDescriptorLayered._globalDefines.emplace_back(Util::StringFormat("GS_MAX_INVOCATIONS %d", MAX_INVOCATIONS_BLUR_SHADER_LAYERED));
-                shaderDescriptorLayered._primitiveTopology = PrimitiveTopology::POINTS;
 
                 ResourceDescriptor blur("GaussBlur_Layered");
                 blur.propertyDescriptor(shaderDescriptorLayered);
@@ -1043,6 +1044,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                     PipelineDescriptor pipelineDescriptor;
                     pipelineDescriptor._stateHash = get2DStateBlock();
                     pipelineDescriptor._shaderProgramHandle = blurShader->handle();
+                    pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
 
                     _blurGaussianPipelineLayeredCmd._pipeline = newPipeline(pipelineDescriptor);
                     });
@@ -1102,7 +1104,6 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         ShaderProgramDescriptor shaderDescriptor = {};
         shaderDescriptor._modules.push_back(vertModule);
         shaderDescriptor._modules.push_back(fragModule);
-        shaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
         descriptor3.propertyDescriptor(shaderDescriptor);
         {
             _displayShader = CreateResource<ShaderProgram>(cache, descriptor3, loadTasks);
@@ -1110,6 +1111,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 PipelineDescriptor pipelineDescriptor = {};
                 pipelineDescriptor._stateHash = get2DStateBlock();
                 pipelineDescriptor._shaderProgramHandle = _displayShader->handle();
+                pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
                 _drawFSTexturePipelineCmd._pipeline = newPipeline(pipelineDescriptor);
 
                 BlendingSettings& blendState = pipelineDescriptor._blendStates._settings[0];
@@ -1127,6 +1129,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
             _depthShader->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource* res) {
                 PipelineDescriptor pipelineDescriptor = {};
                 pipelineDescriptor._stateHash = _stateDepthOnlyRenderingHash;
+                pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
                 pipelineDescriptor._shaderProgramHandle = _depthShader->handle();
 
                 _drawFSDepthPipelineCmd._pipeline = newPipeline(pipelineDescriptor);
@@ -1140,24 +1143,27 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         RenderStateBlock primitiveStateBlock{};
 
         PipelineDescriptor pipelineDesc;
+        pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
         pipelineDesc._shaderProgramHandle = _imWorldShader->handle();
-
         pipelineDesc._stateHash = primitiveStateBlock.getHash();
-        _debugGizmoPipeline = newPipeline(pipelineDesc);
+
+        _debugGizmoPipeline = pipelineDesc;
 
         primitiveStateBlock.depthTestEnabled(false);
         pipelineDesc._stateHash = primitiveStateBlock.getHash();
-        _debugGizmoPipelineNoDepth = newPipeline(pipelineDesc);
+        _debugGizmoPipelineNoDepth = pipelineDesc;
+
 
         primitiveStateBlock.setCullMode(CullMode::NONE);
         pipelineDesc._stateHash = primitiveStateBlock.getHash();
-        _debugGizmoPipelineNoCullNoDepth = newPipeline(pipelineDesc);
+        _debugGizmoPipelineNoCullNoDepth = pipelineDesc;
+
 
         primitiveStateBlock.depthTestEnabled(true);
         pipelineDesc._stateHash = primitiveStateBlock.getHash();
-        _debugGizmoPipelineNoCull = newPipeline(pipelineDesc);
-
+        _debugGizmoPipelineNoCull = pipelineDesc;
     }
+
     _renderer = eastl::make_unique<Renderer>(context(), cache);
 
     WAIT_FOR_CONDITION(loadTasks.load() == 0);
@@ -1242,12 +1248,13 @@ void GFXDevice::closeRenderingAPI() {
         string list = " [ ";
         for (const std::tuple<GraphicsResource::Type, I64, U64>& res : _graphicResources) {
             list.append(TypeUtil::GraphicResourceTypeToName(std::get<0>(res)));
-            list.append(" _ ");
+            list.append("_");
             list.append(Util::to_string(std::get<1>(res)));
-            list.append(" _ ");
+            list.append("_");
             list.append(Util::to_string(std::get<2>(res)));
-            list.append(" ");
+            list.append(",");
         }
+        list.pop_back();
         list += " ]";
         Console::errorfn(Locale::Get(_ID("ERROR_GFX_LEAKED_RESOURCES")), _graphicResources.size());
         Console::errorfn(list.c_str());
@@ -2533,7 +2540,6 @@ void GFXDevice::initDebugViews() {
         ShaderProgramDescriptor shaderDescriptor = {};
         shaderDescriptor._modules.push_back(vertModule);
         shaderDescriptor._modules.push_back(fragModule);
-        shaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         // The LinearDepth variant converts the depth values to linear values between the 2 scene z-planes
         ResourceDescriptor fbPreview("fbPreviewLinearDepth");
@@ -2697,6 +2703,7 @@ void GFXDevice::renderDebugViews(const Rect<I32> targetViewport, const I32 paddi
     PipelineDescriptor pipelineDesc{};
     pipelineDesc._stateHash = _state2DRenderingHash;
     pipelineDesc._shaderProgramHandle = ShaderProgram::INVALID_HANDLE;
+    pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
     const Rect<I32> previousViewport{
         to_I32(_gpuBlock._camData._ViewPort.x),
@@ -2842,7 +2849,7 @@ void GFXDevice::getDebugViewNames(vector<std::tuple<string, I16, I16, bool>>& na
     }
 }
 
-Pipeline* GFXDevice::getDebugPipeline(const IMPrimitive::BaseDescriptor& descriptor) const noexcept {
+PipelineDescriptor& GFXDevice::getDebugPipeline(const IMPrimitive::BaseDescriptor& descriptor) noexcept {
     if (descriptor.noDepth) {
         return (descriptor.noCull ? _debugGizmoPipelineNoCullNoDepth : _debugGizmoPipelineNoDepth);
     } else if (descriptor.noCull) {
@@ -2873,10 +2880,8 @@ void GFXDevice::debugDrawLines(GFX::CommandBuffer& bufferInOut) {
         }
 
         linePrimitive->forceWireframe(data._descriptor.wireframe); //? Uhm, not gonna do much -Ionut
-        linePrimitive->pipeline(*getDebugPipeline(data._descriptor));
-        linePrimitive->worldMatrix(data._descriptor.worldMatrix);
         linePrimitive->fromLines(data._descriptor);
-        bufferInOut.add(linePrimitive->toCommandBuffer());
+        linePrimitive->getCommandBuffer(data._descriptor.worldMatrix, getDebugPipeline(data._descriptor), bufferInOut);
     }
 }
 
@@ -2900,10 +2905,8 @@ void GFXDevice::debugDrawBoxes(GFX::CommandBuffer& bufferInOut) {
         }
 
         boxPrimitive->forceWireframe(data._descriptor.wireframe);
-        boxPrimitive->pipeline(*getDebugPipeline(data._descriptor));
-        boxPrimitive->worldMatrix(data._descriptor.worldMatrix);
         boxPrimitive->fromBox(data._descriptor);
-        bufferInOut.add(boxPrimitive->toCommandBuffer());
+        boxPrimitive->getCommandBuffer(data._descriptor.worldMatrix, getDebugPipeline(data._descriptor), bufferInOut);
     }
 }
 
@@ -2927,10 +2930,8 @@ void GFXDevice::debugDrawOBBs(GFX::CommandBuffer& bufferInOut) {
         }
 
         boxPrimitive->forceWireframe(data._descriptor.wireframe);
-        boxPrimitive->pipeline(*getDebugPipeline(data._descriptor));
-        boxPrimitive->worldMatrix(data._descriptor.worldMatrix);
         boxPrimitive->fromOBB(data._descriptor);
-        bufferInOut.add(boxPrimitive->toCommandBuffer());
+        boxPrimitive->getCommandBuffer(data._descriptor.worldMatrix, getDebugPipeline(data._descriptor), bufferInOut);
     }
 }
 void GFXDevice::debugDrawSphere(const I64 ID, const IMPrimitive::SphereDescriptor descriptor) noexcept {
@@ -2953,10 +2954,8 @@ void GFXDevice::debugDrawSpheres(GFX::CommandBuffer& bufferInOut) {
         }
 
         spherePrimitive->forceWireframe(data._descriptor.wireframe);
-        spherePrimitive->pipeline(*getDebugPipeline(data._descriptor));
-        spherePrimitive->worldMatrix(data._descriptor.worldMatrix);
         spherePrimitive->fromSphere(data._descriptor);
-        bufferInOut.add(spherePrimitive->toCommandBuffer());
+        spherePrimitive->getCommandBuffer(data._descriptor.worldMatrix, getDebugPipeline(data._descriptor), bufferInOut);
     }
 }
 
@@ -2981,10 +2980,8 @@ void GFXDevice::debugDrawCones(GFX::CommandBuffer& bufferInOut) {
         }
 
         conePrimitive->forceWireframe(data._descriptor.wireframe);
-        conePrimitive->pipeline(*getDebugPipeline(data._descriptor));
-        conePrimitive->worldMatrix(data._descriptor.worldMatrix);
         conePrimitive->fromCone(data._descriptor);
-        bufferInOut.add(conePrimitive->toCommandBuffer());
+        conePrimitive->getCommandBuffer(data._descriptor.worldMatrix, getDebugPipeline(data._descriptor), bufferInOut);
     }
 }
 
@@ -3009,10 +3006,8 @@ void GFXDevice::debugDrawFrustums(GFX::CommandBuffer& bufferInOut) {
         }
 
         frustumPrimitive->forceWireframe(data._descriptor.wireframe);
-        frustumPrimitive->pipeline(*getDebugPipeline(data._descriptor));
-        frustumPrimitive->worldMatrix(data._descriptor.worldMatrix);
         frustumPrimitive->fromFrustum(data._descriptor);
-        bufferInOut.add(frustumPrimitive->toCommandBuffer());
+        frustumPrimitive->getCommandBuffer(data._descriptor.worldMatrix, getDebugPipeline(data._descriptor), bufferInOut);
     }
 }
 
@@ -3062,12 +3057,12 @@ GenericVertexData* GFXDevice::getOrCreateIMGUIBuffer(const I64 windowGUID, const
     params._bindConfig = { 0u, 0u };
     params._useRingBuffer = true;
     params._useAutoSyncObjects = false; // we manually call sync after all draw commands are submitted
+    params._initialData = { nullptr, 0 };
 
     params._bufferParams._elementCount = maxVertices;
     params._bufferParams._elementSize = sizeof(ImDrawVert);
     params._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
     params._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
-    params._bufferParams._initialData = { nullptr, 0 };
 
     ret->setBuffer(params); //Pos, UV and Colour
     ret->setIndexBuffer(idxBuff);
@@ -3106,42 +3101,17 @@ RenderTarget_uptr GFXDevice::newRT(const RenderTargetDescriptor& descriptor) {
 }
 
 IMPrimitive* GFXDevice::newIMP() {
-    switch (renderAPI()) {
-        case RenderAPI::OpenGL: {
-            return GL_API::NewIMP(_imprimitiveMutex , *this);
-        };
-        case RenderAPI::Vulkan: {
-            return VK_API::NewIMP(_imprimitiveMutex, *this);
-        }
-        case RenderAPI::None: {
-            ScopedLock<Mutex> w_lock(_imprimitiveMutex);
-            return MemoryManager_NEW noIMPrimitive(*this);
-        };
-        default: {
-            DIVIDE_UNEXPECTED_CALL_MSG(Locale::Get(_ID("ERROR_GFX_DEVICE_API")));
-        } break;
-    };
-
-    return nullptr;
+    ScopedLock<Mutex> w_lock(_imprimitiveMutex);
+    return s_IMPrimitivePool.newElement(*this);
 }
 
 bool GFXDevice::destroyIMP(IMPrimitive*& primitive) {
-    switch (renderAPI()) {
-        case RenderAPI::OpenGL: {
-            return GL_API::DestroyIMP(_imprimitiveMutex , primitive);
-        };
-        case RenderAPI::Vulkan: {
-            return VK_API::DestroyIMP(_imprimitiveMutex, primitive);
-        };
-        case RenderAPI::None: {
-            ScopedLock<Mutex> w_lock(_imprimitiveMutex);
-            MemoryManager::SAFE_DELETE(primitive);
-            return true;
-        };
-        default: {
-            DIVIDE_UNEXPECTED_CALL_MSG(Locale::Get(_ID("ERROR_GFX_DEVICE_API")));
-        } break;
-    };
+    if (primitive != nullptr) {
+        ScopedLock<Mutex> w_lock(_imprimitiveMutex);
+        s_IMPrimitivePool.deleteElement(primitive);
+        primitive = nullptr;
+        return true;
+    }
 
     return false;
 }
@@ -3196,6 +3166,7 @@ Texture_ptr GFXDevice::newTexture(const size_t descriptorHash,
 Pipeline* GFXDevice::newPipeline(const PipelineDescriptor& descriptor) {
     // Pipeline with no shader is no pipeline at all
     DIVIDE_ASSERT(descriptor._shaderProgramHandle != ShaderProgram::INVALID_HANDLE, "Missing shader handle during pipeline creation!");
+    DIVIDE_ASSERT(descriptor._primitiveTopology != PrimitiveTopology::COUNT, "Missing primitive topology during pipeline creation!");
 
     const size_t hash = GetHash(descriptor);
 

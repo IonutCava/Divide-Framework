@@ -7,10 +7,6 @@
 #ifndef GLIM_DECLARATIONS_H
 #define GLIM_DECLARATIONS_H
 
-#ifndef AE_RENDERAPI_OPENGL
-#define AE_RENDERAPI_OPENGL
-#endif
-
 #include "Core/TemplateLibraries/Headers/String.h"
 #include <assert.h>
 
@@ -45,15 +41,13 @@ namespace NS_GLIM
         GLIM_4UB,                // for internal use
     };
 
-    enum class GLIM_API : unsigned int
-    {
-        GLIM_NONE,
-        GLIM_OPENGL,
-        GLIM_D3D11,
+    enum class GLIM_BUFFER_TYPE : unsigned int {
+        POINTS,
+        LINES,
+        TRIANGLES,
+        WIREFRAME,
+        COUNT
     };
-
-    // Base class for GLIM-objects. Defines the interface.
-    class GLIM_Interface;
 
     // One implementation of GLIM_Interface.
     class GLIM_BATCH;
@@ -69,18 +63,9 @@ namespace NS_GLIM
     //! Declaration for a callback-function that will be called directly before each drawcall / shader-query.
     typedef void (*GLIM_CALLBACK)(void);
 
-#ifdef AE_RENDERAPI_D3D11
-    typedef void (*GLIM_CALLBACK_SETINPUTLAYOUT)(GLIM_Interface* pBatch, const vector<D3D11_INPUT_ELEMENT_DESC>& Signature);
-    typedef void (*GLIM_CALLBACK_RELEASERESOURCE)(ID3D11Resource* pResource);
-#endif
-
     //! Assert Macro used internally.
-    inline void GLIM_CHECK (bool bCondition, [[maybe_unused]] const char* szErrorMsg) noexcept
-    {
-        if (bCondition)
-            return;
-
-        assert(false && szErrorMsg);
+    inline void GLIM_CHECK (bool bCondition, const char* szErrorMsg) noexcept {
+        Divide::DIVIDE_ASSERT(bCondition, szErrorMsg);
     }
 
 }

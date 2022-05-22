@@ -39,15 +39,6 @@ void NavMeshDebugDraw::beginBatch() {
         _primitive = _context.newIMP();
     }
 
-    // Generate a render state
-    RenderStateBlock navigationDebugStateBlock;
-    navigationDebugStateBlock.setCullMode(CullMode::NONE);
-    navigationDebugStateBlock.depthTestEnabled(_depthMask);
-
-    PipelineDescriptor pipeDesc;
-    pipeDesc._stateHash = navigationDebugStateBlock.getHash();
-    _primitive->pipeline(*_context.newPipeline(pipeDesc));
-
     assert(_primitive != nullptr);
 
     if (_dirty) {
@@ -111,8 +102,18 @@ void NavMeshDebugDraw::end() {
     }
 }
 
-GFX::CommandBuffer& NavMeshDebugDraw::toCommandBuffer() const {
-    return _primitive->toCommandBuffer();
+void NavMeshDebugDraw::toCommandBuffer(GFX::CommandBuffer& bufferInOut) const {
+
+    // Generate a render state
+    RenderStateBlock navigationDebugStateBlock;
+    navigationDebugStateBlock.setCullMode(CullMode::NONE);
+    navigationDebugStateBlock.depthTestEnabled(_depthMask);
+
+    PipelineDescriptor pipeDesc;
+    pipeDesc._stateHash = navigationDebugStateBlock.getHash();
+    pipeDesc._shaderProgramHandle = _context.defaultIMShader()->handle();
+
+    _primitive->getCommandBuffer(pipeDesc, bufferInOut);
 }
 
 void NavMeshDebugDraw::overrideColour(const U32 col) noexcept {

@@ -484,13 +484,13 @@ void Vegetation::createAndUploadGPUData(GFXDevice& gfxDevice, const Terrain_ptr&
         if (s_maxTreeInstances > 0) {
             bufferDescriptor._bufferParams._elementCount = to_U32(s_maxTreeInstances * s_maxChunks);
             bufferDescriptor._name = "Tree_data";
-            bufferDescriptor._bufferParams._initialData = { treeData.data(), treeData.size() };
+            bufferDescriptor._initialData = { treeData.data(), treeData.size() };
             s_treeData = gfxDevice.newSB(bufferDescriptor);
         }
         if (s_maxGrassInstances > 0) {
             bufferDescriptor._bufferParams._elementCount = to_U32(s_maxGrassInstances * s_maxChunks);
             bufferDescriptor._name = "Grass_data";
-            bufferDescriptor._bufferParams._initialData = { grassData.data(), grassData.size() };
+            bufferDescriptor._initialData = { grassData.data(), grassData.size() };
             s_grassData = gfxDevice.newSB(bufferDescriptor);
         }
 

@@ -114,9 +114,16 @@ Texture::~Texture()
 
 bool Texture::load() {
     Start(*CreateTask([this]([[maybe_unused]] const Task & parent) { threadedLoad(); }),
-            _context.context().taskPool(TaskPoolType::HIGH_PRIORITY));
+            _context.context().taskPool(TaskPoolType::HIGH_PRIORITY), TaskPriority::DONT_CARE,
+           [&]() {
+               postLoad();
+           });
 
     return true;
+}
+
+void Texture::postLoad() {
+    NOP();
 }
 
 /// Load texture data using the specified file name

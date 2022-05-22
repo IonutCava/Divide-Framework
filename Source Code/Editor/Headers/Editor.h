@@ -42,6 +42,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Rendering/Camera/Headers/CameraSnapshot.h"
 #include "Editor/Widgets/Headers/Gizmo.h"
 
+#include "Platform/Video/Headers/Pipeline.h"
 #include "Platform/Headers/DisplayWindow.h"
 #include "Platform/Input/Headers/InputAggregatorInterface.h"
 
@@ -296,8 +297,8 @@ class Editor final : public PlatformContextComponent,
 
     IMPrimitive*  _infiniteGridPrimitive = nullptr;
     ShaderProgram_ptr _infiniteGridProgram;
-    Pipeline*     _infiniteGridPipeline = nullptr;
-    Pipeline* _axisGizmoPipeline = nullptr;
+    PipelineDescriptor  _infiniteGridPipelineDesc;
+    PipelineDescriptor _axisGizmoPipelineDesc;
     IMPrimitive* _axisGizmo = nullptr;
     Pipeline* _editorPipeline = nullptr;
 

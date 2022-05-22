@@ -112,10 +112,11 @@ class NOINITVTABLE ShaderBuffer : public LockableDataRangeBuffer,
 /// determined by comparing the data size to the buffer size
 struct ShaderBufferDescriptor {
     BufferParams _bufferParams;
-    string _name = "";
-    U32 _ringBufferLength = 1u;
-    ShaderBuffer::Usage _usage = ShaderBuffer::Usage::COUNT;
-    bool _separateReadWrite = false; ///< Use a separate read/write index based on queue length
+    std::pair<bufferPtr, size_t> _initialData{nullptr, 0u};
+    string _name{ "" };
+    U32 _ringBufferLength{ 1u };
+    ShaderBuffer::Usage _usage{ ShaderBuffer::Usage::COUNT };
+    bool _separateReadWrite{ false }; ///< Use a separate read/write index based on queue length
 };
 
 FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);

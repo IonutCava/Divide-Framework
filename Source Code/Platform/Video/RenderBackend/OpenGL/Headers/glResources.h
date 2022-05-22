@@ -203,7 +203,6 @@ extern std::array<GLenum, to_base(GFXImageFormat::COUNT)> glImageFormatTable;
 extern std::array<GLenum, to_base(PrimitiveTopology::COUNT)> glPrimitiveTypeTable;
 extern std::array<GLenum, to_base(GFXDataFormat::COUNT)> glDataFormat;
 extern std::array<GLenum, to_base(TextureWrap::COUNT)> glWrapTable;
-extern std::array<NS_GLIM::GLIM_ENUM, to_base(PrimitiveTopology::COUNT)> glimPrimitiveType;
 extern std::array<GLenum, to_base(ShaderType::COUNT)> glShaderStageTable;
 };  // namespace GLUtil
 };  // namespace Divide

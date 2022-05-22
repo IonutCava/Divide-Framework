@@ -455,7 +455,7 @@ protected:
     
     void stepResolution(bool increment);
 
-    [[nodiscard]] Pipeline* getDebugPipeline(const IMPrimitive::BaseDescriptor& descriptor) const noexcept;
+    [[nodiscard]] PipelineDescriptor& getDebugPipeline(const IMPrimitive::BaseDescriptor& descriptor) noexcept;
     void debugDrawLines(GFX::CommandBuffer& bufferInOut);
     void debugDrawBoxes(GFX::CommandBuffer& bufferInOut);
     void debugDrawOBBs(GFX::CommandBuffer& bufferInOut);
@@ -548,10 +548,10 @@ private:
 
     Pipeline* _HIZPipeline = nullptr;
     Pipeline* _HIZCullPipeline = nullptr;
-    Pipeline* _debugGizmoPipeline = nullptr;
-    Pipeline* _debugGizmoPipelineNoDepth = nullptr;
-    Pipeline* _debugGizmoPipelineNoCull = nullptr;
-    Pipeline* _debugGizmoPipelineNoCullNoDepth = nullptr;
+    PipelineDescriptor _debugGizmoPipeline;
+    PipelineDescriptor _debugGizmoPipelineNoDepth;
+    PipelineDescriptor _debugGizmoPipelineNoCull;
+    PipelineDescriptor _debugGizmoPipelineNoCullNoDepth;
     GFX::BindPipelineCommand _drawFSTexturePipelineCmd;
     GFX::BindPipelineCommand _drawFSTexturePipelineBlendCmd;
     GFX::BindPipelineCommand _drawFSDepthPipelineCmd;
@@ -622,6 +622,9 @@ private:
 
     std::stack<Rect<I32>> _viewportStack;
     Mutex _imprimitiveMutex;
+
+    using IMPrimitivePool = MemoryPool<IMPrimitive, 1 << 15>;
+    static IMPrimitivePool s_IMPrimitivePool;
 
     static D64 s_interpolationFactor;
     static U32 s_frameCount;

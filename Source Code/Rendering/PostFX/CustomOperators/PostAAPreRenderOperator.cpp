@@ -43,7 +43,6 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
     }
     { //FXAA Shader
         ShaderProgramDescriptor aaShaderDescriptor = {};
-        aaShaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
         aaShaderDescriptor._modules = { 
             ShaderModuleDescriptor{ ShaderType::VERTEX, "baseVertexShaders.glsl", "FullScreenQuad" },
             ShaderModuleDescriptor{ ShaderType::FRAGMENT, "FXAA.glsl" } 
@@ -57,6 +56,7 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
             PipelineDescriptor pipelineDescriptor;
             pipelineDescriptor._stateHash = _context.get2DStateBlock();
             pipelineDescriptor._shaderProgramHandle = _fxaa->handle();
+            pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
             _fxaaPipeline = _context.newPipeline(pipelineDescriptor);
         });
@@ -75,7 +75,6 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
         fragModule._variant = "Weight";
         ShaderProgramDescriptor weightsDescriptor = {};
         weightsDescriptor._modules = { vertModule, fragModule };
-        weightsDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         ResourceDescriptor smaaWeights("SMAA.Weights");
         smaaWeights.propertyDescriptor(weightsDescriptor);
@@ -85,6 +84,7 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
             PipelineDescriptor pipelineDescriptor;
             pipelineDescriptor._stateHash = _context.get2DStateBlock();
             pipelineDescriptor._shaderProgramHandle = _smaaWeightComputation->handle();
+            pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
             _smaaWeightPipeline = _context.newPipeline(pipelineDescriptor);
         });
@@ -93,7 +93,6 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
         fragModule._variant = "Blend";
         ShaderProgramDescriptor blendDescriptor = {};
         blendDescriptor._modules = { vertModule, fragModule };
-        blendDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         ResourceDescriptor smaaBlend("SMAA.Blend");
         smaaBlend.propertyDescriptor(blendDescriptor);
@@ -103,6 +102,7 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
             PipelineDescriptor pipelineDescriptor;
             pipelineDescriptor._stateHash = _context.get2DStateBlock();
             pipelineDescriptor._shaderProgramHandle = _smaaBlend->handle();
+            pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
             _smaaBlendPipeline = _context.newPipeline(pipelineDescriptor);
         });

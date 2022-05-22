@@ -71,7 +71,6 @@ void RenderPassManager::postInit() {
         ShaderProgramDescriptor shaderDescriptor = {};
         shaderDescriptor._modules.push_back(vertModule);
         shaderDescriptor._modules.push_back(fragModule);
-        shaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         ResourceDescriptor shaderResDesc("OITComposition");
         shaderResDesc.propertyDescriptor(shaderDescriptor);
@@ -91,7 +90,6 @@ void RenderPassManager::postInit() {
         ShaderProgramDescriptor shaderDescriptor = {};
         shaderDescriptor._modules.push_back(vertModule);
         shaderDescriptor._modules.push_back(fragModule);
-        shaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         ResourceDescriptor shaderResolveDesc("GBufferResolveShader");
         shaderResolveDesc.propertyDescriptor(shaderDescriptor);

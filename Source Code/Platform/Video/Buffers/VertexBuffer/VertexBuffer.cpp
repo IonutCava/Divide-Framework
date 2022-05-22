@@ -104,7 +104,7 @@ void FillSmallData(const vector<VertexBuffer::Vertex>& dataIn, Byte* dataOut, co
 } //namespace
 
 VertexBuffer::VertexBuffer(GFXDevice& context)
-    : VertexDataInterface(context)
+    : VertexDataInterface(context, nullptr)
     , _internalGVD(context.newGVD(1u))
 {
 }
@@ -160,7 +160,8 @@ void VertexBuffer::refresh() {
             setBufferParams._bufferParams._elementCount = to_U32(_data.size());
             setBufferParams._bufferParams._updateFrequency = _staticBuffer ? BufferUpdateFrequency::ONCE : BufferUpdateFrequency::OFTEN;
             setBufferParams._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
-            setBufferParams._bufferParams._initialData = { smallData.data(), smallData.size() };
+            setBufferParams._initialData = { smallData.data(), smallData.size() };
+            setBufferParams._elementStride = setBufferParams._bufferParams._elementSize;
             _internalGVD->setBuffer(setBufferParams);
         } else {
             assert(!_staticBuffer);

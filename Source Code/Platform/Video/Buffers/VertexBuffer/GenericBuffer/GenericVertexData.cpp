@@ -5,7 +5,7 @@
 namespace Divide {
 
 GenericVertexData::GenericVertexData(GFXDevice& context, const U32 ringBufferLength, const char* name)
-  : VertexDataInterface(context),
+  : VertexDataInterface(context, name),
     RingBuffer(ringBufferLength),
     _name(name == nullptr ? "" : name)
 {

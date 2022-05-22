@@ -8,7 +8,6 @@
 #define GLIM_GLIM_H
 
 #include "Declarations.h"
-#include "glimInterface.h"
 #include "glimBatch.h"
 
 

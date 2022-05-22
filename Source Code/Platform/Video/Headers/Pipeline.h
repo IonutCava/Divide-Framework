@@ -43,6 +43,8 @@ struct PipelineDescriptor {
     RTBlendStates _blendStates;
     size_t _stateHash = 0;
     ShaderProgram::Handle _shaderProgramHandle = ShaderProgram::INVALID_HANDLE;
+    PrimitiveTopology _primitiveTopology = PrimitiveTopology::COUNT;
+    AttributeMap _vertexFormat;
     U8 _multiSampleCount = 0u;
     bool _primitiveRestartEnabled = false;
 }; //struct PipelineDescriptor
@@ -57,6 +59,8 @@ public:
 
     PROPERTY_R_IW(PipelineDescriptor, descriptor);
     PROPERTY_R_IW(size_t, hash, 0u);
+
+    PROPERTY_R_IW(size_t, vertexFormatHash, 0u);
 }; //class Pipeline
 
 inline bool operator==(const Pipeline& lhs, const Pipeline& rhs) noexcept {

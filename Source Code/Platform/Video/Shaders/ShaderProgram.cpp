@@ -711,9 +711,6 @@ size_t ShaderProgramDescriptor::getHash() const {
                                     desc._sourceFile.data(),
                                     desc._moduleType);
     }
-    for (const AttributeDescriptor& attrDescriptor : _vertexFormat) {
-        Util::Hash_combine(_hash, GetHash(attrDescriptor));
-    }
     return _hash;
 }
 
@@ -796,8 +793,6 @@ ShaderProgram::ShaderProgram(GFXDevice& context,
         assetName(ResourcePath(resourceName().c_str()));
     }
     s_shaderCount.fetch_add(1, std::memory_order_relaxed);
-
-    _vertexFormatHash = GetHash(descriptor._vertexFormat);
 }
 
 ShaderProgram::~ShaderProgram()
@@ -1460,16 +1455,17 @@ bool ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExis
             NOP();
         }
     };
+    const bool targetVulkan = _context.renderAPI() == RenderAPI::Vulkan;
+    STUBBED("Investigate why OpenGL SPIRV loading doesn't work on my AMD card - Ionut");
+    const bool skipSPIRV = !targetVulkan && _context.GetDeviceInformation()._vendor == GPUVendor::AMD;
 
     if (reloadExisting) {
         // Hot reloading will always reparse GLSL source files!
         ParseAndSaveSource();
         loadDataInOut._codeSource = LoadData::SourceCodeSource::SOURCE_FILES;
     } else {
-        const bool targetVulkan = _context.renderAPI() == RenderAPI::Vulkan;
-
         // Try and load from the spir-v cache
-        if (LoadSPIRVFromCache(loadDataInOut, targetVulkan, atomIDs)) {
+        if (!skipSPIRV && LoadSPIRVFromCache(loadDataInOut, targetVulkan, atomIDs)) {
             loadDataInOut._codeSource = LoadData::SourceCodeSource::SPIRV_CACHE;
         } else if (LoadTextFromCache(loadDataInOut, targetVulkan, atomIDs)) {
             loadDataInOut._codeSource = LoadData::SourceCodeSource::TEXT_CACHE;
@@ -1484,6 +1480,9 @@ bool ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExis
 
     if (!loadDataInOut._sourceCodeGLSL.empty() || !loadDataInOut._sourceCodeSpirV.empty()) {
         _usedAtomIDs.insert(begin(atomIDs), end(atomIDs));
+        if (skipSPIRV) {
+            loadDataInOut._sourceCodeSpirV.clear();
+        }
         return true;
     }
 

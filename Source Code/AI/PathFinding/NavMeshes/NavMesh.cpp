@@ -577,7 +577,7 @@ bool NavigationMesh::createNavigationMesh(dtNavMeshCreateParams& params) {
     return true;
 }
 
-GFX::CommandBuffer& NavigationMesh::draw(const bool force) {
+void NavigationMesh::draw(const bool force, GFX::CommandBuffer& bufferInOut) {
     _debugDrawInterface->paused(!_debugDraw && !force);
 
     RenderMode mode = _renderMode;
@@ -629,8 +629,8 @@ GFX::CommandBuffer& NavigationMesh::draw(const bool force) {
     }
 
     _debugDrawInterface->endBatch();
-
-    return _debugDrawInterface->toCommandBuffer();
+    
+    _debugDrawInterface->toCommandBuffer(bufferInOut);
 }
 
 

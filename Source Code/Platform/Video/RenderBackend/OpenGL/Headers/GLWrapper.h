@@ -52,7 +52,6 @@ namespace Time {
 
 enum class ShaderResult : U8;
 
-class IMPrimitive;
 class DisplayWindow;
 class glHardwareQueryRing;
 class glHardwareQueryPool;
@@ -65,7 +64,6 @@ FWD_DECLARE_MANAGED_STRUCT(SyncObject);
 class GL_API final : public RenderAPIWrapper {
     friend class glShader;
     friend class glTexture;
-    friend class glIMPrimitive;
     friend class glFramebuffer;
     friend class glVertexArray;
     friend class glShaderProgram;
@@ -151,9 +149,6 @@ public:
     static [[nodiscard]] bool DeleteVAOs(GLuint count, GLuint* vaos);
     static [[nodiscard]] bool DeleteFramebuffers(GLuint count, GLuint* framebuffers);
 
-    static [[nodiscard]] IMPrimitive* NewIMP(Mutex& lock, GFXDevice& parent);
-    static [[nodiscard]] bool DestroyIMP(Mutex& lock, IMPrimitive*& primitive);
-
     static [[nodiscard]] GLuint GetSamplerHandle(size_t samplerHash);
 
     static [[nodiscard]] glHardwareQueryPool* GetHardwareQueryPool() noexcept;
@@ -174,7 +169,6 @@ private:
 
     /// /*sampler hash value*/ /*sampler object*/
     using SamplerObjectMap = hashMap<size_t, GLuint, NoHash<size_t>>;
-    using IMPrimitivePool = MemoryPool<glIMPrimitive, 1 << 15>;
     using BufferLockQueue = eastl::fixed_vector<BufferLockEntry, 64, true, eastl::dvd_allocator>;
 
 private:
@@ -217,12 +211,9 @@ private:
     using VAOMap = hashMap<size_t, GLuint>;
     static VAOMap s_vaoCache;
 
-    static IMPrimitivePool s_IMPrimitivePool;
-
     static glHardwareQueryPool* s_hardwareQueryPool;
 
     static U32 s_fenceSyncCounter[s_LockFrameLifetime];
-
 };
 
 };  // namespace Divide

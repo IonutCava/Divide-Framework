@@ -67,6 +67,12 @@ bool glTexture::unload() {
     return true;
 }
 
+void glTexture::postLoad() {
+    DIVIDE_ASSERT(Runtime::isMainThread());
+    _lockManager.wait(true);
+    Texture::postLoad();
+}
+
 void glTexture::reserveStorage(const bool fromFile) {
     assert(
         !(_loadingData._textureType == TextureType::TEXTURE_CUBE_MAP && _width != _height) &&
@@ -245,11 +251,11 @@ void glTexture::loadDataCompressed(const ImageTools::ImageData& imageData) {
     }
 
     if (!Runtime::isMainThread()) {
-        glFlush();
+        _lockManager.lock();
     }
 }
 
-void glTexture::loadDataUncompressed(const ImageTools::ImageData& imageData) const {
+void glTexture::loadDataUncompressed(const ImageTools::ImageData& imageData) {
     const GLenum glFormat = GLUtil::glImageFormatTable[to_U32(_descriptor.baseFormat())];
     const GLenum glType = GLUtil::glDataFormat[to_U32(_descriptor.dataType())];
     const U32 numLayers = imageData.layerCount();
@@ -316,7 +322,7 @@ void glTexture::loadDataUncompressed(const ImageTools::ImageData& imageData) con
         }
     }
     if (!Runtime::isMainThread()) {
-        glFlush();
+        _lockManager.lock();
     }
 }
 

@@ -389,6 +389,7 @@ enum class PrimitiveTopology : U8 {
     TRIANGLES_ADJACENCY,
     TRIANGLE_STRIP_ADJACENCY,
     PATCH,
+    COMPUTE,
     COUNT
 };
 
@@ -396,7 +397,7 @@ namespace Names {
     static const char* primitiveType[] = {
         "POINTS", "LINES", "LINE_STRIP", "TRIANGLES", "TRIANGLE_STRIP",
         "TRIANGLE_FAN", "LINES_ADJANCENCY", "LINE_STRIP_ADJACENCY",
-        "TRIANGLES_ADJACENCY", "TRIANGLE_STRIP_ADJACENCY", "PATCH", "NONE"
+        "TRIANGLES_ADJACENCY", "TRIANGLE_STRIP_ADJACENCY", "PATCH", "COMPUTE", "NONE"
     };
 };
 

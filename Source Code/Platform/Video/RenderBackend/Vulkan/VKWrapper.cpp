@@ -201,7 +201,6 @@ namespace {
 }
 
 namespace Divide {
-    VK_API::IMPrimitivePool VK_API::s_IMPrimitivePool{};
     bool VK_API::s_hasDebugMarkerSupport = false;
     eastl::unique_ptr<VKStateTracker> VK_API::s_stateTracker = nullptr;
 
@@ -866,22 +865,6 @@ namespace Divide {
         }
 
         GetStateTracker()->_debugScope[GetStateTracker()->_debugScopeDepth--] = { "", std::numeric_limits<U32>::max() };
-    }
-
-    IMPrimitive* VK_API::NewIMP(Mutex& lock, GFXDevice& parent) {
-        ScopedLock<Mutex> w_lock(lock);
-        return s_IMPrimitivePool.newElement(parent);
-    }
-
-    bool VK_API::DestroyIMP(Mutex& lock, IMPrimitive*& primitive) {
-        if (primitive != nullptr) {
-            ScopedLock<Mutex> w_lock(lock);
-            s_IMPrimitivePool.deleteElement(static_cast<vkIMPrimitive*>(primitive));
-            primitive = nullptr;
-            return true;
-        }
-
-        return false;
     }
 
 }; //namespace Divide

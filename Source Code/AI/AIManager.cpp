@@ -205,7 +205,7 @@ void AIManager::debugDraw(GFX::CommandBuffer& bufferInOut, const bool forceAll) 
         SharedLock<SharedMutex> r_lock(_navMeshMutex);
         for (NavMeshMap::value_type& it : _navMeshes) {
             if (forceAll || it.second->debugDraw()) {
-                bufferInOut.add(it.second->draw(forceAll));
+                it.second->draw(forceAll, bufferInOut);
             }
         }
     }

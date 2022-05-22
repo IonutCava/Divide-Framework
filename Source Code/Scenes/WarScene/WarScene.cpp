@@ -162,16 +162,15 @@ void WarScene::debugDraw(GFX::CommandBuffer& bufferInOut) {
     if (state()->renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_CUSTOM_PRIMITIVES)) {
         if (!_targetLines) {
             _targetLines = _context.gfx().newIMP();
-
+        } else {
             PipelineDescriptor pipelineDescriptor = {};
             pipelineDescriptor._shaderProgramHandle = _context.gfx().defaultIMShader()->handle();
 
             RenderStateBlock primitiveStateBlockNoZRead = {};
             primitiveStateBlockNoZRead.depthTestEnabled(false);
             pipelineDescriptor._stateHash = primitiveStateBlockNoZRead.getHash();
-            _targetLines->pipeline(*_context.gfx().newPipeline(pipelineDescriptor));
-        } else {
-            bufferInOut.add(_targetLines->toCommandBuffer());
+            
+            _targetLines->getCommandBuffer(pipelineDescriptor, bufferInOut);
         }
     } else if (_targetLines) {
         _context.gfx().destroyIMP(_targetLines);

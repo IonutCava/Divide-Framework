@@ -240,7 +240,7 @@ void Terrain::postBuild() {
                 params._bufferParams._elementCount += to_U32(ringData.size());
             }
             params._bindConfig = { 0u, 0u };
-            params._bufferParams._initialData = { (Byte*)vbData.data(), vbData.size() * sizeof(TileRing::InstanceData) };
+            params._initialData = { (Byte*)vbData.data(), vbData.size() * sizeof(TileRing::InstanceData) };
             _terrainBuffer->setBuffer(params);
         }
     }

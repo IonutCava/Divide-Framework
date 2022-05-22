@@ -548,9 +548,6 @@ bool Material::canDraw(const RenderStagePass renderStagePass, bool& shaderJustFi
 void Material::computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDescriptor, const RenderStagePass renderStagePass) const {
     OPTICK_EVENT();
 
-    shaderDescriptor._primitiveTopology = _topology;
-    shaderDescriptor._vertexFormat = _shaderAttributes;
-
     const bool isDepthPass = IsDepthPass(renderStagePass);
 
     DIVIDE_ASSERT(properties().shadingMode() != ShadingMode::COUNT, "Material computeShader error: Invalid shading mode specified!");

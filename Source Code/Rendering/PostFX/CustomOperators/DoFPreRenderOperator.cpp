@@ -43,7 +43,6 @@ DoFPreRenderOperator::DoFPreRenderOperator(GFXDevice& context, PreRenderBatch& p
     ShaderProgramDescriptor shaderDescriptor = {};
     shaderDescriptor._modules.push_back(vertModule);
     shaderDescriptor._modules.push_back(fragModule);
-    shaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
     ResourceDescriptor dof("DepthOfField");
     dof.waitForReady(false);
@@ -53,6 +52,7 @@ DoFPreRenderOperator::DoFPreRenderOperator(GFXDevice& context, PreRenderBatch& p
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _dofShader->handle();
+        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         _pipeline = _context.newPipeline(pipelineDescriptor);
     });

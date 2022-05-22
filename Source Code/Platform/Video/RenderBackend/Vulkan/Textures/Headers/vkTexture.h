@@ -74,7 +74,7 @@ namespace Divide {
     private:
         void reserveStorage(bool fromFile) override;
         void loadDataCompressed(const ImageTools::ImageData& imageData) override;
-        void loadDataUncompressed(const ImageTools::ImageData& imageData) const override;
+        void loadDataUncompressed(const ImageTools::ImageData& imageData) override;
         void prepareTextureData(U16 width, U16 height) override;
         void submitTextureData() override;
 

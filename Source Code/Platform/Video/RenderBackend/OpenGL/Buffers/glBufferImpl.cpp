@@ -3,6 +3,7 @@
 #include "Headers/glBufferImpl.h"
 #include "Headers/glMemoryManager.h"
 
+#include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/glLockManager.h"
@@ -11,7 +12,7 @@
 
 namespace Divide {
 
-glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
+glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params, const std::pair<bufferPtr, size_t>& initialData)
     : GUIDWrapper(),
       _params(params),
       _context(context)
@@ -54,7 +55,7 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
         GLUtil::createAndAllocBuffer(_params._dataSize, 
                                      usage,
                                      _memoryBlock._bufferHandle,
-                                     _params._bufferParams._initialData,
+                                     initialData,
                                      _params._name);
 
         _memoryBlock._offset = 0u;
@@ -68,7 +69,7 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
                                                 ? GFXDevice::GetDeviceInformation()._UBOffsetAlignmentBytes
                                                 : _params._target == GL_SHADER_STORAGE_BUFFER
                                                                   ? GFXDevice::GetDeviceInformation()._SSBOffsetAlignmentBytes
-                                                                  : sizeof(U32);
+                                                                  : GFXDevice::GetDeviceInformation()._VBOffsetAlignmentBytes;
 
         GLUtil::GLMemory::DeviceAllocator& allocator = GL_API::GetMemoryAllocator(GL_API::GetMemoryTypeForUsage(_params._target));
         _memoryBlock = allocator.allocate(_params._useChunkAllocation,
@@ -78,8 +79,12 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
                                           accessMask,
                                           params._target,
                                           _params._name,
-                                          _params._bufferParams._initialData);
+                                          initialData);
         assert(_memoryBlock._ptr != nullptr && _memoryBlock._size >= _params._dataSize && "PersistentBuffer::Create error: Can't mapped persistent buffer!");
+    }
+
+    if (!Runtime::isMainThread()) {
+        _lockManager.lock();
     }
 }
 
@@ -142,8 +147,12 @@ void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t ra
     } else {
         DIVIDE_ASSERT(zeroMem || firstWrite, "glBufferImpl: trying to write to a buffer create with BufferUpdateFrequency::ONCE");
 
-        Byte* ptr = (Byte*)glMapNamedBufferRange(_memoryBlock._bufferHandle, _memoryBlock._offset + offsetInBytes, rangeInBytes, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
-        memset(ptr, 0, rangeInBytes);
+        Byte* ptr = (Byte*)glMapNamedBufferRange(_memoryBlock._bufferHandle, _memoryBlock._offset + offsetInBytes, rangeInBytes, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+        if (zeroMem) {
+            memset(ptr, 0, rangeInBytes);
+        } else {
+            memcpy(ptr, data, rangeInBytes);
+        }
         glUnmapNamedBuffer(_memoryBlock._bufferHandle);
     }
 }

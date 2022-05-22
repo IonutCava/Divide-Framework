@@ -42,11 +42,27 @@ namespace Divide {
 
 struct BufferImplParams {
     BufferParams _bufferParams;
-    GLenum _target = GL_NONE;
-    size_t _dataSize = 0;
-    bool _useChunkAllocation = false;
-    const char* _name = nullptr;
+    GLenum _target{ GL_NONE };
+    size_t _dataSize{0};
+    bool _useChunkAllocation{ false };
+    const char* _name {nullptr};
 };
+
+inline bool operator==(const BufferImplParams& lhs, const BufferImplParams& rhs) noexcept {
+    return lhs._bufferParams == rhs._bufferParams &&
+           lhs._target == rhs._target &&
+           lhs._dataSize == rhs._dataSize &&
+           lhs._useChunkAllocation == rhs._useChunkAllocation &&
+           strcmp(lhs._name == nullptr ? "" : lhs._name, rhs._name == nullptr ? "" : rhs._name) == 0;
+}
+
+inline bool operator!=(const BufferImplParams& lhs, const BufferImplParams& rhs) noexcept {
+    return lhs._bufferParams != rhs._bufferParams ||
+           lhs._target != rhs._target ||
+           lhs._dataSize != rhs._dataSize ||
+           lhs._useChunkAllocation != rhs._useChunkAllocation ||
+           strcmp(lhs._name == nullptr ? "" : lhs._name, rhs._name == nullptr ? "" : rhs._name) != 0;
+}
 
 struct BufferMapRange
 {
@@ -56,7 +72,7 @@ struct BufferMapRange
 
 class glBufferImpl final : public GUIDWrapper {
 public:
-    explicit glBufferImpl(GFXDevice& context, const BufferImplParams& params);
+    explicit glBufferImpl(GFXDevice& context, const BufferImplParams& params, const std::pair<bufferPtr, size_t>& initialData);
     virtual ~glBufferImpl();
 
     // Returns false if we encounter an error

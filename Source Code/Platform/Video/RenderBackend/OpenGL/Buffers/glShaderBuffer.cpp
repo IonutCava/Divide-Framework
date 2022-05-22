@@ -39,13 +39,13 @@ glShaderBuffer::glShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor&
     implParams._name = _name.empty() ? nullptr : _name.c_str();
     implParams._useChunkAllocation = _usage != Usage::COMMAND_BUFFER;
 
-    _bufferImpl = eastl::make_unique<glBufferImpl>(context, implParams);
+    _bufferImpl = eastl::make_unique<glBufferImpl>(context, implParams, descriptor._initialData);
 
     // Just to avoid issues with reading undefined or zero-initialised memory.
     // This is quite fast so far so worth it for now.
-    if (descriptor._separateReadWrite && descriptor._bufferParams._initialData.second > 0) {
+    if (descriptor._separateReadWrite && descriptor._initialData.second > 0) {
         for (U32 i = 1u; i < descriptor._ringBufferLength; ++i) {
-            bufferImpl()->writeOrClearBytes(_alignedBufferSize * i, descriptor._bufferParams._initialData.second, descriptor._bufferParams._initialData.first, false, true);
+            bufferImpl()->writeOrClearBytes(_alignedBufferSize * i, descriptor._initialData.second, descriptor._initialData.first, false, true);
         }
     }
 }

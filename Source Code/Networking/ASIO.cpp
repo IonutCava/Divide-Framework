@@ -28,9 +28,13 @@ ASIO::~ASIO()
 {
     io_service_.stop();
     _work.reset();
-    _thread->join();
-    _localClient->stop();
-    delete _localClient;
+    if (_thread) {
+        _thread->join();
+    }
+    if (_localClient) {
+        _localClient->stop();
+        delete _localClient;
+    }
 }
 
 void ASIO::disconnect() {

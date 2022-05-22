@@ -90,7 +90,6 @@ std::array<GLenum, to_base(GFXImageFormat::COUNT)> glImageFormatTable;
 std::array<GLenum, to_base(PrimitiveTopology::COUNT)> glPrimitiveTypeTable;
 std::array<GLenum, to_base(GFXDataFormat::COUNT)> glDataFormat;
 std::array<GLenum, to_base(TextureWrap::COUNT)> glWrapTable;
-std::array<NS_GLIM::GLIM_ENUM, to_base(PrimitiveTopology::COUNT)> glimPrimitiveType;
 std::array<GLenum, to_base(ShaderType::COUNT)> glShaderStageTable;
 
 void fillEnumTables() {
@@ -186,6 +185,7 @@ void fillEnumTables() {
     glPrimitiveTypeTable[to_base(PrimitiveTopology::TRIANGLES_ADJACENCY)] = GL_TRIANGLES_ADJACENCY;
     glPrimitiveTypeTable[to_base(PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY)] = GL_TRIANGLE_STRIP_ADJACENCY;
     glPrimitiveTypeTable[to_base(PrimitiveTopology::PATCH)] = GL_PATCHES;
+    glPrimitiveTypeTable[to_base(PrimitiveTopology::COMPUTE)] = GL_NONE;
 
     glDataFormat[to_base(GFXDataFormat::UNSIGNED_BYTE)] = GL_UNSIGNED_BYTE;
     glDataFormat[to_base(GFXDataFormat::UNSIGNED_SHORT)] = GL_UNSIGNED_SHORT;
@@ -201,13 +201,6 @@ void fillEnumTables() {
     glWrapTable[to_base(TextureWrap::CLAMP_TO_EDGE)] = GL_CLAMP_TO_EDGE;
     glWrapTable[to_base(TextureWrap::CLAMP_TO_BORDER)] = GL_CLAMP_TO_BORDER;
     glWrapTable[to_base(TextureWrap::MIRROR_CLAMP_TO_EDGE)] = GL_MIRROR_CLAMP_TO_EDGE;
-
-    glimPrimitiveType[to_base(PrimitiveTopology::POINTS)] = NS_GLIM::GLIM_ENUM::GLIM_POINTS;
-    glimPrimitiveType[to_base(PrimitiveTopology::LINES)] = NS_GLIM::GLIM_ENUM::GLIM_LINES;
-    glimPrimitiveType[to_base(PrimitiveTopology::LINE_STRIP)] = NS_GLIM::GLIM_ENUM::GLIM_LINE_STRIP;
-    glimPrimitiveType[to_base(PrimitiveTopology::TRIANGLES)] = NS_GLIM::GLIM_ENUM::GLIM_TRIANGLES;
-    glimPrimitiveType[to_base(PrimitiveTopology::TRIANGLE_STRIP)] = NS_GLIM::GLIM_ENUM::GLIM_TRIANGLE_STRIP;
-    glimPrimitiveType[to_base(PrimitiveTopology::TRIANGLE_FAN)] = NS_GLIM::GLIM_ENUM::GLIM_TRIANGLE_FAN;
 
     glShaderStageTable[to_base(ShaderType::VERTEX)] = GL_VERTEX_SHADER;
     glShaderStageTable[to_base(ShaderType::FRAGMENT)] = GL_FRAGMENT_SHADER;

@@ -94,7 +94,7 @@ class NavMeshDebugDraw final : public duDebugDraw {
         vertex(x, y, z, colour);
     }
 
-    [[nodiscard]] GFX::CommandBuffer& toCommandBuffer() const;
+    [[nodiscard]] void toCommandBuffer(GFX::CommandBuffer& bufferInOut) const;
 
    private:
     GFXDevice& _context;

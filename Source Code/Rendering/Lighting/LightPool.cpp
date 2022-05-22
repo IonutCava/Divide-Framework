@@ -124,7 +124,6 @@ void LightPool::init() {
     fragModule._sourceFile = "lightImpostorShader.glsl";
 
     ShaderProgramDescriptor shaderDescriptor = {};
-    shaderDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
     shaderDescriptor._modules.push_back(vertModule);
     shaderDescriptor._modules.push_back(geomModule);
     shaderDescriptor._modules.push_back(fragModule);
@@ -548,6 +547,7 @@ void LightPool::drawLightImpostors(GFX::CommandBuffer& bufferInOut) const {
         PipelineDescriptor pipelineDescriptor{};
         pipelineDescriptor._stateHash = _context.gfx().getDefaultStateBlock(false);
         pipelineDescriptor._shaderProgramHandle = _lightImpostorShader->handle();
+        pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
 
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _context.gfx().newPipeline(pipelineDescriptor) });
         {

@@ -284,25 +284,6 @@ bool Editor::init(const vec2<U16>& renderResolution) {
         shaderDescriptor._modules.push_back(vertModule);
         shaderDescriptor._modules.push_back(fragModule);
 
-        shaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
-        AttributeDescriptor& descPos = shaderDescriptor._vertexFormat[to_base(AttribLocation::GENERIC)];
-        AttributeDescriptor& descUV = shaderDescriptor._vertexFormat[to_base(AttribLocation::TEXCOORD)];
-        AttributeDescriptor& descColour = shaderDescriptor._vertexFormat[to_base(AttribLocation::COLOR)];
-
-#   define OFFSETOF(TYPE, ELEMENT) ((size_t)&(((TYPE *)0)->ELEMENT))
-        descPos._bindingIndex = descUV._bindingIndex = descColour._bindingIndex = 0u;
-        descPos._componentsPerElement = descUV._componentsPerElement = 2u;
-        descPos._dataType = descUV._dataType = GFXDataFormat::FLOAT_32;
-
-        descColour._componentsPerElement = 4u;
-        descColour._dataType = GFXDataFormat::UNSIGNED_BYTE;
-        descColour._normalized = true;
-
-        descPos._strideInBytes = to_U32(OFFSETOF(ImDrawVert, pos));
-        descUV._strideInBytes = to_U32(OFFSETOF(ImDrawVert, uv));
-        descColour._strideInBytes = to_U32(OFFSETOF(ImDrawVert, col));
-#   undef OFFSETOF
-
         ResourceDescriptor shaderResDescriptor("IMGUI");
         shaderResDescriptor.propertyDescriptor(shaderDescriptor);
         _imguiProgram = CreateResource<ShaderProgram>(parentCache, shaderResDescriptor);
@@ -311,8 +292,8 @@ bool Editor::init(const vec2<U16>& renderResolution) {
         RenderStateBlock gridStateBlock = {};
         gridStateBlock.setCullMode(CullMode::NONE);
 
-        PipelineDescriptor gridPipeDesc;
-        gridPipeDesc._stateHash = gridStateBlock.getHash();
+        _infiniteGridPipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
+        _infiniteGridPipelineDesc._stateHash = gridStateBlock.getHash();
 
         ShaderModuleDescriptor vertModule = {};
         vertModule._moduleType = ShaderType::VERTEX;
@@ -329,21 +310,19 @@ bool Editor::init(const vec2<U16>& renderResolution) {
         ResourceDescriptor shaderResDescriptor("InfiniteGrid.Colour");
         shaderResDescriptor.propertyDescriptor(shaderDescriptor);
         _infiniteGridProgram = CreateResource<ShaderProgram>(parentCache, shaderResDescriptor);
-        gridPipeDesc._shaderProgramHandle = _infiniteGridProgram->handle();
-        BlendingSettings& blend = gridPipeDesc._blendStates._settings[to_U8(GFXDevice::ScreenTargets::ALBEDO)];
+        _infiniteGridPipelineDesc._shaderProgramHandle = _infiniteGridProgram->handle();
+        BlendingSettings& blend = _infiniteGridPipelineDesc._blendStates._settings[to_U8(GFXDevice::ScreenTargets::ALBEDO)];
         blend.enabled(true);
         blend.blendSrc(BlendProperty::SRC_ALPHA);
         blend.blendDest(BlendProperty::INV_SRC_ALPHA);
         blend.blendOp(BlendOperation::ADD);
-        _infiniteGridPipeline = _context.gfx().newPipeline(gridPipeDesc);
 
-        PipelineDescriptor pipelineDesc;
-        pipelineDesc._stateHash = _context.gfx().getDefaultStateBlock(true);
-        pipelineDesc._shaderProgramHandle = _context.gfx().defaultIMShaderWorld()->handle();
-        _axisGizmoPipeline = _context.gfx().newPipeline(pipelineDesc);
+        _axisGizmoPipelineDesc._stateHash = _context.gfx().getDefaultStateBlock(true);
+        _axisGizmoPipelineDesc._shaderProgramHandle = _context.gfx().defaultIMShaderWorld()->handle();
     }
 
     _infiniteGridPrimitive = _context.gfx().newIMP();
+    _infiniteGridPrimitive->name("Editor Infinite Grid");
     _infiniteGridPrimitive->beginBatch(true, 6, 0);
         _infiniteGridPrimitive->begin(PrimitiveTopology::TRIANGLES);
             _infiniteGridPrimitive->vertex( 1.f, 1.f, 0.f);
@@ -362,6 +341,25 @@ bool Editor::init(const vec2<U16>& renderResolution) {
 
     PipelineDescriptor pipelineDesc = {};
     pipelineDesc._stateHash = state.getHash();
+    pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
+    AttributeDescriptor& descPos = pipelineDesc._vertexFormat[to_base(AttribLocation::GENERIC)];
+    AttributeDescriptor& descUV = pipelineDesc._vertexFormat[to_base(AttribLocation::TEXCOORD)];
+    AttributeDescriptor& descColour = pipelineDesc._vertexFormat[to_base(AttribLocation::COLOR)];
+
+#   define OFFSETOF(TYPE, ELEMENT) ((size_t)&(((TYPE *)0)->ELEMENT))
+    descPos._bindingIndex = descUV._bindingIndex = descColour._bindingIndex = 0u;
+    descPos._componentsPerElement = descUV._componentsPerElement = 2u;
+    descPos._dataType = descUV._dataType = GFXDataFormat::FLOAT_32;
+
+    descColour._componentsPerElement = 4u;
+    descColour._dataType = GFXDataFormat::UNSIGNED_BYTE;
+    descColour._normalized = true;
+
+    descPos._strideInBytes = to_U32(OFFSETOF(ImDrawVert, pos));
+    descUV._strideInBytes = to_U32(OFFSETOF(ImDrawVert, uv));
+    descColour._strideInBytes = to_U32(OFFSETOF(ImDrawVert, col));
+#   undef OFFSETOF
+
     pipelineDesc._shaderProgramHandle = _imguiProgram->handle();
 
     BlendingSettings& blend = pipelineDesc._blendStates._settings[to_U8(GFXDevice::ScreenTargets::ALBEDO)];
@@ -939,7 +937,6 @@ void Editor::postRender(const CameraSnapshot& cameraSnapshot, const RenderTarget
     }
 
     if (running() && infiniteGridEnabled() && _infiniteGridPrimitive && _isScenePaused) {
-        _infiniteGridPrimitive->pipeline(*_infiniteGridPipeline);
         if (_gridSettingsDirty) {
             PushConstants constants{};
             constants.set(_ID("axisWidth"), GFX::PushConstantType::FLOAT, infiniteGridAxisWidth());
@@ -948,7 +945,7 @@ void Editor::postRender(const CameraSnapshot& cameraSnapshot, const RenderTarget
             _gridSettingsDirty = false;
         }
 
-        bufferInOut.add(_infiniteGridPrimitive->toCommandBuffer());
+        _infiniteGridPrimitive->getCommandBuffer(_infiniteGridPipelineDesc, bufferInOut);
     }
 
     // Debug axis form the axis arrow gizmo in the corner of the screen
@@ -957,7 +954,6 @@ void Editor::postRender(const CameraSnapshot& cameraSnapshot, const RenderTarget
         if (!_axisGizmo) {
             _axisGizmo = _context.gfx().newIMP();
             _axisGizmo->name("EditorDeviceAxisGizmo");
-            _axisGizmo->pipeline(*_axisGizmoPipeline);
 
             const auto addValAnd10Percent = [](const F32 val) { return val + ((val + 10) / 100.f); };
             const auto addValMinus20Percent = [](const F32 val) { return val - ((val + 20) / 100.f); };
@@ -1016,17 +1012,19 @@ void Editor::postRender(const CameraSnapshot& cameraSnapshot, const RenderTarget
         // Apply the inverse view matrix so that it cancels out in the shader
         // Submit the draw command, rendering it in a tiny viewport in the lower right corner
         const U16 windowWidth = _context.gfx().renderTargetPool().getRenderTarget(target)->getWidth();
-        _axisGizmo->viewport(Rect<I32>(windowWidth - 250, 6, 256, 256));
 
         // We need to transform the gizmo so that it always remains axis aligned
         // Create a world matrix using a look at function with the eye position
         // backed up from the camera's view direction
         const mat4<F32>& viewMatrix = cameraSnapshot._viewMatrix;
 
-        _axisGizmo->worldMatrix(mat4<F32>(-viewMatrix.getForwardVec() * 5,
-                                            VECTOR3_ZERO,
-                                            viewMatrix.getUpVec()) * cameraSnapshot._invViewMatrix);
-        bufferInOut.add(_axisGizmo->toCommandBuffer());
+        const mat4<F32> worldMatrix(mat4<F32>(-viewMatrix.getForwardVec() * 5,
+                                              VECTOR3_ZERO,
+                                              viewMatrix.getUpVec()) *
+                                    cameraSnapshot._invViewMatrix);
+
+        GFX::EnqueueCommand(bufferInOut, GFX::SetViewportCommand{ Rect<I32>(windowWidth - 250, 6, 256, 256) });
+        _axisGizmo->getCommandBuffer(worldMatrix, _axisGizmoPipelineDesc, bufferInOut);
     } else if (_axisGizmo) {
         _context.gfx().destroyIMP(_axisGizmo);
     }

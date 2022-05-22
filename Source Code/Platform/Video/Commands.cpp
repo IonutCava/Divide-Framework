@@ -92,7 +92,7 @@ string ToString(const BindPipelineCommand& cmd, const U16 indent) {
     }
     ShaderProgram* shader = ShaderProgram::FindShaderProgram(cmd._pipeline->descriptor()._shaderProgramHandle);
     if (shader) {
-        ret.append(Util::StringFormat("Primitive topology : %s\n", Divide::Names::primitiveType[to_base(shader->descriptor()._primitiveTopology)]));
+        ret.append(Util::StringFormat("Primitive topology : %s\n", Divide::Names::primitiveType[to_base(cmd._pipeline->descriptor()._primitiveTopology)]));
         ret.append("    ");
         for (U16 j = 0; j < indent; ++j) {
             ret.append("    ");
@@ -116,7 +116,7 @@ string ToString(const BindPipelineCommand& cmd, const U16 indent) {
     if (shader) {
         ret.append("Vertex format: \n");
         U8 idx = 0u;
-        for (const AttributeDescriptor& desc : shader->descriptor()._vertexFormat) {
+        for (const AttributeDescriptor& desc : cmd._pipeline->descriptor()._vertexFormat) {
             ret.append("    ");
             for (U16 j = 0; j < indent; ++j) {
                 ret.append("    ");

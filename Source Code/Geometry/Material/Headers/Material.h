@@ -304,7 +304,8 @@ class Material final : public CachedResource {
     PROPERTY_R_IW(DescriptorSet, descriptorSetMainPass);
     PROPERTY_R_IW(DescriptorSet, descriptorSetPrePass);
     PROPERTY_RW(bool, ignoreXMLData, false);
-
+    PROPERTY_R_IW(AttributeMap, shaderAttributes);
+    PROPERTY_R_IW(PrimitiveTopology, topology, PrimitiveTopology::COUNT);
    private:
     void getSortKeys(RenderStagePass renderStagePass, I64& shaderKey, I32& textureKey) const;
     void addShaderDefineInternal(ShaderType type, const string& define, bool addPrefix);
@@ -339,7 +340,6 @@ class Material final : public CachedResource {
 
     StatePassesPerStage<ShaderProgramInfo> _shaderInfo{};
     StatePassesPerStage<size_t> _defaultRenderStates{};
-    AttributeMap _shaderAttributes;
 
     std::array<ModuleDefines, to_base(ShaderType::COUNT)> _extraShaderDefines{};
     mutable SharedMutex _textureLock{};
@@ -349,7 +349,6 @@ class Material final : public CachedResource {
 
     std::array<TextureInfo, to_base(TextureUsage::COUNT)> _textures;
 
-    PrimitiveTopology _topology{ PrimitiveTopology::COUNT };
     size_t _shaderAttributesHash{ 0u };
 
     static SamplerAddress s_defaultTextureAddress;

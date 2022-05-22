@@ -397,10 +397,13 @@ bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
             if (_materialInstance != nullptr) {
                 pipelineDescriptor._stateHash = _materialInstance->getOrCreateRenderStateBlock(renderStagePass);
                 pipelineDescriptor._shaderProgramHandle = _materialInstance->getProgramHandle(renderStagePass);
+                pipelineDescriptor._primitiveTopology = _materialInstance->topology();
+                pipelineDescriptor._vertexFormat = _materialInstance->shaderAttributes();
                 pkg.descriptorSetCmd()._set = _materialInstance->getDescriptorSet(renderStagePass);
             } else {
                 pipelineDescriptor._stateHash = _context.getDefaultStateBlock(false);
                 pipelineDescriptor._shaderProgramHandle = _context.defaultIMShaderWorld()->handle();
+                pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
             }
             if (renderStagePass._passType == RenderPassType::TRANSPARENCY_PASS) {
                 BlendingSettings& state0 = pipelineDescriptor._blendStates._settings[to_U8(GFXDevice::ScreenTargets::ALBEDO)];

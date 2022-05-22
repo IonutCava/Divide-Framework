@@ -73,6 +73,7 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
 
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._shaderProgramHandle = _lightCullComputeShader->handle();
+        pipelineDescriptor._primitiveTopology = PrimitiveTopology::COMPUTE;
         _lightCullPipelineCmd._pipeline = _context.gfx().newPipeline(pipelineDescriptor);
     }
     {
@@ -86,6 +87,7 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
 
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._shaderProgramHandle = _lightCounterResetComputeShader->handle();
+        pipelineDescriptor._primitiveTopology = PrimitiveTopology::COMPUTE;
         _lightResetCounterPipelineCmd._pipeline = _context.gfx().newPipeline(pipelineDescriptor);
     }
     {
@@ -99,6 +101,7 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
 
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._shaderProgramHandle = _lightBuildClusteredAABBsComputeShader->handle();
+        pipelineDescriptor._primitiveTopology = PrimitiveTopology::COMPUTE;
         _lightBuildClusteredAABBsPipelineCmd._pipeline = _context.gfx().newPipeline(pipelineDescriptor);
     }
   
@@ -107,7 +110,6 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
     bufferDescriptor._ringBufferLength = 1;
     bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
     bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_R_GPU_W;
-    bufferDescriptor._bufferParams._initialData = { nullptr, 0 };
 
     { //Light Index Buffer
         const U32 totalLights = numClusters * to_U32(config.rendering.numLightsPerCluster);

@@ -247,56 +247,53 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\GLIM\glimBatchData.h">
       <Filter>Video\GLIM\Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Source Code\Platform\Video\GLIM\glimInterface.h">
-      <Filter>Video\GLIM\Headers</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\GeometryBufferBase.h">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\GL.h">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\GL3FBOTextureTarget.h">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\GL3GeometryBuffer.h">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\GL3Renderer.h">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\GlmPimpl.h">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\RendererBase.h">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\RenderTarget.h">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\Shader.h">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\ShaderManager.h">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\StandardShaderFrag.h">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\StandardShaderVert.h">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\StateChangeWrapper.h">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\Texture.h">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\TextureTarget.h">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\ViewportTarget.h">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Headers\PlatformMemoryDefines.h">
       <Filter>Headers</Filter>
@@ -548,47 +545,41 @@
     <ClCompile Include="..\..\Source Code\Platform\Video\GLIM\glimBatchData.cpp">
       <Filter>Video\GLIM</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Source Code\Platform\Video\GLIM\glimD3D11.cpp">
-      <Filter>Video\GLIM</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Source Code\Platform\Video\GLIM\Stuff.cpp">
-      <Filter>Video\GLIM</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src\GeometryBufferBase.cpp">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src\GL.cpp">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src\GL3FBOTextureTarget.cpp">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src\GL3GeometryBuffer.cpp">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src\GL3Renderer.cpp">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src\RendererBase.cpp">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src\Shader.cpp">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src\ShaderManager.cpp">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src\StateChangeWrapper.cpp">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src\TextureTarget.cpp">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src\ViewportTarget.cpp">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src\Texture_.cpp">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\ConditionalWait.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\BlendingProperties.cpp">
@@ -800,15 +791,6 @@
     <Filter Include="Video\GLIM\Headers">
       <UniqueIdentifier>{f0c3a601-2795-436a-9d9c-437c2c5e221d}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer">
-      <UniqueIdentifier>{8a514703-f1a0-4f74-90ac-49acf8e967a5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include">
-      <UniqueIdentifier>{064e4c01-4f02-4f11-8f5a-e2b5fb33aa78}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src">
-      <UniqueIdentifier>{87167cda-8d11-400d-b2f4-db3d03a2307a}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Video\ShaderSource\GLSL\computeAtoms">
       <UniqueIdentifier>{8d3e72da-846d-4d38-ae70-fd9185511aef}</UniqueIdentifier>
     </Filter>
@@ -832,6 +814,15 @@
     </Filter>
     <Filter Include="Video\RenderBackend\Vulkan\Textures\Headers">
       <UniqueIdentifier>{b42eae90-4d10-4845-880e-dfebee4da634}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer">
+      <UniqueIdentifier>{8a514703-f1a0-4f74-90ac-49acf8e967a5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\include">
+      <UniqueIdentifier>{064e4c01-4f02-4f11-8f5a-e2b5fb33aa78}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\src">
+      <UniqueIdentifier>{87167cda-8d11-400d-b2f4-db3d03a2307a}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -1052,7 +1043,7 @@
       <Filter>Video\ShaderSource\GLSL\fragmentAtoms</Filter>
     </None>
     <None Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\RenderTarget.inl">
-      <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</Filter>
+      <Filter>Video\RenderBackend\OpenGL\Headers\CEGUIOpenGLRenderer\include</Filter>
     </None>
     <None Include="..\..\assets\shaders\GLSL\common\sceneData.cmn">
       <Filter>Video\ShaderSource\GLSL\common</Filter>

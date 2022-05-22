@@ -15,14 +15,14 @@ SceneShaderData::SceneShaderData(GFXDevice& context)
     {
         bufferDescriptor._bufferParams._elementCount = 1u;
         bufferDescriptor._bufferParams._elementSize = sizeof(SceneShaderBufferData);
-        bufferDescriptor._bufferParams._initialData = { (Byte*)&_sceneBufferData, bufferDescriptor._bufferParams._elementSize };
+        bufferDescriptor._initialData = { (Byte*)&_sceneBufferData, bufferDescriptor._bufferParams._elementSize };
         bufferDescriptor._name = "SCENE_SHADER_DATA";
         _sceneShaderData = _context.newSB(bufferDescriptor);
     }
     {
         bufferDescriptor._bufferParams._elementCount = GLOBAL_PROBE_COUNT;
         bufferDescriptor._bufferParams._elementSize = sizeof(ProbeData);
-        bufferDescriptor._bufferParams._initialData = { (Byte*)_probeData.data(), bufferDescriptor._bufferParams._elementSize };
+        bufferDescriptor._initialData = { (Byte*)_probeData.data(), bufferDescriptor._bufferParams._elementSize };
         bufferDescriptor._name = "SCENE_PROBE_DATA";
         _probeShaderData = _context.newSB(bufferDescriptor);
     }

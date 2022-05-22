@@ -33,7 +33,6 @@ MotionBlurPreRenderOperator::MotionBlurPreRenderOperator(GFXDevice& context, Pre
     ShaderProgramDescriptor shaderDescriptor = {};
     shaderDescriptor._modules.push_back(vertModule);
     shaderDescriptor._modules.push_back(fragModule);
-    shaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
     ResourceDescriptor motionBlur("MotionBlur");
     motionBlur.propertyDescriptor(shaderDescriptor);
@@ -44,6 +43,7 @@ MotionBlurPreRenderOperator::MotionBlurPreRenderOperator(GFXDevice& context, Pre
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _blurApply->handle();
+        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         _blurApplyPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
     });

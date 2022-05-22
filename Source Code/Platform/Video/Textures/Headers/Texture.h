@@ -136,6 +136,7 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     /// Load texture data using the specified file name
     bool load() override;
     virtual void threadedLoad();
+    virtual void postLoad();
 
     void validateDescriptor();
 
@@ -143,7 +144,7 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
 
     virtual void reserveStorage(bool fromFile) = 0;
     virtual void loadDataCompressed(const ImageTools::ImageData& imageData) = 0;
-    virtual void loadDataUncompressed(const ImageTools::ImageData& imageData) const = 0;
+    virtual void loadDataUncompressed(const ImageTools::ImageData& imageData) = 0;
     virtual void prepareTextureData(U16 width, U16 height) = 0;
     virtual void submitTextureData() = 0;
 

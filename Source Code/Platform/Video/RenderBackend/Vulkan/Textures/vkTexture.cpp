@@ -98,7 +98,7 @@ namespace Divide {
     void vkTexture::loadDataCompressed([[maybe_unused]] const ImageTools::ImageData& imageData) {
     }
 
-    void vkTexture::loadDataUncompressed([[maybe_unused]] const ImageTools::ImageData& imageData) const {
+    void vkTexture::loadDataUncompressed([[maybe_unused]] const ImageTools::ImageData& imageData) {
     }
 
     void vkTexture::clearData([[maybe_unused]] const UColour4& clearColour, [[maybe_unused]] U8 level) const noexcept {

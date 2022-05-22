@@ -250,6 +250,7 @@ bool GUI::init(PlatformContext& context, ResourceCache* cache) {
     PipelineDescriptor pipelineDesc = {};
     pipelineDesc._stateHash = context.gfx().getDefaultStateBlock(false);
     pipelineDesc._shaderProgramHandle = context.gfx().defaultIMShader()->handle();
+    pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
     _postCEGUIPipeline = context.gfx().newPipeline(pipelineDesc);
 

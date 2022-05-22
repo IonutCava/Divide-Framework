@@ -54,7 +54,6 @@ eastl::unique_ptr<GLStateTracker> GL_API::s_stateTracker = nullptr;
 GL_API::VAOMap GL_API::s_vaoCache;
 std::atomic_bool GL_API::s_glFlushQueued;
 GLUtil::glTextureViewCache GL_API::s_textureViewCache{};
-GL_API::IMPrimitivePool GL_API::s_IMPrimitivePool{};
 U32 GL_API::s_fenceSyncCounter[GL_API::s_LockFrameLifetime]{};
 vector<GL_API::ResidentTexture> GL_API::s_residentTextures{};
 SharedMutex GL_API::s_samplerMapLock;
@@ -355,6 +354,8 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
         GLUtil::getGLValue(GL_MAX_COMBINED_SHADER_STORAGE_BLOCKS),
         deviceInformation._SSBOffsetAlignmentBytes);
 
+    deviceInformation._SSBOffsetAlignmentBytes = sizeof(GLuint);
+
     // Maximum number of subroutines and maximum number of subroutine uniform
     // locations usable in a shader
     Console::printfn(Locale::Get(_ID("GL_SUBROUTINE_INFO")),
@@ -408,9 +409,6 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
         Console::errorfn(Locale::Get(_ID("ERROR_FONT_INIT")));
         return ErrorCode::FONT_INIT_ERROR;
     }
-
-    // Prepare immediate mode emulation rendering
-    NS_GLIM::glim.SetVertexAttribLocation(to_base(AttribLocation::POSITION));
 
     // Initialize our query pool
     s_hardwareQueryPool->init(
@@ -740,6 +738,7 @@ bool GL_API::draw(const GenericDrawCommand& cmd) const {
     if (cmd._sourceBuffer._id == 0) {
         U32 indexCount = 0u;
         switch (GL_API::GetStateTracker()->_activeTopology) {
+            case PrimitiveTopology::COMPUTE:
             case PrimitiveTopology::COUNT     : DIVIDE_UNEXPECTED_CALL();         break;
             case PrimitiveTopology::TRIANGLES : indexCount = cmd._drawCount * 3;  break;
             case PrimitiveTopology::POINTS    : indexCount = cmd._drawCount * 1;  break;
@@ -1044,6 +1043,8 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             OPTICK_EVENT("DISPATCH_COMPUTE");
 
             if (GetStateTracker()->_activePipeline != nullptr) {
+                assert(GetStateTracker()->_activeTopology == PrimitiveTopology::COMPUTE);
+
                 const GFX::DispatchComputeCommand* crtCmd = cmd->As<GFX::DispatchComputeCommand>();
                 const vec3<U32>& workGroupCount = crtCmd->_computeGroupSize;
                 DIVIDE_ASSERT(workGroupCount.x < GFXDevice::GetDeviceInformation()._maxWorgroupCount[0] &&
@@ -1066,7 +1067,7 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             if (barrierMask != 0) {
                 if (BitCompare(barrierMask, to_base(MemoryBarrierType::TEXTURE_BARRIER))) {
                     glTextureBarrier();
-                } 
+                }
                 if (barrierMask == to_base(MemoryBarrierType::ALL_MEM_BARRIERS)) {
                     glMemoryBarrier(MemoryBarrierMask::GL_ALL_BARRIER_BITS);
                 } else {
@@ -1127,19 +1128,19 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
                     }
                     glMemoryBarrier(glMask);
                 }
+            }
 
-                if (!crtCmd->_bufferLocks.empty()) {
-                    SyncObject* sync = glLockManager::CreateSyncObject();
-                    for (const BufferLock& lock : crtCmd->_bufferLocks) {
-                        if (!lock._targetBuffer->lockByteRange(lock._range, sync)) {
-                            DIVIDE_UNEXPECTED_CALL();
-                        }
+            if (!crtCmd->_bufferLocks.empty()) {
+                SyncObject* sync = glLockManager::CreateSyncObject();
+                for (const BufferLock& lock : crtCmd->_bufferLocks) {
+                    if (!lock._targetBuffer->lockByteRange(lock._range, sync)) {
+                        DIVIDE_UNEXPECTED_CALL();
                     }
                 }
+            }
 
-                for (auto it : crtCmd->_fenceLocks) {
-                    it->insertFencesIfNeeded();
-                }
+            for (auto it : crtCmd->_fenceLocks) {
+                it->insertFencesIfNeeded();
             }
         } break;
         default: break;
@@ -1463,10 +1464,10 @@ ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) const {
     {
         {
             OPTICK_EVENT("Set Vertex Format");
-            stateTracker->setVertexFormat(program->descriptor()._primitiveTopology,
+            stateTracker->setVertexFormat(pipelineDescriptor._primitiveTopology,
                                           pipelineDescriptor._primitiveRestartEnabled,
-                                          program->descriptor()._vertexFormat,
-                                          program->vertexFormatHash());
+                                          pipelineDescriptor._vertexFormat,
+                                          pipeline.vertexFormatHash());
         }
         {
             OPTICK_EVENT("Set Shader Program");
@@ -1720,22 +1721,6 @@ bool GL_API::DeleteFramebuffers(const GLuint count, GLuint* framebuffers) {
         memset(framebuffers, 0, count * sizeof(GLuint));
         return true;
     }
-    return false;
-}
-
-IMPrimitive* GL_API::NewIMP(Mutex& lock, GFXDevice& parent) {
-    ScopedLock<Mutex> w_lock(lock);
-    return s_IMPrimitivePool.newElement(parent);
-}
-
-bool GL_API::DestroyIMP(Mutex& lock, IMPrimitive*& primitive) {
-    if (primitive != nullptr) {
-        ScopedLock<Mutex> w_lock(lock);
-        s_IMPrimitivePool.deleteElement(static_cast<glIMPrimitive*>(primitive));
-        primitive = nullptr;
-        return true;
-    }
-
     return false;
 }
 
