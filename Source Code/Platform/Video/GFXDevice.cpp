@@ -2875,13 +2875,13 @@ void GFXDevice::debugDrawLines(GFX::CommandBuffer& bufferInOut) {
 
         IMPrimitive*& linePrimitive = _debugLines._debugPrimitives[f];
         if (linePrimitive == nullptr) {
-            linePrimitive = newIMP();
-            linePrimitive->name(Util::StringFormat("DebugLine_%d", f));
+            linePrimitive = newIMP(Util::StringFormat("DebugLine_%d", f));
+            linePrimitive->setPipelineDescriptor(getDebugPipeline(data._descriptor));
         }
 
         linePrimitive->forceWireframe(data._descriptor.wireframe); //? Uhm, not gonna do much -Ionut
         linePrimitive->fromLines(data._descriptor);
-        linePrimitive->getCommandBuffer(data._descriptor.worldMatrix, getDebugPipeline(data._descriptor), bufferInOut);
+        linePrimitive->getCommandBuffer(data._descriptor.worldMatrix, bufferInOut);
     }
 }
 
@@ -2900,13 +2900,13 @@ void GFXDevice::debugDrawBoxes(GFX::CommandBuffer& bufferInOut) {
 
         IMPrimitive*& boxPrimitive = _debugBoxes._debugPrimitives[f];
         if (boxPrimitive == nullptr) {
-            boxPrimitive = newIMP();
-            boxPrimitive->name(Util::StringFormat("DebugBox_%d", f));
+            boxPrimitive = newIMP(Util::StringFormat("DebugBox_%d", f));
+            boxPrimitive->setPipelineDescriptor(getDebugPipeline(data._descriptor));
         }
 
         boxPrimitive->forceWireframe(data._descriptor.wireframe);
         boxPrimitive->fromBox(data._descriptor);
-        boxPrimitive->getCommandBuffer(data._descriptor.worldMatrix, getDebugPipeline(data._descriptor), bufferInOut);
+        boxPrimitive->getCommandBuffer(data._descriptor.worldMatrix, bufferInOut);
     }
 }
 
@@ -2925,13 +2925,13 @@ void GFXDevice::debugDrawOBBs(GFX::CommandBuffer& bufferInOut) {
 
         IMPrimitive*& boxPrimitive = _debugOBBs._debugPrimitives[f];
         if (boxPrimitive == nullptr) {
-            boxPrimitive = newIMP();
-            boxPrimitive->name(Util::StringFormat("DebugOBB_%d", f));
+            boxPrimitive = newIMP(Util::StringFormat("DebugOBB_%d", f));
+            boxPrimitive->setPipelineDescriptor(getDebugPipeline(data._descriptor));
         }
 
         boxPrimitive->forceWireframe(data._descriptor.wireframe);
         boxPrimitive->fromOBB(data._descriptor);
-        boxPrimitive->getCommandBuffer(data._descriptor.worldMatrix, getDebugPipeline(data._descriptor), bufferInOut);
+        boxPrimitive->getCommandBuffer(data._descriptor.worldMatrix, bufferInOut);
     }
 }
 void GFXDevice::debugDrawSphere(const I64 ID, const IMPrimitive::SphereDescriptor descriptor) noexcept {
@@ -2949,13 +2949,13 @@ void GFXDevice::debugDrawSpheres(GFX::CommandBuffer& bufferInOut) {
 
         IMPrimitive*& spherePrimitive = _debugSpheres._debugPrimitives[f];
         if (spherePrimitive == nullptr) {
-            spherePrimitive = newIMP();
-            spherePrimitive->name(Util::StringFormat("DebugSphere_%d", f));
+            spherePrimitive = newIMP(Util::StringFormat("DebugSphere_%d", f));
+            spherePrimitive->setPipelineDescriptor(getDebugPipeline(data._descriptor));
         }
 
         spherePrimitive->forceWireframe(data._descriptor.wireframe);
         spherePrimitive->fromSphere(data._descriptor);
-        spherePrimitive->getCommandBuffer(data._descriptor.worldMatrix, getDebugPipeline(data._descriptor), bufferInOut);
+        spherePrimitive->getCommandBuffer(data._descriptor.worldMatrix, bufferInOut);
     }
 }
 
@@ -2975,13 +2975,13 @@ void GFXDevice::debugDrawCones(GFX::CommandBuffer& bufferInOut) {
 
         IMPrimitive*& conePrimitive = _debugCones._debugPrimitives[f];
         if (conePrimitive == nullptr) {
-            conePrimitive = newIMP();
-            conePrimitive->name(Util::StringFormat("DebugCone_%d", f));
+            conePrimitive = newIMP(Util::StringFormat("DebugCone_%d", f));
+            conePrimitive->setPipelineDescriptor(getDebugPipeline(data._descriptor));
         }
 
         conePrimitive->forceWireframe(data._descriptor.wireframe);
         conePrimitive->fromCone(data._descriptor);
-        conePrimitive->getCommandBuffer(data._descriptor.worldMatrix, getDebugPipeline(data._descriptor), bufferInOut);
+        conePrimitive->getCommandBuffer(data._descriptor.worldMatrix,bufferInOut);
     }
 }
 
@@ -3001,13 +3001,13 @@ void GFXDevice::debugDrawFrustums(GFX::CommandBuffer& bufferInOut) {
 
         IMPrimitive*& frustumPrimitive = _debugFrustums._debugPrimitives[f];
         if (frustumPrimitive == nullptr) {
-            frustumPrimitive = newIMP();
-            frustumPrimitive->name(Util::StringFormat("DebugFrustum_%d", f));
+            frustumPrimitive = newIMP(Util::StringFormat("DebugFrustum_%d", f));
+            frustumPrimitive->setPipelineDescriptor(getDebugPipeline(data._descriptor));
         }
 
         frustumPrimitive->forceWireframe(data._descriptor.wireframe);
         frustumPrimitive->fromFrustum(data._descriptor);
-        frustumPrimitive->getCommandBuffer(data._descriptor.worldMatrix, getDebugPipeline(data._descriptor), bufferInOut);
+        frustumPrimitive->getCommandBuffer(data._descriptor.worldMatrix, bufferInOut);
     }
 }
 
@@ -3100,9 +3100,9 @@ RenderTarget_uptr GFXDevice::newRT(const RenderTargetDescriptor& descriptor) {
     return valid ? MOV(temp) : nullptr;
 }
 
-IMPrimitive* GFXDevice::newIMP() {
+IMPrimitive* GFXDevice::newIMP(const Str64& name) {
     ScopedLock<Mutex> w_lock(_imprimitiveMutex);
-    return s_IMPrimitivePool.newElement(*this);
+    return s_IMPrimitivePool.newElement(*this, name);
 }
 
 bool GFXDevice::destroyIMP(IMPrimitive*& primitive) {

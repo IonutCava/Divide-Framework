@@ -23,12 +23,16 @@ glGenericVertexData::~glGenericVertexData()
 
 void glGenericVertexData::reset() {
     _bufferObjects.clear();
-    GLUtil::freeBuffer(_indexBufferHandle);
+    for (auto& buffer : _idxBuffers) {
+        GLUtil::freeBuffer(buffer.second);
+    }
+    _idxBuffers.clear();
 }
 
 /// Submit a draw command to the GPU using this object and the specified command
 void glGenericVertexData::draw(const GenericDrawCommand& command) {
     DIVIDE_ASSERT(GL_API::GetStateTracker()->_primitiveRestartEnabled == primitiveRestartRequired());
+    DIVIDE_ASSERT(_idxBuffers.size() > command._bufferFlag);
     _lockManager.wait(false);
 
     // Update buffer bindings
@@ -36,21 +40,22 @@ void glGenericVertexData::draw(const GenericDrawCommand& command) {
         bindBufferInternal(buffer._bindConfig);
     }
 
+    const auto& idxBuffer = _idxBuffers[command._bufferFlag];
     if (!renderIndirect() &&
         command._cmd.primCount == 1u &&
         command._drawCount > 1u)
     {
-        rebuildCountAndIndexData(command._drawCount, command._cmd.indexCount, command._cmd.firstIndex, idxBuffer().count);
+        rebuildCountAndIndexData(command._drawCount, command._cmd.indexCount, command._cmd.firstIndex, idxBuffer.first.count);
     }
 
-    if (GL_API::GetStateTracker()->setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, _indexBufferHandle) == GLStateTracker::BindResult::FAILED) {
+    if (GL_API::GetStateTracker()->setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, idxBuffer.second) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
 
     // Submit the draw command
     GLUtil::SubmitRenderCommand(command,
                                 renderIndirect(),
-                                _idxBuffer.smallIndices ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT,
+                                idxBuffer.first.smallIndices ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT,
                                 _indexInfo._countData.data(),
                                 (bufferPtr)_indexInfo._indexOffsetData.data());
 
@@ -58,13 +63,31 @@ void glGenericVertexData::draw(const GenericDrawCommand& command) {
 }
 
 void glGenericVertexData::setIndexBuffer(const IndexBuffer& indices) {
-    if (!AreCompatible(_idxBuffer, indices) || indices.count == 0u) {
-        GLUtil::freeBuffer(_indexBufferHandle);
+    std::pair<IndexBuffer, GLuint>* oldIdxBufferEntry = nullptr;
+
+    bool found = false;
+    for (auto& idxBuffer : _idxBuffers) {
+        if (idxBuffer.first.id == indices.id) {
+            oldIdxBufferEntry = &idxBuffer;
+            found = true;
+            break;
+        }
     }
 
-    const size_t oldCount = _idxBuffer.count;
-    GenericVertexData::setIndexBuffer(indices);
-    _idxBuffer.count = std::max(oldCount, _idxBuffer.count);
+    if (!found) {
+        _idxBuffers.push_back({ indices, GLUtil::k_invalidObjectID });
+        oldIdxBufferEntry = &_idxBuffers.back();
+    }
+
+    if (oldIdxBufferEntry->second != GLUtil::k_invalidObjectID &&
+        (!AreCompatible(oldIdxBufferEntry->first, indices) || indices.count == 0u))
+    {
+        GLUtil::freeBuffer(oldIdxBufferEntry->second);
+    }
+
+    IndexBuffer& oldIdxBuffer = oldIdxBufferEntry->first;
+
+    oldIdxBuffer.count = std::max(oldIdxBuffer.count, indices.count);
 
     if (indices.count > 0u) {
         const size_t elementSize = indices.smallIndices ? sizeof(GLushort) : sizeof(GLuint);
@@ -81,13 +104,13 @@ void glGenericVertexData::setIndexBuffer(const IndexBuffer& indices) {
             data = smallIndicesTemp.data();
         }
 
-        if (_indexBufferHandle == GLUtil::k_invalidObjectID) {
+        if (oldIdxBufferEntry->second == GLUtil::k_invalidObjectID) {
             const GLuint newDataSize = static_cast<GLuint>(indices.count * elementSize);
             _indexBufferSize = std::max(newDataSize, _indexBufferSize);
 
             assert(indices.offsetCount == 0u);
             GLUtil::createBuffer(_indexBufferSize,
-                                 _indexBufferHandle,
+                                 oldIdxBufferEntry->second,
                                  _name.empty() ? nullptr : (_name + "_index").c_str());
         }
 
@@ -96,10 +119,10 @@ void glGenericVertexData::setIndexBuffer(const IndexBuffer& indices) {
         DIVIDE_ASSERT(offset + range <= _indexBufferSize);
 
         if (offset == 0u && range == _indexBufferSize) {
-            glNamedBufferData(_indexBufferHandle, range, data, indices.dynamic ? GL_STREAM_DRAW : GL_STATIC_DRAW);
+            glNamedBufferData(oldIdxBufferEntry->second, range, data, indices.dynamic ? GL_STREAM_DRAW : GL_STATIC_DRAW);
         } else {
-            glInvalidateBufferSubData(_indexBufferHandle, offset, range);
-            glNamedBufferSubData(_indexBufferHandle, offset, range, data);
+            glInvalidateBufferSubData(oldIdxBufferEntry->second, offset, range);
+            glNamedBufferSubData(oldIdxBufferEntry->second, offset, range, data);
         }
         if (!Runtime::isMainThread()) {
             _lockManager.lock();

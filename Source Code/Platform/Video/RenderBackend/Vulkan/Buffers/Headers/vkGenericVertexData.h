@@ -47,6 +47,8 @@ namespace Divide {
 
         void setBuffer(const SetBufferParams& params) noexcept override;
 
+        void setIndexBuffer(const IndexBuffer& indices) override;
+
         void insertFencesIfNeeded() override;
 
         void updateBuffer(U32 buffer, U32 elementCountOffset, U32 elementCountRange, bufferPtr data) noexcept override;

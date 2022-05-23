@@ -5,12 +5,9 @@
 
 namespace Divide {
 
-namespace GenericDrawCommandResults {
-    hashMap<I64, QueryResult> g_queryResults;
-};
-
 bool Compatible(const GenericDrawCommand& lhs, const GenericDrawCommand& rhs) noexcept {
-    return lhs._sourceBuffer == rhs._sourceBuffer;
+    return lhs._sourceBuffer == rhs._sourceBuffer &&
+           lhs._bufferFlag == rhs._bufferFlag;
 }
 
 }; //namespace Divide

@@ -47,13 +47,15 @@ namespace NS_GLIM
         m_Data.m_State = GLIM_BATCH_STATE::STATE_BEGINNING_BATCH;
     }
 
-    void GLIM_BATCH::EndBatch (void) noexcept
+    glimBatchData& GLIM_BATCH::EndBatch (void) noexcept
     {
         // if the state is STATE_BEGINNING_BATCH, than no Begin/End call has been made => created an empty batch, which is ok
         GLIM_CHECK (m_Data.m_State == GLIM_BATCH_STATE::STATE_END_PRIMITIVE || m_Data.m_State == GLIM_BATCH_STATE::STATE_BEGINNING_BATCH, "GLIM_BATCH::EndBatch: This function must be called after a call to \"End\".");
 
         // mark this batch as finished
         m_Data.m_State = GLIM_BATCH_STATE::STATE_FINISHED_BATCH;
+
+        return m_Data;
     }
 
     void GLIM_BATCH::Begin (GLIM_ENUM eType) noexcept
@@ -94,7 +96,7 @@ namespace NS_GLIM
         }
     }
 
-    void GLIM_BATCH::End (void)
+    void GLIM_BATCH::End ()
     {
         GLIM_CHECK (m_Data.m_State == GLIM_BATCH_STATE::STATE_BEGIN_PRIMITIVE, "GLIM_BATCH::End: This function can only be called after a call to \"Begin\".");
 
@@ -184,7 +186,6 @@ namespace NS_GLIM
 
         default:
             GLIM_CHECK (false, "GLIM_BATCH::End: The given primitive-type is unknown.");
-            return;
         }
     }
 

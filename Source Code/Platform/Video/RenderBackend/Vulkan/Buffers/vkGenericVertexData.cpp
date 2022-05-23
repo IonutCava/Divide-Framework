@@ -17,6 +17,9 @@ namespace Divide {
     void vkGenericVertexData::setBuffer([[maybe_unused]] const SetBufferParams& params) noexcept {
     }
 
+    void vkGenericVertexData::setIndexBuffer([[maybe_unused]] const IndexBuffer& indices) {
+    }
+
     void vkGenericVertexData::insertFencesIfNeeded() {
     }
 

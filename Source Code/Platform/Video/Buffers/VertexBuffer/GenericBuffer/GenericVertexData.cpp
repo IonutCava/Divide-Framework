@@ -12,9 +12,4 @@ GenericVertexData::GenericVertexData(GFXDevice& context, const U32 ringBufferLen
     assert(handle()._id != 0);
 }
 
-
-void GenericVertexData::setIndexBuffer(const IndexBuffer& indices) {
-    _idxBuffer = indices;
-}
-
 }; //namespace Divide

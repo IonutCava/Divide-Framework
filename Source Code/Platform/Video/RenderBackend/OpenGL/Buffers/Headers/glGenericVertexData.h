@@ -126,8 +126,8 @@ class glGenericVertexData final : public GenericVertexData {
         bool _useAutoSyncObjects{ true };
     };
     glVertexDataIndexContainer _indexInfo;
+    vector<std::pair<IndexBuffer, GLuint>> _idxBuffers;
     vector<genericBufferImpl> _bufferObjects;
-    GLuint _indexBufferHandle{ GLUtil::k_invalidObjectID };
     GLuint _indexBufferSize{ 0u };
     GLuint _lastDrawCount{ 0u };
     GLuint _lastIndexCount{ 0u };

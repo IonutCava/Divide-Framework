@@ -21,7 +21,7 @@ namespace NS_GLIM
         // Begins defining one piece of geometry that can later be rendered with one set of states.
         void BeginBatch (bool reserveBuffers = true, unsigned int vertexCount = 64 * 3, unsigned int attributeCount = 1);
         //! Ends defining the batch. After this call "RenderBatch" can be called to actually render it.
-        void EndBatch (void) noexcept;
+        glimBatchData& EndBatch (void) noexcept;
 
         //! Renders n instances of the batch that has been defined previously.
         bool PrepareRender();
@@ -81,8 +81,6 @@ namespace NS_GLIM
 
         //! Returns true if the GLIM_BATCH contains no batch data.
         bool isCleared (void) const noexcept {return m_Data.m_State == GLIM_BATCH_STATE::STATE_EMPTY;}
-
-        [[nodiscard]] inline glimBatchData& GetData() { return m_Data; }
 
     private:
         GLIM_BATCH (const GLIM_BATCH& cc);

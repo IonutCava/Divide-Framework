@@ -74,6 +74,7 @@ class glLockManager : public GUIDWrapper {
      vector<BufferLockInstance> _bufferLocks;
      vector<BufferLockInstance> _swapLocks;
 
+     static Mutex s_bufferLockLock; // :D
      static BufferLockPool s_bufferLockPool;
 };
 

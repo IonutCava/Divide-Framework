@@ -321,8 +321,9 @@ bool Editor::init(const vec2<U16>& renderResolution) {
         _axisGizmoPipelineDesc._shaderProgramHandle = _context.gfx().defaultIMShaderWorld()->handle();
     }
 
-    _infiniteGridPrimitive = _context.gfx().newIMP();
-    _infiniteGridPrimitive->name("Editor Infinite Grid");
+    _infiniteGridPrimitive = _context.gfx().newIMP("Editor Infinite Grid");
+    _infiniteGridPrimitive->setPipelineDescriptor(_infiniteGridPipelineDesc);
+
     _infiniteGridPrimitive->beginBatch(true, 6, 0);
         _infiniteGridPrimitive->begin(PrimitiveTopology::TRIANGLES);
             _infiniteGridPrimitive->vertex( 1.f, 1.f, 0.f);
@@ -945,15 +946,15 @@ void Editor::postRender(const CameraSnapshot& cameraSnapshot, const RenderTarget
             _gridSettingsDirty = false;
         }
 
-        _infiniteGridPrimitive->getCommandBuffer(_infiniteGridPipelineDesc, bufferInOut);
+        _infiniteGridPrimitive->getCommandBuffer(bufferInOut);
     }
 
     // Debug axis form the axis arrow gizmo in the corner of the screen
     // This is toggleable, so check if it's actually requested
     if (sceneGizmoEnabled()) {
         if (!_axisGizmo) {
-            _axisGizmo = _context.gfx().newIMP();
-            _axisGizmo->name("EditorDeviceAxisGizmo");
+            _axisGizmo = _context.gfx().newIMP("Editor Device Axis Gizmo");
+            _axisGizmo->setPipelineDescriptor(_axisGizmoPipelineDesc);
 
             const auto addValAnd10Percent = [](const F32 val) { return val + ((val + 10) / 100.f); };
             const auto addValMinus20Percent = [](const F32 val) { return val - ((val + 20) / 100.f); };
@@ -1024,7 +1025,7 @@ void Editor::postRender(const CameraSnapshot& cameraSnapshot, const RenderTarget
                                     cameraSnapshot._invViewMatrix);
 
         GFX::EnqueueCommand(bufferInOut, GFX::SetViewportCommand{ Rect<I32>(windowWidth - 250, 6, 256, 256) });
-        _axisGizmo->getCommandBuffer(worldMatrix, _axisGizmoPipelineDesc, bufferInOut);
+        _axisGizmo->getCommandBuffer(worldMatrix, bufferInOut);
     } else if (_axisGizmo) {
         _context.gfx().destroyIMP(_axisGizmo);
     }

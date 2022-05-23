@@ -7,6 +7,7 @@
 
 namespace Divide {
 
+Mutex glLockManager::s_bufferLockLock;
 glLockManager::BufferLockPool glLockManager::s_bufferLockPool;
 
 constexpr GLuint64 kOneSecondInNanoSeconds = 1000000000;
@@ -54,6 +55,8 @@ glLockManager::~glLockManager()
 }
 
 void glLockManager::CleanExpiredSyncObjects(const U32 frameID) {
+
+    ScopedLock<Mutex> r_lock(s_bufferLockLock);
     for (SyncObject_uptr& syncObject : s_bufferLockPool) {
         if (syncObject->_fenceObject.has_value() && std::any_cast<GLsync>(syncObject->_fenceObject) != nullptr) {
             ScopedLock<Mutex> w_lock(syncObject->_fenceLock);
@@ -73,15 +76,17 @@ SyncObject* glLockManager::CreateSyncObject(const bool isRetry) {
     if (isRetry) {
         CleanExpiredSyncObjects(GFXDevice::FrameCount());
     }
-
-    for (SyncObject_uptr& syncObject : s_bufferLockPool) {
-        if (!syncObject->_fenceObject.has_value() || std::any_cast<GLsync>(syncObject->_fenceObject) == nullptr) {
-            ScopedLock<Mutex> w_lock(syncObject->_fenceLock);
-            // Check again to avoid race conditions
+    {
+        ScopedLock<Mutex> r_lock(s_bufferLockLock);
+        for (SyncObject_uptr& syncObject : s_bufferLockPool) {
             if (!syncObject->_fenceObject.has_value() || std::any_cast<GLsync>(syncObject->_fenceObject) == nullptr) {
-                syncObject->_frameID = GFXDevice::FrameCount();
-                syncObject->_fenceObject = GL_API::CreateFenceSync();
-                return syncObject.get();
+                ScopedLock<Mutex> w_lock(syncObject->_fenceLock);
+                // Check again to avoid race conditions
+                if (!syncObject->_fenceObject.has_value() || std::any_cast<GLsync>(syncObject->_fenceObject) == nullptr) {
+                    syncObject->_frameID = GFXDevice::FrameCount();
+                    syncObject->_fenceObject = GL_API::CreateFenceSync();
+                    return syncObject.get();
+                }
             }
         }
     }
@@ -89,12 +94,15 @@ SyncObject* glLockManager::CreateSyncObject(const bool isRetry) {
     if (!isRetry) {
         return CreateSyncObject(true);
     }
-
-    s_bufferLockPool.emplace_back(MOV(eastl::make_unique<SyncObject>()));
+    {
+        ScopedLock<Mutex> r_lock(s_bufferLockLock);
+        s_bufferLockPool.emplace_back(MOV(eastl::make_unique<SyncObject>()));
+    }
     return CreateSyncObject(false);
 }
 
 void glLockManager::Clear() {
+    ScopedLock<Mutex> r_lock(s_bufferLockLock);
     s_bufferLockPool.clear();
 }
 

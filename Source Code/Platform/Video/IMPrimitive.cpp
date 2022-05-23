@@ -5,6 +5,7 @@
 #include "Core/Math/BoundingVolumes/Headers/OBB.h"
 #include "Headers/CommandBufferPool.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
 
@@ -31,6 +32,17 @@ namespace {
         DIVIDE_UNEXPECTED_CALL();
         return 0u;
     }
+
+    inline PrimitiveTopology GetTopology(const NS_GLIM::GLIM_BUFFER_TYPE type) {
+        switch (type) {
+            case NS_GLIM::GLIM_BUFFER_TYPE::POINTS: return PrimitiveTopology::POINTS;
+            case NS_GLIM::GLIM_BUFFER_TYPE::LINES: return PrimitiveTopology::LINES;
+            case NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME: return PrimitiveTopology::LINES;
+            case NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES: return PrimitiveTopology::TRIANGLES;
+        }
+
+        return PrimitiveTopology::COUNT;
+    }
 };
 
 void IMPrimitive::InitStaticData()
@@ -43,30 +55,39 @@ void IMPrimitive::InitStaticData()
     glimPrimitiveType[to_base(PrimitiveTopology::TRIANGLE_FAN)] = NS_GLIM::GLIM_ENUM::GLIM_TRIANGLE_FAN;
 }
 
-IMPrimitive::IMPrimitive(GFXDevice& context)
+IMPrimitive::IMPrimitive(GFXDevice& context, const Str64& name)
     : _context(context)
+    , _name(name)
 {
     _imInterface = eastl::make_unique<NS_GLIM::GLIM_BATCH>();
-    for (auto& buffer : _dataBuffers) {
-        buffer = context.newGVD(1);
-        buffer->renderIndirect(false);
-    }
-    _drawFlags.fill(false);
+    _dataBuffer = context.newGVD(1);
+    _dataBuffer->renderIndirect(false);
 
-    AttributeDescriptor& desc = _vertexFormat[0u];
+    reset();
+}
+
+void IMPrimitive::reset() {
+    clearBatch();
+    _drawFlags.fill(false);
+    _indexCount.fill(0u);
+    _indexBufferId.fill(0u);
+    _pipelines.fill(nullptr);
+
+    _baseDescriptorSet._usage = DescriptorSetUsage::PER_DRAW_SET;
+
+    // Create general purpose render state blocks
+    RenderStateBlock primitiveStateBlock{};
+    _basePipelineDescriptor._primitiveTopology = PrimitiveTopology::COUNT;
+    _basePipelineDescriptor._shaderProgramHandle = _context.defaultIMShaderWorld()->handle();
+    _basePipelineDescriptor._stateHash = primitiveStateBlock.getHash();
+    _basePipelineDescriptor._vertexFormat = {};
+
+    AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat[0u];
     desc._bindingIndex = 0u;
     desc._componentsPerElement = 3u;
     desc._dataType = GFXDataFormat::FLOAT_32;
     desc._normalized = false;
     desc._strideInBytes = 0;
-}
-
-void IMPrimitive::reset() {
-    clearBatch();
-    for (U8 i = 1u; i < to_base(AttribLocation::COUNT); ++i) {
-        _vertexFormat[i] = {};
-    }
-    _drawFlags.fill(false);
 }
 
 
@@ -88,80 +109,67 @@ void IMPrimitive::begin(const PrimitiveTopology type) {
 
 void IMPrimitive::vertex(const F32 x, const  F32 y, const F32 z) {
     _imInterface->Vertex(x, y, z);
-    _dirty = true;
 }
 
 void IMPrimitive::attribute1f(const U32 attribLocation, const F32 value) {
     _imInterface->Attribute1f(attribLocation, value);
 
-    AttributeDescriptor& desc = _vertexFormat[attribLocation];
+    AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat[attribLocation];
     desc._bindingIndex = to_U16(attribLocation);
     desc._normalized = false;
     desc._strideInBytes = 0u;
     desc._componentsPerElement = 1u;
     desc._dataType = GFXDataFormat::FLOAT_32;
-
-    _dirty = true;
 }
 
 void IMPrimitive::attribute2f(const U32 attribLocation, const vec2<F32> value) {
     _imInterface->Attribute2f(attribLocation, value.x, value.y);
-    AttributeDescriptor& desc = _vertexFormat[attribLocation];
+    AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat[attribLocation];
     desc._bindingIndex = to_U16(attribLocation);
     desc._normalized = false;
     desc._strideInBytes = 0u;
     desc._componentsPerElement = 2u;
     desc._dataType = GFXDataFormat::FLOAT_32;
-
-    _dirty = true;
 }
 
 void IMPrimitive::attribute3f(const U32 attribLocation, const vec3<F32> value) {
     _imInterface->Attribute3f(attribLocation, value.x, value.y, value.z);
-    Divide::AttributeDescriptor& desc = _vertexFormat[attribLocation];
+    Divide::AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat[attribLocation];
     desc._bindingIndex = to_U16(attribLocation);
     desc._normalized = false;
     desc._strideInBytes = 0u;
     desc._componentsPerElement = 3u;
     desc._dataType = GFXDataFormat::FLOAT_32;
-
-    _dirty = true;
 }
 
 void IMPrimitive::attribute4ub(const U32 attribLocation, const U8 x, const U8 y, const U8 z, const U8 w) {
     _imInterface->Attribute4ub(attribLocation, x, y, z, w);
-    AttributeDescriptor& desc = _vertexFormat[attribLocation];
+    AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat[attribLocation];
     desc._bindingIndex = to_U16(attribLocation);
     desc._normalized = false;
     desc._strideInBytes = 0u;
     desc._componentsPerElement = 4u;
     desc._dataType = GFXDataFormat::UNSIGNED_BYTE;
-
-    _dirty = true;
 }
 
 void IMPrimitive::attribute4f(const U32 attribLocation, const F32 x, const F32 y, const F32 z, const F32 w) {
     _imInterface->Attribute4f(attribLocation, x, y, z, w);
-    AttributeDescriptor& desc = _vertexFormat[attribLocation];
+    AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat[attribLocation];
     desc._bindingIndex = to_U16(attribLocation);
     desc._normalized = false;
     desc._strideInBytes = 0u;
     desc._componentsPerElement = 4u;
     desc._dataType = GFXDataFormat::FLOAT_32;
-
-    _dirty = true;
 }
 
 void IMPrimitive::attribute1i(const U32 attribLocation, const I32 value) {
     _imInterface->Attribute1i(attribLocation, value);
-    AttributeDescriptor& desc = _vertexFormat[attribLocation];
+    AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat[attribLocation];
     desc._bindingIndex = to_U16(attribLocation);
     desc._normalized = false;
     desc._strideInBytes = 0u;
     desc._componentsPerElement = 1u;
     desc._dataType = Divide::GFXDataFormat::SIGNED_INT;
-
-    _dirty = true;
 }
 
 void IMPrimitive::end() {
@@ -169,7 +177,88 @@ void IMPrimitive::end() {
 }
 
 void IMPrimitive::endBatch() noexcept {
-    _imInterface->EndBatch();
+    auto& batchData = _imInterface->EndBatch();
+
+    _drawFlags[to_base(NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES)] = !batchData.m_IndexBuffer_Triangles.empty();
+    _drawFlags[to_base(NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME)] = !batchData.m_IndexBuffer_Wireframe.empty();
+    _drawFlags[to_base(NS_GLIM::GLIM_BUFFER_TYPE::LINES)] = !batchData.m_IndexBuffer_Lines.empty();
+    _drawFlags[to_base(NS_GLIM::GLIM_BUFFER_TYPE::POINTS)] = !batchData.m_IndexBuffer_Points.empty();
+
+    GenericVertexData::SetBufferParams params{};
+    params._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+    params._bufferParams._updateUsage = BufferUpdateUsage::CPU_R_GPU_W;
+    params._bufferParams._elementSize = sizeof(NS_GLIM::Glim4ByteData);
+    params._useChunkAllocation = true;
+
+    GenericVertexData::IndexBuffer idxBuff{};
+    idxBuff.smallIndices = false;
+    idxBuff.dynamic = true;
+
+    U8 bufferIdx = 0u;
+    // Set positions
+    {
+        params._bindConfig = { bufferIdx++, 0u };
+        params._bufferParams._elementCount = to_U32(batchData.m_PositionData.size());
+        params._initialData = { batchData.m_PositionData.data(), batchData.m_PositionData.size() * sizeof(NS_GLIM::Glim4ByteData) };
+        params._elementStride = sizeof(NS_GLIM::Glim4ByteData) * 3;
+        _dataBuffer->setBuffer(params);
+    }
+
+    // now upload each attribute array one after another
+    for (auto& [index, data] : batchData.m_Attributes) {
+        assert(index != 0u);
+        params._bindConfig = { bufferIdx++, index };
+        params._bufferParams._elementCount = to_U32(data.m_ArrayData.size());
+        params._initialData = { data.m_ArrayData.data(), data.m_ArrayData.size() * sizeof(NS_GLIM::Glim4ByteData) };
+        params._elementStride = sizeof(NS_GLIM::Glim4ByteData) * GetSizeFactor(data.m_DataType);
+        _dataBuffer->setBuffer(params);
+    }
+
+    idxBuff.id = 0u;
+    for (U8 i = 0u; i < to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT); ++i) {
+        if (!_drawFlags[i]) {
+            continue;
+        }
+        const NS_GLIM::GLIM_BUFFER_TYPE glimType = static_cast<NS_GLIM::GLIM_BUFFER_TYPE>(i);
+
+        _basePipelineDescriptor._primitiveTopology = GetTopology(glimType);
+        _pipelines[i] = _context.newPipeline(_basePipelineDescriptor);
+
+        switch (glimType) {
+            case NS_GLIM::GLIM_BUFFER_TYPE::LINES: {
+                idxBuff.count = batchData.m_IndexBuffer_Lines.size();
+                idxBuff.data = batchData.m_IndexBuffer_Lines.data();
+            } break;
+            case NS_GLIM::GLIM_BUFFER_TYPE::POINTS: {
+                idxBuff.count = batchData.m_IndexBuffer_Points.size();
+                idxBuff.data = batchData.m_IndexBuffer_Points.data();
+            } break;
+            case NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES: {
+                idxBuff.count = batchData.m_IndexBuffer_Triangles.size();
+                idxBuff.data = batchData.m_IndexBuffer_Triangles.data();
+            } break;
+            case NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME: {
+                idxBuff.count = batchData.m_IndexBuffer_Wireframe.size();
+                idxBuff.data = batchData.m_IndexBuffer_Wireframe.data();
+            } break;
+        }
+
+        _dataBuffer->setIndexBuffer(idxBuff);
+        _indexCount[i] = idxBuff.count;
+        _indexBufferId[i] = idxBuff.id;
+        ++idxBuff.id;
+    }
+
+    // free the temporary buffer in RAM
+    for (auto& [index, data] : batchData.m_Attributes) {
+        data.m_ArrayData.resize(0);
+    }
+
+    batchData.m_PositionData.resize(0);
+    batchData.m_IndexBuffer_Wireframe.resize(0);
+    batchData.m_IndexBuffer_Triangles.resize(0);
+    batchData.m_IndexBuffer_Lines.resize(0);
+    batchData.m_IndexBuffer_Points.resize(0);
 }
 
 void IMPrimitive::fromLines(const LineDescriptor& lines) {
@@ -517,177 +606,74 @@ void IMPrimitive::setPushConstants(const PushConstants& constants) {
     _additionalConstats = constants;
 }
 
-void IMPrimitive::getCommandBuffer(PipelineDescriptor& pipelineDescriptorInOut,
-                                   GFX::CommandBuffer& commandBufferInOut) 
-{
-    getCommandBuffer(MAT4_IDENTITY, pipelineDescriptorInOut, commandBufferInOut);
+void IMPrimitive::setPipelineDescriptor(const PipelineDescriptor& descriptor) {
+    AttributeMap existingAttributes = _basePipelineDescriptor._vertexFormat;
+    _basePipelineDescriptor = descriptor;
+
+    // allow attribute overwrite (for whatever reason)
+    for (U8 i = 0u; i < to_base(AttribLocation::COUNT); ++i) {
+        const AttributeDescriptor& srcAttrib = existingAttributes[i];
+        AttributeDescriptor& destAttrib = _basePipelineDescriptor._vertexFormat[i];
+        if (destAttrib._dataType == GFXDataFormat::COUNT || destAttrib._componentsPerElement == 0u) {
+            destAttrib = srcAttrib;
+        }
+    }
 }
 
-void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix,
-                                   PipelineDescriptor& pipelineDescriptorInOut,
-                                   GFX::CommandBuffer& commandBufferInOut)
-{
-    getCommandBuffer(worldMatrix, {}, 0u, pipelineDescriptorInOut, commandBufferInOut);
+void IMPrimitive::setTexture(const TextureData texture, const size_t samplerHash) {
+    auto& binding = _baseDescriptorSet._bindings.emplace_back();
+    binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+    binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+    binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+
+    auto& imageSampler = binding._data.As<DescriptorCombinedImageSampler>();
+    imageSampler._image = texture;
+    imageSampler._samplerHash = samplerHash;
 }
 
-void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, 
-                                   const TextureData& texture,
-                                   const size_t samplerHash,
-                                   PipelineDescriptor& pipelineDescriptorInOut,
-                                   GFX::CommandBuffer& commandBufferInOut)
+void IMPrimitive::getCommandBuffer(GFX::CommandBuffer& commandBufferInOut) 
+{
+    getCommandBuffer(MAT4_IDENTITY, commandBufferInOut);
+}
+
+void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuffer& commandBufferInOut)
 {
     if (!_imInterface->PrepareRender()) {
         return;
     }
 
-    const bool hasTexture = IsValid(texture);
-    auto& batchData = _imInterface->GetData();
+    DIVIDE_ASSERT(_basePipelineDescriptor._shaderProgramHandle != ShaderProgram::INVALID_HANDLE, "IMPrimitive error: Draw call received without a valid shader defined!");
 
-    GenericVertexData::SetBufferParams params{};
-    params._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-    params._bufferParams._updateUsage = BufferUpdateUsage::CPU_R_GPU_W;
-    params._bufferParams._elementSize = sizeof(NS_GLIM::Glim4ByteData);
-    params._useChunkAllocation = true;
+    _additionalConstats.set(_ID("dvd_WorldMatrix"), GFX::PushConstantType::MAT4, worldMatrix);
+    _additionalConstats.set(_ID("useTexture"), GFX::PushConstantType::BOOL, !_baseDescriptorSet._bindings.empty());
 
-    GenericVertexData::IndexBuffer idxBuff{};
-    idxBuff.smallIndices = false;
-    idxBuff.dynamic = true;
+    GenericDrawCommand cmd{};
+    cmd._drawCount = 1u;
+    cmd._cmd.primCount = 1u;
+    cmd._sourceBuffer = _dataBuffer->handle();
 
-    const auto setParams = [&params, &idxBuff, &batchData](GenericVertexData* buffer, const NS_GLIM::GLIM_BUFFER_TYPE type) {
-        U8 bufferIdx = 0u;
-        // Set positions
-        {
-            params._bindConfig = { bufferIdx++, 0u };
-            params._bufferParams._elementCount = to_U32(batchData.m_PositionData.size());
-            params._initialData = { batchData.m_PositionData.data(), batchData.m_PositionData.size() * sizeof(NS_GLIM::Glim4ByteData) };
-            params._elementStride = sizeof(NS_GLIM::Glim4ByteData) * 3;
-            buffer->setBuffer(params);
-        }
-
-        // now upload each attribute array one after another
-        for (auto& [index, data] : batchData.m_Attributes) {
-            assert(index != 0u);
-            params._bindConfig = { bufferIdx++, index };
-            params._bufferParams._elementCount = to_U32(data.m_ArrayData.size());
-            params._initialData = { data.m_ArrayData.data(), data.m_ArrayData.size() * sizeof(NS_GLIM::Glim4ByteData) };
-            params._elementStride = sizeof(NS_GLIM::Glim4ByteData) * GetSizeFactor(data.m_DataType);
-            buffer->setBuffer(params);
-        }
-
-        switch (type) {
-            case NS_GLIM::GLIM_BUFFER_TYPE::LINES: {
-                idxBuff.count = batchData.m_IndexBuffer_Lines.size();
-                idxBuff.data = batchData.m_IndexBuffer_Lines.data();
-            } break;
-            case NS_GLIM::GLIM_BUFFER_TYPE::POINTS: {
-                idxBuff.count = batchData.m_IndexBuffer_Points.size();
-                idxBuff.data = batchData.m_IndexBuffer_Points.data();
-            } break;
-            case NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES: {
-                idxBuff.count = batchData.m_IndexBuffer_Triangles.size();
-                idxBuff.data = batchData.m_IndexBuffer_Triangles.data();
-            } break;
-            case NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME: {
-                idxBuff.count = batchData.m_IndexBuffer_Wireframe.size();
-                idxBuff.data = batchData.m_IndexBuffer_Wireframe.data();
-            } break;
-        }
-
-        buffer->setIndexBuffer(idxBuff);
-    };
-
-    const auto drawType = [&](PipelineDescriptor& pipelineDescriptor, const NS_GLIM::GLIM_BUFFER_TYPE type) {
-        GenericVertexData* buffer = _dataBuffers[to_base(type)].get();
-        if (_dirty) {
-            setParams(buffer, type);
-        }
-
-        GFX::EnqueueCommand<GFX::BindPipelineCommand>(commandBufferInOut)->_pipeline = _context.newPipeline(pipelineDescriptor);
-        PushConstants& constants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(commandBufferInOut)->_constants;
-        constants.set(_ID("dvd_WorldMatrix"), GFX::PushConstantType::MAT4, worldMatrix);
-        constants.set(_ID("useTexture"), GFX::PushConstantType::BOOL, hasTexture);
-        if (!_additionalConstats.empty()) {
-            bool partial = false;
-            Merge(constants, _additionalConstats, partial);
-        }
-
-        GenericDrawCommand cmd{};
-        cmd._drawCount = 1u;
-        cmd._cmd.primCount = 1u;
-        cmd._cmd.indexCount = to_U32(buffer->idxBuffer().count);
-        cmd._sourceBuffer = buffer->handle();
-        GFX::EnqueueCommand(commandBufferInOut, GFX::DrawCommand{ cmd });
-    };
-
-    GFX::EnqueueCommand(commandBufferInOut, GFX::BeginDebugScopeCommand{ Util::StringFormat("Render IMPrimitive [ %s ]", _name.empty() ? "generic" : _name.c_str()).c_str() });
-
-    DIVIDE_ASSERT(pipelineDescriptorInOut._shaderProgramHandle != ShaderProgram::INVALID_HANDLE, "IMPrimitive error: Draw call received without a valid shader defined!");
-
-    if (hasTexture) {
-        auto& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(commandBufferInOut)->_set;
-        set._usage = DescriptorSetUsage::PER_DRAW_SET;
-
-        auto& binding = set._bindings.emplace_back();
-        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-        binding._resourceSlot = to_U8(TextureUsage::UNIT0);
-
-        auto& imageSampler = binding._data.As<DescriptorCombinedImageSampler>();
-        imageSampler._image = texture;
-        imageSampler._samplerHash = samplerHash;
-    }
-
-    for (auto& desc : _vertexFormat) {
-        if (desc._dataType != GFXDataFormat::COUNT) {
-            pipelineDescriptorInOut._vertexFormat[desc._bindingIndex] = desc;
-        }
-    }
-
-    if (_dirty) {
-        _drawFlags[to_base(NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES)] = !batchData.m_IndexBuffer_Triangles.empty();
-        _drawFlags[to_base(NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME)] = !batchData.m_IndexBuffer_Wireframe.empty();
-        _drawFlags[to_base(NS_GLIM::GLIM_BUFFER_TYPE::LINES)] = !batchData.m_IndexBuffer_Lines.empty();
-        _drawFlags[to_base(NS_GLIM::GLIM_BUFFER_TYPE::POINTS)] = !batchData.m_IndexBuffer_Points.empty();
-    }
-
-    if (!_forceWireframe && _drawFlags[to_base(NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES)])
+    GFX::EnqueueCommand(commandBufferInOut, GFX::BeginDebugScopeCommand{ _name.c_str() });
     {
-        pipelineDescriptorInOut._primitiveTopology = PrimitiveTopology::TRIANGLES;
-        drawType(pipelineDescriptorInOut, NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES);
-    }
-    else if (_drawFlags[to_base(NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME)])
-    {
-        pipelineDescriptorInOut._primitiveTopology = PrimitiveTopology::LINES;
-        drawType(pipelineDescriptorInOut, NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME);
-    }
+        GFX::EnqueueCommand(commandBufferInOut, GFX::BindDescriptorSetsCommand{ _baseDescriptorSet });
 
-    // render all lines
-    if (_drawFlags[to_base(NS_GLIM::GLIM_BUFFER_TYPE::LINES)]) {
-        pipelineDescriptorInOut._primitiveTopology = PrimitiveTopology::LINES;
-        drawType(pipelineDescriptorInOut, NS_GLIM::GLIM_BUFFER_TYPE::LINES);
-    }
+        for (U8 i = 0u; i < to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT); ++i) {
+            if (_drawFlags[i]) {
+                const NS_GLIM::GLIM_BUFFER_TYPE glimType = static_cast<NS_GLIM::GLIM_BUFFER_TYPE>(i);
+                if ((glimType == NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES && _forceWireframe) ||
+                    (glimType == NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME && !_forceWireframe))
+                {
+                    continue;
+                }
+                cmd._cmd.indexCount = to_U32(_indexCount[i]);
+                cmd._bufferFlag = _indexBufferId[i];
 
-    // render all points
-    if (_drawFlags[to_base(NS_GLIM::GLIM_BUFFER_TYPE::POINTS)]) {
-        pipelineDescriptorInOut._primitiveTopology = PrimitiveTopology::POINTS;
-        drawType(pipelineDescriptorInOut, NS_GLIM::GLIM_BUFFER_TYPE::POINTS);
+                GFX::EnqueueCommand(commandBufferInOut, GFX::BindPipelineCommand{ _pipelines[i] });
+                GFX::EnqueueCommand(commandBufferInOut, GFX::SendPushConstantsCommand{ _additionalConstats });
+                GFX::EnqueueCommand(commandBufferInOut, GFX::DrawCommand{ cmd });
+            }
+        }
     }
-
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(commandBufferInOut);
-
-    if (_dirty) {
-        // free the temporary buffer in RAM
-        for (auto& [index, data] : batchData.m_Attributes) {
-            data.m_ArrayData.resize(0);
-        }
-
-        batchData.m_PositionData.resize(0);
-        batchData.m_IndexBuffer_Wireframe.resize(0);
-        batchData.m_IndexBuffer_Triangles.resize(0);
-        batchData.m_IndexBuffer_Lines.resize(0);
-        batchData.m_IndexBuffer_Points.resize(0);
-        _dirty = false;
-    }
 }
 
 };

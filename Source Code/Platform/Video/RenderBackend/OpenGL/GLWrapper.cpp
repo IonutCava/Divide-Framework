@@ -146,7 +146,7 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     }
 
     glbinding::Binding::useCurrentContext();
-
+    
     // Query GPU vendor to enable/disable vendor specific features
     GPUVendor vendor = GPUVendor::COUNT;
     const char* gpuVendorStr = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
@@ -440,11 +440,11 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
                  DefaultColours::BLACK.b,
                  DefaultColours::BLACK.a);
 
-    _performanceQueries[to_base(QueryType::GPU_TIME)] = eastl::make_unique<glHardwareQueryRing>(_context, GL_TIME_ELAPSED, 6);
-    _performanceQueries[to_base(QueryType::VERTICES_SUBMITTED)] = eastl::make_unique<glHardwareQueryRing>(_context, GL_VERTICES_SUBMITTED, 6);
-    _performanceQueries[to_base(QueryType::PRIMITIVES_GENERATED)] = eastl::make_unique<glHardwareQueryRing>(_context, GL_PRIMITIVES_GENERATED, 6);
-    _performanceQueries[to_base(QueryType::TESSELLATION_PATCHES)] = eastl::make_unique<glHardwareQueryRing>(_context, GL_TESS_CONTROL_SHADER_PATCHES, 6);
-    _performanceQueries[to_base(QueryType::TESSELLATION_CTRL_INVOCATIONS)] = eastl::make_unique<glHardwareQueryRing>(_context, GL_TESS_EVALUATION_SHADER_INVOCATIONS, 6);
+    _performanceQueries[to_base(GlobalQueryTypes::VERTICES_SUBMITTED)] = eastl::make_unique<glHardwareQueryRing>(_context, GL_VERTICES_SUBMITTED, 6);
+    _performanceQueries[to_base(GlobalQueryTypes::PRIMITIVES_GENERATED)] = eastl::make_unique<glHardwareQueryRing>(_context, GL_PRIMITIVES_GENERATED, 6);
+    _performanceQueries[to_base(GlobalQueryTypes::TESSELLATION_PATCHES)] = eastl::make_unique<glHardwareQueryRing>(_context, GL_TESS_CONTROL_SHADER_PATCHES, 6);
+    _performanceQueries[to_base(GlobalQueryTypes::TESSELLATION_EVAL_INVOCATIONS)] = eastl::make_unique<glHardwareQueryRing>(_context, GL_TESS_EVALUATION_SHADER_INVOCATIONS, 6);
+    _performanceQueries[to_base(GlobalQueryTypes::GPU_TIME)] = eastl::make_unique<glHardwareQueryRing>(_context, GL_TIME_ELAPSED, 6);
 
     // That's it. Everything should be ready for draw calls
     Console::printfn(Locale::Get(_ID("START_OGL_API_OK")));
@@ -498,7 +498,7 @@ bool GL_API::beginFrame(DisplayWindow& window, const bool global) {
     // Start a duration query in debug builds
     if (global && _runQueries) {
         if_constexpr(g_runAllQueriesInSameFrame) {
-            for (U8 i = 0u; i < to_base(QueryType::COUNT); ++i) {
+            for (U8 i = 0u; i < to_base(GlobalQueryTypes::COUNT); ++i) {
                 _performanceQueries[i]->begin();
             }
         } else {
@@ -574,7 +574,7 @@ void GL_API::endFrameGlobal(const DisplayWindow& window) {
         // End the timing query started in beginFrame() in debug builds
 
         if_constexpr(g_runAllQueriesInSameFrame) {
-            for (U8 i = 0; i < to_base(QueryType::COUNT); ++i) {
+            for (U8 i = 0; i < to_base(GlobalQueryTypes::COUNT); ++i) {
                 _performanceQueries[i]->end();
             }
         } else {
@@ -619,9 +619,9 @@ void GL_API::endFrameGlobal(const DisplayWindow& window) {
 
     if (_runQueries) {
         OPTICK_EVENT("GL_API: Time Query");
-        static std::array<I64, to_base(QueryType::COUNT)> results{};
+        static std::array<I64, to_base(GlobalQueryTypes::COUNT)> results{};
         if_constexpr(g_runAllQueriesInSameFrame) {
-            for (U8 i = 0; i < to_base(QueryType::COUNT); ++i) {
+            for (U8 i = 0; i < to_base(GlobalQueryTypes::COUNT); ++i) {
                 results[i] = _performanceQueries[i]->getResultNoWait();
                 _performanceQueries[i]->incQueue();
             }
@@ -630,14 +630,14 @@ void GL_API::endFrameGlobal(const DisplayWindow& window) {
             _performanceQueries[_queryIdxForCurrentFrame]->incQueue();
         }
 
-        _queryIdxForCurrentFrame = (_queryIdxForCurrentFrame + 1) % to_base(QueryType::COUNT);
+        _queryIdxForCurrentFrame = (_queryIdxForCurrentFrame + 1) % to_base(GlobalQueryTypes::COUNT);
 
         if (g_runAllQueriesInSameFrame || _queryIdxForCurrentFrame == 0) {
-            _perfMetrics._gpuTimeInMS = Time::NanosecondsToMilliseconds<F32>(results[to_base(QueryType::GPU_TIME)]);
-            _perfMetrics._verticesSubmitted = to_U64(results[to_base(QueryType::VERTICES_SUBMITTED)]);
-            _perfMetrics._primitivesGenerated = to_U64(results[to_base(QueryType::PRIMITIVES_GENERATED)]);
-            _perfMetrics._tessellationPatches = to_U64(results[to_base(QueryType::TESSELLATION_PATCHES)]);
-            _perfMetrics._tessellationInvocations = to_U64(results[to_base(QueryType::TESSELLATION_CTRL_INVOCATIONS)]);
+            _perfMetrics._gpuTimeInMS = Time::NanosecondsToMilliseconds<F32>(results[to_base(GlobalQueryTypes::GPU_TIME)]);
+            _perfMetrics._verticesSubmitted = to_U64(results[to_base(GlobalQueryTypes::VERTICES_SUBMITTED)]);
+            _perfMetrics._primitivesGenerated = to_U64(results[to_base(GlobalQueryTypes::PRIMITIVES_GENERATED)]);
+            _perfMetrics._tessellationPatches = to_U64(results[to_base(GlobalQueryTypes::TESSELLATION_PATCHES)]);
+            _perfMetrics._tessellationInvocations = to_U64(results[to_base(GlobalQueryTypes::TESSELLATION_EVAL_INVOCATIONS)]);
         }
     }
 
@@ -780,10 +780,11 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
         pushConstantsMemCommand._bufferLocks.clear();
     };
 
+
+    OPTICK_EVENT(GFX::Names::commandType[to_base(cmd->Type())]);
+
     switch (cmd->Type()) {
         case GFX::CommandType::BEGIN_RENDER_PASS: {
-            OPTICK_EVENT("BEGIN_RENDER_PASS");
-
             const GFX::BeginRenderPassCommand* crtCmd = cmd->As<GFX::BeginRenderPassCommand>();
 
             glFramebuffer* rt = static_cast<glFramebuffer*>(_context.renderTargetPool().getRenderTarget(crtCmd->_target));
@@ -792,7 +793,6 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             PushDebugMessage(crtCmd->_name.c_str(), rt->framebufferHandle());
         }break;
         case GFX::CommandType::END_RENDER_PASS: {
-            OPTICK_EVENT("END_RENDER_PASS");
             PopDebugMessage();
 
             assert(GL_API::GetStateTracker()->_activeRenderTarget != nullptr);
@@ -802,8 +802,6 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             );
         }break;
         case GFX::CommandType::BEGIN_RENDER_SUB_PASS: {
-            OPTICK_EVENT("BEGIN_RENDER_SUB_PASS");
-
             const GFX::BeginRenderSubPassCommand* crtCmd = cmd->As<GFX::BeginRenderSubPassCommand>();
 
             assert(GL_API::GetStateTracker()->_activeRenderTarget != nullptr);
@@ -814,17 +812,81 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             GetStateTracker()->_activeRenderTarget->setMipLevel(crtCmd->_mipWriteLevel);
         }break;
         case GFX::CommandType::END_RENDER_SUB_PASS: {
-            OPTICK_EVENT("END_RENDER_SUB_PASS");
+            NOP();
+        }break;
+        case GFX::CommandType::BEGIN_GPU_QUERY: {
+            const GFX::BeginGPUQuery* crtCmd = cmd->As<GFX::BeginGPUQuery>();
+            if (crtCmd->_queryMask == 0u) {
+                return;
+            }
+
+            U8 i = 0u;
+            auto& queryContext = _queryContext.emplace();
+            if (BitCompare(crtCmd->_queryMask, QueryType::VERTICES_SUBMITTED)) {
+                queryContext[0]._query = &GL_API::GetHardwareQueryPool()->allocate(GL_VERTICES_SUBMITTED);
+                queryContext[0]._type = QueryType::VERTICES_SUBMITTED;
+                queryContext[0]._index = i++;
+            }
+            if (BitCompare(crtCmd->_queryMask, QueryType::PRIMITIVES_GENERATED)) {
+                queryContext[1]._query = &GL_API::GetHardwareQueryPool()->allocate(GL_PRIMITIVES_GENERATED);
+                queryContext[1]._type = QueryType::VERTICES_SUBMITTED;
+                queryContext[1]._index = i++;
+            }
+            if (BitCompare(crtCmd->_queryMask, QueryType::TESSELLATION_PATCHES)) {
+                queryContext[2]._query = &GL_API::GetHardwareQueryPool()->allocate(GL_TESS_CONTROL_SHADER_PATCHES);
+                queryContext[2]._type = QueryType::VERTICES_SUBMITTED;
+                queryContext[2]._index = i++;
+            }
+            if (BitCompare(crtCmd->_queryMask, QueryType::TESSELLATION_EVAL_INVOCATIONS)) {
+                queryContext[3]._query = &GL_API::GetHardwareQueryPool()->allocate(GL_TESS_EVALUATION_SHADER_INVOCATIONS);
+                queryContext[3]._type = QueryType::VERTICES_SUBMITTED;
+                queryContext[3]._index = i++;
+            }
+            if (BitCompare(crtCmd->_queryMask, QueryType::GPU_TIME)) {
+                queryContext[4]._query = &GL_API::GetHardwareQueryPool()->allocate(GL_TIME_ELAPSED);
+                queryContext[4]._type = QueryType::VERTICES_SUBMITTED;
+                queryContext[4]._index = i++;
+            }
+            if (BitCompare(crtCmd->_queryMask, QueryType::SAMPLE_COUNT)) {
+                queryContext[5]._query = &GL_API::GetHardwareQueryPool()->allocate(GL_SAMPLES_PASSED);
+                queryContext[5]._type = QueryType::VERTICES_SUBMITTED;
+                queryContext[5]._index = i++;
+            }
+            if (BitCompare(crtCmd->_queryMask, QueryType::ANY_SAMPLE_RENDERED)) {
+                queryContext[6]._query = &GL_API::GetHardwareQueryPool()->allocate(GL_ANY_SAMPLES_PASSED_CONSERVATIVE);
+                queryContext[6]._type = QueryType::VERTICES_SUBMITTED;
+                queryContext[6]._index = i++;
+            }
+
+            for (auto& queryEntry : queryContext) {
+                if (queryEntry._query != nullptr) {
+                    queryEntry._query->begin();
+                }
+            }
+        }break;
+        case GFX::CommandType::END_GPU_QUERY: {
+            const GFX::EndGPUQuery* crtCmd = cmd->As<GFX::EndGPUQuery>();
+            if (_queryContext.empty()) {
+                return;
+            }
+            DIVIDE_ASSERT(crtCmd->_resultContainer != nullptr);
+
+            for (auto& queryEntry : _queryContext.top()) {
+                if (queryEntry._query != nullptr) {
+                    queryEntry._query->end();
+
+                    const I64 qResult =  crtCmd->_waitForResults ? queryEntry._query->getResult() : queryEntry._query->getResultNoWait();
+                    (*crtCmd->_resultContainer)[queryEntry._index] = { queryEntry._type,  qResult };
+                }
+            }
+
+            _queryContext.pop();
         }break;
         case GFX::CommandType::COPY_TEXTURE: {
-            OPTICK_EVENT("COPY_TEXTURE");
-
             const GFX::CopyTextureCommand* crtCmd = cmd->As<GFX::CopyTextureCommand>();
             glTexture::copy(crtCmd->_source, crtCmd->_sourceMSAASamples, crtCmd->_destination, crtCmd->_destinationMSAASamples, crtCmd->_params);
         }break;
         case GFX::CommandType::BIND_DESCRIPTOR_SETS: {
-            OPTICK_EVENT("BIND_DESCRIPTOR_SETS");
-
             struct ImageSamplerBinding {
                 U8 _bindingSlot;
                 TextureType _type;
@@ -880,8 +942,6 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
                 pushConstantsNeedLock = false;
             }
 
-            OPTICK_EVENT("BIND_PIPELINE");
-
             const Pipeline* pipeline = cmd->As<GFX::BindPipelineCommand>()->_pipeline;
             assert(pipeline != nullptr);
             if (bindPipeline(*pipeline) == ShaderResult::Failed) {
@@ -889,8 +949,6 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             }
         } break;
         case GFX::CommandType::SEND_PUSH_CONSTANTS: {
-            OPTICK_EVENT("SEND_PUSH_CONSTANTS");
-
             const auto dumpLogs = [this]() {
                 Console::d_errorfn(Locale::Get(_ID("ERROR_GLSL_INVALID_PUSH_CONSTANTS")));
                 if (Config::ENABLE_GPU_VALIDATION) {
@@ -918,15 +976,11 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             pushConstantsNeedLock = !pushConstantsMemCommand._bufferLocks.empty();
         } break;
         case GFX::CommandType::SET_SCISSOR: {
-            OPTICK_EVENT("SET_SCISSOR");
-
             GetStateTracker()->setScissor(cmd->As<GFX::SetScissorCommand>()->_rect);
         }break;
         case GFX::CommandType::SET_TEXTURE_RESIDENCY: {
-            OPTICK_EVENT("SET_TEXTURE_RESIDENCY");
-
             const GFX::SetTexturesResidencyCommand* crtCmd = cmd->As<GFX::SetTexturesResidencyCommand>();
-            if (crtCmd->_state) {
+            if (crtCmd->_makeResident) {
                 for (const SamplerAddress address : crtCmd->_addresses) {
                     MakeTexturesResidentInternal(address);
                 }
@@ -937,23 +991,18 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             }
         }break;
         case GFX::CommandType::BEGIN_DEBUG_SCOPE: {
-            OPTICK_EVENT("BEGIN_DEBUG_SCOPE");
             const auto& crtCmd = cmd->As<GFX::BeginDebugScopeCommand>();
             PushDebugMessage(crtCmd->_scopeName.c_str(), crtCmd->_scopeId);
         } break;
         case GFX::CommandType::END_DEBUG_SCOPE: {
-            OPTICK_EVENT("END_DEBUG_SCOPE");
             PopDebugMessage();
         } break;
         case GFX::CommandType::ADD_DEBUG_MESSAGE: {
-            OPTICK_EVENT("ADD_DEBUG_MESSAGE");
             const auto& crtCmd = cmd->As<GFX::AddDebugMessageCommand>();
             PushDebugMessage(crtCmd->_msg.c_str(), crtCmd->_msgId);
             PopDebugMessage();
         }break;
         case GFX::CommandType::COMPUTE_MIPMAPS: {
-            OPTICK_EVENT("COMPUTE_MIPMAPS");
-
             const GFX::ComputeMipMapsCommand* crtCmd = cmd->As<GFX::ComputeMipMapsCommand>();
 
             if (crtCmd->_layerRange.x == 0 && crtCmd->_layerRange.y == crtCmd->_texture->descriptor().layerCount()) {
@@ -1018,14 +1067,11 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             }
         }break;
         case GFX::CommandType::DRAW_TEXT: {
-            OPTICK_EVENT("DRAW_TEXT");
-
             if (GetStateTracker()->_activePipeline != nullptr) {
                 drawText(cmd->As<GFX::DrawTextCommand>()->_batch);
             }
         }break;
         case GFX::CommandType::DRAW_COMMANDS : {
-            OPTICK_EVENT("DRAW_COMMANDS");
             DIVIDE_ASSERT(GetStateTracker()->_activePipeline != nullptr);
 
             U32 drawCount = 0u;
@@ -1040,8 +1086,6 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             _context.registerDrawCalls(drawCount);
         }break;
         case GFX::CommandType::DISPATCH_COMPUTE: {
-            OPTICK_EVENT("DISPATCH_COMPUTE");
-
             if (GetStateTracker()->_activePipeline != nullptr) {
                 assert(GetStateTracker()->_activeTopology == PrimitiveTopology::COMPUTE);
 
@@ -1054,14 +1098,10 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             }
         }break;
         case GFX::CommandType::SET_CLIPING_STATE: {
-            OPTICK_EVENT("SET_CLIPING_STATE");
-
             const GFX::SetClippingStateCommand* crtCmd = cmd->As<GFX::SetClippingStateCommand>();
             GetStateTracker()->setClippingPlaneState(crtCmd->_lowerLeftOrigin, crtCmd->_negativeOneToOneDepth);
         } break;
         case GFX::CommandType::MEMORY_BARRIER: {
-            OPTICK_EVENT("MEMORY_BARRIER");
-
             const GFX::MemoryBarrierCommand* crtCmd = cmd->As<GFX::MemoryBarrierCommand>();
             const U32 barrierMask = crtCmd->_barrierMask;
             if (barrierMask != 0) {

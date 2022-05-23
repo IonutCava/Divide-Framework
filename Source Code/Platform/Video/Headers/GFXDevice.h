@@ -358,7 +358,7 @@ public:
     GenericVertexData* getOrCreateIMGUIBuffer(I64 windowGUID, I32 maxCommandCount, U32 maxVertices);
 
     /// Create and return a new immediate mode emulation primitive.
-    IMPrimitive*       newIMP();
+    IMPrimitive*       newIMP(const Str64& name);
     bool               destroyIMP(IMPrimitive*& primitive);
 
     /// Create and return a new vertex array (VAO + VB + IB).

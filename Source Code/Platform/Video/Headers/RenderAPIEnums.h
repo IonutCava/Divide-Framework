@@ -833,21 +833,25 @@ namespace Names {
 static_assert(std::size(Names::bufferUpdateFrequency) == to_base(BufferUpdateFrequency::COUNT) + 1);
 
 enum class QueryType : U8 {
-    VERTICES_SUBMITTED = 0,
-    PRIMITIVES_GENERATED,
-    TESSELLATION_PATCHES,
-    TESSELLATION_CTRL_INVOCATIONS,
-    GPU_TIME,
-    COUNT
+    VERTICES_SUBMITTED = toBit(1),
+    PRIMITIVES_GENERATED = toBit(2),
+    TESSELLATION_PATCHES = toBit(3),
+    TESSELLATION_EVAL_INVOCATIONS = toBit(4),
+    GPU_TIME = toBit(5),
+    SAMPLE_COUNT = toBit(6),
+    ANY_SAMPLE_RENDERED = toBit(7),
+    COUNT = 7
 };
 
 namespace Names {
     static const char* queryType[] = {
-        "VERTICES_SUBMITTED", "PRIMITIVES_GENERATED", "TESSELLATION_PATCHES", "TESSELLATION_CTRL_INVOCATIONS", "GPU_TIME", "NONE"
+        "VERTICES_SUBMITTED", "PRIMITIVES_GENERATED", "TESSELLATION_PATCHES", "TESSELLATION_EVAL_INVOCATIONS", "GPU_TIME", "SAMPLE_COUNT", "ANY_SAMPLE_RENDERED", "NONE"
     };
 };
 
 static_assert(std::size(Names::queryType) == to_base(QueryType::COUNT) + 1);
+
+using QueryResults = std::array<std::pair<QueryType, I64>, to_base(QueryType::COUNT)>;
 
 };  // namespace Divide
 

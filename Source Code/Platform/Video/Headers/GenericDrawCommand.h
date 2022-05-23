@@ -39,16 +39,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-namespace GenericDrawCommandResults {
-    struct QueryResult {
-        U64 _primitivesGenerated = 0U;
-        U32 _samplesPassed       = 0U;
-        U32 _anySamplesPassed    = 0U;
-    };
-
-    extern hashMap<I64, QueryResult> g_queryResults;
-};
-
 struct IndirectDrawCommand {
     U32 indexCount   = 0u;
     U32 primCount    = 1u;
@@ -58,23 +48,21 @@ struct IndirectDrawCommand {
 };
 static_assert(sizeof(IndirectDrawCommand) == 20, "Wrong indirect command size!");
 
-enum class CmdRenderOptions : U16 {
+enum class CmdRenderOptions : U8 {
     RENDER_GEOMETRY           = toBit(1),
     RENDER_WIREFRAME          = toBit(2),
     RENDER_NO_RASTERIZE       = toBit(3),
-    QUERY_PRIMITIVE_COUNT     = toBit(4),
-    QUERY_SAMPLE_COUNT        = toBit(5),
-    QUERY_ANY_SAMPLE_RENDERED = toBit(6),
-    COUNT = 6
+    COUNT = 3
 };
 
 #pragma pack(push, 1)
 struct GenericDrawCommand {
-    IndirectDrawCommand _cmd {};                                          // 32 bytes
-    PoolHandle _sourceBuffer {};                                          // 12 bytes
-    U32 _commandOffset = 0u;                                              // 8  bytes
-    U16 _drawCount = 1u;                                                  // 4  bytes
-    U16 _renderOptions = to_base(CmdRenderOptions::RENDER_GEOMETRY); // 2  bytes
+    IndirectDrawCommand _cmd{};                                            // 32 bytes
+    PoolHandle _sourceBuffer{};                                            // 12 bytes
+    U32 _commandOffset{ 0u };                                              // 8  bytes
+    U16 _drawCount{ 1u };                                                  // 4  bytes
+    U8  _renderOptions{ to_base(CmdRenderOptions::RENDER_GEOMETRY) }; // 2  bytes
+    U8  _bufferFlag{ 0u };
 };
 #pragma pack(pop)
 

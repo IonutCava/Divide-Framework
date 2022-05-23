@@ -83,15 +83,19 @@ Scene::Scene(PlatformContext& context, ResourceCache* cache, SceneManager& paren
     _envProbePool = eastl::make_unique<SceneEnvironmentProbePool>(*this);
     _GUI = eastl::make_unique<SceneGUIElements>(*this, _context.gui());
 
-    _linesPrimitive = _context.gfx().newIMP();
-    _linesPrimitive->name("GenericLinePrimitive");
+    _linesPrimitive = _context.gfx().newIMP("Generic Line Primitive");
+
+    RenderStateBlock primitiveDescriptor;
+    primitiveDescriptor.depthTestEnabled(false);
+
+    PipelineDescriptor pipeDesc;
+    pipeDesc._stateHash = primitiveDescriptor.getHash();
+    pipeDesc._shaderProgramHandle = _context.gfx().defaultIMShader()->handle();
+    _linesPrimitive->setPipelineDescriptor(pipeDesc);
 }
 
 Scene::~Scene()
 {
-    for (IMPrimitive*& prim : _octreePrimitives) {
-        _context.gfx().destroyIMP(prim);
-    }
     if (_linesPrimitive) {
         _context.gfx().destroyIMP(_linesPrimitive);
     }
@@ -1459,17 +1463,8 @@ void Scene::processTasks(const U64 deltaTimeUS) {
 
 void Scene::drawCustomUI(const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut) {
     if (_linesPrimitive->hasBatch()) {
-
-        RenderStateBlock primitiveDescriptor;
-        primitiveDescriptor.depthTestEnabled(false);
-
-        PipelineDescriptor pipeDesc;
-        pipeDesc._stateHash = primitiveDescriptor.getHash();
-        pipeDesc._shaderProgramHandle = _context.gfx().defaultIMShader()->handle();
-
         GFX::EnqueueCommand(bufferInOut, GFX::SetViewportCommand{ targetViewport });
-
-        _linesPrimitive->getCommandBuffer(pipeDesc, bufferInOut);
+        _linesPrimitive->getCommandBuffer(bufferInOut);
     }
 }
 
@@ -1479,30 +1474,15 @@ void Scene::debugDraw(GFX::CommandBuffer& bufferInOut) {
             _octreeBoundingBoxes.resize(0);
             sceneGraph()->getOctree()->getAllRegions(_octreeBoundingBoxes);
 
-            const size_t primitiveCount = _octreePrimitives.size();
             const size_t regionCount = _octreeBoundingBoxes.size();
-            if (regionCount > primitiveCount) {
-                const size_t diff = regionCount - primitiveCount;
-                for (size_t i = 0; i < diff; ++i) {
-                    _octreePrimitives.push_back(_context.gfx().newIMP());
-                }
-            }
-
-            assert(_octreePrimitives.size() >= _octreeBoundingBoxes.size());
-
-            STUBBED("ToDo: Port this to the GFX::DrawDebugBox system! -Ionut");
-            PipelineDescriptor pipeDesc;
-            pipeDesc._stateHash = RenderStateBlock::DefaultHash();
-            pipeDesc._shaderProgramHandle = _context.gfx().defaultIMShader()->handle();
 
             IMPrimitive::BoxDescriptor descriptor;
-            for (size_t i = 0; i < regionCount; ++i) {
+            for (size_t i = 0u; i < regionCount; ++i) {
                 const BoundingBox& box = _octreeBoundingBoxes[i];
                 descriptor.min = box.getMin();
                 descriptor.max = box.getMax();
                 descriptor.colour = UColour4(255, 0, 255, 255);
-                _octreePrimitives[i]->fromBox(descriptor);
-                _octreePrimitives[i]->getCommandBuffer(pipeDesc, bufferInOut);
+                _context.gfx().debugDrawBox(getGUID() + i, descriptor);
             }
         }
     }

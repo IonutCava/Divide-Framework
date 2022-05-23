@@ -50,6 +50,7 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
          bufferPtr data{ nullptr };
          size_t count{ 0u };
          size_t offsetCount{ 0u };
+         U8 id{ 0u };
          bool smallIndices{ false };
          bool indicesNeedCast{ false };
          bool dynamic{ false };
@@ -77,7 +78,7 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
     GenericVertexData(GFXDevice& context, U32 ringBufferLength, const char* name = nullptr);
     virtual ~GenericVertexData() = default;
 
-    virtual void setIndexBuffer(const IndexBuffer& indices);
+    virtual void setIndexBuffer(const IndexBuffer& indices) = 0;
 
     virtual void reset() = 0; //< Also clears GPU memory
 
@@ -94,7 +95,6 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
                               bufferPtr data) = 0;
 
     PROPERTY_RW(bool, renderIndirect, true);
-    PROPERTY_R(IndexBuffer, idxBuffer);
 
    protected:
     string _name;

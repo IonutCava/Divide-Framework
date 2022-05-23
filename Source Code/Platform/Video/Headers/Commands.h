@@ -39,7 +39,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 
-
 namespace Divide {
 
 namespace GFX {

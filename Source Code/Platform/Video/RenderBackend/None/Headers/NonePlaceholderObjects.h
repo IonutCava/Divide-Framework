@@ -78,6 +78,9 @@ namespace Divide {
         void setBuffer([[maybe_unused]] const SetBufferParams& params) noexcept override {
         }
 
+        void setIndexBuffer([[maybe_unused]] const IndexBuffer& indices) override {
+        }
+
         void insertFencesIfNeeded() override {
         }
 

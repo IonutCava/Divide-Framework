@@ -56,6 +56,8 @@ enum class CommandType : U8 {
     END_RENDER_PASS,
     BEGIN_RENDER_SUB_PASS,
     END_RENDER_SUB_PASS,
+    BEGIN_GPU_QUERY,
+    END_GPU_QUERY,
     SET_VIEWPORT,
     PUSH_VIEWPORT,
     POP_VIEWPORT,
@@ -92,7 +94,7 @@ enum class CommandType : U8 {
 
 namespace Names {
     static const char* commandType[] = {
-        "BEGIN_RENDER_PASS", "END_RENDER_PASS", "BEGIN_RENDER_SUB_PASS",
+        "BEGIN_RENDER_PASS", "END_RENDER_PASS", "BEGIN_RENDER_SUB_PASS", "BEGIN_GPU_QUERY", "END_GPU_QUERY",
         "END_RENDER_SUB_PASS", "SET_VIEWPORT", "PUSH_VIEWPORT","POP_VIEWPORT", "SET_SCISSOR", "CLEAR_RT",
         "RESET_RT", "RESET_AND_CLEAR_RT", "BLIT_RT", "COPY_TEXTURE", "CLEAR_TEXTURE", "COMPUTE_MIPMAPS", "SET_CAMERA",
         "PUSH_CAMERA", "POP_CAMERA", "SET_CLIP_PLANES", "BIND_PIPELINE", "BIND_DESCRIPTOR_SETS", "SEND_PUSH_CONSTANTS",
@@ -146,43 +148,56 @@ DEFINE_COMMAND(PopViewportCommand, CommandType::POP_VIEWPORT);
 DEFINE_COMMAND_BEGIN(BeginRenderPassCommand, CommandType::BEGIN_RENDER_PASS);
     RenderTargetID _target = INVALID_RENDER_TARGET_ID;
     RTDrawDescriptor _descriptor;
-    Str64 _name = "";
+    Str64 _name;
 DEFINE_COMMAND_END(BeginRenderPassCommand);
 
 DEFINE_COMMAND_BEGIN(EndRenderPassCommand, CommandType::END_RENDER_PASS);
-    bool _setDefaultRTState = true;
+    bool _setDefaultRTState{ true };
 DEFINE_COMMAND_END(EndRenderPassCommand);
 
 DEFINE_COMMAND_BEGIN(BeginRenderSubPassCommand, CommandType::BEGIN_RENDER_SUB_PASS);
-    U16 _mipWriteLevel = 0u;
+    U16 _mipWriteLevel{ 0u };
     vector<RenderTarget::DrawLayerParams> _writeLayers;
 DEFINE_COMMAND_END(BeginRenderSubPassCommand);
 
 DEFINE_COMMAND(EndRenderSubPassCommand, CommandType::END_RENDER_SUB_PASS);
+
+DEFINE_COMMAND_BEGIN(BeginGPUQuery, CommandType::BEGIN_GPU_QUERY);
+    BeginGPUQuery() noexcept = default;
+    BeginGPUQuery(const QueryType query) noexcept : _queryMask(to_base(query)) {}
+    BeginGPUQuery(const U32 mask) noexcept : _queryMask(mask) {}
+
+    U32 _queryMask{ 0u };
+DEFINE_COMMAND_END(BeginGPUQuery);
+
+DEFINE_COMMAND_BEGIN(EndGPUQuery, CommandType::END_GPU_QUERY);
+    QueryResults* _resultContainer{nullptr};
+    bool _waitForResults{false};
+DEFINE_COMMAND_END(EndGPUQuery);
 
 DEFINE_COMMAND_BEGIN(BlitRenderTargetCommand, CommandType::BLIT_RT);
     // Depth layer to blit
     DepthBlitEntry _blitDepth;
     // List of colours + colour layer to blit
     std::array<ColourBlitEntry, RT_MAX_COLOUR_ATTACHMENTS> _blitColours;
-    RenderTargetID _source = INVALID_RENDER_TARGET_ID;
-    RenderTargetID _destination = INVALID_RENDER_TARGET_ID;
+    RenderTargetID _source{ INVALID_RENDER_TARGET_ID };
+    RenderTargetID _destination{ INVALID_RENDER_TARGET_ID };
 DEFINE_COMMAND_END(BlitRenderTargetCommand);
 
 DEFINE_COMMAND_BEGIN(ClearRenderTargetCommand, CommandType::CLEAR_RT);
     ClearRenderTargetCommand() noexcept = default;
     ClearRenderTargetCommand(const RenderTargetID& target, const RTClearDescriptor& descriptor) noexcept : _target(target), _descriptor(descriptor) {}
-    RenderTargetID _target = INVALID_RENDER_TARGET_ID;
+    RenderTargetID _target{ INVALID_RENDER_TARGET_ID };
     RTClearDescriptor _descriptor;
 DEFINE_COMMAND_END(ClearRenderTargetCommand);
 
 DEFINE_COMMAND_BEGIN(ResetRenderTargetCommand, CommandType::RESET_RT);
-    RenderTargetID _source = INVALID_RENDER_TARGET_ID;
+    RenderTargetID _source{ INVALID_RENDER_TARGET_ID };
     RTDrawDescriptor _descriptor;
 DEFINE_COMMAND_END(ResetRenderTargetCommand);
 
 DEFINE_COMMAND_BEGIN(ResetAndClearRenderTargetCommand, CommandType::RESET_AND_CLEAR_RT);
-    RenderTargetID _source = INVALID_RENDER_TARGET_ID;
+    RenderTargetID _source{ INVALID_RENDER_TARGET_ID };
     RTDrawDescriptor _drawDescriptor;
     RTClearDescriptor _clearDescriptor;
 DEFINE_COMMAND_END(ResetAndClearRenderTargetCommand);
@@ -196,18 +211,18 @@ DEFINE_COMMAND_BEGIN(CopyTextureCommand, CommandType::COPY_TEXTURE);
 DEFINE_COMMAND_END(CopyTextureCommand);
 
 DEFINE_COMMAND_BEGIN(ClearTextureCommand, CommandType::CLEAR_TEXTURE);
-    Texture* _texture = nullptr;
+    Texture* _texture{ nullptr };
     UColour4 _clearColour;
     vec2<I32> _depthRange;
     vec4<I32> _reactToClear;
-    U8 _level = 0;
-    bool _clearRect = false;
+    U8 _level{ 0 };
+    bool _clearRect{ false };
 DEFINE_COMMAND_END(ClearTextureCommand);
 
 DEFINE_COMMAND_BEGIN(ComputeMipMapsCommand, CommandType::COMPUTE_MIPMAPS);
-    Texture* _texture = nullptr;
-    vec2<U16> _layerRange = { 0u, 1u };
-    vec2<U16> _mipRange = { 0u, 0u };
+    Texture* _texture{ nullptr };
+    vec2<U16> _layerRange{ 0u, 1u };
+    vec2<U16> _mipRange{ 0u, 0u };
 DEFINE_COMMAND_END(ComputeMipMapsCommand);
 
 DEFINE_COMMAND_BEGIN(SetScissorCommand, CommandType::SET_SCISSOR);
@@ -246,7 +261,7 @@ DEFINE_COMMAND_END(BindDescriptorSetsCommand);
 
 DEFINE_COMMAND_BEGIN(SetTexturesResidencyCommand, CommandType::SET_TEXTURE_RESIDENCY);
     std::array<SamplerAddress, 16> _addresses;
-    bool _state = true;
+    bool _makeResident{ true };
 DEFINE_COMMAND_END(SetTexturesResidencyCommand);
 
 DEFINE_COMMAND_BEGIN(BeginDebugScopeCommand, CommandType::BEGIN_DEBUG_SCOPE);
@@ -257,7 +272,7 @@ DEFINE_COMMAND_BEGIN(BeginDebugScopeCommand, CommandType::BEGIN_DEBUG_SCOPE);
     {}
 
     Str64 _scopeName;
-    U32 _scopeId = std::numeric_limits<U32>::max();
+    U32 _scopeId{ std::numeric_limits<U32>::max() };
 DEFINE_COMMAND_END(BeginDebugScopeCommand);
 
 DEFINE_COMMAND(EndDebugScopeCommand, CommandType::END_DEBUG_SCOPE);
@@ -271,7 +286,7 @@ DEFINE_COMMAND_BEGIN(AddDebugMessageCommand, CommandType::ADD_DEBUG_MESSAGE);
     }
 
     Str64 _msg;
-    U32 _msgId = std::numeric_limits<U32>::max();
+    U32 _msgId{ std::numeric_limits<U32>::max() };
 DEFINE_COMMAND_END(AddDebugMessageCommand);
 
 DEFINE_COMMAND_BEGIN(DrawTextCommand, CommandType::DRAW_TEXT);
@@ -300,21 +315,21 @@ DEFINE_COMMAND_BEGIN(MemoryBarrierCommand, CommandType::MEMORY_BARRIER);
 DEFINE_COMMAND_END(MemoryBarrierCommand);
 
 DEFINE_COMMAND_BEGIN(ReadBufferDataCommand, CommandType::READ_BUFFER_DATA);
-    ShaderBuffer* _buffer = nullptr;
-    std::pair<bufferPtr, size_t> _target = { nullptr, 0u };
-    U32           _offsetElementCount = 0;
-    U32           _elementCount = 0;
+    ShaderBuffer* _buffer{ nullptr };
+    std::pair<bufferPtr, size_t> _target { nullptr, 0u };
+    U32           _offsetElementCount{ 0 };
+    U32           _elementCount{ 0 };
 DEFINE_COMMAND_END(ReadBufferDataCommand);
 
 DEFINE_COMMAND_BEGIN(ClearBufferDataCommand, CommandType::CLEAR_BUFFER_DATA);
-    ShaderBuffer* _buffer = nullptr;
-    U32           _offsetElementCount = 0;
-    U32           _elementCount = 0;
+    ShaderBuffer* _buffer{ nullptr };
+    U32           _offsetElementCount{ 0 };
+    U32           _elementCount{ 0 };
 DEFINE_COMMAND_END(ClearBufferDataCommand);
 
 DEFINE_COMMAND_BEGIN(SetClippingStateCommand, CommandType::SET_CLIPING_STATE)
-    bool _lowerLeftOrigin = true;
-    bool _negativeOneToOneDepth = true;
+    bool _lowerLeftOrigin{true};
+    bool _negativeOneToOneDepth{true};
 DEFINE_COMMAND_END(SetClippingStateCommand);
 
 DEFINE_COMMAND_BEGIN(ExternalCommand, CommandType::EXTERNAL);

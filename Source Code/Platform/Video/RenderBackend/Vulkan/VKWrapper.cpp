@@ -693,39 +693,33 @@ namespace Divide {
         VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
         OPTICK_TAG("Type", to_base(cmd->Type()));
 
+        OPTICK_EVENT(GFX::Names::commandType[to_base(cmd->Type())]);
 
         switch (cmd->Type()) {
             case GFX::CommandType::BEGIN_RENDER_PASS: {
-                OPTICK_EVENT("BEGIN_RENDER_PASS");
-
                 const GFX::BeginRenderPassCommand* crtCmd = cmd->As<GFX::BeginRenderPassCommand>();
                 PushDebugMessage(cmdBuffer, crtCmd->_name.c_str());
             }break;
             case GFX::CommandType::END_RENDER_PASS: {
-                OPTICK_EVENT("END_RENDER_PASS");
                 PopDebugMessage(cmdBuffer);
             }break;
             case GFX::CommandType::BEGIN_RENDER_SUB_PASS: {
-                OPTICK_EVENT("BEGIN_RENDER_SUB_PASS");
             }break;
             case GFX::CommandType::END_RENDER_SUB_PASS: {
-                OPTICK_EVENT("END_RENDER_SUB_PASS");
+            }break;
+            case GFX::CommandType::BEGIN_GPU_QUERY: {
+            }break;
+            case GFX::CommandType::END_GPU_QUERY: {
             }break;
             case GFX::CommandType::COPY_TEXTURE: {
-                OPTICK_EVENT("COPY_TEXTURE");
             }break;
             case GFX::CommandType::BIND_DESCRIPTOR_SETS: {
-                OPTICK_EVENT("BIND_DESCRIPTOR_SETS");
             }break;
             case GFX::CommandType::BIND_PIPELINE: {
-                OPTICK_EVENT("BIND_PIPELINE");
             } break;
             case GFX::CommandType::SEND_PUSH_CONSTANTS: {
-                OPTICK_EVENT("SEND_PUSH_CONSTANTS");
             } break;
             case GFX::CommandType::SET_SCISSOR: {
-                OPTICK_EVENT("SET_SCISSOR");
-
                 const Rect<I32>& rect = cmd->As<GFX::SetScissorCommand>()->_rect;
 
                 const VkOffset2D offset{ rect.offsetX, rect.offsetY };
@@ -735,26 +729,19 @@ namespace Divide {
 
             }break;
             case GFX::CommandType::SET_TEXTURE_RESIDENCY: {
-                OPTICK_EVENT("SET_TEXTURE_RESIDENCY");
             }break;
             case GFX::CommandType::BEGIN_DEBUG_SCOPE: {
-                OPTICK_EVENT("BEGIN_DEBUG_SCOPE");
                  const GFX::BeginDebugScopeCommand* crtCmd = cmd->As<GFX::BeginDebugScopeCommand>();
                  PushDebugMessage(cmdBuffer, crtCmd->_scopeName.c_str());
             } break;
             case GFX::CommandType::END_DEBUG_SCOPE: {
-                OPTICK_EVENT("END_DEBUG_SCOPE");
-
                  PopDebugMessage(cmdBuffer);
             } break;
             case GFX::CommandType::ADD_DEBUG_MESSAGE: {
-                OPTICK_EVENT("ADD_DEBUG_MESSAGE");
                 const GFX::AddDebugMessageCommand* crtCmd = cmd->As<GFX::AddDebugMessageCommand>();
                 InsertDebugMessage(cmdBuffer, crtCmd->_msg.c_str());
             }break;
             case GFX::CommandType::COMPUTE_MIPMAPS: {
-                OPTICK_EVENT("COMPUTE_MIPMAPS");
-
                 const GFX::ComputeMipMapsCommand* crtCmd = cmd->As<GFX::ComputeMipMapsCommand>();
 
                 if (crtCmd->_layerRange.x == 0 && crtCmd->_layerRange.y == crtCmd->_texture->descriptor().layerCount()) {
@@ -764,12 +751,10 @@ namespace Divide {
                 }
             }break;
             case GFX::CommandType::DRAW_TEXT: {
-                OPTICK_EVENT("DRAW_TEXT");
                 const GFX::DrawTextCommand* crtCmd = cmd->As<GFX::DrawTextCommand>();
                 drawText(crtCmd->_batch);
             }break;
             case GFX::CommandType::DRAW_COMMANDS : {
-                OPTICK_EVENT("DRAW_COMMANDS");
                 const GFX::DrawCommand::CommandContainer& drawCommands = cmd->As<GFX::DrawCommand>()->_drawCommands;
 
                 U32 drawCount = 0u;
@@ -783,13 +768,10 @@ namespace Divide {
                 _context.registerDrawCalls(drawCount);
             }break;
             case GFX::CommandType::DISPATCH_COMPUTE: {
-                OPTICK_EVENT("DISPATCH_COMPUTE");
             }break;
             case GFX::CommandType::SET_CLIPING_STATE: {
-                OPTICK_EVENT("SET_CLIPING_STATE");
             } break;
             case GFX::CommandType::MEMORY_BARRIER: {
-                OPTICK_EVENT("MEMORY_BARRIER");
             } break;
             default: break;
         }

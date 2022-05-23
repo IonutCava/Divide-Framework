@@ -347,7 +347,7 @@ std::pair<ErrorType, size_t> CommandBuffer::validate() const {
         OPTICK_EVENT();
 
         size_t cmdIndex = 0u;
-        bool pushedPass = false, pushedSubPass = false;
+        bool pushedPass = false, pushedSubPass = false, pushedQuery = false;
         bool hasPipeline = false, hasDescriptorSets = false;
         I32 pushedDebugScope = 0, pushedCamera = 0, pushedViewport = 0;
 
@@ -377,6 +377,18 @@ std::pair<ErrorType, size_t> CommandBuffer::validate() const {
                         return { ErrorType::MISSING_BEGIN_RENDER_SUB_PASS, cmdIndex };
                     }
                     pushedSubPass = false;
+                } break;
+                case CommandType::BEGIN_GPU_QUERY: {
+                    if (pushedQuery) {
+                        return { ErrorType::MISSING_END_GPU_QUERY, cmdIndex };
+                    }
+                    pushedQuery = true;
+                } break;
+                case CommandType::END_GPU_QUERY: {
+                    if (!pushedQuery) {
+                        return { ErrorType::MISSING_BEGIN_GPU_QUERY, cmdIndex };
+                    }
+                    pushedQuery = false;
                 } break;
                 case CommandType::BEGIN_DEBUG_SCOPE: {
                     ++pushedDebugScope;

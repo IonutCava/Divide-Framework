@@ -332,7 +332,6 @@ class Scene : public Resource, public PlatformContextComponent {
 
     protected:
         IMPrimitive*         _linesPrimitive = nullptr;
-        vector<IMPrimitive*> _octreePrimitives;
         vector<BoundingBox>  _octreeBoundingBoxes;
         vector<size_t>       _selectionCallbackIndices;
 };

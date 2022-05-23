@@ -99,10 +99,12 @@ class IMPrimitive final {
     static void InitStaticData();
 
    public:
-     IMPrimitive(GFXDevice& context);
+     IMPrimitive(GFXDevice& context, const Str64& name);
      ~IMPrimitive() = default;
 
     void setPushConstants(const PushConstants& constants);
+    void setPipelineDescriptor(const PipelineDescriptor& descriptor);
+    void setTexture(TextureData texture, size_t samplerHash);
 
     void begin(PrimitiveTopology type);
     void end();
@@ -153,16 +155,8 @@ class IMPrimitive final {
     template<size_t N>
     inline void fromCones(const std::array<ConeDescriptor, N>& cones) { fromCones(cones.data(), cones.size()); }
 
-    void getCommandBuffer(PipelineDescriptor& pipelineDescriptorInOut,
-                          GFX::CommandBuffer& commandBufferInOut);
-    void getCommandBuffer(const mat4<F32>& worldMatrix,
-                          PipelineDescriptor& pipelineDescriptorInOut,
-                          GFX::CommandBuffer& commandBufferInOut);
-    void getCommandBuffer(const mat4<F32>& worldMatrix,
-                          const TextureData& texture,
-                          size_t samplerHash,
-                          PipelineDescriptor& pipelineDescriptorInOut,
-                          GFX::CommandBuffer& commandBufferInOut);
+    void getCommandBuffer(GFX::CommandBuffer& commandBufferInOut);
+    void getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuffer& commandBufferInOut);
 
     PROPERTY_RW(Str64, name);
     PROPERTY_RW(bool, forceWireframe, false);
@@ -180,11 +174,13 @@ class IMPrimitive final {
     GFXDevice& _context;
     PushConstants _additionalConstats;
     eastl::unique_ptr<NS_GLIM::GLIM_BATCH> _imInterface;
-    AttributeMap _vertexFormat{};
+    PipelineDescriptor _basePipelineDescriptor{};
+    DescriptorSet _baseDescriptorSet{};
     std::array<bool, to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT)> _drawFlags;
-    std::array<GenericVertexData_ptr, to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT)> _dataBuffers;
-
-    bool _dirty = false;
+    std::array<size_t, to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT)> _indexCount;
+    std::array<Pipeline*, to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT)> _pipelines;
+    std::array<U8, to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT)> _indexBufferId;
+    GenericVertexData_ptr _dataBuffer = nullptr;
 };
 
 };  // namespace Divide

@@ -157,16 +157,34 @@ public:
     static void DestroyFenceSync(GLsync& sync);
 
 private:
+
+    enum class GlobalQueryTypes : U8 {
+        VERTICES_SUBMITTED = 0,
+        PRIMITIVES_GENERATED,
+        TESSELLATION_PATCHES,
+        TESSELLATION_EVAL_INVOCATIONS,
+        GPU_TIME,
+        COUNT
+    };
+
     struct WindowGLContext {
-        I64 _windowGUID = -1;
-        SDL_GLContext _context = nullptr;
+        I64 _windowGUID{-1};
+        SDL_GLContext _context{ nullptr };
     };
 
     struct ResidentTexture {
-        SamplerAddress _address = 0u;
-        U8  _frameCount = 0u;
+        SamplerAddress _address{ 0u };
+        U8  _frameCount{ 0u };
     };
 
+    struct glHardwareQueryEntry {
+        glHardwareQueryRing* _query{ nullptr };
+        QueryType _type{ QueryType::COUNT };
+        U8 _index{ 0u };
+    };
+
+    using HardwareQueryContext = std::array<glHardwareQueryEntry, to_base(QueryType::COUNT)>;
+    HardwareQueryContext _primitiveQueries;
     /// /*sampler hash value*/ /*sampler object*/
     using SamplerObjectMap = hashMap<size_t, GLuint, NoHash<size_t>>;
     using BufferLockQueue = eastl::fixed_vector<BufferLockEntry, 64, true, eastl::dvd_allocator>;
@@ -180,7 +198,10 @@ private:
     hashAlg::pair<Str64, I32> _fontCache = {"", -1};
 
     /// Hardware query objects used for performance measurements
-    std::array<eastl::unique_ptr<glHardwareQueryRing>, to_base(QueryType::COUNT)> _performanceQueries;
+    std::array<eastl::unique_ptr<glHardwareQueryRing>, to_base(GlobalQueryTypes::COUNT)> _performanceQueries;
+    // OpenGL rendering is not thread-safe anyway, so this works
+    eastl::stack<HardwareQueryContext> _queryContext;
+
     PerformanceMetrics _perfMetrics{};
 
     WindowGLContext _currentContext{};

@@ -822,7 +822,7 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
 
     if (!_uniqueTextureAddresses.empty()) {
         GFX::SetTexturesResidencyCommand residencyCmd{};
-        residencyCmd._state = true;
+        residencyCmd._makeResident = true;
 
         size_t texIdx = 0u;
         const size_t capacity = residencyCmd._addresses.size();

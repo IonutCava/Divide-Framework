@@ -294,7 +294,7 @@ string ToString(const SetTexturesResidencyCommand& cmd, const U16 indent) {
         for (U16 j = 0; j < indent; ++j) {
             ret.append("    ");
         }
-        ret.append(Util::StringFormat("Address: [ %zu ] State: [ %s ]\n", address, cmd._state ? "True" : "False"));
+        ret.append(Util::StringFormat("Address: [ %zu ] State: [ %s ]\n", address, cmd._makeResident ? "True" : "False"));
     }
     return ret;
 }

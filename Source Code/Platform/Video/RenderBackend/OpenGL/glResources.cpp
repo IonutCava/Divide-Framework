@@ -488,91 +488,19 @@ void SubmitRenderCommand(const GLenum primitiveType,
 
 } //namespace
 
-struct HardwareQueryContext {
-    glHardwareQueryRing* _primitiveQuery = nullptr;
-    glHardwareQueryRing* _sampleCountQuery = nullptr;
-    glHardwareQueryRing* _anySamplesQuery = nullptr;
-    U32 _cmdOptions = 0u;
-    U16 _queryLookupId = 0u;
-    bool _queriesGenerated = false;
-};
-
-[[nodiscard]] bool QueriesGenerated(const HardwareQueryContext& context) noexcept {
-    if (context._cmdOptions == to_base(CmdRenderOptions::RENDER_GEOMETRY)) {
-        // This is the most common case
-        return false;
-    }
-
-    return context._primitiveQuery != nullptr ||
-           context._sampleCountQuery != nullptr ||
-           context._anySamplesQuery != nullptr;
-}
-
-void BeginHardwareQueries(HardwareQueryContext& context) {
-    if (context._cmdOptions == to_base(CmdRenderOptions::RENDER_GEOMETRY)) {
-        // This is the most common case
-        return;
-    }
-
-    if (BitCompare(context._cmdOptions, CmdRenderOptions::QUERY_PRIMITIVE_COUNT)) {
-        context._primitiveQuery = &GL_API::GetHardwareQueryPool()->allocate(GL_PRIMITIVES_GENERATED);
-        context._primitiveQuery->begin();
-    } else {
-        context._primitiveQuery = nullptr;
-    }
-
-    if (BitCompare(context._cmdOptions, CmdRenderOptions::QUERY_SAMPLE_COUNT)) {
-        context._sampleCountQuery = &GL_API::GetHardwareQueryPool()->allocate(GL_SAMPLES_PASSED);
-        context._sampleCountQuery->begin();
-    } else {
-        context._sampleCountQuery = nullptr;
-    }
-
-    if (BitCompare(context._cmdOptions, CmdRenderOptions::QUERY_ANY_SAMPLE_RENDERED)) {
-        context._anySamplesQuery = &GL_API::GetHardwareQueryPool()->allocate(GL_ANY_SAMPLES_PASSED);
-        context._anySamplesQuery->begin();
-    } else {
-        context._anySamplesQuery = nullptr;
-    }
-}
-
-void EndHardwareQueries(const HardwareQueryContext& context) {
-    if (QueriesGenerated(context)) {
-        GenericDrawCommandResults::QueryResult& results = GenericDrawCommandResults::g_queryResults[context._queryLookupId];
-
-        if (context._primitiveQuery != nullptr) {
-            results._primitivesGenerated = to_U64(context._primitiveQuery->getResultNoWait());
-        }
-        if (context._sampleCountQuery != nullptr) {
-            results._samplesPassed = to_U32(context._sampleCountQuery->getResultNoWait());
-        }
-        if (context._anySamplesQuery != nullptr) {
-            results._anySamplesPassed = to_U32(context._anySamplesQuery->getResultNoWait());
-        }
-    }
-}
-
 void SubmitRenderCommand(const GenericDrawCommand& drawCommand,
                          const bool useIndirectBuffer,
                          const GLenum internalFormat,
                          const size_t* const countData,
                          const bufferPtr indexData)
 {
-    // OpenGL rendering is not thread-safe anyway, so this works
-    static HardwareQueryContext context;
     GLStateTracker* stateTracker = GL_API::GetStateTracker();
 
     stateTracker->toggleRasterization(!isEnabledOption(drawCommand, CmdRenderOptions::RENDER_NO_RASTERIZE));
 
     if (isEnabledOption(drawCommand, CmdRenderOptions::RENDER_GEOMETRY)) {
-        context._queryLookupId = drawCommand._sourceBuffer._id;
-        context._cmdOptions = drawCommand._renderOptions;
-
-        BeginHardwareQueries(context);
         SubmitRenderCommand(glPrimitiveTypeTable[to_base(stateTracker->_activeTopology)], drawCommand, useIndirectBuffer, internalFormat, countData, indexData);
-        EndHardwareQueries(context);
     }
-
     if (isEnabledOption(drawCommand, CmdRenderOptions::RENDER_WIREFRAME)) {
         SubmitRenderCommand(GL_LINE_LOOP, drawCommand, useIndirectBuffer, internalFormat, countData, indexData);
     }

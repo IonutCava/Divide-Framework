@@ -161,16 +161,16 @@ void WarScene::toggleTerrainMode() {
 void WarScene::debugDraw(GFX::CommandBuffer& bufferInOut) {
     if (state()->renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_CUSTOM_PRIMITIVES)) {
         if (!_targetLines) {
-            _targetLines = _context.gfx().newIMP();
-        } else {
+            _targetLines = _context.gfx().newIMP("WarScene Target Lines");
             PipelineDescriptor pipelineDescriptor = {};
             pipelineDescriptor._shaderProgramHandle = _context.gfx().defaultIMShader()->handle();
 
             RenderStateBlock primitiveStateBlockNoZRead = {};
             primitiveStateBlockNoZRead.depthTestEnabled(false);
             pipelineDescriptor._stateHash = primitiveStateBlockNoZRead.getHash();
-            
-            _targetLines->getCommandBuffer(pipelineDescriptor, bufferInOut);
+            _targetLines->setPipelineDescriptor(pipelineDescriptor);
+        } else {
+            _targetLines->getCommandBuffer(bufferInOut);
         }
     } else if (_targetLines) {
         _context.gfx().destroyIMP(_targetLines);
