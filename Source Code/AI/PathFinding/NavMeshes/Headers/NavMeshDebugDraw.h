@@ -34,13 +34,17 @@
 #define _NAV_MESH_DEBUG_DRAW_H_
 
 #include <ReCast/DebugUtils/Include/DebugDraw.h>
-#include "Platform/Video/Headers/CommandBuffer.h"
+#include "Platform/Video/Headers/RenderAPIEnums.h"
 
 namespace Divide {
 
 class GFXDevice;
 class IMPrimitive;
 class RenderStateBlock;
+
+namespace GFX {
+    class CommandBuffer;
+};
 
 namespace AI {
 namespace Navigation {

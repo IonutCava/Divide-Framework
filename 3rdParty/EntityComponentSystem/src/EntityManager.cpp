@@ -16,7 +16,7 @@ namespace ECS
 		m_ComponentManagerInstance(componentManagerInstance)
 	{
 		DEFINE_LOGGER("EntityManager")
-		LogInfo("Initialize EntityManager!")
+		LogInfo("Initialize EntityManager!","")
 	}
 
 	EntityManager::~EntityManager()
@@ -28,7 +28,7 @@ namespace ECS
 			ec.second = nullptr;
 		}
 
-		LogInfo("Release EntityManager!")
+		LogInfo("Release EntityManager!","")
 	}
 
 	EntityId EntityManager::AqcuireEntityId(IEntity* entity)

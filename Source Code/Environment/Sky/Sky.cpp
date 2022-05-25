@@ -15,6 +15,8 @@
 #include "Platform/Video/Headers/RenderPackage.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Geometry/Shapes/Predefined/Headers/Sphere3D.h"
+#include "Scenes/Headers/SceneEnvironmentProbePool.h"
+
 #include "ECS/Components/Headers/RenderingComponent.h"
 
 #ifdef _MSC_VER

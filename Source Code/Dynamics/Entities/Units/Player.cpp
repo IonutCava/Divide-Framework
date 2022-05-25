@@ -2,9 +2,12 @@
 
 #include "Headers/Player.h"
 
-#include "Core/Headers/StringHelper.h"
+#include "Graphs/Headers/SceneNode.h"
 #include "Graphs/Headers/SceneGraphNode.h"
+
+#include "Core/Headers/StringHelper.h"
 #include "Rendering/Camera/Headers/FreeFlyCamera.h"
+#include "Core/Math/BoundingVolumes/Headers/BoundingBox.h"
 
 namespace Divide {
 
@@ -23,10 +26,7 @@ Player::~Player()
 void Player::setParentNode(SceneGraphNode* node) {
     Character::setParentNode(node);
     if (node != nullptr) {
-        BoundingBox bb;
-        bb.setMin(-0.5f);
-        bb.setMax(0.5f);
-        Attorney::SceneNodePlayer::setBounds(node->getNode(), bb);
+        Attorney::SceneNodePlayer::setBounds(node->getNode(), BoundingBox{ -0.5f, -0.5f , -0.5f , 0.5f, 0.5f, 0.5f });
     }
 }
 

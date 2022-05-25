@@ -40,16 +40,16 @@
 #include "GFXShaderData.h"
 #include "GFXState.h"
 #include "IMPrimitive.h"
+#include "CommandsImpl.h"
+#include "PushConstants.h"
+#include "RenderAPIWrapper.h"
+#include "RenderStagePass.h"
 
 #include "Core/Math/Headers/Line.h"
 #include "Core/Headers/KernelComponent.h"
 #include "Core/Headers/PlatformContextComponent.h"
 #include "Geometry/Material/Headers/MaterialEnums.h"
 
-#include "Platform/Video/Headers/IMPrimitive.h"
-#include "Platform/Video/Headers/PushConstants.h"
-#include "Platform/Video/Headers/RenderAPIWrapper.h"
-#include "Platform/Video/Headers/RenderStagePass.h"
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 
 #include "Rendering/Camera/Headers/Frustum.h"
@@ -74,7 +74,6 @@ class Quad3D;
 class Texture;
 class Object3D;
 class Renderer;
-class IMPrimitive;
 class SceneGraphNode;
 class SceneShaderData;
 class SceneRenderState;
@@ -345,7 +344,8 @@ public:  // Accessors and Mutators
 
     inline vec2<U16> getDrawableSize(const DisplayWindow& window) const;
     inline U32 getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const;
-    inline void onThreadCreated(const std::thread::id& threadID) const;
+
+    void onThreadCreated(const std::thread::id& threadID) const;
 
     static void FrameInterpolationFactor(const D64 interpolation) noexcept { s_interpolationFactor = interpolation; }
     [[nodiscard]] static D64 FrameInterpolationFactor() noexcept { return s_interpolationFactor; }
@@ -698,7 +698,7 @@ namespace Attorney {
             device.shadowingSettings(lightBleedBias, minShadowVariance);
         }
 
-        friend class SceneManager;
+        friend class Divide::SceneManager;
     };
 };  // namespace Attorney
 };  // namespace Divide

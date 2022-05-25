@@ -1,18 +1,23 @@
 #include "stdafx.h"
 
 #include "Headers/EnvironmentProbeComponent.h"
-
-#include "Core/Headers/Kernel.h"
 #include "Headers/TransformComponent.h"
 
+#include "Core/Headers/Kernel.h"
+
+#include "Graphs/Headers/SceneGraph.h"
 #include "Scenes/Headers/Scene.h"
 #include "Core/Headers/StringHelper.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Managers/Headers/RenderPassManager.h"
 #include "Managers/Headers/SceneManager.h"
+#include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
+#include "Platform/Video/Headers/CommandBuffer.h"
+#include "Rendering/Camera/Headers/Camera.h"
 #include "Scenes/Headers/SceneShaderData.h"
+#include "Scenes/Headers/SceneEnvironmentProbePool.h"
 
 namespace Divide {
 

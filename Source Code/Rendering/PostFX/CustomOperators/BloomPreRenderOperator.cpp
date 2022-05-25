@@ -3,6 +3,7 @@
 #include "Headers/BloomPreRenderOperator.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 
 #include "Core/Headers/Configuration.h"

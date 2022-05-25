@@ -1,6 +1,8 @@
 #include "stdafx.h"
 
 #include "Headers/Octree.h"
+
+#include "Graphs/Headers/SceneNode.h"
 #include "ECS/Components/Headers/BoundsComponent.h"
 #include "ECS/Components/Headers/RigidBodyComponent.h"
 

@@ -37,11 +37,7 @@ namespace Divide {
 template<typename T>
 void Script::addGlobal(const T& var, const char* name, const bool asConst, const bool overwrite) {
     if (overwrite) {
-        if (asConst) {
-            _script->set_global_const(chaiscript::const_var(var), name);
-        } else {
-            _script->set_global(chaiscript::var(var), name); // global non-const, overwrites existing object
-        }
+        _script->set_global(chaiscript::var(var), name); // verwrites existing object
     } else {
         if (asConst) {
             _script->add(chaiscript::const_var(var), name); // copied in and made const

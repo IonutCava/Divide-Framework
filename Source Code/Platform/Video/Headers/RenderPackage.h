@@ -33,9 +33,13 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _RENDER_PACKAGE_H_
 #define _RENDER_PACKAGE_H_
 
-#include "CommandBuffer.h"
+#include "Platform/Video/Headers/CommandsImpl.h"
 
 namespace Divide {
+
+namespace GFX {
+    class CommandBuffer;
+};
 
 struct RenderPackage {
     static constexpr U32 INVALID_CMD_OFFSET = U32_MAX;

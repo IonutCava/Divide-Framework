@@ -94,7 +94,7 @@ class AllocatorPool : public Allocator
 public:
 	AllocatorPool() : Allocator(sizeof(T), Objects, m_memory)
 	{
-        memset(m_memory, 0, sizeof(T) * Objects * sizeof(char))
+        memset(m_memory, 0, sizeof(T) * Objects * sizeof(char));
 	}
 private:
 	CHAR m_memory[sizeof(T) * Objects];

@@ -12,6 +12,11 @@
 #include "Core/Math/Headers/MathHelper.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Managers/Headers/SceneManager.h"
+#include "Rendering/Camera/Headers/Camera.h"
+
+#include "Graphs/Headers/SceneGraph.h"
+#include "AI/Headers/AIManager.h"
+
 #include "Platform/Audio/Headers/SFXDevice.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 

@@ -33,6 +33,7 @@
 #ifndef _OBJECT_3D_H_
 #define _OBJECT_3D_H_
 
+#include "Graphs/Headers/SceneNode.h"
 #include "Graphs/Headers/SceneGraphNode.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexBuffer.h"
 

@@ -14,15 +14,21 @@
 #include "Editor/Headers/Editor.h"
 
 #include "Managers/Headers/SceneManager.h"
+#include "Scenes/Headers/SceneEnvironmentProbePool.h"
 
 #include "Graphs/Headers/SceneGraphNode.h"
+
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/IMPrimitive.h"
+#include "Platform/Video/Headers/CommandBuffer.h"
+#include "Platform/Video/Headers/RenderStateBlock.h"
+#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
+
 #include "Scenes/Headers/SceneState.h"
 
 #include "Geometry/Material/Headers/Material.h"
 #include "Geometry/Shapes/Headers/Mesh.h"
-#include "Platform/Video/Headers/RenderStateBlock.h"
+
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Lighting/Headers/LightPool.h"
 #include "Rendering/RenderPass/Headers/NodeBufferedData.h"

@@ -4,6 +4,7 @@
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 #include <glslang/SPIRV/GlslangToSpv.h>
+#include <Vulkan/vulkan.hpp>
 
 namespace {
     Divide::GFX::PushConstantType GetGFXType(const  glslang::TBasicType type) {

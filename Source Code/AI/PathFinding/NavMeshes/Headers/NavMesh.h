@@ -70,6 +70,10 @@
 
 namespace Divide {
 
+namespace GFX {
+    class CommandBuffer;
+}
+
 class PlatformContext;
 
 FWD_DECLARE_MANAGED_CLASS(SceneGraphNode);
@@ -100,6 +104,7 @@ struct NavMeshTileHeader {
 class NavMeshDebugDraw;
 class DivideDtCrowd;
 class DivideRecast;
+
 
 namespace Attorney {
     class NavigationMeshCrowd;

@@ -1,7 +1,8 @@
-#include "stdafx.h"
-
 #include "Allocator.h"
 #include "DataTypes.h"
+
+#include <cassert>
+#include <new>
 
 //------------------------------------------------------------------------------
 // Constructor

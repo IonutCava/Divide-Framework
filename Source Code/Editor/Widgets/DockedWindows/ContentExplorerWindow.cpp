@@ -15,7 +15,7 @@
 
 namespace Divide {
     namespace {
-        constexpr char* const g_extensions[] = {
+        constexpr const char* g_extensions[] = {
             "glsl", "cmn", "frag", "vert", "cmp", "geom", "tesc", "tese",  //Shaders
             "ogg", "wav", //Sounds
             "chai", //Scripts
@@ -25,15 +25,15 @@ namespace Divide {
             "xml" //General
         };
 
-        constexpr char* const g_imageExtensions[] = {
+        constexpr const char* g_imageExtensions[] = {
             "png", "jpg", "jpeg", "tga", "raw", "dds"
         };
 
-        constexpr char* const g_soundExtensions[] = {
+        constexpr const char* g_soundExtensions[] = {
            "wav", "ogg", "mp3", "mid"
         };
 
-        constexpr char* const g_shaderExtensions[] = {
+        constexpr const char* g_shaderExtensions[] = {
            "glsl", "vert", "frag", "geom", "comp", "cmn", "tesc", "tese"
         };
 

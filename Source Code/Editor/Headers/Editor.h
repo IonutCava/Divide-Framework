@@ -45,6 +45,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Platform/Video/Headers/Pipeline.h"
 #include "Platform/Headers/DisplayWindow.h"
 #include "Platform/Input/Headers/InputAggregatorInterface.h"
+#include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 
 #include <ImGuiMisc/imguistyleserializer/imguistyleserializer.h>
 
@@ -66,7 +67,12 @@ namespace Attorney {
     class EditorEditorComponent;
 }
 
+namespace GFX {
+    class CommandBuffer;
+}
+
 class Gizmo;
+class Scene;
 class Camera;
 class MenuBar;
 class StatusBar;

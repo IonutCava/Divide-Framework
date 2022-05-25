@@ -48,6 +48,7 @@ class DirectionalLightComponent;
 struct DebugView;
 
 FWD_DECLARE_MANAGED_CLASS(SceneGraphNode);
+FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 
 /// Directional lights can't deliver good quality shadows using a single shadow map.
 /// This technique offers an implementation of the CSM method

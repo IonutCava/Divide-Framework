@@ -5,15 +5,18 @@
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/EngineTaskPool.h"
+
 #include "Geometry/Material/Headers/Material.h"
 #include "Managers/Headers/FrameListenerManager.h"
 #include "Managers/Headers/SceneManager.h"
 #include "Utility/Headers/Localization.h"
+#include "Scenes/Headers/SceneEnvironmentProbePool.h"
+#include "Geometry/Shapes/Headers/Object3D.h"
+#include "Physics/Headers/PXDevice.h"
+#include "Rendering/Lighting/Headers/LightPool.h"
 
 #include "ECS/Systems/Headers/ECSManager.h"
 #include "ECS/Components/Headers/BoundsComponent.h"
-#include "Geometry/Shapes/Headers/Object3D.h"
-#include "Physics/Headers/PXDevice.h"
 
 namespace Divide {
 

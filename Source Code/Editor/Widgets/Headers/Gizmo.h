@@ -45,7 +45,9 @@ namespace Divide {
     class Camera;
     class DisplayWindow;
     class SceneGraphNode;
-
+    namespace GFX {
+        class CommandBuffer;
+    }
     namespace Attorney {
         class GizmoEditor;
     }

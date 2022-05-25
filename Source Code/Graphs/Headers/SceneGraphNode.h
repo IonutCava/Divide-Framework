@@ -33,8 +33,10 @@
 #ifndef _SCENE_GRAPH_NODE_H_
 #define _SCENE_GRAPH_NODE_H_
 
-#include "SceneNode.h"
+#include "SceneNodeFwd.h"
 #include "SGNRelationshipCache.h"
+
+#include "Platform/Video/Headers/RenderAPIEnums.h"
 
 #include "ECS/Components/Headers/EditorComponent.h"
 #include "ECS/Components/Headers/SGNComponent.h"
@@ -53,6 +55,10 @@ class RenderingComponent;
 class TransformComponent;
 
 struct NodeCullParams;
+struct CameraSnapshot;
+struct RenderStagePass;
+
+FWD_DECLARE_MANAGED_CLASS(SceneNode);
 
 struct SceneGraphNodeDescriptor {
     SceneNode_ptr    _node = nullptr;
@@ -71,21 +77,6 @@ namespace Attorney {
     class SceneGraphNodeRenderPassCuller;
     class SceneGraphNodeRenderPassManager;
     class SceneGraphNodeRelationshipCache;
-};
-
-struct SGNRayResult {
-    I64 sgnGUID = -1;
-    F32 dist = std::numeric_limits<F32>::max();
-    const char* name = nullptr;
-};
-
-struct SGNIntersectionParams
-{
-    Ray _ray;
-    vec2<F32> _range = { 0.f, 1.f };
-    const SceneNodeType* _ignoredTypes = nullptr;
-    size_t _ignoredTypesCount = 0;
-    bool _includeTransformNodes = true;
 };
 
 class SceneGraphNode final : public ECS::Entity<SceneGraphNode>,
@@ -248,7 +239,7 @@ private:
     FrustumCollision frustumCullNode(const NodeCullParams& params, const U16 cullFlags,F32& distanceToClosestPointSQ) const;
     /// Called after preRender and after we rebuild our command buffers. Useful for modifying the command buffer that's going to be used for this RenderStagePass
     void prepareRender(RenderingComponent& rComp,
-                       RenderStagePass renderStagePass,
+                       const RenderStagePass& renderStagePass,
                        const CameraSnapshot& cameraSnapshot,
                        bool refreshData);
     /// Called whenever we send a networking packet from our NetworkingComponent (if any). FrameCount is the frame ID sent with the packet.
@@ -272,7 +263,7 @@ private:
     /// Changes this node's parent
     void setParentInternal();
 
-    bool canDraw(RenderStagePass stagePass) const;
+    bool canDraw(const RenderStagePass& stagePass) const;
 
     void AddSGNComponentInternal(SGNComponent* comp);
     void RemoveSGNComponentInternal(SGNComponent* comp);
@@ -372,7 +363,7 @@ namespace Attorney {
     };
 
     class SceneGraphNodeComponent {
-        static void prepareRender(SceneGraphNode* node, RenderingComponent& rComp, const CameraSnapshot& cameraSnapshot, const RenderStagePass renderStagePass, const bool refreshData) {
+        static void prepareRender(SceneGraphNode* node, RenderingComponent& rComp, const CameraSnapshot& cameraSnapshot, const RenderStagePass& renderStagePass, const bool refreshData) {
             node->prepareRender(rComp, renderStagePass, cameraSnapshot, refreshData);
         }
 
@@ -403,7 +394,7 @@ namespace Attorney {
 
     class SceneGraphNodeRenderPassManager
     {
-        static bool canDraw(const SceneGraphNode* node, const RenderStagePass stagePass) {
+        static bool canDraw(const SceneGraphNode* node, const RenderStagePass& stagePass) {
             return node->canDraw(stagePass);
         }
 

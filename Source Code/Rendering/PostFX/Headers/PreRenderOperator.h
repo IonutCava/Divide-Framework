@@ -3,17 +3,22 @@
 #define _PRE_RENDER_OPERATOR_H_
 
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
-#include "Platform/Video/Headers/CommandsImpl.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 
 
 namespace Divide {
 struct Configuration;
+struct CameraSnapshot;
 
 class Quad3D;
 class Camera;
 class Texture;
+class Pipeline;
 class ShaderProgram;
+
+namespace GFX {
+    class CommandBuffer;
+};
 
 FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 

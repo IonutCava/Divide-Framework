@@ -33,7 +33,6 @@
 #ifndef _RENDER_API_H_
 #define _RENDER_API_H_
 
-#include "CommandBuffer.h"
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 
 namespace CEGUI {
@@ -41,6 +40,11 @@ namespace CEGUI {
 };
 
 namespace Divide {
+
+namespace GFX {
+    class CommandBuffer;
+    struct CommandBase;
+};
 
 enum class ErrorCode : I8;
 
@@ -119,9 +123,6 @@ struct DeviceInformation
     GPURenderer _renderer = GPURenderer::COUNT;
     bool _bindlessTexturesSupported = false;
 };
-
-using AttributeFlags = std::array<bool, to_base(AttribLocation::COUNT)>;
-using AttributeOffsets = std::array<size_t, to_base(AttribLocation::COUNT)>;
 
 /// Renderer Programming Interface
 class NOINITVTABLE RenderAPIWrapper : NonCopyable {

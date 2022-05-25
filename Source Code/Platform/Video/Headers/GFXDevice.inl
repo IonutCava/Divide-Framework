@@ -114,13 +114,6 @@ inline U32 GFXDevice::getHandleFromCEGUITexture(const CEGUI::Texture& textureIn)
     return _api->getHandleFromCEGUITexture(textureIn);
 }
 
-inline void GFXDevice::onThreadCreated(const std::thread::id& threadID) const {
-    _api->onThreadCreated(threadID);
-    if (!ShaderProgram::OnThreadCreated(*this, threadID)) {
-        DIVIDE_UNEXPECTED_CALL();
-    }
-}
-
 inline const vec2<U16>&  GFXDevice::renderingResolution() const noexcept {
     return _renderingResolution;
 }

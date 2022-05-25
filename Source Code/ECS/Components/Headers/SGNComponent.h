@@ -108,11 +108,11 @@ struct Factory {
 
         static bool RegisterComponentType() {
             Factory::constructData().emplace(C, [](SceneGraphNode* node, Args... args) -> void {
-                node->AddSGNComponent<T>(FWD(args)...);
+                node->template AddSGNComponent<T>(FWD(args)...);
             });
 
             destructData().emplace(C, [](SceneGraphNode* node) -> void {
-                node->RemoveSGNComponent<T>();
+                node->template RemoveSGNComponent<T>();
             });
 
             return true;

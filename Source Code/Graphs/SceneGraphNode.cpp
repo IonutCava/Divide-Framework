@@ -553,7 +553,7 @@ void SceneGraphNode::processEvents() {
 }
 
 void SceneGraphNode::prepareRender(RenderingComponent& rComp,
-                                   const RenderStagePass renderStagePass,
+                                   const RenderStagePass& renderStagePass,
                                    const CameraSnapshot& cameraSnapshot,
                                    const bool refreshData)
 {
@@ -599,7 +599,7 @@ void SceneGraphNode::onNetworkSend(U32 frameCount) const {
     }
 }
 
-bool SceneGraphNode::canDraw(const RenderStagePass stagePass) const {
+bool SceneGraphNode::canDraw(const RenderStagePass& stagePass) const {
     RenderingComponent* rComp = get<RenderingComponent>();
 
     return rComp != nullptr && rComp->canDraw(stagePass);

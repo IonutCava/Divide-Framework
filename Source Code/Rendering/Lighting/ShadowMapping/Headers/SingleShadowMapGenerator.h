@@ -40,6 +40,9 @@ namespace Divide {
 
 class Pipeline;
 class SpotLightComponent;
+
+FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
+
 /// A single shadow map system. Used, for example, by spot lights.
 class SingleShadowMapGenerator final : public ShadowMapGenerator {
    public:

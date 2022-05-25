@@ -33,7 +33,8 @@
 #ifndef _RENDERER_H_
 #define _RENDERER_H_
 
-#include "Platform/Video/Headers/GFXDevice.h"
+#include "Core/Headers/PlatformContextComponent.h"
+#include "Platform/Video/Headers/CommandsImpl.h"
 
 namespace Divide {
 
@@ -41,6 +42,8 @@ class PostFX;
 class LightPool;
 class ResourceCache;
 class PlatformContext;
+
+FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 
 /// TiledForwardShading
 class Renderer final : public PlatformContextComponent {

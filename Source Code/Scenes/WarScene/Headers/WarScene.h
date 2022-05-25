@@ -37,14 +37,16 @@
 
 namespace Divide {
 class NPC;
+class GUIMessageBox;
+class TransformComponent;
 class RigidBodyComponent;
 class SkinnedSubMesh;
 
 namespace AI {
-class AITeam;
-class AIEntity;
-class WarSceneOrder;
-}
+    class AITeam;
+    class AIEntity;
+    class WarSceneOrder;
+};
 
 BEGIN_SCENE(WarScene)
     explicit WarScene(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name);

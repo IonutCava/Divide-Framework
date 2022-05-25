@@ -6,6 +6,7 @@
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Resources/Headers/ResourceCache.h"
+#include "Graphs/Headers/SceneGraph.h"
 #include "Graphs/Headers/SceneGraphNode.h"
 #include "ECS/Components/Headers/TransformComponent.h"
 

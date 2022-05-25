@@ -33,7 +33,7 @@
 #ifndef _RENDERING_RENDER_PASS_RENDERPASS_H_
 #define _RENDERING_RENDER_PASS_RENDERPASS_H_
 
-#include "Platform/Video/Headers/RenderAPIWrapper.h"
+#include "Platform/Video/Headers/RenderAPIEnums.h"
 
 namespace Divide {
 
@@ -41,9 +41,16 @@ namespace Time {
     class ProfileTimer;
 }
 
+namespace GFX {
+    class CommandBuffer;
+    struct MemoryBarrierCommand;
+}
+
 struct Task;
 struct RenderStagePass;
+struct Configuration;
 
+class GFXDevice;
 class SceneGraph;
 class ShaderBuffer;
 class SceneRenderState;

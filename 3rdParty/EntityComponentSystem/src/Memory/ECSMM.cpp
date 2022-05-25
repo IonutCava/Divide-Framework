@@ -17,7 +17,7 @@ namespace ECS { namespace Memory { namespace Internal {
 	MemoryManager::MemoryManager()
 	{	
 		DEFINE_LOGGER("MemoryManager")
-		LogInfo("Initialize MemoryManager!");
+		LogInfo("Initialize MemoryManager!","");
 
 		// allocate global memory
 		this->m_GlobalMemory = malloc(MemoryManager::MEMORY_CAPACITY);
@@ -41,7 +41,7 @@ namespace ECS { namespace Memory { namespace Internal {
 
 	MemoryManager::~MemoryManager()
 	{
-		LogInfo("Releasing MemoryManager!");
+		LogInfo("Releasing MemoryManager!","");
 
 		this->m_MemoryAllocator->clear();
 
@@ -58,9 +58,9 @@ namespace ECS { namespace Memory { namespace Internal {
 
 		if (this->m_PendingMemory.size() > 0)
 		{
-			LogFatal("!!!  M E M O R Y   L E A K   D E T E C T E D  !!!")
-			LogFatal("!!!  M E M O R Y   L E A K   D E T E C T E D  !!!")
-			LogFatal("!!!  M E M O R Y   L E A K   D E T E C T E D  !!!")
+			LogFatal("!!!  M E M O R Y   L E A K   D E T E C T E D  !!!","")
+			LogFatal("!!!  M E M O R Y   L E A K   D E T E C T E D  !!!","")
+			LogFatal("!!!  M E M O R Y   L E A K   D E T E C T E D  !!!","")
 
 			for (auto i : this->m_PendingMemory)
 			{
@@ -83,7 +83,7 @@ namespace ECS { namespace Memory { namespace Internal {
 		}
 		else
 		{
-			LogInfo("No memory leaks detected.")
+			LogInfo("No memory leaks detected.","")
 		}
 	}
 

@@ -10,8 +10,13 @@
 #include "Rendering/Camera/Headers/FreeFlyCamera.h"
 #include "Managers/Headers/RenderPassManager.h"
 #include "Scenes/Headers/Scene.h"
-
+#include "Graphs/Headers/SceneNode.h"
+#include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/PushConstants.h"
+#include "Platform/Video/Headers/CommandBuffer.h"
+#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "ECS/Components/Headers/EnvironmentProbeComponent.h"
+
 #include "Headers/SceneShaderData.h"
 
 namespace Divide {

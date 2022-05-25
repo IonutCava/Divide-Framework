@@ -36,8 +36,9 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SGNComponent.h"
 
 #include "Geometry/Material/Headers/MaterialEnums.h"
-#include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/RenderPackage.h"
+#include "Platform/Video/Headers/IMPrimitive.h"
+#include "Platform/Video/Headers/RenderStagePass.h"
 #include "Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h"
 #include "Rendering/RenderPass/Headers/NodeBufferedData.h"
 
@@ -49,6 +50,7 @@ class SubMesh;
 class Material;
 class GFXDevice;
 class RenderBin;
+class RenderPass;
 class WaterPlane;
 class RenderQueue;
 class SceneGraphNode;
@@ -58,6 +60,7 @@ class SceneEnvironmentProbePool;
 class EnvironmentProbeComponent;
 
 struct RenderBinItem;
+struct Configuration;
 
 using EnvironmentProbeList = vector<EnvironmentProbeComponent*>;
 

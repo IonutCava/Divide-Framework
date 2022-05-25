@@ -7,8 +7,10 @@
 #include "Core/Headers/StringHelper.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
+#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Geometry/Shapes/Predefined/Headers/Quad3D.h"
 
 #include "Rendering/PostFX/Headers/PreRenderBatch.h"

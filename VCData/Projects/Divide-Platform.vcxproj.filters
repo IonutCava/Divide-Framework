@@ -67,9 +67,6 @@
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Shaders\Headers\glShaderProgram.h">
       <Filter>Video\RenderBackend\OpenGL\Shaders\Headers</Filter>
     </ClInclude>
-    <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Headers\glIMPrimitive.h">
-      <Filter>Video\RenderBackend\OpenGL\Headers</Filter>
-    </ClInclude>
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Headers\glResources.h">
       <Filter>Video\RenderBackend\OpenGL\Headers</Filter>
     </ClInclude>
@@ -358,6 +355,9 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\vkIMPrimitive.h">
       <Filter>Video\RenderBackend\Vulkan\Headers</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\Headers\ShaderProgramFwd.h">
+      <Filter>Video\Shaders\Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="../../Source Code/Platform\Input\AutoKeyRepeat.cpp">
@@ -382,9 +382,6 @@
       <Filter>Audio\SDL</Filter>
     </ClCompile>
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\GLError.cpp">
-      <Filter>Video\RenderBackend\OpenGL</Filter>
-    </ClCompile>
-    <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\glIMPrimitive.cpp">
       <Filter>Video\RenderBackend\OpenGL</Filter>
     </ClCompile>
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\glResources.cpp">

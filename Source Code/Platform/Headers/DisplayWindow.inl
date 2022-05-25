@@ -33,6 +33,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _DISPLAY_WINDOW_INL_
 #define _DISPLAY_WINDOW_INL_
 
+#include "Core/Headers/StringHelper.h"
+
 namespace Divide {
 
     inline SDL_Window* DisplayWindow::getRawWindow() const noexcept {

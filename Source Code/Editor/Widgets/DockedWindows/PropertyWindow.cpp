@@ -2,6 +2,7 @@
 
 #include "Headers/PropertyWindow.h"
 #include "Headers/UndoManager.h"
+#include "Headers/Utils.h"
 
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/PlatformContext.h"
@@ -11,7 +12,12 @@
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Camera/Headers/FreeFlyCamera.h"
 #include "Geometry/Material/Headers/Material.h"
+#include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
+#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
+
+#include "Graphs/Headers/SceneNode.h"
+#include "Graphs/Headers/SceneGraph.h"
 
 #include "ECS/Components/Headers/TransformComponent.h"
 #include "ECS/Components/Headers/SpotLightComponent.h"
@@ -19,12 +25,11 @@
 #include "ECS/Components/Headers/DirectionalLightComponent.h"
 #include "ECS/Components/Headers/EnvironmentProbeComponent.h"
 
-#include <imgui_internal.h>
-
 #include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
 #include "Core/Math/BoundingVolumes/Headers/OBB.h"
-#include "Headers/Utils.h"
-#include <Editor/Widgets/Headers/ImGuiExtensions.h>
+#include "Editor/Widgets/Headers/ImGuiExtensions.h"
+
+#include <imgui_internal.h>
 #include <IconFontCppHeaders/IconsForkAwesome.h>
 
 namespace Divide {
@@ -153,7 +158,7 @@ namespace Divide {
                 sceneChanged = processField(camField) || sceneChanged;
             }
             {
-                constexpr char* CamRotateLabels[] = {
+                constexpr const char* CamRotateLabels[] = {
                     "P", "Y", "R"
                 };
 
@@ -174,7 +179,7 @@ namespace Divide {
             if (cam->type() != Camera::CameraType::STATIC &&
                 cam->type() != Camera::CameraType::SCRIPTED)
             {
-                constexpr char* CamSpeedLabels[] = {
+                constexpr const char* CamSpeedLabels[] = {
                     "T", "M", "Z"
                 };
 
@@ -1084,7 +1089,7 @@ namespace Divide {
         string shaderName = "None";
         ShaderProgram* program = nullptr;
         if (currentStagePass._stage != RenderStage::COUNT && currentStagePass._passType != RenderPassType::COUNT) {
-            const ShaderProgram::Handle shaderHandle = material->computeAndGetProgramHandle(currentStagePass);
+            const ShaderProgramHandle shaderHandle = material->computeAndGetProgramHandle(currentStagePass);
             program = ShaderProgram::FindShaderProgram(shaderHandle);
             if (program != nullptr) {
                 shaderName = program->resourceName().c_str();
@@ -1872,7 +1877,7 @@ namespace Divide {
                 ImGui::Separator();
             }
             { // Texture operations
-                constexpr char* const names[] = {
+                constexpr const char* const names[] = {
                     "Tex operation [Albedo - Tex0]",
                     "Tex operation [(Albedo*Tex0) - Tex1]",
                     "Tex operation [SpecColour - SpecMap]"

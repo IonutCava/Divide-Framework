@@ -990,7 +990,7 @@ int fonsAddFont(FONScontext* stash, const char* name, const char* path)
 int fonsAddFontSdf(FONScontext* stash, const char* name, const char* path, FONSsdfSettings sdfSettings)
 {
     FILE* fp = nullptr;
-	int dataSize = 0;
+	int dataSize = 0, readed = 0;
 	unsigned char* data = nullptr;
 
     // Read in the font data.
@@ -1001,7 +1001,7 @@ int fonsAddFontSdf(FONScontext* stash, const char* name, const char* path, FONSs
     fseek(fp,0,SEEK_SET);
     data = (unsigned char*)malloc(dataSize);
 	if (data == nullptr) goto error;
-	int readed = (int)fread(data, 1, dataSize, fp);
+	readed = (int)fread(data, 1, dataSize, fp);
     fclose(fp);
     fp = nullptr;
 	if (readed != dataSize) goto error;
@@ -1025,7 +1025,7 @@ int fonsAddFontMem(FONScontext* stash, const char* name, unsigned char* data, in
 
 int fonsAddFontSdfMem(FONScontext* stash, const char* name, unsigned char* data, int dataSize, int freeData, FONSsdfSettings sdfSettings)
 {
-    int ascent, descent, lineGap;
+    int ascent, descent, lineGap, fh;
 
     const int idx = fons__allocFont(stash);
     if (idx == FONS_INVALID)
@@ -1053,7 +1053,7 @@ int fonsAddFontSdfMem(FONScontext* stash, const char* name, unsigned char* data,
     // Store normalized line height. The real line height is got
     // by multiplying the lineh by font size.
 	fons__tt_getFontVMetrics( &font->font, &ascent, &descent, &lineGap);
-    int fh = ascent - descent;
+    fh = ascent - descent;
     font->ascender = (float)ascent / (float)fh;
     font->descender = (float)descent / (float)fh;
     font->lineh = (float)(fh + lineGap) / (float)fh;

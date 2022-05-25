@@ -47,11 +47,12 @@ namespace Time {
     class ProfileTimer;
 };
 
-
+class Frustum;
 class SceneGraphNode;
 class SceneRenderState;
 
 FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
+FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 
 class LightPool final : public FrameListener, 
                         public SceneComponent,

@@ -16,9 +16,11 @@
 #include "Rendering/Camera/Headers/FreeFlyCamera.h"
 #include "Rendering/Lighting/Headers/LightPool.h"
 
+#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
+#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 #include "ECS/Components/Headers/DirectionalLightComponent.h"
 

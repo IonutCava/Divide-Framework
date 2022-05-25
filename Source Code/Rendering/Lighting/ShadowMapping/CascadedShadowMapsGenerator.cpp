@@ -19,6 +19,7 @@
 #include "Geometry/Shapes/Predefined/Headers/Quad3D.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 

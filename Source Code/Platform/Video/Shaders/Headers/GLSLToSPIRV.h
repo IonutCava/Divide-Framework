@@ -33,6 +33,12 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _GLSL_TO_SPIR_V_H_
 #define _GLSL_TO_SPIR_V_H_
 
+typedef uint32_t VkFlags;
+typedef VkFlags VkShaderStageFlags;
+namespace vk {
+    enum class ShaderStageFlagBits : VkShaderStageFlags;
+};
+
 namespace Divide {
     namespace Reflection {
         struct Data;

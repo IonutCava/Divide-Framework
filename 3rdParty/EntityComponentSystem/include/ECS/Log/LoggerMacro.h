@@ -16,7 +16,7 @@
 	#define DECLARE_STATIC_LOGGER							static Log::Logger* LOGGER;
 
 	#define DEFINE_LOGGER(name)								LOGGER = ECS::Log::Internal::GetLogger(name);
-	#define DEFINE_STATIC_LOGGER(clazz, name)				Log::Logger* ##clazz::LOGGER = ECS::Log::Internal::GetLogger(name);
+	#define DEFINE_STATIC_LOGGER(clazz, name)				Log::Logger* clazz::LOGGER = ECS::Log::Internal::GetLogger(name);
 	#define DEFINE_STATIC_LOGGER_TEMPLATE(clazz, T, name)	template<class T> Log::Logger* clazz<T>::LOGGER = ECS::Log::Internal::GetLogger(name);
 
 

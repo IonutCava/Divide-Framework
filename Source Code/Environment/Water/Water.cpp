@@ -7,8 +7,13 @@
 #include "Core/Headers/Configuration.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
+#include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/CommandBuffer.h"
+
 #include "Managers/Headers/SceneManager.h"
 #include "Managers/Headers/RenderPassManager.h"
+
+#include "Rendering/Camera/Headers/Camera.h"
 
 #include "Geometry/Material/Headers/Material.h"
 #include "ECS/Components/Headers/BoundsComponent.h"

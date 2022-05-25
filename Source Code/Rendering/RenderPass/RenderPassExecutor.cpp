@@ -5,23 +5,34 @@
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/EngineTaskPool.h"
+
 #include "Editor/Headers/Editor.h"
+
+#include "Graphs/Headers/SceneNode.h"
 
 #include "Geometry/Material/Headers/Material.h"
 #include "Managers/Headers/RenderPassManager.h"
 #include "Managers/Headers/SceneManager.h"
+
+#include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Buffers/RenderTarget/Headers/RTAttachment.h"
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 #include "Platform/Video/Headers/GenericDrawCommand.h"
+#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
+
+#include "Rendering/Headers/Renderer.h"
 #include "Rendering/RenderPass/Headers/RenderQueue.h"
 #include "Rendering/PostFX/Headers/PostFX.h"
+#include "Rendering/Camera/Headers/Camera.h"
+
 #include "Scenes/Headers/SceneState.h"
 
 #include "ECS/Components/Headers/AnimationComponent.h"
 #include "ECS/Components/Headers/BoundsComponent.h"
 #include "ECS/Components/Headers/RenderingComponent.h"
 #include "ECS/Components/Headers/TransformComponent.h"
-#include "Rendering/Headers/Renderer.h"
+
 
 namespace Divide {
 namespace {

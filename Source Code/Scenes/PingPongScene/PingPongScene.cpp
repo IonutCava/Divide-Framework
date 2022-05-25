@@ -3,6 +3,8 @@
 #include "Headers/PingPongScene.h"
 
 #include "GUI/Headers/GUIButton.h"
+#include "GUI/Headers/SceneGUIElements.h"
+
 #include "Core/Headers/StringHelper.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/EngineTaskPool.h"
@@ -12,6 +14,10 @@
 #include "Geometry/Material/Headers/Material.h"
 #include "Geometry/Shapes/Predefined/Headers/Sphere3D.h"
 #include "Rendering/Camera/Headers/FreeFlyCamera.h"
+
+#include "Graphs/Headers/SceneGraph.h"
+
+#include "Platform/Video/Headers/GFXDevice.h"
 
 #include "ECS/Components/Headers/BoundsComponent.h"
 #include "ECS/Components/Headers/RenderingComponent.h"

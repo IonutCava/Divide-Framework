@@ -33,11 +33,11 @@
 #ifndef _SCENE_NODE_H_
 #define _SCENE_NODE_H_
 
+#include "SceneNodeFwd.h"
 #include "SceneNodeRenderState.h"
 #include "Core/Math/BoundingVolumes/Headers/BoundingBox.h"
 #include "Core/Resources/Headers/Resource.h"
 #include "ECS/Components/Headers/EditorComponent.h"
-#include "Platform/Video/Headers/RenderAPIWrapper.h"
 #include "Rendering/Camera/Headers/Frustum.h"
 #include "Platform/Video/Headers/AttributeDescriptor.h"
 
@@ -62,6 +62,11 @@ class DirectionalLightComponent;
 
 struct RenderPackage;
 struct RenderStagePass;
+struct CameraSnapshot;
+
+namespace GFX {
+    struct DrawCommand;
+};
 
 FWD_DECLARE_MANAGED_CLASS(SceneGraphNode);
 FWD_DECLARE_MANAGED_CLASS(Material);
@@ -72,41 +77,6 @@ namespace Attorney {
     class SceneNodeLightComponent;
     class SceneNodeBoundsSystem;
     class SceneNodeNetworkComponent;
-};
-
-/// Usage context affects lighting, navigation, physics, etc
-enum class NodeUsageContext : U8 {
-    NODE_DYNAMIC = 0,
-    NODE_STATIC
-};
-
-/// ToDo: Move particle emitter and triggers to components (it will make them way more dynamic) - Ionut
-enum class SceneNodeType : U16 {
-    TYPE_OBJECT3D = 0,       ///< 3d objects in the scene
-    TYPE_TRANSFORM,          ///< dummy node to stack multiple transforms
-    TYPE_WATER,              ///< water node
-    TYPE_TRIGGER,            ///< a scene trigger (perform action on contact)
-    TYPE_PARTICLE_EMITTER,   ///< a particle emitter
-    TYPE_SKY,                ///< sky node
-    TYPE_INFINITEPLANE,      ///< the infinite plane that sits beneath everything in the world
-    TYPE_VEGETATION,         ///< grass node
-    COUNT
-};
-
-namespace Names {
-    static const char* sceneNodeType[] = {
-          "OBJECT3D", "TRANSFORM", "WATER", "TRIGGER", "PARTICLE_EMITTER", "SKY",
-          "INFINITE_PLANE", "VEGETATION_GRASS", "UNKNOWN"
-    };
-};
-
-enum class EditorDataState : U8
-{
-    CHANGED = 0,
-    QUEUED,
-    PROCESSED,
-    IDLE,
-    COUNT
 };
 
 class SceneNode : public CachedResource {

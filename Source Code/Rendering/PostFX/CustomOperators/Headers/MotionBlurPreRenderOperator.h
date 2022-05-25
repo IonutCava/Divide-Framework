@@ -34,6 +34,7 @@
 #define _MOTION_BLUR_PRE_RENDER_OPERATOR_H_
 
 #include "Rendering/PostFX/Headers/PreRenderOperator.h"
+#include "Platform/Video/Headers/CommandsImpl.h"
 
 namespace Divide {
 

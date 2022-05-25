@@ -5,6 +5,9 @@
 
 #include "GUI/Headers/GUIButton.h"
 #include "GUI/Headers/GUIMessageBox.h"
+#include "GUI/Headers/SceneGUIElements.h"
+
+#include "AI/Headers/AIManager.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/PlatformContext.h"
@@ -14,8 +17,13 @@
 #include "Dynamics/Entities/Units/Headers/Player.h"
 #include "Managers/Headers/SceneManager.h"
 #include "Managers/Headers/RenderPassManager.h"
+#include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/IMPrimitive.h"
+#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Rendering/Camera/Headers/FreeFlyCamera.h"
+#include "Rendering/Lighting/Headers/LightPool.h"
+
+#include "Graphs/Headers/SceneGraph.h"
 
 #include "ECS/Components/Headers/BoundsComponent.h"
 #include "ECS/Components/Headers/RigidBodyComponent.h"

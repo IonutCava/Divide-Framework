@@ -35,6 +35,8 @@
 
 #include "Platform/Video/Textures/Headers/Texture.h"
 
+#include <Vulkan/vulkan_core.h>
+
 namespace Divide {
     class vkTexture final : public Texture {
     public:

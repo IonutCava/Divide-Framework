@@ -35,7 +35,6 @@
 
 #include "Core/Headers/RingBuffer.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
-#include "Platform/Video/Headers/RenderAPIWrapper.h"
 
 /// This class is used to upload generic VB data to the GPU that can be rendered directly or instanced.
 /// Use this class to create precise VB data with specific usage (such as particle systems)

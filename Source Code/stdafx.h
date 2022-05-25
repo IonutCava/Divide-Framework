@@ -40,23 +40,18 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define IMGUI_USER_CONFIG "Core\Headers\ImGUICustomConfig.h"
 
-#if !defined(CPP_VERSION)
-#   define CPP_VERSION __cplusplus
-#endif
-
-#if CPP_VERSION > 1
+#if __cplusplus > 1
 #   define CPP_98_SUPPORT
 #   define CPP_03_SUPPORT
-#   if CPP_VERSION >= 201103L
+#   if __cplusplus >= 201402L
 #       define CPP_11_SUPPORT
-#           if CPP_VERSION >= 201402L
-#               define CPP_14_SUPPORT
-#               if CPP_VERSION > 201402L
-#                   if HAS_CPP17
-#                       define CPP_17_SUPPORT
-#                   endif
-#               endif
+#       define CPP_14_SUPPORT
+#       if __cplusplus >= 201703L
+#           define CPP_17_SUPPORT
+#           if __cplusplus >= 201704L
+#               define CPP_20_SUPPORT
 #           endif
+#        endif
 #   endif
 #endif 
 
@@ -137,8 +132,11 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SDL_MAIN_HANDLED
 #include <sdl/include/SDL.h>
 
-#include <Vulkan/vulkan.hpp>
 #include <Optick/src/optick.h>
+
+#if defined(VKAPI_PTR)
+#undef VKAPI_PTR
+#endif //VKAPI_PTR
 
 #ifdef _MSC_VER
 #pragma warning (push)

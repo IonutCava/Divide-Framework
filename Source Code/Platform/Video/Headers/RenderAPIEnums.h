@@ -91,7 +91,7 @@ enum class TextureUsage : U8 {
 static_assert(to_base(TextureUsage::COUNT) <= 32);
 
 namespace Names {
-    static constexpr char* textureUsage[] = {
+    static constexpr const char* textureUsage[] = {
         "UNIT0",
         "NORMALMAP",
         "HEIGHTMAP",
@@ -133,7 +133,7 @@ enum class DescriptorSetUsage : U8 {
 };
 
 namespace Names {
-    static constexpr char* descriptorSetUsage[] = {
+    static constexpr const char* descriptorSetUsage[] = {
          "PER_FRAME_SET", "PER_PASS_SET", "PER_BATCH_SET", "PER_DRAW_SET", "NONE"
     };
 };
@@ -148,7 +148,7 @@ enum class ReflectorType : U8
 };
 
 namespace Names {
-    static const char* reflectorType[] = {
+    static constexpr const char* reflectorType[] = {
         "PLANAR", "CUBE", "NONE"
     };
 };
@@ -162,7 +162,7 @@ enum class RefractorType : U8
 };
 
 namespace Names {
-    static const char* refractorType[] = {
+    static constexpr const char* refractorType[] = {
         "PLANAR", "NONE"
     };
 };
@@ -178,7 +178,7 @@ enum class LightType : U8
     COUNT
 };
 namespace Names {
-    static const char* lightType[] = {
+    static constexpr const char* lightType[] = {
           "DIRECTIONAL", "POINT", "SPOT", "UNKNOWN"
     };
 };
@@ -194,7 +194,7 @@ enum class FrustumCollision : U8
 };
 
 namespace Names {
-    static const char* frustumCollision[] = {
+    static constexpr const char* frustumCollision[] = {
         "FRUSTUM_OUT", "FRUSTUM_IN", "FRUSTUM_INTERSECT", "NONE"
     };
 };
@@ -213,7 +213,7 @@ enum class FrustumPlane : U8
 };
 
 namespace Names {
-    static const char* frustumPlane[] = {
+    static constexpr const char* frustumPlane[] = {
         "PLANE_LEFT", "PLANE_RIGHT", "PLANE_NEAR", "PLANE_FAR",
         "PLANE_TOP", "PLANE_BOTTOM", "NONE"
     };
@@ -235,7 +235,7 @@ enum class FrustumPoints : U8
 };
 
 namespace Names {
-    static const char* frustumPoints[] = {
+    static constexpr const char* frustumPoints[] = {
         "NEAR_LEFT_TOP", "NEAR_RIGHT_TOP", "NEAR_RIGHT_BOTTOM", "NEAR_LEFT_BOTTOM",
         "FAR_LEFT_TOP", "FAR_RIGHT_TOP", "FAR_RIGHT_BOTTOM", "FAR_LEFT_BOTTOM",
         "NONE"
@@ -259,7 +259,7 @@ enum class AttribLocation : U8 {
 };
 
 namespace Names {
-    static const char* attribLocation[] = {
+    static constexpr const char* attribLocation[] = {
         "POSITION", "TEXCOORD", "NORMAL", "TANGENT",
         "COLOR", "BONE_WEIGHT", "BONE_INDICE", "WIDTH",
         "GENERIC", "NONE"
@@ -296,7 +296,7 @@ enum class ShaderBufferLocation : U8 {
 };
 
 namespace Names {
-    static const char* shaderBufferLocation[] = {
+    static constexpr const char* shaderBufferLocation[] = {
         "CAM_BLOCK",
         "GPU_COMMANDS",
         "LIGHT_NORMAL",
@@ -335,7 +335,7 @@ enum class RenderStage : U8 {
 };
 
 namespace Names {
-    static const char* renderStage[] = {
+    static constexpr const char* renderStage[] = {
         "SHADOW", "REFLECTION", "REFRACTION", "DISPLAY", "NONE"
     };
 };
@@ -351,7 +351,7 @@ enum class RenderPassType : U8 {
 };
 
 namespace Names {
-    static const char* renderPassType[] = {
+    static constexpr const char* renderPassType[] = {
         "PRE_PASS", "MAIN_PASS", "OIT_PASS", "TRANSPARENCY_PASS", "NONE"
     };
 };
@@ -366,7 +366,7 @@ enum class PBType : U8 {
 };
 
 namespace Names {
-    static const char* pbType[] = {
+    static constexpr const char* pbType[] = {
         "PB_TEXTURE_1D", "PB_TEXTURE_2D", "PB_TEXTURE_3D", "NONE"
     };
 };
@@ -394,7 +394,7 @@ enum class PrimitiveTopology : U8 {
 };
 
 namespace Names {
-    static const char* primitiveType[] = {
+    static constexpr const char* primitiveType[] = {
         "POINTS", "LINES", "LINE_STRIP", "TRIANGLES", "TRIANGLE_STRIP",
         "TRIANGLE_FAN", "LINES_ADJANCENCY", "LINE_STRIP_ADJACENCY",
         "TRIANGLES_ADJACENCY", "TRIANGLE_STRIP_ADJACENCY", "PATCH", "COMPUTE", "NONE"
@@ -425,7 +425,7 @@ enum class BlendProperty : U8 {
     COUNT
 };
 namespace Names {
-    static const char* blendProperty[] = {
+    static constexpr const char* blendProperty[] = {
        "ZERO", "ONE", "SRC_COLOR", "INV_SRC_COLOR", "SRC_ALPHA", "INV_SRC_ALPHA", "DEST_ALPHA", "INV_DEST_ALPHA",
        "DEST_COLOR", "INV_DEST_COLOR", "SRC_ALPHA_SAT", "NONE"
     };
@@ -453,7 +453,7 @@ enum class BlendOperation : U8 {
 };
 
 namespace Names {
-    static const char* blendOperation[] = {
+    static constexpr const char* blendOperation[] = {
         "ADD", "SUBTRACT", "REV_SUBTRACT", "MIN", "MAX", "NONE"
     };
 };
@@ -486,7 +486,7 @@ enum class ComparisonFunction : U8 {
 };
 
 namespace Names {
-    static const char* compFunctionNames[] = {
+    static constexpr const char* compFunctionNames[] = {
         "NEVER", "LESS", "EQUAL", "LEQUAL", "GREATER", "NEQUAL", "GEQUAL", "ALWAYS", "ERROR"
     };
 };
@@ -507,7 +507,7 @@ enum class CullMode : U8 {
 };
 
 namespace Names {
-    static const char* cullModes[] = {
+    static constexpr const char* cullModes[] = {
         "None", "BACK", "FRONT", "ALL", "ERROR!"
     };
 };
@@ -526,7 +526,7 @@ enum class ShaderType : U8 {
 };
 
 namespace Names {
-    static const char* shaderTypes[] = {
+    static constexpr const char* shaderTypes[] = {
         "Fragment", "Vertex", "Geometry", "TessellationC", "TessellationE", "Compute", "ERROR!"
     };
 };
@@ -561,7 +561,7 @@ enum class StencilOperation : U8 {
 };
 
 namespace Names {
-    static const char* stencilOpNames[] = {
+    static constexpr const char* stencilOpNames[] = {
         "KEEP", "ZERO", "REPLACE", "INCREMENT", "DECREMENT", "INVERT", "INCREMENT_WRAP", "DECREMENT_WRAP", "ERROR"
     };
 };
@@ -582,7 +582,7 @@ enum class FillMode : U8 {
 };
 
 namespace Names {
-    static const char* fillMode[] = {
+    static constexpr const char* fillMode[] = {
         "Point", "Wireframe", "Solid", "ERROR!"
     };
 };
@@ -601,7 +601,7 @@ enum class TextureType : U8 {
 };
 
 namespace Names {
-    static const char* textureType[] = {
+    static constexpr const char* textureType[] = {
         "TEXTURE_1D",
         "TEXTURE_2D",
         "TEXTURE_3D",
@@ -622,7 +622,7 @@ enum class TextureFilter : U8 {
 };
 
 namespace Names {
-    static const char* textureFilter[] = {
+    static constexpr const char* textureFilter[] = {
         "LINEAR", "NEAREST", "NONE"
     };
 };
@@ -638,7 +638,7 @@ enum class TextureMipSampling : U8 {
 
 
 namespace Names {
-    static const char* textureMipSampling[] = {
+    static constexpr const char* textureMipSampling[] = {
         "LINEAR", "NEAREST", "NONE", "ERROR"
     };
 };
@@ -655,7 +655,7 @@ enum class TextureWrap : U8 {
 };
 
 namespace Names {
-    static const char* textureWrap[] = {
+    static constexpr const char* textureWrap[] = {
         "CLAMP_TO_EDGE", "CLAMP_TO_BORDER", "REPEAT", "MIRROR_REPEAT", "MIRROR_CLAMP_TO_EDGE", "NONE"
     };
 };
@@ -702,7 +702,7 @@ enum class GFXImageFormat : U8 {
     DXT5_RGBA = BC3,
 };
 namespace Names {
-    static const char* GFXImageFormat[] = {
+    static constexpr const char* GFXImageFormat[] = {
         "RED", "RG", "BGR", "RGB", "BGRA", "RGBA", "DEPTH_COMPONENT", "BC1/DXT1_RGB", "BC1a/DXT1_RGBA", "BC2/DXT3_RGBA",
         "BC3/DXT5_RGBA", "BC3n", "BC4s", "BC4u", "BC5s", "BC5u", "BC6s", "BC6u", "BC7", "BC7_SRGB",
         "DXT1_RGB_SRGB", "DXT1_RGBA_SRGB", "DXT3_RGBA_SRGB", "DXT5_RGBA_SRGB", "NONE",
@@ -724,7 +724,7 @@ enum class GFXDataFormat : U8 {
 };
 
 namespace Names {
-    static const char* GFXDataFormat[] = {
+    static constexpr const char* GFXDataFormat[] = {
         "UNSIGNED_BYTE", "UNSIGNED_SHORT", "UNSIGNED_INT", "SIGNED_BYTE", "SIGNED_SHORT", "SIGNED_INT",
         "FLOAT_16", "FLOAT_32", "ERROR"
     };
@@ -769,7 +769,7 @@ enum class GPUVendor : U8 {
 };
 
 namespace Names {
-    static const char* GPUVendor[] = {
+    static constexpr const char* GPUVendor[] = {
         "NVIDIA", "AMD", "INTEL", "MICROSOFT", "IMAGINATION_TECH", "ARM",
         "QUALCOMM", "VIVANTE", "ALPHAMOSAIC", "WEBGL", "OTHER", "ERROR"
     };
@@ -793,7 +793,7 @@ enum class GPURenderer : U8 {
 };
 
 namespace Names {
-    static const char* GPURenderer[] = {
+    static constexpr const char* GPURenderer[] = {
         "UNKNOWN", "ADRENO", "GEFORCE", "INTEL", "MALI", "POWERVR",
         "RADEON", "VIDEOCORE", "VIVANTE", "WEBGL", "GDI", "ERROR"
     };
@@ -810,7 +810,7 @@ enum class BufferUpdateUsage : U8 {
 };
 
 namespace Names {
-    static const char* bufferUpdateUsage[] = {
+    static constexpr const char* bufferUpdateUsage[] = {
         "CPU_W_GPU_R", "CPU_R_GPU_W", "GPU_R_GPU_W / GPU_W_CPU_R", "NONE"
     };
 };
@@ -825,7 +825,7 @@ enum class BufferUpdateFrequency : U8 {
 };
 
 namespace Names {
-    static const char* bufferUpdateFrequency[] = {
+    static constexpr const char* bufferUpdateFrequency[] = {
         "ONCE", "OCASSIONAL", "OFTEN", "NONE"
     };
 };
@@ -844,7 +844,7 @@ enum class QueryType : U8 {
 };
 
 namespace Names {
-    static const char* queryType[] = {
+    static constexpr const char* queryType[] = {
         "VERTICES_SUBMITTED", "PRIMITIVES_GENERATED", "TESSELLATION_PATCHES", "TESSELLATION_EVAL_INVOCATIONS", "GPU_TIME", "SAMPLE_COUNT", "ANY_SAMPLE_RENDERED", "NONE"
     };
 };
@@ -852,6 +852,9 @@ namespace Names {
 static_assert(std::size(Names::queryType) == to_base(QueryType::COUNT) + 1);
 
 using QueryResults = std::array<std::pair<QueryType, I64>, to_base(QueryType::COUNT)>;
+
+using AttributeFlags = std::array<bool, to_base(AttribLocation::COUNT)>;
+using AttributeOffsets = std::array<size_t, to_base(AttribLocation::COUNT)>;
 
 };  // namespace Divide
 

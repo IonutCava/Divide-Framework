@@ -11,7 +11,12 @@
 
 #include "Geometry/Shapes/Predefined/Headers/Quad3D.h"
 #include "Managers/Headers/SceneManager.h"
+
+#include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/CommandBuffer.h"
+#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
+
 #include "Rendering/Camera/Headers/Camera.h"
 
 namespace Divide {

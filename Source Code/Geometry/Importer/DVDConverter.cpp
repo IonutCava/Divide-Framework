@@ -753,7 +753,7 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
 
     const auto loadTexture = [&material, &modelDirectoryName](const TextureUsage usage, TextureOperation texOp, const aiString& name, aiTextureMapMode* wrapMode, const bool srgb = false) {
         DIVIDE_ASSERT(name.length > 0);
-        constexpr char* const g_backupImageExtensions[] = {
+        constexpr const char* g_backupImageExtensions[] = {
             "png", "jpg", "jpeg", "tga", "dds"
         };
 

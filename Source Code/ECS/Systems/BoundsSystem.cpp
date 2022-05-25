@@ -6,6 +6,8 @@
 #include "Core/Headers/EngineTaskPool.h"
 #include "Core/Headers/PlatformContext.h"
 
+#include "Graphs/Headers/SceneNode.h"
+
 // For debug rendering
 #include "Platform/Video/Headers/GFXDevice.h"
 

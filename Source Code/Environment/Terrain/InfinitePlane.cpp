@@ -9,6 +9,8 @@
 #include "Managers/Headers/SceneManager.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Geometry/Shapes/Predefined/Headers/Quad3D.h"
+#include "Rendering/Camera/Headers/Camera.h"
+
 #include "ECS/Components/Headers/TransformComponent.h"
 #include "ECS/Components/Headers/RenderingComponent.h"
 

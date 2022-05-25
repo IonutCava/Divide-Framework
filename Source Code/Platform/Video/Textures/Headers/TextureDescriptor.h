@@ -34,7 +34,6 @@
 #define _TEXTURE_DESCRIPTOR_H_
 
 #include "Core/Resources/Headers/ResourceDescriptor.h"
-#include "Platform/Video/Headers/RenderAPIEnums.h"
 #include "Utility/Headers/Colours.h"
 #include "Utility/Headers/ImageTools.h"
 

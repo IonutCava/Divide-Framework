@@ -9,6 +9,7 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Geometry/Shapes/Predefined/Headers/Quad3D.h"
+#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 #include "Rendering/PostFX/Headers/PreRenderBatch.h"

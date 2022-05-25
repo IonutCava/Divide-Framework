@@ -13,6 +13,12 @@
 #include "Managers/Headers/SceneManager.h"
 #include "Rendering/Camera/Headers/FreeFlyCamera.h"
 
+#include "Platform/Video/Headers/GFXDevice.h"
+
+#include "Graphs/Headers/SceneGraph.h"
+
+#include "Dynamics/Entities/Particles/Headers/ParticleSource.h"
+#include "Dynamics/Entities/Particles/Headers/ParticleEmitter.h"
 #include "Dynamics/Entities/Particles/ConcreteGenerators/Headers/ParticleBoxGenerator.h"
 #include "Dynamics/Entities/Particles/ConcreteGenerators/Headers/ParticleColourGenerator.h"
 #include "Dynamics/Entities/Particles/ConcreteGenerators/Headers/ParticleTimeGenerator.h"

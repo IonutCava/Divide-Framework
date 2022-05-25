@@ -35,37 +35,48 @@
 
 #include "SceneState.h"
 #include "SceneInput.h"
-#include "Platform/Threading/Headers/Task.h"
 
-/*All these includes are useful for a scene, so instead of forward declaring the classes, we include the headers
-  to make them available in every scene source file. To reduce compile times, forward declare the "Scene" class instead
-*/
-
-#include "GUI/Headers/GUI.h"
-#include "GUI/Headers/SceneGUIElements.h"
-#include "Graphs/Headers/SceneGraph.h"
-#include "Rendering/Camera/Headers/Camera.h"
-#include "Rendering/Lighting/Headers/LightPool.h"
-#include "AI/Headers/AIManager.h"
-#include "SceneEnvironmentProbePool.h"
-#include "Platform/Video/Headers/GFXDevice.h"
-#include "Environment/Sky/Headers/Sky.h"
-#include "Dynamics/Entities/Particles/Headers/ParticleEmitter.h"
+#include "Core/Headers/PlatformContextComponent.h"
+#include "Environment/Sky/Headers/Sun.h"
+#include "Graphs/Headers/SceneNodeFwd.h"
 #include "Utility/Headers/XMLParser.h"
 
 namespace Divide {
-class SceneShaderData;
+
 class Sky;
+class GUI;
 class Light;
 class Object3D;
 class LoadSave;
+class ByteBuffer;
+class SceneGraph;
+class IMPrimitive;
+class ParticleData;
 class ParamHandler;
-class TerrainDescriptor;
+class SceneManager;
+class ResourceCache;
+class SceneGraphNode;
 class ParticleEmitter;
+class PlatformContext;
+class SceneShaderData;
+class SceneGUIElements;
+class RenderPassManager;
+class TerrainDescriptor;
+class ResourceDescriptor;
+class SceneEnvironmentProbePool;
+class DirectionalLightComponent;
 class EnvironmentProbeComponent;
 
 FWD_DECLARE_MANAGED_CLASS(Mesh);
 FWD_DECLARE_MANAGED_CLASS(Player);
+
+namespace AI {
+    class AIManager;
+}
+
+namespace GFX {
+    class CommandBuffer;
+}
 
 namespace Attorney {
     class SceneManager;
@@ -93,38 +104,6 @@ struct DragSelectData
     vec2<I32> _endDragPos;
     bool _isDragging = false;
 };
-
-#pragma region Scene Factory
-namespace SceneList {
-    template<typename T>
-    using SharedPtrFactory = boost::factory<std::shared_ptr<T>>;
-    using ScenePtrFactory  = std::function<std::shared_ptr<Scene>(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name)>;
-    using SceneFactoryMap  = std::unordered_map<U64, ScenePtrFactory>;
-    using SceneNameMap     = std::unordered_map<U64, Str256>;
-
-    void registerSceneFactory(const char* name, const ScenePtrFactory& factoryFunc);
-
-    template<typename T>
-    inline void registerScene(const char* name, const SharedPtrFactory<T>& scenePtr) {
-        registerSceneFactory(name, scenePtr);
-    }
-}
-
-#define STRUCT_NAME(M) BOOST_PP_CAT(M, RegisterStruct)
-#define REGISTER_SCENE(SceneName)                                                    \
-class SceneName;                                                                     \
-static struct STRUCT_NAME(SceneName) {                                               \
-  STRUCT_NAME(SceneName)()                                                           \
-  {                                                                                  \
-     SceneList::registerScene(#SceneName, SceneList::SharedPtrFactory<SceneName>()); \
-  }                                                                                  \
-} BOOST_PP_CAT(SceneName, RegisterVariable);
-#define BEGIN_SCENE(SceneName)         \
-REGISTER_SCENE(SceneName);             \
-class SceneName final : public Scene { \
-    public:
-#define END_SCENE(SceneName) };
-#pragma endregion
 
 class Scene : public Resource, public PlatformContextComponent {
     friend class Attorney::SceneManager;
@@ -221,11 +200,11 @@ class Scene : public Resource, public PlatformContextComponent {
                       void                  setGeographicLocation(const SimpleLocation& location) noexcept;
         [[nodiscard]] const SimpleLocation& getGeographicLocation() const noexcept;
 
-        [[nodiscard]] vec3<F32>       getSunPosition() const;
-        [[nodiscard]] vec3<F32>       getSunDirection() const;
-        [[nodiscard]] SunInfo         getCurrentSunDetails() const noexcept;
-        [[nodiscard]] Sky::Atmosphere getCurrentAtmosphere() const noexcept;
-                      void            setCurrentAtmosphere(const Sky::Atmosphere& atmosphere) const noexcept;
+        [[nodiscard]] vec3<F32>  getSunPosition() const;
+        [[nodiscard]] vec3<F32>  getSunDirection() const;
+        [[nodiscard]] SunInfo    getCurrentSunDetails() const noexcept;
+        [[nodiscard]] Atmosphere getCurrentAtmosphere() const noexcept;
+                      void       setCurrentAtmosphere(const Atmosphere& atmosphere) const noexcept;
 #pragma endregion
 
 #pragma region Player Camera
@@ -332,7 +311,6 @@ class Scene : public Resource, public PlatformContextComponent {
 
     protected:
         IMPrimitive*         _linesPrimitive = nullptr;
-        vector<BoundingBox>  _octreeBoundingBoxes;
         vector<size_t>       _selectionCallbackIndices;
 };
 
@@ -437,17 +415,9 @@ class SceneRenderPass {
 
 class SceneEnvironmentProbeComponent
 {
-    static void registerProbe(const Scene& scene, EnvironmentProbeComponent* probe) {
-        DIVIDE_ASSERT(scene._envProbePool != nullptr);
+    static void registerProbe(const Scene& scene, EnvironmentProbeComponent* probe);
+    static void unregisterProbe(const Scene& scene, const EnvironmentProbeComponent* const probe);
 
-        scene._envProbePool->registerProbe(probe);
-    }
-
-    static void unregisterProbe(const Scene& scene, const EnvironmentProbeComponent* const probe) {
-        DIVIDE_ASSERT(scene._envProbePool != nullptr);
-
-        scene._envProbePool->unregisterProbe(probe);
-    }
     friend class Divide::EnvironmentProbeComponent;
 };
 
@@ -513,6 +483,39 @@ class SceneInput {
 };
 
 }  // namespace Attorney
+
+#pragma region Scene Factory
+namespace SceneList {
+    template<typename T>
+    using SharedPtrFactory = boost::factory<std::shared_ptr<T>>;
+    using ScenePtrFactory = std::function<std::shared_ptr<Scene>(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name)>;
+    using SceneFactoryMap = std::unordered_map<U64, ScenePtrFactory>;
+    using SceneNameMap = std::unordered_map<U64, Str256>;
+
+    void registerSceneFactory(const char* name, const ScenePtrFactory& factoryFunc);
+
+    template<typename T>
+    inline void registerScene(const char* name, const SharedPtrFactory<T>& scenePtr) {
+        registerSceneFactory(name, scenePtr);
+    }
+}
+
+#define STRUCT_NAME(M) BOOST_PP_CAT(M, RegisterStruct)
+#define REGISTER_SCENE(SceneName)                                                    \
+class SceneName;                                                                     \
+static struct STRUCT_NAME(SceneName) {                                               \
+  STRUCT_NAME(SceneName)()                                                           \
+  {                                                                                  \
+     SceneList::registerScene(#SceneName, SceneList::SharedPtrFactory<SceneName>()); \
+  }                                                                                  \
+} BOOST_PP_CAT(SceneName, RegisterVariable);
+#define BEGIN_SCENE(SceneName)         \
+REGISTER_SCENE(SceneName);             \
+class SceneName final : public Scene { \
+    public:
+#define END_SCENE(SceneName) };
+#pragma endregion
+
 }  // namespace Divide
 
 #endif

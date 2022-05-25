@@ -68,7 +68,7 @@ namespace Divide {
             static_assert(N <= Length, "Fixed String construction: Constructing a smaller fixed string from a larger one!");
         }
 
-        operator std::string_view() const { return std::string_view{c_str()}; }
+        operator std::string_view() const { return std::string_view{ Base::c_str()}; }
 
         [[nodiscard]] boost::string_ref as_ref(size_t pos = 0) const {
             if (pos == 0) {
@@ -103,7 +103,7 @@ namespace Divide {
         typename std::enable_if<std::is_same<string_impl<false>, T_str>::value ||
                                 std::is_same<string_impl<true>, T_str>::value, Str&>::type
         append(const T_str& other) {
-            *this = Str((this->c_str() + other).c_str());
+            *this = Str((Base::c_str() + other).c_str());
             return *this;
         }
 

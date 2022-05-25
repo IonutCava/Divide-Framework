@@ -4,6 +4,7 @@
 #include "Headers/RenderingComponent.h"
 #include "Headers/TransformComponent.h"
 
+#include "Graphs/Headers/SceneNode.h"
 #include "Graphs/Headers/SceneGraphNode.h"
 
 namespace Divide {

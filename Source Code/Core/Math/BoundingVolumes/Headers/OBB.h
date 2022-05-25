@@ -32,8 +32,8 @@
 #pragma once
 #ifndef _CORE_MATH_BOUNDINGVOLUMES_OOBB_H_
 #define _CORE_MATH_BOUNDINGVOLUMES_OOBB_H_
-#include "Core/Math/Headers/Ray.h"
 
+#include "Core/Math/Headers/Ray.h"
 
 //ref: https://github.com/juj/MathGeoLib
 namespace Divide {

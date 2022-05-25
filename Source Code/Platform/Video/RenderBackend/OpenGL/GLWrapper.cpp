@@ -1,7 +1,6 @@
 ﻿#include "stdafx.h"
 
 #include "Headers/GLWrapper.h"
-#include "Headers/glIMPrimitive.h"
 
 #include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Video/Headers/GFXDevice.h"
@@ -17,6 +16,7 @@
 
 #include "CEGUIOpenGLRenderer/include/Texture.h"
 
+#include "Platform/Video/Headers/DescriptorSets.h"
 #include "Platform/Video/RenderBackend/OpenGL/CEGUIOpenGLRenderer/include/GL3Renderer.h"
 
 #include "Platform/Video/RenderBackend/OpenGL/Shaders/Headers/glShaderProgram.h"

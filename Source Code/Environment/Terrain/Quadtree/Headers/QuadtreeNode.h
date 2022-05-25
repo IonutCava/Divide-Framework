@@ -33,7 +33,6 @@
 #ifndef _QUAD_TREE_NODE
 #define _QUAD_TREE_NODE
 
-#include "Platform/Video/Headers/RenderAPIWrapper.h"
 #include "Core/Math/BoundingVolumes/Headers/BoundingBox.h"
 #include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
 
@@ -47,6 +46,7 @@ enum class ChildPosition :U32 {
 };
 
 class Terrain;
+class GFXDevice;
 class TerrainChunk;
 class SceneState;
 class IMPrimitive;

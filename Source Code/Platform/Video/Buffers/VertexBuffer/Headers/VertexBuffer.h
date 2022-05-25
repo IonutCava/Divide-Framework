@@ -34,8 +34,8 @@
 #define _VERTEX_BUFFER_OBJECT_H
 
 #include "VertexDataInterface.h"
-#include "Platform/Video/Headers/RenderAPIWrapper.h"
 #include "Platform/Video/Headers/AttributeDescriptor.h"
+#include "Platform/Video/Headers/RenderAPIEnums.h"
 
 namespace Divide {
 class ByteBuffer;
@@ -170,15 +170,12 @@ class VertexBuffer final : public VertexDataInterface {
     }
 
     template <typename T>
-    void addIndices(const vector_fast<T>& indices, const bool containsRestartIndex) {
+    void addIndices(const vector_fast<T>& indices) {
         eastl::transform(eastl::cbegin(indices),
                          eastl::cend(indices),
                          back_inserter(_indices),
                          static_caster<T, U32>());
 
-        if (containsRestartIndex) {
-            hasRestartIndex(true);
-        }
         _indicesChanged = true;
     }
 

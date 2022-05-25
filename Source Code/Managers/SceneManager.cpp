@@ -4,7 +4,6 @@
 #include "Headers/FrameListenerManager.h"
 #include "Headers/RenderPassManager.h"
 
-#include "AI/PathFinding/Headers/DivideRecast.h"
 #include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/EngineTaskPool.h"
@@ -14,16 +13,27 @@
 #include "Core/Headers/StringHelper.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Core/Time/Headers/ProfileTimer.h"
+
 #include "Editor/Headers/Editor.h"
+
 #include "GUI/Headers/GUI.h"
 #include "GUI/Headers/GUIButton.h"
+
+#include "AI/PathFinding/Headers/DivideRecast.h"
 #include "Rendering/Camera/Headers/FreeFlyCamera.h"
 #include "Rendering/Headers/Renderer.h"
 #include "Rendering/PostFX/Headers/PostFX.h"
+#include "Rendering/Lighting/Headers/LightPool.h"
+
 #include "Scenes/Headers/ScenePool.h"
 #include "Scenes/Headers/SceneShaderData.h"
+#include "Graphs/Headers/SceneGraph.h"
+
+#include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/CommandBuffer.h"
 
 #include "Environment/Vegetation/Headers/Vegetation.h"
+#include "Environment/Sky/Headers/Sky.h"
 #include "Environment/Water/Headers/Water.h"
 
 #include "Dynamics/Entities/Units/Headers/Player.h"
@@ -505,7 +515,7 @@ void SceneManager::updateSceneState(const U64 deltaTimeUS) {
 
     const FColour3 sunColour = dayNightData._sunLight != nullptr 
                                             ? dayNightData._sunLight->getDiffuseColour()
-                                            : DefaultColours::WHITE;
+                                            : DefaultColours::WHITE.rgb;
 
     SceneShaderData* sceneData = parent().platformContext().gfx().sceneData();
     sceneData->sunDetails(activeScene.getSunPosition(), sunColour);

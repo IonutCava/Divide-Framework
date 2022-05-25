@@ -34,9 +34,10 @@
 #define _GL_RESOURCES_H_
 
 #include "Platform/Headers/PlatformDefines.h"
-#include "Platform/Video/Headers/RenderAPIWrapper.h"
+#include "Platform/Video/Headers/RenderAPIEnums.h"
 
 #include <glbinding/gl/gl.h>
+
 using namespace gl;
 
 struct SDL_Window;
@@ -48,6 +49,9 @@ namespace NS_GLIM {
 
 namespace Divide {
 
+struct GenericDrawCommand;
+
+class DisplayWindow;
 class glBufferImpl;
 
 struct BufferLockEntry

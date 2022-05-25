@@ -40,6 +40,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 
 class Scene;
+class Camera;
 class Pipeline;
 class GFXDevice;
 class IMPrimitive;
@@ -47,6 +48,7 @@ FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 
 namespace GFX {
     class CommandBuffer;
+    struct MemoryBarrierCommand;
 } //namespace GFX
 
 BEGIN_COMPONENT_EXT1(EnvironmentProbe, ComponentType::ENVIRONMENT_PROBE, GUIDWrapper)

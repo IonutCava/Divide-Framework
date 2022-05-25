@@ -16,6 +16,8 @@
 
 #include "Editor/Widgets/Headers/ImGuiExtensions.h"
 
+#include "Graphs/Headers/SceneGraph.h"
+
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/PlatformContext.h"
@@ -28,6 +30,7 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
+#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
 
 #include "Rendering/Camera/Headers/FreeFlyCamera.h"

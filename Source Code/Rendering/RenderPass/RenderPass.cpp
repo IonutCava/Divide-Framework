@@ -3,6 +3,7 @@
 #include "config.h"
 
 #include "Headers/RenderPass.h"
+#include "Headers/NodeBufferedData.h"
 
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/Configuration.h"
@@ -11,13 +12,17 @@
 #include "Managers/Headers/SceneManager.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/CommandBuffer.h"
 
+#include "Rendering/Lighting/Headers/LightPool.h"
+#include "Rendering/Camera/Headers/Camera.h"
 #include "Geometry/Material/Headers/Material.h"
+
 #include "Scenes/Headers/Scene.h"
+#include "Scenes/Headers/SceneEnvironmentProbePool.h"
 
 #include "ECS/Components/Headers/EnvironmentProbeComponent.h"
 #include "ECS/Components/Headers/RenderingComponent.h"
-#include "Headers/NodeBufferedData.h"
 
 namespace Divide {
 

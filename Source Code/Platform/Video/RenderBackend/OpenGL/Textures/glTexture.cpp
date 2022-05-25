@@ -2,11 +2,11 @@
 
 #include "config.h"
 
-#include "Platform/Headers/PlatformRuntime.h"
-#include "Platform/Video/RenderBackend/OpenGL/Headers/glResources.h"
 
 #include "Headers/glTexture.h"
+#include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 
 namespace Divide {

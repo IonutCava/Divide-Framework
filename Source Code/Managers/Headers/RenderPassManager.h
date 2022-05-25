@@ -38,7 +38,6 @@
 #include "Rendering/RenderPass/Headers/RenderPass.h"
 #include "Rendering/RenderPass/Headers/RenderQueue.h"
 
-#include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/RenderPackage.h"
 #include "Rendering/RenderPass/Headers/RenderPassExecutor.h"
 

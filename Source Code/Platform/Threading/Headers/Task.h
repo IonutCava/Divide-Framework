@@ -49,12 +49,13 @@ enum class TaskPriority : U8 {
 
 constexpr auto TASK_NOP = [](Task&) { NOP(); };
 
-struct alignas(64) Task {
+struct alignas(128) Task {
     DELEGATE<void, Task&> _callback;
-    Task* _parent = nullptr;
-    U32 _id = 0;
-    std::atomic_ushort _unfinishedJobs = 0u;
-    bool _runWhileIdle = true;
+    Task* _parent{ nullptr };
+    U32 _id{ 0u };
+    std::atomic_ushort _unfinishedJobs{ 0u };
+    bool _runWhileIdle{ true };
+    U8 _padding[48];
 };
 
 static Task EMPTY_TASK{};

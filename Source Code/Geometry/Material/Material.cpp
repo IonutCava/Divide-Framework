@@ -466,7 +466,7 @@ void Material::recomputeShaders() {
     }
 }
 
-ShaderProgram::Handle Material::computeAndGetProgramHandle(const RenderStagePass renderStagePass) {
+ShaderProgramHandle Material::computeAndGetProgramHandle(const RenderStagePass renderStagePass) {
     constexpr U8 maxRetries = 250;
 
     bool justFinishedLoading = false;
@@ -483,7 +483,7 @@ ShaderProgram::Handle Material::computeAndGetProgramHandle(const RenderStagePass
     return _context.defaultIMShader()->handle();
 }
 
-ShaderProgram::Handle Material::getProgramHandle(const RenderStagePass renderStagePass) const {
+ShaderProgramHandle Material::getProgramHandle(const RenderStagePass renderStagePass) const {
 
     const ShaderProgramInfo& info = shaderInfo(renderStagePass);
 

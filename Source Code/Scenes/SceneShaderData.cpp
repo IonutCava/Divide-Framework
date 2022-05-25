@@ -2,6 +2,7 @@
 
 #include "Headers/SceneShaderData.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/CommandBuffer.h"
 
 namespace Divide {
 SceneShaderData::SceneShaderData(GFXDevice& context)

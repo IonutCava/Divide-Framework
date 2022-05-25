@@ -1,7 +1,9 @@
 #include "stdafx.h"
 
 #include "Headers/Scene.h"
+#include "Headers/SceneEnvironmentProbePool.h"
 
+#include "Graphs/Headers/SceneGraph.h"
 #include "Core/Debugging/Headers/DebugInterface.h"
 #include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/Configuration.h"
@@ -15,6 +17,8 @@
 #include "Rendering/Camera/Headers/FreeFlyCamera.h"
 #include "Rendering/Headers/Renderer.h"
 #include "Rendering/PostFX/Headers/PostFX.h"
+#include "Rendering/Lighting/Headers/LightPool.h"
+
 #include "Utility/Headers/XMLParser.h"
 
 #include "Environment/Sky/Headers/Sky.h"
@@ -32,6 +36,9 @@
 
 #include "GUI/Headers/GUI.h"
 #include "GUI/Headers/GUIConsole.h"
+#include "GUI/Headers/SceneGUIElements.h"
+
+#include "AI/Headers/AIManager.h"
 
 #include "ECS/Components/Headers/DirectionalLightComponent.h"
 #include "ECS/Components/Headers/NavigationComponent.h"
@@ -42,14 +49,19 @@
 
 #include "Dynamics/Entities/Triggers/Headers/Trigger.h"
 #include "Dynamics/Entities/Units/Headers/Player.h"
+#include "Dynamics/Entities/Particles/Headers/ParticleEmitter.h"
+
 #include "ECS/Components/Headers/UnitComponent.h"
 #include "Physics/Headers/PXDevice.h"
 
+#include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Audio/Headers/SFXDevice.h"
 #include "Platform/File/Headers/FileManagement.h"
-#include "Platform/Headers/PlatformRuntime.h"
+#include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Headers/IMPrimitive.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
+#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 namespace Divide {
 
@@ -1471,14 +1483,15 @@ void Scene::drawCustomUI(const Rect<I32>& targetViewport, GFX::CommandBuffer& bu
 void Scene::debugDraw(GFX::CommandBuffer& bufferInOut) {
     if_constexpr (!Config::Build::IS_SHIPPING_BUILD) {
         if (state()->renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_OCTREE_REGIONS)) {
-            _octreeBoundingBoxes.resize(0);
-            sceneGraph()->getOctree()->getAllRegions(_octreeBoundingBoxes);
+            static vector<BoundingBox>  octreeBoundingBoxes;
+            octreeBoundingBoxes.resize(0);
+            sceneGraph()->getOctree()->getAllRegions(octreeBoundingBoxes);
 
-            const size_t regionCount = _octreeBoundingBoxes.size();
+            const size_t regionCount = octreeBoundingBoxes.size();
 
             IMPrimitive::BoxDescriptor descriptor;
             for (size_t i = 0u; i < regionCount; ++i) {
-                const BoundingBox& box = _octreeBoundingBoxes[i];
+                const BoundingBox& box = octreeBoundingBoxes[i];
                 descriptor.min = box.getMin();
                 descriptor.max = box.getMax();
                 descriptor.colour = UColour4(255, 0, 255, 255);
@@ -1878,7 +1891,7 @@ SunInfo Scene::getCurrentSunDetails() const noexcept {
     return {};
 }
 
-Sky::Atmosphere Scene::getCurrentAtmosphere() const noexcept {
+Atmosphere Scene::getCurrentAtmosphere() const noexcept {
     if (_dayNightData._skyInstance != nullptr) {
         return _dayNightData._skyInstance->atmosphere();
     }
@@ -1886,7 +1899,7 @@ Sky::Atmosphere Scene::getCurrentAtmosphere() const noexcept {
     return {};
 }
 
-void Scene::setCurrentAtmosphere(const Sky::Atmosphere& atmosphere) const noexcept {
+void Scene::setCurrentAtmosphere(const Atmosphere& atmosphere) const noexcept {
     if (_dayNightData._skyInstance != nullptr) {
         return _dayNightData._skyInstance->setAtmosphere(atmosphere);
     }
@@ -1943,4 +1956,16 @@ Camera* Scene::playerCamera(const U8 index, const bool skipOverride) const {
     return Attorney::SceneManagerCameraAccessor::playerCamera(_parent, index, skipOverride);
 }
 
+void Attorney::SceneEnvironmentProbeComponent::registerProbe(const Scene& scene, EnvironmentProbeComponent* probe) {
+    DIVIDE_ASSERT(scene._envProbePool != nullptr);
+
+    scene._envProbePool->registerProbe(probe);
 }
+
+void Attorney::SceneEnvironmentProbeComponent::unregisterProbe(const Scene& scene, const EnvironmentProbeComponent* const probe) {
+    DIVIDE_ASSERT(scene._envProbePool != nullptr);
+
+    scene._envProbePool->unregisterProbe(probe);
+}
+
+} //namespace Divide

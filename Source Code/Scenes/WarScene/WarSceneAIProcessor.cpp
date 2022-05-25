@@ -4,12 +4,14 @@
 
 #include "Headers/WarScene.h"
 
+#include "AI/Headers/AIManager.h"
 #include "AI/Sensors/Headers/AudioSensor.h"
 #include "AI/Sensors/Headers/VisualSensor.h"
 #include "AI/ActionInterface/Headers/AITeam.h"
 
 #include "Managers/Headers/SceneManager.h"
 #include "Core/Headers/StringHelper.h"
+#include "Graphs/Headers/SceneGraph.h"
 #include "Graphs/Headers/SceneGraphNode.h"
 #include "Dynamics/Entities/Units/Headers/NPC.h"
 #include "ECS/Components/Headers/BoundsComponent.h"

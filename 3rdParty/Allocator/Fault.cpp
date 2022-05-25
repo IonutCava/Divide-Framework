@@ -1,7 +1,7 @@
-#include "stdafx.h"
-
 #include "Fault.h"
 #include "DataTypes.h"
+
+#include <cassert>
 
 //----------------------------------------------------------------------------
 // FaultHandler

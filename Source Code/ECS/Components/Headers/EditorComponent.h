@@ -125,7 +125,7 @@ namespace Divide {
         F32 _step = 0.0f; ///< 0.0f == no +- buttons
         F32 _resetValue = 0.f;
         const char* _format = "";
-        char* const* _labels = nullptr;
+        const char* const* _labels = nullptr;
         GFX::PushConstantType _basicType = GFX::PushConstantType::COUNT;
         EditorComponentFieldType _type = EditorComponentFieldType::COUNT;
         // Use this to configure smaller data sizes for integers only (signed or unsigned) like:

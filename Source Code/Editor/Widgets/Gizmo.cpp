@@ -4,6 +4,7 @@
 #include "Editor/Headers/Editor.h"
 #include "Managers/Headers/SceneManager.h"
 #include "ECS/Components/Headers/BoundsComponent.h"
+#include "Rendering/Camera/Headers/Camera.h"
 
 #include <imgui_internal.h>
 

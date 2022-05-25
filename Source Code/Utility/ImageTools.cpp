@@ -145,8 +145,11 @@ namespace nvttHelpers {
     [[nodiscard]] nvtt::Format getNVTTFormat(const ImageOutputFormat outputFormat, const bool isNormalMap, const bool hasAlpha, const bool isGreyscale) noexcept {
         assert(outputFormat != ImageOutputFormat::COUNT);
 
-        if (!g_KeepDevILDDSCompatibility && outputFormat != ImageOutputFormat::AUTO) {
-            switch (outputFormat) {
+        if_constexpr(g_KeepDevILDDSCompatibility) {
+            return isNormalMap ? nvtt::Format::Format_BC3n : hasAlpha ? nvtt::Format::Format_BC3 : nvtt::Format::Format_BC1;
+        } else {
+            if (outputFormat != ImageOutputFormat::AUTO) {
+                switch (outputFormat) {
                 case ImageOutputFormat::BC1:      return nvtt::Format::Format_BC1;
                 case ImageOutputFormat::BC1a:     return nvtt::Format::Format_BC1a;
                 case ImageOutputFormat::BC2:      return nvtt::Format::Format_BC2;
@@ -155,14 +158,12 @@ namespace nvttHelpers {
                 case ImageOutputFormat::BC5:      return nvtt::Format::Format_BC5;
                 case ImageOutputFormat::BC6:      return nvtt::Format::Format_BC6;
                 case ImageOutputFormat::BC7:      return nvtt::Format::Format_BC7;
-                //case ImageOutputFormat::BC3_RGBM: return nvtt::Format::Format_BC3_RGBM; //Not supported
-            };
-        }
+                    //case ImageOutputFormat::BC3_RGBM: return nvtt::Format::Format_BC3_RGBM; //Not supported
+                };
+            }
 
-        if_constexpr(g_KeepDevILDDSCompatibility) {
-            return isNormalMap ? nvtt::Format::Format_BC3n : hasAlpha ? nvtt::Format::Format_BC3 : nvtt::Format::Format_BC1;
+            return isNormalMap ? nvtt::Format::Format_BC5 : isGreyscale ? nvtt::Format::Format_BC4 : nvtt::Format::Format_BC7;
         }
-        return isNormalMap ? nvtt::Format::Format_BC5 : isGreyscale ? nvtt::Format::Format_BC4 : nvtt::Format::Format_BC7;
     }
 
     [[nodiscard]] nvtt::MipmapFilter getNVTTMipFilter(const MipMapFilter filter) noexcept {

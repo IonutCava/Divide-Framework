@@ -35,7 +35,6 @@
 #include "Utility/Headers/ImageTools.h"
 #include "Graphs/Headers/SceneNode.h"
 #include "Platform/Threading/Headers/Task.h"
-#include "Platform/Video/Headers/RenderAPIWrapper.h"
 #include "Platform/Video/Headers/RenderStagePass.h"
 
 namespace eastl {
@@ -52,6 +51,12 @@ namespace eastl {
 
 namespace Divide {
 
+namespace GFX {
+    class CommandBuffer;
+};
+
+class Pipeline;
+class GFXDevice;
 class SceneState;
 class VertexBuffer;
 class RenderTarget;

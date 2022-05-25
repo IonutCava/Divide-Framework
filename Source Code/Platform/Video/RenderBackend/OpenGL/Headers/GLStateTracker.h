@@ -36,6 +36,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "glResources.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Headers/AttributeDescriptor.h"
+#include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 
 namespace Divide {
 

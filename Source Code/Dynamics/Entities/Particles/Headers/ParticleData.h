@@ -37,6 +37,8 @@
 
 namespace Divide {
 
+class GFXDevice;
+
 enum class ParticleDataProperties : U8
 {
     PROPERTIES_POS = toBit(1),

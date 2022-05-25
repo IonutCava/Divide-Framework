@@ -33,11 +33,10 @@
 #ifndef _QUAD_TREE
 #define _QUAD_TREE
 
-#include "Platform/Video/Headers/RenderAPIWrapper.h"
-
 namespace Divide {
 
 class Terrain;
+class GFXDevice;
 class SceneState;
 class BoundingBox;
 class IMPrimitive;

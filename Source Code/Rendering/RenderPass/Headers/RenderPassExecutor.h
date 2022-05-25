@@ -55,6 +55,7 @@ namespace GFX {
 }
 
 FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
+FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 
 class RenderPassExecutor
 {

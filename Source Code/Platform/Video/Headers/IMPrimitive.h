@@ -37,8 +37,6 @@
 #include "Core/Math/Headers/Line.h"
 #include "Core/Math/BoundingVolumes/Headers/OBB.h"
 #include "Rendering/Camera/Headers/Frustum.h"
-#include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
-#include "Platform/Video/Headers/GraphicsResource.h"
 #include "Platform/Video/Headers/Pipeline.h"
 #include "Platform/Video/Headers/PushConstants.h"
 #include "Platform/Video/GLIM/glim.h"

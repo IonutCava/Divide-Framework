@@ -34,6 +34,9 @@
 #define _SCENE_MANAGER_H
 
 #include "Scenes/Headers/Scene.h"
+
+#include "Core/Headers/KernelComponent.h"
+#include "Rendering/Headers/FrameListener.h"
 #include "Rendering/RenderPass/Headers/RenderPassCuller.h"
 
 namespace Divide {
@@ -57,21 +60,36 @@ namespace Attorney {
     class SceneManagerSSRAccessor;
     class SceneManagerCameraAccessor;
 };
+
 namespace AI {
     namespace Navigation {
-        class DivideRecats;
+        class DivideRecast;
     };
+};
+
+namespace Time {
+    class ProfileTimer;
+};
+
+namespace GFX {
+    struct MemoryBarrierCommand;
 };
 
 class Editor;
 class ScenePool;
+class ShadowMap;
 class UnitComponent;
+class RenderPassExecutor;
 class ShaderComputeQueue;
 class SSRPreRenderOperator;
 class DirectionalLightSystem;
 class SolutionExplorerWindow;
 class GUIConsoleCommandParser;
+
+struct SizeChangeParams;
+
 FWD_DECLARE_MANAGED_CLASS(Player);
+FWD_DECLARE_MANAGED_CLASS(Texture);
 
 class SceneManager final : public FrameListener,
                            public Input::InputAggregatorInterface,
@@ -148,11 +166,6 @@ public:
     void onResolutionChange(const SizeChangeParams& params);
 
     [[nodiscard]] U8 playerPass() const noexcept { return _currentPlayerPass; }
-
-    template <typename T, class Factory>
-    bool register_new_ptr(Factory& factory, BOOST_DEDUCED_TYPENAME Factory::id_param_type id) {
-        return factory.register_creator(id, new_ptr<T>());
-    }
 
     [[nodiscard]] bool saveActiveScene(bool toCache, bool deferred, const DELEGATE<void, std::string_view>& msgCallback = {}, const DELEGATE<void, bool>& finishCallback = {}, const char* sceneNameOverride = "");
 

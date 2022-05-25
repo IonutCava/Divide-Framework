@@ -1,6 +1,8 @@
 #include "stdafx.h"
 
 #include "Headers/Light.h"
+
+#include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Lighting/Headers/LightPool.h"
 
 #include "ECS/Components/Headers/TransformComponent.h"

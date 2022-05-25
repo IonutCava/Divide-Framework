@@ -39,6 +39,10 @@ namespace Divide {
 
 class Sphere3D;
 
+namespace GFX {
+    enum class PushConstantType : U8;
+};
+
 class FreeFlyCamera;
 BEGIN_SCENE(PingPongScene)
     explicit PingPongScene(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name);

@@ -4,6 +4,7 @@
 
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/Configuration.h"
+#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Managers/Headers/SceneManager.h"

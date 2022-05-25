@@ -8,6 +8,7 @@
 #include "Rendering/Headers/Renderer.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Scenes/Headers/SceneShaderData.h"
+#include "Scenes/Headers/SceneEnvironmentProbePool.h"
 
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
@@ -36,6 +37,8 @@ extern "C" {
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
+
+#include <Vulkan/vulkan.hpp>
 
 namespace Divide {
 
@@ -821,7 +824,7 @@ bool ShaderProgram::unload() {
     _uniformBlockBuffers.clear();
     // Unregister the program from the manager
     if (UnregisterShaderProgram(handle())) {
-        handle(INVALID_HANDLE);
+        handle(SHADER_INVALID_HANDLE);
     }
 
     return true;
@@ -966,7 +969,7 @@ void ShaderProgram::RegisterShaderProgram(ShaderProgram* shaderProgram) {
     assert(shaderProgram != nullptr);
 
     ScopedLock<SharedMutex> lock(s_programLock);
-    if (shaderProgram->handle() != INVALID_HANDLE) {
+    if (shaderProgram->handle() != SHADER_INVALID_HANDLE) {
         const ShaderProgramMapEntry& existingEntry = s_shaderPrograms[shaderProgram->handle()._id];
         if (existingEntry._generation == shaderProgram->handle()._generation) {
             // Nothing to do. Probably a reload of some kind.
@@ -996,9 +999,9 @@ void ShaderProgram::RegisterShaderProgram(ShaderProgram* shaderProgram) {
 }
 
 /// Unloading/Deleting a program will unregister it from the manager
-bool ShaderProgram::UnregisterShaderProgram(const Handle shaderHandle) {
+bool ShaderProgram::UnregisterShaderProgram(const ShaderProgramHandle shaderHandle) {
 
-    if (shaderHandle != INVALID_HANDLE) {
+    if (shaderHandle != SHADER_INVALID_HANDLE) {
         ScopedLock<SharedMutex> lock(s_programLock);
         ShaderProgramMapEntry& entry = s_shaderPrograms[shaderHandle._id];
         if (entry._generation == shaderHandle._generation) {
@@ -1017,7 +1020,7 @@ bool ShaderProgram::UnregisterShaderProgram(const Handle shaderHandle) {
     return false;
 }
 
-ShaderProgram* ShaderProgram::FindShaderProgram(const Handle shaderHandle) {
+ShaderProgram* ShaderProgram::FindShaderProgram(const ShaderProgramHandle shaderHandle) {
     SharedLock<SharedMutex> lock(s_programLock);
 
     if (shaderHandle == s_lastRequestedShaderProgram._handle) {

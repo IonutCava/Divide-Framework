@@ -42,10 +42,11 @@
 
 #include "Platform/Video/Headers/RenderAPIEnums.h"
 #include "Platform/Video/Headers/RenderStagePass.h"
+#include "Platform/Video/Headers/AttributeDescriptor.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
+#include "Platform/Video/Shaders/Headers/ShaderProgramFwd.h"
 
 #include "Geometry/Material/Headers/ShaderProgramInfo.h"
-#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Rendering/RenderPass/Headers/NodeBufferedData.h"
 
 namespace Divide {
@@ -281,8 +282,8 @@ class Material final : public CachedResource {
     [[nodiscard]] size_t getOrCreateRenderStateBlock(RenderStagePass renderStagePass);
     [[nodiscard]] Texture_wptr getTexture(TextureUsage textureUsage) const;
     [[nodiscard]] DescriptorSet& getDescriptorSet(const RenderStagePass& renderStagePass);
-    [[nodiscard]] ShaderProgram::Handle getProgramHandle(RenderStagePass renderStagePass) const;
-    [[nodiscard]] ShaderProgram::Handle computeAndGetProgramHandle(RenderStagePass renderStagePass);
+    [[nodiscard]] ShaderProgramHandle getProgramHandle(RenderStagePass renderStagePass) const;
+    [[nodiscard]] ShaderProgramHandle computeAndGetProgramHandle(RenderStagePass renderStagePass);
     [[nodiscard]] bool hasTransparency() const noexcept;
     [[nodiscard]] bool isReflective() const noexcept;
     [[nodiscard]] bool isRefractive() const noexcept;

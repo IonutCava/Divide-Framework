@@ -35,6 +35,8 @@
 
 #include "GLStateTracker.h"
 #include "glHardwareQueryPool.h"
+
+#include "Platform/Video/Headers/RenderAPIWrapper.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glMemoryManager.h"
 
 struct FONScontext;
@@ -56,6 +58,7 @@ class DisplayWindow;
 class glHardwareQueryRing;
 class glHardwareQueryPool;
 
+struct ImageViewEntry;
 struct BufferLockEntry;
 
 FWD_DECLARE_MANAGED_STRUCT(SyncObject);

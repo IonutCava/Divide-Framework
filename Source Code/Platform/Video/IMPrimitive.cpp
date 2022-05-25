@@ -7,6 +7,7 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
+#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
 
 namespace Divide {
@@ -642,7 +643,7 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
         return;
     }
 
-    DIVIDE_ASSERT(_basePipelineDescriptor._shaderProgramHandle != ShaderProgram::INVALID_HANDLE, "IMPrimitive error: Draw call received without a valid shader defined!");
+    DIVIDE_ASSERT(_basePipelineDescriptor._shaderProgramHandle != SHADER_INVALID_HANDLE, "IMPrimitive error: Draw call received without a valid shader defined!");
 
     _additionalConstats.set(_ID("dvd_WorldMatrix"), GFX::PushConstantType::MAT4, worldMatrix);
     _additionalConstats.set(_ID("useTexture"), GFX::PushConstantType::BOOL, !_baseDescriptorSet._bindings.empty());

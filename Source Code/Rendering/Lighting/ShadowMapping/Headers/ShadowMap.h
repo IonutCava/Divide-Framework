@@ -33,7 +33,6 @@
 #ifndef _SHADOW_MAP_H_
 #define _SHADOW_MAP_H_
 
-#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 
 namespace Divide {

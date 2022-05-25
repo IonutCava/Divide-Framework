@@ -83,7 +83,6 @@
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\Headers\glMemoryManager.h" />
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Headers\glHardwareQuery.h" />
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Headers\glHardwareQueryPool.h" />
-    <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Headers\glIMPrimitive.h" />
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Headers\glLockManager.h" />
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Headers\glResources.h" />
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Headers\GLWrapper.h" />
@@ -146,6 +145,7 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Textures\Headers\vkTexture.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\Headers\GLSLToSPIRV.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\Headers\ShaderDataUploader.h" />
+    <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\Headers\ShaderProgramFwd.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="../../Source Code/Platform\Audio\openAl\ALWrapper.cpp" />
@@ -185,7 +185,6 @@
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\GLError.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\glHardwareQuery.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\glHardwareQueryPool.cpp" />
-    <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\glIMPrimitive.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\glLockManager.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\glResources.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\GLWrapper.cpp" />
@@ -545,17 +544,18 @@
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <AdditionalOptions>/bigobj %(AdditionalOptions) /Zc:twoPhase- /Zm200</AdditionalOptions>
+      <AdditionalOptions>/bigobj %(AdditionalOptions) /Zc:twoPhase- /Zm200 /Zc:__cplusplus</AdditionalOptions>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <EnableModules>false</EnableModules>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
-      <ConformanceMode>false</ConformanceMode>
+      <ConformanceMode>true</ConformanceMode>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
       <SupportJustMyCode>false</SupportJustMyCode>
+      <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -602,17 +602,18 @@
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <AdditionalOptions>/bigobj %(AdditionalOptions) /Zc:twoPhase- /Zm200</AdditionalOptions>
+      <AdditionalOptions>/bigobj %(AdditionalOptions) /Zc:twoPhase- /Zm200 /Zc:__cplusplus</AdditionalOptions>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <EnableModules>false</EnableModules>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
-      <ConformanceMode>false</ConformanceMode>
+      <ConformanceMode>true</ConformanceMode>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
       <SupportJustMyCode>false</SupportJustMyCode>
+      <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -657,11 +658,11 @@
       <OmitFramePointers>true</OmitFramePointers>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalOptions>/bigobj %(AdditionalOptions) /Zc:twoPhase- /Zm200</AdditionalOptions>
+      <AdditionalOptions>/bigobj %(AdditionalOptions) /Zc:twoPhase- /Zm200 /Zc:__cplusplus</AdditionalOptions>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <EnableModules>false</EnableModules>
-      <ConformanceMode>false</ConformanceMode>
+      <ConformanceMode>true</ConformanceMode>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <CompileAs>CompileAsCpp</CompileAs>
       <SupportJustMyCode>false</SupportJustMyCode>
@@ -669,6 +670,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
+      <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -710,11 +712,11 @@
       <OmitFramePointers>true</OmitFramePointers>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalOptions>/bigobj %(AdditionalOptions) /Zc:twoPhase- /Zm200</AdditionalOptions>
+      <AdditionalOptions>/bigobj %(AdditionalOptions) /Zc:twoPhase- /Zm200 /Zc:__cplusplus</AdditionalOptions>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <EnableModules>false</EnableModules>
-      <ConformanceMode>false</ConformanceMode>
+      <ConformanceMode>true</ConformanceMode>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <CompileAs>CompileAsCpp</CompileAs>
       <SupportJustMyCode>false</SupportJustMyCode>
@@ -722,6 +724,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
+      <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -763,11 +766,11 @@
       <CompileAsWinRT>false</CompileAsWinRT>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalOptions>/bigobj %(AdditionalOptions) /Zm200</AdditionalOptions>
+      <AdditionalOptions>/bigobj %(AdditionalOptions) /Zm200 /Zc:__cplusplus</AdditionalOptions>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <EnableModules>false</EnableModules>
-      <ConformanceMode>false</ConformanceMode>
+      <ConformanceMode>true</ConformanceMode>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <CompileAs>CompileAsCpp</CompileAs>
       <SupportJustMyCode>false</SupportJustMyCode>
@@ -775,6 +778,7 @@
       <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -815,11 +819,11 @@
       <CompileAsWinRT>false</CompileAsWinRT>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalOptions>/bigobj %(AdditionalOptions) /Zm200</AdditionalOptions>
+      <AdditionalOptions>/bigobj %(AdditionalOptions) /Zm200 /Zc:__cplusplus</AdditionalOptions>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <EnableModules>false</EnableModules>
-      <ConformanceMode>false</ConformanceMode>
+      <ConformanceMode>true</ConformanceMode>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <CompileAs>CompileAsCpp</CompileAs>
       <SupportJustMyCode>false</SupportJustMyCode>
@@ -827,6 +831,7 @@
       <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>

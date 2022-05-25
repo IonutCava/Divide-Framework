@@ -35,10 +35,13 @@
 
 #include "Sun.h"
 #include "Graphs/Headers/SceneNode.h"
+#include "Utility/Headers/Colours.h"
 
 namespace Divide {
 
+class GFXDevice;
 class RenderStateBlock;
+struct PushConstants;
 
 FWD_DECLARE_MANAGED_CLASS(Texture);
 FWD_DECLARE_MANAGED_CLASS(Sphere3D);
@@ -54,20 +57,6 @@ enum class RebuildCommandsState : U8 {
 };
 
 class Sky final : public SceneNode {
-   public: 
-       struct Atmosphere {
-           vec3<F32> _RayleighCoeff = { 5.5f, 13.0f, 22.4f };     // Rayleigh scattering coefficient
-           vec2<F32> _cloudLayerMinMaxHeight = { 1000.f, 2300.f}; // Clouds will be limited between [planerRadius + min - planetRadius + height]
-           F32 _sunIntensity = 1.f;        // x 1000. visual size of the sun disc
-           F32 _sunPenetrationPower = 30.f;// Factor used to calculate atmosphere transmitance for clour layer
-           F32 _planetRadius = 6360e3f;    // radius of the planet in meters
-           F32 _cloudSphereRadius = 200e3f;// cloud sphere radius. Does not need to match planet radius
-           F32 _atmosphereOffset = 60.f;   // planetRadius + atmoOffset = radius of the atmosphere in meters
-           F32 _MieCoeff = 21e-6f;         // Mie scattering coefficient
-           F32 _RayleighScale = 7994.f;    // Rayleigh scale height
-           F32 _MieScaleHeight = 1200.f;   // Mie scale height
-       };
-
    public:
     explicit Sky(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str256& name, U32 diameter);
 

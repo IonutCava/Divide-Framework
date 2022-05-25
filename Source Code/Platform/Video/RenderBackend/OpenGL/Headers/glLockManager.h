@@ -34,6 +34,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "glResources.h"
 
+#include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
+
 // https://github.com/nvMcJohn/apitest
 // --------------------------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------------------------

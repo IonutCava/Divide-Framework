@@ -110,7 +110,7 @@ protected:
 protected:
     GUI* _context;
 
-    std::array<GUIMap, to_base(GUIType::COUNT)> _guiElements{};
+    std::array<GUIMap, to_base(GUIType::COUNT)> _guiElements;
 };
 
 }; //namespace Divide

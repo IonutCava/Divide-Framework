@@ -40,6 +40,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
+class GFXDevice;
+
 class glHardwareQuery {
 public:
     explicit glHardwareQuery() noexcept;

@@ -45,6 +45,7 @@ namespace ECS {
 namespace Divide {
 class SceneState;
 class ECSManager;
+class SceneGraphNode;
 
 struct Ray;
 struct SGNRayResult;
@@ -167,32 +168,32 @@ class SceneGraph final : NonCopyable,
 
 namespace Attorney {
 class SceneGraphSGN {
-    static void onNodeAdd(SceneGraph* sceneGraph, SceneGraphNode* newNode) {
+    static void onNodeAdd(Divide::SceneGraph* sceneGraph, SceneGraphNode* newNode) {
         sceneGraph->onNodeAdd(newNode);
     }
 
-    static void onNodeDestroy(SceneGraph* sceneGraph, SceneGraphNode* oldNode) {
+    static void onNodeDestroy(Divide::SceneGraph* sceneGraph, SceneGraphNode* oldNode) {
         sceneGraph->onNodeDestroy(oldNode);
     }
 
-    static void onNodeMoved(SceneGraph* sceneGraph, const SceneGraphNode& node) {
+    static void onNodeMoved(Divide::SceneGraph* sceneGraph, const SceneGraphNode& node) {
         sceneGraph->onNodeMoved(node);
     }
 
-    static void onNodeShaderReady(SceneGraph* sceneGraph, const SceneGraphNode& node) {
+    static void onNodeShaderReady(Divide::SceneGraph* sceneGraph, const SceneGraphNode& node) {
         sceneGraph->onNodeUpdated(node);
     }
 
-    static void onNodeSpatialChange(SceneGraph* sceneGraph, const SceneGraphNode& node) {
+    static void onNodeSpatialChange(Divide::SceneGraph* sceneGraph, const SceneGraphNode& node) {
         sceneGraph->onNodeSpatialChange(node);
     }
 
-    static void onNodeEvent(SceneGraph* sceneGraph, SceneGraphNode* node) {
+    static void onNodeEvent(Divide::SceneGraph* sceneGraph, SceneGraphNode* node) {
         ScopedLock<Mutex> w_lock(sceneGraph->_nodeEventLock);
         insert_unique(sceneGraph->_nodeEventQueue, node);
     } 
     
-    static void onNodeParentChange(SceneGraph* sceneGraph, SceneGraphNode* node) {
+    static void onNodeParentChange(Divide::SceneGraph* sceneGraph, SceneGraphNode* node) {
         ScopedLock<Mutex> w_lock(sceneGraph->_nodeParentChangeLock);
         insert_unique(sceneGraph->_nodeParentChangeQueue, node);
     }

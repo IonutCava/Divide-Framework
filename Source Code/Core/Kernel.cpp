@@ -22,6 +22,7 @@
 #include "Managers/Headers/FrameListenerManager.h"
 #include "Managers/Headers/RenderPassManager.h"
 #include "Managers/Headers/SceneManager.h"
+#include "Scenes/Headers/SceneEnvironmentProbePool.h"
 #include "Physics/Headers/PXDevice.h"
 #include "Platform/Audio/Headers/SFXDevice.h"
 #include "Platform/File/Headers/FileWatcherManager.h"

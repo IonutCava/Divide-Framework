@@ -1073,6 +1073,9 @@
     <ClInclude Include="..\..\Source Code\ECS\Systems\Headers\EnvironmentProbeSystem.h">
       <Filter>ECS\Systems\Headers</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Source Code\Graphs\Headers\SceneNodeFwd.h">
+      <Filter>Graphs\Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="../../localisation\enGB.ini">

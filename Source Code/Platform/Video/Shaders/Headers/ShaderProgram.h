@@ -33,13 +33,11 @@
 #ifndef _SHADER_PROGRAM_H_
 #define _SHADER_PROGRAM_H_
 
+#include "ShaderProgramFwd.h"
 #include "ShaderDataUploader.h"
 
-#include "Core/Headers/ObjectPool.h"
 #include "Core/Resources/Headers/Resource.h"
-#include "Core/Resources/Headers/ResourceDescriptor.h"
 #include "Platform/Video/Headers/GraphicsResource.h"
-#include "Platform/Video/Headers/RenderAPIEnums.h"
 #include "Platform/Video/Headers/AttributeDescriptor.h"
 
 namespace FW {
@@ -69,64 +67,7 @@ namespace TypeUtil {
     [[nodiscard]] ShaderBufferLocation StringToShaderBufferLocation(const string& name);
 };
 
-enum class ShaderResult : U8 {
-    Failed = 0,
-    OK,
-    COUNT
-};
 
-struct ModuleDefine {
-    ModuleDefine() = default;
-    ModuleDefine(const char* define, const bool addPrefix = true) : ModuleDefine(string{ define }, addPrefix) {}
-    ModuleDefine(const string& define, const bool addPrefix = true) : _define(define), _addPrefix(addPrefix) {}
-
-    string _define;
-    bool _addPrefix = true;
-};
-
-using ModuleDefines = vector<ModuleDefine>;
-
-struct ShaderModuleDescriptor {
-    ShaderModuleDescriptor() = default;
-    explicit ShaderModuleDescriptor(ShaderType type, const Str64& file, const Str64& variant = "")
-        : _moduleType(type), _sourceFile(file), _variant(variant)
-    {
-    }
-
-    ModuleDefines _defines;
-    Str64 _sourceFile;
-    Str64 _variant;
-    ShaderType _moduleType = ShaderType::COUNT;
-};
-
-struct PerFileShaderData;
-class ShaderProgramDescriptor final : public PropertyDescriptor {
-public:
-    ShaderProgramDescriptor() noexcept
-        : PropertyDescriptor(DescriptorType::DESCRIPTOR_SHADER) 
-    {
-    }
-
-    size_t getHash() const override;
-    Str256 _name;
-    ModuleDefines _globalDefines;
-    vector<ShaderModuleDescriptor> _modules;
-};
-
-struct ShaderProgramMapEntry {
-    ShaderProgram* _program = nullptr;
-    U8 _generation = 0u;
-};
-
-inline bool operator==(const ShaderProgramMapEntry& lhs, const ShaderProgramMapEntry& rhs) noexcept {
-    return lhs._generation == rhs._generation &&
-           lhs._program == rhs._program;
-}
-
-inline bool operator!=(const ShaderProgramMapEntry& lhs, const ShaderProgramMapEntry& rhs) noexcept {
-    return lhs._generation != rhs._generation ||
-           lhs._program != rhs._program;
-}
 
 class ShaderModule : public GUIDWrapper, public GraphicsResource {
 protected:
@@ -173,7 +114,7 @@ protected:
 class NOINITVTABLE ShaderProgram : public CachedResource,
                                    public GraphicsResource {
    public:
-    static constexpr char* UNIFORM_BLOCK_NAME = "dvd_uniforms";
+    static constexpr const char* UNIFORM_BLOCK_NAME = "dvd_uniforms";
 
     // one per shader type!
     struct LoadData {
@@ -199,9 +140,6 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     };
 
     using ShaderLoadData = std::array<LoadData, to_base(ShaderType::COUNT)>;
-
-    using Handle = PoolHandle;
-    static constexpr Handle INVALID_HANDLE{ U16_MAX, U8_MAX };
 
     static bool s_UseBindlessTextures;
 
@@ -247,11 +185,11 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     /// Queue a shaderProgram recompile request
     static bool RecompileShaderProgram(const Str256& name);
     /// Remove a shaderProgram from the program cache
-    static bool UnregisterShaderProgram(Handle shaderHandle);
+    static bool UnregisterShaderProgram(ShaderProgramHandle shaderHandle);
     /// Add a shaderProgram to the program cache
     static void RegisterShaderProgram(ShaderProgram* shaderProgram);
     /// Find a specific shader program by handle.
-    [[nodiscard]] static ShaderProgram* FindShaderProgram(Handle shaderHandle);
+    [[nodiscard]] static ShaderProgram* FindShaderProgram(ShaderProgramHandle shaderHandle);
 
     static void RebuildAllShaders();
 
@@ -266,7 +204,7 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     static void OnAtomChange(std::string_view atomName, FileUpdateEvent evt);
 
     PROPERTY_RW(bool, highPriority, true);
-    PROPERTY_R_IW(Handle, handle, INVALID_HANDLE);
+    PROPERTY_R_IW(ShaderProgramHandle, handle, SHADER_INVALID_HANDLE);
 
    protected:
 
@@ -285,8 +223,8 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     static ShaderProgramMap s_shaderPrograms;
 
     struct LastRequestedShader {
-        ShaderProgram* _program = nullptr;
-        Handle _handle = INVALID_HANDLE;
+        ShaderProgram* _program{ nullptr };
+        ShaderProgramHandle _handle{ SHADER_INVALID_HANDLE };
     };
     static LastRequestedShader s_lastRequestedShaderProgram;
     static SharedMutex s_programLock;

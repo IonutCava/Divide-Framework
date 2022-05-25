@@ -5,6 +5,8 @@
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Managers/Headers/SceneManager.h"
+#include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/IMPrimitive.h"
 
 namespace Divide {
     DirectionalLightSystem::DirectionalLightSystem(ECS::ECSEngine& parentEngine, PlatformContext& context)

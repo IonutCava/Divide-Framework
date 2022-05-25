@@ -189,9 +189,9 @@ struct RenderStagePass {
                 return 1u;
             case RenderStage::SHADOW:
                 switch (renderStagePass._variant) {
-                    case to_base(LightType::DIRECTIONAL): return Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT;
-                    case to_base(LightType::POINT): return 6u;
-                    case to_base(LightType::SPOT): return 1u;
+                    case static_cast<RenderStagePass::VariantType>(to_base(LightType::DIRECTIONAL)): return Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT;
+                    case static_cast<RenderStagePass::VariantType>(to_base(LightType::POINT)): return 6u;
+                    case static_cast<RenderStagePass::VariantType>(to_base(LightType::SPOT)): return 1u;
                     default: DIVIDE_UNEXPECTED_CALL();
                 }break;
                 

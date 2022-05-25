@@ -16,8 +16,11 @@
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
+#include "Rendering/Camera/Headers/Camera.h"
+
 #include "Platform/Audio/Headers/SFXDevice.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 namespace Divide {

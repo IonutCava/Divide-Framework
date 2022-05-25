@@ -34,6 +34,7 @@
 #define _PRE_RENDER_BATCH_H_
 
 #include "PreRenderOperator.h"
+#include "Platform/Video/Headers/CommandsImpl.h"
 
 namespace Divide {
 

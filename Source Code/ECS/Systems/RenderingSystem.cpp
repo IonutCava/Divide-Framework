@@ -2,6 +2,7 @@
 
 #include "Headers/RenderingSystem.h"
 
+#include "Graphs/Headers/SceneNode.h"
 #include "Geometry/Material/Headers/Material.h"
 
 namespace Divide {

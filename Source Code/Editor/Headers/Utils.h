@@ -62,7 +62,7 @@ namespace Util {
          {0.2f, 0.35f, 0.8f, 1.f}
     };
 
-    constexpr char* FieldLabels[] = {
+    constexpr const char* FieldLabels[] = {
         "X", "Y", "Z", "W", "U", "V", "T"
     };
     // Separate activate is used for stuff that do continuous value changes, e.g. colour selectors, but you only want to register the old val once

@@ -19,11 +19,15 @@
 #include "Rendering/Headers/Renderer.h"
 #include "Rendering/PostFX/Headers/PostFX.h"
 #include "Rendering/PostFX/Headers/PreRenderOperator.h"
+#include "Rendering/Lighting/Headers/LightPool.h"
+
+#include "GUI/Headers/GUI.h"
+
+#include "Graphs/Headers/SceneGraph.h"
+#include "Scenes/Headers/SceneEnvironmentProbePool.h"
 
 #include "ECS/Components/Headers/EnvironmentProbeComponent.h"
 #include "ECS/Systems/Headers/ECSManager.h"
-
-#include <ImGuiMisc/imguifilesystem/imguifilesystem.h>
 
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "ECS/Systems/Headers/AnimationSystem.h"
@@ -31,7 +35,7 @@
 #include "Geometry/Material/Headers/MaterialEnums.h"
 
 #include <imgui_internal.h>
-
+#include <ImGuiMisc/imguifilesystem/imguifilesystem.h>
 #include <IconFontCppHeaders/IconsForkAwesome.h>
 
 namespace Divide {

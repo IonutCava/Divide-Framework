@@ -36,8 +36,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Headers/RingBuffer.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
 #include "Platform/Video/Headers/GraphicsResource.h"
-#include "Platform/Video/Headers/RenderAPIWrapper.h"
-
 namespace Divide {
 
 struct ShaderBufferDescriptor;

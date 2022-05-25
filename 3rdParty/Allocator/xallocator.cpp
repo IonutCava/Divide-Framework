@@ -1,8 +1,8 @@
-#include "stdafx.h"
-
 #include "xallocator.h"
 #include "allocator.h"
 #include "Fault.h"
+
+#include <iostream>
 
 using namespace std;
 

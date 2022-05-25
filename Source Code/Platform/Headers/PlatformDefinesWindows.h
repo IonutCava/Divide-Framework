@@ -33,11 +33,6 @@
 #ifndef _PLATFORM_DEFINES_WINDOWS_H_
 #define _PLATFORM_DEFINES_WINDOWS_H_
 
-#pragma warning(disable : 4127)  ///< constant conditional expressions
-#pragma warning(disable : 4201)  ///< nameless struct
-#pragma warning(disable : 4522)  ///< multiple assignment operators specified (MSVC 14)
-#pragma warning(disable : 4324)  ///< structure was padded due to alignment specifier
-
 #define NOGDI
 
 #ifndef _CRT_SECURE_NO_WARNINGS
@@ -79,34 +74,14 @@
 
 #include <Windows.h>
 
-#ifdef DELETE
+#if defined(DELETE)
 #undef DELETE
-#endif
+#endif //DELETE
 
 #if defined(_WIN64)
 #define WIN64
 #else
 #define WIN32
-#endif
-
-#if defined(CPP_VERSION)
-#   undef CPP_VERSION
-#endif
-
-#if _MSC_VER == 1600 || _MSC_VER == 1700
-#   define CPP_VERSION 1
-#elif _MSC_VER == 1800
-#   define CPP_VERSION 201103L
-#elif _MSC_VER == 1900
-#   define CPP_VERSION 201402L
-#elif _MSC_VER > 1900
-#   define CPP_VERSION 201500L
-#else
-#   define CPP_VERSION 0
-#endif
-
-#ifndef HAS_CPP17
-#define HAS_CPP17 _HAS_CXX17
 #endif
 
 #define strncasecmp _strnicmp

@@ -3,6 +3,8 @@
 #include "Headers/WarScene.h"
 #include "Headers/WarSceneAIProcessor.h"
 
+#include "AI/Headers/AIManager.h"
+#include "Graphs/Headers/SceneGraph.h"
 #include "GUI/Headers/GUIMessageBox.h"
 #include "Managers/Headers/SceneManager.h"
 #include "Core/Headers/PlatformContext.h"
@@ -10,7 +12,6 @@
 #include "Dynamics/Entities/Units/Headers/NPC.h"
 #include "ECS/Components/Headers/UnitComponent.h"
 #include "ECS/Components/Headers/TransformComponent.h"
-
 #include "AI/PathFinding/NavMeshes/Headers/NavMesh.h"
 #include "Core/Headers/Application.h"
 

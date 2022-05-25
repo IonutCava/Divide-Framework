@@ -1,5 +1,6 @@
 #include "stdafx.h"
 
+#include "Headers/PostFX.h"
 #include "Headers/PreRenderBatch.h"
 #include "Headers/PreRenderOperator.h"
 
@@ -8,7 +9,8 @@
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Resources/Headers/ResourceCache.h"
-#include "Headers/PostFX.h"
+
+#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 

@@ -34,6 +34,7 @@
 #define _PARTICLE_COLOUR_GENERATOR_H_
 
 #include "Dynamics/Entities/Particles/Headers/ParticleGenerator.h"
+#include "Utility/Headers/Colours.h"
 
 namespace Divide {
 struct ParticleColourGenerator final : ParticleGenerator {

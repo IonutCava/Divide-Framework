@@ -1261,6 +1261,14 @@ void GFXDevice::closeRenderingAPI() {
     }
     _graphicResources.clear();
 }
+
+void GFXDevice::onThreadCreated(const std::thread::id& threadID) const {
+    _api->onThreadCreated(threadID);
+    if (!ShaderProgram::OnThreadCreated(*this, threadID)) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
+}
+
 #pragma endregion
 
 #pragma region Main frame loop
@@ -2702,7 +2710,7 @@ void GFXDevice::renderDebugViews(const Rect<I32> targetViewport, const I32 paddi
 
     PipelineDescriptor pipelineDesc{};
     pipelineDesc._stateHash = _state2DRenderingHash;
-    pipelineDesc._shaderProgramHandle = ShaderProgram::INVALID_HANDLE;
+    pipelineDesc._shaderProgramHandle = SHADER_INVALID_HANDLE;
     pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
     const Rect<I32> previousViewport{
@@ -2727,8 +2735,8 @@ void GFXDevice::renderDebugViews(const Rect<I32> targetViewport, const I32 paddi
             view->_shaderData.set(_ID("lodLevel"), GFX::PushConstantType::FLOAT, lodLevel);
             labelStack.emplace_back(Util::StringFormat("Mip level: %d", to_U8(lodLevel)), viewport.sizeY * 4, viewport);
         }
-        const ShaderProgram::Handle crtShader = pipelineDesc._shaderProgramHandle;
-        const ShaderProgram::Handle newShader = view->_shader->handle();
+        const ShaderProgramHandle crtShader = pipelineDesc._shaderProgramHandle;
+        const ShaderProgramHandle newShader = view->_shader->handle();
         if (crtShader != newShader) {
             pipelineDesc._shaderProgramHandle = view->_shader->handle();
             crtPipeline = newPipeline(pipelineDesc);
@@ -3165,7 +3173,7 @@ Texture_ptr GFXDevice::newTexture(const size_t descriptorHash,
 
 Pipeline* GFXDevice::newPipeline(const PipelineDescriptor& descriptor) {
     // Pipeline with no shader is no pipeline at all
-    DIVIDE_ASSERT(descriptor._shaderProgramHandle != ShaderProgram::INVALID_HANDLE, "Missing shader handle during pipeline creation!");
+    DIVIDE_ASSERT(descriptor._shaderProgramHandle != SHADER_INVALID_HANDLE, "Missing shader handle during pipeline creation!");
     DIVIDE_ASSERT(descriptor._primitiveTopology != PrimitiveTopology::COUNT, "Missing primitive topology during pipeline creation!");
 
     const size_t hash = GetHash(descriptor);

@@ -21,6 +21,7 @@
 #include "Environment/Terrain/Headers/TerrainChunk.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexBuffer.h"
 #include "Platform/Video/Headers/CommandBufferPool.h"
+#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 #include "ECS/Components/Headers/BoundsComponent.h"
 #include "ECS/Components/Headers/RenderingComponent.h"

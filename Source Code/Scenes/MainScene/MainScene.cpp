@@ -17,6 +17,9 @@
 #include "Platform/File/Headers/FileManagement.h"
 #include "Rendering/Camera/Headers/FreeFlyCamera.h"
 #include "Dynamics/Entities/Units/Headers/Player.h"
+#include "GUI/Headers/SceneGUIElements.h"
+
+#include "Graphs/Headers/SceneGraph.h"
 
 #include "ECS/Components/Headers/TransformComponent.h"
 #include "ECS/Components/Headers/NavigationComponent.h"
