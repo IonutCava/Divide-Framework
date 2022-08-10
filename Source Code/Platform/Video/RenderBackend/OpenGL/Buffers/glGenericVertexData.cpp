@@ -45,7 +45,7 @@ void glGenericVertexData::draw(const GenericDrawCommand& command) {
         command._cmd.primCount == 1u &&
         command._drawCount > 1u)
     {
-        rebuildCountAndIndexData(command._drawCount, command._cmd.indexCount, command._cmd.firstIndex, idxBuffer.first.count);
+        rebuildCountAndIndexData(command._drawCount, static_cast<GLsizei>(command._cmd.indexCount), command._cmd.firstIndex, idxBuffer.first.count);
     }
 
     if (GL_API::GetStateTracker()->setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, idxBuffer.second) == GLStateTracker::BindResult::FAILED) {
@@ -151,7 +151,6 @@ void glGenericVertexData::setBuffer(const SetBufferParams& params) {
     implParams._bufferParams = params._bufferParams;
     implParams._dataSize = bufferSizeInBytes * ringSizeFactor;
     implParams._target = GL_ARRAY_BUFFER;
-    implParams._name = _name.empty() ? nullptr : _name.c_str();
     implParams._useChunkAllocation = params._useChunkAllocation;
 
     const size_t elementStride = params._elementStride == SetBufferParams::INVALID_ELEMENT_STRIDE
@@ -164,7 +163,7 @@ void glGenericVertexData::setBuffer(const SetBufferParams& params) {
 
     bool skipUpdate = false;
     if (impl->_buffer == nullptr || impl->_buffer->params() != implParams) {
-        impl->_buffer = eastl::make_unique<glBufferImpl>(_context, implParams, params._initialData);
+        impl->_buffer = eastl::make_unique<glBufferImpl>(_context, implParams, params._initialData, _name.empty() ? nullptr : _name.c_str());
         for (U32 i = 1u; i < ringSizeFactor; ++i) {
             impl->_buffer->writeOrClearBytes(
                 i * bufferSizeInBytes,
@@ -272,7 +271,7 @@ void glGenericVertexData::lockBuffersInternal(const bool force) {
     }
 }
 
-void glGenericVertexData::rebuildCountAndIndexData(const U32 drawCount, const  U32 indexCount, const U32 firstIndex, const size_t indexBufferSize) {
+void glGenericVertexData::rebuildCountAndIndexData(const U32 drawCount, const GLsizei indexCount, const U32 firstIndex, const size_t indexBufferSize) {
     if (_lastDrawCount == drawCount && _lastIndexCount == indexCount && _lastFirstIndex == firstIndex) {
         return;
     }

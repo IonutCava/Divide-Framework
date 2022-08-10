@@ -121,6 +121,282 @@ bool VertexBuffer::create(const bool staticDraw, const bool keepData) {
     return true;
 }
 
+void VertexBuffer::setVertexCount(const size_t size) {
+    _dataLayoutChanged = true;
+    _data.resize(size);
+}
+
+size_t VertexBuffer::getVertexCount() const noexcept {
+    return _data.size();
+}
+
+
+const vector<VertexBuffer::Vertex>& VertexBuffer::getVertices() const noexcept {
+    return _data;
+}
+
+void VertexBuffer::reserveIndexCount(const size_t size) {
+    _indices.reserve(size);
+}
+
+void VertexBuffer::resizeVertexCount(const size_t size, const Vertex& defaultValue) {
+    _dataLayoutChanged = true;
+    _data.resize(size, defaultValue);
+}
+
+const vec3<F32>& VertexBuffer::getPosition(const U32 index) const {
+    return _data[index]._position;
+}
+
+const vec2<F32>& VertexBuffer::getTexCoord(const U32 index) const {
+    return _data[index]._texcoord;
+}
+
+F32 VertexBuffer::getNormal(const U32 index) const {
+    return _data[index]._normal;
+}
+
+F32 VertexBuffer::getNormal(const U32 index, vec3<F32>& normalOut) const {
+    const F32 normal = getNormal(index);
+    Util::UNPACK_VEC3(normal, normalOut.x, normalOut.y, normalOut.z);
+    return normal;
+}
+
+F32 VertexBuffer::getTangent(const U32 index) const {
+    return _data[index]._tangent;
+}
+
+F32 VertexBuffer::getTangent(const U32 index, vec3<F32>& tangentOut) const {
+    const F32 tangent = getTangent(index);
+    Util::UNPACK_VEC3(tangent, tangentOut.x, tangentOut.y, tangentOut.z);
+    return tangent;
+}
+
+P32 VertexBuffer::getBoneIndices(const U32 index) const {
+    return _data[index]._indices;
+}
+
+P32 VertexBuffer::getBoneWeightsPacked(const U32 index) const {
+    return _data[index]._weights;
+}
+
+vec4<F32> VertexBuffer::getBoneWeights(const U32 index) const {
+    const P32& weight = _data[index]._weights;
+    return vec4<F32>(UNORM_CHAR_TO_FLOAT(weight.b[0]),
+        UNORM_CHAR_TO_FLOAT(weight.b[1]),
+        UNORM_CHAR_TO_FLOAT(weight.b[2]),
+        UNORM_CHAR_TO_FLOAT(weight.b[3]));
+}
+
+size_t VertexBuffer::getIndexCount() const noexcept {
+    return _indices.size();
+}
+
+U32 VertexBuffer::getIndex(const size_t index) const {
+    assert(index < getIndexCount());
+    return _indices[index];
+}
+
+const vector<U32>& VertexBuffer::getIndices() const noexcept {
+    return _indices;
+}
+
+void VertexBuffer::addIndex(const U32 index) {
+    assert(useLargeIndices() || index <= U16_MAX);
+    _indices.push_back(index);
+    _indicesChanged = true;
+}
+
+void VertexBuffer::addIndices(const vector_fast<U16>& indices) {
+    eastl::transform(eastl::cbegin(indices),
+        eastl::cend(indices),
+        back_inserter(_indices),
+        static_caster<U16, U32>());
+
+    _indicesChanged = true;
+}
+
+void VertexBuffer::addIndices(const vector_fast<U32>& indices) {
+    _indices.insert(eastl::cend(_indices), eastl::cbegin(indices), eastl::cend(_indices));
+    _indicesChanged = true;
+}
+
+void VertexBuffer::addRestartIndex() {
+    primitiveRestartRequired(true);
+    addIndex(useLargeIndices() ? PRIMITIVE_RESTART_INDEX_L : PRIMITIVE_RESTART_INDEX_S);
+}
+
+void VertexBuffer::modifyPositionValues(const U32 indexOffset, const vector<vec3<F32>>& newValues) {
+    assert(indexOffset + newValues.size() - 1 < _data.size());
+    DIVIDE_ASSERT(_staticBuffer == false ||
+        _staticBuffer == true && !_data.empty(),
+        "VertexBuffer error: Modifying static buffers after creation is not allowed!");
+
+    vector<Vertex>::iterator it = _data.begin() + indexOffset;
+    for (const vec3<F32>& value : newValues) {
+        it++->_position.set(value);
+    }
+
+    _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base(AttribLocation::POSITION)];
+    _useAttribute[to_base(AttribLocation::POSITION)] = true;
+    _refreshQueued = true;
+}
+
+void VertexBuffer::modifyPositionValue(const U32 index, const vec3<F32>& newValue) {
+    modifyPositionValue(index, newValue.x, newValue.y, newValue.z);
+}
+
+void VertexBuffer::modifyPositionValue(const U32 index, const F32 x, const F32 y, const F32 z) {
+    assert(index < _data.size());
+
+    DIVIDE_ASSERT(_staticBuffer == false ||
+        _staticBuffer == true && !_data.empty(),
+        "VertexBuffer error: Modifying static buffers after creation is not allowed!");
+
+    _data[index]._position.set(x, y, z);
+    _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base(AttribLocation::POSITION)];
+    _useAttribute[to_base(AttribLocation::POSITION)] = true;
+    _refreshQueued = true;
+}
+
+void VertexBuffer::modifyColourValue(const U32 index, const UColour4& newValue) {
+    modifyColourValue(index, newValue.r, newValue.g, newValue.b, newValue.a);
+}
+
+void VertexBuffer::modifyColourValue(const U32 index, const U8 r, const U8 g, const U8 b, const U8 a) {
+    assert(index < _data.size());
+
+    DIVIDE_ASSERT(_staticBuffer == false ||
+        _staticBuffer == true && !_data.empty(),
+        "VertexBuffer error: Modifying static buffers after creation is not allowed!");
+
+    _data[index]._colour.set(r, g, b, a);
+    _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base(AttribLocation::COLOR)];
+    _useAttribute[to_base(AttribLocation::COLOR)] = true;
+    _refreshQueued = true;
+}
+
+void VertexBuffer::modifyNormalValue(const U32 index, const vec3<F32>& newValue) {
+    modifyNormalValue(index, newValue.x, newValue.y, newValue.z);
+}
+
+void VertexBuffer::modifyNormalValue(const U32 index, const F32 x, const F32 y, const F32 z) {
+    assert(index < _data.size());
+
+    DIVIDE_ASSERT(_staticBuffer == false ||
+        _staticBuffer == true && !_data.empty(),
+        "VertexBuffer error: Modifying static buffers after creation is not allowed!");
+
+    _data[index]._normal = Util::PACK_VEC3(x, y, z);
+    _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base(AttribLocation::NORMAL)];
+    _useAttribute[to_base(AttribLocation::NORMAL)] = true;
+    _refreshQueued = true;
+}
+
+void VertexBuffer::modifyTangentValue(const U32 index, const vec3<F32>& newValue) {
+    modifyTangentValue(index, newValue.x, newValue.y, newValue.z);
+}
+
+void VertexBuffer::modifyTangentValue(const U32 index, const F32 x, const F32 y, const F32 z) {
+    assert(index < _data.size());
+
+    DIVIDE_ASSERT(_staticBuffer == false ||
+        _staticBuffer == true && !_data.empty(),
+        "VertexBuffer error: Modifying static buffers after creation is not allowed!");
+
+    _data[index]._tangent = Util::PACK_VEC3(x, y, z);
+    _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base(AttribLocation::TANGENT)];
+    _useAttribute[to_base(AttribLocation::TANGENT)] = true;
+    _refreshQueued = true;
+}
+
+void VertexBuffer::modifyTexCoordValue(const U32 index, const vec2<F32>& newValue) {
+    modifyTexCoordValue(index, newValue.s, newValue.t);
+}
+
+void VertexBuffer::modifyTexCoordValue(const U32 index, const F32 s, const F32 t) {
+    assert(index < _data.size());
+
+    DIVIDE_ASSERT(_staticBuffer == false ||
+        _staticBuffer == true && !_data.empty(),
+        "VertexBuffer error: Modifying static buffers after creation is not allowed!");
+
+    _data[index]._texcoord.set(s, t);
+    _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base(AttribLocation::TEXCOORD)];
+    _useAttribute[to_base(AttribLocation::TEXCOORD)] = true;
+    _refreshQueued = true;
+}
+
+void VertexBuffer::modifyBoneIndices(const U32 index, const P32 indices) {
+    assert(index < _data.size());
+
+    DIVIDE_ASSERT(_staticBuffer == false ||
+        _staticBuffer == true && !_data.empty(),
+        "VertexBuffer error: Modifying static buffers after creation is not allowed!");
+
+    _data[index]._indices = indices;
+    _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base(AttribLocation::BONE_INDICE)];
+    _useAttribute[to_base(AttribLocation::BONE_INDICE)] = true;
+    _refreshQueued = true;
+}
+
+void VertexBuffer::modifyBoneWeights(const U32 index, const FColour4& weights) {
+    P32 boneWeights;
+    boneWeights.b[0] = FLOAT_TO_CHAR_UNORM(weights.x);
+    boneWeights.b[1] = FLOAT_TO_CHAR_UNORM(weights.y);
+    boneWeights.b[2] = FLOAT_TO_CHAR_UNORM(weights.z);
+    boneWeights.b[3] = FLOAT_TO_CHAR_UNORM(weights.w);
+    modifyBoneWeights(index, boneWeights);
+}
+
+void VertexBuffer::modifyBoneWeights(const U32 index, const P32 packedWeights) {
+    assert(index < _data.size());
+
+    DIVIDE_ASSERT(_staticBuffer == false ||
+        _staticBuffer == true && !_data.empty(),
+        "VertexBuffer error: Modifying static buffers after creation is not allowed!");
+
+    _data[index]._weights = packedWeights;
+    _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base(AttribLocation::BONE_WEIGHT)];
+    _useAttribute[to_base(AttribLocation::BONE_WEIGHT)] = true;
+    _refreshQueued = true;
+}
+
+size_t VertexBuffer::partitionCount() const noexcept {
+    return _partitions.size();
+}
+
+U16 VertexBuffer::partitionBuffer() {
+    const size_t previousIndexCount = _partitions.empty() ? 0 : _partitions.back().second;
+    const size_t previousOffset = _partitions.empty() ? 0 : _partitions.back().first;
+    size_t partitionedIndexCount = previousIndexCount + previousOffset;
+    _partitions.emplace_back(partitionedIndexCount, getIndexCount() - partitionedIndexCount);
+    return to_U16(_partitions.size() - 1);
+}
+
+size_t VertexBuffer::getPartitionIndexCount(const U16 partitionID) {
+    if (_partitions.empty()) {
+        return getIndexCount();
+    }
+    assert(partitionID < _partitions.size() && "VertexBuffer error: Invalid partition offset!");
+    return _partitions[partitionID].second;
+}
+
+size_t VertexBuffer::getPartitionOffset(const U16 partitionID) const {
+    if (_partitions.empty()) {
+        return 0;
+    }
+    assert(partitionID < _partitions.size() && "VertexBuffer error: Invalid partition offset!");
+    return _partitions[partitionID].first;
+}
+
+size_t VertexBuffer::lastPartitionOffset() const {
+    if (_partitions.empty()) {
+        return 0;
+    }
+    return getPartitionOffset(to_U16(_partitions.size() - 1));
+}
+
 /// Trim down the Vertex vector to only upload the minimal amount of data to the GPU
 bool VertexBuffer::getMinimalData(const vector<Vertex>& dataIn, Byte* dataOut, const size_t dataOutBufferLength) {
     assert(dataOut != nullptr);

@@ -34,7 +34,7 @@
 #define _GL_WRAPPER_H_
 
 #include "GLStateTracker.h"
-#include "glHardwareQueryPool.h"
+#include "glHardwareQuery.h"
 
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glMemoryManager.h"

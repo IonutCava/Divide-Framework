@@ -149,42 +149,42 @@ namespace Divide {
       public:
           struct BindConfigEntry
           {
-              U32 _handle = 0u;
-              size_t _offset = 0u;
-              size_t _range = 0u;
+              U32 _handle{ 0u };
+              size_t _offset{ 0u };
+              size_t _range{ 0u };
           };
 
         RenderStateBlock _activeState{};
 
         std::array<std::pair<Str64, U32>, 32> _debugScope;
-        U8 _debugScopeDepth = 0u;
+        U8 _debugScopeDepth{ 0u };
 
-        Pipeline const* _activePipeline = nullptr;
-        PrimitiveTopology _activeTopology = PrimitiveTopology::COUNT;
-        glFramebuffer*  _activeRenderTarget = nullptr;
+        Pipeline const* _activePipeline{ nullptr };
+        PrimitiveTopology _activeTopology{ PrimitiveTopology::COUNT };
+        glFramebuffer* _activeRenderTarget{ nullptr };
         /// Current active vertex array object's handle
-        GLuint _activeVAOID = GLUtil::k_invalidObjectID;
+        GLuint _activeVAOID{ GLUtil::k_invalidObjectID };
         /// 0 - current framebuffer, 1 - current read only framebuffer, 2 - current write only framebuffer
-        GLuint _activeFBID[3] = { GLUtil::k_invalidObjectID,
-                                  GLUtil::k_invalidObjectID,
-                                  GLUtil::k_invalidObjectID };
+        GLuint _activeFBID[3] { GLUtil::k_invalidObjectID,
+                                GLUtil::k_invalidObjectID,
+                                GLUtil::k_invalidObjectID };
         /// VB, IB, SB, TB, UB, PUB, DIB
         std::array<GLuint, 13> _activeBufferID = create_array<13, GLuint>(GLUtil::k_invalidObjectID);
         hashMap<GLuint, GLuint> _activeVAOIB;
 
-        GLint  _activePackUnpackAlignments[2] = { 1 , 1 };
-        GLint  _activePackUnpackRowLength[2] = { 0 , 0 };
-        GLint  _activePackUnpackSkipPixels[2] = { 0 , 0 };
-        GLint  _activePackUnpackSkipRows[2] = {0 , 0};
-        GLuint _activeShaderProgram = 0; //GLUtil::_invalidObjectID;
-        GLuint _activeShaderPipeline = 0;//GLUtil::_invalidObjectID;
-        GLfloat _depthNearVal = -1.f;
-        GLfloat _depthFarVal = -1.f;
-        bool _lowerLeftOrigin = true;
-        bool _negativeOneToOneDepth = true;
-        bool _depthWriteEnabled = true;
+        GLint  _activePackUnpackAlignments[2] { 1 , 1 };
+        GLint  _activePackUnpackRowLength[2]  { 0 , 0 };
+        GLint  _activePackUnpackSkipPixels[2] { 0 , 0 };
+        GLint  _activePackUnpackSkipRows[2]   { 0 , 0 };
+        GLuint _activeShaderProgram{ 0u }; //GLUtil::_invalidObjectID;
+        GLuint _activeShaderPipeline{ 0u };//GLUtil::_invalidObjectID;
+        GLfloat _depthNearVal{ -1.f };
+        GLfloat _depthFarVal{ -1.f };
+        bool _lowerLeftOrigin{ true };
+        bool _negativeOneToOneDepth{ true };
+        bool _depthWriteEnabled{ true };
         BlendingSettings _blendPropertiesGlobal;
-        GLboolean _blendEnabledGlobal = GL_FALSE;
+        GLboolean _blendEnabledGlobal{ GL_FALSE };
 
         // 32 buffer bindings for now
         using BindConfig = std::array<BindConfigEntry, 32>;
@@ -193,30 +193,30 @@ namespace Divide {
 
         vector<BlendingSettings> _blendProperties;
         vector<GLboolean> _blendEnabled;
-        GLenum    _currentCullMode = GL_BACK;
-        GLenum    _currentFrontFace = GL_CCW;
-        UColour4  _blendColour = UColour4(0, 0, 0, 0);
-        Rect<I32> _activeViewport = Rect<I32>(-1);
-        Rect<I32> _activeScissor = Rect<I32>(-1);
-        FColour4  _activeClearColour = DefaultColours::BLACK_U8;
+        GLenum    _currentCullMode{ GL_BACK };
+        GLenum    _currentFrontFace{ GL_CCW };
+        UColour4  _blendColour{ 0, 0, 0, 0 };
+        Rect<I32> _activeViewport{ -1, -1, -1, -1 };
+        Rect<I32> _activeScissor{ -1, -1, -1, -1 };
+        FColour4  _activeClearColour{ DefaultColours::BLACK_U8 };
 
         /// Boolean value used to verify if primitive restart index is enabled or disabled
-        bool _primitiveRestartEnabled = false;
-        bool _rasterizationEnabled = true;
+        bool _primitiveRestartEnabled{ false };
+        bool _rasterizationEnabled{ true };
 
         /// /*hash: texture slot  - array /*texture handle - texture type*/ hash
         using TextureBoundMapDef = std::array<vector<GLuint>, to_base(TextureType::COUNT)>;
-        TextureBoundMapDef _textureBoundMap = {};
+        TextureBoundMapDef _textureBoundMap;
 
         using ImageBoundMapDef = vector<ImageBindSettings>;
-        ImageBoundMapDef _imageBoundMap = {};
+        ImageBoundMapDef _imageBoundMap;
 
         /// /*texture slot*/ /*sampler handle*/
         using SamplerBoundMapDef = vector<GLuint>;
-        SamplerBoundMapDef _samplerBoundMap = {};
+        SamplerBoundMapDef _samplerBoundMap;
 
         using TextureTypeBoundMapDef = vector<TextureType>;
-        TextureTypeBoundMapDef _textureTypeBoundMap = {};
+        TextureTypeBoundMapDef _textureTypeBoundMap;
 
         VAOBindings _vaoBufferData;
     }; //class GLStateTracker

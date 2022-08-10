@@ -48,11 +48,11 @@ namespace GLMemory{
 
     struct Block
     {
-        Byte* _ptr = nullptr;
-        size_t _offset = 0u;
-        size_t _size = 0u;
-        GLuint _bufferHandle = GLUtil::k_invalidObjectID;
-        bool _free = true;
+        Byte* _ptr{ nullptr };
+        size_t _offset{ 0u };
+        size_t _size{ 0u };
+        GLuint _bufferHandle{ GLUtil::k_invalidObjectID };
+        bool _free{ true };
     };
 
     inline bool operator==(const Block &lhs, const Block &rhs) noexcept {
@@ -86,8 +86,8 @@ namespace GLMemory{
 
     protected:
         vector_fast<Block> _blocks;
-        Byte* _memory = nullptr;
-        const bool _poolAllocations = false;
+        Byte* _memory{ nullptr };
+        const bool _poolAllocations{ false };
     };
 
     class ChunkAllocator final : NonCopyable, NonMovable
@@ -104,7 +104,7 @@ namespace GLMemory{
                                       GLenum usage) const;
 
     private:
-        const size_t _size = 0u;
+        const size_t _size{ 0u };
     };
 
     class DeviceAllocator
@@ -128,8 +128,8 @@ namespace GLMemory{
 
     private:
         mutable Mutex _chunkAllocatorLock;
-        const GLMemoryType _memoryType = GLMemoryType::COUNT;
-        eastl::unique_ptr<ChunkAllocator> _chunkAllocator = nullptr;
+        const GLMemoryType _memoryType{ GLMemoryType::COUNT };
+        eastl::unique_ptr<ChunkAllocator> _chunkAllocator{ nullptr };
         vector_fast<Chunk*> _chunks;
     };
 } // namespace GLMemory

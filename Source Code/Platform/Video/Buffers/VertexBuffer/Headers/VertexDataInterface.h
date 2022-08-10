@@ -65,7 +65,6 @@ inline bool operator!=(const BufferParams& lhs, const BufferParams& rhs) noexcep
            lhs._updateUsage != rhs._updateUsage;
 }
 
-
 enum class BufferLockState : U8 {
     ACTIVE = 0,
     EXPIRED,

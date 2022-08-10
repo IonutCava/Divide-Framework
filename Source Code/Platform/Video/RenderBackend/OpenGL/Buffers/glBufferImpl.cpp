@@ -12,7 +12,7 @@
 
 namespace Divide {
 
-glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params, const std::pair<bufferPtr, size_t>& initialData)
+glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params, const std::pair<bufferPtr, size_t>& initialData, const char* name)
     : GUIDWrapper(),
       _params(params),
       _context(context)
@@ -56,7 +56,7 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params, c
                                      usage,
                                      _memoryBlock._bufferHandle,
                                      initialData,
-                                     _params._name);
+                                     name);
 
         _memoryBlock._offset = 0u;
         _memoryBlock._size = _params._dataSize;
@@ -78,7 +78,7 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params, c
                                           storageMask,
                                           accessMask,
                                           params._target,
-                                          _params._name,
+                                          name,
                                           initialData);
         assert(_memoryBlock._ptr != nullptr && _memoryBlock._size >= _params._dataSize && "PersistentBuffer::Create error: Can't mapped persistent buffer!");
     }
@@ -119,10 +119,6 @@ bool glBufferImpl::waitByteRange(const size_t offsetInBytes, const size_t rangeI
     }
 
     return true;
-}
-
-[[nodiscard]] inline bool Overlaps(const BufferMapRange& lhs, const BufferMapRange& rhs) noexcept {
-    return lhs._offset < (rhs._offset + rhs._range) && rhs._offset < (lhs._offset + lhs._range);
 }
 
 void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t rangeInBytes, const bufferPtr data, const bool zeroMem, const bool firstWrite) {
@@ -169,13 +165,11 @@ void glBufferImpl::readBytes(const size_t offsetInBytes, const size_t rangeInByt
         if (_copyBufferTarget == GLUtil::k_invalidObjectID || _copyBufferSize < rangeInBytes) {
             GLUtil::freeBuffer(_copyBufferTarget);
             _copyBufferSize = rangeInBytes;
-            const string copyBufferName = _params._name != nullptr ? string{ _params._name } + "_copy" 
-                                                                   : Util::StringFormat("COPY_BUFFER_%d", _memoryBlock._bufferHandle);
             GLUtil::createAndAllocBuffer(_copyBufferSize,
                                          GL_STREAM_READ,
                                          _copyBufferTarget,
                                          {nullptr, 0u},
-                                         copyBufferName.c_str());
+                                         Util::StringFormat("COPY_BUFFER_%d", _memoryBlock._bufferHandle).c_str());
         }
         glCopyNamedBufferSubData(_memoryBlock._bufferHandle, _copyBufferTarget, _memoryBlock._offset + offsetInBytes, 0u, rangeInBytes);
 

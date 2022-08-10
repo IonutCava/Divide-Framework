@@ -53,12 +53,13 @@ class glShaderBuffer final : public ShaderBuffer {
         [[nodiscard]] bool lockByteRange(BufferRange range, SyncObject* sync) const override;
         [[nodiscard]] bool bindByteRange(U8 bindIndex, BufferRange range) override;
 
-        [[nodiscard]] inline glBufferImpl* bufferImpl() const { return _bufferImpl.get(); }
-
         PROPERTY_R(size_t, alignedBufferSize, 0u);
 
     private:
-        glBufferImpl_uptr _bufferImpl = nullptr;
+        [[nodiscard]] inline glBufferImpl* bufferImpl() const { return _bufferImpl.get(); }
+
+    private:
+        glBufferImpl_uptr _bufferImpl{ nullptr };
 };
 
 };  // namespace Divide

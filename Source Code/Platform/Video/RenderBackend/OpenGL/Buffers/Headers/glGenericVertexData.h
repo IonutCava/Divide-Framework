@@ -40,40 +40,6 @@
 namespace Divide {
 
 class glGenericVertexData final : public GenericVertexData {
-    struct BufferBindConfig {
-        BufferBindConfig() noexcept : BufferBindConfig(0, 0, 0)
-        {
-        }
-
-        BufferBindConfig(const GLuint buffer,
-                         const size_t offset,
-                         const size_t stride) noexcept 
-            : _stride(stride),
-              _offset(offset),
-              _buffer(buffer)
-        {
-        }
-
-        void set(const BufferBindConfig& other) noexcept {
-            _buffer = other._buffer;
-            _offset = other._offset;
-            _stride = other._stride;
-        }
-
-        bool operator==(const BufferBindConfig& other) const noexcept {
-            return _buffer == other._buffer &&
-                   _offset == other._offset &&
-                   _stride == other._stride;
-        }
-
-        size_t _stride;
-        size_t _offset;
-        GLuint _buffer = GLUtil::k_invalidObjectID;
-    };
-    struct glVertexDataIndexContainer {
-        vector_fast<size_t> _countData;
-        vector_fast<GLuint> _indexOffsetData;
-    };
    public:
     glGenericVertexData(GFXDevice& context, U32 ringBufferLength, const char* name = nullptr);
     ~glGenericVertexData();
@@ -99,24 +65,12 @@ class glGenericVertexData final : public GenericVertexData {
     void lockBuffersInternal(bool force);
 
     void rebuildCountAndIndexData(U32 drawCount,
-                                  U32 indexCount,
+                                  GLsizei indexCount,
                                   U32 firstIndex,
                                   size_t indexBufferSize);
 
    private:
     struct genericBufferImpl {
-        genericBufferImpl() = default;
-        ~genericBufferImpl() = default;
-        genericBufferImpl(genericBufferImpl&& other) 
-            : _buffer(MOV(other._buffer)),
-              _ringSizeFactor(other._ringSizeFactor),
-              _writtenRange(other._writtenRange),
-              _bindConfig(other._bindConfig),
-              _elementStride(other._elementStride),
-              _useAutoSyncObjects(other._useAutoSyncObjects)
-        {
-        }
-
         glBufferImpl_uptr _buffer{ nullptr };
         size_t _ringSizeFactor{ 1u };
         size_t _elementStride{ 0u };
@@ -125,12 +79,17 @@ class glGenericVertexData final : public GenericVertexData {
         bool _usedAfterWrite{ false };
         bool _useAutoSyncObjects{ true };
     };
-    glVertexDataIndexContainer _indexInfo;
+
+    struct glVertexDataIndexContainer {
+        vector_fast<GLsizei> _countData;
+        vector_fast<GLuint> _indexOffsetData;
+    } _indexInfo;
+
     vector<std::pair<IndexBuffer, GLuint>> _idxBuffers;
     vector<genericBufferImpl> _bufferObjects;
     GLuint _indexBufferSize{ 0u };
     GLuint _lastDrawCount{ 0u };
-    GLuint _lastIndexCount{ 0u };
+    GLsizei _lastIndexCount{ 0 };
     GLuint _lastFirstIndex{ 0u };
     glLockManager _lockManager;
 };

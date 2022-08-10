@@ -169,9 +169,6 @@
     <ClInclude Include="../../Source Code/Platform\Video\Headers\RenderStagePass.h">
       <Filter>Video\Headers</Filter>
     </ClInclude>
-    <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Headers\glHardwareQueryPool.h">
-      <Filter>Video\RenderBackend\OpenGL\Headers</Filter>
-    </ClInclude>
     <ClInclude Include="../../Source Code/Platform\Video\Headers\BlendingProperties.h">
       <Filter>Video\Headers</Filter>
     </ClInclude>
@@ -381,9 +378,6 @@
     <ClCompile Include="../../Source Code/Platform\Audio\sdl_mixer\SDLWrapper.cpp">
       <Filter>Audio\SDL</Filter>
     </ClCompile>
-    <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\GLError.cpp">
-      <Filter>Video\RenderBackend\OpenGL</Filter>
-    </ClCompile>
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\glResources.cpp">
       <Filter>Video\RenderBackend\OpenGL</Filter>
     </ClCompile>
@@ -481,9 +475,6 @@
     </ClCompile>
     <ClCompile Include="../../Source Code/Platform\PlatformRuntime.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\glHardwareQuery.cpp">
-      <Filter>Video\RenderBackend\OpenGL</Filter>
-    </ClCompile>
-    <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\glHardwareQueryPool.cpp">
       <Filter>Video\RenderBackend\OpenGL</Filter>
     </ClCompile>
     <ClCompile Include="../../Source Code/Platform\Video\CommandBuffer.cpp">

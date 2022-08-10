@@ -45,34 +45,25 @@ struct BufferImplParams {
     GLenum _target{ GL_NONE };
     size_t _dataSize{0};
     bool _useChunkAllocation{ false };
-    const char* _name {nullptr};
 };
 
 inline bool operator==(const BufferImplParams& lhs, const BufferImplParams& rhs) noexcept {
     return lhs._bufferParams == rhs._bufferParams &&
            lhs._target == rhs._target &&
            lhs._dataSize == rhs._dataSize &&
-           lhs._useChunkAllocation == rhs._useChunkAllocation &&
-           strcmp(lhs._name == nullptr ? "" : lhs._name, rhs._name == nullptr ? "" : rhs._name) == 0;
+           lhs._useChunkAllocation == rhs._useChunkAllocation;
 }
 
 inline bool operator!=(const BufferImplParams& lhs, const BufferImplParams& rhs) noexcept {
     return lhs._bufferParams != rhs._bufferParams ||
            lhs._target != rhs._target ||
            lhs._dataSize != rhs._dataSize ||
-           lhs._useChunkAllocation != rhs._useChunkAllocation ||
-           strcmp(lhs._name == nullptr ? "" : lhs._name, rhs._name == nullptr ? "" : rhs._name) != 0;
+           lhs._useChunkAllocation != rhs._useChunkAllocation;
 }
-
-struct BufferMapRange
-{
-    size_t _offset = 0;
-    size_t _range = 0;
-};
 
 class glBufferImpl final : public GUIDWrapper {
 public:
-    explicit glBufferImpl(GFXDevice& context, const BufferImplParams& params, const std::pair<bufferPtr, size_t>& initialData);
+    explicit glBufferImpl(GFXDevice& context, const BufferImplParams& params, const std::pair<bufferPtr, size_t>& initialData, const char* name);
     virtual ~glBufferImpl();
 
     // Returns false if we encounter an error

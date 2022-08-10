@@ -152,14 +152,14 @@ namespace ECS { namespace Memory {
 		{
 			
 			// create initial chunk
-			std::unique_lock<std::shared_mutex> lock(m_lock);
+			std::scoped_lock<std::shared_mutex> lock(m_lock);
 			Allocator* allocator = new Allocator(ALLOC_SIZE, Allocate(ALLOC_SIZE, allocatorTag), sizeof(OBJECT_TYPE), alignof(OBJECT_TYPE));
 			this->m_Chunks.push_back(new MemoryChunk(allocator));
 		}
 
 		~MemoryChunkAllocator()
 		{
-			std::unique_lock<std::shared_mutex> lock(m_lock);
+			std::scoped_lock<std::shared_mutex> lock(m_lock);
 
 			// make sure all entities will be released!
 			for (auto chunk : this->m_Chunks)
@@ -215,7 +215,7 @@ namespace ECS { namespace Memory {
 			// all chunks are full... allocate a new one
 			if (slot == nullptr)
 			{
-				std::unique_lock<std::shared_mutex> lock(m_lock);
+				std::scoped_lock<std::shared_mutex> lock(m_lock);
 				Allocator* allocator = new Allocator(ALLOC_SIZE, Allocate(ALLOC_SIZE, this->m_AllocatorTag), sizeof(OBJECT_TYPE), alignof(OBJECT_TYPE));
 				MemoryChunk* newChunk = new MemoryChunk(allocator);		
 
@@ -247,7 +247,7 @@ namespace ECS { namespace Memory {
 
 		void DestroyObject(void* object)
 		{
-			std::unique_lock<std::shared_mutex> lock(m_lock);
+			std::scoped_lock<std::shared_mutex> lock(m_lock);
 			const uptr adr = reinterpret_cast<uptr>(object);
 
 			for (auto chunk : this->m_Chunks)

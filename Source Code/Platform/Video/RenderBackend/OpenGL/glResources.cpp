@@ -1,12 +1,14 @@
 #include "stdafx.h"
 
 #include "Headers/glResources.h"
-#include "Headers/glHardwareQueryPool.h"
+#include "Headers/glHardwareQuery.h"
 
 #include "Platform/Video/Headers/RenderAPIEnums.h"
 #include "Platform/Video/Headers/GenericDrawCommand.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 #include "Platform/Video/GLIM/glim.h"
+
+#include "Core/Headers/StringHelper.h"
 
 namespace Divide {
 
@@ -395,13 +397,13 @@ void SubmitSingleDirectCommand(const GLenum mode,
 void SubmitMultiDirectCommand(const U32 drawCount,
                               const GLenum mode,
                               const GLenum internalFormat,
-                              const size_t* const countData,
+                              const GLsizei* const count,
                               const bufferPtr indexData)
 {
     if (internalFormat != GL_NONE) {
-        glMultiDrawElements(mode, reinterpret_cast<const GLsizei*>(countData), internalFormat, static_cast<void* const*>(indexData), drawCount);
+        glMultiDrawElements(mode, count, internalFormat, static_cast<void* const*>(indexData), drawCount);
     } else {
-        glMultiDrawArrays(mode, static_cast<GLint*>(indexData), reinterpret_cast<const GLsizei*>(countData), drawCount);
+        glMultiDrawArrays(mode, static_cast<GLint*>(indexData), count, drawCount);
     }
 }
 
@@ -453,7 +455,7 @@ void SubmitDirectCommand(const IndirectDrawCommand& cmd,
                          const U32 drawCount,
                          const GLenum mode,
                          const GLenum internalFormat,
-                         const size_t* const countData,
+                         const GLsizei* const count,
                          const bufferPtr indexData) 
 {
     if (cmd.primCount > 1u) {
@@ -464,7 +466,7 @@ void SubmitDirectCommand(const IndirectDrawCommand& cmd,
         SubmitSingleDirectCommandInstanced(mode, internalFormat, cmd.indexCount, cmd.firstIndex, cmd.primCount, cmd.baseVertex, cmd.baseInstance);
     } else {
         if (drawCount > 1u) {
-            SubmitMultiDirectCommand(drawCount, mode, internalFormat, countData, indexData);
+            SubmitMultiDirectCommand(drawCount, mode, internalFormat, count, indexData);
         } else {
             assert(drawCount == 1u);
             SubmitSingleDirectCommand(mode, internalFormat, cmd.indexCount, cmd.firstIndex, cmd.baseVertex, cmd.baseInstance, cmd.firstIndex);
@@ -476,14 +478,14 @@ void SubmitRenderCommand(const GLenum primitiveType,
                          const GenericDrawCommand& drawCommand,
                          const bool useIndirectBuffer,
                          const GLenum internalFormat,
-                         const size_t* const countData,
+                         const GLsizei* const count,
                          const bufferPtr indexData)
 {
     
     if (useIndirectBuffer) {
         SubmitIndirectCommand(drawCommand._cmd, drawCommand._drawCount, primitiveType, internalFormat, drawCommand._commandOffset);
     } else {
-        SubmitDirectCommand(drawCommand._cmd, drawCommand._drawCount, primitiveType, internalFormat, countData, indexData);
+        SubmitDirectCommand(drawCommand._cmd, drawCommand._drawCount, primitiveType, internalFormat, count, indexData);
     }
 }
 
@@ -492,7 +494,7 @@ void SubmitRenderCommand(const GLenum primitiveType,
 void SubmitRenderCommand(const GenericDrawCommand& drawCommand,
                          const bool useIndirectBuffer,
                          const GLenum internalFormat,
-                         const size_t* const countData,
+                         const GLsizei* const count,
                          const bufferPtr indexData)
 {
     GLStateTracker* stateTracker = GL_API::GetStateTracker();
@@ -500,10 +502,10 @@ void SubmitRenderCommand(const GenericDrawCommand& drawCommand,
     stateTracker->toggleRasterization(!isEnabledOption(drawCommand, CmdRenderOptions::RENDER_NO_RASTERIZE));
 
     if (isEnabledOption(drawCommand, CmdRenderOptions::RENDER_GEOMETRY)) {
-        SubmitRenderCommand(glPrimitiveTypeTable[to_base(stateTracker->_activeTopology)], drawCommand, useIndirectBuffer, internalFormat, countData, indexData);
+        SubmitRenderCommand(glPrimitiveTypeTable[to_base(stateTracker->_activeTopology)], drawCommand, useIndirectBuffer, internalFormat, count, indexData);
     }
     if (isEnabledOption(drawCommand, CmdRenderOptions::RENDER_WIREFRAME)) {
-        SubmitRenderCommand(GL_LINE_LOOP, drawCommand, useIndirectBuffer, internalFormat, countData, indexData);
+        SubmitRenderCommand(GL_LINE_LOOP, drawCommand, useIndirectBuffer, internalFormat, count, indexData);
     }
 }
 
@@ -625,6 +627,106 @@ void glTextureViewCache::deallocate(GLuint& handle, const U32 frameDelay) {
     }
     
     DIVIDE_UNEXPECTED_CALL();
+}
+
+
+/// Print OpenGL specific messages
+void DebugCallback(const GLenum source,
+                   const GLenum type,
+                   const GLuint id,
+                   const GLenum severity,
+                   [[maybe_unused]] const GLsizei length,
+                   const GLchar* message,
+                   const void* userParam) {
+
+    if (type == GL_DEBUG_TYPE_OTHER && severity == GL_DEBUG_SEVERITY_NOTIFICATION) {
+        // Really don't care about these
+        return;
+    }
+
+    // Translate message source
+    const char* gl_source = "Unknown Source";
+    if (source == GL_DEBUG_SOURCE_API) {
+        gl_source = "OpenGL";
+    } else if (source == GL_DEBUG_SOURCE_WINDOW_SYSTEM) {
+        gl_source = "Windows";
+    } else if (source == GL_DEBUG_SOURCE_SHADER_COMPILER) {
+        gl_source = "Shader Compiler";
+    } else if (source == GL_DEBUG_SOURCE_THIRD_PARTY) {
+        gl_source = "Third Party";
+    } else if (source == GL_DEBUG_SOURCE_APPLICATION) {
+        gl_source = "Application";
+    } else if (source == GL_DEBUG_SOURCE_OTHER) {
+        gl_source = "Other";
+    }
+    // Translate message type
+    const char* gl_type = "Unknown Type";
+    if (type == GL_DEBUG_TYPE_ERROR) {
+        gl_type = "Error";
+    } else if (type == GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR) {
+        gl_type = "Deprecated behavior";
+    } else if (type == GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR) {
+        gl_type = "Undefined behavior";
+    } else if (type == GL_DEBUG_TYPE_PORTABILITY) {
+        gl_type = "Portability";
+    } else if (type == GL_DEBUG_TYPE_PERFORMANCE) {
+        gl_type = "Performance";
+    } else if (type == GL_DEBUG_TYPE_OTHER) {
+        gl_type = "Other";
+    } else if (type == GL_DEBUG_TYPE_MARKER) {
+        gl_type = "Marker";
+    } else if (type == GL_DEBUG_TYPE_PUSH_GROUP) {
+        gl_type = "Push";
+    } else if (type == GL_DEBUG_TYPE_POP_GROUP) {
+        gl_type = "Pop";
+    }
+
+    // Translate message severity
+    const char* gl_severity = "Unknown Severity";
+    if (severity == GL_DEBUG_SEVERITY_HIGH) {
+        gl_severity = "High";
+    } else if (severity == GL_DEBUG_SEVERITY_MEDIUM) {
+        gl_severity = "Medium";
+    } else if (severity == GL_DEBUG_SEVERITY_LOW) {
+        gl_severity = "Low";
+    } else if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) {
+        gl_severity = "Info";
+    }
+
+    std::string fullScope = "GL";
+    for (U8 i = 0u; i < GL_API::GetStateTracker()->_debugScopeDepth; ++i) {
+        fullScope.append("::");
+        fullScope.append(GL_API::GetStateTracker()->_debugScope[i].first);
+    }
+    // Print the message and the details
+    const GLuint activeProgram = GL_API::GetStateTracker()->_activeShaderProgram;
+    const GLuint activePipeline = GL_API::GetStateTracker()->_activeShaderPipeline;
+
+    const char* programMsg = "[%s Thread][Source: %s][Type: %s][ID: %d][Severity: %s][Bound Program : %d][DebugGroup: %s][Message: %s]";
+    const char* pipelineMsg = "[%s Thread][Source: %s][Type: %s][ID: %d][Severity: %s][Bound Pipeline : %d][DebugGroup: %s][Message: %s]";
+
+    const string outputError = Util::StringFormat(
+        activeProgram != 0u ? programMsg : pipelineMsg,
+        userParam == nullptr ? "Main" : "Worker",
+        gl_source,
+        gl_type,
+        id, 
+        gl_severity, 
+        activeProgram != 0u ? activeProgram : activePipeline,
+        fullScope.c_str(),
+        message);
+
+    const bool isConsoleIM = Console::immediateModeEnabled();
+    Console::toggleImmediateMode(true);
+    if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) {
+        Console::printfn(outputError.c_str());
+    } else if (severity == GL_DEBUG_SEVERITY_LOW) {
+        Console::warnfn(outputError.c_str());
+    } else {
+        Console::errorfn(outputError.c_str());
+    }
+    Console::toggleImmediateMode(isConsoleIM);
+
 }
 
 }  // namespace GLUtil

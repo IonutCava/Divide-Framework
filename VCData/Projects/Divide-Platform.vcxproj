@@ -82,7 +82,6 @@
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\Headers\glBufferImpl.h" />
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\Headers\glMemoryManager.h" />
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Headers\glHardwareQuery.h" />
-    <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Headers\glHardwareQueryPool.h" />
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Headers\glLockManager.h" />
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Headers\glResources.h" />
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Headers\GLWrapper.h" />
@@ -182,9 +181,7 @@
     <ClCompile Include="../../Source Code/Platform\Video\IMPrimitive.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\glBufferImpl.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\glMemoryManager.cpp" />
-    <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\GLError.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\glHardwareQuery.cpp" />
-    <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\glHardwareQueryPool.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\glLockManager.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\glResources.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\GLWrapper.cpp" />

@@ -101,5 +101,24 @@ protected:
     GLenum _queryType = GL_NONE;
 };
 
+
+class glHardwareQueryPool {
+public:
+    explicit glHardwareQueryPool(GFXDevice& context);
+    ~glHardwareQueryPool();
+
+    void init(const hashMap<GLenum, U32>& sizes);
+    void destroy();
+
+    glHardwareQueryRing& allocate(GLenum queryType);
+    void deallocate(const glHardwareQueryRing& query);
+
+private:
+    hashMap<GLenum, vector<glHardwareQueryRing*>> _queryPool;
+    hashMap<GLenum, U32> _index;
+
+    GFXDevice& _context;
+};
+
 };
 #endif //_GL_HARDWARE_QUERY_H_

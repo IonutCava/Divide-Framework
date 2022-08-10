@@ -36,10 +36,9 @@ glShaderBuffer::glShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor&
                                  : GL_UNIFORM_BUFFER;
 
     implParams._dataSize = _alignedBufferSize * queueLength();
-    implParams._name = _name.empty() ? nullptr : _name.c_str();
     implParams._useChunkAllocation = _usage != Usage::COMMAND_BUFFER;
 
-    _bufferImpl = eastl::make_unique<glBufferImpl>(context, implParams, descriptor._initialData);
+    _bufferImpl = eastl::make_unique<glBufferImpl>(context, implParams, descriptor._initialData, _name.empty() ? nullptr : _name.c_str());
 
     // Just to avoid issues with reading undefined or zero-initialised memory.
     // This is quite fast so far so worth it for now.
@@ -59,7 +58,7 @@ BufferLock glShaderBuffer::clearBytes(BufferRange range) {
 
     range._startOffset += queueWriteIndex() * _alignedBufferSize;
 
-    bufferImpl()->writeOrClearBytes(range._startOffset, range._length, nullptr, true);
+    bufferImpl()->writeOrClearBytes(range, nullptr, true);
     return { this, range };
 }
 
@@ -70,7 +69,7 @@ void glShaderBuffer::readBytes(BufferRange range, std::pair<bufferPtr, size_t> o
         DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
         range._startOffset += queueReadIndex() * _alignedBufferSize;
 
-        bufferImpl()->readBytes(range._startOffset, range._length, outData);
+        bufferImpl()->readBytes(range, outData);
     }
 }
 
@@ -81,14 +80,14 @@ BufferLock glShaderBuffer::writeBytes(BufferRange range, bufferPtr data) {
     DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
     range._startOffset += queueWriteIndex() * _alignedBufferSize;
 
-    bufferImpl()->writeOrClearBytes(range._startOffset, range._length, data, false);
+    bufferImpl()->writeOrClearBytes(range, data, false);
     return { this, range };
 }
 
 bool glShaderBuffer::lockByteRange(const BufferRange range, SyncObject* sync) const {
     DIVIDE_ASSERT(sync != nullptr);
     DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
-    return bufferImpl()->lockByteRange(range._startOffset, range._length, sync);
+    return bufferImpl()->lockByteRange(range, sync);
 }
 
 bool glShaderBuffer::bindByteRange(const U8 bindIndex, BufferRange range) {
