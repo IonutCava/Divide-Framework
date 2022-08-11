@@ -28,10 +28,6 @@ RenderTarget::RenderTarget(GFXDevice& context, const RenderTargetDescriptor& des
 {
 }
 
-RenderTarget::~RenderTarget()
-{
-}
-
 bool RenderTarget::create() {
     const auto updateAttachment = [&](const RTAttachmentDescriptor& attDesc) {
         bool printWarning = false;

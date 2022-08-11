@@ -227,7 +227,6 @@ namespace {
 bool RenderPassExecutor::s_globalDataInit = false;
 Mutex RenderPassExecutor::s_indirectionGlobalLock;
 std::array<bool, RenderPassExecutor::MAX_INDIRECTION_ENTRIES> RenderPassExecutor::s_indirectionFreeList{};
-SamplerAddress RenderPassExecutor::s_defaultTextureSamplerAddress = 0u;
 
 Pipeline* RenderPassExecutor::s_OITCompositionPipeline = nullptr;
 Pipeline* RenderPassExecutor::s_OITCompositionMSPipeline = nullptr;
@@ -261,17 +260,13 @@ ShaderBuffer* RenderPassExecutor::getCommandBufferForStagePass(const RenderStage
 }
 
 void RenderPassExecutor::OnStartup(const GFXDevice& gfx) {
-    s_defaultTextureSamplerAddress = Texture::DefaultTexture()->getGPUAddress(0u);
-    assert(Uvec2ToTexture(TextureToUVec2(s_defaultTextureSamplerAddress)) == s_defaultTextureSamplerAddress);
-
     s_indirectionFreeList.fill(true);
 
-    Material::OnStartup(s_defaultTextureSamplerAddress);
+    Material::OnStartup();
 }
 
 void RenderPassExecutor::OnShutdown([[maybe_unused]] const GFXDevice& gfx) {
     s_globalDataInit = false;
-    s_defaultTextureSamplerAddress = 0u;
     s_OITCompositionPipeline = nullptr;
     s_OITCompositionMSPipeline = nullptr;
     s_ResolveGBufferPipeline = nullptr;
@@ -314,13 +309,6 @@ void RenderPassExecutor::postInit(const ShaderProgram_ptr& OITCompositionShader,
 
     _transformBuffer._data._freeList.fill(true);
     _materialBuffer._data._lookupInfo.fill({ INVALID_MAT_HASH, g_invalidMaterialIndex });
-    const vec2<U32> defaultSampler = TextureToUVec2(s_defaultTextureSamplerAddress);
-    for (NodeMaterialTextures& textures : _texturesBuffer._data._gpuData) {
-        for (NodeMaterialTextureAddress& texture : textures) {
-            texture = defaultSampler;
-        }
-    }
-    _texturesBuffer._data._lookupInfo.fill({ INVALID_TEX_HASH, g_invalidTexturesIndex });
 
     ShaderBufferDescriptor bufferDescriptor = {};
     bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
@@ -340,16 +328,6 @@ void RenderPassExecutor::postInit(const ShaderProgram_ptr& OITCompositionShader,
         bufferDescriptor._name = Util::StringFormat("NODE_MATERIAL_DATA_%s", TypeUtil::RenderStageToString(_stage));
         _materialBuffer._gpuBuffer = _context.newSB(bufferDescriptor);
         _materialBuffer._bufferUpdateRangeHistory.resize(bufferDescriptor._ringBufferLength);
-    }
-    {// Node Textures buffer
-        static_assert((sizeof(NodeMaterialTextures) * Config::MAX_VISIBLE_NODES) % 256 == 0u);
-        static_assert(sizeof(NodeMaterialTextureAddress) == sizeof(SamplerAddress));
-
-        bufferDescriptor._bufferParams._elementCount = to_U32(_texturesBuffer._data._gpuData.size());
-        bufferDescriptor._bufferParams._elementSize = sizeof(NodeMaterialTextures);
-        bufferDescriptor._name = Util::StringFormat("NODE_TEXTURE_DATA_%s", TypeUtil::RenderStageToString(_stage));
-        _texturesBuffer._gpuBuffer = _context.newSB(bufferDescriptor);
-        _texturesBuffer._bufferUpdateRangeHistory.resize(bufferDescriptor._ringBufferLength);
     }
     {// Indirection Buffer
         bufferDescriptor._bufferParams._elementCount = to_U32(_indirectionBuffer._data._gpuData.size());
@@ -439,100 +417,6 @@ void RenderPassExecutor::processVisibleNodeTransform(RenderingComponent* rComp, 
 
         if (_indirectionBuffer._data._gpuData[indirectionIDX][TRANSFORM_IDX] != transformIdx || transformIdx == 0u) {
             _indirectionBuffer._data._gpuData[indirectionIDX][TRANSFORM_IDX] = transformIdx;
-            UpdateBufferRange(_indirectionBuffer, indirectionIDX);
-        }
-    }
-}
-
-U32 RenderPassExecutor::processVisibleNodeTextures(RenderingComponent* rComp, bool& cacheHit) {
-    OPTICK_EVENT();
-
-    cacheHit = false;
-
-    NodeMaterialTextures tempData{};
-    rComp->getMaterialTextures(tempData, s_defaultTextureSamplerAddress);
-    {
-        ScopedLock<Mutex> w_lock(_texturesBuffer._lock);
-        for (const NodeMaterialTextureAddress address : tempData) {
-            _uniqueTextureAddresses.insert(Uvec2ToTexture(address));
-        }
-    }
-    const size_t texturesHash = HashTexturesData(tempData);
-
-    const auto findTexturesMatch = [](const size_t targetHash, BufferTexturesData::LookupInfoContainer& data) -> U32 {
-        const U32 count = to_U32(data.size());
-        for (U32 idx = 0u; idx < count; ++idx) {
-            const auto [hash, _] = data[idx];
-            if (hash == targetHash) {
-                return idx;
-            }
-        }
-
-        return g_invalidTexturesIndex;
-    };
-
-
-    ScopedLock<Mutex> w_lock(_texturesBuffer._lock);
-    BufferTexturesData::LookupInfoContainer& infoContainer = _texturesBuffer._data._lookupInfo;
-    {// Try and match an existing texture blob
-        OPTICK_EVENT("processVisibleNode - try match textures");
-        const U32 idx = findTexturesMatch(texturesHash, infoContainer);
-        if (idx != g_invalidTexturesIndex) {
-            infoContainer[idx]._framesSinceLastUsed = 0u;
-            cacheHit = true;
-            UpdateBufferRangeLocked(_texturesBuffer, idx);
-            return idx;
-        }
-    }
-
-    // If we fail, try and find an empty slot and update it
-    OPTICK_EVENT("processVisibleNode - process unmatched textures");
-    // No match found (cache miss) so add a new entry.
-    BufferCandidate<U32> bestCandidate = { g_invalidTexturesIndex, 0u };
-
-    const U32 count = to_U32(infoContainer.size());
-    for (U32 idx = 0u; idx < count; ++idx) {
-        const auto [hash, framesSinceLastUsed] = infoContainer[idx];
-        // Two cases here. We either have empty slots (e.g. startup, cache clear, etc) ...
-        if (hash == INVALID_TEX_HASH) {
-            // ... in which case our current idx is what we are looking for ...
-            bestCandidate._index = idx;
-            bestCandidate._framesSinceLastUsed = g_maxMaterialFrameLifetime;
-            break;
-        }
-        // ... else we need to find a slot with a stale entry (but not one that is still in flight!)
-        if (framesSinceLastUsed >= std::max(to_U32(g_maxMaterialFrameLifetime), bestCandidate._framesSinceLastUsed)) {
-            bestCandidate._index = idx;
-            bestCandidate._framesSinceLastUsed = framesSinceLastUsed;
-            // Keep going and see if we can find an even older entry
-        }
-    }
-
-    assert(bestCandidate._index != g_invalidTexturesIndex);
-
-    infoContainer[bestCandidate._index] = { texturesHash, 0u };
-    assert(bestCandidate._index < _texturesBuffer._data._gpuData.size());
-    _texturesBuffer._data._gpuData[bestCandidate._index] = tempData;
-    UpdateBufferRangeLocked(_texturesBuffer, bestCandidate._index);
-
-    return bestCandidate._index;
-}
-
-void RenderPassExecutor::parseTextureRange(RenderBin::SortedQueue& queue, const U32 start, const U32 end) {
-    for (U32 i = start; i < end; ++i) {
-
-        const U32 indirectionIDX = Attorney::RenderingCompRenderPassExecutor::getIndirectionBufferEntry(queue[i]);
-        if (!NodeNeedsUpdate(_texturesBuffer, indirectionIDX)) {
-            continue;
-        }
-
-        [[maybe_unused]] bool cacheHit = false;
-        const U32 idx = processVisibleNodeTextures(queue[i], cacheHit);
-        DIVIDE_ASSERT(idx != g_invalidTexturesIndex && idx != U32_MAX);
-
-        // We are already protected by the atomic boolean for this entry
-        if (_indirectionBuffer._data._gpuData[indirectionIDX][TEXTURES_IDX] != idx || idx == 0u) {
-            _indirectionBuffer._data._gpuData[indirectionIDX][TEXTURES_IDX] = idx;
             UpdateBufferRange(_indirectionBuffer, indirectionIDX);
         }
     }
@@ -638,8 +522,6 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
     RenderPass::BufferData bufferData = _parent.getPassForStage(_stage).getBufferData(stagePass);
 
     _drawCommands.clear();
-    _uniqueTextureAddresses.clear();
-    _uniqueTextureAddresses.insert(s_defaultTextureSamplerAddress);
 
     for (RenderBin::SortedQueue& sQueue : _sortedQueues) {
         sQueue.resize(0);
@@ -685,23 +567,6 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
             nodeCount += queueSize;
         }
         assert(nodeCount < Config::MAX_VISIBLE_NODES);
-    }
-    {
-        OPTICK_EVENT("buildDrawCommands - process nodes: Textures")
-        for (RenderBin::SortedQueue& queue : _sortedQueues) {
-            const U32 queueSize = to_U32(queue.size());
-            if (queueSize > g_nodesPerPrepareDrawPartition) {
-                const U32 midPoint = queueSize / 2;
-                Start(*CreateTask(updateTask, [this, &queue, midPoint](const Task&) {
-                    parseTextureRange(queue, 0u, midPoint);
-                }), pool); 
-                Start(*CreateTask(updateTask, [this, &queue, midPoint, queueSize](const Task&) {
-                    parseTextureRange(queue, midPoint, queueSize);
-                }), pool);
-            } else {
-                parseTextureRange(queue, 0u, queueSize);
-            }
-        }
     }
     {
         OPTICK_EVENT("buildDrawCommands - process nodes: Materials")
@@ -777,10 +642,6 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
         WriteToGPUBuffer(_transformBuffer, memCmdInOut);
     }
     {
-        OPTICK_EVENT("buildDrawCommands - update texture buffer");
-        WriteToGPUBuffer(_texturesBuffer, memCmdInOut);
-    }
-    {
         OPTICK_EVENT("buildDrawCommands - update indirection buffer");
         WriteToGPUBuffer(_indirectionBuffer, memCmdInOut);
     }
@@ -821,32 +682,6 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
         binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
         binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::VERTEX;
         binding._data.As<ShaderBufferEntry>() = { _indirectionBuffer._gpuBuffer.get(), { 0u, _indirectionBuffer._highWaterMark } };
-    }
-    {
-        auto& binding = set._bindings.emplace_back();
-        binding._resourceSlot = to_base(ShaderBufferLocation::NODE_TEXTURE_DATA);
-        binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::ALL_DRAW;
-        binding._data.As<ShaderBufferEntry>() = { _texturesBuffer._gpuBuffer.get(), { 0u, _texturesBuffer._highWaterMark } };
-
-    }
-
-    if (!_uniqueTextureAddresses.empty()) {
-        GFX::SetTexturesResidencyCommand residencyCmd{};
-        residencyCmd._makeResident = true;
-
-        size_t texIdx = 0u;
-        const size_t capacity = residencyCmd._addresses.size();
-        for (const SamplerAddress& address : _uniqueTextureAddresses) {
-            residencyCmd._addresses[texIdx++] = address;
-            if (texIdx == capacity) {
-                GFX::EnqueueCommand(bufferInOut, residencyCmd);
-                texIdx = 0u;
-            }
-        }
-        if (texIdx > 0u) {
-            GFX::EnqueueCommand(bufferInOut, residencyCmd);
-        }
     }
 
     return queueTotalSize;
@@ -1495,16 +1330,10 @@ void RenderPassExecutor::postRender() {
     ExecutorBufferPostRender(_indirectionBuffer);
     ExecutorBufferPostRender(_materialBuffer);
     ExecutorBufferPostRender(_transformBuffer);
-    ExecutorBufferPostRender(_texturesBuffer);
     {
         OPTICK_EVENT("Increment Lifetime");
         for (BufferMaterialData::LookupInfo& it : _materialBuffer._data._lookupInfo) {
             if (it._hash != INVALID_MAT_HASH) {
-                ++it._framesSinceLastUsed;
-            }
-        }
-        for (BufferTexturesData::LookupInfo& it : _texturesBuffer._data._lookupInfo) {
-            if (it._hash != INVALID_TEX_HASH) {
                 ++it._framesSinceLastUsed;
             }
         }
@@ -1515,7 +1344,7 @@ void RenderPassExecutor::postRender() {
         _transformBuffer._data._freeList.fill(true);
     }
 
-    _materialBuffer._highWaterMark = _transformBuffer._highWaterMark = _texturesBuffer._highWaterMark = 0u;
+    _materialBuffer._highWaterMark = _transformBuffer._highWaterMark = 0u;
 }
 
 U32 RenderPassExecutor::renderQueueSize() const {

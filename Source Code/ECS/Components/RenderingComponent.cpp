@@ -258,15 +258,6 @@ void RenderingComponent::getMaterialData(NodeMaterialData& dataOut) const {
     }
 }
 
-void RenderingComponent::getMaterialTextures(NodeMaterialTextures& texturesOut, const SamplerAddress defaultTexAddress) const {
-    if (_materialInstance != nullptr) {
-        _materialInstance->getTextures(*this, texturesOut);
-        return;
-    }
-
-    texturesOut.fill(TextureToUVec2(defaultTexAddress));
-}
-
 /// Called after the current node was rendered
 void RenderingComponent::postRender(const SceneRenderState& sceneRenderState, const RenderStagePass& renderStagePass, GFX::CommandBuffer& bufferInOut) {
     if (renderStagePass._stage != RenderStage::DISPLAY ||

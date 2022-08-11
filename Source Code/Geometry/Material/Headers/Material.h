@@ -223,14 +223,13 @@ class Material final : public CachedResource {
         Texture_ptr _ptr{ nullptr };
         size_t _sampler{ 0u };
         TexturePrePassUsage _useForPrePass{ TexturePrePassUsage::AUTO };
-        SamplerAddress _address{ 0u };
         TextureOperation _operation{ TextureOperation::NONE };
     };
 
    public:
     explicit Material(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str256& name);
 
-    static void OnStartup(SamplerAddress defaultTexAddress);
+    static void OnStartup();
     static void OnShutdown();
     static void RecomputeShaders();
     static void Update(U64 deltaTimeUS);
@@ -269,7 +268,6 @@ class Material final : public CachedResource {
 
     // Returns the material's hash value (just for the uploadable data)
     void getData(const RenderingComponent& parentComp, U32 bestProbeID, NodeMaterialData& dataOut);
-    void getTextures(const RenderingComponent& parentComp, NodeMaterialTextures& texturesOut);
 
     [[nodiscard]] FColour4 getBaseColour(bool& hasTextureOverride, Texture*& textureOut) const noexcept;
     [[nodiscard]] FColour3 getEmissive(bool& hasTextureOverride, Texture*& textureOut) const noexcept;
@@ -352,7 +350,6 @@ class Material final : public CachedResource {
 
     size_t _shaderAttributesHash{ 0u };
 
-    static SamplerAddress s_defaultTextureAddress;
     static bool s_shadersDirty;
 };
 

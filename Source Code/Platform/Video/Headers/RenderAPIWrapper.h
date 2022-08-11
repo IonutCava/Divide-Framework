@@ -121,7 +121,6 @@ struct DeviceInformation
     U8 _maxClipAndCullDistances = 8u;
     GPUVendor _vendor = GPUVendor::COUNT;
     GPURenderer _renderer = GPURenderer::COUNT;
-    bool _bindlessTexturesSupported = false;
 };
 
 /// Renderer Programming Interface

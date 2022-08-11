@@ -53,8 +53,6 @@ class glShaderBuffer final : public ShaderBuffer {
         [[nodiscard]] bool lockByteRange(BufferRange range, SyncObject* sync) const override;
         [[nodiscard]] bool bindByteRange(U8 bindIndex, BufferRange range) override;
 
-        PROPERTY_R(size_t, alignedBufferSize, 0u);
-
     private:
         [[nodiscard]] inline glBufferImpl* bufferImpl() const { return _bufferImpl.get(); }
 

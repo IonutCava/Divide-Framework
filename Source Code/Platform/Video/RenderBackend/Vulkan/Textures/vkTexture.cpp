@@ -30,10 +30,6 @@ namespace Divide {
         _vkDescriptor.imageLayout = _imageLayout;
     }
 
-    [[nodiscard]] SamplerAddress vkTexture::getGPUAddress([[maybe_unused]] size_t samplerHash) noexcept {
-        return 0u;
-    }
-
     bool vkTexture::unload() {
         auto device = VK_API::GetStateTracker()->_device->getVKDevice();
 
@@ -47,31 +43,10 @@ namespace Divide {
         return true;
     }
 
-    void vkTexture::reserveStorage(const bool fromFile) {
-        constexpr bool useStaging = true;
-
-        auto physicalDevice = VK_API::GetStateTracker()->_device->getPhysicalDevice();
-        const VkFormat vkInternalFormat = VKUtil::internalFormat(_descriptor.baseFormat(), _descriptor.dataType(), _descriptor.srgb(), _descriptor.normalized());
-        //const U8 msaaSamples = _descriptor.msaaSamples();
-
-        assert(
-            !(_loadingData._textureType == TextureType::TEXTURE_CUBE_MAP && _width != _height) &&
-            "vkTexture::reserverStorage error: width and height for cube map texture do not match!");
-        // Get device properties for the requested texture format
-        VkFormatProperties formatProperties;
-        vkGetPhysicalDeviceFormatProperties(physicalDevice, vkInternalFormat, &formatProperties);
-
-        VkMemoryAllocateInfo memAllocInfo{};
-        memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-
-        //VkMemoryRequirements memReqs;
-        // Use a separate command buffer for texture loading
-        //VkCommandBuffer copyCmd = VK_API::GetStateTracker()->_device->createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
-        if_constexpr(useStaging)
-        {
-        } else {
-        }
-
+    void vkTexture::reserveStorage() {
+        //auto& physicalDevice = VK_API::GetStateTracker()->_device->getPhysicalDevice();
+        //const VkFormat vkInternalFormat = VKUtil::internalFormat(_descriptor.baseFormat(), _descriptor.dataType(), _descriptor.srgb(), _descriptor.normalized());
+     
         updateDescriptor();
     }
 

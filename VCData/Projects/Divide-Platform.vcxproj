@@ -139,6 +139,7 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\VKDevice.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\vkIMPrimitive.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\VKSwapChain.h" />
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\VMAInclude.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Shaders\Headers\vkShader.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Shaders\Headers\vkShaderProgram.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Textures\Headers\vkTexture.h" />

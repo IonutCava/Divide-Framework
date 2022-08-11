@@ -33,7 +33,6 @@ IMPLEMENT_COMMAND(PushCameraCommand);
 IMPLEMENT_COMMAND(PopCameraCommand);
 IMPLEMENT_COMMAND(SetClipPlanesCommand);
 IMPLEMENT_COMMAND(BindDescriptorSetsCommand);
-IMPLEMENT_COMMAND(SetTexturesResidencyCommand);
 IMPLEMENT_COMMAND(BeginDebugScopeCommand);
 IMPLEMENT_COMMAND(EndDebugScopeCommand);
 IMPLEMENT_COMMAND(AddDebugMessageCommand);
@@ -289,18 +288,6 @@ string ToString(const AddDebugMessageCommand& cmd, const U16 indent) {
     return ret;
 }
 
-string ToString(const SetTexturesResidencyCommand& cmd, const U16 indent) {
-    string ret = "\n";
-    for (const SamplerAddress& address : cmd._addresses) {
-        ret.append("    ");
-        for (U16 j = 0; j < indent; ++j) {
-            ret.append("    ");
-        }
-        ret.append(Util::StringFormat("Address: [ %zu ] State: [ %s ]\n", address, cmd._makeResident ? "True" : "False"));
-    }
-    return ret;
-}
-
 string ToString(const DrawTextCommand& cmd, const U16 indent) {
     string ret = "\n";
     size_t i = 0;
@@ -391,10 +378,6 @@ string ToString(const CommandBase& cmd, U16 indent) {
         case CommandType::BIND_DESCRIPTOR_SETS:
         {
             ret.append(ToString(static_cast<const BindDescriptorSetsCommand&>(cmd), indent));
-        }break;
-        case CommandType::SET_TEXTURE_RESIDENCY:
-        {
-            ret.append(ToString(static_cast<const SetTexturesResidencyCommand&>(cmd), indent));
         }break;
         case CommandType::BEGIN_DEBUG_SCOPE:
         {

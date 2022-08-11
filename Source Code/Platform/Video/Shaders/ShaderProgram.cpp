@@ -76,8 +76,6 @@ constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
 constexpr I8 s_maxHeaderRecursionLevel = 64;
 
-bool ShaderProgram::s_UseBindlessTextures = false;
-
 Mutex ShaderProgram::s_atomLock;
 Mutex ShaderProgram::g_textDumpLock;
 Mutex ShaderProgram::g_binaryDumpLock;
@@ -455,10 +453,6 @@ bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo,
     AppendToShaderHeader(ShaderType::COUNT, "/*Copyright 2009-2022 DIVIDE-Studio*/");
 
     if (renderingAPI == RenderAPI::OpenGL) {
-        if (ShaderProgram::s_UseBindlessTextures) {
-            AppendToShaderHeader(ShaderType::COUNT, "#extension  GL_ARB_bindless_texture : require");
-        }
-
         //AppendToShaderHeader(ShaderType::COUNT, "#extension GL_ARB_gpu_shader5 : require");
         AppendToShaderHeader(ShaderType::COUNT, "#define SPECIFY_SET(SET)");
         AppendToShaderHeader(ShaderType::COUNT, "#define TARGET_OPENGL");
@@ -508,10 +502,6 @@ bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo,
 
     if_constexpr(Config::USE_COLOURED_WOIT) {
         AppendToShaderHeader(ShaderType::COUNT, "#define USE_COLOURED_WOIT");
-    }
-
-    if (ShaderProgram::s_UseBindlessTextures) {
-        AppendToShaderHeader(ShaderType::COUNT, "#define BINDLESS_TEXTURES_ENABLED");
     }
 
     // ToDo: Automate adding of buffer bindings by using, for example, a TypeUtil::bufferBindingToString -Ionut
@@ -929,14 +919,11 @@ ErrorCode ShaderProgram::OnStartup(ResourceCache* parentCache) {
     const PlatformContext& ctx = parentCache->context();
     const Configuration& config = ctx.config();
 
-    ShaderProgram::s_UseBindlessTextures = config.rendering.useBindlessTextures && ctx.gfx().GetDeviceInformation()._bindlessTexturesSupported;
     if (!InitGLSW(ctx.gfx().renderAPI(), GFXDevice::GetDeviceInformation(), config)) {
         return ErrorCode::GLSL_INIT_ERROR;
     }
 
     SpirvHelper::Init();
-
-    Console::printfn(Locale::Get(_ID("GLSL_BINDLESS_TEXTURES_STATE")), ShaderProgram::s_UseBindlessTextures ? "True" : "False");
 
     return ErrorCode::NO_ERR;
 }

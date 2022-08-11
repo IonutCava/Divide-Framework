@@ -36,8 +36,10 @@
 #include "VKPlaceholderObjects.h"
 #include "VKDevice.h"
 #include "VKSwapChain.h"
+#include "VMAInclude.h"
 
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
+
 
 namespace Divide {
 
@@ -107,6 +109,7 @@ private:
 
 private:
     GFXDevice& _context;
+    VmaAllocator _allocator;
 
     eastl::unique_ptr<VKDevice> _device = nullptr;
     eastl::unique_ptr<VKSwapChain> _swapChain = nullptr;

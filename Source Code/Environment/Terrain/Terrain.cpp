@@ -223,23 +223,23 @@ void Terrain::postBuild() {
             idxBuff.data = indices.data();
             idxBuff.dynamic = false;
 
-            GenericVertexData::SetBufferParams params = {};
-            params._bufferParams._elementSize = sizeof(TileRing::InstanceData);
-            params._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
-            params._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
-
             _terrainBuffer = _context.newGVD(1);
             _terrainBuffer->setIndexBuffer(idxBuff);
 
             vector<TileRing::InstanceData> vbData;
             vbData.reserve(TessellationParams::QUAD_LIST_INDEX_COUNT * ringCount);
 
+            GenericVertexData::SetBufferParams params = {};
+            params._bindConfig = { 0u, 0u };
+            params._bufferParams._elementSize = sizeof(TileRing::InstanceData);
+            params._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
+            params._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
+
             for (size_t i = 0u; i < ringCount; ++i) {
                 vector<TileRing::InstanceData> ringData = _tileRings[i]->createInstanceDataVB(to_I32(i));
                 vbData.insert(cend(vbData), cbegin(ringData), cend(ringData));
                 params._bufferParams._elementCount += to_U32(ringData.size());
             }
-            params._bindConfig = { 0u, 0u };
             params._initialData = { (Byte*)vbData.data(), vbData.size() * sizeof(TileRing::InstanceData) };
             _terrainBuffer->setBuffer(params);
         }

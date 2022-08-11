@@ -97,12 +97,11 @@ namespace Divide {
 
     void ContentExplorerWindow::update([[maybe_unused]] const U64 deltaTimeUS) {
 
-        while (!_textureLoadQueue.empty()) {
-            if (!_textureLoadQueue.empty()) {
-                const auto [path, name] = _textureLoadQueue.top();
-                _textureLoadQueue.pop();
-                _loadedTextures[_ID((path + "/" + name._path).c_str())] = getTextureForPath(ResourcePath(path), ResourcePath(name._path));
-            }
+        // One per frame to avoid massive stutters.
+        if (!_textureLoadQueue.empty()) {
+            const auto [path, name] = _textureLoadQueue.top();
+            _textureLoadQueue.pop();
+            _loadedTextures[_ID((path + "/" + name._path).c_str())] = getTextureForPath(ResourcePath(path), ResourcePath(name._path));
         }
 
         _textureLoadQueueLocked = false;

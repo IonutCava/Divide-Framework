@@ -35,26 +35,6 @@ glTexture::~glTexture()
     unload();
 }
 
-SamplerAddress glTexture::getGPUAddress(const size_t samplerHash) {
-    assert(_data._textureType != TextureType::COUNT);
-
-    if (ShaderProgram::s_UseBindlessTextures) {
-        const GLuint sampler = GL_API::GetSamplerHandle(samplerHash);
-        ScopedLock<Mutex> w_lock(_gpuAddressesLock);
-        if (_cachedAddressForSampler._sampler != sampler) {
-            if (sampler != 0u) {
-                _cachedAddressForSampler._address = glGetTextureSamplerHandleARB(_data._textureHandle, sampler);
-                _cachedAddressForSampler._sampler = sampler;
-            } else {
-                _cachedAddressForSampler._address = _baseTexAddress;
-                _cachedAddressForSampler._sampler = 0u;
-            }
-        }
-    }
-
-    return _cachedAddressForSampler._address;
-}
-
 bool glTexture::unload() {
     if (_data._textureHandle > 0u) {
         if (GL_API::GetStateTracker()->unbindTexture(_data._textureType, _data._textureHandle)) {
@@ -73,10 +53,11 @@ void glTexture::postLoad() {
     Texture::postLoad();
 }
 
-void glTexture::reserveStorage(const bool fromFile) {
+void glTexture::reserveStorage() {
     assert(
         !(_loadingData._textureType == TextureType::TEXTURE_CUBE_MAP && _width != _height) &&
         "glTexture::reserverStorage error: width and height for cube map texture do not match!");
+    assert(!_hasStorage && "glTexture::reserveStorage error: double call detected!");
 
     const GLenum glInternalFormat = GLUtil::internalFormat(_descriptor.baseFormat(), _descriptor.dataType(), _descriptor.srgb(), _descriptor.normalized());
     const GLuint handle = _loadingData._textureHandle;
@@ -84,6 +65,7 @@ void glTexture::reserveStorage(const bool fromFile) {
 
     switch (_loadingData._textureType) {
         case TextureType::TEXTURE_1D: {
+            assert(_numLayers == 1u);
             glTextureStorage1D(
                 handle,
                 mipCount(),
@@ -94,6 +76,7 @@ void glTexture::reserveStorage(const bool fromFile) {
         case TextureType::TEXTURE_1D_ARRAY:
         case TextureType::TEXTURE_CUBE_MAP:
         case TextureType::TEXTURE_2D: {
+            assert(_loadingData._textureType == TextureType::TEXTURE_1D_ARRAY || _numLayers == 1u);
             if (msaaSamples == 0u) {
                 glTextureStorage2D(
                     handle,
@@ -114,9 +97,9 @@ void glTexture::reserveStorage(const bool fromFile) {
         case TextureType::TEXTURE_3D:
         case TextureType::TEXTURE_2D_ARRAY:
         case TextureType::TEXTURE_CUBE_ARRAY: {
-            U32 numFaces = 1;
-            if (_loadingData._textureType == TextureType::TEXTURE_CUBE_ARRAY && !fromFile) {
-                numFaces = 6;
+            U32 layerCount = _numLayers;
+            if (_loadingData._textureType == TextureType::TEXTURE_CUBE_ARRAY) {
+                layerCount *= 6u;
             }
             if (msaaSamples == 0u) {
                 glTextureStorage3D(
@@ -125,7 +108,7 @@ void glTexture::reserveStorage(const bool fromFile) {
                     glInternalFormat,
                     _width,
                     _height,
-                    _numLayers * numFaces);
+                    layerCount);
             } else {
                 glTextureStorage3DMultisample(
                     handle,
@@ -133,12 +116,14 @@ void glTexture::reserveStorage(const bool fromFile) {
                     glInternalFormat,
                     _width,
                     _height,
-                    _numLayers * numFaces,
+                    layerCount,
                     GL_TRUE);
             }
         } break;
         default: break;
     }
+
+    _hasStorage = true;
 }
 
 void glTexture::prepareTextureData(const U16 width, const U16 height) {
@@ -154,11 +139,13 @@ void glTexture::prepareTextureData(const U16 width, const U16 height) {
     _type = GLUtil::internalTextureType(_loadingData._textureType, _descriptor.msaaSamples());
 
     glCreateTextures(_type, 1, &_loadingData._textureHandle);
-    
+    _hasStorage = false;
     assert(_loadingData._textureHandle != 0 && "glTexture error: failed to generate new texture handle!");
     if_constexpr(Config::ENABLE_GPU_VALIDATION) {
         glObjectLabel(GL_TEXTURE, _loadingData._textureHandle, -1, resourceName().c_str());
     }
+
+    reserveStorage();
 }
 
 void glTexture::submitTextureData() {
@@ -174,16 +161,7 @@ void glTexture::submitTextureData() {
         glDeleteTextures(1, &_data._textureHandle);
     }
 
-    ScopedLock<Mutex> w_lock(_gpuAddressesLock);
     _data = _loadingData;
-
-    if (ShaderProgram::s_UseBindlessTextures) {
-        _baseTexAddress = glGetTextureHandleARB(_data._textureHandle);
-    } else {
-        _baseTexAddress = _data._textureHandle;
-    }
-    _cachedAddressForSampler._address = _baseTexAddress;
-    _cachedAddressForSampler._sampler = 0u;
 }
 
 void glTexture::loadDataCompressed(const ImageTools::ImageData& imageData) {

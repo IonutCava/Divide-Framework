@@ -104,19 +104,6 @@ public:
         LookupInfoContainer _lookupInfo{};
     };
 
-    struct BufferTexturesData
-    {
-        struct LookupInfo {
-            size_t _hash = INVALID_TEX_HASH;
-            U32 _framesSinceLastUsed = g_invalidTexturesIndex;
-        };
-        using FlagContainer = std::array<std::atomic_bool, Config::MAX_VISIBLE_NODES>;
-        using LookupInfoContainer = std::array<LookupInfo, Config::MAX_VISIBLE_NODES>;
-        using TexturesDataContainer = std::array<NodeMaterialTextures, Config::MAX_VISIBLE_NODES>;
-        TexturesDataContainer _gpuData{};
-        LookupInfoContainer _lookupInfo{};
-
-    };
     struct BufferTransformData
     {
         using FlagContainer = std::array<std::atomic_bool, Config::MAX_VISIBLE_NODES>;
@@ -200,8 +187,7 @@ private:
 
     void processVisibleNodeTransform(RenderingComponent* rComp,
                                      D64 interpolationFactor);
-    
-    [[nodiscard]] U32 processVisibleNodeTextures(RenderingComponent* rComp, bool& cacheHit);
+
     [[nodiscard]] U16 processVisibleNodeMaterial(RenderingComponent* rComp, bool& cacheHit);
 
     U16 buildDrawCommands(const RenderPassParams& params, bool doPrePass, bool doOITPass, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
@@ -223,7 +209,6 @@ private:
                                  GFX::CommandBuffer& bufferInOut) const;
 
     [[nodiscard]] bool validateNodesForStagePass(VisibleNodeList<>& nodes, RenderStagePass stagePass);
-    void parseTextureRange(RenderBin::SortedQueue& queue, const U32 start, const U32 end);
     void parseMaterialRange(RenderBin::SortedQueue& queue, U32 start, U32 end);
 
 private:
@@ -242,17 +227,13 @@ private:
 
     vector<ShaderBuffer_uptr> _cmdBuffers;
 
-    eastl::set<SamplerAddress> _uniqueTextureAddresses{};
-
     ExecutorBuffer<BufferMaterialData> _materialBuffer;
-    ExecutorBuffer<BufferTexturesData> _texturesBuffer;
     ExecutorBuffer<BufferTransformData> _transformBuffer;
     ExecutorBuffer<BufferIndirectionData> _indirectionBuffer;
 
     static bool s_globalDataInit;
     static std::array<bool, MAX_INDIRECTION_ENTRIES> s_indirectionFreeList;
     static Mutex s_indirectionGlobalLock;
-    static SamplerAddress s_defaultTextureSamplerAddress;
     static Pipeline* s_OITCompositionPipeline;
     static Pipeline* s_OITCompositionMSPipeline;
     static Pipeline* s_ResolveGBufferPipeline;

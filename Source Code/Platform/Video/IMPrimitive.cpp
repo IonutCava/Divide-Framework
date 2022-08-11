@@ -189,7 +189,6 @@ void IMPrimitive::endBatch() noexcept {
     params._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
     params._bufferParams._updateUsage = BufferUpdateUsage::CPU_R_GPU_W;
     params._bufferParams._elementSize = sizeof(NS_GLIM::Glim4ByteData);
-    params._useChunkAllocation = true;
 
     GenericVertexData::IndexBuffer idxBuff{};
     idxBuff.smallIndices = false;

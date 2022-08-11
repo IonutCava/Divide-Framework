@@ -88,6 +88,7 @@ class NOINITVTABLE ShaderBuffer : public LockableDataRangeBuffer,
 
     [[nodiscard]] static size_t AlignmentRequirement(Usage usage) noexcept;
 
+    PROPERTY_R(size_t, alignedBufferSize, 0u);
     PROPERTY_R(string, name);
 
   protected:

@@ -69,7 +69,6 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
          size_t _elementStride{ INVALID_ELEMENT_STRIDE };
          std::pair<bufferPtr, size_t> _initialData{nullptr, 0};
          bool _useRingBuffer{ false };
-         bool _useChunkAllocation{ true };
          bool _useAutoSyncObjects{ true };
      };
 

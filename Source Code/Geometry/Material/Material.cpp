@@ -96,16 +96,14 @@ namespace TypeUtil {
     }
 }; //namespace TypeUtil
 
-SamplerAddress Material::s_defaultTextureAddress = 0u;
 bool Material::s_shadersDirty = false;
 
-void Material::OnStartup(const SamplerAddress defaultTexAddress) {
-    s_defaultTextureAddress = defaultTexAddress;
+void Material::OnStartup() {
+    NOP();
 }
 
 void Material::OnShutdown() {
     s_shadersDirty = false;
-    s_defaultTextureAddress = 0u;
 }
 
 void Material::RecomputeShaders() {
@@ -122,10 +120,6 @@ Material::Material(GFXDevice& context, ResourceCache* parentCache, const size_t 
       _parentCache(parentCache)
 {
     properties().receivesShadows(_context.context().config().rendering.shadowMapping.enabled);
-
-    for (TextureInfo& tex : _textures) {
-        tex._address = s_defaultTextureAddress;
-    }
 
     const ShaderProgramInfo defaultShaderInfo = {};
     // Could just direct copy the arrays, but this looks cool
@@ -305,13 +299,7 @@ void Material::setPipelineLayout(const PrimitiveTopology topology, const Attribu
 
 bool Material::setSampler(const TextureUsage textureUsageSlot, const size_t samplerHash)
 {
-
-    TextureInfo& tex = _textures[to_U32(textureUsageSlot)];
-    if (tex._address != s_defaultTextureAddress &&  tex._sampler != samplerHash) {
-        assert(tex._ptr != nullptr && tex._ptr->getState() == ResourceState::RES_LOADED);
-        tex._address = tex._ptr->getGPUAddress(samplerHash);
-    }
-    tex._sampler = samplerHash;
+    _textures[to_U32(textureUsageSlot)]._sampler = samplerHash;
 
     return true;
 }
@@ -343,7 +331,6 @@ bool Material::setTexture(const TextureUsage textureUsageSlot, const Texture_ptr
 
         texInfo._useForPrePass = texture ? prePassUsage : TexturePrePassUsage::AUTO;
         texInfo._ptr = texture;
-        texInfo._address = texture ? texture->getGPUAddress(samplerHash) : s_defaultTextureAddress;
 
         if (textureUsageSlot == TextureUsage::METALNESS) {
             properties()._usePackedOMR = (texture != nullptr && texture->numChannels() > 2u);
@@ -756,15 +743,11 @@ size_t Material::getOrCreateRenderStateBlock(const RenderStagePass renderStagePa
 
 void Material::getSortKeys(const RenderStagePass renderStagePass, I64& shaderKey, I32& textureKey) const {
     shaderKey = shaderInfo(renderStagePass)._shaderKeyCache;
-    if (ShaderProgram::s_UseBindlessTextures) {
-        textureKey = 0u;
+    SharedLock<SharedMutex> r_lock(_textureLock);
+    if (_textures[to_base(TextureUsage::UNIT0)]._ptr != nullptr) {
+        textureKey = _textures[to_base(TextureUsage::UNIT0)]._ptr->data()._textureHandle;
     } else {
-        SharedLock<SharedMutex> r_lock(_textureLock);
-        if (_textures[to_base(TextureUsage::UNIT0)]._ptr != nullptr) {
-            textureKey = _textures[to_base(TextureUsage::UNIT0)]._ptr->data()._textureHandle;
-        } else {
-            textureKey = std::numeric_limits<I32>::lowest();
-        }
+        textureKey = std::numeric_limits<I32>::lowest();
     }
 }
 
@@ -868,12 +851,6 @@ void Material::getData(const RenderingComponent& parentComp, const U32 bestProbe
                                                        properties().specGloss().x,
                                                        properties().specGloss().y);
     dataOut._textureOperations.w = Util::PACK_UNORM4x8(properties().receivesShadows() ? 1.f : 0.f, 0.f, 0.f, 0.f);
-}
-
-void Material::getTextures(const RenderingComponent& parentComp, NodeMaterialTextures& texturesOut) {
-    for (size_t i = 0u; i < std::size(g_materialTextures); ++i) {
-        texturesOut[i] = TextureToUVec2(_textures[to_base(g_materialTextures[i])]._address);
-    }
 }
 
 DescriptorSet& Material::getDescriptorSet(const RenderStagePass& renderStagePass) {

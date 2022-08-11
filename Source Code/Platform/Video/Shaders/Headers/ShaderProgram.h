@@ -141,8 +141,6 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
 
     using ShaderLoadData = std::array<LoadData, to_base(ShaderType::COUNT)>;
 
-    static bool s_UseBindlessTextures;
-
     using ShaderProgramMap = std::array<ShaderProgramMapEntry, U16_MAX>;
 
     using AtomMap = ska::bytell_hash_map<U64 /*name hash*/, string>;

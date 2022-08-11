@@ -57,29 +57,6 @@ constexpr TextureUsage g_materialTextures[] = {
 
 constexpr size_t MATERIAL_TEXTURE_COUNT = std::size(g_materialTextures) + 2; /* padded for alignment. Keep at 128 bytes.*/
 
-using NodeMaterialTextureAddress = vec2<U32>;
-using NodeMaterialTextures = std::array<NodeMaterialTextureAddress, MATERIAL_TEXTURE_COUNT>;
-
-FORCE_INLINE [[nodiscard]] vec2<U32> TextureToUVec2(const SamplerAddress address) noexcept {
-    // GL_ARB_bindless_texture:
-    // In the following four constructors, the low 32 bits of the sampler
-    // type correspond to the .x component of the uvec2 and the high 32 bits
-    // correspond to the .y component.
-    // uvec2(any sampler type)     // Converts a sampler type to a pair of 32-bit unsigned integers
-    // any sampler type(uvec2)     // Converts a pair of 32-bit unsigned integers to a sampler type
-    // uvec2(any image type)       // Converts an image type to a pair of 32-bit unsigned integers
-    // any image type(uvec2)       // Converts a pair of 32-bit unsigned integers to an image type
-
-    return vec2<U32> {
-        to_U32(address & 0xFFFFFFFF), //low -> x
-        to_U32(address >> 32) // high -> y
-    };
-}
-
-FORCE_INLINE [[nodiscard]] SamplerAddress Uvec2ToTexture(const vec2<U32> address) noexcept {
-    return ((SamplerAddress(address.y) << 32) | address.x);
-}
-
 #pragma pack(push, 1)
     struct NodeTransformData
     {
@@ -116,7 +93,6 @@ FORCE_INLINE [[nodiscard]] SamplerAddress Uvec2ToTexture(const vec2<U32> address
     };
 
     [[nodiscard]] size_t HashMaterialData(const NodeMaterialData& dataIn);
-    [[nodiscard]] size_t HashTexturesData(const NodeMaterialTextures& dataIn) noexcept;
 #pragma pack(pop)
 
 } //namespace Divide

@@ -37,8 +37,6 @@ namespace Divide {
 
 constexpr U32 RT_MAX_COLOUR_ATTACHMENTS = 6;
 
-using SamplerAddress = U64;
-
 using RenderTargetID = U32;
 constexpr RenderTargetID INVALID_RENDER_TARGET_ID = std::numeric_limits<RenderTargetID>::max();
 
@@ -280,7 +278,6 @@ enum class ShaderBufferLocation : U8 {
     LIGHT_CLUSTER_AABBS,
     NODE_TRANSFORM_DATA,
     NODE_MATERIAL_DATA,
-    NODE_TEXTURE_DATA,
     NODE_INDIRECTION_DATA,
     BONE_TRANSFORMS,
     BONE_TRANSFORMS_PREV,
@@ -308,7 +305,6 @@ namespace Names {
         "LIGHT_CLUSTER_AABBS",
         "NODE_TRANSFORM_DATA",
         "NODE_MATERIAL_DATA",
-        "NODE_TEXTURE_DATA",
         "NODE_INDIRECTION_DATA",
         "BONE_TRANSFORMS",
         "BONE_TRANSFORMS_PREV",
@@ -801,6 +797,21 @@ namespace Names {
 
 static_assert(std::size(Names::GPURenderer) == to_base(GPURenderer::COUNT) + 1);
 
+enum class BufferUsageType : U8 {
+    VERTEX_BUFFER = 0,
+    INDEX_BUFFER,
+    SHADER_BUFFER,
+    COUNT
+};
+
+namespace Names {
+    static constexpr const char* bufferUsageType[] = {
+        "VERTEX_BUFFER", "INDEX_BUFFER", "SHADER_BUFFER", "NONE"
+    };
+};
+
+static_assert(std::size(Names::bufferUsageType) == to_base(BufferUsageType::COUNT) + 1);
+
 enum class BufferUpdateUsage : U8 {
     CPU_W_GPU_R = 0, //DRAW
     CPU_R_GPU_W = 1, //READ
@@ -831,6 +842,7 @@ namespace Names {
 };
 
 static_assert(std::size(Names::bufferUpdateFrequency) == to_base(BufferUpdateFrequency::COUNT) + 1);
+
 
 enum class QueryType : U8 {
     VERTICES_SUBMITTED = toBit(1),

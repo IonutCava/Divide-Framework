@@ -35,6 +35,8 @@
 
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 
+#include "vkBufferImpl.h"
+
 namespace Divide {
 
     class vkShaderBuffer final : public ShaderBuffer {
@@ -50,6 +52,12 @@ namespace Divide {
         bool bindByteRange(U8 bindIndex, [[maybe_unused]] BufferRange range) noexcept override;
 
         bool lockByteRange(BufferRange range, [[maybe_unused]] SyncObject* sync) const override;
+
+    private:
+        [[nodiscard]] inline AllocatedBuffer* bufferImpl() const { return _bufferImpl.get(); }
+
+    private:
+        eastl::unique_ptr<AllocatedBuffer> _bufferImpl{ nullptr };
     };
 } //namespace Divide
 

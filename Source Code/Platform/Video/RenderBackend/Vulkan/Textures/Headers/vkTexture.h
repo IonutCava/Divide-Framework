@@ -52,8 +52,6 @@ namespace Divide {
 
         bool unload() override;
 
-        [[nodiscard]] SamplerAddress getGPUAddress(size_t samplerHash) noexcept override;
-
         void bindLayer(U8 slot, U8 level, U8 layer, bool layered, Image::Flag rw_flag) noexcept override;
 
         void clearData(const UColour4& clearColour, U8 level) const noexcept override;
@@ -74,7 +72,7 @@ namespace Divide {
         PROPERTY_R_IW(VkDescriptorImageInfo, vkDescriptor);
 
     private:
-        void reserveStorage(bool fromFile) override;
+        void reserveStorage();
         void loadDataCompressed(const ImageTools::ImageData& imageData) override;
         void loadDataUncompressed(const ImageTools::ImageData& imageData) override;
         void prepareTextureData(U16 width, U16 height) override;

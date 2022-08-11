@@ -46,8 +46,6 @@ namespace Divide {
 namespace {
     // Weird stuff happens if this is enabled (i.e. certain draw calls hang forever)
     constexpr bool g_runAllQueriesInSameFrame = false;
-    // Keep resident textures in memory for a max of 30 frames
-    constexpr U8 g_maxTextureResidencyFrameCount = Config::TARGET_FRAME_RATE / 2;
 }
 
 eastl::unique_ptr<GLStateTracker> GL_API::s_stateTracker = nullptr;
@@ -55,7 +53,6 @@ GL_API::VAOMap GL_API::s_vaoCache;
 std::atomic_bool GL_API::s_glFlushQueued;
 GLUtil::glTextureViewCache GL_API::s_textureViewCache{};
 U32 GL_API::s_fenceSyncCounter[GL_API::s_LockFrameLifetime]{};
-vector<GL_API::ResidentTexture> GL_API::s_residentTextures{};
 SharedMutex GL_API::s_samplerMapLock;
 GL_API::SamplerObjectMap GL_API::s_samplerMap{};
 glHardwareQueryPool* GL_API::s_hardwareQueryPool = nullptr;
@@ -209,10 +206,6 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     deviceInformation._vendor = vendor;
     deviceInformation._renderer = renderer;
 
-    // Not supported in RenderDoc (as of 2021). Will always return false when using it to debug the app
-    deviceInformation._bindlessTexturesSupported = glbinding::aux::ContextInfo::supported({ GLextension::GL_ARB_bindless_texture });
-    Console::printfn(Locale::Get(_ID("GL_BINDLESS_TEXTURE_EXTENSION_STATE")), deviceInformation._bindlessTexturesSupported ? "True" : "False");
-
     if (s_hardwareQueryPool == nullptr) {
         s_hardwareQueryPool = MemoryManager_NEW glHardwareQueryPool(_context);
     }
@@ -232,7 +225,6 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     // If we got here, let's figure out what capabilities we have available
     // Maximum addressable texture image units in the fragment shader
     deviceInformation._maxTextureUnits = to_U8(CLAMPED(GLUtil::getGLValue(GL_MAX_TEXTURE_IMAGE_UNITS), 16u, 255u));
-    s_residentTextures.resize(to_size(deviceInformation._maxTextureUnits) * (1 << 4));
 
     GLUtil::getGLValue(GL_MAX_VERTEX_ATTRIB_BINDINGS, deviceInformation._maxVertAttributeBindings);
     GLUtil::getGLValue(GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS, deviceInformation._maxAtomicBufferBindingIndices);
@@ -603,20 +595,6 @@ void GL_API::endFrameGlobal(const DisplayWindow& window) {
     s_glFlushQueued.store(false);
     glLockManager::CleanExpiredSyncObjects(GFXDevice::FrameCount());
 
-    if (ShaderProgram::s_UseBindlessTextures) {
-        for (ResidentTexture& texture : s_residentTextures) {
-            if (texture._address == 0u) {
-                // Most common case
-                continue;
-            }
-
-            if (++texture._frameCount > g_maxTextureResidencyFrameCount) {
-                glMakeTextureHandleNonResidentARB(texture._address);
-                texture = {};
-            }
-        }
-    }
-
     if (_runQueries) {
         OPTICK_EVENT("GL_API: Time Query");
         static std::array<I64, to_base(GlobalQueryTypes::COUNT)> results{};
@@ -977,18 +955,6 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
         } break;
         case GFX::CommandType::SET_SCISSOR: {
             GetStateTracker()->setScissor(cmd->As<GFX::SetScissorCommand>()->_rect);
-        }break;
-        case GFX::CommandType::SET_TEXTURE_RESIDENCY: {
-            const GFX::SetTexturesResidencyCommand* crtCmd = cmd->As<GFX::SetTexturesResidencyCommand>();
-            if (crtCmd->_makeResident) {
-                for (const SamplerAddress address : crtCmd->_addresses) {
-                    MakeTexturesResidentInternal(address);
-                }
-            } else {
-                for (const SamplerAddress address : crtCmd->_addresses) {
-                    MakeTexturesNonResidentInternal(address);
-                }
-            }
         }break;
         case GFX::CommandType::BEGIN_DEBUG_SCOPE: {
             const auto& crtCmd = cmd->As<GFX::BeginDebugScopeCommand>();
@@ -1560,60 +1526,6 @@ GLUtil::GLMemory::DeviceAllocator& GL_API::GetMemoryAllocator(const GLUtil::GLMe
     return s_memoryAllocators[to_base(memoryType)];
 }
 
-bool GL_API::MakeTexturesResidentInternal(const SamplerAddress address) {
-    if (!ShaderProgram::s_UseBindlessTextures) {
-        return true;
-    }
-
-    if (address > 0u) {
-        bool valid = false;
-        // Check for existing resident textures
-        for (ResidentTexture& texture : s_residentTextures) {
-            if (texture._address == address) {
-                texture._frameCount = 0u;
-                valid = true;
-                break;
-            }
-        }
-
-        if (!valid) {
-            // Register a new resident texture
-            for (ResidentTexture& texture : s_residentTextures) {
-                if (texture._address == 0u) {
-                    texture._address = address;
-                    texture._frameCount = 0u;
-                    glMakeTextureHandleResidentARB(address);
-                    valid = true;
-                    break;
-                }
-            }
-        }
-
-        return valid;
-    }
-
-    return true;
-}
-
-bool GL_API::MakeTexturesNonResidentInternal(const SamplerAddress address) {
-    if (!ShaderProgram::s_UseBindlessTextures) {
-        return true;
-    }
-
-    if (address > 0u) {
-        for (ResidentTexture& texture : s_residentTextures) {
-            if (texture._address == address) {
-                texture._address = 0u;
-                texture._frameCount = 0u;
-                glMakeTextureHandleNonResidentARB(address);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    return true;
-}
 void GL_API::QueueFlush() noexcept {
     s_glFlushQueued.store(true);
 }

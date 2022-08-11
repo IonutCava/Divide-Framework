@@ -33,8 +33,15 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef VK_BUFFER_IMPL_H_
 #define VK_BUFFER_IMPL_H_
 
-namespace Divide {
+#include "Platform/Video/Headers/RenderAPIEnums.h"
+#include "Platform/Video/RenderBackend/Vulkan/Headers/VMAInclude.h"
 
+namespace Divide {
+    struct AllocatedBuffer {
+        VkBuffer _buffer;
+        VmaAllocation _allocation;
+        BufferUsageType _usageType{ BufferUsageType::COUNT };
+    };
 } //namespace Divide
 
 #endif //VK_BUFFER_IMPL_H_

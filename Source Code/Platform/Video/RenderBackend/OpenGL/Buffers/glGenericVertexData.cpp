@@ -151,7 +151,7 @@ void glGenericVertexData::setBuffer(const SetBufferParams& params) {
     implParams._bufferParams = params._bufferParams;
     implParams._dataSize = bufferSizeInBytes * ringSizeFactor;
     implParams._target = GL_ARRAY_BUFFER;
-    implParams._useChunkAllocation = params._useChunkAllocation;
+    implParams._useChunkAllocation = true;
 
     const size_t elementStride = params._elementStride == SetBufferParams::INVALID_ELEMENT_STRIDE
                                                     ? params._bufferParams._elementSize

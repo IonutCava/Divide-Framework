@@ -34,6 +34,7 @@
 #define VK_GENERIC_VERTEX_DATA_H
 
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
+#include "vkBufferImpl.h"
 
 namespace Divide {
 
@@ -52,6 +53,20 @@ namespace Divide {
         void insertFencesIfNeeded() override;
 
         void updateBuffer(U32 buffer, U32 elementCountOffset, U32 elementCountRange, bufferPtr data) noexcept override;
+
+    private:
+        struct genericBufferImpl {
+            eastl::unique_ptr<AllocatedBuffer> _buffer{nullptr};
+            size_t _ringSizeFactor{ 1u };
+            size_t _elementStride{ 0u };
+            BufferRange _writtenRange{};
+            SetBufferParams::BufferBindConfig _bindConfig{};
+            bool _usedAfterWrite{ false };
+            bool _useAutoSyncObjects{ true };
+        };
+
+        vector<std::pair<IndexBuffer, AllocatedBuffer>> _idxBuffers;
+        vector<genericBufferImpl> _bufferObjects;
     };
 
 } //namespace Divide

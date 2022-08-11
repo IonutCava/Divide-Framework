@@ -108,10 +108,6 @@ namespace Divide {
             _data._textureHandle = s_textureHandle.fetch_add(1u);
         }
 
-        [[nodiscard]] SamplerAddress getGPUAddress([[maybe_unused]] size_t samplerHash) noexcept override {
-            return 0u;
-        }
-
         void bindLayer([[maybe_unused]] U8 slot, [[maybe_unused]] U8 level, [[maybe_unused]] U8 layer, [[maybe_unused]] bool layered, [[maybe_unused]] Image::Flag rw_flag) noexcept override {
         }
 
@@ -124,9 +120,6 @@ namespace Divide {
         TextureReadbackData readData([[maybe_unused]] U16 mipLevel, [[maybe_unused]] GFXDataFormat desiredFormat) const noexcept override {
             TextureReadbackData data{};
             return MOV(data);
-        }
-
-        void reserveStorage([[maybe_unused]] bool fromFile) {
         }
 
         void loadDataCompressed([[maybe_unused]] const ImageTools::ImageData& imageData) {

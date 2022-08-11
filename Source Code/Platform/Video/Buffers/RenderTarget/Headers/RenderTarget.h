@@ -141,7 +141,7 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
     explicit RenderTarget(GFXDevice& context, const RenderTargetDescriptor& descriptor);
 
    public:
-    virtual ~RenderTarget();
+    virtual ~RenderTarget() = default;
 
     /// Init all attachments. Returns false if already called
     [[nodiscard]] virtual bool create();

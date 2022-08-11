@@ -200,7 +200,6 @@ bool ParticleEmitter::updateData() {
             params._bufferParams._elementSize = sizeof(vec4<F32>);
             params._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
             params._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
-
             buffer.setBuffer(params);
 
             params._bindConfig = { g_particleColourBuffer, g_particleColourBuffer };

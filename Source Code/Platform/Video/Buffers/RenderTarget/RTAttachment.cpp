@@ -20,10 +20,9 @@ const Texture_ptr& RTAttachment::texture() const {
 }
 
 void RTAttachment::setTexture(const Texture_ptr& tex, const bool isExternal) noexcept {
+    assert(tex == nullptr || IsValid(tex->data()));
+
     _texture = tex;
-    if (tex != nullptr) {
-        assert(IsValid(tex->data()));
-    }
     changed(true);
 }
 

@@ -93,9 +93,6 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     static [[nodiscard]] const Texture_ptr& DefaultTexture() noexcept;
     static [[nodiscard]] U8 GetSizeFactor(const GFXDataFormat format) noexcept;
 
-    // Returns the GPU address of the texture
-    virtual SamplerAddress getGPUAddress(size_t samplerHash) = 0;
-
     /// Bind a single level
     virtual void bindLayer(U8 slot, U8 level, U8 layer, bool layered, Image::Flag rw_flag) = 0;
 
@@ -142,7 +139,6 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
 
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Texture"; }
 
-    virtual void reserveStorage(bool fromFile) = 0;
     virtual void loadDataCompressed(const ImageTools::ImageData& imageData) = 0;
     virtual void loadDataUncompressed(const ImageTools::ImageData& imageData) = 0;
     virtual void prepareTextureData(U16 width, U16 height) = 0;

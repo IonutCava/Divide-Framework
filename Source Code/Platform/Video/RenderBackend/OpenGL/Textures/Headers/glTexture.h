@@ -51,13 +51,11 @@ class glTexture final : public Texture {
 
     ~glTexture();
 
-    [[nodiscard]] SamplerAddress getGPUAddress(size_t samplerHash) override;
-
     bool unload() override;
 
     void bindLayer(U8 slot, U8 level, U8 layer, bool layered, Image::Flag rwFlag) override;
 
-     void clearData(const UColour4& clearColour, U8 level) const override;
+    void clearData(const UColour4& clearColour, U8 level) const override;
     void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const override;
 
     static void copy(const TextureData& source, U8 sourceSamples, const TextureData& destination, U8 destinationSamples, const CopyTexParams& params);
@@ -66,7 +64,7 @@ class glTexture final : public Texture {
 
    protected:
     void postLoad() override;
-    void reserveStorage(bool fromFile) override;
+    void reserveStorage();
     void loadDataCompressed(const ImageTools::ImageData& imageData) override;
     void loadDataUncompressed(const ImageTools::ImageData& imageData) override;
     void prepareTextureData(U16 width, U16 height) override;
@@ -77,15 +75,8 @@ class glTexture final : public Texture {
 
    private:
     GLenum _type{GL_NONE};
-    struct SamplerAddressCache {
-        SamplerAddress _address{ 0u };
-        GLuint _sampler{ 0u };
-    };
-
-    SamplerAddressCache _cachedAddressForSampler{};
-    SamplerAddress _baseTexAddress{ 0u };
-    Mutex _gpuAddressesLock;
     glLockManager _lockManager;
+    bool _hasStorage{ false };
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(glTexture);

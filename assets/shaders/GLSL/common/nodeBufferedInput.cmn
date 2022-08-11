@@ -43,32 +43,6 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_BATCH_SET, BUFFER_NODE_MATERIAL_DATA, std430)
 #endif //FRAG_SHADER
 
 #if defined(NEED_TEXTURE_DATA)
-#if defined(BINDLESS_TEXTURES_ENABLED)
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_BATCH_SET, BUFFER_NODE_TEXTURE_DATA, std430) coherent ACCESS_R buffer dvd_textureBlock
-{
-    uvec2 dvd_Textures[];
-};
-#endif //BINDLESS_TEXTURES_ENABLED
-
-#if defined(BINDLESS_TEXTURES_ENABLED)
-
-#define texDiffuse0 sampler2DArray(dvd_Textures[TEXTURE_IDX + 0])
-#define texOpacityMap sampler2DArray(dvd_Textures[TEXTURE_IDX + 1])
-#define texNormalMap sampler2DArray(dvd_Textures[TEXTURE_IDX + 2])
-#define texHeight sampler2DArray(dvd_Textures[TEXTURE_IDX + 3])
-#define texSpecular sampler2DArray(dvd_Textures[TEXTURE_IDX + 4])
-#define texMetalness sampler2DArray(dvd_Textures[TEXTURE_IDX + 5])
-#define texRoughness sampler2DArray(dvd_Textures[TEXTURE_IDX + 6])
-#define texOcclusion sampler2DArray(dvd_Textures[TEXTURE_IDX + 7])
-#define texEmissive sampler2DArray(dvd_Textures[TEXTURE_IDX + 8])
-#define texDiffuse1 sampler2DArray(dvd_Textures[TEXTURE_IDX + 9])
-#define texProjected sampler2DArray(dvd_Textures[TEXTURE_IDX + 10])
-#define texReflectPlanar sampler2D(dvd_Textures[TEXTURE_IDX + 11])
-#define texRefractPlanar sampler2D(dvd_Textures[TEXTURE_IDX + 12])
-#define texReflectCube sampler2DCube(dvd_Textures[TEXTURE_IDX + 13])
-#define texRefractCube sampler2DCube(dvd_Textures[TEXTURE_IDX + 14])
-
-#else //BINDLESS_TEXTURES_ENABLED
 
 DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0)             uniform sampler2DArray texDiffuse0;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_OPACITY)           uniform sampler2DArray texOpacityMap;
@@ -84,8 +58,6 @@ DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_PROJECTION)        uniform sampler
 DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_REFLECTION_PLANAR) uniform sampler2D      texReflectPlanar;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_REFRACTION_PLANAR) uniform sampler2D      texRefractPlanar;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_REFLECTION_CUBE)   uniform samplerCube    texReflectCube;
-
-#endif //BINDLESS_TEXTURES_ENABLED
 
 #endif //NEED_TEXTURE_DATA
 

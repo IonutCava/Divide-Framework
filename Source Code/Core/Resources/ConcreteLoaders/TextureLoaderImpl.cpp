@@ -31,12 +31,24 @@ CachedResource_ptr ImplResourceLoader<Texture>::operator()() {
                                            std::cend(resourceLocation),
                                            ',');
 
-    if (texDescriptor->layerCount() < numCommas + 1) {
-        texDescriptor->layerCount(to_U16(numCommas + 1));
+    if (texDescriptor->layerCount() < numCommas + 1u) {
+        texDescriptor->layerCount(to_U16(numCommas + 1u));
+    }
+
+    if (numCommas > 0u &&
+        texDescriptor->layerCount() > 1u &&
+        (texDescriptor->texType() == TextureType::TEXTURE_CUBE_MAP ||
+         texDescriptor->texType() == TextureType::TEXTURE_CUBE_ARRAY))
+    {
+        DIVIDE_ASSERT(texDescriptor->layerCount() % 6u == 0u, "TextureLoaderImpl error: Invalid number of source textures specified for cube map!");
+        texDescriptor->layerCount() /= 6;
+    }
+
+    if (texDescriptor->layerCount() > 1u && texDescriptor->texType() == TextureType::TEXTURE_CUBE_MAP) {
+        texDescriptor->texType(TextureType::TEXTURE_CUBE_ARRAY);
     }
 
     if (crtNumCommas < numCommas ) {
-
         if (!resourceLocation.empty()) {
             stringstream textureLocationList(resourceLocation);
             while (std::getline(textureLocationList, resourceLocation, ',')) {}

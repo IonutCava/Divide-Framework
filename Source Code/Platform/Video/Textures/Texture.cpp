@@ -75,16 +75,16 @@ ResourcePath Texture::GetCachePath(ResourcePath originalPath) noexcept {
 
 U8 Texture::GetSizeFactor(const GFXDataFormat format) noexcept {
     switch (format) {
-    case GFXDataFormat::UNSIGNED_BYTE:
-    case GFXDataFormat::SIGNED_BYTE: return 1u;
+        case GFXDataFormat::UNSIGNED_BYTE:
+        case GFXDataFormat::SIGNED_BYTE: return 1u;
 
-    case GFXDataFormat::UNSIGNED_SHORT:
-    case GFXDataFormat::SIGNED_SHORT:
-    case GFXDataFormat::FLOAT_16: return 2u;
+        case GFXDataFormat::UNSIGNED_SHORT:
+        case GFXDataFormat::SIGNED_SHORT:
+        case GFXDataFormat::FLOAT_16: return 2u;
 
-    case GFXDataFormat::UNSIGNED_INT:
-    case GFXDataFormat::SIGNED_INT:
-    case GFXDataFormat::FLOAT_32: return 4u;
+        case GFXDataFormat::UNSIGNED_INT:
+        case GFXDataFormat::SIGNED_INT:
+        case GFXDataFormat::FLOAT_32: return 4u;
     };
 
     return 1u;
@@ -164,8 +164,7 @@ void Texture::threadedLoad() {
             if (!currentTextureFile.empty()) {
                 Util::ReplaceStringInPlace(currentTextureFile, searchPattern, "/");
                 currentTextureFullPath = currentTextureLocation.empty() ? Paths::g_texturesLocation : ResourcePath{ currentTextureLocation };
-                auto[file, path] = splitPathToNameAndLocation(currentTextureFile.c_str());
-                const ResourcePath fileName = file;
+                const auto[file, path] = splitPathToNameAndLocation(currentTextureFile.c_str());
                 if (!path.empty()) {
                     currentTextureFullPath += path;
                 }
@@ -260,26 +259,26 @@ bool Texture::loadFile(const ResourcePath& path, const ResourcePath& name, Image
 }
 
 void Texture::loadData(const Byte* data, const size_t dataSize, const vec2<U16>& dimensions) {
-    prepareTextureData(dimensions.width, dimensions.height);
-
     // This should never be called for compressed textures
     assert(!IsCompressed(_descriptor.baseFormat()));
 
-    reserveStorage(false);
-    if (_descriptor.msaaSamples() == 0u) {
-        ImageTools::ImageData imgData = {};
-        if (imgData.loadFromMemory(data, dataSize, _width, _height, 1, GetSizeFactor(_descriptor.dataType()) * NumChannels(_descriptor.baseFormat()))) {
+    prepareTextureData(dimensions.width, dimensions.height);
+
+    // We can't manually specify data for msaa textures.
+    assert(_descriptor.msaaSamples() == 0u || data == nullptr);
+
+    if (data != nullptr) {
+        ImageTools::ImageData imgData{};
+        if (imgData.loadFromMemory(data, dataSize, dimensions.width, dimensions.height, 1, GetSizeFactor(_descriptor.dataType()) * NumChannels(_descriptor.baseFormat()))) {
             loadDataUncompressed(imgData);
-            assert(_width > 0 && _height > 0 && "glTexture error: Invalid texture dimensions!");
         }
     }
+
     submitTextureData();
 }
 
 void Texture::loadData(const ImageTools::ImageData& imageData) {
-
     prepareTextureData(imageData.dimensions(0u, 0u).width, imageData.dimensions(0u, 0u).height);
-    reserveStorage(true);
 
     if (IsCompressed(_descriptor.baseFormat())) {
         if (_descriptor.mipMappingState() == TextureDescriptor::MipMappingState::AUTO) {

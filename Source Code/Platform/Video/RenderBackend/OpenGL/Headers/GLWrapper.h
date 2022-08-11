@@ -137,9 +137,6 @@ public:
     static [[nodiscard]] GLUtil::GLMemory::GLMemoryType GetMemoryTypeForUsage(GLenum usage) noexcept;
     static [[nodiscard]] GLUtil::GLMemory::DeviceAllocator& GetMemoryAllocator(GLUtil::GLMemory::GLMemoryType memoryType) noexcept;
 
-    static [[nodiscard]] bool MakeTexturesResidentInternal(SamplerAddress address);
-    static [[nodiscard]] bool MakeTexturesNonResidentInternal(SamplerAddress address);
-
     static void QueueFlush() noexcept;
 
     static void PushDebugMessage(const char* message, U32 id = std::numeric_limits<U32>::max());
@@ -173,11 +170,6 @@ private:
     struct WindowGLContext {
         I64 _windowGUID{-1};
         SDL_GLContext _context{ nullptr };
-    };
-
-    struct ResidentTexture {
-        SamplerAddress _address{ 0u };
-        U8  _frameCount{ 0u };
     };
 
     struct glHardwareQueryEntry {
@@ -221,7 +213,6 @@ private:
 private:
 
     static std::atomic_bool s_glFlushQueued;
-    static vector<ResidentTexture> s_residentTextures;
 
     static SharedMutex s_samplerMapLock;
     static SamplerObjectMap s_samplerMap;

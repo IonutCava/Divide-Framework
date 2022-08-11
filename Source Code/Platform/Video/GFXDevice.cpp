@@ -308,12 +308,6 @@ void GFXDevice::GFXDescriptorSets::init() {
             binding._resourceSlot = to_U8(ShaderBufferLocation::NODE_MATERIAL_DATA);
             binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
         }
-        {
-            auto& binding = batchSet._bindings.emplace_back();
-            binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resourceSlot = to_U8(ShaderBufferLocation::NODE_TEXTURE_DATA);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::ALL_DRAW;
-        }
     }
 }
 

@@ -35,13 +35,4 @@ namespace Divide {
         return tempHash;
     }
 
-    size_t HashTexturesData(const NodeMaterialTextures& dataIn) noexcept {
-        size_t tempHash = 9999991;
-        for (const NodeMaterialTextureAddress address : dataIn) {
-            Util::Hash_combine(tempHash, Uvec2ToTexture(address));
-        }
-
-        return tempHash;
-    }
-
 }; //namespace Divide

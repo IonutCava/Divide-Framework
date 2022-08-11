@@ -22,41 +22,8 @@
 
 #include <sdl/include/SDL_vulkan.h>
 
-#define VMA_HEAVY_ASSERT(expr) DIVIDE_ASSERT(expr)
-
-#define VMA_DEBUG_LOG(format, ...) do { \
-        Console::printfn(format, __VA_ARGS__); \
-    } while(false)
-
-
-#ifdef _MSVC_LANG
-
-#pragma warning(push, 4)
-#pragma warning(disable: 4127) // conditional expression is constant
-#pragma warning(disable: 4100) // unreferenced formal parameter
-#pragma warning(disable: 4189) // local variable is initialized but not referenced
-#pragma warning(disable: 4324) // structure was padded due to alignment specifier
-
-#endif  // #ifdef _MSVC_LANG
-
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wtautological-compare" // comparison of unsigned expression < 0 is always false
-#pragma clang diagnostic ignored "-Wunused-private-field"
-#pragma clang diagnostic ignored "-Wunused-parameter"
-#pragma clang diagnostic ignored "-Wmissing-field-initializers"
-#pragma clang diagnostic ignored "-Wnullability-completeness"
-#endif
-
-#include <VulkanMemoryAllocator/include/vk_mem_alloc.h>
-
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
-
-#ifdef _MSVC_LANG
-#pragma warning(pop)
-#endif
+#define VMA_IMPLEMENTATION
+#include "Headers/VMAInclude.h"
 
 // ref (mostly everything): https://vkguide.dev/
 namespace vkInit{
@@ -453,6 +420,20 @@ namespace Divide {
 
         recreateSwapChain(window);
 
+
+        VmaAllocatorCreateInfo allocatorInfo = {};
+        allocatorInfo.physicalDevice = _device->getPhysicalDevice();
+        allocatorInfo.device = _device->getDevice();
+        allocatorInfo.instance = _vkbInstance.instance;
+        if_constexpr(Config::MINIMUM_VULKAN_MINOR_VERSION > 2) {
+            allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_3;
+        } else if_constexpr(Config::MINIMUM_VULKAN_MINOR_VERSION > 1) {
+            allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_2;
+        } else if_constexpr(Config::MINIMUM_VULKAN_MINOR_VERSION > 0) {
+            allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_1;
+        }
+        vmaCreateAllocator(&allocatorInfo, &_allocator);
+
         _commandBuffers.resize(VKSwapChain::MAX_FRAMES_IN_FLIGHT);
 
         //allocate the default command buffer that we will use for rendering
@@ -461,7 +442,7 @@ namespace Divide {
         cmdAllocInfo.commandPool = _device->graphicsCommandPool();
         cmdAllocInfo.commandBufferCount = VKSwapChain::MAX_FRAMES_IN_FLIGHT;
         cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-
+        
         VK_CHECK(vkAllocateCommandBuffers(_device->getVKDevice(), &cmdAllocInfo, _commandBuffers.data()));
 
         return ErrorCode::NO_ERR;
@@ -727,8 +708,6 @@ namespace Divide {
                 const VkRect2D scissor{offset, extent};
                 vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
 
-            }break;
-            case GFX::CommandType::SET_TEXTURE_RESIDENCY: {
             }break;
             case GFX::CommandType::BEGIN_DEBUG_SCOPE: {
                  const GFX::BeginDebugScopeCommand* crtCmd = cmd->As<GFX::BeginDebugScopeCommand>();

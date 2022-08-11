@@ -171,7 +171,6 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
                          void setLoDIndexOffset(U8 lodIndex, size_t indexOffset, size_t indexCount) noexcept;
 
     void getMaterialData(NodeMaterialData& dataOut) const;
-    void getMaterialTextures(NodeMaterialTextures& texturesOut, SamplerAddress defaultTexAddress) const;
 
     void rebuildMaterial();
 

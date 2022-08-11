@@ -207,7 +207,6 @@ UniformBlockUploader::UniformBlockUploader(GFXDevice& context, const UniformBloc
         bufferDescriptor._bufferParams._elementCount = 1;
         bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
         bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
-        bufferDescriptor._ringBufferLength = 3;
         bufferDescriptor._bufferParams._elementSize = _uniformBlockSizeAligned;
         _buffer = context.newSB(bufferDescriptor);
     } else {
