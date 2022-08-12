@@ -41,6 +41,7 @@ namespace Divide {
     class vkGenericVertexData final : public GenericVertexData {
     public:
         vkGenericVertexData(GFXDevice& context, const U32 ringBufferLength, const char* name);
+        ~vkGenericVertexData() = default;
 
         void reset() override;
 
@@ -50,12 +51,10 @@ namespace Divide {
 
         void setIndexBuffer(const IndexBuffer& indices) override;
 
-        void insertFencesIfNeeded() override;
-
         void updateBuffer(U32 buffer, U32 elementCountOffset, U32 elementCountRange, bufferPtr data) noexcept override;
 
     private:
-        struct genericBufferImpl {
+        struct GenericBufferImpl {
             eastl::unique_ptr<AllocatedBuffer> _buffer{nullptr};
             size_t _ringSizeFactor{ 1u };
             size_t _elementStride{ 0u };
@@ -65,8 +64,13 @@ namespace Divide {
             bool _useAutoSyncObjects{ true };
         };
 
-        vector<std::pair<IndexBuffer, AllocatedBuffer>> _idxBuffers;
-        vector<genericBufferImpl> _bufferObjects;
+        struct IndexBufferEntry {
+            eastl::unique_ptr<AllocatedBuffer> _handle{ nullptr };
+            IndexBuffer _data;
+        };
+
+        vector<IndexBufferEntry> _idxBuffers;
+        vector<GenericBufferImpl> _bufferObjects;
     };
 
 } //namespace Divide

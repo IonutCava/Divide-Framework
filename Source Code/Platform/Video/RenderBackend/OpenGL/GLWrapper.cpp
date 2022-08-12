@@ -1146,7 +1146,7 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             }
 
             for (auto it : crtCmd->_fenceLocks) {
-                it->insertFencesIfNeeded();
+                Attorney::glGenericVertexDataGL_API::insertFencesIfNeeded(static_cast<glGenericVertexData*>(it));
             }
         } break;
         default: break;

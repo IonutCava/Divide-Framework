@@ -16,8 +16,6 @@ namespace Divide {
 glShaderBuffer::glShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor)
     : ShaderBuffer(context, descriptor)
 {
-    _maxSize = _usage == Usage::CONSTANT_BUFFER ? GFXDevice::GetDeviceInformation()._UBOMaxSizeBytes : GFXDevice::GetDeviceInformation()._SSBOMaxSizeBytes;
-
     const size_t targetElementSize = Util::GetAlignmentCorrected(_params._elementSize, AlignmentRequirement(_usage));
     if (targetElementSize > _params._elementSize) {
         DIVIDE_ASSERT((_params._elementSize * _params._elementCount) % AlignmentRequirement(_usage) == 0u,
@@ -62,17 +60,6 @@ BufferLock glShaderBuffer::clearBytes(BufferRange range) {
     return { this, range };
 }
 
-void glShaderBuffer::readBytes(BufferRange range, std::pair<bufferPtr, size_t> outData) const {
-    if (range._length > 0) {
-        OPTICK_EVENT();
-        
-        DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
-        range._startOffset += queueReadIndex() * _alignedBufferSize;
-
-        bufferImpl()->readBytes(range, outData);
-    }
-}
-
 BufferLock glShaderBuffer::writeBytes(BufferRange range, bufferPtr data) {
     DIVIDE_ASSERT(range._length > 0);
     OPTICK_EVENT();
@@ -84,10 +71,15 @@ BufferLock glShaderBuffer::writeBytes(BufferRange range, bufferPtr data) {
     return { this, range };
 }
 
-bool glShaderBuffer::lockByteRange(const BufferRange range, SyncObject* sync) const {
-    DIVIDE_ASSERT(sync != nullptr);
-    DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
-    return bufferImpl()->lockByteRange(range, sync);
+void glShaderBuffer::readBytes(BufferRange range, std::pair<bufferPtr, size_t> outData) const {
+    if (range._length > 0) {
+        OPTICK_EVENT();
+
+        DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
+        range._startOffset += queueReadIndex() * _alignedBufferSize;
+
+        bufferImpl()->readBytes(range, outData);
+    }
 }
 
 bool glShaderBuffer::bindByteRange(const U8 bindIndex, BufferRange range) {
@@ -119,5 +111,12 @@ bool glShaderBuffer::bindByteRange(const U8 bindIndex, BufferRange range) {
 
     return result == GLStateTracker::BindResult::JUST_BOUND;
 }
+
+bool glShaderBuffer::lockByteRange(const BufferRange range, SyncObject* sync) const {
+    DIVIDE_ASSERT(sync != nullptr);
+    DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
+    return bufferImpl()->lockByteRange(range, sync);
+}
+
 
 }  // namespace Divide

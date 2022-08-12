@@ -35,12 +35,18 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Platform/Video/Headers/RenderAPIEnums.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VMAInclude.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
 
 namespace Divide {
     struct AllocatedBuffer {
-        VkBuffer _buffer;
-        VmaAllocation _allocation;
+        AllocatedBuffer() = default;
+        ~AllocatedBuffer();
+
+        VkBuffer _buffer{VK_NULL_HANDLE};
+        VmaAllocation _allocation{ VK_NULL_HANDLE };
+        VmaAllocationInfo _allocInfo{};
         BufferUsageType _usageType{ BufferUsageType::COUNT };
+        BufferParams _params{};
     };
 } //namespace Divide
 

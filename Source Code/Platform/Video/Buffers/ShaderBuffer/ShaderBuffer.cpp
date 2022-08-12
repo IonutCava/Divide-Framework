@@ -26,6 +26,7 @@ ShaderBuffer::ShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& des
 {
     assert(descriptor._usage != Usage::COUNT);
     assert(descriptor._bufferParams._elementSize * descriptor._bufferParams._elementCount > 0 && "ShaderBuffer::Create error: Invalid buffer size!");
+    _maxSize = _usage == Usage::CONSTANT_BUFFER ? GFXDevice::GetDeviceInformation()._UBOMaxSizeBytes : GFXDevice::GetDeviceInformation()._SSBOMaxSizeBytes;
 }
 
 BufferLock ShaderBuffer::clearData(const BufferRange range) {

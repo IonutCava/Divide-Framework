@@ -454,7 +454,6 @@ void VertexBuffer::refresh() {
         // Check if we need to update the IBO (will be true for the first Refresh() call)
         GenericVertexData::IndexBuffer idxBuffer{};
         idxBuffer.count = _indices.size();
-        idxBuffer.offsetCount = 0u;
         idxBuffer.smallIndices = !useLargeIndices();
         idxBuffer.indicesNeedCast = idxBuffer.smallIndices;
         idxBuffer.data = _indices.data();

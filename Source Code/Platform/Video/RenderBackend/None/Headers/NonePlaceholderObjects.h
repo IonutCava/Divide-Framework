@@ -81,9 +81,6 @@ namespace Divide {
         void setIndexBuffer([[maybe_unused]] const IndexBuffer& indices) override {
         }
 
-        void insertFencesIfNeeded() override {
-        }
-
         void updateBuffer([[maybe_unused]] U32 buffer,
                           [[maybe_unused]] U32 elementCountOffset,
                           [[maybe_unused]] U32 elementCountRange,

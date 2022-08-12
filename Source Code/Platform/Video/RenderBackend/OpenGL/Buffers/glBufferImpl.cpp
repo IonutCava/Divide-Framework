@@ -160,7 +160,9 @@ void glBufferImpl::readBytes(const size_t offsetInBytes, const size_t rangeInByt
     }
 
     if (_memoryBlock._ptr != nullptr) {
-        memcpy(outData.first, _memoryBlock._ptr + offsetInBytes, std::min(rangeInBytes, outData.second));
+        memcpy(outData.first,
+               _memoryBlock._ptr + offsetInBytes,
+               std::min(std::min(rangeInBytes, outData.second), _memoryBlock._size));
     } else {
         if (_copyBufferTarget == GLUtil::k_invalidObjectID || _copyBufferSize < rangeInBytes) {
             GLUtil::freeBuffer(_copyBufferTarget);

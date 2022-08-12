@@ -61,7 +61,7 @@ public:
 
 struct VKStateTracker {
     VKDevice* _device = nullptr;
-
+    VmaAllocator* _allocator = nullptr;
     std::array < std::pair<Str64, U32>, 32 > _debugScope;
     U8 _debugScopeDepth = 0u;
 };

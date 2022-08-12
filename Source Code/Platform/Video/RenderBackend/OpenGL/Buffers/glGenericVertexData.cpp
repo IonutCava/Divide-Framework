@@ -11,21 +11,20 @@
 
 namespace Divide {
 
+glGenericVertexData::IndexBufferEntry::~IndexBufferEntry()
+{
+    if (_handle != GLUtil::k_invalidObjectID) {
+        GLUtil::freeBuffer(_handle);
+    }
+}
+
 glGenericVertexData::glGenericVertexData(GFXDevice& context, const U32 ringBufferLength, const char* name)
     : GenericVertexData(context, ringBufferLength, name)
 {
 }
 
-glGenericVertexData::~glGenericVertexData()
-{
-    reset();
-}
-
 void glGenericVertexData::reset() {
     _bufferObjects.clear();
-    for (auto& buffer : _idxBuffers) {
-        GLUtil::freeBuffer(buffer.second);
-    }
     _idxBuffers.clear();
 }
 
@@ -45,17 +44,17 @@ void glGenericVertexData::draw(const GenericDrawCommand& command) {
         command._cmd.primCount == 1u &&
         command._drawCount > 1u)
     {
-        rebuildCountAndIndexData(command._drawCount, static_cast<GLsizei>(command._cmd.indexCount), command._cmd.firstIndex, idxBuffer.first.count);
+        rebuildCountAndIndexData(command._drawCount, static_cast<GLsizei>(command._cmd.indexCount), command._cmd.firstIndex, idxBuffer._data.count);
     }
 
-    if (GL_API::GetStateTracker()->setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, idxBuffer.second) == GLStateTracker::BindResult::FAILED) {
+    if (GL_API::GetStateTracker()->setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, idxBuffer._handle) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
 
     // Submit the draw command
     GLUtil::SubmitRenderCommand(command,
                                 renderIndirect(),
-                                idxBuffer.first.smallIndices ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT,
+                                idxBuffer._data.smallIndices ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT,
                                 _indexInfo._countData.data(),
                                 (bufferPtr)_indexInfo._indexOffsetData.data());
 
@@ -63,11 +62,11 @@ void glGenericVertexData::draw(const GenericDrawCommand& command) {
 }
 
 void glGenericVertexData::setIndexBuffer(const IndexBuffer& indices) {
-    std::pair<IndexBuffer, GLuint>* oldIdxBufferEntry = nullptr;
+    IndexBufferEntry* oldIdxBufferEntry = nullptr;
 
     bool found = false;
     for (auto& idxBuffer : _idxBuffers) {
-        if (idxBuffer.first.id == indices.id) {
+        if (idxBuffer._data.id == indices.id) {
             oldIdxBufferEntry = &idxBuffer;
             found = true;
             break;
@@ -77,15 +76,13 @@ void glGenericVertexData::setIndexBuffer(const IndexBuffer& indices) {
     if (!found) {
         _idxBuffers.push_back({ indices, GLUtil::k_invalidObjectID });
         oldIdxBufferEntry = &_idxBuffers.back();
-    }
-
-    if (oldIdxBufferEntry->second != GLUtil::k_invalidObjectID &&
-        (!AreCompatible(oldIdxBufferEntry->first, indices) || indices.count == 0u))
+    } else if (oldIdxBufferEntry->_handle != GLUtil::k_invalidObjectID &&
+               (!AreCompatible(oldIdxBufferEntry->_data, indices) || indices.count == 0u))
     {
-        GLUtil::freeBuffer(oldIdxBufferEntry->second);
+        GLUtil::freeBuffer(oldIdxBufferEntry->_handle);
     }
 
-    IndexBuffer& oldIdxBuffer = oldIdxBufferEntry->first;
+    IndexBuffer& oldIdxBuffer = oldIdxBufferEntry->_data;
 
     oldIdxBuffer.count = std::max(oldIdxBuffer.count, indices.count);
 
@@ -104,25 +101,23 @@ void glGenericVertexData::setIndexBuffer(const IndexBuffer& indices) {
             data = smallIndicesTemp.data();
         }
 
-        if (oldIdxBufferEntry->second == GLUtil::k_invalidObjectID) {
-            const GLuint newDataSize = static_cast<GLuint>(indices.count * elementSize);
+        if (oldIdxBufferEntry->_handle == GLUtil::k_invalidObjectID) {
+            const size_t newDataSize = indices.count * elementSize;
             _indexBufferSize = std::max(newDataSize, _indexBufferSize);
 
-            assert(indices.offsetCount == 0u);
             GLUtil::createBuffer(_indexBufferSize,
-                                 oldIdxBufferEntry->second,
+                                 oldIdxBufferEntry->_handle,
                                  _name.empty() ? nullptr : (_name + "_index").c_str());
         }
 
-        const size_t offset = indices.offsetCount * elementSize;
         const size_t range = indices.count * elementSize;
-        DIVIDE_ASSERT(offset + range <= _indexBufferSize);
+        DIVIDE_ASSERT(range <= _indexBufferSize);
 
-        if (offset == 0u && range == _indexBufferSize) {
-            glNamedBufferData(oldIdxBufferEntry->second, range, data, indices.dynamic ? GL_STREAM_DRAW : GL_STATIC_DRAW);
+        if (range == _indexBufferSize) {
+            glNamedBufferData(oldIdxBufferEntry->_handle, range, data, indices.dynamic ? GL_STREAM_DRAW : GL_STATIC_DRAW);
         } else {
-            glInvalidateBufferSubData(oldIdxBufferEntry->second, offset, range);
-            glNamedBufferSubData(oldIdxBufferEntry->second, offset, range, data);
+            glInvalidateBufferSubData(oldIdxBufferEntry->_handle, 0u, range);
+            glNamedBufferSubData(oldIdxBufferEntry->_handle, 0u, range, data);
         }
         if (!Runtime::isMainThread()) {
             _lockManager.lock();
@@ -133,7 +128,7 @@ void glGenericVertexData::setIndexBuffer(const IndexBuffer& indices) {
 /// Specify the structure and data of the given buffer
 void glGenericVertexData::setBuffer(const SetBufferParams& params) {
     // Make sure we specify buffers in order.
-    genericBufferImpl* impl = nullptr;
+    GenericBufferImpl* impl = nullptr;
     for (auto& buffer : _bufferObjects) {
         if (buffer._bindConfig._bufferIdx == params._bindConfig._bufferIdx) {
             impl = &buffer;
@@ -185,7 +180,7 @@ void glGenericVertexData::updateBuffer(const U32 buffer,
                                        const U32 elementCountOffset,
                                        const U32 elementCountRange,
                                        const bufferPtr data) {
-    genericBufferImpl* impl = nullptr;
+    GenericBufferImpl* impl = nullptr;
     for (auto& bufferImpl : _bufferObjects) {
         if (bufferImpl._bindConfig._bufferIdx == buffer) {
             impl = &bufferImpl;
@@ -211,7 +206,7 @@ void glGenericVertexData::updateBuffer(const U32 buffer,
 }
 
 void glGenericVertexData::bindBufferInternal(const SetBufferParams::BufferBindConfig& bindConfig) {
-    genericBufferImpl* impl = nullptr;
+    GenericBufferImpl* impl = nullptr;
     for (auto& bufferImpl : _bufferObjects) {
         if (bufferImpl._bindConfig._bufferIdx == bindConfig._bufferIdx) {
             impl = &bufferImpl;
@@ -241,10 +236,6 @@ void glGenericVertexData::bindBufferInternal(const SetBufferParams::BufferBindCo
     }
 
     impl->_usedAfterWrite = impl->_writtenRange._length > 0u;
-}
-
-void glGenericVertexData::insertFencesIfNeeded() {
-    lockBuffersInternal(true);
 }
 
 void glGenericVertexData::lockBuffersInternal(const bool force) {

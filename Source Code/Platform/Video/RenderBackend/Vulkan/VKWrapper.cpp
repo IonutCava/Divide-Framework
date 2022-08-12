@@ -420,7 +420,6 @@ namespace Divide {
 
         recreateSwapChain(window);
 
-
         VmaAllocatorCreateInfo allocatorInfo = {};
         allocatorInfo.physicalDevice = _device->getPhysicalDevice();
         allocatorInfo.device = _device->getDevice();
@@ -433,6 +432,7 @@ namespace Divide {
             allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_1;
         }
         vmaCreateAllocator(&allocatorInfo, &_allocator);
+        GetStateTracker()->_allocator = &_allocator;
 
         _commandBuffers.resize(VKSwapChain::MAX_FRAMES_IN_FLIGHT);
 
@@ -549,6 +549,8 @@ namespace Divide {
         vkShaderProgram::DestroyStaticData();
 
         s_stateTracker.reset();
+
+        vmaDestroyAllocator(_allocator);
 
         if (_device != nullptr) {
             destroyPipelines();

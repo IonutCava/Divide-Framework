@@ -48,7 +48,6 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
      struct IndexBuffer {
          bufferPtr data{ nullptr };
          size_t count{ 0u };
-         size_t offsetCount{ 0u };
          U8 id{ 0u };
          bool smallIndices{ false };
          bool indicesNeedCast{ false };
@@ -83,9 +82,6 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
     /// When reading and writing to the same buffer, we use a round-robin approach and
     /// offset the reading and writing to multiple copies of the data
     virtual void setBuffer(const SetBufferParams& params) = 0;
-    /// Will manually insert a fence at call site (for buffers that were written to only!) 
-    /// and clear any dirty flags associated with that write
-    virtual void insertFencesIfNeeded() = 0u;
 
     virtual void updateBuffer(U32 buffer,
                               U32 elementCountOffset,
@@ -93,6 +89,7 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
                               bufferPtr data) = 0;
 
     PROPERTY_RW(bool, renderIndirect, true);
+    PROPERTY_R(size_t, indexBufferSize, 0u );
 
    protected:
     string _name;

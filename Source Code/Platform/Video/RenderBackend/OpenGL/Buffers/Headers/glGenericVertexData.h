@@ -39,18 +39,23 @@
 
 namespace Divide {
 
+namespace Attorney {
+    class glGenericVertexDataGL_API;
+}
+
+
 class glGenericVertexData final : public GenericVertexData {
+   friend class Attorney::glGenericVertexDataGL_API;
+
    public:
     glGenericVertexData(GFXDevice& context, U32 ringBufferLength, const char* name = nullptr);
-    ~glGenericVertexData();
+    ~glGenericVertexData() = default;
 
     void reset() override;
 
     void setIndexBuffer(const IndexBuffer& indices) override;
 
     void setBuffer(const SetBufferParams& params) override;
-
-    void insertFencesIfNeeded() override;
 
     void updateBuffer(U32 buffer, U32 elementCountOffset, U32 elementCountRange, bufferPtr data) override;
 
@@ -70,7 +75,7 @@ class glGenericVertexData final : public GenericVertexData {
                                   size_t indexBufferSize);
 
    private:
-    struct genericBufferImpl {
+    struct GenericBufferImpl {
         glBufferImpl_uptr _buffer{ nullptr };
         size_t _ringSizeFactor{ 1u };
         size_t _elementStride{ 0u };
@@ -80,19 +85,38 @@ class glGenericVertexData final : public GenericVertexData {
         bool _useAutoSyncObjects{ true };
     };
 
+    struct IndexBufferEntry {
+        IndexBufferEntry() = default;
+        ~IndexBufferEntry();
+
+        IndexBuffer _data;
+        GLuint _handle{ GLUtil::k_invalidObjectID };
+    };
+
     struct glVertexDataIndexContainer {
         vector_fast<GLsizei> _countData;
         vector_fast<GLuint> _indexOffsetData;
     } _indexInfo;
 
-    vector<std::pair<IndexBuffer, GLuint>> _idxBuffers;
-    vector<genericBufferImpl> _bufferObjects;
-    GLuint _indexBufferSize{ 0u };
+    vector<IndexBufferEntry> _idxBuffers;
+    vector<GenericBufferImpl> _bufferObjects;
     GLuint _lastDrawCount{ 0u };
     GLsizei _lastIndexCount{ 0 };
     GLuint _lastFirstIndex{ 0u };
     glLockManager _lockManager;
 };
+
+
+namespace Attorney {
+    class glGenericVertexDataGL_API {
+        static void insertFencesIfNeeded(glGenericVertexData* gvd) {
+            assert(gvd != nullptr);
+            gvd->lockBuffersInternal(true);
+        }
+
+        friend class GL_API;
+    };
+}; //namespace Attorney;
 
 };  // namespace Divide
 #endif //GL_GENERIC_VERTEX_DATA_H
