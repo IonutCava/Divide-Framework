@@ -75,6 +75,8 @@ namespace Divide {
 
         static void Idle(PlatformContext& platformContext);
 
+        const vector<vkShader*>& shaderStages() const { return _shaderStage; }
+
     protected:
         ShaderResult validatePreBind(bool rebind = true);
         /// Make sure this program is ready for deletion

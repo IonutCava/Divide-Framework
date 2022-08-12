@@ -128,8 +128,7 @@ namespace Divide {
         subpass.colorAttachmentCount = 1;
         subpass.pColorAttachments = &color_attachment_ref;
 
-        VkRenderPassCreateInfo render_pass_info = {};
-        render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        VkRenderPassCreateInfo render_pass_info = vk::renderPassCreateInfo();
 
         //connect the color attachment to the info
         render_pass_info.attachmentCount = 1;
@@ -141,9 +140,7 @@ namespace Divide {
         VK_CHECK(vkCreateRenderPass(device, &render_pass_info, nullptr, &_renderPass));
 
         //create the framebuffers for the swapchain images. This will connect the render-pass to the images for rendering
-        VkFramebufferCreateInfo fb_info = {};
-        fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fb_info.pNext = nullptr;
+        VkFramebufferCreateInfo fb_info = vk::framebufferCreateInfo();
 
         fb_info.renderPass = _renderPass;
         fb_info.attachmentCount = 1;
@@ -169,13 +166,10 @@ namespace Divide {
 
         //create synchronization structures
         //for the semaphores we don't need any flags
-        VkSemaphoreCreateInfo semaphoreCreateInfo = {};
-        semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        VkSemaphoreCreateInfo semaphoreCreateInfo = vk::semaphoreCreateInfo();
 
         //we want to create the fence with the Create Signaled flag, so we can wait on it before using it on a GPU command (for the first frame)
-        VkFenceCreateInfo fenceCreateInfo = {};
-        fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        VkFenceCreateInfo fenceCreateInfo = vk::fenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
 
         for (U8 i = 0u; i < MAX_FRAMES_IN_FLIGHT; i++) {
             VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &_imageAvailableSemaphores[i]));
@@ -217,8 +211,7 @@ namespace Divide {
         }
         _imagesInFlight[_swapchainImageIndex] = _inFlightFences[_currentFrameIdx];
 
-        VkSubmitInfo submit = {};
-        submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        VkSubmitInfo submit = vk::submitInfo();
 
         VkSemaphore waitSemaphores[] = { _imageAvailableSemaphores[_currentFrameIdx] };
         VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };

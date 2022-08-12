@@ -37,7 +37,19 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VMAInclude.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
 
+#include "Platform/Video/Headers/AttributeDescriptor.h"
+
 namespace Divide {
+    struct VertexInputDescription {
+
+        std::vector<VkVertexInputBindingDescription> bindings;
+        std::vector<VkVertexInputAttributeDescription> attributes;
+
+        VkPipelineVertexInputStateCreateFlags flags = 0u;
+    };
+
+    VertexInputDescription getVertexDescription(const AttributeMap& vertexFormat);
+
     struct AllocatedBuffer {
         AllocatedBuffer() = default;
         ~AllocatedBuffer();

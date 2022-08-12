@@ -26,7 +26,7 @@ VAOBindings::VAOData* VAOBindings::getVAOData(const GLuint vao) {
     return _cachedData;
 }
 
-GLuint VAOBindings::instanceDivisor(const GLuint vao, const GLuint index) {
+bool VAOBindings::instanceDivisorFlag(const GLuint vao, const GLuint index) {
     VAOData* data = getVAOData(vao);
 
     const size_t count = data->second.size();
@@ -40,13 +40,13 @@ GLuint VAOBindings::instanceDivisor(const GLuint vao, const GLuint index) {
     return data->second.front();
 }
 
-void VAOBindings::instanceDivisor(const GLuint vao, const GLuint index, const GLuint divisor) {
+void VAOBindings::instanceDivisorFlag(const GLuint vao, const GLuint index, const bool divisorFlag) {
     VAOData* data = getVAOData(vao);
 
     [[maybe_unused]] const size_t count = data->second.size();
     assert(count > 0 && count > index);
 
-    data->second[index] = divisor;
+    data->second[index] = divisorFlag;
 }
 
 const VAOBindings::BufferBindingParams& VAOBindings::bindingParams(const GLuint vao, const GLuint index) {

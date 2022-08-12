@@ -98,7 +98,7 @@ public:
 
 private:
     using VAOBufferData = vector_fast<BufferBindingParams>;
-    using VAODivisors = vector_fast<GLuint>;
+    using VAODivisors = vector_fast<bool>;
     using VAOData = std::pair<VAOBufferData, VAODivisors>;
 
 public:
@@ -106,8 +106,8 @@ public:
 
     const BufferBindingParams& bindingParams(GLuint vao, GLuint index);
 
-    GLuint instanceDivisor(GLuint vao, GLuint index);
-    void instanceDivisor(GLuint vao, GLuint index, GLuint divisor);
+    bool instanceDivisorFlag(GLuint vao, GLuint index);
+    void instanceDivisorFlag(GLuint vao, GLuint index, bool perInstanceDivisor);
 
     void bindingParams(GLuint vao, GLuint index, const BufferBindingParams& newParams);
 

@@ -8,23 +8,6 @@
 #include "Utility/Headers/Localization.h"
 
 namespace Divide {
-    namespace vkInit {
-        VkPipelineShaderStageCreateInfo pipeline_shader_stage_create_info(VkShaderStageFlagBits stage, VkShaderModule shaderModule) {
-
-            VkPipelineShaderStageCreateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            info.pNext = nullptr;
-
-            //shader stage
-            info.stage = stage;
-            //module containing the code for this shader stage
-            info.module = shaderModule;
-            //the entry point of the shader
-            info.pName = "main";
-            return info;
-        }
-    }; //namespace vkInit
-
     vkShader::vkShader(GFXDevice& context, const Str256& name)
         : ShaderModule(context, name)
     {
@@ -101,7 +84,7 @@ namespace Divide {
 
             VK_CHECK(vkCreateShaderModule(VK_API::GetStateTracker()->_device->getVKDevice(), &createInfo, nullptr, &_handle));
 
-            _createInfo = vkInit::pipeline_shader_stage_create_info(vkShaderStageTable[to_base(data._type)], _handle);
+            _createInfo = vk::pipelineShaderStageCreateInfo(vkShaderStageTable[to_base(data._type)], _handle);
             _stageMask = vkShaderStageTable[to_base(data._type)];
         }
 

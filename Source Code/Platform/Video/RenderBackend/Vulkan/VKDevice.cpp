@@ -83,8 +83,7 @@ namespace Divide {
     }
 
     VkCommandPool VKDevice::createCommandPool(const uint32_t queueFamilyIndex, const VkCommandPoolCreateFlags createFlags) {
-        VkCommandPoolCreateInfo cmdPoolInfo = {};
-        cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        VkCommandPoolCreateInfo cmdPoolInfo = vk::commandPoolCreateInfo();
         cmdPoolInfo.queueFamilyIndex = queueFamilyIndex;
         cmdPoolInfo.flags = createFlags;
         VkCommandPool cmdPool;
@@ -102,18 +101,13 @@ namespace Divide {
     * @return A handle to the allocated command buffer
     */
     VkCommandBuffer VKDevice::createCommandBuffer(const VkCommandBufferLevel level, const VkCommandPool pool, const bool begin) {
-        VkCommandBufferAllocateInfo cmdBufAllocateInfo{};
-        cmdBufAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cmdBufAllocateInfo.commandPool = pool;
-        cmdBufAllocateInfo.level = level;
-        cmdBufAllocateInfo.commandBufferCount = 1;
+        VkCommandBufferAllocateInfo cmdBufAllocateInfo = vk::commandBufferAllocateInfo(pool, level, 1);
 
         VkCommandBuffer cmdBuffer;
         VK_CHECK(vkAllocateCommandBuffers(getVKDevice(), &cmdBufAllocateInfo, &cmdBuffer));
         // If requested, also start recording for the new command buffer
         if (begin) {
-            VkCommandBufferBeginInfo cmdBufferBeginInfo{};
-            cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            VkCommandBufferBeginInfo cmdBufferBeginInfo = vk::commandBufferBeginInfo();
             VK_CHECK(vkBeginCommandBuffer(cmdBuffer, &cmdBufferBeginInfo));
         }
         return cmdBuffer;
@@ -141,15 +135,12 @@ namespace Divide {
 
         VK_CHECK(vkEndCommandBuffer(commandBuffer));
 
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        VkSubmitInfo submitInfo = vk::submitInfo();
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &commandBuffer;
 
         // Create fence to ensure that the command buffer has finished executing
-        VkFenceCreateInfo fenceInfo{};
-        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fenceInfo.flags = VK_FLAGS_NONE;
+        VkFenceCreateInfo fenceInfo = vk::fenceCreateInfo();
 
         VkFence fence;
         VK_CHECK(vkCreateFence(getVKDevice(), &fenceInfo, nullptr, &fence));

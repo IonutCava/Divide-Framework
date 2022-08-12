@@ -11,6 +11,7 @@
 #include "Platform/Headers/SDLEventManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/File/Headers/FileManagement.h"
+#include "Platform/Video/Headers/RenderStateBlock.h"
 
 #include "Buffers/Headers/vkFramebuffer.h"
 #include "Buffers/Headers/vkShaderBuffer.h"
@@ -24,109 +25,6 @@
 
 #define VMA_IMPLEMENTATION
 #include "Headers/VMAInclude.h"
-
-// ref (mostly everything): https://vkguide.dev/
-namespace vkInit{
-    VkPipelineShaderStageCreateInfo pipeline_shader_stage_create_info(VkShaderStageFlagBits stage, VkShaderModule shaderModule) {
-
-        VkPipelineShaderStageCreateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        info.pNext = nullptr;
-
-        //shader stage
-        info.stage = stage;
-        //module containing the code for this shader stage
-        info.module = shaderModule;
-        //the entry point of the shader
-        info.pName = "main";
-        return info;
-    }
-
-    VkPipelineVertexInputStateCreateInfo vertex_input_state_create_info() {
-        VkPipelineVertexInputStateCreateInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        info.pNext = nullptr;
-
-        //no vertex bindings or attributes
-        info.vertexBindingDescriptionCount = 0;
-        info.vertexAttributeDescriptionCount = 0;
-        return info;
-    }
-
-    VkPipelineInputAssemblyStateCreateInfo input_assembly_create_info(VkPrimitiveTopology topology) {
-        VkPipelineInputAssemblyStateCreateInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-        info.pNext = nullptr;
-
-        info.topology = topology;
-        //we are not going to use primitive restart on the entire tutorial so leave it on false
-        info.primitiveRestartEnable = VK_FALSE;
-        return info;
-    }
-
-    VkPipelineRasterizationStateCreateInfo rasterization_state_create_info(VkPolygonMode polygonMode)
-    {
-        VkPipelineRasterizationStateCreateInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-        info.pNext = nullptr;
-
-        info.depthClampEnable = VK_FALSE;
-        //discards all primitives before the rasterization stage if enabled which we don't want
-        info.rasterizerDiscardEnable = VK_FALSE;
-
-        info.polygonMode = polygonMode;
-        info.lineWidth = 1.0f;
-        //no backface cull
-        info.cullMode = VK_CULL_MODE_NONE;
-        info.frontFace = VK_FRONT_FACE_CLOCKWISE;
-        //no depth bias
-        info.depthBiasEnable = VK_FALSE;
-        info.depthBiasConstantFactor = 0.0f;
-        info.depthBiasClamp = 0.0f;
-        info.depthBiasSlopeFactor = 0.0f;
-
-        return info;
-    }
-
-    VkPipelineMultisampleStateCreateInfo multisampling_state_create_info()
-    {
-        VkPipelineMultisampleStateCreateInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-        info.pNext = nullptr;
-
-        info.sampleShadingEnable = VK_FALSE;
-        //multisampling defaulted to no multisampling (1 sample per pixel)
-        info.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-        info.minSampleShading = 1.0f;
-        info.pSampleMask = nullptr;
-        info.alphaToCoverageEnable = VK_FALSE;
-        info.alphaToOneEnable = VK_FALSE;
-        return info;
-    }
-
-    VkPipelineColorBlendAttachmentState color_blend_attachment_state() {
-        VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
-        colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-            VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-        colorBlendAttachment.blendEnable = VK_FALSE;
-        return colorBlendAttachment;
-    }
-
-    VkPipelineLayoutCreateInfo pipeline_layout_create_info() {
-        VkPipelineLayoutCreateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        info.pNext = nullptr;
-
-        //empty defaults
-        info.flags = 0;
-        info.setLayoutCount = 0;
-        info.pSetLayouts = nullptr;
-        info.pushConstantRangeCount = 0;
-        info.pPushConstantRanges = nullptr;
-        return info;
-    }
-
-}; //namespace vkInit
 
 namespace {
     inline VKAPI_ATTR VkBool32 VKAPI_CALL divide_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -174,46 +72,29 @@ namespace Divide {
     VkPipeline PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass) {
         //make viewport state from our stored viewport and scissor.
         //at the moment we won't support multiple viewports or scissors
-        VkPipelineViewportStateCreateInfo viewportState = {};
-        viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-        viewportState.pNext = nullptr;
-
-        viewportState.viewportCount = 1;
+        VkPipelineViewportStateCreateInfo viewportState = vk::pipelineViewportStateCreateInfo(1, 1);
         viewportState.pViewports = &_viewport;
-        viewportState.scissorCount = 1;
         viewportState.pScissors = &_scissor;
 
         //setup dummy color blending. We aren't using transparent objects yet
         //the blending is just "no blend", but we do write to the color attachment
-        VkPipelineColorBlendStateCreateInfo colorBlending = {};
-        colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        colorBlending.pNext = nullptr;
-
-        colorBlending.logicOpEnable = VK_FALSE;
-        colorBlending.logicOp = VK_LOGIC_OP_COPY;
-        colorBlending.attachmentCount = 1;
-        colorBlending.pAttachments = &_colorBlendAttachment;
+        const VkPipelineColorBlendStateCreateInfo colorBlending = vk::pipelineColorBlendStateCreateInfo(1, &_colorBlendAttachment);
 
         const VkDynamicState dynamicStates[] = {
             VK_DYNAMIC_STATE_VIEWPORT,
             VK_DYNAMIC_STATE_SCISSOR,
-            //VK_DYNAMIC_STATE_DEPTH_BIAS,
-            //VK_DYNAMIC_STATE_BLEND_CONSTANTS,
-            //VK_DYNAMIC_STATE_CULL_MODE,
-            //VK_DYNAMIC_STATE_FRONT_FACE,
-            //VK_DYNAMIC_STATE_LINE_WIDTH
+            VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
+            VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
+            VK_DYNAMIC_STATE_STENCIL_REFERENCE,
+            VK_DYNAMIC_STATE_DEPTH_BIAS,
         };
+
         constexpr U32 stateCount = to_U32(std::size(dynamicStates));
-        VkPipelineDynamicStateCreateInfo dynamicState = {};
-        dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-        dynamicState.dynamicStateCount = stateCount;
-        dynamicState.pDynamicStates = dynamicStates;
+        const VkPipelineDynamicStateCreateInfo dynamicState = vk::pipelineDynamicStateCreateInfo(dynamicStates, stateCount);
 
         //build the actual pipeline
         //we now use all of the info structs we have been writing into into this one to create the pipeline
-        VkGraphicsPipelineCreateInfo pipelineInfo = {};
-        pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        pipelineInfo.pNext = nullptr;
+        VkGraphicsPipelineCreateInfo pipelineInfo = vk::pipelineCreateInfo(_pipelineLayout, pass);
         pipelineInfo.pDynamicState = &dynamicState;
         pipelineInfo.stageCount = to_U32(_shaderStages.size());
         pipelineInfo.pStages = _shaderStages.data();
@@ -223,10 +104,9 @@ namespace Divide {
         pipelineInfo.pRasterizationState = &_rasterizer;
         pipelineInfo.pMultisampleState = &_multisampling;
         pipelineInfo.pColorBlendState = &colorBlending;
-        pipelineInfo.layout = _pipelineLayout;
-        pipelineInfo.renderPass = pass;
+        pipelineInfo.pDepthStencilState = &_depthStencil;
+        pipelineInfo.pTessellationState = &_tessellation;
         pipelineInfo.subpass = 0;
-        pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
         //it's easy to error out on create graphics pipeline, so we handle it a bit better than the common VK_CHECK case
         VkPipeline newPipeline;
@@ -234,9 +114,7 @@ namespace Divide {
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &newPipeline) != VK_SUCCESS) {
             Console::errorfn("failed to create pipeline");
             return VK_NULL_HANDLE; // failed to create graphics pipeline
-        }
-        else
-        {
+        } else {
             return newPipeline;
         }
     }
@@ -279,10 +157,7 @@ namespace Divide {
         VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
 
         //begin the command buffer recording. We will use this command buffer exactly once, so we want to let Vulkan know that
-        VkCommandBufferBeginInfo cmdBeginInfo = {};
-        cmdBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        cmdBeginInfo.pNext = nullptr;
-        cmdBeginInfo.pInheritanceInfo = nullptr;
+        VkCommandBufferBeginInfo cmdBeginInfo = vk::commandBufferBeginInfo();
         cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
         VK_CHECK(vkBeginCommandBuffer(cmdBuffer, &cmdBeginInfo));
@@ -293,9 +168,7 @@ namespace Divide {
 
         //start the main renderpass.
         //We will use the clear color from above, and the framebuffer of the index the swapchain gave us
-        VkRenderPassBeginInfo rpInfo = {};
-        rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        rpInfo.pNext = nullptr;
+        VkRenderPassBeginInfo rpInfo = vk::renderPassBeginInfo();
 
         rpInfo.renderPass = _swapChain->getRenderPass();
         rpInfo.renderArea.offset.x = 0;
@@ -311,14 +184,11 @@ namespace Divide {
 
         //once we start adding rendering commands, they will go here
 
-        vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _trianglePipeline);
+        vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _trianglePipeline._pipeline);
         // Set dynamic state to default
-        if (setViewport({ 0, 0, windowDimensions.width, windowDimensions.height })) {
-            const VkOffset2D offset{ 0, 0 };
-            const VkExtent2D extent{ to_U32(windowDimensions.width),to_U32(windowDimensions.height) };
-            const VkRect2D scissor{ offset, extent };
-            vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
-
+        if (setViewport({ 0, 0, windowDimensions.width, windowDimensions.height }) &&
+            setScissor({ 0, 0, windowDimensions.width, windowDimensions.height }))
+        {
             vkCmdDraw(cmdBuffer, 3, 1, 0, 0);
         }
 
@@ -437,12 +307,7 @@ namespace Divide {
         _commandBuffers.resize(VKSwapChain::MAX_FRAMES_IN_FLIGHT);
 
         //allocate the default command buffer that we will use for rendering
-        VkCommandBufferAllocateInfo cmdAllocInfo = {};
-        cmdAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cmdAllocInfo.commandPool = _device->graphicsCommandPool();
-        cmdAllocInfo.commandBufferCount = VKSwapChain::MAX_FRAMES_IN_FLIGHT;
-        cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        
+        const VkCommandBufferAllocateInfo cmdAllocInfo = vk::commandBufferAllocateInfo(_device->graphicsCommandPool(), VK_COMMAND_BUFFER_LEVEL_PRIMARY, VKSwapChain::MAX_FRAMES_IN_FLIGHT);
         VK_CHECK(vkAllocateCommandBuffers(_device->getVKDevice(), &cmdAllocInfo, _commandBuffers.data()));
 
         return ErrorCode::NO_ERR;
@@ -486,23 +351,22 @@ namespace Divide {
 
         //build the pipeline layout that controls the inputs/outputs of the shader
         //we are not using descriptor sets or other systems yet, so no need to use anything other than empty default
-        VkPipelineLayoutCreateInfo pipeline_layout_info = vkInit::pipeline_layout_create_info();
-
-        VK_CHECK(vkCreatePipelineLayout(_device->getVKDevice(), &pipeline_layout_info, nullptr, &_trianglePipelineLayout));
+        const VkPipelineLayoutCreateInfo pipeline_layout_info = vk::pipelineLayoutCreateInfo(0u);
+        VK_CHECK(vkCreatePipelineLayout(_device->getVKDevice(), &pipeline_layout_info, nullptr, &_trianglePipeline._layout));
 
         //build the stage-create-info for both vertex and fragment stages. This lets the pipeline know the shader modules per stage
         PipelineBuilder pipelineBuilder;
 
-        pipelineBuilder._shaderStages.push_back(vkInit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, triangleVertexShader));
+        pipelineBuilder._shaderStages.push_back(vk::pipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, triangleVertexShader));
 
-        pipelineBuilder._shaderStages.push_back(vkInit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, triangleFragShader));
+        pipelineBuilder._shaderStages.push_back(vk::pipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, triangleFragShader));
 
         //vertex input controls how to read vertices from vertex buffers. We aren't using it yet
-        pipelineBuilder._vertexInputInfo = vkInit::vertex_input_state_create_info();
+        pipelineBuilder._vertexInputInfo = vk::pipelineVertexInputStateCreateInfo();
 
         //input assembly is the configuration for drawing triangle lists, strips, or individual points.
         //we are just going to draw triangle list
-        pipelineBuilder._inputAssembly = vkInit::input_assembly_create_info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+        pipelineBuilder._inputAssembly = vk::pipelineInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0u, VK_FALSE);
 
         //build viewport and scissor from the swapchain extents
         pipelineBuilder._viewport.x = 0.0f;
@@ -516,39 +380,53 @@ namespace Divide {
         pipelineBuilder._scissor.extent = _windowExtents;
 
         //configure the rasterizer to draw filled triangles
-        pipelineBuilder._rasterizer = vkInit::rasterization_state_create_info(VK_POLYGON_MODE_FILL);
-
+        pipelineBuilder._rasterizer = vk::pipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
         //we don't use multisampling, so just run the default one
-        pipelineBuilder._multisampling = vkInit::multisampling_state_create_info();
-
+        pipelineBuilder._multisampling = vk::pipelineMultisampleStateCreateInfo(VK_SAMPLE_COUNT_1_BIT);
+        pipelineBuilder._multisampling.minSampleShading = 1.f;
+        pipelineBuilder._depthStencil = vk::pipelineDepthStencilStateCreateInfo(true, true, VK_COMPARE_OP_GREATER_OR_EQUAL);
+        pipelineBuilder._tessellation = vk::pipelineTessellationStateCreateInfo(1);
         //a single blend attachment with no blending and writing to RGBA
-        pipelineBuilder._colorBlendAttachment = vkInit::color_blend_attachment_state();
+        pipelineBuilder._colorBlendAttachment = vk::pipelineColorBlendAttachmentState(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, VK_FALSE);
 
         //use the triangle layout we created
-        pipelineBuilder._pipelineLayout = _trianglePipelineLayout;
+        pipelineBuilder._pipelineLayout = _trianglePipeline._layout;
 
         //finally build the pipeline
-        _trianglePipeline = pipelineBuilder.build_pipeline(_device->getVKDevice(), _swapChain->getRenderPass());
+        _trianglePipeline._pipeline = pipelineBuilder.build_pipeline(_device->getVKDevice(), _swapChain->getRenderPass());
 
         vkDestroyShaderModule(_device->getVKDevice(), triangleVertexShader, nullptr);
         vkDestroyShaderModule(_device->getVKDevice(), triangleFragShader, nullptr);
     }
 
-    void VK_API::destroyPipelines() {
-        if (_trianglePipeline != VK_NULL_HANDLE) {
-            _device->waitIdle();
-            vkDestroyPipeline(_device->getVKDevice(), _trianglePipeline, nullptr);
-            vkDestroyPipelineLayout(_device->getVKDevice(), _trianglePipelineLayout, nullptr);
+    void VK_API::destroyPipeline(VkPipelineEntry& pipelineEntry) {
+        if (pipelineEntry._pipeline != VK_NULL_HANDLE) {
+            vkDestroyPipeline(_device->getVKDevice(), pipelineEntry._pipeline, nullptr);
+            pipelineEntry._pipeline = VK_NULL_HANDLE;
         }
-        _trianglePipeline = VK_NULL_HANDLE;
-        _trianglePipelineLayout = VK_NULL_HANDLE;
+        if (pipelineEntry._layout != VK_NULL_HANDLE) {
+            vkDestroyPipelineLayout(_device->getVKDevice(), pipelineEntry._layout, nullptr);
+            pipelineEntry._layout = VK_NULL_HANDLE;
+        }
+    }
+
+    void VK_API::destroyPipelines(const bool keepDefaults) {
+        if (_trianglePipeline._pipeline != VK_NULL_HANDLE || !GetStateTracker()->_tempPipelines.empty()) {
+            _device->waitIdle();
+            if (!keepDefaults) {
+                destroyPipeline(_trianglePipeline);
+            }
+
+            while (!GetStateTracker()->_tempPipelines.empty()) {
+                destroyPipeline(GetStateTracker()->_tempPipelines.front());
+                GetStateTracker()->_tempPipelines.pop();
+            }
+        }
     }
 
     void VK_API::closeRenderingAPI() {
 
         vkShaderProgram::DestroyStaticData();
-
-        s_stateTracker.reset();
 
         vmaDestroyAllocator(_allocator);
 
@@ -558,6 +436,9 @@ namespace Divide {
             _swapChain.reset();
             _device.reset();
         }
+
+        s_stateTracker.reset();
+
         if (_vkbInstance.instance != nullptr) {
             vkDestroySurfaceKHR(_vkbInstance.instance, _surface, nullptr);
         }
@@ -670,6 +551,115 @@ namespace Divide {
         return perf;
     }
 
+    void VK_API::bindDynamicState(const RenderStateBlock& currentState, VkCommandBuffer& cmdBuffer) const {
+        vkCmdSetStencilCompareMask(cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState.stencilMask());
+        vkCmdSetStencilWriteMask(cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState.stencilWriteMask());
+        vkCmdSetStencilReference(cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState.stencilRef());
+        vkCmdSetDepthBias(cmdBuffer, currentState.zUnits(), 0.f, currentState.zBias());
+    }
+
+    ShaderResult VK_API::bindPipeline(const Pipeline& pipeline, VkCommandBuffer& cmdBuffer) const {
+        const PipelineDescriptor& pipelineDescriptor = pipeline.descriptor();
+        ShaderProgram* program = ShaderProgram::FindShaderProgram(pipelineDescriptor._shaderProgramHandle);
+        if (program == nullptr) {
+            return ShaderResult::Failed;
+        }
+
+        const vkShaderProgram& vkProgram = static_cast<vkShaderProgram&>(*program);
+        const auto& shaderStages = vkProgram.shaderStages();
+        
+        //build the pipeline layout that controls the inputs/outputs of the shader
+        //we are not using descriptor sets or other systems yet, so no need to use anything other than empty default
+        VkPipelineLayout tempPipelineLayout{VK_NULL_HANDLE};
+        const VkPipelineLayoutCreateInfo pipeline_layout_info = vk::pipelineLayoutCreateInfo(0u);
+        VK_CHECK(vkCreatePipelineLayout(_device->getVKDevice(), &pipeline_layout_info, nullptr, &tempPipelineLayout));
+
+        //build the stage-create-info for both vertex and fragment stages. This lets the pipeline know the shader modules per stage
+        PipelineBuilder pipelineBuilder;
+
+        bool isGraphicsPipeline = false;
+        for (const auto& stage : shaderStages) {
+            pipelineBuilder._shaderStages.push_back(vk::pipelineShaderStageCreateInfo(stage->stageMask(), stage->handle()));
+            isGraphicsPipeline = isGraphicsPipeline || stage->stageMask() != VK_SHADER_STAGE_COMPUTE_BIT;
+        }
+
+        const VertexInputDescription vertexDescription = getVertexDescription(pipelineDescriptor._vertexFormat);
+        //connect the pipeline builder vertex input info to the one we get from Vertex
+        pipelineBuilder._vertexInputInfo.pVertexAttributeDescriptions = vertexDescription.attributes.data();
+        pipelineBuilder._vertexInputInfo.vertexAttributeDescriptionCount = to_U32(vertexDescription.attributes.size());
+        pipelineBuilder._vertexInputInfo.pVertexBindingDescriptions = vertexDescription.bindings.data();
+        pipelineBuilder._vertexInputInfo.vertexBindingDescriptionCount = to_U32(vertexDescription.bindings.size());
+
+        //vertex input controls how to read vertices from vertex buffers. We aren't using it yet
+        pipelineBuilder._vertexInputInfo = vk::pipelineVertexInputStateCreateInfo();
+
+        //input assembly is the configuration for drawing triangle lists, strips, or individual points.
+        //we are just going to draw triangle list
+        pipelineBuilder._inputAssembly = vk::pipelineInputAssemblyStateCreateInfo(vkPrimitiveTypeTable[to_base(pipelineDescriptor._primitiveTopology)], 0u, pipelineDescriptor._primitiveRestartEnabled ? VK_TRUE : VK_FALSE);
+
+        size_t stateBlockHash = pipelineDescriptor._stateHash == 0u ? _context.getDefaultStateBlock(false) : pipelineDescriptor._stateHash;
+        if (stateBlockHash == 0) {
+            stateBlockHash = RenderStateBlock::DefaultHash();
+        }
+        bool currentStateValid = false;
+        const RenderStateBlock& currentState = RenderStateBlock::Get(stateBlockHash, currentStateValid);
+        DIVIDE_ASSERT(currentStateValid, "GL_API error: Invalid state blocks detected on activation!");
+
+        //configure the rasterizer to draw filled triangles
+        pipelineBuilder._rasterizer = vk::pipelineRasterizationStateCreateInfo(
+            vkFillModeTable[to_base(currentState.fillMode())],
+            vkCullModeTable[to_base(currentState.cullMode())],
+            currentState.frontFaceCCW() ? VK_FRONT_FACE_CLOCKWISE : VK_FRONT_FACE_COUNTER_CLOCKWISE);
+        //we don't use multisampling, so just run the default one
+
+        VkSampleCountFlagBits msaaSampleFlags = VK_SAMPLE_COUNT_1_BIT;
+        const U8 msaaSamples = GetStateTracker()->_activeMSAASamples;
+        if (msaaSamples > 0u) {
+            assert(isPowerOfTwo(msaaSamples));
+            msaaSampleFlags = static_cast<VkSampleCountFlagBits>(msaaSamples);
+        }
+
+        pipelineBuilder._multisampling = vk::pipelineMultisampleStateCreateInfo(msaaSampleFlags);
+        pipelineBuilder._multisampling.minSampleShading = 1.f;
+        pipelineBuilder._multisampling.alphaToCoverageEnable = GetStateTracker()->_alphaToCoverage ? VK_TRUE : VK_FALSE;
+        VkStencilOpState stencilOpState{};
+        stencilOpState.failOp = vkStencilOpTable[to_base(currentState.stencilFailOp())];
+        stencilOpState.passOp = vkStencilOpTable[to_base(currentState.stencilPassOp())];
+        stencilOpState.depthFailOp = vkStencilOpTable[to_base(currentState.stencilZFailOp())];
+        stencilOpState.compareOp = vkCompareFuncTable[to_base(currentState.stencilFunc())];
+        
+        pipelineBuilder._depthStencil = vk::pipelineDepthStencilStateCreateInfo(currentState.depthTestEnabled(), true, vkCompareFuncTable[to_base(currentState.zFunc())]);
+        pipelineBuilder._depthStencil.stencilTestEnable = currentState.stencilEnable();
+        pipelineBuilder._depthStencil.front = stencilOpState;
+        pipelineBuilder._depthStencil.back = stencilOpState;
+        pipelineBuilder._rasterizer.depthBiasEnable = !IS_ZERO(currentState.zBias());
+
+        //a single blend attachment with no blending and writing to RGBA
+        const P32 cWrite = currentState.colourWrite();
+        pipelineBuilder._colorBlendAttachment = vk::pipelineColorBlendAttachmentState(
+            (cWrite.b[0] == 1 ? VK_COLOR_COMPONENT_R_BIT : 0) |
+            (cWrite.b[1] == 1 ? VK_COLOR_COMPONENT_G_BIT : 0) |
+            (cWrite.b[2] == 1 ? VK_COLOR_COMPONENT_B_BIT : 0) |
+            (cWrite.b[3] == 1 ? VK_COLOR_COMPONENT_A_BIT : 0),
+            VK_FALSE);
+
+        //use the triangle layout we created
+        pipelineBuilder._pipelineLayout = tempPipelineLayout;
+        pipelineBuilder._tessellation = vk::pipelineTessellationStateCreateInfo(currentState.tessControlPoints());
+
+        //finally build the pipeline
+        GetStateTracker()->_tempPipelines.push(
+            {
+                VK_NULL_HANDLE,//pipelineBuilder.build_pipeline(_device->getVKDevice(), _swapChain->getRenderPass()),
+                tempPipelineLayout
+            });
+
+        //vkCmdBindPipeline(cmdBuffer, isGraphicsPipeline ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE, GetStateTracker()->_tempPipelines.back()._pipeline);
+
+        bindDynamicState(currentState, cmdBuffer);
+        return ShaderResult::OK;
+    }
+
     void VK_API::flushCommand(GFX::CommandBase* cmd) noexcept {
         OPTICK_EVENT();
 
@@ -682,9 +672,14 @@ namespace Divide {
             case GFX::CommandType::BEGIN_RENDER_PASS: {
                 const GFX::BeginRenderPassCommand* crtCmd = cmd->As<GFX::BeginRenderPassCommand>();
                 PushDebugMessage(cmdBuffer, crtCmd->_name.c_str());
+                vkRenderTarget* rt = static_cast<vkRenderTarget*>(_context.renderTargetPool().getRenderTarget(crtCmd->_target));
+                GetStateTracker()->_alphaToCoverage = crtCmd->_descriptor._alphaToCoverage;
+                GetStateTracker()->_activeMSAASamples = rt->getSampleCount();
             }break;
             case GFX::CommandType::END_RENDER_PASS: {
                 PopDebugMessage(cmdBuffer);
+                GetStateTracker()->_alphaToCoverage = false;
+                GetStateTracker()->_activeMSAASamples = _context.context().config().rendering.MSAASamples;
             }break;
             case GFX::CommandType::BEGIN_RENDER_SUB_PASS: {
             }break;
@@ -699,17 +694,18 @@ namespace Divide {
             case GFX::CommandType::BIND_DESCRIPTOR_SETS: {
             }break;
             case GFX::CommandType::BIND_PIPELINE: {
+                const Pipeline* pipeline = cmd->As<GFX::BindPipelineCommand>()->_pipeline;
+                assert(pipeline != nullptr);
+                if (bindPipeline(*pipeline, cmdBuffer) == ShaderResult::Failed) {
+                    Console::errorfn(Locale::Get(_ID("ERROR_GLSL_INVALID_BIND")), pipeline->descriptor()._shaderProgramHandle);
+                }
             } break;
             case GFX::CommandType::SEND_PUSH_CONSTANTS: {
             } break;
             case GFX::CommandType::SET_SCISSOR: {
-                const Rect<I32>& rect = cmd->As<GFX::SetScissorCommand>()->_rect;
-
-                const VkOffset2D offset{ rect.offsetX, rect.offsetY };
-                const VkExtent2D extent{ to_U32(rect.sizeX),to_U32(rect.sizeY) };
-                const VkRect2D scissor{offset, extent};
-                vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
-
+                if (!setScissor(cmd->As<GFX::SetScissorCommand>()->_rect)) {
+                    NOP();
+                }
             }break;
             case GFX::CommandType::BEGIN_DEBUG_SCOPE: {
                  const GFX::BeginDebugScopeCommand* crtCmd = cmd->As<GFX::BeginDebugScopeCommand>();
@@ -762,6 +758,7 @@ namespace Divide {
     }
 
     void VK_API::postFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer) noexcept {
+        destroyPipelines(true);
     }
 
     vec2<U16> VK_API::getDrawableSize(const DisplayWindow& window) const noexcept {
@@ -776,13 +773,23 @@ namespace Divide {
 
     bool VK_API::setViewport(const Rect<I32>& newViewport) noexcept {
         VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
-        const VkViewport viewport{to_F32(newViewport.offsetX),
-                                  to_F32(newViewport.sizeY) - to_F32(newViewport.offsetY),
-                                  to_F32(newViewport.sizeX),
-                                  -to_F32(newViewport.sizeY),
-                                  0.f,
-                                  1.f};
-        vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
+        GetStateTracker()->_activeViewport =  VkViewport{to_F32(newViewport.offsetX),
+                                                         to_F32(newViewport.sizeY) - to_F32(newViewport.offsetY),
+                                                         to_F32(newViewport.sizeX),
+                                                         -to_F32(newViewport.sizeY),
+                                                         0.f,
+                                                         1.f};
+        vkCmdSetViewport(cmdBuffer, 0, 1, &GetStateTracker()->_activeViewport);
+        return true;
+    }
+
+    bool VK_API::setScissor(const Rect<I32>& newScissor) noexcept {
+        VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
+
+        const VkOffset2D offset{ std::max(0, newScissor.offsetX), std::max(0, newScissor.offsetY) };
+        const VkExtent2D extent{ to_U32(newScissor.sizeX),to_U32(newScissor.sizeY) };
+        GetStateTracker()->_activeScissor = VkRect2D{ offset, extent };
+        vkCmdSetScissor(cmdBuffer, 0, 1, &GetStateTracker()->_activeScissor);
         return true;
     }
 

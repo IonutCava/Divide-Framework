@@ -150,6 +150,7 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
     [[nodiscard]] bool usesAttachment(RTAttachmentType type, U8 index) const;
     [[nodiscard]] RTAttachment* getAttachment(RTAttachmentType type, U8 index) const;
     [[nodiscard]] U8 getAttachmentCount(RTAttachmentType type) const noexcept;
+    [[nodiscard]] U8 getSampleCount() const noexcept;
 
     virtual void clear(const RTClearDescriptor& descriptor) = 0;
     virtual void setDefaultState(const RTDrawDescriptor& drawPolicy) = 0;

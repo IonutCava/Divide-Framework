@@ -358,6 +358,9 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\VMAInclude.h">
       <Filter>Video\RenderBackend\Vulkan\Headers</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\vkInitializers.h">
+      <Filter>Video\RenderBackend\Vulkan\Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="../../Source Code/Platform\Input\AutoKeyRepeat.cpp">

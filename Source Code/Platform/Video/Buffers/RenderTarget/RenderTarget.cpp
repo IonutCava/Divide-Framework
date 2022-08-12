@@ -167,6 +167,9 @@ bool RenderTarget::resize(const U16 width, const U16 height) {
 
     return false;
 }
+U8 RenderTarget::getSampleCount() const noexcept {
+    return _descriptor._msaaSamples;
+}
 
 bool RenderTarget::updateSampleCount(U8 newSampleCount) {
     CLAMP(newSampleCount, to_U8(0u), _context.gpuState().maxMSAASampleCount());

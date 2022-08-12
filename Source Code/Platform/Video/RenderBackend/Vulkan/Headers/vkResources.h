@@ -36,7 +36,7 @@
 #include "Platform/Headers/PlatformDefines.h"
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
 
-#include <vk-bootstrap/src/VkBootstrap.h>
+#include "vkInitializers.h"
 
 namespace NS_GLIM {
     enum class GLIM_ENUM : int;
@@ -121,6 +121,7 @@ namespace VKUtil {
     void fillEnumTables(VkDevice device);
 
     [[nodiscard]] VkFormat internalFormat(GFXImageFormat baseFormat, GFXDataFormat dataType, bool srgb, bool normalized) noexcept;
+    [[nodiscard]] VkFormat internalFormat(GFXDataFormat format, U8 componentCount, bool normalized) noexcept;
 
 }; //namespace VKUtil
 }; //namespace Divide

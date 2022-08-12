@@ -135,6 +135,7 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkFramebuffer.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkGenericVertexData.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkShaderBuffer.h" />
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\vkInitializers.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\vkResources.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\VKDevice.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\vkIMPrimitive.h" />

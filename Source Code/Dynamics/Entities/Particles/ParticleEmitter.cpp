@@ -113,7 +113,7 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
         desc._dataType = GFXDataFormat::FLOAT_32;
         desc._normalized = false;
         desc._strideInBytes = 0u;
-        desc._instanceDivisor = 1u;
+        desc._perVertexInputRate = false;
     }
     {
         AttributeDescriptor& desc = vertexFormat[to_base(AttribLocation::COLOR)];

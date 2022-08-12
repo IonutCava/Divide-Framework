@@ -107,7 +107,7 @@ namespace VKUtil {
         vkPrimitiveTypeTable[to_base(PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY)] = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY;
         vkPrimitiveTypeTable[to_base(PrimitiveTopology::PATCH)] = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
         vkPrimitiveTypeTable[to_base(PrimitiveTopology::COMPUTE)] = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
-        
+
         vkWrapTable[to_base(TextureWrap::MIRROR_REPEAT)] = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
         vkWrapTable[to_base(TextureWrap::REPEAT)] = VK_SAMPLER_ADDRESS_MODE_REPEAT;
         vkWrapTable[to_base(TextureWrap::CLAMP_TO_EDGE)] = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
@@ -228,6 +228,78 @@ namespace VKUtil {
             case GFXImageFormat::BC6u: return VK_FORMAT_BC6H_UFLOAT_BLOCK;
             case GFXImageFormat::BC7: return VK_FORMAT_BC7_UNORM_BLOCK;
             case GFXImageFormat::BC7_SRGB: return VK_FORMAT_BC7_SRGB_BLOCK;
+        }
+
+        DIVIDE_UNEXPECTED_CALL();
+        return VK_FORMAT_MAX_ENUM;
+    }
+
+    VkFormat internalFormat(const GFXDataFormat format, const U8 componentCount, const bool normalized) noexcept {
+        switch (format) {
+            case GFXDataFormat::UNSIGNED_BYTE: {
+                switch (componentCount) {
+                    case 1u: return normalized ? VK_FORMAT_R8_UNORM : VK_FORMAT_R8_UINT;
+                    case 2u: return normalized ? VK_FORMAT_R8G8_UNORM : VK_FORMAT_R8G8_UINT;
+                    case 3u: return normalized ? VK_FORMAT_R8G8B8_UNORM : VK_FORMAT_R8G8B8_UINT;
+                    case 4u: return normalized ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_UINT;
+                };
+            } break;
+            case GFXDataFormat::UNSIGNED_SHORT: {
+                switch (componentCount) {
+                    case 1u: return normalized ? VK_FORMAT_R16_UNORM : VK_FORMAT_R16_UINT;
+                    case 2u: return normalized ? VK_FORMAT_R16G16_UNORM : VK_FORMAT_R16G16_UINT;
+                    case 3u: return normalized ? VK_FORMAT_R16G16B16_UNORM : VK_FORMAT_R16G16B16_UINT;
+                    case 4u: return normalized ? VK_FORMAT_R16G16B16A16_UNORM : VK_FORMAT_R16G16B16A16_UINT;
+                };
+            } break;
+            case GFXDataFormat::UNSIGNED_INT: {
+                switch (componentCount) {
+                    case 1u: return VK_FORMAT_R32_UINT;
+                    case 2u: return VK_FORMAT_R32G32_UINT;
+                    case 3u: return VK_FORMAT_R32G32B32_UINT;
+                    case 4u: return VK_FORMAT_R32G32B32A32_UINT;
+                };
+            } break;
+            case GFXDataFormat::SIGNED_BYTE: {
+                switch (componentCount) {
+                    case 1u: return normalized ? VK_FORMAT_R8_SNORM : VK_FORMAT_R8_SINT;
+                    case 2u: return normalized ? VK_FORMAT_R8_SNORM : VK_FORMAT_R8_SINT;
+                    case 3u: return normalized ? VK_FORMAT_R8_SNORM : VK_FORMAT_R8_SINT;
+                    case 4u: return normalized ? VK_FORMAT_R8_SNORM : VK_FORMAT_R8_SINT;
+                };
+            } break;
+            case GFXDataFormat::SIGNED_SHORT: {
+                switch (componentCount) {
+                    case 1u: return normalized ? VK_FORMAT_R16_SNORM : VK_FORMAT_R16_SINT;
+                    case 2u: return normalized ? VK_FORMAT_R16G16_SNORM : VK_FORMAT_R16G16_SINT;
+                    case 3u: return normalized ? VK_FORMAT_R16G16B16_SNORM : VK_FORMAT_R16G16B16_SINT;
+                    case 4u: return normalized ? VK_FORMAT_R16G16B16A16_SNORM : VK_FORMAT_R16G16B16A16_SINT;
+                };
+            } break;
+            case GFXDataFormat::SIGNED_INT: {
+                switch (componentCount) {
+                    case 1u: return VK_FORMAT_R32_SINT;
+                    case 2u: return VK_FORMAT_R32G32_SINT;
+                    case 3u: return VK_FORMAT_R32G32B32_SINT;
+                    case 4u: return VK_FORMAT_R32G32B32A32_SINT;
+                };
+            } break;
+            case GFXDataFormat::FLOAT_16: {
+                switch (componentCount) {
+                    case 1u: return VK_FORMAT_R16_SFLOAT;
+                    case 2u: return VK_FORMAT_R16G16_SFLOAT;
+                    case 3u: return VK_FORMAT_R16G16B16_SFLOAT;
+                    case 4u: return VK_FORMAT_R16G16B16A16_SFLOAT;
+                };
+            } break;
+            case GFXDataFormat::FLOAT_32: {
+                switch (componentCount) {
+                    case 1u: return VK_FORMAT_R32_SFLOAT;
+                    case 2u: return VK_FORMAT_R32G32_SFLOAT;
+                    case 3u: return VK_FORMAT_R32G32B32_SFLOAT;
+                    case 4u: return VK_FORMAT_R32G32B32A32_SFLOAT;
+                };
+            } break;
         }
 
         DIVIDE_UNEXPECTED_CALL();

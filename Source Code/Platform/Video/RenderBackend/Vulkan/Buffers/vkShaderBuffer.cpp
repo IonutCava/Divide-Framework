@@ -32,12 +32,7 @@ namespace Divide {
         _bufferImpl->_usageType = BufferUsageType::SHADER_BUFFER;
 
         // allocate vertex buffer
-        VkBufferCreateInfo bufferInfo = {};
-        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        //this is the total size, in bytes, of the buffer we are allocating
-        bufferInfo.size = dataSize;
-        //this buffer is going to be used as a Vertex Buffer
-        bufferInfo.usage = usageFlags;
+        VkBufferCreateInfo bufferInfo = vk::bufferCreateInfo(usageFlags, dataSize);
 
         //let the VMA library know that this data should be writeable by CPU, but also readable by GPU
         VmaAllocationCreateInfo vmaallocInfo = {};

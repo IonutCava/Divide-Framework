@@ -55,8 +55,14 @@ public:
     VkPipelineColorBlendAttachmentState _colorBlendAttachment;
     VkPipelineMultisampleStateCreateInfo _multisampling;
     VkPipelineLayout _pipelineLayout;
-
+    VkPipelineDepthStencilStateCreateInfo _depthStencil;
+    VkPipelineTessellationStateCreateInfo _tessellation;
     VkPipeline build_pipeline(VkDevice device, VkRenderPass pass);
+};
+
+struct VkPipelineEntry {
+    VkPipeline _pipeline{VK_NULL_HANDLE};
+    VkPipelineLayout _layout{VK_NULL_HANDLE};
 };
 
 struct VKStateTracker {
@@ -64,8 +70,14 @@ struct VKStateTracker {
     VmaAllocator* _allocator = nullptr;
     std::array < std::pair<Str64, U32>, 32 > _debugScope;
     U8 _debugScopeDepth = 0u;
+    VkRect2D _activeScissor{};
+    VkViewport _activeViewport{};
+    U8 _activeMSAASamples{ 1u };
+    bool _alphaToCoverage{ false };
+    std::queue<VkPipelineEntry> _tempPipelines;
 };
 
+class RenderStateBlock;
 class VK_API final : public RenderAPIWrapper {
   public:
     VK_API(GFXDevice& context) noexcept;
@@ -86,11 +98,13 @@ class VK_API final : public RenderAPIWrapper {
       [[nodiscard]] vec2<U16> getDrawableSize(const DisplayWindow& window) const noexcept override;
       [[nodiscard]] U32 getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const noexcept override;
       [[nodiscard]] bool setViewport(const Rect<I32>& newViewport) noexcept override;
+      [[nodiscard]] bool setScissor(const Rect<I32>& newScissor) noexcept;
       void onThreadCreated(const std::thread::id& threadID) noexcept override;
 
 private:
     void initPipelines();
-    void destroyPipelines();
+    void destroyPipeline(VkPipelineEntry& pipelineEntry);
+    void destroyPipelines(bool keepDefault = false);
 
     void recreateSwapChain(const DisplayWindow& window);
     void drawText(const TextElementBatch& batch);
@@ -99,6 +113,8 @@ private:
     //loads a shader module from a spir-v file. Returns false if it errors
     [[nodiscard]] bool loadShaderModule(const char* filePath, VkShaderModule* outShaderModule);
 
+    ShaderResult bindPipeline(const Pipeline& pipeline, VkCommandBuffer& cmdBuffer) const;
+    void bindDynamicState(const RenderStateBlock& currentState, VkCommandBuffer& cmdBuffer) const;
 public:
     static VKStateTracker* GetStateTracker() noexcept;
 
@@ -123,10 +139,9 @@ private:
     vector<VkCommandBuffer> _commandBuffers{};
     U8 _currentFrameIndex{ 0u };
 
-    VkPipelineLayout _trianglePipelineLayout{ VK_NULL_HANDLE };
-    VkPipeline _trianglePipeline{VK_NULL_HANDLE};
-    VkExtent2D _windowExtents{};
+    VkPipelineEntry _trianglePipeline{};
 
+    VkExtent2D _windowExtents{};
     bool _skipEndFrame{ false };
 
 private:

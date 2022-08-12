@@ -50,13 +50,7 @@ namespace Divide {
         impl->_buffer->_usageType = BufferUsageType::VERTEX_BUFFER;
 
         // allocate vertex buffer
-        VkBufferCreateInfo bufferInfo = {};
-        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        //this is the total size, in bytes, of the buffer we are allocating
-        bufferInfo.size = dataSize;
-        //this buffer is going to be used as a Vertex Buffer
-        bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-
+        VkBufferCreateInfo bufferInfo = vk::bufferCreateInfo(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, dataSize);
         //let the VMA library know that this data should be writeable by CPU, but also readable by GPU
         VmaAllocationCreateInfo vmaallocInfo = {};
         vmaallocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
@@ -143,12 +137,7 @@ namespace Divide {
                 _indexBufferSize = std::max(newDataSize, _indexBufferSize);
 
                 //allocate vertex buffer
-                VkBufferCreateInfo bufferInfo = {};
-                bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-                //this is the total size, in bytes, of the buffer we are allocating
-                bufferInfo.size = _indexBufferSize;
-                //this buffer is going to be used as a Vertex Buffer
-                bufferInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+                const VkBufferCreateInfo bufferInfo = vk::bufferCreateInfo(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, _indexBufferSize);
 
                 //let the VMA library know that this data should be writeable by CPU, but also readable by GPU
                 VmaAllocationCreateInfo vmaallocInfo = {};

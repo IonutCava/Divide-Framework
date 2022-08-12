@@ -91,10 +91,10 @@ void GLStateTracker::setAttributesInternal(const GLuint vaoID, const AttributeMa
                                            static_cast<GLuint>(descriptor._strideInBytes));
             }
 
-            const GLuint instanceDivisor = descriptor._instanceDivisor;
-            if (_vaoBufferData.instanceDivisor(vaoID, idx) != instanceDivisor) {
-                glVertexArrayBindingDivisor(vaoID, idx, instanceDivisor);
-                _vaoBufferData.instanceDivisor(vaoID, idx, instanceDivisor);
+            const bool perInstanceDivisor = !descriptor._perVertexInputRate;
+            if (_vaoBufferData.instanceDivisorFlag(vaoID, idx) != perInstanceDivisor) {
+                glVertexArrayBindingDivisor(vaoID, idx, perInstanceDivisor ? 1u : 0u);
+                _vaoBufferData.instanceDivisorFlag(vaoID, idx, perInstanceDivisor);
             }
 
         }

@@ -38,12 +38,12 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 
     struct AttributeDescriptor {
-        size_t _strideInBytes =  0u;
-        U16 _bindingIndex = 0u;
-        U16 _componentsPerElement = 0u;
-        U16 _instanceDivisor = 0u;
-        GFXDataFormat _dataType = GFXDataFormat::COUNT;
-        bool _normalized = false;
+        size_t _strideInBytes{ 0u };
+        U16 _bindingIndex{ 0u };
+        U8 _componentsPerElement{ 0u };
+        GFXDataFormat _dataType{ GFXDataFormat::COUNT };
+        bool _perVertexInputRate{ true };
+        bool _normalized{ false };
     };
 
     [[nodiscard]] size_t GetHash(const AttributeDescriptor& descriptor);

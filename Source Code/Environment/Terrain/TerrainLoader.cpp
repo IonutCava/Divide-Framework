@@ -498,7 +498,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
         desc._dataType = GFXDataFormat::FLOAT_32;
         desc._normalized = false;
         desc._strideInBytes = 0u * sizeof(F32);
-        desc._instanceDivisor = 1u;
+        desc._perVertexInputRate = false;
     }
     {
         AttributeDescriptor& desc = vertexFormat[to_base(AttribLocation::COLOR)];
@@ -507,7 +507,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
         desc._dataType = GFXDataFormat::FLOAT_32;
         desc._normalized = false;
         desc._strideInBytes = 4u * sizeof(F32);
-        desc._instanceDivisor = 1u;
+        desc._perVertexInputRate = false;
     }
     terrainMaterial->setPipelineLayout(PrimitiveTopology::PATCH, vertexFormat);
 

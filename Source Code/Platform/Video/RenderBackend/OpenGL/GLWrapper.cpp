@@ -892,7 +892,7 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             }
 
             for (U8 i = 0u; i < imageSamplerCount; ++i) {
-                ImageSamplerBinding& binding = samplerBindings[i];
+                const ImageSamplerBinding& binding = samplerBindings[i];
                 if (GetStateTracker()->bindTexture(binding._bindingSlot, binding._type, binding._handle, binding._samplerHandle) == GLStateTracker::BindResult::FAILED) {
                     DIVIDE_UNEXPECTED_CALL();
                 }
