@@ -45,13 +45,16 @@ namespace Divide {
 
         void reset() override;
 
-        void draw(const GenericDrawCommand& command) noexcept override;
+        void draw(const GenericDrawCommand& command, VDIUserData* data) noexcept override;
 
         void setBuffer(const SetBufferParams& params) noexcept override;
 
         void setIndexBuffer(const IndexBuffer& indices) override;
 
         void updateBuffer(U32 buffer, U32 elementCountOffset, U32 elementCountRange, bufferPtr data) noexcept override;
+
+    private:
+        void bindBufferInternal(const SetBufferParams::BufferBindConfig& bindConfig, VkCommandBuffer& cmdBuffer);
 
     private:
         struct GenericBufferImpl {

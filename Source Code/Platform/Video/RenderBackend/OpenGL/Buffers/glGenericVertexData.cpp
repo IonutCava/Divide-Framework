@@ -29,7 +29,7 @@ void glGenericVertexData::reset() {
 }
 
 /// Submit a draw command to the GPU using this object and the specified command
-void glGenericVertexData::draw(const GenericDrawCommand& command) {
+void glGenericVertexData::draw(const GenericDrawCommand& command, [[maybe_unused]]VDIUserData* userData) {
     DIVIDE_ASSERT(GL_API::GetStateTracker()->_primitiveRestartEnabled == primitiveRestartRequired());
     DIVIDE_ASSERT(_idxBuffers.size() > command._bufferFlag);
     _lockManager.wait(false);
@@ -40,15 +40,15 @@ void glGenericVertexData::draw(const GenericDrawCommand& command) {
     }
 
     const auto& idxBuffer = _idxBuffers[command._bufferFlag];
+    if (GL_API::GetStateTracker()->setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, idxBuffer._handle) == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
+
     if (!renderIndirect() &&
         command._cmd.primCount == 1u &&
         command._drawCount > 1u)
     {
         rebuildCountAndIndexData(command._drawCount, static_cast<GLsizei>(command._cmd.indexCount), command._cmd.firstIndex, idxBuffer._data.count);
-    }
-
-    if (GL_API::GetStateTracker()->setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, idxBuffer._handle) == GLStateTracker::BindResult::FAILED) {
-        DIVIDE_UNEXPECTED_CALL();
     }
 
     // Submit the draw command

@@ -2,6 +2,7 @@
 
 #include "Headers/vkGenericVertexData.h"
 
+#include "Platform/Video/Headers/GenericDrawCommand.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 
 #include "Core/Headers/StringHelper.h"
@@ -17,7 +18,39 @@ namespace Divide {
         _idxBuffers.clear();
     }
 
-    void vkGenericVertexData::draw([[maybe_unused]] const GenericDrawCommand& command) noexcept {
+    void vkGenericVertexData::draw(const GenericDrawCommand& command, VDIUserData* userData) noexcept {
+        vkUserData* vkData = static_cast<vkUserData*>(userData);
+
+        for (const auto& buffer : _bufferObjects) {
+            bindBufferInternal(buffer._bindConfig, *vkData->_cmdBuffer);
+        }
+        const auto& idxBuffer = _idxBuffers[command._bufferFlag];
+        if (idxBuffer._handle != nullptr) {
+            vkCmdBindIndexBuffer(*vkData->_cmdBuffer, idxBuffer._handle->_buffer, 0u, idxBuffer._data.smallIndices ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
+        }
+    }
+
+    void vkGenericVertexData::bindBufferInternal(const SetBufferParams::BufferBindConfig& bindConfig, VkCommandBuffer& cmdBuffer) {
+        GenericBufferImpl* impl = nullptr;
+        for (auto& bufferImpl : _bufferObjects) {
+            if (bufferImpl._bindConfig._bufferIdx == bindConfig._bufferIdx) {
+                impl = &bufferImpl;
+                break;
+            }
+        }
+
+        if (impl == nullptr) {
+            return;
+        }
+
+        const BufferParams& bufferParams = impl->_buffer->_params;
+        VkDeviceSize offsetInBytes = 0u;
+
+        if (impl->_ringSizeFactor > 1) {
+            offsetInBytes += bufferParams._elementCount * bufferParams._elementSize * queueIndex();
+        }
+
+        vkCmdBindVertexBuffers(cmdBuffer, bindConfig._bindIdx, 1, &impl->_buffer->_buffer, &offsetInBytes);
     }
 
     void vkGenericVertexData::setBuffer(const SetBufferParams& params) noexcept {

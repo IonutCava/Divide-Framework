@@ -735,7 +735,7 @@ bool GL_API::draw(const GenericDrawCommand& cmd) const {
         }
 
         DIVIDE_ASSERT(s_lastBuffer != nullptr);
-        s_lastBuffer->draw(cmd);
+        s_lastBuffer->draw(cmd, nullptr);
     }
 
     return true;

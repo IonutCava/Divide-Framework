@@ -164,7 +164,7 @@ class VertexBuffer final : public VertexDataInterface {
 
     bool getMinimalData(const vector<Vertex>& dataIn, Byte* dataOut, size_t dataOutBufferLength);
     /// Calculates the appropriate attribute offsets and returns the total size of a vertex for this buffer
-    void draw(const GenericDrawCommand& command) override;
+    void draw(const GenericDrawCommand& command, VDIUserData* data) override;
 
     static [[nodiscard]] AttributeOffsets GetAttributeOffsets(const AttributeFlags& usedAttributes, size_t& totalDataSizeOut);
 

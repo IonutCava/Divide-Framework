@@ -463,11 +463,11 @@ void VertexBuffer::refresh() {
     }
 }
 
-void VertexBuffer::draw(const GenericDrawCommand& command) {
+void VertexBuffer::draw(const GenericDrawCommand& command, VDIUserData* data) {
     // Check if we have a refresh request queued up
     refresh();
-    
-    _internalGVD->draw(command);
+
+    _internalGVD->draw(command, data);
 }
 
 /// Activate and set all of the required vertex attributes.

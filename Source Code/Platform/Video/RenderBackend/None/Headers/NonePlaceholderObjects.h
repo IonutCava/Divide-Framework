@@ -72,7 +72,7 @@ namespace Divide {
 
         }
 
-        void draw([[maybe_unused]] const GenericDrawCommand& command) noexcept override {
+        void draw([[maybe_unused]] const GenericDrawCommand& command, [[maybe_unused]] VDIUserData* data) noexcept override {
         }
 
         void setBuffer([[maybe_unused]] const SetBufferParams& params) noexcept override {

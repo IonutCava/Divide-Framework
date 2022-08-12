@@ -163,6 +163,10 @@ public:
     [[nodiscard]] virtual bool lockByteRange(BufferRange range, SyncObject* sync) const = 0;
 };
 
+struct VDIUserData {
+
+};
+
 class NOINITVTABLE VertexDataInterface : public GUIDWrapper, public GraphicsResource {
    public:
     using Handle = PoolHandle;
@@ -171,7 +175,7 @@ class NOINITVTABLE VertexDataInterface : public GUIDWrapper, public GraphicsReso
     explicit VertexDataInterface(GFXDevice& context, const char* name);
     virtual ~VertexDataInterface();
 
-    virtual void draw(const GenericDrawCommand& command) = 0;
+    virtual void draw(const GenericDrawCommand& command, VDIUserData* data) = 0;
 
     PROPERTY_R(Handle, handle);
     PROPERTY_RW(bool, primitiveRestartRequired, false);

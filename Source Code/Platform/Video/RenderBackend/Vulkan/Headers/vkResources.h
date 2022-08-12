@@ -126,4 +126,33 @@ namespace VKUtil {
 }; //namespace VKUtil
 }; //namespace Divide
 
+
+inline bool operator==(const VkViewport& lhs, const VkViewport& rhs) noexcept {
+    return lhs.x == rhs.x &&
+           lhs.y == rhs.y &&
+           lhs.width == rhs.width &&
+           lhs.height == rhs.height &&
+           lhs.minDepth == rhs.minDepth &&
+           lhs.maxDepth == rhs.maxDepth;
+}
+inline bool operator!=(const VkViewport& lhs, const VkViewport& rhs) noexcept {
+    return lhs.x != rhs.x ||
+           lhs.y != rhs.y ||
+           lhs.width != rhs.width ||
+           lhs.height != rhs.height ||
+           lhs.minDepth != rhs.minDepth ||
+           lhs.maxDepth != rhs.maxDepth;
+}
+inline bool operator==(const VkRect2D& lhs, const VkRect2D& rhs) noexcept {
+    return lhs.offset.x == rhs.offset.x &&
+           lhs.offset.y == rhs.offset.y &&
+           lhs.extent.width == rhs.extent.width &&
+           lhs.extent.height == rhs.extent.height;
+}
+inline bool operator!=(const VkRect2D& lhs, const VkRect2D& rhs) noexcept {
+    return lhs.offset.x != rhs.offset.x ||
+           lhs.offset.y != rhs.offset.y ||
+           lhs.extent.width != rhs.extent.width ||
+           lhs.extent.height != rhs.extent.height;
+}
 #endif //VK_RESOURCES_H

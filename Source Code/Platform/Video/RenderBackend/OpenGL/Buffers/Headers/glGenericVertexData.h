@@ -62,7 +62,7 @@ class glGenericVertexData final : public GenericVertexData {
    protected:
     friend class GFXDevice;
     friend class glVertexArray;
-    void draw(const GenericDrawCommand& command) override;
+    void draw(const GenericDrawCommand& command, VDIUserData* data) override;
 
    protected:
     void bindBufferInternal(const SetBufferParams::BufferBindConfig& bindConfig);

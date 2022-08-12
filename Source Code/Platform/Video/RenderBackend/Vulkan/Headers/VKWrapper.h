@@ -65,17 +65,47 @@ struct VkPipelineEntry {
     VkPipelineLayout _layout{VK_NULL_HANDLE};
 };
 
+struct VKDynamicState {
+    PROPERTY_RW(U32, stencilRef, 0u);
+    PROPERTY_RW(U32, stencilMask, 0xFFFFFFFF);
+    PROPERTY_RW(U32, stencilWriteMask, 0xFFFFFFFF);
+    PROPERTY_RW(F32, zBias, 0.0f);
+    PROPERTY_RW(F32, zUnits, 0.0f);
+    VkRect2D _activeScissor{};
+    VkViewport _activeViewport{};
+};
+
 struct VKStateTracker {
     VKDevice* _device = nullptr;
     VmaAllocator* _allocator = nullptr;
     std::array < std::pair<Str64, U32>, 32 > _debugScope;
     U8 _debugScopeDepth = 0u;
-    VkRect2D _activeScissor{};
-    VkViewport _activeViewport{};
+    PrimitiveTopology _activeTopology{ PrimitiveTopology::COUNT };
     U8 _activeMSAASamples{ 1u };
     bool _alphaToCoverage{ false };
+    VKDynamicState _dynamicState{};
     std::queue<VkPipelineEntry> _tempPipelines;
 };
+
+struct vkUserData : VDIUserData {
+    VkCommandBuffer* _cmdBuffer = nullptr;
+};
+
+struct VKBufferDeletionQueue
+{
+    struct BufferEntry {
+        VkBuffer _buffer{ VK_NULL_HANDLE };
+        VmaAllocation _allocation{ VK_NULL_HANDLE };
+    };
+
+    Mutex _deletionLock;
+    std::deque<BufferEntry> _deletionQueue;
+
+    void push(BufferEntry&& function);
+    void flush(bool deviceIsIdle);
+    bool empty();
+};
+
 
 class RenderStateBlock;
 class VK_API final : public RenderAPIWrapper {
@@ -97,18 +127,18 @@ class VK_API final : public RenderAPIWrapper {
       void postFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) noexcept override;
       [[nodiscard]] vec2<U16> getDrawableSize(const DisplayWindow& window) const noexcept override;
       [[nodiscard]] U32 getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const noexcept override;
-      [[nodiscard]] bool setViewport(const Rect<I32>& newViewport) noexcept override;
-      [[nodiscard]] bool setScissor(const Rect<I32>& newScissor) noexcept;
+      bool setViewport(const Rect<I32>& newViewport) noexcept override;
+      bool setScissor(const Rect<I32>& newScissor) noexcept;
       void onThreadCreated(const std::thread::id& threadID) noexcept override;
 
 private:
     void initPipelines();
     void destroyPipeline(VkPipelineEntry& pipelineEntry);
-    void destroyPipelines(bool keepDefault = false);
+    bool destroyPipelines(bool keepDefault = false);
 
     void recreateSwapChain(const DisplayWindow& window);
     void drawText(const TextElementBatch& batch);
-    bool draw(const GenericDrawCommand& cmd) const;
+    bool draw(const GenericDrawCommand& cmd, VkCommandBuffer& cmdBuffer) const;
 
     //loads a shader module from a spir-v file. Returns false if it errors
     [[nodiscard]] bool loadShaderModule(const char* filePath, VkShaderModule* outShaderModule);
@@ -117,6 +147,8 @@ private:
     void bindDynamicState(const RenderStateBlock& currentState, VkCommandBuffer& cmdBuffer) const;
 public:
     static VKStateTracker* GetStateTracker() noexcept;
+
+    static void RegisterBufferDelete(VKBufferDeletionQueue::BufferEntry&& buffer);
 
 private:
     static void InsertDebugMessage(VkCommandBuffer cmdBuffer, const char* message, U32 id = std::numeric_limits<U32>::max());
@@ -147,7 +179,9 @@ private:
 private:
     static eastl::unique_ptr<VKStateTracker> s_stateTracker;
     static bool s_hasDebugMarkerSupport;
+    static VKBufferDeletionQueue s_bufferDeletionQueue;
 };
 
 };  // namespace Divide
+
 #endif //_VK_WRAPPER_H_
