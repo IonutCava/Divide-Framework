@@ -44,7 +44,7 @@ namespace Divide {
     };
 
     namespace Reflection {
-        static constexpr U32 INVALID_BINDING_INDEX = std::numeric_limits<U32>::max();
+        static constexpr U8 INVALID_BINDING_INDEX = std::numeric_limits<U8>::max();
 
         struct BlockMember {
             GFX::PushConstantType _type{ GFX::PushConstantType::COUNT };
@@ -56,12 +56,24 @@ namespace Divide {
             vec2<size_t> _matrixDimensions{ 0u, 0u }; //columns, rows
         };
 
+        struct ImageEntry {
+            bool _combinedImageSampler{ false };
+            bool _isWriteTarget{ false };
+
+            string _imageName;
+            U8 _bindingSet{ 0u };
+            U8 _targetImageBindingIndex{ INVALID_BINDING_INDEX };
+        };
+
         struct Data {
-            U32 _targetBlockBindingIndex = INVALID_BINDING_INDEX;
+            U8 _bindingSet{ 0u };
+            U8 _targetBlockBindingIndex{ INVALID_BINDING_INDEX };
             string _targetBlockName;
             size_t _blockSize{ 0u };
             vector<BlockMember> _blockMembers{};
             std::array<bool, 16> _enabledAttributes;
+
+            vector<ImageEntry> _images{};
         };
 
 
@@ -113,11 +125,11 @@ namespace Divide {
         void commit(GFX::MemoryBarrierCommand& memCmdInOut);
         void prepare();
 
+        PROPERTY_R_IW(UniformBlockUploaderDescriptor, descriptor);
     private:
         vector<Byte> _localDataCopy;
         vector<BlockMember> _blockMembers;
         ShaderBuffer_uptr _buffer = nullptr;
-        UniformBlockUploaderDescriptor _descriptor;
         size_t _uniformBlockSizeAligned = 0u;
         bool _uniformBlockDirty = false;
         bool _needsQueueIncrement = false;

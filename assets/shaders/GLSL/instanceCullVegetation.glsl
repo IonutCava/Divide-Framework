@@ -26,7 +26,6 @@ vec3 _private_h_extents;
 
 uniform vec3 cameraPosition;
 
-#define NEED_SCENE_DATA
 #include "HiZCullingAlgorithm.cmn";
 #include "vegetationData.cmn"
 #include "sceneData.cmn"

@@ -80,12 +80,11 @@ void GUISplash::render(GFXDevice& context) const {
 
     _splashImage->waitForReady();
 
-    DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(buffer)->_set;
-    set._usage = DescriptorSetUsage::PER_DRAW_SET;
-    auto& binding = set._bindings.emplace_back();
-    binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-    binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-    binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+    auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(buffer);
+    cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+
+    auto& binding = cmd->_bindings.emplace_back();
+    binding._slot = to_U8(TextureUsage::UNIT0);
     binding._data.As<DescriptorCombinedImageSampler>() = { _splashImage->data(), splashSampler.getHash() };
 
     GFX::EnqueueCommand<GFX::DrawCommand>(buffer);

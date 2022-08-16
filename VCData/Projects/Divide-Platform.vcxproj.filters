@@ -1084,6 +1084,9 @@
     <None Include="..\..\assets\shaders\SPIRV\triangle.vert.spv">
       <Filter>Video\ShaderSource\SPIRV</Filter>
     </None>
+    <None Include="..\..\assets\shaders\GLSL\common\viewport.cmn">
+      <Filter>Video\ShaderSource\GLSL\common</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Text Include="../../assets\shaders\GLSL\toneMap.glsl">

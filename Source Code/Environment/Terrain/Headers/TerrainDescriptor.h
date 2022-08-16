@@ -75,7 +75,7 @@ class TerrainDescriptor final : public PropertyDescriptor {
         return _ringTileCount[index];
     }
 
-    [[nodiscard]] size_t getHash() const override
+    [[nodiscard]] size_t getHash() const noexcept override
     {
         _hash = PropertyDescriptor::getHash();
         for (const auto& it : _variables) {

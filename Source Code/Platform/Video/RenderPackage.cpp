@@ -11,7 +11,7 @@ void Clear(RenderPackage& pkg) noexcept {
     pkg.drawCmdOffset(RenderPackage::INVALID_CMD_OFFSET);
     pkg.stagePassBaseIndex(RenderPackage::INVALID_STAGE_INDEX);
     pkg.pipelineCmd(GFX::BindPipelineCommand{});
-    pkg.descriptorSetCmd(GFX::BindDescriptorSetsCommand{});
+    pkg.descriptorSetCmd(GFX::BindShaderResourcesCommand{});
     pkg.pushConstantsCmd(GFX::SendPushConstantsCommand{});
     pkg.additionalCommands(nullptr);
 }

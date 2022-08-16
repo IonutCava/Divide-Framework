@@ -1,6 +1,5 @@
 --Vertex
 
-#define NEED_SCENE_DATA
 #define COMPUTE_TBN
 #define NO_VELOCITY
 #include "vbInputData.vert"

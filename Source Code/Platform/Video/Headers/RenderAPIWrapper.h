@@ -34,6 +34,7 @@
 #define _RENDER_API_H_
 
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
+#include "Platform/Video/Headers/DescriptorSets.h"
 
 namespace CEGUI {
     class Texture;
@@ -155,6 +156,8 @@ protected:
     virtual bool setViewport(const Rect<I32>& newViewport) = 0;
 
     virtual void onThreadCreated(const std::thread::id& threadID) = 0;
+
+    virtual void createSetLayout(DescriptorSetUsage usage, const DescriptorSet& set) = 0;
 };
 
 };  // namespace Divide

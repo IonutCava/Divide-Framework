@@ -458,7 +458,7 @@ void glFramebuffer::begin(const RTDrawDescriptor& drawPolicy) {
 
     // Set the viewport
     if (drawPolicy._setViewport) {
-        _prevViewport.set(_context.getViewport());
+        _prevViewport.set(_context.activeViewport());
         _context.setViewport(0, 0, to_I32(getWidth()), to_I32(getHeight()));
     }
 

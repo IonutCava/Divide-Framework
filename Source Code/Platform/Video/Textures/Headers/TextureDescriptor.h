@@ -128,7 +128,7 @@ class TextureDescriptor final : public PropertyDescriptor {
     {
     }
 
-    [[nodiscard]] size_t getHash() const override;
+    [[nodiscard]] size_t getHash() const noexcept override;
 
     PROPERTY_RW(U16, layerCount, 1);
     PROPERTY_RW(U16, mipBaseLevel, 0);

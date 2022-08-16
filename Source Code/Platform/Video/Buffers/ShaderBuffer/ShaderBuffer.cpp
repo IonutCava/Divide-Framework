@@ -17,7 +17,7 @@ size_t ShaderBuffer::AlignmentRequirement(const Usage usage) noexcept {
 }
 
 ShaderBuffer::ShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor)
-      : LockableDataRangeBuffer(),
+      : GUIDWrapper(),
         GraphicsResource(context, Type::SHADER_BUFFER, getGUID(), _ID(descriptor._name.c_str())),
         RingBufferSeparateWrite(descriptor._ringBufferLength, descriptor._separateReadWrite),
         _params(descriptor._bufferParams),

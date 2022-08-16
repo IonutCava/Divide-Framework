@@ -47,9 +47,9 @@ FORCE_INLINE void DELETE_CMD(CommandBase*& cmd) {
 
 FORCE_INLINE size_t RESERVE_CMD(const U8 typeIndex) noexcept {
     switch (static_cast<CommandType>(typeIndex)) {
-        case CommandType::BIND_DESCRIPTOR_SETS: return 2;
-        case CommandType::SEND_PUSH_CONSTANTS : return 3;
-        case CommandType::DRAW_COMMANDS       : return 4;
+        case CommandType::BIND_SHADER_RESOURCES: return 2;
+        case CommandType::SEND_PUSH_CONSTANTS  : return 3;
+        case CommandType::DRAW_COMMANDS        : return 4;
         default: break;
     }
 

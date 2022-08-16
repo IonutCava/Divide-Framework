@@ -164,10 +164,6 @@ namespace Divide {
         bool bindByteRange([[maybe_unused]] U8 bindIndex, [[maybe_unused]] BufferRange range) noexcept override {
             return true;
         }
-
-        bool lockByteRange([[maybe_unused]] BufferRange range, [[maybe_unused]] SyncObject* sync) const override {
-            return true;
-        }
     };
 
 };  // namespace Divide

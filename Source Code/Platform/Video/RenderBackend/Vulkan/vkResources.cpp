@@ -3,6 +3,7 @@
 #include "Headers/vkResources.h"
 
 #include "Platform/Video/GLIM/glim.h"
+#include "Platform/Video/Headers/DescriptorSets.h"
 
 namespace Divide {
 std::array<VkBlendFactor, to_base(BlendProperty::COUNT)> vkBlendTable;
@@ -304,6 +305,18 @@ namespace VKUtil {
 
         DIVIDE_UNEXPECTED_CALL();
         return VK_FORMAT_MAX_ENUM;
+    }
+
+    VkDescriptorType vkDescriptorType(DescriptorSetBindingType type) noexcept {
+        switch (type) {
+            case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            case DescriptorSetBindingType::UNIFORM_BUFFER: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            case DescriptorSetBindingType::IMAGE: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+            case DescriptorSetBindingType::IMAGE_VIEW: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        }
+
+        return VK_DESCRIPTOR_TYPE_MAX_ENUM;
     }
 };
 

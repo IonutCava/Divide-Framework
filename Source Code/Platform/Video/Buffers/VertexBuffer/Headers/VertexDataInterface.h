@@ -65,27 +65,11 @@ inline bool operator!=(const BufferParams& lhs, const BufferParams& rhs) noexcep
            lhs._updateUsage != rhs._updateUsage;
 }
 
-enum class BufferLockState : U8 {
-    ACTIVE = 0,
-    EXPIRED,
-    DELETED,
-    ERROR
-};
-
-struct SyncObject {
-    ~SyncObject();
-    void reset();
-
-    Mutex _fenceLock;
-    std::any _fenceObject;
-    U32 _frameID = 0u;
-};
-
-FWD_DECLARE_MANAGED_STRUCT(SyncObject);
-
 struct BufferRange {
-    size_t _startOffset = 0u;
-    size_t _length = 0u;
+    size_t _startOffset{ 0u };
+    size_t _length{ 0u };
+
+    FORCE_INLINE [[nodiscard]] size_t endOffset() const noexcept { return _startOffset + _length; }
 };
 
 inline bool operator==(const BufferRange& lhs, const BufferRange& rhs) noexcept {
@@ -99,29 +83,20 @@ inline bool operator!=(const BufferRange& lhs, const BufferRange& rhs) noexcept 
 }
 
 [[nodiscard]] inline bool Overlaps(const BufferRange& lhs, const BufferRange& rhs) noexcept {
-    return lhs._startOffset < (rhs._startOffset + rhs._length) && rhs._startOffset < (lhs._startOffset + lhs._length);
+    return lhs._startOffset < rhs.endOffset() &&
+           rhs._startOffset < lhs.endOffset();
 }
 
 inline void Merge(BufferRange& lhs, const BufferRange& rhs) noexcept {
+    const size_t lhsEndOffset = lhs.endOffset();
+    const size_t rhsEndOffset = rhs.endOffset();
     lhs._startOffset = std::min(lhs._startOffset, rhs._startOffset);
-    lhs._length = std::max(lhs._length, rhs._length);
+    lhs._length = std::max(lhsEndOffset, rhsEndOffset) - lhs._startOffset;
 }
 
-struct BufferLockInstance {
-    BufferLockInstance() = default;
-    explicit BufferLockInstance(const BufferRange range, SyncObject* syncObj) noexcept
-        : _range(range), _syncObj(syncObj)
-    {
-    }
-
-    BufferRange _range{};
-    SyncObject* _syncObj = nullptr;
-    BufferLockState _state = BufferLockState::ACTIVE;
-};
-
-class LockableDataRangeBuffer;
+class ShaderBuffer;
 struct BufferLock {
-    const LockableDataRangeBuffer* _targetBuffer = nullptr;
+    const ShaderBuffer* _targetBuffer = nullptr;
     BufferRange _range{};
 };
 
@@ -158,14 +133,7 @@ inline [[nodiscard]] bool IsEmpty(const FenceLocks& locks) noexcept {
     return true;
 }
 
-class LockableDataRangeBuffer : public GUIDWrapper {
-public:
-    [[nodiscard]] virtual bool lockByteRange(BufferRange range, SyncObject* sync) const = 0;
-};
-
-struct VDIUserData {
-
-};
+struct VDIUserData {};
 
 class NOINITVTABLE VertexDataInterface : public GUIDWrapper, public GraphicsResource {
    public:

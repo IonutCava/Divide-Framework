@@ -646,41 +646,31 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
         WriteToGPUBuffer(_indirectionBuffer, memCmdInOut);
     }
 
-    DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-    set._usage = DescriptorSetUsage::PER_BATCH_SET;
+    auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+    cmd->_usage = DescriptorSetUsage::PER_BATCH_SET;
     {
-        auto& binding = set._bindings.emplace_back();
-        binding._resourceSlot = to_base(ShaderBufferLocation::CMD_BUFFER);
-        binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::NONE;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_base(ShaderBufferLocation::CMD_BUFFER);
         binding._data.As<ShaderBufferEntry>() = { cmdBuffer,  { 0u, cmdBuffer->getPrimitiveCount() } };
     }
     {
-        auto& binding = set._bindings.emplace_back();
-        binding._resourceSlot = to_base(ShaderBufferLocation::GPU_COMMANDS);
-        binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_base(ShaderBufferLocation::GPU_COMMANDS);
         binding._data.As<ShaderBufferEntry>() = { cmdBuffer, { 0u, cmdBuffer->getPrimitiveCount() } };
     }
     {
-        auto& binding = set._bindings.emplace_back();
-        binding._resourceSlot = to_base(ShaderBufferLocation::NODE_MATERIAL_DATA);
-        binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_base(ShaderBufferLocation::NODE_MATERIAL_DATA);
         binding._data.As<ShaderBufferEntry>() = { _materialBuffer._gpuBuffer.get(), { 0u, _materialBuffer._highWaterMark } };
     }
     {
-        auto& binding = set._bindings.emplace_back();
-        binding._resourceSlot = to_base(ShaderBufferLocation::NODE_TRANSFORM_DATA);
-        binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::ALL_GEOMETRY;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_base(ShaderBufferLocation::NODE_TRANSFORM_DATA);
         binding._data.As<ShaderBufferEntry>() = { _transformBuffer._gpuBuffer.get(), { 0u, _transformBuffer._highWaterMark } };
     }
     {
-        auto& binding = set._bindings.emplace_back();
-        binding._resourceSlot = to_base(ShaderBufferLocation::NODE_INDIRECTION_DATA);
-        binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::VERTEX;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_base(ShaderBufferLocation::NODE_INDIRECTION_DATA);
         binding._data.As<ShaderBufferEntry>() = { _indirectionBuffer._gpuBuffer.get(), { 0u, _indirectionBuffer._highWaterMark } };
     }
 
@@ -915,32 +905,26 @@ void RenderPassExecutor::mainPass(const VisibleNodeList<>& nodes, const RenderPa
         const RenderTarget* screenTarget = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN);
         RTAttachment* normalsAtt = screenTarget->getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::NORMALS));
 
-        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-        set._usage = DescriptorSetUsage::PER_PASS_SET;
+        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+        cmd->_usage = DescriptorSetUsage::PER_PASS_SET;
 
         Texture_ptr hizTex = nullptr;
         if (hasHiZ) {
             const RenderTarget* hizTarget = _context.renderTargetPool().getRenderTarget(params._targetHIZ);
             RTAttachment* hizAtt = hizTarget->getAttachment(RTAttachmentType::Depth_Stencil, 0);
 
-            auto& binding = set._bindings.emplace_back();
-            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resourceSlot = to_base(TextureUsage::DEPTH);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+            auto& binding = cmd->_bindings.emplace_back();
+            binding._slot = to_base(TextureUsage::DEPTH);
             binding._data.As<DescriptorCombinedImageSampler>() = { hizAtt->texture()->data(), hizAtt->descriptor()._samplerHash };
         } else if (prePassExecuted) {
             RTAttachment* depthAtt = target.getAttachment(RTAttachmentType::Depth_Stencil, 0);
-            auto& binding = set._bindings.emplace_back();
-            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resourceSlot = to_base(TextureUsage::DEPTH);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+            auto& binding = cmd->_bindings.emplace_back();
+            binding._slot = to_base(TextureUsage::DEPTH);
             binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->data(), depthAtt->descriptor()._samplerHash };
         }
 
-        auto& binding = set._bindings.emplace_back();
-        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-        binding._resourceSlot = to_base(TextureUsage::SCENE_NORMALS);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_base(TextureUsage::SCENE_NORMALS);
         binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt->texture()->data(), normalsAtt->descriptor()._samplerHash };
 
         prepareRenderQueues(params, nodes, cameraSnapshot, false, RenderingOrder::COUNT, bufferInOut);
@@ -982,12 +966,10 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
         const RenderTarget* nonMSTarget = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN);
         const auto& colourAtt = nonMSTarget->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
 
-        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-        set._usage = DescriptorSetUsage::PER_PASS_SET;
-        auto& binding = set._bindings.emplace_back();
-        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-        binding._resourceSlot = to_base(TextureUsage::TRANSMITANCE);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+        cmd->_usage = DescriptorSetUsage::PER_PASS_SET;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_base(TextureUsage::TRANSMITANCE);
         binding._data.As<DescriptorCombinedImageSampler>() = { colourAtt->texture()->data(), colourAtt->descriptor()._samplerHash };
     }
 
@@ -1018,20 +1000,16 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
     const auto& accumAtt = oitRT->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ACCUMULATION));
     const auto& revAtt = oitRT->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::REVEALAGE));
 
-    DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-    set._usage = DescriptorSetUsage::PER_DRAW_SET;
+    auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+    cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
     {
-        auto& binding = set._bindings.emplace_back();
-        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-        binding._resourceSlot = to_U8(TextureUsage::UNIT0);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_U8(TextureUsage::UNIT0);
         binding._data.As<DescriptorCombinedImageSampler>() = { accumAtt->texture()->data(), accumAtt->descriptor()._samplerHash };
     }
     {
-        auto& binding = set._bindings.emplace_back();
-        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-        binding._resourceSlot = to_U8(TextureUsage::UNIT1);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_U8(TextureUsage::UNIT1);
         binding._data.As<DescriptorCombinedImageSampler>() = { revAtt->texture()->data(), revAtt->descriptor()._samplerHash };
     }
 
@@ -1118,20 +1096,16 @@ void RenderPassExecutor::resolveMainScreenTarget(const RenderPassParams& params,
             RTAttachment* velocityAtt = MSSource->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::VELOCITY));
             RTAttachment* normalsAtt = MSSource->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS));
 
-            DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-            set._usage = DescriptorSetUsage::PER_DRAW_SET;
+            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+            cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
             {
-                auto& binding = set._bindings.emplace_back();
-                binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-                binding._resourceSlot = to_U8(TextureUsage::UNIT0);
-                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+                auto& binding = cmd->_bindings.emplace_back();
+                binding._slot = to_U8(TextureUsage::UNIT0);
                 binding._data.As<DescriptorCombinedImageSampler>() = { velocityAtt->texture()->data(), velocityAtt->descriptor()._samplerHash };
             }
             {
-                auto& binding = set._bindings.emplace_back();
-                binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-                binding._resourceSlot = to_U8(TextureUsage::UNIT1);
-                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+                auto& binding = cmd->_bindings.emplace_back();
+                binding._slot = to_U8(TextureUsage::UNIT1);
                 binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt->texture()->data(), normalsAtt->descriptor()._samplerHash };
             }
 

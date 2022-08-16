@@ -39,7 +39,7 @@
 #include "Core/Resources/Headers/Resource.h"
 #include "Platform/Video/Headers/GraphicsResource.h"
 #include "Platform/Video/Headers/AttributeDescriptor.h"
-
+#include "Platform/Video/Headers/DescriptorSets.h"
 namespace FW {
     class FileWatcher;
 };
@@ -201,6 +201,7 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
 
     static void OnAtomChange(std::string_view atomName, FileUpdateEvent evt);
 
+    PROPERTY_R_IW(DescriptorSet, descriptorSet);
     PROPERTY_RW(bool, highPriority, true);
     PROPERTY_R_IW(ShaderProgramHandle, handle, SHADER_INVALID_HANDLE);
 
@@ -235,13 +236,13 @@ protected:
                         bool reloadExisting,
                         LoadData& loadDataInOut,
                         Reflection::UniformsSet& previousUniformsInOut,
-                        U32& blockIndexInOut);
+                        U8& blockIndexInOut);
 
     void loadAndParseGLSL(const ModuleDefines& defines,
                           bool reloadExisting,
                           LoadData& loadDataInOut,
                           Reflection::UniformsSet& previousUniformsInOut,
-                          U32& blockIndexInOut,
+                          U8& blockIndexInOut,
                           eastl::set<U64>& atomIDsInOut);
 
     void initUniformUploader(const PerFileShaderData& loadData);

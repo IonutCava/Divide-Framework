@@ -123,20 +123,22 @@ namespace Names {
 static_assert(std::size(Names::textureUsage) == to_base(TextureUsage::COUNT) + 1);
 
 enum class DescriptorSetUsage : U8 {
-    PER_FRAME_SET = 0,
-    PER_PASS_SET,
+    PER_DRAW_SET = 0,
     PER_BATCH_SET,
-    PER_DRAW_SET,
+    PER_PASS_SET,
+    PER_FRAME_SET,
     COUNT
 };
 
 namespace Names {
     static constexpr const char* descriptorSetUsage[] = {
-         "PER_FRAME_SET", "PER_PASS_SET", "PER_BATCH_SET", "PER_DRAW_SET", "NONE"
+         "PER_DRAW_SET", "PER_BATCH_SET", "PER_PASS_SET", "PER_FRAME_SET", "NONE"
     };
 };
 
 static_assert(std::size(Names::descriptorSetUsage) == to_base(DescriptorSetUsage::COUNT) + 1);
+
+static_assert(to_base(DescriptorSetUsage::PER_DRAW_SET) == 0u, "PER_DRAW_SET must be set to 0 to provide compatibility with the OpenGL renderer!");
 
 enum class ReflectorType : U8
 {

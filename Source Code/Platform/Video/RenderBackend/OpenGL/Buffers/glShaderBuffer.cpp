@@ -52,7 +52,7 @@ BufferLock glShaderBuffer::clearBytes(BufferRange range) {
     OPTICK_EVENT();
 
     DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected((range._startOffset), AlignmentRequirement(_usage)));
-    assert(range._startOffset + range._length <= _alignedBufferSize && "glShaderBuffer::UpdateData error: was called with an invalid range (buffer overflow)!");
+    assert(range.endOffset() <= _alignedBufferSize && "glShaderBuffer::UpdateData error: was called with an invalid range (buffer overflow)!");
 
     range._startOffset += queueWriteIndex() * _alignedBufferSize;
 
@@ -111,12 +111,5 @@ bool glShaderBuffer::bindByteRange(const U8 bindIndex, BufferRange range) {
 
     return result == GLStateTracker::BindResult::JUST_BOUND;
 }
-
-bool glShaderBuffer::lockByteRange(const BufferRange range, SyncObject* sync) const {
-    DIVIDE_ASSERT(sync != nullptr);
-    DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
-    return bufferImpl()->lockByteRange(range, sync);
-}
-
 
 }  // namespace Divide

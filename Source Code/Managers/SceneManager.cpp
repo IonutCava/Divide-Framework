@@ -502,14 +502,16 @@ bool SceneManager::frameEnded(const FrameEvent& evt) {
     return Attorney::SceneManager::frameEnded(getActiveScene());
 }
 
-void SceneManager::updateSceneState(const U64 deltaTimeUS) {
+void SceneManager::updateSceneState(const U64 deltaGameTimeUS, const U64 deltaAppTimeUS) {
     OPTICK_EVENT();
 
     Scene& activeScene = getActiveScene();
     assert(activeScene.getState() == ResourceState::RES_LOADED);
     // Update internal timers
-    _elapsedTime += deltaTimeUS;
-    _elapsedTimeMS = Time::MicrosecondsToMilliseconds<U32>(_elapsedTime);
+    _elapsedGameTime += deltaGameTimeUS;
+    _elapsedGameTimeMS = Time::MicrosecondsToMilliseconds<U32>(_elapsedGameTime);
+    _elapsedAppTime += deltaAppTimeUS;
+    _elapsedAppTimeMS = Time::MicrosecondsToMilliseconds<U32>(_elapsedAppTime);
 
     const Scene::DayNightData& dayNightData = activeScene.dayNightData();
 
@@ -517,8 +519,11 @@ void SceneManager::updateSceneState(const U64 deltaTimeUS) {
                                             ? dayNightData._sunLight->getDiffuseColour()
                                             : DefaultColours::WHITE.rgb;
 
-    SceneShaderData* sceneData = parent().platformContext().gfx().sceneData();
+    const GFXDevice& gfx = parent().platformContext().gfx();
+    SceneShaderData* sceneData = gfx.sceneData();
     sceneData->sunDetails(activeScene.getSunPosition(), sunColour);
+    sceneData->appData(_elapsedAppTimeMS, gfx.materialDebugFlag());
+
     //_sceneData->skyColour(horizonColour, zenithColour);
 
     FogDetails fog = activeScene.state()->renderState().fogDetails();
@@ -537,7 +542,7 @@ void SceneManager::updateSceneState(const U64 deltaTimeUS) {
 
     Attorney::GFXDeviceSceneManager::shadowingSettings(_parent.platformContext().gfx(), activeSceneState->lightBleedBias(), activeSceneState->minShadowVariance());
 
-    activeScene.updateSceneState(deltaTimeUS);
+    activeScene.updateSceneState(deltaGameTimeUS);
 
     U8 index = 0u;
 
@@ -545,7 +550,7 @@ void SceneManager::updateSceneState(const U64 deltaTimeUS) {
     for (const auto& body : waterBodies) {
         sceneData->waterDetails(index++, body);
     }
-    _saveTimer += deltaTimeUS;
+    _saveTimer += deltaGameTimeUS;
 
     if (_saveTimer >= Time::SecondsToMicroseconds(Config::Build::IS_DEBUG_BUILD ? 5 : 10)) {
         if (!saveActiveScene(true, true)) {

@@ -819,7 +819,7 @@ inline size_t GetAlignmentCorrected(const size_t value, const size_t alignment) 
 
 /// a la Boost
 template<typename T, typename... Rest>
-void Hash_combine(std::size_t& seed, const T& v, const Rest&... rest) {
+void Hash_combine(std::size_t& seed, const T& v, const Rest&... rest) noexcept {
     seed ^= std::hash<T>{}(v)+0x9e3779b9 + (seed << 6) + (seed >> 2);
     (Hash_combine(seed, rest), ...);
 };

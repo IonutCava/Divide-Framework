@@ -79,7 +79,7 @@ namespace Divide {
         {
         }
 
-        size_t getHash() const override;
+        size_t getHash() const noexcept override;
         Str256 _name;
         ModuleDefines _globalDefines;
         vector<ShaderModuleDescriptor> _modules;

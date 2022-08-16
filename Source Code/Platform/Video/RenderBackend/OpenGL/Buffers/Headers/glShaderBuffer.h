@@ -50,10 +50,7 @@ class glShaderBuffer final : public ShaderBuffer {
         void readBytes(BufferRange range, std::pair<bufferPtr, size_t> outData) const override;
         BufferLock writeBytes(BufferRange range, bufferPtr data) override;
 
-        [[nodiscard]] bool lockByteRange(BufferRange range, SyncObject* sync) const override;
         [[nodiscard]] bool bindByteRange(U8 bindIndex, BufferRange range) override;
-
-    private:
         [[nodiscard]] inline glBufferImpl* bufferImpl() const { return _bufferImpl.get(); }
 
     private:

@@ -25,6 +25,7 @@
 #include "Platform/Video/RenderBackend/OpenGL/Textures/Headers/glSamplerObject.h"
 
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glBufferImpl.h"
+#include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glShaderBuffer.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glFramebuffer.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glGenericVertexData.h"
 
@@ -864,55 +865,9 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             const GFX::CopyTextureCommand* crtCmd = cmd->As<GFX::CopyTextureCommand>();
             glTexture::copy(crtCmd->_source, crtCmd->_sourceMSAASamples, crtCmd->_destination, crtCmd->_destinationMSAASamples, crtCmd->_params);
         }break;
-        case GFX::CommandType::BIND_DESCRIPTOR_SETS: {
-            struct ImageSamplerBinding {
-                U8 _bindingSlot;
-                TextureType _type;
-                GLuint _handle;
-                GLuint _samplerHandle;
-            };
-            static ImageSamplerBinding samplerBindings[to_base(TextureType::COUNT)];
-
-            const DescriptorSet& set = cmd->As<GFX::BindDescriptorSetsCommand>()->_set;
-
-            U8 imageSamplerCount = 0u;
-            for (auto& binding : set._bindings) {
-                if (binding._type == DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER &&
-                    binding._resourceSlot != INVALID_TEXTURE_BINDING) 
-                {
-                    const auto& imageSampler = binding._data.As<DescriptorCombinedImageSampler>();
-                    const TextureData& texData = imageSampler._image;
-
-                    auto& samplerBinding = samplerBindings[imageSamplerCount++];
-                    samplerBinding._bindingSlot = binding._resourceSlot;
-                    samplerBinding._type = texData._textureType;
-                    samplerBinding._handle = texData._textureHandle;
-                    samplerBinding._samplerHandle = GetSamplerHandle(imageSampler._samplerHash);
-                };
-            }
-
-            for (U8 i = 0u; i < imageSamplerCount; ++i) {
-                const ImageSamplerBinding& binding = samplerBindings[i];
-                if (GetStateTracker()->bindTexture(binding._bindingSlot, binding._type, binding._handle, binding._samplerHandle) == GLStateTracker::BindResult::FAILED) {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
-            }
-
-            for (auto& binding : set._bindings) {
-                const U8 bindingSlot = binding._resourceSlot;
-                DIVIDE_ASSERT(binding._shaderStageVisibility != DescriptorSetBinding::ShaderStageVisibility::COUNT);
-
-                const DescriptorSetBindingData& data = binding._data;
-
-                if (binding._type == DescriptorSetBindingType::IMAGE_VIEW &&
-                    bindingSlot != INVALID_TEXTURE_BINDING)
-                {
-                    const auto& texData = data.As<ImageViewEntry>();
-                    if (makeTextureViewResidentInternal(texData, bindingSlot) == GLStateTracker::BindResult::FAILED) {
-                        DIVIDE_UNEXPECTED_CALL();
-                    }
-                }
-            }
+        case GFX::CommandType::BIND_SHADER_RESOURCES: {
+            const auto resCmd = cmd->As<GFX::BindShaderResourcesCommand>();
+            bindShaderResources(resCmd->_usage, resCmd->_bindings);
         }break;
         case GFX::CommandType::BIND_PIPELINE: {
             if (pushConstantsNeedLock) {
@@ -1139,7 +1094,8 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             if (!crtCmd->_bufferLocks.empty()) {
                 SyncObject* sync = glLockManager::CreateSyncObject();
                 for (const BufferLock& lock : crtCmd->_bufferLocks) {
-                    if (!lock._targetBuffer->lockByteRange(lock._range, sync)) {
+                    glBufferImpl* buffer = static_cast<const glShaderBuffer*>(lock._targetBuffer)->bufferImpl();
+                    if (!buffer->lockByteRange(lock._range, sync)) {
                         DIVIDE_UNEXPECTED_CALL();
                     }
                 }
@@ -1495,6 +1451,101 @@ ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) const {
     }
 
     return ret;
+}
+
+bool GL_API::bindShaderResources(const DescriptorSetUsage usage, const DescriptorBindings& bindings) const {
+    OPTICK_EVENT("BIND_SHADER_RESOURCES");
+
+    struct ImageSamplerBinding {
+        U8 _bindingSlot;
+        TextureType _type;
+        GLuint _handle;
+        GLuint _samplerHandle;
+    };
+    static ImageSamplerBinding samplerBindings[to_base(TextureType::COUNT)];
+
+    if (usage != DescriptorSetUsage::PER_DRAW_SET) {
+        auto& descriptorSet = _context.descriptorSets()._globalDescriptorSets[to_base(usage)];
+        for (auto& binding : bindings) {
+            descriptorSet.update(binding._slot, binding._data);
+        }
+
+        return true;
+    }
+
+    U8 imageSamplerCount = 0u;
+    for (auto& srcBinding : bindings) {
+        switch (srcBinding._data.Type()) {
+              case DescriptorSetBindingType::IMAGE: {
+                  if (!srcBinding._data.Has<Image>()) {
+                      continue;
+                  }
+                  const auto& image = srcBinding._data.As<Image>();
+                  DIVIDE_ASSERT(image._texture != nullptr);
+                  image._texture->bindLayer(srcBinding._slot,
+                                            image._level,
+                                            image._layer,
+                                            image._layered,
+                                            image._flag);
+              } break;
+              case DescriptorSetBindingType::UNIFORM_BUFFER:
+              case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: {
+                  if (!srcBinding._data.Has<ShaderBufferEntry>() ||
+                       srcBinding._data.As<ShaderBufferEntry>()._buffer == nullptr ||
+                       srcBinding._data.As<ShaderBufferEntry>()._range._length == 0u)
+                  {
+                      continue;
+                  }
+
+                  const auto& bufferEntry = srcBinding._data.As<ShaderBufferEntry>();
+                  DIVIDE_ASSERT(bufferEntry._buffer != nullptr);
+                  Attorney::ShaderBufferBind::bindRange(*bufferEntry._buffer,
+                                                        srcBinding._slot,
+                                                        bufferEntry._range);
+              } break;
+              case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: {
+                  if (srcBinding._slot == INVALID_TEXTURE_BINDING) {
+                      continue;
+                  }
+
+                  const auto& imageSampler = srcBinding._data.As<DescriptorCombinedImageSampler>();
+                  const TextureData& texData = imageSampler._image;
+
+                  auto& samplerBinding = samplerBindings[imageSamplerCount++];
+                  samplerBinding._bindingSlot = srcBinding._slot;
+                  samplerBinding._type = texData._textureType;
+                  samplerBinding._handle = texData._textureHandle;
+                  samplerBinding._samplerHandle = GetSamplerHandle(imageSampler._samplerHash);
+
+              } break;
+              case DescriptorSetBindingType::IMAGE_VIEW: {
+                  if (srcBinding._slot == INVALID_TEXTURE_BINDING) {
+                      continue;
+                  }
+
+                  const auto& texData = srcBinding._data.As<ImageViewEntry>();
+                  if (makeTextureViewResidentInternal(texData, srcBinding._slot) == GLStateTracker::BindResult::FAILED) {
+                      DIVIDE_UNEXPECTED_CALL();
+                  }
+              } break;
+              case DescriptorSetBindingType::COUNT: {
+                  DIVIDE_UNEXPECTED_CALL();
+              } break;
+        };
+    }
+
+    for (U8 i = 0u; i < imageSamplerCount; ++i) {
+        const ImageSamplerBinding& binding = samplerBindings[i];
+        if (GetStateTracker()->bindTexture(binding._bindingSlot, binding._type, binding._handle, binding._samplerHandle) == GLStateTracker::BindResult::FAILED) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
+    }
+
+    return true;
+}
+
+void GL_API::createSetLayout([[maybe_unused]] const DescriptorSetUsage usage, [[maybe_unused]] const DescriptorSet& set) {
+
 }
 
 /******************************************************************************************************************************/

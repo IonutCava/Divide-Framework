@@ -25,7 +25,6 @@ void main(void){
 --Vertex.Clouds
 
 #define NO_VELOCITY
-#define NEED_SCENE_DATA
 #include "sceneData.cmn"
 #include "vbInputData.vert"
 #include "lightingDefaults.vert"
@@ -294,7 +293,6 @@ uniform uint  dvd_enableClouds;
 
 #define NO_POST_FX
 
-#define NEED_SCENE_DATA
 #include "sceneData.cmn"
 #include "utility.frag"
 #include "output.frag"

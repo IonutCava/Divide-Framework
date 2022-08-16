@@ -38,6 +38,12 @@
 #include <Vulkan/vulkan_core.h>
 
 namespace Divide {
+    struct vkDescriptorSetLayoutData {
+        uint32_t set_number;
+        VkDescriptorSetLayoutCreateInfo create_info;
+        std::vector<VkDescriptorSetLayoutBinding> bindings;
+    };
+
     class vkShader final : public ShaderModule {
     public:
         explicit vkShader(GFXDevice& context, const Str256& name);

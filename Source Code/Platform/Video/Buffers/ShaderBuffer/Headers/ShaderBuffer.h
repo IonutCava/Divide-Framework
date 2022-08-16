@@ -45,7 +45,7 @@ namespace Attorney {
 };
 
 class ShaderProgram;
-class NOINITVTABLE ShaderBuffer : public LockableDataRangeBuffer,
+class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
                                   public GraphicsResource,
                                   public RingBufferSeparateWrite
                                   
@@ -136,6 +136,9 @@ namespace Attorney {
         }
 
         friend class GFXDevice;
+        friend class GL_API;
+        friend class VK_API;
+        friend class NONE_API;
         friend class UniformBlockUploader;
     };
 };

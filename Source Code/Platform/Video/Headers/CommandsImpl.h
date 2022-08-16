@@ -40,6 +40,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "PushConstants.h"
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
+#include "Platform/Video/Headers/DescriptorSets.h"
 #include "Rendering/Camera/Headers/CameraSnapshot.h"
 #include "Utility/Headers/TextLabel.h"
 
@@ -74,7 +75,7 @@ enum class CommandType : U8 {
     POP_CAMERA,
     SET_CLIP_PLANES,
     BIND_PIPELINE,
-    BIND_DESCRIPTOR_SETS,
+    BIND_SHADER_RESOURCES,
     SEND_PUSH_CONSTANTS,
     DRAW_COMMANDS,
     DRAW_TEXT,
@@ -96,7 +97,7 @@ namespace Names {
         "BEGIN_RENDER_PASS", "END_RENDER_PASS", "BEGIN_RENDER_SUB_PASS", "BEGIN_GPU_QUERY", "END_GPU_QUERY",
         "END_RENDER_SUB_PASS", "SET_VIEWPORT", "PUSH_VIEWPORT","POP_VIEWPORT", "SET_SCISSOR", "CLEAR_RT",
         "RESET_RT", "RESET_AND_CLEAR_RT", "BLIT_RT", "COPY_TEXTURE", "CLEAR_TEXTURE", "COMPUTE_MIPMAPS", "SET_CAMERA",
-        "PUSH_CAMERA", "POP_CAMERA", "SET_CLIP_PLANES", "BIND_PIPELINE", "BIND_DESCRIPTOR_SETS", "SEND_PUSH_CONSTANTS",
+        "PUSH_CAMERA", "POP_CAMERA", "SET_CLIP_PLANES", "BIND_PIPELINE", "BIND_SHADER_RESOURCES", "SEND_PUSH_CONSTANTS",
         "DRAW_COMMANDS", "DRAW_TEXT", "DISPATCH_COMPUTE", "MEMORY_BARRIER", "READ_BUFFER_DATA", "CLEAR_BUFFER_DATA",
         "BEGIN_DEBUG_SCOPE","END_DEBUG_SCOPE", "ADD_DEBUG_MESSAGE", "SWITCH_WINDOW", "SET_CLIPING_STATE", "EXTERNAL", "UNKNOWN"
     };
@@ -251,12 +252,10 @@ DEFINE_COMMAND_BEGIN(SetClipPlanesCommand, CommandType::SET_CLIP_PLANES);
     FrustumClipPlanes _clippingPlanes;
 DEFINE_COMMAND_END(SetClipPlanesCommand);
 
-DEFINE_COMMAND_BEGIN(BindDescriptorSetsCommand, CommandType::BIND_DESCRIPTOR_SETS);
-    BindDescriptorSetsCommand() noexcept = default;
-    BindDescriptorSetsCommand(const DescriptorSet& set) noexcept : _set(set) {}
-
-    DescriptorSet _set;
-DEFINE_COMMAND_END(BindDescriptorSetsCommand);
+DEFINE_COMMAND_BEGIN(BindShaderResourcesCommand, CommandType::BIND_SHADER_RESOURCES);
+    DescriptorBindings _bindings;
+    DescriptorSetUsage _usage{ DescriptorSetUsage::COUNT };
+DEFINE_COMMAND_END(BindShaderResourcesCommand);
 
 DEFINE_COMMAND_BEGIN(BeginDebugScopeCommand, CommandType::BEGIN_DEBUG_SCOPE);
     BeginDebugScopeCommand() noexcept = default;

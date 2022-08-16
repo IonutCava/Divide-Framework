@@ -563,23 +563,36 @@ void SceneGraphNode::prepareRender(RenderingComponent& rComp,
         const AnimationComponent::AnimData data = get<AnimationComponent>()->getAnimationData();
         // We always bind a bone buffer if we have animation data available as the shaders will expect the data to be there
         DIVIDE_ASSERT(data._boneBuffer != nullptr && data._prevBoneBufferRange._length > 0);
-        DescriptorSet& set = rComp.getDescriptorSet(renderStagePass);
+        auto& descriptorBindings = rComp.getDescriptorSet(renderStagePass);
 
-        DescriptorSetBinding bufferBinding{};
-        bufferBinding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
-        bufferBinding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::VERTEX;
+        DescriptorBindingEntry *boneEntry = nullptr, *prevBoneEntry = nullptr;
+        for (auto& entry : descriptorBindings) {
+            if (entry._slot == to_U8(ShaderBufferLocation::BONE_TRANSFORMS)) {
+                boneEntry = &entry;
+                continue;
+            }
 
-        bufferBinding._resourceSlot = to_U8(ShaderBufferLocation::BONE_TRANSFORMS);
-        bufferBinding._data.As<ShaderBufferEntry>() = { data._boneBuffer, data._boneBufferRange };
-        if (UpdateBinding(set, bufferBinding) == DescriptorUpdateResult::COUNT) {
-            DIVIDE_UNEXPECTED_CALL();
+            if (entry._slot == to_U8(ShaderBufferLocation::BONE_TRANSFORMS_PREV)) {
+                prevBoneEntry = &entry;
+                continue;
+            }
+            if (boneEntry && prevBoneEntry) {
+                break;
+            }
+        }
+        if (!boneEntry) {
+            auto& binding = descriptorBindings.emplace_back();
+            binding._slot = to_U8(ShaderBufferLocation::BONE_TRANSFORMS);
+            boneEntry = &binding;
+        }
+        if (!prevBoneEntry) {
+            auto& binding = descriptorBindings.emplace_back();
+            binding._slot = to_U8(ShaderBufferLocation::BONE_TRANSFORMS_PREV);
+            prevBoneEntry = &binding;
         }
 
-        bufferBinding._resourceSlot = to_U8(ShaderBufferLocation::BONE_TRANSFORMS_PREV);
-        bufferBinding._data.As<ShaderBufferEntry>() = { data._boneBuffer, data._prevBoneBufferRange };
-        if (UpdateBinding(set, bufferBinding) == DescriptorUpdateResult::COUNT) {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        boneEntry->_data.As<ShaderBufferEntry>() = { data._boneBuffer, data._boneBufferRange };
+        prevBoneEntry->_data.As<ShaderBufferEntry>() = { data._boneBuffer, data._prevBoneBufferRange };
     }
 
     _node->prepareRender(this, rComp, renderStagePass, cameraSnapshot, refreshData);

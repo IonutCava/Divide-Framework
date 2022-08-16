@@ -194,37 +194,29 @@ void Renderer::prepareLighting(const RenderStage stage,
         context().kernel().sceneManager()->getActiveScene().lightPool()->uploadLightData(stage, bufferInOut);
         PerRenderStageData& data = _lightDataPerStage[GetIndexForStage(stage)];
         {
-            DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-            set._usage = DescriptorSetUsage::PER_FRAME_SET;
+            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+            cmd->_usage = DescriptorSetUsage::PER_FRAME_SET;
             {
-                auto& binding = set._bindings.emplace_back();
-                binding._resourceSlot = to_base(ShaderBufferLocation::LIGHT_INDICES);
-                binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW;
+                auto& binding = cmd->_bindings.emplace_back();
+                binding._slot = to_base(ShaderBufferLocation::LIGHT_INDICES);
                 binding._data.As<ShaderBufferEntry>() = { data._lightIndexBuffer.get(), { 0u, data._lightIndexBuffer->getPrimitiveCount() } };
             }
             {
-                auto& binding = set._bindings.emplace_back();
-                binding._resourceSlot = to_base(ShaderBufferLocation::LIGHT_CLUSTER_AABBS);
-                binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW;
+                auto& binding = cmd->_bindings.emplace_back();
+                binding._slot = to_base(ShaderBufferLocation::LIGHT_CLUSTER_AABBS);
                 binding._data.As<ShaderBufferEntry>() = { data._lightClusterAABBsBuffer.get(), { 0u, data._lightClusterAABBsBuffer->getPrimitiveCount() } };
             }
             {
-                auto& binding = set._bindings.emplace_back();
-                binding._resourceSlot = to_base(ShaderBufferLocation::LIGHT_GRID);
-                binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW;
+                auto& binding = cmd->_bindings.emplace_back();
+                binding._slot = to_base(ShaderBufferLocation::LIGHT_GRID);
                 binding._data.As<ShaderBufferEntry>() = { data._lightGridBuffer.get(), { 0u, data._lightGridBuffer->getPrimitiveCount() } };
             }
         }
-        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-        set._usage = DescriptorSetUsage::PER_DRAW_SET;
+        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+        cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
         {
-            auto& binding = set._bindings.emplace_back();
-            binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resourceSlot = to_U8(ShaderBufferLocation::LIGHT_INDEX_COUNT);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
+            auto& binding = cmd->_bindings.emplace_back();
+            binding._slot = to_U8(ShaderBufferLocation::LIGHT_INDEX_COUNT);
             binding._data.As<ShaderBufferEntry>() = { data._globalIndexCountBuffer.get(), { 0u, data._globalIndexCountBuffer->getPrimitiveCount() } };
         }
 
@@ -235,7 +227,7 @@ void Renderer::prepareLighting(const RenderStage stage,
             {
                 GFX::SendPushConstantsCommand pushConstantsCommands{};
                 pushConstantsCommands._constants.set(_ID("inverseProjectionMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix);
-                pushConstantsCommands._constants.set(_ID("viewport"), GFX::PushConstantType::IVEC4, context().gfx().getViewport());
+                pushConstantsCommands._constants.set(_ID("viewport"), GFX::PushConstantType::IVEC4, context().gfx().activeViewport());
                 pushConstantsCommands._constants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
 
                 GFX::EnqueueCommand(bufferInOut, _lightBuildClusteredAABBsPipelineCmd);

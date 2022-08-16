@@ -58,6 +58,7 @@ class NONE_API final : public RenderAPIWrapper {
       [[nodiscard]] U32 getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const noexcept override;
       bool setViewport(const Rect<I32>& newViewport) noexcept override;
       void onThreadCreated(const std::thread::id& threadID) noexcept override;
+      void createSetLayout(DescriptorSetUsage usage, const DescriptorSet& set) override;
 
 private:
     GFXDevice& _context;

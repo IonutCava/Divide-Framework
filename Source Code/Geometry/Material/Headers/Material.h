@@ -279,7 +279,7 @@ class Material final : public CachedResource {
     [[nodiscard]] const TextureInfo& getTextureInfo(TextureUsage usage) const;
     [[nodiscard]] size_t getOrCreateRenderStateBlock(RenderStagePass renderStagePass);
     [[nodiscard]] Texture_wptr getTexture(TextureUsage textureUsage) const;
-    [[nodiscard]] DescriptorSet& getDescriptorSet(const RenderStagePass& renderStagePass);
+    [[nodiscard]] DescriptorBindings& getDescriptorSet(const RenderStagePass& renderStagePass);
     [[nodiscard]] ShaderProgramHandle getProgramHandle(RenderStagePass renderStagePass) const;
     [[nodiscard]] ShaderProgramHandle computeAndGetProgramHandle(RenderStagePass renderStagePass);
     [[nodiscard]] bool hasTransparency() const noexcept;
@@ -300,8 +300,8 @@ class Material final : public CachedResource {
     PROPERTY_RW(ComputeRenderStateCBK, computeRenderStateCBK);
     POINTER_R_IW(Material, baseMaterial, nullptr);
     PROPERTY_RW(UpdatePriority, updatePriorirty, UpdatePriority::Default);
-    PROPERTY_R_IW(DescriptorSet, descriptorSetMainPass);
-    PROPERTY_R_IW(DescriptorSet, descriptorSetPrePass);
+    PROPERTY_R_IW(DescriptorBindings, descriptorSetMainPass);
+    PROPERTY_R_IW(DescriptorBindings, descriptorSetPrePass);
     PROPERTY_RW(bool, ignoreXMLData, false);
     PROPERTY_R_IW(AttributeMap, shaderAttributes);
     PROPERTY_R_IW(PrimitiveTopology, topology, PrimitiveTopology::COUNT);

@@ -8,7 +8,9 @@ AllocatedBuffer::~AllocatedBuffer()
 {
     if (_buffer != VK_NULL_HANDLE) {
         assert(_usageType != BufferUsageType::COUNT);
-        VK_API::RegisterBufferDelete({ _buffer, _allocation });
+        VK_API::RegisterCustomAPIDelete([=]{
+            vmaDestroyBuffer(*VK_API::GetStateTracker()->_allocator, _buffer, _allocation);
+        }, true);
     }
 }
 

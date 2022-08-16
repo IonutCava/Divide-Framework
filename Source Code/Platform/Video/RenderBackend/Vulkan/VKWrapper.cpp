@@ -67,7 +67,8 @@ namespace {
 
 namespace Divide {
     bool VK_API::s_hasDebugMarkerSupport = false;
-    VKBufferDeletionQueue VK_API::s_bufferDeletionQueue;
+    VKDeletionQueue VK_API::s_transientDeleteQueue;
+    VKDeletionQueue VK_API::s_deviceDeleteQueue;
 
     eastl::unique_ptr<VKStateTracker> VK_API::s_stateTracker = nullptr;
 
@@ -121,31 +122,35 @@ namespace Divide {
         }
     }
 
-    void VKBufferDeletionQueue::push(BufferEntry&& function) {
+    void VKDeletionQueue::push(DELEGATE<void>&& function) {
         ScopedLock<Mutex> w_lock(_deletionLock);
         _deletionQueue.push_back(std::move(function));
     }
 
-    void VKBufferDeletionQueue::flush(const bool deviceIsIdle) {
-        if (!deviceIsIdle) {
+    void VKDeletionQueue::flush(const bool deviceIsIdle) {
+        if (BitCompare(_flags, Flags::REQUIRE_DEVICE_IDLE) && !deviceIsIdle) {
             VK_API::GetStateTracker()->_device->waitIdle();
         }
         ScopedLock<Mutex> w_lock(_deletionLock);
-        // reverse iterate the deletion queue to execute all the functions
+        // reverse iterate the deletion queue to delete all the buffers
         for (auto it = _deletionQueue.rbegin(); it != _deletionQueue.rend(); it++) {
-            vmaDestroyBuffer(*VK_API::GetStateTracker()->_allocator, it->_buffer, it->_allocation);
+            (*it)();
         }
 
         _deletionQueue.clear();
     }
 
-    bool VKBufferDeletionQueue::empty() {
+    bool VKDeletionQueue::empty() const {
         ScopedLock<Mutex> w_lock(_deletionLock);
         return _deletionQueue.empty();
     }
 
-    void VK_API::RegisterBufferDelete(VKBufferDeletionQueue::BufferEntry&& buffer) {
-        s_bufferDeletionQueue.push(std::move(buffer));
+    void VK_API::RegisterCustomAPIDelete(DELEGATE<void>&& cbk, const bool isResourceTransient) {
+        if (isResourceTransient) {
+            s_transientDeleteQueue.push(std::move(cbk));
+        } else {
+            s_deviceDeleteQueue.push(std::move(cbk));
+        }
     }
 
     VK_API::VK_API(GFXDevice& context) noexcept
@@ -255,6 +260,8 @@ namespace Divide {
 
     ErrorCode VK_API::initRenderingAPI([[maybe_unused]] I32 argc, [[maybe_unused]] char** argv, [[maybe_unused]] Configuration& config) noexcept {
         s_stateTracker = eastl::make_unique<VKStateTracker>();
+
+        s_transientDeleteQueue.flags(s_transientDeleteQueue.flags() | to_base(VKDeletionQueue::Flags::TREAT_AS_TRANSIENT));
 
         const DisplayWindow& window = *_context.context().app().windowManager().mainWindow();
 
@@ -463,7 +470,8 @@ namespace Divide {
 
         if (_device != nullptr) {
             const bool deviceIdle = destroyPipelines();
-            s_bufferDeletionQueue.flush(deviceIdle);
+            s_transientDeleteQueue.flush(deviceIdle);
+            s_deviceDeleteQueue.flush(deviceIdle);
             vmaDestroyAllocator(_allocator);
             _commandBuffers.clear();
             _swapChain.reset();
@@ -505,13 +513,8 @@ namespace Divide {
 
 
         //create a new shader module, using the buffer we loaded
-        VkShaderModuleCreateInfo createInfo = {};
-        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        createInfo.pNext = nullptr;
-
         //codeSize has to be in bytes, so multiply the ints in the buffer by size of int to know the real size of the buffer
-        createInfo.codeSize = buffer.size() * sizeof(uint32_t);
-        createInfo.pCode = buffer.data();
+        const VkShaderModuleCreateInfo createInfo = vk::shaderModuleCreateInfo(buffer.size() * sizeof(uint32_t), buffer.data());
 
         //check that the creation goes well.
         VkShaderModule shaderModule;
@@ -621,9 +624,12 @@ namespace Divide {
     ShaderResult VK_API::bindPipeline(const Pipeline& pipeline, VkCommandBuffer& cmdBuffer) const {
         const PipelineDescriptor& pipelineDescriptor = pipeline.descriptor();
         ShaderProgram* program = ShaderProgram::FindShaderProgram(pipelineDescriptor._shaderProgramHandle);
+        GetStateTracker()->_perDrawSet = nullptr;
+
         if (program == nullptr) {
             return ShaderResult::Failed;
         }
+        GetStateTracker()->_perDrawSet = &program->descriptorSet();
 
         const vkShaderProgram& vkProgram = static_cast<vkShaderProgram&>(*program);
         const auto& shaderStages = vkProgram.shaderStages();
@@ -752,7 +758,7 @@ namespace Divide {
             }break;
             case GFX::CommandType::COPY_TEXTURE: {
             }break;
-            case GFX::CommandType::BIND_DESCRIPTOR_SETS: {
+            case GFX::CommandType::BIND_SHADER_RESOURCES: {
             }break;
             case GFX::CommandType::BIND_PIPELINE: {
                 const Pipeline* pipeline = cmd->As<GFX::BindPipelineCommand>()->_pipeline;
@@ -820,7 +826,7 @@ namespace Divide {
 
     void VK_API::postFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer) noexcept {
         const bool deviceIdle = destroyPipelines(true);
-        s_bufferDeletionQueue.flush(deviceIdle);
+        s_transientDeleteQueue.flush(deviceIdle);
     }
 
     vec2<U16> VK_API::getDrawableSize(const DisplayWindow& window) const noexcept {
@@ -865,6 +871,71 @@ namespace Divide {
     }
 
     void VK_API::onThreadCreated([[maybe_unused]] const std::thread::id& threadID) noexcept {
+    }
+
+    void VK_API::createSetLayout(const DescriptorSetUsage usage, const DescriptorSet& set) {
+        constexpr U8 s_maxBindings = 32u;
+        if (set.empty()) {
+            return;
+        }
+
+        U8 index = 0u;
+        VkDescriptorSetLayoutBinding tempBindings[s_maxBindings];
+        for (const auto& binding : set) {
+            VkDescriptorSetLayoutBinding& tempBinding = tempBindings[index++];
+            assert(index < s_maxBindings);
+
+            if (binding._shaderStageVisibility == to_base(DescriptorSetBinding::ShaderStageVisibility::NONE)) {
+                continue;
+            } else if (binding._shaderStageVisibility == to_base(DescriptorSetBinding::ShaderStageVisibility::ALL)) {
+                tempBinding.stageFlags = VK_SHADER_STAGE_ALL;
+            } else if (binding._shaderStageVisibility == to_base(DescriptorSetBinding::ShaderStageVisibility::ALL_DRAW)) {
+                tempBinding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
+            } else if (binding._shaderStageVisibility == to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE)) {
+                tempBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+            } else {
+                if (BitCompare(binding._shaderStageVisibility, DescriptorSetBinding::ShaderStageVisibility::VERTEX)) {
+                    tempBinding.stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
+                }
+                if (BitCompare(binding._shaderStageVisibility, DescriptorSetBinding::ShaderStageVisibility::GEOMETRY)) {
+                    tempBinding.stageFlags |= VK_SHADER_STAGE_GEOMETRY_BIT;
+                }
+                if (BitCompare(binding._shaderStageVisibility, DescriptorSetBinding::ShaderStageVisibility::TESS_CONTROL)) {
+                    tempBinding.stageFlags |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+                }
+                if (BitCompare(binding._shaderStageVisibility, DescriptorSetBinding::ShaderStageVisibility::TESS_EVAL)) {
+                    tempBinding.stageFlags |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+                }
+                if (BitCompare(binding._shaderStageVisibility, DescriptorSetBinding::ShaderStageVisibility::FRAGMENT)) {
+                    tempBinding.stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+                }
+                if (BitCompare(binding._shaderStageVisibility, DescriptorSetBinding::ShaderStageVisibility::COMPUTE)) {
+                    tempBinding.stageFlags |= VK_SHADER_STAGE_COMPUTE_BIT;
+                }
+            }
+            tempBinding.binding = binding._resource._slot;
+            tempBinding.descriptorCount = 1u;
+            tempBinding.descriptorType = VKUtil::vkDescriptorType(binding._type);
+        }
+
+        VkDescriptorSetLayoutCreateInfo setinfo = {};
+        setinfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        setinfo.pNext = nullptr;
+
+        setinfo.bindingCount = index;
+        setinfo.pBindings = tempBindings;
+        //no flags
+        setinfo.flags = 0;
+
+        VkDescriptorSetLayout setLayout;
+        vkCreateDescriptorSetLayout(_device->getVKDevice(), &setinfo, nullptr, &setLayout);
+
+        // other code ....
+
+        // add descriptor set layout to deletion queues
+        RegisterCustomAPIDelete([&]() {
+            vkDestroyDescriptorSetLayout(_device->getVKDevice(), setLayout, nullptr);
+        }, false);
     }
 
     VKStateTracker* VK_API::GetStateTracker() noexcept {

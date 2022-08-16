@@ -1209,10 +1209,10 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
     F32* projection = GFX::EnqueueCommand<GFX::SetCameraCommand>(bufferInOut, { _render2DSnapshot })->_cameraSnapshot._projectionMatrix.mat;
     memcpy(projection, ortho_projection, sizeof(F32) * 16);
 
-    const Rect<I32>& viewport = _context.gfx().getViewport();
+    const Rect<I32>& viewport = _context.gfx().activeViewport();
 
-    GenericDrawCommand cmd{};
-    cmd._sourceBuffer = buffer->handle();
+    GenericDrawCommand drawCmd{};
+    drawCmd._sourceBuffer = buffer->handle();
 
     U32 baseVertex = 0u;
     U32 indexOffset = 0u;
@@ -1245,19 +1245,17 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
 
                     Texture* tex = (Texture*)(pcmd.GetTexID());
                     if (tex != nullptr) {
-                        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-                        set._usage = DescriptorSetUsage::PER_DRAW_SET;
-                        auto& binding = set._bindings.emplace_back();
-                        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-                        binding._resourceSlot = to_base(TextureUsage::UNIT0);
-                        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+                        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+                        cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+                        auto& binding = cmd->_bindings.emplace_back();
+                        binding._slot = to_base(TextureUsage::UNIT0);
                         binding._data.As<DescriptorCombinedImageSampler>() = { tex->data(), _editorSamplerHash };
                     }
 
-                    cmd._cmd.indexCount = pcmd.ElemCount;
-                    cmd._cmd.firstIndex = indexOffset + pcmd.IdxOffset;
-                    cmd._cmd.baseVertex = baseVertex + pcmd.VtxOffset;
-                    GFX::EnqueueCommand(bufferInOut, GFX::DrawCommand{ cmd });
+                    drawCmd._cmd.indexCount = pcmd.ElemCount;
+                    drawCmd._cmd.firstIndex = indexOffset + pcmd.IdxOffset;
+                    drawCmd._cmd.baseVertex = baseVertex + pcmd.VtxOffset;
+                    GFX::EnqueueCommand(bufferInOut, GFX::DrawCommand{ drawCmd });
                 }
             }
         }
@@ -1778,11 +1776,11 @@ bool Editor::modalTextureView(const char* modalName, Texture* tex, const vec2<F3
 
     static std::array<bool, 4> state = { true, true, true, true };
 
-    const ImDrawCallback toggleColours { []([[maybe_unused]] const ImDrawList* parent_list, const ImDrawCmd* cmd) -> void {
+    const ImDrawCallback toggleColours { []([[maybe_unused]] const ImDrawList* parent_list, const ImDrawCmd* imCmd) -> void {
         static SamplerDescriptor defaultSampler{};
         static size_t texSampler = defaultSampler.getHash();
 
-        const TextureCallbackData data = *static_cast<TextureCallbackData*>(cmd->UserCallbackData);
+        const TextureCallbackData data = *static_cast<TextureCallbackData*>(imCmd->UserCallbackData);
 
         GFX::ScopedCommandBuffer sBuffer = GFX::AllocateScopedCommandBuffer();
         GFX::CommandBuffer& buffer = sBuffer();
@@ -1797,14 +1795,12 @@ bool Editor::modalTextureView(const char* modalName, Texture* tex, const vec2<F3
             if (isTextureArray || isTextureCube) {
                 textureType = 1u;
 
-                DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(buffer)->_set;
-                set._usage = DescriptorSetUsage::PER_DRAW_SET;
-                auto& binding = set._bindings.emplace_back();
-                binding._resourceSlot = to_U8(TextureUsage::UNIT1);
-                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+                auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(buffer);
+                cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+                auto& binding = cmd->_bindings.emplace_back();
+                binding._slot = to_U8(TextureUsage::UNIT1);
 
                 if (isTextureCube) {
-                    binding._type = DescriptorSetBindingType::IMAGE_VIEW;
                     ImageViewEntry& entry = binding._data.As<ImageViewEntry>();
                     entry._view._textureData = data._texture->data();
                     entry._descriptor = data._texture->descriptor();
@@ -1813,7 +1809,6 @@ bool Editor::modalTextureView(const char* modalName, Texture* tex, const vec2<F3
                     entry._view._mipLevels.set(0u, data._texture->mipCount());
                     entry._view._layerRange.set(0u, data._texture->numLayers() * 6u);
                 } else {
-                    binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                     binding._data.As<DescriptorCombinedImageSampler>() = { data._texture->data(), texSampler };
                 }
             }

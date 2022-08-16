@@ -74,8 +74,6 @@ void IMPrimitive::reset() {
     _indexBufferId.fill(0u);
     _pipelines.fill(nullptr);
 
-    _baseDescriptorSet._usage = DescriptorSetUsage::PER_DRAW_SET;
-
     // Create general purpose render state blocks
     RenderStateBlock primitiveStateBlock{};
     _basePipelineDescriptor._primitiveTopology = PrimitiveTopology::COUNT;
@@ -621,14 +619,8 @@ void IMPrimitive::setPipelineDescriptor(const PipelineDescriptor& descriptor) {
 }
 
 void IMPrimitive::setTexture(const TextureData texture, const size_t samplerHash) {
-    auto& binding = _baseDescriptorSet._bindings.emplace_back();
-    binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-    binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-    binding._resourceSlot = to_U8(TextureUsage::UNIT0);
-
-    auto& imageSampler = binding._data.As<DescriptorCombinedImageSampler>();
-    imageSampler._image = texture;
-    imageSampler._samplerHash = samplerHash;
+    _textureData = texture;
+    _samplerHash = samplerHash;
 }
 
 void IMPrimitive::getCommandBuffer(GFX::CommandBuffer& commandBufferInOut) 
@@ -645,16 +637,24 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
     DIVIDE_ASSERT(_basePipelineDescriptor._shaderProgramHandle != SHADER_INVALID_HANDLE, "IMPrimitive error: Draw call received without a valid shader defined!");
 
     _additionalConstats.set(_ID("dvd_WorldMatrix"), GFX::PushConstantType::MAT4, worldMatrix);
-    _additionalConstats.set(_ID("useTexture"), GFX::PushConstantType::BOOL, !_baseDescriptorSet._bindings.empty());
+    _additionalConstats.set(_ID("useTexture"), GFX::PushConstantType::BOOL, IsValid(_textureData));
 
-    GenericDrawCommand cmd{};
-    cmd._drawCount = 1u;
-    cmd._cmd.primCount = 1u;
-    cmd._sourceBuffer = _dataBuffer->handle();
+    GenericDrawCommand drawCmd{};
+    drawCmd._drawCount = 1u;
+    drawCmd._cmd.primCount = 1u;
+    drawCmd._sourceBuffer = _dataBuffer->handle();
 
     GFX::EnqueueCommand(commandBufferInOut, GFX::BeginDebugScopeCommand{ _name.c_str() });
     {
-        GFX::EnqueueCommand(commandBufferInOut, GFX::BindDescriptorSetsCommand{ _baseDescriptorSet });
+        if (IsValid(_textureData)) {
+            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(commandBufferInOut);
+            cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+            auto& binding = cmd->_bindings.emplace_back();
+            binding._slot = to_U8(TextureUsage::UNIT0);
+            auto& imageSampler = binding._data.As<DescriptorCombinedImageSampler>();
+            imageSampler._image = _textureData;
+            imageSampler._samplerHash = _samplerHash;
+        }
 
         for (U8 i = 0u; i < to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT); ++i) {
             if (_drawFlags[i]) {
@@ -664,12 +664,12 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
                 {
                     continue;
                 }
-                cmd._cmd.indexCount = to_U32(_indexCount[i]);
-                cmd._bufferFlag = _indexBufferId[i];
+                drawCmd._cmd.indexCount = to_U32(_indexCount[i]);
+                drawCmd._bufferFlag = _indexBufferId[i];
 
                 GFX::EnqueueCommand(commandBufferInOut, GFX::BindPipelineCommand{ _pipelines[i] });
                 GFX::EnqueueCommand(commandBufferInOut, GFX::SendPushConstantsCommand{ _additionalConstats });
-                GFX::EnqueueCommand(commandBufferInOut, GFX::DrawCommand{ cmd });
+                GFX::EnqueueCommand(commandBufferInOut, GFX::DrawCommand{ drawCmd });
             }
         }
     }

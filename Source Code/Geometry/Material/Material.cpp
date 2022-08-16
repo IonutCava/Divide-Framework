@@ -198,9 +198,6 @@ Material::Material(GFXDevice& context, ResourceCache* parentCache, const size_t 
 
         return shaderDescriptor;
     };
-
-    _descriptorSetMainPass._usage = DescriptorSetUsage::PER_DRAW_SET;
-    _descriptorSetPrePass._usage = DescriptorSetUsage::PER_DRAW_SET;
 }
 
 Material_ptr Material::clone(const Str256& nameSuffix) {
@@ -307,8 +304,8 @@ bool Material::setSampler(const TextureUsage textureUsageSlot, const size_t samp
 bool Material::setTexture(const TextureUsage textureUsageSlot, const Texture_ptr& texture, const size_t samplerHash, const TextureOperation op, const TexturePrePassUsage prePassUsage)
 {
     // Invalidate our descriptor sets
-    _descriptorSetMainPass._bindings.resize(0);
-    _descriptorSetPrePass._bindings.resize(0);
+    _descriptorSetMainPass.resize(0);
+    _descriptorSetPrePass.resize(0);
 
     const U32 slot = to_U32(textureUsageSlot);
 
@@ -853,23 +850,20 @@ void Material::getData(const RenderingComponent& parentComp, const U32 bestProbe
     dataOut._textureOperations.w = Util::PACK_UNORM4x8(properties().receivesShadows() ? 1.f : 0.f, 0.f, 0.f, 0.f);
 }
 
-DescriptorSet& Material::getDescriptorSet(const RenderStagePass& renderStagePass) {
+DescriptorBindings& Material::getDescriptorSet(const RenderStagePass& renderStagePass) {
     OPTICK_EVENT();
 
     const bool isPrePass = (renderStagePass._passType == RenderPassType::PRE_PASS);
-    DescriptorSet& set = isPrePass ? _descriptorSetPrePass : _descriptorSetMainPass;
-    if (set._bindings.empty()) {
+    auto& descriptor = isPrePass ? _descriptorSetPrePass : _descriptorSetMainPass;
+    if (descriptor.empty()) {
         SharedLock<SharedMutex> r_lock(_textureLock);
         // Check again
-        if (set._bindings.empty()) {
+        if (descriptor.empty()) {
             const auto addTexture = [&](const U8 slot) {
                 const Texture_ptr& crtTexture = _textures[slot]._ptr;
                 if (crtTexture != nullptr) {
-                    auto& texBinding = set._bindings.emplace_back();
-                    texBinding._resourceSlot = slot;
-                    STUBBED("Add a per-texture switch for shader-stage visibility - Ionut");
-                    texBinding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::ALL;
-                    texBinding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                    auto& texBinding = descriptor.emplace_back();
+                    texBinding._slot = slot;
                     texBinding._data.As<DescriptorCombinedImageSampler>() = { crtTexture->data(), _textures[slot]._sampler };
                 }
             };
@@ -929,7 +923,7 @@ DescriptorSet& Material::getDescriptorSet(const RenderStagePass& renderStagePass
         }
     }
 
-    return set;
+    return descriptor;
 }
 
 void Material::rebuild() {

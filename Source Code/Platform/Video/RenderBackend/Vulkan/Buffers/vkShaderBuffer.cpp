@@ -73,7 +73,7 @@ namespace Divide {
         OPTICK_EVENT();
 
         DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected((range._startOffset), AlignmentRequirement(_usage)));
-        assert(range._startOffset + range._length <= _alignedBufferSize && "glShaderBuffer::UpdateData error: was called with an invalid range (buffer overflow)!");
+        assert(range.endOffset() <= _alignedBufferSize && "glShaderBuffer::UpdateData error: was called with an invalid range (buffer overflow)!");
 
         range._startOffset += queueWriteIndex() * _alignedBufferSize;
 
@@ -121,7 +121,4 @@ namespace Divide {
         return true;
     }
 
-    bool vkShaderBuffer::lockByteRange([[maybe_unused]] BufferRange range, [[maybe_unused]] SyncObject* sync) const {
-        return true;
-    }
 }; //namespace Divide

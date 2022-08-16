@@ -113,7 +113,7 @@ namespace Divide {
         return s_samplerDescriptorMap.find(s_defaultHashValue)->second;
     }
 
-    size_t TextureDescriptor::getHash() const {
+    size_t TextureDescriptor::getHash() const noexcept {
         _hash = PropertyDescriptor::getHash();
 
         Util::Hash_combine(_hash, _layerCount,

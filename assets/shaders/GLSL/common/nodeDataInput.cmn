@@ -58,7 +58,7 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_BATCH_SET, BUFFER_CAM_BLOCK, std140) uniform 
     vec4  dvd_camProperties;
     //xy - depth range, zw - light cluster size X / Y
     vec4  dvd_renderTargetInfo;
-    //x - elapsed time (ms), y - unused, z = material debug flag, w - clip plane count
+    //x - clip plane count, y - unused, z = unused, w - unused
     vec4  dvd_renderProperties;
     vec4  dvd_clipPlanes[MAX_CLIP_PLANES];
     vec4  dvd_frustumPlanes[6];
@@ -69,9 +69,7 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_BATCH_SET, BUFFER_CAM_BLOCK, std140) uniform 
 #define SHADOW_PASS_TYPE int(dvd_camProperties.w)
 #define CAMERA_FLAG SHADOW_PASS_TYPE
 
-#define dvd_TimeMS int(dvd_renderProperties.x)
-#define dvd_MaterialDebugFlag int(dvd_renderProperties.z)
-#define dvd_ClipPlaneCount uint(dvd_renderProperties.w)
+#define dvd_ClipPlaneCount uint(dvd_renderProperties.x)
 
 #define dvd_ClusterSizes vec2(uint(dvd_renderTargetInfo.z), uint(dvd_renderTargetInfo.w))
 #define dvd_ScreenDimensions dvd_ViewPort.zw

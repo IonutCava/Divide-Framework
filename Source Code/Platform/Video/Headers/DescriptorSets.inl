@@ -71,27 +71,43 @@ namespace Divide {
     }
 
     inline bool operator==(const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs) noexcept {
-        return lhs._resourceSlot == rhs._resourceSlot &&
-               lhs._shaderStageVisibility == rhs._shaderStageVisibility &&
+        return lhs._shaderStageVisibility == rhs._shaderStageVisibility &&
                lhs._type == rhs._type &&
-               lhs._data == rhs._data;
+               lhs._resource == rhs._resource;
     }
 
     inline bool operator!=(const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs) noexcept {
-        return lhs._resourceSlot != rhs._resourceSlot ||
-               lhs._shaderStageVisibility != rhs._shaderStageVisibility ||
+        return lhs._shaderStageVisibility != rhs._shaderStageVisibility ||
                lhs._type != rhs._type ||
+               lhs._resource != rhs._resource;
+    }
+
+    inline bool operator==(const DescriptorBindingEntry& lhs, const DescriptorBindingEntry& rhs) noexcept {
+        return lhs._slot == rhs._slot &&
+               lhs._data == rhs._data;
+    }
+
+    inline bool operator!=(const DescriptorBindingEntry& lhs, const DescriptorBindingEntry& rhs) noexcept {
+        return lhs._slot != rhs._slot ||
                lhs._data != rhs._data;
     }
 
-    inline bool operator==(const DescriptorSet& lhs, const DescriptorSet& rhs) noexcept {
-        return lhs._usage == rhs._usage &&
-               lhs._bindings == rhs._bindings;
+    template<typename T>
+    FORCE_INLINE T& DescriptorSetBindingData::As() noexcept {
+        if (_resource.index() == 0) {
+            return _resource.emplace<T>();
+        }
+        return std::get<T>(_resource);
     }
 
-    inline bool operator!=(const DescriptorSet& lhs, const DescriptorSet& rhs) noexcept {
-        return lhs._usage != rhs._usage ||
-               lhs._bindings != rhs._bindings;
+    template<typename T>
+    FORCE_INLINE bool DescriptorSetBindingData::Has() const noexcept {
+        return std::holds_alternative<T>(_resource);
+    }
+
+    template<typename T>
+    FORCE_INLINE const T& DescriptorSetBindingData::As() const noexcept {
+        return std::get<T>(_resource);
     }
 } //namespace Divide
 #endif //_DESCRIPTOR_SETS_INL_

@@ -35,6 +35,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "glResources.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
+#include "Platform/Video/Headers/DescriptorSets.h"
 #include "Platform/Video/Headers/AttributeDescriptor.h"
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 
@@ -160,6 +161,7 @@ namespace Divide {
         U8 _debugScopeDepth{ 0u };
 
         Pipeline const* _activePipeline{ nullptr };
+
         PrimitiveTopology _activeTopology{ PrimitiveTopology::COUNT };
         glFramebuffer* _activeRenderTarget{ nullptr };
         /// Current active vertex array object's handle

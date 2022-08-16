@@ -127,6 +127,9 @@ protected:
 
     bool setViewport(const Rect<I32>& viewport) override;
     ShaderResult bindPipeline(const Pipeline& pipeline) const;
+    bool bindShaderResources(DescriptorSetUsage usage, const DescriptorBindings& bindings) const;
+
+    void createSetLayout(DescriptorSetUsage usage, const DescriptorSet& set) override;
 
 private:
     void endFrameLocal(const DisplayWindow& window);

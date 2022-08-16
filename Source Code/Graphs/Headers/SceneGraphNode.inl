@@ -34,6 +34,16 @@
 #define _SCENE_GRAPH_NODE_INL_
 
 namespace Divide {
+    template<class T, typename... Args>
+    void AddSGNComponent(SceneGraphNode* node, Args... args) {
+        node->template AddSGNComponent<T>(FWD(args)...);
+    }
+
+    template<class T>
+    void RemoveSGNComponent(SceneGraphNode* node) {
+        node->template RemoveSGNComponent<T>();
+    }
+
     inline [[nodiscard]] bool SceneGraphNode::hasFlag(const Flags flag) const noexcept {
         return BitCompare(_nodeFlags, flag); 
     }

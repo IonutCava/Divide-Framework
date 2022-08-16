@@ -3,6 +3,7 @@
 #define DEBUG_NAN_VALUES
 
 #include "utility.frag"
+#include "sceneData.cmn"
 
 DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D texScreen;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT1) uniform sampler2D texDepth;

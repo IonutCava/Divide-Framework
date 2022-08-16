@@ -126,15 +126,6 @@ inline bool GFXDevice::setViewport(const I32 x, const I32 y, const I32 width, co
     return setViewport({ x, y, width, height });
 }
 
-inline Rect<I32> GFXDevice::getViewport() const noexcept {
-    return {
-        to_I32(_gpuBlock._camData._ViewPort.x),
-        to_I32(_gpuBlock._camData._ViewPort.y),
-        to_I32(_gpuBlock._camData._ViewPort.z),
-        to_I32(_gpuBlock._camData._ViewPort.w)
-    };
-}
-
 };  // namespace Divide
 
 #endif

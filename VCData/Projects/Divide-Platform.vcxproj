@@ -303,6 +303,7 @@
     <None Include="..\..\assets\shaders\GLSL\common\sceneData.cmn" />
     <None Include="..\..\assets\shaders\GLSL\common\terrainUtils.cmn" />
     <None Include="..\..\assets\shaders\GLSL\common\velocityCheck.cmn" />
+    <None Include="..\..\assets\shaders\GLSL\common\viewport.cmn" />
     <None Include="..\..\assets\shaders\GLSL\computeAtoms\pbrHelpers.comp" />
     <None Include="..\..\assets\shaders\GLSL\fragmentAtoms\debug.frag" />
     <None Include="..\..\assets\shaders\GLSL\fragmentAtoms\environment.frag" />

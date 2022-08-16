@@ -288,7 +288,6 @@ public:  // GPU interface
     /// Returns true if the viewport was changed
            bool setViewport(const Rect<I32>& viewport);
     inline bool setViewport(I32 x, I32 y, I32 width, I32 height);
-    inline Rect<I32> getViewport() const noexcept;
 
     void setPreviousViewProjectionMatrix(const mat4<F32>& prevViewMatrix, const mat4<F32> prevProjectionMatrix);
 
@@ -403,38 +402,34 @@ public:
                     U8 layerCount,
                     GFX::CommandBuffer& bufferInOut);
 
-    void materialDebugFlag(MaterialDebugFlag flag);
-
     [[nodiscard]] GFX::MemoryBarrierCommand updateSceneDescriptorSet(GFX::CommandBuffer& bufferInOut) const;
 
-    PROPERTY_R(MaterialDebugFlag, materialDebugFlag, MaterialDebugFlag::COUNT);
+    PROPERTY_RW(MaterialDebugFlag, materialDebugFlag, MaterialDebugFlag::COUNT);
     PROPERTY_RW(RenderAPI, renderAPI, RenderAPI::COUNT);
     PROPERTY_RW(bool, queryPerformanceStats, false);
     PROPERTY_R_IW(U32, frameDrawCalls, 0u);
     PROPERTY_R_IW(U32, frameDrawCallsPrev, 0u);
     PROPERTY_R_IW(vec4<U32>, lastCullCount, VECTOR4_ZERO);
-
+    PROPERTY_R_IW(Rect<I32>, activeViewport);
 
     struct GFXDescriptorSet {
         PROPERTY_RW(DescriptorSet, set);
+        PROPERTY_RW(DescriptorSetUsage, usage, DescriptorSetUsage::COUNT);
         PROPERTY_RW(bool, dirty, true);
-        void update(DescriptorSetBinding& newBinding);
+        void update(U8 slot, const DescriptorSetBindingData& newBindingData);
     };
 
     struct GFXDescriptorSets {
-        PROPERTY_RW(GFXDescriptorSet, perFrameSet);
-        PROPERTY_RW(GFXDescriptorSet, perPassSet);
-        PROPERTY_RW(GFXDescriptorSet, perBatchSet);
-        void init();
+        std::array<GFXDescriptorSet, to_base(DescriptorSetUsage::COUNT)> _globalDescriptorSets;
+        void init(RenderAPIWrapper* api);
     };
+
 
     PROPERTY_RW(GFXDescriptorSets, descriptorSets);
     
     POINTER_R(SceneShaderData, sceneData, nullptr);
 
 protected:
-
-    void updateDescriptorSet(DescriptorSetUsage usage, DescriptorSetBinding& newBinding);
 
     void update(U64 deltaTimeUSFixed, U64 deltaTimeUSApp);
 
@@ -566,7 +561,6 @@ private:
     Mutex _graphicsResourceMutex;
     vector<std::tuple<GraphicsResource::Type, I64, U64>> _graphicResources;
 
-    Rect<I32> _viewport;
     vec2<U16> _renderingResolution;
     GFXShaderData _gpuBlock;
 
@@ -577,7 +571,7 @@ private:
         static constexpr U8 PerFrameBufferCount = 3u;
 
         struct PerFrameBuffers {
-            GFX::MemoryBarrierCommand _writeMemCmd{};
+            BufferRange _camBufferWriteRange;
             ShaderBuffer_uptr _camDataBuffer = nullptr;
             ShaderBuffer_uptr _cullCounter = nullptr;
             size_t _camWritesThisFrame = 0u;

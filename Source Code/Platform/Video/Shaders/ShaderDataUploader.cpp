@@ -18,7 +18,7 @@
 namespace Divide {
 
 namespace Reflection {
-    constexpr U16 BYTE_BUFFER_VERSION = 1u;
+    constexpr U16 BYTE_BUFFER_VERSION = 2u;
 
     bool UniformCompare::operator()(const UniformDeclaration& lhs, const UniformDeclaration& rhs) const {
         //Note: this doesn't care about arrays so those won't sort properly to reduce wastage
@@ -76,6 +76,7 @@ bool SaveReflectionData(const ResourcePath& path, const ResourcePath& file, cons
     ByteBuffer buffer;
     buffer << BYTE_BUFFER_VERSION;
     buffer << reflectionDataIn._targetBlockBindingIndex;
+    buffer << reflectionDataIn._bindingSet;
     buffer << reflectionDataIn._targetBlockName;
     buffer << reflectionDataIn._blockSize;
     buffer << reflectionDataIn._blockMembers.size();
@@ -89,7 +90,14 @@ bool SaveReflectionData(const ResourcePath& path, const ResourcePath& file, cons
         buffer << member._matrixDimensions.x;
         buffer << member._matrixDimensions.y;
     }
-    
+    buffer << reflectionDataIn._images.size();
+    for (const auto& image : reflectionDataIn._images) {
+        buffer << std::string(image._imageName.c_str());
+        buffer << image._combinedImageSampler;
+        buffer << image._isWriteTarget;
+        buffer << image._targetImageBindingIndex;
+        buffer << image._bindingSet;
+    }
     buffer << atomIDsIn.size();
     for (const U64 id : atomIDsIn) {
         buffer << id;
@@ -105,6 +113,7 @@ bool LoadReflectionData(const ResourcePath& path, const ResourcePath& file, Refl
         buffer >> tempVer;
         if (tempVer == BYTE_BUFFER_VERSION) {
             buffer >> reflectionDataOut._targetBlockBindingIndex;
+            buffer >> reflectionDataOut._bindingSet;
             buffer >> reflectionDataOut._targetBlockName;
             buffer >> reflectionDataOut._blockSize;
 
@@ -127,6 +136,17 @@ bool LoadReflectionData(const ResourcePath& path, const ResourcePath& file, Refl
                 buffer >> tempMember._vectorDimensions;
                 buffer >> tempMember._matrixDimensions.x;
                 buffer >> tempMember._matrixDimensions.y;
+            }
+            buffer >> sizeTemp;
+            reflectionDataOut._images.reserve(sizeTemp);
+            for (size_t i = 0u; i < sizeTemp; ++i) {
+                Reflection::ImageEntry& image = reflectionDataOut._images.emplace_back();
+                buffer >> tempStr;
+                image._imageName = tempStr.c_str();
+                buffer >> image._combinedImageSampler;
+                buffer >> image._isWriteTarget;
+                buffer >> image._targetImageBindingIndex;
+                buffer >> image._bindingSet;
             }
 
             buffer >> sizeTemp;

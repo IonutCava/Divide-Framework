@@ -173,7 +173,8 @@ class IMPrimitive final {
     PushConstants _additionalConstats;
     eastl::unique_ptr<NS_GLIM::GLIM_BATCH> _imInterface;
     PipelineDescriptor _basePipelineDescriptor{};
-    DescriptorSet _baseDescriptorSet{};
+    TextureData _textureData{};
+    size_t _samplerHash{0u};
     std::array<bool, to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT)> _drawFlags;
     std::array<size_t, to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT)> _indexCount;
     std::array<Pipeline*, to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT)> _pipelines;

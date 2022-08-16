@@ -59,8 +59,8 @@ struct GFXShaderData {
           vec4<F32> _cameraProperties = { 0.01f, 1.0f, 40.f, 0.f };
           //xy - depth range, zw - light cluster size X / Y
           vec4<F32> _renderTargetInfo{0.f, 1.f, 1.f, 1.f};
-          //x - elapsed time (ms), y - unused, z = material debug flag, w - clip plane count
-          vec4<F32> _renderProperties = { 0.f, 0.f, to_F32(to_base(MaterialDebugFlag::COUNT)), 0.f };
+          //x - clip plane count
+          vec4<F32> _renderProperties = VECTOR4_ZERO;
           vec4<F32> _clipPlanes[Config::MAX_CLIP_DISTANCES];
           vec4<F32> _frustumPlanes[6];
           vec4<F32> _padding[2];

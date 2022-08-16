@@ -53,7 +53,7 @@ class PropertyDescriptor : public Hashable {
     {
     }
 
-    [[nodiscard]] size_t getHash() const override;
+    [[nodiscard]] size_t getHash() const noexcept override;
 
 protected:
     /// useful for switch statements

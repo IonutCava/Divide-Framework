@@ -32,17 +32,16 @@ SceneShaderData::SceneShaderData(GFXDevice& context)
 GFX::MemoryBarrierCommand SceneShaderData::updateSceneDescriptorSet(GFX::CommandBuffer& bufferInOut) {
     GFX::MemoryBarrierCommand memBarrier{};
     if (_sceneDataDirty || _probeDataDirty) {
-        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-        set._usage = DescriptorSetUsage::PER_FRAME_SET;
+        auto bindCmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+        bindCmd->_usage = DescriptorSetUsage::PER_FRAME_SET;
+        auto& set = bindCmd->_bindings;
 
         if (_sceneDataDirty) {
             _sceneShaderData->incQueue();
             memBarrier._bufferLocks.push_back(_sceneShaderData->writeData(&_sceneBufferData));
 
-            auto& binding = set._bindings.emplace_back();
-            binding._resourceSlot = to_base(ShaderBufferLocation::SCENE_DATA);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::ALL_DRAW;
-            binding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
+            auto& binding = set.emplace_back();
+            binding._slot = to_base(ShaderBufferLocation::SCENE_DATA);
             binding._data.As<ShaderBufferEntry>() = { _sceneShaderData.get(), { 0u, 1u } };
 
             _sceneDataDirty = false;
@@ -52,10 +51,8 @@ GFX::MemoryBarrierCommand SceneShaderData::updateSceneDescriptorSet(GFX::Command
             _probeShaderData->incQueue();
             memBarrier._bufferLocks.push_back(_probeShaderData->writeData(_probeData.data()));
 
-            auto& binding = set._bindings.emplace_back();
-            binding._resourceSlot = to_base(ShaderBufferLocation::PROBE_DATA);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW;
-            binding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
+            auto& binding = set.emplace_back();
+            binding._slot = to_base(ShaderBufferLocation::PROBE_DATA);
             binding._data.As<ShaderBufferEntry>() = { _probeShaderData.get(), { 0u, GLOBAL_PROBE_COUNT } };
 
             _probeDataDirty = false;

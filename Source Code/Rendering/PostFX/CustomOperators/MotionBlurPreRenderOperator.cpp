@@ -73,20 +73,16 @@ bool MotionBlurPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx
     const F32 velocityScale = _context.context().config().rendering.postFX.motionBlur.velocityScale;
     const F32 velocityFactor = fps / Config::TARGET_FRAME_RATE * velocityScale;
 
-    DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-    set._usage = DescriptorSetUsage::PER_DRAW_SET;
+    auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+    cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
     {
-        auto& binding = set._bindings.emplace_back();
-        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-        binding._resourceSlot = to_U8(TextureUsage::UNIT0);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_U8(TextureUsage::UNIT0);
         binding._data.As<DescriptorCombinedImageSampler>() = { screenAtt->texture()->data(), screenAtt->descriptor()._samplerHash };
     }
     {
-        auto& binding = set._bindings.emplace_back();
-        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-        binding._resourceSlot = to_U8(TextureUsage::UNIT1);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_U8(TextureUsage::UNIT1);
         binding._data.As<DescriptorCombinedImageSampler>() = { velocityAtt->texture()->data(), velocityAtt->descriptor()._samplerHash };
     }
 

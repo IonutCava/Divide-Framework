@@ -283,7 +283,7 @@ namespace Preprocessor{
 } //Preprocessor
 
 namespace {
-    [[nodiscard]] size_t DefinesHash(const ModuleDefines& defines) {
+    [[nodiscard]] size_t DefinesHash(const ModuleDefines& defines) noexcept {
         if (defines.empty()) {
             return 0u;
         }
@@ -319,7 +319,7 @@ namespace {
     [[nodiscard]] bool ValidateCache(const bool validateSPV, const Str256& sourceFileName, const Str256& targetFileName, const bool targetVulkan) {
         //"There are only two hard things in Computer Science: cache invalidation and naming things" - Phil Karlton
         //"There are two hard things in computer science: cache invalidation, naming things, and off-by-one errors." - Leon Bambrick
-
+        return false;
         // Get our source file's "last written" timestamp
         U64 lastWriteTime = 0u, lastWriteTimeCache = 0u;
 
@@ -696,7 +696,7 @@ bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo,
     return glswState == 1;
 }
 
-size_t ShaderProgramDescriptor::getHash() const {
+size_t ShaderProgramDescriptor::getHash() const noexcept {
     _hash = PropertyDescriptor::getHash();
     for (const ShaderModuleDescriptor& desc : _modules) {
         Util::Hash_combine(_hash, DefinesHash(desc._defines),
@@ -1362,7 +1362,7 @@ bool ShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, boo
         _usedAtomIDs.insert(_ID(shaderDescriptor._sourceFile.c_str()));
     }
 
-    U32 blockOffset = 0u;
+    U8 blockOffset = 0u;
 
     Reflection::UniformsSet previousUniforms;
 
@@ -1403,15 +1403,82 @@ bool ShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, boo
     return true;
 }
 
+namespace {
+
+    void SetShaderStageFlag(const ShaderType type, U16& maskOut) {
+        switch (type) {
+            case ShaderType::FRAGMENT:
+                maskOut |= to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
+                break;
+            case ShaderType::VERTEX:
+                maskOut |= to_base(DescriptorSetBinding::ShaderStageVisibility::VERTEX);
+                break;
+            case ShaderType::GEOMETRY:
+                maskOut |= to_base(DescriptorSetBinding::ShaderStageVisibility::GEOMETRY);
+                break;
+            case ShaderType::TESSELLATION_CTRL:
+                maskOut |= to_base(DescriptorSetBinding::ShaderStageVisibility::TESS_CONTROL);
+                break;
+            case ShaderType::TESSELLATION_EVAL:
+                maskOut |= to_base(DescriptorSetBinding::ShaderStageVisibility::TESS_EVAL);
+                break;
+            case ShaderType::COMPUTE:
+                maskOut |= to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE);
+                break;
+        };
+    }
+};
+
 void ShaderProgram::initUniformUploader(const PerFileShaderData& shaderFileData) {
     const ShaderLoadData& programLoadData = shaderFileData._loadData;
 
+    _descriptorSet.resize(0);
     for (const LoadData& stageData : programLoadData) {
         if (!stageData._reflectionData._blockMembers.empty()) {
             UniformBlockUploaderDescriptor descriptor{};
             descriptor._parentShaderName = shaderFileData._programName.c_str();
             descriptor._reflectionData = stageData._reflectionData;
-            _uniformBlockBuffers.emplace_back(_context, descriptor);
+            bool found = false;
+            for (auto& blocks : _uniformBlockBuffers) {
+                if (blocks.descriptor()._reflectionData._bindingSet != to_base(DescriptorSetUsage::PER_DRAW_SET)) {
+                    continue;
+                }
+
+                if (blocks.descriptor()._reflectionData._targetBlockBindingIndex == descriptor._reflectionData._targetBlockBindingIndex) {
+                    assert(blocks.descriptor()._reflectionData._blockSize == descriptor._reflectionData._blockSize);
+                    found = true;
+                    continue;
+                }
+            }
+            if (!found && !descriptor._reflectionData._blockMembers.empty()) {
+                _uniformBlockBuffers.emplace_back(_context, descriptor);
+                auto& blockBinding = _descriptorSet.emplace_back();
+                blockBinding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
+                blockBinding._resource._slot = to_U8(descriptor._reflectionData._targetBlockBindingIndex);
+                SetShaderStageFlag(stageData._type, blockBinding._shaderStageVisibility);
+            }
+        }
+        for (auto& image : stageData._reflectionData._images) {
+            if (image._bindingSet != to_base(DescriptorSetUsage::PER_DRAW_SET)) {
+                continue;
+            }
+
+            const DescriptorSetBindingType targetType = image._combinedImageSampler ? DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER : DescriptorSetBindingType::IMAGE;
+
+            bool found = false;
+            for (auto& binding : _descriptorSet) {
+                if (binding._type == targetType && binding._resource._slot == image._targetImageBindingIndex) {
+                    found = true;
+                    SetShaderStageFlag(stageData._type, binding._shaderStageVisibility);
+                    break;
+                }
+            }
+            if (!found) {
+                auto& binding = _descriptorSet.emplace_back();
+                binding._resource._slot = image._targetImageBindingIndex;
+                binding._type = targetType;
+                SetShaderStageFlag(stageData._type, binding._shaderStageVisibility);
+            }
         }
     }
 }
@@ -1433,7 +1500,7 @@ void ShaderProgram::preparePushConstants() {
     }
 }
 
-bool ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExisting, LoadData& loadDataInOut, Reflection::UniformsSet& previousUniformsInOut, U32& blockIndexInOut) {
+bool ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExisting, LoadData& loadDataInOut, Reflection::UniformsSet& previousUniformsInOut, U8& blockIndexInOut) {
     // Clear existing code
     loadDataInOut._sourceCodeGLSL.resize(0);
     loadDataInOut._sourceCodeSpirV.resize(0);
@@ -1483,7 +1550,7 @@ void ShaderProgram::loadAndParseGLSL(const ModuleDefines& defines,
                                      bool reloadExisting,
                                      LoadData& loadDataInOut,
                                      Reflection::UniformsSet& previousUniformsInOut,
-                                     U32& blockIndexInOut,
+                                     U8& blockIndexInOut,
                                      eastl::set<U64>& atomIDsInOut)
 {
     auto& glslCodeOut = loadDataInOut._sourceCodeGLSL;
@@ -1532,12 +1599,13 @@ void ShaderProgram::loadAndParseGLSL(const ModuleDefines& defines,
             ++blockIndexInOut;
         }
 
+        loadDataInOut._reflectionData._bindingSet = to_base(DescriptorSetUsage::PER_DRAW_SET);
         loadDataInOut._reflectionData._targetBlockBindingIndex = blockIndexInOut;
         loadDataInOut._reflectionData._targetBlockName = Util::StringFormat("dvd_UniformBlock_%lld", loadDataInOut._reflectionData._targetBlockBindingIndex);
-        loadDataInOut._reflectionData._targetBlockBindingIndex += to_U32(ShaderBufferLocation::UNIFORM_BLOCK);
+        loadDataInOut._reflectionData._targetBlockBindingIndex += to_U8(ShaderBufferLocation::UNIFORM_BLOCK);
 
         string& uniformBlock = loadDataInOut._uniformBlock;
-        uniformBlock = _context.renderAPI() == RenderAPI::OpenGL ? "layout( " : "layout( set = 0, ";
+        uniformBlock = _context.renderAPI() == RenderAPI::OpenGL ? "layout( " : Util::StringFormat("layout( set = %d, ", to_base(DescriptorSetUsage::PER_DRAW_SET));
         uniformBlock.append("binding = %d, std140 ) uniform %s {");
 
         for (const Reflection::UniformDeclaration& uniform : loadDataInOut._uniforms) {
@@ -1549,7 +1617,7 @@ void ShaderProgram::loadAndParseGLSL(const ModuleDefines& defines,
             const auto rawName = uniform._name.substr(0, uniform._name.find_first_of("[")).to_string();
             uniformBlock.append(Util::StringFormat("\n#define %s %s.%s", rawName.c_str(), UNIFORM_BLOCK_NAME, rawName.c_str()));
         }
-
+       
         uniformBlock = Util::StringFormat(uniformBlock, loadDataInOut._reflectionData._targetBlockBindingIndex, loadDataInOut._reflectionData._targetBlockName.c_str());
     }
     previousUniformsInOut = loadDataInOut._uniforms;

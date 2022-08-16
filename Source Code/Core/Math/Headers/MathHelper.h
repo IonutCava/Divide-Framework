@@ -515,7 +515,7 @@ struct Circle {
 
 /// a la Boost
 template <typename T, typename... Rest>
-void Hash_combine(size_t& seed, const T& v, const Rest&... rest);
+void Hash_combine(size_t& seed, const T& v, const Rest&... rest) noexcept;
 
 // U = to data type, T = from data type
 template <typename U, typename T>

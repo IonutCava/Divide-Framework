@@ -87,7 +87,7 @@ namespace TypeUtil {
 
 namespace {
     /// How many writes we can basically issue per frame to our scratch buffers before we have to sync
-    constexpr size_t TargetBufferSizeCam = 256u;
+    constexpr size_t TargetBufferSizeCam = 512u;
     constexpr size_t TargetBufferSizeRender = 8u;
 
     constexpr U32 GROUP_SIZE_AABB = 64;
@@ -116,212 +116,208 @@ DeviceInformation GFXDevice::s_deviceInformation{};
 GFXDevice::IMPrimitivePool GFXDevice::s_IMPrimitivePool{};
 #pragma region Construction, destruction, initialization
 
-void GFXDevice::GFXDescriptorSets::init() {
+void GFXDevice::GFXDescriptorSets::init(RenderAPIWrapper* api) {
     {
-        auto& frameSet = _perFrameSet.set();
-        frameSet._usage = DescriptorSetUsage::PER_FRAME_SET;
+        auto& frameSet = _globalDescriptorSets[to_base(DescriptorSetUsage::PER_FRAME_SET)].set();
+        
         {
-            auto& binding = frameSet._bindings.emplace_back();
+            auto& binding = frameSet.emplace_back();
             binding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
-            binding._resourceSlot = to_U8(ShaderBufferLocation::SCENE_DATA);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::ALL_DRAW;
+            binding._resource._slot = to_U8(ShaderBufferLocation::SCENE_DATA);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::ALL_DRAW);
         }
         {
-            auto& binding = frameSet._bindings.emplace_back();
+            auto& binding = frameSet.emplace_back();
             binding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
-            binding._resourceSlot = to_U8(ShaderBufferLocation::PROBE_DATA);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW;
+            binding._resource._slot = to_U8(ShaderBufferLocation::PROBE_DATA);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW);
         }
         {
-            auto& binding = frameSet._bindings.emplace_back();
+            auto& binding = frameSet.emplace_back();
             binding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
-            binding._resourceSlot = to_U8(ShaderBufferLocation::LIGHT_SCENE);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW;
+            binding._resource._slot = to_U8(ShaderBufferLocation::LIGHT_SCENE);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW);
         }
         {
-            auto& binding = frameSet._bindings.emplace_back();
+            auto& binding = frameSet.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resourceSlot = to_U8(ShaderBufferLocation::LIGHT_NORMAL);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW;
+            binding._resource._slot = to_U8(ShaderBufferLocation::LIGHT_NORMAL);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW);
         }
         {
-            auto& binding = frameSet._bindings.emplace_back();
+            auto& binding = frameSet.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resourceSlot = to_U8(ShaderBufferLocation::LIGHT_GRID);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW;
+            binding._resource._slot = to_U8(ShaderBufferLocation::LIGHT_GRID);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW);
         }
         {
-            auto& binding = frameSet._bindings.emplace_back();
+            auto& binding = frameSet.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resourceSlot = to_U8(ShaderBufferLocation::LIGHT_INDICES);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW;
+            binding._resource._slot = to_U8(ShaderBufferLocation::LIGHT_INDICES);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW);
         }
         {
-            auto& binding = frameSet._bindings.emplace_back();
+            auto& binding = frameSet.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resourceSlot = to_U8(ShaderBufferLocation::LIGHT_CLUSTER_AABBS);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW;
+            binding._resource._slot = to_U8(ShaderBufferLocation::LIGHT_CLUSTER_AABBS);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW);
         }
         {
-            auto& binding = frameSet._bindings.emplace_back();
+            auto& binding = frameSet.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resourceSlot = to_U8(ShaderBufferLocation::LIGHT_SHADOW);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+            binding._resource._slot = to_U8(ShaderBufferLocation::LIGHT_SHADOW);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
         }
         {
-            auto& binding = frameSet._bindings.emplace_back();
+            auto& binding = frameSet.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resourceSlot = to_U8(TextureUsage::SHADOW_SINGLE);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+            binding._resource._slot = to_U8(TextureUsage::SHADOW_SINGLE);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
         }
         {
-            auto& binding = frameSet._bindings.emplace_back();
+            auto& binding = frameSet.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resourceSlot = to_U8(TextureUsage::SHADOW_LAYERED);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+            binding._resource._slot = to_U8(TextureUsage::SHADOW_LAYERED);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
         }
         {
-            auto& binding = frameSet._bindings.emplace_back();
+            auto& binding = frameSet.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resourceSlot = to_U8(TextureUsage::SHADOW_CUBE);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+            binding._resource._slot = to_U8(TextureUsage::SHADOW_CUBE);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
         }
         {
-            auto& binding = frameSet._bindings.emplace_back();
+            auto& binding = frameSet.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resourceSlot = to_U8(TextureUsage::REFLECTION_PREFILTERED);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+            binding._resource._slot = to_U8(TextureUsage::REFLECTION_PREFILTERED);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
         }
         {
-            auto& binding = frameSet._bindings.emplace_back();
+            auto& binding = frameSet.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resourceSlot = to_U8(TextureUsage::IRRADIANCE);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+            binding._resource._slot = to_U8(TextureUsage::IRRADIANCE);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
         }
         {
-            auto& binding = frameSet._bindings.emplace_back();
+            auto& binding = frameSet.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resourceSlot = to_U8(TextureUsage::BRDF_LUT);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+            binding._resource._slot = to_U8(TextureUsage::BRDF_LUT);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
         }
+        api->createSetLayout(DescriptorSetUsage::PER_FRAME_SET, frameSet);
     }
     {
-        auto& passSet = _perPassSet.set();
-        passSet._usage = DescriptorSetUsage::PER_PASS_SET;
+        auto& passSet = _globalDescriptorSets[to_base(DescriptorSetUsage::PER_PASS_SET)].set();
         {
-            auto& binding = passSet._bindings.emplace_back();
+            auto& binding = passSet.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resourceSlot = to_U8(ShaderBufferLocation::TREE_DATA); 
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_GEOMETRY;
+            binding._resource._slot = to_U8(ShaderBufferLocation::TREE_DATA);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_GEOMETRY);
         }
         {
-            auto& binding = passSet._bindings.emplace_back();
+            auto& binding = passSet.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resourceSlot = to_U8(ShaderBufferLocation::GRASS_DATA);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_GEOMETRY;
+            binding._resource._slot = to_U8(ShaderBufferLocation::GRASS_DATA);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_GEOMETRY);
         }
         {
-            auto& binding = passSet._bindings.emplace_back();
+            auto& binding = passSet.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resourceSlot = to_U8(ShaderBufferLocation::ATOMIC_COUNTER);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
+            binding._resource._slot = to_U8(ShaderBufferLocation::ATOMIC_COUNTER);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE);
         }
         {
-            auto& binding = passSet._bindings.emplace_back();
+            auto& binding = passSet.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resourceSlot = to_U8(TextureUsage::SCENE_NORMALS);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+            binding._resource._slot = to_U8(TextureUsage::SCENE_NORMALS);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
         }
         {
-            auto& binding = passSet._bindings.emplace_back();
+            auto& binding = passSet.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resourceSlot = to_U8(TextureUsage::UNIT0);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+            binding._resource._slot = to_U8(TextureUsage::UNIT0);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
         }
         {
-            auto& binding = passSet._bindings.emplace_back();
+            auto& binding = passSet.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resourceSlot = to_U8(TextureUsage::UNIT1);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+            binding._resource._slot = to_U8(TextureUsage::UNIT1);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
         }
         {
-            auto& binding = passSet._bindings.emplace_back();
+            auto& binding = passSet.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resourceSlot = to_U8(TextureUsage::DEPTH);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+            binding._resource._slot = to_U8(TextureUsage::DEPTH);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
         }
         {
-            auto& binding = passSet._bindings.emplace_back();
+            auto& binding = passSet.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resourceSlot = to_U8(TextureUsage::TRANSMITANCE);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+            binding._resource._slot = to_U8(TextureUsage::TRANSMITANCE);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
         }
         {
-            auto& binding = passSet._bindings.emplace_back();
+            auto& binding = passSet.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resourceSlot = to_U8(TextureUsage::SSR_SAMPLE);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+            binding._resource._slot = to_U8(TextureUsage::SSR_SAMPLE);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
         }
         {
-            auto& binding = passSet._bindings.emplace_back();
+            auto& binding = passSet.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resourceSlot = to_U8(TextureUsage::SSAO_SAMPLE);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+            binding._resource._slot = to_U8(TextureUsage::SSAO_SAMPLE);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
         }
+        api->createSetLayout(DescriptorSetUsage::PER_PASS_SET, passSet);
     }
     {
-        auto& batchSet = _perBatchSet.set();
-        batchSet._usage = DescriptorSetUsage::PER_BATCH_SET;
+        auto& batchSet = _globalDescriptorSets[to_base(DescriptorSetUsage::PER_BATCH_SET)].set();
         {
-            auto& binding = batchSet._bindings.emplace_back();
+            auto& binding = batchSet.emplace_back();
             binding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
-            binding._resourceSlot = to_U8(ShaderBufferLocation::CAM_BLOCK);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::ALL;
+            binding._resource._slot = to_U8(ShaderBufferLocation::CAM_BLOCK);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::ALL);
         }
         {
-            auto& binding = batchSet._bindings.emplace_back();
+            auto& binding = batchSet.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resourceSlot = to_U8(ShaderBufferLocation::GPU_COMMANDS);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
+            binding._resource._slot = to_U8(ShaderBufferLocation::GPU_COMMANDS);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE);
         }
         {
-            auto& binding = batchSet._bindings.emplace_back();
+            auto& binding = batchSet.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resourceSlot = to_U8(ShaderBufferLocation::CMD_BUFFER);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::NONE;
+            binding._resource._slot = to_U8(ShaderBufferLocation::CMD_BUFFER);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE);
         }
         {
-            auto& binding = batchSet._bindings.emplace_back();
+            auto& binding = batchSet.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resourceSlot = to_U8(ShaderBufferLocation::NODE_TRANSFORM_DATA);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::ALL_GEOMETRY;
+            binding._resource._slot = to_U8(ShaderBufferLocation::NODE_TRANSFORM_DATA);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::ALL_GEOMETRY);
         }
         {
-            auto& binding = batchSet._bindings.emplace_back();
+            auto& binding = batchSet.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resourceSlot = to_U8(ShaderBufferLocation::NODE_INDIRECTION_DATA);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::VERTEX;
+            binding._resource._slot = to_U8(ShaderBufferLocation::NODE_INDIRECTION_DATA);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::VERTEX);
         }
         {
-            auto& binding = batchSet._bindings.emplace_back();
+            auto& binding = batchSet.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resourceSlot = to_U8(ShaderBufferLocation::NODE_MATERIAL_DATA);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+            binding._resource._slot = to_U8(ShaderBufferLocation::NODE_MATERIAL_DATA);
+            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
         }
+        api->createSetLayout(DescriptorSetUsage::PER_BATCH_SET, batchSet);
     }
 }
 
-void GFXDevice::GFXDescriptorSet::update(DescriptorSetBinding& newBinding) {
-    for (auto& binding : _set._bindings) {
-        if (binding._resourceSlot == newBinding._resourceSlot && binding._type == newBinding._type) {
-            if (newBinding._shaderStageVisibility == DescriptorSetBinding::ShaderStageVisibility::COUNT) {
-                newBinding._shaderStageVisibility = binding._shaderStageVisibility;
-            } else {
-                DIVIDE_ASSERT(binding._shaderStageVisibility == newBinding._shaderStageVisibility);
-            }
-
-            if (binding._data != newBinding._data) {
-                binding._data = newBinding._data;
+void GFXDevice::GFXDescriptorSet::update(const U8 slot, const DescriptorSetBindingData& newBindingData) {
+    for (auto& bindingEntry : _set) {
+        assert(bindingEntry._type != DescriptorSetBindingType::COUNT && newBindingData.Type() != DescriptorSetBindingType::COUNT);
+        if (bindingEntry._type == newBindingData.Type() && bindingEntry._resource._slot == slot) {
+            if (bindingEntry._resource._data != newBindingData) {
+                bindingEntry._resource._data = newBindingData;
                 dirty(true);
             }
             return;
@@ -426,21 +422,6 @@ ErrorCode GFXDevice::initRenderingAPI(const I32 argc, char** argv, const RenderA
     return ShaderProgram::OnStartup(parent().resourceCache());
 }
 
-void GFXDevice::updateDescriptorSet(const DescriptorSetUsage usage, DescriptorSetBinding& newBinding) {
-    switch (usage) {
-        case DescriptorSetUsage::PER_FRAME_SET: {
-            descriptorSets().perFrameSet().update(newBinding);
-        } break;
-        case DescriptorSetUsage::PER_PASS_SET: {
-            descriptorSets().perPassSet().update(newBinding);
-        } break;
-        case DescriptorSetUsage::PER_BATCH_SET: {
-            descriptorSets().perBatchSet().update(newBinding);
-        } break;
-        default: DIVIDE_UNEXPECTED_CALL(); break;
-    }
-}
-
 GFX::MemoryBarrierCommand GFXDevice::updateSceneDescriptorSet(GFX::CommandBuffer& bufferInOut) const {
     return _sceneData->updateSceneDescriptorSet(bufferInOut);
 }
@@ -475,6 +456,7 @@ void GFXDevice::resizeGPUBlocks(size_t targetSizeCam, size_t targetSizeCullCount
         for (U8 i = 0u; i < GFXBuffers::PerFrameBufferCount; ++i) {
             bufferDescriptor._name = Util::StringFormat("DVD_GPU_CAM_DATA_%d", i);
             _gfxBuffers._perFrameBuffers[i]._camDataBuffer = newSB(bufferDescriptor);
+            _gfxBuffers._perFrameBuffers[i]._camBufferWriteRange = {};
         }
     }
 
@@ -1173,7 +1155,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     }
 
     _sceneData = MemoryManager_NEW SceneShaderData(*this);
-    _descriptorSets.init();
+    _descriptorSets.init(_api.get());
 
     // Everything is ready from the rendering point of view
     return ErrorCode::NO_ERR;
@@ -1281,8 +1263,6 @@ void GFXDevice::idle(const bool fast) {
 
 void GFXDevice::update(const U64 deltaTimeUSFixed, const U64 deltaTimeUSApp) {
     getRenderer().postFX().update(deltaTimeUSFixed, deltaTimeUSApp);
-    _gpuBlock._camData._renderProperties.x += Time::MicrosecondsToMilliseconds<F32>(deltaTimeUSFixed);
-    _gpuBlock._camNeedsUpload = true;
 }
 
 void GFXDevice::beginFrame(DisplayWindow& window, const bool global) {
@@ -1567,12 +1547,10 @@ void GFXDevice::blurTarget(RenderTargetHandle& blurSource,
         GFX::EnqueueCommand(bufferInOut, gaussian ? (layerCount > 1 ? _blurGaussianPipelineLayeredCmd : _blurGaussianPipelineSingleCmd)
                                                   : (layerCount > 1 ? _blurBoxPipelineLayeredCmd      : _blurBoxPipelineSingleCmd));
 
-        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-        set._usage = DescriptorSetUsage::PER_DRAW_SET;
-        auto& binding = set._bindings.emplace_back();
-        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-        binding._resourceSlot = to_U8(TextureUsage::UNIT0);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+        cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_U8(TextureUsage::UNIT0);
         binding._data.As<DescriptorCombinedImageSampler>() = { inputAttachment->texture()->data(), inputAttachment->descriptor()._samplerHash };
 
         pushConstantsCmd._constants.set(_ID("verticalBlur"), GFX::PushConstantType::INT, false);
@@ -1613,12 +1591,10 @@ void GFXDevice::blurTarget(RenderTargetHandle& blurSource,
             pushConstantsCmd._constants.set(_ID("size"), GFX::PushConstantType::VEC2, vec2<F32>(blurTarget._rt->getResolution()));
         }
 
-        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-        set._usage = DescriptorSetUsage::PER_DRAW_SET;
-        auto& binding = set._bindings.emplace_back();
-        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-        binding._resourceSlot = to_U8(TextureUsage::UNIT0);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+        cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_U8(TextureUsage::UNIT0);
         binding._data.As<DescriptorCombinedImageSampler>() = { bufferAttachment->texture()->data(), bufferAttachment->descriptor()._samplerHash };
 
         GFX::EnqueueCommand(bufferInOut, pushConstantsCmd);
@@ -1824,26 +1800,45 @@ PerformanceMetrics GFXDevice::getPerformanceMetrics() const noexcept {
 bool GFXDevice::uploadGPUBlock() {
     OPTICK_EVENT();
 
-    GFXBuffers::PerFrameBuffers& frameBuffers = _gfxBuffers.crtBuffers();
+    // Put the viewport update here as it is the most common source of gpu data invalidation and not always
+    // needed for rendering (e.g. changed by RenderTarget::End())
+
+    const vec4<F32> tempViewport{ activeViewport() };
+    if (_gpuBlock._camData._ViewPort != tempViewport) {
+        _gpuBlock._camData._ViewPort.set(tempViewport);
+        const U32 clustersX = to_U32(std::ceil(to_F32(tempViewport.sizeX) / Renderer::CLUSTER_SIZE.x));
+        const U32 clustersY = to_U32(std::ceil(to_F32(tempViewport.sizeY) / Renderer::CLUSTER_SIZE.y));
+        if (clustersX != to_U32(_gpuBlock._camData._renderTargetInfo.z) ||
+            clustersY != to_U32(_gpuBlock._camData._renderTargetInfo.w))
+        {
+            _gpuBlock._camData._renderTargetInfo.z = to_F32(clustersX);
+            _gpuBlock._camData._renderTargetInfo.w = to_F32(clustersY);
+        }
+        _gpuBlock._camNeedsUpload = true;
+    }
 
     if (_gpuBlock._camNeedsUpload) {
+        GFXBuffers::PerFrameBuffers& frameBuffers = _gfxBuffers.crtBuffers();
+        _gpuBlock._camNeedsUpload = false;
         frameBuffers._camDataBuffer->incQueue();
         if (++frameBuffers._camWritesThisFrame >= _gfxBuffers._currentSizeCam) {
             //We've wrapped around this buffer inside of a single frame so sync performance will degrade unless we increase our buffer size
             _gfxBuffers._needsResizeCam = true;
             //Because we are now overwriting existing data, we need to make sure that any fences that could possibly protect us have been flushed
-            DIVIDE_ASSERT(IsEmpty(frameBuffers._writeMemCmd._bufferLocks));
+            DIVIDE_ASSERT(frameBuffers._camBufferWriteRange._length == 0u);
         }
-        frameBuffers._writeMemCmd._bufferLocks.push_back(frameBuffers._camDataBuffer->writeData(&_gpuBlock._camData));
-        _gpuBlock._camNeedsUpload = false;
+        const BufferRange writtenRange = frameBuffers._camDataBuffer->writeData(&_gpuBlock._camData)._range;
 
-        DescriptorSetBinding binding{};
-        binding._data.As<ShaderBufferEntry>() = { _gfxBuffers.crtBuffers()._camDataBuffer.get(), { 0, 1 } };
-        binding._resourceSlot = to_U8(ShaderBufferLocation::CAM_BLOCK);
-        binding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::ALL;
+        if (frameBuffers._camBufferWriteRange._length == 0u) {
+            frameBuffers._camBufferWriteRange = writtenRange;
+        } else {
+            Merge(frameBuffers._camBufferWriteRange, writtenRange);
+        }
 
-        updateDescriptorSet(DescriptorSetUsage::PER_BATCH_SET, binding);
+        DescriptorSetBindingData binding{};
+        binding.As<ShaderBufferEntry>() = { _gfxBuffers.crtBuffers()._camDataBuffer.get(), { 0, 1 } };
+
+        descriptorSets()._globalDescriptorSets[to_base(DescriptorSetUsage::PER_BATCH_SET)].update(to_U8(ShaderBufferLocation::CAM_BLOCK), binding);
         return true;
     }
 
@@ -1868,7 +1863,7 @@ void GFXDevice::setClipPlanes(const FrustumClipPlanes& clipPlanes) {
             }
         }
 
-        _gpuBlock._camData._renderProperties.w = to_F32(count);
+        _gpuBlock._camData._renderProperties.x = to_F32(count);
         _gpuBlock._camNeedsUpload = true;
     }
 }
@@ -1968,33 +1963,13 @@ void GFXDevice::setPreviousViewProjectionMatrix(const mat4<F32>& prevViewMatrix,
     }
 }
 
-void GFXDevice::materialDebugFlag(const MaterialDebugFlag flag) {
-    if (_materialDebugFlag != flag) {
-        _materialDebugFlag = flag;
-        _gpuBlock._camData._renderProperties.z = to_F32(materialDebugFlag());
-        _gpuBlock._camNeedsUpload = true;
-    }
-}
-/// Update the rendering viewport
+// Update the rendering viewport
 bool GFXDevice::setViewport(const Rect<I32>& viewport) {
     OPTICK_EVENT();
 
     // Change the viewport on the Rendering API level
     if (_api->setViewport(viewport)) {
-        // Update the buffer with the new value
-        _gpuBlock._camData._ViewPort.set(viewport.x, viewport.y, viewport.z, viewport.w);
-        _gpuBlock._camNeedsUpload = true;
-
-        const U32 clustersX = to_U32(std::ceil(to_F32(viewport.z) / Renderer::CLUSTER_SIZE.x));
-        const U32 clustersY = to_U32(std::ceil(to_F32(viewport.w) / Renderer::CLUSTER_SIZE.y));
-        if (clustersX != to_U32(_gpuBlock._camData._renderTargetInfo.z) ||
-            clustersY != to_U32(_gpuBlock._camData._renderTargetInfo.w))
-        {
-            _gpuBlock._camData._renderTargetInfo.z = to_F32(clustersX);
-            _gpuBlock._camData._renderTargetInfo.w = to_F32(clustersY);
-            _gpuBlock._camNeedsUpload = true;
-        }
-
+        _activeViewport.set(viewport);
         return true;
     }
 
@@ -2041,11 +2016,11 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
     }
 
     const auto bindDescriptorSet = [&](const DescriptorSet& set, const bool allowEmpty) {
-        for (auto& binding : set._bindings) {
-            DIVIDE_ASSERT(binding._shaderStageVisibility != DescriptorSetBinding::ShaderStageVisibility::COUNT);
+        for (auto& binding : set) {
+            DIVIDE_ASSERT(binding._shaderStageVisibility != to_base(DescriptorSetBinding::ShaderStageVisibility::NONE));
 
-            const U8 bindingSlot = binding._resourceSlot;
-            const DescriptorSetBindingData& data = binding._data;
+            const U8 bindingSlot = binding._resource._slot;
+            const DescriptorSetBindingData& data = binding._resource._data;
 
             switch (binding._type) {
                 case DescriptorSetBindingType::IMAGE: {
@@ -2081,29 +2056,27 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
         }
     };
 
+    auto& frameSet = descriptorSets()._globalDescriptorSets[to_base(DescriptorSetUsage::PER_FRAME_SET)];
+    auto& passSet = descriptorSets()._globalDescriptorSets[to_base(DescriptorSetUsage::PER_PASS_SET)];
+    auto& batchSet = descriptorSets()._globalDescriptorSets[to_base(DescriptorSetUsage::PER_BATCH_SET)];
+
     const auto validateAndUploadDescriptorSets = [&]() {
         uploadGPUBlock();
 
-        if (descriptorSets().perFrameSet().dirty()) {
-            bindDescriptorSet(descriptorSets().perFrameSet().set(), true);
-            descriptorSets().perFrameSet().dirty(false);
+        if (frameSet.dirty()) {
+            bindDescriptorSet(frameSet.set(), true);
+            frameSet.dirty(false);
         }
 
-        if (descriptorSets().perPassSet().dirty()) {
-            bindDescriptorSet(descriptorSets().perPassSet().set(), true);
-            descriptorSets().perPassSet().dirty(false);
+        if (passSet.dirty()) {
+            bindDescriptorSet(passSet.set(), true);
+            passSet.dirty(false);
         }
 
-        if (descriptorSets().perBatchSet().dirty()) {
-            bindDescriptorSet(descriptorSets().perBatchSet().set(), true);
-            descriptorSets().perBatchSet().dirty(false);
+        if (batchSet.dirty()) {
+            bindDescriptorSet(batchSet.set(), true);
+            batchSet.dirty(false);
         }
-    };
-
-    const auto markDescriptorSetsDirty = [&]() {
-        descriptorSets().perBatchSet().dirty(true);
-        descriptorSets().perFrameSet().dirty(true);
-        descriptorSets().perBatchSet().dirty(true);
     };
 
     _api->preFlushCommandBuffer(commandBuffer);
@@ -2185,7 +2158,7 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
                 OPTICK_EVENT("PUSH_VIEWPORT");
 
                 const GFX::PushViewportCommand* crtCmd = commandBuffer.get<GFX::PushViewportCommand>(cmd);
-                _viewportStack.push(_gpuBlock._camData._ViewPort);
+                _viewportStack.push(activeViewport());
                 setViewport(crtCmd->_viewport);
             } break;
             case GFX::CommandType::POP_VIEWPORT: {
@@ -2226,18 +2199,6 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
                 validateAndUploadDescriptorSets();
                 commandBuffer.get<GFX::ExternalCommand>(cmd)->_cbk();
             } break;
-
-            case GFX::CommandType::BIND_DESCRIPTOR_SETS: {
-                OPTICK_EVENT("BIND_DESCRIPTOR_SETS");
-                DescriptorSet& set = commandBuffer.get<GFX::BindDescriptorSetsCommand>(cmd)->_set;
-                if (set._usage != DescriptorSetUsage::PER_DRAW_SET) {
-                    for (auto& binding : set._bindings) {
-                        updateDescriptorSet(set._usage, binding);
-                    }
-                } else {
-                    bindDescriptorSet(set, false);
-                }
-            } break;
             case GFX::CommandType::BEGIN_RENDER_PASS: {
                 const GFX::BeginRenderPassCommand* crtCmd = commandBuffer.get<GFX::BeginRenderPassCommand>(cmd);
                 const vec2<F32> depthRange = renderTargetPool().getRenderTarget(crtCmd->_target)->getDepthRange();
@@ -2256,15 +2217,21 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
     _api->postFlushCommandBuffer(commandBuffer);
 
     GFXBuffers::PerFrameBuffers& frameBuffers = _gfxBuffers.crtBuffers();
-    if (!IsEmpty(frameBuffers._writeMemCmd._bufferLocks)) {
-        _api->flushCommand(&frameBuffers._writeMemCmd);
-        frameBuffers._writeMemCmd._bufferLocks.clear();
+    if (frameBuffers._camBufferWriteRange._length > 0u) {
+        GFX::MemoryBarrierCommand writeMemCmd{};
+        BufferLock& lock = writeMemCmd._bufferLocks.emplace_back();
+        lock._targetBuffer = frameBuffers._camDataBuffer.get();
+        lock._range = frameBuffers._camBufferWriteRange;
+        _api->flushCommand(&writeMemCmd);
+        frameBuffers._camBufferWriteRange._startOffset = {};
     }
 
     // Descriptor sets are only valid per command buffer they are submitted in. If we finish the command buffer submission,
     // we mark them as dirty so that the next command buffer can bind them again even if the data is the same
     // We always check the dirty flags before any draw/compute command by calling "validateAndUploadDescriptorSets" beforehand
-    markDescriptorSetsDirty();
+    frameSet.dirty(true);
+    passSet.dirty(true);
+    batchSet.dirty(true);
 }
 
 /// Transform our depth buffer to a HierarchicalZ buffer (for occlusion queries and screen space reflections)
@@ -2283,7 +2250,7 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
     U16 dim = width > height ? width : height;
 
     // Store the current width and height of each mip
-    const Rect<I32> previousViewport(_gpuBlock._camData._ViewPort);
+    const Rect<I32> previousViewport(activeViewport());
 
     GFX::EnqueueCommand(cmdBufferInOut, GFX::BeginDebugScopeCommand{ "Construct Hi-Z" });
 
@@ -2328,12 +2295,10 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
     GFX::EnqueueCommand(cmdBufferInOut, GFX::BindPipelineCommand{ _HIZPipeline });
 
     // for i > 0, use texture views?
-    DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(cmdBufferInOut)->_set;
-    set._usage = DescriptorSetUsage::PER_DRAW_SET;
-    auto& binding = set._bindings.emplace_back();
-    binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-    binding._resourceSlot = to_base(TextureUsage::DEPTH);
-    binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+    auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(cmdBufferInOut);
+    cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+    auto& binding = cmd->_bindings.emplace_back();
+    binding._slot = to_base(TextureUsage::DEPTH);
     binding._data.As<DescriptorCombinedImageSampler>() = { hizData, att->descriptor()._samplerHash };
 
     // We skip the first level as that's our full resolution image
@@ -2398,21 +2363,17 @@ void GFXDevice::occlusionCull(const RenderPass::BufferData& bufferData,
     // Not worth the overhead for a handful of items and the Pre-Z pass should handle overdraw just fine
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _HIZCullPipeline });
     {
-        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-        set._usage = DescriptorSetUsage::PER_DRAW_SET;
-        auto& binding = set._bindings.emplace_back();
-        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-        binding._resourceSlot = to_base(TextureUsage::UNIT0);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
+        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+        cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_base(TextureUsage::UNIT0);
         binding._data.As<DescriptorCombinedImageSampler>() = { depthBuffer->data(), samplerHash };
     }
     {
-        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-        set._usage = DescriptorSetUsage::PER_PASS_SET;
-        auto& binding = set._bindings.emplace_back();
-        binding._resourceSlot = to_base(ShaderBufferLocation::ATOMIC_COUNTER);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
-        binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+        cmd->_usage = DescriptorSetUsage::PER_PASS_SET;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_base(ShaderBufferLocation::ATOMIC_COUNTER);
         binding._data.As<ShaderBufferEntry>() = { cullBuffer, { 0u, 1u } };
     }
     mat4<F32> viewProjectionMatrix;
@@ -2485,12 +2446,10 @@ void GFXDevice::drawTextureInViewport(const TextureData data, const size_t sampl
     GFX::EnqueueCommand(bufferInOut, GFX::PushCameraCommand{ Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
     GFX::EnqueueCommand(bufferInOut, drawToDepthOnly ? _drawFSDepthPipelineCmd : drawBlend ? _drawFSTexturePipelineBlendCmd : _drawFSTexturePipelineCmd);
 
-    DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-    set._usage = DescriptorSetUsage::PER_DRAW_SET;
-    auto& binding = set._bindings.emplace_back();
-    binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-    binding._resourceSlot = to_base(TextureUsage::UNIT0);
-    binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+    auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+    cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+    auto& binding = cmd->_bindings.emplace_back();
+    binding._slot = to_base(TextureUsage::UNIT0);
     binding._data.As<DescriptorCombinedImageSampler>() = { data, samplerHash };
 
     GFX::EnqueueCommand(bufferInOut, GFX::PushViewportCommand{ viewport });
@@ -2707,12 +2666,7 @@ void GFXDevice::renderDebugViews(const Rect<I32> targetViewport, const I32 paddi
     pipelineDesc._shaderProgramHandle = SHADER_INVALID_HANDLE;
     pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
-    const Rect<I32> previousViewport{
-        to_I32(_gpuBlock._camData._ViewPort.x),
-        to_I32(_gpuBlock._camData._ViewPort.y),
-        to_I32(_gpuBlock._camData._ViewPort.z),
-        to_I32(_gpuBlock._camData._ViewPort.w)
-    };
+    const Rect<I32> previousViewport = activeViewport();
 
     Pipeline* crtPipeline = nullptr;
     U16 idx = 0u;
@@ -2740,12 +2694,10 @@ void GFXDevice::renderDebugViews(const Rect<I32> targetViewport, const I32 paddi
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants = view->_shaderData;
         GFX::EnqueueCommand<GFX::SetViewportCommand>(bufferInOut)->_viewport.set(viewport);
 
-        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-        set._usage = DescriptorSetUsage::PER_DRAW_SET;
-        auto& binding = set._bindings.emplace_back();
-        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-        binding._resourceSlot = view->_textureBindSlot;
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+        cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = view->_textureBindSlot;
         binding._data.As<DescriptorCombinedImageSampler>() = { view->_texture->data(), view->_samplerHash };
 
          GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);

@@ -120,7 +120,7 @@ void glGenericVertexData::setIndexBuffer(const IndexBuffer& indices) {
             glNamedBufferSubData(oldIdxBufferEntry->_handle, 0u, range, data);
         }
         if (!Runtime::isMainThread()) {
-            _lockManager.lock();
+            _lockManager.lockRange(0u, range);
         }
     }
 }

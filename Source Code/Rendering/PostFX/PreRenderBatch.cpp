@@ -495,12 +495,10 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
 
         RTAttachment* depthAtt = screenRT()._rt->getAttachment(RTAttachmentType::Depth_Stencil, 0);
 
-        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-        set._usage = DescriptorSetUsage::PER_DRAW_SET;
-        auto& binding = set._bindings.emplace_back();
-        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-        binding._resourceSlot = to_U8(TextureUsage::DEPTH);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+        cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_U8(TextureUsage::DEPTH);
         binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->data(), depthAtt->descriptor()._samplerHash };
 
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
@@ -528,20 +526,16 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
     RTAttachment* ssrDataAtt = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SSR_RESULT)->getAttachment(RTAttachmentType::Colour, 0);
     RTAttachment* ssaoDataAtt = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SSAO_RESULT)->getAttachment(RTAttachmentType::Colour, 0u);
 
-    DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-    set._usage = DescriptorSetUsage::PER_PASS_SET;
+    auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+    cmd->_usage = DescriptorSetUsage::PER_PASS_SET;
     {
-        auto& binding = set._bindings.emplace_back();
-        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-        binding._resourceSlot = to_base(TextureUsage::SSR_SAMPLE);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_base(TextureUsage::SSR_SAMPLE);
         binding._data.As<DescriptorCombinedImageSampler>() = { ssrDataAtt->texture()->data(), ssrDataAtt->descriptor()._samplerHash };
     }
     {
-        auto& binding = set._bindings.emplace_back();
-        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-        binding._resourceSlot = to_base(TextureUsage::SSAO_SAMPLE);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_base(TextureUsage::SSAO_SAMPLE);
         binding._data.As<DescriptorCombinedImageSampler>() = { ssaoDataAtt->texture()->data(), ssaoDataAtt->descriptor()._samplerHash };
     }
 }
@@ -567,20 +561,16 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "CreateLuminanceHistogram" });
 
             const Texture_ptr& screenColour = screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO))->texture();
-            DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-            set._usage = DescriptorSetUsage::PER_DRAW_SET;
+            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+            cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
             {
-                auto& binding = set._bindings.emplace_back();
-                binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-                binding._resourceSlot = to_U8(ShaderBufferLocation::LUMINANCE_HISTOGRAM);
-                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
+                auto& binding = cmd->_bindings.emplace_back();
+                binding._slot = to_U8(ShaderBufferLocation::LUMINANCE_HISTOGRAM);
                 binding._data.As<ShaderBufferEntry>() = { _histogramBuffer.get(), {0u, _histogramBuffer->getPrimitiveCount()}};
             }
             {
-                auto& binding = set._bindings.emplace_back();
-                binding._type = DescriptorSetBindingType::IMAGE;
-                binding._resourceSlot = to_U8(TextureUsage::UNIT0);
-                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
+                auto& binding = cmd->_bindings.emplace_back();
+                binding._slot = to_U8(TextureUsage::UNIT0);
                 binding._data.As<Image>()._texture = screenColour.get();
                 binding._data.As<Image>()._flag = Image::Flag::READ;
             }
@@ -608,20 +598,16 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             };
 
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "AverageLuminanceHistogram" });
-            DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-            set._usage = DescriptorSetUsage::PER_DRAW_SET;
+            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+            cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
             {
-                auto& binding = set._bindings.emplace_back();
-                binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-                binding._resourceSlot = to_U8(ShaderBufferLocation::LUMINANCE_HISTOGRAM);
-                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
+                auto& binding = cmd->_bindings.emplace_back();
+                binding._slot = to_U8(ShaderBufferLocation::LUMINANCE_HISTOGRAM);
                 binding._data.As<ShaderBufferEntry>() = { _histogramBuffer.get(), { 0u, _histogramBuffer->getPrimitiveCount() } };
             }
             {
-                auto& binding = set._bindings.emplace_back();
-                binding._type = DescriptorSetBindingType::IMAGE;
-                binding._resourceSlot = to_U8(TextureUsage::UNIT0);
-                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
+                auto& binding = cmd->_bindings.emplace_back();
+                binding._slot = to_U8(TextureUsage::UNIT0);
                 binding._data.As<Image>()._texture = _currentLuminance.get();
                 binding._data.As<Image>()._flag = Image::Flag::READ_WRITE;
             }
@@ -701,27 +687,21 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
 
         GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "PostFX: tone map" });
 
-        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-        set._usage = DescriptorSetUsage::PER_DRAW_SET;
+        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+        cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
         {
-            auto& binding = set._bindings.emplace_back();
-            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resourceSlot = to_U8(TextureUsage::UNIT0);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+            auto& binding = cmd->_bindings.emplace_back();
+            binding._slot = to_U8(TextureUsage::UNIT0);
             binding._data.As<DescriptorCombinedImageSampler>() = { screenAtt->texture()->data(), screenAtt->descriptor()._samplerHash };
         }
         {
-            auto& binding = set._bindings.emplace_back();
-            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resourceSlot = to_U8(TextureUsage::UNIT1);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+            auto& binding = cmd->_bindings.emplace_back();
+            binding._slot = to_U8(TextureUsage::UNIT1);
             binding._data.As<DescriptorCombinedImageSampler>() = { _currentLuminance->data(), lumaSamplerHash };
         }
         {
-            auto& binding = set._bindings.emplace_back();
-            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resourceSlot = to_U8(TextureUsage::DEPTH);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+            auto& binding = cmd->_bindings.emplace_back();
+            binding._slot = to_U8(TextureUsage::DEPTH);
             binding._data.As<DescriptorCombinedImageSampler>() = { screenDepthAtt->texture()->data(), screenDepthAtt->descriptor()._samplerHash };
         }
 
@@ -751,13 +731,11 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
 
         const auto& screenAtt = getInput(false)._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
 
-        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-        set._usage = DescriptorSetUsage::PER_DRAW_SET;
+        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+        cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
         {
-            auto& binding = set._bindings.emplace_back();
-            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resourceSlot = to_U8(TextureUsage::UNIT0);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+            auto& binding = cmd->_bindings.emplace_back();
+            binding._slot = to_U8(TextureUsage::UNIT0);
             binding._data.As<DescriptorCombinedImageSampler>() = { screenAtt->texture()->data(), screenAtt->descriptor()._samplerHash };
         }
 

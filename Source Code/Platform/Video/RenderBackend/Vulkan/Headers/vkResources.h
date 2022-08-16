@@ -50,6 +50,8 @@ namespace NS_GLIM {
 
 namespace Divide {
 
+enum class DescriptorSetBindingType : U8;
+
 namespace Debug {
     extern PFN_vkDebugMarkerSetObjectTagEXT vkDebugMarkerSetObjectTag;
     extern PFN_vkDebugMarkerSetObjectNameEXT vkDebugMarkerSetObjectName;
@@ -122,7 +124,7 @@ namespace VKUtil {
 
     [[nodiscard]] VkFormat internalFormat(GFXImageFormat baseFormat, GFXDataFormat dataType, bool srgb, bool normalized) noexcept;
     [[nodiscard]] VkFormat internalFormat(GFXDataFormat format, U8 componentCount, bool normalized) noexcept;
-
+    [[nodiscard]] VkDescriptorType vkDescriptorType(DescriptorSetBindingType type) noexcept;
 }; //namespace VKUtil
 }; //namespace Divide
 

@@ -4,6 +4,7 @@
 #include "Platform/Video/Headers/Pipeline.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
+#include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 
 namespace Divide {
@@ -164,7 +165,7 @@ void CommandBuffer::batch() {
             case CommandType::MEMORY_BARRIER:
             case CommandType::DRAW_TEXT:
             case CommandType::DRAW_COMMANDS:
-            case CommandType::BIND_DESCRIPTOR_SETS:
+            case CommandType::BIND_SHADER_RESOURCES:
             case CommandType::BLIT_RT:
             case CommandType::RESET_RT:
             case CommandType::SEND_PUSH_CONSTANTS:
@@ -214,7 +215,7 @@ void CommandBuffer::clean() {
     const Pipeline* prevPipeline = nullptr;
     const Rect<I32>* prevScissorRect = nullptr;
     const Rect<I32>* prevViewportRect = nullptr;
-    const DescriptorSet* prevDescriptorSet = nullptr;
+    const DescriptorBindings* prevDescriptorSet = nullptr;
 
     for (CommandEntry& cmd :_commandOrder) {
         bool erase = false;
@@ -247,16 +248,12 @@ void CommandBuffer::clean() {
 
                 erase = get<SendPushConstantsCommand>(cmd)->_constants.empty();
             }break;
-            case CommandType::BIND_DESCRIPTOR_SETS: {
+            case CommandType::BIND_SHADER_RESOURCES: {
                 OPTICK_EVENT("Clean Descriptor Sets");
 
-                DescriptorSet& set = get<BindDescriptorSetsCommand>(cmd)->_set;
-                dvd_erase_if(set._bindings, [](const DescriptorSetBinding& it) {
-                    return it._type == DescriptorSetBindingType::COUNT;
-                });
-
-                if (prevDescriptorSet == nullptr || IsEmpty(set) || *prevDescriptorSet != set) {
-                    prevDescriptorSet = &set;
+                auto bindCmd = get<BindShaderResourcesCommand>(cmd);
+                if (bindCmd->_usage != DescriptorSetUsage::COUNT && (prevDescriptorSet == nullptr || *prevDescriptorSet != bindCmd->_bindings)) {
+                    prevDescriptorSet = &bindCmd->_bindings;
                 } else {
                     erase = true;
                 }
@@ -347,7 +344,7 @@ std::pair<ErrorType, size_t> CommandBuffer::validate() const {
 
         size_t cmdIndex = 0u;
         bool pushedPass = false, pushedSubPass = false, pushedQuery = false;
-        bool hasPipeline = false, hasDescriptorSets = false;
+        bool hasPipeline = false, hasShaderResources = false;
         I32 pushedDebugScope = 0, pushedCamera = 0, pushedViewport = 0;
 
         for (const CommandEntry& cmd : _commandOrder) {
@@ -420,8 +417,8 @@ std::pair<ErrorType, size_t> CommandBuffer::validate() const {
                         return { ErrorType::MISSING_VALID_PIPELINE, cmdIndex };
                     }
                 }break;
-                case CommandType::BIND_DESCRIPTOR_SETS: {
-                    hasDescriptorSets = true;
+                case CommandType::BIND_SHADER_RESOURCES: {
+                    hasShaderResources = true;
                 }break;
                 default: {
                     // no requirements yet

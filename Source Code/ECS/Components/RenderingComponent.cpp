@@ -396,7 +396,8 @@ bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
                 pipelineDescriptor._shaderProgramHandle = _materialInstance->getProgramHandle(renderStagePass);
                 pipelineDescriptor._primitiveTopology = _materialInstance->topology();
                 pipelineDescriptor._vertexFormat = _materialInstance->shaderAttributes();
-                pkg.descriptorSetCmd()._set = _materialInstance->getDescriptorSet(renderStagePass);
+                pkg.descriptorSetCmd()._bindings = _materialInstance->getDescriptorSet(renderStagePass);
+                pkg.descriptorSetCmd()._usage = DescriptorSetUsage::PER_DRAW_SET;
             } else {
                 pipelineDescriptor._stateHash = _context.getDefaultStateBlock(false);
                 pipelineDescriptor._shaderProgramHandle = _context.defaultIMShaderWorld()->handle();
@@ -494,8 +495,8 @@ void RenderingComponent::getCommandBuffer(RenderPackage* const pkg, GFX::Command
     }
 }
 
-DescriptorSet& RenderingComponent::getDescriptorSet(const RenderStagePass& renderStagePass) {
-    return getDrawPackage(renderStagePass).descriptorSetCmd()._set;
+DescriptorBindings& RenderingComponent::getDescriptorSet(const RenderStagePass& renderStagePass) {
+    return getDrawPackage(renderStagePass).descriptorSetCmd()._bindings;
 }
 
 PushConstants& RenderingComponent::getPushConstants(const RenderStagePass& renderStagePass) {

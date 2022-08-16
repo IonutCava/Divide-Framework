@@ -68,23 +68,21 @@ public:
 
     // Returns false if we encounter an error
     [[nodiscard]] bool lockByteRange(size_t offsetInBytes, size_t rangeInBytes, SyncObject* sync);
-    [[nodiscard]] bool waitByteRange(size_t offsetInBytes, size_t rangeInBytes, bool blockClient);
-
     [[nodiscard]] inline bool lockByteRange(const BufferRange range, SyncObject* sync) {
         return lockByteRange(range._startOffset, range._length, sync);
     }
 
+    [[nodiscard]] bool waitByteRange(size_t offsetInBytes, size_t rangeInBytes, bool blockClient);
     [[nodiscard]] inline bool waitByteRange(const BufferRange range, bool blockClient) {
         return waitByteRange(range._startOffset, range._length, blockClient);
     }
 
     void writeOrClearBytes(size_t offsetInBytes, size_t rangeInBytes, bufferPtr data, bool zeroMem, bool firstWrite = false);
-    void readBytes(size_t offsetInBytes, size_t rangeInBytes, std::pair<bufferPtr, size_t> outData);
-
     inline void writeOrClearBytes(const BufferRange range, bufferPtr data, bool zeroMem, bool firstWrite = false) {
         writeOrClearBytes(range._startOffset, range._length, data, zeroMem, firstWrite);
     }
 
+    void readBytes(size_t offsetInBytes, size_t rangeInBytes, std::pair<bufferPtr, size_t> outData);
     inline void readBytes(const BufferRange range, std::pair<bufferPtr, size_t> outData) {
         readBytes(range._startOffset, range._length, outData);
     }

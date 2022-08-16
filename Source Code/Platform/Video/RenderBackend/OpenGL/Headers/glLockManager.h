@@ -46,6 +46,36 @@ namespace Divide {
 
 constexpr U8 g_MaxLockWaitRetries = 5u;
 
+enum class BufferLockState : U8 {
+    ACTIVE = 0,
+    EXPIRED,
+    DELETED,
+    ERROR
+};
+
+struct SyncObject {
+    ~SyncObject();
+    void reset();
+
+    Mutex _fenceLock;
+    GLsync _fenceObject;
+    U32 _frameID = 0u;
+};
+
+FWD_DECLARE_MANAGED_STRUCT(SyncObject);
+
+struct BufferLockInstance {
+    BufferLockInstance() = default;
+    explicit BufferLockInstance(const BufferRange range, SyncObject* syncObj) noexcept
+        : _range(range), _syncObj(syncObj)
+    {
+    }
+
+    BufferRange _range{};
+    SyncObject* _syncObj = nullptr;
+    BufferLockState _state = BufferLockState::ACTIVE;
+};
+
 // --------------------------------------------------------------------------------------------------------------------
 class glLockManager : public GUIDWrapper {
    public:
@@ -59,12 +89,11 @@ class glLockManager : public GUIDWrapper {
     virtual ~glLockManager();
 
     void wait(bool blockClient);
-    void lock();
 
     /// Returns false if we encountered an error
     bool waitForLockedRange(size_t lockBeginBytes, size_t lockLength, bool blockClient, bool quickCheck = false);
     /// Returns false if we encountered an error
-    bool lockRange(size_t lockBeginBytes, size_t lockLength, SyncObject* syncObj);
+    bool lockRange(size_t lockBeginBytes, size_t lockLength, SyncObject* syncObj = CreateSyncObject());
 
   protected:
     /// Returns true if the sync object was signaled. retryCount is the number of retries it took to wait for the object

@@ -261,8 +261,6 @@ void main(void)
 #define NO_CLIP_CULL_OUT
 #endif //TOGGLE_DEBUG || TOGGLE_TESS_LEVEL
 
-#define NEED_SCENE_DATA
-
 layout(quads, fractional_even_spacing, cw) in;
 
 #include "terrainUtils.cmn"

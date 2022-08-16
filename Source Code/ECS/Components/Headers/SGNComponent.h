@@ -77,6 +77,11 @@ namespace ECS {
 
 namespace Divide {
 
+template<class T, typename... Args>
+void AddSGNComponent(SceneGraphNode* node, Args... args);
+template<class T>
+void RemoveSGNComponent(SceneGraphNode* node);
+
 //ref: http://www.nirfriedman.com/2018/04/29/unforgettable-factory/
 template <typename Base, typename... Args>
 struct Factory {
@@ -108,13 +113,11 @@ struct Factory {
 
         static bool RegisterComponentType() {
             Factory::constructData().emplace(C, [](SceneGraphNode* node, Args... args) -> void {
-                node->template AddSGNComponent<T>(FWD(args)...);
+                AddSGNComponent<T, Args...>(node, FWD(args)...);
             });
-
-            destructData().emplace(C, [](SceneGraphNode* node) -> void {
-                node->template RemoveSGNComponent<T>();
+            Factory::destructData().emplace(C, [](SceneGraphNode* node) -> void {
+                RemoveSGNComponent<T>(node);
             });
-
             return true;
         }
 

@@ -200,69 +200,51 @@ void PostFX::apply(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, 
     defaultSampler.wrapUVW(TextureWrap::REPEAT);
     const size_t samplerHash = defaultSampler.getHash();
 
-    DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-    set._usage = DescriptorSetUsage::PER_DRAW_SET;
+    auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+    cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
     {
-        auto& binding = set._bindings.emplace_back();
-        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-        binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCREEN);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCREEN);
         binding._data.As<DescriptorCombinedImageSampler>() = { prbAtt->texture()->data(), prbAtt->descriptor()._samplerHash };
     }
     {
-        auto& binding = set._bindings.emplace_back();
-        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-        binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_DEPTH);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_DEPTH);
         binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->data(), samplerHash };
     }   
     {
-        auto& binding = set._bindings.emplace_back();
-        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-        binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_LINDEPTH);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_LINDEPTH);
         binding._data.As<DescriptorCombinedImageSampler>() = { linDepthDataAtt->texture()->data(), samplerHash };
     }
     {
-        auto& binding = set._bindings.emplace_back();
-        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-        binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SSR);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SSR);
         binding._data.As<DescriptorCombinedImageSampler>() = { ssrDataAtt->texture()->data(), samplerHash };
     }
     {
-        auto& binding = set._bindings.emplace_back();
-        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-        binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_DATA);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_DATA);
         binding._data.As<DescriptorCombinedImageSampler>() = { sceneDataAtt->texture()->data(), samplerHash };
     }
     {
-        auto& binding = set._bindings.emplace_back();
-        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-        binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_VELOCITY);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_VELOCITY);
         binding._data.As<DescriptorCombinedImageSampler>() = { velocityAtt->texture()->data(), samplerHash };
     }
     {
-        auto& binding = set._bindings.emplace_back();
-        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-        binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_UNDERWATER);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_UNDERWATER);
         binding._data.As<DescriptorCombinedImageSampler>() = { _underwaterTexture->data(), samplerHash };
     }
     {
-        auto& binding = set._bindings.emplace_back();
-        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-        binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_NOISE);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_NOISE);
         binding._data.As<DescriptorCombinedImageSampler>() = { _noise->data(), samplerHash };
     }
     {
-        auto& binding = set._bindings.emplace_back();
-        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-        binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_BORDER);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_BORDER);
         binding._data.As<DescriptorCombinedImageSampler>() = { _screenBorder->data(), samplerHash };
     }
 

@@ -32,7 +32,7 @@ IMPLEMENT_COMMAND(SetCameraCommand);
 IMPLEMENT_COMMAND(PushCameraCommand);
 IMPLEMENT_COMMAND(PopCameraCommand);
 IMPLEMENT_COMMAND(SetClipPlanesCommand);
-IMPLEMENT_COMMAND(BindDescriptorSetsCommand);
+IMPLEMENT_COMMAND(BindShaderResourcesCommand);
 IMPLEMENT_COMMAND(BeginDebugScopeCommand);
 IMPLEMENT_COMMAND(EndDebugScopeCommand);
 IMPLEMENT_COMMAND(AddDebugMessageCommand);
@@ -199,45 +199,38 @@ string ToString(const SetCameraCommand& cmd, U16 indent) {
     return ret;
 }
 
-string ToString(const BindDescriptorSetsCommand& cmd, const U16 indent) {
+string ToString(const BindShaderResourcesCommand& cmd, const U16 indent) {
     U8 bufferCount = 0u;
     U8 imageCount = 0u;
-    const DescriptorSet& set = cmd._set;
-    for (const auto& binding : set._bindings) {
-        if (binding._type == DescriptorSetBindingType::SHADER_STORAGE_BUFFER ||
-            binding._type == DescriptorSetBindingType::UNIFORM_BUFFER) {
+    for (const auto& binding : cmd._bindings) {
+        if (binding._data.Has<ShaderBufferEntry>()) {
             ++bufferCount;
-        } else if (binding._type == DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER ||
-                   binding._type == DescriptorSetBindingType::IMAGE) {
+        } else if (binding._data.Has<DescriptorCombinedImageSampler>() ||
+                   binding._data.Has<ImageViewEntry>() ||
+                   binding._data.Has<Image>()) {
             ++imageCount;
         }
     }
     string ret = Util::StringFormat(" [ Buffers: %d, Images: %d ]\n", bufferCount, imageCount);
 
-    for (const auto& binding : set._bindings) {
-        if (binding._type == DescriptorSetBindingType::SHADER_STORAGE_BUFFER ||
-            binding._type == DescriptorSetBindingType::UNIFORM_BUFFER)
-        {
+    for (const auto& binding : cmd._bindings) {
+        if (binding._data.Has<ShaderBufferEntry>()) {
             ret.append("    ");
             for (U16 j = 0; j < indent; ++j) {
                 ret.append("    ");
             }
             const auto& data = binding._data;
             const auto& bufferEntry = data.As<ShaderBufferEntry>();
-            ret.append(Util::StringFormat("Stage mask [ %d ] Buffer [ %d - %d ] Range [%zu - %zu] ]\n",
-                       to_U32(binding._shaderStageVisibility),
-                       binding._resourceSlot,
+            ret.append(Util::StringFormat("Buffer [ %d - %d ] Range [%zu - %zu] ]\n",
+                       binding._slot,
                        bufferEntry._buffer->getGUID(),
                        bufferEntry._range._startOffset,
                        bufferEntry._range._length));
         }
     }
-    for (const auto& binding : set._bindings) {
-        if (binding._type == DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER ||
-            binding._type == DescriptorSetBindingType::IMAGE_VIEW ||
-            binding._type == DescriptorSetBindingType::IMAGE)
-        {
-            if (binding._resourceSlot == INVALID_TEXTURE_BINDING) {
+    for (const auto& binding : cmd._bindings) {
+        if (!binding._data.Has<ShaderBufferEntry>()) {
+            if (binding._slot == INVALID_TEXTURE_BINDING) {
                 continue;
             }
             
@@ -245,22 +238,19 @@ string ToString(const BindDescriptorSetsCommand& cmd, const U16 indent) {
             for (U16 j = 0; j < indent; ++j) {
                 ret.append("    ");
             }
-            if (binding._type == DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER) {
-                ret.append(Util::StringFormat("Stage mask [ %d ] Texture [ %d - %d - %zu ]\n",
-                           to_U32(binding._shaderStageVisibility),
-                           binding._resourceSlot,
+            if (binding._data.Has<DescriptorCombinedImageSampler>()) {
+                ret.append(Util::StringFormat("Texture [ %d - %d - %zu ]\n",
+                           binding._slot,
                            binding._data.As<DescriptorCombinedImageSampler>()._image._textureHandle,
                            binding._data.As<DescriptorCombinedImageSampler>()._samplerHash));
-            } else if (binding._type == DescriptorSetBindingType::IMAGE_VIEW) {
-                ret.append(Util::StringFormat("Stage mask [ %d ] Texture layers [ %d - [%d - %d ]]\n",
-                           to_U32(binding._shaderStageVisibility),
-                           binding._resourceSlot,
+            } else if (binding._data.Has<ImageViewEntry>()) {
+                ret.append(Util::StringFormat("Texture layers [ %d - [%d - %d ]]\n",
+                           binding._slot,
                            binding._data.As<ImageViewEntry>()._view._layerRange.min,
                            binding._data.As<ImageViewEntry>()._view._layerRange.max));
             } else {
-                ret.append(Util::StringFormat("Stage mask [ %d ] Image binds: [ %d - [%d - %d - %s]",
-                           to_U32(binding._shaderStageVisibility),
-                           binding._resourceSlot,
+                ret.append(Util::StringFormat("Image binds: [ %d - [%d - %d - %s]",
+                           binding._slot,
                            binding._data.As<Image>()._layer,
                            binding._data.As<Image>()._level,
                            binding._data.As<Image>()._flag == Image::Flag::READ
@@ -375,9 +365,9 @@ string ToString(const CommandBase& cmd, U16 indent) {
         {
             ret.append(ToString(static_cast<const SetCameraCommand&>(cmd), indent));
         }break;
-        case CommandType::BIND_DESCRIPTOR_SETS:
+        case CommandType::BIND_SHADER_RESOURCES:
         {
-            ret.append(ToString(static_cast<const BindDescriptorSetsCommand&>(cmd), indent));
+            ret.append(ToString(static_cast<const BindShaderResourcesCommand&>(cmd), indent));
         }break;
         case CommandType::BEGIN_DEBUG_SCOPE:
         {

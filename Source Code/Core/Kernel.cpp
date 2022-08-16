@@ -359,7 +359,7 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
                 _sceneManager->getActiveScene().processTasks(fixedTimestep);
             }
             // Update the scene state based on current time (e.g. animation matrices)
-            _sceneManager->updateSceneState(fixedTimestep);
+            _sceneManager->updateSceneState(fixedTimestep, _timingData.appTimeDeltaUS());
             // Update visual effect timers as well
             Attorney::GFXDeviceKernel::update(_platformContext.gfx(), fixedTimestep, _timingData.appTimeDeltaUS());
 
@@ -873,8 +873,7 @@ vec2<I32> Kernel::remapMouseCoords(const vec2<I32>& absPositionIn, bool& remappe
             const Rect<I32>& sceneRect = editor.scenePreviewRect(false);
             if (sceneRect.contains(absPositionIn)) {
                 remappedOut = true;
-                const Rect<I32>& viewport = _platformContext.gfx().getViewport();
-                return COORD_REMAP(absPositionIn, sceneRect, viewport);
+                return COORD_REMAP(absPositionIn, sceneRect, _platformContext.gfx().activeViewport());
             }
         }
     }

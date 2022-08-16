@@ -161,7 +161,7 @@ public:
         return Attorney::SceneManager::loadComplete(getActiveScene());
     }
     /// Update animations, network data, sounds, triggers etc.
-    void updateSceneState(U64 deltaTimeUS);
+    void updateSceneState(U64 deltaGameTimeUS, U64 deltaAppTimeUS);
 
     void onResolutionChange(const SizeChangeParams& params);
 
@@ -266,8 +266,10 @@ private:
     Task* _saveTask = nullptr;
     PlayerIndex _currentPlayerPass = 0u;
     ScenePool* _scenePool = nullptr;
-    U64 _elapsedTime = 0ULL;
-    U32 _elapsedTimeMS = 0u;
+    U64 _elapsedAppTime = 0ULL;
+    U32 _elapsedAppTimeMS = 0u;
+    U64 _elapsedGameTime = 0ULL;
+    U32 _elapsedGameTimeMS = 0u;
     U64 _saveTimer = 0ULL;
 
     std::array<Time::ProfileTimer*, to_base(RenderStage::COUNT)> _sceneGraphCullTimers = {};

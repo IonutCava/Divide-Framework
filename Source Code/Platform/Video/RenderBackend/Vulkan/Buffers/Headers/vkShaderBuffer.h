@@ -51,8 +51,6 @@ namespace Divide {
 
         bool bindByteRange(U8 bindIndex, [[maybe_unused]] BufferRange range) noexcept override;
 
-        bool lockByteRange(BufferRange range, [[maybe_unused]] SyncObject* sync) const override;
-
     private:
         [[nodiscard]] inline AllocatedBuffer* bufferImpl() const { return _bufferImpl.get(); }
 

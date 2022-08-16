@@ -1,8 +1,6 @@
 -- Fragment
 
 #include "utility.frag"
-
-#define NEED_SCENE_DATA
 #include "sceneData.cmn"
 layout(location = TARGET_ALBEDO) out vec4 _colourOut;
 

@@ -35,12 +35,11 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Scenes/Headers/SceneState.h"
 #include "Utility/Headers/Colours.h"
+#include "Geometry/Material/Headers/MaterialEnums.h"
 
 namespace Divide {
 
 class GFXDevice;
-
-struct DescriptorSet;
 
 namespace GFX {
     class CommandBuffer;
@@ -60,13 +59,26 @@ class SceneShaderData {
         FColour4 _sunColour = DefaultColours::WHITE;
         // x,y,z - direction, w - speed
         vec4<F32> _windDetails = VECTOR4_ZERO;
+        // x - elapsed time (ms), y - material debug flag
+        vec4<F32> _appData = {0.f, to_F32(MaterialDebugFlag::COUNT), 0.f, 0.f};
         FogDetails _fogDetails{};
         WaterBodyData _waterEntities[GLOBAL_WATER_BODIES_COUNT] = {};
-        vec4<F32> _padding[7];
+        vec4<F32> _padding[6];
     };
 
   public:
     explicit SceneShaderData(GFXDevice& context);
+
+    void appData(const U32 elapsedTimeMS, const MaterialDebugFlag materialDebugFlag) {
+        if (!COMPARE(_sceneBufferData._appData.x, to_F32(elapsedTimeMS))) {
+            _sceneBufferData._appData.x = to_F32(elapsedTimeMS);
+            _sceneDataDirty = true;
+        }
+        if (!COMPARE(_sceneBufferData._appData.y, to_F32(materialDebugFlag))) {
+            _sceneBufferData._appData.y = to_F32(materialDebugFlag);
+            _sceneDataDirty = true;
+        }
+    }
 
     void sunDetails(const vec3<F32>& sunPosition, const FColour3& colour) noexcept {
         if (_sceneBufferData._sunPosition != sunPosition ||

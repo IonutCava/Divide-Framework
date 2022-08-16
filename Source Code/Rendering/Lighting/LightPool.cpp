@@ -457,27 +457,21 @@ void LightPool::uploadLightData(const RenderStage stage, GFX::CommandBuffer& buf
     const U32 lightCount = _sortedLightPropertiesCount[stageIndex];
     const size_t bufferOffset = to_size(LightBufferIndex(stage));
 
-    DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-    set._usage = DescriptorSetUsage::PER_FRAME_SET;
+    auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+    cmd->_usage = DescriptorSetUsage::PER_FRAME_SET;
     {
-        auto& binding = set._bindings.emplace_back();
-        binding._resourceSlot = to_base(ShaderBufferLocation::LIGHT_NORMAL);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW;
-        binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_base(ShaderBufferLocation::LIGHT_NORMAL);
         binding._data.As<ShaderBufferEntry>() = { _lightBuffer.get(), { bufferOffset * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, lightCount } };
     }
     {
-        auto& binding = set._bindings.emplace_back();
-        binding._resourceSlot = to_base(ShaderBufferLocation::LIGHT_SCENE);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW;
-        binding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_base(ShaderBufferLocation::LIGHT_SCENE);
         binding._data.As<ShaderBufferEntry>() = { _sceneBuffer.get(), { bufferOffset, 1u } };
     }
     {
-        auto& binding = set._bindings.emplace_back();
-        binding._resourceSlot = to_base(ShaderBufferLocation::LIGHT_SHADOW);
-        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-        binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+        auto& binding = cmd->_bindings.emplace_back();
+        binding._slot = to_base(ShaderBufferLocation::LIGHT_SHADOW);
         binding._data.As<ShaderBufferEntry>() = { _shadowBuffer.get(), { 0u, 1u } };
     }
 }
@@ -553,21 +547,19 @@ void LightPool::drawLightImpostors(GFX::CommandBuffer& bufferInOut) const {
 
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _context.gfx().newPipeline(pipelineDescriptor) });
         {
-            DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-            set._usage = DescriptorSetUsage::PER_DRAW_SET;
-            auto& binding = set._bindings.emplace_back();
-            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resourceSlot = to_U8(TextureUsage::UNIT0);
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+            cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+
+            auto& binding = cmd->_bindings.emplace_back();
+            binding._slot = to_U8(TextureUsage::UNIT0);
             binding._data.As<DescriptorCombinedImageSampler>() = { _lightIconsTexture->data(), s_debugSamplerHash };
         }
         {
-            DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-            set._usage = DescriptorSetUsage::PER_FRAME_SET;
-            auto& binding = set._bindings.emplace_back();
-            binding._resourceSlot = to_base(ShaderBufferLocation::LIGHT_NORMAL);
-            binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW;
+            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+            cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+
+            auto& binding = cmd->_bindings.emplace_back();
+            binding._slot = to_base(ShaderBufferLocation::LIGHT_NORMAL);
             binding._data.As<ShaderBufferEntry>() = { _lightBuffer.get(), { to_size(LightBufferIndex(RenderStage::DISPLAY)) * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, totalLightCount } };
         }
 

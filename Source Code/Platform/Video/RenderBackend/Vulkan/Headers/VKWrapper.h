@@ -84,6 +84,7 @@ struct VKStateTracker {
     U8 _activeMSAASamples{ 1u };
     bool _alphaToCoverage{ false };
     VKDynamicState _dynamicState{};
+    DescriptorSet const* _perDrawSet{ nullptr };
     std::queue<VkPipelineEntry> _tempPipelines;
 };
 
@@ -91,21 +92,22 @@ struct vkUserData : VDIUserData {
     VkCommandBuffer* _cmdBuffer = nullptr;
 };
 
-struct VKBufferDeletionQueue
+struct VKDeletionQueue
 {
-    struct BufferEntry {
-        VkBuffer _buffer{ VK_NULL_HANDLE };
-        VmaAllocation _allocation{ VK_NULL_HANDLE };
+    enum class Flags : U8 {
+        TREAT_AS_TRANSIENT = toBit(1),
+        REQUIRE_DEVICE_IDLE = toBit(2),
+        COUNT = 2
     };
 
-    Mutex _deletionLock;
-    std::deque<BufferEntry> _deletionQueue;
+    void push(DELEGATE<void>&& function);
+    void flush(const bool deviceIsIdle);
+    [[nodiscard]] bool empty() const;
 
-    void push(BufferEntry&& function);
-    void flush(bool deviceIsIdle);
-    bool empty();
+    mutable Mutex _deletionLock;
+    std::deque<DELEGATE<void>> _deletionQueue;
+    PROPERTY_RW(U32, flags, to_base(Flags::REQUIRE_DEVICE_IDLE));
 };
-
 
 class RenderStateBlock;
 class VK_API final : public RenderAPIWrapper {
@@ -130,6 +132,7 @@ class VK_API final : public RenderAPIWrapper {
       bool setViewport(const Rect<I32>& newViewport) noexcept override;
       bool setScissor(const Rect<I32>& newScissor) noexcept;
       void onThreadCreated(const std::thread::id& threadID) noexcept override;
+      void createSetLayout(DescriptorSetUsage usage, const DescriptorSet& set) override;
 
 private:
     void initPipelines();
@@ -147,8 +150,7 @@ private:
     void bindDynamicState(const RenderStateBlock& currentState, VkCommandBuffer& cmdBuffer) const;
 public:
     static VKStateTracker* GetStateTracker() noexcept;
-
-    static void RegisterBufferDelete(VKBufferDeletionQueue::BufferEntry&& buffer);
+    static void RegisterCustomAPIDelete(DELEGATE<void>&& cbk, bool isResourceTransient);
 
 private:
     static void InsertDebugMessage(VkCommandBuffer cmdBuffer, const char* message, U32 id = std::numeric_limits<U32>::max());
@@ -179,7 +181,8 @@ private:
 private:
     static eastl::unique_ptr<VKStateTracker> s_stateTracker;
     static bool s_hasDebugMarkerSupport;
-    static VKBufferDeletionQueue s_bufferDeletionQueue;
+    static VKDeletionQueue s_transientDeleteQueue;
+    static VKDeletionQueue s_deviceDeleteQueue;
 };
 
 };  // namespace Divide

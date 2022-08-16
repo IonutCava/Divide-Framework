@@ -9,6 +9,7 @@ See "license.txt" or "http://copyfree.org/licenses/mit/license.txt".
 /*And: https://github.com/McNopper/OpenGL/blob/master/Example28/shader/ssao.frag.glsl */
 
 #include "utility.frag"
+#include "sceneData.cmn"
 
 uniform mat4 projectionMatrix;
 uniform mat4 invProjectionMatrix;

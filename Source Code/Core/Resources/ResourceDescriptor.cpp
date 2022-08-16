@@ -8,7 +8,7 @@
 namespace Divide {
 
 
-size_t PropertyDescriptor::getHash() const {
+size_t PropertyDescriptor::getHash() const noexcept {
     Util::Hash_combine(_hash, to_base(_type));
     return _hash;
 }

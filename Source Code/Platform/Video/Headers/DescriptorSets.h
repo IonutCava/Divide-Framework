@@ -51,13 +51,6 @@ namespace Divide {
         COUNT
     };
 
-    enum class DescriptorUpdateResult : U8 {
-        NEW_ENTRY_ADDED = 0u,
-        OVERWRITTEN_EXISTING,
-        NO_UPDATE,
-        COUNT
-    };
-
     struct ImageView final : Hashable
     {
         TextureData _textureData{};
@@ -115,22 +108,18 @@ namespace Divide {
                      ImageViewEntry> _resource{};
 
         template<typename T>
-        [[nodiscard]] FORCE_INLINE T& As() noexcept { 
-            if (_resource.index() == 0) {
-                return _resource.emplace<T>();
-            }
-            return std::get<T>(_resource);
-        }
+        [[nodiscard]] T& As() noexcept;
+        template<typename T>
+        [[nodiscard]] bool Has() const noexcept;
+        template<typename T>
+        [[nodiscard]] const T& As() const noexcept;
+        [[nodiscard]] DescriptorSetBindingType Type() const noexcept;
+    };
 
-        template<typename T>
-        [[nodiscard]] FORCE_INLINE bool Has() const noexcept {
-            return std::holds_alternative<T>(_resource);
-        }
-        
-        template<typename T>
-        [[nodiscard]] FORCE_INLINE const T& As() const noexcept {
-            return std::get<T>(_resource);
-        }
+
+    struct DescriptorBindingEntry {
+        DescriptorSetBindingData _data{};
+        U8 _slot{ 0u };
     };
 
     struct DescriptorSetBinding {
@@ -142,26 +131,23 @@ namespace Divide {
             TESS_EVAL = toBit(4),
             FRAGMENT = toBit(5),
             COMPUTE = toBit(6),
-            MESH = toBit(7),
-            TASK = toBit(8),
-            ALL_GEOMETRY = MESH | TASK | VERTEX | GEOMETRY | TESS_CONTROL | TESS_EVAL,
+            /*MESH = toBit(7),
+            TASK = toBit(8),*/
+            ALL_GEOMETRY = /*MESH | TASK |*/ VERTEX | GEOMETRY | TESS_CONTROL | TESS_EVAL,
             ALL_DRAW = ALL_GEOMETRY | FRAGMENT,
             COMPUTE_AND_DRAW = FRAGMENT | COMPUTE,
             COMPUTE_AND_GEOMETRY = ALL_GEOMETRY | COMPUTE,
-            ALL = ALL_DRAW | COMPUTE,
-            COUNT = 10
+            ALL = ALL_DRAW | COMPUTE
         };
 
-        DescriptorSetBindingData _data{};
-        U8 _resourceSlot{ 0u };
-        ShaderStageVisibility _shaderStageVisibility{ ShaderStageVisibility::COUNT };
+        DescriptorBindingEntry _resource{};
+        U16 _shaderStageVisibility{ to_base(ShaderStageVisibility::NONE) };
         DescriptorSetBindingType _type{ DescriptorSetBindingType::COUNT };
     };
 
-    struct DescriptorSet {
-        DescriptorSetUsage _usage{ DescriptorSetUsage::COUNT };
-        eastl::fixed_vector<DescriptorSetBinding, 16, false> _bindings{};
-    };
+    using DescriptorSet = eastl::fixed_vector<DescriptorSetBinding, 16, false>;
+
+    using DescriptorBindings = eastl::fixed_vector<DescriptorBindingEntry, 16, false>;
 
     bool operator==(const ImageView& lhs, const ImageView& rhs) noexcept;
     bool operator!=(const ImageView& lhs, const ImageView& rhs) noexcept;
@@ -177,11 +163,8 @@ namespace Divide {
     bool operator!=(const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs) noexcept;
     bool operator==(const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs) noexcept;
     bool operator!=(const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs) noexcept;
-    bool operator==(const DescriptorSet& lhs, const DescriptorSet& rhs) noexcept;
-    bool operator!=(const DescriptorSet& lhs, const DescriptorSet& rhs) noexcept;
-    /// Returns true if we don't have any bindings set
-    [[nodiscard]] bool IsEmpty(const DescriptorSet& set) noexcept;
-    [[nodiscard]] DescriptorUpdateResult UpdateBinding(DescriptorSet& set, const DescriptorSetBinding& binding);
+    bool operator==(const DescriptorBindingEntry& lhs, const DescriptorBindingEntry& rhs) noexcept;
+    bool operator!=(const DescriptorBindingEntry& lhs, const DescriptorBindingEntry& rhs) noexcept;
 }; //namespace Divide
 
 #endif //_DESCRIPTOR_SETS_H_

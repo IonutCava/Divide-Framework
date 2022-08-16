@@ -622,6 +622,7 @@
     <ClInclude Include="..\..\3rdParty\simplefilewatcher\include\FileWatcher\FileWatcherWin32.h" />
     <ClInclude Include="..\..\3rdParty\SimpleINI\ConvertUTF.h" />
     <ClInclude Include="..\..\3rdParty\SimpleINI\SimpleIni.h" />
+    <ClInclude Include="..\..\3rdParty\SPIRV-Reflect\spirv_reflect.h" />
     <ClInclude Include="..\..\3rdParty\TileableVolumeNoise\libtarga.h" />
     <ClInclude Include="..\..\3rdParty\TileableVolumeNoise\TileableVolumeNoise.h" />
     <ClInclude Include="..\..\3rdParty\vk-bootstrap\src\VkBootstrap.h" />
@@ -870,6 +871,15 @@
     <ClCompile Include="..\..\3rdParty\simplefilewatcher\source\FileWatcherOSX.cpp" />
     <ClCompile Include="..\..\3rdParty\simplefilewatcher\source\FileWatcherWin32.cpp" />
     <ClCompile Include="..\..\3rdParty\SimpleINI\ConvertUTF.c" />
+    <ClCompile Include="..\..\3rdParty\SPIRV-Reflect\spirv_reflect.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\3rdParty\SPIRV-Reflect\spirv_reflect.cpp" />
     <ClCompile Include="..\..\3rdParty\TileableVolumeNoise\libtarga.c" />
     <ClCompile Include="..\..\3rdParty\TileableVolumeNoise\TileableVolumeNoise.cpp" />
     <ClCompile Include="..\..\3rdParty\vk-bootstrap\src\VkBootstrap.cpp" />

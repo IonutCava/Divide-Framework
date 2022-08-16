@@ -84,7 +84,7 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params, c
     }
 
     if (!Runtime::isMainThread()) {
-        _lockManager.lock();
+        _lockManager.lockRange(0u, params._dataSize);
     }
 }
 

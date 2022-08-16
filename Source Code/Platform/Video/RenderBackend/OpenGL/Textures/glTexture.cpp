@@ -169,6 +169,7 @@ void glTexture::loadDataCompressed(const ImageTools::ImageData& imageData) {
     const GLenum glFormat = GLUtil::internalFormat(_descriptor.baseFormat(), _descriptor.dataType(), _descriptor.srgb(), _descriptor.normalized());
     const U32 numLayers = imageData.layerCount();
 
+    size_t totalMipSize = 0u;
     GL_API::GetStateTracker()->setPixelPackUnpackAlignment();
     for (U32 l = 0u; l < numLayers; ++l) {
         const ImageTools::ImageLayer& layer = imageData.imageLayers()[l];
@@ -176,6 +177,8 @@ void glTexture::loadDataCompressed(const ImageTools::ImageData& imageData) {
 
         for (U8 m = 0u; m < numMips; ++m) {
             const ImageTools::LayerData* mip = layer.getMip(m);
+            totalMipSize += mip->_size;
+
             switch (_loadingData._textureType) {
                 case TextureType::TEXTURE_1D: {
                     assert(numLayers == 1);
@@ -229,7 +232,7 @@ void glTexture::loadDataCompressed(const ImageTools::ImageData& imageData) {
     }
 
     if (!Runtime::isMainThread()) {
-        _lockManager.lock();
+        _lockManager.lockRange(0u, totalMipSize);
     }
 }
 
@@ -241,13 +244,14 @@ void glTexture::loadDataUncompressed(const ImageTools::ImageData& imageData) {
     const U8 msaaSamples = _descriptor.msaaSamples();
 
     GL_API::GetStateTracker()->setPixelPackUnpackAlignment();
-
+    size_t totalMipSize = 0u;
     for (U32 l = 0u; l < numLayers; ++l) {
         const ImageTools::ImageLayer& layer = imageData.imageLayers()[l];
 
         for (U8 m = 0u; m < numMips; ++m) {
             const ImageTools::LayerData* mip = layer.getMip(m);
             assert(mip->_size > 0u);
+            totalMipSize += mip->_size;
 
             switch (_loadingData._textureType) {
                 case TextureType::TEXTURE_1D: {
@@ -300,7 +304,7 @@ void glTexture::loadDataUncompressed(const ImageTools::ImageData& imageData) {
         }
     }
     if (!Runtime::isMainThread()) {
-        _lockManager.lock();
+        _lockManager.lockRange(0u, totalMipSize);
     }
 }
 

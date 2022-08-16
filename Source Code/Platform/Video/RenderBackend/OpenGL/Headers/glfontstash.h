@@ -197,7 +197,7 @@ static void glfons__renderDraw(void* userPtr, const FONSvert* verts, int nverts)
         prevWriteOffsetBytes = writeOffsetBytes;
         writeOffsetBytes = (writeOffsetBytes + dataSize) % GLFONS_VB_BUFFER_SIZE;
         if (prevWriteOffsetBytes > writeOffsetBytes) {
-            g_lockManager->lock();
+            g_lockManager->lockRange(prevWriteOffsetBytes, writeOffsetBytes);
         }
     }
 }

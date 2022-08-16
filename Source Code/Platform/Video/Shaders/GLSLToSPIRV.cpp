@@ -5,6 +5,7 @@
 
 #include <glslang/SPIRV/GlslangToSpv.h>
 #include <Vulkan/vulkan.hpp>
+#include <SPIRV-Reflect/spirv_reflect.h>
 
 namespace {
     Divide::GFX::PushConstantType GetGFXType(const  glslang::TBasicType type) {
@@ -217,6 +218,64 @@ bool SpirvHelper::GLSLtoSPV(const vk::ShaderStageFlagBits shader_type, const cha
 
     BuildReflectionData(program, shader_type, reflectionDataInOut);
 
+    
+    SpvReflectShaderModule module;
+    SpvReflectResult result = spvReflectCreateShaderModule(spirv.size() * sizeof(unsigned int), spirv.data(), &module);
+    if (result != SPV_REFLECT_RESULT_SUCCESS) {
+        Divide::DIVIDE_UNEXPECTED_CALL();
+    }
+    uint32_t count = 0u;
+    result = spvReflectEnumerateDescriptorSets(&module, &count, NULL);
+    if (result != SPV_REFLECT_RESULT_SUCCESS) {
+        Divide::DIVIDE_UNEXPECTED_CALL();
+    }
+    std::vector<SpvReflectDescriptorSet*> sets(count);
+    result = spvReflectEnumerateDescriptorSets(&module, &count, sets.data());
+    if (result != SPV_REFLECT_RESULT_SUCCESS) {
+        Divide::DIVIDE_UNEXPECTED_CALL();
+    }
+    for (uint32_t i = 0u; i < count; ++i) {
+        const SpvReflectDescriptorSet& refl_set = *(sets[i]);
+        for (uint32_t i_binding = 0u; i_binding < refl_set.binding_count; ++i_binding) {
+            const SpvReflectDescriptorBinding& refl_binding = *(refl_set.bindings[i_binding]);
+            if (refl_binding.descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
+                auto& image = reflectionDataInOut._images.emplace_back();
+                image._combinedImageSampler = true;
+                image._isWriteTarget = false;
+                image._imageName = refl_binding.name;
+                image._bindingSet = Divide::to_U8(refl_binding.set);
+                image._targetImageBindingIndex = Divide::to_U8(refl_binding.binding);
+            } else if (refl_binding.descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLED_IMAGE) {
+                auto& image = reflectionDataInOut._images.emplace_back();
+                image._combinedImageSampler = false;
+                image._isWriteTarget = false;
+                image._imageName = refl_binding.name;
+                image._bindingSet = Divide::to_U8(refl_binding.set);
+                image._targetImageBindingIndex = Divide::to_U8(refl_binding.binding);
+            } else if (refl_binding.descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLER) {
+                Divide::DebugBreak();
+            } else if (refl_binding.descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
+                auto& image = reflectionDataInOut._images.emplace_back();
+                image._combinedImageSampler = false;
+                image._isWriteTarget = true;
+                image._imageName = refl_binding.name;
+                image._bindingSet = Divide::to_U8(refl_binding.set);
+                image._targetImageBindingIndex = Divide::to_U8(refl_binding.binding);
+            } else if (refl_binding.descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
+                //Divide::DebugBreak();
+            } else if (refl_binding.descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC) {
+                Divide::DebugBreak();
+            } else if (refl_binding.descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER) {
+                //Divide::DebugBreak();
+            } else if (refl_binding.descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
+                Divide::DebugBreak();
+            } else {
+                Divide::DIVIDE_UNEXPECTED_CALL();
+            }
+        }
+    }
+    spvReflectDestroyShaderModule(&module);
+
     return true;
 }
 
@@ -240,7 +299,7 @@ void SpirvHelper::BuildReflectionData(glslang::TProgram& program, const vk::Shad
                 for (int j = 0; j < numMembers; ++j) {
                     const auto& member = (*structure)[j];
                     Divide::Reflection::BlockMember& target = reflectionDataInOut._blockMembers[j];
-
+                    
                     target._offset = member.type->getQualifier().layoutOffset;
                     target._type = GetGFXType(member.type->getBasicType());
                     target._vectorDimensions = member.type->getVectorSize();

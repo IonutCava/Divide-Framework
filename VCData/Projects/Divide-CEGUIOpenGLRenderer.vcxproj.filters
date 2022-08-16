@@ -151,6 +151,9 @@
     <Filter Include="vk-bootstrap">
       <UniqueIdentifier>{8b21d486-fa2b-47c9-91e7-ce3ff83f453d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="SPIRV-Reflect">
+      <UniqueIdentifier>{228b9fc4-a9be-4a10-83b3-5df433924f86}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\3rdParty\ArenaAllocator\arena_allocator.h">
@@ -506,6 +509,9 @@
     </ClInclude>
     <ClInclude Include="..\..\3rdParty\vk-bootstrap\src\VkBootstrapDispatch.h">
       <Filter>vk-bootstrap</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rdParty\SPIRV-Reflect\spirv_reflect.h">
+      <Filter>SPIRV-Reflect</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -886,6 +892,12 @@
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\vk-bootstrap\src\VkBootstrap.cpp">
       <Filter>vk-bootstrap</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rdParty\SPIRV-Reflect\spirv_reflect.c">
+      <Filter>SPIRV-Reflect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rdParty\SPIRV-Reflect\spirv_reflect.cpp">
+      <Filter>SPIRV-Reflect</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
