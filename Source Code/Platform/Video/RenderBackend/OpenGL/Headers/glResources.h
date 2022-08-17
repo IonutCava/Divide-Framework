@@ -54,6 +54,12 @@ struct GenericDrawCommand;
 class DisplayWindow;
 class glBufferImpl;
 
+
+struct FrameDependendSync {
+    GLsync _syncObject{ nullptr };
+    U64 _frameNumber{ 0u };
+};
+
 struct BufferLockEntry
 {
     glBufferImpl* _buffer = nullptr;

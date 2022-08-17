@@ -88,10 +88,11 @@ inline bool operator!=(const BufferRange& lhs, const BufferRange& rhs) noexcept 
 }
 
 inline void Merge(BufferRange& lhs, const BufferRange& rhs) noexcept {
-    const size_t lhsEndOffset = lhs.endOffset();
-    const size_t rhsEndOffset = rhs.endOffset();
+    const size_t endOffset = std::max(lhs.endOffset(), rhs.endOffset());
     lhs._startOffset = std::min(lhs._startOffset, rhs._startOffset);
-    lhs._length = std::max(lhsEndOffset, rhsEndOffset) - lhs._startOffset;
+    assert(endOffset > lhs._startOffset);
+
+    lhs._length = endOffset - lhs._startOffset;
 }
 
 class ShaderBuffer;

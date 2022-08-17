@@ -110,6 +110,8 @@ namespace Divide {
 
     class UniformBlockUploader {
     public:
+        constexpr static size_t RingBufferLength = 6u;
+
         struct BlockMember
         {
             Reflection::BlockMember _externalData;

@@ -367,6 +367,15 @@ namespace Divide {
             crtDrawCallCount[1] = rpm->drawCallCount(RenderStage::SHADOW);
             crtDrawCallCount[2] = rpm->drawCallCount(RenderStage::REFLECTION);
             crtDrawCallCount[3] = rpm->drawCallCount(RenderStage::REFRACTION);
+            const PerformanceMetrics perfMetrics = context().gfx().getPerformanceMetrics();
+            const vec4<U32>& cullCount = context().gfx().lastCullCount();
+            static U32 cachedSyncCount[3]{};
+            static U32 cachedCamWrites[2]{};
+            if (ms_per_frame_idx % 2 == 0) {
+                std::memcpy(cachedSyncCount, perfMetrics._syncObjectsInFlight, 3 * sizeof(U32));
+                std::memcpy(cachedCamWrites, perfMetrics._scratchBufferQueueUsage, 2 * sizeof(U32));
+                s_maxLocksInFlight = std::max(cachedSyncCount[0], s_maxLocksInFlight);
+            }
 
             ImGui::NewLine();
             ImGui::Columns(5, "draw_call_columns");
@@ -395,11 +404,6 @@ namespace Divide {
             ImGui::Text("%d", rpm->getLastTotalBinSize(RenderStage::REFRACTION));                         ImGui::NextColumn();
             ImGui::Columns(1);
             ImGui::Separator();
-
-            const PerformanceMetrics perfMetrics = context().gfx().getPerformanceMetrics();
-
-            const vec4<U32>& cullCount = context().gfx().lastCullCount();
-
             ImGui::NewLine();
             ImGui::Text("HiZ Cull Counts: %d | %d | %d | %d", cullCount.x, cullCount.y, cullCount.z, cullCount.w);
             ImGui::NewLine();
@@ -415,23 +419,16 @@ namespace Divide {
             ImGui::NewLine();
             ImGui::Text("Generated Render Targets: %d", perfMetrics._generatedRenderTargetCount);
             ImGui::NewLine();
-
-            if (s_maxLocksInFlight < perfMetrics._syncObjectsInFlight[2]) {
-                s_maxLocksInFlight = perfMetrics._syncObjectsInFlight[2];
-            }
-
-            ImGui::Text("Sync objects in flight : %d / %d / %d   Max: %d",
-                        perfMetrics._syncObjectsInFlight[0],
-                        perfMetrics._syncObjectsInFlight[1],
-                        perfMetrics._syncObjectsInFlight[2],
-                        s_maxLocksInFlight);
+            ImGui::Text("Queued GPU Frames: %d", perfMetrics._queuedGPUFrames);
+            ImGui::NewLine();
+            ImGui::Text("Sync objects in flight : %d / %d / %d   Max: %d", cachedSyncCount[0], cachedSyncCount[1], cachedSyncCount[2], s_maxLocksInFlight);
 
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("[ Current Frame - 2 ] / [ Current Frame - 1] / [ Current Frame ]");
             }
-            ImGui::Text("Cam Buffer Writes: %d | Render Buffer Writes: %d",
-                         perfMetrics._scratchBufferQueueUsage[0],
-                         perfMetrics._scratchBufferQueueUsage[1]);
+
+            ImGui::Text("Cam Buffer Writes: %d | Render Buffer Writes: %d", cachedCamWrites[0], cachedCamWrites[1]);
+
             ImGui::NewLine();
             ImGui::Separator();
             ImGui::NewLine();

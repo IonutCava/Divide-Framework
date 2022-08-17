@@ -158,6 +158,9 @@ public:
 
     static [[nodiscard]] GLsync CreateFenceSync();
     static void DestroyFenceSync(GLsync& sync);
+    
+    static [[nodiscard]] FrameDependendSync CreateFrameFenceSync();
+    static void DestroyFrameFenceSync(FrameDependendSync& sync);
 
 private:
 

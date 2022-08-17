@@ -221,6 +221,7 @@ UniformBlockUploader::UniformBlockUploader(GFXDevice& context, const UniformBloc
 
         ShaderBufferDescriptor bufferDescriptor{};
         bufferDescriptor._name = _descriptor._reflectionData._targetBlockName.c_str();
+        bufferDescriptor._ringBufferLength = RingBufferLength;
         bufferDescriptor._name.append("_");
         bufferDescriptor._name.append(_descriptor._parentShaderName.c_str());
         bufferDescriptor._usage = ShaderBuffer::Usage::CONSTANT_BUFFER;

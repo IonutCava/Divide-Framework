@@ -500,6 +500,20 @@ bool GL_API::beginFrame(DisplayWindow& window, const bool global) {
     }
 
     GLStateTracker* stateTracker = GetStateTracker();
+    while(!stateTracker->_endFrameFences.empty()) {
+        auto& sync = stateTracker->_endFrameFences.front();
+        const GLenum waitRet = glClientWaitSync(sync._syncObject, SyncObjectMask::GL_NONE_BIT, 0u);
+        DIVIDE_ASSERT(waitRet != GL_WAIT_FAILED, "GL_API::beginFrame error: Not sure what to do here. Probably raise an exception or something.");
+        if (waitRet == GL_ALREADY_SIGNALED || waitRet == GL_CONDITION_SATISFIED) {
+            stateTracker->_lastSyncedFrameNumber = sync._frameNumber;
+            DestroyFenceSync(sync._syncObject);
+            stateTracker->_endFrameFences.pop();
+        } else {
+            break;
+        }
+    }
+
+    glLockManager::CleanExpiredSyncObjects(stateTracker->_lastSyncedFrameNumber);
 
     SDL_GLContext glContext = window.userData()->_glContext;
     const I64 windowGUID = window.getGUID();
@@ -628,6 +642,9 @@ void GL_API::endFrameGlobal(const DisplayWindow& window) {
 
     _perfMetrics._generatedRenderTargetCount = to_U32(_context.renderTargetPool().getRenderTargets().size());
     _runQueries = _context.queryPerformanceStats();
+
+    GetStateTracker()->_endFrameFences.push(CreateFrameFenceSync());
+    _perfMetrics._queuedGPUFrames = GetStateTracker()->_endFrameFences.size();
 }
 
 /// Finish rendering the current frame
@@ -1780,4 +1797,19 @@ void GL_API::DestroyFenceSync(GLsync& sync) {
     glDeleteSync(sync);
     sync = nullptr;
 }
+
+FrameDependendSync GL_API::CreateFrameFenceSync() {
+    return {
+        CreateFenceSync(),
+        GFXDevice::FrameCount()
+    };
+}
+
+void GL_API::DestroyFrameFenceSync(FrameDependendSync& sync) {
+    if (sync._syncObject != nullptr) {
+        DestroyFenceSync(sync._syncObject);
+    }
+    sync._frameNumber = std::numeric_limits<U64>::max();
+}
+
 };

@@ -1012,7 +1012,7 @@ bool SceneManager::saveActiveScene(bool toCache, const bool deferred, const DELE
     return true;
 }
 
-bool SceneManager::networkUpdate([[maybe_unused]] const U32 frameCount) {
+bool SceneManager::networkUpdate([[maybe_unused]] const U64 frameCount) {
     return true;
 }
 

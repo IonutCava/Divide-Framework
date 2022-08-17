@@ -110,7 +110,7 @@ std::array<RenderTargetID, Config::MAX_REFLECTIVE_NODES_IN_VIEW> RenderTargetNam
 std::array<RenderTargetID, Config::MAX_REFRACTIVE_NODES_IN_VIEW> RenderTargetNames::REFRACTION_PLANAR = create_array<Config::MAX_REFRACTIVE_NODES_IN_VIEW, RenderTargetID>(INVALID_RENDER_TARGET_ID);
 
 D64 GFXDevice::s_interpolationFactor = 1.0;
-U32 GFXDevice::s_frameCount = 0u;
+U64 GFXDevice::s_frameCount = 0u;
 
 DeviceInformation GFXDevice::s_deviceInformation{};
 GFXDevice::IMPrimitivePool GFXDevice::s_IMPrimitivePool{};
@@ -1269,6 +1269,8 @@ void GFXDevice::beginFrame(DisplayWindow& window, const bool global) {
     OPTICK_EVENT();
 
     if (global) {
+        ++s_frameCount;
+
         if (_queuedScreenSampleChange != s_invalidQueueSampleCount) {
             setScreenMSAASampleCountInternal(_queuedScreenSampleChange);
             _queuedScreenSampleChange = s_invalidQueueSampleCount;
@@ -1315,8 +1317,6 @@ void GFXDevice::endFrame(DisplayWindow& window, const bool global) {
     OPTICK_EVENT();
 
     if (global) {
-        s_frameCount += 1u;
-
         frameDrawCallsPrev(frameDrawCalls());
         frameDrawCalls(0u);
 
@@ -2214,8 +2214,6 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
         _api->flushCommand(commandBuffer.get<GFX::CommandBase>(cmd));
     }
 
-    _api->postFlushCommandBuffer(commandBuffer);
-
     GFXBuffers::PerFrameBuffers& frameBuffers = _gfxBuffers.crtBuffers();
     if (frameBuffers._camBufferWriteRange._length > 0u) {
         GFX::MemoryBarrierCommand writeMemCmd{};
@@ -2223,8 +2221,10 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
         lock._targetBuffer = frameBuffers._camDataBuffer.get();
         lock._range = frameBuffers._camBufferWriteRange;
         _api->flushCommand(&writeMemCmd);
-        frameBuffers._camBufferWriteRange._startOffset = {};
+        frameBuffers._camBufferWriteRange = {};
     }
+
+    _api->postFlushCommandBuffer(commandBuffer);
 
     // Descriptor sets are only valid per command buffer they are submitted in. If we finish the command buffer submission,
     // we mark them as dirty so that the next command buffer can bind them again even if the data is the same

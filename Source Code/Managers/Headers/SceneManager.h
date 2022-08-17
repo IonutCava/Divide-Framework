@@ -207,9 +207,9 @@ public:  /// Input
     void mouseMovedExternally(const Input::MouseMoveEvent& arg);
 
     PROPERTY_RW(bool, wantsMouse, false);
-// networking
+
 protected:
-    bool networkUpdate(U32 frameCount);
+    bool networkUpdate(U64 frameCount);
 
 protected:
     void initPostLoadState() noexcept;
@@ -318,7 +318,7 @@ class SceneManagerKernel {
         manager->currentPlayerPass(deltaTimeUS, idx);
     }
 
-    static bool networkUpdate(Divide::SceneManager* manager, const U32 frameCount) {
+    static bool networkUpdate(Divide::SceneManager* manager, const U64 frameCount) {
         return manager->networkUpdate(frameCount);
     }
 

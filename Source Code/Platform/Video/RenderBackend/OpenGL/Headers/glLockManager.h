@@ -46,34 +46,19 @@ namespace Divide {
 
 constexpr U8 g_MaxLockWaitRetries = 5u;
 
-enum class BufferLockState : U8 {
-    ACTIVE = 0,
-    EXPIRED,
-    DELETED,
-    ERROR
-};
-
 struct SyncObject {
     ~SyncObject();
     void reset();
 
     Mutex _fenceLock;
-    GLsync _fenceObject;
-    U32 _frameID = 0u;
+    FrameDependendSync _impl;
 };
 
 FWD_DECLARE_MANAGED_STRUCT(SyncObject);
 
 struct BufferLockInstance {
-    BufferLockInstance() = default;
-    explicit BufferLockInstance(const BufferRange range, SyncObject* syncObj) noexcept
-        : _range(range), _syncObj(syncObj)
-    {
-    }
-
     BufferRange _range{};
-    SyncObject* _syncObj = nullptr;
-    BufferLockState _state = BufferLockState::ACTIVE;
+    SyncObject* _syncObj{ nullptr };
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -81,8 +66,8 @@ class glLockManager : public GUIDWrapper {
    public:
     using BufferLockPool = eastl::fixed_vector<SyncObject_uptr, 1024, true>;
 
-    static void CleanExpiredSyncObjects(U32 frameID);
-    static [[nodiscard]] SyncObject* CreateSyncObject(bool isRetry = false);
+    static void CleanExpiredSyncObjects(U64 frameNumber);
+    static [[nodiscard]] SyncObject* CreateSyncObject();
     static void Clear();
 
    public:
@@ -99,9 +84,9 @@ class glLockManager : public GUIDWrapper {
     /// Returns true if the sync object was signaled. retryCount is the number of retries it took to wait for the object
     /// if quickCheck is true, we don't retry if the initial check fails 
     static bool Wait(GLsync syncObj, bool blockClient, bool quickCheck, U8& retryCount);
-
+    static [[nodiscard]] SyncObject* CreateSyncObjectLocked(bool isRetry = false);
    protected:
-     mutable SharedMutex _lock;
+     mutable SharedMutex _bufferLockslock; // :D
      vector<BufferLockInstance> _bufferLocks;
      vector<BufferLockInstance> _swapLocks;
 

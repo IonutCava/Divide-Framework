@@ -319,7 +319,6 @@ namespace {
     [[nodiscard]] bool ValidateCache(const bool validateSPV, const Str256& sourceFileName, const Str256& targetFileName, const bool targetVulkan) {
         //"There are only two hard things in Computer Science: cache invalidation and naming things" - Phil Karlton
         //"There are two hard things in computer science: cache invalidation, naming things, and off-by-one errors." - Leon Bambrick
-        return false;
         // Get our source file's "last written" timestamp
         U64 lastWriteTime = 0u, lastWriteTimeCache = 0u;
 

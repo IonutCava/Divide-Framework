@@ -73,21 +73,23 @@ struct VideoModes {
 /// Queries are expensive, so this result MAY BE SEVERAL frames out of date!
 struct PerformanceMetrics
 {
-    F32 _gpuTimeInMS = 0.f;
+    F32 _gpuTimeInMS{ 0.f };
     /// Returns the time in milliseconds that it took to render one frame
-    U64 _verticesSubmitted = 0u;
+    U64 _verticesSubmitted{ 0u };
     /// Returns the total number of vertices submitted between frame start and end (before swap buffers)
     /// Includes all vertices, including GUI and debug stuff (but the delta should still be useful)
-    U64 _primitivesGenerated = 0u;
+    U64 _primitivesGenerated{ 0u };
     ///  Number of patches processed by the tessellation control shader
-    U64 _tessellationPatches = 0u;
+    U64 _tessellationPatches{ 0u };
     /// Number of times the tessellation control shader has been invoked
-    U64 _tessellationInvocations = 0u;
-    U32 _generatedRenderTargetCount = 0u;
+    U64 _tessellationInvocations{ 0u };
+    U32 _generatedRenderTargetCount{ 0u };
+    /// How many frames are still queued up for execution on the GPU
+    U64 _queuedGPUFrames{ 0u };
     /// Number of active sync objects
-    U32 _syncObjectsInFlight[3] = {};
+    U32 _syncObjectsInFlight[3]{};
     /// Scratch buffer queue usage
-    U32 _scratchBufferQueueUsage[2] = {};
+    U32 _scratchBufferQueueUsage[2]{};
 };
 
 struct DeviceInformation

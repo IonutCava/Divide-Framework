@@ -348,7 +348,7 @@ public:  // Accessors and Mutators
 
     static void FrameInterpolationFactor(const D64 interpolation) noexcept { s_interpolationFactor = interpolation; }
     [[nodiscard]] static D64 FrameInterpolationFactor() noexcept { return s_interpolationFactor; }
-    [[nodiscard]] static U32 FrameCount() noexcept { return s_frameCount; }
+    [[nodiscard]] static U64 FrameCount() noexcept { return s_frameCount; }
 
     static const DeviceInformation& GetDeviceInformation() noexcept;
     static void OverrideDeviceInformation(const DeviceInformation& info) noexcept;
@@ -621,7 +621,7 @@ private:
     static IMPrimitivePool s_IMPrimitivePool;
 
     static D64 s_interpolationFactor;
-    static U32 s_frameCount;
+    static U64 s_frameCount;
 
     static DeviceInformation s_deviceInformation;
 };

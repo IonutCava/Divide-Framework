@@ -221,6 +221,9 @@ namespace Divide {
         TextureTypeBoundMapDef _textureTypeBoundMap;
 
         VAOBindings _vaoBufferData;
+        eastl::queue<FrameDependendSync> _endFrameFences;
+        U64 _lastSyncedFrameNumber{ 0u };
+
     }; //class GLStateTracker
 }; //namespace Divide
 
