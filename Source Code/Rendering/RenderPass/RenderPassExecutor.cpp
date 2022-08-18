@@ -902,30 +902,27 @@ void RenderPassExecutor::mainPass(const VisibleNodeList<>& nodes, const RenderPa
             GFX::EnqueueCommand<GFX::BeginRenderSubPassCommand>(bufferInOut)->_writeLayers.push_back(params._layerParams);
         }
 
-        const RenderTarget* screenTarget = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN);
-        RTAttachment* normalsAtt = screenTarget->getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::NORMALS));
+        const RenderTarget* screenTargetMS = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_MS);
+        const RTAttachment* normalsAttMS = screenTargetMS->getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::NORMALS));
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_PASS_SET;
 
-        Texture_ptr hizTex = nullptr;
         if (hasHiZ) {
+            auto& binding = cmd->_bindings.emplace_back();
+            binding._slot = to_base(TextureUsage::DEPTH);
             const RenderTarget* hizTarget = _context.renderTargetPool().getRenderTarget(params._targetHIZ);
             RTAttachment* hizAtt = hizTarget->getAttachment(RTAttachmentType::Depth_Stencil, 0);
-
-            auto& binding = cmd->_bindings.emplace_back();
-            binding._slot = to_base(TextureUsage::DEPTH);
             binding._data.As<DescriptorCombinedImageSampler>() = { hizAtt->texture()->data(), hizAtt->descriptor()._samplerHash };
         } else if (prePassExecuted) {
-            RTAttachment* depthAtt = target.getAttachment(RTAttachmentType::Depth_Stencil, 0);
             auto& binding = cmd->_bindings.emplace_back();
             binding._slot = to_base(TextureUsage::DEPTH);
+            RTAttachment* depthAtt = target.getAttachment(RTAttachmentType::Depth_Stencil, 0);
             binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->data(), depthAtt->descriptor()._samplerHash };
         }
-
         auto& binding = cmd->_bindings.emplace_back();
         binding._slot = to_base(TextureUsage::SCENE_NORMALS);
-        binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt->texture()->data(), normalsAtt->descriptor()._samplerHash };
+        binding._data.As<DescriptorCombinedImageSampler>() = { normalsAttMS->texture()->data(), normalsAttMS->descriptor()._samplerHash };
 
         prepareRenderQueues(params, nodes, cameraSnapshot, false, RenderingOrder::COUNT, bufferInOut);
 

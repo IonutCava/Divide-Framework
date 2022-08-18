@@ -240,18 +240,6 @@ void GFXDevice::GFXDescriptorSets::init(RenderAPIWrapper* api) {
         {
             auto& binding = passSet.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resource._slot = to_U8(TextureUsage::UNIT0);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
-        }
-        {
-            auto& binding = passSet.emplace_back();
-            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resource._slot = to_U8(TextureUsage::UNIT1);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
-        }
-        {
-            auto& binding = passSet.emplace_back();
-            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
             binding._resource._slot = to_U8(TextureUsage::DEPTH);
             binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
         }
@@ -318,7 +306,7 @@ void GFXDevice::GFXDescriptorSets::init(RenderAPIWrapper* api) {
 }
 
 void GFXDevice::GFXDescriptorSet::update(const U8 slot, const DescriptorSetBindingData& newBindingData) {
-    for (auto& bindingEntry : _set) {
+    for (DescriptorSetBinding& bindingEntry : _set) {
         assert(bindingEntry._type != DescriptorSetBindingType::COUNT && newBindingData.Type() != DescriptorSetBindingType::COUNT);
         if (bindingEntry._type == newBindingData.Type() && bindingEntry._resource._slot == slot) {
             if (bindingEntry._resource._data != newBindingData) {

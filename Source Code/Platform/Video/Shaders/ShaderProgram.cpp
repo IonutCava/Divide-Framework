@@ -1545,30 +1545,42 @@ bool ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExis
     loadDataInOut._sourceCodeGLSL.resize(0);
     loadDataInOut._sourceCodeSpirV.resize(0);
 
+    const bool targetVulkan = _context.renderAPI() == RenderAPI::Vulkan;
     eastl::set<U64> atomIDs;
-    const auto ParseAndSaveSource = [&]() {
+    const auto ParseAndSaveSource = [&](const bool toSPIRV) {
         loadAndParseGLSL(defines, reloadExisting, loadDataInOut, previousUniformsInOut, blockIndexInOut, atomIDs);
-        if (!GLSLToSPIRV(loadDataInOut, _context.renderAPI() == RenderAPI::Vulkan, atomIDs)) {
+        if (toSPIRV && !GLSLToSPIRV(loadDataInOut, targetVulkan, atomIDs)) {
             NOP();
         }
     };
-    const bool targetVulkan = _context.renderAPI() == RenderAPI::Vulkan;
+    
     if (reloadExisting) {
         // Hot reloading will always reparse GLSL source files!
-        ParseAndSaveSource();
+        ParseAndSaveSource(true);
         loadDataInOut._codeSource = LoadData::SourceCodeSource::SOURCE_FILES;
     } else {
+        bool needGLSL = !targetVulkan;
         // Try and load from the spir-v cache
         if (LoadSPIRVFromCache(loadDataInOut, targetVulkan, atomIDs)) {
             loadDataInOut._codeSource = LoadData::SourceCodeSource::SPIRV_CACHE;
-        } else if (LoadTextFromCache(loadDataInOut, targetVulkan, atomIDs)) {
-            loadDataInOut._codeSource = LoadData::SourceCodeSource::TEXT_CACHE;
-            if (!GLSLToSPIRV(loadDataInOut, targetVulkan, atomIDs)) {
-                NOP();
-            }
         } else {
-            ParseAndSaveSource();
-            loadDataInOut._codeSource = LoadData::SourceCodeSource::SOURCE_FILES;
+            needGLSL = true;
+        }
+
+        if (needGLSL) {
+            if (LoadTextFromCache(loadDataInOut, targetVulkan, atomIDs)) {
+                if (loadDataInOut._codeSource != LoadData::SourceCodeSource::SPIRV_CACHE) {
+                    loadDataInOut._codeSource = LoadData::SourceCodeSource::TEXT_CACHE;
+                    if (!GLSLToSPIRV(loadDataInOut, targetVulkan, atomIDs)) {
+                        NOP();
+                    }
+                }
+            } else {
+                ParseAndSaveSource(loadDataInOut._codeSource != LoadData::SourceCodeSource::SPIRV_CACHE);
+                if (loadDataInOut._codeSource != LoadData::SourceCodeSource::SPIRV_CACHE) {
+                    loadDataInOut._codeSource = LoadData::SourceCodeSource::SOURCE_FILES;
+                }
+            }
         }
     }
 

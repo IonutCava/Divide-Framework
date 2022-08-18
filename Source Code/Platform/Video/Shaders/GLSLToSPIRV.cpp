@@ -218,7 +218,6 @@ bool SpirvHelper::GLSLtoSPV(const vk::ShaderStageFlagBits shader_type, const cha
 
     BuildReflectionData(program, shader_type, reflectionDataInOut);
 
-    
     SpvReflectShaderModule module;
     SpvReflectResult result = spvReflectCreateShaderModule(spirv.size() * sizeof(unsigned int), spirv.data(), &module);
     if (result != SPV_REFLECT_RESULT_SUCCESS) {

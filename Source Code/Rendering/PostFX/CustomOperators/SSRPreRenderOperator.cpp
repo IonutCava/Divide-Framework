@@ -139,7 +139,6 @@ bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& 
     _constantsCmd._constants.set(_ID("maxScreenMips"), GFX::PushConstantType::UINT, screenMipCount);
     _constantsCmd._constants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
 
-    {
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
         {
@@ -152,14 +151,11 @@ bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& 
             binding._slot = to_U8(TextureUsage::UNIT1);
             binding._data.As<DescriptorCombinedImageSampler>() = { depthTex, depthAtt->descriptor()._samplerHash };
         }
-    }
-    {
-        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-        cmd->_usage = DescriptorSetUsage::PER_PASS_SET;
-        auto& binding = cmd->_bindings.emplace_back();
-        binding._slot = to_U8(TextureUsage::SCENE_NORMALS);
-        binding._data.As<DescriptorCombinedImageSampler>() = { normalsTex, normalsAtt->descriptor()._samplerHash };
-    }
+        {
+            auto& binding = cmd->_bindings.emplace_back();
+            binding._slot = to_U8(TextureUsage::NORMALMAP);
+            binding._data.As<DescriptorCombinedImageSampler>() = { normalsTex, normalsAtt->descriptor()._samplerHash };
+        }
 
     GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
     renderPassCmd->_target = RenderTargetNames::SSR_RESULT;

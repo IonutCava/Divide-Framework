@@ -5,9 +5,9 @@
 #include "utility.frag"
 #include "sceneData.cmn"
 
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D texScreen;
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT1) uniform sampler2D texDepth;
-DESCRIPTOR_SET_RESOURCE(PER_PASS_SET, TEXTURE_SCENE_NORMALS) uniform sampler2D texNormal;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0)     uniform sampler2D texScreen;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT1)     uniform sampler2D texDepth;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_NORMALMAP) uniform sampler2D texNormal;
 
 uniform mat4 projToPixel; // A projection matrix that maps to pixel coordinates (not [-1, +1] normalized device coordinates)
 uniform mat4 projectionMatrix;

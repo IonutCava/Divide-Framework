@@ -522,7 +522,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             }
             {
                 auto& binding = cmd->_bindings.emplace_back();
-                binding._slot = to_U8(TextureUsage::SCENE_NORMALS);
+                binding._slot = to_U8(TextureUsage::NORMALMAP);
                 binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt->texture()->data(), normalsAtt->descriptor()._samplerHash };
             }
 
@@ -655,7 +655,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 }
                 {
                     auto& binding = cmd->_bindings.emplace_back();
-                    binding._slot = to_U8(TextureUsage::SCENE_NORMALS);
+                    binding._slot = to_U8(TextureUsage::NORMALMAP);
                     binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt->texture()->data(), normalsAtt->descriptor()._samplerHash };
                 }
                 {
@@ -686,7 +686,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 }
                 {
                     auto& binding = cmd->_bindings.emplace_back();
-                    binding._slot = to_U8(TextureUsage::SCENE_NORMALS);
+                    binding._slot = to_U8(TextureUsage::NORMALMAP);
                     binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt->texture()->data(), normalsAtt->descriptor()._samplerHash };
                 }
                 {

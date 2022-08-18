@@ -16,6 +16,7 @@
 namespace Divide {
 
 namespace {
+    constexpr bool g_useSPIRVBinaryCode = false;
     constexpr const char* g_binaryBinExtension = ".bin";
     constexpr const char* g_binaryFmtExtension = ".fmt";
 
@@ -114,12 +115,13 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
                 timers[1].start();
             }
             GLuint shader = GLUtil::k_invalidObjectID;
-            DIVIDE_ASSERT(shader != 0u);
-            if (!data._sourceCodeSpirV.empty()) {
+            DIVIDE_ASSERT(shader != 0u && !data._sourceCodeSpirV.empty() && !data._sourceCodeGLSL.empty());
+
+            if_constexpr(g_useSPIRVBinaryCode) {
                 shader = glCreateShader(GLUtil::glShaderStageTable[to_base(data._type)]);
                 glShaderBinary(1, &shader, GL_SHADER_BINARY_FORMAT_SPIR_V_ARB, data._sourceCodeSpirV.data(), (GLsizei)(data._sourceCodeSpirV.size() * sizeof(U32)));
                 glSpecializeShader(shader, "main", 0, nullptr, nullptr);
-            } else if (!data._sourceCodeGLSL.empty()) {
+            } else {
                 shader = glCreateShader(GLUtil::glShaderStageTable[to_base(data._type)]);
                 vector<const char*> sourceCodeCstr{ data._sourceCodeGLSL.c_str() };
                 glShaderSource(shader, static_cast<GLsizei>(sourceCodeCstr.size()), sourceCodeCstr.data(), nullptr);

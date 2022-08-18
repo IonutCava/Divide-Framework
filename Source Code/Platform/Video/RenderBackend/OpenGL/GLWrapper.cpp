@@ -1479,16 +1479,14 @@ bool GL_API::bindShaderResources(const DescriptorSetUsage usage, const Descripto
         GLuint _handle;
         GLuint _samplerHandle;
     };
-    static ImageSamplerBinding samplerBindings[to_base(TextureType::COUNT)];
 
-    U8 imageSamplerCount = 0u;
     for (auto& srcBinding : bindings) {
         switch (srcBinding._data.Type()) {
               case DescriptorSetBindingType::IMAGE: {
                   if (!srcBinding._data.Has<Image>()) {
                       continue;
                   }
-                  const auto& image = srcBinding._data.As<Image>();
+                  const Image& image = srcBinding._data.As<Image>();
                   DIVIDE_ASSERT(image._texture != nullptr);
                   image._texture->bindLayer(srcBinding._slot,
                                             image._level,
@@ -1505,7 +1503,7 @@ bool GL_API::bindShaderResources(const DescriptorSetUsage usage, const Descripto
                       continue;
                   }
 
-                  const auto& bufferEntry = srcBinding._data.As<ShaderBufferEntry>();
+                  const ShaderBufferEntry& bufferEntry = srcBinding._data.As<ShaderBufferEntry>();
                   DIVIDE_ASSERT(bufferEntry._buffer != nullptr);
                   Attorney::ShaderBufferBind::bindRange(*bufferEntry._buffer,
                                                         srcBinding._slot,
@@ -1516,22 +1514,17 @@ bool GL_API::bindShaderResources(const DescriptorSetUsage usage, const Descripto
                       continue;
                   }
 
-                  const auto& imageSampler = srcBinding._data.As<DescriptorCombinedImageSampler>();
-                  const TextureData& texData = imageSampler._image;
-
-                  auto& samplerBinding = samplerBindings[imageSamplerCount++];
-                  samplerBinding._bindingSlot = srcBinding._slot;
-                  samplerBinding._type = texData._textureType;
-                  samplerBinding._handle = texData._textureHandle;
-                  samplerBinding._samplerHandle = GetSamplerHandle(imageSampler._samplerHash);
-
+                  const DescriptorCombinedImageSampler& imageSampler = srcBinding._data.As<DescriptorCombinedImageSampler>();
+                  if (GetStateTracker()->bindTexture(srcBinding._slot, imageSampler._image._textureType, imageSampler._image._textureHandle, GetSamplerHandle(imageSampler._samplerHash)) == GLStateTracker::BindResult::FAILED) {
+                      DIVIDE_UNEXPECTED_CALL();
+                  }
               } break;
               case DescriptorSetBindingType::IMAGE_VIEW: {
                   if (srcBinding._slot == INVALID_TEXTURE_BINDING) {
                       continue;
                   }
 
-                  const auto& texData = srcBinding._data.As<ImageViewEntry>();
+                  const ImageViewEntry& texData = srcBinding._data.As<ImageViewEntry>();
                   if (makeTextureViewResidentInternal(texData, srcBinding._slot) == GLStateTracker::BindResult::FAILED) {
                       DIVIDE_UNEXPECTED_CALL();
                   }
@@ -1540,13 +1533,6 @@ bool GL_API::bindShaderResources(const DescriptorSetUsage usage, const Descripto
                   DIVIDE_UNEXPECTED_CALL();
               } break;
         };
-    }
-
-    for (U8 i = 0u; i < imageSamplerCount; ++i) {
-        const ImageSamplerBinding& binding = samplerBindings[i];
-        if (GetStateTracker()->bindTexture(binding._bindingSlot, binding._type, binding._handle, binding._samplerHandle) == GLStateTracker::BindResult::FAILED) {
-            DIVIDE_UNEXPECTED_CALL();
-        }
     }
 
     return true;
