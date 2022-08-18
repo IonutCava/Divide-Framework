@@ -333,6 +333,11 @@ class Material final : public CachedResource {
     void saveTextureDataToXML(const string& entryName, boost::property_tree::ptree& pt) const;
     void loadTextureDataFromXML(const string& entryName, const boost::property_tree::ptree& pt);
 
+    bool setTextureLocked(TextureUsage textureUsageSlot,
+                          const Texture_ptr& texture,
+                          size_t samplerHash,
+                          TextureOperation op,
+                          TexturePrePassUsage prePassUsage);
    private:
     GFXDevice& _context;
     ResourceCache* _parentCache = nullptr;

@@ -118,6 +118,11 @@ GFXDevice::IMPrimitivePool GFXDevice::s_IMPrimitivePool{};
 
 void GFXDevice::GFXDescriptorSets::init(RenderAPIWrapper* api) {
     {
+        _globalDescriptorSets[to_base(DescriptorSetUsage::PER_DRAW_SET)].usage(DescriptorSetUsage::PER_DRAW_SET);
+        _globalDescriptorSets[to_base(DescriptorSetUsage::PER_BATCH_SET)].usage(DescriptorSetUsage::PER_BATCH_SET);
+        _globalDescriptorSets[to_base(DescriptorSetUsage::PER_PASS_SET)].usage(DescriptorSetUsage::PER_PASS_SET);
+        _globalDescriptorSets[to_base(DescriptorSetUsage::PER_FRAME_SET)].usage(DescriptorSetUsage::PER_FRAME_SET);
+
         auto& frameSet = _globalDescriptorSets[to_base(DescriptorSetUsage::PER_FRAME_SET)].set();
         
         {
@@ -430,8 +435,8 @@ void GFXDevice::resizeGPUBlocks(size_t targetSizeCam, size_t targetSizeCullCount
     if (targetSizeCam == 0u) { targetSizeCam = 1u; }
     if (targetSizeCullCounter == 0u) { targetSizeCullCounter = 1u; }
 
-    const bool resizeCamBuffer = _gfxBuffers._currentSizeCam != targetSizeCam;
-    const bool resizeCullCounter = _gfxBuffers._currentSizeCullCounter != targetSizeCullCounter;
+    const bool resizeCamBuffer = _gfxBuffers.crtBuffers()._camDataBuffer == nullptr || _gfxBuffers.crtBuffers()._camDataBuffer->queueLength() != targetSizeCam;
+    const bool resizeCullCounter = _gfxBuffers.crtBuffers()._cullCounter == nullptr || _gfxBuffers.crtBuffers()._cullCounter->queueLength() != targetSizeCullCounter;
 
     if (!resizeCamBuffer && !resizeCullCounter) {
         return;
@@ -440,8 +445,6 @@ void GFXDevice::resizeGPUBlocks(size_t targetSizeCam, size_t targetSizeCullCount
     DIVIDE_ASSERT(ValidateGPUDataStructure());
 
     _gfxBuffers.reset(resizeCamBuffer, resizeCullCounter);
-    _gfxBuffers._currentSizeCam = targetSizeCam;
-    _gfxBuffers._currentSizeCullCounter = targetSizeCullCounter;
 
     if (resizeCamBuffer) {
         ShaderBufferDescriptor bufferDescriptor = {};
@@ -459,7 +462,7 @@ void GFXDevice::resizeGPUBlocks(size_t targetSizeCam, size_t targetSizeCullCount
             _gfxBuffers._perFrameBuffers[i]._camBufferWriteRange = {};
         }
     }
-
+    
     if (resizeCullCounter) {
         // Atomic counter for occlusion culling
         ShaderBufferDescriptor bufferDescriptor = {};
@@ -476,6 +479,8 @@ void GFXDevice::resizeGPUBlocks(size_t targetSizeCam, size_t targetSizeCullCount
             _gfxBuffers._perFrameBuffers[i]._cullCounter = newSB(bufferDescriptor);
         }
     }
+
+    _gpuBlock._camData = {};
 }
 
 ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
@@ -1332,12 +1337,18 @@ void GFXDevice::endFrame(DisplayWindow& window, const bool global) {
     DIVIDE_ASSERT(_viewportStack.empty(), "Not all viewports have been cleared properly! Check command buffers for missmatched push/pop!");
     // Activate the default render states
     _api->endFrame(window, global);
+    _performanceMetrics._scratchBufferQueueUsage[0] = to_U32(_gfxBuffers.crtBuffers()._camWritesThisFrame);
+    _performanceMetrics._scratchBufferQueueUsage[1] = to_U32(_gfxBuffers.crtBuffers()._renderWritesThisFrame);
+
     if (_gfxBuffers._needsResizeCam) {
-        resizeGPUBlocks(_gfxBuffers._needsResizeCam ? _gfxBuffers._currentSizeCam + TargetBufferSizeCam : _gfxBuffers._currentSizeCam,
-                        _gfxBuffers._currentSizeCullCounter);
+        const GFXBuffers::PerFrameBuffers& frameBuffers = _gfxBuffers.crtBuffers();
+        const U32 currentSizeCam = frameBuffers._camDataBuffer->queueLength();
+        const U32 currentSizeCullCounter = frameBuffers._cullCounter->queueLength();
+        resizeGPUBlocks(_gfxBuffers._needsResizeCam ? currentSizeCam + TargetBufferSizeCam : currentSizeCam, currentSizeCullCounter);
         _gfxBuffers._needsResizeCam = false;
     }
     _gfxBuffers.onEndFrame();
+    ShaderProgram::OnEndFrame(*this);
 }
 
 #pragma endregion
@@ -1790,13 +1801,6 @@ bool GFXDevice::fitViewportInWindow(const U16 w, const U16 h) {
 #pragma endregion
 
 #pragma region GPU State
-PerformanceMetrics GFXDevice::getPerformanceMetrics() const noexcept {
-    PerformanceMetrics ret = _api->getPerformanceMetrics();
-    ret._scratchBufferQueueUsage[0] = to_U32(_gfxBuffers.crtBuffers()._camWritesThisFrame);
-    ret._scratchBufferQueueUsage[1] = to_U32(_gfxBuffers.crtBuffers()._renderWritesThisFrame);
-    return ret;
-}
-
 bool GFXDevice::uploadGPUBlock() {
     OPTICK_EVENT();
 
@@ -1821,7 +1825,7 @@ bool GFXDevice::uploadGPUBlock() {
         GFXBuffers::PerFrameBuffers& frameBuffers = _gfxBuffers.crtBuffers();
         _gpuBlock._camNeedsUpload = false;
         frameBuffers._camDataBuffer->incQueue();
-        if (++frameBuffers._camWritesThisFrame >= _gfxBuffers._currentSizeCam) {
+        if (++frameBuffers._camWritesThisFrame >= frameBuffers._camDataBuffer->queueLength()) {
             //We've wrapped around this buffer inside of a single frame so sync performance will degrade unless we increase our buffer size
             _gfxBuffers._needsResizeCam = true;
             //Because we are now overwriting existing data, we need to make sure that any fences that could possibly protect us have been flushed
@@ -1994,6 +1998,46 @@ const GFXShaderData::CamData& GFXDevice::cameraData() const noexcept {
 #pragma endregion
 
 #pragma region Command buffers, occlusion culling, etc
+void GFXDevice::validateAndUploadDescriptorSets() {
+    uploadGPUBlock();
+
+    const auto createResourceCmd = [](const GFXDescriptorSet& set, const bool allowEmpty) {
+        GFX::BindShaderResourcesCommand bindShaderResourcesCmd{};
+        bindShaderResourcesCmd._usage = set.usage();
+        for (const DescriptorSetBinding& binding : set.set()) {
+            if (binding._type != DescriptorSetBindingType::COUNT && binding._resource._data.isSet()) {
+                bindShaderResourcesCmd._bindings.emplace_back(binding._resource);
+            }
+        }
+        return bindShaderResourcesCmd;
+    };
+
+    auto& frameSet = descriptorSets()._globalDescriptorSets[to_base(DescriptorSetUsage::PER_FRAME_SET)];
+    auto& passSet = descriptorSets()._globalDescriptorSets[to_base(DescriptorSetUsage::PER_PASS_SET)];
+    auto& batchSet = descriptorSets()._globalDescriptorSets[to_base(DescriptorSetUsage::PER_BATCH_SET)];
+
+    //if (frameSet.dirty()) 
+    {
+        auto cmd = createResourceCmd(frameSet, true);
+        _api->flushCommand(&cmd);
+        frameSet.dirty(false);
+    }
+
+    //if (passSet.dirty())
+    {
+        auto cmd = createResourceCmd(passSet, true);
+        _api->flushCommand(&cmd);
+        passSet.dirty(false);
+    }
+
+    //if (batchSet.dirty())
+    {
+        auto cmd = createResourceCmd(batchSet, true);
+        _api->flushCommand(&cmd);
+        batchSet.dirty(false);
+    }
+}
+
 void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool batch) {
     OPTICK_EVENT();
 
@@ -2014,70 +2058,6 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
         DIVIDE_UNEXPECTED_CALL_MSG(Util::StringFormat("GFXDevice::flushCommandBuffer error [ %s ]: Invalid command buffer. Check error log!", GFX::Names::errorType[to_base(error)]).c_str());
         return;
     }
-
-    const auto bindDescriptorSet = [&](const DescriptorSet& set, const bool allowEmpty) {
-        for (auto& binding : set) {
-            DIVIDE_ASSERT(binding._shaderStageVisibility != to_base(DescriptorSetBinding::ShaderStageVisibility::NONE));
-
-            const U8 bindingSlot = binding._resource._slot;
-            const DescriptorSetBindingData& data = binding._resource._data;
-
-            switch (binding._type) {
-                case DescriptorSetBindingType::IMAGE: {
-                    if (allowEmpty && data.Has<Image>()) {
-                        continue;
-                    }
-                    const auto& image = data.As<Image>();
-                    DIVIDE_ASSERT(image._texture != nullptr);
-                    image._texture->bindLayer(bindingSlot,
-                                              image._level,
-                                              image._layer,
-                                              image._layered,
-                                              image._flag);
-                } break;
-                case DescriptorSetBindingType::UNIFORM_BUFFER:
-                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: {
-                    if (allowEmpty &&
-                        (!data.Has<ShaderBufferEntry>() ||
-                          data.As<ShaderBufferEntry>()._buffer == nullptr ||
-                          data.As<ShaderBufferEntry>()._range._length == 0u))
-                    {
-                            continue;
-                    }
-
-                    const auto& bufferEntry = data.As<ShaderBufferEntry>();
-                    DIVIDE_ASSERT(bufferEntry._buffer != nullptr);
-                    Attorney::ShaderBufferBind::bindRange(*bufferEntry._buffer,
-                                                          bindingSlot,
-                                                          bufferEntry._range);
-                } break;
-                default: break;
-            }
-        }
-    };
-
-    auto& frameSet = descriptorSets()._globalDescriptorSets[to_base(DescriptorSetUsage::PER_FRAME_SET)];
-    auto& passSet = descriptorSets()._globalDescriptorSets[to_base(DescriptorSetUsage::PER_PASS_SET)];
-    auto& batchSet = descriptorSets()._globalDescriptorSets[to_base(DescriptorSetUsage::PER_BATCH_SET)];
-
-    const auto validateAndUploadDescriptorSets = [&]() {
-        uploadGPUBlock();
-
-        if (frameSet.dirty()) {
-            bindDescriptorSet(frameSet.set(), true);
-            frameSet.dirty(false);
-        }
-
-        if (passSet.dirty()) {
-            bindDescriptorSet(passSet.set(), true);
-            passSet.dirty(false);
-        }
-
-        if (batchSet.dirty()) {
-            bindDescriptorSet(batchSet.set(), true);
-            batchSet.dirty(false);
-        }
-    };
 
     _api->preFlushCommandBuffer(commandBuffer);
 
@@ -2199,6 +2179,17 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
                 validateAndUploadDescriptorSets();
                 commandBuffer.get<GFX::ExternalCommand>(cmd)->_cbk();
             } break;
+            case GFX::CommandType::BIND_SHADER_RESOURCES: {
+                const auto resCmd = commandBuffer.get<GFX::BindShaderResourcesCommand>(cmd);
+                if (resCmd->_usage != DescriptorSetUsage::PER_DRAW_SET) {
+                    auto& descriptorSet = descriptorSets()._globalDescriptorSets[to_base(resCmd->_usage)];
+                    for (auto& binding : resCmd->_bindings) {
+                        descriptorSet.update(binding._slot, binding._data);
+                    }
+                } else {
+                    _api->flushCommand(resCmd);
+                }
+            } break;
             case GFX::CommandType::BEGIN_RENDER_PASS: {
                 const GFX::BeginRenderPassCommand* crtCmd = commandBuffer.get<GFX::BeginRenderPassCommand>(cmd);
                 const vec2<F32> depthRange = renderTargetPool().getRenderTarget(crtCmd->_target)->getDepthRange();
@@ -2229,9 +2220,9 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
     // Descriptor sets are only valid per command buffer they are submitted in. If we finish the command buffer submission,
     // we mark them as dirty so that the next command buffer can bind them again even if the data is the same
     // We always check the dirty flags before any draw/compute command by calling "validateAndUploadDescriptorSets" beforehand
-    frameSet.dirty(true);
-    passSet.dirty(true);
-    batchSet.dirty(true);
+    descriptorSets()._globalDescriptorSets[to_base(DescriptorSetUsage::PER_FRAME_SET)].dirty(true);
+    descriptorSets()._globalDescriptorSets[to_base(DescriptorSetUsage::PER_PASS_SET)].dirty(true);
+    descriptorSets()._globalDescriptorSets[to_base(DescriptorSetUsage::PER_BATCH_SET)].dirty(true);
 }
 
 /// Transform our depth buffer to a HierarchicalZ buffer (for occlusion queries and screen space reflections)
@@ -2995,12 +2986,12 @@ GenericVertexData* GFXDevice::getOrCreateIMGUIBuffer(const I64 windowGUID, const
     }
 
     if (ret == nullptr) {
-        GenericVertexData_ptr newBuffer = newGVD(newSize);
+        GenericVertexData_ptr newBuffer = newGVD(newSize, "IMGUI");
         _IMGUIBuffers[windowGUID] = newBuffer;
         ret = newBuffer.get();
     }
 
-    GenericVertexData::IndexBuffer idxBuff;
+    GenericVertexData::IndexBuffer idxBuff{};
     idxBuff.smallIndices = sizeof(ImDrawIdx) == sizeof(U16);
     idxBuff.count = maxVertices * 3;
     idxBuff.dynamic = true;
@@ -3070,8 +3061,8 @@ bool GFXDevice::destroyIMP(IMPrimitive*& primitive) {
     return false;
 }
 
-VertexBuffer_ptr GFXDevice::newVB() {
-    return std::make_shared<VertexBuffer>(*this);
+VertexBuffer_ptr GFXDevice::newVB(const Str256& name) {
+    return std::make_shared<VertexBuffer>(*this, name);
 }
 
 GenericVertexData_ptr GFXDevice::newGVD(const U32 ringBufferLength, const char* name) {

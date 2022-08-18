@@ -103,7 +103,7 @@ void main(void) {
 //ref: https://github.com/itoral/vkdf/blob/9622f6a9e6602e06c5a42507202ad5a7daf917a4/data/spirv/ssao-blur.deferred.frag.input
 DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0)         uniform sampler2D texSSAO;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_DEPTH)         uniform sampler2D texDepthMap;
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_SCENE_NORMALS) uniform sampler2D texNormal;
+DESCRIPTOR_SET_RESOURCE(PER_PASS_SET, TEXTURE_SCENE_NORMALS) uniform sampler2D texNormal;
 
 uniform mat4 invProjectionMatrix;
 uniform vec2 _zPlanes;
@@ -185,7 +185,7 @@ void main() {
 //ref: https://github.com/itoral/vkdf/blob/9622f6a9e6602e06c5a42507202ad5a7daf917a4/data/spirv/ssao-blur.deferred.frag.input
 DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0)         uniform sampler2D texSSAO;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_DEPTH)         uniform sampler2D texDepthMap;
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_SCENE_NORMALS) uniform sampler2D texNormal;
+DESCRIPTOR_SET_RESOURCE(PER_PASS_SET, TEXTURE_SCENE_NORMALS) uniform sampler2D texNormal;
 
 uniform mat4 invProjectionMatrix;
 uniform vec2 _zPlanes;
@@ -274,7 +274,7 @@ void main() {
 
 --Fragment.SSAODownsample
 
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_SCENE_NORMALS) uniform sampler2D texNormal;
+DESCRIPTOR_SET_RESOURCE(PER_PASS_SET, TEXTURE_SCENE_NORMALS) uniform sampler2D texNormal;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_DEPTH)         uniform sampler2D texDepthMap;
 
 layout(location = 0) out vec3 _outColour;

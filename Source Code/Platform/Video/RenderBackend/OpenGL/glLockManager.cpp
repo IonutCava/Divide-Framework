@@ -31,7 +31,7 @@ void glLockManager::CleanExpiredSyncObjects(const U64 frameNumber) {
     ScopedLock<Mutex> r_lock(s_bufferLockLock);
     for (const SyncObject_uptr& syncObject : s_bufferLockPool) {
         ScopedLock<Mutex> w_lock(syncObject->_fenceLock);
-        if (syncObject->_impl._frameNumber <= frameNumber) {
+        if (syncObject->_impl._frameNumber < frameNumber) {
             syncObject->reset();
         }
     }
@@ -132,11 +132,13 @@ bool glLockManager::waitForLockedRange(const size_t lockBeginBytes,
     const BufferRange testRange{ lockBeginBytes, lockLength };
 
     bool error = false;
+    ScopedLock<Mutex> w_lock(_bufferLockslock);
     _swapLocks.resize(0);
-
-    ScopedLock<SharedMutex> w_lock(_bufferLockslock);
     for (BufferLockInstance& lock : _bufferLocks) {
-        assert(lock._syncObj != nullptr);
+        if (lock._syncObj == nullptr) {
+            // Lock expired from underneath us
+            continue;
+        }
 
         if (!Overlaps(testRange, lock._range)) {
             _swapLocks.push_back(lock);
@@ -145,7 +147,7 @@ bool glLockManager::waitForLockedRange(const size_t lockBeginBytes,
 
             ScopedLock<Mutex> w_lock_sync(lock._syncObj->_fenceLock);
             if (lock._syncObj->_impl._syncObject == nullptr ||
-                lock._syncObj->_impl._frameNumber <= GL_API::GetStateTracker()->_lastSyncedFrameNumber)
+                lock._syncObj->_impl._frameNumber < GL_API::GetStateTracker()->_lastSyncedFrameNumber)
             {
                 continue;
             }
@@ -174,7 +176,7 @@ bool glLockManager::lockRange(const size_t lockBeginBytes, const size_t lockLeng
 
     const BufferRange testRange{ lockBeginBytes, lockLength };
 
-    SharedLock<SharedMutex> w_lock(_bufferLockslock);
+    ScopedLock<Mutex> w_lock(_bufferLockslock);
     // See if we can reuse an old lock. Ignore the old fence since the new one will guard the same mem region. (Right?)
     for (BufferLockInstance& lock : _bufferLocks) {
         if (Overlaps(testRange, lock._range)) {

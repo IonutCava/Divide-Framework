@@ -107,6 +107,8 @@ namespace Divide {
                      Image,
                      ImageViewEntry> _resource{};
 
+        [[nodiscard]] bool isSet() const noexcept;
+
         template<typename T>
         [[nodiscard]] T& As() noexcept;
         template<typename T>

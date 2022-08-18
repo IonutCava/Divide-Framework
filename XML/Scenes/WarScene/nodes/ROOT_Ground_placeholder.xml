@@ -5,8 +5,8 @@
 <TRANSFORM>
     <Transform>
         <position x="100" y="14.75" z="-50"/>
-        <orientation x="-89.8056564" y="4.74065071e-15" z="2.1715528e-18"/>
-        <scale x="102.562851" y="102.06208" z="102.613083"/>
+        <orientation x="-89.8056641" y="4.74065028e-15" z="2.1717809e-18"/>
+        <scale x="102.562851" y="102.562851" z="102.562851"/>
     </Transform>
 </TRANSFORM>
 <BOUNDS/>
@@ -37,7 +37,7 @@
                 <zUnits>0</zUnits>
                 <zFunc>LEQUAL</zFunc>
                 <tessControlPoints>3</tessControlPoints>
-                <cullMode>CW/BACK</cullMode>
+                <cullMode>BACK</cullMode>
                 <fillMode>Solid</fillMode>
                 <frontFaceCCW>true</frontFaceCCW>
                 <scissorTestEnabled>false</scissorTestEnabled>
@@ -121,8 +121,10 @@
             <PerStagePass index="2" stage="1" pass="1" variant="0"/>
             <PerStagePass index="2" stage="1" pass="1" variant="1"/>
             <PerStagePass index="2" stage="1" pass="2" variant="0"/>
+            <PerStagePass index="2" stage="1" pass="3" variant="1"/>
             <PerStagePass index="1" stage="2" pass="0" variant="0"/>
             <PerStagePass index="2" stage="2" pass="1" variant="0"/>
+            <PerStagePass index="2" stage="2" pass="3" variant="0"/>
             <PerStagePass index="3" stage="3" pass="0" variant="0"/>
             <PerStagePass index="2" stage="3" pass="1" variant="0"/>
             <PerStagePass index="2" stage="3" pass="2" variant="0"/>

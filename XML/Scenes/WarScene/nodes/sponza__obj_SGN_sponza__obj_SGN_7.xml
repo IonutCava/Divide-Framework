@@ -31,6 +31,100 @@
         <transparencyEnabled>true</transparencyEnabled>
         <useAlphaDiscard>true</useAlphaDiscard>
         <isRefractive>false</isRefractive>
+        <RenderStates>
+            <0>
+                <colourWrite r="true" g="true" b="false" a="false"/>
+                <zBias>0</zBias>
+                <zUnits>0</zUnits>
+                <zFunc>LEQUAL</zFunc>
+                <tessControlPoints>3</tessControlPoints>
+                <cullMode>BACK</cullMode>
+                <fillMode>Solid</fillMode>
+                <frontFaceCCW>true</frontFaceCCW>
+                <scissorTestEnabled>false</scissorTestEnabled>
+                <depthTestEnabled>true</depthTestEnabled>
+                <stencilEnable>false</stencilEnable>
+                <stencilFailOp>KEEP</stencilFailOp>
+                <stencilPassOp>KEEP</stencilPassOp>
+                <stencilZFailOp>KEEP</stencilZFailOp>
+                <stencilFunc>NEVER</stencilFunc>
+                <stencilRef>0</stencilRef>
+                <stencilMask>4294967295</stencilMask>
+                <stencilWriteMask>4294967295</stencilWriteMask>
+            </0>
+            <1>
+                <colourWrite r="false" g="false" b="false" a="false"/>
+                <zBias>0</zBias>
+                <zUnits>0</zUnits>
+                <zFunc>LEQUAL</zFunc>
+                <tessControlPoints>3</tessControlPoints>
+                <cullMode>BACK</cullMode>
+                <fillMode>Solid</fillMode>
+                <frontFaceCCW>true</frontFaceCCW>
+                <scissorTestEnabled>false</scissorTestEnabled>
+                <depthTestEnabled>true</depthTestEnabled>
+                <stencilEnable>false</stencilEnable>
+                <stencilFailOp>KEEP</stencilFailOp>
+                <stencilPassOp>KEEP</stencilPassOp>
+                <stencilZFailOp>KEEP</stencilZFailOp>
+                <stencilFunc>NEVER</stencilFunc>
+                <stencilRef>0</stencilRef>
+                <stencilMask>4294967295</stencilMask>
+                <stencilWriteMask>4294967295</stencilWriteMask>
+            </1>
+            <2>
+                <colourWrite r="true" g="true" b="true" a="true"/>
+                <zBias>0</zBias>
+                <zUnits>0</zUnits>
+                <zFunc>EQUAL</zFunc>
+                <tessControlPoints>3</tessControlPoints>
+                <cullMode>BACK</cullMode>
+                <fillMode>Solid</fillMode>
+                <frontFaceCCW>true</frontFaceCCW>
+                <scissorTestEnabled>false</scissorTestEnabled>
+                <depthTestEnabled>true</depthTestEnabled>
+                <stencilEnable>false</stencilEnable>
+                <stencilFailOp>KEEP</stencilFailOp>
+                <stencilPassOp>KEEP</stencilPassOp>
+                <stencilZFailOp>KEEP</stencilZFailOp>
+                <stencilFunc>NEVER</stencilFunc>
+                <stencilRef>0</stencilRef>
+                <stencilMask>4294967295</stencilMask>
+                <stencilWriteMask>4294967295</stencilWriteMask>
+            </2>
+            <3>
+                <colourWrite r="true" g="true" b="true" a="true"/>
+                <zBias>0</zBias>
+                <zUnits>0</zUnits>
+                <zFunc>LEQUAL</zFunc>
+                <tessControlPoints>3</tessControlPoints>
+                <cullMode>BACK</cullMode>
+                <fillMode>Solid</fillMode>
+                <frontFaceCCW>true</frontFaceCCW>
+                <scissorTestEnabled>false</scissorTestEnabled>
+                <depthTestEnabled>true</depthTestEnabled>
+                <stencilEnable>false</stencilEnable>
+                <stencilFailOp>KEEP</stencilFailOp>
+                <stencilPassOp>KEEP</stencilPassOp>
+                <stencilZFailOp>KEEP</stencilZFailOp>
+                <stencilFunc>NEVER</stencilFunc>
+                <stencilRef>0</stencilRef>
+                <stencilMask>4294967295</stencilMask>
+                <stencilWriteMask>4294967295</stencilWriteMask>
+            </3>
+        </RenderStates>
+        <RenderStateIndex>
+            <PerStagePass index="0" stage="0" pass="1" variant="0"/>
+            <PerStagePass index="1" stage="1" pass="0" variant="0"/>
+            <PerStagePass index="2" stage="1" pass="1" variant="0"/>
+            <PerStagePass index="2" stage="1" pass="2" variant="0"/>
+            <PerStagePass index="1" stage="2" pass="0" variant="0"/>
+            <PerStagePass index="2" stage="2" pass="1" variant="0"/>
+            <PerStagePass index="2" stage="2" pass="3" variant="0"/>
+            <PerStagePass index="3" stage="3" pass="0" variant="0"/>
+            <PerStagePass index="2" stage="3" pass="1" variant="0"/>
+            <PerStagePass index="2" stage="3" pass="2" variant="0"/>
+        </RenderStateIndex>
         <texture>
             <UNIT0>
                 <name>sponza/sponza_ceiling_a_diff.png</name>
@@ -54,7 +148,7 @@
         <SamplerDescriptors>
             <1>
                 <Sampler>
-                    <Filter min="LINEAR_MIPMAP_LINEAR" mag="LINEAR"/>
+                    <Filter min="LINEAR" mag="LINEAR" sampling="LINEAR"/>
                     <Map U="REPEAT" V="REPEAT" W="REPEAT"/>
                     <useRefCompare>false</useRefCompare>
                     <comparisonFunction>LEQUAL</comparisonFunction>

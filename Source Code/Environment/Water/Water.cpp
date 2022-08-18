@@ -169,6 +169,12 @@ bool WaterPlane::load() {
 
     const Str256& name = resourceName();
 
+    ResourceDescriptor waterPlane("waterPlane");
+    waterPlane.flag(true);  // No default material
+    waterPlane.waitForReady(true);
+
+    _plane = CreateResource<Quad3D>(_parentCache, waterPlane);
+
     SamplerDescriptor defaultSampler = {};
     defaultSampler.wrapUVW(TextureWrap::REPEAT);
     defaultSampler.anisotropyLevel(4);
@@ -225,18 +231,11 @@ bool WaterPlane::load() {
         return shaderDescriptor;
     });
 
-
     waterMat->properties().roughness(0.01f);
     waterMat->setPipelineLayout(PrimitiveTopology::TRIANGLE_STRIP, _plane->geometryBuffer()->generateAttributeMap());
 
     setMaterialTpl(waterMat);
-    
-    ResourceDescriptor waterPlane("waterPlane");
-    waterPlane.flag(true);  // No default material
-    waterPlane.waitForReady(true);
 
-    _plane = CreateResource<Quad3D>(_parentCache, waterPlane);
-    
     const F32 halfWidth = _dimensions.width * 0.5f;
     const F32 halfLength = _dimensions.height * 0.5f;
 
@@ -365,8 +364,8 @@ void WaterPlane::updateRefraction(RenderPassManager* passManager, RenderCbkParam
 
     RenderPassParams params = {};
     params._sourceNode = renderParams._sgn;
-    params._targetHIZ = {}; // We don't need to HiZ cull refractions
-    params._targetOIT = {}; // We don't need to draw refracted transparents using woit 
+    // We don't need to HiZ cull refractions
+    // We don't need to draw refracted transparents using woit 
     params._minExtents.set(1.0f);
     params._stagePass = { RenderStage::REFRACTION, RenderPassType::COUNT, renderParams._passIndex, RenderStagePass::VariantType::VARIANT_0 };
     params._target = renderParams._renderTarget;

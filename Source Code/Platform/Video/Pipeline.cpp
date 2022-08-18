@@ -12,6 +12,7 @@ size_t GetHash(const PipelineDescriptor& descriptor) {
     Util::Hash_combine(hash, descriptor._multiSampleCount,
                              descriptor._shaderProgramHandle._generation,
                              descriptor._shaderProgramHandle._id,
+                             descriptor._primitiveRestartEnabled,
                              descriptor._primitiveTopology);
 
     for (U8 i = 0u; i < to_base(ShaderType::COUNT); ++i) {
@@ -30,7 +31,8 @@ bool operator==(const PipelineDescriptor& lhs, const PipelineDescriptor& rhs) {
            lhs._multiSampleCount == rhs._multiSampleCount &&
            lhs._shaderProgramHandle == rhs._shaderProgramHandle &&
            lhs._blendStates == rhs._blendStates &&
-           lhs._vertexFormat == rhs._vertexFormat;
+           lhs._vertexFormat == rhs._vertexFormat &&
+           lhs._primitiveRestartEnabled == rhs._primitiveRestartEnabled;
 }
 
 bool operator!=(const PipelineDescriptor& lhs, const PipelineDescriptor& rhs) {
@@ -39,7 +41,8 @@ bool operator!=(const PipelineDescriptor& lhs, const PipelineDescriptor& rhs) {
            lhs._multiSampleCount != rhs._multiSampleCount ||
            lhs._shaderProgramHandle != rhs._shaderProgramHandle ||
            lhs._blendStates != rhs._blendStates ||
-           lhs._vertexFormat != rhs._vertexFormat;
+           lhs._vertexFormat != rhs._vertexFormat ||
+           lhs._primitiveRestartEnabled != rhs._primitiveRestartEnabled;
 }
 
 Pipeline::Pipeline(const PipelineDescriptor& descriptor)

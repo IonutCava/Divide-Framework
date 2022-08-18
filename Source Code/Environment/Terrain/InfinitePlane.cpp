@@ -33,6 +33,16 @@ bool InfinitePlane::load() {
 
     setState(ResourceState::RES_LOADING);
 
+    ResourceDescriptor infinitePlane("infinitePlane");
+    infinitePlane.flag(true);  // No default material
+    infinitePlane.waitForReady(true);
+    infinitePlane.ID(150u);
+    infinitePlane.data().set(Util::FLOAT_TO_UINT(_dimensions.x * 2.f),
+                             0u,
+                             Util::FLOAT_TO_UINT(_dimensions.y * 2.f));
+
+    _plane = CreateResource<Quad3D>(_parentCache, infinitePlane);
+
     ResourceDescriptor planeMaterialDescriptor("infinitePlaneMaterial");
     Material_ptr planeMaterial = CreateResource<Material>(_parentCache, planeMaterialDescriptor);
     planeMaterial->properties().shadingMode(ShadingMode::BLINN_PHONG);
@@ -77,19 +87,11 @@ bool InfinitePlane::load() {
 
         return shaderDescriptor;
     });
+
     planeMaterial->setPipelineLayout(PrimitiveTopology::TRIANGLE_STRIP, _plane->geometryBuffer()->generateAttributeMap());
 
     setMaterialTpl(planeMaterial);
 
-    ResourceDescriptor infinitePlane("infinitePlane");
-    infinitePlane.flag(true);  // No default material
-    infinitePlane.waitForReady(true);
-    infinitePlane.ID(150u);
-    infinitePlane.data().set(Util::FLOAT_TO_UINT(_dimensions.x * 2.f),
-                            0u,
-                            Util::FLOAT_TO_UINT(_dimensions.y * 2.f));
-
-    _plane = CreateResource<Quad3D>(_parentCache, infinitePlane);
     _boundingBox.set(vec3<F32>(-(_dimensions.x * 1.5f), -0.5f, -(_dimensions.y * 1.5f)),
                      vec3<F32>(  _dimensions.x * 1.5f,   0.5f,   _dimensions.y * 1.5f));
 

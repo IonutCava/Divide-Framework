@@ -366,6 +366,8 @@ void MenuBar::draw() {
                     if (g_nodeDescriptor._name.empty()) {
                         PopReadOnly();
                     }
+
+                    std::memset(buf, 0, 64 * sizeof(char));
                     ImGui::EndPopup();
                 }
             }

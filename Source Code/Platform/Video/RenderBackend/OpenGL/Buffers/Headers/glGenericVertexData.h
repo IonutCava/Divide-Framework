@@ -85,10 +85,7 @@ class glGenericVertexData final : public GenericVertexData {
         bool _useAutoSyncObjects{ true };
     };
 
-    struct IndexBufferEntry {
-        IndexBufferEntry() = default;
-        ~IndexBufferEntry();
-
+    struct IndexBufferEntry : public NonCopyable {
         IndexBuffer _data;
         GLuint _handle{ GLUtil::k_invalidObjectID };
     };

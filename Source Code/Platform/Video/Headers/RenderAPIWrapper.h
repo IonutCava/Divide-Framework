@@ -90,6 +90,10 @@ struct PerformanceMetrics
     U32 _syncObjectsInFlight[3]{};
     /// Scratch buffer queue usage
     U32 _scratchBufferQueueUsage[2]{};
+    /// Total VRAM used for shader uniform storage across all used shader programs
+    size_t _uniformBufferVRAMUsage{0u};
+    /// Total VRAM usage for all shader buffers
+    size_t _bufferVRAMUsage{ 0u };
 };
 
 struct DeviceInformation
@@ -142,8 +146,6 @@ protected:
 
     virtual ErrorCode initRenderingAPI(I32 argc, char** argv, Configuration& config) = 0;
     virtual void closeRenderingAPI() = 0;
-
-    [[nodiscard]] virtual const PerformanceMetrics& getPerformanceMetrics() const noexcept = 0;
 
     virtual void preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) = 0;
     virtual void flushCommand(GFX::CommandBase* cmd) = 0;

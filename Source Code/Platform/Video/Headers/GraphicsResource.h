@@ -36,7 +36,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 
 class GFXDevice;
-class GraphicsResource : NonCopyable, NonMovable {
+class GraphicsResource : public NonCopyable, public NonMovable {
 public:
     enum class Type : U8 {
         RENDER_TARGET,

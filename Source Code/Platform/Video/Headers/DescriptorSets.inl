@@ -92,6 +92,10 @@ namespace Divide {
                lhs._data != rhs._data;
     }
 
+    FORCE_INLINE bool DescriptorSetBindingData::isSet() const noexcept {
+        return _resource.index() != 0;
+    }
+
     template<typename T>
     FORCE_INLINE T& DescriptorSetBindingData::As() noexcept {
         if (_resource.index() == 0) {

@@ -4,7 +4,7 @@
     <Transform>
         <position x="0.155974999" y="0" z="0"/>
         <orientation x="0" y="0" z="-0.129087567"/>
-        <scale x="0.999999523" y="0.999999523" z="1"/>
+        <scale x="0.999999523" y="0.999999523" z="0.999999523"/>
     </Transform>
 </TRANSFORM>
 <NETWORKING/>

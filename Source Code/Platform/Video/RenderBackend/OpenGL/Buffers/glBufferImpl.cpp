@@ -84,8 +84,10 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params, c
     }
 
     if (!Runtime::isMainThread()) {
-        _lockManager.lockRange(0u, params._dataSize);
+        _lockManager.lockRange(0u, _params._dataSize);
     }
+
+    context.getPerformanceMetrics()._bufferVRAMUsage += params._dataSize;
 }
 
 glBufferImpl::~glBufferImpl()
@@ -102,6 +104,9 @@ glBufferImpl::~glBufferImpl()
             GLUtil::freeBuffer(_memoryBlock._bufferHandle);
             GLUtil::freeBuffer(_copyBufferTarget);
         }
+
+        _context.getPerformanceMetrics()._bufferVRAMUsage -= _params._dataSize;
+        _context.getPerformanceMetrics()._bufferVRAMUsage -= _copyBufferSize;
     }
 }
 
@@ -172,6 +177,8 @@ void glBufferImpl::readBytes(const size_t offsetInBytes, const size_t rangeInByt
                                          _copyBufferTarget,
                                          {nullptr, 0u},
                                          Util::StringFormat("COPY_BUFFER_%d", _memoryBlock._bufferHandle).c_str());
+
+            _context.getPerformanceMetrics()._bufferVRAMUsage += _copyBufferSize;
         }
         glCopyNamedBufferSubData(_memoryBlock._bufferHandle, _copyBufferTarget, _memoryBlock._offset + offsetInBytes, 0u, rangeInBytes);
 

@@ -156,7 +156,7 @@ class IMPrimitive final {
     void getCommandBuffer(GFX::CommandBuffer& commandBufferInOut);
     void getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuffer& commandBufferInOut);
 
-    PROPERTY_RW(Str64, name);
+    PROPERTY_R(Str64, name);
     PROPERTY_RW(bool, forceWireframe, false);
 
    protected:

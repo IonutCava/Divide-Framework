@@ -451,8 +451,6 @@ PhysicsAsset* PhysX::createRigidActor(SceneGraphNode* node, RigidBodyComponent& 
 
         newActor->_type = physx::PxGeometryType::eBOX;
 
-        
-
         const physx::PxBoxGeometry geometry = { hExtent.x, hExtent.y, hExtent.z};
         physx::PxShape* shape = physx::PxRigidActorExt::createExclusiveShape(*newActor->_actor, geometry, *_defaultMaterial);
         if (sNode.type() == SceneNodeType::TYPE_WATER) {

@@ -103,9 +103,9 @@ void FillSmallData(const vector<VertexBuffer::Vertex>& dataIn, Byte* dataOut, co
 
 } //namespace
 
-VertexBuffer::VertexBuffer(GFXDevice& context)
+VertexBuffer::VertexBuffer(GFXDevice& context, const Str256& name)
     : VertexDataInterface(context, nullptr)
-    , _internalGVD(context.newGVD(1u))
+    , _internalGVD(context.newGVD(1u, name.c_str()))
 {
 }
 
@@ -466,7 +466,7 @@ void VertexBuffer::refresh() {
 void VertexBuffer::draw(const GenericDrawCommand& command, VDIUserData* data) {
     // Check if we have a refresh request queued up
     refresh();
-
+    _internalGVD->primitiveRestartRequired(primitiveRestartRequired());
     _internalGVD->draw(command, data);
 }
 

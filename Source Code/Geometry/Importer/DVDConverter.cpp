@@ -314,7 +314,7 @@ bool Load(PlatformContext& context, Import::ImportData& target) {
 namespace detail {
 
 void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target) {
-    target._vertexBuffer = context.gfx().newVB();
+    target._vertexBuffer = context.gfx().newVB(target.modelName().c_str());
 
     VertexBuffer* vb = target._vertexBuffer.get();
 

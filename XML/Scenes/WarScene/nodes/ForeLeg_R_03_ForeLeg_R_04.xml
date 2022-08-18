@@ -3,8 +3,8 @@
 <TRANSFORM>
     <Transform>
         <position x="0.170554996" y="0" z="0"/>
-        <orientation x="-0.546089709" y="1.15904903" z="21.365099"/>
-        <scale x="0.999999523" y="1.00000012" z="1.00000012"/>
+        <orientation x="-0.546089768" y="1.15904903" z="21.365099"/>
+        <scale x="0.999999523" y="0.999999523" z="0.999999523"/>
     </Transform>
 </TRANSFORM>
 <NETWORKING/>

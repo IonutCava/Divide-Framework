@@ -11,13 +11,6 @@
 
 namespace Divide {
 
-glGenericVertexData::IndexBufferEntry::~IndexBufferEntry()
-{
-    if (_handle != GLUtil::k_invalidObjectID) {
-        GLUtil::freeBuffer(_handle);
-    }
-}
-
 glGenericVertexData::glGenericVertexData(GFXDevice& context, const U32 ringBufferLength, const char* name)
     : GenericVertexData(context, ringBufferLength, name)
 {
@@ -25,6 +18,11 @@ glGenericVertexData::glGenericVertexData(GFXDevice& context, const U32 ringBuffe
 
 void glGenericVertexData::reset() {
     _bufferObjects.clear();
+    for (auto& idx : _idxBuffers) {
+        if (idx._handle != GLUtil::k_invalidObjectID) {
+            GLUtil::freeBuffer(idx._handle);
+        }
+    }
     _idxBuffers.clear();
 }
 
@@ -74,8 +72,8 @@ void glGenericVertexData::setIndexBuffer(const IndexBuffer& indices) {
     }
 
     if (!found) {
-        _idxBuffers.push_back({ indices, GLUtil::k_invalidObjectID });
-        oldIdxBufferEntry = &_idxBuffers.back();
+        oldIdxBufferEntry = &_idxBuffers.emplace_back();
+        oldIdxBufferEntry->_data = indices;
     } else if (oldIdxBufferEntry->_handle != GLUtil::k_invalidObjectID &&
                (!AreCompatible(oldIdxBufferEntry->_data, indices) || indices.count == 0u))
     {
@@ -107,7 +105,7 @@ void glGenericVertexData::setIndexBuffer(const IndexBuffer& indices) {
 
             GLUtil::createBuffer(_indexBufferSize,
                                  oldIdxBufferEntry->_handle,
-                                 _name.empty() ? nullptr : (_name + "_index").c_str());
+                                 _name.empty() ? nullptr : Util::StringFormat("%s_index_%d", _name.c_str(), _idxBuffers.size() - 1u).c_str());
         }
 
         const size_t range = indices.count * elementSize;

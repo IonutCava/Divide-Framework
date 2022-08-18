@@ -301,7 +301,7 @@ bool Material::setSampler(const TextureUsage textureUsageSlot, const size_t samp
     return true;
 }
 
-bool Material::setTexture(const TextureUsage textureUsageSlot, const Texture_ptr& texture, const size_t samplerHash, const TextureOperation op, const TexturePrePassUsage prePassUsage)
+bool Material::setTextureLocked(const TextureUsage textureUsageSlot, const Texture_ptr& texture, const size_t samplerHash, const TextureOperation op, const TexturePrePassUsage prePassUsage)
 {
     // Invalidate our descriptor sets
     _descriptorSetMainPass.resize(0);
@@ -311,38 +311,40 @@ bool Material::setTexture(const TextureUsage textureUsageSlot, const Texture_ptr
 
     TextureInfo& texInfo = _textures[slot];
 
-    if (samplerHash != _textures[slot]._sampler) {
+    if (samplerHash != texInfo._sampler) {
         setSampler(textureUsageSlot, samplerHash);
     }
 
     setTextureOperation(textureUsageSlot, texture ? op : TextureOperation::NONE);
 
-    {
-        ScopedLock<SharedMutex> w_lock(_textureLock);
-        if (texInfo._ptr != nullptr) {
-            // Skip adding same texture
-            if (texture != nullptr && texInfo._ptr->getGUID() == texture->getGUID()) {
-                return true;
-            }
+    if (texInfo._ptr != nullptr) {
+        // Skip adding same texture
+        if (texture != nullptr && texInfo._ptr->getGUID() == texture->getGUID()) {
+            return true;
         }
+    }
 
-        texInfo._useForPrePass = texture ? prePassUsage : TexturePrePassUsage::AUTO;
-        texInfo._ptr = texture;
+    texInfo._useForPrePass = texture ? prePassUsage : TexturePrePassUsage::AUTO;
+    texInfo._ptr = texture;
 
-        if (textureUsageSlot == TextureUsage::METALNESS) {
-            properties()._usePackedOMR = (texture != nullptr && texture->numChannels() > 2u);
-        }
+    if (textureUsageSlot == TextureUsage::METALNESS) {
+        properties()._usePackedOMR = (texture != nullptr && texture->numChannels() > 2u);
+    }
         
-        if (textureUsageSlot == TextureUsage::UNIT0 ||
-            textureUsageSlot == TextureUsage::OPACITY)
-        {
-            updateTransparency();
-        }
+    if (textureUsageSlot == TextureUsage::UNIT0 ||
+        textureUsageSlot == TextureUsage::OPACITY)
+    {
+        updateTransparency();
     }
 
     properties()._needsNewShader = true;
 
     return true;
+}
+
+bool Material::setTexture(const TextureUsage textureUsageSlot, const Texture_ptr& texture, const size_t samplerHash, const TextureOperation op, const TexturePrePassUsage prePassUsage) {
+    ScopedLock<SharedMutex> w_lock(_textureLock);
+    return setTextureLocked(textureUsageSlot, texture, samplerHash, op, prePassUsage);
 }
 
 void Material::setTextureOperation(const TextureUsage textureUsageSlot, const TextureOperation op) {
@@ -1060,7 +1062,6 @@ void Material::saveTextureDataToXML(const string& entryName, boost::property_tre
 void Material::loadTextureDataFromXML(const string& entryName, const boost::property_tree::ptree& pt) {
     hashMap<U32, size_t> previousHashValues;
 
-    ScopedLock<SharedMutex> w_lock(_textureLock);
     for (const TextureUsage usage : g_materialTextures) {
         if (pt.get_child_optional(entryName + ".texture." + TypeUtil::TextureUsageToString(usage) + ".name")) {
             const string textureNode = entryName + ".texture." + TypeUtil::TextureUsageToString(usage);
@@ -1073,6 +1074,7 @@ void Material::loadTextureDataFromXML(const string& entryName, const boost::prop
             }
 
             if (!texName.empty()) {
+                ScopedLock<SharedMutex> w_lock(_textureLock);
                 _textures[to_base(usage)]._useForPrePass = static_cast<TexturePrePassUsage>(pt.get<U32>(textureNode + ".UseForPrePass", to_U32(_textures[to_base(usage)]._useForPrePass)));
                 const U32 index = pt.get<U32>(textureNode + ".Sampler.id", 0);
                 const auto& it = previousHashValues.find(index);
@@ -1107,7 +1109,7 @@ void Material::loadTextureDataFromXML(const string& entryName, const boost::prop
                 texture.waitForReady(true);
 
                 Texture_ptr tex = CreateResource<Texture>(_context.parent().resourceCache(), texture);
-                setTexture(usage, tex, hash, op);
+                setTextureLocked(usage, tex, hash, op, TexturePrePassUsage::AUTO);
             }
         }
     }

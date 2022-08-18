@@ -40,7 +40,7 @@
                 <zUnits>0</zUnits>
                 <zFunc>LEQUAL</zFunc>
                 <tessControlPoints>3</tessControlPoints>
-                <cullMode>CW/BACK</cullMode>
+                <cullMode>BACK</cullMode>
                 <fillMode>Solid</fillMode>
                 <frontFaceCCW>true</frontFaceCCW>
                 <scissorTestEnabled>false</scissorTestEnabled>
@@ -60,7 +60,7 @@
                 <zUnits>0</zUnits>
                 <zFunc>LEQUAL</zFunc>
                 <tessControlPoints>3</tessControlPoints>
-                <cullMode>CW/BACK</cullMode>
+                <cullMode>BACK</cullMode>
                 <fillMode>Solid</fillMode>
                 <frontFaceCCW>true</frontFaceCCW>
                 <scissorTestEnabled>false</scissorTestEnabled>
@@ -80,7 +80,7 @@
                 <zUnits>0</zUnits>
                 <zFunc>EQUAL</zFunc>
                 <tessControlPoints>3</tessControlPoints>
-                <cullMode>CW/BACK</cullMode>
+                <cullMode>BACK</cullMode>
                 <fillMode>Solid</fillMode>
                 <frontFaceCCW>true</frontFaceCCW>
                 <scissorTestEnabled>false</scissorTestEnabled>

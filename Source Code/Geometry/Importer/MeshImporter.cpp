@@ -105,7 +105,7 @@ namespace Import {
                 }
                 tempBuffer >> _modelName;
                 tempBuffer >> _modelPath;
-                _vertexBuffer = context.gfx().newVB();
+                _vertexBuffer = context.gfx().newVB(_modelName.c_str());
                 if (_vertexBuffer->deserialize(tempBuffer)) {
                     U32 subMeshCount = 0;
                     tempBuffer >> subMeshCount;

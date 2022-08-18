@@ -6,7 +6,7 @@
     <Transform>
         <position x="150" y="15" z="8.21257877"/>
         <orientation x="0" y="-0" z="0"/>
-        <scale x="1" y="0.99676019" z="0.99676019"/>
+        <scale x="1" y="1" z="1"/>
     </Transform>
 </TRANSFORM>
 <BOUNDS/>

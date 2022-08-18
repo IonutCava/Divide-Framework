@@ -110,7 +110,7 @@ namespace Divide {
 
     class UniformBlockUploader {
     public:
-        constexpr static size_t RingBufferLength = 6u;
+        constexpr static U32 RingBufferLength = 6u;
 
         struct BlockMember
         {
@@ -120,22 +120,34 @@ namespace Divide {
             size_t _elementSize{ 0 };
         };
 
+        static void Idle();
 
         explicit UniformBlockUploader(GFXDevice& context, const UniformBlockUploaderDescriptor& descriptor);
 
         void uploadPushConstant(const GFX::PushConstant& constant, bool force = false) noexcept;
         void commit(GFX::MemoryBarrierCommand& memCmdInOut);
         void prepare();
+        void onFrameEnd() noexcept;
 
         PROPERTY_R_IW(UniformBlockUploaderDescriptor, descriptor);
+
+        [[nodiscard]] size_t totalBufferSize() const noexcept;
+
     private:
+        void resizeBlockBuffer(bool increaseSize);
+
+    private:
+        GFXDevice& _context;
         vector<Byte> _localDataCopy;
         vector<BlockMember> _blockMembers;
-        ShaderBuffer_uptr _buffer = nullptr;
-        size_t _uniformBlockSizeAligned = 0u;
-        bool _uniformBlockDirty = false;
-        bool _needsQueueIncrement = false;
+        ShaderBuffer_uptr _buffer{ nullptr };
+        size_t _uniformBlockSizeAligned{ 0u };
+        bool _uniformBlockDirty{ false };
+        bool _needsQueueIncrement{ false };
 
+        bool _needsResize{ false };
+        U32 _bufferWritesThisFrame{ 0u };
+        U32 _bufferSizeFactor{ 0u };
     };
 
 }; // namespace Divide

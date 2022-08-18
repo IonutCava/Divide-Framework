@@ -626,25 +626,25 @@ void GL_API::endFrameGlobal(const DisplayWindow& window) {
         _queryIdxForCurrentFrame = (_queryIdxForCurrentFrame + 1) % to_base(GlobalQueryTypes::COUNT);
 
         if (g_runAllQueriesInSameFrame || _queryIdxForCurrentFrame == 0) {
-            _perfMetrics._gpuTimeInMS = Time::NanosecondsToMilliseconds<F32>(results[to_base(GlobalQueryTypes::GPU_TIME)]);
-            _perfMetrics._verticesSubmitted = to_U64(results[to_base(GlobalQueryTypes::VERTICES_SUBMITTED)]);
-            _perfMetrics._primitivesGenerated = to_U64(results[to_base(GlobalQueryTypes::PRIMITIVES_GENERATED)]);
-            _perfMetrics._tessellationPatches = to_U64(results[to_base(GlobalQueryTypes::TESSELLATION_PATCHES)]);
-            _perfMetrics._tessellationInvocations = to_U64(results[to_base(GlobalQueryTypes::TESSELLATION_EVAL_INVOCATIONS)]);
+            _context.getPerformanceMetrics()._gpuTimeInMS = Time::NanosecondsToMilliseconds<F32>(results[to_base(GlobalQueryTypes::GPU_TIME)]);
+            _context.getPerformanceMetrics()._verticesSubmitted = to_U64(results[to_base(GlobalQueryTypes::VERTICES_SUBMITTED)]);
+            _context.getPerformanceMetrics()._primitivesGenerated = to_U64(results[to_base(GlobalQueryTypes::PRIMITIVES_GENERATED)]);
+            _context.getPerformanceMetrics()._tessellationPatches = to_U64(results[to_base(GlobalQueryTypes::TESSELLATION_PATCHES)]);
+            _context.getPerformanceMetrics()._tessellationInvocations = to_U64(results[to_base(GlobalQueryTypes::TESSELLATION_EVAL_INVOCATIONS)]);
         }
     }
 
     const size_t fenceSize = std::size(s_fenceSyncCounter);
 
-    for (size_t i = 0u; i < std::size(_perfMetrics._syncObjectsInFlight); ++i) {
-        _perfMetrics._syncObjectsInFlight[i] = i < fenceSize ? s_fenceSyncCounter[i] : 0u;
+    for (size_t i = 0u; i < std::size(_context.getPerformanceMetrics()._syncObjectsInFlight); ++i) {
+        _context.getPerformanceMetrics()._syncObjectsInFlight[i] = i < fenceSize ? s_fenceSyncCounter[i] : 0u;
     }
 
-    _perfMetrics._generatedRenderTargetCount = to_U32(_context.renderTargetPool().getRenderTargets().size());
+    _context.getPerformanceMetrics()._generatedRenderTargetCount = to_U32(_context.renderTargetPool().getRenderTargets().size());
     _runQueries = _context.queryPerformanceStats();
 
     GetStateTracker()->_endFrameFences.push(CreateFrameFenceSync());
-    _perfMetrics._queuedGPUFrames = GetStateTracker()->_endFrameFences.size();
+    _context.getPerformanceMetrics()._queuedGPUFrames = GetStateTracker()->_endFrameFences.size();
 }
 
 /// Finish rendering the current frame
@@ -1481,15 +1481,6 @@ bool GL_API::bindShaderResources(const DescriptorSetUsage usage, const Descripto
     };
     static ImageSamplerBinding samplerBindings[to_base(TextureType::COUNT)];
 
-    if (usage != DescriptorSetUsage::PER_DRAW_SET) {
-        auto& descriptorSet = _context.descriptorSets()._globalDescriptorSets[to_base(usage)];
-        for (auto& binding : bindings) {
-            descriptorSet.update(binding._slot, binding._data);
-        }
-
-        return true;
-    }
-
     U8 imageSamplerCount = 0u;
     for (auto& srcBinding : bindings) {
         switch (srcBinding._data.Type()) {
@@ -1758,7 +1749,6 @@ GLuint GL_API::GetSamplerHandle(const size_t samplerHash) {
             }
         }
         {
-
             ScopedLock<SharedMutex> w_lock(s_samplerMapLock);
             // Check again
             const SamplerObjectMap::const_iterator it = s_samplerMap.find(samplerHash);

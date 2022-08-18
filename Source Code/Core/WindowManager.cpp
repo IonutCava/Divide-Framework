@@ -427,8 +427,8 @@ ErrorCode WindowManager::applyAPISettings(const RenderAPI api, DisplayWindow* wi
 
     if (window->_userData == nullptr) {
         Console::errorfn(Locale::Get(_ID("ERROR_GFX_DEVICE")), SDL_GetError());
-        Console::printfn(Locale::Get(_ID("WARN_SWITCH_API")));
-        Console::printfn(Locale::Get(_ID("WARN_APPLICATION_CLOSE")));
+        Console::warnfn(Locale::Get(_ID("WARN_SWITCH_API")));
+        Console::warnfn(Locale::Get(_ID("WARN_APPLICATION_CLOSE")));
         return ErrorCode::GL_OLD_HARDWARE;
     }
 
@@ -441,6 +441,9 @@ ErrorCode WindowManager::applyAPISettings(const RenderAPI api, DisplayWindow* wi
             // Late swap may fail
             if (_context->config().runtime.adaptiveSync) {
                 vsyncSet = SDL_GL_SetSwapInterval(-1) != -1;
+                if (!vsyncSet) {
+                    Console::warnfn(Locale::Get(_ID("WARN_ADAPTIVE_SYNC_NOT_SUPPORTED")));
+                }
             }
 
             if (!vsyncSet) {

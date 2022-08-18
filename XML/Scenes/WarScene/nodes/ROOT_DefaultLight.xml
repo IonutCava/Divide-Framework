@@ -3,14 +3,14 @@
 <TRANSFORM>
     <Transform>
         <position x="0" y="0" z="0"/>
-        <orientation x="-92.1136475" y="-12.9180222" z="13.4025698"/>
-        <scale x="0.99987042" y="0.999870777" z="0.999772847"/>
+        <orientation x="-64.3144608" y="-15.4844332" z="9.76007557"/>
+        <scale x="0.99987042" y="0.99987042" z="0.99987042"/>
     </Transform>
 </TRANSFORM>
 <RENDERING/>
 <NETWORKING/>
 <DIRECTIONAL_LIGHT>
-    <Direction x="0.223613262" y="-0.974023879" z="0.0357039869"/>
+    <Direction x="0.266813546" y="-0.868432999" z="-0.417893052"/>
     <Fit__CSM__To__AABB______0____>true</Fit__CSM__To__AABB______0____>
     <Fit__CSM__To__AABB______1____>true</Fit__CSM__To__AABB______1____>
     <Fit__CSM__To__AABB______2____>true</Fit__CSM__To__AABB______2____>

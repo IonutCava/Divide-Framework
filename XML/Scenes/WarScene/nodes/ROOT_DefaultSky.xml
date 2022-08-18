@@ -11,7 +11,7 @@
     <Cloud__Radius____1m__400000m__>200000</Cloud__Radius____1m__400000m__>
     <Atmosphere__Offset____1m__-__2000m__>218.283005</Atmosphere__Offset____1m__-__2000m__>
     <Cloud__layer__height__range__(m) x="2000" y="3400"/>
-    <Weather__Scale__(__x__1e-5)>7.30031395</Weather__Scale__(__x__1e-5)>
+    <Weather__Scale__(__x__1e-5)>7.40497303</Weather__Scale__(__x__1e-5)>
     <Use__Day__Skybox>false</Use__Day__Skybox>
     <Use__Night__Skybox>true</Use__Night__Skybox>
     <Enable__Procedural__Clouds>true</Enable__Procedural__Clouds>
@@ -22,7 +22,7 @@
 <TRANSFORM>
     <Transform>
         <position x="0" y="0" z="0"/>
-        <orientation x="-179.999985" y="3.68578577" z="-179.999985"/>
+        <orientation x="-179.999985" y="3.68578529" z="-179.999985"/>
         <scale x="1" y="1" z="1"/>
     </Transform>
 </TRANSFORM>
@@ -54,7 +54,7 @@
                 <zUnits>0</zUnits>
                 <zFunc>LEQUAL</zFunc>
                 <tessControlPoints>3</tessControlPoints>
-                <cullMode>CW/BACK</cullMode>
+                <cullMode>BACK</cullMode>
                 <fillMode>Solid</fillMode>
                 <frontFaceCCW>true</frontFaceCCW>
                 <scissorTestEnabled>false</scissorTestEnabled>
@@ -74,7 +74,7 @@
                 <zUnits>0</zUnits>
                 <zFunc>LEQUAL</zFunc>
                 <tessControlPoints>3</tessControlPoints>
-                <cullMode>CCW/FRONT</cullMode>
+                <cullMode>FRONT</cullMode>
                 <fillMode>Solid</fillMode>
                 <frontFaceCCW>true</frontFaceCCW>
                 <scissorTestEnabled>false</scissorTestEnabled>
@@ -94,7 +94,7 @@
                 <zUnits>0</zUnits>
                 <zFunc>EQUAL</zFunc>
                 <tessControlPoints>3</tessControlPoints>
-                <cullMode>CW/BACK</cullMode>
+                <cullMode>BACK</cullMode>
                 <fillMode>Solid</fillMode>
                 <frontFaceCCW>true</frontFaceCCW>
                 <scissorTestEnabled>false</scissorTestEnabled>
@@ -114,7 +114,7 @@
                 <zUnits>0</zUnits>
                 <zFunc>EQUAL</zFunc>
                 <tessControlPoints>3</tessControlPoints>
-                <cullMode>CCW/FRONT</cullMode>
+                <cullMode>FRONT</cullMode>
                 <fillMode>Solid</fillMode>
                 <frontFaceCCW>true</frontFaceCCW>
                 <scissorTestEnabled>false</scissorTestEnabled>
@@ -134,7 +134,7 @@
                 <zUnits>0</zUnits>
                 <zFunc>LEQUAL</zFunc>
                 <tessControlPoints>3</tessControlPoints>
-                <cullMode>CCW/FRONT</cullMode>
+                <cullMode>FRONT</cullMode>
                 <fillMode>Solid</fillMode>
                 <frontFaceCCW>true</frontFaceCCW>
                 <scissorTestEnabled>false</scissorTestEnabled>
@@ -155,8 +155,10 @@
             <PerStagePass index="2" stage="1" pass="1" variant="0"/>
             <PerStagePass index="3" stage="1" pass="1" variant="1"/>
             <PerStagePass index="2" stage="1" pass="2" variant="0"/>
+            <PerStagePass index="3" stage="1" pass="3" variant="1"/>
             <PerStagePass index="1" stage="2" pass="0" variant="0"/>
             <PerStagePass index="3" stage="2" pass="1" variant="0"/>
+            <PerStagePass index="3" stage="2" pass="3" variant="0"/>
             <PerStagePass index="4" stage="3" pass="0" variant="0"/>
             <PerStagePass index="3" stage="3" pass="1" variant="0"/>
             <PerStagePass index="3" stage="3" pass="2" variant="0"/>
@@ -171,21 +173,12 @@
                 </Sampler>
                 <UseForPrePass>2</UseForPrePass>
             </UNIT0>
-            <OPACITY>
-                <name>curlnoise.bmp</name>
-                <path>assets/textures/procTextures/</path>
-                <usage>NONE</usage>
-                <Sampler>
-                    <id>2</id>
-                </Sampler>
-                <UseForPrePass>2</UseForPrePass>
-            </OPACITY>
             <NORMALMAP>
                 <name/>
                 <path/>
                 <usage>NONE</usage>
                 <Sampler>
-                    <id>3</id>
+                    <id>2</id>
                 </Sampler>
                 <UseForPrePass>2</UseForPrePass>
             </NORMALMAP>
@@ -194,7 +187,7 @@
                 <path>assets/textures/procTextures/</path>
                 <usage>NONE</usage>
                 <Sampler>
-                    <id>2</id>
+                    <id>3</id>
                 </Sampler>
                 <UseForPrePass>2</UseForPrePass>
             </HEIGHTMAP>
@@ -203,7 +196,7 @@
                 <path/>
                 <usage>NONE</usage>
                 <Sampler>
-                    <id>3</id>
+                    <id>2</id>
                 </Sampler>
                 <UseForPrePass>2</UseForPrePass>
             </SPECULAR>
@@ -212,7 +205,7 @@
                 <path>assets/textures/procTextures/</path>
                 <usage>NONE</usage>
                 <Sampler>
-                    <id>2</id>
+                    <id>3</id>
                 </Sampler>
                 <UseForPrePass>2</UseForPrePass>
             </UNIT1>
@@ -220,7 +213,7 @@
         <SamplerDescriptors>
             <1>
                 <Sampler>
-                    <Filter min="LINEAR" mag="LINEAR"/>
+                    <Filter min="LINEAR" mag="LINEAR" sampling="NONE"/>
                     <Map U="CLAMP_TO_EDGE" V="CLAMP_TO_EDGE" W="CLAMP_TO_EDGE"/>
                     <useRefCompare>false</useRefCompare>
                     <comparisonFunction>LEQUAL</comparisonFunction>
@@ -233,11 +226,11 @@
             </1>
             <2>
                 <Sampler>
-                    <Filter min="LINEAR" mag="LINEAR"/>
+                    <Filter min="LINEAR" mag="LINEAR" sampling="LINEAR"/>
                     <Map U="REPEAT" V="REPEAT" W="REPEAT"/>
                     <useRefCompare>false</useRefCompare>
                     <comparisonFunction>LEQUAL</comparisonFunction>
-                    <anisotropy>0</anisotropy>
+                    <anisotropy>8</anisotropy>
                     <minLOD>-1000</minLOD>
                     <maxLOD>1000</maxLOD>
                     <biasLOD>0</biasLOD>
@@ -246,11 +239,11 @@
             </2>
             <3>
                 <Sampler>
-                    <Filter min="LINEAR_MIPMAP_LINEAR" mag="LINEAR"/>
+                    <Filter min="LINEAR" mag="LINEAR" sampling="NONE"/>
                     <Map U="REPEAT" V="REPEAT" W="REPEAT"/>
                     <useRefCompare>false</useRefCompare>
                     <comparisonFunction>LEQUAL</comparisonFunction>
-                    <anisotropy>8</anisotropy>
+                    <anisotropy>0</anisotropy>
                     <minLOD>-1000</minLOD>
                     <maxLOD>1000</maxLOD>
                     <biasLOD>0</biasLOD>

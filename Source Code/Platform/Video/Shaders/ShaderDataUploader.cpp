@@ -194,8 +194,13 @@ eastl::string GatherUniformDeclarations(const eastl::string & source, Reflection
 
 };
 
+void UniformBlockUploader::Idle() {
+
+}
+
 UniformBlockUploader::UniformBlockUploader(GFXDevice& context, const UniformBlockUploaderDescriptor& descriptor) 
-     : _descriptor(descriptor)
+     : _context(context),
+       _descriptor(descriptor)
 {
     const auto GetSizeOf = [](const GFX::PushConstantType type) noexcept -> size_t {
         switch (type) {
@@ -215,26 +220,8 @@ UniformBlockUploader::UniformBlockUploader(GFXDevice& context, const UniformBloc
 
     const size_t activeMembers = _descriptor._reflectionData._blockMembers.size();
     _blockMembers.resize(activeMembers);
-    if (_descriptor._reflectionData._blockSize > _uniformBlockSizeAligned || _buffer == nullptr) {
-        _uniformBlockSizeAligned = Util::GetAlignmentCorrected(_descriptor._reflectionData._blockSize, ShaderBuffer::AlignmentRequirement(ShaderBuffer::Usage::CONSTANT_BUFFER));
-        _localDataCopy.resize(_uniformBlockSizeAligned);
-
-        ShaderBufferDescriptor bufferDescriptor{};
-        bufferDescriptor._name = _descriptor._reflectionData._targetBlockName.c_str();
-        bufferDescriptor._ringBufferLength = RingBufferLength;
-        bufferDescriptor._name.append("_");
-        bufferDescriptor._name.append(_descriptor._parentShaderName.c_str());
-        bufferDescriptor._usage = ShaderBuffer::Usage::CONSTANT_BUFFER;
-        bufferDescriptor._bufferParams._elementCount = 1;
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-        bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
-        bufferDescriptor._bufferParams._elementSize = _uniformBlockSizeAligned;
-        _buffer = context.newSB(bufferDescriptor);
-    } else {
-        _buffer->clearData();
-    }
-
-    std::memset(_localDataCopy.data(), 0, _localDataCopy.size());
+    _uniformBlockSizeAligned = Util::GetAlignmentCorrected(_descriptor._reflectionData._blockSize, ShaderBuffer::AlignmentRequirement(ShaderBuffer::Usage::CONSTANT_BUFFER));
+    resizeBlockBuffer(false);
 
     size_t requiredExtraMembers = 0;
     for (size_t member = 0; member < activeMembers; ++member) {
@@ -307,6 +294,25 @@ UniformBlockUploader::UniformBlockUploader(GFXDevice& context, const UniformBloc
     }
 }
 
+void UniformBlockUploader::resizeBlockBuffer(const bool increaseSize) {
+
+    const U32 newSize = _buffer == nullptr ? RingBufferLength : _bufferSizeFactor;
+
+    ShaderBufferDescriptor bufferDescriptor{};
+    bufferDescriptor._name = _descriptor._reflectionData._targetBlockName.c_str();
+    bufferDescriptor._ringBufferLength = increaseSize ? newSize : RingBufferLength;
+    bufferDescriptor._name.append("_");
+    bufferDescriptor._name.append(_descriptor._parentShaderName.c_str());
+    bufferDescriptor._usage = ShaderBuffer::Usage::CONSTANT_BUFFER;
+    bufferDescriptor._bufferParams._elementCount = 1;
+    bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+    bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
+    bufferDescriptor._bufferParams._elementSize = _uniformBlockSizeAligned;
+    _buffer = _context.newSB(bufferDescriptor);
+    _localDataCopy.resize(_uniformBlockSizeAligned);
+    std::memset(_localDataCopy.data(), 0, _localDataCopy.size());
+}
+
 void UniformBlockUploader::uploadPushConstant(const GFX::PushConstant& constant, bool force) noexcept {
     if (constant.type() == GFX::PushConstantType::COUNT || constant.bindingHash() == 0u) {
         return;
@@ -338,11 +344,21 @@ void UniformBlockUploader::commit(GFX::MemoryBarrierCommand& memCmdInOut) {
     }
 
     DIVIDE_ASSERT(_descriptor._reflectionData._targetBlockBindingIndex != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr);
+
+    if (_needsResize) {
+        resizeBlockBuffer(true);
+        _needsResize = false;
+        _needsQueueIncrement = false;
+        _bufferWritesThisFrame = 0u;
+    }
+
     const bool rebind = _needsQueueIncrement;
     if (_needsQueueIncrement) {
         _buffer->incQueue();
         _needsQueueIncrement = false;
+        ++_bufferWritesThisFrame;
     }
+
     memCmdInOut._bufferLocks.push_back(_buffer->writeData(_localDataCopy.data()));
     _needsQueueIncrement = true;
     _uniformBlockDirty = false;
@@ -357,4 +373,19 @@ void UniformBlockUploader::prepare() {
     }
 }
 
+void UniformBlockUploader::onFrameEnd() noexcept {
+    if (_bufferWritesThisFrame >= _buffer->queueLength()) {
+        _bufferSizeFactor = _bufferWritesThisFrame * 4; /*enough space for 4 frames of data*/
+        _needsResize = true;
+    }
+    _bufferWritesThisFrame = 0u;
+}
+
+size_t UniformBlockUploader::totalBufferSize() const noexcept {
+    if (_buffer != nullptr) {
+        return _buffer->alignedBufferSize() * _buffer->queueLength();
+    }
+
+    return 0u;
+}
 }; //namespace Divide

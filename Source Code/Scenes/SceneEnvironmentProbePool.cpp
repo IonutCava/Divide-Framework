@@ -554,7 +554,7 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U
     cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
     {
         auto& binding = cmd->_bindings.emplace_back();
-        binding._slot = to_U8(TextureUsage::UNIT0);
+        binding._slot = 0u;
         binding._data.As<DescriptorCombinedImageSampler>() = { sourceAtt->texture()->data(), sourceAtt->descriptor()._samplerHash };
     }
     {

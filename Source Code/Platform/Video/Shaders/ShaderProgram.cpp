@@ -838,6 +838,8 @@ void ShaderProgram::Idle(PlatformContext& platformContext) {
         }
         s_recompileQueue.pop();
     }
+
+    UniformBlockUploader::Idle();
 }
 
 void ShaderProgram::InitStaticData() {
@@ -944,6 +946,20 @@ bool ShaderProgram::OnShutdown() {
 
 bool ShaderProgram::OnThreadCreated(const GFXDevice& gfx, [[maybe_unused]] const std::thread::id& threadID) {
     return InitGLSW(gfx.renderAPI(), GFXDevice::GetDeviceInformation(), gfx.context().config());
+}
+
+void ShaderProgram::OnEndFrame(GFXDevice& gfx) {
+    size_t totalUniformBufferSize = 0u;
+    SharedLock<SharedMutex> lock(s_programLock);
+    for (const ShaderProgramMapEntry& entry : s_shaderPrograms) {
+        if (entry._program != nullptr) {
+            for (UniformBlockUploader& block : entry._program->_uniformBlockBuffers) {
+                block.onFrameEnd();
+                totalUniformBufferSize += block.totalBufferSize();
+            }
+        }
+    }
+    gfx.getPerformanceMetrics()._uniformBufferVRAMUsage = totalUniformBufferSize;
 }
 
 /// Whenever a new program is created, it's registered with the manager
@@ -1458,11 +1474,36 @@ void ShaderProgram::initUniformUploader(const PerFileShaderData& shaderFileData)
             }
         }
         for (auto& image : stageData._reflectionData._images) {
-            if (image._bindingSet != to_base(DescriptorSetUsage::PER_DRAW_SET)) {
-                continue;
+            const DescriptorSetBindingType targetType = image._combinedImageSampler ? DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER : DescriptorSetBindingType::IMAGE;
+
+            bool skip = false;
+            if (_context.renderAPI() == RenderAPI::Vulkan) {
+                if (image._bindingSet != to_base(DescriptorSetUsage::PER_DRAW_SET)) {
+                    skip = true;
+                }
+            } else { //OpenGL uses one global set for everything ...
+                for (const auto& globalDescriptorSet : _context.descriptorSets()._globalDescriptorSets) {
+                    if (skip) {
+                        break;
+                    }
+
+                    if (globalDescriptorSet.usage() == DescriptorSetUsage::COUNT ||
+                        globalDescriptorSet.usage() == DescriptorSetUsage::PER_DRAW_SET)
+                    {
+                        continue;
+                    }
+                    for (const auto& binding : globalDescriptorSet.set()) {
+                        if (binding._type == targetType && binding._resource._slot == image._targetImageBindingIndex) {
+                            skip = true;
+                            continue;
+                        }
+                    }
+                }
             }
 
-            const DescriptorSetBindingType targetType = image._combinedImageSampler ? DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER : DescriptorSetBindingType::IMAGE;
+            if (skip) {
+                continue;
+            }
 
             bool found = false;
             for (auto& binding : _descriptorSet) {
@@ -1512,16 +1553,13 @@ bool ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExis
         }
     };
     const bool targetVulkan = _context.renderAPI() == RenderAPI::Vulkan;
-    STUBBED("Investigate why OpenGL SPIRV loading doesn't work on my AMD card - Ionut");
-    const bool skipSPIRV = !targetVulkan && _context.GetDeviceInformation()._vendor == GPUVendor::AMD;
-
     if (reloadExisting) {
         // Hot reloading will always reparse GLSL source files!
         ParseAndSaveSource();
         loadDataInOut._codeSource = LoadData::SourceCodeSource::SOURCE_FILES;
     } else {
         // Try and load from the spir-v cache
-        if (!skipSPIRV && LoadSPIRVFromCache(loadDataInOut, targetVulkan, atomIDs)) {
+        if (LoadSPIRVFromCache(loadDataInOut, targetVulkan, atomIDs)) {
             loadDataInOut._codeSource = LoadData::SourceCodeSource::SPIRV_CACHE;
         } else if (LoadTextFromCache(loadDataInOut, targetVulkan, atomIDs)) {
             loadDataInOut._codeSource = LoadData::SourceCodeSource::TEXT_CACHE;
@@ -1536,9 +1574,6 @@ bool ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExis
 
     if (!loadDataInOut._sourceCodeGLSL.empty() || !loadDataInOut._sourceCodeSpirV.empty()) {
         _usedAtomIDs.insert(begin(atomIDs), end(atomIDs));
-        if (skipSPIRV) {
-            loadDataInOut._sourceCodeSpirV.clear();
-        }
         return true;
     }
 

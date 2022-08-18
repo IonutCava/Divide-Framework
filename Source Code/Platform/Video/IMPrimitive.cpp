@@ -61,7 +61,7 @@ IMPrimitive::IMPrimitive(GFXDevice& context, const Str64& name)
     , _name(name)
 {
     _imInterface = eastl::make_unique<NS_GLIM::GLIM_BATCH>();
-    _dataBuffer = context.newGVD(1);
+    _dataBuffer = context.newGVD(1, name.c_str());
     _dataBuffer->renderIndirect(false);
 
     reset();

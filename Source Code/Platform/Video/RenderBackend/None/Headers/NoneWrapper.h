@@ -50,7 +50,6 @@ class NONE_API final : public RenderAPIWrapper {
 
       ErrorCode initRenderingAPI(I32 argc, char** argv, Configuration& config) noexcept override;
       void closeRenderingAPI() noexcept override;
-      [[nodiscard]] const PerformanceMetrics& getPerformanceMetrics() const noexcept override;
       void preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) override;
       void flushCommand(GFX::CommandBase* cmd) noexcept override;
       void postFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) noexcept override;

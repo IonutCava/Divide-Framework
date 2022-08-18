@@ -95,11 +95,6 @@ namespace Divide {
         _renderer = nullptr;
     }
 
-    const PerformanceMetrics& NONE_API::getPerformanceMetrics() const noexcept {
-        static PerformanceMetrics perf;
-        return perf;
-    }
-
     void NONE_API::flushCommand([[maybe_unused]] GFX::CommandBase* cmd) noexcept {
     }
 

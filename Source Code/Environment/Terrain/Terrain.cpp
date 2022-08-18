@@ -217,13 +217,13 @@ void Terrain::postBuild() {
         vector_fast<U16> indices = CreateTileQuadListIB();
 
         { // Create a single buffer to hold the data for all of our tile rings
-            GenericVertexData::IndexBuffer idxBuff = {};
+            GenericVertexData::IndexBuffer idxBuff{};
             idxBuff.smallIndices = true;
             idxBuff.count = indices.size();
             idxBuff.data = indices.data();
             idxBuff.dynamic = false;
 
-            _terrainBuffer = _context.newGVD(1);
+            _terrainBuffer = _context.newGVD(1, _descriptor->_name.c_str());
             _terrainBuffer->setIndexBuffer(idxBuff);
 
             vector<TileRing::InstanceData> vbData;

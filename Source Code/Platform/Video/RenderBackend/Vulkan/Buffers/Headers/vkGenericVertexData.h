@@ -67,7 +67,7 @@ namespace Divide {
             bool _useAutoSyncObjects{ true };
         };
 
-        struct IndexBufferEntry {
+        struct IndexBufferEntry : public NonCopyable {
             eastl::unique_ptr<AllocatedBuffer> _handle{ nullptr };
             IndexBuffer _data;
         };

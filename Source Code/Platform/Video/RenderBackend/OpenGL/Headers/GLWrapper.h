@@ -107,8 +107,6 @@ protected:
 
     void postFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) override;
 
-    [[nodiscard]] const PerformanceMetrics& getPerformanceMetrics() const noexcept override { return _perfMetrics; }
-
     /// Return the size in pixels that we can render to. This differs from the window size on Retina displays
     vec2<U16> getDrawableSize(const DisplayWindow& window) const noexcept override;
 
@@ -202,8 +200,6 @@ private:
     std::array<eastl::unique_ptr<glHardwareQueryRing>, to_base(GlobalQueryTypes::COUNT)> _performanceQueries;
     // OpenGL rendering is not thread-safe anyway, so this works
     eastl::stack<HardwareQueryContext> _queryContext;
-
-    PerformanceMetrics _perfMetrics{};
 
     WindowGLContext _currentContext{};
 

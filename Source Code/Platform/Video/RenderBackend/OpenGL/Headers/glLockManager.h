@@ -86,7 +86,7 @@ class glLockManager : public GUIDWrapper {
     static bool Wait(GLsync syncObj, bool blockClient, bool quickCheck, U8& retryCount);
     static [[nodiscard]] SyncObject* CreateSyncObjectLocked(bool isRetry = false);
    protected:
-     mutable SharedMutex _bufferLockslock; // :D
+     mutable Mutex _bufferLockslock; // :D
      vector<BufferLockInstance> _bufferLocks;
      vector<BufferLockInstance> _swapLocks;
 

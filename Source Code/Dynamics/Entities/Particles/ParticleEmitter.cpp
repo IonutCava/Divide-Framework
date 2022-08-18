@@ -44,7 +44,7 @@ ParticleEmitter::ParticleEmitter(GFXDevice& context, ResourceCache* parentCache,
 {
     for (U8 i = 0u; i < s_MaxPlayerBuffers; ++i) {
         for (U8 j = 0u; j < to_base(RenderStage::COUNT); ++j) {
-            _particleGPUBuffers[i][j] = _context.newGVD(g_particleBufferSizeFactor);
+            _particleGPUBuffers[i][j] = _context.newGVD(g_particleBufferSizeFactor, Util::StringFormat("%s_buffer_%d_%d", name.c_str(), i,j).c_str());
         }
     }
 
@@ -83,7 +83,7 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
             buffer.setBuffer(params);
 
             if (!indices.empty()) {
-                GenericVertexData::IndexBuffer idxBuff;
+                GenericVertexData::IndexBuffer idxBuff{};
                 idxBuff.smallIndices = false;
                 idxBuff.count = to_U32(indices.size());
                 idxBuff.data = (Byte*)indices.data();

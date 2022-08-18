@@ -116,9 +116,9 @@ void SSRPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX::
 bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
     assert(_enabled);
 
-    RTAttachment* screenAtt  = input._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
+    RTAttachment* screenAtt = input._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
     RTAttachment* normalsAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS));
-    RTAttachment* depthAtt   = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Depth_Stencil, 0);
+    RTAttachment* depthAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Depth_Stencil, 0);
 
     const TextureData screenTex = screenAtt->texture()->data();
     const TextureData normalsTex = normalsAtt->texture()->data();
@@ -139,19 +139,23 @@ bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& 
     _constantsCmd._constants.set(_ID("maxScreenMips"), GFX::PushConstantType::UINT, screenMipCount);
     _constantsCmd._constants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
 
-    auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-    cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
     {
-        auto& binding = cmd->_bindings.emplace_back();
-        binding._slot = to_U8(TextureUsage::UNIT0);
-        binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt->descriptor()._samplerHash };
+        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+        cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+        {
+            auto& binding = cmd->_bindings.emplace_back();
+            binding._slot = to_U8(TextureUsage::UNIT0);
+            binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt->descriptor()._samplerHash };
+        }
+        {
+            auto& binding = cmd->_bindings.emplace_back();
+            binding._slot = to_U8(TextureUsage::UNIT1);
+            binding._data.As<DescriptorCombinedImageSampler>() = { depthTex, depthAtt->descriptor()._samplerHash };
+        }
     }
     {
-        auto& binding = cmd->_bindings.emplace_back();
-        binding._slot = to_U8(TextureUsage::UNIT1);
-        binding._data.As<DescriptorCombinedImageSampler>() = { depthTex, depthAtt->descriptor()._samplerHash };
-    }
-    {
+        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+        cmd->_usage = DescriptorSetUsage::PER_PASS_SET;
         auto& binding = cmd->_bindings.emplace_back();
         binding._slot = to_U8(TextureUsage::SCENE_NORMALS);
         binding._data.As<DescriptorCombinedImageSampler>() = { normalsTex, normalsAtt->descriptor()._samplerHash };

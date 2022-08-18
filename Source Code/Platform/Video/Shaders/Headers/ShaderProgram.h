@@ -180,6 +180,8 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     [[nodiscard]] static ErrorCode OnStartup(ResourceCache* parentCache);
     [[nodiscard]] static bool OnShutdown();
     [[nodiscard]] static bool OnThreadCreated(const GFXDevice& gfx, const std::thread::id& threadID);
+                  static void OnEndFrame(GFXDevice& gfx);
+
     /// Queue a shaderProgram recompile request
     static bool RecompileShaderProgram(const Str256& name);
     /// Remove a shaderProgram from the program cache
@@ -246,6 +248,7 @@ protected:
                           eastl::set<U64>& atomIDsInOut);
 
     void initUniformUploader(const PerFileShaderData& loadData);
+
 private:
     static const string& ShaderFileRead(const ResourcePath& filePath, const ResourcePath& atomName, bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed);
     static const string& ShaderFileReadLocked(const ResourcePath& filePath, const ResourcePath& atomName, bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed);

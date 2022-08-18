@@ -51,7 +51,7 @@ Object3D::Object3D(GFXDevice& context, ResourceCache* parentCache, const size_t 
     _geometryPartitionIDs[0] = 0u;
 
     if (!getObjectFlag(ObjectFlag::OBJECT_FLAG_NO_VB)) {
-        _geometryBuffer = context.newVB();
+        _geometryBuffer = context.newVB(name);
     }
 
     if (getObjectFlag(ObjectFlag::OBJECT_FLAG_SKINNED)) {

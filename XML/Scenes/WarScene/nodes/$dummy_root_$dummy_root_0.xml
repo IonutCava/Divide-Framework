@@ -11,7 +11,7 @@
 </TRANSFORM>
 <ANIMATION>
     <Animation__Speed>1</Animation__Speed>
-    <Animation__Frame__Index x="7" y="6" z="8"/>
+    <Animation__Frame__Index x="16" y="15" z="17"/>
 </ANIMATION>
 <INVERSE_KINEMATICS/>
 <RAGDOLL/>
@@ -44,7 +44,7 @@
                 <zUnits>0</zUnits>
                 <zFunc>LEQUAL</zFunc>
                 <tessControlPoints>3</tessControlPoints>
-                <cullMode>CW/BACK</cullMode>
+                <cullMode>BACK</cullMode>
                 <fillMode>Solid</fillMode>
                 <frontFaceCCW>true</frontFaceCCW>
                 <scissorTestEnabled>false</scissorTestEnabled>
@@ -64,7 +64,7 @@
                 <zUnits>0</zUnits>
                 <zFunc>EQUAL</zFunc>
                 <tessControlPoints>3</tessControlPoints>
-                <cullMode>CW/BACK</cullMode>
+                <cullMode>BACK</cullMode>
                 <fillMode>Solid</fillMode>
                 <frontFaceCCW>true</frontFaceCCW>
                 <scissorTestEnabled>false</scissorTestEnabled>

@@ -263,7 +263,7 @@ public:  // GPU interface
     void debugDrawCone(const I64 ID, IMPrimitive::ConeDescriptor descriptor) noexcept;
     void debugDrawFrustum(const I64 ID, IMPrimitive::FrustumDescriptor descriptor) noexcept;
     void flushCommandBuffer(GFX::CommandBuffer& commandBuffer, bool batch = true);
-    
+    void validateAndUploadDescriptorSets();
     /// Generate a cubemap from the given position
     /// It renders the entire scene graph (with culling) as default
     /// use the callback param to override the draw function
@@ -339,7 +339,8 @@ public:  // Accessors and Mutators
     bool getDebugGroupState(I16 groupID) const;
     void getDebugViewNames(vector<std::tuple<string, I16, I16, bool>>& namesOut);
 
-    [[nodiscard]] PerformanceMetrics getPerformanceMetrics() const noexcept;
+    [[nodiscard]] PerformanceMetrics& getPerformanceMetrics() noexcept;
+    [[nodiscard]] const PerformanceMetrics& getPerformanceMetrics() const noexcept;
 
     inline vec2<U16> getDrawableSize(const DisplayWindow& window) const;
     inline U32 getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const;
@@ -361,7 +362,7 @@ public:
     bool               destroyIMP(IMPrimitive*& primitive);
 
     /// Create and return a new vertex array (VAO + VB + IB).
-    VertexBuffer_ptr  newVB();
+    VertexBuffer_ptr  newVB(const Str256& name);
     /// Create and return a new generic vertex data object
     GenericVertexData_ptr newGVD(U32 ringBufferLength, const char* name = nullptr);
     /// Create and return a new texture.
@@ -403,7 +404,7 @@ public:
                     GFX::CommandBuffer& bufferInOut);
 
     [[nodiscard]] GFX::MemoryBarrierCommand updateSceneDescriptorSet(GFX::CommandBuffer& bufferInOut) const;
-
+    
     PROPERTY_RW(MaterialDebugFlag, materialDebugFlag, MaterialDebugFlag::COUNT);
     PROPERTY_RW(RenderAPI, renderAPI, RenderAPI::COUNT);
     PROPERTY_RW(bool, queryPerformanceStats, false);
@@ -578,8 +579,6 @@ private:
             size_t _renderWritesThisFrame = 0u;
         } _perFrameBuffers[PerFrameBufferCount];
         size_t _perFrameBufferIndex = 0u;
-        size_t _currentSizeCam = 0u;
-        size_t _currentSizeCullCounter = 0u;
         bool _needsResizeCam = false;
         inline [[nodiscard]] PerFrameBuffers& crtBuffers() noexcept { return _perFrameBuffers[_perFrameBufferIndex]; }
         inline [[nodiscard]] const PerFrameBuffers& crtBuffers() const noexcept { return _perFrameBuffers[_perFrameBufferIndex]; }
@@ -616,6 +615,8 @@ private:
 
     std::stack<Rect<I32>> _viewportStack;
     Mutex _imprimitiveMutex;
+
+    PerformanceMetrics _performanceMetrics{};
 
     using IMPrimitivePool = MemoryPool<IMPrimitive, 1 << 15>;
     static IMPrimitivePool s_IMPrimitivePool;

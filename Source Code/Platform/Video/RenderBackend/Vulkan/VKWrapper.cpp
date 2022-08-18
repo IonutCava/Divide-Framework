@@ -595,11 +595,6 @@ namespace Divide {
         return true;
     }
 
-    const PerformanceMetrics& VK_API::getPerformanceMetrics() const noexcept {
-        static PerformanceMetrics perf;
-        return perf;
-    }
-
     void VK_API::bindDynamicState(const RenderStateBlock& currentState, VkCommandBuffer& cmdBuffer) const {
         auto& stateTrackerDS = GetStateTracker()->_dynamicState;
         if (stateTrackerDS.stencilMask() != currentState.stencilMask()) {

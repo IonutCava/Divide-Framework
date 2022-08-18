@@ -272,7 +272,7 @@ void Vegetation::precomputeStaticData(GFXDevice& gfxDevice, const U32 chunkSize,
             vec2<F32>(1.f, 0.f)
         };
 
-        s_buffer = gfxDevice.newVB();
+        s_buffer = gfxDevice.newVB("Vegetation");
         s_buffer->useLargeIndices(false);
         s_buffer->setVertexCount(vertices.size());
 
@@ -536,6 +536,7 @@ void Vegetation::prepareDraw(SceneGraphNode* sgn) {
                            s_cullShaderTrees->getState() == ResourceState::RES_LOADED);
 
         PipelineDescriptor pipeDesc;
+        pipeDesc._primitiveTopology = PrimitiveTopology::COMPUTE;
         pipeDesc._shaderProgramHandle = s_cullShaderGrass->handle();
         _cullPipelineGrass = _context.newPipeline(pipeDesc);
         pipeDesc._shaderProgramHandle = s_cullShaderTrees->handle();

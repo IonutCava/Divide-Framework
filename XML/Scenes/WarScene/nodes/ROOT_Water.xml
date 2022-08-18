@@ -49,7 +49,7 @@
                 <zUnits>0</zUnits>
                 <zFunc>LEQUAL</zFunc>
                 <tessControlPoints>3</tessControlPoints>
-                <cullMode>CW/BACK</cullMode>
+                <cullMode>BACK</cullMode>
                 <fillMode>Solid</fillMode>
                 <frontFaceCCW>true</frontFaceCCW>
                 <scissorTestEnabled>false</scissorTestEnabled>
@@ -69,7 +69,7 @@
                 <zUnits>0</zUnits>
                 <zFunc>EQUAL</zFunc>
                 <tessControlPoints>3</tessControlPoints>
-                <cullMode>CW/BACK</cullMode>
+                <cullMode>BACK</cullMode>
                 <fillMode>Solid</fillMode>
                 <frontFaceCCW>true</frontFaceCCW>
                 <scissorTestEnabled>false</scissorTestEnabled>
@@ -89,7 +89,7 @@
                 <zUnits>0</zUnits>
                 <zFunc>LEQUAL</zFunc>
                 <tessControlPoints>3</tessControlPoints>
-                <cullMode>CW/BACK</cullMode>
+                <cullMode>BACK</cullMode>
                 <fillMode>Solid</fillMode>
                 <frontFaceCCW>true</frontFaceCCW>
                 <scissorTestEnabled>false</scissorTestEnabled>
@@ -107,6 +107,7 @@
         <RenderStateIndex>
             <PerStagePass index="0" stage="1" pass="0" variant="1"/>
             <PerStagePass index="1" stage="1" pass="1" variant="1"/>
+            <PerStagePass index="1" stage="1" pass="3" variant="1"/>
             <PerStagePass index="2" stage="3" pass="0" variant="0"/>
             <PerStagePass index="1" stage="3" pass="1" variant="0"/>
             <PerStagePass index="1" stage="3" pass="2" variant="0"/>
@@ -122,7 +123,7 @@
                 <UseForPrePass>2</UseForPrePass>
             </NORMALMAP>
             <REFLECTION_PLANAR>
-                <name>FBO_Reflection_Planar_0_Att_Colour_0_63</name>
+                <name>RT_Reflection_Planar_0_Att_Colour_0_74</name>
                 <path/>
                 <usage>REPLACE</usage>
                 <Sampler>
@@ -131,7 +132,7 @@
                 <UseForPrePass>2</UseForPrePass>
             </REFLECTION_PLANAR>
             <REFRACTION_PLANAR>
-                <name>FBO_Refraction_Planar_0_Att_Colour_0_72</name>
+                <name>RT_Refraction_Planar_0_Att_Colour_0_99</name>
                 <path/>
                 <usage>REPLACE</usage>
                 <Sampler>
@@ -143,7 +144,7 @@
         <SamplerDescriptors>
             <1>
                 <Sampler>
-                    <Filter min="LINEAR_MIPMAP_LINEAR" mag="LINEAR"/>
+                    <Filter min="LINEAR" mag="LINEAR" sampling="LINEAR"/>
                     <Map U="REPEAT" V="REPEAT" W="REPEAT"/>
                     <useRefCompare>false</useRefCompare>
                     <comparisonFunction>LEQUAL</comparisonFunction>
@@ -156,7 +157,7 @@
             </1>
             <2>
                 <Sampler>
-                    <Filter min="NEAREST" mag="NEAREST"/>
+                    <Filter min="NEAREST" mag="NEAREST" sampling="NONE"/>
                     <Map U="CLAMP_TO_EDGE" V="CLAMP_TO_EDGE" W="CLAMP_TO_EDGE"/>
                     <useRefCompare>false</useRefCompare>
                     <comparisonFunction>LEQUAL</comparisonFunction>

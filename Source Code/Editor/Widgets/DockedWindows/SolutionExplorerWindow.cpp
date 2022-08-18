@@ -407,7 +407,7 @@ namespace Divide {
             ImGui::NewLine();
             ImGui::Text("HiZ Cull Counts: %d | %d | %d | %d", cullCount.x, cullCount.y, cullCount.z, cullCount.w);
             ImGui::NewLine();
-            ImGui::Text("GPU Frame Time: %5.2f ms", perfMetrics._gpuTimeInMS);
+            ImGui::Text("GPU Frame Time: %.2f ms", perfMetrics._gpuTimeInMS);
             ImGui::NewLine();
             ImGui::Text("Submitted Vertices: %s", Util::commaprint(perfMetrics._verticesSubmitted));
             ImGui::NewLine();
@@ -420,6 +420,10 @@ namespace Divide {
             ImGui::Text("Generated Render Targets: %d", perfMetrics._generatedRenderTargetCount);
             ImGui::NewLine();
             ImGui::Text("Queued GPU Frames: %d", perfMetrics._queuedGPUFrames);
+            ImGui::NewLine();  
+            ImGui::Text("Shader uniforms VRAM usage: %.2f Kb", (perfMetrics._uniformBufferVRAMUsage / 1024.f));
+            ImGui::NewLine();
+            ImGui::Text("Shader buffers VRAM usage: %.2f Mb", (perfMetrics._bufferVRAMUsage / 1024.f / 1024.f));
             ImGui::NewLine();
             ImGui::Text("Sync objects in flight : %d / %d / %d   Max: %d", cachedSyncCount[0], cachedSyncCount[1], cachedSyncCount[2], s_maxLocksInFlight);
 
