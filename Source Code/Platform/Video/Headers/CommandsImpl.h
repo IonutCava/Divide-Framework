@@ -303,6 +303,7 @@ DEFINE_COMMAND_BEGIN(MemoryBarrierCommand, CommandType::MEMORY_BARRIER);
     MemoryBarrierCommand(const U32 mask) noexcept : _barrierMask(mask) {}
 
     U32 _barrierMask{ 0u };
+    U8 _syncFlag{ 0u }; // Used to track internal rendering sync objects back to a specific mem command
     BufferLocks _bufferLocks;
     FenceLocks  _fenceLocks;
 DEFINE_COMMAND_END(MemoryBarrierCommand);

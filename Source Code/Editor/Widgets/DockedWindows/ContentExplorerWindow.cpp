@@ -258,7 +258,8 @@ namespace Divide {
                         const U16 h = icon->height();
                         const F32 aspect = w / to_F32(h);
 
-                        const ImVec4 bgColour(imguiContext.IO.KeyShift ? 1.f : 0.f, 0.f, 0.f, imguiContext.IO.KeyShift ? 1.f : 0.f);
+                        const bool modifierPressed = imguiContext.IO.KeyShift;
+                        const ImVec4 bgColour(modifierPressed ? 1.f : 0.f, 0.f, 0.f, modifierPressed ? 1.f : 0.f);
                         if (ImGui::ImageButton((void*)icon.get(), ImVec2(64, 64 / aspect), ImVec2(0, 0), ImVec2(1, 1), 2, bgColour, ImVec4(1, 1, 1, 1))) {
                             spawnMesh = getModelForPath(ResourcePath(file.first), ResourcePath(file.second._path));
                             if (spawnMesh == nullptr) {
@@ -312,7 +313,7 @@ namespace Divide {
         if (Attorney::EditorGeneralWidget::modalTextureView(_parent, "Image Preview", previewTexture.get(), vec2<F32>(512, 512), true, true)) {
             previewTexture = nullptr;
         }
-        if (Attorney::EditorGeneralWidget::modalModelSpawn(_parent, "Spawn Entity", spawnMesh)) {
+        if (Attorney::EditorGeneralWidget::modalModelSpawn(_parent, spawnMesh, imguiContext.IO.KeyShift)) {
             spawnMesh = nullptr;
         }
 

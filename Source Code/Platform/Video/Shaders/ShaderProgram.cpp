@@ -1532,6 +1532,8 @@ void ShaderProgram::uploadPushConstants(const PushConstants& constants, GFX::Mem
         }
         blockBuffer.commit(memCmdInOut);
     }
+
+    memCmdInOut._syncFlag = 202u;
 }
 
 void ShaderProgram::preparePushConstants() {

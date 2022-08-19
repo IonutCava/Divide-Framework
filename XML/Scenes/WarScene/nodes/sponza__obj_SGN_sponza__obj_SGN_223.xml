@@ -4,7 +4,7 @@
 <SUBMESH/>
 <TRANSFORM>
     <Transform>
-        <position x="0" y="0" z="0"/>
+        <position x="-63.4197006" y="691.428711" z="204.929657"/>
         <orientation x="0" y="-0" z="0"/>
         <scale x="1" y="1" z="1"/>
     </Transform>
@@ -116,8 +116,11 @@
         <RenderStateIndex>
             <PerStagePass index="0" stage="0" pass="1" variant="0"/>
             <PerStagePass index="1" stage="1" pass="0" variant="0"/>
+            <PerStagePass index="1" stage="1" pass="0" variant="1"/>
             <PerStagePass index="2" stage="1" pass="1" variant="0"/>
+            <PerStagePass index="2" stage="1" pass="1" variant="1"/>
             <PerStagePass index="2" stage="1" pass="2" variant="0"/>
+            <PerStagePass index="2" stage="1" pass="3" variant="1"/>
             <PerStagePass index="3" stage="3" pass="0" variant="0"/>
             <PerStagePass index="2" stage="3" pass="1" variant="0"/>
             <PerStagePass index="2" stage="3" pass="2" variant="0"/>

@@ -11,6 +11,7 @@ ResourcePath Paths::g_logPath = ResourcePath("logs/");
 
 ResourcePath Paths::g_rootPath;
 ResourcePath Paths::g_assetsLocation;
+ResourcePath Paths::g_modelsLocation;
 ResourcePath Paths::g_shadersLocation;
 ResourcePath Paths::g_texturesLocation;
 ResourcePath Paths::g_proceduralTxturesLocation;
@@ -82,6 +83,7 @@ void Paths::initPaths(const SysInfo& info) {
     g_logPath = ResourcePath("logs/");
     g_xmlDataLocation = ResourcePath("XML/");
     g_assetsLocation = ResourcePath("assets/");
+    g_modelsLocation = ResourcePath("models/");
     g_shadersLocation = ResourcePath("shaders/");
     g_texturesLocation = ResourcePath("textures/");
     g_proceduralTxturesLocation = ResourcePath("procTextures/");

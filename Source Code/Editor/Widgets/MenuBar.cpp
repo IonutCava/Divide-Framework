@@ -7,6 +7,8 @@
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Resources/Headers/ResourceCache.h"
+
 #include "Editor/Headers/Editor.h"
 
 #include "Managers/Headers/SceneManager.h"
@@ -14,6 +16,7 @@
 #include "Geometry/Shapes/Predefined/Headers/Box3D.h"
 #include "Geometry/Shapes/Predefined/Headers/Sphere3D.h"
 #include "Geometry/Shapes/Predefined/Headers/Quad3D.h"
+#include "Geometry/Shapes/Headers/Mesh.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Rendering/Headers/Renderer.h"
@@ -237,8 +240,8 @@ void MenuBar::draw() {
                 ImGui::Separator();
 
                 string progress;
-                for (U32 i = 0; i < maxSize; ++i) {
-                    progress.append(i < ident ? "=" : " ");
+                for (U32 i = 0u; i < maxSize; ++i) {
+                    progress.append(i < ident ? "~" : " ");
                 }
                 ImGui::Text("[%s]", progress.c_str());
                 ImGui::Separator();
@@ -259,11 +262,11 @@ void MenuBar::draw() {
         const auto createPrimitive = [&]() {
             g_currentNodeType = SceneNodeType::TYPE_OBJECT3D;
             g_nodeDescriptor._componentMask = to_U32(ComponentType::TRANSFORM) |
-                to_U32(ComponentType::BOUNDS) |
-                to_U32(ComponentType::RIGID_BODY) |
-                to_U32(ComponentType::RENDERING) |
-                to_U32(ComponentType::SELECTION) |
-                to_U32(ComponentType::NAVIGATION);
+                                              to_U32(ComponentType::BOUNDS) |
+                                              to_U32(ComponentType::RIGID_BODY) |
+                                              to_U32(ComponentType::RENDERING) |
+                                              to_U32(ComponentType::SELECTION) |
+                                              to_U32(ComponentType::NAVIGATION);
             g_nodeDescriptor._usageContext = NodeUsageContext::NODE_DYNAMIC;
 
             if (g_nodeDescriptor._name.empty()) {
@@ -371,6 +374,11 @@ void MenuBar::draw() {
                     ImGui::EndPopup();
                 }
             }
+        }
+
+        if (_debugObject != DebugObject::COUNT) {
+            spawnDebugObject(_debugObject, modifierPressed);
+            _debugObject = DebugObject::COUNT;
         }
     }
 }
@@ -616,6 +624,16 @@ void MenuBar::drawObjectMenu(const bool modifierPressed) {
             if (ImGui::MenuItem("Plane")) {
                 g_nodeDescriptor = {};
                 _newPrimitiveType = ObjectType::QUAD_3D;
+            }
+            if (modifierPressed) {
+                Util::AddUnderLine();
+            }
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Debug Objects")) {
+            if (ImGui::MenuItem("Sponza")) {
+                g_nodeDescriptor = {};
+                _debugObject = DebugObject::SPONZA;
             }
             if (modifierPressed) {
                 Util::AddUnderLine();
@@ -1006,6 +1024,21 @@ void MenuBar::drawHelpMenu([[maybe_unused]] const bool modifierPressed) const {
         ImGui::Text("Copyright(c) 2018 DIVIDE - Studio");
         ImGui::Text("Copyright(c) 2009 Ionut Cava");
         ImGui::EndMenu();
+    }
+}
+
+void MenuBar::spawnDebugObject(const DebugObject object, const bool modifierPressed) const {
+    ResourceDescriptor model("Debug_Sponza");
+    model.assetLocation(Paths::g_assetsLocation + Paths::g_modelsLocation);
+    model.assetName(ResourcePath{ "sponza.obj" });
+    model.flag(true);
+    //model.waitForReady(true);
+
+    Mesh_ptr spawnMesh = CreateResource<Mesh>(_context.kernel().resourceCache(), model);
+    if (spawnMesh == nullptr) {
+        Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "ERROR: Couldn't load Sponza model!", Time::SecondsToMilliseconds<F32>(3), true);
+    }
+    if (Attorney::EditorGeneralWidget::modalModelSpawn(_context.editor(), spawnMesh, modifierPressed)) {
     }
 }
 } //namespace Divide

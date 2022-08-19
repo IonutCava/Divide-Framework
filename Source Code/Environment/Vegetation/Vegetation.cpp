@@ -559,7 +559,7 @@ void Vegetation::prepareDraw(SceneGraphNode* sgn) {
                                    }))
                 {
                     ResourceDescriptor model("Tree");
-                    model.assetLocation(Paths::g_assetsLocation + "models");
+                    model.assetLocation(Paths::g_assetsLocation + Paths::g_modelsLocation);
                     model.flag(true);
                     model.waitForReady(true);
                     model.assetName(meshName);

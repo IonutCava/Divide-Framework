@@ -162,6 +162,10 @@ void glTexture::submitTextureData() {
     }
 
     _data = _loadingData;
+    if (!Runtime::isMainThread()) {
+        _lockManager.lock();
+        glFlush();
+    }
 }
 
 void glTexture::loadDataCompressed(const ImageTools::ImageData& imageData) {
@@ -229,10 +233,6 @@ void glTexture::loadDataCompressed(const ImageTools::ImageData& imageData) {
                     break;
             }
         }
-    }
-
-    if (!Runtime::isMainThread()) {
-        _lockManager.lockRange(0u, totalMipSize);
     }
 }
 
@@ -302,9 +302,6 @@ void glTexture::loadDataUncompressed(const ImageTools::ImageData& imageData) {
                 default: break;
             }
         }
-    }
-    if (!Runtime::isMainThread()) {
-        _lockManager.lockRange(0u, totalMipSize);
     }
 }
 

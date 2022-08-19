@@ -43,24 +43,28 @@ namespace Divide {
     FWD_DECLARE_MANAGED_CLASS(Texture);
 
     class MenuBar final : public PlatformContextComponent, NonMovable {
-      public:
+        enum class DebugObject : U8 {
+            SPONZA = 0,
+            COUNT
+        };
 
+    public:
         explicit MenuBar(PlatformContext& context, bool mainMenu);
-
         void draw();
 
-      protected:
-          void drawFileMenu(bool modifierPressed);
-          void drawEditMenu(bool modifierPressed) const;
-          void drawProjectMenu(bool modifierPressed) const;
-          void drawObjectMenu(bool modifierPressed);
-          void drawToolsMenu(bool modifierPressed);
-          void drawWindowsMenu(bool modifierPressed) const;
-          void drawPostFXMenu(bool modifierPressed) const;
-          void drawDebugMenu(bool modifierPressed);
-          void drawHelpMenu(bool modifierPressed) const;
+    protected:
+        void drawFileMenu(bool modifierPressed);
+        void drawEditMenu(bool modifierPressed) const;
+        void drawProjectMenu(bool modifierPressed) const;
+        void drawObjectMenu(bool modifierPressed);
+        void drawToolsMenu(bool modifierPressed);
+        void drawWindowsMenu(bool modifierPressed) const;
+        void drawPostFXMenu(bool modifierPressed) const;
+        void drawDebugMenu(bool modifierPressed);
+        void drawHelpMenu(bool modifierPressed) const;
+        void spawnDebugObject(DebugObject object, bool modifierPressed) const;
 
-      protected:
+    protected:
         bool _isMainMenu = true;
         bool _quitPopup = false;
         bool _restartPopup = false;
@@ -68,10 +72,11 @@ namespace Divide {
         bool _closePopup = false;
         bool _savePopup = false;
         ObjectType _newPrimitiveType = ObjectType::COUNT;
-
+        DebugObject _debugObject = DebugObject::COUNT;
+        
         string _errorMsg = "";
         vector<Texture_ptr> _previewTextures;
-
+        
         ImGuiFs::Dialog _sceneOpenDialog;
         ImGuiFs::Dialog _sceneSaveDialog;
     };

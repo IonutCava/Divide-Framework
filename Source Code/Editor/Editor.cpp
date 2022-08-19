@@ -907,6 +907,8 @@ bool Editor::render([[maybe_unused]] const U64 deltaTime) {
 
     _optionsWindow->draw(_showOptionsWindow);
 
+    renderModelSpawnModal();
+
     ImGui::End();
 
     return true;
@@ -1946,45 +1948,50 @@ bool Editor::modalTextureView(const char* modalName, Texture* tex, const vec2<F3
     return closed;
 }
 
-bool Editor::modalModelSpawn(const char* modalName, const Mesh_ptr& mesh) const {
+bool Editor::modalModelSpawn(const Mesh_ptr& mesh, const bool quick) {
     if (mesh == nullptr) {
         return false;
     }
+    if (quick) {
+        const Camera* playerCam = Attorney::SceneManagerCameraAccessor::playerCamera(_context.kernel().sceneManager());
+        if (!spawnGeometry(mesh, VECTOR3_UNIT, playerCam->getEye(), VECTOR3_ZERO, mesh->resourceName().c_str())) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
+        return true;
+    }
 
+    if (_queuedModelSpawn == nullptr) {
+        _queuedModelSpawn = mesh;
+        return true;
+    }
+
+    return false;
+}
+
+void Editor::renderModelSpawnModal() {
+    if (_queuedModelSpawn == nullptr) {
+        return;
+    }
+
+    static bool wasClosed = false;
     static vec3<F32> scale(1.0f);
     static vec3<F32> position(0.0f);
     static vec3<F32> rotation(0.0f);
     static char inputBuf[256] = {};
 
-    bool closed = false;
-
-    static bool wasClosed = true;
-
-    {
-        const ImGuiIO& io = _imguiContexts[to_base(ImGuiContextType::Editor)]->IO;
-        if (io.KeyShift) {
-            const Camera* playerCam = Attorney::SceneManagerCameraAccessor::playerCamera(_context.kernel().sceneManager());
-            position = playerCam->getEye();
-            if (!spawnGeometry(mesh, scale, position, rotation, mesh->resourceName().c_str())) {
-                DIVIDE_UNEXPECTED_CALL();
-            }
-            return true;
-        }
-    }
-
-    Util::OpenCenteredPopup(modalName);
-    if (ImGui::BeginPopupModal(modalName, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+    Util::OpenCenteredPopup("Spawn Entity");
+    if (ImGui::BeginPopupModal("Spawn Entity", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         if (wasClosed) {
             wasClosed = false;
             const Camera* playerCam = Attorney::SceneManagerCameraAccessor::playerCamera(_context.kernel().sceneManager());
             position = playerCam->getEye();
         }
 
-        assert(mesh != nullptr);
+        assert(_queuedModelSpawn != nullptr);
         if (Util::IsEmptyOrNull(inputBuf)) {
-            strcpy_s(&inputBuf[0], std::min(to_size(254), mesh->resourceName().length()) + 1, mesh->resourceName().c_str());
+            strcpy_s(&inputBuf[0], std::min(to_size(254), _queuedModelSpawn->resourceName().length()) + 1, _queuedModelSpawn->resourceName().c_str());
         }
-        ImGui::Text("Spawn [ %s ]?", mesh->resourceName().c_str());
+        ImGui::Text("Spawn [ %s ]?", _queuedModelSpawn->resourceName().c_str());
         ImGui::Separator();
      
 
@@ -2001,7 +2008,6 @@ bool Editor::modalModelSpawn(const char* modalName, const Mesh_ptr& mesh) const 
         if (ImGui::Button("Cancel", ImVec2(120, 0))) {
             ImGui::CloseCurrentPopup();
             wasClosed = true;
-            closed = true;
             scale.set(1.0f);
             rotation.set(0.f);
             inputBuf[0] = '\0';
@@ -2012,18 +2018,18 @@ bool Editor::modalModelSpawn(const char* modalName, const Mesh_ptr& mesh) const 
         if (ImGui::Button("Yes", ImVec2(120, 0))) {
             ImGui::CloseCurrentPopup();
             wasClosed = true;
-            closed = true;
-            if (!spawnGeometry(mesh, scale, position, rotation, inputBuf)) {
+            if (!spawnGeometry(_queuedModelSpawn, scale, position, rotation, inputBuf)) {
                 DIVIDE_UNEXPECTED_CALL();
             }
             scale.set(1.0f);
             rotation.set(0.f);
             inputBuf[0] = '\0';
         }
+        if (wasClosed) {
+            _queuedModelSpawn.reset();
+        }
         ImGui::EndPopup();
     }
-
-    return closed;
 }
 
 void Editor::showStatusMessage(const string& message, const F32 durationMS, bool error) const {

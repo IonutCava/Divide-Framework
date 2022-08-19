@@ -467,8 +467,7 @@ void GFXDevice::resizeGPUBlocks(size_t targetSizeCam, size_t targetSizeCullCount
             _gfxBuffers._perFrameBuffers[i]._cullCounter = newSB(bufferDescriptor);
         }
     }
-
-    _gpuBlock._camData = {};
+    _gpuBlock._camNeedsUpload = true;
 }
 
 ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
@@ -2114,6 +2113,7 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
                 if (crtCmd._buffer != nullptr) {
                     GFX::MemoryBarrierCommand memCmd{};
                     memCmd._bufferLocks.push_back(crtCmd._buffer->clearData({ crtCmd._offsetElementCount, crtCmd._elementCount }));
+                    memCmd._syncFlag = 101u;
                     _api->flushCommand(&memCmd);
                 }
             } break;

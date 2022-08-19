@@ -122,7 +122,6 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
 
     for (U8 i = 0u; i < layerCount; ++i) {
         layerOffsetStr = Util::to_string(i);
-        splatTextures.push_back(terrainDescriptor->getVariable("blendMap" + layerOffsetStr));
         U8 j = 0u;
         for (const auto& [channelName, channel] : channels) {
             currentMaterial = terrainDescriptor->getVariable(channelName + layerOffsetStr + "_mat");

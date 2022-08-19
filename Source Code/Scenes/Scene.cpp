@@ -492,7 +492,7 @@ void Scene::loadAsset(const Task* parentTask, const XML::SceneNode& sceneNode, S
                     if (!modelName.empty()) {
                         _loadingTasks.fetch_add(1);
                         ResourceDescriptor model(modelName.str());
-                        model.assetLocation(Paths::g_assetsLocation + "models");
+                        model.assetLocation(Paths::g_assetsLocation + Paths::g_modelsLocation);
                         model.assetName(modelName);
                         model.flag(true);
                         model.waitForReady(true);
@@ -1541,19 +1541,22 @@ void Scene::findHoverTarget(PlayerIndex idx, const vec2<I32>& aimPos) {
     };
 
     const Camera* crtCamera = playerCamera(idx);
-
-    const vec2<F32>& zPlanes = crtCamera->getZPlanes();
-    const Rect<I32>& viewport = _context.gfx().activeViewport();
-
-    const vec3<F32> startRay = crtCamera->getEye();
-    const vec3<F32> direction = crtCamera->unProject(to_F32(aimPos.x), viewport.w - to_F32(aimPos.y), viewport);
+    const vec2<U16>& renderingResolution = _context.gfx().renderingResolution();
+    const vec3<F32> direction = crtCamera->unProject(to_F32(aimPos.x), 
+                                                     renderingResolution.height - to_F32(aimPos.y),
+                                                     {
+                                                          0,
+                                                          0,
+                                                          renderingResolution.width,
+                                                          renderingResolution.height
+                                                      });
 
     // see if we select another one
     _sceneSelectionCandidates.resize(0);
 
     SGNIntersectionParams intersectionParams = {};
-    intersectionParams._ray = { startRay, direction };
-    intersectionParams._range = zPlanes;
+    intersectionParams._ray = { crtCamera->getEye(), direction };
+    intersectionParams._range = crtCamera->getZPlanes();
     intersectionParams._includeTransformNodes = true;
     intersectionParams._ignoredTypes = s_ignoredNodes.data();
     intersectionParams._ignoredTypesCount = s_ignoredNodes.size();
@@ -1702,7 +1705,7 @@ bool Scene::findSelection(const PlayerIndex idx, const bool clearOld) {
     }
 
     Selections& playerSelections = _currentSelection[idx];
-    for (U8 i = 0; i < playerSelections._selectionCount; ++i) {
+    for (U8 i = 0u; i < playerSelections._selectionCount; ++i) {
         if (playerSelections._selections[i] == hoverGUID) {
             //Already selected
             return true;

@@ -2,8 +2,8 @@
 <static>false</static>
 <TRANSFORM>
     <Transform>
-        <position x="-8.98744583" y="2.99053383" z="2.99053383"/>
-        <orientation x="103.489265" y="-1.2842555" z="179.555557"/>
+        <position x="0" y="0" z="0"/>
+        <orientation x="0" y="-0" z="0"/>
         <scale x="1" y="1" z="1"/>
     </Transform>
 </TRANSFORM>

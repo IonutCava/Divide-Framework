@@ -189,8 +189,8 @@
                 <UseForPrePass>0</UseForPrePass>
             </UNIT0>
             <OPACITY>
-                <name>alpha_maps_Alpha1.png,alpha_maps_Alpha2.png,alpha_maps_Alpha1.png,alpha_maps_Alpha2.png</name>
-                <path>assets/terrain/Main,assets/terrain/Main,assets/terrain/Main,assets/terrain/Main,assets/terrain/Main,assets/terrain/Main,assets/terrain/Main,assets/terrain/Main</path>
+                <name>alpha_maps_Alpha1.png,alpha_maps_Alpha2.png</name>
+                <path>assets/terrain/Main,assets/terrain/Main</path>
                 <usage>NONE</usage>
                 <Sampler>
                     <id>2</id>

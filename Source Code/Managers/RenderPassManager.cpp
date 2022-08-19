@@ -297,6 +297,7 @@ void RenderPassManager::render(const RenderParams& params) {
                         // No running dependency so we can flush the command buffer and add the pass to the skip list
                         _drawCallCount[i] = _context.frameDrawCalls();
                         _context.flushCommandBuffer(*_renderPassData[i]._cmdBuffer, false);
+                        _renderPassData[i]._memCmd._syncFlag = 150 + i;
                         GFX::EnqueueCommand(*_postRenderBuffer, _renderPassData[i]._memCmd);
                         _drawCallCount[i] = _context.frameDrawCalls() - _drawCallCount[i];
 

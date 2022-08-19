@@ -194,16 +194,16 @@ namespace Divide {
                         vec3<Angle::DEGREES<F32>> orientationEuler;
 
                         position.set(pt.get<F32>(entryName + ".position.<xmlattr>.x", 0.0f),
-                                     pt.get<F32>(entryName + ".position.<xmlattr>.y", 0.0f),
-                                     pt.get<F32>(entryName + ".position.<xmlattr>.z", 0.0f));
+                            pt.get<F32>(entryName + ".position.<xmlattr>.y", 0.0f),
+                            pt.get<F32>(entryName + ".position.<xmlattr>.z", 0.0f));
 
                         orientationEuler.pitch = pt.get<F32>(entryName + ".orientation.<xmlattr>.x", 0.0f);
-                        orientationEuler.yaw   = pt.get<F32>(entryName + ".orientation.<xmlattr>.y", 0.0f);
-                        orientationEuler.roll  = pt.get<F32>(entryName + ".orientation.<xmlattr>.z", 0.0f);
+                        orientationEuler.yaw = pt.get<F32>(entryName + ".orientation.<xmlattr>.y", 0.0f);
+                        orientationEuler.roll = pt.get<F32>(entryName + ".orientation.<xmlattr>.z", 0.0f);
 
                         scale.set(pt.get<F32>(entryName + ".scale.<xmlattr>.x", 1.0f),
-                                  pt.get<F32>(entryName + ".scale.<xmlattr>.y", 1.0f),
-                                  pt.get<F32>(entryName + ".scale.<xmlattr>.z", 1.0f));
+                            pt.get<F32>(entryName + ".scale.<xmlattr>.y", 1.0f),
+                            pt.get<F32>(entryName + ".scale.<xmlattr>.z", 1.0f));
 
                         Quaternion<F32> rotation;
                         rotation.fromEuler(orientationEuler);

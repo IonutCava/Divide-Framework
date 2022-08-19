@@ -11,7 +11,7 @@
 </TRANSFORM>
 <ANIMATION>
     <Animation__Speed>1</Animation__Speed>
-    <Animation__Frame__Index x="44" y="43" z="45"/>
+    <Animation__Frame__Index x="8" y="7" z="9"/>
 </ANIMATION>
 <INVERSE_KINEMATICS/>
 <RAGDOLL/>

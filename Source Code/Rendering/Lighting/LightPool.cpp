@@ -315,6 +315,7 @@ void LightPool::generateShadowMaps(const Camera& playerCamera, GFX::CommandBuffe
     }
 
     memCmdInOut._bufferLocks.push_back(_shadowBuffer->writeData(_shadowBufferData.data()));
+    memCmdInOut._syncFlag = 1u;
     _shadowBufferDirty = true;
 
     ShadowMap::bindShadowMaps(bufferInOut);
@@ -450,6 +451,7 @@ void LightPool::uploadLightData(const RenderStage stage, const CameraSnapshot& c
         OPTICK_EVENT("LightPool::UploadSceneDataToGPU");
         memCmdInOut._bufferLocks.push_back(_sceneBuffer->writeData({ bufferOffset, 1 }, &_sortedSceneProperties[stageIndex]));
     }
+    memCmdInOut._syncFlag = 2u;
 }
 
 void LightPool::uploadLightData(const RenderStage stage, GFX::CommandBuffer& bufferInOut) {

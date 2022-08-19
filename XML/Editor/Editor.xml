@@ -5,7 +5,7 @@
     <themeIndex>6</themeIndex>
     <textEditor/>
     <lastOpenSceneGUID>830</lastOpenSceneGUID>
-    <grid enabled="true" axisWidth="4.954" scale="1.02800083"/>
+    <grid enabled="true" axisWidth="2" scale="1"/>
     <camera>
         <Editor__Camera>
             <reflectionPlane>
@@ -13,15 +13,15 @@
                 <distance>0</distance>
                 <active>false</active>
             </reflectionPlane>
-            <accumPitchDegrees>-14.9972277</accumPitchDegrees>
+            <accumPitchDegrees>-28.6579037</accumPitchDegrees>
             <frustumLocked>false</frustumLocked>
-            <euler x="-14.999999" y="39.9882622" z="0"/>
-            <eye x="60" y="45" z="60"/>
-            <orientation x="-0.122639529" y="0.339052707" z="0.0446371362" w="0.931539714"/>
-            <aspectRatio>1.77777779</aspectRatio>
+            <euler x="151.353714" y="-0.876447916" z="178.832336"/>
+            <eye x="-3.12681746" y="2.41091704" z="-10.4297237"/>
+            <orientation x="-0.0117645413" y="-0.968813419" z="-0.247444645" w="0.00488956831"/>
+            <aspectRatio>1.76999998</aspectRatio>
             <zPlanes min="0.100000001" max="1000"/>
-            <FoV>77.5521393</FoV>
-            <speedFactor turn="5" move="4" zoom="5"/>
+            <FoV>77.7975693</FoV>
+            <speedFactor turn="50" move="40" zoom="35"/>
             <fixedYawAxis x="0" y="1" z="0"/>
             <yawFixed>true</yawFixed>
             <rotationLocked>false</rotationLocked>

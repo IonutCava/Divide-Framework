@@ -119,6 +119,7 @@ void glGenericVertexData::setIndexBuffer(const IndexBuffer& indices) {
         }
         if (!Runtime::isMainThread()) {
             _lockManager.lockRange(0u, range);
+            glFlush();
         }
     }
 }
@@ -237,15 +238,15 @@ void glGenericVertexData::bindBufferInternal(const SetBufferParams::BufferBindCo
 }
 
 void glGenericVertexData::lockBuffersInternal(const bool force) {
-    SyncObject* sync = nullptr;
+    SyncObjectHandle sync{};
     for (const auto& buffer : _bufferObjects) {
         if ((buffer._useAutoSyncObjects || force) && buffer._usedAfterWrite) {
-            sync = glLockManager::CreateSyncObject();
+            sync = glLockManager::CreateSyncObject(glLockManager::DEFAULT_SYNC_FLAG_GVD);
             break;
         }
     }
 
-    if (sync != nullptr) {
+    if (sync._id != SyncObjectHandle::INVALID_ID) {
         for (auto& buffer : _bufferObjects) {
             if ((buffer._useAutoSyncObjects || force) && buffer._usedAfterWrite) {
                 DIVIDE_ASSERT(buffer._writtenRange._length > 0u);

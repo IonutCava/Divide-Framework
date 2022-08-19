@@ -11,7 +11,7 @@
     <Cloud__Radius____1m__400000m__>200000</Cloud__Radius____1m__400000m__>
     <Atmosphere__Offset____1m__-__2000m__>218.283005</Atmosphere__Offset____1m__-__2000m__>
     <Cloud__layer__height__range__(m) x="2000" y="3400"/>
-    <Weather__Scale__(__x__1e-5)>7.40497303</Weather__Scale__(__x__1e-5)>
+    <Weather__Scale__(__x__1e-5)>7.43697071</Weather__Scale__(__x__1e-5)>
     <Use__Day__Skybox>false</Use__Day__Skybox>
     <Use__Night__Skybox>true</Use__Night__Skybox>
     <Enable__Procedural__Clouds>true</Enable__Procedural__Clouds>

@@ -222,6 +222,7 @@ UniformBlockUploader::UniformBlockUploader(GFXDevice& context, const UniformBloc
     _blockMembers.resize(activeMembers);
     _uniformBlockSizeAligned = Util::GetAlignmentCorrected(_descriptor._reflectionData._blockSize, ShaderBuffer::AlignmentRequirement(ShaderBuffer::Usage::CONSTANT_BUFFER));
     resizeBlockBuffer(false);
+    _localDataCopy.resize(_uniformBlockSizeAligned);
 
     size_t requiredExtraMembers = 0;
     for (size_t member = 0; member < activeMembers; ++member) {
@@ -309,8 +310,7 @@ void UniformBlockUploader::resizeBlockBuffer(const bool increaseSize) {
     bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
     bufferDescriptor._bufferParams._elementSize = _uniformBlockSizeAligned;
     _buffer = _context.newSB(bufferDescriptor);
-    _localDataCopy.resize(_uniformBlockSizeAligned);
-    std::memset(_localDataCopy.data(), 0, _localDataCopy.size());
+    _uniformBlockDirty = true;
 }
 
 void UniformBlockUploader::uploadPushConstant(const GFX::PushConstant& constant, bool force) noexcept {

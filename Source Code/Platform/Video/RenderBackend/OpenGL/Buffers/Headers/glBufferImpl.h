@@ -67,8 +67,8 @@ public:
     virtual ~glBufferImpl();
 
     // Returns false if we encounter an error
-    [[nodiscard]] bool lockByteRange(size_t offsetInBytes, size_t rangeInBytes, SyncObject* sync);
-    [[nodiscard]] inline bool lockByteRange(const BufferRange range, SyncObject* sync) {
+    [[nodiscard]] bool lockByteRange(size_t offsetInBytes, size_t rangeInBytes, SyncObjectHandle sync);
+    [[nodiscard]] inline bool lockByteRange(const BufferRange range, SyncObjectHandle sync) {
         return lockByteRange(range._startOffset, range._length, sync);
     }
 

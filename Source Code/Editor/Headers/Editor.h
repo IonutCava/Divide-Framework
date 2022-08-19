@@ -238,6 +238,7 @@ class Editor final : public PlatformContextComponent,
     [[nodiscard]] bool isDefaultScene() const noexcept;
 
     void postRender(const CameraSnapshot& cameraSnapshot, RenderTargetID target, GFX::CommandBuffer& bufferInOut);
+    void renderModelSpawnModal();
 
     PROPERTY_R_IW(bool, running, false);
     PROPERTY_R_IW(bool, unsavedSceneChanges, false);
@@ -262,8 +263,8 @@ class Editor final : public PlatformContextComponent,
 
     /// Returns true if the window was closed
     [[nodiscard]] bool modalTextureView(const char* modalName, Texture* tex, const vec2<F32>& dimensions, bool preserveAspect, bool useModal) const;
-    /// Returns true if the modal window was closed
-    [[nodiscard]] bool modalModelSpawn(const char* modalName, const Mesh_ptr& mesh) const;
+    /// Returns true if the model was queued
+    [[nodiscard]] bool modalModelSpawn(const Mesh_ptr& mesh, bool quick);
     /// Return true if the model was spawned as a scene node
     [[nodiscard]] bool spawnGeometry(const Mesh_ptr& mesh, const vec3<F32>& scale, const vec3<F32>& position, const vec3<Angle::DEGREES<F32>>& rotation, const string& name) const;
     /// Return true if the specified node passed frustum culling during the main render pass
@@ -327,6 +328,7 @@ class Editor final : public PlatformContextComponent,
     CircularBuffer<Str256> _recentSceneList;
     CameraSnapshot _render2DSnapshot{};
     RenderTargetHandle _editorRTHandle{};
+    Mesh_ptr _queuedModelSpawn{ nullptr };
 }; //Editor
 
 namespace Attorney {
@@ -555,8 +557,8 @@ namespace Attorney {
             return editor.modalTextureView(modalName, tex, dimensions, preserveAspect, useModal);
         }
 
-        [[nodiscard]] static bool modalModelSpawn(const Editor& editor, const char* modalName, const Mesh_ptr& mesh) {
-            return editor.modalModelSpawn(modalName, mesh);
+        [[nodiscard]] static bool modalModelSpawn(Editor& editor, const Mesh_ptr& mesh, bool quick) {
+            return editor.modalModelSpawn(mesh, quick);
         }
 
         [[nodiscard]] static ImGuiContext& getImGuiContext(Editor& editor, const Editor::ImGuiContextType type) noexcept {

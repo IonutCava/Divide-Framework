@@ -132,7 +132,7 @@
                 <UseForPrePass>2</UseForPrePass>
             </REFLECTION_PLANAR>
             <REFRACTION_PLANAR>
-                <name>RT_Refraction_Planar_0_Att_Colour_0_99</name>
+                <name>RT_Refraction_Planar_0_Att_Colour_0_89</name>
                 <path/>
                 <usage>REPLACE</usage>
                 <Sampler>

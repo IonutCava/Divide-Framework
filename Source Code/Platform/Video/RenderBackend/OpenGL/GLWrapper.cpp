@@ -1109,7 +1109,7 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             }
 
             if (!crtCmd->_bufferLocks.empty()) {
-                SyncObject* sync = glLockManager::CreateSyncObject();
+                SyncObjectHandle sync = glLockManager::CreateSyncObject(crtCmd->_syncFlag);
                 for (const BufferLock& lock : crtCmd->_bufferLocks) {
                     glBufferImpl* buffer = static_cast<const glShaderBuffer*>(lock._targetBuffer)->bufferImpl();
                     if (!buffer->lockByteRange(lock._range, sync)) {
@@ -1572,7 +1572,11 @@ GLUtil::GLMemory::DeviceAllocator& GL_API::GetMemoryAllocator(const GLUtil::GLMe
 }
 
 void GL_API::QueueFlush() noexcept {
-    s_glFlushQueued.store(true);
+    if (Runtime::isMainThread()) {
+        glFlush();
+    } else {
+        s_glFlushQueued.store(true);
+    }
 }
 
 void GL_API::PushDebugMessage(const char* message, const U32 id) {

@@ -551,6 +551,7 @@ bool Merge(DrawCommand* prevCommand, DrawCommand* crtCommand) {
 
 bool Merge(GFX::MemoryBarrierCommand* lhs, GFX::MemoryBarrierCommand* rhs) {
     BitMaskSet(lhs->_barrierMask, rhs->_barrierMask);
+    lhs->_syncFlag = std::max(lhs->_syncFlag, rhs->_syncFlag);
 
     for (const BufferLock& otherLock : rhs->_bufferLocks) {
         bool found = false;

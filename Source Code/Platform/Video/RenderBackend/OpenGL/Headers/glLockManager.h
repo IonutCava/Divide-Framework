@@ -56,35 +56,51 @@ struct SyncObject {
 
 FWD_DECLARE_MANAGED_STRUCT(SyncObject);
 
+struct SyncObjectHandle {
+    static constexpr size_t INVALID_ID = std::numeric_limits<size_t>::max();
+
+    size_t _id{ INVALID_ID };
+    size_t _generation{ 0u };
+};
+
 struct BufferLockInstance {
     BufferRange _range{};
-    SyncObject* _syncObj{ nullptr };
+    SyncObjectHandle _syncObjHandle{};
 };
 
 // --------------------------------------------------------------------------------------------------------------------
 class glLockManager : public GUIDWrapper {
    public:
-    using BufferLockPool = eastl::fixed_vector<SyncObject_uptr, 1024, true>;
+    static constexpr U8 DEFAULT_SYNC_FLAG_INTERNAL = 254u;
+    static constexpr U8 DEFAULT_SYNC_FLAG_GVD = 255u;
+    struct BufferLockPoolEntry {
+        SyncObject_uptr _ptr{ nullptr };
+        size_t _generation{ 0u };
+        U8 _flag{ 0u };
+    };
+
+    using BufferLockPool = eastl::fixed_vector<BufferLockPoolEntry, 1024, true>;
 
     static void CleanExpiredSyncObjects(U64 frameNumber);
-    static [[nodiscard]] SyncObject* CreateSyncObject();
+    static [[nodiscard]] SyncObjectHandle CreateSyncObject(U8 flag);
     static void Clear();
 
    public:
     virtual ~glLockManager();
 
+    bool lock(SyncObjectHandle syncObj = CreateSyncObject(DEFAULT_SYNC_FLAG_INTERNAL));
     void wait(bool blockClient);
 
     /// Returns false if we encountered an error
     bool waitForLockedRange(size_t lockBeginBytes, size_t lockLength, bool blockClient, bool quickCheck = false);
     /// Returns false if we encountered an error
-    bool lockRange(size_t lockBeginBytes, size_t lockLength, SyncObject* syncObj = CreateSyncObject());
+    bool lockRange(size_t lockBeginBytes, size_t lockLength, SyncObjectHandle syncObj = CreateSyncObject(DEFAULT_SYNC_FLAG_INTERNAL));
 
   protected:
     /// Returns true if the sync object was signaled. retryCount is the number of retries it took to wait for the object
     /// if quickCheck is true, we don't retry if the initial check fails 
-    static bool Wait(GLsync syncObj, bool blockClient, bool quickCheck, U8& retryCount);
-    static [[nodiscard]] SyncObject* CreateSyncObjectLocked(bool isRetry = false);
+    static bool Wait(GLsync sync, bool blockClient, bool quickCheck, U8& retryCount);
+    static [[nodiscard]] SyncObjectHandle CreateSyncObjectLocked(U8 flag, bool isRetry = false);
    protected:
      mutable Mutex _bufferLockslock; // :D
      vector<BufferLockInstance> _bufferLocks;

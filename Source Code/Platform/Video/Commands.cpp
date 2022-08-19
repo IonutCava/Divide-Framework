@@ -301,7 +301,7 @@ string ToString(const DispatchComputeCommand& cmd, U16 indent) {
 }
 
 string ToString(const MemoryBarrierCommand& cmd, U16 indent) {
-    string ret = Util::StringFormat(" [ Mask: %d ] [ Buffer locks: %zu ] [ Fence locks: %zu ]", cmd._barrierMask, cmd._bufferLocks.size(), cmd._fenceLocks.size());
+    string ret = Util::StringFormat(" [ Mask: %d ] [ Buffer locks: %zu ] [ Fence locks: %zu ] [ Sync flag: %d ]", cmd._barrierMask, cmd._bufferLocks.size(), cmd._fenceLocks.size(), cmd._syncFlag);
  
     for (auto it : cmd._bufferLocks) {
         ret.append("    ");

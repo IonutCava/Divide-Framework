@@ -2,9 +2,9 @@
 <static>false</static>
 <TRANSFORM>
     <Transform>
-        <position x="-9.53674316e-06" y="12.9108629" z="3.81469727e-06"/>
-        <orientation x="-5.55377426e-07" y="-7.03227579e-06" z="-4.98845959"/>
-        <scale x="0.99999994" y="0.99999994" z="0.99999994"/>
+        <position x="0" y="0" z="0"/>
+        <orientation x="0" y="-0" z="0"/>
+        <scale x="1" y="1" z="1"/>
     </Transform>
 </TRANSFORM>
 <NETWORKING/>

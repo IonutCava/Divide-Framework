@@ -114,7 +114,7 @@ inline U32 GFXDevice::getHandleFromCEGUITexture(const CEGUI::Texture& textureIn)
     return _api->getHandleFromCEGUITexture(textureIn);
 }
 
-inline const vec2<U16>&  GFXDevice::renderingResolution() const noexcept {
+inline const vec2<U16>& GFXDevice::renderingResolution() const noexcept {
     return _renderingResolution;
 }
 
