@@ -5,6 +5,7 @@
 		<enableRenderAPIDebugging>true</enableRenderAPIDebugging>
 		<useGeometryCache>true</useGeometryCache>
 		<useVegetationCache>true</useVegetationCache>
+		<useShaderCache>true</useShaderCache>
 		<enableTreeInstances>false</enableTreeInstances>
 		<enableGrassInstances>true</enableGrassInstances>
 		<renderFilter>

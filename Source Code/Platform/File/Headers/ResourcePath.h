@@ -60,7 +60,7 @@ struct ResourcePath
     [[nodiscard]] const string& str() const noexcept { return _str; }
 
     const string& convertToLower() noexcept { 
-        std::transform(_str.begin(), _str.end(), _str.begin(), [](unsigned char c) { return std::tolower(c); });
+        std::transform(_str.begin(), _str.end(), _str.begin(), [](unsigned char c) noexcept { return std::tolower(c); });
         return str();
     }
 private:

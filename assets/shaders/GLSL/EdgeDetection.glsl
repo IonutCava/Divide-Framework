@@ -38,7 +38,7 @@ layout(location = ATTRIB_FREE_START) in vec4 vOffset[3];
 
 layout(location = 0) out vec2 _colourOut;
 
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_DEPTH) uniform sampler2D texDepth;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texDepth;
 
 /**
  * Gathers current pixel, and the top-left neighbors.
@@ -75,7 +75,7 @@ uniform float dvd_edgeThreshold;
 
 layout(location = 0) out vec2 _colourOut;
 
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D texScreen;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texScreen;
 
 void main() {
     vec2 vTexCoord0 = VAR._texCoord;
@@ -132,7 +132,7 @@ layout(location = ATTRIB_FREE_START) in vec4 vOffset[3];
 
 layout(location = 0) out vec2 _colourOut;
 
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D texScreen;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texScreen;
 
 void main() {
     // Calculate the threshold:

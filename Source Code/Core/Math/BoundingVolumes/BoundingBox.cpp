@@ -134,7 +134,7 @@ RayResult BoundingBox::intersect(const Ray& r, F32 t0, F32 t1) const noexcept {
     const F32 ty_max = (bounds[1 - colHelpers._sign[1]].y - origin.y) * colHelpers._invDirection.y;
 
     if (t_min > ty_max || ty_min > t_max) {
-        return { false, (t_min >= 0.0f ? t_min : t_max) };
+        return { false, t_min < 0.f, (t_min >= 0.0f ? t_min : t_max) };
     }
 
     if (ty_min > t_min) {
@@ -149,7 +149,7 @@ RayResult BoundingBox::intersect(const Ray& r, F32 t0, F32 t1) const noexcept {
     const F32 tz_max = (bounds[1 - colHelpers._sign[2]].z - origin.z) * colHelpers._invDirection.z;
 
     if (t_min > tz_max || tz_min > t_max) {
-        return { false, (t_min >= 0.0f ? t_min : t_max) };
+        return { false, t_min < 0.f, (t_min >= 0.0f ? t_min : t_max) };
     }
 
     if (tz_min > t_min) {
@@ -164,6 +164,7 @@ RayResult BoundingBox::intersect(const Ray& r, F32 t0, F32 t1) const noexcept {
 
     RayResult ret;
     ret.dist = t;
+    ret.inside = t_min < 0.f;
     // Ray started inside the box
     if (ret.dist < 0.0f) {
         ret.hit = true;

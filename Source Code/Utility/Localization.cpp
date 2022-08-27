@@ -8,16 +8,20 @@
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/File/Headers/FileUpdateMonitor.h"
 
+namespace FW {
+    FWD_DECLARE_MANAGED_CLASS(FileWatcher);
+};
+
 namespace Divide::Locale {
 
 namespace detail {
     /// Default language can be set at compile time
     Str64 g_localeFile = {};
 
-    eastl::unique_ptr<LanguageData> g_data = nullptr;
+    LanguageData_uptr g_data = nullptr;
 
     /// External modification monitoring system
-    eastl::unique_ptr<FW::FileWatcher> g_LanguageFileWatcher = nullptr;
+    FW::FileWatcher_uptr g_LanguageFileWatcher = nullptr;
 
     /// Callback for external file changes. 
     UpdateListener g_fileWatcherListener([](const std::string_view languageFile, const FileUpdateEvent evt) {

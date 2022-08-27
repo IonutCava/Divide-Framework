@@ -33,17 +33,16 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _PLATFORM_FILE_FILE_WATCHER_MANAGER_H_
 #define _PLATFORM_FILE_FILE_WATCHER_MANAGER_H_
 namespace FW {
-    class FileWatcher;
+    FWD_DECLARE_MANAGED_CLASS(FileWatcher);
 }
 
 namespace Divide {
     struct FileWatcher final : GUIDWrapper {
-        FW::FileWatcher& operator()() noexcept {
-            return *_impl;
-        }
-
-       eastl::unique_ptr<FW::FileWatcher> _impl = nullptr;
+       FORCE_INLINE FW::FileWatcher& operator()() noexcept { return *_impl; }
+       FW::FileWatcher_uptr _impl = nullptr;
     };
+
+    FWD_DECLARE_MANAGED_STRUCT(FileWatcher);
 
     class FileWatcherManager {
       public:
@@ -53,7 +52,7 @@ namespace Divide {
         static void deallocateWatcher(const FileWatcher& fw);
 
       private:
-        static vector<std::pair<eastl::unique_ptr<FileWatcher>, U32>> s_fileWatchers;
+        static vector<std::pair<FileWatcher_uptr, U32>> s_fileWatchers;
     }; //FileWatcherManager
 }; //namespace Divide
 

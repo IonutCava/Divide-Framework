@@ -53,6 +53,9 @@ protected:
     RigidBodyComponent & _parentComponent;
     PXDevice& _context;
 };
+
+FWD_DECLARE_MANAGED_CLASS(PhysicsAsset);
+
 };
 
 #endif //_PHYSICS_ASSET_H_

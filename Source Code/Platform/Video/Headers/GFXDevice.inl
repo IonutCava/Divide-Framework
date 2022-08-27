@@ -62,15 +62,15 @@ inline GPUState& GFXDevice::gpuState() noexcept {
     return _state;
 }
 
-inline ShaderProgram* GFXDevice::defaultIMShader() const {
+inline ShaderProgram* GFXDevice::defaultIMShader() const noexcept {
     return _imShader.get();
 }
 
-inline ShaderProgram* GFXDevice::defaultIMShaderWorld() const {
+inline ShaderProgram* GFXDevice::defaultIMShaderWorld() const noexcept {
     return _imWorldShader.get();
 }
 
-inline ShaderProgram* GFXDevice::defaultIMShaderOIT() const {
+inline ShaderProgram* GFXDevice::defaultIMShaderOIT() const noexcept {
     return _imWorldOITShader.get();
 }
 
@@ -106,6 +106,18 @@ inline void GFXDevice::OverrideDeviceInformation(const DeviceInformation& info) 
     s_deviceInformation = info;
 }
 
+inline bool GFXDevice::IsSubmitCommand(const GFX::CommandType type) noexcept {
+    if (type == GFX::CommandType::EXTERNAL ||
+        type == GFX::CommandType::DISPATCH_COMPUTE ||
+        type == GFX::CommandType::DRAW_TEXT ||
+        type == GFX::CommandType::DRAW_COMMANDS)
+    {
+        return true;
+    }
+
+    return false;
+}
+
 inline vec2<U16> GFXDevice::getDrawableSize(const DisplayWindow& window) const {
     return _api->getDrawableSize(window);
 }
@@ -133,6 +145,33 @@ inline const PerformanceMetrics& GFXDevice::getPerformanceMetrics() const noexce
     return _performanceMetrics;
 }
 
+inline GFXDevice::GFXDescriptorSet& GFXDevice::descriptorSet(const DescriptorSetUsage usage) noexcept {
+    switch (usage) {
+        case DescriptorSetUsage::PER_FRAME: return _descriptorSets._perFrameSet;
+        case DescriptorSetUsage::PER_PASS: return _descriptorSets._perPassSet;
+        case DescriptorSetUsage::PER_BATCH: return _descriptorSets._perBatchSet;
+    }
+    
+    DIVIDE_UNEXPECTED_CALL();
+    return _descriptorSets._perFrameSet;
+}
+
+inline const GFXDevice::GFXDescriptorSet& GFXDevice::descriptorSet(const DescriptorSetUsage usage) const noexcept {
+    switch (usage) {
+        case DescriptorSetUsage::PER_FRAME: return _descriptorSets._perFrameSet;
+        case DescriptorSetUsage::PER_PASS: return _descriptorSets._perPassSet;
+        case DescriptorSetUsage::PER_BATCH: return _descriptorSets._perBatchSet;
+    }
+
+    DIVIDE_UNEXPECTED_CALL();
+    return _descriptorSets._perFrameSet;
+}
+
+inline void GFXDevice::GFXDescriptorSets::markDirty() noexcept {
+    _perFrameSet.dirty(true);
+    _perPassSet.dirty(true);
+    _perBatchSet.dirty(true);
+}
 };  // namespace Divide
 
 #endif

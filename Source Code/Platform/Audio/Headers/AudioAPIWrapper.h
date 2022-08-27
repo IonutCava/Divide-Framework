@@ -80,6 +80,8 @@ class NOINITVTABLE AudioAPIWrapper {
     virtual void musicFinished() = 0;
 };
 
+FWD_DECLARE_MANAGED_CLASS(AudioAPIWrapper);
+
 };  // namespace Divide
 
 #endif

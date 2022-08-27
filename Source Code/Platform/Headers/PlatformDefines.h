@@ -64,6 +64,11 @@ do {                                                \
 #define TO_STRING(X) TO_STRING_NAME(X)
 #endif //TO_STRING
 
+/// Makes writing and reading smart pointer types easier and cleaner
+/// Faster to write ClassName_uptr than eastl::unique_ptr<ClassName>
+/// Also cleaner and easier to read the managed type in nested templated parameters 
+/// e.g. std::pair<ClassNameA_uptr, ClassNameB_wptr> vs std::pair<eastl::unique_ptr<ClassNameA>, std::weak_ptr<ClassNameB>>
+/// Also makes it easier to switch smart pointer implementations (i.e. eastl for unique_ptr) using a centralized location
 #define TYPEDEF_SMART_POINTERS_FOR_TYPE(T)       \
     using T ## _wptr  = std::weak_ptr<T>;        \
     using T ## _ptr   = std::shared_ptr<T>;      \
@@ -245,7 +250,7 @@ template<typename T>
 }
 
 [[nodiscard]] constexpr U32 powerOfTwo(U32 X) noexcept {
-    U32 r = 0;
+    U32 r = 0u;
     while (X >>= 1) {
         r++;
     }

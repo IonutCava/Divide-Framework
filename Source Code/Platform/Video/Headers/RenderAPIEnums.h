@@ -55,90 +55,23 @@ namespace Names {
 
 static_assert(std::size(Names::renderAPI) == to_base(RenderAPI::COUNT) + 1);
 
-/// A list of built-in sampler slots. Use these if possible and keep them sorted by how often they are used
-enum class TextureUsage : U8 {
-    UNIT0 = 0u,
-    NORMALMAP,
-    HEIGHTMAP,
-    SHADOW_LAYERED,
-    DEPTH,
-    SHADOW_SINGLE,
-    SHADOW_CUBE,
-    OPACITY,
-    SPECULAR,
-    METALNESS,
-    ROUGHNESS,
-    OCCLUSION,
-    EMISSIVE,
-    UNIT1,
-    PROJECTION,
-    REFLECTION_PLANAR,
-    REFLECTION_CUBE,
-    REFRACTION_PLANAR,
-    REFLECTION_PREFILTERED,
-    IRRADIANCE,
-    SSR_SAMPLE,
-    SSAO_SAMPLE,
-    BRDF_LUT,
-    SSAO,
-    TRANSMITANCE,
-    SCENE_NORMALS,
-    COUNT
-};
-
-static_assert(to_base(TextureUsage::COUNT) <= 32);
-
-namespace Names {
-    static constexpr const char* textureUsage[] = {
-        "UNIT0",
-        "NORMALMAP",
-        "HEIGHTMAP",
-        "SHADOW_LAYERED",
-        "DEPTH",
-        "SHADOW_SINGLE",
-        "SHADOW_CUBE",
-        "OPACITY",
-        "SPECULAR",
-        "METALNESS",
-        "ROUGHNESS",
-        "OCCLUSION",
-        "EMISSIVE",
-        "UNIT1",
-        "PROJECTION",
-        "REFLECTION_PLANAR",
-        "REFLECTION_CUBE",
-        "REFRACTION_PLANAR",
-        "REFLECTION_PREFILTERED",
-        "IRRADIANCE",
-        "SSR_SAMPLE",
-        "SSAO_SAMPLE",
-        "BRDF_LUT",
-        "SSAO",
-        "TRANSMITANCE",
-        "SCENE_NORMALS",
-        "NONE"
-    };
-};
-
-static_assert(std::size(Names::textureUsage) == to_base(TextureUsage::COUNT) + 1);
-
 enum class DescriptorSetUsage : U8 {
-    PER_DRAW_SET = 0,
-    PER_BATCH_SET,
-    PER_PASS_SET,
-    PER_FRAME_SET,
+    PER_DRAW = 0,
+    PER_BATCH,
+    PER_PASS,
+    PER_FRAME,
     COUNT
 };
 
 namespace Names {
     static constexpr const char* descriptorSetUsage[] = {
-         "PER_DRAW_SET", "PER_BATCH_SET", "PER_PASS_SET", "PER_FRAME_SET", "NONE"
+         "PER_DRAW", "PER_BATCH", "PER_PASS", "PER_FRAME", "NONE"
     };
 };
 
 static_assert(std::size(Names::descriptorSetUsage) == to_base(DescriptorSetUsage::COUNT) + 1);
 
-static_assert(to_base(DescriptorSetUsage::PER_DRAW_SET) == 0u, "PER_DRAW_SET must be set to 0 to provide compatibility with the OpenGL renderer!");
+static_assert(to_base(DescriptorSetUsage::PER_DRAW) == 0u, "PER_DRAW must be set to 0 to provide compatibility with the OpenGL renderer!");
 
 enum class ReflectorType : U8
 {
@@ -267,62 +200,6 @@ namespace Names {
 };
 
 static_assert(std::size(Names::attribLocation) == to_base(AttribLocation::COUNT) + 1);
-
-enum class ShaderBufferLocation : U8 {
-    CAM_BLOCK = 0,
-    GPU_COMMANDS,
-    LIGHT_NORMAL,
-    LIGHT_SCENE,
-    LIGHT_SHADOW,
-    LIGHT_INDICES,
-    LIGHT_GRID,
-    LIGHT_INDEX_COUNT,
-    LIGHT_CLUSTER_AABBS,
-    NODE_TRANSFORM_DATA,
-    NODE_MATERIAL_DATA,
-    NODE_INDIRECTION_DATA,
-    BONE_TRANSFORMS,
-    BONE_TRANSFORMS_PREV,
-    SCENE_DATA,
-    PROBE_DATA,
-    GRASS_DATA,
-    TREE_DATA,
-    CMD_BUFFER,
-    LUMINANCE_HISTOGRAM,
-    ATOMIC_COUNTER,
-    UNIFORM_BLOCK,
-    COUNT
-};
-
-namespace Names {
-    static constexpr const char* shaderBufferLocation[] = {
-        "CAM_BLOCK",
-        "GPU_COMMANDS",
-        "LIGHT_NORMAL",
-        "LIGHT_SCENE",
-        "LIGHT_SHADOW",
-        "LIGHT_INDICES",
-        "LIGHT_GRID",
-        "LIGHT_INDEX_COUNT",
-        "LIGHT_CLUSTER_AABBS",
-        "NODE_TRANSFORM_DATA",
-        "NODE_MATERIAL_DATA",
-        "NODE_INDIRECTION_DATA",
-        "BONE_TRANSFORMS",
-        "BONE_TRANSFORMS_PREV",
-        "SCENE_DATA",
-        "PROBE_DATA",
-        "GRASS_DATA",
-        "TREE_DATA",
-        "CMD_BUFFER",
-        "LUMINANCE_HISTOGRAM",
-        "ATOMIC_COUNTER",
-        "UNIFORM_BLOCK",
-        "NONE"
-    };
-};
-
-static_assert(std::size(Names::shaderBufferLocation) == to_base(ShaderBufferLocation::COUNT) + 1);
 
 enum class RenderStage : U8 {
     SHADOW = 0,
@@ -530,6 +407,23 @@ namespace Names {
 };
 
 static_assert(std::size(Names::shaderTypes) == to_base(ShaderType::COUNT) + 1);
+
+enum class ShaderStageVisibility : U16 {
+    NONE = 0,
+    VERTEX = toBit(1),
+    GEOMETRY = toBit(2),
+    TESS_CONTROL = toBit(3),
+    TESS_EVAL = toBit(4),
+    FRAGMENT = toBit(5),
+    COMPUTE = toBit(6),
+    /*MESH = toBit(7),
+    TASK = toBit(8),*/
+    ALL_GEOMETRY = /*MESH | TASK |*/ VERTEX | GEOMETRY | TESS_CONTROL | TESS_EVAL,
+    ALL_DRAW = ALL_GEOMETRY | FRAGMENT,
+    COMPUTE_AND_DRAW = FRAGMENT | COMPUTE,
+    COMPUTE_AND_GEOMETRY = ALL_GEOMETRY | COMPUTE,
+    ALL = ALL_DRAW | COMPUTE
+};
 
 /// Valid front and back stencil test actions
 enum class StencilOperation : U8 {

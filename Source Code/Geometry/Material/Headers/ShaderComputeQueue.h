@@ -59,7 +59,7 @@ public:
     // This is the main loop that steps through the queue and processes each entry
     void idle();
     // Processes a queue element on the spot
-    void process(ShaderQueueElement& element) const;
+    void process(ShaderQueueElement& element);
     // Push a process request at the front of the queue
     void addToQueueFront(const ShaderQueueElement& element);
     // Push a process request at the end of the queue
@@ -79,6 +79,7 @@ private:
 
     SharedMutex _queueLock;
     std::deque<ShaderQueueElement> _shaderComputeQueue;
+    std::atomic_uint _maxShaderLoadsInFlight;
 };
 
 }; //namespace Divide

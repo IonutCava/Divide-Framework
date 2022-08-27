@@ -82,5 +82,7 @@ class NOINITVTABLE PreRenderOperator {
     bool _enabled = true;
 };
 
+FWD_DECLARE_MANAGED_CLASS(PreRenderOperator);
+
 };  // namespace Divide
 #endif

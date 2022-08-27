@@ -45,11 +45,13 @@ namespace Divide {
         Str32 _extension;
     };
 
+    FWD_DECLARE_MANAGED_STRUCT(Directory);
+
     struct Directory {
         string _path;
         string _name;
         vector_fast<std::pair<Str256, File>> _files;
-        vector_fast<eastl::unique_ptr<Directory>> _children;
+        vector_fast<Directory_uptr> _children;
     };
 
     class ContentExplorerWindow final : public DockedWindow {

@@ -44,7 +44,6 @@
 
 namespace Divide {
 
-class TileRing;
 class TerrainLoader;
 
 template <typename T>
@@ -65,6 +64,7 @@ class TerrainChunk;
 class TerrainDescriptor;
 
 FWD_DECLARE_MANAGED_CLASS(Quad3D);
+FWD_DECLARE_MANAGED_CLASS(TileRing);
 FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 FWD_DECLARE_MANAGED_CLASS(GenericVertexData);
 
@@ -169,7 +169,7 @@ class Terrain final : public Object3D {
     Quadtree _terrainQuadtree;
     vector<TerrainChunk*> _terrainChunks;
     GenericVertexData_ptr _terrainBuffer = nullptr;
-    vector<eastl::unique_ptr<TileRing>> _tileRings;
+    vector<TileRing_uptr> _tileRings;
 
     bool _initialSetupDone = false;
 

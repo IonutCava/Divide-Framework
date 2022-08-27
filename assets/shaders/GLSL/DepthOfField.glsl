@@ -44,8 +44,8 @@ changelog:
 
 -- Fragment
 
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D texScreen;
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_DEPTH) uniform sampler2D texLinearDepth;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texScreen;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform sampler2D texLinearDepth;
 
 uniform vec2 size;
 // autofocus point on screen (0.0,0.0 - left lower corner, 1.0,1.0 - upper right)

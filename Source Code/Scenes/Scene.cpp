@@ -1574,7 +1574,7 @@ void Scene::findHoverTarget(PlayerIndex idx, const vec2<I32>& aimPos) {
 
         SceneGraphNode* target = nullptr;
         for (const SGNRayResult& result : _sceneSelectionCandidates) {
-            if (result.dist < 0.0f) {
+            if (result.inside || result.dist < 0.0f) {
                 continue;
             }
 

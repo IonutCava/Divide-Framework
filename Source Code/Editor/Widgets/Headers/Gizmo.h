@@ -80,6 +80,7 @@ namespace Divide {
                settings.currentGizmoOperation == ImGuizmo::OPERATION::SCALE_Y ||
                settings.currentGizmoOperation == ImGuizmo::OPERATION::SCALE_Z;
     }
+
     class Gizmo {
         friend class Attorney::GizmoEditor;
 
@@ -129,6 +130,8 @@ namespace Divide {
         mat4<F32> _localToWorldMatrix;
         mat4<F32> _deltaMatrix;
     };
+
+    FWD_DECLARE_MANAGED_CLASS(Gizmo);
 
     namespace Attorney {
         class GizmoEditor {

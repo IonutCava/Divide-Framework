@@ -58,7 +58,7 @@ namespace Divide {
 
     private:
         struct GenericBufferImpl {
-            eastl::unique_ptr<AllocatedBuffer> _buffer{nullptr};
+            AllocatedBuffer_uptr _buffer{nullptr};
             size_t _ringSizeFactor{ 1u };
             size_t _elementStride{ 0u };
             BufferRange _writtenRange{};
@@ -68,7 +68,7 @@ namespace Divide {
         };
 
         struct IndexBufferEntry : public NonCopyable {
-            eastl::unique_ptr<AllocatedBuffer> _handle{ nullptr };
+            AllocatedBuffer_uptr _handle{ nullptr };
             IndexBuffer _data;
         };
 

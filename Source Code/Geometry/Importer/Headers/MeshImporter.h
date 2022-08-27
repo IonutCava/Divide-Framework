@@ -106,7 +106,7 @@ namespace Divide {
             PROPERTY_RW(F32, metallic, 0.0f);
             PROPERTY_RW(F32, roughness, 1.0f);
             PROPERTY_RW(F32, parallaxFactor, 1.0f);
-            std::array<TextureEntry, to_base(TextureUsage::COUNT)> _textures;
+            std::array<TextureEntry, to_base(TextureSlot::COUNT)> _textures;
         };
 
         struct SubMeshData {
@@ -173,7 +173,7 @@ namespace Divide {
     {
         public:
             static bool loadMeshDataFromFile(PlatformContext& context, Import::ImportData& dataOut);
-            static bool loadMesh(bool loadedFromCache, const Mesh_ptr& mesh, PlatformContext& context, ResourceCache* cache, const Import::ImportData& dataIn);
+            static bool loadMesh(bool loadedFromCache, Mesh* mesh, PlatformContext& context, ResourceCache* cache, const Import::ImportData& dataIn);
 
         protected:
             static Material_ptr loadSubMeshMaterial(ResourceCache* cache, const Import::MaterialData& importData, bool loadedFromCache, bool skinned, std::atomic_uint& taskCounter);

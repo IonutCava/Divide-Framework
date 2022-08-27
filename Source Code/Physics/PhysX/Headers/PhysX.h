@@ -87,7 +87,7 @@ public:
 #endif //PX_SUPPORT_GPU_PHYSX
 
 protected:
-    eastl::unique_ptr<PhysXSceneInterface> _targetScene;
+    PhysXSceneInterface_uptr _targetScene;
     physx::PxRigidActor* createActorForGroup(PhysicsGroup group, const physx::PxTransform& pose);
 private:
     F32 _simulationSpeed = 1.0f;

@@ -48,7 +48,7 @@ FWD_DECLARE_MANAGED_CLASS(SceneNode);
 /// This class manages all of the RenderBins and renders them in the correct order
 class RenderQueue final : public KernelComponent {
   public: 
-    using RenderBinArray = std::array<eastl::unique_ptr<RenderBin>, to_base(RenderBinType::COUNT)>;
+    using RenderBinArray = std::array<RenderBin_uptr, to_base(RenderBinType::COUNT)>;
 
     struct PopulateQueueParams {
         RenderStagePass _stagePass;

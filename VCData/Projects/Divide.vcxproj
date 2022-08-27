@@ -279,7 +279,7 @@
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <ConformanceMode>true</ConformanceMode>
-      <EnableModules>false</EnableModules>
+      <EnableModules>true</EnableModules>
       <AdditionalOptions>/Zc:twoPhase- /Zc:__cplusplus</AdditionalOptions>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -359,7 +359,7 @@ call "copyDLLsToBin.bat" "Debug"</Command>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <ConformanceMode>true</ConformanceMode>
-      <EnableModules>false</EnableModules>
+      <EnableModules>true</EnableModules>
       <AdditionalOptions>/Zc:twoPhase- /Zc:__cplusplus</AdditionalOptions>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -438,7 +438,7 @@ call "copyDLLsToBin.bat" "Debug"</Command>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <CompileAs>CompileAsCpp</CompileAs>
       <ConformanceMode>true</ConformanceMode>
-      <EnableModules>false</EnableModules>
+      <EnableModules>true</EnableModules>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <SupportJustMyCode>false</SupportJustMyCode>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -510,7 +510,7 @@ call "copyDLLsToBin.bat" "Release"</Command>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <CompileAs>CompileAsCpp</CompileAs>
       <ConformanceMode>true</ConformanceMode>
-      <EnableModules>false</EnableModules>
+      <EnableModules>true</EnableModules>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <SupportJustMyCode>false</SupportJustMyCode>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -581,7 +581,7 @@ call "copyDLLsToBin.bat" "Release"</Command>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <CompileAs>CompileAsCpp</CompileAs>
       <ConformanceMode>true</ConformanceMode>
-      <EnableModules>false</EnableModules>
+      <EnableModules>true</EnableModules>
       <AdditionalOptions> /Zc:twoPhase-  /Zc:__cplusplus</AdditionalOptions>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <SupportJustMyCode>false</SupportJustMyCode>
@@ -653,7 +653,7 @@ call "copyDLLsToBin.bat" "Profile"</Command>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <CompileAs>CompileAsCpp</CompileAs>
       <ConformanceMode>true</ConformanceMode>
-      <EnableModules>false</EnableModules>
+      <EnableModules>true</EnableModules>
       <AdditionalOptions> /Zc:twoPhase-  /Zc:__cplusplus</AdditionalOptions>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <SupportJustMyCode>false</SupportJustMyCode>

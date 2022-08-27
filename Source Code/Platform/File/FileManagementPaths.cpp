@@ -50,6 +50,7 @@ ResourcePath Paths::Shaders::g_cacheLocationGL;
 ResourcePath Paths::Shaders::g_cacheLocationVK;
 ResourcePath Paths::Shaders::g_cacheLocationText;
 ResourcePath Paths::Shaders::g_cacheLocationSpv;
+ResourcePath Paths::Shaders::g_cacheLocationRefl;
 
 Str8 Paths::Shaders::g_ReflectionExt;
 Str8 Paths::Shaders::g_SPIRVExt;
@@ -127,6 +128,7 @@ void Paths::initPaths(const SysInfo& info) {
     Shaders::g_cacheLocationVK = ResourcePath("Vulkan/");
     Shaders::g_cacheLocationText = ResourcePath("Text/");
     Shaders::g_cacheLocationSpv = ResourcePath("SPV/");
+    Shaders::g_cacheLocationRefl = ResourcePath("Refl/");
 
     Shaders::g_ReflectionExt = "refl";
     Shaders::g_SPIRVExt = "spv";

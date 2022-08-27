@@ -54,4 +54,9 @@ namespace ImGui {
 
 #define AddBezierCurve AddBezierCubic
 
+struct ImDrawList;
+struct ImDrawCmd;
+typedef void (*MyImDrawCallback)(const ImDrawList* draw_list, const ImDrawCmd* cmd, void* renderData);
+#define ImDrawCallback MyImDrawCallback
+
 #endif //_IMGUI_CUSTOM_CONFIG_H_

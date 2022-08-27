@@ -630,11 +630,11 @@ bool Sky::load() {
     _weatherTex->waitForReady();
     _curlNoiseTex->waitForReady();
 
-    skyMat->setTexture(TextureUsage::UNIT0, _skybox, _skyboxSampler, TextureOperation::NONE);
-    skyMat->setTexture(TextureUsage::HEIGHTMAP, _weatherTex, noiseSamplerLinear, TextureOperation::NONE);
-    skyMat->setTexture(TextureUsage::UNIT1, _curlNoiseTex, noiseSamplerLinear, TextureOperation::NONE);
-    skyMat->setTexture(TextureUsage::SPECULAR, _worlNoiseTex, noiseSamplerMipMap, TextureOperation::NONE);
-    skyMat->setTexture(TextureUsage::NORMALMAP, _perWorlNoiseTex, noiseSamplerMipMap, TextureOperation::NONE);
+    skyMat->setTexture(TextureSlot::UNIT0, _skybox, _skyboxSampler, TextureOperation::NONE);
+    skyMat->setTexture(TextureSlot::HEIGHTMAP, _weatherTex, noiseSamplerLinear, TextureOperation::NONE);
+    skyMat->setTexture(TextureSlot::UNIT1, _curlNoiseTex, noiseSamplerLinear, TextureOperation::NONE);
+    skyMat->setTexture(TextureSlot::SPECULAR, _worlNoiseTex, noiseSamplerMipMap, TextureOperation::NONE);
+    skyMat->setTexture(TextureSlot::NORMALMAP, _perWorlNoiseTex, noiseSamplerMipMap, TextureOperation::NONE);
 
     setMaterialTpl(skyMat);
 

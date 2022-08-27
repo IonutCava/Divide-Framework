@@ -34,7 +34,11 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _SCRIPTING_SCRIPT_H_
 
 namespace FW {
-    class FileWatcher;
+    FWD_DECLARE_MANAGED_CLASS(FileWatcher);
+}
+
+namespace chaiscript {
+    FWD_DECLARE_MANAGED_CLASS(ChaiScript);
 }
 
 namespace Divide {
@@ -76,7 +80,7 @@ protected:
 
 protected:
     //ToDo: Move this somewhere else to avoid having the include in this file -Ionut
-    eastl::unique_ptr<chaiscript::ChaiScript> _script;
+    chaiscript::ChaiScript_uptr _script;
     string  _scriptSource;
     FileAndPath _scriptFile;
     FileType    _scriptFileType;

@@ -81,5 +81,7 @@ namespace Divide {
         U32 _swapchainImageIndex{ 0u };
         U8 _currentFrameIdx{ 0u };
     };
+
+    FWD_DECLARE_MANAGED_CLASS(VKSwapChain);
 }; //namespace Divide
 #endif //_VK_SWAP_CHAIN_H_

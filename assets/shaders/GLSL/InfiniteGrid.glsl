@@ -58,7 +58,7 @@ void main()
 {
     const float t = -nearPoint.y / (farPoint.y - nearPoint.y);
     const vec3 fragPos3D = nearPoint + t * (farPoint - nearPoint);
-    float fade_factor = length(dvd_CameraPosition.xz - fragPos3D.xz);
+    float fade_factor = length(dvd_CameraPosition.xz - fragPos3D.xz) * 10.f;
     fade_factor = Saturate(1.f - (fade_factor / dvd_ZPlanes.y));
 
     vec4 outColour = grid(fragPos3D, gridScale) * float(t > 0); 

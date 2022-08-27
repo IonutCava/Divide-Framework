@@ -392,13 +392,13 @@ vector<SceneGraphNode*> SceneManager::getNodesInScreenRect(const Rect<I32>& scre
         sceneGraph->intersect(intersectionParams, rayResults);
 
         for (const SGNRayResult& result : rayResults) {
-            if (result.sgnGUID == nodeGUID || 
+            if (result.sgnGUID == nodeGUID ||
                 result.sgnGUID == parentNodeGUID)
             {
                 continue;
             }
 
-            if (result.dist < distanceToPoint) {
+            if (result.inside || result.dist < distanceToPoint) {
                 return false;
             }
         }

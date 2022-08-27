@@ -35,7 +35,7 @@ void threadedMeshLoad(MeshLoadData loadData, ResourcePath modelPath, ResourcePat
 
     Import::ImportData tempMeshData(modelPath, modelName);
     if (MeshImporter::loadMeshDataFromFile(*loadData._context, tempMeshData) &&
-        MeshImporter::loadMesh(tempMeshData.loadedFromFile(), loadData._mesh, *loadData._context, loadData._cache, tempMeshData) &&
+        MeshImporter::loadMesh(tempMeshData.loadedFromFile(), loadData._mesh.get(), *loadData._context, loadData._cache, tempMeshData) &&
         loadData._mesh->load())
     {
         NOP();

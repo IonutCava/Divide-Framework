@@ -30,7 +30,7 @@ void main(){
 layout(location = TARGET_ALBEDO) out vec4 _colourOut;
 #endif //WORLD_PASS
 
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D texDiffuse0;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texDiffuse0;
 
 uniform mat4 dvd_WorldMatrix;
 uniform uint useTexture;
@@ -71,7 +71,7 @@ void main() {
 
 -- Fragment.GUI
 
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D texDiffuse0;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texDiffuse0;
 
 layout(location = ATTRIB_FREE_START + 0) in  vec4 _colour;
 
@@ -79,40 +79,4 @@ layout(location = 0) out vec4 _colourOut;
 
 void main(){
     _colourOut = vec4(_colour.rgb, texture(texDiffuse0, VAR._texCoord).r);
-}
-
---Vertex.EnvironmentProbe
-
-#include "nodeBufferedInput.cmn"
-
-uniform mat4 dvd_WorldMatrixOverride;
-uniform uint dvd_LayerIndex;
-
-void main(void) {
-    vec3 dvd_Normal = UnpackVec3(inNormalData);
-    VAR._vertexW = dvd_WorldMatrixOverride * vec4(inVertexData, 1.0);
-    VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
-    VAR._viewDirectionWV = mat3(dvd_ViewMatrix) * normalize(dvd_CameraPosition - VAR._vertexW.xyz);
-    NodeTransformData nodeData = dvd_Transforms[DVD_GL_BASE_INSTANCE];
-    mat3 normalMatrixWV = mat3(dvd_ViewMatrix) * dvd_NormalMatrixW(nodeData);
-    VAR._normalWV = normalize(normalMatrixWV * dvd_Normal);
-    //Compute the final vert position
-    gl_Position = dvd_ProjectionMatrix * VAR._vertexWV;
-}
-
---Fragment.EnvironmentProbe
-
-#define NO_POST_FX
-#include "output.frag"
-
-uniform mat4 dvd_WorldMatrixOverride;
-uniform uint dvd_LayerIndex;
-
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_REFLECTION_CUBE) uniform samplerCube texEnvironmentCube;
-
-void main() {
-    vec3 reflectDirection = reflect(-VAR._viewDirectionWV, VAR._normalWV);
-    vec4 colour = vec4(texture(texEnvironmentCube, vec3(reflectDirection).rgb, 1.0);
-
-    writeScreenColour(colour);
 }

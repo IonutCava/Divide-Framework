@@ -146,11 +146,11 @@ class TextureDescriptor final : public PropertyDescriptor {
 [[nodiscard]] bool IsCompressed(GFXImageFormat format) noexcept;
 [[nodiscard]] bool HasAlphaChannel (GFXImageFormat format) noexcept;
 
-inline bool operator==(const TextureDescriptor& lhs, const TextureDescriptor& rhs) {
+inline bool operator==(const TextureDescriptor& lhs, const TextureDescriptor& rhs) noexcept {
     return lhs.getHash() == rhs.getHash();
 }
 
-inline bool operator!=(const TextureDescriptor& lhs, const TextureDescriptor& rhs) {
+inline bool operator!=(const TextureDescriptor& lhs, const TextureDescriptor& rhs) noexcept {
     return lhs.getHash() != rhs.getHash();
 }
 

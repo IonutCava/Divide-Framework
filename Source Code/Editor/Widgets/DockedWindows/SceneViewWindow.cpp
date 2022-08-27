@@ -94,7 +94,7 @@ namespace Divide {
         static F32 AButtonWidth = 10.0f;
 
         ImGuiWindow* window = ImGui::GetCurrentWindow();
-        ImGui::SameLine(window->ContentSize.x * 0.5f);
+        ImGui::SameLine(window->ContentSize.x * 0.49f);
         if (play) {
             PushReadOnly();
         }
@@ -102,8 +102,12 @@ namespace Divide {
         {
             Attorney::EditorSceneViewWindow::copyPlayerCamToEditorCam(_parent);
         }
-
-        F32 pos = SButtonWidth + ItemSpacing + 25;
+        ImGui::SameLine();
+        if (button(true, ICON_FK_HOME, "Set the editor's camera's position to (0, 0, 0) and view direction to (0, -1, 0)"))
+        {
+            Attorney::EditorSceneViewWindow::setEditorCamLookAt(_parent, VECTOR3_ZERO, WORLD_Z_NEG_AXIS, WORLD_Y_AXIS);
+        }
+        F32 pos = (2*SButtonWidth) + ItemSpacing + 25;
         ImGui::SameLine(window->ContentSize.x - pos);
         if (button(!enableGizmo || !IsScaleOperation(settings), ICON_FK_EXPAND, "Scale", true))
         {

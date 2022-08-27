@@ -58,7 +58,6 @@ class DisplayWindow;
 class glHardwareQueryRing;
 class glHardwareQueryPool;
 
-struct ImageViewEntry;
 struct BufferLockEntry;
 
 FWD_DECLARE_MANAGED_STRUCT(SyncObject);
@@ -82,7 +81,7 @@ public:
 public:
     GL_API(GFXDevice& context);
 
-protected:
+private:
     /// Try and create a valid OpenGL context taking in account the specified command line arguments
     ErrorCode initRenderingAPI(I32 argc, char** argv, Configuration& config) override;
     /// Clear everything that was setup in initRenderingAPI()
@@ -118,23 +117,24 @@ protected:
     I32 getFont(const Str64& fontName);
 
     /// Reset as much of the GL default state as possible within the limitations given
-    void clearStates(const DisplayWindow& window, GLStateTracker* stateTracker, bool global) const;
+    void clearStates(const DisplayWindow& window, GLStateTracker& stateTracker, bool global) const;
 
-    //[[nodiscard]] GLStateTracker::BindResult makeTexturesResidentInternal(TextureDataContainer& textureData, U8 offset = 0u, U8 count = U8_MAX) const;
-    [[nodiscard]] GLStateTracker::BindResult makeTextureViewResidentInternal(const ImageViewEntry& textureView, U8 bindingSlot) const;
+    [[nodiscard]] GLStateTracker::BindResult makeTextureViewResidentInternal(U8 bindingSlot, const ImageView& imageView, size_t samplerHash) const;
 
     bool setViewport(const Rect<I32>& viewport) override;
-    ShaderResult bindPipeline(const Pipeline& pipeline) const;
+    ShaderResult bindPipeline(const Pipeline& pipeline);
     bool bindShaderResources(DescriptorSetUsage usage, const DescriptorBindings& bindings) const;
 
     void createSetLayout(DescriptorSetUsage usage, const DescriptorSet& set) override;
+
+    void flushTextureBindQueue();
 
 private:
     void endFrameLocal(const DisplayWindow& window);
     void endFrameGlobal(const DisplayWindow& window);
 
 public:
-    static [[nodiscard]] GLStateTracker* GetStateTracker() noexcept;
+    static [[nodiscard]] const GLStateTracker_uptr& GetStateTracker() noexcept;
     static [[nodiscard]] GLUtil::GLMemory::GLMemoryType GetMemoryTypeForUsage(GLenum usage) noexcept;
     static [[nodiscard]] GLUtil::GLMemory::DeviceAllocator& GetMemoryAllocator(GLUtil::GLMemory::GLMemoryType memoryType) noexcept;
 
@@ -182,6 +182,14 @@ private:
         U8 _index{ 0u };
     };
 
+    struct TexBindEntry {
+        GLubyte _slot{ INVALID_TEXTURE_BINDING };
+        GLuint _handle{ GLUtil::k_invalidObjectID };
+        GLuint _sampler{ GLUtil::k_invalidObjectID };
+    };
+
+    static eastl::fixed_vector<TexBindEntry, 32, false> s_TexBindQueue;
+
     using HardwareQueryContext = std::array<glHardwareQueryEntry, to_base(QueryType::COUNT)>;
     HardwareQueryContext _primitiveQueries;
     /// /*sampler hash value*/ /*sampler object*/
@@ -197,7 +205,7 @@ private:
     hashAlg::pair<Str64, I32> _fontCache = {"", -1};
 
     /// Hardware query objects used for performance measurements
-    std::array<eastl::unique_ptr<glHardwareQueryRing>, to_base(GlobalQueryTypes::COUNT)> _performanceQueries;
+    std::array<glHardwareQueryRing_uptr, to_base(GlobalQueryTypes::COUNT)> _performanceQueries;
     // OpenGL rendering is not thread-safe anyway, so this works
     eastl::stack<HardwareQueryContext> _queryContext;
 
@@ -218,7 +226,7 @@ private:
 
     static SharedMutex s_samplerMapLock;
     static SamplerObjectMap s_samplerMap;
-    static eastl::unique_ptr<GLStateTracker> s_stateTracker;
+    static GLStateTracker_uptr s_stateTracker;
 
     static std::array<GLUtil::GLMemory::DeviceAllocator, to_base(GLUtil::GLMemory::GLMemoryType::COUNT)> s_memoryAllocators;
     static std::array<size_t, to_base(GLUtil::GLMemory::GLMemoryType::COUNT)> s_memoryAllocatorSizes;

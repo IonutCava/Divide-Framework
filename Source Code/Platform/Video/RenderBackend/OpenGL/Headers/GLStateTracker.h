@@ -46,7 +46,9 @@ namespace Divide {
     class RenderStateBlock;
 
     struct GLStateTracker {
-        GLStateTracker();
+        static constexpr U8 MAX_BOUND_TEXTURE_UNITS = 32u;
+
+        GLStateTracker() noexcept;
         ~GLStateTracker() = default;
 
         using AttribHashes = std::array<size_t, to_base(AttribLocation::COUNT)>;
@@ -106,14 +108,14 @@ namespace Divide {
         [[nodiscard]] bool      unbindTextures();
         /// Bind a texture specified by a GL handle and GL type to the specified unit
         /// using the sampler object defined by handle value
-        [[nodiscard]] BindResult bindTexture(GLushort unit, TextureType type, GLuint handle, GLuint samplerHandle = 0u);
-        [[nodiscard]] BindResult bindTextureImage(GLushort unit, GLuint handle, GLint level, bool layered, GLint layer, GLenum access, GLenum format);
+        [[nodiscard]] BindResult bindTexture(GLubyte unit, GLuint handle, GLuint samplerHandle = 0u);
+        [[nodiscard]] BindResult bindTextureImage(GLubyte unit, GLuint handle, GLint level, bool layered, GLint layer, GLenum access, GLenum format);
         /// Bind multiple textures specified by an array of handles and an offset unit
-        [[nodiscard]] BindResult bindTextures(GLushort unitOffset, GLuint textureCount, TextureType texturesType, const GLuint* textureHandles, const GLuint* samplerHandles);
+        [[nodiscard]] BindResult bindTextures(GLubyte unitOffset, GLuint textureCount, const GLuint* textureHandles, const GLuint* samplerHandles);
         [[nodiscard]] BindResult setStateBlock(size_t stateBlockHash);
         /// Bind multiple samplers described by the array of hash values to the
         /// consecutive texture units starting from the specified offset
-        [[nodiscard]] BindResult bindSamplers(GLushort unitOffset, GLuint samplerCount, const GLuint* samplerHandles);
+        [[nodiscard]] BindResult bindSamplers(GLubyte unitOffset, GLuint samplerCount, const GLuint* samplerHandles);
         /// Modify buffer bindings for the active vao
         [[nodiscard]] BindResult bindActiveBuffer(GLuint location, GLuint bufferID, size_t offset, size_t stride);
         [[nodiscard]] BindResult bindActiveBuffers(GLuint location, GLsizei count, GLuint* bufferIDs, GLintptr* offset, GLsizei* strides);
@@ -134,12 +136,11 @@ namespace Divide {
 
         bool setDepthWrite(bool state);
 
-        [[nodiscard]] GLuint getBoundTextureHandle(U8 slot, TextureType type) const;
-        [[nodiscard]] GLuint getBoundSamplerHandle(U8 slot) const;
+        [[nodiscard]] GLuint getBoundTextureHandle(U8 slot) const noexcept;
+        [[nodiscard]] GLuint getBoundSamplerHandle(U8 slot) const noexcept;
         [[nodiscard]] GLuint getBoundProgramHandle() const noexcept;
-        [[nodiscard]] GLuint getBoundBuffer(GLenum target, GLuint bindIndex) const;
-        [[nodiscard]] GLuint getBoundBuffer(GLenum target, GLuint bindIndex, size_t& offsetOut, size_t& rangeOut) const;
-        [[nodiscard]] TextureType getBoundTextureType(U8 slot) const;
+        [[nodiscard]] GLuint getBoundBuffer(GLenum target, GLuint bindIndex) const noexcept;
+        [[nodiscard]] GLuint getBoundBuffer(GLenum target, GLuint bindIndex, size_t& offsetOut, size_t& rangeOut) const noexcept;
 
         void getActiveViewport(GLint* vp) const noexcept;
 
@@ -206,25 +207,22 @@ namespace Divide {
         bool _primitiveRestartEnabled{ false };
         bool _rasterizationEnabled{ true };
 
-        /// /*hash: texture slot  - array /*texture handle - texture type*/ hash
-        using TextureBoundMapDef = std::array<vector<GLuint>, to_base(TextureType::COUNT)>;
+        using TextureBoundMapDef = std::array<GLuint, MAX_BOUND_TEXTURE_UNITS>;
         TextureBoundMapDef _textureBoundMap;
 
         using ImageBoundMapDef = vector<ImageBindSettings>;
         ImageBoundMapDef _imageBoundMap;
 
-        /// /*texture slot*/ /*sampler handle*/
-        using SamplerBoundMapDef = vector<GLuint>;
+        using SamplerBoundMapDef = std::array<GLuint, MAX_BOUND_TEXTURE_UNITS>;
         SamplerBoundMapDef _samplerBoundMap;
-
-        using TextureTypeBoundMapDef = vector<TextureType>;
-        TextureTypeBoundMapDef _textureTypeBoundMap;
 
         VAOBindings _vaoBufferData;
         eastl::queue<FrameDependendSync> _endFrameFences;
         U64 _lastSyncedFrameNumber{ 0u };
 
-    }; //class GLStateTracker
+    }; //struct GLStateTracker
+
+    FWD_DECLARE_MANAGED_STRUCT(GLStateTracker);
 }; //namespace Divide
 
 

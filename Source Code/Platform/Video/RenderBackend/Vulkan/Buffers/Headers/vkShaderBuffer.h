@@ -49,13 +49,13 @@ namespace Divide {
 
         void readBytes(BufferRange range, [[maybe_unused]] std::pair<bufferPtr, size_t> outData) const noexcept override;
 
-        bool bindByteRange(U8 bindIndex, [[maybe_unused]] BufferRange range) noexcept override;
+        bool bindByteRange(DescriptorSetUsage set, U8 bindIndex, [[maybe_unused]] BufferRange range) noexcept override;
 
     private:
         [[nodiscard]] inline AllocatedBuffer* bufferImpl() const { return _bufferImpl.get(); }
 
     private:
-        eastl::unique_ptr<AllocatedBuffer> _bufferImpl{ nullptr };
+        AllocatedBuffer_uptr _bufferImpl{ nullptr };
     };
 } //namespace Divide
 

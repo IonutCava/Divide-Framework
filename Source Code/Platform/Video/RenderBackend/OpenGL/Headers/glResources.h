@@ -55,6 +55,7 @@ class DisplayWindow;
 class glBufferImpl;
 
 
+
 struct FrameDependendSync {
     GLsync _syncObject{ nullptr };
     U64 _frameNumber{ 0u };
@@ -179,8 +180,7 @@ T getGLValueIndexed(GLenum param, GLint index = -1);
 void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
                    GLsizei length, const GLchar* message, const void* userParam);
 
-/// Invalid object value. Used to compare handles and determine if they were
-/// properly created
+/// Invalid object value. Used to compare handles and determine if they were properly created
 extern GLuint k_invalidObjectID;
 extern GLuint s_lastQueryResult;
 extern const DisplayWindow* s_glMainRenderWindow;

@@ -63,7 +63,7 @@ namespace Attorney {
 
 namespace AI {
     namespace Navigation {
-        class DivideRecast;
+        FWD_DECLARE_MANAGED_CLASS(DivideRecast);
     };
 };
 
@@ -83,6 +83,7 @@ class RenderPassExecutor;
 class ShaderComputeQueue;
 class SSRPreRenderOperator;
 class DirectionalLightSystem;
+class ContentExplorerWindow;
 class SolutionExplorerWindow;
 class GUIConsoleCommandParser;
 
@@ -279,7 +280,7 @@ private:
     bool _playerQueueDirty = false;
     eastl::queue<std::pair<Scene*, SceneGraphNode*>>  _playerAddQueue;
     eastl::queue<std::pair<Scene*, SceneGraphNode*>>  _playerRemoveQueue;
-    eastl::unique_ptr<AI::Navigation::DivideRecast> _recast = nullptr;
+    AI::Navigation::DivideRecast_uptr _recast = nullptr;
 
     vector<std::pair<size_t, DELEGATE<void, U8 /*player index*/, const vector<SceneGraphNode*>& /*nodes*/>> > _selectionChangeCallbacks;
 
@@ -396,6 +397,7 @@ class SceneManagerCameraAccessor {
     friend class Divide::ShadowMap;
     friend class Divide::RenderPass;
     friend class Divide::DirectionalLightSystem;
+    friend class Divide::ContentExplorerWindow;
     friend class Divide::SolutionExplorerWindow;
     friend class Divide::GUIConsoleCommandParser;
 };

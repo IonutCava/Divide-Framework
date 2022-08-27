@@ -34,29 +34,37 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _DESCRIPTOR_SETS_INL_
 
 namespace Divide {
+    FORCE_INLINE  bool ImageView::isDefaultView() const noexcept {
+        return _isDefaultView || (_mipLevels.max == 0u && _layerRange.max == 0u);
+    }
+
+    FORCE_INLINE bool operator==(const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs) noexcept {
+        return lhs._msaaSamples == rhs._msaaSamples &&
+               lhs._dataType == rhs._dataType &&
+               lhs._baseFormat == rhs._baseFormat &&
+               lhs._srgb == rhs._srgb &&
+               lhs._normalized == rhs._normalized;
+    }
+
+    FORCE_INLINE bool operator!=(const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs) noexcept {
+        return lhs._msaaSamples != rhs._msaaSamples ||
+               lhs._dataType != rhs._dataType ||
+               lhs._baseFormat != rhs._baseFormat ||
+               lhs._srgb != rhs._srgb ||
+               lhs._normalized != rhs._normalized;
+    }
+
     FORCE_INLINE bool operator==(const ImageView& lhs, const ImageView&rhs) noexcept {
-        return lhs._samplerHash == rhs._samplerHash &&
-               lhs._targetType == rhs._targetType &&
-               lhs._mipLevels == rhs._mipLevels &&
+        return lhs._mipLevels == rhs._mipLevels &&
                lhs._layerRange == rhs._layerRange &&
-               lhs._textureData == rhs._textureData;
-    }
-
-    FORCE_INLINE bool operator!=(const ImageView& lhs, const ImageView&rhs) noexcept {
-        return lhs._samplerHash != rhs._samplerHash ||
-               lhs._targetType != rhs._targetType ||
-               lhs._mipLevels != rhs._mipLevels ||
-               lhs._layerRange != rhs._layerRange ||
-               lhs._textureData != rhs._textureData;
-    }
-
-    inline bool operator==(const ImageViewEntry& lhs, const ImageViewEntry&rhs) noexcept {
-        return lhs._view == rhs._view &&
+               lhs._textureData == rhs._textureData &&
                lhs._descriptor == rhs._descriptor;
     }
 
-    inline bool operator!=(const ImageViewEntry& lhs, const ImageViewEntry&rhs) noexcept {
-        return lhs._view != rhs._view ||
+    FORCE_INLINE bool operator!=(const ImageView& lhs, const ImageView&rhs) noexcept {
+        return lhs._mipLevels != rhs._mipLevels ||
+               lhs._layerRange != rhs._layerRange ||
+               lhs._textureData != rhs._textureData ||
                lhs._descriptor != rhs._descriptor;
     }
 
@@ -101,17 +109,17 @@ namespace Divide {
         if (_resource.index() == 0) {
             return _resource.emplace<T>();
         }
-        return std::get<T>(_resource);
+        return eastl::get<T>(_resource);
     }
 
     template<typename T>
     FORCE_INLINE bool DescriptorSetBindingData::Has() const noexcept {
-        return std::holds_alternative<T>(_resource);
+        return eastl::holds_alternative<T>(_resource);
     }
 
     template<typename T>
     FORCE_INLINE const T& DescriptorSetBindingData::As() const noexcept {
-        return std::get<T>(_resource);
+        return eastl::get<T>(_resource);
     }
 } //namespace Divide
 #endif //_DESCRIPTOR_SETS_INL_

@@ -81,11 +81,11 @@ void GUISplash::render(GFXDevice& context) const {
     _splashImage->waitForReady();
 
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(buffer);
-    cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+    cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
     auto& binding = cmd->_bindings.emplace_back();
-    binding._slot = to_U8(TextureUsage::UNIT0);
-    binding._data.As<DescriptorCombinedImageSampler>() = { _splashImage->data(), splashSampler.getHash() };
+    binding._slot =0;
+    binding._data.As<DescriptorCombinedImageSampler>() = { _splashImage->defaultView(), splashSampler.getHash() };
 
     GFX::EnqueueCommand<GFX::DrawCommand>(buffer);
 

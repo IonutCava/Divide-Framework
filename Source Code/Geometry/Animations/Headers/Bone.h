@@ -57,7 +57,8 @@ public:
     {
     }
 
-    ~Bone() {
+    ~Bone()
+    {
         MemoryManager::DELETE_CONTAINER(_children);
     }
 

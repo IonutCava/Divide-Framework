@@ -1621,7 +1621,7 @@ namespace Divide {
                 ImGui::Separator();
             }
             { //Second texture
-                Texture_ptr detailTex = material->getTexture(TextureUsage::UNIT1).lock();
+                Texture_ptr detailTex = material->getTexture(TextureSlot::UNIT1).lock();
                 const bool ro = detailTex == nullptr;
                 ImGui::PushID(4321234 + id++);
                 if (ro || readOnly) {
@@ -1650,7 +1650,7 @@ namespace Divide {
                 }
             }
             { //Normal
-                Texture_ptr normalTex = material->getTexture(TextureUsage::NORMALMAP).lock();
+                Texture_ptr normalTex = material->getTexture(TextureSlot::NORMALMAP).lock();
                 const bool ro = normalTex == nullptr;
                 ImGui::PushID(4321234 + id++);
                 if (ro || readOnly) {
@@ -1885,9 +1885,9 @@ namespace Divide {
 
                 static UndoEntry<I32> opUndo = {};
                 for (U8 i = 0; i < 3; ++i) {
-                    const TextureUsage targetTex = i == 0 ? TextureUsage::UNIT0 
-                                                          : i == 1 ? TextureUsage::UNIT1
-                                                                   : TextureUsage::SPECULAR;
+                    const TextureSlot targetTex = i == 0 ? TextureSlot::UNIT0
+                                                         : i == 1 ? TextureSlot::UNIT1
+                                                                  : TextureSlot::SPECULAR;
 
                     const bool hasTexture = material->getTexture(targetTex).lock() != nullptr;
 

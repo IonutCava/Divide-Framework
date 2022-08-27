@@ -131,6 +131,14 @@ inline void Application::mainLoopPaused(const bool state) noexcept {
     _mainLoopPaused = state;
 }
 
+inline bool Application::freezeRendering() const noexcept {
+    return _freezeRendering;
+}
+
+inline void Application::freezeRendering(const bool state) noexcept {
+    _freezeRendering = state;
+}
+
 inline void Application::throwError(const ErrorCode err) noexcept {
     _errorCode = err;
 }

@@ -107,19 +107,19 @@ bool DoFPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const
     
     const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
     const auto& extraAtt = _parent.getLinearDepthRT()._rt->getAttachment(RTAttachmentType::Colour, 0u);
-    const TextureData screenTex = screenAtt->texture()->data();
-    const TextureData extraTex = extraAtt->texture()->data();
+    const auto& screenTex = screenAtt->texture()->defaultView();
+    const auto& extraTex = extraAtt->texture()->defaultView();
 
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-    cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+    cmd->_usage = DescriptorSetUsage::PER_DRAW;
     {
         auto& binding = cmd->_bindings.emplace_back();
-        binding._slot = to_U8(TextureUsage::UNIT0);
+        binding._slot = 0;
         binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt->descriptor()._samplerHash };
     }
     {
         auto& binding = cmd->_bindings.emplace_back();
-        binding._slot = to_U8(TextureUsage::DEPTH);
+        binding._slot = 1;
         binding._data.As<DescriptorCombinedImageSampler>() = { extraTex, extraAtt->descriptor()._samplerHash };
     }
 

@@ -103,6 +103,12 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     /// Change the number of MSAA samples for this current texture
     void setSampleCount(U8 newSampleCount);
 
+    [[nodiscard]] U16 mipCount() const noexcept;
+    [[nodiscard]] U32 handle() const noexcept;
+    [[nodiscard]] TextureData data() const noexcept;
+
+    [[nodiscard]] ImageView getView(TextureType targetType, vec2<U16> mipRange, vec2<U16> layerRange) const noexcept;
+
     virtual void clearData(const UColour4& clearColour, U8 level) const = 0;
     virtual void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const = 0;
 
@@ -110,15 +116,13 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     [[nodiscard]] virtual TextureReadbackData readData(U16 mipLevel, GFXDataFormat desiredFormat = GFXDataFormat::COUNT) const = 0;
 
     PROPERTY_R(TextureDescriptor, descriptor);
-    PROPERTY_R(TextureData, data);
+    PROPERTY_R(ImageView, defaultView);
     /// Set/Get the number of layers (used by texture arrays)
     PROPERTY_RW(U32, numLayers, 1u);
     /// Texture width as returned by STB/DDS loader
     PROPERTY_R(U16, width, 0u);
     /// Texture height depth as returned by STB/DDS loader
     PROPERTY_R(U16, height, 0u);
-    /// Number of mipmaps (if mipMapState is off , returns 1u);
-    PROPERTY_R(U16, mipCount, 1u);
     /// If the texture has an alpha channel and at least one pixel is translucent, return true
     PROPERTY_R(bool, hasTranslucency, false);
     /// If the texture has an alpha channel and at least on pixel is fully transparent and no pixels are partially transparent, return true

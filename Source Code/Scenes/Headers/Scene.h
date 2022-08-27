@@ -49,7 +49,6 @@ class Light;
 class Object3D;
 class LoadSave;
 class ByteBuffer;
-class SceneGraph;
 class IMPrimitive;
 class ParticleData;
 class ParamHandler;
@@ -59,19 +58,21 @@ class SceneGraphNode;
 class ParticleEmitter;
 class PlatformContext;
 class SceneShaderData;
-class SceneGUIElements;
 class RenderPassManager;
 class TerrainDescriptor;
 class ResourceDescriptor;
-class SceneEnvironmentProbePool;
 class DirectionalLightComponent;
 class EnvironmentProbeComponent;
 
 FWD_DECLARE_MANAGED_CLASS(Mesh);
 FWD_DECLARE_MANAGED_CLASS(Player);
+FWD_DECLARE_MANAGED_CLASS(SceneGraph);
+FWD_DECLARE_MANAGED_CLASS(LightPool);
+FWD_DECLARE_MANAGED_CLASS(SceneGUIElements);
+FWD_DECLARE_MANAGED_CLASS(SceneEnvironmentProbePool);
 
 namespace AI {
-    class AIManager;
+    FWD_DECLARE_MANAGED_CLASS(AIManager);
 }
 
 namespace GFX {
@@ -214,16 +215,16 @@ class Scene : public Resource, public PlatformContextComponent {
 #pragma endregion
 
         /// Contains all game related info for the scene (wind speed, visibility ranges, etc)
-        PROPERTY_R(eastl::unique_ptr<SceneState>, state);
+        PROPERTY_R(SceneState_uptr, state);
         PROPERTY_RW(bool, dayNightCycleEnabled, true);
         PROPERTY_R_IW(DayNightData, dayNightData);
-        PROPERTY_R(eastl::unique_ptr<SceneGraph>, sceneGraph);
-        PROPERTY_R(eastl::unique_ptr<AI::AIManager>, aiManager);
-        PROPERTY_R(eastl::unique_ptr<SceneGUIElements>, GUI);
+        PROPERTY_R(SceneGraph_uptr, sceneGraph);
+        PROPERTY_R(AI::AIManager_uptr, aiManager);
+        PROPERTY_R(SceneGUIElements_uptr, GUI);
         POINTER_R(ResourceCache, resourceCache, nullptr);
-        PROPERTY_R(eastl::unique_ptr<LightPool>, lightPool);
-        PROPERTY_R(eastl::unique_ptr<SceneInput>, input);
-        PROPERTY_R(eastl::unique_ptr<SceneEnvironmentProbePool>, envProbePool);
+        PROPERTY_R(LightPool_uptr, lightPool);
+        PROPERTY_R(SceneInput_uptr, input);
+        PROPERTY_R(SceneEnvironmentProbePool_uptr, envProbePool);
         PROPERTY_R_IW(bool, loadComplete, false);
         PROPERTY_R_IW(U64, sceneRuntimeUS, 0ULL);
     protected:

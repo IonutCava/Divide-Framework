@@ -34,19 +34,19 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-inline void Material::lockInstancesForRead() const {
+inline void Material::lockInstancesForRead() const noexcept {
     _instanceLock.lock_shared();
 }
 
-inline void Material::unlockInstancesForRead() const {
+inline void Material::unlockInstancesForRead() const noexcept {
     _instanceLock.unlock_shared();
 }
 
-inline void Material::lockInstancesForWrite() const {
+inline void Material::lockInstancesForWrite() const noexcept {
     _instanceLock.lock();
 }
 
-inline void Material::unlockInstancesForWrite() const {
+inline void Material::unlockInstancesForWrite() const noexcept {
     _instanceLock.unlock();
 }
 
@@ -54,12 +54,12 @@ inline const vector<Material*>& Material::getInstancesLocked() const noexcept {
     return _instances;
 }
 
-inline const vector<Material*>& Material::getInstances() const noexcept {
+inline const vector<Material*>& Material::getInstances() const {
     SharedLock<SharedMutex> r_lock(_instanceLock);
     return getInstancesLocked();
 }
 
-inline Texture_wptr Material::getTexture(const TextureUsage textureUsage) const {
+inline Texture_wptr Material::getTexture(const TextureSlot textureUsage) const {
     SharedLock<SharedMutex> r_lock(_textureLock);
     return _textures[to_U32(textureUsage)]._ptr;
 }
@@ -95,7 +95,7 @@ inline void Material::addShaderDefine(const ShaderType type, const string& defin
     }
 }
 
-inline const Material::TextureInfo& Material::getTextureInfo(const TextureUsage usage) const {
+inline const Material::TextureInfo& Material::getTextureInfo(const TextureSlot usage) const {
     return _textures[to_base(usage)];
 }
 

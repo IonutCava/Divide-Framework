@@ -37,7 +37,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-class Application;
 class StreamBuffer;
 class Engine final : NonCopyable, NonMovable {
 public:
@@ -52,7 +51,7 @@ public:
 
 private:
     I32 _errorCode = 0;
-    eastl::unique_ptr<Application> _app{};
+    Application_uptr _app{};
     bool _restartEngineOnClose = false;
     StreamBuffer* _outputStreams[2] = { nullptr, nullptr };
 };

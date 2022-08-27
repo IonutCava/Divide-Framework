@@ -44,7 +44,7 @@ layout(location = ATTRIB_FREE_START) in flat int layerIndex;
 
 layout(location = 0) out vec2 _outColour;
 
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2DArray texDepth;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2DArray texDepth;
 
 #include "vsm.frag"
 
@@ -65,7 +65,7 @@ layout(location = ATTRIB_FREE_START) in flat int layerIndex;
 
 layout(location = 0) out vec2 _outColour;
 
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2DMSArray texDepth;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2DMSArray texDepth;
 
 #include "vsm.frag"
 

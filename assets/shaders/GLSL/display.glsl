@@ -4,7 +4,7 @@
 #include "utility.frag"
 #endif
 
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D tex;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D tex;
 #if defined(DEPTH_ONLY)
 #else //DEPTH_ONLY
 uniform uint convertToSRGB;
@@ -26,8 +26,8 @@ void main(void){
 
 #include "utility.frag"
 
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2DMS velocityTex;
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT1) uniform sampler2DMS normalsDataTex;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2DMS velocityTex;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform sampler2DMS normalsDataTex;
 
 layout(location = TARGET_VELOCITY) out vec3 _velocityOut;
 layout(location = TARGET_NORMALS)  out vec3 _normalDataOut;

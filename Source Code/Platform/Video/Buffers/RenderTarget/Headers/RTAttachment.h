@@ -49,7 +49,7 @@ enum class RTAttachmentType : U8 {
 };
 
 struct RTAttachmentDescriptor {
-    explicit RTAttachmentDescriptor(const size_t samplerHash, const RTAttachmentType type, const U8 index, const FColour4& clearColour)
+    explicit RTAttachmentDescriptor(const size_t samplerHash, const RTAttachmentType type, const U8 index, const FColour4& clearColour) noexcept
         : _samplerHash(samplerHash)
         , _type(type)
         , _index(index)

@@ -73,7 +73,6 @@ class Camera;
 class Quad3D;
 class Texture;
 class Object3D;
-class Renderer;
 class SceneGraphNode;
 class SceneShaderData;
 class SceneRenderState;
@@ -85,6 +84,7 @@ struct ShaderBufferDescriptor;
 enum class ShadowType : U8;
 
 FWD_DECLARE_MANAGED_CLASS(Texture);
+FWD_DECLARE_MANAGED_CLASS(Renderer);
 FWD_DECLARE_MANAGED_CLASS(VertexBuffer);
 FWD_DECLARE_MANAGED_CLASS(GenericVertexData);
 
@@ -240,12 +240,26 @@ public:
         REVEALAGE = VELOCITY,
     };
 
+    struct GFXDescriptorSet {
+        explicit GFXDescriptorSet(const DescriptorSetUsage usage) noexcept : _usage(usage) {};
+
+        PROPERTY_RW(DescriptorSet, impl);
+        PROPERTY_RW(DescriptorSetUsage, usage, DescriptorSetUsage::COUNT);
+        PROPERTY_RW(bool, dirty, true);
+        void update(U8 slot, const DescriptorSetBindingData& newBindingData);
+    };
+
+    struct GFXDescriptorSets {
+        GFXDescriptorSet _perFrameSet{ DescriptorSetUsage::PER_FRAME };
+        GFXDescriptorSet _perPassSet{ DescriptorSetUsage::PER_PASS };
+        GFXDescriptorSet _perBatchSet{ DescriptorSetUsage::PER_BATCH };
+
+        void markDirty() noexcept;
+    };
+
 public:  // GPU interface
     explicit GFXDevice(Kernel& parent);
     ~GFXDevice();
-
-    static constexpr U32 MaxFrameQueueSize = 2;
-    static_assert(MaxFrameQueueSize > 0, "FrameQueueSize is invalid!");
 
     ErrorCode initRenderingAPI(I32 argc, char** argv, RenderAPI API);
     ErrorCode postInitRenderingAPI(const vec2<U16>& renderResolution);
@@ -254,6 +268,7 @@ public:  // GPU interface
     void idle(bool fast);
     void beginFrame(DisplayWindow& window, bool global);
     void endFrame(DisplayWindow& window, bool global);
+    void createSetLayout(DescriptorSetUsage usage, const DescriptorSet& set);
 
     void debugDraw(const SceneRenderState& sceneRenderState, GFX::CommandBuffer& bufferInOut);
     void debugDrawLines(const I64 ID, IMPrimitive::LineDescriptor descriptor) noexcept;
@@ -316,9 +331,9 @@ public:  // GPU interface
 
 public:  // Accessors and Mutators
 
-    [[nodiscard]] ShaderProgram* defaultIMShader() const;
-    [[nodiscard]] ShaderProgram* defaultIMShaderWorld() const;
-    [[nodiscard]] ShaderProgram* defaultIMShaderOIT() const;
+    [[nodiscard]] ShaderProgram* defaultIMShader() const noexcept;
+    [[nodiscard]] ShaderProgram* defaultIMShaderWorld() const noexcept;
+    [[nodiscard]] ShaderProgram* defaultIMShaderOIT() const noexcept;
 
     inline Renderer& getRenderer() const;
     inline const GPUState& gpuState() const noexcept;
@@ -353,6 +368,8 @@ public:  // Accessors and Mutators
 
     static const DeviceInformation& GetDeviceInformation() noexcept;
     static void OverrideDeviceInformation(const DeviceInformation& info) noexcept;
+
+    static bool IsSubmitCommand(GFX::CommandType type) noexcept;
 
 public:
     GenericVertexData* getOrCreateIMGUIBuffer(I64 windowGUID, I32 maxCommandCount, U32 maxVertices);
@@ -391,7 +408,7 @@ public:
     void drawText(const TextElementBatch& batch, GFX::CommandBuffer& bufferInOut, bool pushCamera = true) const;
 
     // Render the texture using a custom viewport
-    void drawTextureInViewport(TextureData data, size_t samplerHash, const Rect<I32>& viewport, bool convertToSrgb, bool drawToDepthOnly, bool drawBlend, GFX::CommandBuffer& bufferInOut);
+    void drawTextureInViewport(const ImageView& texture, size_t samplerHash, const Rect<I32>& viewport, bool convertToSrgb, bool drawToDepthOnly, bool drawBlend, GFX::CommandBuffer& bufferInOut);
 
     void blurTarget(RenderTargetHandle& blurSource, 
                     RenderTargetHandle& blurBuffer,
@@ -404,35 +421,26 @@ public:
                     GFX::CommandBuffer& bufferInOut);
 
     [[nodiscard]] GFX::MemoryBarrierCommand updateSceneDescriptorSet(GFX::CommandBuffer& bufferInOut) const;
-    
+
+    [[nodiscard]] GFXDescriptorSet& descriptorSet(DescriptorSetUsage usage) noexcept;
+    [[nodiscard]] const GFXDescriptorSet& descriptorSet(DescriptorSetUsage usage) const noexcept;
+
     PROPERTY_RW(MaterialDebugFlag, materialDebugFlag, MaterialDebugFlag::COUNT);
     PROPERTY_RW(RenderAPI, renderAPI, RenderAPI::COUNT);
     PROPERTY_RW(bool, queryPerformanceStats, false);
+    PROPERTY_RW(bool, enableOcclusionCulling, true);
     PROPERTY_R_IW(U32, frameDrawCalls, 0u);
     PROPERTY_R_IW(U32, frameDrawCallsPrev, 0u);
     PROPERTY_R_IW(vec4<U32>, lastCullCount, VECTOR4_ZERO);
     PROPERTY_R_IW(Rect<I32>, activeViewport);
-
-    struct GFXDescriptorSet {
-        PROPERTY_RW(DescriptorSet, set);
-        PROPERTY_RW(DescriptorSetUsage, usage, DescriptorSetUsage::COUNT);
-        PROPERTY_RW(bool, dirty, true);
-        void update(U8 slot, const DescriptorSetBindingData& newBindingData);
-    };
-
-    struct GFXDescriptorSets {
-        std::array<GFXDescriptorSet, to_base(DescriptorSetUsage::COUNT)> _globalDescriptorSets;
-        void init(RenderAPIWrapper* api);
-    };
-
-
     PROPERTY_RW(GFXDescriptorSets, descriptorSets);
-    
     POINTER_R(SceneShaderData, sceneData, nullptr);
-
+    
 protected:
 
     void update(U64 deltaTimeUSFixed, U64 deltaTimeUSApp);
+
+    void initDescriptorSets();
 
     void setScreenMSAASampleCountInternal(U8 sampleCount);
     void setShadowMSAASampleCountInternal(ShadowType type, U8 sampleCount);
@@ -494,8 +502,8 @@ private:
     ErrorCode createAPIInstance(RenderAPI api);
 
 private:
-    eastl::unique_ptr<RenderAPIWrapper> _api = nullptr;
-    eastl::unique_ptr<Renderer> _renderer = nullptr;
+    RenderAPIWrapper_uptr _api = nullptr;
+    Renderer_uptr _renderer = nullptr;
 
     ShaderComputeQueue* _shaderComputeQueue = nullptr;
 
@@ -583,7 +591,7 @@ private:
         inline [[nodiscard]] PerFrameBuffers& crtBuffers() noexcept { return _perFrameBuffers[_perFrameBufferIndex]; }
         inline [[nodiscard]] const PerFrameBuffers& crtBuffers() const noexcept { return _perFrameBuffers[_perFrameBufferIndex]; }
 
-        inline void reset(const bool camBuffer, const bool cullBuffer) {
+        inline void reset(const bool camBuffer, const bool cullBuffer) noexcept {
             for (U8 i = 0u; i < PerFrameBufferCount; ++i) {
                 if (camBuffer) {
                     _perFrameBuffers[i]._camDataBuffer.reset();
@@ -596,7 +604,7 @@ private:
             crtBuffers()._renderWritesThisFrame = 0u;
         }
 
-        inline void onEndFrame() { 
+        inline void onEndFrame() noexcept {
             _perFrameBufferIndex = (_perFrameBufferIndex + 1u) % PerFrameBufferCount;
             crtBuffers()._camWritesThisFrame = 0u;
             crtBuffers()._renderWritesThisFrame = 0u;

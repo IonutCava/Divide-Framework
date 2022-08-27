@@ -26,11 +26,11 @@
 
 //Global sky light layer index: SKY_LIGHT_LAYER_IDX
 // eg: vec4 skyIrradiance = texture(texEnvIrradiance, vec4(coords, SKY_LIGHT_LAYER_IDX);
-DESCRIPTOR_SET_RESOURCE(PER_FRAME_SET, TEXTURE_REFLECTION_PREFILTERED) uniform samplerCubeArray texEnvPrefiltered;
-DESCRIPTOR_SET_RESOURCE(PER_FRAME_SET, TEXTURE_IRRADIANCE) uniform samplerCubeArray texEnvIrradiance;
-DESCRIPTOR_SET_RESOURCE(PER_FRAME_SET, TEXTURE_BRDF_LUT) uniform sampler2D texBRDFLut;
+DESCRIPTOR_SET_RESOURCE(PER_FRAME, 0) uniform samplerCubeArray texEnvPrefiltered;
+DESCRIPTOR_SET_RESOURCE(PER_FRAME, 1) uniform samplerCubeArray texEnvIrradiance;
+DESCRIPTOR_SET_RESOURCE(PER_FRAME, 2) uniform sampler2D texBRDFLut;
 
-DESCRIPTOR_SET_RESOURCE(PER_PASS_SET, TEXTURE_SSR_SAMPLE) uniform sampler2D texSSR;
+DESCRIPTOR_SET_RESOURCE(PER_PASS, 3) uniform sampler2D texSSR;
 
 struct ProbeData
 {
@@ -38,9 +38,11 @@ struct ProbeData
     vec4 _halfExtents;
 };
 
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_FRAME_SET, BUFFER_PROBE_DATA, std140) uniform dvd_ProbeBlock {
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_FRAME, 7, std140) uniform dvd_ProbeBlock {
     ProbeData dvd_Probes[GLOBAL_PROBE_COUNT];
 };
+
+DESCRIPTOR_SET_RESOURCE(PER_FRAME, 14) uniform samplerCube    texReflectCube;
 
 #define IsProbeEnabled(P) (uint(P._positionW.w) == 1u)
 

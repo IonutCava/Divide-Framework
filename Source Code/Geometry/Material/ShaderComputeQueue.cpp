@@ -11,6 +11,7 @@ ShaderComputeQueue::ShaderComputeQueue(ResourceCache* cache)
     : _cache(cache),
       _queueComputeTimer(Time::ADD_TIMER("Shader Queue Timer"))
 {
+    std::atomic_init(&_maxShaderLoadsInFlight, 0u);
 }
 
 void ShaderComputeQueue::idle() {
@@ -30,11 +31,11 @@ void ShaderComputeQueue::idle() {
 }
 
 // Processes a queue element on the spot
-void ShaderComputeQueue::process(ShaderQueueElement& element) const {
+void ShaderComputeQueue::process(ShaderQueueElement& element) {
     ResourceDescriptor resDescriptor(element._shaderDescriptor._name);
     resDescriptor.propertyDescriptor(element._shaderDescriptor);
     resDescriptor.waitForReady(false);
-    element._shaderRef = CreateResource<ShaderProgram>(_cache, resDescriptor);
+    element._shaderRef = CreateResource<ShaderProgram>(_cache, resDescriptor, _maxShaderLoadsInFlight);
 }
 
 bool ShaderComputeQueue::stepQueue() {
@@ -43,19 +44,19 @@ bool ShaderComputeQueue::stepQueue() {
 }
 
 bool ShaderComputeQueue::stepQueueLocked() {
-    constexpr U8 MAX_STEP_PER_FRAME = 50u;
+    constexpr U8 MAX_STEP_PER_FRAME = 15u;
 
     if (_shaderComputeQueue.empty()) {
         return false;
     }
 
-    U8 count = 0u;
+    if (_maxShaderLoadsInFlight.load() >= MAX_STEP_PER_FRAME) {
+        return false;
+    }
+
     while (!_shaderComputeQueue.empty()) {
         process(_shaderComputeQueue.front());
         _shaderComputeQueue.pop_front();
-        if (++count == MAX_STEP_PER_FRAME) {
-            break;
-        }
     }
     return true;
 }

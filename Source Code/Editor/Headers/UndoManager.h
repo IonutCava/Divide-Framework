@@ -101,5 +101,7 @@ namespace Divide {
         string _lastActionName;
     };
 
+    FWD_DECLARE_MANAGED_CLASS(UndoManager);
+
 } //namespace Divide
 #endif //_UNDO_MANAGER_H_

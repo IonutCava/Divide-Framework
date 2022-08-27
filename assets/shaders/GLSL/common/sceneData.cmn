@@ -14,7 +14,7 @@ struct FogDetails
     vec4 _colourSunScatter;
 };
 
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_FRAME_SET, BUFFER_SCENE_DATA, std140) uniform dvd_SceneData {
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_FRAME, 6, std140) uniform dvd_SceneData {
     // w - reserved (normalize(-dvd_sunPosition) == dvd_sunDirection)
     vec4 dvd_sunPosition;
     // w - reserved

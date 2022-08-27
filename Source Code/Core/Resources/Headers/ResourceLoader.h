@@ -39,7 +39,7 @@
 
 namespace Divide {
 
-class CachedResource;
+class ResourceCache;
 // Used to delete resources
 struct DeleteResource {
     explicit DeleteResource(ResourceCache* context) noexcept

@@ -195,29 +195,35 @@ void Renderer::prepareLighting(const RenderStage stage,
         PerRenderStageData& data = _lightDataPerStage[GetIndexForStage(stage)];
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-            cmd->_usage = DescriptorSetUsage::PER_FRAME_SET;
+            cmd->_usage = DescriptorSetUsage::PER_FRAME;
             {
                 auto& binding = cmd->_bindings.emplace_back();
-                binding._slot = to_base(ShaderBufferLocation::LIGHT_INDICES);
-                binding._data.As<ShaderBufferEntry>() = { data._lightIndexBuffer.get(), { 0u, data._lightIndexBuffer->getPrimitiveCount() } };
+                binding._slot = 10;
+                binding._data.As<ShaderBufferEntry>() = { *data._lightGridBuffer, { 0u, data._lightGridBuffer->getPrimitiveCount() } };
             }
             {
                 auto& binding = cmd->_bindings.emplace_back();
-                binding._slot = to_base(ShaderBufferLocation::LIGHT_CLUSTER_AABBS);
-                binding._data.As<ShaderBufferEntry>() = { data._lightClusterAABBsBuffer.get(), { 0u, data._lightClusterAABBsBuffer->getPrimitiveCount() } };
+                binding._slot = 11;
+                binding._data.As<ShaderBufferEntry>() = { *data._lightIndexBuffer, { 0u, data._lightIndexBuffer->getPrimitiveCount() }};
             }
             {
                 auto& binding = cmd->_bindings.emplace_back();
-                binding._slot = to_base(ShaderBufferLocation::LIGHT_GRID);
-                binding._data.As<ShaderBufferEntry>() = { data._lightGridBuffer.get(), { 0u, data._lightGridBuffer->getPrimitiveCount() } };
+                binding._slot = 12;
+                binding._data.As<ShaderBufferEntry>() = { *data._lightClusterAABBsBuffer, { 0u, data._lightClusterAABBsBuffer->getPrimitiveCount() } };
+            }
+            {
+                RTAttachment* targetAtt = _context.gfx().renderTargetPool().getRenderTarget(RenderTargetNames::REFLECTION_CUBE)->getAttachment(RTAttachmentType::Colour, 0u);
+                auto& binding = cmd->_bindings.emplace_back();
+                binding._slot = 14;
+                binding._data.As<DescriptorCombinedImageSampler>() = { targetAtt->texture()->defaultView(), targetAtt->descriptor()._samplerHash};
             }
         }
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-        cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+        cmd->_usage = DescriptorSetUsage::PER_DRAW;
         {
             auto& binding = cmd->_bindings.emplace_back();
-            binding._slot = to_U8(ShaderBufferLocation::LIGHT_INDEX_COUNT);
-            binding._data.As<ShaderBufferEntry>() = { data._globalIndexCountBuffer.get(), { 0u, data._globalIndexCountBuffer->getPrimitiveCount() } };
+            binding._slot = 0;
+            binding._data.As<ShaderBufferEntry>() = { *data._globalIndexCountBuffer, { 0u, data._globalIndexCountBuffer->getPrimitiveCount() } };
         }
 
         if (data._previousProjMatrix != cameraSnapshot._projectionMatrix)  {

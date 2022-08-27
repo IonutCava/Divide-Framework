@@ -81,6 +81,8 @@ class NOINITVTABLE PhysicsAPIWrapper {
     virtual bool intersect(const Ray& intersectionRay, const vec2<F32>& range, vector<SGNRayResult>& intersectionsOut) const = 0;
 };
 
+FWD_DECLARE_MANAGED_CLASS(PhysicsAPIWrapper);
+
 };  // namespace Divide
 
 #endif

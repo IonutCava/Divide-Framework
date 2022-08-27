@@ -33,7 +33,7 @@ GFX::MemoryBarrierCommand SceneShaderData::updateSceneDescriptorSet(GFX::Command
     GFX::MemoryBarrierCommand memBarrier{};
     if (_sceneDataDirty || _probeDataDirty) {
         auto bindCmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-        bindCmd->_usage = DescriptorSetUsage::PER_FRAME_SET;
+        bindCmd->_usage = DescriptorSetUsage::PER_FRAME;
         auto& set = bindCmd->_bindings;
 
         if (_sceneDataDirty) {
@@ -41,8 +41,8 @@ GFX::MemoryBarrierCommand SceneShaderData::updateSceneDescriptorSet(GFX::Command
             memBarrier._bufferLocks.push_back(_sceneShaderData->writeData(&_sceneBufferData));
 
             auto& binding = set.emplace_back();
-            binding._slot = to_base(ShaderBufferLocation::SCENE_DATA);
-            binding._data.As<ShaderBufferEntry>() = { _sceneShaderData.get(), { 0u, 1u } };
+            binding._slot = 6;
+            binding._data.As<ShaderBufferEntry>() = { *_sceneShaderData, { 0u, 1u }};
 
             _sceneDataDirty = false;
         }
@@ -52,8 +52,8 @@ GFX::MemoryBarrierCommand SceneShaderData::updateSceneDescriptorSet(GFX::Command
             memBarrier._bufferLocks.push_back(_probeShaderData->writeData(_probeData.data()));
 
             auto& binding = set.emplace_back();
-            binding._slot = to_base(ShaderBufferLocation::PROBE_DATA);
-            binding._data.As<ShaderBufferEntry>() = { _probeShaderData.get(), { 0u, GLOBAL_PROBE_COUNT } };
+            binding._slot = 7;
+            binding._data.As<ShaderBufferEntry>() = { *_probeShaderData, { 0u, GLOBAL_PROBE_COUNT }};
 
             _probeDataDirty = false;
         }

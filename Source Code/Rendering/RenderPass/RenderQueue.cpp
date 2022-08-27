@@ -43,7 +43,7 @@ RenderingOrder RenderQueue::getSortOrder(const RenderStagePass stagePass, const 
     switch (rbType) {
         case RenderBinType::OPAQUE: {
             // Opaque items should be rendered front to back in depth passes for early-Z reasons
-            sortOrder = IsDepthPass(stagePass) ? RenderingOrder::FRONT_TO_BACK
+            sortOrder = IsDepthPass(stagePass) ? RenderingOrder::FRONT_TO_BACK_ALPHA_LAST
                                                : RenderingOrder::BY_STATE;
         } break;
         case RenderBinType::SKY: {

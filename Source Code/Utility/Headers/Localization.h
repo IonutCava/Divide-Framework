@@ -61,6 +61,8 @@ private:
     LangCallback _languageChangeCallback{};
 };
 
+FWD_DECLARE_MANAGED_CLASS(LanguageData);
+
 /// Reset everything and load the specified language file.
 ErrorCode Init(const char* newLanguage = DEFAULT_LANG);
 /// clear the language table

@@ -73,7 +73,7 @@ namespace {
         U32 _arrayLayer = 0u;
         U32 _mip = 0u;
         bool _isDepthTexture = false;
-        bool _flip = false;
+        bool _flip = true;
     };
 
     TextureCallbackData g_modalTextureData;
@@ -1224,7 +1224,7 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
 
             if (pcmd.UserCallback) {
                 // User callback (registered via ImDrawList::AddCallback)
-                pcmd.UserCallback(cmd_list, &pcmd);
+                pcmd.UserCallback(cmd_list, &pcmd, &bufferInOut);
             } else {
                 Rect<I32> clipRect{
                     pcmd.ClipRect.x - pDrawData->DisplayPos.x,
@@ -1248,10 +1248,10 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
                     Texture* tex = (Texture*)(pcmd.GetTexID());
                     if (tex != nullptr) {
                         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-                        cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+                        cmd->_usage = DescriptorSetUsage::PER_DRAW;
                         auto& binding = cmd->_bindings.emplace_back();
-                        binding._slot = to_base(TextureUsage::UNIT0);
-                        binding._data.As<DescriptorCombinedImageSampler>() = { tex->data(), _editorSamplerHash };
+                        binding._slot = 0;
+                        binding._data.As<DescriptorCombinedImageSampler>() = { tex->defaultView(), _editorSamplerHash };
                     }
 
                     drawCmd._cmd.indexCount = pcmd.ElemCount;
@@ -1280,6 +1280,10 @@ void Editor::selectionChangeCallback(const PlayerIndex idx, const vector<SceneGr
 
 void Editor::copyPlayerCamToEditorCam() noexcept {
     _editorCamera->fromCamera(*Attorney::SceneManagerEditor::playerCamera(_context.kernel().sceneManager(), 0, true));
+}
+
+void Editor::setEditorCamLookAt(const vec3<F32>& eye, const vec3<F32>& fwd, const vec3<F32>& up) {
+    _editorCamera->lookAt(eye, fwd, up);
 }
 
 void Editor::setEditorCameraSpeed(const vec3<F32>& speed) noexcept {
@@ -1778,19 +1782,19 @@ bool Editor::modalTextureView(const char* modalName, Texture* tex, const vec2<F3
 
     static std::array<bool, 4> state = { true, true, true, true };
 
-    const ImDrawCallback toggleColours { []([[maybe_unused]] const ImDrawList* parent_list, const ImDrawCmd* imCmd) -> void {
+    const ImDrawCallback toggleColours { []([[maybe_unused]] const ImDrawList* parent_list, const ImDrawCmd* imCmd, void* renderData) -> void {
         static SamplerDescriptor defaultSampler{};
         static size_t texSampler = defaultSampler.getHash();
 
         const TextureCallbackData data = *static_cast<TextureCallbackData*>(imCmd->UserCallbackData);
 
-        GFX::ScopedCommandBuffer sBuffer = GFX::AllocateScopedCommandBuffer();
-        GFX::CommandBuffer& buffer = sBuffer();
+        assert(renderData != nullptr);
+        GFX::CommandBuffer& buffer = *static_cast<GFX::CommandBuffer*>(renderData);
 
         U32 textureType = 0u;
         if (data._texture != nullptr) {
-            const TextureType texType = data._texture->data()._textureType;
 
+            const TextureType texType = data._texture->data()._textureType;
             const bool isTextureArray = IsArrayTexture(texType);
             const bool isTextureCube = IsCubeTexture(texType);
         
@@ -1798,20 +1802,15 @@ bool Editor::modalTextureView(const char* modalName, Texture* tex, const vec2<F3
                 textureType = 1u;
 
                 auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(buffer);
-                cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+                cmd->_usage = DescriptorSetUsage::PER_DRAW;
                 auto& binding = cmd->_bindings.emplace_back();
-                binding._slot = to_U8(TextureUsage::UNIT1);
+                binding._slot = 1;
 
                 if (isTextureCube) {
-                    ImageViewEntry& entry = binding._data.As<ImageViewEntry>();
-                    entry._view._textureData = data._texture->data();
-                    entry._descriptor = data._texture->descriptor();
-                    entry._view._targetType = TextureType::TEXTURE_2D_ARRAY;
-                    entry._view._samplerHash = texSampler;
-                    entry._view._mipLevels.set(0u, data._texture->mipCount());
-                    entry._view._layerRange.set(0u, data._texture->numLayers() * 6u);
+                    const ImageView texView = data._texture->getView(TextureType::TEXTURE_2D_ARRAY, { 0u, data._texture->mipCount() }, { 0u, data._texture->numLayers() * 6u });
+                    binding._data.As<DescriptorCombinedImageSampler>() = { texView, texSampler };
                 } else {
-                    binding._data.As<DescriptorCombinedImageSampler>() = { data._texture->data(), texSampler };
+                    binding._data.As<DescriptorCombinedImageSampler>() = { data._texture->defaultView(), texSampler };
                 }
             }
         }
@@ -1828,7 +1827,6 @@ bool Editor::modalTextureView(const char* modalName, Texture* tex, const vec2<F3
         GFX::SendPushConstantsCommand pushConstantsCommand = {};
         pushConstantsCommand._constants = pushConstants;
         EnqueueCommand(buffer, pushConstantsCommand);
-        data._gfxDevice->flushCommandBuffer(buffer);
     } };
 
     bool closed = false;
@@ -1948,20 +1946,22 @@ bool Editor::modalTextureView(const char* modalName, Texture* tex, const vec2<F3
     return closed;
 }
 
-bool Editor::modalModelSpawn(const Mesh_ptr& mesh, const bool quick) {
+bool Editor::modalModelSpawn(const Mesh_ptr& mesh, const bool quick, const vec3<F32>& scale, const vec3<F32>& position) {
     if (mesh == nullptr) {
         return false;
     }
     if (quick) {
         const Camera* playerCam = Attorney::SceneManagerCameraAccessor::playerCamera(_context.kernel().sceneManager());
-        if (!spawnGeometry(mesh, VECTOR3_UNIT, playerCam->getEye(), VECTOR3_ZERO, mesh->resourceName().c_str())) {
+        if (!spawnGeometry(mesh, scale, playerCam->getEye(), position, mesh->resourceName().c_str())) {
             DIVIDE_UNEXPECTED_CALL();
         }
         return true;
     }
 
-    if (_queuedModelSpawn == nullptr) {
-        _queuedModelSpawn = mesh;
+    if (_queuedModelSpawn._mesh == nullptr) {
+        _queuedModelSpawn._mesh = mesh;
+        _queuedModelSpawn._position = position;
+        _queuedModelSpawn._scale = scale;
         return true;
     }
 
@@ -1969,13 +1969,11 @@ bool Editor::modalModelSpawn(const Mesh_ptr& mesh, const bool quick) {
 }
 
 void Editor::renderModelSpawnModal() {
-    if (_queuedModelSpawn == nullptr) {
+    if (_queuedModelSpawn._mesh == nullptr) {
         return;
     }
 
     static bool wasClosed = false;
-    static vec3<F32> scale(1.0f);
-    static vec3<F32> position(0.0f);
     static vec3<F32> rotation(0.0f);
     static char inputBuf[256] = {};
 
@@ -1983,21 +1981,19 @@ void Editor::renderModelSpawnModal() {
     if (ImGui::BeginPopupModal("Spawn Entity", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         if (wasClosed) {
             wasClosed = false;
-            const Camera* playerCam = Attorney::SceneManagerCameraAccessor::playerCamera(_context.kernel().sceneManager());
-            position = playerCam->getEye();
         }
 
-        assert(_queuedModelSpawn != nullptr);
+        assert(_queuedModelSpawn._mesh != nullptr);
         if (Util::IsEmptyOrNull(inputBuf)) {
-            strcpy_s(&inputBuf[0], std::min(to_size(254), _queuedModelSpawn->resourceName().length()) + 1, _queuedModelSpawn->resourceName().c_str());
+            strcpy_s(&inputBuf[0], std::min(to_size(254), _queuedModelSpawn._mesh->resourceName().length()) + 1, _queuedModelSpawn._mesh->resourceName().c_str());
         }
-        ImGui::Text("Spawn [ %s ]?", _queuedModelSpawn->resourceName().c_str());
+        ImGui::Text("Spawn [ %s ]?", _queuedModelSpawn._mesh->resourceName().c_str());
         ImGui::Separator();
      
 
-        if (ImGui::InputFloat3("Scale", scale._v)) {
+        if (ImGui::InputFloat3("Scale", _queuedModelSpawn._scale._v)) {
         }
-        if (ImGui::InputFloat3("Position", position._v)) {
+        if (ImGui::InputFloat3("Position", _queuedModelSpawn._position._v)) {
         }
         if (ImGui::InputFloat3("Rotation (euler)", rotation._v)) {
         }
@@ -2008,7 +2004,6 @@ void Editor::renderModelSpawnModal() {
         if (ImGui::Button("Cancel", ImVec2(120, 0))) {
             ImGui::CloseCurrentPopup();
             wasClosed = true;
-            scale.set(1.0f);
             rotation.set(0.f);
             inputBuf[0] = '\0';
         }
@@ -2018,15 +2013,14 @@ void Editor::renderModelSpawnModal() {
         if (ImGui::Button("Yes", ImVec2(120, 0))) {
             ImGui::CloseCurrentPopup();
             wasClosed = true;
-            if (!spawnGeometry(_queuedModelSpawn, scale, position, rotation, inputBuf)) {
+            if (!spawnGeometry(_queuedModelSpawn._mesh, _queuedModelSpawn._scale, _queuedModelSpawn._position, rotation, inputBuf)) {
                 DIVIDE_UNEXPECTED_CALL();
             }
-            scale.set(1.0f);
             rotation.set(0.f);
             inputBuf[0] = '\0';
         }
         if (wasClosed) {
-            _queuedModelSpawn.reset();
+            _queuedModelSpawn._mesh.reset();
         }
         ImGui::EndPopup();
     }

@@ -751,7 +751,7 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
                                  _aiTextureMapMode_Force32Bit,
                                  _aiTextureMapMode_Force32Bit };
 
-    const auto loadTexture = [&material, &modelDirectoryName](const TextureUsage usage, TextureOperation texOp, const aiString& name, aiTextureMapMode* wrapMode, const bool srgb = false) {
+    const auto loadTexture = [&material, &modelDirectoryName](const TextureSlot usage, TextureOperation texOp, const aiString& name, aiTextureMapMode* wrapMode, const bool srgb = false) {
         DIVIDE_ASSERT(name.length > 0);
         constexpr const char* g_backupImageExtensions[] = {
             "png", "jpg", "jpeg", "tga", "dds"
@@ -807,10 +807,10 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
             texture.operation(texOp);
             texture.srgb(srgb);
             texture.useDDSCache(true);
-            texture.isNormalMap(usage == TextureUsage::NORMALMAP);
-            texture.alphaForTransparency(usage == TextureUsage::UNIT0 ||
-                                         usage == TextureUsage::UNIT1 ||
-                                         usage == TextureUsage::OPACITY);
+            texture.isNormalMap(usage == TextureSlot::NORMALMAP);
+            texture.alphaForTransparency(usage == TextureSlot::UNIT0 ||
+                                         usage == TextureSlot::UNIT1 ||
+                                         usage == TextureSlot::OPACITY);
 
             material._textures[to_base(usage)] = texture;
         }
@@ -823,9 +823,9 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
         {
             if (tName.length > 0) {
                 // The first texture operation defines how we should mix the diffuse colour with the texture itself
-                loadTexture(TextureUsage::UNIT0, detail::aiTextureOperationTable[op], tName, mode, true);
+                loadTexture(TextureSlot::UNIT0, detail::aiTextureOperationTable[op], tName, mode, true);
             } else {
-                Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "UNIT0");
+                Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "0");
             }
         }
     }
@@ -835,7 +835,7 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
         {
             if (tName.length > 0) {
                 // The second operation is how we mix the albedo generated from the diffuse and Tex0 with this texture
-                loadTexture(TextureUsage::UNIT1, detail::aiTextureOperationTable[op], tName, mode, true);
+                loadTexture(TextureSlot::UNIT1, detail::aiTextureOperationTable[op], tName, mode, true);
             } else {
                 Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "UNIT1");
             }
@@ -853,7 +853,7 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
             AI_SUCCESS == mat->GetTexture(aiTextureType_NORMALS, 0, &tName, &mapping, &uvInd, &blend, &op, mode))
         {
             if (tName.length > 0) {
-                loadTexture(TextureUsage::NORMALMAP, detail::aiTextureOperationTable[op], tName, mode);
+                loadTexture(TextureSlot::NORMALMAP, detail::aiTextureOperationTable[op], tName, mode);
                 material.bumpMethod(BumpMethod::NORMAL);
                 hasNormalMap = true;
             } else {
@@ -865,11 +865,11 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
         if (AI_SUCCESS == mat->GetTexture(aiTextureType_HEIGHT, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
             if (tName.length > 0) {
                 if (convertHeightToBumpMap && !hasNormalMap) {
-                    loadTexture(TextureUsage::NORMALMAP, detail::aiTextureOperationTable[op], tName, mode);
+                    loadTexture(TextureSlot::NORMALMAP, detail::aiTextureOperationTable[op], tName, mode);
                     material.bumpMethod(BumpMethod::NORMAL);
                     hasNormalMap = true;
                 } else {
-                    loadTexture(TextureUsage::HEIGHTMAP, detail::aiTextureOperationTable[op], tName, mode);
+                    loadTexture(TextureSlot::HEIGHTMAP, detail::aiTextureOperationTable[op], tName, mode);
                     material.bumpMethod(BumpMethod::PARALLAX);
                 }
             } else {
@@ -879,7 +879,7 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
 
         if (AI_SUCCESS == mat->GetTexture(aiTextureType_DISPLACEMENT, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
             if (tName.length > 0) {
-                loadTexture(TextureUsage::HEIGHTMAP, detail::aiTextureOperationTable[op], tName, mode);
+                loadTexture(TextureSlot::HEIGHTMAP, detail::aiTextureOperationTable[op], tName, mode);
                 material.bumpMethod(BumpMethod::PARALLAX);
             } else {
                 Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "HEIGHTMAP");
@@ -889,7 +889,7 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
     { // Opacity map
         if (AI_SUCCESS == mat->GetTexture(aiTextureType_OPACITY, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
             if (tName.length > 0) {
-                loadTexture(TextureUsage::OPACITY, detail::aiTextureOperationTable[op], tName, mode);
+                loadTexture(TextureSlot::OPACITY, detail::aiTextureOperationTable[op], tName, mode);
             } else {
                 Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "OPACITY");
             }
@@ -898,7 +898,7 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
     { // Specular map
         if (AI_SUCCESS == mat->GetTexture(aiTextureType_SPECULAR, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
             if (tName.length > 0) {
-                loadTexture(TextureUsage::SPECULAR, detail::aiTextureOperationTable[op], tName, mode);
+                loadTexture(TextureSlot::SPECULAR, detail::aiTextureOperationTable[op], tName, mode);
                 // Undo the spec colour and leave only the strength component in!
                 material.specular({ specStrength, specStrength, specStrength, material.specular().a });
             } else {
@@ -910,7 +910,7 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
         if (AI_SUCCESS == mat->GetTexture(aiTextureType_EMISSIVE, 0, &tName, &mapping, &uvInd, &blend, &op, mode) ||
             AI_SUCCESS == mat->GetTexture(aiTextureType_EMISSION_COLOR, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
             if (tName.length > 0) {
-                loadTexture(TextureUsage::EMISSIVE, detail::aiTextureOperationTable[op], tName, mode);
+                loadTexture(TextureSlot::EMISSIVE, detail::aiTextureOperationTable[op], tName, mode);
             } else {
                 Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "EMISSIVE");
             }
@@ -918,28 +918,28 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
     }
     if (AI_SUCCESS == mat->GetTexture(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLICROUGHNESS_TEXTURE, &tName, &mapping, &uvInd, &blend, &op, mode)) {
         if (tName.length > 0) {
-            loadTexture(TextureUsage::METALNESS, detail::aiTextureOperationTable[op], tName, mode);
+            loadTexture(TextureSlot::METALNESS, detail::aiTextureOperationTable[op], tName, mode);
         } else {
             Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "METALLIC_ROUGHNESS");
         }
     } else {
         if (AI_SUCCESS == mat->GetTexture(aiTextureType_METALNESS, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
             if (tName.length > 0) {
-                loadTexture(TextureUsage::METALNESS, detail::aiTextureOperationTable[op], tName, mode);
+                loadTexture(TextureSlot::METALNESS, detail::aiTextureOperationTable[op], tName, mode);
             } else {
                 Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "METALNESS");
             }
         }
         if (AI_SUCCESS == mat->GetTexture(aiTextureType_DIFFUSE_ROUGHNESS, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
             if (tName.length > 0) {
-                loadTexture(TextureUsage::ROUGHNESS, detail::aiTextureOperationTable[op], tName, mode);
+                loadTexture(TextureSlot::ROUGHNESS, detail::aiTextureOperationTable[op], tName, mode);
             } else {
                 Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "ROUGHNESS");
             }
         }
         if (AI_SUCCESS == mat->GetTexture(aiTextureType_AMBIENT_OCCLUSION, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
             if (tName.length > 0) {
-                loadTexture(TextureUsage::OCCLUSION, detail::aiTextureOperationTable[op], tName, mode);
+                loadTexture(TextureSlot::OCCLUSION, detail::aiTextureOperationTable[op], tName, mode);
             } else {
                 Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "OCCLUSION");
             }

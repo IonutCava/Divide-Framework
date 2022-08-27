@@ -46,34 +46,54 @@ namespace Divide {
     namespace Reflection {
         static constexpr U8 INVALID_BINDING_INDEX = std::numeric_limits<U8>::max();
 
-        struct BlockMember {
+        struct DataEntry {
+            U8 _bindingSet{ 0u };
+            U8 _bindingSlot{ INVALID_BINDING_INDEX };
+            string _name;
+        };
+
+        struct ImageEntry : DataEntry {
+            bool _combinedImageSampler{ false };
+            bool _isWriteTarget{ false };
+            bool _isMultiSampled{ false };
+            bool _isArray{ false };
+        };
+
+        struct BufferMember {
             GFX::PushConstantType _type{ GFX::PushConstantType::COUNT };
-            Str64 _name{};
             size_t _offset{ 0u };
+            size_t _absoluteOffset{ 0u };
+            size_t _size{ 0u };
+            size_t _paddedSize{ 0u };
             size_t _arrayInnerSize{ 0u }; // array[innerSize][outerSize]
             size_t _arrayOuterSize{ 0u }; // array[innerSize][outerSize]
             size_t _vectorDimensions{ 0u };
             vec2<size_t> _matrixDimensions{ 0u, 0u }; //columns, rows
+            string _name;
+
+            size_t _memberCount{0u};
+            vector<BufferMember> _members;
         };
 
-        struct ImageEntry {
-            bool _combinedImageSampler{ false };
-            bool _isWriteTarget{ false };
-
-            string _imageName;
-            U8 _bindingSet{ 0u };
-            U8 _targetImageBindingIndex{ INVALID_BINDING_INDEX };
+        struct BufferEntry : DataEntry {
+            size_t _offset{ 0u };
+            size_t _absoluteOffset{ 0u };
+            size_t _size{ 0u };
+            size_t _paddedSize{ 0u };
+            size_t _memberCount{ 0u };
+            bool _uniformBuffer{ true };
+            bool _dynamic{ false };
+            vector<BufferMember> _members;
         };
 
         struct Data {
-            U8 _bindingSet{ 0u };
-            U8 _targetBlockBindingIndex{ INVALID_BINDING_INDEX };
-            string _targetBlockName;
-            size_t _blockSize{ 0u };
-            vector<BlockMember> _blockMembers{};
-            std::array<bool, 16> _enabledAttributes;
+            U8 _uniformBlockBindingSet{ INVALID_BINDING_INDEX };
+            U8 _uniformBlockBindingIndex{ INVALID_BINDING_INDEX };
+
+            U16 _stageVisibility{ 0u };
 
             vector<ImageEntry> _images{};
+            vector<BufferEntry> _buffers{};
         };
 
 
@@ -101,12 +121,10 @@ namespace Divide {
         bool SaveReflectionData(const ResourcePath& path, const ResourcePath& file, const Data& reflectionDataIn, const eastl::set<U64>& atomIDsIn);
         bool LoadReflectionData(const ResourcePath& path, const ResourcePath& file, Data& reflectionDataOut, eastl::set<U64>& atomIDsOut);
         eastl::string GatherUniformDeclarations(const eastl::string& source, UniformsSet& foundUniforms);
+
+        const Reflection::BufferEntry* FindUniformBlock(const Reflection::Data& data);
     }; //namespace Reflection
 
-    struct UniformBlockUploaderDescriptor {
-        eastl::string _parentShaderName = "";
-        Reflection::Data _reflectionData{};
-    };
 
     class UniformBlockUploader {
     public:
@@ -114,24 +132,27 @@ namespace Divide {
 
         struct BlockMember
         {
-            Reflection::BlockMember _externalData;
+            string _name;
             U64    _nameHash{ 0u };
-            size_t _size{ 0 };
-            size_t _elementSize{ 0 };
+            size_t _offset{ 0u };
+            size_t _size{ 0u };
+            size_t _elementSize{ 0u };
+            size_t _arrayOuterSize{ 0u };
+            size_t _arrayInnerSize{ 0u };
         };
 
         static void Idle();
 
-        explicit UniformBlockUploader(GFXDevice& context, const UniformBlockUploaderDescriptor& descriptor);
+        explicit UniformBlockUploader(GFXDevice& context, const eastl::string& parentShaderName, const Reflection::BufferEntry& uniformBlock);
 
         void uploadPushConstant(const GFX::PushConstant& constant, bool force = false) noexcept;
         void commit(GFX::MemoryBarrierCommand& memCmdInOut);
         void prepare();
         void onFrameEnd() noexcept;
 
-        PROPERTY_R_IW(UniformBlockUploaderDescriptor, descriptor);
-
         [[nodiscard]] size_t totalBufferSize() const noexcept;
+
+        PROPERTY_R_IW(Reflection::BufferEntry, uniformBlock);
 
     private:
         void resizeBlockBuffer(bool increaseSize);
@@ -140,6 +161,7 @@ namespace Divide {
         GFXDevice& _context;
         vector<Byte> _localDataCopy;
         vector<BlockMember> _blockMembers;
+        eastl::string _parentShaderName;
         ShaderBuffer_uptr _buffer{ nullptr };
         size_t _uniformBlockSizeAligned{ 0u };
         bool _uniformBlockDirty{ false };

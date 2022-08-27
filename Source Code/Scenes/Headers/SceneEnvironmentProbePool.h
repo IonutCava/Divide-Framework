@@ -148,6 +148,8 @@ private:
     static bool s_lutTextureDirty;
 };
 
+FWD_DECLARE_MANAGED_CLASS(SceneEnvironmentProbePool);
+
 } //namespace Divide
 
 #endif //_SCENE_ENVIRONMENT_PROBE_POOL_H_

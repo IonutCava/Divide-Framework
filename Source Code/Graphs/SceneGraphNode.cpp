@@ -447,7 +447,7 @@ bool SceneGraphNode::intersect(const Ray& intersectionRay, const vec2<F32>& rang
         if (HasComponents(ComponentType::BOUNDS) && get<BoundsComponent>()->getBoundingSphere().intersect(intersectionRay, range.min, range.max).hit) {
             const RayResult result = get<BoundsComponent>()->getOBB().intersect(intersectionRay, range.min, range.max);
             if (result.hit) {
-                intersections.push_back({ getGUID(), result.dist, name().c_str() });
+                intersections.push_back({ getGUID(), result.dist, result.inside, name().c_str() });
 
                 SharedLock<SharedMutex> r_lock(_children._lock);
                 const U32 childCount = _children._count;
@@ -567,12 +567,12 @@ void SceneGraphNode::prepareRender(RenderingComponent& rComp,
 
         DescriptorBindingEntry *boneEntry = nullptr, *prevBoneEntry = nullptr;
         for (auto& entry : descriptorBindings) {
-            if (entry._slot == to_U8(ShaderBufferLocation::BONE_TRANSFORMS)) {
+            if (entry._slot == 14) {
                 boneEntry = &entry;
                 continue;
             }
 
-            if (entry._slot == to_U8(ShaderBufferLocation::BONE_TRANSFORMS_PREV)) {
+            if (entry._slot == 15) {
                 prevBoneEntry = &entry;
                 continue;
             }
@@ -582,17 +582,17 @@ void SceneGraphNode::prepareRender(RenderingComponent& rComp,
         }
         if (!boneEntry) {
             auto& binding = descriptorBindings.emplace_back();
-            binding._slot = to_U8(ShaderBufferLocation::BONE_TRANSFORMS);
+            binding._slot = 12;
             boneEntry = &binding;
         }
         if (!prevBoneEntry) {
             auto& binding = descriptorBindings.emplace_back();
-            binding._slot = to_U8(ShaderBufferLocation::BONE_TRANSFORMS_PREV);
+            binding._slot = 13;
             prevBoneEntry = &binding;
         }
 
-        boneEntry->_data.As<ShaderBufferEntry>() = { data._boneBuffer, data._boneBufferRange };
-        prevBoneEntry->_data.As<ShaderBufferEntry>() = { data._boneBuffer, data._prevBoneBufferRange };
+        boneEntry->_data.As<ShaderBufferEntry>() = { *data._boneBuffer, data._boneBufferRange};
+        prevBoneEntry->_data.As<ShaderBufferEntry>() = { *data._boneBuffer, data._prevBoneBufferRange};
     }
 
     _node->prepareRender(this, rComp, renderStagePass, cameraSnapshot, refreshData);

@@ -154,7 +154,7 @@ class LightPool final : public FrameListener,
 
     /// Get the appropriate shadow bind slot for every light's shadow
     [[nodiscard]] static U8 GetShadowBindSlotOffset(const ShadowType type) noexcept {
-        return to_U8(_shadowLocation[to_U32(type)]);
+        return _shadowLocation[to_U32(type)];
     }
 
     /// Get the appropriate shadow bind slot offset for every light's shadow
@@ -248,8 +248,10 @@ class LightPool final : public FrameListener,
     bool _shadowBufferDirty = false;
     bool _init = false;
 
-    static std::array<TextureUsage, to_base(ShadowType::COUNT)> _shadowLocation;
+    static std::array<U8, to_base(ShadowType::COUNT)> _shadowLocation;
 };
+
+FWD_DECLARE_MANAGED_CLASS(LightPool);
 
 };  // namespace Divide
 

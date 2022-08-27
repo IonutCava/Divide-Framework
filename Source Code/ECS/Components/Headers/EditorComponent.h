@@ -247,7 +247,7 @@ namespace Divide {
         [[nodiscard]] const vector<EditorComponentField>& fields() const noexcept { return _fields; }
 
         void onChangedCbk(const DELEGATE<void, std::string_view>& cbk) { _onChangedCbk = cbk; }
-        void onChangedCbk(DELEGATE<void, std::string_view>&& cbk) { _onChangedCbk = MOV(cbk); }
+        void onChangedCbk(DELEGATE<void, std::string_view>&& cbk) noexcept { _onChangedCbk = MOV(cbk); }
 
         bool saveCache(ByteBuffer& outputBuffer) const;
         bool loadCache(ByteBuffer& inputBuffer);

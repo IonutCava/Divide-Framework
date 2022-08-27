@@ -78,6 +78,18 @@ void RenderBin::sort(const RenderingOrder renderOrder) {
                 eastl::sort(binStartIt, binEndIt, sortFunc);
             }
         } break;
+        case RenderingOrder::FRONT_TO_BACK_ALPHA_LAST: {
+            const auto sortFunc = [](const RenderBinItem& a, const RenderBinItem& b) noexcept -> bool {
+                if (a._hasTransparency == b._hasTransparency) return a._distanceToCameraSq < b._distanceToCameraSq;
+                return b._hasTransparency;
+            };
+
+            if (binSize > k_parallelSortThreshold) {
+                std::sort(std::execution::par_unseq, binStartIt, binEndIt, sortFunc);
+            } else {
+                eastl::sort(binStartIt, binEndIt, sortFunc);
+            }
+        } break;
         case RenderingOrder::NONE: {
             // no need to sort
         } break;
@@ -111,7 +123,7 @@ void RenderBin::addNodeToBin(const SceneGraphNode* sgn, const RenderStagePass re
 
     const Material_ptr& nodeMaterial = item._renderable->getMaterialInstance();
     if (nodeMaterial) {
-        Attorney::MaterialRenderBin::getSortKeys(*nodeMaterial, renderStagePass, item._shaderKey, item._textureKey);
+        Attorney::MaterialRenderBin::getSortKeys(*nodeMaterial, renderStagePass, item._shaderKey, item._textureKey, item._hasTransparency);
     }
 }
 

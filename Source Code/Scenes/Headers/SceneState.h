@@ -247,5 +247,7 @@ protected:
     WaterBodyDataContainer _waterBodies;
 };
 
+FWD_DECLARE_MANAGED_CLASS(SceneState);
+
 }  // namespace Divide
 #endif

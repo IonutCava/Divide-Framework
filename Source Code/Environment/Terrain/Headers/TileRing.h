@@ -119,6 +119,8 @@ private:
     const I32 _ringWidth = 0;
 };
 
+FWD_DECLARE_MANAGED_CLASS(TileRing);
+
 }  // namespace Divide
 
 #endif //_TILE_RING_H_

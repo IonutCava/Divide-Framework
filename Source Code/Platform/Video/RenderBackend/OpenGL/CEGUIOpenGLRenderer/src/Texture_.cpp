@@ -338,10 +338,10 @@ void OpenGLTexture::setTextureSize_impl(const Sizef& sz)
         CEGUI_THROW(RendererException("size too big"));
 
     // save old texture binding
-    const Divide::U32 old_tex = Divide::GL_API::GetStateTracker()->getBoundTextureHandle(0, Divide::TextureType::TEXTURE_2D);
+    const Divide::U32 old_tex = Divide::GL_API::GetStateTracker()->getBoundTextureHandle(0u);
 
     // set texture to required size
-    if (Divide::GL_API::GetStateTracker()->bindTexture(0, Divide::TextureType::TEXTURE_2D, d_ogltexture) == Divide::GLStateTracker::BindResult::FAILED) {
+    if (Divide::GL_API::GetStateTracker()->bindTexture(0, d_ogltexture) == Divide::GLStateTracker::BindResult::FAILED) {
         Divide::DIVIDE_UNEXPECTED_CALL();
     }
 
@@ -362,7 +362,7 @@ void OpenGLTexture::setTextureSize_impl(const Sizef& sz)
     }
 
     // restore previous texture binding.
-    if (Divide::GL_API::GetStateTracker()->bindTexture(0, Divide::TextureType::TEXTURE_2D, old_tex) == Divide::GLStateTracker::BindResult::FAILED) {
+    if (Divide::GL_API::GetStateTracker()->bindTexture(0, old_tex) == Divide::GLStateTracker::BindResult::FAILED) {
         Divide::DIVIDE_UNEXPECTED_CALL();
     }
 }

@@ -105,7 +105,7 @@ class tcp_session_tpl : public subscriber,
     boost::asio::deadline_timer _outputDeadline;
     time_t _startTime;
 
-    eastl::unique_ptr<Strand> _strand;
+    Strand_uptr _strand;
 };
 
 using tcp_session_ptr = std::shared_ptr<tcp_session_tpl>;

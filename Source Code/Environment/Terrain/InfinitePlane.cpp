@@ -63,7 +63,7 @@ bool InfinitePlane::load() {
     textureWaterCaustics.assetName(ResourcePath{ "terrain_water_caustics.jpg" });
     textureWaterCaustics.propertyDescriptor(miscTexDescriptor);
 
-    planeMaterial->setTexture(TextureUsage::UNIT0, CreateResource<Texture>(_parentCache, textureWaterCaustics), albedoSampler.getHash(), TextureOperation::REPLACE);
+    planeMaterial->setTexture(TextureSlot::UNIT0, CreateResource<Texture>(_parentCache, textureWaterCaustics), albedoSampler.getHash(), TextureOperation::REPLACE);
 
     planeMaterial->computeShaderCBK([]([[maybe_unused]] Material* material, const RenderStagePass stagePass) {
         ShaderModuleDescriptor vertModule = {};

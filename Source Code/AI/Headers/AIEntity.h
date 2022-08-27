@@ -149,9 +149,9 @@ class AIEntity final : public GUIDWrapper {
     /// at.
     [[nodiscard]] vec3<F32> getVelocity() const noexcept;
     /// The current speed this character is traveling at.
-    [[nodiscard]] D64 getSpeed() const { return getVelocity().length(); }
+    [[nodiscard]] D64 getSpeed() const noexcept { return getVelocity().length(); }
     /// Returns true if this character is moving.
-    [[nodiscard]] bool isMoving() const { return !_stopped || !IS_ZERO(getSpeed()); }
+    [[nodiscard]] bool isMoving() const noexcept { return !_stopped || !IS_ZERO(getSpeed()); }
 
     [[nodiscard]] string toString() const;
 

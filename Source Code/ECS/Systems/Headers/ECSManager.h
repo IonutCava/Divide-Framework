@@ -53,6 +53,9 @@ namespace Divide {
         protected:
             ECS::ECSEngine& _ecsEngine;
     };
+
+    FWD_DECLARE_MANAGED_CLASS(ECSManager);
+
 } //namespace Divide
 
 #endif //_ECS_MANAGER_H_

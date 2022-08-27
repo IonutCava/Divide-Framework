@@ -4,7 +4,9 @@
 
 #include "Editor/Headers/Editor.h"
 #include "Core/Headers/Kernel.h"
+#include "Managers/Headers/SceneManager.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Rendering/Camera/Headers/Camera.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
@@ -188,6 +190,12 @@ namespace Divide {
                 }
             }
         };
+
+        constexpr bool flipImages = true;
+        constexpr U8 buttonSize = 64u;
+        const ImVec2 uv0{ 0, flipImages ? 1 : 0 };
+        const ImVec2 uv1{ 1, flipImages ? 0 : 1 };
+
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
 
         {
@@ -249,7 +257,7 @@ namespace Divide {
                         const U16 h = tex->height();
                         const F32 aspect = w / to_F32(h);
 
-                        if (ImGui::ImageButton((void*)tex.get(), ImVec2(64, 64 / aspect))) {
+                        if (ImGui::ImageButton((void*)tex.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1)) {
                             previewTexture = tex;
                         }
                     } else if (format != GeometryFormat::COUNT) {
@@ -260,7 +268,7 @@ namespace Divide {
 
                         const bool modifierPressed = imguiContext.IO.KeyShift;
                         const ImVec4 bgColour(modifierPressed ? 1.f : 0.f, 0.f, 0.f, modifierPressed ? 1.f : 0.f);
-                        if (ImGui::ImageButton((void*)icon.get(), ImVec2(64, 64 / aspect), ImVec2(0, 0), ImVec2(1, 1), 2, bgColour, ImVec4(1, 1, 1, 1))) {
+                        if (ImGui::ImageButton((void*)icon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1, 2, bgColour, ImVec4(1, 1, 1, 1))) {
                             spawnMesh = getModelForPath(ResourcePath(file.first), ResourcePath(file.second._path));
                             if (spawnMesh == nullptr) {
                                 Attorney::EditorGeneralWidget::showStatusMessage(_parent, "ERROR: Couldn't load specified mesh!", Time::SecondsToMilliseconds<F32>(3), true);
@@ -275,7 +283,7 @@ namespace Divide {
                         const U16 h = _soundIcon->height();
                          const F32 aspect = w / to_F32(h);
 
-                        if (ImGui::ImageButton((void*)_soundIcon.get(), ImVec2(64, 64 / aspect))) {
+                        if (ImGui::ImageButton((void*)_soundIcon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1)) {
                             //ToDo: Play sound file -Ionut
                         }
                     } else if (isShaderFile(file.second._extension.c_str())) {
@@ -283,7 +291,7 @@ namespace Divide {
                         const U16 h = _shaderIcon->height();
                         const F32 aspect = w / to_F32(h);
 
-                        if (ImGui::ImageButton((void*)_shaderIcon.get(), ImVec2(64, 64 / aspect))) {
+                        if (ImGui::ImageButton((void*)_shaderIcon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1)) {
                             openFileInEditor(file);
                         }
                     } else {
@@ -291,7 +299,7 @@ namespace Divide {
                         const U16 h = _fileIcon->height();
                         const F32 aspect = w / to_F32(h);
 
-                        if (ImGui::ImageButton((void*)_fileIcon.get(), ImVec2(64, 64 / aspect))) {
+                        if (ImGui::ImageButton((void*)_fileIcon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1)) {
                             openFileInEditor(file);
                         }
                     }
@@ -313,7 +321,9 @@ namespace Divide {
         if (Attorney::EditorGeneralWidget::modalTextureView(_parent, "Image Preview", previewTexture.get(), vec2<F32>(512, 512), true, true)) {
             previewTexture = nullptr;
         }
-        if (Attorney::EditorGeneralWidget::modalModelSpawn(_parent, spawnMesh, imguiContext.IO.KeyShift)) {
+
+        const Camera* playerCam = Attorney::SceneManagerCameraAccessor::playerCamera(_parent.context().kernel().sceneManager());
+        if (Attorney::EditorGeneralWidget::modalModelSpawn(_parent, spawnMesh, imguiContext.IO.KeyShift, VECTOR3_UNIT, playerCam->getEye())) {
             spawnMesh = nullptr;
         }
 

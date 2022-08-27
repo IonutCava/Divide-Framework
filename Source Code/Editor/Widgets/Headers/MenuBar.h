@@ -80,6 +80,8 @@ namespace Divide {
         ImGuiFs::Dialog _sceneOpenDialog;
         ImGuiFs::Dialog _sceneSaveDialog;
     };
+
+    FWD_DECLARE_MANAGED_CLASS(MenuBar);
 } //namespace Divide
 
 #endif //_EDITOR_MENU_BAR_H_

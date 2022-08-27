@@ -67,7 +67,7 @@ FORCE_INLINE bool operator!=(const GUIDWrapper& lhs, const GUIDWrapper& rhs) noe
     return lhs.getGUID() != rhs.getGUID();
 }
 
-FORCE_INLINE [[nodiscard]] bool Compare(GUIDWrapper* const lhs, GUIDWrapper* const rhs) noexcept {
+FORCE_INLINE [[nodiscard]] bool Compare(const GUIDWrapper* const lhs, const GUIDWrapper* const rhs) noexcept {
     if (lhs != nullptr && rhs != nullptr) {
         return lhs->getGUID() == rhs->getGUID();
     }

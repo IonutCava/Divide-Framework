@@ -41,6 +41,10 @@
 #include "Platform/Video/Headers/PushConstants.h"
 #include "Platform/Video/GLIM/glim.h"
 
+namespace NS_GLIM {
+    FWD_DECLARE_MANAGED_CLASS(GLIM_BATCH);
+}
+
 namespace Divide {
 
 namespace GFX {
@@ -102,7 +106,7 @@ class IMPrimitive final {
 
     void setPushConstants(const PushConstants& constants);
     void setPipelineDescriptor(const PipelineDescriptor& descriptor);
-    void setTexture(TextureData texture, size_t samplerHash);
+    void setTexture(const ImageView& texture, size_t samplerHash);
 
     void begin(PrimitiveTopology type);
     void end();
@@ -171,9 +175,9 @@ class IMPrimitive final {
    private:
     GFXDevice& _context;
     PushConstants _additionalConstats;
-    eastl::unique_ptr<NS_GLIM::GLIM_BATCH> _imInterface;
+    NS_GLIM::GLIM_BATCH_uptr _imInterface;
     PipelineDescriptor _basePipelineDescriptor{};
-    TextureData _textureData{};
+    ImageView _texture{};
     size_t _samplerHash{0u};
     std::array<bool, to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT)> _drawFlags;
     std::array<size_t, to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT)> _indexCount;

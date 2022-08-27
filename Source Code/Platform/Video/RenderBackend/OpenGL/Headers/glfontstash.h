@@ -178,7 +178,7 @@ static void glfons__renderDraw(void* userPtr, const FONSvert* verts, int nverts)
     }
 
     { //Prep
-        if (Divide::GL_API::GetStateTracker()->bindTexture(0, Divide::TextureType::TEXTURE_2D, gl->tex) == Divide::GLStateTracker::BindResult::FAILED) {
+        if (Divide::GL_API::GetStateTracker()->bindTexture(0, gl->tex) == Divide::GLStateTracker::BindResult::FAILED) {
             Divide::DIVIDE_UNEXPECTED_CALL();
         }
         if (Divide::GL_API::GetStateTracker()->setActiveVAO(gl->glfons_vaoID) == Divide::GLStateTracker::BindResult::FAILED) {
@@ -197,7 +197,7 @@ static void glfons__renderDraw(void* userPtr, const FONSvert* verts, int nverts)
         prevWriteOffsetBytes = writeOffsetBytes;
         writeOffsetBytes = (writeOffsetBytes + dataSize) % GLFONS_VB_BUFFER_SIZE;
         if (prevWriteOffsetBytes > writeOffsetBytes) {
-            g_lockManager->lockRange(prevWriteOffsetBytes, writeOffsetBytes);
+            g_lockManager->lockRange(prevWriteOffsetBytes, writeOffsetBytes == 0 ? GLFONS_VB_BUFFER_SIZE : writeOffsetBytes);
         }
     }
 }

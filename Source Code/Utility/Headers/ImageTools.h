@@ -84,6 +84,8 @@ struct LayerData {
     vec3<U16> _dimensions = { 0, 0, 1 };
 };
 
+FWD_DECLARE_MANAGED_STRUCT(LayerData);
+
 template<typename T>
 struct ImageMip final : LayerData {
 
@@ -143,7 +145,7 @@ struct ImageLayer {
     }
 
 private:
-    vector<eastl::unique_ptr<LayerData>> _mips;
+    vector<LayerData_uptr> _mips;
 };
 
 struct ImageData final : NonCopyable {

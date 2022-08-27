@@ -40,7 +40,6 @@
 
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
 
-
 namespace Divide {
 
 class PipelineBuilder {
@@ -87,6 +86,7 @@ struct VKStateTracker {
     DescriptorSet const* _perDrawSet{ nullptr };
     std::queue<VkPipelineEntry> _tempPipelines;
 };
+FWD_DECLARE_MANAGED_STRUCT(VKStateTracker);
 
 struct vkUserData : VDIUserData {
     VkCommandBuffer* _cmdBuffer = nullptr;
@@ -148,7 +148,7 @@ private:
     ShaderResult bindPipeline(const Pipeline& pipeline, VkCommandBuffer& cmdBuffer) const;
     void bindDynamicState(const RenderStateBlock& currentState, VkCommandBuffer& cmdBuffer) const;
 public:
-    static VKStateTracker* GetStateTracker() noexcept;
+    static const VKStateTracker_uptr& GetStateTracker() noexcept;
     static void RegisterCustomAPIDelete(DELEGATE<void>&& cbk, bool isResourceTransient);
 
 private:
@@ -160,8 +160,8 @@ private:
     GFXDevice& _context;
     VmaAllocator _allocator;
 
-    eastl::unique_ptr<VKDevice> _device = nullptr;
-    eastl::unique_ptr<VKSwapChain> _swapChain = nullptr;
+    VKDevice_uptr _device = nullptr;
+    VKSwapChain_uptr _swapChain = nullptr;
 
     vkb::Instance _vkbInstance;
 
@@ -178,7 +178,7 @@ private:
     bool _skipEndFrame{ false };
 
 private:
-    static eastl::unique_ptr<VKStateTracker> s_stateTracker;
+    static VKStateTracker_uptr s_stateTracker;
     static bool s_hasDebugMarkerSupport;
     static VKDeletionQueue s_transientDeleteQueue;
     static VKDeletionQueue s_deviceDeleteQueue;

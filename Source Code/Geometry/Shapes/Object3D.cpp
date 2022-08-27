@@ -70,10 +70,8 @@ Object3D::Object3D(GFXDevice& context, ResourceCache* parentCache, const size_t 
 {
 }
 
-void Object3D::editorFieldChanged(const std::string_view field) {
-    if (field == "Toogle Animation Playback") {
-        DebugBreak();
-    }
+void Object3D::editorFieldChanged([[maybe_unused]] const std::string_view field) {
+    NOP();
 }
 
 void Object3D::rebuildInternal() {

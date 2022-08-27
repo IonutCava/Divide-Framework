@@ -108,7 +108,7 @@ void glFramebuffer::initAttachment(const RTAttachmentType type, const U8 index) 
         }
         if (tex->descriptor().mipMappingState() == TextureDescriptor::MipMappingState::AUTO) {
             // We do this here to avoid any undefined data if we use this attachment as a texture before we actually draw to it
-            glGenerateTextureMipmap(tex->data()._textureHandle);
+            glGenerateTextureMipmap(tex->handle());
         }
     } else {
         RTAttachment* attachmentTemp = getAttachment(type, index);
@@ -171,7 +171,7 @@ void glFramebuffer::toggleAttachment(const RTAttachment_uptr& attachment, const 
                 glFramebufferTexture(GL_FRAMEBUFFER, binding, 0u, 0);
             }
         } else {
-            const GLuint handle = tex->data()._textureHandle;
+            const GLuint handle = static_cast<GLuint>(tex->handle());
             if (layeredRendering) {
                 if (useDSA) {
                     glNamedFramebufferTextureLayer(_framebufferHandle, binding, handle, bState._writeLevel, bState._writeLayer);
@@ -519,7 +519,7 @@ void glFramebuffer::QueueMipMapsRecomputation(const RTAttachment_uptr& attachmen
 
     const Texture_ptr& texture = attachment->texture();
     if (texture->descriptor().mipMappingState() == TextureDescriptor::MipMappingState::AUTO) {
-        glGenerateTextureMipmap(texture->data()._textureHandle);
+        glGenerateTextureMipmap(texture->handle());
     }
 }
 

@@ -58,9 +58,8 @@ struct SpirvHelper
     static void Finalize();
     static void InitResources(TBuiltInResource& Resources);
 
-    static bool GLSLtoSPV(vk::ShaderStageFlagBits shader_type, const char* pshader, std::vector<unsigned int>& spirv, const bool targetVulkan, Divide::Reflection::Data& reflectionDataInOut);
-    static void BuildReflectionData(glslang::TProgram& program, vk::ShaderStageFlagBits shader_type, Divide::Reflection::Data& reflectionDataInOut);
-
+    static bool GLSLtoSPV(vk::ShaderStageFlagBits shader_type, const char* pshader, std::vector<unsigned int>& spirv, const bool targetVulkan);
+    static bool BuildReflectionData(vk::ShaderStageFlagBits shader_type, const std::vector<unsigned int>& spirv, bool targetVulkan, Divide::Reflection::Data& reflectionDataInOut);
     static bool s_isInit;
 };
 

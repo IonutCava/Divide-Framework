@@ -12,6 +12,9 @@
 #define MATERIAL_IDX VAR._indirectionIDs._materialIdx
 #define TEXTURE_IDX VAR._indirectionIDs._texturesIdx
 #define SELECTION_FLAG VAR._indirectionIDs._selectionIdx
+#define SELECTION_FLAG_NONE 0
+#define SELECTION_FLAG_HOVERED 1
+#define SELECTION_FLAG_SELECTED 2
 
 struct NodeTransformData {
     mat4 _worldMatrix;
@@ -25,11 +28,6 @@ struct NodeTransformData {
 };
 
 #define NodeIndirectionData uvec4
-
-
-#if defined(PROJECTED_TEXTURE)
-uniform float projectedTextureMixWeight;
-#endif //PROJECTED_TEXTURE
 
 #if defined(FRAG_SHADER)
 

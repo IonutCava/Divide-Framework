@@ -3,6 +3,7 @@
 #include "Headers/glShaderBuffer.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glBufferImpl.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/glResources.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
@@ -82,11 +83,17 @@ void glShaderBuffer::readBytes(BufferRange range, std::pair<bufferPtr, size_t> o
     }
 }
 
-bool glShaderBuffer::bindByteRange(const U8 bindIndex, BufferRange range) {
+bool glShaderBuffer::bindByteRange(const DescriptorSetUsage set, const U8 bindIndex, BufferRange range) {
     OPTICK_EVENT();
 
     GLStateTracker::BindResult result = GLStateTracker::BindResult::FAILED;
-    if (bindIndex == to_base(ShaderBufferLocation::CMD_BUFFER)) {
+    const U8 glBindIndex = ShaderProgram::GetGLBindingForDescriptorSlot(set,
+                                                                        bindIndex,
+                                                                        _usage == Usage::CONSTANT_BUFFER
+                                                                                ? DescriptorSetBindingType::UNIFORM_BUFFER
+                                                                                : DescriptorSetBindingType::SHADER_STORAGE_BUFFER);
+
+    if (glBindIndex == ShaderProgram::k_commandBufferID) {
         result = GL_API::GetStateTracker()->setActiveBuffer(GL_DRAW_INDIRECT_BUFFER,
                                                             bufferImpl()->memoryBlock()._bufferHandle);
     } else if (range._length > 0) {
@@ -100,7 +107,7 @@ bool glShaderBuffer::bindByteRange(const U8 bindIndex, BufferRange range) {
 
         result = GL_API::GetStateTracker()->setActiveBufferIndexRange(bufferImpl()->params()._target,
                                                                       bufferImpl()->memoryBlock()._bufferHandle,
-                                                                      bindIndex,
+                                                                      glBindIndex,
                                                                       offset,
                                                                       bindRange);
     }

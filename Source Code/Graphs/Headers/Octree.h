@@ -44,6 +44,8 @@ class BoundsComponent;
 
 struct SGNIntersectionParams;
 
+FWD_DECLARE_MANAGED_CLASS(OctreeNode);
+
 // ref: http://www.gamedev.net/page/resources/_/technical/game-programming/introduction-to-octrees-r3529
 class Octree {
 public:
@@ -75,7 +77,7 @@ private:
     void handleIntersection(const IntersectionRecord& intersection) const;
 
 protected:
-    eastl::unique_ptr<OctreeNode> _root = nullptr;
+    OctreeNode_uptr _root = nullptr;
     vector<const SceneGraphNode*> _intersectionsObjectCache;
     eastl::queue<SceneGraphNode*> _pendingInsertion;
     eastl::queue<SceneGraphNode*> _pendingRemoval;
@@ -87,6 +89,8 @@ protected:
     Mutex _linearObjectCacheLock;
     vector<OctreeNode*> _linearObjectCache;
 };
+
+FWD_DECLARE_MANAGED_CLASS(Octree);
 
 class OctreeNode  {
 public:
@@ -138,11 +142,13 @@ private:
     I32 _curLife = -1;
     I32 _maxLifespan = MAX_LIFE_SPAN_LIMIT / 8;
 
-    std::array<eastl::unique_ptr<OctreeNode>, 8> _childNodes;
+    std::array<OctreeNode_uptr, 8> _childNodes;
 
     //ToDo: make this work in a multi-threaded environment
     mutable I8 _frustPlaneCache = -1;
 };
+
+FWD_DECLARE_MANAGED_CLASS(OctreeNode);
 
 };  // namespace Divide
 

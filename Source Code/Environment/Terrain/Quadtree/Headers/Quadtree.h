@@ -41,12 +41,13 @@ class SceneState;
 class BoundingBox;
 class IMPrimitive;
 class VertexBuffer;
-class QuadtreeNode;
 class ShaderProgram;
 class SceneGraphNode;
 class SceneRenderState;
 
 struct RenderPackage;
+
+FWD_DECLARE_MANAGED_CLASS(QuadtreeNode);
 
 class Quadtree {
   public:
@@ -66,12 +67,12 @@ class Quadtree {
 
     [[nodiscard]] QuadtreeNode* findLeaf(const vec2<F32>& pos) const noexcept;
 
-    const eastl::unique_ptr<QuadtreeNode>& getRoot() const noexcept { return _root; }
+    const QuadtreeNode_uptr& getRoot() const noexcept { return _root; }
 
     PROPERTY_R_IW(U32, targetChunkDimension, 0u);
 
    private:
-    eastl::unique_ptr<QuadtreeNode> _root = nullptr;
+    QuadtreeNode_uptr _root = nullptr;
     VertexBuffer* _parentVB = nullptr;
     U32 _chunkCount = 0u;
     bool _drawBBoxes = false;

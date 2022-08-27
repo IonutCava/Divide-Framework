@@ -252,7 +252,7 @@ void ShadowMap::resetShadowMaps(GFX::CommandBuffer& bufferInOut) {
 
 void ShadowMap::bindShadowMaps(GFX::CommandBuffer& bufferInOut) {
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-    cmd->_usage = DescriptorSetUsage::PER_FRAME_SET;
+    cmd->_usage = DescriptorSetUsage::PER_FRAME;
 
     for (U8 i = 0u; i < to_base(ShadowType::COUNT); ++i) {
         RenderTargetHandle& sm = s_shadowMaps[i];
@@ -265,7 +265,7 @@ void ShadowMap::bindShadowMaps(GFX::CommandBuffer& bufferInOut) {
         RTAttachment* shadowTexture = sm._rt->getAttachment(RTAttachmentType::Colour, 0);
         auto& binding = cmd->_bindings.emplace_back();
         binding._slot = bindSlot;
-        binding._data.As<DescriptorCombinedImageSampler>() = { shadowTexture->texture()->data(), shadowTexture->descriptor()._samplerHash };
+        binding._data.As<DescriptorCombinedImageSampler>() = { shadowTexture->texture()->defaultView(), shadowTexture->descriptor()._samplerHash };
     }
 }
 

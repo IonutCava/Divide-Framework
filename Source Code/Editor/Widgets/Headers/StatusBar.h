@@ -55,6 +55,8 @@ namespace Divide {
     private:
         eastl::queue<Message> _messages;
     };
+
+    FWD_DECLARE_MANAGED_CLASS(StatusBar);
 } //namespace Divide
 
 #endif //_EDITOR_STATUS_BAR_H_

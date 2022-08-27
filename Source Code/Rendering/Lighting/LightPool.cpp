@@ -18,10 +18,10 @@
 
 namespace Divide {
 
-std::array<TextureUsage, to_base(ShadowType::COUNT)> LightPool::_shadowLocation = { {
-    TextureUsage::SHADOW_SINGLE,
-    TextureUsage::SHADOW_LAYERED,
-    TextureUsage::SHADOW_CUBE
+std::array<U8, to_base(ShadowType::COUNT)> LightPool::_shadowLocation = { {
+    3, //TextureUsage::SHADOW_SINGLE,
+    4, //TextureUsage::SHADOW_LAYERED,
+    5  //TextureUsage::SHADOW_CUBE
 }};
 
 namespace {
@@ -460,21 +460,21 @@ void LightPool::uploadLightData(const RenderStage stage, GFX::CommandBuffer& buf
     const size_t bufferOffset = to_size(LightBufferIndex(stage));
 
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-    cmd->_usage = DescriptorSetUsage::PER_FRAME_SET;
+    cmd->_usage = DescriptorSetUsage::PER_FRAME;
     {
         auto& binding = cmd->_bindings.emplace_back();
-        binding._slot = to_base(ShaderBufferLocation::LIGHT_NORMAL);
-        binding._data.As<ShaderBufferEntry>() = { _lightBuffer.get(), { bufferOffset * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, lightCount } };
+        binding._slot = 9;
+        binding._data.As<ShaderBufferEntry>() = { *_lightBuffer, { bufferOffset * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, lightCount } };
     }
     {
         auto& binding = cmd->_bindings.emplace_back();
-        binding._slot = to_base(ShaderBufferLocation::LIGHT_SCENE);
-        binding._data.As<ShaderBufferEntry>() = { _sceneBuffer.get(), { bufferOffset, 1u } };
+        binding._slot = 8;
+        binding._data.As<ShaderBufferEntry>() = { *_sceneBuffer, { bufferOffset, 1u } };
     }
     {
         auto& binding = cmd->_bindings.emplace_back();
-        binding._slot = to_base(ShaderBufferLocation::LIGHT_SHADOW);
-        binding._data.As<ShaderBufferEntry>() = { _shadowBuffer.get(), { 0u, 1u } };
+        binding._slot = 13;
+        binding._data.As<ShaderBufferEntry>() = { *_shadowBuffer, { 0u, 1u } };
     }
 }
 
@@ -550,19 +550,11 @@ void LightPool::drawLightImpostors(GFX::CommandBuffer& bufferInOut) const {
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _context.gfx().newPipeline(pipelineDescriptor) });
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-            cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+            cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
             auto& binding = cmd->_bindings.emplace_back();
-            binding._slot = to_U8(TextureUsage::UNIT0);
-            binding._data.As<DescriptorCombinedImageSampler>() = { _lightIconsTexture->data(), s_debugSamplerHash };
-        }
-        {
-            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-            cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
-
-            auto& binding = cmd->_bindings.emplace_back();
-            binding._slot = to_base(ShaderBufferLocation::LIGHT_NORMAL);
-            binding._data.As<ShaderBufferEntry>() = { _lightBuffer.get(), { to_size(LightBufferIndex(RenderStage::DISPLAY)) * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, totalLightCount } };
+            binding._slot = 0;
+            binding._data.As<DescriptorCombinedImageSampler>() = { _lightIconsTexture->defaultView(), s_debugSamplerHash };
         }
 
         GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.back()._drawCount = to_U16(totalLightCount);

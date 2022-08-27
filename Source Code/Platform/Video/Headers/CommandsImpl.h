@@ -123,8 +123,8 @@ DEFINE_COMMAND_BEGIN(DrawCommand, CommandType::DRAW_COMMANDS);
     using CommandContainer = eastl::fixed_vector<GenericDrawCommand, 4, true, eastl::dvd_allocator>;
     static_assert(sizeof(GenericDrawCommand) == 32, "Wrong command size! May cause performance issues. Disable assert to continue anyway.");
 
-    DrawCommand() : DrawCommand(GenericDrawCommand{}) {}
-    DrawCommand(const GenericDrawCommand& cmd) : _drawCommands{ { cmd } } {}
+    DrawCommand() noexcept : DrawCommand(GenericDrawCommand{}) {}
+    DrawCommand(const GenericDrawCommand& cmd) noexcept : _drawCommands{ { cmd } } {}
 
     CommandContainer _drawCommands;
 DEFINE_COMMAND_END(DrawCommand);

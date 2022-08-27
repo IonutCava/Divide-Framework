@@ -70,5 +70,8 @@ namespace Divide {
         vkb::Device _device{}; // Vulkan device for commands
         vkb::PhysicalDevice _physicalDevice{}; // GPU chosen as the default device
     };
+
+    FWD_DECLARE_MANAGED_CLASS(VKDevice);
+
 }; //namespace Divide
 #endif //_VK_DEVICE_H_

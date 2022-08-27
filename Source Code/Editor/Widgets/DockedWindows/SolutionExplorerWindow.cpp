@@ -192,15 +192,18 @@ namespace Divide {
                     return false;
                 }
             }
+            const bool isHovered = sgn->hasFlag(SceneGraphNode::Flags::HOVERED);
 
             const bool isRoot = sgn->parent() == nullptr;
             const bool nodeOpen = ImGui::TreeNodeEx((void*)(intptr_t)sgn->getGUID(),
                                                     node_flags,
-                                                    Util::StringFormat("%s [%d] %s %s",
+                                                    Util::StringFormat("%s [%d] %s %s %s",
                                                                        icon == nullptr ? ICON_FK_QUESTION : icon,
                                                                        nodeIDX,
-                                                                       sgn->name().c_str(),
-                                                                       (modifierPressed && !isRoot) ? ICON_FK_CHECK_SQUARE_O : "").c_str());
+                                                                       sgn->name().c_str(), 
+                                                                       (modifierPressed && !isRoot) ? ICON_FK_CHECK_SQUARE_O : "",
+                                                                       (wasSelected ? ICON_FK_CHEVRON_CIRCLE_LEFT : isHovered ? ICON_FK_CHEVRON_LEFT : "")).c_str());
+            
             if (!secondaryView && wasSelected) {
                 drawContextMenu(sgn);
             }
@@ -334,7 +337,8 @@ namespace Divide {
                                  0.0f,
                                  max_ms_per_frame,
                                  ImVec2(0, 50));
-        }ImGui::PopItemWidth();
+        }
+        ImGui::PopItemWidth();
 
         static bool performanceStatsWereEnabled = false;
         static U32 s_maxLocksInFlight = 0u;
@@ -360,9 +364,8 @@ namespace Divide {
             context().gfx().queryPerformanceStats(true);
             const auto& rpm = _context.kernel().renderPassManager();
 
-            static I32 prevDrawCallCount[4] = {0, 0, 0, 0};
+            static I32 maxDrawCallCount[4] = {0, 0, 0, 0};
             static I32 crtDrawCallCount[4] = {0, 0, 0, 0};
-
             crtDrawCallCount[0] = rpm->drawCallCount(RenderStage::DISPLAY);
             crtDrawCallCount[1] = rpm->drawCallCount(RenderStage::SHADOW);
             crtDrawCallCount[2] = rpm->drawCallCount(RenderStage::REFLECTION);
@@ -388,15 +391,32 @@ namespace Divide {
             ImGui::Text("Refractions"); ImGui::NextColumn();
             ImGui::Separator();
 
-            ImGui::Text(ICON_FK_PENCIL); if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Draw Calls"); } ImGui::NextColumn();
-            for (U8 i = 0u; i < 4u; ++i) {
-                if (crtDrawCallCount[i] == prevDrawCallCount[i]) {
-                    ImGui::Text("%d", crtDrawCallCount[i]); ImGui::NextColumn();
-                } else {
-                    ImGui::Text("%d (prev: %d)", crtDrawCallCount[i], prevDrawCallCount[i]); ImGui::NextColumn();
-                }
+            static bool maxCalls = false;
+            if (maxCalls) {
+                ImGui::Text(ICON_FK_PENCIL" (Max)");
+            } else {
+                ImGui::Text(ICON_FK_PENCIL);
             }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Draw Calls. Click to toggle between Max Calls and Current Calls"); 
+            }
+            if (ImGui::IsItemClicked()) {
+                maxCalls = !maxCalls;
+            }
+            ImGui::NextColumn();
 
+            for (U8 i = 0u; i < 4u; ++i) {
+                ImGui::Text("%d", maxCalls ? maxDrawCallCount[i] : crtDrawCallCount[i]);
+                if (ImGui::IsItemHovered()) { 
+                    if (maxCalls) {
+                        ImGui::SetTooltip("Current calls: %d", crtDrawCallCount[i]);
+                    } else {
+                        ImGui::SetTooltip("Max calls: %d", maxDrawCallCount[i]); 
+                    }
+                }
+                ImGui::NextColumn();
+            }
+  
             ImGui::Text(ICON_FK_EYE); if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Visible Nodes"); } ImGui::NextColumn();
             ImGui::Text("%d", rpm->getLastTotalBinSize(RenderStage::DISPLAY));                            ImGui::NextColumn();
             ImGui::Text("%d", rpm->getLastTotalBinSize(RenderStage::SHADOW));                             ImGui::NextColumn();
@@ -405,7 +425,18 @@ namespace Divide {
             ImGui::Columns(1);
             ImGui::Separator();
             ImGui::NewLine();
+            bool enableHiZ = context().gfx().enableOcclusionCulling();
+            ImGui::PushID("ToggleHiZCheckBox");
+            if (ImGui::Checkbox("", &enableHiZ)) {
+                context().gfx().enableOcclusionCulling(enableHiZ);
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Enable / Disable GPU Hi-Z occlusion culling");
+            }
+            ImGui::PopID();
+            ImGui::SameLine();
             ImGui::Text("HiZ Cull Counts: %d | %d | %d | %d", cullCount.x, cullCount.y, cullCount.z, cullCount.w);
+            
             ImGui::NewLine();
             ImGui::Text("GPU Frame Time: %.2f ms", perfMetrics._gpuTimeInMS);
             ImGui::NewLine();
@@ -437,17 +468,17 @@ namespace Divide {
             ImGui::Separator();
             ImGui::NewLine();
 
-            prevDrawCallCount[0] = rpm->drawCallCount(RenderStage::DISPLAY);
-            prevDrawCallCount[1] = rpm->drawCallCount(RenderStage::SHADOW);
-            prevDrawCallCount[2] = rpm->drawCallCount(RenderStage::REFLECTION);
-            prevDrawCallCount[3] = rpm->drawCallCount(RenderStage::REFRACTION);
+            maxDrawCallCount[0] = std::max(rpm->drawCallCount(RenderStage::DISPLAY), maxDrawCallCount[0]);
+            maxDrawCallCount[1] = std::max(rpm->drawCallCount(RenderStage::SHADOW), maxDrawCallCount[1]);
+            maxDrawCallCount[2] = std::max(rpm->drawCallCount(RenderStage::REFLECTION), maxDrawCallCount[2]);
+            maxDrawCallCount[3] = std::max(rpm->drawCallCount(RenderStage::REFRACTION), maxDrawCallCount[3]);
         } else {
             if (!performanceStatsWereEnabled && context().gfx().queryPerformanceStats()) {
                 context().gfx().queryPerformanceStats(false);
             }
             s_maxLocksInFlight = 0u;
         }
-
+        
         static string dayNightText = Util::StringFormat("%s/%s Day/Night Settings", ICON_FK_SUN_O, ICON_FK_MOON_O).c_str();
 
         if (ImGui::CollapsingHeader(dayNightText.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth)) {

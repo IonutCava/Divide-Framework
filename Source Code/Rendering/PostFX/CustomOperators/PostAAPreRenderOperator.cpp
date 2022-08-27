@@ -170,7 +170,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
     }
 
     const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
-    const TextureData screenTex = screenAtt->texture()->data();
+    const auto& screenTex = screenAtt->texture()->defaultView();
 
     if (useSMAA()) {
         { //Step 1: Compute weights
@@ -189,31 +189,31 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
             GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
             const auto& att = _parent.edgesRT()._rt->getAttachment(RTAttachmentType::Colour, 0);
-            const TextureData edgesTex = att->texture()->data();
-            const TextureData areaTex = _areaTexture->data();
-            const TextureData searchTex = _searchTexture->data();
+            const auto& edgesTex = att->texture()->defaultView();
+            const auto& areaTex = _areaTexture->defaultView();
+            const auto& searchTex = _searchTexture->defaultView();
 
             SamplerDescriptor samplerDescriptor = {};
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-            cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+            cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
             {
                 auto& binding = cmd->_bindings.emplace_back();
-                binding._slot = to_U8(TextureUsage::UNIT0);
+                binding._slot = 0;
                 binding._data.As<DescriptorCombinedImageSampler>() = { edgesTex, att->descriptor()._samplerHash };
             }
             samplerDescriptor.mipSampling(TextureMipSampling::NONE);
             {
                 auto& binding = cmd->_bindings.emplace_back();
-                binding._slot = to_U8(TextureUsage::UNIT1);
+                binding._slot = 1;
                 binding._data.As<DescriptorCombinedImageSampler>() = { areaTex, samplerDescriptor.getHash() };
             }
             samplerDescriptor.minFilter(TextureFilter::NEAREST);
             samplerDescriptor.magFilter(TextureFilter::NEAREST);
             {
                 auto& binding = cmd->_bindings.emplace_back();
-                binding._slot = to_U8(TextureUsage::UNIT1) + 1u;
+                binding._slot = 2;
                 binding._data.As<DescriptorCombinedImageSampler>() = { searchTex, samplerDescriptor.getHash() };
             }
 
@@ -231,19 +231,19 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
             GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
             const auto& att = _smaaWeights._rt->getAttachment(RTAttachmentType::Colour, 0);
-            const TextureData blendTex = att->texture()->data();
+            const auto& blendTex = att->texture()->defaultView();
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-            cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+            cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
             {
                 auto& binding = cmd->_bindings.emplace_back();
-                binding._slot = to_U8(TextureUsage::UNIT0);
+                binding._slot = 0;
                 binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt->descriptor()._samplerHash };
             }
             {
                 auto& binding = cmd->_bindings.emplace_back();
-                binding._slot = to_U8(TextureUsage::UNIT1);
+                binding._slot = 1;
                 binding._data.As<DescriptorCombinedImageSampler>() = { blendTex, screenAtt->descriptor()._samplerHash };
             }
 
@@ -265,11 +265,11 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
         GFX::EnqueueCommand(bufferInOut, _pushConstantsCommand);
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-        cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+        cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
         {
             auto& binding = cmd->_bindings.emplace_back();
-            binding._slot = to_U8(TextureUsage::UNIT0);
+            binding._slot = 0;
             binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt->descriptor()._samplerHash };
         }
 

@@ -227,6 +227,7 @@ void RenderPass::render(const PlayerIndex idx, [[maybe_unused]] const Task& pare
                     }
                 }
             }
+
             GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = true;
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 

@@ -72,23 +72,40 @@ constexpr F32 Specular_Water = 0.255f;
 constexpr F32 Specular_Milk = 0.277f;
 constexpr F32 Specular_Skin = 0.35f;
 
-
-constexpr U8 g_materialTextureSlots[] = {
-    to_base(TextureUsage::UNIT0),
-    to_base(TextureUsage::UNIT1),
-    to_base(TextureUsage::OPACITY),
-    to_base(TextureUsage::NORMALMAP),
-    to_base(TextureUsage::METALNESS),
-    to_base(TextureUsage::ROUGHNESS),
-    to_base(TextureUsage::OCCLUSION),
-    to_base(TextureUsage::EMISSIVE),
-    to_base(TextureUsage::HEIGHTMAP),
-    to_base(TextureUsage::SPECULAR),
-    to_base(TextureUsage::REFLECTION_PLANAR),
-    to_base(TextureUsage::REFLECTION_CUBE),
-    to_base(TextureUsage::REFRACTION_PLANAR),
-    to_base(TextureUsage::PROJECTION)
+enum class TextureSlot : U8 {
+    UNIT0 = 0,
+    OPACITY,
+    NORMALMAP,
+    HEIGHTMAP,
+    SPECULAR,
+    METALNESS,
+    ROUGHNESS,
+    OCCLUSION,
+    EMISSIVE,
+    UNIT1,
+    REFLECTION_PLANAR,
+    REFRACTION_PLANAR,
+    COUNT
 };
+namespace Names {
+    static constexpr const char* textureSlot[] = {
+        "UNIT0",
+        "OPACITY",
+        "NORMALMAP",
+        "HEIGHTMAP",
+        "SPECULAR",
+        "METALNESS",
+        "ROUGHNESS",
+        "OCCLUSION",
+        "EMISSIVE",
+        "UNIT1",
+        "REFLECTION_PLANAR",
+        "REFRACTION_PLANAR",
+        "NONE"
+    };
+};
+
+static_assert(std::size(Names::textureSlot) == to_base(TextureSlot::COUNT) + 1);
 
 enum class TexturePrePassUsage : U8 {
     ALWAYS = 0u,
@@ -103,8 +120,8 @@ namespace TypeUtil {
     [[nodiscard]] const char* ShadingModeToString(ShadingMode shadingMode) noexcept;
     [[nodiscard]] ShadingMode StringToShadingMode(const string& name);
 
-    [[nodiscard]] const char* TextureUsageToString(TextureUsage texUsage) noexcept;
-    [[nodiscard]] TextureUsage StringToTextureUsage(const string& name);
+    [[nodiscard]] const char* TextureSlotToString(TextureSlot texUsage) noexcept;
+    [[nodiscard]] TextureSlot StringToTextureSlot(const string& name);
 
     [[nodiscard]] const char* TextureOperationToString(TextureOperation textureOp) noexcept;
     [[nodiscard]] TextureOperation StringToTextureOperation(const string& operation);
@@ -246,21 +263,21 @@ class Material final : public CachedResource {
 
     void setPipelineLayout(PrimitiveTopology topology, const AttributeMap& shaderAttributes);
 
-    bool setSampler(TextureUsage textureUsageSlot, size_t samplerHash);
-    bool setTexture(TextureUsage textureUsageSlot,
+    bool setSampler(TextureSlot textureUsageSlot, size_t samplerHash);
+    bool setTexture(TextureSlot textureUsageSlot,
                     const Texture_ptr& texture,
                     size_t samplerHash,
                     TextureOperation op,
                     TexturePrePassUsage prePassUsage = TexturePrePassUsage::AUTO);
-    void setTextureOperation(TextureUsage textureUsageSlot, TextureOperation op);
+    void setTextureOperation(TextureSlot textureUsageSlot, TextureOperation op);
 
-    void lockInstancesForRead() const;
-    void unlockInstancesForRead() const;
-    void lockInstancesForWrite() const;
-    void unlockInstancesForWrite() const;
+    void lockInstancesForRead() const noexcept;
+    void unlockInstancesForRead() const noexcept;
+    void lockInstancesForWrite() const noexcept;
+    void unlockInstancesForWrite() const noexcept;
 
     [[nodiscard]] const vector<Material*>& getInstancesLocked() const noexcept;
-    [[nodiscard]] const vector<Material*>& getInstances() const noexcept;
+    [[nodiscard]] const vector<Material*>& getInstances() const;
 
     /// Add the specified renderStateBlockHash to specific RenderStagePass parameters. Use "COUNT" and/or "g_AllVariantsID" for global options
     /// e.g. a RenderPassType::COUNT will use the block in the specified stage+variant combo but for all of the passes
@@ -276,9 +293,9 @@ class Material final : public CachedResource {
     [[nodiscard]] F32 getMetallic(bool& hasTextureOverride, Texture*& textureOut) const noexcept;
     [[nodiscard]] F32 getRoughness(bool& hasTextureOverride, Texture*& textureOut) const noexcept;
     [[nodiscard]] F32 getOcclusion(bool& hasTextureOverride, Texture*& textureOut) const noexcept;
-    [[nodiscard]] const TextureInfo& getTextureInfo(TextureUsage usage) const;
+    [[nodiscard]] const TextureInfo& getTextureInfo(TextureSlot usage) const;
     [[nodiscard]] size_t getOrCreateRenderStateBlock(RenderStagePass renderStagePass);
-    [[nodiscard]] Texture_wptr getTexture(TextureUsage textureUsage) const;
+    [[nodiscard]] Texture_wptr getTexture(TextureSlot textureUsage) const;
     [[nodiscard]] DescriptorBindings& getDescriptorSet(const RenderStagePass& renderStagePass);
     [[nodiscard]] ShaderProgramHandle getProgramHandle(RenderStagePass renderStagePass) const;
     [[nodiscard]] ShaderProgramHandle computeAndGetProgramHandle(RenderStagePass renderStagePass);
@@ -306,7 +323,7 @@ class Material final : public CachedResource {
     PROPERTY_R_IW(AttributeMap, shaderAttributes);
     PROPERTY_R_IW(PrimitiveTopology, topology, PrimitiveTopology::COUNT);
    private:
-    void getSortKeys(RenderStagePass renderStagePass, I64& shaderKey, I32& textureKey) const;
+    void getSortKeys(RenderStagePass renderStagePass, I64& shaderKey, I32& textureKey, bool& transparencyFlag) const;
     void addShaderDefineInternal(ShaderType type, const string& define, bool addPrefix);
 
     void updateTransparency();
@@ -333,7 +350,7 @@ class Material final : public CachedResource {
     void saveTextureDataToXML(const string& entryName, boost::property_tree::ptree& pt) const;
     void loadTextureDataFromXML(const string& entryName, const boost::property_tree::ptree& pt);
 
-    bool setTextureLocked(TextureUsage textureUsageSlot,
+    bool setTextureLocked(TextureSlot textureUsageSlot,
                           const Texture_ptr& texture,
                           size_t samplerHash,
                           TextureOperation op,
@@ -351,7 +368,7 @@ class Material final : public CachedResource {
     mutable SharedMutex _instanceLock;
     vector<Material*> _instances{};
 
-    std::array<TextureInfo, to_base(TextureUsage::COUNT)> _textures;
+    std::array<TextureInfo, to_base(TextureSlot::COUNT)> _textures;
 
     size_t _shaderAttributesHash{ 0u };
 
@@ -362,8 +379,8 @@ TYPEDEF_SMART_POINTERS_FOR_TYPE(Material);
 
 namespace Attorney {
 class MaterialRenderBin {
-    static void getSortKeys(const Material& material, const RenderStagePass renderStagePass, I64& shaderKey, I32& textureKey) {
-        material.getSortKeys(renderStagePass, shaderKey, textureKey);
+    static void getSortKeys(const Material& material, const RenderStagePass renderStagePass, I64& shaderKey, I32& textureKey, bool& hasTransparency) {
+        material.getSortKeys(renderStagePass, shaderKey, textureKey, hasTransparency);
     }
 
     friend class RenderBin;

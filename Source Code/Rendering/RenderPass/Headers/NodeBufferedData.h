@@ -36,26 +36,6 @@
 #include "Platform/Video/Headers/RenderAPIEnums.h"
 
 namespace Divide {
-enum class TextureUsage : unsigned char;
-
-constexpr TextureUsage g_materialTextures[] = {
-    TextureUsage::UNIT0,
-    TextureUsage::OPACITY,
-    TextureUsage::NORMALMAP,
-    TextureUsage::HEIGHTMAP,
-    TextureUsage::SPECULAR,
-    TextureUsage::METALNESS,
-    TextureUsage::ROUGHNESS,
-    TextureUsage::OCCLUSION,
-    TextureUsage::EMISSIVE,
-    TextureUsage::UNIT1,
-    TextureUsage::PROJECTION,
-    TextureUsage::REFLECTION_PLANAR,
-    TextureUsage::REFRACTION_PLANAR,
-    TextureUsage::REFLECTION_CUBE
-};
-
-constexpr size_t MATERIAL_TEXTURE_COUNT = std::size(g_materialTextures) + 2; /* padded for alignment. Keep at 128 bytes.*/
 
 #pragma pack(push, 1)
     struct NodeTransformData

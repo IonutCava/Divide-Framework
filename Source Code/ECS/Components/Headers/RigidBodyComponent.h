@@ -66,7 +66,7 @@ namespace Divide {
         bool filterCollision(const RigidBodyComponent& collider);
 
       private:
-        eastl::unique_ptr<PhysicsAsset> _rigidBody;
+        PhysicsAsset_uptr _rigidBody;
         DELEGATE<void, const RigidBodyComponent&> _collisionCbk;
     END_COMPONENT(RigidBody)
 

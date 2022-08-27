@@ -107,6 +107,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <EASTL/include/EASTL/stack.h>
 #include <EASTL/include/EASTL/queue.h>
 #include <EASTL/include/EASTL/string.h>
+#include <EASTL/include/EASTL/variant.h>
 #include <EASTL/include/EASTL/fixed_set.h>
 #include <EASTL/include/EASTL/fixed_vector.h>
 #include <EASTL/include/EASTL/weak_ptr.h>

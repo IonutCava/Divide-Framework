@@ -39,16 +39,19 @@ vec4 getPixelColour(in vec4 albedo, in NodeMaterialData materialData, in vec3 no
         return vec4(radianceOut, albedo.a);
     }
 #if !defined(PRE_PASS)
-    if (SELECTION_FLAG > 0) {
+    if (SELECTION_FLAG != SELECTION_FLAG_NONE) {
         const float NdotV2 = max(dot(VAR._normalWV, viewVec), 0.f);
-        const vec3 lineColour = vec3(SELECTION_FLAG == 1 ? 1.f : 0.f, SELECTION_FLAG == 2 ? 1.f : 0.f, 0.f);
+        const vec3 lineColour = vec3(SELECTION_FLAG == SELECTION_FLAG_HOVERED ? 1.f : 0.f, SELECTION_FLAG == SELECTION_FLAG_SELECTED ? 1.f : 0.f, 0.f);
         radianceOut = mix(lineColour, radianceOut, smoothstep(0.25f, 0.45f, NdotV2));
+    } else {
+        radianceOut += ApplyIBL(material, viewVec, normalWV, NdotV, VAR._vertexW.xyz, dvd_ProbeIndex(materialData));
+        radianceOut = ApplySSR(material._roughness, radianceOut);
     }
 #endif //!PRE_PASS
-#endif //MAIN_DISPLAY_PASS
-
-    radianceOut+= ApplyIBL(material, viewVec, normalWV, NdotV, VAR._vertexW.xyz, dvd_ProbeIndex(materialData));
+#else // MAIN_DISPLAY_PASS
+    radianceOut += ApplyIBL(material, viewVec, normalWV, NdotV, VAR._vertexW.xyz, dvd_ProbeIndex(materialData));
     radianceOut = ApplySSR(material._roughness, radianceOut);
+#endif //MAIN_DISPLAY_PASS
 
     radianceOut = getLightContribution(material, normalWV, viewVec, dvd_ReceivesShadows(materialData), radianceOut);
     radianceOut = ApplyFog(radianceOut);

@@ -47,7 +47,6 @@ enum class ChildPosition :U32 {
 
 class Terrain;
 class GFXDevice;
-class TerrainChunk;
 class SceneState;
 class IMPrimitive;
 class VertexBuffer;
@@ -59,6 +58,8 @@ struct RenderPackage;
 
 class Quadtree;
 class QuadtreeChildren;
+
+FWD_DECLARE_MANAGED_CLASS(TerrainChunk);
 
 class QuadtreeNode {
    public:
@@ -95,10 +96,12 @@ class QuadtreeNode {
     BoundingSphere _boundingSphere;              ///< Node BoundingSphere
     Quadtree* _parent = nullptr;
     std::array<QuadtreeNode*, 4> _children = {}; ///< Node children
-    eastl::unique_ptr<TerrainChunk> _terrainChunk = nullptr; ///< Terrain Chunk contained in node
+    TerrainChunk_uptr _terrainChunk = nullptr; ///< Terrain Chunk contained in node
     U8 _LoD = 0u;
     bool _drawBBoxes = false;
 };
+
+FWD_DECLARE_MANAGED_CLASS(QuadtreeNode);
 
 }  // namespace Divide
 

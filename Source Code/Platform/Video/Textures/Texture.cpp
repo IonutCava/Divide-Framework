@@ -100,11 +100,11 @@ Texture::Texture(GFXDevice& context,
     : CachedResource(ResourceType::GPU_OBJECT, descriptorHash, name, assetNames, assetLocations),
       GraphicsResource(context, Type::TEXTURE, getGUID(), _ID(name.c_str())),
       _descriptor(texDescriptor),
-      _data{0u, TextureType::COUNT},
       _numLayers(texDescriptor.layerCount()),
-      _parentCache(parentCache),
-      _loadingData(_data)
+      _parentCache(parentCache)
 {
+    _defaultView._mipLevels.max = 1u;
+    _defaultView._isDefaultView = true;
 }
 
 Texture::~Texture()
@@ -403,10 +403,36 @@ void Texture::validateDescriptor() {
     if (_width > 0 && _height > 0) {
         //http://www.opengl.org/registry/specs/ARB/texture_non_power_of_two.txt
         if (descriptor().mipMappingState() != TextureDescriptor::MipMappingState::OFF) {
-            _mipCount = to_U16(std::floorf(std::log2f(std::fmaxf(to_F32(_width), to_F32(_height))))) + 1;
+            _defaultView._mipLevels.max = to_U16(std::floorf(std::log2f(std::fmaxf(to_F32(_width), to_F32(_height))))) + 1;
         } else {
-            _mipCount = 1u;
+            _defaultView._mipLevels.max = 1u;
         }
     }
+}
+
+U16 Texture::mipCount() const noexcept {
+    return _defaultView._mipLevels.max;
+}
+
+U32 Texture::handle() const noexcept {
+    return data()._textureHandle;
+}
+
+TextureData Texture::data() const noexcept {
+    return _defaultView._textureData;
+}
+
+ImageView Texture::getView(const TextureType targetType, const vec2<U16> mipRange, const vec2<U16> layerRange) const noexcept {
+    ImageView ret{};
+    ret._textureData = _defaultView._textureData;
+    ret._textureData._textureType = targetType;
+    ret._mipLevels = mipRange;
+    ret._layerRange = layerRange;
+    ret._descriptor._msaaSamples = _descriptor.msaaSamples();
+    ret._descriptor._dataType = _descriptor.dataType();
+    ret._descriptor._baseFormat = _descriptor.baseFormat();
+    ret._descriptor._srgb = _descriptor.srgb();
+    ret._descriptor._normalized = _descriptor.normalized();
+    return ret;
 }
 };

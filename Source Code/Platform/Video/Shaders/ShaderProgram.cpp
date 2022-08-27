@@ -56,20 +56,6 @@ namespace TypeUtil {
 
         return DescriptorSetUsage::COUNT;
     }
-
-    const char* ShaderBufferLocationToString(const ShaderBufferLocation bufferLocation) noexcept {
-        return Names::shaderBufferLocation[to_base(bufferLocation)];
-    }
-
-    ShaderBufferLocation StringToShaderBufferLocation(const string& name) {
-        for (U8 i = 0u; i < to_U8(ShaderBufferLocation::COUNT); ++i) {
-            if (strcmp(name.c_str(), Names::shaderBufferLocation[i]) == 0) {
-                return static_cast<ShaderBufferLocation>(i);
-            }
-        }
-
-        return ShaderBufferLocation::COUNT;
-    }
 };
 
 constexpr U16 BYTE_BUFFER_VERSION = 1u;
@@ -77,8 +63,7 @@ constexpr U16 BYTE_BUFFER_VERSION = 1u;
 constexpr I8 s_maxHeaderRecursionLevel = 64;
 
 Mutex ShaderProgram::s_atomLock;
-Mutex ShaderProgram::g_textDumpLock;
-Mutex ShaderProgram::g_binaryDumpLock;
+Mutex ShaderProgram::g_cacheLock;
 ShaderProgram::AtomMap ShaderProgram::s_atoms;
 ShaderProgram::AtomInclusionMap ShaderProgram::s_atomIncludes;
 
@@ -90,9 +75,12 @@ Str8 ShaderProgram::shaderAtomExtensionName[to_base(ShaderType::COUNT) + 1];
 ShaderProgram::ShaderQueue ShaderProgram::s_recompileQueue;
 ShaderProgram::ShaderProgramMap ShaderProgram::s_shaderPrograms;
 ShaderProgram::LastRequestedShader ShaderProgram::s_lastRequestedShaderProgram = {};
+U8 ShaderProgram::k_commandBufferID = U8_MAX - ShaderProgram::MaxSlotsPerDescriptorSet;
 
 SharedMutex ShaderProgram::s_programLock;
 std::atomic_int ShaderProgram::s_shaderCount;
+
+std::array<ShaderProgram::GLBindingsPerSetArray, to_base(DescriptorSetUsage::COUNT)> ShaderProgram::s_glBindingsPerSet;
 
 UpdateListener g_sFileWatcherListener(
     [](const std::string_view atomName, const FileUpdateEvent evt) {
@@ -283,6 +271,15 @@ namespace Preprocessor{
 } //Preprocessor
 
 namespace {
+    U64 s_newestShaderAtomWriteTime = 0u; //< Used to detect modified shader atoms to validate/invalidate shader cache
+    bool s_useShaderCache = true;
+    bool s_targetVulkan = false;
+
+    constexpr U8 s_reserverdTextureSlotsPerDraw = to_base(TextureSlot::COUNT);
+    constexpr U8 s_reserverdBufferSlotsPerDraw = ShaderProgram::MaxSlotsPerDescriptorSet - s_reserverdTextureSlotsPerDraw;
+    constexpr U8 s_reservedImageSlotsPerDraw = ShaderProgram::MaxSlotsPerDescriptorSet - s_reserverdBufferSlotsPerDraw - s_reserverdTextureSlotsPerDraw;
+    constexpr U8 s_uniformBlockBindingOffset = 14u;
+
     [[nodiscard]] size_t DefinesHash(const ModuleDefines& defines) noexcept {
         if (defines.empty()) {
             return 0u;
@@ -296,90 +293,150 @@ namespace {
         return hash;
     }
 
-    [[nodiscard]] ResourcePath SpvCacheLocation(const bool targetVulkan) {
-        return Paths::g_cacheLocation + 
-               Paths::Shaders::g_cacheLocation + 
-               (targetVulkan ? Paths::Shaders::g_cacheLocationVK : Paths::Shaders::g_cacheLocationGL) +
-               Paths::Shaders::g_cacheLocationSpv +
-               Paths::g_buildTypeLocation;
+    [[nodiscard]] ResourcePath ShaderAPILocation() {
+        return (s_targetVulkan ? Paths::Shaders::g_cacheLocationVK : Paths::Shaders::g_cacheLocationGL);
+    }
+
+    [[nodiscard]] ResourcePath ShaderBuildCacheLocation() {
+        return Paths::g_cacheLocation + Paths::Shaders::g_cacheLocation + Paths::g_buildTypeLocation;
+    }
+
+    [[nodiscard]] ResourcePath ShaderParentCacheLocation() {
+        return ShaderBuildCacheLocation() + ShaderAPILocation();
+    }
+
+    [[nodiscard]] ResourcePath SpvCacheLocation() {
+        return ShaderParentCacheLocation() + Paths::Shaders::g_cacheLocationSpv;
+    }   
+    
+    [[nodiscard]] ResourcePath ReflCacheLocation() {
+        return ShaderParentCacheLocation() + Paths::Shaders::g_cacheLocationRefl;
+    }
+
+    [[nodiscard]] ResourcePath TxtCacheLocation() {
+        return ShaderParentCacheLocation() + Paths::Shaders::g_cacheLocationText;
     }
 
     [[nodiscard]] ResourcePath SpvTargetName(const Str256& fileName) {
         return ResourcePath{ fileName + "." + Paths::Shaders::g_SPIRVExt };
     }
 
-    [[nodiscard]] ResourcePath TxtCacheLocation(const bool targetVulkan) {
-        return Paths::g_cacheLocation +
-               Paths::Shaders::g_cacheLocation +
-               (targetVulkan ? Paths::Shaders::g_cacheLocationVK : Paths::Shaders::g_cacheLocationGL) +
-               Paths::Shaders::g_cacheLocationText +
-               Paths::g_buildTypeLocation;
+    [[nodiscard]] ResourcePath ReflTargetName(const Str256& fileName) {
+        return ResourcePath{ fileName + "." + Paths::Shaders::g_ReflectionExt };
     }
 
-    [[nodiscard]] bool ValidateCache(const bool validateSPV, const Str256& sourceFileName, const Str256& targetFileName, const bool targetVulkan) {
+    [[nodiscard]] bool ValidateCacheLocked(const ShaderProgram::LoadData::ShaderCacheType type, const Str256& sourceFileName, const Str256& fileName) {
+        if (!s_useShaderCache) {
+            return false;
+        }
+
         //"There are only two hard things in Computer Science: cache invalidation and naming things" - Phil Karlton
         //"There are two hard things in computer science: cache invalidation, naming things, and off-by-one errors." - Leon Bambrick
-        // Get our source file's "last written" timestamp
+        
+        // Get our source file's "last written" timestamp. Every cache file that's older than this is automatically out-of-date
         U64 lastWriteTime = 0u, lastWriteTimeCache = 0u;
-
         const ResourcePath sourceShaderFullPath = Paths::g_assetsLocation + Paths::g_shadersLocation + Paths::Shaders::GLSL::g_GLSLShaderLoc + sourceFileName;
         if (fileLastWriteTime(sourceShaderFullPath, lastWriteTime) != FileError::NONE) {
             return false;
         }
 
-        if (validateSPV) {
-            const ResourcePath spvCacheFullPath = SpvCacheLocation(targetVulkan) + SpvTargetName(targetFileName);
-
-            // Check agains SPV cache file's timestamps;
-            if (fileLastWriteTime(spvCacheFullPath, lastWriteTimeCache) != FileError::NONE || lastWriteTimeCache < lastWriteTime) {
-                return false;
-            }
-        } else {
-            const ResourcePath texCacheFullPath = TxtCacheLocation(targetVulkan) + targetFileName;
-
-            // Do the same for the text cache
-            if (fileLastWriteTime(texCacheFullPath, lastWriteTimeCache) != FileError::NONE || lastWriteTimeCache < lastWriteTime) {
-                return false;
-            }
+        ResourcePath filePath;
+        switch (type) {
+            case ShaderProgram::LoadData::ShaderCacheType::REFLECTION: filePath = ReflCacheLocation() + ReflTargetName(fileName);break;
+            case ShaderProgram::LoadData::ShaderCacheType::GLSL: filePath = TxtCacheLocation() + ResourcePath{fileName}; break;
+            case ShaderProgram::LoadData::ShaderCacheType::SPIRV: filePath = SpvCacheLocation() + SpvTargetName(fileName); break;
+            default: return false;
         }
+
+        if (fileLastWriteTime(filePath, lastWriteTimeCache) != FileError::NONE ||
+            lastWriteTimeCache < lastWriteTime ||
+            lastWriteTimeCache < s_newestShaderAtomWriteTime)
+        {
+            return false;
+        }
+
         return true;
     }
-
-    void DeleteSPIRVCache(const Str256& sourceFileName, const bool targetVulkan) {
-        if (deleteFile(SpvCacheLocation(targetVulkan), ResourcePath{ SpvTargetName(sourceFileName) }) != FileError::NONE) {
-            NOP();
-        }
-        if (deleteFile(SpvCacheLocation(targetVulkan), ResourcePath{ SpvTargetName(sourceFileName) + "." + Paths::Shaders::g_ReflectionExt }) != FileError::NONE) {
-            NOP();
-        }
+    [[nodiscard]] bool ValidateCache(const ShaderProgram::LoadData::ShaderCacheType type, const Str256& sourceFileName, const Str256& fileName) {
+        ScopedLock<Mutex> rw_lock(ShaderProgram::g_cacheLock);
+        return ValidateCache(type, sourceFileName, fileName);
     }
-    
-    void DeleteTextCache(const Str256& sourceFileName, const bool targetVulkan) {
-        // Cache file and reflection file are out of sync so (attempt to) remove both.
-        if (deleteFile(TxtCacheLocation(targetVulkan), ResourcePath{ sourceFileName }) != FileError::NONE) {
-            NOP();
+
+    [[nodiscard]] bool DeleteCacheLocked(const ShaderProgram::LoadData::ShaderCacheType type, const Str256& fileName) {
+        FileError err = FileError::NONE;
+        switch (type) {
+            case ShaderProgram::LoadData::ShaderCacheType::REFLECTION: err = deleteFile(ReflCacheLocation(), ReflTargetName(fileName)); break;
+            case ShaderProgram::LoadData::ShaderCacheType::GLSL: err = deleteFile(TxtCacheLocation(), ResourcePath{ fileName }); break;
+            case ShaderProgram::LoadData::ShaderCacheType::SPIRV: err = deleteFile(SpvCacheLocation(), SpvTargetName(fileName)); break;
+            default: return false;
         }
-        if (deleteFile(TxtCacheLocation(targetVulkan), ResourcePath{ sourceFileName + "." + Paths::Shaders::g_ReflectionExt }) != FileError::NONE) {
-            NOP();
+
+        return err == FileError::NONE || err == FileError::FILE_NOT_FOUND;
+    }
+
+    [[nodiscard]] bool DeleteCache(const ShaderProgram::LoadData::ShaderCacheType type, const Str256& fileName) {
+        ScopedLock<Mutex> rw_lock(ShaderProgram::g_cacheLock);
+        if (type == ShaderProgram::LoadData::ShaderCacheType::COUNT) {
+            bool ret = false;
+            ret = DeleteCacheLocked(ShaderProgram::LoadData::ShaderCacheType::REFLECTION, fileName) || ret;
+            ret = DeleteCacheLocked(ShaderProgram::LoadData::ShaderCacheType::GLSL, fileName) || ret;
+            ret = DeleteCacheLocked(ShaderProgram::LoadData::ShaderCacheType::SPIRV, fileName) || ret;
+            return ret;
+
         }
+
+        return DeleteCacheLocked(type, fileName);
     }
 };
 
-bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo, const Configuration& config) {
+bool InitGLSW(const GFXDevice& gfx, const DeviceInformation& deviceInfo, const Configuration& config) {
+    const RenderAPI renderingAPI = gfx.renderAPI();
+
     const auto AppendToShaderHeader = [](const ShaderType type, const string& entry) {
         glswAddDirectiveToken(type != ShaderType::COUNT ? Names::shaderTypes[to_U8(type)] : "", entry.c_str());
     };
 
-    const auto AppendResourceBindingSlots = [&AppendToShaderHeader]([[maybe_unused]] const bool targetOpenGL) {
-        STUBBED("Find a way to map slots differentely between Vulkan and OpenGL. -Ionut");
+    const auto AppendResourceBindingSlots = [&AppendToShaderHeader, &gfx](const bool targetOpenGL) {
 
-        for (U8 i = 0u; i < to_base(ShaderBufferLocation::COUNT); ++i) {
-            AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define BUFFER_%s %d", TypeUtil::ShaderBufferLocationToString(static_cast<ShaderBufferLocation>(i)), i).c_str());
-        }
-        for (U8 i = 0u; i < to_base(TextureUsage::COUNT); ++i) {
-            AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define TEXTURE_%s %d", TypeUtil::TextureUsageToString(static_cast<TextureUsage>(i)), i).c_str());
+
+        if (targetOpenGL) {
+            const auto AppendSetBindings = [&](const DescriptorSetUsage setUsage) {
+                if (setUsage == DescriptorSetUsage::PER_DRAW) {
+                    for (U8 i = 0u; i < ShaderProgram::MaxSlotsPerDescriptorSet; ++i) {
+                        AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define %s_%d %d",
+                                                                                   TypeUtil::DescriptorSetUsageToString(DescriptorSetUsage::PER_DRAW),
+                                                                                   i,
+                                                                                   i).c_str());
+                    }
+                } else {
+                    const GFXDevice::GFXDescriptorSet& set = gfx.descriptorSet(setUsage);
+                    for (const DescriptorSetBinding& binding : set.impl()) {
+                        const U8 glSlot = ShaderProgram::GetGLBindingForDescriptorSlot(setUsage, binding._resource._slot, binding._type);
+                        AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define %s_%d %d",
+                                                                                   TypeUtil::DescriptorSetUsageToString(setUsage),
+                                                                                   binding._resource._slot,
+                                                                                   glSlot).c_str());
+                    }
+                }
+            };
+
+            AppendSetBindings(DescriptorSetUsage::PER_DRAW);
+            AppendSetBindings(DescriptorSetUsage::PER_BATCH);
+            AppendSetBindings(DescriptorSetUsage::PER_PASS);
+            AppendSetBindings(DescriptorSetUsage::PER_FRAME);
+
+            AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE(SET, BINDING) layout(binding = CONCATENATE(SET, BINDING))");
+            AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_OFFSET(SET, BINDING, OFFSET) layout(binding = CONCATENATE(SET, BINDING), offset = OFFSET)");
+            AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_LAYOUT(SET, BINDING, LAYOUT) layout(binding = CONCATENATE(SET, BINDING), LAYOUT)");
+            AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_OFFSET_LAYOUT(SET, BINDING, OFFSET, LAYOUT) layout(binding = CONCATENATE(SET, BINDING), offset = OFFSET, LAYOUT)");
+        } else {
+            AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE(SET, BINDING) layout(set = SET, binding = BINDING)");
+            AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_OFFSET(SET, BINDING, OFFSET) layout(set = SET, binding = BINDING, offset = OFFSET)");
+            AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_LAYOUT(SET, BINDING, LAYOUT) layout(set = SET, binding = BINDING, LAYOUT)");
+            AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_OFFSET_LAYOUT(SET, BINDING, OFFSET, LAYOUT) layout(set = SET, binding = BINDING, offset = OFFSET, LAYOUT)");
         }
     };
+
     constexpr std::pair<const char*, const char*> shaderVaryings[] =
     {
         { "vec4"       , "_vertexW"},          // 16 bytes
@@ -453,7 +510,6 @@ bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo,
 
     if (renderingAPI == RenderAPI::OpenGL) {
         //AppendToShaderHeader(ShaderType::COUNT, "#extension GL_ARB_gpu_shader5 : require");
-        AppendToShaderHeader(ShaderType::COUNT, "#define SPECIFY_SET(SET)");
         AppendToShaderHeader(ShaderType::COUNT, "#define TARGET_OPENGL");
         AppendToShaderHeader(ShaderType::COUNT, "#define dvd_VertexIndex gl_VertexID");
         AppendToShaderHeader(ShaderType::COUNT, "#define dvd_InstanceIndex gl_InstanceID");
@@ -462,7 +518,6 @@ bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo,
         AppendToShaderHeader(ShaderType::COUNT, "#define DVD_GL_DRAW_ID gl_DrawID");
     } else {
         AppendToShaderHeader(ShaderType::COUNT, "#extension GL_ARB_shader_draw_parameters : require");
-        AppendToShaderHeader(ShaderType::COUNT, "#define SPECIFY_SET(SET) set = SET,");
         AppendToShaderHeader(ShaderType::COUNT, "#define TARGET_VULKAN");
         AppendToShaderHeader(ShaderType::COUNT, "#define dvd_VertexIndex gl_VertexIndex");
         AppendToShaderHeader(ShaderType::COUNT, "#define dvd_InstanceIndex gl_InstanceIndex");
@@ -471,12 +526,6 @@ bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo,
         AppendToShaderHeader(ShaderType::COUNT, "#define DVD_GL_DRAW_ID gl_DrawIDARB");
     }
 
-    AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE(SET, BINDING) layout(SPECIFY_SET(SET) binding = BINDING)");
-    AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_OFFSET(SET, BINDING, OFFSET) layout(SPECIFY_SET(SET) binding = BINDING, offset = OFFSET)");
-    AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_LAYOUT(SET, BINDING, LAYOUT) layout(SPECIFY_SET(SET) binding = BINDING, LAYOUT)");
-    AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_OFFSET_LAYOUT(SET, BINDING, OFFSET, LAYOUT) layout(SPECIFY_SET(SET) binding = BINDING, offset = OFFSET, LAYOUT)");
-
-   
     AppendToShaderHeader(ShaderType::COUNT, crossTypeGLSLHLSL);
 
     // Add current build environment information to the shaders
@@ -487,6 +536,8 @@ bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo,
     } else {
         AppendToShaderHeader(ShaderType::COUNT, "#define _RELEASE");
     }
+    AppendToShaderHeader(ShaderType::COUNT, "#define CONCATENATE_IMPL(s1, s2) s1 ## _ ## s2");
+    AppendToShaderHeader(ShaderType::COUNT, "#define CONCATENATE(s1, s2) CONCATENATE_IMPL(s1, s2)");
 
     // Shader stage level reflection system. A shader stage must know what stage it's used for
     AppendToShaderHeader(ShaderType::VERTEX, "#define VERT_SHADER");
@@ -536,9 +587,6 @@ bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo,
 
     AppendResourceBindingSlots(renderingAPI == RenderAPI::OpenGL);
 
-    for (U8 i = 0u; i < to_base(DescriptorSetUsage::COUNT); ++i) {
-        AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define %s %d", TypeUtil::DescriptorSetUsageToString(static_cast<DescriptorSetUsage>(i)), i).c_str());
-    }
     for (U8 i = 0u; i < to_base(TextureOperation::COUNT); ++i) {
         AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define TEX_%s %d", TypeUtil::TextureOperationToString(static_cast<TextureOperation>(i)), i).c_str());
     }
@@ -588,12 +636,8 @@ bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo,
 
     AppendToShaderHeader(ShaderType::COUNT, "#define GLOBAL_WATER_BODIES_COUNT " + Util::to_string(GLOBAL_WATER_BODIES_COUNT));
     AppendToShaderHeader(ShaderType::COUNT, "#define GLOBAL_PROBE_COUNT " + Util::to_string(GLOBAL_PROBE_COUNT));
-    AppendToShaderHeader(ShaderType::COUNT, "#define MATERIAL_TEXTURE_COUNT " + Util::to_string(MATERIAL_TEXTURE_COUNT));
+    AppendToShaderHeader(ShaderType::COUNT, "#define MATERIAL_TEXTURE_COUNT 16");
 
-    AppendToShaderHeader(ShaderType::COMPUTE, "#define BUFFER_LUMINANCE_HISTOGRAM " + Util::to_string(to_base(ShaderBufferLocation::LUMINANCE_HISTOGRAM)));
-
-    AppendToShaderHeader(ShaderType::VERTEX,   "#define BUFFER_BONE_TRANSFORMS " + Util::to_string(to_base(ShaderBufferLocation::BONE_TRANSFORMS)));
-    AppendToShaderHeader(ShaderType::VERTEX,   "#define BUFFER_BONE_TRANSFORMS_PREV " + Util::to_string(to_base(ShaderBufferLocation::BONE_TRANSFORMS_PREV)));
     AppendToShaderHeader(ShaderType::VERTEX,   "#define MAX_BONE_COUNT_PER_NODE " + Util::to_string(Config::MAX_BONE_COUNT_PER_NODE));
     AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_POSITION " + Util::to_string(to_base(AttribLocation::POSITION)));
     AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_TEXCOORD " + Util::to_string(to_base(AttribLocation::TEXCOORD)));
@@ -708,7 +752,6 @@ size_t ShaderProgramDescriptor::getHash() const noexcept {
 
 SharedMutex ShaderModule::s_shaderNameLock;
 ShaderModule::ShaderMap ShaderModule::s_shaderNameMap;
-
 
 void ShaderModule::InitStaticData() {
     NOP();
@@ -889,7 +932,7 @@ ErrorCode ShaderProgram::OnStartup(ResourceCache* parentCache) {
         const vector<ResourcePath> atomLocations = GetAllAtomLocations();
         for (const ResourcePath& loc : atomLocations) {
             if (!CreateDirectories(loc)) {
-                DebugBreak();
+                DIVIDE_UNEXPECTED_CALL();
             }
             watcher().addWatch(loc.c_str(), &g_sFileWatcherListener);
         }
@@ -919,8 +962,23 @@ ErrorCode ShaderProgram::OnStartup(ResourceCache* parentCache) {
 
     const PlatformContext& ctx = parentCache->context();
     const Configuration& config = ctx.config();
+    s_useShaderCache = config.debug.useShaderCache;
+    s_targetVulkan = ctx.gfx().renderAPI() == RenderAPI::Vulkan;
 
-    if (!InitGLSW(ctx.gfx().renderAPI(), GFXDevice::GetDeviceInformation(), config)) {
+    FileList list{};
+    if (s_useShaderCache) {
+        for (U8 i = 0u; i < to_base(ShaderType::COUNT) + 1; ++i) {
+            const ResourcePath& atomLocation = shaderAtomLocationPrefix[i];
+            if (getAllFilesInDirectory(atomLocation, list, shaderAtomExtensionName[i].c_str())) {
+                for (const FileEntry& it : list) {
+                    s_newestShaderAtomWriteTime = std::max(s_newestShaderAtomWriteTime, it._lastWriteTime);
+                }
+            }
+            list.resize(0);
+        }
+    }
+
+    if (!InitGLSW(ctx.gfx(), GFXDevice::GetDeviceInformation(), config)) {
         return ErrorCode::GLSL_INIT_ERROR;
     }
 
@@ -944,8 +1002,68 @@ bool ShaderProgram::OnShutdown() {
     return glswGetCurrentContext() == nullptr || glswShutdown() == 1;
 }
 
+
+U8 ShaderProgram::GetGLBindingForDescriptorSlot(const DescriptorSetUsage usage, const U8 slot, const DescriptorSetBindingType type) noexcept {
+    if (usage == DescriptorSetUsage::PER_DRAW) {
+        return slot;
+    }
+
+    const auto& entry = s_glBindingsPerSet[to_base(usage)][slot];
+
+    DIVIDE_ASSERT(type == entry._type);
+    return entry._glBinding;
+}
+
+std::pair<DescriptorSetUsage, U8> ShaderProgram::GetDescriptorSlotForGLBinding(const U8 binding, const DescriptorSetBindingType type) noexcept {
+    for (U8 i = 0u; i < to_base(DescriptorSetUsage::COUNT); ++i) {
+        const GLBindingsPerSetArray& bindings = s_glBindingsPerSet[i];
+        for (U8 j = 0u; j < bindings.size(); ++j) {
+            if (bindings[j]._glBinding == binding && bindings[j]._type == type) {
+                return { static_cast<DescriptorSetUsage>(i), j };
+            }
+        }
+    }
+
+    // If we didn't specify any images, we assume per-draw granularity
+    return { DescriptorSetUsage::PER_DRAW, binding };
+}
+
+void ShaderProgram::CreateSetLayout(const DescriptorSetUsage usage, const DescriptorSet& set) {
+    DIVIDE_ASSERT(usage != DescriptorSetUsage::PER_DRAW);
+
+    static U8 textureSlot = s_reserverdTextureSlotsPerDraw;
+    static U8 bufferSlot = textureSlot + s_reserverdBufferSlotsPerDraw;
+    static U8 imageSlot = s_reservedImageSlotsPerDraw;
+
+    GLBindingsPerSetArray& bindingsPerSet = s_glBindingsPerSet[to_base(usage)];
+
+    for (const DescriptorSetBinding& binding : set) {
+        DIVIDE_ASSERT(binding._resource._slot < MaxSlotsPerDescriptorSet);
+
+        bindingsPerSet[binding._resource._slot]._type = binding._type;
+
+        switch (binding._type) {
+            case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER:
+                bindingsPerSet[binding._resource._slot]._glBinding = textureSlot++;
+            break;
+            case DescriptorSetBindingType::IMAGE:
+                bindingsPerSet[binding._resource._slot]._glBinding = imageSlot++;
+            break;
+            case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
+            case DescriptorSetBindingType::UNIFORM_BUFFER:
+                if (usage == DescriptorSetUsage::PER_BATCH && binding._resource._slot == 0) {
+                    bindingsPerSet[binding._resource._slot]._glBinding = k_commandBufferID;
+                } else {
+                    bindingsPerSet[binding._resource._slot]._glBinding = bufferSlot++;
+                }
+            break;
+            default: DIVIDE_UNEXPECTED_CALL();
+            break;
+        }
+    }
+}
 bool ShaderProgram::OnThreadCreated(const GFXDevice& gfx, [[maybe_unused]] const std::thread::id& threadID) {
-    return InitGLSW(gfx.renderAPI(), GFXDevice::GetDeviceInformation(), gfx.context().config());
+    return InitGLSW(gfx, GFXDevice::GetDeviceInformation(), gfx.context().config());
 }
 
 void ShaderProgram::OnEndFrame(GFXDevice& gfx) {
@@ -1221,143 +1339,107 @@ const string& ShaderProgram::ShaderFileReadLocked(const ResourcePath& filePath, 
     return entry->second;
 }
 
-bool ShaderProgram::LoadTextFromCache(LoadData& dataInOut, const bool targetVulkan, eastl::set<U64>& atomIDsOut) {
-    if (ValidateCache(false, dataInOut._sourceFile, dataInOut._fileName, targetVulkan)) {
-        if (Reflection::LoadReflectionData(TxtCacheLocation(targetVulkan), 
-                                           ResourcePath{ dataInOut._fileName + "." + Paths::Shaders::g_ReflectionExt },
-                                           dataInOut._reflectionData,
-                                           atomIDsOut))
-        {
-            FileError err = FileError::FILE_EMPTY;
-            {
-                ScopedLock<Mutex> w_lock(g_textDumpLock);
-                err = readFile(TxtCacheLocation(targetVulkan),
-                               ResourcePath{ dataInOut._fileName },
-                               dataInOut._sourceCodeGLSL, FileType::TEXT);
-            }
+bool ShaderProgram::SaveToCache(const LoadData::ShaderCacheType cache, const LoadData& dataIn, const eastl::set<U64>& atomIDsIn) {
+    bool ret = false;
 
-            if (err == FileError::NONE) {
-                return true;
+    ScopedLock<Mutex> rw_lock(g_cacheLock);
+    FileError err = FileError::FILE_EMPTY;
+    switch (cache) {
+        case LoadData::ShaderCacheType::GLSL:{
+            if (!dataIn._sourceCodeGLSL.empty()) {
+                {
+                    err = writeFile(TxtCacheLocation(),
+                                    ResourcePath(dataIn._fileName),
+                                    dataIn._sourceCodeGLSL.c_str(),
+                                    dataIn._sourceCodeGLSL.length(),
+                                    FileType::TEXT);
+                }
+
+                if (err != FileError::NONE) {
+                    Console::errorfn(Locale::Get(_ID("ERROR_SHADER_SAVE_TEXT_FAILED")), dataIn._fileName.c_str());
+                } else {
+                    ret = true;
+                }
             }
+        } break;
+        case LoadData::ShaderCacheType::SPIRV: {
+            if (!dataIn._sourceCodeSpirV.empty()) {
+                err = writeFile(SpvCacheLocation(),
+                                SpvTargetName(dataIn._fileName),
+                                (bufferPtr)dataIn._sourceCodeSpirV.data(),
+                                dataIn._sourceCodeSpirV.size() * sizeof(U32),
+                                FileType::BINARY);
+
+                if (err != FileError::NONE) {
+                    Console::errorfn(Locale::Get(_ID("ERROR_SHADER_SAVE_SPIRV_FAILED")), dataIn._fileName.c_str());
+                } else {
+                    ret = true;
+                }
+            }
+        } break;
+        case LoadData::ShaderCacheType::REFLECTION: {
+            ret = Reflection::SaveReflectionData(ReflCacheLocation(), ReflTargetName(dataIn._fileName), dataIn._reflectionData, atomIDsIn);
+            if (!ret) {
+                Console::errorfn(Locale::Get(_ID("ERROR_SHADER_SAVE_REFL_FAILED")), dataIn._fileName.c_str());
+            }
+        } break;
+        default: return false;
+    };
+
+    if (!ret) {
+        if (!DeleteCacheLocked(cache, dataIn._fileName)) {
+            NOP();
         }
     }
 
-    // Cache file and reflection file are out of sync so (attempt to) remove both.
-    DeleteTextCache(dataInOut._fileName, targetVulkan);
-    return false;
+    return ret;
 }
 
-bool ShaderProgram::SaveTextToCache(const LoadData& dataIn, const bool targetVulkan, const eastl::set<U64>& atomIDsIn) {
-
-    if (Reflection::SaveReflectionData(TxtCacheLocation(targetVulkan),
-                                       ResourcePath{ dataIn._fileName + "." + Paths::Shaders::g_ReflectionExt },
-                                       dataIn._reflectionData,
-                                       atomIDsIn))
-    {
-        FileError err = FileError::FILE_EMPTY;
-        {
-            ScopedLock<Mutex> w_lock(g_textDumpLock);
-            err = writeFile(Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationText + Paths::g_buildTypeLocation,
-                            ResourcePath(dataIn._fileName),
-                            dataIn._sourceCodeGLSL.c_str(),
-                            dataIn._sourceCodeGLSL.length(),
-                            FileType::TEXT);
-        }
-        if (err == FileError::NONE) {
-            return true;
-        }
+bool ShaderProgram::LoadFromCache(const LoadData::ShaderCacheType cache, LoadData& dataInOut, eastl::set<U64>& atomIDsOut) {
+    if (!s_useShaderCache) {
+        return false;
     }
 
-    // Cache file and reflection file are out of sync so (attempt to) remove both.
-    DeleteTextCache(dataIn._fileName, targetVulkan);
-    Console::errorfn(Locale::Get(_ID("ERROR_SHADER_SAVE_TEXT_FAILED")), dataIn._fileName.c_str());
-    return false;
-}
+    ScopedLock<Mutex> rw_lock(g_cacheLock);
+    if (!ValidateCacheLocked(cache, dataInOut._sourceFile, dataInOut._fileName)) {
+        if (!DeleteCacheLocked(cache, dataInOut._fileName)) {
+            NOP();
+        }
 
+        return false;
+    }
 
-bool ShaderProgram::LoadSPIRVFromCache(LoadData& dataInOut, const bool targetVulkan, eastl::set<U64>& atomIDsOut) {
-    if (ValidateCache(true, dataInOut._sourceFile, dataInOut._fileName, targetVulkan)) {
-        const ResourcePath spvTarget{ SpvTargetName(dataInOut._fileName) };
-
-        vector<Byte> tempData;
-        if (Reflection::LoadReflectionData(SpvCacheLocation(targetVulkan),
-                                           ResourcePath{ spvTarget + "." + Paths::Shaders::g_ReflectionExt },
-                                           dataInOut._reflectionData,
-                                           atomIDsOut)) {
-            FileError err = FileError::FILE_EMPTY;
+    FileError err = FileError::FILE_EMPTY;
+    switch (cache) {
+        case LoadData::ShaderCacheType::GLSL: {
+            err = readFile(TxtCacheLocation(),
+                           ResourcePath{ dataInOut._fileName },
+                           dataInOut._sourceCodeGLSL, FileType::TEXT);
+            return err == FileError::NONE;
+        } break;
+        case LoadData::ShaderCacheType::SPIRV: {
+            vector<Byte> tempData;
             {
-                ScopedLock<Mutex> w_lock(g_binaryDumpLock);
-                err = readFile(SpvCacheLocation(targetVulkan),
-                               spvTarget,
+                err = readFile(SpvCacheLocation(),
+                               SpvTargetName(dataInOut._fileName),
                                tempData,
                                FileType::BINARY);
             }
 
-            if (err == FileError::NONE)
-            {
+            if (err == FileError::NONE) {
                 dataInOut._sourceCodeSpirV.resize(tempData.size() / sizeof(U32));
                 memcpy(dataInOut._sourceCodeSpirV.data(), tempData.data(), tempData.size());
                 return true;
             }
-        }
+
+            return false;
+        } break;
+        case LoadData::ShaderCacheType::REFLECTION: {
+            return Reflection::LoadReflectionData(ReflCacheLocation(), ReflTargetName(dataInOut._fileName), dataInOut._reflectionData, atomIDsOut);
+        } break;
     }
 
-    // Cache file and reflection file are out of sync so (attempt to) remove both.
-    DeleteSPIRVCache(dataInOut._fileName, targetVulkan);
     return false;
-}
-
-bool ShaderProgram::SaveSPIRVToCache(const LoadData& dataIn, const bool targetVulkan, const eastl::set<U64>& atomIDsIn){
-    const ResourcePath spvTarget{ SpvTargetName(dataIn._fileName) };
-    if (Reflection::SaveReflectionData(SpvCacheLocation(targetVulkan),
-                                       ResourcePath{ spvTarget + "." + Paths::Shaders::g_ReflectionExt },
-                                       dataIn._reflectionData,
-                                       atomIDsIn)) 
-    {
-        FileError err = FileError::FILE_EMPTY;
-        {
-            ScopedLock<Mutex> w_lock(g_binaryDumpLock);
-            err = writeFile(SpvCacheLocation(targetVulkan),
-                            spvTarget,
-                            (bufferPtr)dataIn._sourceCodeSpirV.data(),
-                            dataIn._sourceCodeSpirV.size() * sizeof(U32),
-                            FileType::BINARY);
-        }
-
-        if (err == FileError::NONE) {
-            return true;
-        }
-    }
-
-    // Cache file and reflection file are out of sync so (attempt to) remove both.
-    DeleteSPIRVCache(dataIn._fileName, targetVulkan);
-    Console::errorfn(Locale::Get(_ID("ERROR_SHADER_SAVE_SPIRV_FAILED")), dataIn._fileName.c_str());
-    return false;
-}
-
-bool ShaderProgram::GLSLToSPIRV(LoadData& dataInOut, const bool targetVulkan, const eastl::set<U64>& atomIDsIn) {
-    DIVIDE_ASSERT(!dataInOut._sourceCodeGLSL.empty());
-
-    vk::ShaderStageFlagBits type = vk::ShaderStageFlagBits::eVertex;
-
-    switch (dataInOut._type) {
-        default:
-        case ShaderType::VERTEX:            type = vk::ShaderStageFlagBits::eVertex;                 break;
-        case ShaderType::TESSELLATION_CTRL: type = vk::ShaderStageFlagBits::eTessellationControl;    break;
-        case ShaderType::TESSELLATION_EVAL: type = vk::ShaderStageFlagBits::eTessellationEvaluation; break;
-        case ShaderType::GEOMETRY:          type = vk::ShaderStageFlagBits::eGeometry;               break;
-        case ShaderType::FRAGMENT:          type = vk::ShaderStageFlagBits::eFragment;               break;
-        case ShaderType::COMPUTE:           type = vk::ShaderStageFlagBits::eCompute;                break;
-    };
-
-    if (!SpirvHelper::GLSLtoSPV(type, dataInOut._sourceCodeGLSL.c_str(), dataInOut._sourceCodeSpirV, targetVulkan, dataInOut._reflectionData) || dataInOut._sourceCodeSpirV.empty()) {
-        Console::errorfn(Locale::Get(_ID("ERROR_SHADER_CONVERSION_SPIRV_FAILED")), dataInOut._fileName.c_str());
-        dataInOut._sourceCodeSpirV.clear();
-        return false;
-    }
-
-    SaveSPIRVToCache(dataInOut, targetVulkan, atomIDsIn);
-    return true;
 }
 
 bool ShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, bool reloadExisting) {
@@ -1381,7 +1463,6 @@ bool ShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, boo
 
     Reflection::UniformsSet previousUniforms;
 
-    _uniformBlockBuffers.clear();
     for (auto& [fileHash, loadDataPerFile] : fileData) {
         for (const ShaderModuleDescriptor& data : loadDataPerFile._modules) {
             const ShaderType type = data._moduleType;
@@ -1403,7 +1484,7 @@ bool ShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, boo
 
             if (!loadSourceCode(data._defines, reloadExisting, stageData, previousUniforms, blockOffset)) {
                 //ToDo: Add an error message here! -Ionut
-                NOP();
+                return false;
             }
 
             if (!loadDataPerFile._programName.empty()) {
@@ -1423,22 +1504,22 @@ namespace {
     void SetShaderStageFlag(const ShaderType type, U16& maskOut) {
         switch (type) {
             case ShaderType::FRAGMENT:
-                maskOut |= to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
+                maskOut |= to_base(ShaderStageVisibility::FRAGMENT);
                 break;
             case ShaderType::VERTEX:
-                maskOut |= to_base(DescriptorSetBinding::ShaderStageVisibility::VERTEX);
+                maskOut |= to_base(ShaderStageVisibility::VERTEX);
                 break;
             case ShaderType::GEOMETRY:
-                maskOut |= to_base(DescriptorSetBinding::ShaderStageVisibility::GEOMETRY);
+                maskOut |= to_base(ShaderStageVisibility::GEOMETRY);
                 break;
             case ShaderType::TESSELLATION_CTRL:
-                maskOut |= to_base(DescriptorSetBinding::ShaderStageVisibility::TESS_CONTROL);
+                maskOut |= to_base(ShaderStageVisibility::TESS_CONTROL);
                 break;
             case ShaderType::TESSELLATION_EVAL:
-                maskOut |= to_base(DescriptorSetBinding::ShaderStageVisibility::TESS_EVAL);
+                maskOut |= to_base(ShaderStageVisibility::TESS_EVAL);
                 break;
             case ShaderType::COMPUTE:
-                maskOut |= to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE);
+                maskOut |= to_base(ShaderStageVisibility::COMPUTE);
                 break;
         };
     }
@@ -1448,74 +1529,51 @@ void ShaderProgram::initUniformUploader(const PerFileShaderData& shaderFileData)
     const ShaderLoadData& programLoadData = shaderFileData._loadData;
 
     _descriptorSet.resize(0);
+    _uniformBlockBuffers.clear();
     for (const LoadData& stageData : programLoadData) {
-        if (!stageData._reflectionData._blockMembers.empty()) {
-            UniformBlockUploaderDescriptor descriptor{};
-            descriptor._parentShaderName = shaderFileData._programName.c_str();
-            descriptor._reflectionData = stageData._reflectionData;
+        auto uniformBlock = Reflection::FindUniformBlock(stageData._reflectionData);
+
+        if (uniformBlock != nullptr) {
             bool found = false;
-            for (auto& blocks : _uniformBlockBuffers) {
-                if (blocks.descriptor()._reflectionData._bindingSet != to_base(DescriptorSetUsage::PER_DRAW_SET)) {
+            for (auto& block : _uniformBlockBuffers) {
+                if (block.uniformBlock()._bindingSet != stageData._reflectionData._uniformBlockBindingSet &&
+                    block.uniformBlock()._bindingSlot != stageData._reflectionData._uniformBlockBindingIndex)
+                {
                     continue;
                 }
 
-                if (blocks.descriptor()._reflectionData._targetBlockBindingIndex == descriptor._reflectionData._targetBlockBindingIndex) {
-                    assert(blocks.descriptor()._reflectionData._blockSize == descriptor._reflectionData._blockSize);
-                    found = true;
-                    continue;
-                }
+                found = true;
+                break;
             }
-            if (!found && !descriptor._reflectionData._blockMembers.empty()) {
-                _uniformBlockBuffers.emplace_back(_context, descriptor);
+            
+            if (!found) {
+                _uniformBlockBuffers.emplace_back(_context, shaderFileData._programName.c_str(), *uniformBlock);
                 auto& blockBinding = _descriptorSet.emplace_back();
                 blockBinding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
-                blockBinding._resource._slot = to_U8(descriptor._reflectionData._targetBlockBindingIndex);
+                blockBinding._resource._slot = to_U8(stageData._reflectionData._uniformBlockBindingIndex);
                 SetShaderStageFlag(stageData._type, blockBinding._shaderStageVisibility);
             }
         }
+
         for (auto& image : stageData._reflectionData._images) {
+            assert(image._bindingSet != to_base(DescriptorSetUsage::COUNT));
+            if (image._bindingSet != to_base(DescriptorSetUsage::PER_DRAW)) {
+                continue; // We don't care about global sets here
+            }
+
             const DescriptorSetBindingType targetType = image._combinedImageSampler ? DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER : DescriptorSetBindingType::IMAGE;
 
-            bool skip = false;
-            if (_context.renderAPI() == RenderAPI::Vulkan) {
-                if (image._bindingSet != to_base(DescriptorSetUsage::PER_DRAW_SET)) {
-                    skip = true;
-                }
-            } else { //OpenGL uses one global set for everything ...
-                for (const auto& globalDescriptorSet : _context.descriptorSets()._globalDescriptorSets) {
-                    if (skip) {
-                        break;
-                    }
-
-                    if (globalDescriptorSet.usage() == DescriptorSetUsage::COUNT ||
-                        globalDescriptorSet.usage() == DescriptorSetUsage::PER_DRAW_SET)
-                    {
-                        continue;
-                    }
-                    for (const auto& binding : globalDescriptorSet.set()) {
-                        if (binding._type == targetType && binding._resource._slot == image._targetImageBindingIndex) {
-                            skip = true;
-                            continue;
-                        }
-                    }
-                }
-            }
-
-            if (skip) {
-                continue;
-            }
-
             bool found = false;
-            for (auto& binding : _descriptorSet) {
-                if (binding._type == targetType && binding._resource._slot == image._targetImageBindingIndex) {
+            for (DescriptorSetBinding& binding : _descriptorSet) {
+                if (binding._type == targetType && binding._resource._slot == image._bindingSlot) {
                     found = true;
                     SetShaderStageFlag(stageData._type, binding._shaderStageVisibility);
                     break;
                 }
             }
             if (!found) {
-                auto& binding = _descriptorSet.emplace_back();
-                binding._resource._slot = image._targetImageBindingIndex;
+                DescriptorSetBinding& binding = _descriptorSet.emplace_back();
+                binding._resource._slot = image._bindingSlot;
                 binding._type = targetType;
                 SetShaderStageFlag(stageData._type, binding._shaderStageVisibility);
             }
@@ -1547,43 +1605,80 @@ bool ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExis
     loadDataInOut._sourceCodeGLSL.resize(0);
     loadDataInOut._sourceCodeSpirV.resize(0);
 
-    const bool targetVulkan = _context.renderAPI() == RenderAPI::Vulkan;
     eastl::set<U64> atomIDs;
-    const auto ParseAndSaveSource = [&](const bool toSPIRV) {
-        loadAndParseGLSL(defines, reloadExisting, loadDataInOut, previousUniformsInOut, blockIndexInOut, atomIDs);
-        if (toSPIRV && !GLSLToSPIRV(loadDataInOut, targetVulkan, atomIDs)) {
-            NOP();
-        }
-    };
-    
-    if (reloadExisting) {
-        // Hot reloading will always reparse GLSL source files!
-        ParseAndSaveSource(true);
-        loadDataInOut._codeSource = LoadData::SourceCodeSource::SOURCE_FILES;
-    } else {
-        bool needGLSL = !targetVulkan;
-        // Try and load from the spir-v cache
-        if (LoadSPIRVFromCache(loadDataInOut, targetVulkan, atomIDs)) {
-            loadDataInOut._codeSource = LoadData::SourceCodeSource::SPIRV_CACHE;
-        } else {
-            needGLSL = true;
-        }
 
-        if (needGLSL) {
-            if (LoadTextFromCache(loadDataInOut, targetVulkan, atomIDs)) {
-                if (loadDataInOut._codeSource != LoadData::SourceCodeSource::SPIRV_CACHE) {
-                    loadDataInOut._codeSource = LoadData::SourceCodeSource::TEXT_CACHE;
-                    if (!GLSLToSPIRV(loadDataInOut, targetVulkan, atomIDs)) {
-                        NOP();
-                    }
-                }
+    vk::ShaderStageFlagBits type = vk::ShaderStageFlagBits::eVertex;
+
+    switch (loadDataInOut._type) {
+        default:
+        case ShaderType::VERTEX:            type = vk::ShaderStageFlagBits::eVertex;                 break;
+        case ShaderType::TESSELLATION_CTRL: type = vk::ShaderStageFlagBits::eTessellationControl;    break;
+        case ShaderType::TESSELLATION_EVAL: type = vk::ShaderStageFlagBits::eTessellationEvaluation; break;
+        case ShaderType::GEOMETRY:          type = vk::ShaderStageFlagBits::eGeometry;               break;
+        case ShaderType::FRAGMENT:          type = vk::ShaderStageFlagBits::eFragment;               break;
+        case ShaderType::COMPUTE:           type = vk::ShaderStageFlagBits::eCompute;                break;
+    };
+
+    bool needGLSL = !s_targetVulkan;
+    if (reloadExisting) {
+        // Hot reloading will always reparse GLSL source files so the best way to achieve that is to delete cache files
+        needGLSL = true;
+        if (!DeleteCache(LoadData::ShaderCacheType::COUNT, loadDataInOut._fileName)) {
+            // We should have cached the existing shader, so a failure here is NOT expected
+            DIVIDE_UNEXPECTED_CALL();
+        }
+    }
+
+    // Load SPIRV code from cache
+    if (!LoadFromCache(LoadData::ShaderCacheType::SPIRV, loadDataInOut, atomIDs)) {
+        needGLSL = true;
+    }
+
+    // We either have SPIRV code or we explicitly require GLSL code (e.g. for OpenGL)
+    if (needGLSL) {
+        // Try and load GLSL code from cache
+        if (!LoadFromCache(LoadData::ShaderCacheType::GLSL, loadDataInOut, atomIDs)) {
+            // That failed, so re-parse the code
+            loadAndParseGLSL(defines, reloadExisting, loadDataInOut, previousUniformsInOut, blockIndexInOut, atomIDs);
+            if (loadDataInOut._sourceCodeGLSL.empty()) {
+                // That failed so we have no choice but to bail
+                return false;
             } else {
-                ParseAndSaveSource(loadDataInOut._codeSource != LoadData::SourceCodeSource::SPIRV_CACHE);
-                if (loadDataInOut._codeSource != LoadData::SourceCodeSource::SPIRV_CACHE) {
-                    loadDataInOut._codeSource = LoadData::SourceCodeSource::SOURCE_FILES;
-                }
+                // That succeeded so save the new cache file for future use
+                SaveToCache(LoadData::ShaderCacheType::GLSL, loadDataInOut, atomIDs);
             }
         }
+
+        // We MUST have GLSL code at this point so now we have too options.
+        // We already have SPIRV code and can proceed or we failed loading SPIRV from cache so we must convert GLSL -> SPIRV
+        if (loadDataInOut._sourceCodeSpirV.empty()) {
+            // We are in situation B: we need SPIRV code, so convert our GLSL code over
+            DIVIDE_ASSERT(!loadDataInOut._sourceCodeGLSL.empty());
+            if (!SpirvHelper::GLSLtoSPV(type, loadDataInOut._sourceCodeGLSL.c_str(), loadDataInOut._sourceCodeSpirV, s_targetVulkan)) {
+                Console::errorfn(Locale::Get(_ID("ERROR_SHADER_CONVERSION_SPIRV_FAILED")), loadDataInOut._fileName.c_str());
+                // We may fail here for WHATEVER reason so bail
+                if (!DeleteCache(LoadData::ShaderCacheType::GLSL, loadDataInOut._fileName)) {
+                    NOP();
+                }
+                return false;
+            } else {
+                // We managed to generate good SPIRV so save it to the cache for future use
+                SaveToCache(LoadData::ShaderCacheType::SPIRV, loadDataInOut, atomIDs);
+            }
+        }
+    }
+
+    // Whatever the process to get here was, we need SPIRV to proceed
+    DIVIDE_ASSERT(!loadDataInOut._sourceCodeSpirV.empty());
+    // Time to see if we have any cached reflection data, and, if not, build it
+    if (!LoadFromCache(LoadData::ShaderCacheType::REFLECTION, loadDataInOut, atomIDs)) {
+        // Well, we failed. Time to build our reflection data again
+        if (!SpirvHelper::BuildReflectionData(type, loadDataInOut._sourceCodeSpirV, s_targetVulkan, loadDataInOut._reflectionData)) {
+            Console::errorfn(Locale::Get(_ID("ERROR_SHADER_REFLECTION_SPIRV_FAILED")), loadDataInOut._fileName.c_str());
+            return false;
+        }
+        // Save reflection data to cache for future use
+        SaveToCache(LoadData::ShaderCacheType::REFLECTION, loadDataInOut, atomIDs);
     }
 
     if (!loadDataInOut._sourceCodeGLSL.empty() || !loadDataInOut._sourceCodeSpirV.empty()) {
@@ -1643,17 +1738,18 @@ void ShaderProgram::loadAndParseGLSL(const ModuleDefines& defines,
     }
 
     if (!loadDataInOut._uniforms.empty()) {
-        if (previousUniformsInOut.empty() || previousUniformsInOut != loadDataInOut._uniforms) {
+        if (!previousUniformsInOut.empty() && previousUniformsInOut != loadDataInOut._uniforms) {
             ++blockIndexInOut;
         }
 
-        loadDataInOut._reflectionData._bindingSet = to_base(DescriptorSetUsage::PER_DRAW_SET);
-        loadDataInOut._reflectionData._targetBlockBindingIndex = blockIndexInOut;
-        loadDataInOut._reflectionData._targetBlockName = Util::StringFormat("dvd_UniformBlock_%lld", loadDataInOut._reflectionData._targetBlockBindingIndex);
-        loadDataInOut._reflectionData._targetBlockBindingIndex += to_U8(ShaderBufferLocation::UNIFORM_BLOCK);
+        loadDataInOut._reflectionData._uniformBlockBindingSet = to_base(DescriptorSetUsage::PER_DRAW);
+        loadDataInOut._reflectionData._uniformBlockBindingIndex = s_uniformBlockBindingOffset + blockIndexInOut;
 
         string& uniformBlock = loadDataInOut._uniformBlock;
-        uniformBlock = _context.renderAPI() == RenderAPI::OpenGL ? "layout( " : Util::StringFormat("layout( set = %d, ", to_base(DescriptorSetUsage::PER_DRAW_SET));
+        uniformBlock = "layout( ";
+        if (_context.renderAPI() == RenderAPI::Vulkan) {
+            uniformBlock.append(Util::StringFormat("set = %d, ", to_base(DescriptorSetUsage::PER_DRAW)));
+        }
         uniformBlock.append("binding = %d, std140 ) uniform %s {");
 
         for (const Reflection::UniformDeclaration& uniform : loadDataInOut._uniforms) {
@@ -1665,10 +1761,17 @@ void ShaderProgram::loadAndParseGLSL(const ModuleDefines& defines,
             const auto rawName = uniform._name.substr(0, uniform._name.find_first_of("[")).to_string();
             uniformBlock.append(Util::StringFormat("\n#define %s %s.%s", rawName.c_str(), UNIFORM_BLOCK_NAME, rawName.c_str()));
         }
-       
-        uniformBlock = Util::StringFormat(uniformBlock, loadDataInOut._reflectionData._targetBlockBindingIndex, loadDataInOut._reflectionData._targetBlockName.c_str());
+
+        const U8 layoutIndex = _context.renderAPI() == RenderAPI::Vulkan 
+                                                        ? loadDataInOut._reflectionData._uniformBlockBindingIndex
+                                                        : ShaderProgram::GetGLBindingForDescriptorSlot(DescriptorSetUsage::PER_DRAW,
+                                                                                                    loadDataInOut._reflectionData._uniformBlockBindingIndex,
+                                                                                                    DescriptorSetBindingType::UNIFORM_BUFFER);
+
+        uniformBlock = Util::StringFormat(uniformBlock, layoutIndex, Util::StringFormat("dvd_UniformBlock_%lld", blockIndexInOut).c_str());
+
+        previousUniformsInOut = loadDataInOut._uniforms;
     }
-    previousUniformsInOut = loadDataInOut._uniforms;
 
     Util::ReplaceStringInPlace(loadDataInOut._sourceCodeGLSL, "//_CUSTOM_UNIFORMS_\\", loadDataInOut._uniformBlock);
 }

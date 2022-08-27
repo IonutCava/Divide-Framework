@@ -40,6 +40,7 @@
 #include "Platform/Video/Headers/GraphicsResource.h"
 #include "Platform/Video/Headers/AttributeDescriptor.h"
 #include "Platform/Video/Headers/DescriptorSets.h"
+
 namespace FW {
     class FileWatcher;
 };
@@ -62,9 +63,6 @@ FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 namespace TypeUtil {
     [[nodiscard]] const char* DescriptorSetUsageToString(DescriptorSetUsage setUsage) noexcept;
     [[nodiscard]] DescriptorSetUsage StringToDescriptorSetUsage(const string& name);
-
-    [[nodiscard]] const char* ShaderBufferLocationToString(ShaderBufferLocation bufferLocation) noexcept;
-    [[nodiscard]] ShaderBufferLocation StringToShaderBufferLocation(const string& name);
 };
 
 
@@ -115,6 +113,9 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
                                    public GraphicsResource {
    public:
     static constexpr const char* UNIFORM_BLOCK_NAME = "dvd_uniforms";
+    static constexpr U8 MaxSlotsPerDescriptorSet = 16u;
+
+    static U8 k_commandBufferID;
 
     // one per shader type!
     struct LoadData {
@@ -122,6 +123,12 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
             SOURCE_FILES,
             TEXT_CACHE,
             SPIRV_CACHE,
+            COUNT
+        };
+        enum class ShaderCacheType : U8 {
+            GLSL,
+            SPIRV,
+            REFLECTION,
             COUNT
         };
 
@@ -133,7 +140,6 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
         Str256 _sourceFile = "";
         size_t _definesHash = 0u;
         ShaderType _type = ShaderType::COUNT;
-        SourceCodeSource _codeSource = SourceCodeSource::COUNT;
         string _uniformBlock{};
         Reflection::Data _reflectionData{};
         bool _compiled = false;
@@ -203,19 +209,21 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
 
     static void OnAtomChange(std::string_view atomName, FileUpdateEvent evt);
 
+    static [[nodiscard]] U8 GetGLBindingForDescriptorSlot(DescriptorSetUsage usage, U8 slot, DescriptorSetBindingType type) noexcept;
+    static [[nodiscard]] std::pair<DescriptorSetUsage, U8> GetDescriptorSlotForGLBinding(U8 binding, DescriptorSetBindingType type) noexcept;
+
+    static void CreateSetLayout(DescriptorSetUsage usage, const DescriptorSet& set);
+
     PROPERTY_R_IW(DescriptorSet, descriptorSet);
     PROPERTY_RW(bool, highPriority, true);
     PROPERTY_R_IW(ShaderProgramHandle, handle, SHADER_INVALID_HANDLE);
 
+    static Mutex g_cacheLock;
+
    protected:
 
-     static bool GLSLToSPIRV(LoadData& dataInOut, bool targetVulkan, const eastl::set<U64>& atomIDsIn);
-
-     static bool SaveSPIRVToCache(const LoadData& dataIn, bool targetVulkan, const eastl::set<U64>& atomIDsIn);
-     static bool LoadSPIRVFromCache(LoadData& dataInOut, bool targetVulkan, eastl::set<U64>& atomIDsOut);
-
-     static bool SaveTextToCache(const LoadData& dataIn, bool targetVulkan, const eastl::set<U64>& atomIDsIn);
-     static bool LoadTextFromCache(LoadData& dataInOut, bool targetVulkan, eastl::set<U64>& atomIDsOut);
+     static bool SaveToCache(LoadData::ShaderCacheType cache, const LoadData& dataIn, const eastl::set<U64>& atomIDsIn);
+     static bool LoadFromCache(LoadData::ShaderCacheType cache, LoadData& dataInOut, eastl::set<U64>& atomIDsOut);
 
    protected:
     /// Only 1 shader program per frame should be recompiled to avoid a lot of stuttering
@@ -276,8 +284,6 @@ private:
 
     /// Shaders loaded from files are kept as atoms
     static Mutex s_atomLock;
-    static Mutex g_textDumpLock;
-    static Mutex g_binaryDumpLock;
     static AtomMap s_atoms;
     static AtomInclusionMap s_atomIncludes;
 
@@ -285,6 +291,14 @@ private:
     static ResourcePath shaderAtomLocationPrefix[to_base(ShaderType::COUNT) + 1];
     static Str8 shaderAtomExtensionName[to_base(ShaderType::COUNT) + 1];
     static U64 shaderAtomExtensionHash[to_base(ShaderType::COUNT) + 1];
+
+    struct GLBindingsPerSet {
+        U8 _glBinding{ INVALID_TEXTURE_BINDING };
+        DescriptorSetBindingType _type{ DescriptorSetBindingType::COUNT };
+    };
+    using GLBindingsPerSetArray = std::array<GLBindingsPerSet, MaxSlotsPerDescriptorSet>;
+
+    static std::array<GLBindingsPerSetArray, to_base(DescriptorSetUsage::COUNT)> s_glBindingsPerSet;
 };
 
 struct PerFileShaderData {

@@ -44,7 +44,6 @@ namespace ECS {
 
 namespace Divide {
 class SceneState;
-class ECSManager;
 class SceneGraphNode;
 
 struct Ray;
@@ -54,6 +53,8 @@ struct SceneGraphNodeDescriptor;
 namespace Attorney {
     class SceneGraphSGN;
 };
+
+FWD_DECLARE_MANAGED_CLASS(ECSManager);
 
 class SceneGraph final : NonCopyable,
                          public FrameListener,
@@ -141,14 +142,14 @@ class SceneGraph final : NonCopyable,
 
    private:
     ECS::ECSEngine _ecsEngine;
-    eastl::unique_ptr<ECSManager> _ecsManager;
+    ECSManager_uptr _ecsManager;
 
     bool _loadComplete = false;
     bool _octreeChanged = false;
     bool _nodeListChanged = false;
 
     SceneGraphNode* _root = nullptr;
-    eastl::unique_ptr<Octree> _octree;
+    Octree_uptr _octree;
     std::atomic_bool _octreeUpdating;
     vector<SceneGraphNode*> _nodeList;
 
@@ -165,6 +166,8 @@ class SceneGraph final : NonCopyable,
     mutable Mutex _nodeParentChangeLock;
     eastl::fixed_vector<SceneGraphNode*, 256, true, eastl::dvd_allocator> _nodeParentChangeQueue;
 };
+
+FWD_DECLARE_MANAGED_CLASS(SceneGraph);
 
 namespace Attorney {
 class SceneGraphSGN {

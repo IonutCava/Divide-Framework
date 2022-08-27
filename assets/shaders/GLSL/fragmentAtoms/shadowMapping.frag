@@ -4,15 +4,13 @@
 #if !defined(DISABLE_SHADOW_MAPPING)
 
 #if !defined(DISABLE_SHADOW_MAPPING_SPOT)
-DESCRIPTOR_SET_RESOURCE(PER_FRAME_SET, TEXTURE_SHADOW_SINGLE)  uniform sampler2DArray    singleDepthMaps;
+DESCRIPTOR_SET_RESOURCE(PER_FRAME, 3) uniform sampler2DArray    singleDepthMaps;
 #endif //DISABLE_SHADOW_MAPPING_SPOT
-
 #if !defined(DISABLE_SHADOW_MAPPING_CSM)
-DESCRIPTOR_SET_RESOURCE(PER_FRAME_SET, TEXTURE_SHADOW_LAYERED) uniform sampler2DArray    layeredDepthMaps;
+DESCRIPTOR_SET_RESOURCE(PER_FRAME, 4) uniform sampler2DArray    layeredDepthMaps;
 #endif //DISABLE_SHADOW_MAPPING_CSM
-
 #if !defined(DISABLE_SHADOW_MAPPING_POINT)
-DESCRIPTOR_SET_RESOURCE(PER_FRAME_SET, TEXTURE_SHADOW_CUBE)    uniform samplerCubeArray  cubeDepthMaps;
+DESCRIPTOR_SET_RESOURCE(PER_FRAME, 5) uniform samplerCubeArray  cubeDepthMaps;
 #endif //DISABLE_SHADOW_MAPPING_POINT
 
 #include "shadowUtils.frag"

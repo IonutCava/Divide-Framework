@@ -1038,7 +1038,7 @@ void MenuBar::spawnDebugObject(const DebugObject object, const bool modifierPres
     if (spawnMesh == nullptr) {
         Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "ERROR: Couldn't load Sponza model!", Time::SecondsToMilliseconds<F32>(3), true);
     }
-    if (Attorney::EditorGeneralWidget::modalModelSpawn(_context.editor(), spawnMesh, modifierPressed)) {
+    if (Attorney::EditorGeneralWidget::modalModelSpawn(_context.editor(), spawnMesh, modifierPressed, vec3<F32>{0.1f})) {
     }
 }
 } //namespace Divide

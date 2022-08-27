@@ -95,6 +95,8 @@ class TerrainChunk {
     Vegetation_ptr _vegetation;
 };
 
+FWD_DECLARE_MANAGED_CLASS(TerrainChunk);
+
 namespace Attorney {
 class TerrainChunkTerrain {
     static const Vegetation_ptr& getVegetation(const Divide::TerrainChunk& chunk) noexcept {

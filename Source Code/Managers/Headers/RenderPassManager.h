@@ -142,7 +142,7 @@ private:
     Task* _postFXWorkTask{ nullptr };
     GFX::CommandBuffer* _postFXCmdBuffer{ nullptr };
 
-    std::array<eastl::unique_ptr<RenderPassExecutor>, to_base(RenderStage::COUNT)> _executors;
+    std::array<RenderPassExecutor_uptr, to_base(RenderStage::COUNT)> _executors;
     std::array<Time::ProfileTimer*, to_base(RenderStage::COUNT)> _processCommandBufferTimer = create_array<to_base(RenderStage::COUNT), Time::ProfileTimer*>(nullptr);
     std::array<I32, to_base(RenderStage::COUNT)> _drawCallCount = create_array<to_base(RenderStage::COUNT), I32>(0);
 

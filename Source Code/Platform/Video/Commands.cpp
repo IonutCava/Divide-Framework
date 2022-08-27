@@ -206,7 +206,6 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent) {
         if (binding._data.Has<ShaderBufferEntry>()) {
             ++bufferCount;
         } else if (binding._data.Has<DescriptorCombinedImageSampler>() ||
-                   binding._data.Has<ImageViewEntry>() ||
                    binding._data.Has<Image>()) {
             ++imageCount;
         }
@@ -221,11 +220,12 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent) {
             }
             const auto& data = binding._data;
             const auto& bufferEntry = data.As<ShaderBufferEntry>();
-            ret.append(Util::StringFormat("Buffer [ %d - %d ] Range [%zu - %zu] ]\n",
+            ret.append(Util::StringFormat("Buffer [ %d - %d ] Range [%zu - %zu] Read Index [ %d ]\n",
                        binding._slot,
                        bufferEntry._buffer->getGUID(),
                        bufferEntry._range._startOffset,
-                       bufferEntry._range._length));
+                       bufferEntry._range._length,
+                       bufferEntry._bufferQueueReadIndex));
         }
     }
     for (const auto& binding : cmd._bindings) {
@@ -239,15 +239,14 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent) {
                 ret.append("    ");
             }
             if (binding._data.Has<DescriptorCombinedImageSampler>()) {
-                ret.append(Util::StringFormat("Texture [ %d - %d - %zu ]\n",
+                ret.append(Util::StringFormat("Texture [ %d - %d - %zu ] Layers: [ %d - %d ] MipRange: [ %d - %d ]\n",
                            binding._slot,
-                           binding._data.As<DescriptorCombinedImageSampler>()._image._textureHandle,
-                           binding._data.As<DescriptorCombinedImageSampler>()._samplerHash));
-            } else if (binding._data.Has<ImageViewEntry>()) {
-                ret.append(Util::StringFormat("Texture layers [ %d - [%d - %d ]]\n",
-                           binding._slot,
-                           binding._data.As<ImageViewEntry>()._view._layerRange.min,
-                           binding._data.As<ImageViewEntry>()._view._layerRange.max));
+                           binding._data.As<DescriptorCombinedImageSampler>()._image._textureData._textureHandle,
+                           binding._data.As<DescriptorCombinedImageSampler>()._samplerHash,
+                           binding._data.As<DescriptorCombinedImageSampler>()._image._layerRange.min,
+                           binding._data.As<DescriptorCombinedImageSampler>()._image._layerRange.max,
+                           binding._data.As<DescriptorCombinedImageSampler>()._image._mipLevels.min,
+                           binding._data.As<DescriptorCombinedImageSampler>()._image._mipLevels.max));
             } else {
                 ret.append(Util::StringFormat("Image binds: [ %d - [%d - %d - %s]",
                            binding._slot,

@@ -54,6 +54,9 @@ public:
 private:
     GFX::DrawTextCommand _drawTextCommand{};
 };
+
+FWD_DECLARE_MANAGED_CLASS(SceneGUIElements);
+
 } //namespace Divide;
 
 #endif //_SCENE_GUI_ELEMENTS_H_

@@ -103,7 +103,7 @@ void OpenGL3GeometryBuffer::draw() const
 
             d_glStateChanger->bindDefaultState(currentBatch.clip);
 
-            if (Divide::GL_API::GetStateTracker()->bindTexture(0, Divide::TextureType::TEXTURE_2D, currentBatch.texture) == Divide::GLStateTracker::BindResult::FAILED) {
+            if (Divide::GL_API::GetStateTracker()->bindTexture(0, currentBatch.texture) == Divide::GLStateTracker::BindResult::FAILED) {
                 Divide::DIVIDE_UNEXPECTED_CALL();
             }
 

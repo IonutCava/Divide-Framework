@@ -618,8 +618,8 @@ void IMPrimitive::setPipelineDescriptor(const PipelineDescriptor& descriptor) {
     }
 }
 
-void IMPrimitive::setTexture(const TextureData texture, const size_t samplerHash) {
-    _textureData = texture;
+void IMPrimitive::setTexture(const ImageView& texture, const size_t samplerHash) {
+    _texture = texture;
     _samplerHash = samplerHash;
 }
 
@@ -637,7 +637,7 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
     DIVIDE_ASSERT(_basePipelineDescriptor._shaderProgramHandle != SHADER_INVALID_HANDLE, "IMPrimitive error: Draw call received without a valid shader defined!");
 
     _additionalConstats.set(_ID("dvd_WorldMatrix"), GFX::PushConstantType::MAT4, worldMatrix);
-    _additionalConstats.set(_ID("useTexture"), GFX::PushConstantType::BOOL, IsValid(_textureData));
+    _additionalConstats.set(_ID("useTexture"), GFX::PushConstantType::BOOL, IsValid(_texture._textureData));
 
     GenericDrawCommand drawCmd{};
     drawCmd._drawCount = 1u;
@@ -646,14 +646,12 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
 
     GFX::EnqueueCommand(commandBufferInOut, GFX::BeginDebugScopeCommand{ _name.c_str() });
     {
-        if (IsValid(_textureData)) {
+        if (IsValid(_texture._textureData)) {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(commandBufferInOut);
-            cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+            cmd->_usage = DescriptorSetUsage::PER_DRAW;
             auto& binding = cmd->_bindings.emplace_back();
-            binding._slot = to_U8(TextureUsage::UNIT0);
-            auto& imageSampler = binding._data.As<DescriptorCombinedImageSampler>();
-            imageSampler._image = _textureData;
-            imageSampler._samplerHash = _samplerHash;
+            binding._slot = 0;
+            binding._data.As<DescriptorCombinedImageSampler>() = { _texture, _samplerHash };
         }
 
         for (U8 i = 0u; i < to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT); ++i) {

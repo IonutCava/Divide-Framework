@@ -10,7 +10,7 @@ vec3 getHalfExtents(const in vec3 P, const in float R) {
 }
 #endif //!USE_CUSTOM_EXTENTS
 
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D HiZBuffer;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D HiZBuffer;
 
 uniform float nearPlane;
 uniform vec2 viewSize;
@@ -110,11 +110,12 @@ bool HiZCull(const in vec3 position, const in float bSphereRadius) {
         float miplevel = ceil(log2(maxsize));
 
         float depth = 0.0f;
-        float a = textureLod(HiZBuffer, clipmin.xy, miplevel).r;
-        float b = textureLod(HiZBuffer, vec2(clipmax.x, clipmin.y), miplevel).r;
-        float c = textureLod(HiZBuffer, clipmax.xy, miplevel).r;
-        float d = textureLod(HiZBuffer, vec2(clipmin.x, clipmax.y), miplevel).r;
+        const float a = textureLod(HiZBuffer, clipmin.xy, miplevel).r;
+        const float b = textureLod(HiZBuffer, vec2(clipmax.x, clipmin.y), miplevel).r;
+        const float c = textureLod(HiZBuffer, clipmax.xy, miplevel).r;
+        const float d = textureLod(HiZBuffer, vec2(clipmin.x, clipmax.y), miplevel).r;
         depth = max(depth, max(max(max(a, b), c), d));
+        
 
         isVisible = clipmin.z <= depth;
     }

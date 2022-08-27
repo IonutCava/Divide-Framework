@@ -107,6 +107,8 @@ namespace GLMemory{
         const size_t _size{ 0u };
     };
 
+    FWD_DECLARE_MANAGED_CLASS(ChunkAllocator);
+
     class DeviceAllocator
     {
     public:
@@ -129,7 +131,7 @@ namespace GLMemory{
     private:
         mutable Mutex _chunkAllocatorLock;
         const GLMemoryType _memoryType{ GLMemoryType::COUNT };
-        eastl::unique_ptr<ChunkAllocator> _chunkAllocator{ nullptr };
+        ChunkAllocator_uptr _chunkAllocator{ nullptr };
         vector_fast<Chunk*> _chunks;
     };
 } // namespace GLMemory

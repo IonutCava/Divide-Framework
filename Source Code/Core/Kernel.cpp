@@ -274,7 +274,7 @@ void Kernel::onLoop() {
 
         {
             Time::ScopedTimer timer2(_appIdleTimer);
-            idle(true);
+            idle(false);
         }
     }
 
@@ -311,66 +311,69 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
         SDLEventManager::pollEvents();
         return true;
     }
-
-    {// We should pause physics simulations if needed, but the framerate dependency is handled by whatever 3rd party pfx library we are using
-        Time::ScopedTimer timer2(_physicsProcessTimer);
-        if (!_timingData.freezeLoopTime() || _timingData.forceRunPhysics()) {
-            _platformContext.pfx().process(_timingData.realTimeDeltaUS());
-        }
-    }
+    if (!_platformContext.app().freezeRendering())
     {
-        Time::ScopedTimer timer2(_sceneUpdateTimer);
-
-        const U8 playerCount = _sceneManager->getActivePlayerCount();
-
-        _timingData.updateLoops(0u);
-
-        constexpr U8 MAX_FRAME_SKIP = 4u;
-
-        const U64 fixedTimestep = _timingData.fixedTimeStep();
-        while (_timingData.accumulator() >= FIXED_UPDATE_RATE_US) {
-            OPTICK_EVENT("Run Update Loop");
-            // Everything inside here should use fixed timesteps, apart from GFX updates which should use both!
-            // Some things (e.g. tonemapping) need to resolve even if the simulation is paused (might not remain true in the future)
-
-            if (_timingData.updateLoops() == 0u) {
-                _sceneUpdateLoopTimer.start();
+        {// We should pause physics simulations if needed, but the framerate dependency is handled by whatever 3rd party pfx library we are using
+            Time::ScopedTimer timer2(_physicsProcessTimer);
+            if (!_timingData.freezeLoopTime() || _timingData.forceRunPhysics()) {
+                _platformContext.pfx().process(_timingData.realTimeDeltaUS());
             }
-            {
-                OPTICK_EVENT("GUI Update");
-                _sceneManager->getActiveScene().processGUI(fixedTimestep);
-            }
-            // Flush any pending threaded callbacks
-            for (U8 i = 0u; i < to_U8(TaskPoolType::COUNT); ++i) {
-                _platformContext.taskPool(static_cast<TaskPoolType>(i)).flushCallbackQueue();
-            }
+        }
+        {
+            Time::ScopedTimer timer2(_sceneUpdateTimer);
 
-            // Update scene based on input
-            {
-                OPTICK_EVENT("Process input");
-                for (U8 i = 0u; i < playerCount; ++i) {
-                    OPTICK_TAG("Player index", i);
-                    _sceneManager->getActiveScene().processInput(i, fixedTimestep);
+            const U8 playerCount = _sceneManager->getActivePlayerCount();
+
+            _timingData.updateLoops(0u);
+
+            constexpr U8 MAX_FRAME_SKIP = 4u;
+
+            const U64 fixedTimestep = _timingData.fixedTimeStep();
+            while (_timingData.accumulator() >= FIXED_UPDATE_RATE_US) {
+                OPTICK_EVENT("Run Update Loop");
+                // Everything inside here should use fixed timesteps, apart from GFX updates which should use both!
+                // Some things (e.g. tonemapping) need to resolve even if the simulation is paused (might not remain true in the future)
+
+                if (_timingData.updateLoops() == 0u) {
+                    _sceneUpdateLoopTimer.start();
                 }
-            }
-            // process all scene events
-            {
-                OPTICK_EVENT("Process scene events");
-                _sceneManager->getActiveScene().processTasks(fixedTimestep);
-            }
-            // Update the scene state based on current time (e.g. animation matrices)
-            _sceneManager->updateSceneState(fixedTimestep, _timingData.appTimeDeltaUS());
-            // Update visual effect timers as well
-            Attorney::GFXDeviceKernel::update(_platformContext.gfx(), fixedTimestep, _timingData.appTimeDeltaUS());
+                {
+                    OPTICK_EVENT("GUI Update");
+                    _sceneManager->getActiveScene().processGUI(fixedTimestep);
+                }
+                // Flush any pending threaded callbacks
+                for (U8 i = 0u; i < to_U8(TaskPoolType::COUNT); ++i) {
+                    _platformContext.taskPool(static_cast<TaskPoolType>(i)).flushCallbackQueue();
+                }
 
-            _timingData.updateLoops(_timingData.updateLoops() + 1u);
-            _timingData.accumulator(_timingData.accumulator() - FIXED_UPDATE_RATE_US);
-            const U8 loopCount = _timingData.updateLoops();
-            if (loopCount == 1u) {
-                _sceneUpdateLoopTimer.stop();
-            } else if (loopCount == MAX_FRAME_SKIP) {
-                _timingData.accumulator(FIXED_UPDATE_RATE_US);
-                break;
+                // Update scene based on input
+                {
+                    OPTICK_EVENT("Process input");
+                    for (U8 i = 0u; i < playerCount; ++i) {
+                        OPTICK_TAG("Player index", i);
+                        _sceneManager->getActiveScene().processInput(i, fixedTimestep);
+                    }
+                }
+                // process all scene events
+                {
+                    OPTICK_EVENT("Process scene events");
+                    _sceneManager->getActiveScene().processTasks(fixedTimestep);
+                }
+                // Update the scene state based on current time (e.g. animation matrices)
+                _sceneManager->updateSceneState(fixedTimestep, _timingData.appTimeDeltaUS());
+                // Update visual effect timers as well
+                Attorney::GFXDeviceKernel::update(_platformContext.gfx(), fixedTimestep, _timingData.appTimeDeltaUS());
+
+                _timingData.updateLoops(_timingData.updateLoops() + 1u);
+                _timingData.accumulator(_timingData.accumulator() - FIXED_UPDATE_RATE_US);
+                const U8 loopCount = _timingData.updateLoops();
+                if (loopCount == 1u) {
+                    _sceneUpdateLoopTimer.stop();
+                }
+                else if (loopCount == MAX_FRAME_SKIP) {
+                    _timingData.accumulator(FIXED_UPDATE_RATE_US);
+                    break;
+                }
             }
         }
     }

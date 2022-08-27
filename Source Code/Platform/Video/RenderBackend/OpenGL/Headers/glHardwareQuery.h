@@ -101,6 +101,7 @@ protected:
     GLenum _queryType = GL_NONE;
 };
 
+FWD_DECLARE_MANAGED_CLASS(glHardwareQueryRing);
 
 class glHardwareQueryPool {
 public:

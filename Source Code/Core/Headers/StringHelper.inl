@@ -77,7 +77,7 @@ vector<T_str>& Split(const char* input, char delimiter, vector<T_str>& elems) {
         {
             size_t i = 0u;
             const char* o = input;
-            for (i = 0u; input[i]; (input[i] == delimiter) ? i++ : *input++) {
+            for (i = 0u; input[i]; (input[i] == delimiter) ? i++ : *(input++)) {
                 NOP();
             }
             elems.resize(i + 1);

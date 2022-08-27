@@ -99,7 +99,7 @@ class PreRenderBatch {
         bool _swappedLDR{ false };
     };
 
-    using OperatorBatch = vector<eastl::unique_ptr<PreRenderOperator>>;
+    using OperatorBatch = vector<PreRenderOperator_uptr>;
 
    public:
        // Ordered by cost

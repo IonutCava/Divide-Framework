@@ -325,11 +325,11 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
 
         Texture* brdfLutTexture = SceneEnvironmentProbePool::BRDFLUTTarget()._rt->getAttachment(RTAttachmentType::Colour, 0)->texture().get();
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-        cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+        cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
         auto& binding = cmd->_bindings.emplace_back();
-        binding._slot = to_base(TextureUsage::UNIT0);
-        binding._data.As<Image>()._texture = SceneEnvironmentProbePool::BRDFLUTTarget()._rt->getAttachment(RTAttachmentType::Colour, 0)->texture().get();
+        binding._slot = 0;
+        binding._data.As<Image>()._texture = brdfLutTexture;
         binding._data.As<Image>()._flag = Image::Flag::WRITE;
 
         const U32 groupsX = to_U32(std::ceil(s_LUTTextureSize / to_F32(8)));
@@ -347,21 +347,21 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         RTAttachment* brdfLut = SceneEnvironmentProbePool::BRDFLUTTarget()._rt->getAttachment(RTAttachmentType::Colour, 0);
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-        cmd->_usage = DescriptorSetUsage::PER_FRAME_SET;
+        cmd->_usage = DescriptorSetUsage::PER_FRAME;
         {
             auto& binding = cmd->_bindings.emplace_back();
-            binding._slot = to_base(TextureUsage::REFLECTION_PREFILTERED);
-            binding._data.As<DescriptorCombinedImageSampler>() = { prefiltered->texture()->data(), prefiltered->descriptor()._samplerHash };
+            binding._slot = 0;
+            binding._data.As<DescriptorCombinedImageSampler>() = { prefiltered->texture()->defaultView(), prefiltered->descriptor()._samplerHash };
         }
         {
             auto& binding = cmd->_bindings.emplace_back();
-            binding._slot = to_base(TextureUsage::IRRADIANCE);
-            binding._data.As<DescriptorCombinedImageSampler>() = { irradiance->texture()->data(), irradiance->descriptor()._samplerHash };
+            binding._slot = 1;
+            binding._data.As<DescriptorCombinedImageSampler>() = { irradiance->texture()->defaultView(), irradiance->descriptor()._samplerHash };
         }
         {
             auto& binding = cmd->_bindings.emplace_back();
-            binding._slot = to_base(TextureUsage::BRDF_LUT);
-            binding._data.As<DescriptorCombinedImageSampler>() = { brdfLut->texture()->data(), brdfLut->descriptor()._samplerHash };
+            binding._slot = 2;
+            binding._data.As<DescriptorCombinedImageSampler>() = { brdfLut->texture()->defaultView(), brdfLut->descriptor()._samplerHash };
         }
     }
 
@@ -487,10 +487,10 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
 
     {
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-        cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+        cmd->_usage = DescriptorSetUsage::PER_DRAW;
         auto& binding = cmd->_bindings.emplace_back();
-        binding._slot = to_U8(TextureUsage::UNIT0);
-        binding._data.As<DescriptorCombinedImageSampler>() = { sourceTex->data(), sourceAtt->descriptor()._samplerHash };
+        binding._slot = 0;
+        binding._data.As<DescriptorCombinedImageSampler>() = { sourceTex->defaultView(), sourceAtt->descriptor()._samplerHash };
     }
     {
         PushConstants& constants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants;
@@ -514,7 +514,7 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
 
         destinationImage._level = to_U8(mipLevel);
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-        cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+        cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
         auto& binding = cmd->_bindings.emplace_back();
         binding._slot = 1u;
@@ -551,11 +551,11 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U
     destinationImage._level = 0u;
 
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-    cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+    cmd->_usage = DescriptorSetUsage::PER_DRAW;
     {
         auto& binding = cmd->_bindings.emplace_back();
         binding._slot = 0u;
-        binding._data.As<DescriptorCombinedImageSampler>() = { sourceAtt->texture()->data(), sourceAtt->descriptor()._samplerHash };
+        binding._data.As<DescriptorCombinedImageSampler>() = { sourceAtt->texture()->defaultView(), sourceAtt->descriptor()._samplerHash };
     }
     {
         auto& binding = cmd->_bindings.emplace_back();

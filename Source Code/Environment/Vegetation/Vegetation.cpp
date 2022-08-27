@@ -452,7 +452,7 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
         return shaderDescriptor;
     });
 
-    vegMaterial->setTexture(TextureUsage::UNIT0, grassBillboardArray, grassSampler.getHash(), TextureOperation::REPLACE, TexturePrePassUsage::ALWAYS);
+    vegMaterial->setTexture(TextureSlot::UNIT0, grassBillboardArray, grassSampler.getHash(), TextureOperation::REPLACE, TexturePrePassUsage::ALWAYS);
     s_vegetationMaterial = vegMaterial;
 }
 
@@ -692,24 +692,24 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
 
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-            cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+            cmd->_usage = DescriptorSetUsage::PER_DRAW;
             auto& binding = cmd->_bindings.emplace_back();
-            binding._slot = to_U8(TextureUsage::UNIT0);
-            binding._data.As<DescriptorCombinedImageSampler>() = { hizTexture->data(), hizAttachment->descriptor()._samplerHash };
+            binding._slot = 0;
+            binding._data.As<DescriptorCombinedImageSampler>() = { hizTexture->defaultView(), hizAttachment->descriptor()._samplerHash };
         }
         if (s_grassData || s_treeData) {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-            cmd->_usage = DescriptorSetUsage::PER_PASS_SET;
+            cmd->_usage = DescriptorSetUsage::PER_PASS;
             if (s_grassData) {
                 auto& binding = cmd->_bindings.emplace_back();
-                binding._slot = to_base(ShaderBufferLocation::GRASS_DATA);
-                binding._data.As<ShaderBufferEntry>() = { s_grassData.get(), { 0u, s_grassData->getPrimitiveCount() } };
+                binding._slot = 6;
+                binding._data.As<ShaderBufferEntry>() = { *s_grassData, { 0u, s_grassData->getPrimitiveCount() } };
             }
 
             if (s_treeData) {
                 auto& binding = cmd->_bindings.emplace_back();
-                binding._slot = to_base(ShaderBufferLocation::TREE_DATA);
-                binding._data.As<ShaderBufferEntry>() = { s_treeData.get(), { 0u, s_treeData->getPrimitiveCount() } };
+                binding._slot = 5;
+                binding._data.As<ShaderBufferEntry>() = { *s_treeData, { 0u, s_treeData->getPrimitiveCount() } };
             }
         }
 

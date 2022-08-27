@@ -35,7 +35,7 @@ void main() {
 #include "Fxaa3_11.frag"
 
 layout(location = 0) out vec4 _colourOut;
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D texScreen;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texScreen;
 
 uniform int dvd_qualityMultiplier;
 

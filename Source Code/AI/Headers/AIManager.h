@@ -146,6 +146,8 @@ class AIManager final : public SceneComponent
 
 };
 
+FWD_DECLARE_MANAGED_CLASS(AIManager);
+
 }  // namespace AI
 }  // namespace Divide
 #endif

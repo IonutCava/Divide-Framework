@@ -74,16 +74,16 @@ bool MotionBlurPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx
     const F32 velocityFactor = fps / Config::TARGET_FRAME_RATE * velocityScale;
 
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-    cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+    cmd->_usage = DescriptorSetUsage::PER_DRAW;
     {
         auto& binding = cmd->_bindings.emplace_back();
-        binding._slot = to_U8(TextureUsage::UNIT0);
-        binding._data.As<DescriptorCombinedImageSampler>() = { screenAtt->texture()->data(), screenAtt->descriptor()._samplerHash };
+        binding._slot = 0;
+        binding._data.As<DescriptorCombinedImageSampler>() = { screenAtt->texture()->defaultView(), screenAtt->descriptor()._samplerHash };
     }
     {
         auto& binding = cmd->_bindings.emplace_back();
-        binding._slot = to_U8(TextureUsage::UNIT1);
-        binding._data.As<DescriptorCombinedImageSampler>() = { velocityAtt->texture()->data(), velocityAtt->descriptor()._samplerHash };
+        binding._slot = 1;
+        binding._data.As<DescriptorCombinedImageSampler>() = { velocityAtt->texture()->defaultView(), velocityAtt->descriptor()._samplerHash };
     }
 
     GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);

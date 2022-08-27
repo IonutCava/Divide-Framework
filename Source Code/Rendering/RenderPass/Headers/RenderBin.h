@@ -56,15 +56,17 @@ namespace GFX {
 
 struct RenderBinItem {
     RenderingComponent* _renderable = nullptr;
-    size_t _stateHash = 0u;
-    I64 _shaderKey = std::numeric_limits<I64>::lowest();
-    I32 _textureKey = std::numeric_limits<I32>::lowest();
-    F32 _distanceToCameraSq = 0.f;
+    size_t _stateHash{ 0u };
+    I64 _shaderKey{ std::numeric_limits<I64>::lowest() };
+    I32 _textureKey{ std::numeric_limits<I32>::lowest() };
+    bool _hasTransparency{ false };
+    F32 _distanceToCameraSq{ 0.f };
 };
 
 enum class RenderingOrder : U8 {
     NONE = 0,
     FRONT_TO_BACK,
+    FRONT_TO_BACK_ALPHA_LAST,
     BACK_TO_FRONT,
     BY_STATE,
     COUNT
@@ -140,6 +142,8 @@ class RenderBin {
     RenderBinStack _renderBinStack{};
     std::atomic_ushort _renderBinIndex;
 };
+
+FWD_DECLARE_MANAGED_CLASS(RenderBin);
 
 };  // namespace Divide
 #endif

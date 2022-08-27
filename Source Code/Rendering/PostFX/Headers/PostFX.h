@@ -62,19 +62,6 @@ private:
         COUNT
     };
 
-    enum class TexOperatorBindPoint : U8 {
-        TEX_BIND_POINT_SCREEN = to_base(TextureUsage::UNIT0),
-        TEX_BIND_POINT_BORDER = to_base(TextureUsage::UNIT1),
-        TEX_BIND_POINT_NOISE = to_base(TextureUsage::HEIGHTMAP),
-        TEX_BIND_POINT_UNDERWATER = to_base(TextureUsage::OPACITY),
-        TEX_BIND_POINT_LINDEPTH = to_base(TextureUsage::OCCLUSION),
-        TEX_BIND_POINT_DEPTH = to_base(TextureUsage::DEPTH),
-        TEX_BIND_POINT_SSR = to_base(TextureUsage::NORMALMAP),
-        TEX_BIND_POINT_SCENE_DATA = to_base(TextureUsage::ROUGHNESS),
-        TEX_BIND_POINT_SCENE_VELOCITY = to_base(TextureUsage::METALNESS),
-        COUNT
-    };
-
 public:
     explicit PostFX(PlatformContext& context, ResourceCache* cache);
     ~PostFX();
@@ -173,6 +160,8 @@ private:
     GFX::SendPushConstantsCommand _drawConstantsCmd;
     GFX::SetCameraCommand _setCameraCmd;
 };
+
+FWD_DECLARE_MANAGED_CLASS(PostFX);
 
 }  // namespace Divide
 

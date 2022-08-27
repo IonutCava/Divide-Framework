@@ -38,11 +38,11 @@
 
 namespace Divide {
 
-class PostFX;
 class LightPool;
 class ResourceCache;
 class PlatformContext;
 
+FWD_DECLARE_MANAGED_CLASS(PostFX);
 FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 
 /// TiledForwardShading
@@ -77,7 +77,7 @@ class Renderer final : public PlatformContextComponent {
     ShaderProgram_ptr _lightCullComputeShader = nullptr;
     ShaderProgram_ptr _lightCounterResetComputeShader = nullptr;
     ShaderProgram_ptr _lightBuildClusteredAABBsComputeShader = nullptr;
-    eastl::unique_ptr<PostFX> _postFX = nullptr;
+    PostFX_uptr _postFX = nullptr;
 
     GFX::BindPipelineCommand _lightCullPipelineCmd;
     GFX::BindPipelineCommand _lightResetCounterPipelineCmd;
@@ -85,6 +85,8 @@ class Renderer final : public PlatformContextComponent {
 
     vec3<U32> _computeWorkgroupSize;
 };
+
+FWD_DECLARE_MANAGED_CLASS(Renderer);
 
 };  // namespace Divide
 

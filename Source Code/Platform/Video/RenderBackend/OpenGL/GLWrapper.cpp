@@ -49,7 +49,7 @@ namespace {
     constexpr bool g_runAllQueriesInSameFrame = false;
 }
 
-eastl::unique_ptr<GLStateTracker> GL_API::s_stateTracker = nullptr;
+GLStateTracker_uptr GL_API::s_stateTracker = nullptr;
 GL_API::VAOMap GL_API::s_vaoCache;
 std::atomic_bool GL_API::s_glFlushQueued;
 GLUtil::glTextureViewCache GL_API::s_textureViewCache{};
@@ -57,6 +57,7 @@ U32 GL_API::s_fenceSyncCounter[GL_API::s_LockFrameLifetime]{};
 SharedMutex GL_API::s_samplerMapLock;
 GL_API::SamplerObjectMap GL_API::s_samplerMap{};
 glHardwareQueryPool* GL_API::s_hardwareQueryPool = nullptr;
+eastl::fixed_vector<GL_API::TexBindEntry, GLStateTracker::MAX_BOUND_TEXTURE_UNITS, false> GL_API::s_TexBindQueue;
 
 std::array<GLUtil::GLMemory::DeviceAllocator, to_base(GLUtil::GLMemory::GLMemoryType::COUNT)> GL_API::s_memoryAllocators = {
     GLUtil::GLMemory::DeviceAllocator(GLUtil::GLMemory::GLMemoryType::SHADER_BUFFER),
@@ -226,12 +227,13 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     // If we got here, let's figure out what capabilities we have available
     // Maximum addressable texture image units in the fragment shader
     deviceInformation._maxTextureUnits = to_U8(CLAMPED(GLUtil::getGLValue(GL_MAX_TEXTURE_IMAGE_UNITS), 16u, 255u));
+    DIVIDE_ASSERT(deviceInformation._maxTextureUnits >= GLStateTracker::MAX_BOUND_TEXTURE_UNITS);
 
     GLUtil::getGLValue(GL_MAX_VERTEX_ATTRIB_BINDINGS, deviceInformation._maxVertAttributeBindings);
     GLUtil::getGLValue(GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS, deviceInformation._maxAtomicBufferBindingIndices);
     Console::printfn(Locale::Get(_ID("GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS")), deviceInformation._maxAtomicBufferBindingIndices);
 
-    if (to_base(TextureUsage::COUNT) >= deviceInformation._maxTextureUnits) {
+    if (deviceInformation._maxTextureUnits <= 16) {
         Console::errorfn(Locale::Get(_ID("ERROR_INSUFFICIENT_TEXTURE_UNITS")));
         return ErrorCode::GFX_NOT_SUPPORTED;
     }
@@ -499,7 +501,7 @@ bool GL_API::beginFrame(DisplayWindow& window, const bool global) {
         }
     }
 
-    GLStateTracker* stateTracker = GetStateTracker();
+    auto& stateTracker = GetStateTracker();
     while(!stateTracker->_endFrameFences.empty()) {
         auto& sync = stateTracker->_endFrameFences.front();
         const GLenum waitRet = glClientWaitSync(sync._syncObject, SyncObjectMask::GL_NONE_BIT, 0u);
@@ -546,7 +548,7 @@ bool GL_API::beginFrame(DisplayWindow& window, const bool global) {
     // to stay in sync with third party software
     _context.registerDrawCall();
 
-    clearStates(window, stateTracker, global);
+    clearStates(window, *stateTracker, global);
 
     const vec2<U16>& drawableSize = window.getDrawableSize();
     _context.setViewport(0, 0, drawableSize.width, drawableSize.height);
@@ -710,21 +712,21 @@ void GL_API::drawText(const TextElementBatch& batch) {
 
         F32 lh = 0;
         fonsVertMetrics(_fonsContext, nullptr, nullptr, &lh);
-        
-        const TextElement::TextType& text = entry.text();
-        const size_t lineCount = text.size();
-        for (size_t i = 0; i < lineCount; ++i) {
-            fonsDrawText(_fonsContext,
-                         textX,
-                         textY - lh * i,
-                         text[i].c_str(),
-                         nullptr);
-        }
-        drawCount += lineCount;
-        
 
-        // Register each label rendered as a draw call
-        _context.registerDrawCalls(to_U32(drawCount));
+const TextElement::TextType& text = entry.text();
+const size_t lineCount = text.size();
+for (size_t i = 0; i < lineCount; ++i) {
+    fonsDrawText(_fonsContext,
+        textX,
+        textY - lh * i,
+        text[i].c_str(),
+        nullptr);
+}
+drawCount += lineCount;
+
+
+// Register each label rendered as a draw call
+_context.registerDrawCalls(to_U32(drawCount));
     }
 }
 
@@ -734,15 +736,16 @@ bool GL_API::draw(const GenericDrawCommand& cmd) const {
     if (cmd._sourceBuffer._id == 0) {
         U32 indexCount = 0u;
         switch (GL_API::GetStateTracker()->_activeTopology) {
-            case PrimitiveTopology::COMPUTE:
-            case PrimitiveTopology::COUNT     : DIVIDE_UNEXPECTED_CALL();         break;
-            case PrimitiveTopology::TRIANGLES : indexCount = cmd._drawCount * 3;  break;
-            case PrimitiveTopology::POINTS    : indexCount = cmd._drawCount * 1;  break;
-            default                           : indexCount = cmd._cmd.indexCount; break;
+        case PrimitiveTopology::COMPUTE:
+        case PrimitiveTopology::COUNT: DIVIDE_UNEXPECTED_CALL();         break;
+        case PrimitiveTopology::TRIANGLES: indexCount = cmd._drawCount * 3;  break;
+        case PrimitiveTopology::POINTS: indexCount = cmd._drawCount * 1;  break;
+        default: indexCount = cmd._cmd.indexCount; break;
         }
 
         glDrawArrays(GLUtil::glPrimitiveTypeTable[to_base(GL_API::GetStateTracker()->_activeTopology)], cmd._cmd.firstIndex, indexCount);
-    } else {
+    }
+    else {
         // Because this can only happen on the main thread, try and avoid costly lookups for hot-loop drawing
         static VertexDataInterface::Handle s_lastID = VertexDataInterface::INVALID_VDI_HANDLE;
         static VertexDataInterface* s_lastBuffer = nullptr;
@@ -759,6 +762,75 @@ bool GL_API::draw(const GenericDrawCommand& cmd) const {
     return true;
 }
 
+void GL_API::flushTextureBindQueue() {
+    static std::array<TexBindEntry, GLStateTracker::MAX_BOUND_TEXTURE_UNITS> s_textureCache;
+    static std::array<GLuint, GLStateTracker::MAX_BOUND_TEXTURE_UNITS> s_textureHandles;
+    static std::array<GLuint, GLStateTracker::MAX_BOUND_TEXTURE_UNITS> s_textureSamplers;
+
+    if (s_TexBindQueue.empty()) {
+        return;
+    }
+
+    if (s_TexBindQueue.size() == 1u) {
+        const TexBindEntry& texEntry = s_TexBindQueue.front();
+        if (GetStateTracker()->bindTexture(texEntry._slot, texEntry._handle, texEntry._sampler) == GLStateTracker::BindResult::FAILED) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
+    } else {
+        auto& stateTracker = GetStateTracker();
+
+        // Reset our cache
+        for (auto& it : s_textureCache) {
+            it._handle = GLUtil::k_invalidObjectID;
+        }
+
+        // Sort by slot number
+        eastl::sort(eastl::begin(s_TexBindQueue),
+            eastl::end(s_TexBindQueue),
+            [](const  TexBindEntry& lhs, const TexBindEntry& rhs) {
+                return lhs._slot < rhs._slot;
+            });
+
+        // Grab min and max slot and fill in the cache with all of the available data
+        U8 minSlot = U8_MAX, maxSlot = 0u;
+        for (const TexBindEntry& texEntry : s_TexBindQueue) {
+            s_textureCache[texEntry._slot] = texEntry;
+            minSlot = std::min(texEntry._slot, minSlot);
+            maxSlot = std::max(texEntry._slot, maxSlot);
+        }
+
+        U8 idx = 0u, bindOffset = minSlot, texCount = maxSlot - minSlot;
+        for (U8 i = 0u; i < texCount + 1; ++i) {
+            const U8 slot = i + minSlot;
+            const TexBindEntry& it = s_textureCache[slot];
+
+            if (it._handle != GLUtil::k_invalidObjectID) {
+                s_textureHandles[idx] = it._handle;
+                s_textureSamplers[idx] = it._sampler;
+
+                if (idx++ == 0u) {
+                    // Start a new range so remember the starting offset
+                    bindOffset = slot;
+                }
+            } else if (idx > 0u) {
+                // We found a hole in the texture range. Flush the current range and start a new one
+                if (stateTracker->bindTextures(bindOffset, idx, s_textureHandles.data(), s_textureSamplers.data()) == GLStateTracker::BindResult::FAILED) {
+                    DIVIDE_UNEXPECTED_CALL();
+                }
+                idx = 0u;
+            }
+        }
+        // Handle the final range (if any)
+        if (idx > 0u) {
+            if (stateTracker->bindTextures(bindOffset, idx, s_textureHandles.data(), s_textureSamplers.data()) == GLStateTracker::BindResult::FAILED) {
+                DIVIDE_UNEXPECTED_CALL();
+            }
+        }
+    }
+
+    s_TexBindQueue.clear();
+}
+
 void GL_API::preFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer) {
     NOP();
 }
@@ -771,13 +843,10 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
 
     OPTICK_TAG("Type", to_base(cmd->Type()));
 
-    const auto lockPushConstants = [&]() {
-        flushCommand(&pushConstantsMemCommand);
-        pushConstantsMemCommand._bufferLocks.clear();
-    };
-
-
     OPTICK_EVENT(GFX::Names::commandType[to_base(cmd->Type())]);
+    if (GFXDevice::IsSubmitCommand(cmd->Type())) {
+        flushTextureBindQueue();
+    }
 
     switch (cmd->Type()) {
         case GFX::CommandType::BEGIN_RENDER_PASS: {
@@ -888,7 +957,8 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
         }break;
         case GFX::CommandType::BIND_PIPELINE: {
             if (pushConstantsNeedLock) {
-                lockPushConstants();
+                flushCommand(&pushConstantsMemCommand);
+                pushConstantsMemCommand._bufferLocks.clear();
                 pushConstantsNeedLock = false;
             }
 
@@ -945,41 +1015,37 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
 
             if (crtCmd->_layerRange.x == 0 && crtCmd->_layerRange.y == crtCmd->_texture->descriptor().layerCount()) {
                 OPTICK_EVENT("GL: In-place computation - Full");
-                glGenerateTextureMipmap(crtCmd->_texture->data()._textureHandle);
+                glGenerateTextureMipmap(crtCmd->_texture->handle());
             } else {
                 OPTICK_EVENT("GL: View-based computation");
 
                 const TextureDescriptor& descriptor = crtCmd->_texture->descriptor();
                 const GLenum glInternalFormat = GLUtil::internalFormat(descriptor.baseFormat(), descriptor.dataType(), descriptor.srgb(), descriptor.normalized());
 
-                ImageView view = {};
-                view._textureData = crtCmd->_texture->data();
+                ImageView view = crtCmd->_texture->defaultView();
                 view._layerRange.set(crtCmd->_layerRange);
-                view._targetType = view._textureData._textureType;
 
-                if (crtCmd->_mipRange.max == 0u) {
-                    view._mipLevels.set(0, crtCmd->_texture->mipCount());
-                } else {
+                if (crtCmd->_mipRange.max != 0u) {
                     view._mipLevels.set(crtCmd->_mipRange);
                 }
                 assert(IsValid(view._textureData));
 
-                if (IsArrayTexture(view._targetType) && view._layerRange.max == 1) {
-                    switch (view._targetType) {
+                if (IsArrayTexture(view._textureData._textureType) && view._layerRange.max == 1) {
+                    switch (view._textureData._textureType) {
                         case TextureType::TEXTURE_1D_ARRAY:
-                            view._targetType = TextureType::TEXTURE_1D;
+                            view._textureData._textureType = TextureType::TEXTURE_1D;
                             break;
                         case TextureType::TEXTURE_2D_ARRAY:
-                            view._targetType = TextureType::TEXTURE_2D;
+                            view._textureData._textureType = TextureType::TEXTURE_2D;
                             break;
                         case TextureType::TEXTURE_CUBE_ARRAY:
-                            view._targetType = TextureType::TEXTURE_CUBE_MAP;
+                            view._textureData._textureType = TextureType::TEXTURE_CUBE_MAP;
                             break;
                         default: break;
                     }
                 }
 
-                if (IsCubeTexture(view._targetType)) {
+                if (IsCubeTexture(view._textureData._textureType)) {
                     view._layerRange *= 6; //offset and count
                 }
 
@@ -989,7 +1055,7 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
                 {
                     OPTICK_EVENT("GL: cache miss  - Image");
                     glTextureView(handle,
-                                  GLUtil::internalTextureType(view._targetType, descriptor.msaaSamples()),
+                                  GLUtil::internalTextureType(view._textureData._textureType, descriptor.msaaSamples()),
                                   view._textureData._textureHandle,
                                   glInternalFormat,
                                   static_cast<GLuint>(view._mipLevels.x),
@@ -1029,7 +1095,8 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
 
                 const GFX::DispatchComputeCommand* crtCmd = cmd->As<GFX::DispatchComputeCommand>();
                 const vec3<U32>& workGroupCount = crtCmd->_computeGroupSize;
-                DIVIDE_ASSERT(workGroupCount.x < GFXDevice::GetDeviceInformation()._maxWorgroupCount[0] &&
+                DIVIDE_ASSERT(workGroupCount.x > 0 && 
+                              workGroupCount.x < GFXDevice::GetDeviceInformation()._maxWorgroupCount[0] &&
                               workGroupCount.y < GFXDevice::GetDeviceInformation()._maxWorgroupCount[1] &&
                               workGroupCount.z < GFXDevice::GetDeviceInformation()._maxWorgroupCount[2]);
                 glDispatchCompute(crtCmd->_computeGroupSize.x, crtCmd->_computeGroupSize.y, crtCmd->_computeGroupSize.z);
@@ -1125,17 +1192,12 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
         default: break;
     }
 
-    switch (cmd->Type()) {
-        case GFX::CommandType::EXTERNAL:
-        case GFX::CommandType::DISPATCH_COMPUTE:
-        case GFX::CommandType::DRAW_TEXT:
-        case GFX::CommandType::DRAW_COMMANDS: {
-            if (pushConstantsNeedLock) {
-                lockPushConstants();
-                pushConstantsNeedLock = false;
-            }
-        } break;
-        default: break;
+    if (GFXDevice::IsSubmitCommand(cmd->Type())) {
+        if (pushConstantsNeedLock) {
+            flushCommand(&pushConstantsMemCommand);
+            pushConstantsMemCommand._bufferLocks.clear();
+            pushConstantsNeedLock = false;
+        }
     }
 }
 
@@ -1222,200 +1284,125 @@ I32 GL_API::getFont(const Str64& fontName) {
 }
 
 /// Reset as much of the GL default state as possible within the limitations given
-void GL_API::clearStates(const DisplayWindow& window, GLStateTracker* stateTracker, const bool global) const {
+void GL_API::clearStates(const DisplayWindow& window, GLStateTracker& stateTracker, const bool global) const {
     if (global) {
-        if (!stateTracker->unbindTextures()) {
+        if (!stateTracker.unbindTextures()) {
             DIVIDE_UNEXPECTED_CALL();
         }
-        stateTracker->setPixelPackUnpackAlignment();
+        stateTracker.setPixelPackUnpackAlignment();
     }
 
-    if (stateTracker->setActiveVAO(0) == GLStateTracker::BindResult::FAILED) {
+    if (stateTracker.setActiveVAO(0) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
-    if (stateTracker->setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, 0) == GLStateTracker::BindResult::FAILED) {
+    if (stateTracker.setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, 0) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
-    if (stateTracker->setActiveFB(RenderTarget::RenderTargetUsage::RT_READ_WRITE, 0) == GLStateTracker::BindResult::FAILED) {
+    if (stateTracker.setActiveFB(RenderTarget::RenderTargetUsage::RT_READ_WRITE, 0) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
-    stateTracker->_activeClearColour.set(window.clearColour());
-    const U8 blendCount = to_U8(stateTracker->_blendEnabled.size());
+    stateTracker._activeClearColour.set(window.clearColour());
+    const U8 blendCount = to_U8(stateTracker._blendEnabled.size());
     for (U8 i = 0u; i < blendCount; ++i) {
-        stateTracker->setBlending(i, {});
+        stateTracker.setBlending(i, {});
     }
-    stateTracker->setBlendColour({ 0u, 0u, 0u, 0u });
+    stateTracker.setBlendColour({ 0u, 0u, 0u, 0u });
 
     const vec2<U16>& drawableSize = _context.getDrawableSize(window);
-    stateTracker->setScissor({ 0, 0, drawableSize.width, drawableSize.height });
+    stateTracker.setScissor({ 0, 0, drawableSize.width, drawableSize.height });
 
-    stateTracker->_activePipeline = nullptr;
-    stateTracker->_activeRenderTarget = nullptr;
-    if (stateTracker->setActiveProgram(0u) == GLStateTracker::BindResult::FAILED) {
+    stateTracker._activePipeline = nullptr;
+    stateTracker._activeRenderTarget = nullptr;
+    if (stateTracker.setActiveProgram(0u) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
-    if (stateTracker->setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED) {
+    if (stateTracker.setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
-    if (stateTracker->setStateBlock(RenderStateBlock::DefaultHash()) == GLStateTracker::BindResult::FAILED) {
+    if (stateTracker.setStateBlock(RenderStateBlock::DefaultHash()) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
 
-    stateTracker->setDepthWrite(true);
+    stateTracker.setDepthWrite(true);
 }
 
-/*GLStateTracker::BindResult GL_API::makeTexturesResidentInternal(TextureDataContainer& textureData, const U8 offset, U8 count) const {
-    // All of the complicate and fragile code bellow does actually provide a measurable performance increase 
-    // (micro second range for a typical scene, nothing amazing, but still ...)
-    // CPU cost is comparable to the multiple glBind calls on some specific driver + GPU combos.
 
-    constexpr GLuint k_textureThreshold = 3;
-    GLStateTracker* stateTracker = GetStateTracker();
+GLStateTracker::BindResult GL_API::makeTextureViewResidentInternal(const U8 bindingSlot, const ImageView& imageView, const size_t samplerHash) const {
+    const GLuint samplerHandle = GetSamplerHandle(samplerHash);
 
-    const size_t totalTextureCount = textureData.count();
-
-    count = std::min(count, to_U8(totalTextureCount - offset));
-    assert(to_size(offset) + count <= totalTextureCount);
-    const auto& textures = textureData._entries;
-
-    GLStateTracker::BindResult result = GLStateTracker::BindResult::FAILED;
-    if (count > 1) {
-        // If we have 3 or more textures, there's a chance we might get a binding gap, so just sort
-        if (totalTextureCount > 2) {
-            textureData.sortByBinding();
-        }
-
-        U8 prevBinding = textures.front()._binding;
-        const TextureType targetType = textures.front()._data._textureType;
-
-        U8 matchingTexCount = 0u;
-        U8 startBinding = U8_MAX;
-        U8 endBinding = 0u; 
-
-        for (U8 idx = offset; idx < offset + count; ++idx) {
-            const TextureEntry& entry = textures[idx];
-            assert(IsValid(entry._data));
-            if (entry._binding != INVALID_TEXTURE_BINDING && targetType != entry._data._textureType) {
-                break;
-            }
-            // Avoid large gaps between bindings. It's faster to just bind them individually.
-            if (matchingTexCount > 0 && entry._binding - prevBinding > k_textureThreshold) {
-                break;
-            }
-            // We mainly want to handle ONLY consecutive units
-            prevBinding = entry._binding;
-            startBinding = std::min(startBinding, entry._binding);
-            endBinding = std::max(endBinding, entry._binding);
-            ++matchingTexCount;
-        }
-
-        if (matchingTexCount >= k_textureThreshold) {
-            static vector<GLuint> handles{};
-            static vector<GLuint> samplers{};
-            static bool init = false;
-            if (!init) {
-                init = true;
-                handles.resize(GFXDevice::GetDeviceInformation()._maxTextureUnits, GLUtil::k_invalidObjectID);
-                samplers.resize(GFXDevice::GetDeviceInformation()._maxTextureUnits, GLUtil::k_invalidObjectID);
-            } else {
-                std::memset(&handles[startBinding], GLUtil::k_invalidObjectID, (to_size(endBinding - startBinding) + 1) * sizeof(GLuint));
-            }
-
-            for (U8 idx = offset; idx < offset + matchingTexCount; ++idx) {
-                const TextureEntry& entry = textures[idx];
-                if (entry._binding != INVALID_TEXTURE_BINDING) {
-                    handles[entry._binding]  = entry._data._textureHandle;
-                    samplers[entry._binding] = GetSamplerHandle(entry._sampler);
-                }
-            }
-
-            
-            for (U8 binding = startBinding; binding < endBinding; ++binding) {
-                if (handles[binding] == GLUtil::k_invalidObjectID) {
-                    const TextureType crtType = stateTracker->getBoundTextureType(binding);
-                    samplers[binding] = stateTracker->getBoundSamplerHandle(binding);
-                    handles[binding] = stateTracker->getBoundTextureHandle(binding, crtType);
-                }
-            }
-
-            result = stateTracker->bindTextures(startBinding, endBinding - startBinding + 1, targetType, &handles[startBinding], &samplers[startBinding]);
-        } else {
-            matchingTexCount = 1;
-            result = makeTexturesResidentInternal(textureData, offset, 1);
-            if (result == GLStateTracker::BindResult::FAILED) {
-                DIVIDE_UNEXPECTED_CALL();
-            }
-        }
-
-        // Recurse to try and get more matches
-        result = makeTexturesResidentInternal(textureData, offset + matchingTexCount, count - matchingTexCount);
-    } else if (count == 1) {
-        // Normal usage. Bind a single texture at a time
-        const TextureEntry& entry = textures[offset];
-        if (entry._binding != INVALID_TEXTURE_BINDING) {
-            assert(IsValid(entry._data));
-            const GLuint handle = entry._data._textureHandle;
-            const GLuint sampler = GetSamplerHandle(entry._sampler);
-            result = stateTracker->bindTextures(entry._binding, 1, entry._data._textureType, &handle, &sampler);
-        }
-    } else {
-        result = GLStateTracker::BindResult::ALREADY_BOUND;
+    const TextureData& data = imageView._textureData;
+    if (!IsValid(data)) {
+        return GLStateTracker::BindResult::FAILED;
     }
 
-    return result;
-}*/
+    GLuint texHandle = static_cast<GLuint>(data._textureHandle);
+    if (!imageView.isDefaultView()) {
+        const size_t viewHash = imageView.getHash();
 
-GLStateTracker::BindResult GL_API::makeTextureViewResidentInternal(const ImageViewEntry& textureView, const U8 bindingSlot) const {
-    const size_t viewHash = textureView.getHash();
-    ImageView view = textureView._view;
-    if (view._targetType == TextureType::COUNT) {
-        view._targetType = view._textureData._textureType;
-    }
-    const TextureData& data = view._textureData;
-    assert(IsValid(data));
+        auto [textureID, cacheHit] = s_textureViewCache.allocate(viewHash);
+        DIVIDE_ASSERT(textureID != 0u);
 
-    auto [textureID, cacheHit] = s_textureViewCache.allocate(viewHash);
-    DIVIDE_ASSERT(textureID != 0u);
+        if (!cacheHit)
+        {
+            const GLenum glInternalFormat = GLUtil::internalFormat(imageView._descriptor._baseFormat,
+                imageView._descriptor._dataType,
+                imageView._descriptor._srgb,
+                imageView._descriptor._normalized);
 
-    if (!cacheHit)
-    {
-        const GLenum glInternalFormat = GLUtil::internalFormat(textureView._descriptor.baseFormat(),
-                                                               textureView._descriptor.dataType(),
-                                                               textureView._descriptor.srgb(),
-                                                               textureView._descriptor.normalized());
+            const bool isCube = IsCubeTexture(imageView._textureData._textureType);
 
-        if (IsCubeTexture(view._targetType)) {
-            view._layerRange *= 6;
+            glTextureView(textureID,
+                GLUtil::internalTextureType(imageView._textureData._textureType, imageView._descriptor._msaaSamples),
+                data._textureHandle,
+                glInternalFormat,
+                static_cast<GLuint>(imageView._mipLevels.x),
+                static_cast<GLuint>(imageView._mipLevels.y),
+                isCube ? imageView._layerRange.min * 6 : imageView._layerRange.min,
+                isCube ? imageView._layerRange.max * 6 : imageView._layerRange.max);
         }
 
-        glTextureView(textureID,
-            GLUtil::internalTextureType(view._targetType, textureView._descriptor.msaaSamples()),
-            data._textureHandle,
-            glInternalFormat,
-            static_cast<GLuint>(textureView._view._mipLevels.x),
-            static_cast<GLuint>(textureView._view._mipLevels.y),
-            view._layerRange.min,
-            view._layerRange.max);
+        // Self delete after 3 frames unless we use it again
+        s_textureViewCache.deallocate(textureID, 3u);
+        texHandle = textureID;
     }
 
-    // Self delete after 3 frames unless we use it again
-    s_textureViewCache.deallocate(textureID, 3u);
-    const GLuint samplerHandle = GetSamplerHandle(textureView._view._samplerHash);
-    return GL_API::GetStateTracker()->bindTexture(static_cast<GLushort>(bindingSlot), view._targetType, textureID, samplerHandle);
+#if 1
+    const GLubyte slot = static_cast<GLubyte>(bindingSlot);
+
+    for (TexBindEntry& it : s_TexBindQueue) {
+        if (it._slot == slot) {
+            it._handle = texHandle;
+            it._sampler = samplerHandle;
+            return GLStateTracker::BindResult::ALREADY_BOUND;
+        }
+    }
+
+    TexBindEntry entry{};
+    entry._slot = slot;
+    entry._handle = texHandle;
+    entry._sampler = samplerHandle;
+
+    s_TexBindQueue.push_back(MOV(entry));
+
+    return GLStateTracker::BindResult::JUST_BOUND;
+
+#else
+    return GL_API::GetStateTracker()->bindTexture(static_cast<GLubyte>(bindingSlot), texHandle, samplerHandle);
+#endif
 }
 
 bool GL_API::setViewport(const Rect<I32>& viewport) {
     return GetStateTracker()->setViewport(viewport);
 }
 
-ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) const {
+ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) {
     OPTICK_EVENT();
-    GLStateTracker* stateTracker = GetStateTracker();
+    auto& stateTracker = GetStateTracker();
 
     if (stateTracker->_activePipeline && *stateTracker->_activePipeline == pipeline) {
         return ShaderResult::OK;
     }
-
+   
     stateTracker->_activePipeline = &pipeline;
 
     const PipelineDescriptor& pipelineDescriptor = pipeline.descriptor();
@@ -1455,7 +1442,7 @@ ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) const {
             // Try to bind the shader program. If it failed to load, or isn't loaded yet, cancel the draw request for this frame
             ret = Attorney::GLAPIShaderProgram::bind(glProgram);
         }
-
+ 
         if (ret != ShaderResult::OK) {
             if (stateTracker->setActiveProgram(0u) == GLStateTracker::BindResult::FAILED) {
                 DIVIDE_UNEXPECTED_CALL();
@@ -1482,56 +1469,50 @@ bool GL_API::bindShaderResources(const DescriptorSetUsage usage, const Descripto
 
     for (auto& srcBinding : bindings) {
         switch (srcBinding._data.Type()) {
-              case DescriptorSetBindingType::IMAGE: {
-                  if (!srcBinding._data.Has<Image>()) {
-                      continue;
-                  }
-                  const Image& image = srcBinding._data.As<Image>();
-                  DIVIDE_ASSERT(image._texture != nullptr);
-                  image._texture->bindLayer(srcBinding._slot,
-                                            image._level,
-                                            image._layer,
-                                            image._layered,
-                                            image._flag);
-              } break;
-              case DescriptorSetBindingType::UNIFORM_BUFFER:
-              case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: {
-                  if (!srcBinding._data.Has<ShaderBufferEntry>() ||
-                       srcBinding._data.As<ShaderBufferEntry>()._buffer == nullptr ||
-                       srcBinding._data.As<ShaderBufferEntry>()._range._length == 0u)
-                  {
-                      continue;
-                  }
+            case DescriptorSetBindingType::UNIFORM_BUFFER:
+            case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: {
+                if (!srcBinding._data.Has<ShaderBufferEntry>() ||
+                    srcBinding._data.As<ShaderBufferEntry>()._buffer == nullptr ||
+                    srcBinding._data.As<ShaderBufferEntry>()._range._length == 0u)
+                {
+                    continue;
+                }
 
-                  const ShaderBufferEntry& bufferEntry = srcBinding._data.As<ShaderBufferEntry>();
-                  DIVIDE_ASSERT(bufferEntry._buffer != nullptr);
-                  Attorney::ShaderBufferBind::bindRange(*bufferEntry._buffer,
-                                                        srcBinding._slot,
-                                                        bufferEntry._range);
-              } break;
-              case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: {
-                  if (srcBinding._slot == INVALID_TEXTURE_BINDING) {
-                      continue;
-                  }
+                const ShaderBufferEntry& bufferEntry = srcBinding._data.As<ShaderBufferEntry>();
+                DIVIDE_ASSERT(bufferEntry._buffer != nullptr);
+                Attorney::ShaderBufferBind::bindRange(*bufferEntry._buffer,
+                                                    usage,
+                                                    srcBinding._slot,
+                                                    bufferEntry._range);
+            } break;
+            case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: {
+                if (srcBinding._slot == INVALID_TEXTURE_BINDING) {
+                    continue;
+                }
 
-                  const DescriptorCombinedImageSampler& imageSampler = srcBinding._data.As<DescriptorCombinedImageSampler>();
-                  if (GetStateTracker()->bindTexture(srcBinding._slot, imageSampler._image._textureType, imageSampler._image._textureHandle, GetSamplerHandle(imageSampler._samplerHash)) == GLStateTracker::BindResult::FAILED) {
-                      DIVIDE_UNEXPECTED_CALL();
-                  }
-              } break;
-              case DescriptorSetBindingType::IMAGE_VIEW: {
-                  if (srcBinding._slot == INVALID_TEXTURE_BINDING) {
-                      continue;
-                  }
-
-                  const ImageViewEntry& texData = srcBinding._data.As<ImageViewEntry>();
-                  if (makeTextureViewResidentInternal(texData, srcBinding._slot) == GLStateTracker::BindResult::FAILED) {
-                      DIVIDE_UNEXPECTED_CALL();
-                  }
-              } break;
-              case DescriptorSetBindingType::COUNT: {
-                  DIVIDE_UNEXPECTED_CALL();
-              } break;
+                const DescriptorCombinedImageSampler& imageSampler = srcBinding._data.As<DescriptorCombinedImageSampler>();
+                if (makeTextureViewResidentInternal(ShaderProgram::GetGLBindingForDescriptorSlot(usage, srcBinding._slot, DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER),
+                                                    imageSampler._image,
+                                                    imageSampler._samplerHash) == GLStateTracker::BindResult::FAILED)
+                {
+                    DIVIDE_UNEXPECTED_CALL();
+                }
+            } break;
+            case DescriptorSetBindingType::IMAGE: {
+                if (!srcBinding._data.Has<Image>()) {
+                    continue;
+                }
+                const Image& image = srcBinding._data.As<Image>();
+                DIVIDE_ASSERT(image._texture != nullptr);
+                image._texture->bindLayer(srcBinding._slot,
+                                          image._level,
+                                          image._layer,
+                                          image._layered,
+                                          image._flag);
+            } break;
+            case DescriptorSetBindingType::COUNT: {
+                DIVIDE_UNEXPECTED_CALL();
+            } break;
         };
     }
 
@@ -1539,17 +1520,17 @@ bool GL_API::bindShaderResources(const DescriptorSetUsage usage, const Descripto
 }
 
 void GL_API::createSetLayout([[maybe_unused]] const DescriptorSetUsage usage, [[maybe_unused]] const DescriptorSet& set) {
-
+    
 }
 
 /******************************************************************************************************************************/
 /****************************************************STATIC METHODS************************************************************/
 /******************************************************************************************************************************/
 
-GLStateTracker* GL_API::GetStateTracker() noexcept {
+const GLStateTracker_uptr& GL_API::GetStateTracker() noexcept {
     DIVIDE_ASSERT(s_stateTracker != nullptr);
 
-    return s_stateTracker.get();
+    return s_stateTracker;
 }
 
 GLUtil::GLMemory::GLMemoryType GL_API::GetMemoryTypeForUsage(const GLenum usage) noexcept {
@@ -1618,15 +1599,14 @@ bool GL_API::DeleteShaderPrograms(const GLuint count, GLuint* programs) {
 bool GL_API::DeleteTextures(const GLuint count, GLuint* textures, const TextureType texType) {
     if (count > 0 && textures != nullptr) {
         
-        for (GLuint i = 0; i < count; ++i) {
+        for (GLuint i = 0u; i < count; ++i) {
             const GLuint crtTex = textures[i];
             if (crtTex != 0) {
-                GLStateTracker* stateTracker = GetStateTracker();
+                auto& stateTracker = GetStateTracker();
 
-                auto bindingIt = stateTracker->_textureBoundMap[to_base(texType)];
-                for (GLuint& handle : bindingIt) {
+                for (GLuint& handle : stateTracker->_textureBoundMap) {
                     if (handle == crtTex) {
-                        handle = 0u;
+                        handle = GLUtil::k_invalidObjectID;
                     }
                 }
 
@@ -1671,7 +1651,7 @@ bool GL_API::DeleteBuffers(const GLuint count, GLuint* buffers) {
     if (count > 0 && buffers != nullptr) {
         for (GLuint i = 0; i < count; ++i) {
             const GLuint crtBuffer = buffers[i];
-            GLStateTracker* stateTracker = GetStateTracker();
+            auto& stateTracker = GetStateTracker();
             for (GLuint& boundBuffer : stateTracker->_activeBufferID) {
                 if (boundBuffer == crtBuffer) {
                     boundBuffer = GLUtil::k_invalidObjectID;

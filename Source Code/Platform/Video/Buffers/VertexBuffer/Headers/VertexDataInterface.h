@@ -79,7 +79,7 @@ inline bool operator==(const BufferRange& lhs, const BufferRange& rhs) noexcept 
 
 inline bool operator!=(const BufferRange& lhs, const BufferRange& rhs) noexcept {
     return lhs._startOffset != rhs._startOffset ||
-           lhs._length == rhs._length;
+           lhs._length != rhs._length;
 }
 
 [[nodiscard]] inline bool Overlaps(const BufferRange& lhs, const BufferRange& rhs) noexcept {

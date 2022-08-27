@@ -8,8 +8,8 @@ uniform vec2 imgSize;
 uniform uint cubeFace;
 uniform uint layerIndex;
 
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, 0) uniform samplerCubeArray s_source;
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW_SET, 1, rgba16f) uniform ACCESS_W image2D s_target;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform samplerCubeArray s_source;
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 1, rgba16f) uniform ACCESS_W image2D s_target;
 
 
 layout(local_size_x = THREADS, local_size_y = THREADS, local_size_z = 1) in;
@@ -45,7 +45,7 @@ void main()
 
 #define THREADS 16
 
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW_SET, TEXTURE_UNIT0, rg16f) uniform ACCESS_W image2D s_target;
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 0, rg16f) uniform ACCESS_W image2D s_target;
 
 // Karis 2014
 vec2 integrateBRDF(float roughness, float NoV)
@@ -117,8 +117,8 @@ uniform vec2 imgSize;
 uniform uint cubeFace;
 uniform uint layerIndex;
 
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform samplerCubeArray s_source;
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW_SET, TEXTURE_UNIT0, rgba16f) uniform ACCESS_W image2D s_target;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform samplerCubeArray s_source;
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 1, rgba16f) uniform ACCESS_W image2D s_target;
 
 // From Karis, 2014
 vec3 prefilterEnvMap(float roughness, vec3 R, float imgDimensions)

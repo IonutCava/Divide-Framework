@@ -47,6 +47,7 @@ namespace Divide {
 struct RayResult
 {
     bool hit = false;
+    bool inside = false;
     F32 dist = std::numeric_limits<F32>::infinity();
 };
 

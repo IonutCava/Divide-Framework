@@ -10,8 +10,8 @@ uniform vec4 u_params;
 // u_params.y = inverse of the log_2 luminance range
 
 // Our two inputs, the read-only HDR color image, and the histogramBuffer
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW_SET, TEXTURE_UNIT0, rgba16f) uniform ACCESS_R image2D s_texColor;
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW_SET, BUFFER_LUMINANCE_HISTOGRAM, std430) coherent ACCESS_W buffer histogramBuffer
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 0, rgba16f) uniform ACCESS_R image2D s_texColor;
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 1, std430) coherent ACCESS_W buffer histogramBuffer
 {
     uint histogram[];
 };
@@ -75,9 +75,9 @@ uniform vec4 u_params;
 #define numPixels u_params.w
 
 // We'll be writing our average to s_target
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW_SET, TEXTURE_UNIT0, r16f) uniform ACCESS_RW image2D s_target;
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 0, r16f) uniform ACCESS_RW image2D s_target;
 
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW_SET, BUFFER_LUMINANCE_HISTOGRAM, std430) coherent ACCESS_RW buffer histogramBuffer
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 1, std430) coherent ACCESS_RW buffer histogramBuffer
 {
     uint histogram[];
 };

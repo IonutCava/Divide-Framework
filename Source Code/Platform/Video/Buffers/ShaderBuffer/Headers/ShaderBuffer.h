@@ -83,8 +83,6 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
 
     FORCE_INLINE BufferLock writeData(bufferPtr data) { return writeData({ 0u, _params._elementCount }, data); }
     FORCE_INLINE BufferLock clearData() { return clearData({ 0u, _params._elementCount }); }
-    FORCE_INLINE bool bind(ShaderBufferLocation bindIndex) { return bind(to_U8(bindIndex)); }
-    FORCE_INLINE bool bindRange(ShaderBufferLocation bindIndex, BufferRange range) { return bindRange(to_U8(bindIndex), range); }
 
     [[nodiscard]] static size_t AlignmentRequirement(Usage usage) noexcept;
 
@@ -92,12 +90,12 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
     PROPERTY_R(string, name);
 
   protected:
-    virtual bool bindByteRange(U8 bindIndex, BufferRange range) = 0;
+    virtual bool bindByteRange(DescriptorSetUsage set, U8 bindIndex, BufferRange range) = 0;
 
-    bool bindRange(U8 bindIndex, BufferRange range);
+    bool bindRange(DescriptorSetUsage set, U8 bindIndex, BufferRange range);
 
     /// Bind return false if the buffer was already bound
-    FORCE_INLINE bool bind(U8 bindIndex) { return bindRange(bindIndex, { 0u, _params._elementCount }); }
+    FORCE_INLINE bool bind(const DescriptorSetUsage set, U8 bindIndex) { return bindRange(set, bindIndex, { 0u, _params._elementCount }); }
 
    protected:
     BufferParams _params;
@@ -122,17 +120,17 @@ FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
 
 namespace Attorney {
     class ShaderBufferBind {
-        static bool bindByteRange(ShaderBuffer& buf, U8 bindIndex, BufferRange range) {
-            return buf.bindByteRange(bindIndex, range);
+        static bool bindByteRange(ShaderBuffer& buf, DescriptorSetUsage set, U8 bindIndex, BufferRange range) {
+            return buf.bindByteRange(set, bindIndex, range);
         }
 
-        static bool bindRange(ShaderBuffer& buf, U8 bindIndex, const BufferRange range) {
-            return buf.bindRange(bindIndex, range);
+        static bool bindRange(ShaderBuffer& buf, DescriptorSetUsage set, U8 bindIndex, const BufferRange range) {
+            return buf.bindRange(set, bindIndex, range);
         }
 
         /// Bind return false if the buffer was already bound
-        static bool bind(ShaderBuffer& buf, U8 bindIndex) {
-            return buf.bind(bindIndex);
+        static bool bind(ShaderBuffer& buf, DescriptorSetUsage set, U8 bindIndex) {
+            return buf.bind(set, bindIndex);
         }
 
         friend class GFXDevice;

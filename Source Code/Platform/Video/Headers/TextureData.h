@@ -38,16 +38,16 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 
 struct CopyTexParams {
-    U8 _sourceMipLevel = 0;
-    U8 _targetMipLevel = 0;
+    U8 _sourceMipLevel{ 0u };
+    U8 _targetMipLevel{ 0u };
     vec3<U32> _sourceCoords;
     vec3<U32> _targetCoords;
     vec3<U16> _dimensions; //width, height, numlayers
 };
 
 struct TextureData {
-    U32 _textureHandle = 0u;
-    TextureType _textureType = TextureType::COUNT;
+    U32 _textureHandle{ 0u };
+    TextureType _textureType{ TextureType::COUNT };
 };
 
 FORCE_INLINE bool IsValid(const TextureData& data) noexcept {
@@ -80,7 +80,6 @@ enum class TextureUpdateState : U8 {
 struct TextureEntry
 {
     TextureEntry() = default;
-    explicit TextureEntry(const TextureData& data, const size_t samplerHash, const TextureUsage binding) noexcept : TextureEntry(data, samplerHash, to_U8(binding)) {}
     explicit TextureEntry(const TextureData& data, const size_t samplerHash, const U8 binding) noexcept
       : _data(data),
         _sampler(samplerHash),

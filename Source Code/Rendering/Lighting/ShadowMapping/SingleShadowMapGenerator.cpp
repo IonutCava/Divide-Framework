@@ -227,10 +227,10 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _blurPipeline });
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-            cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+            cmd->_usage = DescriptorSetUsage::PER_DRAW;
             auto& binding = cmd->_bindings.emplace_back();
-            binding._slot = to_U8(TextureUsage::UNIT0);
-            binding._data.As<DescriptorCombinedImageSampler>() = { shadowAtt->texture()->data(), shadowAtt->descriptor()._samplerHash };
+            binding._slot = 0;
+            binding._data.As<DescriptorCombinedImageSampler>() = { shadowAtt->texture()->defaultView(), shadowAtt->descriptor()._samplerHash };
         }
 
         _shaderConstants.set(_ID("layered"), GFX::PushConstantType::BOOL, true);
@@ -247,10 +247,10 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
         const auto& blurAtt = _blurBuffer._rt->getAttachment(RTAttachmentType::Colour, 0);
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-            cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+            cmd->_usage = DescriptorSetUsage::PER_DRAW;
             auto& binding = cmd->_bindings.emplace_back();
-            binding._slot = to_U8(TextureUsage::UNIT0);
-            binding._data.As<DescriptorCombinedImageSampler>() = { blurAtt->texture()->data(), blurAtt->descriptor()._samplerHash };
+            binding._slot = 0;
+            binding._data.As<DescriptorCombinedImageSampler>() = { blurAtt->texture()->defaultView(), blurAtt->descriptor()._samplerHash };
         }
 
         beginRenderPassCmd._target = handle._targetID;

@@ -117,7 +117,7 @@ namespace Divide {
         }
     }
 
-    bool vkShaderBuffer::bindByteRange([[maybe_unused]] U8 bindIndex, [[maybe_unused]] BufferRange range) noexcept {
+    bool vkShaderBuffer::bindByteRange([[maybe_unused]] DescriptorSetUsage set, [[maybe_unused]] U8 bindIndex, [[maybe_unused]] BufferRange range) noexcept {
         return true;
     }
 

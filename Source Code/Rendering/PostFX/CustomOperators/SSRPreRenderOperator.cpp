@@ -120,9 +120,9 @@ bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& 
     RTAttachment* normalsAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS));
     RTAttachment* depthAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Depth_Stencil, 0);
 
-    const TextureData screenTex = screenAtt->texture()->data();
-    const TextureData normalsTex = normalsAtt->texture()->data();
-    const TextureData depthTex = depthAtt->texture()->data();
+    const auto& screenTex = screenAtt->texture()->defaultView();
+    const auto& normalsTex = normalsAtt->texture()->defaultView();
+    const auto& depthTex = depthAtt->texture()->defaultView();
     U16 screenMipCount = screenAtt->texture()->mipCount();
     if (screenMipCount > 2u) {
         screenMipCount -= 2u;
@@ -140,20 +140,20 @@ bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& 
     _constantsCmd._constants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-        cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+        cmd->_usage = DescriptorSetUsage::PER_DRAW;
         {
             auto& binding = cmd->_bindings.emplace_back();
-            binding._slot = to_U8(TextureUsage::UNIT0);
+            binding._slot = 0;
             binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt->descriptor()._samplerHash };
         }
         {
             auto& binding = cmd->_bindings.emplace_back();
-            binding._slot = to_U8(TextureUsage::UNIT1);
+            binding._slot = 1;
             binding._data.As<DescriptorCombinedImageSampler>() = { depthTex, depthAtt->descriptor()._samplerHash };
         }
         {
             auto& binding = cmd->_bindings.emplace_back();
-            binding._slot = to_U8(TextureUsage::NORMALMAP);
+            binding._slot = 2;
             binding._data.As<DescriptorCombinedImageSampler>() = { normalsTex, normalsAtt->descriptor()._samplerHash };
         }
 

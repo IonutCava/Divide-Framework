@@ -98,6 +98,7 @@ struct Paths {
         static ResourcePath g_cacheLocationVK;
         static ResourcePath g_cacheLocationText;
         static ResourcePath g_cacheLocationSpv;
+        static ResourcePath g_cacheLocationRefl;
 
         static Str8 g_ReflectionExt;
         static Str8 g_SPIRVExt;
@@ -139,14 +140,18 @@ struct Paths {
     static void updatePaths(const PlatformContext& context);
 }; //class Paths
 
+struct FileEntry {
+    ResourcePath _name{};
+    U64 _lastWriteTime{0u};
+};
+using FileList = vector<FileEntry>;
 
 [[nodiscard]] std::string getWorkingDirectory();
 
-//returns true if both paths are identical regardless of number of slashes and capitalization
-
 using asPath = std::filesystem::path;
-
+///Returns true if both paths are identical regardless of number of slashes and capitalization
 [[nodiscard]] bool pathCompare(const char* filePathA, const char* filePathB);
+
 [[nodiscard]] bool pathExists(const char* filePath);
 [[nodiscard]] bool pathExists(const ResourcePath& filePath);
 [[nodiscard]] bool fileExists(const char* filePathAndName);
@@ -158,9 +163,10 @@ using asPath = std::filesystem::path;
 [[nodiscard]] bool createDirectory(const char* path);
 [[nodiscard]] bool createDirectory(const ResourcePath& path);
 [[nodiscard]] bool createFile(const char* filePathAndName, bool overwriteExisting);
-[[nodiscard]] bool deleteAllFiles(const char* filePath, const char* extension = nullptr);
-[[nodiscard]] bool deleteAllFiles(const ResourcePath& filePath, const char* extension = nullptr);
-
+[[nodiscard]] bool deleteAllFiles(const char* filePath, const char* extensionNoDot = nullptr);
+[[nodiscard]] bool deleteAllFiles(const ResourcePath& filePath, const char* extensionNoDot = nullptr);
+[[nodiscard]] bool getAllFilesInDirectory(const char* filePath, FileList& listInOut, const char* extensionNoDot = nullptr);
+[[nodiscard]] bool getAllFilesInDirectory(const ResourcePath& filePath, FileList& listInOut, const char* extensionNoDot = nullptr);
 [[nodiscard]] FileError fileLastWriteTime(const char* filePathAndName, U64& timeOutSec);
 [[nodiscard]] FileError fileLastWriteTime(const ResourcePath& filePathAndName, U64& timeOutSec);
 [[nodiscard]] FileError fileLastWriteTime(const char* filePath, const char* fileName, U64& timeOutSec);
@@ -195,9 +201,8 @@ typename std::enable_if<std::is_same<decltype(has_assign<T>(nullptr)), std::true
 [[nodiscard]] FileError findFile(const char* filePath, const char* fileName, string& foundPath);
 [[nodiscard]] FileError findFile(const ResourcePath& filePath, const char* fileName, string& foundPath);
 
-/// will add '.' automatically at the start of 'extension'
-[[nodiscard]] bool hasExtension(const char* filePath, const Str16& extension);
-[[nodiscard]] bool hasExtension(const ResourcePath& filePath, const Str16& extension);
+[[nodiscard]] bool hasExtension(const char* filePath, const char* extensionNoDot);
+[[nodiscard]] bool hasExtension(const ResourcePath& filePath, const char* extensionNoDot);
 
 [[nodiscard]] string getExtension(const char* filePath);
 [[nodiscard]] string getExtension(const ResourcePath& filePath);

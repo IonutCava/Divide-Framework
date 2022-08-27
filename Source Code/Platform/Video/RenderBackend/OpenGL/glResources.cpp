@@ -497,7 +497,7 @@ void SubmitRenderCommand(const GenericDrawCommand& drawCommand,
                          const GLsizei* const count,
                          const bufferPtr indexData)
 {
-    GLStateTracker* stateTracker = GL_API::GetStateTracker();
+    auto& stateTracker = GL_API::GetStateTracker();
 
     stateTracker->toggleRasterization(!isEnabledOption(drawCommand, CmdRenderOptions::RENDER_NO_RASTERIZE));
 
@@ -628,7 +628,6 @@ void glTextureViewCache::deallocate(GLuint& handle, const U32 frameDelay) {
     
     DIVIDE_UNEXPECTED_CALL();
 }
-
 
 /// Print OpenGL specific messages
 void DebugCallback(const GLenum source,

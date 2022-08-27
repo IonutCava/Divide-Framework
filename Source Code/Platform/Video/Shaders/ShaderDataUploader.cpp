@@ -73,30 +73,67 @@ namespace Reflection {
     };
 
 bool SaveReflectionData(const ResourcePath& path, const ResourcePath& file, const Reflection::Data& reflectionDataIn, const eastl::set<U64>& atomIDsIn) {
+    const auto saveDataEntry = [](ByteBuffer& buffer, const DataEntry& entry) {
+        buffer << entry._bindingSet;
+        buffer << entry._bindingSlot;
+        buffer << entry._name;
+    };
+
+    const auto saveImage = [&](ByteBuffer& buffer, const ImageEntry& entry) {
+        saveDataEntry(buffer, entry);
+        buffer << entry._combinedImageSampler;
+        buffer << entry._isWriteTarget;
+        buffer << entry._isMultiSampled;
+        buffer << entry._isArray;
+    };
+
+    std::function<void(ByteBuffer&, const BufferMember&)> saveBufferMember;
+    saveBufferMember = [&saveBufferMember](ByteBuffer& buffer, const BufferMember& entry) {
+        buffer << to_base(entry._type);
+        buffer << entry._offset;
+        buffer << entry._absoluteOffset;
+        buffer << entry._size;
+        buffer << entry._paddedSize;
+        buffer << entry._arrayInnerSize;
+        buffer << entry._arrayOuterSize;
+        buffer << entry._arrayOuterSize;
+        buffer << entry._vectorDimensions;
+        buffer << entry._matrixDimensions;
+        buffer << entry._name;
+        buffer << entry._memberCount;
+        for (size_t i = 0u; i < entry._memberCount; ++i) {
+            saveBufferMember(buffer, entry._members[i]);
+        }
+    };
+
+    const auto saveBuffer = [&](ByteBuffer& buffer, const BufferEntry& entry) {
+        saveDataEntry(buffer, entry);
+        buffer << entry._offset;
+        buffer << entry._absoluteOffset;
+        buffer << entry._size;
+        buffer << entry._paddedSize;
+        buffer << entry._memberCount;
+        buffer << entry._uniformBuffer;
+        buffer << entry._dynamic;
+        
+        for (size_t i = 0u; i < entry._memberCount; ++i) {
+            saveBufferMember(buffer, entry._members[i]);
+        }
+    };
+
     ByteBuffer buffer;
     buffer << BYTE_BUFFER_VERSION;
-    buffer << reflectionDataIn._targetBlockBindingIndex;
-    buffer << reflectionDataIn._bindingSet;
-    buffer << reflectionDataIn._targetBlockName;
-    buffer << reflectionDataIn._blockSize;
-    buffer << reflectionDataIn._blockMembers.size();
-    for (const auto& member : reflectionDataIn._blockMembers) {
-        buffer << std::string(member._name.c_str());
-        buffer << to_base(member._type);
-        buffer << member._offset;
-        buffer << member._arrayInnerSize;
-        buffer << member._arrayOuterSize;
-        buffer << member._vectorDimensions;
-        buffer << member._matrixDimensions.x;
-        buffer << member._matrixDimensions.y;
-    }
+    buffer << reflectionDataIn._uniformBlockBindingSet;
+    buffer << reflectionDataIn._uniformBlockBindingIndex;
+    buffer << reflectionDataIn._stageVisibility;
+
     buffer << reflectionDataIn._images.size();
     for (const auto& image : reflectionDataIn._images) {
-        buffer << std::string(image._imageName.c_str());
-        buffer << image._combinedImageSampler;
-        buffer << image._isWriteTarget;
-        buffer << image._targetImageBindingIndex;
-        buffer << image._bindingSet;
+        saveImage(buffer, image);
+    }
+    buffer << reflectionDataIn._buffers.size();
+    for (const auto& bufferEntry : reflectionDataIn._buffers) {
+        saveBuffer(buffer, bufferEntry);
     }
     buffer << atomIDsIn.size();
     for (const U64 id : atomIDsIn) {
@@ -107,48 +144,79 @@ bool SaveReflectionData(const ResourcePath& path, const ResourcePath& file, cons
 }
 
 bool LoadReflectionData(const ResourcePath& path, const ResourcePath& file, Reflection::Data& reflectionDataOut, eastl::set<U64>& atomIDsOut) {
+    size_t sizeTemp;
+
+    const auto loadDataEntry = [&](ByteBuffer& buffer, DataEntry& entry) {
+        buffer >> entry._bindingSet;
+        buffer >> entry._bindingSlot;
+        buffer >> entry._name;
+    };
+
+    const auto loadImage = [&](ByteBuffer& buffer, ImageEntry& entry) {
+        loadDataEntry(buffer, entry);
+        buffer >> entry._combinedImageSampler;
+        buffer >> entry._isWriteTarget;
+        buffer >> entry._isMultiSampled;
+        buffer >> entry._isArray;
+    };
+
+    std::function<void(ByteBuffer&, BufferMember&)> loadBufferMember;
+    loadBufferMember = [&loadBufferMember](ByteBuffer& buffer, BufferMember& entry) {
+        std::underlying_type_t<GFX::PushConstantType> tempType{ 0u };
+
+        buffer >> tempType; entry._type = static_cast<GFX::PushConstantType>(tempType);
+        buffer >> entry._offset;
+        buffer >> entry._absoluteOffset;
+        buffer >> entry._size;
+        buffer >> entry._paddedSize;
+        buffer >> entry._arrayInnerSize;
+        buffer >> entry._arrayOuterSize;
+        buffer >> entry._arrayOuterSize;
+        buffer >> entry._vectorDimensions;
+        buffer >> entry._matrixDimensions;
+        buffer >> entry._name;
+        buffer >> entry._memberCount;
+        entry._members.resize(entry._memberCount);
+        for (size_t i = 0u; i < entry._memberCount; ++i) {
+            loadBufferMember(buffer, entry._members[i]);
+        }
+    };
+
+    const auto loadBuffer = [&](ByteBuffer& buffer, BufferEntry& entry) {
+        loadDataEntry(buffer, entry);
+        buffer >> entry._offset;
+        buffer >> entry._absoluteOffset;
+        buffer >> entry._size;
+        buffer >> entry._paddedSize;
+        buffer >> entry._memberCount;
+        buffer >> entry._uniformBuffer;
+        buffer >> entry._dynamic;
+
+        entry._members.resize(entry._memberCount);
+        for (size_t i = 0u; i < entry._memberCount; ++i) {
+            loadBufferMember(buffer, entry._members[i]);
+        }
+    };
+
     ByteBuffer buffer;
     if (buffer.loadFromFile(path.c_str(), file.c_str())) {
         auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
         buffer >> tempVer;
         if (tempVer == BYTE_BUFFER_VERSION) {
-            buffer >> reflectionDataOut._targetBlockBindingIndex;
-            buffer >> reflectionDataOut._bindingSet;
-            buffer >> reflectionDataOut._targetBlockName;
-            buffer >> reflectionDataOut._blockSize;
+            buffer >> reflectionDataOut._uniformBlockBindingSet;
+            buffer >> reflectionDataOut._uniformBlockBindingIndex;
+            buffer >> reflectionDataOut._stageVisibility;
 
-            size_t sizeTemp = 0u;
             buffer >> sizeTemp;
-            reflectionDataOut._blockMembers.reserve(sizeTemp);
-
-            std::string tempStr;
-            std::underlying_type_t<GFX::PushConstantType> tempType{0u};
-            
+            reflectionDataOut._images.resize(sizeTemp);
             for (size_t i = 0u; i < sizeTemp; ++i) {
-                Reflection::BlockMember& tempMember = reflectionDataOut._blockMembers.emplace_back();
-                buffer >> tempStr;
-                tempMember._name = tempStr.c_str();
-                buffer >> tempType;
-                tempMember._type = static_cast<GFX::PushConstantType>(tempType);
-                buffer >> tempMember._offset;
-                buffer >> tempMember._arrayInnerSize;
-                buffer >> tempMember._arrayOuterSize;
-                buffer >> tempMember._vectorDimensions;
-                buffer >> tempMember._matrixDimensions.x;
-                buffer >> tempMember._matrixDimensions.y;
+                loadImage(buffer, reflectionDataOut._images[i]);
             }
             buffer >> sizeTemp;
-            reflectionDataOut._images.reserve(sizeTemp);
+            reflectionDataOut._buffers.resize(sizeTemp);
             for (size_t i = 0u; i < sizeTemp; ++i) {
-                Reflection::ImageEntry& image = reflectionDataOut._images.emplace_back();
-                buffer >> tempStr;
-                image._imageName = tempStr.c_str();
-                buffer >> image._combinedImageSampler;
-                buffer >> image._isWriteTarget;
-                buffer >> image._targetImageBindingIndex;
-                buffer >> image._bindingSet;
+                loadBuffer(buffer, reflectionDataOut._buffers[i]);
             }
-
             buffer >> sizeTemp;
             U64 tempID = 0u;
             for (size_t i = 0u; i < sizeTemp; ++i) {
@@ -192,15 +260,29 @@ eastl::string GatherUniformDeclarations(const eastl::string & source, Reflection
     return ret;
 }
 
+const BufferEntry* FindUniformBlock(const Data& data) {
+    const BufferEntry* uniformBlock = nullptr;
+    for (const BufferEntry& block : data._buffers) {
+        if (block._bindingSlot == data._uniformBlockBindingIndex &&
+            block._bindingSet == data._uniformBlockBindingSet)
+        {
+            uniformBlock = &block;
+            break;
+        }
+    }
+    return uniformBlock;
+}
+
 };
 
 void UniformBlockUploader::Idle() {
 
 }
 
-UniformBlockUploader::UniformBlockUploader(GFXDevice& context, const UniformBlockUploaderDescriptor& descriptor) 
+UniformBlockUploader::UniformBlockUploader(GFXDevice& context, const eastl::string& parentShaderName, const Reflection::BufferEntry& uniformBlock)
      : _context(context),
-       _descriptor(descriptor)
+       _parentShaderName(parentShaderName),
+       _uniformBlock(uniformBlock)
 {
     const auto GetSizeOf = [](const GFX::PushConstantType type) noexcept -> size_t {
         switch (type) {
@@ -214,76 +296,69 @@ UniformBlockUploader::UniformBlockUploader(GFXDevice& context, const UniformBloc
         return 0u;
     };
 
-    if (_descriptor._reflectionData._blockMembers.empty()) {
+    if (uniformBlock._memberCount == 0u) {
         return;
     }
 
-    const size_t activeMembers = _descriptor._reflectionData._blockMembers.size();
-    _blockMembers.resize(activeMembers);
-    _uniformBlockSizeAligned = Util::GetAlignmentCorrected(_descriptor._reflectionData._blockSize, ShaderBuffer::AlignmentRequirement(ShaderBuffer::Usage::CONSTANT_BUFFER));
+    _blockMembers.resize(uniformBlock._memberCount);
+    _uniformBlockSizeAligned = Util::GetAlignmentCorrected(uniformBlock._size, ShaderBuffer::AlignmentRequirement(ShaderBuffer::Usage::CONSTANT_BUFFER));
     resizeBlockBuffer(false);
     _localDataCopy.resize(_uniformBlockSizeAligned);
 
-    size_t requiredExtraMembers = 0;
-    for (size_t member = 0; member < activeMembers; ++member) {
+    size_t requiredExtraMembers = 0u;
+    for (size_t member = 0u; member < uniformBlock._memberCount; ++member) {
         BlockMember& bMember = _blockMembers[member];
-        bMember._externalData = _descriptor._reflectionData._blockMembers[member];
-        bMember._nameHash = _ID(bMember._externalData._name.c_str());
-        bMember._elementSize = GetSizeOf(bMember._externalData._type);
-        if (bMember._externalData._matrixDimensions.x > 0 || bMember._externalData._matrixDimensions.y > 0) {
-            bMember._elementSize = bMember._externalData._matrixDimensions.x * bMember._externalData._matrixDimensions.y * bMember._elementSize;
-        } else {
-            bMember._elementSize = bMember._externalData._vectorDimensions * bMember._elementSize;
-        }
+        const Reflection::BufferMember& srcMember = _uniformBlock._members[member];
+        DIVIDE_ASSERT(srcMember._memberCount == 0u, "UniformBlockUploader error: Custom structs in uniform declarations not supported!");
 
-        bMember._size = bMember._elementSize;
-        if (bMember._externalData._arrayInnerSize > 0) {
-            bMember._size *= bMember._externalData._arrayInnerSize;
-        }
-        if (bMember._externalData._arrayOuterSize > 0) {
-            bMember._size *= bMember._externalData._arrayOuterSize;
-        }
-
-        requiredExtraMembers += (bMember._externalData._arrayInnerSize * bMember._externalData._arrayOuterSize);
+        bMember._name = srcMember._name;
+        bMember._nameHash = _ID(bMember._name.c_str());
+        bMember._offset = srcMember._offset;
+        bMember._size = srcMember._size;
+        bMember._elementSize = GetSizeOf(srcMember._type);
+        bMember._arrayInnerSize = srcMember._arrayInnerSize;
+        bMember._arrayOuterSize = srcMember._arrayOuterSize;
+        requiredExtraMembers += (srcMember._arrayInnerSize * srcMember._arrayOuterSize);
     }
 
     vector<BlockMember> arrayMembers;
     arrayMembers.reserve(requiredExtraMembers);
 
-    for (size_t member = 0; member < activeMembers; ++member) {
+    for (size_t member = 0; member < uniformBlock._memberCount; ++member) {
         const BlockMember& bMember = _blockMembers[member];
+
         size_t offset = 0u;
-        if (bMember._externalData._arrayInnerSize > 0) {
-            for (size_t i = 0; i < bMember._externalData._arrayOuterSize; ++i) {
-                for (size_t j = 0; j < bMember._externalData._arrayInnerSize; ++j) {
+        if (bMember._arrayInnerSize > 0) {
+            for (size_t i = 0u; i < bMember._arrayOuterSize; ++i) {
+                for (size_t j = 0u; j < bMember._arrayInnerSize; ++j) {
                     BlockMember newMember = bMember;
-                    newMember._externalData._name = Util::StringFormat("%s[%d][%d]", bMember._externalData._name.c_str(), i, j);
-                    newMember._nameHash = _ID(newMember._externalData._name.c_str());
-                    newMember._externalData._arrayOuterSize -= i;
-                    newMember._externalData._arrayInnerSize -= j;
+                    newMember._name = Util::StringFormat("%s[%d][%d]", bMember._name.c_str(), i, j);
+                    newMember._nameHash = _ID(newMember._name.c_str());
                     newMember._size -= offset;
-                    newMember._externalData._offset = offset;
+                    newMember._offset = offset;
+                    newMember._arrayOuterSize -= i;
+                    newMember._arrayInnerSize -= j;
                     offset += bMember._elementSize;
                     arrayMembers.push_back(newMember);
                 }
             }
-            for (size_t i = 0; i < bMember._externalData._arrayOuterSize; ++i) {
+            for (size_t i = 0u; i < bMember._arrayOuterSize; ++i) {
                 BlockMember newMember = bMember;
-                newMember._externalData._name = Util::StringFormat("%s[%d]", bMember._externalData._name.c_str(), i);
-                newMember._nameHash = _ID(newMember._externalData._name.c_str());
-                newMember._externalData._arrayOuterSize -= i;
-                newMember._size -= i * (bMember._externalData._arrayInnerSize * bMember._elementSize);
-                newMember._externalData._offset = i * (bMember._externalData._arrayInnerSize * bMember._elementSize);
+                newMember._name = Util::StringFormat("%s[%d]", bMember._name.c_str(), i);
+                newMember._nameHash = _ID(newMember._name.c_str());
+                newMember._size -= i * (bMember._arrayInnerSize * bMember._elementSize);
+                newMember._offset = i * (bMember._arrayInnerSize * bMember._elementSize);
+                newMember._arrayOuterSize -= i;
                 arrayMembers.push_back(newMember);
             }
-        } else if (bMember._externalData._arrayOuterSize > 0) {
-            for (size_t i = 0; i < bMember._externalData._arrayOuterSize; ++i) {
+        } else if (bMember._arrayOuterSize > 0) {
+            for (size_t i = 0u; i < bMember._arrayOuterSize; ++i) {
                 BlockMember newMember = bMember;
-                newMember._externalData._name = Util::StringFormat("%s[%d]", bMember._externalData._name.c_str(), i);
-                newMember._nameHash = _ID(newMember._externalData._name.c_str());
-                newMember._externalData._arrayOuterSize -= i;
+                newMember._name = Util::StringFormat("%s[%d]", bMember._name.c_str(), i);
+                newMember._nameHash = _ID(newMember._name.c_str());
                 newMember._size -= offset;
-                newMember._externalData._offset = offset;
+                newMember._offset = offset;
+                newMember._arrayOuterSize -= i;
                 offset += bMember._elementSize;
                 arrayMembers.push_back(newMember);
             }
@@ -300,10 +375,10 @@ void UniformBlockUploader::resizeBlockBuffer(const bool increaseSize) {
     const U32 newSize = _buffer == nullptr ? RingBufferLength : _bufferSizeFactor;
 
     ShaderBufferDescriptor bufferDescriptor{};
-    bufferDescriptor._name = _descriptor._reflectionData._targetBlockName.c_str();
+    bufferDescriptor._name = _uniformBlock._name.c_str();
     bufferDescriptor._ringBufferLength = increaseSize ? newSize : RingBufferLength;
     bufferDescriptor._name.append("_");
-    bufferDescriptor._name.append(_descriptor._parentShaderName.c_str());
+    bufferDescriptor._name.append(_parentShaderName.c_str());
     bufferDescriptor._usage = ShaderBuffer::Usage::CONSTANT_BUFFER;
     bufferDescriptor._bufferParams._elementCount = 1;
     bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
@@ -318,12 +393,12 @@ void UniformBlockUploader::uploadPushConstant(const GFX::PushConstant& constant,
         return;
     }
 
-    if (_descriptor._reflectionData._targetBlockBindingIndex != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr) {
+    if (_uniformBlock._bindingSlot != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr) {
         for (BlockMember& member : _blockMembers) {
             if (member._nameHash == constant.bindingHash()) {
                 DIVIDE_ASSERT(constant.dataSize() <= member._size);
 
-                      Byte* dst = &_localDataCopy.data()[member._externalData._offset];
+                      Byte* dst = &_localDataCopy.data()[member._offset];
                 const Byte* src = constant.data();
                 const size_t numBytes = constant.dataSize();
 
@@ -343,7 +418,7 @@ void UniformBlockUploader::commit(GFX::MemoryBarrierCommand& memCmdInOut) {
         return;
     }
 
-    DIVIDE_ASSERT(_descriptor._reflectionData._targetBlockBindingIndex != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr);
+    DIVIDE_ASSERT(_uniformBlock._bindingSlot != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr);
 
     if (_needsResize) {
         resizeBlockBuffer(true);
@@ -368,8 +443,8 @@ void UniformBlockUploader::commit(GFX::MemoryBarrierCommand& memCmdInOut) {
 }
 
 void UniformBlockUploader::prepare() {
-    if (_descriptor._reflectionData._targetBlockBindingIndex != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr) {
-        Attorney::ShaderBufferBind::bind(*_buffer, to_U8(_descriptor._reflectionData._targetBlockBindingIndex));
+    if (_uniformBlock._bindingSlot != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr) {
+        Attorney::ShaderBufferBind::bind(*_buffer, DescriptorSetUsage::PER_DRAW, to_U8(_uniformBlock._bindingSlot));
     }
 }
 

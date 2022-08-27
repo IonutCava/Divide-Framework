@@ -74,6 +74,8 @@ class PhysXSceneInterface final : public PhysicsSceneInterface {
     LoadQueue _sceneRigidQueue;
 };
 
+FWD_DECLARE_MANAGED_CLASS(PhysXSceneInterface);
+
 };  // namespace Divide
 
 #endif //_PHYSX_SCENE_INTERFACE_H_

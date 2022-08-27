@@ -77,6 +77,7 @@ namespace Divide {
     struct SGNRayResult {
         I64 sgnGUID = -1;
         F32 dist = std::numeric_limits<F32>::max();
+        bool inside = false;
         const char* name = nullptr;
     };
 

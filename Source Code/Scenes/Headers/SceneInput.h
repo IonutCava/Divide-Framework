@@ -176,6 +176,8 @@ class SceneInput final : public Input::InputAggregatorInterface {
 
 };  // SceneInput
 
+FWD_DECLARE_MANAGED_CLASS(SceneInput);
+
 }  // namespace Divide
 #endif  //_SCENE_INPUT_H_
 

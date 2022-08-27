@@ -21,8 +21,8 @@ void main()
 
 #include "utility.frag"
 
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D Texture;
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT1) uniform sampler2DArray Texture2;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D Texture;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform sampler2DArray Texture2;
 
 layout(location = ATTRIB_FREE_START + 0) in vec2 Frag_UV;
 layout(location = ATTRIB_FREE_START + 1) in vec4 Frag_Color;

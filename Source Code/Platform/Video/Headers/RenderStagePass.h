@@ -143,10 +143,9 @@ struct RenderStagePass {
                     default: 
                         DIVIDE_UNEXPECTED_CALL();
                 }
-            }
+            } break;
             case RenderStage::COUNT:
-            default: 
-                DIVIDE_UNEXPECTED_CALL();
+            default: DIVIDE_UNEXPECTED_CALL(); break;
         }
 
         DIVIDE_UNEXPECTED_CALL();

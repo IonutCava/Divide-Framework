@@ -119,7 +119,7 @@ class Object3D : public SceneNode {
 
     [[nodiscard]] const VertexBuffer_ptr& geometryBuffer();
 
-    inline void geometryBuffer(const VertexBuffer_ptr& vb) { _geometryBuffer = vb; }
+    inline void geometryBuffer(const VertexBuffer_ptr& vb) noexcept { _geometryBuffer = vb; }
 
     virtual void onAnimationChange([[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] I32 newIndex) {}
 

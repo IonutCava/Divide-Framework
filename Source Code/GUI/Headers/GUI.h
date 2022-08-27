@@ -56,14 +56,16 @@ class ResourceCache;
 class SceneGraphNode;
 class PlatformContext;
 class RenderStateBlock;
+class SceneGUIElements;
 
 FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 
 class Scene;
 struct SizeChangeParams;
-/// Graphical User Interface
 
-class SceneGUIElements;
+struct ImageView;
+
+/// Graphical User Interface
 class GUI final : public GUIInterface,
                   public KernelComponent,
                   public Input::InputAggregatorInterface {
@@ -157,7 +159,7 @@ protected:
     void CEGUIDrawInternal();
     [[nodiscard]] GUIElement* getGUIElementImpl(I64 sceneID, U64 elementName, GUIType type) const;
     [[nodiscard]] GUIElement* getGUIElementImpl(I64 sceneID, I64 elementID, GUIType type) const;
-    [[nodiscard]] TextureData getCEGUIRenderTextureData() const;
+    [[nodiscard]] ImageView   getCEGUIRenderTextureData() const;
 
     void recreateDefaultMessageBox();
 

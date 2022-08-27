@@ -443,17 +443,16 @@ CEGUI::GUIContext* GUI::getCEGUIContext() noexcept {
     return _ceguiContext;
 }
 
-TextureData GUI::getCEGUIRenderTextureData() const {
+ImageView GUI::getCEGUIRenderTextureData() const {
     if (_ceguiRenderTextureTarget != nullptr) {
         const GFXDevice& gfx = _context->parent().platformContext().gfx();
-        return
-        {
-            gfx.getHandleFromCEGUITexture(_ceguiRenderTextureTarget->getTexture()),
-            TextureType::TEXTURE_2D 
-        };
+        ImageView ret{};
+        ret._textureData._textureHandle = gfx.getHandleFromCEGUITexture(_ceguiRenderTextureTarget->getTexture());
+        ret._textureData._textureType = TextureType::TEXTURE_2D;
+        return ret;
 
     }
 
-    return { 0u, TextureType::COUNT };
+    return {};
 }
 };

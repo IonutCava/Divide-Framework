@@ -243,6 +243,7 @@ bool PhysXSceneInterface::intersect(const Ray& intersectionRay, const vec2<F32>&
             intersectionsOut.push_back({
                 node->getGUID(),
                 hit.block.distance,
+                false,
                 node->name().c_str()
             });
         }

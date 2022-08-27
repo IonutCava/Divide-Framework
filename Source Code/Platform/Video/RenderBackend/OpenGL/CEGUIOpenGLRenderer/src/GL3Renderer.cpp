@@ -231,7 +231,7 @@ void OpenGL3Renderer::endRendering()
 //----------------------------------------------------------------------------//
 void OpenGL3Renderer::setupExtraStates()
 {
-    if (Divide::GL_API::GetStateTracker()->bindTexture(0, Divide::TextureType::TEXTURE_2D, 0) == Divide::GLStateTracker::BindResult::FAILED) {
+    if (Divide::GL_API::GetStateTracker()->bindTexture(0, 0) == Divide::GLStateTracker::BindResult::FAILED) {
         Divide::DIVIDE_UNEXPECTED_CALL();
     }
     if (Divide::GL_API::GetStateTracker()->setActiveProgram(0) == Divide::GLStateTracker::BindResult::FAILED) {

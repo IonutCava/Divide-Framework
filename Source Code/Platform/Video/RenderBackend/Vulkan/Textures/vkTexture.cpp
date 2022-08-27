@@ -15,8 +15,8 @@ namespace Divide {
         : Texture(context, descriptorHash, name, assetNames, assetLocations, texDescriptor, parentCache)
     {
         static std::atomic_uint s_textureHandle = 1u;
-        _data._textureType = _descriptor.texType();
-        _data._textureHandle = s_textureHandle.fetch_add(1u);
+        _defaultView._textureData._textureType = _descriptor.texType();
+        _defaultView._textureData._textureHandle = s_textureHandle.fetch_add(1u);
     }
 
     vkTexture::~vkTexture()
@@ -57,7 +57,7 @@ namespace Divide {
     }
 
     void vkTexture::prepareTextureData(const U16 width, const U16 height) {
-        _loadingData = _data;
+        _loadingData = _defaultView._textureData;
 
         _width = width;
         _height = height;

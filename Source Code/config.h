@@ -89,7 +89,7 @@ namespace Profile {
 constexpr float Z_TEST_SIGMA = 0.00001f;// 1.f / U8_MAX;
 constexpr float ALPHA_DISCARD_THRESHOLD = 1.f - 0.05f;
 
-constexpr U8 MINIMUM_VULKAN_MINOR_VERSION = 2u;
+constexpr U8 MINIMUM_VULKAN_MINOR_VERSION = 3u;
 constexpr U8 DESIRED_VULKAN_MINOR_VERSION = 3u;
 
 /// Application desired framerate for physics and input simulations

@@ -189,8 +189,8 @@ TEST(TestCmpNoCase)
 
 TEST(TestExtension) {
     const char* input = "something.ext";
-    const Str16 ext1("ext");
-    const Str16 ext2("bak");
+    const char* ext1 = "ext";
+    const char* ext2 = "bak";
     CHECK_TRUE(hasExtension(input, ext1));
     CHECK_FALSE(hasExtension(input, ext2));
 }

@@ -397,7 +397,7 @@ bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
                 pipelineDescriptor._primitiveTopology = _materialInstance->topology();
                 pipelineDescriptor._vertexFormat = _materialInstance->shaderAttributes();
                 pkg.descriptorSetCmd()._bindings = _materialInstance->getDescriptorSet(renderStagePass);
-                pkg.descriptorSetCmd()._usage = DescriptorSetUsage::PER_DRAW_SET;
+                pkg.descriptorSetCmd()._usage = DescriptorSetUsage::PER_DRAW;
             } else {
                 pipelineDescriptor._stateHash = _context.getDefaultStateBlock(false);
                 pipelineDescriptor._shaderProgramHandle = _context.defaultIMShaderWorld()->handle();
@@ -561,14 +561,16 @@ bool RenderingComponent::updateReflection(const U16 reflectionIndex,
         RenderCbkParams params{ _context, _parentSGN, renderState, reflectRTID, reflectionIndex, to_U8(_reflectorType), camera };
         _reflectionCallback(passManager, params, bufferInOut, memCmdInOut);
 
-        RTAttachment* targetAtt = _context.renderTargetPool().getRenderTarget(reflectRTID)->getAttachment(RTAttachmentType::Colour, 0u);
-        _materialInstance->setTexture(
-            _reflectorType == ReflectorType::PLANAR ? TextureUsage::REFLECTION_PLANAR : TextureUsage::REFLECTION_CUBE,
-            targetAtt->texture(),
-            targetAtt->descriptor()._samplerHash,
-            TextureOperation::REPLACE,
-            TexturePrePassUsage::AUTO
-        );
+        if (_reflectorType == ReflectorType::PLANAR) {
+            RTAttachment* targetAtt = _context.renderTargetPool().getRenderTarget(reflectRTID)->getAttachment(RTAttachmentType::Colour, 0u);
+            _materialInstance->setTexture(
+                TextureSlot::REFLECTION_PLANAR,
+                targetAtt->texture(),
+                targetAtt->descriptor()._samplerHash,
+                TextureOperation::REPLACE,
+                TexturePrePassUsage::AUTO
+            );
+        }
         return true;
     }
     // No need to clear the reflection texture (if there is one) as an outdated reflection is better than random artefacts
@@ -599,7 +601,7 @@ bool RenderingComponent::updateRefraction(const U16 refractionIndex,
 
         RTAttachment* targetAtt = _context.renderTargetPool().getRenderTarget(refractRTID)->getAttachment(RTAttachmentType::Colour, 0u);
         _materialInstance->setTexture(
-            TextureUsage::REFRACTION_PLANAR,
+            TextureSlot::REFRACTION_PLANAR,
             targetAtt->texture(),
             targetAtt->descriptor()._samplerHash,
             TextureOperation::REPLACE,

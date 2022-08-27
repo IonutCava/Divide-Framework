@@ -147,12 +147,12 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
     assert(input._targetID != output._targetID);
 
     const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
-    const TextureData screenTex = screenAtt->texture()->data();
+    const auto& screenTex = screenAtt->texture()->defaultView();
     {
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-        cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+        cmd->_usage = DescriptorSetUsage::PER_DRAW;
         auto& binding = cmd->_bindings.emplace_back();
-        binding._slot = to_U8(TextureUsage::UNIT0);
+        binding._slot = 0;
         binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt->descriptor()._samplerHash };
     }
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _bloomCalcPipeline });
@@ -189,18 +189,18 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
 
     // Step 3: apply bloom
     const auto& bloomAtt = _bloomBlurBuffer[1]._rt->getAttachment(RTAttachmentType::Colour, 0); 
-    const TextureData bloomTex = bloomAtt->texture()->data();
+    const auto& bloomTex = bloomAtt->texture()->defaultView();
 
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-    cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+    cmd->_usage = DescriptorSetUsage::PER_DRAW;
     {
         auto& binding = cmd->_bindings.emplace_back();
-        binding._slot = to_U8(TextureUsage::UNIT0);
+        binding._slot = 0;
         binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt->descriptor()._samplerHash };
     }
     {
         auto& binding = cmd->_bindings.emplace_back();
-        binding._slot = to_U8(TextureUsage::UNIT1);
+        binding._slot = 1;
         binding._data.As<DescriptorCombinedImageSampler>() = { bloomTex, bloomAtt->descriptor()._samplerHash };
     }
 

@@ -723,7 +723,7 @@ static const mat4<F32> MAT4_IDENTITY{};
 //This avoids object popping up at (0,0,0) with whatever scale they were exported at while loading for RenderPass::DataBufferRingSize -1 frames.
 static const mat4<F32> MAT4_INITIAL_TRANSFORM {
     vec3<F32>(0.f, -65535.f, 0.f),
-    vec3<F32>(1.f / U8_MAX, 1.f / U8_MAX, 1.f / U8_MAX)
+    vec3<F32>(1.f / U8_MAX)
 };
 
 }  // namespace Divide

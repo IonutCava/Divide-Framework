@@ -20,7 +20,7 @@ const Texture_ptr& RTAttachment::texture() const {
 }
 
 void RTAttachment::setTexture(const Texture_ptr& tex, const bool isExternal) noexcept {
-    assert(tex == nullptr || IsValid(tex->data()));
+    assert(tex == nullptr || IsValid(tex->defaultView()._textureData));
 
     _texture = tex;
     changed(true);

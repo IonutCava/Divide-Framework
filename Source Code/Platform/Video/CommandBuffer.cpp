@@ -217,6 +217,9 @@ void CommandBuffer::clean() {
     const Rect<I32>* prevViewportRect = nullptr;
     const DescriptorBindings* prevDescriptorSet = nullptr;
 
+    bool keepGoing = false;
+    const auto initialCommandOrderSize = _commandOrder.size();
+
     for (CommandEntry& cmd :_commandOrder) {
         bool erase = false;
 
@@ -311,6 +314,7 @@ void CommandBuffer::clean() {
 
 
         if (erase) {
+            keepGoing = true;
             --_commandCount[cmd._typeIndex];
             cmd._data = PolyContainerEntry::INVALID_ENTRY_ID;
         } 
@@ -328,12 +332,20 @@ void CommandBuffer::clean() {
             {
                 --_commandCount[typeIndex];
                 entry->_data = PolyContainerEntry::INVALID_ENTRY_ID;
+                keepGoing = true;
             }
         }
     }
     {
         OPTICK_EVENT("Remove invalid commands");
         erase_if(_commandOrder, [](const CommandEntry& entry) noexcept { return entry._data == PolyContainerEntry::INVALID_ENTRY_ID; });
+        if (_commandOrder.size() != initialCommandOrderSize) {
+            keepGoing = true;
+        }
+    }
+
+    if (keepGoing) {
+        clean();
     }
 }
 

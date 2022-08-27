@@ -36,12 +36,11 @@ glTexture::~glTexture()
 }
 
 bool glTexture::unload() {
-    if (_data._textureHandle > 0u) {
-        if (GL_API::GetStateTracker()->unbindTexture(_data._textureType, _data._textureHandle)) {
-            NOP();
+    if (_defaultView._textureData._textureHandle > 0u) {
+        if (GL_API::GetStateTracker()->unbindTexture(_defaultView._textureData._textureType, _defaultView._textureData._textureHandle)) {            NOP();
         }
-        glDeleteTextures(1, &_data._textureHandle);
-        _data._textureHandle = 0u;
+        glDeleteTextures(1, &_defaultView._textureData._textureHandle);
+        _defaultView._textureData._textureHandle = 0u;
     }
 
     return true;
@@ -127,7 +126,7 @@ void glTexture::reserveStorage() {
 }
 
 void glTexture::prepareTextureData(const U16 width, const U16 height) {
-    _loadingData = _data;
+    _loadingData = _defaultView._textureData;
 
     _width = width;
     _height = height;
@@ -150,18 +149,18 @@ void glTexture::prepareTextureData(const U16 width, const U16 height) {
 
 void glTexture::submitTextureData() {
     glTextureParameteri(_loadingData._textureHandle, GL_TEXTURE_BASE_LEVEL, _descriptor.mipBaseLevel());
-    glTextureParameteri(_loadingData._textureHandle, GL_TEXTURE_MAX_LEVEL, _mipCount);
+    glTextureParameteri(_loadingData._textureHandle, GL_TEXTURE_MAX_LEVEL, mipCount());
 
     if (_descriptor.mipMappingState() == TextureDescriptor::MipMappingState::AUTO) {
         glGenerateTextureMipmap(_loadingData._textureHandle);
     }
 
-    if (_data._textureHandle > 0u) {
+    if (_defaultView._textureData._textureHandle > 0u) {
         // Immutable storage requires us to create a new texture object 
-        glDeleteTextures(1, &_data._textureHandle);
+        glDeleteTextures(1, &_defaultView._textureData._textureHandle);
     }
 
-    _data = _loadingData;
+    _defaultView._textureData = _loadingData;
     if (!Runtime::isMainThread()) {
         _lockManager.lock();
         glFlush();
@@ -353,14 +352,14 @@ void glTexture::clearDataInternal(const UColour4& clearColour, U8 level, bool cl
     const GLenum glFormat = GLUtil::glImageFormatTable[to_U32(_descriptor.baseFormat())];
     const GLenum glType = GLUtil::glDataFormat[to_U32(_descriptor.dataType())];
     if (clearRect) {
-        glClearTexSubImage(_data._textureHandle, level, rectToClear.x, rectToClear.y, depthRange.min, rectToClear.z, rectToClear.w, depthRange.max, glFormat, glType, GetClearData(_descriptor.dataType()));
+        glClearTexSubImage(_defaultView._textureData._textureHandle, level, rectToClear.x, rectToClear.y, depthRange.min, rectToClear.z, rectToClear.w, depthRange.max, glFormat, glType, GetClearData(_descriptor.dataType()));
     } else {
-        glClearTexImage(_data._textureHandle, level, glFormat, glType, GetClearData(_descriptor.dataType()));
+        glClearTexImage(_defaultView._textureData._textureHandle, level, glFormat, glType, GetClearData(_descriptor.dataType()));
     }
 }
 
 void glTexture::bindLayer(const U8 slot, const U8 level, const U8 layer, const bool layered, const Image::Flag rwFlag) {
-    assert(_data._textureType != TextureType::COUNT);
+    assert(_defaultView._textureData._textureType != TextureType::COUNT);
 
     GLenum access = GL_NONE;
     switch (rwFlag) {
@@ -372,7 +371,7 @@ void glTexture::bindLayer(const U8 slot, const U8 level, const U8 layer, const b
     assert(layer == 0u || !layered);
     if (access != GL_NONE) {
         const GLenum glInternalFormat = GLUtil::internalFormat(_descriptor.baseFormat(), _descriptor.dataType(), _descriptor.srgb(), _descriptor.normalized());
-        if (GL_API::GetStateTracker()->bindTextureImage(slot, _data._textureHandle, level, layered, layer, access, glInternalFormat) == GLStateTracker::BindResult::FAILED) {
+        if (GL_API::GetStateTracker()->bindTextureImage(slot, _defaultView._textureData._textureHandle, level, layered, layer, access, glInternalFormat) == GLStateTracker::BindResult::FAILED) {
             DIVIDE_UNEXPECTED_CALL();
         }
     } else {
@@ -425,11 +424,11 @@ Texture::TextureReadbackData glTexture::readData(U16 mipLevel, const GFXDataForm
         return MOV(data);
     }
 
-    CLAMP(mipLevel, to_U16(0u), _mipCount);
+    CLAMP(mipLevel, to_U16(0u), mipCount());
 
     GLint texWidth = _width, texHeight = _height;
-    glGetTextureLevelParameteriv(_data._textureHandle, static_cast<GLint>(mipLevel), GL_TEXTURE_WIDTH, &texWidth);
-    glGetTextureLevelParameteriv(_data._textureHandle, static_cast<GLint>(mipLevel), GL_TEXTURE_HEIGHT, &texHeight);
+    glGetTextureLevelParameteriv(_defaultView._textureData._textureHandle, static_cast<GLint>(mipLevel), GL_TEXTURE_WIDTH, &texWidth);
+    glGetTextureLevelParameteriv(_defaultView._textureData._textureHandle, static_cast<GLint>(mipLevel), GL_TEXTURE_HEIGHT, &texHeight);
 
     /** Always assume 4 channels as per GL spec:
       * If the selected texture image does not contain four components, the following mappings are applied.
@@ -448,7 +447,7 @@ Texture::TextureReadbackData glTexture::readData(U16 mipLevel, const GFXDataForm
     grabData._size = size;
 
     GL_API::GetStateTracker()->setPixelPackAlignment(1);
-    glGetTextureImage(_data._textureHandle,
+    glGetTextureImage(_defaultView._textureData._textureHandle,
                       0,
                       GLUtil::glImageFormatTable[to_base(_descriptor.baseFormat())],
                       GLUtil::glDataFormat[to_base(dataFormat)],

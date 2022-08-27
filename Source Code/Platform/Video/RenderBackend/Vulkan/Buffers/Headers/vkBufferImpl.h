@@ -60,6 +60,7 @@ namespace Divide {
         BufferUsageType _usageType{ BufferUsageType::COUNT };
         BufferParams _params{};
     };
+    FWD_DECLARE_MANAGED_STRUCT(AllocatedBuffer);
 } //namespace Divide
 
 #endif //VK_BUFFER_IMPL_H_

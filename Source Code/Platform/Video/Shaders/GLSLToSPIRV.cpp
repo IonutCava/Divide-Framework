@@ -154,7 +154,7 @@ namespace {
     }
 };
 
-bool SpirvHelper::GLSLtoSPV(const vk::ShaderStageFlagBits shader_type, const char* pshader, std::vector<unsigned int>& spirv, const bool targetVulkan, Divide::Reflection::Data& reflectionDataInOut) {
+bool SpirvHelper::GLSLtoSPV(const vk::ShaderStageFlagBits shader_type, const char* pshader, std::vector<unsigned int>& spirv, const bool targetVulkan) {
     const EShLanguage stage = FindLanguage(shader_type);
     glslang::TShader shader(stage);
     glslang::TProgram program;
@@ -215,118 +215,195 @@ bool SpirvHelper::GLSLtoSPV(const vk::ShaderStageFlagBits shader_type, const cha
     }
 
     glslang::GlslangToSpv(*program.getIntermediate(stage), spirv);
+    return !spirv.empty();
+}
 
-    BuildReflectionData(program, shader_type, reflectionDataInOut);
+bool SpirvHelper::BuildReflectionData(const vk::ShaderStageFlagBits shader_type, const std::vector<unsigned int>& spirv, const bool targetVulkan, Divide::Reflection::Data& reflectionDataInOut) {
+    const EShLanguage stage = FindLanguage(shader_type);
+
+    switch (stage) {
+        case EShLangVertex: reflectionDataInOut._stageVisibility |= to_base(Divide::ShaderStageVisibility::VERTEX); break;
+        case EShLangTessControl: reflectionDataInOut._stageVisibility |= to_base(Divide::ShaderStageVisibility::TESS_CONTROL); break;
+        case EShLangTessEvaluation: reflectionDataInOut._stageVisibility |= to_base(Divide::ShaderStageVisibility::TESS_EVAL); break;
+        case EShLangGeometry: reflectionDataInOut._stageVisibility |= to_base(Divide::ShaderStageVisibility::GEOMETRY); break;
+        case EShLangFragment: reflectionDataInOut._stageVisibility |= to_base(Divide::ShaderStageVisibility::FRAGMENT); break;
+        case EShLangCompute: reflectionDataInOut._stageVisibility |= to_base(Divide::ShaderStageVisibility::COMPUTE); break;
+        default: Divide::DIVIDE_UNEXPECTED_CALL(); break;
+    };
 
     SpvReflectShaderModule module;
     SpvReflectResult result = spvReflectCreateShaderModule(spirv.size() * sizeof(unsigned int), spirv.data(), &module);
     if (result != SPV_REFLECT_RESULT_SUCCESS) {
-        Divide::DIVIDE_UNEXPECTED_CALL();
+        return false;
     }
     uint32_t count = 0u;
     result = spvReflectEnumerateDescriptorSets(&module, &count, NULL);
     if (result != SPV_REFLECT_RESULT_SUCCESS) {
-        Divide::DIVIDE_UNEXPECTED_CALL();
+        return false;
     }
     std::vector<SpvReflectDescriptorSet*> sets(count);
     result = spvReflectEnumerateDescriptorSets(&module, &count, sets.data());
     if (result != SPV_REFLECT_RESULT_SUCCESS) {
-        Divide::DIVIDE_UNEXPECTED_CALL();
+        return false;
     }
+
+    const auto setResourceBinding = [targetVulkan](Divide::Reflection::DataEntry& entry, Divide::U8 bindingSet, Divide::U8 bindingSlot, const Divide::DescriptorSetBindingType type) {
+        if (!targetVulkan) {
+            assert(bindingSet == 0u);
+
+            const auto[set, slot] = Divide::ShaderProgram::GetDescriptorSlotForGLBinding(bindingSlot, type);
+            bindingSet = to_base(set);
+            bindingSlot = slot;
+        }
+
+        entry._bindingSet = bindingSet;
+        entry._bindingSlot = bindingSlot;
+    };
+
+    const auto fillImageData = [](Divide::Reflection::ImageEntry& target, const SpvReflectDescriptorBinding& binding) {
+        const auto& traits = binding.image;
+        target._isMultiSampled = traits.ms > 0u;
+        target._isArray = traits.arrayed > 0u;
+        if (binding.name != nullptr && strlen(binding.name) > 0) {
+            target._name = binding.name;
+        } else {
+            Divide::DIVIDE_UNEXPECTED_CALL();
+        }
+    };
+    std::function<void(Divide::Reflection::BufferMember&, const SpvReflectBlockVariable&)> fillBufferMemberData;
+    fillBufferMemberData = [&fillBufferMemberData](Divide::Reflection::BufferMember& target, const SpvReflectBlockVariable& binding) {
+        target._offset = binding.offset;
+        target._absoluteOffset = binding.absolute_offset;
+        target._size = binding.size;
+        target._paddedSize = binding.padded_size;
+        if (binding.array.dims_count > 0) {
+            target._arrayInnerSize = binding.array.dims[0];
+            if (binding.array.dims_count > 1) {
+                target._arrayOuterSize = binding.array.dims[1];
+            } 
+            if (binding.array.dims_count > 2) {
+                // We only support 2D arrays max
+                Divide::DIVIDE_UNEXPECTED_CALL();
+            }
+        }
+        target._vectorDimensions = binding.numeric.vector.component_count;
+        target._matrixDimensions.x = binding.numeric.matrix.column_count;
+        target._matrixDimensions.y = binding.numeric.matrix.row_count;
+        if (binding.name != nullptr && strlen(binding.name) > 0) {
+            target._name = binding.name;
+        } else {
+            Divide::DIVIDE_UNEXPECTED_CALL();
+        }
+
+        const uint32_t typeFlags = binding.type_description->type_flags;
+        if (typeFlags & SpvReflectTypeFlagBits::SPV_REFLECT_TYPE_FLAG_INT) {
+            if (binding.numeric.scalar.signedness == 1) {
+                target._type = Divide::GFX::PushConstantType::INT;
+            } else {
+                target._type = Divide::GFX::PushConstantType::UINT;
+            }
+        } else if (typeFlags & SpvReflectTypeFlagBits::SPV_REFLECT_TYPE_FLAG_FLOAT) {
+            Divide::DIVIDE_ASSERT(binding.numeric.scalar.signedness == 0);
+            if (binding.numeric.scalar.width == 32) {
+                target._type = Divide::GFX::PushConstantType::FLOAT;
+            } else if (binding.numeric.scalar.width == 64) {
+                target._type = Divide::GFX::PushConstantType::DOUBLE;
+            } else {
+                Divide::DIVIDE_UNEXPECTED_CALL();
+            }
+        } else if (typeFlags & SpvReflectTypeFlagBits::SPV_REFLECT_TYPE_FLAG_VECTOR) {
+            Divide::DIVIDE_UNEXPECTED_CALL();
+        } else if (typeFlags & SpvReflectTypeFlagBits::SPV_REFLECT_TYPE_FLAG_MATRIX) {
+            Divide::DIVIDE_UNEXPECTED_CALL();
+        } else if (typeFlags & SpvReflectTypeFlagBits::SPV_REFLECT_TYPE_FLAG_BOOL) {
+            Divide::DIVIDE_UNEXPECTED_CALL();
+        } else if (typeFlags & SpvReflectTypeFlagBits::SPV_REFLECT_TYPE_FLAG_STRUCT) {
+            target._memberCount = binding.member_count;
+            target._members.resize(target._memberCount);
+            for (size_t i = 0u; i < target._memberCount; ++i) {
+                fillBufferMemberData(target._members[i], binding.members[i]);
+            }
+        } else if (typeFlags & SpvReflectTypeFlagBits::SPV_REFLECT_TYPE_FLAG_ARRAY) {
+            Divide::DIVIDE_UNEXPECTED_CALL();
+        }
+    };
+
+    const auto fillBufferData = [&](Divide::Reflection::BufferEntry& target, const SpvReflectDescriptorBinding& binding) {
+        const SpvReflectBlockVariable& sourceBlock = binding.block;
+        target._offset = sourceBlock.offset;
+        target._absoluteOffset = sourceBlock.absolute_offset;
+        target._size = sourceBlock.size;
+        target._paddedSize = sourceBlock.padded_size;
+        target._memberCount = sourceBlock.member_count;
+        if (binding.type_description != nullptr && binding.type_description->type_name != nullptr) {
+            target._name = binding.type_description->type_name;
+        } else if (binding.name != nullptr && strlen(binding.name) > 0) {
+            target._name = binding.name;
+        } else {
+            Divide::DIVIDE_UNEXPECTED_CALL();
+        }
+        target._members.resize(target._memberCount);
+        for (uint32_t i = 0u; i < target._memberCount; ++i) {
+            fillBufferMemberData(target._members[i], sourceBlock.members[i]);
+        }
+    };
+
     for (uint32_t i = 0u; i < count; ++i) {
         const SpvReflectDescriptorSet& refl_set = *(sets[i]);
         for (uint32_t i_binding = 0u; i_binding < refl_set.binding_count; ++i_binding) {
             const SpvReflectDescriptorBinding& refl_binding = *(refl_set.bindings[i_binding]);
+
             if (refl_binding.descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
-                auto& image = reflectionDataInOut._images.emplace_back();
+                Divide::Reflection::ImageEntry& image = reflectionDataInOut._images.emplace_back();
                 image._combinedImageSampler = true;
                 image._isWriteTarget = false;
-                image._imageName = refl_binding.name;
-                image._bindingSet = Divide::to_U8(refl_binding.set);
-                image._targetImageBindingIndex = Divide::to_U8(refl_binding.binding);
+                fillImageData(image, refl_binding);
+                setResourceBinding(image, Divide::to_U8(refl_binding.set), Divide::to_U8(refl_binding.binding), Divide::DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER);
             } else if (refl_binding.descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLED_IMAGE) {
-                auto& image = reflectionDataInOut._images.emplace_back();
+                Divide::Reflection::ImageEntry& image = reflectionDataInOut._images.emplace_back();
                 image._combinedImageSampler = false;
                 image._isWriteTarget = false;
-                image._imageName = refl_binding.name;
-                image._bindingSet = Divide::to_U8(refl_binding.set);
-                image._targetImageBindingIndex = Divide::to_U8(refl_binding.binding);
+                fillImageData(image, refl_binding);
+                setResourceBinding(image, Divide::to_U8(refl_binding.set), Divide::to_U8(refl_binding.binding), Divide::DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER);
             } else if (refl_binding.descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLER) {
-                Divide::DebugBreak();
+                Divide::DIVIDE_UNEXPECTED_CALL(); //Not yet supported!
             } else if (refl_binding.descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
-                auto& image = reflectionDataInOut._images.emplace_back();
+                Divide::Reflection::ImageEntry& image = reflectionDataInOut._images.emplace_back();
                 image._combinedImageSampler = false;
                 image._isWriteTarget = true;
-                image._imageName = refl_binding.name;
-                image._bindingSet = Divide::to_U8(refl_binding.set);
-                image._targetImageBindingIndex = Divide::to_U8(refl_binding.binding);
+                fillImageData(image, refl_binding);
+                setResourceBinding(image, Divide::to_U8(refl_binding.set), Divide::to_U8(refl_binding.binding), Divide::DescriptorSetBindingType::IMAGE);
             } else if (refl_binding.descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
-                //Divide::DebugBreak();
+                Divide::Reflection::BufferEntry& buffer = reflectionDataInOut._buffers.emplace_back();
+                buffer._uniformBuffer = true;
+                buffer._dynamic = false;
+                fillBufferData(buffer, refl_binding);
+                setResourceBinding(buffer, Divide::to_U8(refl_binding.set), Divide::to_U8(refl_binding.binding), Divide::DescriptorSetBindingType::UNIFORM_BUFFER);
             } else if (refl_binding.descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC) {
-                Divide::DebugBreak();
+                Divide::Reflection::BufferEntry& buffer = reflectionDataInOut._buffers.emplace_back();
+                buffer._uniformBuffer = true;
+                buffer._dynamic = true;
+                fillBufferData(buffer, refl_binding);
+                setResourceBinding(buffer, Divide::to_U8(refl_binding.set), Divide::to_U8(refl_binding.binding), Divide::DescriptorSetBindingType::UNIFORM_BUFFER);
             } else if (refl_binding.descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER) {
-                //Divide::DebugBreak();
+                Divide::Reflection::BufferEntry& buffer = reflectionDataInOut._buffers.emplace_back();
+                buffer._uniformBuffer = false;
+                buffer._dynamic = false;
+                fillBufferData(buffer, refl_binding);
+                setResourceBinding(buffer, Divide::to_U8(refl_binding.set), Divide::to_U8(refl_binding.binding), Divide::DescriptorSetBindingType::SHADER_STORAGE_BUFFER);
             } else if (refl_binding.descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
-                Divide::DebugBreak();
+                Divide::Reflection::BufferEntry& buffer = reflectionDataInOut._buffers.emplace_back();
+                buffer._uniformBuffer = false;
+                buffer._dynamic = true;
+                fillBufferData(buffer, refl_binding);
+                setResourceBinding(buffer, Divide::to_U8(refl_binding.set), Divide::to_U8(refl_binding.binding), Divide::DescriptorSetBindingType::SHADER_STORAGE_BUFFER);
             } else {
                 Divide::DIVIDE_UNEXPECTED_CALL();
             }
         }
     }
+
     spvReflectDestroyShaderModule(&module);
 
     return true;
-}
-
-void SpirvHelper::BuildReflectionData(glslang::TProgram& program, const vk::ShaderStageFlagBits shader_type, Divide::Reflection::Data& reflectionDataInOut) {
-    if (reflectionDataInOut._blockSize != 0u) {
-        return;
-    }
-
-    Divide::DIVIDE_ASSERT(reflectionDataInOut._blockMembers.empty());
-
-    if (program.buildReflection()) {
-        const int numUniformBlocks = program.getNumLiveUniformBlocks();
-        for (int i = 0; i < numUniformBlocks; ++i) {
-            const auto& block = program.getUniformBlock(i);
-
-            if (block.name == reflectionDataInOut._targetBlockName) {
-                reflectionDataInOut._blockSize = block.size;
-                const auto& structure = block.getType()->getStruct();
-                const int numMembers = block.numMembers;
-                reflectionDataInOut._blockMembers.resize(numMembers);
-                for (int j = 0; j < numMembers; ++j) {
-                    const auto& member = (*structure)[j];
-                    Divide::Reflection::BlockMember& target = reflectionDataInOut._blockMembers[j];
-                    
-                    target._offset = member.type->getQualifier().layoutOffset;
-                    target._type = GetGFXType(member.type->getBasicType());
-                    target._vectorDimensions = member.type->getVectorSize();
-                    target._matrixDimensions = { member.type->getMatrixCols(), member.type->getMatrixRows() };
-                    target._name = member.type->getFieldName().c_str();
-                    if (member.type->isArray()) {
-                        target._arrayOuterSize = member.type->getOuterArraySize();
-                        const int numDimemsions = member.type->getArraySizes()->getNumDims();
-                        Divide::DIVIDE_ASSERT(numDimemsions <= 2);
-                        if (numDimemsions > 1) {
-                            target._arrayInnerSize = member.type->getArraySizes()->getDimSize(1);
-                        }
-                    }
-                }
-            }
-        }
-
-        if (shader_type == vk::ShaderStageFlagBits::eVertex) {
-            reflectionDataInOut._enabledAttributes.fill(false);
-            const int numAttribInputs = program.getNumLiveUniformBlocks();
-            for (int i = 0; i < numAttribInputs; ++i) {
-                const auto& attrib = program.getPipeInput(i);
-                const int binding = attrib.getBinding();
-                if (binding != -1) {
-                    reflectionDataInOut._enabledAttributes[binding] = true;
-                }
-            }
-            Divide::NOP();
-        }
-    }
 }

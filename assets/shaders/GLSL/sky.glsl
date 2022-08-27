@@ -264,11 +264,11 @@ layout(location = ATTRIB_FREE_START + 2) in vec3 vAmbient;
 layout(location = ATTRIB_FREE_START + 3) in vec3 vBetaR;
 layout(location = ATTRIB_FREE_START + 4) in vec3 vBetaM;
 
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0)     uniform samplerCubeArray texSky;
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_HEIGHTMAP) uniform sampler2DArray weather;
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT1)     uniform sampler2DArray curl;
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_SPECULAR)  uniform sampler3D worl;
-DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_NORMALMAP) uniform sampler3D perlworl;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform samplerCubeArray texSky;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 2) uniform sampler3D perlworl;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 3) uniform sampler2DArray weather;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 4) uniform sampler3D worl;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 9) uniform sampler2DArray curl;
 
 uniform vec3 dvd_nightSkyColour;
 uniform vec3 dvd_moonColour;

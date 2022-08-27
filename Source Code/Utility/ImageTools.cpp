@@ -287,7 +287,7 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
             // Try and save regular images to DDS for better compression next time
             if (options._useDDSCache) {
                 if (!createDirectory(cachePath)) {
-                    DebugBreak();
+                    DIVIDE_UNEXPECTED_CALL();
                 }
 
                 const ResourcePath cacheFilePath = cachePath + cacheName;
@@ -337,7 +337,7 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
                         image.setNormalMap(options._isNormalMap);
 
                         if (!context.outputHeader(image, image.countMipmaps(), compressionOptions, outputOptions)) {
-                            DebugBreak();
+                            DIVIDE_UNEXPECTED_CALL();
                         }
 
                         if (UseUpperLeftOrigin()) {
@@ -355,7 +355,7 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
                             }
                         }
                         if (!context.compress(image, 0, 0, compressionOptions, outputOptions)) {
-                            DebugBreak();
+                            DIVIDE_UNEXPECTED_CALL();
                         }
 
                         // Build and output mipmaps.

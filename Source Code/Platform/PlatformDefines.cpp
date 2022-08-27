@@ -38,27 +38,26 @@ void log_delete(void* p) {
 
 namespace Assert {
 
-    bool DIVIDE_ASSERT_FUNC(const bool expression, [[maybe_unused]] const char* file, [[maybe_unused]] const int line, [[maybe_unused]] const char* failMessage) noexcept {
+    bool DIVIDE_ASSERT_FUNC(const bool expression, const char* file, const int line, const char* failMessage) noexcept {
         if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
+            if (failMessage == nullptr || strlen(failMessage) == 0) {
+                return DIVIDE_ASSERT_FUNC(expression, file, line, "Message truncated");
+            }
+
             if (!expression) {
-                const char* msgOut = FormatText("[ %s ] [ %s ] AT [ %d ]", failMessage, file, line);
-                if (strlen(msgOut) == 0) {
-                    return DIVIDE_ASSERT_FUNC(expression, file, line, "Message truncated");
-                }
-
+                const char* msgOut = FormatText("ASSERT [%s : %d]: %s", file, line, failMessage);
                 if_constexpr(Config::Assert::LOG_ASSERTS) {
-                    Console::errorfn(failMessage);
+                    Console::errorfn(msgOut);
                 }
-
-                Console::flush();
 
                 DIVIDE_ASSERT_MSG_BOX(msgOut);
+                Console::flush();
 
-                if_constexpr(!Config::Assert::CONTINUE_ON_ASSERT) {
+                if_constexpr(Config::Assert::CONTINUE_ON_ASSERT) {
+                    DebugBreak();
+                } else {
                     assert(expression && msgOut);
                 }
-
-                DebugBreak();
             }
         }
 
@@ -66,9 +65,10 @@ namespace Assert {
     }
 }; // namespace Assert
 
-SysInfo::SysInfo() noexcept : _availableRamInBytes(0),
-                     _systemResolutionWidth(0),
-                     _systemResolutionHeight(0)
+SysInfo::SysInfo() noexcept 
+    : _availableRamInBytes(0),
+      _systemResolutionWidth(0),
+      _systemResolutionHeight(0)
 {
 }
 

@@ -44,34 +44,36 @@ namespace Divide {
 
     enum class DescriptorSetBindingType : U8 {
         COMBINED_IMAGE_SAMPLER,
+        IMAGE,
         UNIFORM_BUFFER,
         SHADER_STORAGE_BUFFER,
-        IMAGE,
-        IMAGE_VIEW,
         COUNT
     };
 
     struct ImageView final : Hashable
     {
+        struct Descriptor final : Hashable {
+            U8 _msaaSamples{ 0u };
+            GFXDataFormat _dataType{ GFXDataFormat::COUNT };
+            GFXImageFormat _baseFormat{ GFXImageFormat::COUNT };
+            bool _srgb{ false };
+            bool _normalized{ true };
+
+            [[nodiscard]] size_t getHash() const override;
+
+        } _descriptor;
+
         TextureData _textureData{};
-        TextureType _targetType{ TextureType::COUNT };
-        size_t _samplerHash{ 0u };
         vec2<U16> _mipLevels{};
         vec2<U16> _layerRange{};
 
-        size_t getHash() const override;
-    };
+        [[nodiscard]] size_t getHash() const override;
 
-    struct ImageViewEntry final : Hashable
-    {
-        ImageView _view{};
-        TextureDescriptor _descriptor{};
+        [[nodiscard]] bool isDefaultView() const noexcept;
 
-        [[nodiscard]] bool isValid() const noexcept { return IsValid(_view._textureData); }
-
-        void reset() noexcept { _view = {}; _descriptor = {}; }
-
-        size_t getHash() const override;
+    private:
+        friend class Texture;
+        bool _isDefaultView{ false };
     };
 
     struct Image
@@ -91,21 +93,24 @@ namespace Divide {
     };
 
     struct DescriptorCombinedImageSampler {
-        TextureData _image{};
+        ImageView _image{};
         size_t _samplerHash{ 0u };
     };
 
     struct ShaderBufferEntry {
+        ShaderBufferEntry() = default;
+        ShaderBufferEntry(ShaderBuffer& buffer, const BufferRange& range);
+
         ShaderBuffer* _buffer{ nullptr };
         BufferRange _range{};
+        I32 _bufferQueueReadIndex{ 0u };
     };
 
     struct DescriptorSetBindingData {
-        std::variant<std::monostate,
-                     ShaderBufferEntry,
-                     DescriptorCombinedImageSampler,
-                     Image,
-                     ImageViewEntry> _resource{};
+        eastl::variant<std::monostate,
+                       ShaderBufferEntry,
+                       DescriptorCombinedImageSampler,
+                       Image> _resource{};
 
         [[nodiscard]] bool isSet() const noexcept;
 
@@ -125,36 +130,18 @@ namespace Divide {
     };
 
     struct DescriptorSetBinding {
-        enum class ShaderStageVisibility : U16 {
-            NONE = 0,
-            VERTEX = toBit(1),
-            GEOMETRY = toBit(2),
-            TESS_CONTROL = toBit(3),
-            TESS_EVAL = toBit(4),
-            FRAGMENT = toBit(5),
-            COMPUTE = toBit(6),
-            /*MESH = toBit(7),
-            TASK = toBit(8),*/
-            ALL_GEOMETRY = /*MESH | TASK |*/ VERTEX | GEOMETRY | TESS_CONTROL | TESS_EVAL,
-            ALL_DRAW = ALL_GEOMETRY | FRAGMENT,
-            COMPUTE_AND_DRAW = FRAGMENT | COMPUTE,
-            COMPUTE_AND_GEOMETRY = ALL_GEOMETRY | COMPUTE,
-            ALL = ALL_DRAW | COMPUTE
-        };
-
         DescriptorBindingEntry _resource{};
         U16 _shaderStageVisibility{ to_base(ShaderStageVisibility::NONE) };
         DescriptorSetBindingType _type{ DescriptorSetBindingType::COUNT };
     };
 
     using DescriptorSet = eastl::fixed_vector<DescriptorSetBinding, 16, false>;
-
     using DescriptorBindings = eastl::fixed_vector<DescriptorBindingEntry, 16, false>;
 
     bool operator==(const ImageView& lhs, const ImageView& rhs) noexcept;
     bool operator!=(const ImageView& lhs, const ImageView& rhs) noexcept;
-    bool operator==(const ImageViewEntry& lhs, const ImageViewEntry& rhs) noexcept;
-    bool operator!=(const ImageViewEntry& lhs, const ImageViewEntry& rhs) noexcept;
+    bool operator==(const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs) noexcept;
+    bool operator!=(const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs) noexcept;
     bool operator==(const Image& lhs, const Image& rhs) noexcept;
     bool operator!=(const Image& lhs, const Image& rhs) noexcept;
     bool operator==(const ShaderBufferEntry& lhs, const ShaderBufferEntry& rhs) noexcept;

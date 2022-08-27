@@ -80,7 +80,7 @@ public:
 private:
     F32 _simulationSpeed = 1.0f;
     PhysicsAPI _API_ID = PhysicsAPI::COUNT;
-    eastl::unique_ptr<PhysicsAPIWrapper> _api = nullptr;
+    PhysicsAPIWrapper_uptr _api = nullptr;
 
 };
 

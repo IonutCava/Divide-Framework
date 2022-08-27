@@ -90,10 +90,10 @@ void SetEnabled(RTDrawMask& mask, RTAttachmentType type, U8 index, bool state) n
 void EnableAll(RTDrawMask& mask);
 void DisableAll(RTDrawMask& mask);
 
-bool operator==(const RTDrawMask& lhs, const RTDrawMask& rhs) noexcept;
-bool operator!=(const RTDrawMask& lhs, const RTDrawMask& rhs) noexcept;
-bool operator==(const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs) noexcept;
-bool operator!=(const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs) noexcept;
+bool operator==(const RTDrawMask& lhs, const RTDrawMask& rhs);
+bool operator!=(const RTDrawMask& lhs, const RTDrawMask& rhs);
+bool operator==(const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs);
+bool operator!=(const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs);
 
 }; //namespace Divide
 

@@ -14,14 +14,14 @@ layout(location = TARGET_ALBEDO) out vec4 _colourOut;
 layout(location = TARGET_ACCUMULATION) out vec4  _accum;
 layout(location = TARGET_REVEALAGE) out float _revealage;
 
-DESCRIPTOR_SET_RESOURCE(PER_PASS_SET, TEXTURE_DEPTH) uniform sampler2D texDepth;
+DESCRIPTOR_SET_RESOURCE(PER_PASS, 1) uniform sampler2D texDepth;
 #define SampleDepth(UV) texture(texDepth, UV).r
 
 #if defined(USE_COLOURED_WOIT)
 layout(location = TARGET_MODULATE) out vec4  _modulate;
 #endif
 
-//DESCRIPTOR_SET_RESOURCE(PER_PASS_SET, TEXTURE_TRANSMITANCE) uniform sampler2D texTransmitance;
+//DESCRIPTOR_SET_RESOURCE(PER_PASS, 2) uniform sampler2D texTransmitance;
 
 // Shameless copy-paste from http://casual-effects.blogspot.co.uk/2015/03/colored-blended-order-independent.html
 void writePixel(in vec4 premultipliedReflect, in vec3 transmit, in float viewSpaceZ) {

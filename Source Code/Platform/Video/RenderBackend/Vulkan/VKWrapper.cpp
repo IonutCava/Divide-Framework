@@ -70,7 +70,7 @@ namespace Divide {
     VKDeletionQueue VK_API::s_transientDeleteQueue;
     VKDeletionQueue VK_API::s_deviceDeleteQueue;
 
-    eastl::unique_ptr<VKStateTracker> VK_API::s_stateTracker = nullptr;
+    VKStateTracker_uptr VK_API::s_stateTracker = nullptr;
 
     VkPipeline PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass) {
         //make viewport state from our stored viewport and scissor.
@@ -90,6 +90,20 @@ namespace Divide {
             VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
             VK_DYNAMIC_STATE_STENCIL_REFERENCE,
             VK_DYNAMIC_STATE_DEPTH_BIAS,
+
+            //ToDo:
+             /*VK_DYNAMIC_STATE_CULL_MODE,
+             VK_DYNAMIC_STATE_FRONT_FACE,
+             VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY,
+             VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE,
+             VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE,
+             VK_DYNAMIC_STATE_DEPTH_COMPARE_OP,
+             VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE,
+             VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE,
+             VK_DYNAMIC_STATE_STENCIL_OP,
+             VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE,
+             VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE,
+             VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE,*/
         };
 
         constexpr U32 stateCount = to_U32(std::size(dynamicStates));
@@ -277,7 +291,7 @@ namespace Divide {
                .set_engine_name(Config::ENGINE_NAME)
                .set_engine_version(Config::ENGINE_VERSION_MAJOR, Config::ENGINE_VERSION_MINOR, Config::ENGINE_VERSION_PATCH)
                .request_validation_layers(Config::ENABLE_GPU_VALIDATION)
-               .require_api_version(1, Config::MINIMUM_VULKAN_MINOR_VERSION, 0)
+               .require_api_version(1, Config::DESIRED_VULKAN_MINOR_VERSION, 0)
                .set_debug_callback(divide_debug_callback)
                .set_debug_callback_user_data_pointer(this);
 
@@ -327,17 +341,14 @@ namespace Divide {
 
         recreateSwapChain(window);
 
+        DIVIDE_ASSERT(Config::MINIMUM_VULKAN_MINOR_VERSION > 2);
+
         VmaAllocatorCreateInfo allocatorInfo = {};
         allocatorInfo.physicalDevice = _device->getPhysicalDevice();
         allocatorInfo.device = _device->getDevice();
         allocatorInfo.instance = _vkbInstance.instance;
-        if_constexpr(Config::MINIMUM_VULKAN_MINOR_VERSION > 2) {
-            allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_3;
-        } else if_constexpr(Config::MINIMUM_VULKAN_MINOR_VERSION > 1) {
-            allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_2;
-        } else if_constexpr(Config::MINIMUM_VULKAN_MINOR_VERSION > 0) {
-            allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_1;
-        }
+        allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_3;
+        
         vmaCreateAllocator(&allocatorInfo, &_allocator);
         GetStateTracker()->_allocator = &_allocator;
 
@@ -880,31 +891,31 @@ namespace Divide {
             VkDescriptorSetLayoutBinding& tempBinding = tempBindings[index++];
             assert(index < s_maxBindings);
 
-            if (binding._shaderStageVisibility == to_base(DescriptorSetBinding::ShaderStageVisibility::NONE)) {
+            if (binding._shaderStageVisibility == to_base(ShaderStageVisibility::NONE)) {
                 continue;
-            } else if (binding._shaderStageVisibility == to_base(DescriptorSetBinding::ShaderStageVisibility::ALL)) {
+            } else if (binding._shaderStageVisibility == to_base(ShaderStageVisibility::ALL)) {
                 tempBinding.stageFlags = VK_SHADER_STAGE_ALL;
-            } else if (binding._shaderStageVisibility == to_base(DescriptorSetBinding::ShaderStageVisibility::ALL_DRAW)) {
+            } else if (binding._shaderStageVisibility == to_base(ShaderStageVisibility::ALL_DRAW)) {
                 tempBinding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
-            } else if (binding._shaderStageVisibility == to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE)) {
+            } else if (binding._shaderStageVisibility == to_base(ShaderStageVisibility::COMPUTE)) {
                 tempBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
             } else {
-                if (BitCompare(binding._shaderStageVisibility, DescriptorSetBinding::ShaderStageVisibility::VERTEX)) {
+                if (BitCompare(binding._shaderStageVisibility, ShaderStageVisibility::VERTEX)) {
                     tempBinding.stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
                 }
-                if (BitCompare(binding._shaderStageVisibility, DescriptorSetBinding::ShaderStageVisibility::GEOMETRY)) {
+                if (BitCompare(binding._shaderStageVisibility, ShaderStageVisibility::GEOMETRY)) {
                     tempBinding.stageFlags |= VK_SHADER_STAGE_GEOMETRY_BIT;
                 }
-                if (BitCompare(binding._shaderStageVisibility, DescriptorSetBinding::ShaderStageVisibility::TESS_CONTROL)) {
+                if (BitCompare(binding._shaderStageVisibility, ShaderStageVisibility::TESS_CONTROL)) {
                     tempBinding.stageFlags |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
                 }
-                if (BitCompare(binding._shaderStageVisibility, DescriptorSetBinding::ShaderStageVisibility::TESS_EVAL)) {
+                if (BitCompare(binding._shaderStageVisibility, ShaderStageVisibility::TESS_EVAL)) {
                     tempBinding.stageFlags |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
                 }
-                if (BitCompare(binding._shaderStageVisibility, DescriptorSetBinding::ShaderStageVisibility::FRAGMENT)) {
+                if (BitCompare(binding._shaderStageVisibility, ShaderStageVisibility::FRAGMENT)) {
                     tempBinding.stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
                 }
-                if (BitCompare(binding._shaderStageVisibility, DescriptorSetBinding::ShaderStageVisibility::COMPUTE)) {
+                if (BitCompare(binding._shaderStageVisibility, ShaderStageVisibility::COMPUTE)) {
                     tempBinding.stageFlags |= VK_SHADER_STAGE_COMPUTE_BIT;
                 }
             }
@@ -933,10 +944,10 @@ namespace Divide {
         }, false);
     }
 
-    VKStateTracker* VK_API::GetStateTracker() noexcept {
+    const VKStateTracker_uptr& VK_API::GetStateTracker() noexcept {
         DIVIDE_ASSERT(s_stateTracker != nullptr);
 
-        return s_stateTracker.get();
+        return s_stateTracker;
     }
 
     void VK_API::InsertDebugMessage(VkCommandBuffer cmdBuffer, const char* message, [[maybe_unused]] const U32 id) {

@@ -12,6 +12,7 @@ bool Configuration::fromXML(const char* xmlFile) {
         GET_PARAM(debug.enableRenderAPIDebugging);
         GET_PARAM(debug.useGeometryCache);
         GET_PARAM(debug.useVegetationCache);
+        GET_PARAM(debug.useShaderCache);
         GET_PARAM(debug.enableTreeInstances);
         GET_PARAM(debug.enableGrassInstances);
         GET_PARAM(debug.renderFilter.primitives);
@@ -165,6 +166,7 @@ bool Configuration::toXML(const char* xmlFile) const {
     if (LoadSave.prepareSaveFile(xmlFile)) {
         PUT_PARAM(debug.enableRenderAPIDebugging);
         PUT_PARAM(debug.useGeometryCache);
+        PUT_PARAM(debug.useShaderCache);
         PUT_PARAM(debug.useVegetationCache);
         PUT_PARAM(debug.enableTreeInstances);
         PUT_PARAM(debug.enableGrassInstances);

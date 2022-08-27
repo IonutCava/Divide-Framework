@@ -103,8 +103,8 @@ class glLockManager : public GUIDWrapper {
     static [[nodiscard]] SyncObjectHandle CreateSyncObjectLocked(U8 flag, bool isRetry = false);
    protected:
      mutable Mutex _bufferLockslock; // :D
-     vector<BufferLockInstance> _bufferLocks;
-     vector<BufferLockInstance> _swapLocks;
+     eastl::fixed_vector<BufferLockInstance, 64, true> _bufferLocks;
+     eastl::fixed_vector<BufferLockInstance, 64, true> _swapLocks;
 
      static Mutex s_bufferLockLock; // :D
      static BufferLockPool s_bufferLockPool;

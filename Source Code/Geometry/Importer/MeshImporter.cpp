@@ -272,7 +272,7 @@ namespace Import {
         return success;
     }
 
-    bool MeshImporter::loadMesh(const bool loadedFromCache, const Mesh_ptr& mesh, PlatformContext& context, ResourceCache* cache, const Import::ImportData& dataIn) {
+    bool MeshImporter::loadMesh(const bool loadedFromCache, Mesh* mesh, PlatformContext& context, ResourceCache* cache, const Import::ImportData& dataIn) {
         Time::ProfileTimer importTimer;
         importTimer.start();
 
@@ -385,7 +385,7 @@ namespace Import {
 
         TextureDescriptor textureDescriptor(TextureType::TEXTURE_2D_ARRAY);
 
-        for (U32 i = 0; i < to_base(TextureUsage::COUNT); ++i) {
+        for (U32 i = 0; i < to_base(TextureSlot::COUNT); ++i) {
             const Import::TextureEntry& tex = importData._textures[i];
             if (!tex.textureName().empty()) {
                 textureSampler.wrapU(tex.wrapU());
@@ -407,7 +407,7 @@ namespace Import {
                 texture.waitForReady(true);
                 Texture_ptr texPtr = CreateResource<Texture>(cache, texture, taskCounter);
                 texPtr->addStateCallback(ResourceState::RES_LOADED, [tempMaterial, i, texPtr, tex, textureSampler](CachedResource*) {
-                    tempMaterial->setTexture(static_cast<TextureUsage>(i), texPtr, textureSampler.getHash(),tex.operation());
+                    tempMaterial->setTexture(static_cast<TextureSlot>(i), texPtr, textureSampler.getHash(),tex.operation());
                 });
             }
         }

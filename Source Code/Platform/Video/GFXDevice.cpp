@@ -116,197 +116,197 @@ DeviceInformation GFXDevice::s_deviceInformation{};
 GFXDevice::IMPrimitivePool GFXDevice::s_IMPrimitivePool{};
 #pragma region Construction, destruction, initialization
 
-void GFXDevice::GFXDescriptorSets::init(RenderAPIWrapper* api) {
+void GFXDevice::initDescriptorSets() {
     {
-        _globalDescriptorSets[to_base(DescriptorSetUsage::PER_DRAW_SET)].usage(DescriptorSetUsage::PER_DRAW_SET);
-        _globalDescriptorSets[to_base(DescriptorSetUsage::PER_BATCH_SET)].usage(DescriptorSetUsage::PER_BATCH_SET);
-        _globalDescriptorSets[to_base(DescriptorSetUsage::PER_PASS_SET)].usage(DescriptorSetUsage::PER_PASS_SET);
-        _globalDescriptorSets[to_base(DescriptorSetUsage::PER_FRAME_SET)].usage(DescriptorSetUsage::PER_FRAME_SET);
-
-        auto& frameSet = _globalDescriptorSets[to_base(DescriptorSetUsage::PER_FRAME_SET)].set();
-        
+        auto& batchSet = _descriptorSets._perBatchSet.impl();
         {
-            auto& binding = frameSet.emplace_back();
+            auto& binding = batchSet.emplace_back();
+            binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+            binding._resource._slot = 0; // CMD_BUFFER;
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::COMPUTE);
+        }
+        {
+            auto& binding = batchSet.emplace_back();
             binding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
-            binding._resource._slot = to_U8(ShaderBufferLocation::SCENE_DATA);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::ALL_DRAW);
+            binding._resource._slot = 1;// CAM_BLOCK;
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::ALL);
         }
         {
-            auto& binding = frameSet.emplace_back();
-            binding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
-            binding._resource._slot = to_U8(ShaderBufferLocation::PROBE_DATA);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW);
-        }
-        {
-            auto& binding = frameSet.emplace_back();
-            binding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
-            binding._resource._slot = to_U8(ShaderBufferLocation::LIGHT_SCENE);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW);
-        }
-        {
-            auto& binding = frameSet.emplace_back();
+            auto& binding = batchSet.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resource._slot = to_U8(ShaderBufferLocation::LIGHT_NORMAL);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW);
+            binding._resource._slot = 2; // GPU_COMMANDS;
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::COMPUTE);
         }
         {
-            auto& binding = frameSet.emplace_back();
+            auto& binding = batchSet.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resource._slot = to_U8(ShaderBufferLocation::LIGHT_GRID);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW);
+            binding._resource._slot = 3; // NODE_TRANSFORM_DATA;
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::ALL_GEOMETRY);
         }
         {
-            auto& binding = frameSet.emplace_back();
+            auto& binding = batchSet.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resource._slot = to_U8(ShaderBufferLocation::LIGHT_INDICES);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW);
+            binding._resource._slot = 4; // NODE_INDIRECTION_DATA;
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::VERTEX);
         }
         {
-            auto& binding = frameSet.emplace_back();
+            auto& binding = batchSet.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resource._slot = to_U8(ShaderBufferLocation::LIGHT_CLUSTER_AABBS);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW);
+            binding._resource._slot = 5; // NODE_MATERIAL_DATA;
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::FRAGMENT);
         }
-        {
-            auto& binding = frameSet.emplace_back();
-            binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resource._slot = to_U8(ShaderBufferLocation::LIGHT_SHADOW);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
-        }
-        {
-            auto& binding = frameSet.emplace_back();
-            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resource._slot = to_U8(TextureUsage::SHADOW_SINGLE);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
-        }
-        {
-            auto& binding = frameSet.emplace_back();
-            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resource._slot = to_U8(TextureUsage::SHADOW_LAYERED);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
-        }
-        {
-            auto& binding = frameSet.emplace_back();
-            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resource._slot = to_U8(TextureUsage::SHADOW_CUBE);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
-        }
-        {
-            auto& binding = frameSet.emplace_back();
-            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resource._slot = to_U8(TextureUsage::REFLECTION_PREFILTERED);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
-        }
-        {
-            auto& binding = frameSet.emplace_back();
-            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resource._slot = to_U8(TextureUsage::IRRADIANCE);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
-        }
-        {
-            auto& binding = frameSet.emplace_back();
-            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resource._slot = to_U8(TextureUsage::BRDF_LUT);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
-        }
-        api->createSetLayout(DescriptorSetUsage::PER_FRAME_SET, frameSet);
+        createSetLayout(DescriptorSetUsage::PER_BATCH, batchSet);
     }
     {
-        auto& passSet = _globalDescriptorSets[to_base(DescriptorSetUsage::PER_PASS_SET)].set();
+        auto& passSet = _descriptorSets._perPassSet.impl();
+        {
+            auto& binding = passSet.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resource._slot = 0; // SCENE_NORMALS;
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::FRAGMENT);
+        }
+        {
+            auto& binding = passSet.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resource._slot = 1; // DEPTH;
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::FRAGMENT);
+        }
+        {
+            auto& binding = passSet.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resource._slot = 2; // TRANSMITANCE;
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::FRAGMENT);
+        }
+        {
+            auto& binding = passSet.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resource._slot = 3; // SSR_SAMPLE;
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::FRAGMENT);
+        }
+        {
+            auto& binding = passSet.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resource._slot = 4; // SSAO_SAMPLE;
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::FRAGMENT);
+        }
         {
             auto& binding = passSet.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resource._slot = to_U8(ShaderBufferLocation::TREE_DATA);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_GEOMETRY);
+            binding._resource._slot = 5; // TREE_DATA;
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::COMPUTE_AND_GEOMETRY);
         }
         {
             auto& binding = passSet.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resource._slot = to_U8(ShaderBufferLocation::GRASS_DATA);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_GEOMETRY);
+            binding._resource._slot = 6; // GRASS_DATA;
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::COMPUTE_AND_GEOMETRY);
         }
         {
             auto& binding = passSet.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resource._slot = to_U8(ShaderBufferLocation::ATOMIC_COUNTER);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE);
+            binding._resource._slot = 7; // ATOMIC_COUNTER;
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::COMPUTE);
         }
-        {
-            auto& binding = passSet.emplace_back();
-            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resource._slot = to_U8(TextureUsage::SCENE_NORMALS);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
-        }
-        {
-            auto& binding = passSet.emplace_back();
-            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resource._slot = to_U8(TextureUsage::DEPTH);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
-        }
-        {
-            auto& binding = passSet.emplace_back();
-            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resource._slot = to_U8(TextureUsage::TRANSMITANCE);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
-        }
-        {
-            auto& binding = passSet.emplace_back();
-            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resource._slot = to_U8(TextureUsage::SSR_SAMPLE);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
-        }
-        {
-            auto& binding = passSet.emplace_back();
-            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-            binding._resource._slot = to_U8(TextureUsage::SSAO_SAMPLE);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
-        }
-        api->createSetLayout(DescriptorSetUsage::PER_PASS_SET, passSet);
+        createSetLayout(DescriptorSetUsage::PER_PASS, passSet);
     }
     {
-        auto& batchSet = _globalDescriptorSets[to_base(DescriptorSetUsage::PER_BATCH_SET)].set();
+        auto& frameSet = _descriptorSets._perFrameSet.impl();
         {
-            auto& binding = batchSet.emplace_back();
+            auto& binding = frameSet.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resource._slot = 0; //ENV Prefiltered
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::FRAGMENT);
+        }
+        {
+            auto& binding = frameSet.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resource._slot = 1; //ENV Irradiance
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::FRAGMENT);
+        }
+        {
+            auto& binding = frameSet.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resource._slot = 2; //BRDF Lut
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::FRAGMENT);
+        }
+        {
+            auto& binding = frameSet.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resource._slot = 3; //Shadow Single
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::FRAGMENT);
+        }
+        {
+            auto& binding = frameSet.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resource._slot = 4; //Shadow Array
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::FRAGMENT);
+        }
+        {
+            auto& binding = frameSet.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resource._slot = 5; //Shadow Cube
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::FRAGMENT);
+        }
+        {
+            auto& binding = frameSet.emplace_back();
             binding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
-            binding._resource._slot = to_U8(ShaderBufferLocation::CAM_BLOCK);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::ALL);
+            binding._resource._slot = 6; //SCENE_DATA;
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::ALL_DRAW);
         }
         {
-            auto& binding = batchSet.emplace_back();
-            binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resource._slot = to_U8(ShaderBufferLocation::GPU_COMMANDS);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE);
+            auto& binding = frameSet.emplace_back();
+            binding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
+            binding._resource._slot = 7; //PROBE_DATA;
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::COMPUTE_AND_DRAW);
         }
         {
-            auto& binding = batchSet.emplace_back();
-            binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resource._slot = to_U8(ShaderBufferLocation::CMD_BUFFER);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::COMPUTE);
+            auto& binding = frameSet.emplace_back();
+            binding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
+            binding._resource._slot = 8; //LIGHT_SCENE;
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::COMPUTE_AND_DRAW);
         }
         {
-            auto& binding = batchSet.emplace_back();
+            auto& binding = frameSet.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resource._slot = to_U8(ShaderBufferLocation::NODE_TRANSFORM_DATA);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::ALL_GEOMETRY);
+            binding._resource._slot = 9; //LIGHT_NORMAL;
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::COMPUTE_AND_DRAW);
         }
         {
-            auto& binding = batchSet.emplace_back();
+            auto& binding = frameSet.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resource._slot = to_U8(ShaderBufferLocation::NODE_INDIRECTION_DATA);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::VERTEX);
+            binding._resource._slot = 10; // LIGHT_GRID);
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::COMPUTE_AND_DRAW);
         }
         {
-            auto& binding = batchSet.emplace_back();
+            auto& binding = frameSet.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._resource._slot = to_U8(ShaderBufferLocation::NODE_MATERIAL_DATA);
-            binding._shaderStageVisibility = to_base(DescriptorSetBinding::ShaderStageVisibility::FRAGMENT);
+            binding._resource._slot = 11; // LIGHT_INDICES;
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::COMPUTE_AND_DRAW);
         }
-        api->createSetLayout(DescriptorSetUsage::PER_BATCH_SET, batchSet);
+        {
+            auto& binding = frameSet.emplace_back();
+            binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+            binding._resource._slot = 12; // LIGHT_CLUSTER_AABBS;
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::COMPUTE_AND_DRAW);
+        }
+        {
+            auto& binding = frameSet.emplace_back();
+            binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+            binding._resource._slot = 13; // LIGHT_SHADOW;
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::FRAGMENT);
+        }
+        {
+            auto& binding = frameSet.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resource._slot = 14; // Cube Reflection
+            binding._shaderStageVisibility = to_base(ShaderStageVisibility::FRAGMENT);
+        }
+        createSetLayout(DescriptorSetUsage::PER_FRAME, frameSet);
     }
 }
 
 void GFXDevice::GFXDescriptorSet::update(const U8 slot, const DescriptorSetBindingData& newBindingData) {
-    for (DescriptorSetBinding& bindingEntry : _set) {
+    for (DescriptorSetBinding& bindingEntry : _impl) {
         assert(bindingEntry._type != DescriptorSetBindingType::COUNT && newBindingData.Type() != DescriptorSetBindingType::COUNT);
         if (bindingEntry._type == newBindingData.Type() && bindingEntry._resource._slot == slot) {
             if (bindingEntry._resource._data != newBindingData) {
@@ -411,6 +411,8 @@ ErrorCode GFXDevice::initRenderingAPI(const I32 argc, char** argv, const RenderA
         config.rendering.reflectionProbeResolution = reflectionProbeRes;
         config.changed(true);
     }
+
+    initDescriptorSets();
 
     return ShaderProgram::OnStartup(parent().resourceCache());
 }
@@ -613,7 +615,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     hiZSampler.anisotropyLevel(0u);
     hiZSampler.magFilter(TextureFilter::NEAREST);
     hiZSampler.minFilter(TextureFilter::NEAREST);
-    hiZSampler.mipSampling(TextureMipSampling::NONE);
+    hiZSampler.mipSampling(TextureMipSampling::NEAREST);
 
     InternalRTAttachmentDescriptors hiZAttachments {
         InternalRTAttachmentDescriptor{ hiZDescriptor, hiZSampler.getHash(), RTAttachmentType::Depth_Stencil, 0, VECTOR4_UNIT },
@@ -1147,7 +1149,6 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     }
 
     _sceneData = MemoryManager_NEW SceneShaderData(*this);
-    _descriptorSets.init(_api.get());
 
     // Everything is ready from the rendering point of view
     return ErrorCode::NO_ERR;
@@ -1341,6 +1342,10 @@ void GFXDevice::endFrame(DisplayWindow& window, const bool global) {
 #pragma endregion
 
 #pragma region Utility functions
+void GFXDevice::createSetLayout(const DescriptorSetUsage usage, const DescriptorSet& set) {
+    ShaderProgram::CreateSetLayout(usage, set);
+    _api->createSetLayout(usage, set);
+}
 /// Generate a cube texture and store it in the provided RenderTarget
 void GFXDevice::generateCubeMap(RenderPassParams& params,
                                 const I16 arrayOffset,
@@ -1546,10 +1551,10 @@ void GFXDevice::blurTarget(RenderTargetHandle& blurSource,
                                                   : (layerCount > 1 ? _blurBoxPipelineLayeredCmd      : _blurBoxPipelineSingleCmd));
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-        cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+        cmd->_usage = DescriptorSetUsage::PER_DRAW;
         auto& binding = cmd->_bindings.emplace_back();
-        binding._slot = to_U8(TextureUsage::UNIT0);
-        binding._data.As<DescriptorCombinedImageSampler>() = { inputAttachment->texture()->data(), inputAttachment->descriptor()._samplerHash };
+        binding._slot = 0;
+        binding._data.As<DescriptorCombinedImageSampler>() = { inputAttachment->texture()->defaultView(), inputAttachment->descriptor()._samplerHash };
 
         pushConstantsCmd._constants.set(_ID("verticalBlur"), GFX::PushConstantType::INT, false);
         if (gaussian) {
@@ -1590,10 +1595,10 @@ void GFXDevice::blurTarget(RenderTargetHandle& blurSource,
         }
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-        cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+        cmd->_usage = DescriptorSetUsage::PER_DRAW;
         auto& binding = cmd->_bindings.emplace_back();
-        binding._slot = to_U8(TextureUsage::UNIT0);
-        binding._data.As<DescriptorCombinedImageSampler>() = { bufferAttachment->texture()->data(), bufferAttachment->descriptor()._samplerHash };
+        binding._slot = 0;
+        binding._data.As<DescriptorCombinedImageSampler>() = { bufferAttachment->texture()->defaultView(), bufferAttachment->descriptor()._samplerHash };
 
         GFX::EnqueueCommand(bufferInOut, pushConstantsCmd);
 
@@ -1827,9 +1832,9 @@ bool GFXDevice::uploadGPUBlock() {
         }
 
         DescriptorSetBindingData binding{};
-        binding.As<ShaderBufferEntry>() = { _gfxBuffers.crtBuffers()._camDataBuffer.get(), { 0, 1 } };
+        binding.As<ShaderBufferEntry>() = { *_gfxBuffers.crtBuffers()._camDataBuffer, { 0, 1 } };
 
-        descriptorSets()._globalDescriptorSets[to_base(DescriptorSetUsage::PER_BATCH_SET)].update(to_U8(ShaderBufferLocation::CAM_BLOCK), binding);
+        _descriptorSets._perBatchSet.update(1, binding);
         return true;
     }
 
@@ -1988,41 +1993,23 @@ const GFXShaderData::CamData& GFXDevice::cameraData() const noexcept {
 void GFXDevice::validateAndUploadDescriptorSets() {
     uploadGPUBlock();
 
-    const auto createResourceCmd = [](const GFXDescriptorSet& set, const bool allowEmpty) {
-        GFX::BindShaderResourcesCommand bindShaderResourcesCmd{};
-        bindShaderResourcesCmd._usage = set.usage();
-        for (const DescriptorSetBinding& binding : set.set()) {
-            if (binding._type != DescriptorSetBindingType::COUNT && binding._resource._data.isSet()) {
-                bindShaderResourcesCmd._bindings.emplace_back(binding._resource);
+    const auto flushResourceCmd = [](RenderAPIWrapper* api, GFXDescriptorSet& set, const bool allowEmpty) {
+        if (set.dirty()) {
+            GFX::BindShaderResourcesCommand bindShaderResourcesCmd{};
+            bindShaderResourcesCmd._usage = set.usage();
+            for (const DescriptorSetBinding& binding : set.impl()) {
+                if (binding._type != DescriptorSetBindingType::COUNT && binding._resource._data.isSet()) {
+                    bindShaderResourcesCmd._bindings.emplace_back(binding._resource);
+                }
             }
+            api->flushCommand(&bindShaderResourcesCmd);
+            set.dirty(false);
         }
-        return bindShaderResourcesCmd;
     };
 
-    auto& frameSet = descriptorSets()._globalDescriptorSets[to_base(DescriptorSetUsage::PER_FRAME_SET)];
-    auto& passSet = descriptorSets()._globalDescriptorSets[to_base(DescriptorSetUsage::PER_PASS_SET)];
-    auto& batchSet = descriptorSets()._globalDescriptorSets[to_base(DescriptorSetUsage::PER_BATCH_SET)];
-
-    //if (frameSet.dirty()) 
-    {
-        auto cmd = createResourceCmd(frameSet, true);
-        _api->flushCommand(&cmd);
-        frameSet.dirty(false);
-    }
-
-    //if (passSet.dirty())
-    {
-        auto cmd = createResourceCmd(passSet, true);
-        _api->flushCommand(&cmd);
-        passSet.dirty(false);
-    }
-
-    //if (batchSet.dirty())
-    {
-        auto cmd = createResourceCmd(batchSet, true);
-        _api->flushCommand(&cmd);
-        batchSet.dirty(false);
-    }
+    flushResourceCmd(_api.get(), _descriptorSets._perFrameSet, true);
+    flushResourceCmd(_api.get(), _descriptorSets._perPassSet, true);
+    flushResourceCmd(_api.get(), _descriptorSets._perBatchSet, true);
 }
 
 void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool batch) {
@@ -2051,6 +2038,10 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
     const GFX::CommandBuffer::CommandOrderContainer& commands = commandBuffer();
     for (const GFX::CommandBuffer::CommandEntry& cmd : commands) {
         const GFX::CommandType cmdType = static_cast<GFX::CommandType>(cmd._typeIndex);
+        if (IsSubmitCommand(cmdType)) {
+            validateAndUploadDescriptorSets();
+        }
+
         switch (cmdType) {
             case GFX::CommandType::BLIT_RT: {
                 OPTICK_EVENT("BLIT_RT");
@@ -2164,15 +2155,14 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
             } break;
             case GFX::CommandType::EXTERNAL: {
                 OPTICK_EVENT("EXTERNAL");
-                validateAndUploadDescriptorSets();
                 commandBuffer.get<GFX::ExternalCommand>(cmd)->_cbk();
             } break;
             case GFX::CommandType::BIND_SHADER_RESOURCES: {
                 const auto resCmd = commandBuffer.get<GFX::BindShaderResourcesCommand>(cmd);
-                if (resCmd->_usage != DescriptorSetUsage::PER_DRAW_SET) {
-                    auto& descriptorSet = descriptorSets()._globalDescriptorSets[to_base(resCmd->_usage)];
+                if (resCmd->_usage != DescriptorSetUsage::PER_DRAW) {
+                    GFXDescriptorSet& set = descriptorSet(resCmd->_usage);
                     for (auto& binding : resCmd->_bindings) {
-                        descriptorSet.update(binding._slot, binding._data);
+                        set.update(binding._slot, binding._data);
                     }
                 } else {
                     _api->flushCommand(resCmd);
@@ -2183,13 +2173,9 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
                 const vec2<F32> depthRange = renderTargetPool().getRenderTarget(crtCmd->_target)->getDepthRange();
                 setDepthRange(depthRange);
             } [[fallthrough]];
-            case GFX::CommandType::DRAW_TEXT:
-            case GFX::CommandType::DRAW_COMMANDS:
-            case GFX::CommandType::DISPATCH_COMPUTE: {
-                validateAndUploadDescriptorSets();
-            } [[fallthrough]];
             default: break;
         }
+
         _api->flushCommand(commandBuffer.get<GFX::CommandBase>(cmd));
     }
 
@@ -2208,9 +2194,7 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
     // Descriptor sets are only valid per command buffer they are submitted in. If we finish the command buffer submission,
     // we mark them as dirty so that the next command buffer can bind them again even if the data is the same
     // We always check the dirty flags before any draw/compute command by calling "validateAndUploadDescriptorSets" beforehand
-    descriptorSets()._globalDescriptorSets[to_base(DescriptorSetUsage::PER_FRAME_SET)].dirty(true);
-    descriptorSets()._globalDescriptorSets[to_base(DescriptorSetUsage::PER_PASS_SET)].dirty(true);
-    descriptorSets()._globalDescriptorSets[to_base(DescriptorSetUsage::PER_BATCH_SET)].dirty(true);
+    _descriptorSets.markDirty();
 }
 
 /// Transform our depth buffer to a HierarchicalZ buffer (for occlusion queries and screen space reflections)
@@ -2242,7 +2226,7 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
         
 
         const auto& att = _rtPool->getRenderTarget(depthBuffer)->getAttachment(RTAttachmentType::Depth_Stencil, 0);
-        drawTextureInViewport(att->texture()->data(),
+        drawTextureInViewport(att->texture()->defaultView(),
                               att->descriptor()._samplerHash,
                               Rect<I32>{0, 0, width, height},
                               false,
@@ -2255,8 +2239,6 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
 
     RTAttachment* att = renderTarget->getAttachment(RTAttachmentType::Depth_Stencil, 0);
     const Texture_ptr& hizDepthTex = att->texture();
-
-    const TextureData& hizData = hizDepthTex->data();
     DIVIDE_ASSERT(hizDepthTex->descriptor().mipMappingState() == TextureDescriptor::MipMappingState::MANUAL);
 
     // We use a special shader that downsamples the buffer
@@ -2275,10 +2257,10 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
 
     // for i > 0, use texture views?
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(cmdBufferInOut);
-    cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+    cmd->_usage = DescriptorSetUsage::PER_DRAW;
     auto& binding = cmd->_bindings.emplace_back();
-    binding._slot = to_base(TextureUsage::DEPTH);
-    binding._data.As<DescriptorCombinedImageSampler>() = { hizData, att->descriptor()._samplerHash };
+    binding._slot = 0;
+    binding._data.As<DescriptorCombinedImageSampler>() = { hizDepthTex->defaultView(), att->descriptor()._samplerHash };
 
     // We skip the first level as that's our full resolution image
     U16 twidth = width;
@@ -2333,27 +2315,32 @@ void GFXDevice::occlusionCull(const RenderPass::BufferData& bufferData,
                               GFX::CommandBuffer& bufferInOut)
 {
     OPTICK_EVENT();
-    ShaderBuffer* cullBuffer = _gfxBuffers.crtBuffers()._cullCounter.get();
 
     const U32 cmdCount = *bufferData._lastCommandCount;
     const U32 threadCount = (cmdCount + GROUP_SIZE_AABB - 1) / GROUP_SIZE_AABB;
+    if (threadCount == 0u || !enableOcclusionCulling()) {
+        GFX::EnqueueCommand(bufferInOut, GFX::AddDebugMessageCommand("Occlusion Culling Skipped"));
+        return;
+    }
+
+    ShaderBuffer* cullBuffer = _gfxBuffers.crtBuffers()._cullCounter.get();
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Occlusion Cull" });
 
     // Not worth the overhead for a handful of items and the Pre-Z pass should handle overdraw just fine
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _HIZCullPipeline });
     {
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-        cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+        cmd->_usage = DescriptorSetUsage::PER_DRAW;
         auto& binding = cmd->_bindings.emplace_back();
-        binding._slot = to_base(TextureUsage::UNIT0);
-        binding._data.As<DescriptorCombinedImageSampler>() = { depthBuffer->data(), samplerHash };
+        binding._slot = 0;
+        binding._data.As<DescriptorCombinedImageSampler>() = { depthBuffer->defaultView(), samplerHash };
     }
     {
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-        cmd->_usage = DescriptorSetUsage::PER_PASS_SET;
+        cmd->_usage = DescriptorSetUsage::PER_PASS;
         auto& binding = cmd->_bindings.emplace_back();
-        binding._slot = to_base(ShaderBufferLocation::ATOMIC_COUNTER);
-        binding._data.As<ShaderBufferEntry>() = { cullBuffer, { 0u, 1u } };
+        binding._slot = 7;
+        binding._data.As<ShaderBufferEntry>() = { *cullBuffer, { 0u, 1u } };
     }
     mat4<F32> viewProjectionMatrix;
     mat4<F32>::Multiply(cameraSnapshot._viewMatrix, cameraSnapshot._projectionMatrix, viewProjectionMatrix);
@@ -2416,7 +2403,7 @@ void GFXDevice::drawText(const GFX::DrawTextCommand& cmd, GFX::CommandBuffer& bu
     }
 }
 
-void GFXDevice::drawTextureInViewport(const TextureData data, const size_t samplerHash, const Rect<I32>& viewport, const bool convertToSrgb, const bool drawToDepthOnly, bool drawBlend, GFX::CommandBuffer& bufferInOut) {
+void GFXDevice::drawTextureInViewport(const ImageView& texture, const size_t samplerHash, const Rect<I32>& viewport, const bool convertToSrgb, const bool drawToDepthOnly, bool drawBlend, GFX::CommandBuffer& bufferInOut) {
     static GFX::BeginDebugScopeCommand   s_beginDebugScopeCmd    { "Draw Texture In Viewport" };
     static GFX::SendPushConstantsCommand s_pushConstantsSRGBTrue { PushConstants{{_ID("convertToSRGB"), GFX::PushConstantType::BOOL, true}}};
     static GFX::SendPushConstantsCommand s_pushConstantsSRGBFalse{ PushConstants{{_ID("convertToSRGB"), GFX::PushConstantType::BOOL, false}}};
@@ -2426,10 +2413,10 @@ void GFXDevice::drawTextureInViewport(const TextureData data, const size_t sampl
     GFX::EnqueueCommand(bufferInOut, drawToDepthOnly ? _drawFSDepthPipelineCmd : drawBlend ? _drawFSTexturePipelineBlendCmd : _drawFSTexturePipelineCmd);
 
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-    cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+    cmd->_usage = DescriptorSetUsage::PER_DRAW;
     auto& binding = cmd->_bindings.emplace_back();
-    binding._slot = to_base(TextureUsage::UNIT0);
-    binding._data.As<DescriptorCombinedImageSampler>() = { data, samplerHash };
+    binding._slot = 0;
+    binding._data.As<DescriptorCombinedImageSampler>() = { texture, samplerHash };
 
     GFX::EnqueueCommand(bufferInOut, GFX::PushViewportCommand{ viewport });
 
@@ -2674,10 +2661,10 @@ void GFXDevice::renderDebugViews(const Rect<I32> targetViewport, const I32 paddi
         GFX::EnqueueCommand<GFX::SetViewportCommand>(bufferInOut)->_viewport.set(viewport);
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-        cmd->_usage = DescriptorSetUsage::PER_DRAW_SET;
+        cmd->_usage = DescriptorSetUsage::PER_DRAW;
         auto& binding = cmd->_bindings.emplace_back();
         binding._slot = view->_textureBindSlot;
-        binding._data.As<DescriptorCombinedImageSampler>() = { view->_texture->data(), view->_samplerHash };
+        binding._data.As<DescriptorCombinedImageSampler>() = { view->_texture->defaultView(), view->_samplerHash };
 
          GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
 

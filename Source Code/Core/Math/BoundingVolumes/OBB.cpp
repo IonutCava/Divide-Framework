@@ -236,6 +236,7 @@ namespace Divide {
         }
 
         RayResult ret;
+        ret.inside = tNear < 0.f;
         ret.dist = tNear > 0.f ? tNear : tFar;
         // Ray started inside the box
         if (ret.dist < 0.0f) {

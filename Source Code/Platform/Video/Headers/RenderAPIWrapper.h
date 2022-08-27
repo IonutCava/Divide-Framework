@@ -133,6 +133,11 @@ struct DeviceInformation
 /// Renderer Programming Interface
 class NOINITVTABLE RenderAPIWrapper : NonCopyable {
 public:
+
+    static constexpr U32 MaxFrameQueueSize = 2;
+    static_assert(MaxFrameQueueSize > 0, "FrameQueueSize is invalid!");
+
+public:
     virtual ~RenderAPIWrapper() = default;
 
 protected:
@@ -163,6 +168,8 @@ protected:
 
     virtual void createSetLayout(DescriptorSetUsage usage, const DescriptorSet& set) = 0;
 };
+
+FWD_DECLARE_MANAGED_CLASS(RenderAPIWrapper);
 
 };  // namespace Divide
 

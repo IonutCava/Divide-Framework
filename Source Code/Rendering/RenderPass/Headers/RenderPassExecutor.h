@@ -238,6 +238,9 @@ private:
     static Pipeline* s_OITCompositionMSPipeline;
     static Pipeline* s_ResolveGBufferPipeline;
 };
+
+FWD_DECLARE_MANAGED_CLASS(RenderPassExecutor);
+
 } //namespace Divide
 
 #endif //_RENDER_PASS_EXECUTOR_H_

@@ -294,18 +294,18 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     heightMapTexture.propertyDescriptor(heightMapDescriptor);
     terrainMaterial->properties().isStatic(true);
     terrainMaterial->properties().isInstanced(true);
-    terrainMaterial->setTexture(TextureUsage::UNIT0, CreateResource<Texture>(terrain->parentResourceCache(), textureAlbedoMaps), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
-    terrainMaterial->setTexture(TextureUsage::UNIT1, CreateResource<Texture>(terrain->parentResourceCache(), textureNoiseMedium), noiseHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
-    terrainMaterial->setTexture(TextureUsage::OPACITY, CreateResource<Texture>(terrain->parentResourceCache(), textureBlendMap), blendMapHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
-    terrainMaterial->setTexture(TextureUsage::NORMALMAP, CreateResource<Texture>(terrain->parentResourceCache(), textureNormalMaps), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
-    terrainMaterial->setTexture(TextureUsage::HEIGHTMAP, CreateResource<Texture>(terrain->parentResourceCache(), heightMapTexture), heightSamplerHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
-    terrainMaterial->setTexture(TextureUsage::SPECULAR, CreateResource<Texture>(terrain->parentResourceCache(), textureWaterCaustics), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
-    terrainMaterial->setTexture(TextureUsage::METALNESS, CreateResource<Texture>(terrain->parentResourceCache(), textureExtraMaps), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
-    terrainMaterial->setTexture(TextureUsage::EMISSIVE, Texture::DefaultTexture(), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
+    terrainMaterial->setTexture(TextureSlot::UNIT0, CreateResource<Texture>(terrain->parentResourceCache(), textureAlbedoMaps), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
+    terrainMaterial->setTexture(TextureSlot::UNIT1, CreateResource<Texture>(terrain->parentResourceCache(), textureNoiseMedium), noiseHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
+    terrainMaterial->setTexture(TextureSlot::OPACITY, CreateResource<Texture>(terrain->parentResourceCache(), textureBlendMap), blendMapHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
+    terrainMaterial->setTexture(TextureSlot::NORMALMAP, CreateResource<Texture>(terrain->parentResourceCache(), textureNormalMaps), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
+    terrainMaterial->setTexture(TextureSlot::HEIGHTMAP, CreateResource<Texture>(terrain->parentResourceCache(), heightMapTexture), heightSamplerHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
+    terrainMaterial->setTexture(TextureSlot::SPECULAR, CreateResource<Texture>(terrain->parentResourceCache(), textureWaterCaustics), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
+    terrainMaterial->setTexture(TextureSlot::METALNESS, CreateResource<Texture>(terrain->parentResourceCache(), textureExtraMaps), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
+    terrainMaterial->setTexture(TextureSlot::EMISSIVE, Texture::DefaultTexture(), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
 
     const Configuration::Terrain terrainConfig = context.config().terrain;
     const vec2<F32> WorldScale = terrain->tessParams().WorldScale();
-    Texture_ptr albedoTile = terrainMaterial->getTexture(TextureUsage::UNIT0).lock();
+    Texture_ptr albedoTile = terrainMaterial->getTexture(TextureSlot::UNIT0).lock();
     WAIT_FOR_CONDITION(albedoTile->getState() == ResourceState::RES_LOADED);
     const U16 tileMapSize = albedoTile->width();
 

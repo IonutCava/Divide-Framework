@@ -117,7 +117,7 @@ class SceneAnimator {
 
     const AnimEvaluator& animationByIndex(const I32 animationIndex) const {
         assert(IS_IN_RANGE_INCLUSIVE(animationIndex, 0, to_I32(_animations.size()) - 1));
-        AnimEvaluator* animation = _animations[animationIndex];
+        const AnimEvaluator* animation = _animations[animationIndex];
         assert(animation != nullptr);
         return *animation;
     }

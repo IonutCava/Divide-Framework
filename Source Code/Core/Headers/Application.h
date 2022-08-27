@@ -96,7 +96,10 @@ class Application : public SDLEventListener {
     inline void mainLoopActive(bool state) noexcept;
 
     inline bool mainLoopPaused() const noexcept;
-    inline void mainLoopPaused(bool state) noexcept;
+    inline void mainLoopPaused(bool state) noexcept; 
+    
+    inline bool freezeRendering() const noexcept;
+    inline void freezeRendering(bool state) noexcept;
 
     bool onWindowSizeChange(const SizeChangeParams& params) const;
     bool onResolutionChange(const SizeChangeParams& params) const;
@@ -122,6 +125,7 @@ class Application : public SDLEventListener {
     /// this is true when we are inside the main app loop
     std::atomic_bool _mainLoopActive;
     std::atomic_bool _mainLoopPaused;
+    std::atomic_bool _freezeRendering;
     std::atomic_bool _requestShutdown;
     std::atomic_bool _requestRestart;
     std::atomic_bool _stepLoop;
@@ -138,6 +142,8 @@ class Application : public SDLEventListener {
     mutable Mutex _taskLock;
     vector<DELEGATE<void> > _mainThreadCallbacks;
 };
+
+FWD_DECLARE_MANAGED_CLASS(Application);
 
 };  // namespace Divide
 

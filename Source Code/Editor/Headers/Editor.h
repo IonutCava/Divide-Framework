@@ -70,12 +70,8 @@ namespace Attorney {
 namespace GFX {
     class CommandBuffer;
 }
-
-class Gizmo;
 class Scene;
 class Camera;
-class MenuBar;
-class StatusBar;
 class LightPool;
 class ECSManager;
 class UndoManager;
@@ -91,14 +87,17 @@ class SceneGraphNode;
 class SceneViewWindow;
 class PlatformContext;
 class ApplicationOutput;
-class EditorOptionsWindow;
 class ContentExplorerWindow;
 class SolutionExplorerWindow;
 class SceneEnvironmentProbePool;
 
+FWD_DECLARE_MANAGED_CLASS(Gizmo);
 FWD_DECLARE_MANAGED_CLASS(Mesh);
 FWD_DECLARE_MANAGED_CLASS(Texture);
+FWD_DECLARE_MANAGED_CLASS(MenuBar);
+FWD_DECLARE_MANAGED_CLASS(StatusBar);
 FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
+FWD_DECLARE_MANAGED_CLASS(EditorOptionsWindow);
 
 struct Selections;
 struct SizeChangeParams;
@@ -264,7 +263,7 @@ class Editor final : public PlatformContextComponent,
     /// Returns true if the window was closed
     [[nodiscard]] bool modalTextureView(const char* modalName, Texture* tex, const vec2<F32>& dimensions, bool preserveAspect, bool useModal) const;
     /// Returns true if the model was queued
-    [[nodiscard]] bool modalModelSpawn(const Mesh_ptr& mesh, bool quick);
+    [[nodiscard]] bool modalModelSpawn(const Mesh_ptr& mesh, bool quick, const vec3<F32>& scale = VECTOR3_UNIT, const vec3<F32>& position = VECTOR3_ZERO);
     /// Return true if the model was spawned as a scene node
     [[nodiscard]] bool spawnGeometry(const Mesh_ptr& mesh, const vec3<F32>& scale, const vec3<F32>& position, const vec3<Angle::DEGREES<F32>>& rotation, const string& name) const;
     /// Return true if the specified node passed frustum culling during the main render pass
@@ -279,6 +278,7 @@ class Editor final : public PlatformContextComponent,
     inline void toggleMemoryEditor(bool state) noexcept;
 
     void copyPlayerCamToEditorCam() noexcept;
+    void setEditorCamLookAt(const vec3<F32>& eye, const vec3<F32>& fwd, const vec3<F32>& up);
     void setEditorCameraSpeed(const vec3<F32>& speed) noexcept;
     [[nodiscard]] vec3<F32> getEditorCameraSpeed() const noexcept;
 
@@ -292,11 +292,11 @@ class Editor final : public PlatformContextComponent,
     Time::ProfileTimer& _editorUpdateTimer;
     Time::ProfileTimer& _editorRenderTimer;
 
-    eastl::unique_ptr<MenuBar>             _menuBar = nullptr;
-    eastl::unique_ptr<StatusBar>           _statusBar = nullptr;
-    eastl::unique_ptr<EditorOptionsWindow> _optionsWindow = nullptr;
-    eastl::unique_ptr<UndoManager>         _undoManager = nullptr;
-    eastl::unique_ptr<Gizmo>               _gizmo = nullptr;
+    MenuBar_uptr             _menuBar = nullptr;
+    StatusBar_uptr           _statusBar = nullptr;
+    EditorOptionsWindow_uptr _optionsWindow = nullptr;
+    UndoManager_uptr         _undoManager = nullptr;
+    Gizmo_uptr               _gizmo = nullptr;
 
     DisplayWindow*    _mainWindow = nullptr;
     Texture_ptr       _fontTexture = nullptr;
@@ -328,7 +328,11 @@ class Editor final : public PlatformContextComponent,
     CircularBuffer<Str256> _recentSceneList;
     CameraSnapshot _render2DSnapshot{};
     RenderTargetHandle _editorRTHandle{};
-    Mesh_ptr _queuedModelSpawn{ nullptr };
+    struct QueueModelSpawn {
+        Mesh_ptr _mesh{ nullptr };
+        vec3<F32> _scale{ VECTOR3_UNIT };
+        vec3<F32> _position{ VECTOR3_ZERO };
+    } _queuedModelSpawn;
 }; //Editor
 
 namespace Attorney {
@@ -355,6 +359,10 @@ namespace Attorney {
 
         static void copyPlayerCamToEditorCam(Editor& editor) noexcept {
             editor.copyPlayerCamToEditorCam();
+        }
+        
+        static void setEditorCamLookAt(Editor& editor, const vec3<F32>& eye, const vec3<F32>& fwd, const vec3<F32>& up) noexcept {
+            editor.setEditorCamLookAt(eye, fwd, up);
         }
 
         static vec3<F32> getEditorCameraSpeed(const Editor& editor) noexcept {
@@ -557,8 +565,8 @@ namespace Attorney {
             return editor.modalTextureView(modalName, tex, dimensions, preserveAspect, useModal);
         }
 
-        [[nodiscard]] static bool modalModelSpawn(Editor& editor, const Mesh_ptr& mesh, bool quick) {
-            return editor.modalModelSpawn(mesh, quick);
+        [[nodiscard]] static bool modalModelSpawn(Editor& editor, const Mesh_ptr& mesh, bool quick, const vec3<F32>& scale = VECTOR3_UNIT, const vec3<F32>& position = VECTOR3_ZERO) {
+            return editor.modalModelSpawn(mesh, quick, scale, position);
         }
 
         [[nodiscard]] static ImGuiContext& getImGuiContext(Editor& editor, const Editor::ImGuiContextType type) noexcept {
