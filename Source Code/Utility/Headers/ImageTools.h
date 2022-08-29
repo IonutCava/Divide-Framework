@@ -32,47 +32,11 @@
 #pragma once
 #ifndef _UTILITY_IMAGETOOLS_H
 #define _UTILITY_IMAGETOOLS_H
-#include "Platform/Video/Headers/RenderAPIEnums.h"
+
+#include "ImageToolsFwd.h"
 
 namespace Divide {
 namespace ImageTools {
-
-void OnStartup(bool upperLeftOrigin);
-void OnShutdown();
-
-[[nodiscard]] bool UseUpperLeftOrigin() noexcept;
-
-enum class MipMapFilter : U8 {
-    BOX,
-    TRIANGLE,
-    KAISER,
-    COUNT
-};
-
-enum class ImageOutputFormat : U8 {
-    BC1, //Will be BC1n for normal maps
-    BC1a,
-    BC2,
-    BC3,//Will be BC3n for normal maps
-    BC4,
-    BC5,
-    BC6,
-    BC7,
-    //BC3_RGBM, //Not supported
-    AUTO,  // BC7 for textures, BC5 for normal maps, BC4 single channel images
-    COUNT
-};
-
-struct ImportOptions {
-    bool _useDDSCache = true;
-    bool _skipMipMaps = false;
-    bool _isNormalMap = false;
-    bool _fastCompression = false;
-    bool _outputSRGB = false;
-    bool _alphaChannelTransparency = true; //< If false, the alpha channel represents arbitrary data (e.g. in splatmaps)
-    MipMapFilter _mipFilter = MipMapFilter::KAISER;
-    ImageOutputFormat _outputFormat = ImageOutputFormat::AUTO;
-};
 
 struct LayerData {
     virtual ~LayerData() = default;
@@ -83,8 +47,6 @@ struct LayerData {
     /// with and height
     vec3<U16> _dimensions = { 0, 0, 1 };
 };
-
-FWD_DECLARE_MANAGED_STRUCT(LayerData);
 
 template<typename T>
 struct ImageMip final : LayerData {
@@ -232,20 +194,6 @@ struct ImageData final : NonCopyable {
     /// HDR data
     bool _isHDR = false;
 };
-
-enum class SaveImageFormat : U8 {
-    PNG,
-    BMP,
-    TGA,
-    //HDR, /// Use special function for this!
-    JPG,
-    COUNT
-};
-
-/// Save an image to file of the desired format. Only ubyte is supported as input data.
-bool SaveImage(const ResourcePath& filename, const vec2<U16>& dimensions, U8 numberOfComponents, U8* imageData, SaveImageFormat format);
-/// Save an HDR image to file of the desired format.
-bool SaveImageHDR(const ResourcePath& filename, const vec2<U16>& dimensions, U8 numberOfComponents, F32* imageData);
 
 }  // namespace ImageTools
 }  // namespace Divide

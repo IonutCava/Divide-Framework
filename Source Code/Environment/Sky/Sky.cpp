@@ -14,6 +14,7 @@
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Headers/RenderPackage.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Geometry/Shapes/Predefined/Headers/Sphere3D.h"
 #include "Scenes/Headers/SceneEnvironmentProbePool.h"
 

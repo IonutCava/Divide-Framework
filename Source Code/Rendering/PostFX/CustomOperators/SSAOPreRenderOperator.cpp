@@ -9,8 +9,10 @@
 #include "Core/Headers/PlatformContext.h"
 #include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Geometry/Shapes/Predefined/Headers/Quad3D.h"
 
 #include "Rendering/PostFX/Headers/PreRenderBatch.h"
@@ -92,7 +94,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
 
     const Str64 attachmentName("SSAOPreRenderOperator_NoiseTexture");
 
-    TextureDescriptor noiseDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGB, GFXDataFormat::FLOAT_32);
+    TextureDescriptor noiseDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_32, GFXImageFormat::RGB);
     noiseDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
     ResourceDescriptor textureAttachment(attachmentName);
@@ -102,7 +104,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     _noiseTexture->loadData((Byte*)noiseData.data(), noiseData.size() * sizeof(vec3<F32>), vec2<U16>(SSAO_NOISE_SIZE));
 
     {
-        TextureDescriptor outputDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RED, GFXDataFormat::FLOAT_16);
+        TextureDescriptor outputDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RED);
         outputDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
         const vec2<U16> res = parent.screenRT()._rt->getResolution();
         InternalRTAttachmentDescriptors att{
@@ -127,7 +129,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         _ssaoHalfResOutput = _context.renderTargetPool().allocateRT(desc);
     }
     {
-        TextureDescriptor outputDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGB, GFXDataFormat::FLOAT_32);
+        TextureDescriptor outputDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_32, GFXImageFormat::RGB);
         outputDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         InternalRTAttachmentDescriptors att = {

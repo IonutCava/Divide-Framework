@@ -8,6 +8,7 @@
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/glLockManager.h"
 
+#include "Core/Headers/StringHelper.h"
 #include "Utility/Headers/Localization.h"
 
 namespace Divide {

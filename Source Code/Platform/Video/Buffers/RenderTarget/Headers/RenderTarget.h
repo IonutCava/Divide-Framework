@@ -38,41 +38,29 @@
 #include "Platform/Video/Headers/GraphicsResource.h"
 
 namespace Divide {
-class GFXRTPool;
 
 constexpr I16 INVALID_COLOUR_LAYER = std::numeric_limits<I16>::lowest();
+constexpr U16 INVALID_DEPTH_LAYER = std::numeric_limits<U16>::max();
 
 struct BlitIndex {
-    I16 _layer = INVALID_COLOUR_LAYER;
-    I16 _index = INVALID_COLOUR_LAYER;
+    I16 _layer{ INVALID_COLOUR_LAYER };
+    I16 _index{ INVALID_COLOUR_LAYER };
+};
+
+struct DepthBlitEntry {
+    U16 _inputLayer{ INVALID_DEPTH_LAYER };
+    U16 _outputLayer{ INVALID_DEPTH_LAYER };
 };
 
 struct ColourBlitEntry {
-    void set(const U16 indexIn, const U16 indexOut, const U16 layerIn = 0u, const U16 layerOut = 0u) noexcept {
-        input(indexIn, layerIn);
-        output(indexOut, layerOut);
-    } 
-    
-    void set(const BlitIndex in, const BlitIndex out) noexcept {
-        input(in);
-        output(out);
-    }
+    void set(const U16 indexIn, const U16 indexOut, const U16 layerIn = 0u, const U16 layerOut = 0u) noexcept { input(indexIn, layerIn); output(indexOut, layerOut); } 
+    void set(const BlitIndex in, const BlitIndex out) noexcept { input(in); output(out); }
 
-    void input(const BlitIndex in) noexcept {
-        _input = in;
-    }
+    void input(const BlitIndex in) noexcept { _input = in; }
+    void input(const U16 index, const U16 layer = 0u) noexcept { _input = { to_I16(layer), to_I16(index) }; }
 
-    void input(const U16 index, const U16 layer = 0u) noexcept {
-        _input = { to_I16(layer), to_I16(index) };
-    }
-
-    void output(const BlitIndex out) noexcept {
-        _output = out;
-    }
-
-    void output(const U16 index, const U16 layer = 0u) noexcept {
-        _output = { to_I16(layer), to_I16(index) };
-    }
+    void output(const BlitIndex out) noexcept { _output = out; }
+    void output(const U16 index, const U16 layer = 0u) noexcept { _output = { to_I16(layer), to_I16(index) }; }
 
     [[nodiscard]] BlitIndex input()  const noexcept { return _input; }
     [[nodiscard]] BlitIndex output() const noexcept { return _output; }
@@ -83,29 +71,22 @@ protected:
     BlitIndex _output;
 };
 
-constexpr U16 INVALID_DEPTH_LAYER = U16_MAX;
-
-struct DepthBlitEntry {
-    U16 _inputLayer = INVALID_DEPTH_LAYER;
-    U16 _outputLayer = INVALID_DEPTH_LAYER;
-};
-
 class RenderTarget;
 struct RenderTargetHandle {
-    RenderTarget* _rt = nullptr;
-    RenderTargetID _targetID = INVALID_RENDER_TARGET_ID;
+    RenderTarget* _rt{ nullptr };
+    RenderTargetID _targetID{ INVALID_RENDER_TARGET_ID };
 };
 
 struct RenderTargetDescriptor {
-    Str64 _name = "";
-    InternalRTAttachmentDescriptor* _attachments = nullptr;
-    ExternalRTAttachmentDescriptor* _externalAttachments = nullptr;
-    vec2<F32> _depthRange = vec2<F32>(0.f, 1.f);
-    vec2<U16>  _resolution = vec2<U16>(1u);
-    F32 _depthValue = 1.0f;
-    U8 _externalAttachmentCount = 0u;
-    U8 _attachmentCount = 0u;
-    U8 _msaaSamples = 0u;
+    Str64 _name{ "" };
+    InternalRTAttachmentDescriptor* _attachments{ nullptr };
+    ExternalRTAttachmentDescriptor* _externalAttachments{ nullptr };
+    vec2<F32> _depthRange{ 0.f, 1.f };
+    vec2<U16>  _resolution{ 1u, 1u };
+    F32 _depthValue{ 1.0f };
+    U8 _externalAttachmentCount{ 0u };
+    U8 _attachmentCount{ 0u };
+    U8 _msaaSamples{ 0u };
 };
 
 class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
@@ -124,17 +105,11 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
     };
 
     struct RTBlitParams {
-        RenderTarget* _inputFB = nullptr;
+        RenderTarget* _inputFB{ nullptr };
         DepthBlitEntry _blitDepth;
         std::array<ColourBlitEntry, RT_MAX_COLOUR_ATTACHMENTS> _blitColours;
 
-        [[nodiscard]] bool hasBlitColours() const {
-            return std::any_of(std::cbegin(_blitColours),
-                               std::cend(_blitColours),
-                               [](const auto& entry) noexcept {
-                                    return entry.valid();
-                               });
-        }
+        bool hasBlitColours() const;
     };
 
    protected:
@@ -184,6 +159,5 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
 FWD_DECLARE_MANAGED_CLASS(RenderTarget);
 
 };  // namespace Divide
-
 
 #endif //_RENDER_TARGET_H_

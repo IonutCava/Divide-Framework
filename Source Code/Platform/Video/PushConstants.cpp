@@ -3,6 +3,15 @@
 #include "Headers/PushConstants.h"
 
 namespace Divide {
+PushConstants::PushConstants(const GFX::PushConstant& constant)
+    : _data{ constant }
+{
+}
+
+PushConstants::PushConstants(GFX::PushConstant&& constant)
+    : _data{ MOV(constant) }
+{
+}
 
 void PushConstants::set(const GFX::PushConstant& constant) {
     for (GFX::PushConstant& iter : _data) {
@@ -13,6 +22,22 @@ void PushConstants::set(const GFX::PushConstant& constant) {
     }
 
     _data.emplace_back(constant);
+}
+
+void PushConstants::clear() noexcept {
+    _data.clear();
+}
+
+[[nodiscard]] bool PushConstants::empty() const noexcept {
+    return _data.empty();
+}
+
+void PushConstants::countHint(const size_t count) {
+    _data.reserve(count);
+}
+
+[[nodiscard]] const vector_fast<GFX::PushConstant>& PushConstants::data() const noexcept {
+    return _data;
 }
 
 bool Merge(PushConstants& lhs, const PushConstants& rhs, bool& partial) {

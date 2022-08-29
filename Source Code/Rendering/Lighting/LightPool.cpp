@@ -9,7 +9,9 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Platform/Video/Headers/CommandBuffer.h"
+#include "Platform/File/Headers/FileManagement.h"
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h"
 

@@ -36,10 +36,14 @@
 #include "Platform/Video/Headers/RenderAPIEnums.h"
 #include "Core/Resources/Headers/ResourceDescriptor.h"
 
-#include "Core/Headers/ObjectPool.h"
+#include "Core/Headers/PoolHandle.h"
 
 namespace Divide {
     class ShaderProgram;
+    struct PerFileShaderData;
+
+    using ShaderProgramHandle = PoolHandle;
+    static constexpr ShaderProgramHandle SHADER_INVALID_HANDLE{ U16_MAX, U8_MAX };
 
     enum class ShaderResult : U8 {
         Failed = 0,
@@ -49,8 +53,8 @@ namespace Divide {
 
     struct ModuleDefine {
         ModuleDefine() = default;
-        ModuleDefine(const char* define, const bool addPrefix = true) : ModuleDefine(string{ define }, addPrefix) {}
-        ModuleDefine(const string& define, const bool addPrefix = true) : _define(define), _addPrefix(addPrefix) {}
+        ModuleDefine(const char* define, const bool addPrefix = true);
+        ModuleDefine(const string& define, const bool addPrefix = true);
 
         string _define;
         bool _addPrefix = true;
@@ -60,10 +64,7 @@ namespace Divide {
 
     struct ShaderModuleDescriptor {
         ShaderModuleDescriptor() = default;
-        explicit ShaderModuleDescriptor(ShaderType type, const Str64& file, const Str64& variant = "")
-            : _moduleType(type), _sourceFile(file), _variant(variant)
-        {
-        }
+        explicit ShaderModuleDescriptor(ShaderType type, const Str64& file, const Str64& variant = "");
 
         ModuleDefines _defines;
         Str64 _sourceFile;
@@ -71,13 +72,8 @@ namespace Divide {
         ShaderType _moduleType = ShaderType::COUNT;
     };
 
-    struct PerFileShaderData;
-    class ShaderProgramDescriptor final : public PropertyDescriptor {
-    public:
-        ShaderProgramDescriptor() noexcept
-            : PropertyDescriptor(DescriptorType::DESCRIPTOR_SHADER)
-        {
-        }
+    struct ShaderProgramDescriptor final : public PropertyDescriptor {
+        ShaderProgramDescriptor() noexcept;
 
         size_t getHash() const noexcept override;
         Str256 _name;
@@ -90,20 +86,8 @@ namespace Divide {
         U8 _generation = 0u;
     };
 
-    inline bool operator==(const ShaderProgramMapEntry& lhs, const ShaderProgramMapEntry& rhs) noexcept {
-        return lhs._generation == rhs._generation &&
-            lhs._program == rhs._program;
-    }
-
-    inline bool operator!=(const ShaderProgramMapEntry& lhs, const ShaderProgramMapEntry& rhs) noexcept {
-        return lhs._generation != rhs._generation ||
-            lhs._program != rhs._program;
-    }
-
-    using ShaderProgramHandle = PoolHandle;
-
-
-    static constexpr ShaderProgramHandle SHADER_INVALID_HANDLE{ U16_MAX, U8_MAX };
+    bool operator==(const ShaderProgramMapEntry& lhs, const ShaderProgramMapEntry& rhs) noexcept;
+    bool operator!=(const ShaderProgramMapEntry& lhs, const ShaderProgramMapEntry& rhs) noexcept;
 
 }; //namespace Divide
 

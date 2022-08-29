@@ -34,7 +34,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _SHADER_BUFFER_H_
 
 #include "Core/Headers/RingBuffer.h"
-#include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/BufferLocks.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/BufferParams.h"
 #include "Platform/Video/Headers/GraphicsResource.h"
 namespace Divide {
 

@@ -34,6 +34,7 @@
 #define _GENERIC_VERTEX_DATA_H
 
 #include "Core/Headers/RingBuffer.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/BufferParams.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
 
 /// This class is used to upload generic VB data to the GPU that can be rendered directly or instanced.

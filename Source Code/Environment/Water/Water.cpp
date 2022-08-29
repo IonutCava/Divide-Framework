@@ -8,7 +8,10 @@
 #include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Headers/CommandBuffer.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
+#include "Platform/File/Headers/FileManagement.h"
 
 #include "Managers/Headers/SceneManager.h"
 #include "Managers/Headers/RenderPassManager.h"

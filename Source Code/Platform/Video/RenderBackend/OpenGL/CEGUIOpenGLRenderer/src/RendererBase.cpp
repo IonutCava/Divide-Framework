@@ -38,7 +38,7 @@
 #include "CEGUI/ImageCodec.h"
 #include "CEGUI/Logger.h"
 
-#include <algorithm>
+#include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 
 namespace CEGUI
 {

@@ -29,8 +29,8 @@ author:     Paul D Turner
 #define _CEGUIOpenGL_h_
 
 #include "CEGUI/Config.h"
-#include "Platform/Video/RenderBackend/OpenGL/Headers/glResources.h"
-#include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
+#include <glbinding/gl/types.h>
+using namespace gl;
 
 #define OPENGL_GUIRENDERER_API
 

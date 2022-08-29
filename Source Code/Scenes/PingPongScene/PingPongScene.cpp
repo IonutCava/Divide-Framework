@@ -18,6 +18,7 @@
 #include "Graphs/Headers/SceneGraph.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/GFXRTPool.h"
 
 #include "ECS/Components/Headers/BoundsComponent.h"
 #include "ECS/Components/Headers/RenderingComponent.h"

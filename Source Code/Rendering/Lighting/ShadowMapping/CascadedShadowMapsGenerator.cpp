@@ -19,9 +19,11 @@
 #include "Geometry/Shapes/Predefined/Headers/Quad3D.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 
 namespace Divide {
 
@@ -88,12 +90,12 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
     // Draw FBO
     {
         // MSAA rendering is supported
-        TextureDescriptor colourDescriptor(TextureType::TEXTURE_2D_ARRAY, texDescriptor.baseFormat(), texDescriptor.dataType());
+        TextureDescriptor colourDescriptor(TextureType::TEXTURE_2D_ARRAY, texDescriptor.dataType(), texDescriptor.baseFormat());
         colourDescriptor.layerCount(Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT);
         colourDescriptor.msaaSamples(g_shadowSettings.csm.MSAASamples);
         colourDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        TextureDescriptor depthDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::UNSIGNED_INT);
+        TextureDescriptor depthDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::DEPTH_COMPONENT);
         depthDescriptor.layerCount(Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT);
         depthDescriptor.msaaSamples(g_shadowSettings.csm.MSAASamples);
         depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
@@ -115,7 +117,7 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
 
     //Blur FBO
     {
-        TextureDescriptor blurMapDescriptor(TextureType::TEXTURE_2D_ARRAY, texDescriptor.baseFormat(), texDescriptor.dataType());
+        TextureDescriptor blurMapDescriptor(TextureType::TEXTURE_2D_ARRAY, texDescriptor.dataType(), texDescriptor.baseFormat());
         blurMapDescriptor.layerCount(Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT);
         blurMapDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 

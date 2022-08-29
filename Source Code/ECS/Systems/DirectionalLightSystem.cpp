@@ -25,7 +25,7 @@ namespace Divide {
         Parent::PreUpdate(dt);
         for (DirectionalLightComponent* comp : _componentCache) {
             if (comp->drawImpostor() || comp->showDirectionCone()) {
-                IMPrimitive::ConeDescriptor descriptor;
+                IM::ConeDescriptor descriptor;
                 descriptor.root = -comp->directionCache() * comp->range();
                 descriptor.direction = comp->directionCache();
                 descriptor.length = comp->range();

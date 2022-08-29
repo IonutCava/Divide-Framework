@@ -4,6 +4,7 @@
 
 #include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/File/Headers/FileManagement.h"
 
 #include "Core/Headers/Kernel.h"
@@ -17,6 +18,7 @@
 #include "CEGUIOpenGLRenderer/include/Texture.h"
 
 #include "Platform/Video/Headers/DescriptorSets.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Platform/Video/RenderBackend/OpenGL/CEGUIOpenGLRenderer/include/GL3Renderer.h"
 
 #include "Platform/Video/RenderBackend/OpenGL/Shaders/Headers/glShaderProgram.h"

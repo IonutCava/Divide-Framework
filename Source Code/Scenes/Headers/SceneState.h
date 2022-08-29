@@ -34,10 +34,7 @@
 #define _SCENE_STATE_H_
 
 #include "Platform/Video/Headers/RenderAPIEnums.h"
-#include "Platform/Audio/Headers/AudioDescriptor.h"
 #include "Scenes/Headers/SceneComponent.h"
-#include "Utility/Headers/Localization.h"
-#include "Rendering/Camera/Headers/CameraSnapshot.h"
 
 /// This class contains all the variables that define each scene's
 /// "unique"-ness:
@@ -48,6 +45,8 @@
 /// SceneRenderState
 
 namespace Divide {
+
+FWD_DECLARE_MANAGED_CLASS(AudioDescriptor);
 
 enum class MusicType : U8 {
     TYPE_BACKGROUND = 0,
@@ -62,10 +61,8 @@ struct WaterBodyData
     vec4<F32> _extents = VECTOR4_ZERO;
 };
 
-[[nodiscard]] FORCE_INLINE bool operator!=(const WaterBodyData& lhs, const WaterBodyData& rhs) noexcept {
-    return lhs._positionW != rhs._positionW ||
-           lhs._extents != rhs._extents;
-}
+bool operator==(const WaterBodyData& lhs, const WaterBodyData& rhs) noexcept;
+bool operator!=(const WaterBodyData& lhs, const WaterBodyData& rhs) noexcept;
 
 struct ProbeData
 {
@@ -80,10 +77,8 @@ struct FogDetails
     vec4<F32> _colourSunScatter = VECTOR4_ZERO;
 };
 
-[[nodiscard]] FORCE_INLINE bool operator!=(const FogDetails& lhs, const FogDetails& rhs) noexcept {
-    return lhs._colourAndDensity != rhs._colourAndDensity ||
-           lhs._colourSunScatter != rhs._colourSunScatter;
-}
+bool operator==(const FogDetails& lhs, const FogDetails& rhs) noexcept;
+bool operator!=(const FogDetails& lhs, const FogDetails& rhs) noexcept;
 
 class Scene;
 class LightPool;
@@ -117,12 +112,12 @@ class SceneRenderState : public SceneComponent {
     explicit SceneRenderState(Scene& parentScene) noexcept;
 
     void renderMask(U16 mask);
-    [[nodiscard]] bool isEnabledOption(RenderOptions option) const noexcept;
     void enableOption(RenderOptions option) noexcept;
     void disableOption(RenderOptions option) noexcept;
     void toggleOption(RenderOptions option) noexcept;
     void toggleOption(RenderOptions option, bool state) noexcept;
-    
+    [[nodiscard]] bool isEnabledOption(RenderOptions option) const noexcept;
+
     PROPERTY_RW(F32, generalVisibility, 1000.0f);
     PROPERTY_RW(F32, grassVisibility, 1000.0f);
     PROPERTY_RW(F32, treeVisibility, 1000.0f);
@@ -148,17 +143,8 @@ enum class MoveDirection : I8 {
 constexpr F32 DEFAULT_PLAYER_HEIGHT = 1.82f;
 
 struct SceneStatePerPlayer {
-    void resetMovement() noexcept {
-        _moveFB = _moveLR = _moveUD = _angleUD = _angleLR = _roll = _zoom = MoveDirection::NONE;
-    }
-
-    void resetAll() noexcept {
-        resetMovement();
-        _cameraUnderwater = false;
-        _cameraUpdated = false;
-        _overrideCamera = nullptr;
-        _cameraLockedToMouse = false;
-    }
+    void resetMovement() noexcept;
+    void resetAll() noexcept;
 
     PROPERTY_RW(bool, cameraUnderwater, false);
     PROPERTY_RW(bool, cameraUpdated, false);
@@ -178,13 +164,9 @@ struct SceneStatePerPlayer {
 
 struct WaterBodyDataContainer {
     vector<WaterBodyData> _data;
-    void reset() {
-        _data.resize(0);
-    }
 
-    void registerData(const WaterBodyData& data) {
-        _data.push_back(data);
-    }
+    inline void reset() { _data.resize(0); }
+    inline void registerData(const WaterBodyData& data) { _data.push_back(data); }
 };
 
 class SceneState : public SceneComponent {
@@ -192,41 +174,22 @@ class SceneState : public SceneComponent {
     /// Background music map : trackName - track
     using MusicPlaylist = hashMap<U64, AudioDescriptor_ptr>;
 
-    explicit SceneState(Scene& parentScene)
-        : SceneComponent(parentScene),
-          _renderState(parentScene)
-     {
-     }
+    explicit SceneState(Scene& parentScene);
 
-    void onPlayerAdd(const U8 index) noexcept {
-        // Just reset everything
-        onPlayerRemove(index);
-    }
+    void onPlayerAdd(const U8 index) noexcept { onPlayerRemove(index); }
 
-    inline void onPlayerRemove(const U8 index) noexcept {
-        _playerState[index].resetAll();
-    }
+    inline void onPlayerRemove(const U8 index) noexcept { _playerState[index].resetAll(); }
 
-    [[nodiscard]] inline SceneStatePerPlayer& playerState() noexcept {
-        return _playerState[playerPass()];
-    }
+    [[nodiscard]] inline SceneStatePerPlayer& playerState() noexcept { return _playerState[playerPass()]; }
+    [[nodiscard]] inline const SceneStatePerPlayer& playerState() const noexcept { return _playerState[playerPass()]; }
 
-    [[nodiscard]] inline const SceneStatePerPlayer& playerState() const noexcept {
-        return _playerState[playerPass()];
-    }
-
-    [[nodiscard]] inline SceneStatePerPlayer& playerState(const U8 index) noexcept {
-        return _playerState[index];
-    }
-
-    [[nodiscard]] inline const SceneStatePerPlayer& playerState(const U8 index) const noexcept {
-        return _playerState[index];
-    }
+    [[nodiscard]] inline SceneStatePerPlayer& playerState(const U8 index) noexcept { return _playerState[index]; }
+    [[nodiscard]] inline const SceneStatePerPlayer& playerState(const U8 index) const noexcept { return _playerState[index]; }
 
     [[nodiscard]] inline SceneRenderState& renderState() noexcept { return _renderState; }
-    [[nodiscard]] inline MusicPlaylist& music(const MusicType type) noexcept { return _music[to_U32(type)]; }
-
     [[nodiscard]] inline const SceneRenderState& renderState() const noexcept { return _renderState; }
+
+    [[nodiscard]] inline MusicPlaylist& music(const MusicType type) noexcept { return _music[to_U32(type)]; }
     [[nodiscard]] inline const MusicPlaylist& music(const MusicType type) const noexcept { return _music[to_U32(type)]; }
 
     [[nodiscard]] inline WaterBodyDataContainer& waterBodies() noexcept { return _waterBodies; }

@@ -259,20 +259,20 @@ void IMPrimitive::endBatch() noexcept {
     batchData.m_IndexBuffer_Points.resize(0);
 }
 
-void IMPrimitive::fromLines(const LineDescriptor& lines) {
+void IMPrimitive::fromLines(const IM::LineDescriptor& lines) {
     fromLines(lines._lines.data(), lines._lines.size());
 }
 
-void IMPrimitive::fromLines(const LineDescriptor* lines, size_t count) {
+void IMPrimitive::fromLines(const IM::LineDescriptor* lines, size_t count) {
     for (size_t i = 0u; i < count; ++i) {
         fromLines(lines[i]._lines.data(), lines[i]._lines.size());
     }
 }
-void IMPrimitive::fromFrustum(const FrustumDescriptor& frustum) {
+void IMPrimitive::fromFrustum(const IM::FrustumDescriptor& frustum) {
     fromFrustums(&frustum, 1u);
 }
 
-void IMPrimitive::fromFrustums(const FrustumDescriptor* frustums, size_t count) {
+void IMPrimitive::fromFrustums(const IM::FrustumDescriptor* frustums, size_t count) {
     Line temp = {};
     std::array<Line, to_base(FrustumPlane::COUNT) * 2> lines = {};
     std::array<vec3<F32>, to_base(FrustumPoints::COUNT)> corners = {};
@@ -369,11 +369,11 @@ void IMPrimitive::fromFrustums(const FrustumDescriptor* frustums, size_t count) 
     endBatch();
 }
 
-void IMPrimitive::fromOBB(const OBBDescriptor& box) {
+void IMPrimitive::fromOBB(const IM::OBBDescriptor& box) {
     fromOBBs(&box, 1u);
 }
 
-void IMPrimitive::fromOBBs(const OBBDescriptor* boxes, const size_t count) {
+void IMPrimitive::fromOBBs(const IM::OBBDescriptor* boxes, const size_t count) {
     if (count == 0u) {
         return;
     }
@@ -382,7 +382,7 @@ void IMPrimitive::fromOBBs(const OBBDescriptor* boxes, const size_t count) {
     // Create the object containing all of the lines
     beginBatch(true, 12 * to_U32(count) * 2 * 14, 2);
         for (size_t i = 0u; i < count; ++i) {
-            const OBBDescriptor& descriptor = boxes[i];
+            const IM::OBBDescriptor& descriptor = boxes[i];
             OBB::OOBBEdgeList edges = descriptor.box.edgeList();
             for (U8 j = 0u; j < 12u; ++j)
             {
@@ -397,11 +397,11 @@ void IMPrimitive::fromOBBs(const OBBDescriptor* boxes, const size_t count) {
     endBatch();
 }
 
-void IMPrimitive::fromBox(const BoxDescriptor& box) {
+void IMPrimitive::fromBox(const IM::BoxDescriptor& box) {
     fromBoxes(&box, 1u);
 }
 
-void IMPrimitive::fromBoxes(const BoxDescriptor* boxes, const size_t count) {
+void IMPrimitive::fromBoxes(const IM::BoxDescriptor* boxes, const size_t count) {
     if (count == 0u) {
         return;
     }
@@ -409,7 +409,7 @@ void IMPrimitive::fromBoxes(const BoxDescriptor* boxes, const size_t count) {
     // Create the object
     beginBatch(true, to_U32(count * 16u), 1);
         for (size_t i = 0u; i < count; ++i) {
-            const BoxDescriptor& box = boxes[i];
+            const IM::BoxDescriptor& box = boxes[i];
             const UColour4& colour = box.colour;
             const vec3<F32>& min = box.min;
             const vec3<F32>& max = box.max;
@@ -448,18 +448,18 @@ void IMPrimitive::fromBoxes(const BoxDescriptor* boxes, const size_t count) {
     endBatch();
 }
 
-void IMPrimitive::fromSphere(const SphereDescriptor& sphere) {
+void IMPrimitive::fromSphere(const IM::SphereDescriptor& sphere) {
     fromSpheres(&sphere, 1u);
 }
 
-void IMPrimitive::fromSpheres(const SphereDescriptor* spheres, const size_t count) {
+void IMPrimitive::fromSpheres(const IM::SphereDescriptor* spheres, const size_t count) {
     if (count == 0u) {
         return;
     }
 
     beginBatch(true, 32u * ((32u + 1) * 2), 1);
     for (size_t c = 0u; c < count; ++c) {
-        const SphereDescriptor& sphere = spheres[c];
+        const IM::SphereDescriptor& sphere = spheres[c];
         const F32 drho = M_PI_f / sphere.stacks;
         const F32 dtheta = 2.f * M_PI_f / sphere.slices;
         const F32 ds = 1.f / sphere.slices;
@@ -513,11 +513,11 @@ void IMPrimitive::fromSpheres(const SphereDescriptor* spheres, const size_t coun
 }
 
 //ref: http://www.freemancw.com/2012/06/opengl-cone-function/
-void IMPrimitive::fromCone(const ConeDescriptor& cone) {
+void IMPrimitive::fromCone(const IM::ConeDescriptor& cone) {
     fromCones(&cone, 1u);
 }
 
-void IMPrimitive::fromCones(const ConeDescriptor* cones, const size_t count) {
+void IMPrimitive::fromCones(const IM::ConeDescriptor* cones, const size_t count) {
     if (count == 0u) {
         return;
     }
@@ -525,7 +525,7 @@ void IMPrimitive::fromCones(const ConeDescriptor* cones, const size_t count) {
     beginBatch(true, to_U32(count * (32u + 1)), 1u);
 
     for (size_t i = 0u; i < count; ++i) {
-        const ConeDescriptor& cone = cones[i];
+        const IM::ConeDescriptor& cone = cones[i];
 
         const U8 slices = std::min(cone.slices, to_U8(32u));
         const F32 angInc = 360.0f / slices * M_PIDIV180_f;

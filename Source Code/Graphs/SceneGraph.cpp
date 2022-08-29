@@ -14,6 +14,7 @@
 #include "Geometry/Shapes/Headers/Object3D.h"
 #include "Physics/Headers/PXDevice.h"
 #include "Rendering/Lighting/Headers/LightPool.h"
+#include "Platform/File/Headers/FileManagement.h"
 
 #include "ECS/Systems/Headers/ECSManager.h"
 #include "ECS/Components/Headers/BoundsComponent.h"

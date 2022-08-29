@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "Headers/TextLabel.h"
+#include "Core/Headers/StringHelper.h"
 
 namespace Divide {
 
@@ -79,4 +80,28 @@ const Str64& TextLabelStyle::fontName(const size_t fontNameHash) {
     return s_fontName[fontNameHash];
 }
 
+TextElement::TextElement(const TextLabelStyle& textLabelStyle, const RelativePosition2D& position)
+    : TextElement(textLabelStyle.getHash(), position)
+{
+}
+
+TextElement::TextElement(const size_t textLabelStyleHash, const RelativePosition2D& position)
+    : _textLabelStyleHash(textLabelStyleHash),
+    _position(position)
+{
+}
+
+void TextElement::text(const char* text, const bool multiLine) {
+    if (multiLine) {
+        Util::Split(text, '\n', _text);
+        return;
+    }
+
+    _text = { text };
+}
+
+TextElementBatch::TextElementBatch(const TextElement& element)
+{
+    _data.push_back(element);
+}
 } //namespace Divide

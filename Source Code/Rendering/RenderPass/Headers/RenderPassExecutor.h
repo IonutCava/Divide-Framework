@@ -35,9 +35,8 @@
 
 #include "NodeBufferedData.h"
 #include "RenderPass.h"
-#include "RenderQueue.h"
+#include "RenderBin.h"
 #include "ECS/Components/Headers/RenderingComponent.h"
-#include "Platform/Video/Headers/GenericDrawCommand.h"
 #include "Platform/Video/Headers/RenderPackage.h"
 #include "Rendering/RenderPass/Headers/RenderPassCuller.h"
 
@@ -54,6 +53,7 @@ namespace GFX {
     class CommandBuffer;
 }
 
+FWD_DECLARE_MANAGED_CLASS(RenderQueue);
 FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
 FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 
@@ -70,11 +70,11 @@ public:
         U32 _firstIDX = U32_MAX;
         U32 _lastIDX = 0u;
 
-        [[nodiscard]] U32 range() const noexcept {
+        [[nodiscard]] inline U32 range() const noexcept {
             return _lastIDX >= _firstIDX ? _lastIDX - _firstIDX + 1u : 0u;
         }
 
-        void reset() noexcept {
+        inline void reset() noexcept {
             _firstIDX = U32_MAX;
             _lastIDX = 0u;
         }
@@ -220,7 +220,7 @@ private:
     RenderPassManager& _parent;
     GFXDevice& _context;
     const RenderStage _stage;
-    RenderQueue _renderQueue;
+    RenderQueue_uptr _renderQueue{nullptr};
     RenderBin::SortedQueues _sortedQueues{};
     DrawCommandContainer _drawCommands{};
     RenderQueuePackages _renderQueuePackages{};

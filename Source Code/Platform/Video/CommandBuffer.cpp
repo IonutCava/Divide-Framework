@@ -2,7 +2,6 @@
 
 #include "Headers/CommandBuffer.h"
 #include "Platform/Video/Headers/Pipeline.h"
-#include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 #include "Platform/Video/Textures/Headers/Texture.h"

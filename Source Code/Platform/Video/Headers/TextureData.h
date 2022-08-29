@@ -37,6 +37,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
+static constexpr U8 INVALID_TEXTURE_BINDING = U8_MAX;
+
 struct CopyTexParams {
     U8 _sourceMipLevel{ 0u };
     U8 _targetMipLevel{ 0u };
@@ -49,26 +51,10 @@ struct TextureData {
     U32 _textureHandle{ 0u };
     TextureType _textureType{ TextureType::COUNT };
 };
-
-FORCE_INLINE bool IsValid(const TextureData& data) noexcept {
-    return data._textureHandle != 0u && data._textureType != TextureType::COUNT;
-}
-
-FORCE_INLINE bool operator==(const TextureData& lhs, const TextureData& rhs) noexcept {
-    return lhs._textureHandle == rhs._textureHandle &&
-           lhs._textureType == rhs._textureType;
-}
-
-FORCE_INLINE bool operator!=(const TextureData& lhs, const TextureData& rhs) noexcept {
-    return lhs._textureHandle != rhs._textureHandle ||
-           lhs._textureType != rhs._textureType;
-}
-
-inline size_t GetHash(const TextureData& data) {
-    size_t ret = 11;
-    Util::Hash_combine(ret, data._textureHandle, to_base(data._textureType));
-    return ret;
-}
+bool operator==(const TextureData& lhs, const TextureData& rhs) noexcept;
+bool operator!=(const TextureData& lhs, const TextureData& rhs) noexcept;
+bool IsValid(const TextureData& data) noexcept;
+size_t GetHash(const TextureData& data);
 
 enum class TextureUpdateState : U8 {
     ADDED = 0,
@@ -80,24 +66,15 @@ enum class TextureUpdateState : U8 {
 struct TextureEntry
 {
     TextureEntry() = default;
-    explicit TextureEntry(const TextureData& data, const size_t samplerHash, const U8 binding) noexcept
-      : _data(data),
-        _sampler(samplerHash),
-        _binding(binding)
-    {
-    }
+    explicit TextureEntry(const TextureData& data, const size_t samplerHash, const U8 binding) noexcept;
 
     TextureData _data{};
     size_t _sampler = 0u;
     U8 _binding = 0u;
 };
-
-static constexpr U8 INVALID_TEXTURE_BINDING = U8_MAX;
-
-[[nodiscard]] bool IsValid(const TextureEntry& entry) noexcept;
 bool operator==(const TextureEntry & lhs, const TextureEntry & rhs) noexcept;
 bool operator!=(const TextureEntry & lhs, const TextureEntry & rhs) noexcept;
-
+[[nodiscard]] bool IsValid(const TextureEntry& entry) noexcept;
 
 }; //namespace Divide
 

@@ -34,8 +34,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _HARDWARE_VIDEO_GFX_SHADER_DATA_H_
 
 #include "config.h"
-#include "Rendering/Camera/Headers/Frustum.h"
-#include "Geometry/Material/Headers/MaterialEnums.h"
 
 namespace Divide {
 

@@ -37,23 +37,16 @@ namespace Divide {
 
 class Hashable {
   public:
+    Hashable() = default;
     virtual ~Hashable() = default;
 
-    virtual size_t getHash() const { return _hash; }
+    [[nodiscard]] virtual size_t getHash() const;
     Hashable& operator=(Hashable const& old) noexcept;
 
   protected:
-    mutable size_t _hash = 9999991;
+    mutable size_t _hash{ 9999991 };
 };
 
-inline Hashable& Hashable::operator=(Hashable const& old) noexcept
-{
-    if (&old != this){
-        _hash = old._hash;
-    }
-
-    return *this;
-}
 }  // namespace Divide
 
 #endif  //_CORE_HASHABLE_H_

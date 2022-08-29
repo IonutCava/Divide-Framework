@@ -16,6 +16,7 @@ RenderBin::RenderBin(const RenderBinType rbType, const RenderStage stage)
       _stage(stage)
 
 {
+    static_assert(ArrayCount(Names::renderBinType) == to_base(RenderBinType::COUNT) + 1, "RenderBinType name array out of sync!");
     std::atomic_init(&_renderBinIndex, 0u);
 }
 

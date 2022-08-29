@@ -113,7 +113,11 @@ void ASIO::LOG_PRINT(const char* msg, const bool error) {
     if (_logCBK) {
         _logCBK(msg, error);
     }  else {
-        (error ? std::cerr : std::cout) << msg << std::endl;
+        if (error) {
+            Console::errorfn(msg);
+        } else {
+            Console::printfn(msg);
+        }
     }
 }
 

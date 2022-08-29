@@ -37,6 +37,8 @@
 #include "StateChangeWrapper.h"
 #include "GlmPimpl.h"
 
+#include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
+
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
 
 // Start of CEGUI namespace section

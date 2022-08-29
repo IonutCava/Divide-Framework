@@ -33,12 +33,10 @@
 #ifndef _IM_EMULATION_H_
 #define _IM_EMULATION_H_
 
+#include "IMPrimitiveDescriptors.h"
 #include "DescriptorSets.h"
-#include "Core/Math/Headers/Line.h"
-#include "Core/Math/BoundingVolumes/Headers/OBB.h"
-#include "Rendering/Camera/Headers/Frustum.h"
-#include "Platform/Video/Headers/Pipeline.h"
-#include "Platform/Video/Headers/PushConstants.h"
+#include "Pipeline.h"
+#include "PushConstants.h"
 #include "Platform/Video/GLIM/glim.h"
 
 namespace NS_GLIM {
@@ -51,52 +49,14 @@ namespace GFX {
     class CommandBuffer;
 };
 
+class GFXDevice;
 FWD_DECLARE_MANAGED_CLASS(IMPrimitive);
 FWD_DECLARE_MANAGED_CLASS(GenericVertexData);
 
 /// IMPrimitive replaces immediate mode calls to VB based rendering
 class IMPrimitive final {
    public:
-       struct BaseDescriptor {
-           UColour4  colour{ DefaultColours::WHITE };
-           mat4<F32> worldMatrix;
-           bool noDepth{ false };
-           bool noCull{ false };
-           bool wireframe{ false };
-       };
-
-       struct OBBDescriptor final : public BaseDescriptor {
-           OBB box;
-       };
-
-       struct FrustumDescriptor final : public BaseDescriptor {
-           Frustum frustum;
-       };
-
-       struct BoxDescriptor final : public BaseDescriptor {
-           vec3<F32> min{ VECTOR3_UNIT * -0.5f };
-           vec3<F32> max{ VECTOR3_UNIT * 0.5f };
-       }; 
-       
-       struct LineDescriptor final : public BaseDescriptor {
-           vector<Line> _lines;
-       };
-
-       struct SphereDescriptor final : public BaseDescriptor {
-           vec3<F32> center{ VECTOR3_ZERO };
-           F32 radius{ 1.f };
-           U8 slices{ 8u };
-           U8 stacks{ 8u };
-       };
-
-       struct ConeDescriptor final : public BaseDescriptor {
-           vec3<F32> root{ VECTOR3_ZERO };
-           vec3<F32> direction{ WORLD_Y_AXIS };
-           F32 length{ 1.f };
-           F32 radius{ 2.f };
-           U8 slices{ 16u }; //max 32u
-       };
-
+      
    public:
     static void InitStaticData();
 
@@ -129,33 +89,33 @@ class IMPrimitive final {
     inline void attribute4ub(const U32 attribLocation, const vec4<U8>& value) { attribute4ub(attribLocation, value.x, value.y, value.z, value.w); }
     inline void attribute4f(const U32 attribLocation, const vec4<F32>& value) { attribute4f(attribLocation, value.x, value.y, value.z, value.w); }
 
-    void fromLines(const LineDescriptor& lines);
-    void fromLines(const LineDescriptor* lines, size_t count);
+    void fromLines(const IM::LineDescriptor& lines);
+    void fromLines(const IM::LineDescriptor* lines, size_t count);
     
-    void fromFrustum(const FrustumDescriptor& frustum);
-    void fromFrustums(const FrustumDescriptor* frustums, size_t count);
+    void fromFrustum(const IM::FrustumDescriptor& frustum);
+    void fromFrustums(const IM::FrustumDescriptor* frustums, size_t count);
     
-    void fromOBB(const OBBDescriptor& box);
-    void fromOBBs(const OBBDescriptor* boxes, size_t count);
+    void fromOBB(const IM::OBBDescriptor& box);
+    void fromOBBs(const IM::OBBDescriptor* boxes, size_t count);
 
-    void fromBox(const BoxDescriptor& box);
-    void fromBoxes(const BoxDescriptor* boxes, size_t count);
-    void fromSphere(const SphereDescriptor& sphere);
-    void fromSpheres(const SphereDescriptor* spheres, size_t count);
-    void fromCone(const ConeDescriptor& cone);
-    void fromCones(const ConeDescriptor* cones, size_t count);
+    void fromBox(const IM::BoxDescriptor& box);
+    void fromBoxes(const IM::BoxDescriptor* boxes, size_t count);
+    void fromSphere(const IM::SphereDescriptor& sphere);
+    void fromSpheres(const IM::SphereDescriptor* spheres, size_t count);
+    void fromCone(const IM::ConeDescriptor& cone);
+    void fromCones(const IM::ConeDescriptor* cones, size_t count);
     void fromLines(const Line* lines, size_t count);
 
     template<size_t N>
-    inline void fromLines(const std::array<LineDescriptor, N>& lines) { fromLines(lines.data(), lines.size()); } 
+    inline void fromLines(const std::array<IM::LineDescriptor, N>& lines) { fromLines(lines.data(), lines.size()); }
     template<size_t N>
-    inline void fromOBBs(const std::array<OBBDescriptor, N>& obbs) { fromOBBs(obbs.data(), obbs.size()); } 
+    inline void fromOBBs(const std::array<IM::OBBDescriptor, N>& obbs) { fromOBBs(obbs.data(), obbs.size()); }
     template<size_t N>
-    inline void fromBoxes(const std::array<BoxDescriptor, N>& boxes) { fromBoxes(boxes.data(), boxes.size()); }
+    inline void fromBoxes(const std::array<IM::BoxDescriptor, N>& boxes) { fromBoxes(boxes.data(), boxes.size()); }
     template<size_t N>
-    inline void fromSpheres(const std::array<SphereDescriptor, N>& spheres) { fromSpheres(spheres.data(), spheres.size()); }
+    inline void fromSpheres(const std::array<IM::SphereDescriptor, N>& spheres) { fromSpheres(spheres.data(), spheres.size()); }
     template<size_t N>
-    inline void fromCones(const std::array<ConeDescriptor, N>& cones) { fromCones(cones.data(), cones.size()); }
+    inline void fromCones(const std::array<IM::ConeDescriptor, N>& cones) { fromCones(cones.data(), cones.size()); }
 
     void getCommandBuffer(GFX::CommandBuffer& commandBufferInOut);
     void getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuffer& commandBufferInOut);

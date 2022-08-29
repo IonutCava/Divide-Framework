@@ -34,18 +34,18 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _GENERIC_DRAW_COMMAND_H_
 
 #include "RenderAPIEnums.h"
-#include "Core/Headers/ObjectPool.h"
-#include "Platform/Headers/PlatformDefines.h"
+#include "Core/Headers/PoolHandle.h"
 
 namespace Divide {
 
 struct IndirectDrawCommand {
-    U32 indexCount   = 0u;
-    U32 primCount    = 1u;
-    U32 firstIndex   = 0u;
-    U32 baseVertex   = 0u;
-    U32 baseInstance = 0u;
+    U32 indexCount   {0u};
+    U32 primCount    {1u};
+    U32 firstIndex   {0u};
+    U32 baseVertex   {0u};
+    U32 baseInstance {0u};
 };
+
 static_assert(sizeof(IndirectDrawCommand) == 20, "Wrong indirect command size!");
 
 enum class CmdRenderOptions : U8 {

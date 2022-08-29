@@ -3,7 +3,7 @@
 #include "config.h"
 
 #include "Headers/GFXDevice.h"
-
+#include "Headers/GFXRTPool.h"
 #include "Editor/Headers/Editor.h"
 
 #include "Core/Headers/Configuration.h"
@@ -30,6 +30,7 @@
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 
 #include "Platform/Video/RenderBackend/None/Headers/NoneWrapper.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
@@ -525,18 +526,18 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     const size_t samplerHashMips = defaultSamplerMips.getHash();
 
     //PrePass
-    TextureDescriptor depthDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::FLOAT_32);
-    TextureDescriptor velocityDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGB, GFXDataFormat::FLOAT_16);
+    TextureDescriptor depthDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_32, GFXImageFormat::DEPTH_COMPONENT);
+    TextureDescriptor velocityDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RGB);
     //RG - packed normal, B - roughness
-    TextureDescriptor normalsDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGB, GFXDataFormat::FLOAT_16);
+    TextureDescriptor normalsDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RGB);
     depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
     velocityDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
     normalsDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
     //MainPass
-    TextureDescriptor screenDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_16);
+    TextureDescriptor screenDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RGBA);
     screenDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
-    TextureDescriptor materialDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RG, GFXDataFormat::FLOAT_16);
+    TextureDescriptor materialDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RG);
     materialDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
     // Normal, Previous and MSAA
@@ -573,7 +574,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         RenderTargetNames::SCREEN_PREV = _rtPool->allocateRT(screenDesc)._targetID;
     }
     {
-        TextureDescriptor ssaoDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RED, GFXDataFormat::FLOAT_16);
+        TextureDescriptor ssaoDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RED);
         ssaoDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         InternalRTAttachmentDescriptors attachments {
@@ -589,7 +590,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         RenderTargetNames::SSAO_RESULT = _rtPool->allocateRT(ssaoDesc)._targetID;
     }
     {
-        TextureDescriptor ssrDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_16);
+        TextureDescriptor ssrDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RGBA);
         ssrDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
         
         InternalRTAttachmentDescriptors attachments {
@@ -607,7 +608,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     }
     const U32 reflectRes = nextPOW2(CLAMPED(to_U32(config.rendering.reflectionPlaneResolution), 16u, 4096u) - 1u);
 
-    TextureDescriptor hiZDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::UNSIGNED_INT);
+    TextureDescriptor hiZDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::DEPTH_COMPONENT);
     hiZDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
 
     SamplerDescriptor hiZSampler = {};
@@ -643,8 +644,8 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     const size_t reflectionSamplerHash = reflectionSampler.getHash();
 
     {
-        TextureDescriptor environmentDescriptorPlanar(TextureType::TEXTURE_2D, GFXImageFormat::RGB, GFXDataFormat::UNSIGNED_BYTE);
-        TextureDescriptor depthDescriptorPlanar(TextureType::TEXTURE_2D, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::UNSIGNED_INT);
+        TextureDescriptor environmentDescriptorPlanar(TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGB);
+        TextureDescriptor depthDescriptorPlanar(TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::DEPTH_COMPONENT);
 
         environmentDescriptorPlanar.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
         depthDescriptorPlanar.mipMappingState(TextureDescriptor::MipMappingState::OFF);
@@ -694,11 +695,11 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         accumulationSampler.mipSampling(TextureMipSampling::NONE);
         const size_t accumulationSamplerHash = accumulationSampler.getHash();
 
-        TextureDescriptor accumulationDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_16);
+        TextureDescriptor accumulationDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RGBA);
         accumulationDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         //R = revealage
-        TextureDescriptor revealageDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RED, GFXDataFormat::FLOAT_16);
+        TextureDescriptor revealageDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RED);
         revealageDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         InternalRTAttachmentDescriptors oitAttachments {
@@ -783,8 +784,8 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         }
     }
     {
-        TextureDescriptor environmentDescriptorCube(TextureType::TEXTURE_CUBE_ARRAY, GFXImageFormat::RGB, GFXDataFormat::UNSIGNED_BYTE);
-        TextureDescriptor depthDescriptorCube(TextureType::TEXTURE_CUBE_ARRAY, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::UNSIGNED_INT);
+        TextureDescriptor environmentDescriptorCube(TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGB);
+        TextureDescriptor depthDescriptorCube(TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::DEPTH_COMPONENT);
 
         environmentDescriptorCube.mipMappingState(TextureDescriptor::MipMappingState::OFF);
         depthDescriptorCube.mipMappingState(TextureDescriptor::MipMappingState::OFF);
@@ -2769,7 +2770,7 @@ void GFXDevice::getDebugViewNames(vector<std::tuple<string, I16, I16, bool>>& na
     }
 }
 
-PipelineDescriptor& GFXDevice::getDebugPipeline(const IMPrimitive::BaseDescriptor& descriptor) noexcept {
+PipelineDescriptor& GFXDevice::getDebugPipeline(const IM::BaseDescriptor& descriptor) noexcept {
     if (descriptor.noDepth) {
         return (descriptor.noCull ? _debugGizmoPipelineNoCullNoDepth : _debugGizmoPipelineNoDepth);
     } else if (descriptor.noCull) {
@@ -2779,7 +2780,7 @@ PipelineDescriptor& GFXDevice::getDebugPipeline(const IMPrimitive::BaseDescripto
     return _debugGizmoPipeline;
 }
 
-void GFXDevice::debugDrawLines(const I64 ID, const IMPrimitive::LineDescriptor descriptor) noexcept {
+void GFXDevice::debugDrawLines(const I64 ID, const IM::LineDescriptor descriptor) noexcept {
     _debugLines.add(ID, descriptor);
 }
 
@@ -2805,7 +2806,7 @@ void GFXDevice::debugDrawLines(GFX::CommandBuffer& bufferInOut) {
     }
 }
 
-void GFXDevice::debugDrawBox(const I64 ID, const IMPrimitive::BoxDescriptor descriptor) noexcept {
+void GFXDevice::debugDrawBox(const I64 ID, const IM::BoxDescriptor descriptor) noexcept {
     _debugBoxes.add(ID, descriptor);
 }
 
@@ -2830,7 +2831,7 @@ void GFXDevice::debugDrawBoxes(GFX::CommandBuffer& bufferInOut) {
     }
 }
 
-void GFXDevice::debugDrawOBB(const I64 ID, const IMPrimitive::OBBDescriptor descriptor) noexcept {
+void GFXDevice::debugDrawOBB(const I64 ID, const IM::OBBDescriptor descriptor) noexcept {
     _debugOBBs.add(ID, descriptor);
 }
 
@@ -2854,7 +2855,7 @@ void GFXDevice::debugDrawOBBs(GFX::CommandBuffer& bufferInOut) {
         boxPrimitive->getCommandBuffer(data._descriptor.worldMatrix, bufferInOut);
     }
 }
-void GFXDevice::debugDrawSphere(const I64 ID, const IMPrimitive::SphereDescriptor descriptor) noexcept {
+void GFXDevice::debugDrawSphere(const I64 ID, const IM::SphereDescriptor descriptor) noexcept {
     _debugSpheres.add(ID, descriptor);
 }
 
@@ -2879,7 +2880,7 @@ void GFXDevice::debugDrawSpheres(GFX::CommandBuffer& bufferInOut) {
     }
 }
 
-void GFXDevice::debugDrawCone(const I64 ID, const IMPrimitive::ConeDescriptor descriptor) noexcept {
+void GFXDevice::debugDrawCone(const I64 ID, const IM::ConeDescriptor descriptor) noexcept {
     _debugCones.add(ID, descriptor);
 }
 
@@ -2905,7 +2906,7 @@ void GFXDevice::debugDrawCones(GFX::CommandBuffer& bufferInOut) {
     }
 }
 
-void GFXDevice::debugDrawFrustum(const I64 ID, const IMPrimitive::FrustumDescriptor descriptor) noexcept {
+void GFXDevice::debugDrawFrustum(const I64 ID, const IM::FrustumDescriptor descriptor) noexcept {
     _debugFrustums.add(ID, descriptor);
 }
 

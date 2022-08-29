@@ -87,6 +87,7 @@ class ContentExplorerWindow;
 class SolutionExplorerWindow;
 class GUIConsoleCommandParser;
 
+struct CameraSnapshot;
 struct SizeChangeParams;
 
 FWD_DECLARE_MANAGED_CLASS(Player);

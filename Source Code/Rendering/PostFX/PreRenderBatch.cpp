@@ -5,7 +5,9 @@
 #include "Headers/PreRenderOperator.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/GFXRTPool.h"
 
+#include "Core/Headers/StringHelper.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Resources/Headers/ResourceCache.h"
@@ -13,6 +15,7 @@
 #include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 
 #include "Rendering/PostFX/CustomOperators/Headers/BloomPreRenderOperator.h"
 #include "Rendering/PostFX/CustomOperators/Headers/DoFPreRenderOperator.h"
@@ -102,7 +105,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         _screenRTs._ldr._temp[1] = _context.renderTargetPool().allocateRT(desc);
     }
     {
-        TextureDescriptor edgeDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RG, GFXDataFormat::FLOAT_16);
+        TextureDescriptor edgeDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RG);
         edgeDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         InternalRTAttachmentDescriptors att = {
@@ -114,7 +117,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         _sceneEdges = _context.renderTargetPool().allocateRT(desc);
     }
     {
-        TextureDescriptor lumaDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RED, GFXDataFormat::FLOAT_16);
+        TextureDescriptor lumaDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RED);
         lumaDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
         lumaDescriptor.srgb(false);
 
@@ -136,7 +139,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         defaultSampler.anisotropyLevel(0);
         const size_t samplerHash = defaultSampler.getHash();
 
-        TextureDescriptor linearDepthDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RED, GFXDataFormat::FLOAT_16);
+        TextureDescriptor linearDepthDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RED);
         linearDepthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         InternalRTAttachmentDescriptors attachments = {

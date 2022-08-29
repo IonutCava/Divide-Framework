@@ -13,6 +13,7 @@
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "ECS/Components/Headers/RenderingComponent.h"
 #include "Editor/Headers/Editor.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Rendering/RenderPass/Headers/NodeBufferedData.h"
 
 namespace Divide {

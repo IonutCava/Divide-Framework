@@ -31,6 +31,7 @@
     <ClCompile Include="..\..\Source Code\Core\Console.cpp" />
     <ClCompile Include="..\..\Source Code\Core\Debugging\DebugInterface.cpp" />
     <ClCompile Include="..\..\Source Code\Core\GUIDWrapper.cpp" />
+    <ClCompile Include="..\..\Source Code\Core\Hashable.cpp" />
     <ClCompile Include="..\..\Source Code\Core\Math\BoundingVolumes\BoundingBox.cpp" />
     <ClCompile Include="..\..\Source Code\Core\Math\BoundingVolumes\BoundingSphere.cpp" />
     <ClCompile Include="..\..\Source Code\Core\Math\BoundingVolumes\OBB.cpp" />
@@ -62,6 +63,7 @@
     <ClCompile Include="..\..\Source Code\Core\Time\FrameRateHandler.cpp" />
     <ClCompile Include="..\..\Source Code\Core\Time\ProfileTimer.cpp" />
     <ClCompile Include="..\..\Source Code\Core\WindowManager.cpp" />
+    <ClCompile Include="..\..\Source Code\Utility\Colours.cpp" />
     <ClCompile Include="..\..\Source Code\Utility\CommandParser.cpp" />
     <ClCompile Include="..\..\Source Code\Utility\CRC.cpp" />
     <ClCompile Include="..\..\Source Code\Utility\EASTLImport.cpp" />
@@ -122,8 +124,10 @@
     <ClInclude Include="../../Source Code/Core\TemplateLibraries\Headers\PolyContainer.h" />
     <ClInclude Include="..\..\Source Code\Core\Headers\ImGUICustomConfig.h" />
     <ClInclude Include="..\..\Source Code\Core\Headers\ObjectPool.h" />
+    <ClInclude Include="..\..\Source Code\Core\Headers\PoolHandle.h" />
     <ClInclude Include="..\..\Source Code\Core\Math\BoundingVolumes\Headers\OBB.h" />
     <ClInclude Include="..\..\Source Code\Core\TemplateLibraries\Headers\CircularBuffer.h" />
+    <ClInclude Include="..\..\Source Code\Utility\Headers\ImageToolsFwd.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="../../Source Code/Core\Headers\ByteBuffer.inl" />
@@ -142,6 +146,7 @@
     <None Include="../../Source Code/Core\Time\Headers\FrameRateHandler.inl" />
     <None Include="../../Source Code/Core\Time\Headers\ProfileTimer.inl" />
     <None Include="..\..\Source Code\Core\Headers\ObjectPool.inl" />
+    <None Include="..\..\Source Code\Core\Headers\PoolHandle.inl" />
     <None Include="..\..\Source Code\Core\Headers\TaskPool.inl" />
     <None Include="Divide-Core.ruleset" />
   </ItemGroup>

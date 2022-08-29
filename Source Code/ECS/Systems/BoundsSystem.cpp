@@ -86,7 +86,7 @@ namespace Divide {
             }
 
             const BoundingBox& bb = bComp->getBoundingBox();
-            IMPrimitive::BoxDescriptor descriptor;
+            IM::BoxDescriptor descriptor;
             descriptor.min = bb.getMin();
             descriptor.max = bb.getMax();
             descriptor.colour = DefaultColours::WHITE_U8;

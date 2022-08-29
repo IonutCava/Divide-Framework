@@ -33,6 +33,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _SCRIPTING_SCRIPT_BINDINGS_H_
 #define _SCRIPTING_SCRIPT_BINDINGS_H_
 
+#include <ChaiScript/include/chaiscript/chaiscript_stdlib.hpp>
+
 namespace chaiscript {
     class Module;
 }

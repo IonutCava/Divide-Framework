@@ -18,6 +18,7 @@
 #include "Managers/Headers/SceneManager.h"
 #include "Managers/Headers/RenderPassManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Headers/IMPrimitive.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Rendering/Camera/Headers/FreeFlyCamera.h"

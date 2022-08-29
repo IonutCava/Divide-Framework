@@ -3,6 +3,7 @@
 #include "Headers/glSamplerObject.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 
 

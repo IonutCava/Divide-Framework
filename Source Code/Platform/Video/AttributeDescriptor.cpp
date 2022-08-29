@@ -3,8 +3,7 @@
 #include "Headers/AttributeDescriptor.h"
 
 namespace Divide {
-    size_t GetHash(const AttributeDescriptor& descriptor)
-    {
+    [[nodiscard]] size_t GetHash(const AttributeDescriptor& descriptor) {
         if (descriptor._dataType == GFXDataFormat::COUNT) {
             return 0u;
         }
@@ -15,6 +14,17 @@ namespace Divide {
                                  descriptor._dataType, descriptor._normalized);
 
         return hash;
+    }
+
+    [[nodiscard]] size_t GetHash(const AttributeMap& attributes) {
+        size_t vertexFormatHash = 1337;
+        for (const AttributeDescriptor& attrDescriptor : attributes) {
+            if (attrDescriptor._dataType != GFXDataFormat::COUNT) {
+                Util::Hash_combine(vertexFormatHash, GetHash(attrDescriptor));
+            }
+        }
+
+        return vertexFormatHash;
     }
 
     bool operator==(const AttributeDescriptor& lhs, const AttributeDescriptor& rhs) noexcept {

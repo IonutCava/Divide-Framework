@@ -39,7 +39,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Platform/Video/Headers/RenderPackage.h"
 #include "Platform/Video/Headers/IMPrimitive.h"
 #include "Platform/Video/Headers/RenderStagePass.h"
-#include "Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h"
 #include "Rendering/RenderPass/Headers/NodeBufferedData.h"
 
 namespace Divide {
@@ -86,25 +85,16 @@ struct RenderCbkParams {
                              const RenderTargetID& renderTarget,
                              const U16 passIndex,
                              const U8 passVariant,
-                             Camera* camera) noexcept
-        : _context(context),
-          _sgn(sgn),
-          _sceneRenderState(sceneRenderState),
-          _renderTarget(renderTarget),
-          _camera(camera),
-          _passIndex(passIndex),
-          _passVariant(passVariant)
-    {
-    }
+                             Camera* camera) noexcept;
 
     GFXDevice& _context;
-    const SceneGraphNode* _sgn = nullptr;
+    const SceneGraphNode* _sgn{ nullptr };
     const SceneRenderState& _sceneRenderState;
     const RenderTargetID& _renderTarget;
 
-    Camera* _camera;
-    U16 _passIndex;
-    U8  _passVariant;
+    Camera* _camera{ nullptr };
+    U16 _passIndex{ 0u };
+    U8  _passVariant{ 0u };
 };
 
 using RenderCallback = DELEGATE<void, RenderPassManager*, RenderCbkParams&, GFX::CommandBuffer&, GFX::MemoryBarrierCommand&>;
@@ -171,7 +161,6 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
                          void setLoDIndexOffset(U8 lodIndex, size_t indexOffset, size_t indexCount) noexcept;
 
     void getMaterialData(NodeMaterialData& dataOut) const;
-
     void rebuildMaterial();
 
                          void                instantiateMaterial(const Material_ptr& material);
@@ -264,9 +253,9 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     RenderCallback _reflectionCallback{};
     RenderCallback _refractionCallback{};
 
-    IMPrimitive::LineDescriptor _axisGizmoLinesDescriptor;
-    IMPrimitive::LineDescriptor _skeletonLinesDescriptor;
-    IMPrimitive::OBBDescriptor _selectionGizmoDescriptor;
+    IM::LineDescriptor _axisGizmoLinesDescriptor;
+    IM::LineDescriptor _skeletonLinesDescriptor;
+    IM::OBBDescriptor _selectionGizmoDescriptor;
 
     SharedMutex _renderPackagesLock;
 
@@ -386,4 +375,5 @@ class RenderingComponentSGN {
 };
 }  // namespace Attorney
 }  // namespace Divide
+
 #endif

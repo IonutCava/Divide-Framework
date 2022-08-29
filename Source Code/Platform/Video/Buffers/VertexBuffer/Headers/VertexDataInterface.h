@@ -33,106 +33,15 @@
 #ifndef _VERTEX_DATA_INTERFACE_H_
 #define _VERTEX_DATA_INTERFACE_H_
 
+#include "BufferLocks.h"
 #include "Core/Headers/ObjectPool.h"
 
 #include "Platform/Video/Headers/GraphicsResource.h"
-#include "Platform/Video/Headers/RenderAPIEnums.h"
 
 namespace Divide {
 
 struct RenderStagePass;
 struct GenericDrawCommand;
-
-struct BufferParams
-{
-    U32 _elementCount{ 0u };
-    size_t _elementSize{ 0u };     ///< Buffer primitive size in bytes
-    BufferUpdateFrequency _updateFrequency{ BufferUpdateFrequency::COUNT };
-    BufferUpdateUsage _updateUsage{ BufferUpdateUsage::COUNT };
-};
-
-inline bool operator==(const BufferParams& lhs, const BufferParams& rhs) noexcept {
-    return lhs._elementCount == rhs._elementCount &&
-           lhs._elementSize == rhs._elementSize &&
-           lhs._updateFrequency == rhs._updateFrequency &&
-           lhs._updateUsage == rhs._updateUsage;
-}
-
-inline bool operator!=(const BufferParams& lhs, const BufferParams& rhs) noexcept {
-    return lhs._elementCount != rhs._elementCount ||
-           lhs._elementSize != rhs._elementSize ||
-           lhs._updateFrequency != rhs._updateFrequency ||
-           lhs._updateUsage != rhs._updateUsage;
-}
-
-struct BufferRange {
-    size_t _startOffset{ 0u };
-    size_t _length{ 0u };
-
-    FORCE_INLINE [[nodiscard]] size_t endOffset() const noexcept { return _startOffset + _length; }
-};
-
-inline bool operator==(const BufferRange& lhs, const BufferRange& rhs) noexcept {
-    return lhs._startOffset == rhs._startOffset &&
-           lhs._length == rhs._length;
-}
-
-inline bool operator!=(const BufferRange& lhs, const BufferRange& rhs) noexcept {
-    return lhs._startOffset != rhs._startOffset ||
-           lhs._length != rhs._length;
-}
-
-[[nodiscard]] inline bool Overlaps(const BufferRange& lhs, const BufferRange& rhs) noexcept {
-    return lhs._startOffset < rhs.endOffset() &&
-           rhs._startOffset < lhs.endOffset();
-}
-
-inline void Merge(BufferRange& lhs, const BufferRange& rhs) noexcept {
-    const size_t endOffset = std::max(lhs.endOffset(), rhs.endOffset());
-    lhs._startOffset = std::min(lhs._startOffset, rhs._startOffset);
-    assert(endOffset > lhs._startOffset);
-
-    lhs._length = endOffset - lhs._startOffset;
-}
-
-class ShaderBuffer;
-struct BufferLock {
-    const ShaderBuffer* _targetBuffer = nullptr;
-    BufferRange _range{};
-};
-
-class GenericVertexData;
-
-using BufferLocks = eastl::fixed_vector<BufferLock, 3, true, eastl::dvd_allocator>;
-using FenceLocks = eastl::fixed_vector<GenericVertexData*, 3, true, eastl::dvd_allocator>;
-
-inline [[nodiscard]] bool IsEmpty(const BufferLocks& locks) noexcept {
-    if (locks.empty()) {
-        return true;
-    }
-
-    for (auto& it : locks) {
-        if (it._targetBuffer != nullptr) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-inline [[nodiscard]] bool IsEmpty(const FenceLocks& locks) noexcept {
-    if (locks.empty()) {
-        return true;
-    }
-
-    for (auto& it : locks) {
-        if (it != nullptr) {
-            return false;
-        }
-    }
-
-    return true;
-}
 
 struct VDIUserData {};
 
@@ -156,5 +65,6 @@ class NOINITVTABLE VertexDataInterface : public GUIDWrapper, public GraphicsReso
 
 };  // namespace Divide
 
+#endif //_VERTEX_DATA_INTERFACE_H_
 
-#endif
+#include "VertexDataInterface.inl"

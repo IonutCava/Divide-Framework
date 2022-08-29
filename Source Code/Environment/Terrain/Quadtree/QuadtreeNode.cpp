@@ -99,7 +99,7 @@ void QuadtreeNode::toggleBoundingBoxes() {
 }
 
 void QuadtreeNode::drawBBox(GFXDevice& context) {
-    IMPrimitive::BoxDescriptor descriptor;
+    IM::BoxDescriptor descriptor;
     descriptor.min = _boundingBox.getMin();
     descriptor.max = _boundingBox.getMax();
     descriptor.colour = UColour4(0, 128, 255, 255);

@@ -4,6 +4,43 @@
 #include "Platform/Video/Headers/RenderStagePass.h"
 
 namespace Divide {
+[[nodiscard]] bool operator==(const WaterBodyData& lhs, const WaterBodyData& rhs) noexcept {
+    return lhs._positionW == rhs._positionW &&
+           lhs._extents == rhs._extents;
+}
+
+[[nodiscard]] bool operator!=(const WaterBodyData& lhs, const WaterBodyData& rhs) noexcept {
+    return lhs._positionW != rhs._positionW ||
+           lhs._extents != rhs._extents;
+}
+
+[[nodiscard]] bool operator==(const FogDetails& lhs, const FogDetails& rhs) noexcept {
+    return lhs._colourAndDensity == rhs._colourAndDensity &&
+           lhs._colourSunScatter == rhs._colourSunScatter;
+}
+
+[[nodiscard]] bool operator!=(const FogDetails& lhs, const FogDetails& rhs) noexcept {
+    return lhs._colourAndDensity != rhs._colourAndDensity ||
+           lhs._colourSunScatter != rhs._colourSunScatter;
+}
+
+void SceneStatePerPlayer::resetMovement() noexcept {
+    _moveFB = _moveLR = _moveUD = _angleUD = _angleLR = _roll = _zoom = MoveDirection::NONE;
+}
+
+void SceneStatePerPlayer::resetAll() noexcept {
+    resetMovement();
+    _cameraUnderwater = false;
+    _cameraUpdated = false;
+    _overrideCamera = nullptr;
+    _cameraLockedToMouse = false;
+}
+
+SceneState::SceneState(Scene& parentScene)
+  : SceneComponent(parentScene),
+    _renderState(parentScene)
+{
+}
 
 SceneRenderState::SceneRenderState(Scene& parentScene) noexcept
     : SceneComponent(parentScene)

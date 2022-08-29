@@ -31,7 +31,8 @@
 #include "CEGUI/Exceptions.h"
 #include "CEGUI/System.h"
 #include "CEGUI/ImageCodec.h"
-#include <cmath>
+
+#include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 
 // Start of CEGUI namespace section
 namespace CEGUI

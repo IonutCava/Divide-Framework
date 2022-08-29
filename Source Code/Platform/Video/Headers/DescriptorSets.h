@@ -35,12 +35,11 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "TextureData.h"
 #include "Core/Headers/Hashable.h"
-#include "Platform/Video/Textures/Headers/TextureDescriptor.h"
-#include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/BufferRange.h"
 
 namespace Divide {
     class Texture;
-    FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
+    class ShaderBuffer;
 
     enum class DescriptorSetBindingType : U8 {
         COMBINED_IMAGE_SAMPLER,
@@ -107,7 +106,7 @@ namespace Divide {
     };
 
     struct DescriptorSetBindingData {
-        eastl::variant<std::monostate,
+        eastl::variant<eastl::monostate,
                        ShaderBufferEntry,
                        DescriptorCombinedImageSampler,
                        Image> _resource{};
@@ -122,7 +121,6 @@ namespace Divide {
         [[nodiscard]] const T& As() const noexcept;
         [[nodiscard]] DescriptorSetBindingType Type() const noexcept;
     };
-
 
     struct DescriptorBindingEntry {
         DescriptorSetBindingData _data{};

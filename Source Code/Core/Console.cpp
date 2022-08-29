@@ -4,6 +4,8 @@
 
 #include "Core/Time/Headers/ApplicationTimer.h"
 
+#include <iostream>
+
 namespace Divide {
 
 bool Console::_timestamps = false;

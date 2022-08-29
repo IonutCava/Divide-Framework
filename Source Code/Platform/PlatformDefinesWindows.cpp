@@ -163,7 +163,9 @@ namespace Divide {
         const HRESULT hr = SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
         if (FAILED(hr)) {
             const _com_error err(hr);
-            std::cerr << "SetProcessDpiAwareness: " << err.ErrorMessage() << std::endl;
+            CHAR msgText[256];
+            GetLastErrorText(msgText, sizeof(msgText));
+            Console::errorfn(msgText);
         }
 
         return ErrorCode::NO_ERR;
@@ -183,7 +185,7 @@ namespace Divide {
         } else {
             CHAR msgText[256];
             GetLastErrorText(msgText,sizeof(msgText));
-            std::cerr << msgText << std::endl;
+            Console::errorfn(msgText);
         }
         return false;
     }

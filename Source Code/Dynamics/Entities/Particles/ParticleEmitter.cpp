@@ -4,6 +4,7 @@
 
 
 #include "Core/Headers/Configuration.h"
+#include "Core/Headers/StringHelper.h"
 #include "Scenes/Headers/Scene.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/RenderPackage.h"
@@ -18,6 +19,7 @@
 #include "ECS/Components/Headers/RenderingComponent.h"
 #include "ECS/Components/Headers/BoundsComponent.h"
 #include "ECS/Components/Headers/TransformComponent.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
 
 namespace Divide {

@@ -19,7 +19,9 @@
 #include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 #include "ECS/Components/Headers/DirectionalLightComponent.h"
@@ -113,7 +115,7 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
                 shadowMapSampler.anisotropyLevel(isCSM ? settings.csm.maxAnisotropicFilteringLevel : settings.spot.maxAnisotropicFilteringLevel);
 
                 // Default filters, LINEAR is OK for this
-                TextureDescriptor shadowMapDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXImageFormat::RG, isCSM ? GFXDataFormat::FLOAT_32 : GFXDataFormat::FLOAT_16);
+                TextureDescriptor shadowMapDescriptor(TextureType::TEXTURE_2D_ARRAY, isCSM ? GFXDataFormat::FLOAT_32 : GFXDataFormat::FLOAT_16, GFXImageFormat::RG);
                 shadowMapDescriptor.layerCount(isCSM ? Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS * Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT
                                                      : Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS);
 
@@ -158,14 +160,14 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
                     continue;
                 }
 
-                TextureDescriptor colourMapDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXImageFormat::RG, GFXDataFormat::FLOAT_16);
+                TextureDescriptor colourMapDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::FLOAT_16, GFXImageFormat::RG);
                 colourMapDescriptor.layerCount(Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS);
                 colourMapDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
                 shadowMapSampler.mipSampling(TextureMipSampling::NONE);
                 shadowMapSampler.anisotropyLevel(0);
                 const size_t samplerHash = shadowMapSampler.getHash();
 
-                TextureDescriptor depthDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::UNSIGNED_INT);
+                TextureDescriptor depthDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::DEPTH_COMPONENT);
                 depthDescriptor.layerCount(colourMapDescriptor.layerCount());
                 depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
 

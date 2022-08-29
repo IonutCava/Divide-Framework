@@ -9,6 +9,7 @@
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Managers/Headers/SceneManager.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Rendering/Headers/Renderer.h"
 #include "Rendering/PostFX/Headers/PostFX.h"
 

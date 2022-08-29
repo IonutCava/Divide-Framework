@@ -36,8 +36,6 @@
 #include "CEGUI/Rect.h"
 #include "CEGUI/TextureTarget.h"
 #include "GL.h"
-#include <vector>
-#include <map>
 
 #if defined(_MSC_VER)
 #   pragma warning(push)

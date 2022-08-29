@@ -30,10 +30,7 @@
 #include "CEGUI/String.h"
 #include "CEGUI/Exceptions.h"
 
-#if defined CEGUI_USE_GLEW
-#include <sstream>
-#include <cstring>
-#endif
+#include <glbinding/gl/gl.h>
 
 namespace CEGUI
 {

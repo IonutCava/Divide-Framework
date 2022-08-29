@@ -46,52 +46,14 @@ namespace Divide {
                lhs._level != rhs._level ||
                !Compare(lhs._texture, rhs._texture);
     }
-#if 0
-    bool operator==(const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs) noexcept {
-        if (lhs._resource.index() == rhs._resource.index()) {
-            switch (lhs.Type()) {
-                case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER:
-                    return lhs.As<DescriptorCombinedImageSampler>() == rhs.As<DescriptorCombinedImageSampler>();
-                case DescriptorSetBindingType::IMAGE:
-                    return lhs.As<Image>() == rhs.As<Image>();
-                case DescriptorSetBindingType::UNIFORM_BUFFER:
-                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: 
-                    return lhs.As<ShaderBufferEntry>() == rhs.As<ShaderBufferEntry>();
-                default:
-                    DIVIDE_UNEXPECTED_CALL();
-                    break;
-            };
-        }
 
-        return false;
-    }
-
-    bool operator!=(const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs) noexcept {
-        if (lhs._resource.index() == rhs._resource.index()) {
-            switch (lhs.Type()) {
-            case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER:
-                return lhs.As<DescriptorCombinedImageSampler>() != rhs.As<DescriptorCombinedImageSampler>();
-            case DescriptorSetBindingType::IMAGE:
-                return lhs.As<Image>() != rhs.As<Image>();
-            case DescriptorSetBindingType::UNIFORM_BUFFER:
-            case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
-                return lhs.As<ShaderBufferEntry>() != rhs.As<ShaderBufferEntry>();
-            default:
-                DIVIDE_UNEXPECTED_CALL();
-                break;
-            };
-        }
-
-        return true;
-    }
-#else
     bool operator==(const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs) noexcept {
         return lhs._resource == rhs._resource;
     }
     bool operator!=(const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs) noexcept {
         return lhs._resource != rhs._resource;
     }
-#endif
+
     bool operator==(const ShaderBufferEntry& lhs, const ShaderBufferEntry& rhs) noexcept {
         return lhs._bufferQueueReadIndex == rhs._bufferQueueReadIndex &&
                lhs._range == rhs._range &&

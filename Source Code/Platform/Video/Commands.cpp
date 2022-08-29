@@ -1,8 +1,9 @@
 #include "stdafx.h"
 
 #include "Headers/CommandsImpl.h"
-
 #include "Headers/Pipeline.h"
+
+#include "Core/Headers/StringHelper.h"
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"

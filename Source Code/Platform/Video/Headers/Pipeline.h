@@ -33,7 +33,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _PIPELINE_H_
 #define _PIPELINE_H_
 
-#include "Core/Headers/Hashable.h"
 #include "Platform/Video/Headers/BlendingProperties.h"
 #include "Platform/Video/Headers/AttributeDescriptor.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgramFwd.h"
@@ -60,17 +59,11 @@ public:
 
     PROPERTY_R_IW(PipelineDescriptor, descriptor);
     PROPERTY_R_IW(size_t, hash, 0u);
-
     PROPERTY_R_IW(size_t, vertexFormatHash, 0u);
 }; //class Pipeline
 
-inline bool operator==(const Pipeline& lhs, const Pipeline& rhs) noexcept {
-    return lhs.hash() == rhs.hash();
-}
-
-inline bool operator!=(const Pipeline& lhs, const Pipeline& rhs) noexcept {
-    return lhs.hash() != rhs.hash();
-}
+bool operator==(const Pipeline& lhs, const Pipeline& rhs) noexcept;
+bool operator!=(const Pipeline& lhs, const Pipeline& rhs) noexcept;
 
 }; //namespace Divide
 

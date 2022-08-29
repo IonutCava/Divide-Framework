@@ -5,6 +5,7 @@
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/RenderPackage.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Managers/Headers/SceneManager.h"
 #include "Geometry/Material/Headers/Material.h"

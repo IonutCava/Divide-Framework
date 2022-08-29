@@ -34,9 +34,6 @@
 #include "CEGUI/Rect.h"
 #include "CEGUI/Quaternion.h"
 
-#include <utility>
-#include <vector>
-
 #if defined(_MSC_VER)
 #   pragma warning(push)
 #   pragma warning(disable : 4251)

@@ -31,6 +31,7 @@
 
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/CommandBuffer.h"
+#include "Platform/File/Headers/FileManagement.h"
 
 #include "Environment/Vegetation/Headers/Vegetation.h"
 #include "Environment/Sky/Headers/Sky.h"

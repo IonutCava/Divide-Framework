@@ -10,6 +10,7 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 
 #include "Geometry/Material/Headers/Material.h"
 #include "Managers/Headers/SceneManager.h"

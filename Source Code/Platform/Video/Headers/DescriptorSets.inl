@@ -34,11 +34,11 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _DESCRIPTOR_SETS_INL_
 
 namespace Divide {
-    FORCE_INLINE  bool ImageView::isDefaultView() const noexcept {
+    inline  bool ImageView::isDefaultView() const noexcept {
         return _isDefaultView || (_mipLevels.max == 0u && _layerRange.max == 0u);
     }
 
-    FORCE_INLINE bool operator==(const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs) noexcept {
+    inline bool operator==(const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs) noexcept {
         return lhs._msaaSamples == rhs._msaaSamples &&
                lhs._dataType == rhs._dataType &&
                lhs._baseFormat == rhs._baseFormat &&
@@ -46,7 +46,7 @@ namespace Divide {
                lhs._normalized == rhs._normalized;
     }
 
-    FORCE_INLINE bool operator!=(const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs) noexcept {
+    inline bool operator!=(const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs) noexcept {
         return lhs._msaaSamples != rhs._msaaSamples ||
                lhs._dataType != rhs._dataType ||
                lhs._baseFormat != rhs._baseFormat ||
@@ -54,26 +54,26 @@ namespace Divide {
                lhs._normalized != rhs._normalized;
     }
 
-    FORCE_INLINE bool operator==(const ImageView& lhs, const ImageView&rhs) noexcept {
+    inline bool operator==(const ImageView& lhs, const ImageView&rhs) noexcept {
         return lhs._mipLevels == rhs._mipLevels &&
                lhs._layerRange == rhs._layerRange &&
                lhs._textureData == rhs._textureData &&
                lhs._descriptor == rhs._descriptor;
     }
 
-    FORCE_INLINE bool operator!=(const ImageView& lhs, const ImageView&rhs) noexcept {
+    inline bool operator!=(const ImageView& lhs, const ImageView&rhs) noexcept {
         return lhs._mipLevels != rhs._mipLevels ||
                lhs._layerRange != rhs._layerRange ||
                lhs._textureData != rhs._textureData ||
                lhs._descriptor != rhs._descriptor;
     }
 
-    FORCE_INLINE bool operator==(const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs) noexcept {
+    inline bool operator==(const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs) noexcept {
         return lhs._image == rhs._image &&
                lhs._samplerHash == rhs._samplerHash;
     }
 
-    FORCE_INLINE bool operator!=(const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs) noexcept {
+    inline bool operator!=(const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs) noexcept {
         return lhs._image != rhs._image ||
                lhs._samplerHash != rhs._samplerHash;
     }
@@ -100,12 +100,12 @@ namespace Divide {
                lhs._data != rhs._data;
     }
 
-    FORCE_INLINE bool DescriptorSetBindingData::isSet() const noexcept {
+    inline bool DescriptorSetBindingData::isSet() const noexcept {
         return _resource.index() != 0;
     }
 
     template<typename T>
-    FORCE_INLINE T& DescriptorSetBindingData::As() noexcept {
+    inline T& DescriptorSetBindingData::As() noexcept {
         if (_resource.index() == 0) {
             return _resource.emplace<T>();
         }
@@ -113,12 +113,12 @@ namespace Divide {
     }
 
     template<typename T>
-    FORCE_INLINE bool DescriptorSetBindingData::Has() const noexcept {
+    inline bool DescriptorSetBindingData::Has() const noexcept {
         return eastl::holds_alternative<T>(_resource);
     }
 
     template<typename T>
-    FORCE_INLINE const T& DescriptorSetBindingData::As() const noexcept {
+    inline const T& DescriptorSetBindingData::As() const noexcept {
         return eastl::get<T>(_resource);
     }
 } //namespace Divide

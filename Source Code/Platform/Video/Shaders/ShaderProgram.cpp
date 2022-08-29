@@ -31,9 +31,6 @@ extern "C" {
 #pragma warning(disable:4706)
 #endif
 #include <boost/regex.hpp>
-#include <boost/wave.hpp>
-#include <boost/wave/cpplexer/cpp_lex_iterator.hpp> // lexer class
-#include <boost/wave/cpplexer/cpp_lex_token.hpp>    // token class
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
@@ -89,30 +86,6 @@ UpdateListener g_sFileWatcherListener(
 );
 
 namespace Preprocessor{
-     //ref: https://stackoverflow.com/questions/14858017/using-boost-wave
-    class custom_directives_hooks final : public boost::wave::context_policies::default_preprocessing_hooks
-    {
-    public:
-        template <typename ContextT, typename ContainerT>
-        bool found_unknown_directive(ContextT const& /*ctx*/, ContainerT const& line, ContainerT& pending) {
-            auto itBegin = cbegin(line);
-            const auto itEnd = cend(line);
-
-            const boost::wave::token_id ret = boost::wave::util::impl::skip_whitespace(itBegin, itEnd);
-
-            if (ret == boost::wave::T_IDENTIFIER) {
-                const auto& temp = (*itBegin).get_value();
-                if (temp == "version" || temp == "extension") {
-                    // handle #version and #extension directives
-                    copy(cbegin(line), itEnd, back_inserter(pending));
-                    return true;
-                }
-            }
-
-            return false;  // unknown directive
-        }
-    };
-
     struct WorkData
     {
         const char* _input = nullptr;
@@ -173,8 +146,7 @@ namespace Preprocessor{
             if (work->_firstError) {
                 work->_firstError = false;
                 Console::errorfn("------------------------------------------");
-                Console::errorfn(Locale::Get(firstErrorPrint ? _ID("ERROR_GLSL_PARSE_ERROR_NAME_LONG")
-                                                             : _ID("ERROR_GLSL_PARSE_ERROR_NAME_SHORT")), work->_fileName);
+                Console::errorfn(Locale::Get(_ID("ERROR_GLSL_PARSE_ERROR_NAME_SHORT")), work->_fileName);
                 firstErrorPrint = false;
             }
             if (strlen(formatted) != 1 && formatted[0] != '\n') {
@@ -184,29 +156,6 @@ namespace Preprocessor{
             }
         }
     }
-    
-     eastl::string PreProcessBoost(const eastl::string& source, const char* fileName) {
-         eastl::string ret = {};
-
-         // Fallback to slow Boost.Wave parsing
-         using ContextType = boost::wave::context<eastl::string::const_iterator,
-                             boost::wave::cpplexer::lex_iterator<boost::wave::cpplexer::lex_token<>>,
-                             boost::wave::iteration_context_policies::load_file_to_string,
-                             custom_directives_hooks>;
-
-         ContextType ctx(cbegin(source), cend(source), fileName);
-
-         ctx.set_language(enable_long_long(ctx.get_language()));
-         ctx.set_language(enable_preserve_comments(ctx.get_language()));
-         ctx.set_language(enable_prefer_pp_numbers(ctx.get_language()));
-         ctx.set_language(enable_emit_line_directives(ctx.get_language(), false));
-
-         for (const auto& it : ctx) {
-             ret.append(it.get_value().c_str());
-         }
-
-         return ret;
-     }
 
     eastl::string PreProcess(const eastl::string& source, const char* fileName) {
         constexpr U8 g_maxTagCount = 64;
@@ -262,7 +211,7 @@ namespace Preprocessor{
         setTag(FPPTAG_END,                nullptr);
 
         if (fppPreProcess(tags) != 0) {
-            return PreProcessBoost(source, fileName);
+            NOP();
         }
 
         return workData._output;
@@ -739,6 +688,27 @@ bool InitGLSW(const GFXDevice& gfx, const DeviceInformation& deviceInfo, const C
     return glswState == 1;
 }
 
+ModuleDefine::ModuleDefine(const char* define, const bool addPrefix)
+    : ModuleDefine(string{ define }, addPrefix)
+{
+}
+
+ModuleDefine::ModuleDefine(const string& define, const bool addPrefix)
+    : _define(define),
+      _addPrefix(addPrefix)
+{
+}
+
+ShaderModuleDescriptor::ShaderModuleDescriptor(ShaderType type, const Str64& file, const Str64& variant)
+    : _moduleType(type), _sourceFile(file), _variant(variant)
+{
+}
+
+ShaderProgramDescriptor::ShaderProgramDescriptor() noexcept
+    : PropertyDescriptor(DescriptorType::DESCRIPTOR_SHADER)
+{
+}
+
 size_t ShaderProgramDescriptor::getHash() const noexcept {
     _hash = PropertyDescriptor::getHash();
     for (const ShaderModuleDescriptor& desc : _modules) {
@@ -748,6 +718,16 @@ size_t ShaderProgramDescriptor::getHash() const noexcept {
                                     desc._moduleType);
     }
     return _hash;
+}
+
+bool operator==(const ShaderProgramMapEntry& lhs, const ShaderProgramMapEntry& rhs) noexcept {
+    return lhs._generation == rhs._generation &&
+           lhs._program == rhs._program;
+}
+
+bool operator!=(const ShaderProgramMapEntry& lhs, const ShaderProgramMapEntry& rhs) noexcept {
+    return lhs._generation != rhs._generation ||
+           lhs._program != rhs._program;
 }
 
 SharedMutex ShaderModule::s_shaderNameLock;
@@ -1654,7 +1634,7 @@ bool ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExis
         if (loadDataInOut._sourceCodeSpirV.empty()) {
             // We are in situation B: we need SPIRV code, so convert our GLSL code over
             DIVIDE_ASSERT(!loadDataInOut._sourceCodeGLSL.empty());
-            if (!SpirvHelper::GLSLtoSPV(type, loadDataInOut._sourceCodeGLSL.c_str(), loadDataInOut._sourceCodeSpirV, s_targetVulkan)) {
+            if (!SpirvHelper::GLSLtoSPV(loadDataInOut._type, loadDataInOut._sourceCodeGLSL.c_str(), loadDataInOut._sourceCodeSpirV, s_targetVulkan)) {
                 Console::errorfn(Locale::Get(_ID("ERROR_SHADER_CONVERSION_SPIRV_FAILED")), loadDataInOut._fileName.c_str());
                 // We may fail here for WHATEVER reason so bail
                 if (!DeleteCache(LoadData::ShaderCacheType::GLSL, loadDataInOut._fileName)) {
@@ -1673,7 +1653,7 @@ bool ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExis
     // Time to see if we have any cached reflection data, and, if not, build it
     if (!LoadFromCache(LoadData::ShaderCacheType::REFLECTION, loadDataInOut, atomIDs)) {
         // Well, we failed. Time to build our reflection data again
-        if (!SpirvHelper::BuildReflectionData(type, loadDataInOut._sourceCodeSpirV, s_targetVulkan, loadDataInOut._reflectionData)) {
+        if (!SpirvHelper::BuildReflectionData(loadDataInOut._type, loadDataInOut._sourceCodeSpirV, s_targetVulkan, loadDataInOut._reflectionData)) {
             Console::errorfn(Locale::Get(_ID("ERROR_SHADER_REFLECTION_SPIRV_FAILED")), loadDataInOut._fileName.c_str());
             return false;
         }

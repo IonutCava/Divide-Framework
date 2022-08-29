@@ -39,7 +39,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenericDrawCommand.h"
 #include "PushConstants.h"
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
-#include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/BufferLocks.h"
 #include "Platform/Video/Headers/DescriptorSets.h"
 #include "Rendering/Camera/Headers/CameraSnapshot.h"
 #include "Utility/Headers/TextLabel.h"

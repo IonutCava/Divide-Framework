@@ -4,20 +4,33 @@
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 #include <glslang/SPIRV/GlslangToSpv.h>
-#include <Vulkan/vulkan.hpp>
 #include <SPIRV-Reflect/spirv_reflect.h>
 
 namespace {
-    Divide::GFX::PushConstantType GetGFXType(const  glslang::TBasicType type) {
+    Divide::GFX::PushConstantType GetGFXType(const  glslang::TBasicType type) noexcept {
         switch (type) {
-            default: Divide::DIVIDE_UNEXPECTED_CALL(); break;
             case glslang::TBasicType::EbtFloat:  return Divide::GFX::PushConstantType::FLOAT;
             case glslang::TBasicType::EbtDouble: return Divide::GFX::PushConstantType::DOUBLE;
             case glslang::TBasicType::EbtInt:    return Divide::GFX::PushConstantType::INT;
             case glslang::TBasicType::EbtUint:   return Divide::GFX::PushConstantType::UINT;
+            default: Divide::DIVIDE_UNEXPECTED_CALL(); break;
         }
 
         return Divide::GFX::PushConstantType::COUNT;
+    }
+
+    EShLanguage FindLanguage(const Divide::ShaderType shader_type) noexcept {
+        switch (shader_type) {
+            case Divide::ShaderType::VERTEX: return EShLangVertex;
+            case Divide::ShaderType::TESSELLATION_CTRL: return EShLangTessControl;
+            case Divide::ShaderType::TESSELLATION_EVAL: return EShLangTessEvaluation;
+            case Divide::ShaderType::GEOMETRY: return EShLangGeometry;
+            case Divide::ShaderType::FRAGMENT: return EShLangFragment;
+            case Divide::ShaderType::COMPUTE: return EShLangCompute;
+            default: Divide::DIVIDE_UNEXPECTED_CALL(); break;
+        }
+
+        return EShLangVertex;
     }
 };
 
@@ -140,21 +153,7 @@ void SpirvHelper::InitResources(TBuiltInResource& Resources) {
     Resources.limits.generalConstantMatrixVectorIndexing = 1;
 }
 
-namespace {
-    EShLanguage FindLanguage(const vk::ShaderStageFlagBits shader_type) {
-        switch (shader_type) {
-            case vk::ShaderStageFlagBits::eVertex: return EShLangVertex;
-            case vk::ShaderStageFlagBits::eTessellationControl: return EShLangTessControl;
-            case vk::ShaderStageFlagBits::eTessellationEvaluation: return EShLangTessEvaluation;
-            case vk::ShaderStageFlagBits::eGeometry: return EShLangGeometry;
-            case vk::ShaderStageFlagBits::eFragment: return EShLangFragment;
-            case vk::ShaderStageFlagBits::eCompute: return EShLangCompute;
-            default: return EShLangVertex;
-        }
-    }
-};
-
-bool SpirvHelper::GLSLtoSPV(const vk::ShaderStageFlagBits shader_type, const char* pshader, std::vector<unsigned int>& spirv, const bool targetVulkan) {
+bool SpirvHelper::GLSLtoSPV(const Divide::ShaderType shader_type, const char* pshader, std::vector<unsigned int>& spirv, const bool targetVulkan) {
     const EShLanguage stage = FindLanguage(shader_type);
     glslang::TShader shader(stage);
     glslang::TProgram program;
@@ -218,7 +217,7 @@ bool SpirvHelper::GLSLtoSPV(const vk::ShaderStageFlagBits shader_type, const cha
     return !spirv.empty();
 }
 
-bool SpirvHelper::BuildReflectionData(const vk::ShaderStageFlagBits shader_type, const std::vector<unsigned int>& spirv, const bool targetVulkan, Divide::Reflection::Data& reflectionDataInOut) {
+bool SpirvHelper::BuildReflectionData(const Divide::ShaderType shader_type, const std::vector<unsigned int>& spirv, const bool targetVulkan, Divide::Reflection::Data& reflectionDataInOut) {
     const EShLanguage stage = FindLanguage(shader_type);
 
     switch (stage) {

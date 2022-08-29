@@ -23,7 +23,7 @@ namespace Divide {
 
         for (SpotLightComponent* comp : _componentCache) {
             if (comp->_drawImpostor) {
-                IMPrimitive::ConeDescriptor descriptor;
+                IM::ConeDescriptor descriptor;
                 descriptor.root = comp->positionCache();
                 descriptor.direction = comp->directionCache();
                 descriptor.length = comp->range();

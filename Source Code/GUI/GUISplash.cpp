@@ -8,6 +8,7 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 
 namespace Divide {
 

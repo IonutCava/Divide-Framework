@@ -15,7 +15,7 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
-
+#include "Platform/File/Headers/FileManagement.h"
 #include "Graphs/Headers/SceneNode.h"
 #include "Graphs/Headers/SceneGraph.h"
 
@@ -334,7 +334,7 @@ namespace Divide {
         I64 guid = 12344231;
         for (const auto& it : g_debugFrustums) {
             const auto& [frustum, colour, realtime] = it.second;
-            IMPrimitive::FrustumDescriptor descriptor;
+            IM::FrustumDescriptor descriptor;
             descriptor.frustum = frustum;
             descriptor.colour = Util::ToByteColour(colour);
             _context.gfx().debugDrawFrustum(guid++, descriptor);

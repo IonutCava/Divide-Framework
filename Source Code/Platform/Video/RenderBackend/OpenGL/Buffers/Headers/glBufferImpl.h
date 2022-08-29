@@ -36,7 +36,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "glMemoryManager.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/glLockManager.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLStateTracker.h"
-#include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/BufferParams.h"
 
 namespace Divide {
 

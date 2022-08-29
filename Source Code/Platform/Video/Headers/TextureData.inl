@@ -34,22 +34,39 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _TEXTURE_DATA_INL_
 
 namespace Divide {
+    [[nodiscard]]
     inline bool IsValid(const TextureEntry& entry) noexcept {
         return entry._data._textureType != TextureType::COUNT &&
                entry._data._textureHandle > 0u;
     }
 
-    FORCE_INLINE bool operator==(const TextureEntry & lhs, const TextureEntry & rhs) noexcept {
+    inline bool operator==(const TextureEntry & lhs, const TextureEntry & rhs) noexcept {
         return lhs._binding == rhs._binding && 
                lhs._sampler == rhs._sampler &&
                lhs._data == rhs._data;
     }
 
-    FORCE_INLINE bool operator!=(const TextureEntry & lhs, const TextureEntry & rhs) noexcept {
+    inline bool operator!=(const TextureEntry & lhs, const TextureEntry & rhs) noexcept {
         return lhs._binding != rhs._binding || 
                lhs._sampler != rhs._sampler ||
                lhs._data != rhs._data ;
     }
+
+    [[nodiscard]]
+    inline bool IsValid(const TextureData& data) noexcept {
+        return data._textureHandle != 0u && data._textureType != TextureType::COUNT;
+    }
+
+    inline bool operator==(const TextureData& lhs, const TextureData& rhs) noexcept {
+        return lhs._textureHandle == rhs._textureHandle &&
+               lhs._textureType == rhs._textureType;
+    }
+
+    inline bool operator!=(const TextureData& lhs, const TextureData& rhs) noexcept {
+        return lhs._textureHandle != rhs._textureHandle ||
+               lhs._textureType != rhs._textureType;
+    }
+
 
 } //namespace Divide
 

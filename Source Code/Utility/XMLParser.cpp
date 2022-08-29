@@ -8,7 +8,7 @@
 #include "Managers/Headers/SceneManager.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Scenes/Headers/SceneInput.h"
-
+#include "Utility/Headers/Localization.h"
 #include <boost/property_tree/xml_parser.hpp>
 
 namespace Divide::XML {

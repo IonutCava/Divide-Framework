@@ -43,6 +43,7 @@ class ResourceCache;
 class PlatformContext;
 
 FWD_DECLARE_MANAGED_CLASS(PostFX);
+FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
 FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 
 /// TiledForwardShading

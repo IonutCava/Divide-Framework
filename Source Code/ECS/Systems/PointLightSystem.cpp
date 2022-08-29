@@ -23,7 +23,7 @@ namespace Divide {
         Parent::PreUpdate(dt);
         for (PointLightComponent* comp : _componentCache) {
             if (comp->_drawImpostor) {
-                IMPrimitive::SphereDescriptor descriptor;
+                IM::SphereDescriptor descriptor;
                 descriptor.center = comp->positionCache();
 
                 descriptor.radius = 0.5f;

@@ -3,6 +3,7 @@
 #include "Headers/DirectionalLightComponent.h"
 #include "Managers/Headers/SceneManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Core/Headers/StringHelper.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Resources/Headers/ResourceCache.h"

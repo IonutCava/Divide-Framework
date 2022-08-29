@@ -1489,7 +1489,7 @@ void Scene::debugDraw(GFX::CommandBuffer& bufferInOut) {
 
             const size_t regionCount = octreeBoundingBoxes.size();
 
-            IMPrimitive::BoxDescriptor descriptor;
+            IM::BoxDescriptor descriptor;
             for (size_t i = 0u; i < regionCount; ++i) {
                 const BoundingBox& box = octreeBoundingBoxes[i];
                 descriptor.min = box.getMin();

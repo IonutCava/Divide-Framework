@@ -42,6 +42,7 @@ namespace GFX {
         QWORD,
         COUNT
     };
+
     //ToDo: Make this more generic. Also used by the Editor -Ionut
     enum class PushConstantType : U8 {
         BOOL = 0,
@@ -84,80 +85,30 @@ namespace GFX {
 
     struct PushConstant {
         template<typename T>
-        PushConstant(const U64 bindingHash, const PushConstantType type, const T& data)
-            : PushConstant(bindingHash, type, &data, 1)
-        {
-        }
+        PushConstant(const U64 bindingHash, const PushConstantType type, const T& data);
+        template<typename T>
+        PushConstant(const U64 bindingHash, const PushConstantType type, const T* data, const size_t count);
 
         template<typename T>
-        PushConstant(const U64 bindingHash, const PushConstantType type, const T* data, const size_t count)
-            : _bindingHash(bindingHash),
-              _type(type)
-        {
-            set(data, count);
-        }
-
-        template<typename T>
-        void set(const T* data, const size_t count) {
-            if (count > 0u) {
-                const size_t bufferSize = count * sizeof(T);
-                if (_buffer.size() < bufferSize) {
-                    _buffer.resize(bufferSize);
-                }
-                std::memcpy(_buffer.data(), data, bufferSize);
-                dataSize(bufferSize);
-            } else {
-                _buffer.resize(0);
-                dataSize(0u);
-            }
-        }
-
+        void set(const T* data, const size_t count);
         void clear() noexcept;
 
-        [[nodiscard]] const Byte* data() const noexcept { return _buffer.data(); }
+        const Byte* data() const noexcept;
 
         PROPERTY_R_IW(size_t, dataSize, 0u);
         PROPERTY_R_IW(U64, bindingHash, 0u);
         PROPERTY_R_IW(PushConstantType, type, PushConstantType::COUNT);
 
-    public:
-        inline bool operator==(const PushConstant& rhs) const {
-            return type() == rhs.type() &&
-                   bindingHash() == rhs.bindingHash() &&
-                   dataSize() == rhs.dataSize() &&
-                   _buffer == rhs._buffer;
-        }
+        bool operator==(const PushConstant& rhs) const;
+        bool operator!=(const PushConstant& rhs) const;
 
-        inline bool operator!=(const PushConstant& rhs) const {
-            return type() != rhs.type() ||
-                   bindingHash() != rhs.bindingHash() ||
-                   dataSize() != rhs.dataSize() ||
-                   _buffer != rhs._buffer;
-        }
     private:
         // Most often than not, data will be the size of a mat4 or lower, otherwise we'd just use shader storage buffers
         eastl::fixed_vector<Byte, sizeof(F32) * 16, true, eastl::dvd_allocator> _buffer;
     };
 
-    template <>
-    inline void PushConstant::set<bool>(const bool* data, const size_t count) {
-        assert(data != nullptr);
-
-        if (count == 0) {
-            _buffer.resize(0);
-            dataSize(0u);
-        } else if (count == 1) {
-            //fast path
-            const U32 value = *data ? 1 : 0;
-            set(&value, 1);
-        } else {
-            //Slooow. Avoid using in the rendering loop. Try caching
-            vector<U32> temp(count);
-            std::transform(data, data + count, std::back_inserter(temp), [](const bool e) noexcept { return e ? 1u : 0u; });
-            set(temp.data(), count);
-        }
-    }
-
-}; //namespace GFX
-}; //namespace Divide
+} //namespace GFX
+} //namespace Divide
 #endif //_PUSH_CONSTANT_H_
+
+#include "PushConstant.inl"

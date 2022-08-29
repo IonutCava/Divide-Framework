@@ -51,7 +51,6 @@ class Kernel;
 class Camera;
 class Material;
 class ResourceCache;
-class ShaderProgramDescriptor;
 
 struct PushConstants;
 struct Configuration;

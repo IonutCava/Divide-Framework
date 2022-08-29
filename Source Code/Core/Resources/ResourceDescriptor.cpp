@@ -7,6 +7,10 @@
 
 namespace Divide {
 
+PropertyDescriptor::PropertyDescriptor(const DescriptorType& type) noexcept
+    : _type(type)
+{
+}
 
 size_t PropertyDescriptor::getHash() const noexcept {
     Util::Hash_combine(_hash, to_base(_type));

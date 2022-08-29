@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "Headers/RenderPassExecutor.h"
+#include "Headers/RenderQueue.h"
 
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/Configuration.h"
@@ -15,6 +16,7 @@
 #include "Managers/Headers/SceneManager.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Buffers/RenderTarget/Headers/RTAttachment.h"
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
@@ -236,8 +238,8 @@ RenderPassExecutor::RenderPassExecutor(RenderPassManager& parent, GFXDevice& con
     : _parent(parent)
     , _context(context)
     , _stage(stage)
-    , _renderQueue(parent.parent(), stage)
 {
+    _renderQueue = eastl::make_unique<RenderQueue>(parent.parent(), stage);
     const U8 passCount = TotalPassCountForStage(stage);
 
     ShaderBufferDescriptor bufferDescriptor = {};
@@ -528,7 +530,7 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
         sQueue.reserve(Config::MAX_VISIBLE_NODES);
     }
 
-    const U16 queueTotalSize = _renderQueue.getSortedQueues({}, _sortedQueues);
+    const U16 queueTotalSize = _renderQueue->getSortedQueues({}, _sortedQueues);
 
     //Erase nodes with no draw commands
     for (RenderBin::SortedQueue& queue : _sortedQueues) {
@@ -702,7 +704,7 @@ U16 RenderPassExecutor::prepareNodeData(VisibleNodeList<>& nodes,
     RenderStagePass stagePass = params._stagePass;
     const SceneRenderState& sceneRenderState = _parent.parent().sceneManager()->getActiveScene().state()->renderState();
     {
-        _renderQueue.refresh();
+        _renderQueue->refresh();
         ParallelForDescriptor descriptor = {};
         descriptor._iterCount = to_U32(nodes.size());
         descriptor._cbk = [&](const Task* /*parentTask*/, const U32 start, const U32 end) {
@@ -711,7 +713,7 @@ U16 RenderPassExecutor::prepareNodeData(VisibleNodeList<>& nodes,
                 assert(node._materialReady);
                 RenderingComponent * rComp = node._node->get<RenderingComponent>();
                 if (Attorney::RenderingCompRenderPass::prepareDrawPackage(*rComp, cameraSnapshot, sceneRenderState, stagePass, true)) {
-                    _renderQueue.addNodeToQueue(node._node, stagePass, node._distanceToCameraSq);
+                    _renderQueue->addNodeToQueue(node._node, stagePass, node._distanceToCameraSq);
                 }
             }
         };
@@ -724,7 +726,7 @@ U16 RenderPassExecutor::prepareNodeData(VisibleNodeList<>& nodes,
             descriptor._useCurrentThread = true;
             parallel_for(_parent.parent().platformContext(), descriptor);
         }
-        _renderQueue.sort(stagePass);
+        _renderQueue->sort(stagePass);
     }
 
     _renderQueuePackages.resize(0);
@@ -733,7 +735,7 @@ U16 RenderPassExecutor::prepareNodeData(VisibleNodeList<>& nodes,
     queueParams._stagePass = stagePass;
     queueParams._binType = RenderBinType::COUNT;
     queueParams._filterByBinType = false;
-    _renderQueue.populateRenderQueues(queueParams, _renderQueuePackages);
+    _renderQueue->populateRenderQueues(queueParams, _renderQueuePackages);
 
     return buildDrawCommands(params, doPrePass, doOITPass, bufferInOut, memCmdInOut);
 }
@@ -751,7 +753,7 @@ void RenderPassExecutor::prepareRenderQueues(const RenderPassParams& params,
     const RenderBinType targetBin = transparencyPass ? RenderBinType::TRANSLUCENT : RenderBinType::COUNT;
     const SceneRenderState& sceneRenderState = _parent.parent().sceneManager()->getActiveScene().state()->renderState();
  
-    _renderQueue.refresh(targetBin);
+    _renderQueue->refresh(targetBin);
 
     const U32 nodeCount = to_U32(nodes.size());
     ParallelForDescriptor descriptor = {};
@@ -761,7 +763,7 @@ void RenderPassExecutor::prepareRenderQueues(const RenderPassParams& params,
             SceneGraphNode* sgn = node._node;
             if (sgn->getNode().renderState().drawState(stagePass)) {
                 if (Attorney::RenderingCompRenderPass::prepareDrawPackage(*sgn->get<RenderingComponent>(), cameraSnapshot, sceneRenderState, stagePass, false)) {
-                    _renderQueue.addNodeToQueue(sgn, stagePass, node._distanceToCameraSq, targetBin);
+                    _renderQueue->addNodeToQueue(sgn, stagePass, node._distanceToCameraSq, targetBin);
                 }
             }
         }
@@ -780,7 +782,7 @@ void RenderPassExecutor::prepareRenderQueues(const RenderPassParams& params,
     }
 
     // Sort all bins
-    _renderQueue.sort(stagePass, targetBin, renderOrder);
+    _renderQueue->sort(stagePass, targetBin, renderOrder);
 
     _renderQueuePackages.resize(0);
     _renderQueuePackages.reserve(Config::MAX_VISIBLE_NODES);
@@ -797,7 +799,7 @@ void RenderPassExecutor::prepareRenderQueues(const RenderPassParams& params,
         queueParams._filterByBinType = !transparencyPass;
     }
 
-    _renderQueue.populateRenderQueues(queueParams, _renderQueuePackages);
+    _renderQueue->populateRenderQueues(queueParams, _renderQueuePackages);
 
 
     for (const auto&[rComp, pkg] : _renderQueuePackages) {
@@ -807,9 +809,9 @@ void RenderPassExecutor::prepareRenderQueues(const RenderPassParams& params,
     if (params._stagePass._passType != RenderPassType::PRE_PASS) {
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = Util::StringFormat("Post Render pass for stage [ %s ]", TypeUtil::RenderStageToString(stagePass._stage), to_U32(stagePass._stage));
 
-        _renderQueue.postRender(Attorney::SceneManagerRenderPass::renderState(_parent.parent().sceneManager()),
-                                params._stagePass,
-                                bufferInOut);
+        _renderQueue->postRender(Attorney::SceneManagerRenderPass::renderState(_parent.parent().sceneManager()),
+                                 params._stagePass,
+                                 bufferInOut);
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }

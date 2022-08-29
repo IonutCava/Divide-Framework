@@ -39,7 +39,6 @@
 #ifndef _RENDER_BIN_H_
 #define _RENDER_BIN_H_
 
-#include "Platform/Video/Headers/GenericDrawCommand.h"
 #include "Platform/Video/Headers/RenderAPIEnums.h"
 
 namespace Divide {
@@ -83,13 +82,12 @@ enum class RenderBinType : U8 {
     IMPOSTOR,    ///< Impostors should be overlayed over everything since they are a debugging tool
     COUNT
 };
+
 namespace Names {
     static const char* renderBinType[] = {
         "OPAQUE", "WATER", "TERRAIN", "TERRAIN_AUX", "SKY", "TRANSLUCENT", "IMPOSTOR", "UNKNOWN"
     };
 };
-
-static_assert(ArrayCount(Names::renderBinType) == to_base(RenderBinType::COUNT) + 1, "RenderBinType name array out of sync!");
 
 struct RenderPackage;
 
@@ -129,11 +127,11 @@ class RenderBin {
 
     [[nodiscard]] U16 getSortedNodes(SortedQueue& nodes) const;
 
-    FORCE_INLINE               void                 refresh()                      noexcept { _renderBinIndex.store(0u); }
-    FORCE_INLINE [[nodiscard]] const RenderBinItem& getItem(const U16 index) const          { assert(index < getBinSize()); return _renderBinStack[index]; }
-    FORCE_INLINE [[nodiscard]] U16                  getBinSize()             const noexcept { return _renderBinIndex.load(); }
-    FORCE_INLINE [[nodiscard]] bool                 empty()                  const noexcept { return getBinSize() == 0; }
-    FORCE_INLINE [[nodiscard]] RenderBinType        getType()                const noexcept { return _rbType; }
+    inline               void                 refresh()                      noexcept { _renderBinIndex.store(0u); }
+    inline [[nodiscard]] const RenderBinItem& getItem(const U16 index) const          { assert(index < getBinSize()); return _renderBinStack[index]; }
+    inline [[nodiscard]] U16                  getBinSize()             const noexcept { return _renderBinIndex.load(); }
+    inline [[nodiscard]] bool                 empty()                  const noexcept { return getBinSize() == 0; }
+    inline [[nodiscard]] RenderBinType        getType()                const noexcept { return _rbType; }
 
    private:
     const RenderBinType _rbType;
@@ -146,4 +144,5 @@ class RenderBin {
 FWD_DECLARE_MANAGED_CLASS(RenderBin);
 
 };  // namespace Divide
-#endif
+
+#endif //_RENDER_BIN_H_

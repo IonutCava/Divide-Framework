@@ -15,6 +15,7 @@
 
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/File/Headers/FileManagement.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexBuffer.h"
 
 namespace Divide {

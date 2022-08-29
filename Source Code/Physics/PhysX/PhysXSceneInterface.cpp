@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "Headers/PhysXSceneInterface.h"
+#include "Headers/PhysX.h"
 
 #include "Scenes/Headers/Scene.h"
 #include "Core/Headers/EngineTaskPool.h"
@@ -8,7 +9,7 @@
 #include "Geometry/Material/Headers/Material.h"
 #include "Geometry/Shapes/Predefined/Headers/Quad3D.h"
 #include "ECS/Components/Headers/TransformComponent.h"
-#include "Headers/PhysX.h"
+#include "Utility/Headers/Localization.h"
 #include "Physics/Headers/PXDevice.h"
 
 namespace Divide {

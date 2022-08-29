@@ -36,6 +36,7 @@
 #include "MaterialEnums.h"
 
 #include "Utility/Headers/XMLParser.h"
+#include "Utility/Headers/Colours.h"
 
 #include "Core/Resources/Headers/Resource.h"
 #include "Core/Resources/Headers/ResourceDescriptor.h"

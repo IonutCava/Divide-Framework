@@ -45,24 +45,13 @@ namespace Divide {
         bool _perVertexInputRate{ true };
         bool _normalized{ false };
     };
-
-    [[nodiscard]] size_t GetHash(const AttributeDescriptor& descriptor);
+    using AttributeMap = std::array<AttributeDescriptor, to_base(AttribLocation::COUNT)>;
 
     bool operator==(const AttributeDescriptor& lhs, const AttributeDescriptor& rhs) noexcept;
     bool operator!=(const AttributeDescriptor& lhs, const AttributeDescriptor& rhs) noexcept;
 
-    using AttributeMap = std::array<AttributeDescriptor, to_base(AttribLocation::COUNT)>;
-
-    inline size_t GetHash(const AttributeMap& attributes) {
-        size_t vertexFormatHash = 1337;
-        for (const AttributeDescriptor& attrDescriptor : attributes) {
-            if (attrDescriptor._dataType != GFXDataFormat::COUNT) {
-                Util::Hash_combine(vertexFormatHash, GetHash(attrDescriptor));
-            }
-        }
-
-        return vertexFormatHash;
-    }
+    size_t GetHash(const AttributeDescriptor& descriptor);
+    size_t GetHash(const AttributeMap& attributes);
 
 }; //namespace Divide
 

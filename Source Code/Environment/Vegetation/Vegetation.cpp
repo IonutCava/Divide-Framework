@@ -12,8 +12,10 @@
 #include "Managers/Headers/SceneManager.h"
 #include "Graphs/Headers/SceneGraphNode.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Headers/RenderPackage.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Geometry/Shapes/Headers/Mesh.h"
 #include "Geometry/Shapes/Headers/SubMesh.h"
 #include "Geometry/Material/Headers/Material.h"
@@ -22,6 +24,7 @@
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexBuffer.h"
 #include "Platform/Video/Headers/CommandBufferPool.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
+#include "Platform/File/Headers/FileManagement.h"
 
 #include "ECS/Components/Headers/BoundsComponent.h"
 #include "ECS/Components/Headers/RenderingComponent.h"

@@ -50,6 +50,9 @@
       <Filter>Headers</Filter>
     </None>
     <None Include="Divide-Core.ruleset" />
+    <None Include="..\..\Source Code\Core\Headers\PoolHandle.inl">
+      <Filter>Headers</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Utility">
@@ -214,6 +217,10 @@
     <ClCompile Include="..\..\Source Code\Core\Math\BoundingVolumes\OBB.cpp">
       <Filter>Math\BoundingVolumes</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source Code\Core\Hashable.cpp" />
+    <ClCompile Include="..\..\Source Code\Utility\Colours.cpp">
+      <Filter>Utility</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="../../Source Code/Core\Headers\GUIDWrapper.h">
@@ -375,6 +382,12 @@
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Core\Headers\ImGUICustomConfig.h">
       <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Core\Headers\PoolHandle.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Utility\Headers\ImageToolsFwd.h">
+      <Filter>Utility\Headers</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

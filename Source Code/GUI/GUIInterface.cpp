@@ -14,6 +14,8 @@
 #include "Core/Headers/Kernel.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Platform/Headers/PlatformRuntime.h"
+#include "Platform/File/Headers/FileManagement.h"
+#include "Platform/Audio/Headers/AudioDescriptor.h"
 
 namespace Divide {
 

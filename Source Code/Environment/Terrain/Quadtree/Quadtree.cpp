@@ -31,7 +31,7 @@ void Quadtree::drawBBox(GFXDevice& context) const {
 
     _root->drawBBox(context);
  
-    IMPrimitive::BoxDescriptor descriptor;
+    IM::BoxDescriptor descriptor;
     descriptor.min = _root->getBoundingBox().getMin();
     descriptor.max = _root->getBoundingBox().getMax();
     descriptor.colour = UColour4(0, 64, 255, 255);

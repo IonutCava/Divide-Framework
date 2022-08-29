@@ -5,12 +5,14 @@
 #include "Utility/Headers/Localization.h"
 #include "Core/Headers/Configuration.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Rendering/PostFX/Headers/PostFX.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Rendering/PostFX/Headers/PreRenderBatch.h"
 
 namespace Divide {
@@ -29,7 +31,7 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
         sampler.mipSampling(TextureMipSampling::NONE);
         sampler.anisotropyLevel(0);
 
-        TextureDescriptor weightsDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_16);
+        TextureDescriptor weightsDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RGBA);
         weightsDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         InternalRTAttachmentDescriptors att{

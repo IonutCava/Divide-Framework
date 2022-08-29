@@ -28,8 +28,11 @@
 
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/GFXRTPool.h"
+#include "Platform/Video/Headers/IMPrimitive.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
 
@@ -195,8 +198,8 @@ void Editor::createFontTexture(const F32 DPIScaleFactor) {
 
     if (!_fontTexture) {
         TextureDescriptor texDescriptor(TextureType::TEXTURE_2D,
-                                        GFXImageFormat::RGBA,
-                                        GFXDataFormat::UNSIGNED_BYTE);
+                                        GFXDataFormat::UNSIGNED_BYTE,
+                                        GFXImageFormat::RGBA);
         texDescriptor.layerCount(1u);
         ResourceDescriptor resDescriptor("IMGUI_font_texture");
         resDescriptor.propertyDescriptor(texDescriptor);
@@ -650,7 +653,7 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     editorSampler.anisotropyLevel(0);
     _editorSamplerHash = editorSampler.getHash();
 
-    TextureDescriptor editorDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGB, GFXDataFormat::UNSIGNED_BYTE);
+    TextureDescriptor editorDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGB);
     editorDescriptor.layerCount(1u);
     editorDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
@@ -964,8 +967,8 @@ void Editor::postRender(const CameraSnapshot& cameraSnapshot, const RenderTarget
             const auto addValAnd10Percent = [](const F32 val) { return val + ((val + 10) / 100.f); };
             const auto addValMinus20Percent = [](const F32 val) { return val - ((val + 20) / 100.f); };
 
-            std::array<IMPrimitive::ConeDescriptor, 6> descriptors;
-            for (IMPrimitive::ConeDescriptor& descriptor : descriptors) {
+            std::array<IM::ConeDescriptor, 6> descriptors;
+            for (IM::ConeDescriptor& descriptor : descriptors) {
                 descriptor.slices = 4u;
                 descriptor.noCull = true;
             }

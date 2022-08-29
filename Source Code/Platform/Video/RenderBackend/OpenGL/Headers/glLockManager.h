@@ -33,8 +33,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _GL_LOCK_MANAGER_H_
 
 #include "glResources.h"
-
-#include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/BufferRange.h"
 
 // https://github.com/nvMcJohn/apitest
 // --------------------------------------------------------------------------------------------------------------------

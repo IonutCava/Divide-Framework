@@ -108,4 +108,16 @@ void ObjectPool<T, N>::unregisterExisting(const PoolHandle handle) {
 
 } //namespace Divide
 
+namespace eastl {
+    template <> struct hash<Divide::PoolHandle>
+    {
+        size_t operator()(const Divide::PoolHandle& x) const noexcept
+        {
+            size_t h = 17;
+            Divide::Util::Hash_combine(h, x._generation, x._id);
+            return h;
+        }
+    };
+};
+
 #endif //_OBJECT_POOL_INL_

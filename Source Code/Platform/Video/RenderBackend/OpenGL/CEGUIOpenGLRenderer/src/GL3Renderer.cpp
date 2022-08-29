@@ -39,6 +39,8 @@
 #include "CEGUI/DefaultResourceProvider.h"
 #include "StateChangeWrapper.h"
 
+#include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
+
 // Start of CEGUI namespace section
 namespace CEGUI
 {

@@ -29,6 +29,8 @@
 #include "ViewportTarget.h"
 #include "GL.h"
 
+#include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
+
 // Start of CEGUI namespace section
 namespace CEGUI
 {

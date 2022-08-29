@@ -34,6 +34,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _RENDER_TARGET_ATTACHMENT_H_
 
 #include "Platform/Video/Textures/Headers/TextureDescriptor.h"
+#include "Utility/Headers/Colours.h"
 
 namespace Divide {
 

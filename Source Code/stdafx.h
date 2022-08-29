@@ -122,7 +122,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <any>
 #include <limits>
 #include <execution>
-#include <variant>
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/asio/streambuf.hpp>
@@ -155,10 +154,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <simplefilewatcher/include/FileWatcher/FileWatcher.h>
 
 #include <ArenaAllocator/arena_allocator.h>
-
-#include <ChaiScript/include/chaiscript/chaiscript.hpp>
-#include <ChaiScript/include/chaiscript/chaiscript_stdlib.hpp>
-#include <ChaiScript/include/chaiscript/utility/utility.hpp>
 
 #include <ConcurrentQueue/concurrentqueue.h>
 #include <ConcurrentQueue/blockingconcurrentqueue.h>

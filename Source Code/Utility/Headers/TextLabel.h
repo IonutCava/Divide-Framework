@@ -35,18 +35,17 @@
 
 #include "Colours.h"
 #include "Core/Math/Headers/Dimension.h"
-#include "Core/Headers/StringHelper.h"
 #include "Core/Headers/Hashable.h"
 
 namespace Divide {
 
 namespace Font {
-    const static char* DIVIDE_DEFAULT = "DroidSerif-Regular.ttf"; /*"Test.ttf"*/
-    const static char* BATANG = "Batang.ttf";
-    const static char* DEJA_VU = "DejaVuSans.ttf";
-    const static char* DROID_SERIF = "DroidSerif-Regular.ttf";
-    const static char* DROID_SERIF_ITALIC = "DroidSerif-Italic.ttf";
-    const static char* DROID_SERIF_BOLD = "DroidSerif-Bold.ttf";
+    constexpr const char* DIVIDE_DEFAULT = "DroidSerif-Regular.ttf"; /*"Test.ttf"*/
+    constexpr const char* BATANG = "Batang.ttf";
+    constexpr const char* DEJA_VU = "DejaVuSans.ttf";
+    constexpr const char* DROID_SERIF = "DroidSerif-Regular.ttf";
+    constexpr const char* DROID_SERIF_ITALIC = "DroidSerif-Italic.ttf";
+    constexpr const char* DROID_SERIF_BOLD = "DroidSerif-Bold.ttf";
 }
 
 class TextLabelStyle final : public Hashable {
@@ -64,7 +63,7 @@ class TextLabelStyle final : public Hashable {
     static const TextLabelStyle& get(size_t textLabelStyleHash, bool& styleFound);
     static const Str64& fontName(size_t fontNameHash);
 
-   TextLabelStyle(const char* font, const UColour4& colour, U8 fontSize);
+    TextLabelStyle(const char* font, const UColour4& colour, U8 fontSize);
 
     [[nodiscard]] size_t getHash() const override;
 
@@ -83,25 +82,10 @@ struct TextElement {
     using TextType = vector<eastl::string>;
 
     TextElement() = default;
-    explicit TextElement(const TextLabelStyle& textLabelStyle, const RelativePosition2D& position)
-        : TextElement(textLabelStyle.getHash(), position)
-    {
-    }
+    explicit TextElement(const TextLabelStyle& textLabelStyle, const RelativePosition2D& position);
+    explicit TextElement(const size_t textLabelStyleHash, const RelativePosition2D& position);
 
-    explicit TextElement(const size_t textLabelStyleHash, const RelativePosition2D& position)
-        : _textLabelStyleHash(textLabelStyleHash),
-          _position(position)
-    {
-    }
-
-    void text(const char* text, const bool multiLine) {
-        if (multiLine) {
-            Util::Split(text, '\n', _text);
-            return;
-        }
-
-        _text = { text };
-    }
+    void text(const char* text, const bool multiLine);
 
     PROPERTY_R(size_t, textLabelStyleHash, 0);
     PROPERTY_R(TextType, text, {});
@@ -112,9 +96,7 @@ struct TextElementBatch {
     using BatchType = vector_fast<TextElement>;
 
     TextElementBatch() = default;
-    explicit TextElementBatch(const TextElement& element) {
-        _data.push_back(element);
-    }
+    explicit TextElementBatch(const TextElement& element);
 
     PROPERTY_RW(BatchType, data, {});
 };

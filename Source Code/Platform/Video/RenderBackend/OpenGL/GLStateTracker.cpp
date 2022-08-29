@@ -1,9 +1,9 @@
 #include "stdafx.h"
 
 #include "Headers/GLStateTracker.h"
-
 #include "Headers/GLWrapper.h"
 
+#include "Core/Headers/StringHelper.h"
 #include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"

@@ -6,6 +6,7 @@
 #include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Textures/Headers/Texture.h"
 
 #include "Utility/Headers/Localization.h"
 
@@ -21,6 +22,14 @@ namespace {
         return "ERROR";
     };
 };
+
+[[nodiscard]] bool RenderTarget::RTBlitParams::hasBlitColours() const {
+    return std::any_of(std::cbegin(_blitColours),
+                       std::cend(_blitColours),
+                       [](const auto& entry) noexcept {
+                           return entry.valid();
+                       });
+}
 
 RenderTarget::RenderTarget(GFXDevice& context, const RenderTargetDescriptor& descriptor)
     : GraphicsResource(context, Type::RENDER_TARGET, getGUID(), _ID(descriptor._name.c_str())),

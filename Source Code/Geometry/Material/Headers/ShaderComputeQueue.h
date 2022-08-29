@@ -44,7 +44,6 @@ namespace Time {
 
 class ResourceCache;
 class PlatformContext;
-class ShaderProgramDescriptor;
 
 class ShaderComputeQueue {
 public:

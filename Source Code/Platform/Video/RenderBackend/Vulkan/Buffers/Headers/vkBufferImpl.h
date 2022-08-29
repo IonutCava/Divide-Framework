@@ -35,7 +35,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Platform/Video/Headers/RenderAPIEnums.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VMAInclude.h"
-#include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/BufferParams.h"
 
 #include "Platform/Video/Headers/AttributeDescriptor.h"
 

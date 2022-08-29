@@ -36,14 +36,14 @@
 #include "config.h"
 
 #include "ClipPlanes.h"
-#include "GFXRTPool.h"
 #include "GFXShaderData.h"
 #include "GFXState.h"
-#include "IMPrimitive.h"
+#include "Pipeline.h"
 #include "CommandsImpl.h"
 #include "PushConstants.h"
 #include "RenderAPIWrapper.h"
 #include "RenderStagePass.h"
+#include "IMPrimitiveDescriptors.h"
 
 #include "Core/Math/Headers/Line.h"
 #include "Core/Headers/KernelComponent.h"
@@ -53,13 +53,12 @@
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 
 #include "Rendering/Camera/Headers/Frustum.h"
-#include "Rendering/PostFX/CustomOperators/Headers/BloomPreRenderOperator.h"
 #include "Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h"
 #include "Rendering/RenderPass/Headers/RenderPass.h"
 
 namespace Divide {
-class ShaderProgramDescriptor;
 struct RenderPassParams;
+struct ShaderProgramDescriptor;
 
 enum class SceneNodeType : U16;
 enum class WindowEvent : U8;
@@ -73,6 +72,9 @@ class Camera;
 class Quad3D;
 class Texture;
 class Object3D;
+class GFXRTPool;
+class IMPrimitive;
+class ResourceCache;
 class SceneGraphNode;
 class SceneShaderData;
 class SceneRenderState;
@@ -271,12 +273,12 @@ public:  // GPU interface
     void createSetLayout(DescriptorSetUsage usage, const DescriptorSet& set);
 
     void debugDraw(const SceneRenderState& sceneRenderState, GFX::CommandBuffer& bufferInOut);
-    void debugDrawLines(const I64 ID, IMPrimitive::LineDescriptor descriptor) noexcept;
-    void debugDrawBox(const I64 ID, IMPrimitive::BoxDescriptor descriptor) noexcept;
-    void debugDrawOBB(const I64 ID, IMPrimitive::OBBDescriptor descriptor) noexcept;
-    void debugDrawSphere(const I64 ID, IMPrimitive::SphereDescriptor descriptor) noexcept;
-    void debugDrawCone(const I64 ID, IMPrimitive::ConeDescriptor descriptor) noexcept;
-    void debugDrawFrustum(const I64 ID, IMPrimitive::FrustumDescriptor descriptor) noexcept;
+    void debugDrawLines(const I64 ID, IM::LineDescriptor descriptor) noexcept;
+    void debugDrawBox(const I64 ID, IM::BoxDescriptor descriptor) noexcept;
+    void debugDrawOBB(const I64 ID, IM::OBBDescriptor descriptor) noexcept;
+    void debugDrawSphere(const I64 ID, IM::SphereDescriptor descriptor) noexcept;
+    void debugDrawCone(const I64 ID, IM::ConeDescriptor descriptor) noexcept;
+    void debugDrawFrustum(const I64 ID, IM::FrustumDescriptor descriptor) noexcept;
     void flushCommandBuffer(GFX::CommandBuffer& commandBuffer, bool batch = true);
     void validateAndUploadDescriptorSets();
     /// Generate a cubemap from the given position
@@ -459,7 +461,7 @@ protected:
     
     void stepResolution(bool increment);
 
-    [[nodiscard]] PipelineDescriptor& getDebugPipeline(const IMPrimitive::BaseDescriptor& descriptor) noexcept;
+    [[nodiscard]] PipelineDescriptor& getDebugPipeline(const IM::BaseDescriptor& descriptor) noexcept;
     void debugDrawLines(GFX::CommandBuffer& bufferInOut);
     void debugDrawBoxes(GFX::CommandBuffer& bufferInOut);
     void debugDrawOBBs(GFX::CommandBuffer& bufferInOut);
@@ -507,12 +509,12 @@ private:
 
     ShaderComputeQueue* _shaderComputeQueue = nullptr;
 
-    DebugPrimitiveHandler<IMPrimitive::LineDescriptor, 16u> _debugLines;
-    DebugPrimitiveHandler<IMPrimitive::BoxDescriptor, 16u> _debugBoxes;
-    DebugPrimitiveHandler<IMPrimitive::OBBDescriptor, 16u> _debugOBBs;
-    DebugPrimitiveHandler<IMPrimitive::SphereDescriptor, 16u> _debugSpheres;
-    DebugPrimitiveHandler<IMPrimitive::ConeDescriptor, 16u> _debugCones;
-    DebugPrimitiveHandler<IMPrimitive::FrustumDescriptor, 8u> _debugFrustums;
+    DebugPrimitiveHandler<IM::LineDescriptor, 16u> _debugLines;
+    DebugPrimitiveHandler<IM::BoxDescriptor, 16u> _debugBoxes;
+    DebugPrimitiveHandler<IM::OBBDescriptor, 16u> _debugOBBs;
+    DebugPrimitiveHandler<IM::SphereDescriptor, 16u> _debugSpheres;
+    DebugPrimitiveHandler<IM::ConeDescriptor, 16u> _debugCones;
+    DebugPrimitiveHandler<IM::FrustumDescriptor, 8u> _debugFrustums;
 
     CameraSnapshot  _activeCameraSnapshot;
 

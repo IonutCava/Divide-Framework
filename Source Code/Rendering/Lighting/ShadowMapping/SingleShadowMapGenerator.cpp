@@ -14,8 +14,10 @@
 #include "Rendering/Camera/Headers/Camera.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Geometry/Shapes/Predefined/Headers/Quad3D.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
@@ -96,11 +98,11 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
         RenderTargetDescriptor desc = {};
         desc._resolution = rt->getResolution();
 
-        TextureDescriptor colourDescriptor(TextureType::TEXTURE_2D, texDescriptor.baseFormat(), texDescriptor.dataType());
+        TextureDescriptor colourDescriptor(TextureType::TEXTURE_2D, texDescriptor.dataType(), texDescriptor.baseFormat());
         colourDescriptor.msaaSamples(g_shadowSettings.spot.MSAASamples);
         colourDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        TextureDescriptor depthDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::UNSIGNED_INT);
+        TextureDescriptor depthDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::DEPTH_COMPONENT);
         depthDescriptor.msaaSamples(g_shadowSettings.spot.MSAASamples);
         depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
@@ -119,7 +121,7 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
 
     //Blur FBO
     {
-        TextureDescriptor blurMapDescriptor(TextureType::TEXTURE_2D, texDescriptor.baseFormat(), texDescriptor.dataType());
+        TextureDescriptor blurMapDescriptor(TextureType::TEXTURE_2D, texDescriptor.dataType(), texDescriptor.baseFormat());
         blurMapDescriptor.layerCount(1u);
         blurMapDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 

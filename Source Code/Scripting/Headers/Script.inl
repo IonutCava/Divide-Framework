@@ -32,6 +32,9 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _SCRIPTING_SCRIPT_INL_
 #define _SCRIPTING_SCRIPT_INL_
 
+#include <ChaiScript/include/chaiscript/utility/utility.hpp>
+#include <ChaiScript/include/chaiscript/chaiscript.hpp>
+
 namespace Divide {
 
 template<typename T>

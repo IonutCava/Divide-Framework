@@ -6,6 +6,8 @@
 
 #include "Platform/File/Headers/FileManagement.h"
 
+#include <iostream>
+
 namespace Divide {
 
 class StreamBuffer {

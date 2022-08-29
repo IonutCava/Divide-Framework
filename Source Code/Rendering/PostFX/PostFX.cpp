@@ -13,9 +13,13 @@
 #include "Managers/Headers/SceneManager.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
+
+#include "Platform/File/Headers/FileManagement.h"
 
 #include "Rendering/Camera/Headers/Camera.h"
 

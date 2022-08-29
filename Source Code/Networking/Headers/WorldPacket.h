@@ -1,3 +1,4 @@
+#pragma once
 #ifndef MANGOSSERVER_WORLDPACKET_H
 #define MANGOSSERVER_WORLDPACKET_H
 

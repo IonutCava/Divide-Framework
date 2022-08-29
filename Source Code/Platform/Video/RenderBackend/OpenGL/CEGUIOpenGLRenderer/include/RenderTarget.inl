@@ -29,10 +29,11 @@
 #include "GeometryBufferBase.h"
 #include "GlmPimpl.h"
 
-#include <cmath>
 
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
+
+#include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 
 // Start of CEGUI namespace section
 namespace CEGUI

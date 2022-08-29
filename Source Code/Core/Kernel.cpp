@@ -28,6 +28,7 @@
 #include "Platform/File/Headers/FileWatcherManager.h"
 #include "Platform/Headers/SDLEventManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Textures/Headers/Texture.h"
 #include "Rendering/Camera/Headers/FreeFlyCamera.h"
 #include "Resources/Headers/ResourceCache.h"
 #include "Scripting/Headers/Script.h"

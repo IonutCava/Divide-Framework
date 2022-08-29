@@ -19,6 +19,7 @@
 #include "Graphs/Headers/SceneGraphNode.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Headers/IMPrimitive.h"
 #include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
@@ -38,6 +39,22 @@ namespace Divide {
 
 namespace {
     constexpr I16 g_renderRangeLimit = I16_MAX;
+}
+RenderCbkParams::RenderCbkParams(GFXDevice& context,
+                                 const SceneGraphNode* sgn,
+                                 const SceneRenderState& sceneRenderState,
+                                 const RenderTargetID& renderTarget,
+                                 const U16 passIndex,
+                                 const U8 passVariant,
+                                 Camera* camera) noexcept
+    : _context(context),
+      _sgn(sgn),
+      _sceneRenderState(sceneRenderState),
+      _renderTarget(renderTarget),
+      _camera(camera),
+      _passIndex(passIndex),
+      _passVariant(passVariant)
+{
 }
 
 RenderingComponent::RenderingComponent(SceneGraphNode* parentSGN, PlatformContext& context)
@@ -733,7 +750,7 @@ void RenderingComponent::drawBounds(const bool AABB, const bool OBB, const bool 
 
     if (AABB) {
         const BoundingBox& bb = _parentSGN->get<BoundsComponent>()->getBoundingBox();
-        IMPrimitive::BoxDescriptor descriptor;
+        IM::BoxDescriptor descriptor;
         descriptor.min = bb.getMin();
         descriptor.max = bb.getMax();
         descriptor.colour = isSubMesh ? UColour4(0, 0, 255, 255) : UColour4(255, 0, 255, 255);
@@ -742,7 +759,7 @@ void RenderingComponent::drawBounds(const bool AABB, const bool OBB, const bool 
 
     if (OBB) {
         const auto& obb = _parentSGN->get<BoundsComponent>()->getOBB();
-        IMPrimitive::OBBDescriptor descriptor;
+        IM::OBBDescriptor descriptor;
         descriptor.box = obb;
         descriptor.colour = isSubMesh ? UColour4(128, 0, 255, 255) : UColour4(255, 0, 128, 255);
 
@@ -751,7 +768,7 @@ void RenderingComponent::drawBounds(const bool AABB, const bool OBB, const bool 
 
     if (Sphere) {
         const BoundingSphere& bs = _parentSGN->get<BoundsComponent>()->getBoundingSphere();
-        IMPrimitive::SphereDescriptor descriptor;
+        IM::SphereDescriptor descriptor;
         descriptor.center = bs.getCenter();
         descriptor.radius = bs.getRadius();
         descriptor.colour = isSubMesh ? UColour4(0, 255, 0, 255) : UColour4(255, 255, 0, 255);

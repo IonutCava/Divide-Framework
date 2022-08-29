@@ -1,7 +1,6 @@
 #include "stdafx.h"
 
 #include "Headers/GenericDrawCommand.h"
-#include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
 
 namespace Divide {
 

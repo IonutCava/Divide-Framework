@@ -25,14 +25,14 @@ namespace Divide {
             if (comp->_drawImpostor || comp->showParallaxAABB()) {
                 const BoundingBox& aabb = comp->_aabb;
                 {
-                    IMPrimitive::SphereDescriptor descriptor;
+                    IM::SphereDescriptor descriptor;
                     descriptor.center = aabb.getCenter();
                     descriptor.radius = 0.5f;
                     descriptor.colour = DefaultColours::BLUE_U8;
                     context().gfx().debugDrawSphere(comp->getGUID() + 0, descriptor);
                 }
                 {
-                    IMPrimitive::BoxDescriptor descriptor;
+                    IM::BoxDescriptor descriptor;
                     descriptor.min = aabb.getMin();
                     descriptor.max = aabb.getMax();
                     descriptor.colour = DefaultColours::BLUE_U8;

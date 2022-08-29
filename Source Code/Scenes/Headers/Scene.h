@@ -36,6 +36,7 @@
 #include "SceneState.h"
 #include "SceneInput.h"
 
+#include "Core/Resources/Headers/Resource.h"
 #include "Core/Headers/PlatformContextComponent.h"
 #include "Environment/Sky/Headers/Sun.h"
 #include "Graphs/Headers/SceneNodeFwd.h"

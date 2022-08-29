@@ -52,4 +52,11 @@ Pipeline::Pipeline(const PipelineDescriptor& descriptor)
 {
 }
 
+bool operator==(const Pipeline& lhs, const Pipeline& rhs) noexcept {
+    return lhs.hash() == rhs.hash();
+}
+
+bool operator!=(const Pipeline& lhs, const Pipeline& rhs) noexcept {
+    return lhs.hash() != rhs.hash();
+}
 }; //namespace Divide

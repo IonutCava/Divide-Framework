@@ -38,48 +38,31 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 struct PushConstants {
     PushConstants() = default;
-    explicit PushConstants(const GFX::PushConstant& constant) : _data{ constant } {}
-    explicit PushConstants(GFX::PushConstant&& constant) : _data{ MOV(constant) } {}
+    explicit PushConstants(const GFX::PushConstant& constant);
+    explicit PushConstants(GFX::PushConstant&& constant);
 
     void set(const GFX::PushConstant& constant);
 
     template<typename T>
-    void set(U64 bindingHash, GFX::PushConstantType type, const T* values, size_t count) {
-        for (GFX::PushConstant& constant : _data) {
-            if (constant.bindingHash() == bindingHash) {
-                assert(constant.type() == type);
-                constant.set(values, count);
-                return;
-            }
-        }
-
-        _data.emplace_back(bindingHash, type, values, count);
-    }
+    void set(U64 bindingHash, GFX::PushConstantType type, const T* values, size_t count);
 
     template<typename T>
-    void set(U64 bindingHash, GFX::PushConstantType type, const T& value) {
-        set(bindingHash, type, &value, 1);
-    }
+    void set(U64 bindingHash, GFX::PushConstantType type, const T& value);
 
     template<typename T>
-    void set(U64 bindingHash, GFX::PushConstantType type, const vector<T>& values) {
-        set(bindingHash, type, values.data(), values.size());
-    }
+    void set(U64 bindingHash, GFX::PushConstantType type, const vector<T>& values);
 
     template<typename T, size_t N>
-    void set(U64 bindingHash, GFX::PushConstantType type, const std::array<T, N>& values) {
-        set(bindingHash, type, values.data(), N);
-    }
+    void set(U64 bindingHash, GFX::PushConstantType type, const std::array<T, N>& values);
 
-    void clear() noexcept { _data.clear(); }
-    [[nodiscard]] bool empty() const noexcept { return _data.empty(); }
-    void countHint(const size_t count) { _data.reserve(count); }
+    void clear() noexcept;
+    bool empty() const noexcept;
+    void countHint(const size_t count);
 
-    friend bool Merge(PushConstants& lhs, const PushConstants& rhs, bool& partial);
-
-    [[nodiscard]] const vector_fast<GFX::PushConstant>& data() const noexcept { return _data; }
+    const vector_fast<GFX::PushConstant>& data() const noexcept;
 
 private:
+    friend bool Merge(PushConstants& lhs, const PushConstants& rhs, bool& partial);
     vector_fast<GFX::PushConstant> _data;
 };
 
@@ -88,3 +71,5 @@ bool Merge(PushConstants& lhs, const PushConstants& rhs, bool& partial);
 }; //namespace Divide
 
 #endif //_PUSH_CONSTANTS_H_
+
+#include "PushConstants.inl"

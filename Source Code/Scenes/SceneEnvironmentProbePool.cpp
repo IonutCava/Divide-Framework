@@ -12,9 +12,12 @@
 #include "Scenes/Headers/Scene.h"
 #include "Graphs/Headers/SceneNode.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Headers/PushConstants.h"
 #include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
+#include "Platform/Video/Textures/Headers/Texture.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "ECS/Components/Headers/EnvironmentProbeComponent.h"
 
 #include "Headers/SceneShaderData.h"
@@ -102,11 +105,11 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
 
     const U32 reflectRes = to_U32(context.context().config().rendering.reflectionProbeResolution);
     {
-        TextureDescriptor environmentDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXImageFormat::RGB, GFXDataFormat::UNSIGNED_BYTE);
+        TextureDescriptor environmentDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGB);
         environmentDescriptor.layerCount(Config::MAX_REFLECTIVE_PROBES_PER_PASS + 1u);
         environmentDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
 
-        TextureDescriptor depthDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::UNSIGNED_INT);
+        TextureDescriptor depthDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::DEPTH_COMPONENT);
         depthDescriptor.layerCount(Config::MAX_REFLECTIVE_PROBES_PER_PASS + 1u);
         depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
 
@@ -123,7 +126,7 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         s_reflection = context.renderTargetPool().allocateRT(desc);
     }
     {
-        TextureDescriptor environmentDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_16);
+        TextureDescriptor environmentDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::FLOAT_16, GFXImageFormat::RGBA);
         environmentDescriptor.layerCount(Config::MAX_REFLECTIVE_PROBES_PER_PASS + 1u);
         environmentDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
         InternalRTAttachmentDescriptors att{
@@ -140,7 +143,7 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         s_irradiance = context.renderTargetPool().allocateRT(desc);
     }
     {
-        TextureDescriptor environmentDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RG, GFXDataFormat::FLOAT_16);
+        TextureDescriptor environmentDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RG);
         environmentDescriptor.mipMappingState(TextureDescriptor::MipMappingState::AUTO);
         InternalRTAttachmentDescriptors att {
             InternalRTAttachmentDescriptor{ environmentDescriptor, samplerHash, RTAttachmentType::Colour, 0u, DefaultColours::WHITE },

@@ -71,10 +71,7 @@ class RenderQueue final : public KernelComponent {
 
     [[nodiscard]] RenderBin* getBin(const U16 renderBin) const noexcept { return _renderBins[renderBin].get(); }
     [[nodiscard]] RenderBin* getBin(const RenderBinType rbType) const noexcept { return getBin(to_base(rbType)); }
-
-    [[nodiscard]] RenderBinArray& getBins() noexcept {
-        return _renderBins;
-    }
+    [[nodiscard]] RenderBinArray& getBins() noexcept { return _renderBins; }
 
     U16 getSortedQueues(const vector<RenderBinType>& binTypes, RenderBin::SortedQueues& queuesOut) const;
 
@@ -86,7 +83,7 @@ class RenderQueue final : public KernelComponent {
 
   private:
     const RenderStage _stage;
-    RenderBinArray _renderBins = {};
+    RenderBinArray _renderBins{};
 };
 
 }  // namespace Divide

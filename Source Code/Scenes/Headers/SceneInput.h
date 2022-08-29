@@ -88,6 +88,7 @@ class SceneInput final : public Input::InputAggregatorInterface {
         Input::KeyCode _key = Input::KeyCode::KC_SLEEP;
         Input::InputState _state = Input::InputState::COUNT;
     };
+
     struct MouseLogState {
         Input::MouseButton _btn = Input::MouseButton::COUNT;
         Input::InputState _state = Input::InputState::COUNT;
@@ -180,4 +181,3 @@ FWD_DECLARE_MANAGED_CLASS(SceneInput);
 
 }  // namespace Divide
 #endif  //_SCENE_INPUT_H_
-

@@ -49,9 +49,7 @@ class PropertyDescriptor : public Hashable {
         DESCRIPTOR_COUNT
     };
 
-    explicit PropertyDescriptor(const DescriptorType& type) noexcept : _type(type)
-    {
-    }
+    explicit PropertyDescriptor(const DescriptorType& type) noexcept;
 
     [[nodiscard]] size_t getHash() const noexcept override;
 
@@ -60,7 +58,6 @@ protected:
     DescriptorType _type;
 };
 
-class CachedResource;
 FWD_DECLARE_MANAGED_CLASS(CachedResource);
 FWD_DECLARE_MANAGED_CLASS(PropertyDescriptor);
 
@@ -93,9 +90,9 @@ class ResourceDescriptor final : public Hashable {
 
    private:
     /// Use for extra resource properties: textures, samplers, terrain etc.
-    PropertyDescriptor_ptr _propertyDescriptor = nullptr;
+    PropertyDescriptor_ptr _propertyDescriptor{ nullptr };
 };
 
 }  // namespace Divide
 
-#endif
+#endif //RESOURCE_DESCRIPTOR_H_

@@ -30,6 +30,8 @@
 #include "StateChangeWrapper.h"  
 #include "Platform/Video/Headers/RenderStateBlock.h"
 
+#include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
+
 namespace {
     const GLuint s_invalidBuffer = std::numeric_limits<GLuint>::max();
 };

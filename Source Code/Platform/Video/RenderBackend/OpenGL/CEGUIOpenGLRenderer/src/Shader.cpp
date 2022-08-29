@@ -31,8 +31,7 @@
 #include "CEGUI/Logger.h"
 #include "CEGUI/Exceptions.h"
 
-#include <sstream>
-#include <iostream>
+#include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 
 namespace CEGUI
 {
@@ -284,7 +283,7 @@ void getGLErrors(const char *location)
         if (Logger* logger = Logger::getSingletonPtr())
             logger->logEvent(stringStream.str().c_str());
         else
-            std::cerr << stringStream.str() << std::endl;
+            Divide::Console::errorfn(stringStream.str().c_str());
     }
 }
 
