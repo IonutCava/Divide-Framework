@@ -126,6 +126,15 @@ namespace Divide {
             bufferMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             bufferMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             return bufferMemoryBarrier;
+        }   
+        
+        inline VkBufferMemoryBarrier2 bufferMemoryBarrier2()
+        {
+            VkBufferMemoryBarrier2 bufferMemoryBarrier{};
+            bufferMemoryBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+            bufferMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            bufferMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            return bufferMemoryBarrier;
         }
 
         inline VkMemoryBarrier memoryBarrier()
@@ -133,6 +142,20 @@ namespace Divide {
             VkMemoryBarrier memoryBarrier{};
             memoryBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
             return memoryBarrier;
+        }
+           
+        inline VkMemoryBarrier2 memoryBarrier2()
+        {
+            VkMemoryBarrier2 memoryBarrier{};
+            memoryBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+            return memoryBarrier;
+        }
+
+        inline VkDependencyInfo dependencyInfo()
+        {
+            VkDependencyInfo dependencyInfo{};
+            dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+            return dependencyInfo;
         }
 
         inline VkImageCreateInfo imageCreateInfo()

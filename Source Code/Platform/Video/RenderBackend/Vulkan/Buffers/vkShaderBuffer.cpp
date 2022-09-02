@@ -68,22 +68,16 @@ namespace Divide {
         }
 
         // Queue a command to copy from the staging buffer to the vertex buffer
-        VK_API::GetStateTracker()->_cmdContext->flushCommandBuffer([dataSize, srcBuf = stagingBuffer->_buffer, dstBuf = _bufferImpl->_buffer](VkCommandBuffer cmd) {
-            VkBufferCopy copy;
-            copy.dstOffset = 0u;
-            copy.srcOffset = 0u;
-            copy.size = dataSize;
-            vkCmdCopyBuffer(cmd, srcBuf, dstBuf, 1, &copy);
-
-            VkBufferMemoryBarrier bufferMemBarrier = vk::bufferMemoryBarrier();
-            bufferMemBarrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
-            bufferMemBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-            bufferMemBarrier.buffer = dstBuf;
-            bufferMemBarrier.offset = 0;
-            bufferMemBarrier.size = dataSize;
-
-            vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, 0, 0, nullptr, 1, &bufferMemBarrier, 0, nullptr);
-        });
+        VKTransferQueue::TransferRequest request{};
+        request.srcOffset = 0u;
+        request.dstOffset = 0u;
+        request.size = dataSize;
+        request.srcBuffer = stagingBuffer->_buffer;
+        request.dstBuffer = _bufferImpl->_buffer;
+        request.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        request.dstStageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+        request._immediate = true;
+        VK_API::RegisterTransferRequest(request);
 
         if (_params._updateFrequency != BufferUpdateFrequency::ONCE) {
             _stagingBuffer = VKUtil::createStagingBuffer(_alignedBufferSize);
@@ -110,22 +104,15 @@ namespace Divide {
         range._startOffset += queueWriteIndex() * _alignedBufferSize;
 
         // Queue a command to copy from the staging buffer to the vertex buffer
-        VK_API::GetStateTracker()->_cmdContext->flushCommandBuffer([range, srcBuf = _stagingBuffer->_buffer, dstBuf = _bufferImpl->_buffer](VkCommandBuffer cmd) {
-            VkBufferCopy copy;
-            copy.dstOffset = range._startOffset;
-            copy.srcOffset = 0u;
-            copy.size = range._length;
-            vkCmdCopyBuffer(cmd, srcBuf, dstBuf, 1, &copy);
-
-            VkBufferMemoryBarrier bufferMemBarrier = vk::bufferMemoryBarrier();
-            bufferMemBarrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
-            bufferMemBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-            bufferMemBarrier.buffer = dstBuf;
-            bufferMemBarrier.offset = range._startOffset;
-            bufferMemBarrier.size = range._length;
-
-            vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, 0, 0, nullptr, 1, &bufferMemBarrier, 0, nullptr);
-        });
+        VKTransferQueue::TransferRequest request{};
+        request.srcOffset = 0u;
+        request.dstOffset = range._startOffset;
+        request.size = range._length;
+        request.srcBuffer = _stagingBuffer->_buffer;
+        request.dstBuffer = _bufferImpl->_buffer;
+        request.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        request.dstStageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+        VK_API::RegisterTransferRequest(request);
 
         return { this, range };
     }

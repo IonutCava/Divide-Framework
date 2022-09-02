@@ -128,6 +128,23 @@ struct VKDeletionQueue
     PROPERTY_RW(U32, flags, 0u);
 };
 
+struct VKTransferQueue
+{
+    struct TransferRequest {
+        VkDeviceSize srcOffset{0u};
+        VkDeviceSize dstOffset{0u};
+        VkDeviceSize size{0u};
+        VkBuffer     srcBuffer{VK_NULL_HANDLE};
+        VkBuffer     dstBuffer{VK_NULL_HANDLE};
+        VkAccessFlags2 dstAccessMask{ VK_ACCESS_2_NONE };
+        VkPipelineStageFlags2 dstStageMask{ VK_PIPELINE_STAGE_2_NONE };
+        bool _immediate{ false };
+    };
+
+    mutable Mutex _lock;
+    std::deque<TransferRequest> _requests;
+};
+
 class RenderStateBlock;
 class VK_API final : public RenderAPIWrapper {
   public:
@@ -170,7 +187,7 @@ private:
 public:
     static const VKStateTracker_uptr& GetStateTracker() noexcept;
     static void RegisterCustomAPIDelete(DELEGATE<void, VkDevice>&& cbk, bool isResourceTransient);
-
+    static void RegisterTransferRequest(const VKTransferQueue::TransferRequest& request);
 private:
     static void InsertDebugMessage(VkCommandBuffer cmdBuffer, const char* message, U32 id = std::numeric_limits<U32>::max());
     static void PushDebugMessage(VkCommandBuffer cmdBuffer, const char* message, U32 id = std::numeric_limits<U32>::max());
@@ -202,6 +219,7 @@ private:
     static bool s_hasDebugMarkerSupport;
     static VKDeletionQueue s_transientDeleteQueue;
     static VKDeletionQueue s_deviceDeleteQueue;
+    static VKTransferQueue s_transferQueue;
 };
 
 };  // namespace Divide

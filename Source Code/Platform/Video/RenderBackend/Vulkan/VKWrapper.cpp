@@ -72,6 +72,7 @@ namespace Divide {
     bool VK_API::s_hasDebugMarkerSupport = false;
     VKDeletionQueue VK_API::s_transientDeleteQueue;
     VKDeletionQueue VK_API::s_deviceDeleteQueue;
+    VKTransferQueue VK_API::s_transferQueue;
 
     VKStateTracker_uptr VK_API::s_stateTracker = nullptr;
 
@@ -179,13 +180,14 @@ namespace Divide {
     void VKImmediateCmdContext::flushCommandBuffer(std::function<void(VkCommandBuffer cmd)>&& function) {
         UniqueLock<Mutex> w_lock(_submitLock);
 
-        //begin the command buffer recording. We will use this command buffer exactly once before resetting, so we tell vulkan that
+        // Begin the command buffer recording.
+        // We will use this command buffer exactly once before resetting, so we tell Vulkan that
         const VkCommandBufferBeginInfo cmdBeginInfo = vk::commandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
         VkCommandBuffer cmd = _commandBuffer;
         VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
-        //execute the function
+        // Execute the function
         function(cmd);
 
         VK_CHECK(vkEndCommandBuffer(cmd));
@@ -196,7 +198,7 @@ namespace Divide {
 
         _context.submitToQueueAndWait(vkb::QueueType::graphics, submitInfo, _submitFence);
 
-        // reset the command buffers inside the command pool
+        // Reset the command buffers inside the command pool
         vkResetCommandPool(_context.getVKDevice(), _commandPool, 0);
     }
 
@@ -205,6 +207,39 @@ namespace Divide {
             s_transientDeleteQueue.push(std::move(cbk));
         } else {
             s_deviceDeleteQueue.push(std::move(cbk));
+        }
+    }
+
+    void VK_API::RegisterTransferRequest(const VKTransferQueue::TransferRequest& request) {
+        if (request._immediate) {
+            VK_API::GetStateTracker()->_cmdContext->flushCommandBuffer([&request](VkCommandBuffer cmd) {
+                if (request.srcBuffer != VK_NULL_HANDLE) {
+                    VkBufferCopy copy;
+                    copy.dstOffset = request.dstOffset;
+                    copy.srcOffset = request.srcOffset;
+                    copy.size = request.size;
+                    vkCmdCopyBuffer(cmd, request.srcBuffer, request.dstBuffer, 1, &copy);
+                }
+
+                VkBufferMemoryBarrier2 memoryBarrier = vk::bufferMemoryBarrier2();
+                memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                memoryBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
+                memoryBarrier.dstStageMask = request.dstStageMask;
+                memoryBarrier.dstAccessMask = request.dstAccessMask;
+                memoryBarrier.offset = request.dstOffset;
+                memoryBarrier.size = request.size;
+                memoryBarrier.buffer = request.dstBuffer;
+
+                VkDependencyInfo dependencyInfo = vk::dependencyInfo();
+                dependencyInfo.bufferMemoryBarrierCount = 1;
+                dependencyInfo.pBufferMemoryBarriers = &memoryBarrier;
+
+                //ToDo: batch these up! -Ionut
+                vkCmdPipelineBarrier2(cmd, &dependencyInfo);
+            });
+        } else {
+            UniqueLock<Mutex> w_lock(s_transferQueue._lock);
+            s_transferQueue._requests.push_back(request);
         }
     }
 
@@ -759,6 +794,42 @@ namespace Divide {
         OPTICK_TAG("Type", to_base(cmd->Type()));
 
         OPTICK_EVENT(GFX::Names::commandType[to_base(cmd->Type())]);
+        if (GFXDevice::IsSubmitCommand(cmd->Type()) && !s_transferQueue._requests.empty()) {
+            UniqueLock<Mutex> w_lock(s_transferQueue._lock);
+            // Check again
+            if (!s_transferQueue._requests.empty()) {
+                VK_API::GetStateTracker()->_cmdContext->flushCommandBuffer([&cmdBuffer](VkCommandBuffer cmd) {
+                    while (!s_transferQueue._requests.empty()) {
+                        auto& request = s_transferQueue._requests.front();
+                        if (request.srcBuffer != VK_NULL_HANDLE) {
+                            VkBufferCopy copy;
+                            copy.dstOffset = request.dstOffset;
+                            copy.srcOffset = request.srcOffset;
+                            copy.size = request.size;
+                            vkCmdCopyBuffer(cmd, request.srcBuffer, request.dstBuffer, 1, &copy);
+                        }
+
+                        VkBufferMemoryBarrier2 memoryBarrier = vk::bufferMemoryBarrier2();
+                        memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                        memoryBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
+                        memoryBarrier.dstStageMask = request.dstStageMask;
+                        memoryBarrier.dstAccessMask = request.dstAccessMask;
+                        memoryBarrier.offset = request.dstOffset;
+                        memoryBarrier.size = request.size;
+                        memoryBarrier.buffer = request.dstBuffer;
+
+                        VkDependencyInfo dependencyInfo = vk::dependencyInfo();
+                        dependencyInfo.bufferMemoryBarrierCount = 1;
+                        dependencyInfo.pBufferMemoryBarriers = &memoryBarrier;
+
+                        //ToDo: batch these up! -Ionut
+                        vkCmdPipelineBarrier2(request.srcBuffer != VK_NULL_HANDLE ? cmd : cmdBuffer, &dependencyInfo);
+
+                        s_transferQueue._requests.pop_front();
+                    }
+                });
+            }
+        }
 
         switch (cmd->Type()) {
             case GFX::CommandType::BEGIN_RENDER_PASS: {
