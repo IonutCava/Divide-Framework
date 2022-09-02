@@ -78,36 +78,13 @@ namespace Divide {
         impl->_useAutoSyncObjects = params._useAutoSyncObjects;
         impl->_bindConfig = params._bindConfig;
         impl->_elementStride = elementStride;
-        impl->_buffer = eastl::make_unique<AllocatedBuffer>();
+        impl->_buffer = eastl::make_unique<AllocatedBuffer>(BufferUsageType::VERTEX_BUFFER);
         impl->_buffer->_params = params._bufferParams;
-        impl->_buffer->_usageType = BufferUsageType::VERTEX_BUFFER;
-
-        // allocate vertex buffer
-        VkBufferCreateInfo bufferInfo = vk::bufferCreateInfo(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, dataSize);
-        //let the VMA library know that this data should be writeable by CPU, but also readable by GPU
-        VmaAllocationCreateInfo vmaallocInfo = {};
-        vmaallocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-
-        //allocate the buffer
-        VK_CHECK(vmaCreateBuffer(*VK_API::GetStateTracker()->_allocator,
-                                 &bufferInfo,
-                                 &vmaallocInfo,
-                                 &impl->_buffer->_buffer,
-                                 &impl->_buffer->_allocation,
-                                 &impl->_buffer->_allocInfo));
-
-        VkMemoryPropertyFlags memPropFlags;
-        vmaGetAllocationMemoryProperties(*VK_API::GetStateTracker()->_allocator,
-                                         impl->_buffer->_allocation,
-                                         &memPropFlags);
-
-        const string bufferName = _name.empty() ? Util::StringFormat("DVD_GENERAL_VTX_BUFFER_%d", handle()._id) : (_name + "_VTX_BUFFER");
-        vmaSetAllocationName(*VK_API::GetStateTracker()->_allocator, impl->_buffer->_allocation, bufferName.c_str());
 
         const size_t localDataSize = params._initialData.second > 0 ? params._initialData.second : bufferSizeInBytes;
-        void* mappedData;
-        vmaMapMemory(*VK_API::GetStateTracker()->_allocator, impl->_buffer->_allocation, &mappedData);
-        Byte* mappedRange = (Byte*)mappedData;
+
+        AllocatedBuffer_uptr stagingBuffer = VKUtil::createStagingBuffer(dataSize);
+        Byte* mappedRange = (Byte*)stagingBuffer->_allocInfo.pMappedData;
         for (U32 i = 0u; i < ringSizeFactor; ++i) {
             if (params._initialData.first == nullptr) {
                 memset(&mappedRange[i * bufferSizeInBytes], 0, bufferSizeInBytes);
@@ -115,7 +92,48 @@ namespace Divide {
                 memcpy(&mappedRange[i * bufferSizeInBytes], params._initialData.first, localDataSize);
             }
         }
-        vmaUnmapMemory(*VK_API::GetStateTracker()->_allocator, impl->_buffer->_allocation);
+        // Let the VMA library know that this buffer should be readable by the GPU only
+        VmaAllocationCreateInfo vmaallocInfo{};
+        vmaallocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+        vmaallocInfo.flags = 0;
+
+        // Allocate the vertex buffer (as a vb buffer and transfer destination)
+        {
+            VkBufferCreateInfo bufferInfo = vk::bufferCreateInfo(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, dataSize);
+            UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()->_allocatorInstance._allocatorLock);
+            VK_CHECK(vmaCreateBuffer(*VK_API::GetStateTracker()->_allocatorInstance._allocator,
+                                     &bufferInfo,
+                                     &vmaallocInfo,
+                                     &impl->_buffer->_buffer,
+                                     &impl->_buffer->_allocation,
+                                     &impl->_buffer->_allocInfo));
+
+            VkMemoryPropertyFlags memPropFlags;
+            vmaGetAllocationMemoryProperties(*VK_API::GetStateTracker()->_allocatorInstance._allocator,
+                                             impl->_buffer->_allocation,
+                                             &memPropFlags);
+
+            const string bufferName = _name.empty() ? Util::StringFormat("DVD_GENERAL_VTX_BUFFER_%d", handle()._id) : (_name + "_VTX_BUFFER");
+            vmaSetAllocationName(*VK_API::GetStateTracker()->_allocatorInstance._allocator, impl->_buffer->_allocation, bufferName.c_str());
+        }
+
+        // Queue a command to copy from the staging buffer to the vertex buffer
+        VK_API::GetStateTracker()->_cmdContext->flushCommandBuffer([dataSize, srcBuf = stagingBuffer->_buffer, dstBuf = impl->_buffer->_buffer](VkCommandBuffer cmd) {
+            VkBufferCopy copy;
+            copy.dstOffset = 0u;
+            copy.srcOffset = 0u;
+            copy.size = dataSize;
+            vkCmdCopyBuffer(cmd, srcBuf, dstBuf, 1, &copy);
+
+            VkBufferMemoryBarrier bufferMemBarrier = vk::bufferMemoryBarrier();
+            bufferMemBarrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+            bufferMemBarrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+            bufferMemBarrier.buffer = dstBuf;
+            bufferMemBarrier.offset = 0;
+            bufferMemBarrier.size = dataSize;
+
+            vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1, &bufferMemBarrier, 0, nullptr);
+        });
     }
 
     void vkGenericVertexData::setIndexBuffer(const IndexBuffer& indices) {
@@ -142,10 +160,8 @@ namespace Divide {
         }
 
         if (!oldIdxBufferEntry->_handle) {
-            oldIdxBufferEntry->_handle = eastl::make_unique<AllocatedBuffer>();
+            oldIdxBufferEntry->_handle = eastl::make_unique<AllocatedBuffer>(BufferUsageType::INDEX_BUFFER);
         }
-
-        oldIdxBufferEntry->_handle->_usageType = BufferUsageType::INDEX_BUFFER;
 
         IndexBuffer& oldIdxBuffer = oldIdxBufferEntry->_data;
         oldIdxBuffer.count = std::max(oldIdxBuffer.count, indices.count);
@@ -170,14 +186,16 @@ namespace Divide {
                 _indexBufferSize = std::max(newDataSize, _indexBufferSize);
 
                 //allocate vertex buffer
-                const VkBufferCreateInfo bufferInfo = vk::bufferCreateInfo(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, _indexBufferSize);
+                const VkBufferCreateInfo bufferInfo = vk::bufferCreateInfo(VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, _indexBufferSize);
 
                 //let the VMA library know that this data should be writeable by CPU, but also readable by GPU
                 VmaAllocationCreateInfo vmaallocInfo = {};
-                vmaallocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+                vmaallocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+                vmaallocInfo.flags = 0;
 
                 //allocate the buffer
-                VK_CHECK(vmaCreateBuffer(*VK_API::GetStateTracker()->_allocator,
+                UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()->_allocatorInstance._allocatorLock);
+                VK_CHECK(vmaCreateBuffer(*VK_API::GetStateTracker()->_allocatorInstance._allocator,
                                          &bufferInfo,
                                          &vmaallocInfo,
                                          &oldIdxBufferEntry->_handle->_buffer,
@@ -185,25 +203,42 @@ namespace Divide {
                                          &oldIdxBufferEntry->_handle->_allocInfo));
 
                 VkMemoryPropertyFlags memPropFlags;
-                vmaGetAllocationMemoryProperties(*VK_API::GetStateTracker()->_allocator,
+                vmaGetAllocationMemoryProperties(*VK_API::GetStateTracker()->_allocatorInstance._allocator,
                                                  oldIdxBufferEntry->_handle->_allocation,
                                                  &memPropFlags);
 
                 const string bufferName = _name.empty() ? Util::StringFormat("DVD_GENERAL_IDX_BUFFER_%d", handle()._id) : (_name + "_IDX_BUFFER");
-                vmaSetAllocationName(*VK_API::GetStateTracker()->_allocator, oldIdxBufferEntry->_handle->_allocation, bufferName.c_str());
+                vmaSetAllocationName(*VK_API::GetStateTracker()->_allocatorInstance._allocator, oldIdxBufferEntry->_handle->_allocation, bufferName.c_str());
             }
 
             const size_t range = indices.count * elementSize;
             DIVIDE_ASSERT(range <= _indexBufferSize);
-
-            void* mappedData;
-            vmaMapMemory(*VK_API::GetStateTracker()->_allocator, oldIdxBufferEntry->_handle->_allocation, &mappedData);
-            if (data == nullptr) {
-                memset(mappedData, 0, range);
-            } else {
-                memcpy(mappedData, data, range);
+            if (_stagingBufferIdx == nullptr || _idxStagingBufferSize < _indexBufferSize) {
+                _stagingBufferIdx = VKUtil::createStagingBuffer(_indexBufferSize);
             }
-            vmaUnmapMemory(*VK_API::GetStateTracker()->_allocator, oldIdxBufferEntry->_handle->_allocation);
+
+            if (data == nullptr) {
+                memset(_stagingBufferIdx->_allocInfo.pMappedData, 0, range);
+            } else {
+                memcpy(_stagingBufferIdx->_allocInfo.pMappedData, data, range);
+            }
+            // Queue a command to copy from the staging buffer to the vertex buffer
+            VK_API::GetStateTracker()->_cmdContext->flushCommandBuffer([range, srcBuf = _stagingBufferIdx->_buffer, dstBuf = oldIdxBufferEntry->_handle->_buffer](VkCommandBuffer cmd) {
+                VkBufferCopy copy;
+                copy.dstOffset = 0u;
+                copy.srcOffset = 0u;
+                copy.size = range;
+                vkCmdCopyBuffer(cmd, srcBuf, dstBuf, 1, &copy);
+
+                VkBufferMemoryBarrier bufferMemBarrier = vk::bufferMemoryBarrier();
+                bufferMemBarrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+                bufferMemBarrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+                bufferMemBarrier.buffer = dstBuf;
+                bufferMemBarrier.offset = 0;
+                bufferMemBarrier.size = range;
+
+                vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1, &bufferMemBarrier, 0, nullptr);
+            });
         }
     }
 
@@ -223,6 +258,7 @@ namespace Divide {
         DIVIDE_ASSERT(impl != nullptr && "glGenericVertexData error: set buffer called for invalid buffer index!");
 
         const BufferParams& bufferParams = impl->_buffer->_params;
+        DIVIDE_ASSERT(bufferParams._updateFrequency != BufferUpdateFrequency::ONCE);
 
         // Calculate the size of the data that needs updating
         const size_t dataCurrentSizeInBytes = elementCountRange * bufferParams._elementSize;
@@ -233,10 +269,33 @@ namespace Divide {
             offsetInBytes += bufferParams._elementCount * bufferParams._elementSize * queueIndex();
         }
 
-        void* mappedData;
-        vmaMapMemory(*VK_API::GetStateTracker()->_allocator, impl->_buffer->_allocation, &mappedData);
-        Byte* mappedRange = (Byte*)mappedData;
-        memcpy(&mappedRange[offsetInBytes], data, dataCurrentSizeInBytes);
-        vmaUnmapMemory(*VK_API::GetStateTracker()->_allocator, impl->_buffer->_allocation);
+        const size_t bufferSizeInBytes = bufferParams._elementCount * bufferParams._elementSize;
+        if (_stagingBufferVtx == nullptr || _vtxStagingBufferSize < bufferSizeInBytes) {
+            _stagingBufferVtx = VKUtil::createStagingBuffer(bufferSizeInBytes);
+        }
+
+        if (data == nullptr) {
+            memset(_stagingBufferVtx->_allocInfo.pMappedData, 0, dataCurrentSizeInBytes);
+        } else {
+            memcpy(_stagingBufferVtx->_allocInfo.pMappedData, data, dataCurrentSizeInBytes);
+        }
+
+        // Queue a command to copy from the staging buffer to the vertex buffer
+        VK_API::GetStateTracker()->_cmdContext->flushCommandBuffer([offsetInBytes, dataCurrentSizeInBytes, srcBuf = _stagingBufferVtx->_buffer, dstBuf = impl->_buffer->_buffer](VkCommandBuffer cmd) {
+            VkBufferCopy copy;
+            copy.dstOffset = offsetInBytes;
+            copy.srcOffset = 0u;
+            copy.size = dataCurrentSizeInBytes;
+            vkCmdCopyBuffer(cmd, srcBuf, dstBuf, 1, &copy);
+
+            VkBufferMemoryBarrier bufferMemBarrier = vk::bufferMemoryBarrier();
+            bufferMemBarrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+            bufferMemBarrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+            bufferMemBarrier.buffer = dstBuf;
+            bufferMemBarrier.offset = offsetInBytes;
+            bufferMemBarrier.size = dataCurrentSizeInBytes;
+
+            vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1, &bufferMemBarrier, 0, nullptr);
+        });
     }
 }; //namespace Divide

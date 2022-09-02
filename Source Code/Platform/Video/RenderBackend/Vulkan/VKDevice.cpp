@@ -5,7 +5,8 @@
 #include "Utility/Headers/Localization.h"
 
 namespace Divide {
-    VKDevice::VKDevice(vkb::Instance& instance, VkSurfaceKHR targetSurface)
+    VKDevice::VKDevice(VK_API& context, vkb::Instance& instance, VkSurfaceKHR targetSurface)
+        : _context(context)
     {
         vkb::PhysicalDeviceSelector selector{ instance };
         auto physicalDeviceSelection = selector.set_minimum_version(1, Config::MINIMUM_VULKAN_MINOR_VERSION)
@@ -30,11 +31,12 @@ namespace Divide {
             }
         }
 
-        _graphicsQueue = getQueue(vkb::QueueType::graphics);
-        _computeQueue = getQueue(vkb::QueueType::compute);
-        _transferQueue = getQueue(vkb::QueueType::transfer);
+        _queues[to_base(vkb::QueueType::graphics)] = getQueue(vkb::QueueType::graphics);
+        _queues[to_base(vkb::QueueType::compute)] = getQueue(vkb::QueueType::compute);
+        _queues[to_base(vkb::QueueType::transfer)] = getQueue(vkb::QueueType::transfer);
+        _queues[to_base(vkb::QueueType::present)] = getQueue(vkb::QueueType::present);
 
-        _graphicsCommandPool = createCommandPool(_graphicsQueue._queueIndex, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+        _graphicsCommandPool = createCommandPool(_queues[to_base(vkb::QueueType::graphics)]._queueIndex, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
     }
 
     VKDevice::~VKDevice()
@@ -45,25 +47,21 @@ namespace Divide {
         vkb::destroy_device(_device);
     }
 
-    void VKDevice::waitIdle() const {
-        vkDeviceWaitIdle(getDevice());
-    }
+    VKQueue VKDevice::getQueue(vkb::QueueType type) const noexcept {
+        VKQueue ret{};
 
-    VKDevice::Queue VKDevice::getQueue(vkb::QueueType type) const noexcept {
         if (getDevice() != nullptr) {
             // use vkbootstrap to get a Graphics queue
-            auto queue = _device.get_queue(type);
-            if (!queue) {
-                Console::errorfn(Locale::Get(_ID("ERROR_VK_INIT")), queue.error().message().c_str());
+            const auto queue = _device.get_queue(type);
+            if (queue) {
+                ret._queue = queue.value();
+                ret._queueIndex = _device.get_queue_index(type).value();
             } else {
-                return {
-                    queue.value(),
-                    _device.get_queue_index(type).value()
-                };
+                Console::errorfn(Locale::Get(_ID("ERROR_VK_INIT")), queue.error().message().c_str());
             }
         }
 
-        return {};
+        return ret;
     }
 
     VkDevice VKDevice::getVKDevice() const noexcept {
@@ -91,71 +89,26 @@ namespace Divide {
         return cmdPool;
     }
 
-    /**
-    * Allocate a command buffer from the command pool
-    *
-    * @param level Level of the new command buffer (primary or secondary)
-    * @param pool Command pool from which the command buffer will be allocated
-    * @param (Optional) begin If true, recording on the new command buffer will be started (vkBeginCommandBuffer) (Defaults to false)
-    *
-    * @return A handle to the allocated command buffer
-    */
-    VkCommandBuffer VKDevice::createCommandBuffer(const VkCommandBufferLevel level, const VkCommandPool pool, const bool begin) {
-        VkCommandBufferAllocateInfo cmdBufAllocateInfo = vk::commandBufferAllocateInfo(pool, level, 1);
-
-        VkCommandBuffer cmdBuffer;
-        VK_CHECK(vkAllocateCommandBuffers(getVKDevice(), &cmdBufAllocateInfo, &cmdBuffer));
-        // If requested, also start recording for the new command buffer
-        if (begin) {
-            VkCommandBufferBeginInfo cmdBufferBeginInfo = vk::commandBufferBeginInfo();
-            VK_CHECK(vkBeginCommandBuffer(cmdBuffer, &cmdBufferBeginInfo));
-        }
-        return cmdBuffer;
+    void VKDevice::submitToQueue(const vkb::QueueType queue, const VkSubmitInfo& submitInfo, VkFence& fence) const {
+        // Submit command buffer to the queue and execute it.
+        // "fence" will now block until the graphic commands finish execution
+        UniqueLock<Mutex> w_lock(_queueLocks[to_base(queue)]);
+        VK_CHECK(vkQueueSubmit(_queues[to_base(queue)]._queue, 1, &submitInfo, fence));
     }
 
-    VkCommandBuffer VKDevice::createCommandBuffer(const VkCommandBufferLevel level, const bool begin) {
-        return createCommandBuffer(level, _graphicsCommandPool, begin);
+    void VKDevice::submitToQueueAndWait(const vkb::QueueType queue, const VkSubmitInfo& submitInfo, VkFence& fence) const {
+        submitToQueue(queue, submitInfo, fence);
+
+        vkWaitForFences(getVKDevice(), 1, &fence, true, 9999999999);
+        vkResetFences(getVKDevice(), 1, &fence);
     }
 
-    /**
-    * Finish command buffer recording and submit it to a queue
-    *
-    * @param commandBuffer Command buffer to flush
-    * @param queue Queue to submit the command buffer to
-    * @param pool Command pool on which the command buffer has been created
-    * @param free (Optional) Free the command buffer once it has been submitted (Defaults to true)
-    *
-    * @note The queue that the command buffer is submitted to must be from the same family index as the pool it was allocated from
-    * @note Uses a fence to ensure command buffer has finished executing
-    */
-    void VKDevice::flushCommandBuffer(const VkCommandBuffer commandBuffer, const VkQueue queue, const VkCommandPool pool, const bool free) {
-        if (commandBuffer == VK_NULL_HANDLE) {
-            return;
-        }
-
-        VK_CHECK(vkEndCommandBuffer(commandBuffer));
-
-        VkSubmitInfo submitInfo = vk::submitInfo();
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffer;
-
-        // Create fence to ensure that the command buffer has finished executing
-        VkFenceCreateInfo fenceInfo = vk::fenceCreateInfo();
-
-        VkFence fence;
-        VK_CHECK(vkCreateFence(getVKDevice(), &fenceInfo, nullptr, &fence));
-        // Submit to the queue
-        VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, fence));
-        // Wait for the fence to signal that command buffer has finished executing
-        VK_CHECK(vkWaitForFences(getVKDevice(), 1, &fence, VK_TRUE, DEFAULT_FENCE_TIMEOUT));
-        vkDestroyFence(getVKDevice(), fence, nullptr);
-        if (free) {
-            vkFreeCommandBuffers(getVKDevice(), pool, 1, &commandBuffer);
-        }
+    VkResult VKDevice::queuePresent(const vkb::QueueType queue, const VkPresentInfoKHR& presentInfo) const {
+        UniqueLock<Mutex> w_lock(_queueLocks[to_base(queue)]);
+        return vkQueuePresentKHR(_queues[to_base(queue)]._queue, &presentInfo);
     }
 
-    void VKDevice::flushCommandBuffer(const VkCommandBuffer commandBuffer, const VkQueue queue, const bool free) {
-        return flushCommandBuffer(commandBuffer, queue, _graphicsCommandPool, free);
+    U32 VKDevice::getQueueIndex(const vkb::QueueType queue) const {
+        return _queues[to_base(queue)]._queueIndex;
     }
-
 }; //namespace Divide

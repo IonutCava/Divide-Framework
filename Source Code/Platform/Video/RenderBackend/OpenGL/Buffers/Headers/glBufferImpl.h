@@ -77,9 +77,9 @@ public:
         return waitByteRange(range._startOffset, range._length, blockClient);
     }
 
-    void writeOrClearBytes(size_t offsetInBytes, size_t rangeInBytes, bufferPtr data, bool zeroMem, bool firstWrite = false);
-    inline void writeOrClearBytes(const BufferRange range, bufferPtr data, bool zeroMem, bool firstWrite = false) {
-        writeOrClearBytes(range._startOffset, range._length, data, zeroMem, firstWrite);
+    void writeOrClearBytes(size_t offsetInBytes, size_t rangeInBytes, bufferPtr data, bool firstWrite = false);
+    inline void writeOrClearBytes(const BufferRange range, bufferPtr data, bool firstWrite = false) {
+        writeOrClearBytes(range._startOffset, range._length, data, firstWrite);
     }
 
     void readBytes(size_t offsetInBytes, size_t rangeInBytes, std::pair<bufferPtr, size_t> outData);
@@ -98,6 +98,7 @@ protected:
     GLuint _copyBufferTarget = GLUtil::k_invalidObjectID;
     size_t _copyBufferSize = 0u;
     glLockManager _lockManager;
+    mutable Mutex _mapLock;
 };
 
 FWD_DECLARE_MANAGED_CLASS(glBufferImpl);

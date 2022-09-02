@@ -191,25 +191,13 @@ ShaderResult glShaderProgram::validatePreBind(const bool rebind) {
     return ShaderResult::OK;
 }
 
-/// This should be called in the loading thread, but some issues are still present, and it's not recommended (yet)
-void glShaderProgram::threadedLoad(const bool reloadExisting) {
-    OPTICK_EVENT()
-
-    assert(reloadExisting || _handle == GLUtil::k_invalidObjectID);
-    hashMap<U64, PerFileShaderData> loadDataByFile{};
-    reloadShaders(loadDataByFile, reloadExisting);
-
-    // Pass the rest of the loading steps to the parent class
-    ShaderProgram::threadedLoad(reloadExisting);
-}
-
 bool glShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, const bool reloadExisting) {
     OPTICK_EVENT();
 
     if (ShaderProgram::reloadShaders(fileData, reloadExisting)) {
         _stagesBound = false;
-
         _shaderStage.clear();
+
         for (auto& [fileHash, loadDataPerFile] : fileData) {
             assert(!loadDataPerFile._modules.empty());
 

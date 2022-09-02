@@ -61,7 +61,9 @@ namespace {
         };
 
         Divide::Console::errorfn("[%s: %s]\n%s\n", to_string_message_severity(messageSeverity), to_string_message_type(messageType), pCallbackData->pMessage);
-        Divide::DIVIDE_UNEXPECTED_CALL();
+        if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+            Divide::DIVIDE_UNEXPECTED_CALL();
+        }
         return VK_FALSE; // Applications must return false here
     }
 }
@@ -137,19 +139,16 @@ namespace Divide {
         }
     }
 
-    void VKDeletionQueue::push(DELEGATE<void>&& function) {
+    void VKDeletionQueue::push(DELEGATE<void, VkDevice>&& function) {
         ScopedLock<Mutex> w_lock(_deletionLock);
         _deletionQueue.push_back(std::move(function));
     }
 
-    void VKDeletionQueue::flush(const bool deviceIsIdle) {
-        if (BitCompare(_flags, Flags::REQUIRE_DEVICE_IDLE) && !deviceIsIdle) {
-            VK_API::GetStateTracker()->_device->waitIdle();
-        }
+    void VKDeletionQueue::flush(VkDevice device) {
         ScopedLock<Mutex> w_lock(_deletionLock);
         // reverse iterate the deletion queue to delete all the buffers
         for (auto it = _deletionQueue.rbegin(); it != _deletionQueue.rend(); it++) {
-            (*it)();
+            (*it)(device);
         }
 
         _deletionQueue.clear();
@@ -160,7 +159,48 @@ namespace Divide {
         return _deletionQueue.empty();
     }
 
-    void VK_API::RegisterCustomAPIDelete(DELEGATE<void>&& cbk, const bool isResourceTransient) {
+    VKImmediateCmdContext::VKImmediateCmdContext(VKDevice& context)
+        : _context(context)
+    {
+        const VkFenceCreateInfo fenceCreateInfo = vk::fenceCreateInfo();
+        vkCreateFence(_context.getVKDevice(), &fenceCreateInfo, nullptr, &_submitFence);
+        _commandPool = _context.createCommandPool(_context.getQueueIndex(vkb::QueueType::graphics), 0);
+
+        const VkCommandBufferAllocateInfo cmdBufAllocateInfo = vk::commandBufferAllocateInfo(_commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
+        VK_CHECK(vkAllocateCommandBuffers(_context.getVKDevice(), &cmdBufAllocateInfo, &_commandBuffer));
+    }
+
+    VKImmediateCmdContext::~VKImmediateCmdContext()
+    {
+        vkDestroyCommandPool(_context.getVKDevice(), _commandPool, nullptr);
+        vkDestroyFence(_context.getVKDevice(), _submitFence, nullptr);
+    }
+
+    void VKImmediateCmdContext::flushCommandBuffer(std::function<void(VkCommandBuffer cmd)>&& function) {
+        UniqueLock<Mutex> w_lock(_submitLock);
+
+        //begin the command buffer recording. We will use this command buffer exactly once before resetting, so we tell vulkan that
+        const VkCommandBufferBeginInfo cmdBeginInfo = vk::commandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+        VkCommandBuffer cmd = _commandBuffer;
+        VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
+
+        //execute the function
+        function(cmd);
+
+        VK_CHECK(vkEndCommandBuffer(cmd));
+
+        VkSubmitInfo submitInfo = vk::submitInfo();
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &cmd;
+
+        _context.submitToQueueAndWait(vkb::QueueType::graphics, submitInfo, _submitFence);
+
+        // reset the command buffers inside the command pool
+        vkResetCommandPool(_context.getVKDevice(), _commandPool, 0);
+    }
+
+    void VK_API::RegisterCustomAPIDelete(DELEGATE<void, VkDevice>&& cbk, const bool isResourceTransient) {
         if (isResourceTransient) {
             s_transientDeleteQueue.push(std::move(cbk));
         } else {
@@ -190,24 +230,21 @@ namespace Divide {
         }
 
         const VkResult result = _swapChain->beginFrame();
-
         if (result != VK_SUCCESS) {
-            if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-                recreateSwapChain(window);
-                _skipEndFrame = true;
-                return false;
-            } else {
+            if (result != VK_ERROR_OUT_OF_DATE_KHR && result != VK_SUBOPTIMAL_KHR) {
                 Console::errorfn("Detected Vulkan error: %s\n", VKErrorString(result).c_str());
                 DIVIDE_UNEXPECTED_CALL();
             }
+            recreateSwapChain(window);
+            _skipEndFrame = true;
+            return false;
         }
 
         //naming it cmd for shorter writing
         VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
 
         //begin the command buffer recording. We will use this command buffer exactly once, so we want to let Vulkan know that
-        VkCommandBufferBeginInfo cmdBeginInfo = vk::commandBufferBeginInfo();
-        cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        VkCommandBufferBeginInfo cmdBeginInfo = vk::commandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
         VK_CHECK(vkBeginCommandBuffer(cmdBuffer, &cmdBeginInfo));
 
@@ -259,7 +296,7 @@ namespace Divide {
         //finalize the command buffer (we can no longer add commands, but it can now be executed)
         VK_CHECK(vkEndCommandBuffer(cmd));
 
-        const VkResult result = _swapChain->endFrame(_device->graphicsQueue()._queue, cmd);
+        const VkResult result = _swapChain->endFrame(vkb::QueueType::graphics, cmd);
         
         if (result != VK_SUCCESS) {
             if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
@@ -327,18 +364,21 @@ namespace Divide {
             return ErrorCode::VK_SURFACE_CREATE;
         }
 
-        _device = eastl::make_unique<VKDevice>(_vkbInstance, _surface);
+        _device = eastl::make_unique<VKDevice>(*this, _vkbInstance, _surface);
         if (_device->getVKDevice() == nullptr) {
             return ErrorCode::VK_DEVICE_CREATE_FAILED;
         }
         VKUtil::fillEnumTables(_device->getVKDevice());
 
-        if (_device->graphicsQueue()._queue == nullptr) {
+        if (_device->getQueueIndex(vkb::QueueType::graphics) == INVALID_VK_QUEUE_INDEX) {
             return ErrorCode::VK_NO_GRAHPICS_QUEUE;
         }
 
-        _swapChain = eastl::make_unique<VKSwapChain>(*_device, window);
+        _swapChain = eastl::make_unique<VKSwapChain>(*this, *_device, window);
         VK_API::s_stateTracker->_device = _device.get();
+
+        _cmdContext = eastl::make_unique<VKImmediateCmdContext>(*_device);
+        VK_API::s_stateTracker->_cmdContext = _cmdContext.get();
 
         recreateSwapChain(window);
 
@@ -351,7 +391,7 @@ namespace Divide {
         allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_3;
         
         vmaCreateAllocator(&allocatorInfo, &_allocator);
-        GetStateTracker()->_allocator = &_allocator;
+        GetStateTracker()->_allocatorInstance._allocator = &_allocator;
 
         _commandBuffers.resize(VKSwapChain::MAX_FRAMES_IN_FLIGHT);
 
@@ -368,6 +408,7 @@ namespace Divide {
             SDLEventManager::pollEvents();
         }
 
+        vkDeviceWaitIdle(_device->getVKDevice());
         const ErrorCode err = _swapChain->create(BitCompare(window.flags(), WindowFlags::VSYNC),
                                                  _context.context().config().runtime.adaptiveSync,
                                                  _surface);
@@ -382,7 +423,7 @@ namespace Divide {
 
     void VK_API::initPipelines() {
 
-        destroyPipelines();
+        s_deviceDeleteQueue.flush(_device->getVKDevice());
 
         VkShaderModule triangleFragShader;
         if (!loadShaderModule((Paths::g_assetsLocation + Paths::g_shadersLocation + Paths::Shaders::g_SPIRVShaderLoc + "triangle.frag.spv").c_str(), &triangleFragShader)) {
@@ -444,36 +485,13 @@ namespace Divide {
         //finally build the pipeline
         _trianglePipeline._pipeline = pipelineBuilder.build_pipeline(_device->getVKDevice(), _swapChain->getRenderPass());
 
+        VK_API::RegisterCustomAPIDelete([pipeline = _trianglePipeline._pipeline, layout = _trianglePipeline._layout](VkDevice device) {
+            vkDestroyPipeline(device, pipeline, nullptr);
+            vkDestroyPipelineLayout(device, layout, nullptr);
+        }, false);
+
         vkDestroyShaderModule(_device->getVKDevice(), triangleVertexShader, nullptr);
         vkDestroyShaderModule(_device->getVKDevice(), triangleFragShader, nullptr);
-    }
-
-    void VK_API::destroyPipeline(VkPipelineEntry& pipelineEntry) {
-        if (pipelineEntry._pipeline != VK_NULL_HANDLE) {
-            vkDestroyPipeline(_device->getVKDevice(), pipelineEntry._pipeline, nullptr);
-            pipelineEntry._pipeline = VK_NULL_HANDLE;
-        }
-        if (pipelineEntry._layout != VK_NULL_HANDLE) {
-            vkDestroyPipelineLayout(_device->getVKDevice(), pipelineEntry._layout, nullptr);
-            pipelineEntry._layout = VK_NULL_HANDLE;
-        }
-    }
-
-    bool VK_API::destroyPipelines(const bool keepDefaults) {
-        if (_trianglePipeline._pipeline != VK_NULL_HANDLE || !GetStateTracker()->_tempPipelines.empty()) {
-            _device->waitIdle();
-            if (!keepDefaults) {
-                destroyPipeline(_trianglePipeline);
-            }
-
-            while (!GetStateTracker()->_tempPipelines.empty()) {
-                destroyPipeline(GetStateTracker()->_tempPipelines.front());
-                GetStateTracker()->_tempPipelines.pop();
-            }
-            return true;
-        }
-
-        return false;
     }
 
     void VK_API::closeRenderingAPI() {
@@ -481,11 +499,12 @@ namespace Divide {
         vkShaderProgram::DestroyStaticData();
 
         if (_device != nullptr) {
-            const bool deviceIdle = destroyPipelines();
-            s_transientDeleteQueue.flush(deviceIdle);
-            s_deviceDeleteQueue.flush(deviceIdle);
+            vkDeviceWaitIdle(_device->getVKDevice());
+            s_transientDeleteQueue.flush(_device->getVKDevice());
+            s_deviceDeleteQueue.flush(_device->getVKDevice());
             vmaDestroyAllocator(_allocator);
             _commandBuffers.clear();
+            _cmdContext.reset();
             _swapChain.reset();
             _device.reset();
         }
@@ -637,10 +656,18 @@ namespace Divide {
             return ShaderResult::Failed;
         }
         GetStateTracker()->_perDrawSet = &program->descriptorSet();
+        GetStateTracker()->_activeTopology = pipelineDescriptor._primitiveTopology;
+        size_t stateBlockHash = pipelineDescriptor._stateHash == 0u ? _context.getDefaultStateBlock(false) : pipelineDescriptor._stateHash;
+        if (stateBlockHash == 0) {
+            stateBlockHash = RenderStateBlock::DefaultHash();
+        }
+        bool currentStateValid = false;
+        const RenderStateBlock& currentState = RenderStateBlock::Get(stateBlockHash, currentStateValid);
+        DIVIDE_ASSERT(currentStateValid, "GL_API error: Invalid state blocks detected on activation!");
 
-        const vkShaderProgram& vkProgram = static_cast<vkShaderProgram&>(*program);
+        /*const vkShaderProgram& vkProgram = static_cast<vkShaderProgram&>(*program);
         const auto& shaderStages = vkProgram.shaderStages();
-        
+
         //build the pipeline layout that controls the inputs/outputs of the shader
         //we are not using descriptor sets or other systems yet, so no need to use anything other than empty default
         VkPipelineLayout tempPipelineLayout{VK_NULL_HANDLE};
@@ -666,26 +693,17 @@ namespace Divide {
         //vertex input controls how to read vertices from vertex buffers. We aren't using it yet
         pipelineBuilder._vertexInputInfo = vk::pipelineVertexInputStateCreateInfo();
 
-        GetStateTracker()->_activeTopology = pipelineDescriptor._primitiveTopology;
         //input assembly is the configuration for drawing triangle lists, strips, or individual points.
         //we are just going to draw triangle list
         pipelineBuilder._inputAssembly = vk::pipelineInputAssemblyStateCreateInfo(vkPrimitiveTypeTable[to_base(pipelineDescriptor._primitiveTopology)], 0u, pipelineDescriptor._primitiveRestartEnabled ? VK_TRUE : VK_FALSE);
-
-        size_t stateBlockHash = pipelineDescriptor._stateHash == 0u ? _context.getDefaultStateBlock(false) : pipelineDescriptor._stateHash;
-        if (stateBlockHash == 0) {
-            stateBlockHash = RenderStateBlock::DefaultHash();
-        }
-        bool currentStateValid = false;
-        const RenderStateBlock& currentState = RenderStateBlock::Get(stateBlockHash, currentStateValid);
-        DIVIDE_ASSERT(currentStateValid, "GL_API error: Invalid state blocks detected on activation!");
-
         //configure the rasterizer to draw filled triangles
         pipelineBuilder._rasterizer = vk::pipelineRasterizationStateCreateInfo(
-            vkFillModeTable[to_base(currentState.fillMode())],
-            vkCullModeTable[to_base(currentState.cullMode())],
-            currentState.frontFaceCCW() ? VK_FRONT_FACE_CLOCKWISE : VK_FRONT_FACE_COUNTER_CLOCKWISE);
+                                            vkFillModeTable[to_base(currentState.fillMode())],
+                                            vkCullModeTable[to_base(currentState.cullMode())],
+                                            currentState.frontFaceCCW()
+                                                    ? VK_FRONT_FACE_CLOCKWISE
+                                                    : VK_FRONT_FACE_COUNTER_CLOCKWISE);
         //we don't use multisampling, so just run the default one
-
         VkSampleCountFlagBits msaaSampleFlags = VK_SAMPLE_COUNT_1_BIT;
         const U8 msaaSamples = GetStateTracker()->_activeMSAASamples;
         if (msaaSamples > 0u) {
@@ -721,14 +739,14 @@ namespace Divide {
         pipelineBuilder._pipelineLayout = tempPipelineLayout;
         pipelineBuilder._tessellation = vk::pipelineTessellationStateCreateInfo(currentState.tessControlPoints());
 
-        //finally build the pipeline
-        GetStateTracker()->_tempPipelines.push(
-            {
-                VK_NULL_HANDLE,//pipelineBuilder.build_pipeline(_device->getVKDevice(), _swapChain->getRenderPass()),
-                tempPipelineLayout
-            });
+        VkPipeline pipeline = pipelineBuilder.build_pipeline(_device->getVKDevice(), _swapChain->getRenderPass());
+        VK_API::RegisterCustomAPIDelete([pipeline, tempPipelineLayout](VkDevice device) {
+            vkDestroyPipeline(device, pipeline, nullptr);
+            vkDestroyPipelineLayout(device, tempPipelineLayout, nullptr);
+        }, false);
 
-        //vkCmdBindPipeline(cmdBuffer, isGraphicsPipeline ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE, GetStateTracker()->_tempPipelines.back()._pipeline);
+        vkCmdBindPipeline(cmdBuffer, isGraphicsPipeline ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE, GetStateTracker()->_tempPipelines.back()._pipeline);
+        */
 
         bindDynamicState(currentState, cmdBuffer);
         return ShaderResult::OK;
@@ -832,8 +850,7 @@ namespace Divide {
     }
 
     void VK_API::postFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer) noexcept {
-        const bool deviceIdle = destroyPipelines(true);
-        s_transientDeleteQueue.flush(deviceIdle);
+        s_transientDeleteQueue.flush(_device->getDevice());
     }
 
     vec2<U16> VK_API::getDrawableSize(const DisplayWindow& window) const noexcept {
@@ -887,7 +904,8 @@ namespace Divide {
         }
 
         U8 index = 0u;
-        VkDescriptorSetLayoutBinding tempBindings[s_maxBindings];
+        std::array<VkDescriptorSetLayoutBinding, s_maxBindings> tempBindings{};
+
         for (const auto& binding : set) {
             VkDescriptorSetLayoutBinding& tempBinding = tempBindings[index++];
             assert(index < s_maxBindings);
@@ -930,7 +948,7 @@ namespace Divide {
         setinfo.pNext = nullptr;
 
         setinfo.bindingCount = index;
-        setinfo.pBindings = tempBindings;
+        setinfo.pBindings = tempBindings.data();
         //no flags
         setinfo.flags = 0;
 
@@ -940,8 +958,8 @@ namespace Divide {
         // other code ....
 
         // add descriptor set layout to deletion queues
-        RegisterCustomAPIDelete([&]() {
-            vkDestroyDescriptorSetLayout(_device->getVKDevice(), setLayout, nullptr);
+        RegisterCustomAPIDelete([setLayout](VkDevice device) {
+            vkDestroyDescriptorSetLayout(device, setLayout, nullptr);
         }, false);
     }
 

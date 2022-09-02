@@ -8,9 +8,15 @@ AllocatedBuffer::~AllocatedBuffer()
 {
     if (_buffer != VK_NULL_HANDLE) {
         assert(_usageType != BufferUsageType::COUNT);
-        VK_API::RegisterCustomAPIDelete([=]{
-            vmaDestroyBuffer(*VK_API::GetStateTracker()->_allocator, _buffer, _allocation);
-        }, true);
+        if (_usageType != BufferUsageType::STAGING_BUFFER) {
+            VK_API::RegisterCustomAPIDelete([buf = _buffer, alloc = _allocation]([[maybe_unused]] VkDevice device) {
+                UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()->_allocatorInstance._allocatorLock);
+                vmaDestroyBuffer(*VK_API::GetStateTracker()->_allocatorInstance._allocator, buf, alloc);
+            }, true);
+        } else {
+            UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()->_allocatorInstance._allocatorLock);
+            vmaDestroyBuffer(*VK_API::GetStateTracker()->_allocatorInstance._allocator, _buffer, _allocation);
+        }
     }
 }
 
@@ -40,5 +46,29 @@ VertexInputDescription getVertexDescription(const AttributeMap& vertexFormat) {
 
     return description;
 }
+namespace VKUtil {
 
+AllocatedBuffer_uptr createStagingBuffer(const size_t size) {
+    AllocatedBuffer_uptr ret = eastl::make_unique<AllocatedBuffer>(BufferUsageType::STAGING_BUFFER);
+
+    VmaAllocationCreateInfo vmaallocInfo = {};
+    // Let the VMA library know that this data should be writable by CPU only
+    vmaallocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    vmaallocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+    vmaallocInfo.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+    // Allocate staging buffer
+    const VkBufferCreateInfo bufferInfo = vk::bufferCreateInfo(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, size);
+    // Allocate the buffer
+    UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()->_allocatorInstance._allocatorLock);
+    VK_CHECK(vmaCreateBuffer(*VK_API::GetStateTracker()->_allocatorInstance._allocator,
+                             &bufferInfo,
+                             &vmaallocInfo,
+                             &ret->_buffer,
+                             &ret->_allocation,
+                             &ret->_allocInfo));
+
+    return ret;
+}
+} //namespace VKUtil
 }; //namespace Divide

@@ -434,7 +434,7 @@ public:
     PROPERTY_R_IW(U32, frameDrawCalls, 0u);
     PROPERTY_R_IW(U32, frameDrawCallsPrev, 0u);
     PROPERTY_R_IW(vec4<U32>, lastCullCount, VECTOR4_ZERO);
-    PROPERTY_R_IW(Rect<I32>, activeViewport);
+    PROPERTY_R_IW(Rect<I32>, activeViewport, UNIT_VIEWPORT);
     PROPERTY_RW(GFXDescriptorSets, descriptorSets);
     POINTER_R(SceneShaderData, sceneData, nullptr);
     

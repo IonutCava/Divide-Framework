@@ -461,6 +461,7 @@ void GFXDevice::resizeGPUBlocks(size_t targetSizeCam, size_t targetSizeCullCount
         bufferDescriptor._usage = ShaderBuffer::Usage::UNBOUND_BUFFER;
         bufferDescriptor._ringBufferLength = to_U32(targetSizeCullCounter);
         bufferDescriptor._name = "CULL_COUNTER";
+        bufferDescriptor._bufferParams._hostVisible = true;
         bufferDescriptor._bufferParams._elementSize = 4 * sizeof(U32);
         bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
         bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_W_CPU_R;

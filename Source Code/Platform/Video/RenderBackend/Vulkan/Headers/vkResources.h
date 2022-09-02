@@ -60,6 +60,13 @@ namespace Debug {
     extern PFN_vkCmdDebugMarkerInsertEXT vkCmdDebugMarkerInsert;
 };
 
+constexpr U32 INVALID_VK_QUEUE_INDEX = std::numeric_limits<U32>::max();
+
+struct VKQueue {
+    VkQueue _queue{};
+    U32 _queueIndex{ INVALID_VK_QUEUE_INDEX };
+};
+
 //ref:  SaschaWillems / Vulkan / VulkanTools
 inline std::string VKErrorString(VkResult errorCode)
 {

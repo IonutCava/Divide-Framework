@@ -68,10 +68,11 @@ namespace Divide {
             return cmdPoolCreateInfo;
         }
 
-        inline VkCommandBufferBeginInfo commandBufferBeginInfo()
+        inline VkCommandBufferBeginInfo commandBufferBeginInfo(VkCommandBufferUsageFlags flags = 0)
         {
             VkCommandBufferBeginInfo cmdBufferBeginInfo{};
             cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            cmdBufferBeginInfo.flags = flags;
             return cmdBufferBeginInfo;
         }
 

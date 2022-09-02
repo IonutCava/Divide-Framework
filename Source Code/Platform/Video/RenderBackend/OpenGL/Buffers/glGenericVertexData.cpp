@@ -163,8 +163,7 @@ void glGenericVertexData::setBuffer(const SetBufferParams& params) {
             impl->_buffer->writeOrClearBytes(
                 i * bufferSizeInBytes,
                 params._initialData.second > 0 ? params._initialData.second  : bufferSizeInBytes, 
-                params._initialData.first, 
-                params._initialData.first == nullptr,
+                params._initialData.first,
                 true);
         }
         skipUpdate = true;
@@ -201,7 +200,7 @@ void glGenericVertexData::updateBuffer(const U32 buffer,
         offsetInBytes += bufferParams._elementCount * bufferParams._elementSize * queueIndex();
     }
 
-    impl->_buffer->writeOrClearBytes(offsetInBytes, dataCurrentSizeInBytes, data, false);
+    impl->_buffer->writeOrClearBytes(offsetInBytes, dataCurrentSizeInBytes, data);
     Merge(impl->_writtenRange, {offsetInBytes, dataCurrentSizeInBytes});
 }
 

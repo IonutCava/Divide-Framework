@@ -54,19 +54,19 @@ namespace {
     using ExecutorBuffer = RenderPassExecutor::ExecutorBuffer<DataContainer>;
     using BufferUpdateRange = RenderPassExecutor::BufferUpdateRange;
 
-    FORCE_INLINE bool operator==(const BufferUpdateRange& lhs, const BufferUpdateRange& rhs) noexcept {
+    inline bool operator==(const BufferUpdateRange& lhs, const BufferUpdateRange& rhs) noexcept {
         return lhs._firstIDX == rhs._firstIDX && lhs._lastIDX == rhs._lastIDX;
     }
 
-    FORCE_INLINE bool operator!=(const BufferUpdateRange& lhs, const BufferUpdateRange& rhs) noexcept {
+    inline bool operator!=(const BufferUpdateRange& lhs, const BufferUpdateRange& rhs) noexcept {
         return lhs._firstIDX != rhs._firstIDX || lhs._lastIDX != rhs._lastIDX;
     }
 
-    FORCE_INLINE bool Contains(const BufferUpdateRange& lhs, const BufferUpdateRange& rhs) noexcept {
+    inline bool Contains(const BufferUpdateRange& lhs, const BufferUpdateRange& rhs) noexcept {
         return lhs._firstIDX <= rhs._firstIDX && lhs._lastIDX >= rhs._lastIDX;
     }
 
-    FORCE_INLINE BufferUpdateRange GetPrevRangeDiff(const BufferUpdateRange& crtRange, const BufferUpdateRange& prevRange) noexcept {
+    inline BufferUpdateRange GetPrevRangeDiff(const BufferUpdateRange& crtRange, const BufferUpdateRange& prevRange) noexcept {
         if (crtRange.range() == 0u) {
             return prevRange;
         }
@@ -233,6 +233,16 @@ std::array<bool, RenderPassExecutor::MAX_INDIRECTION_ENTRIES> RenderPassExecutor
 Pipeline* RenderPassExecutor::s_OITCompositionPipeline = nullptr;
 Pipeline* RenderPassExecutor::s_OITCompositionMSPipeline = nullptr;
 Pipeline* RenderPassExecutor::s_ResolveGBufferPipeline = nullptr;
+
+
+[[nodiscard]] U32 BufferUpdateRange::range() const noexcept {
+    return _lastIDX >= _firstIDX ? _lastIDX - _firstIDX + 1u : 0u;
+}
+
+void BufferUpdateRange::reset() noexcept {
+    _firstIDX = U32_MAX;
+    _lastIDX = 0u;
+}
 
 RenderPassExecutor::RenderPassExecutor(RenderPassManager& parent, GFXDevice& context, const RenderStage stage)
     : _parent(parent)

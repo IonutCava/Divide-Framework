@@ -379,6 +379,9 @@ bool InitGLSW(const GFXDevice& gfx, const DeviceInformation& deviceInfo, const C
             AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_LAYOUT(SET, BINDING, LAYOUT) layout(binding = CONCATENATE(SET, BINDING), LAYOUT)");
             AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_OFFSET_LAYOUT(SET, BINDING, OFFSET, LAYOUT) layout(binding = CONCATENATE(SET, BINDING), offset = OFFSET, LAYOUT)");
         } else {
+            for (U8 i = 0u; i < to_base(DescriptorSetUsage::COUNT); ++i) {
+                AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define %s %d", TypeUtil::DescriptorSetUsageToString(static_cast<DescriptorSetUsage>(i)), i).c_str());
+            }
             AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE(SET, BINDING) layout(set = SET, binding = BINDING)");
             AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_OFFSET(SET, BINDING, OFFSET) layout(set = SET, binding = BINDING, offset = OFFSET)");
             AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_LAYOUT(SET, BINDING, LAYOUT) layout(set = SET, binding = BINDING, LAYOUT)");
@@ -817,7 +820,11 @@ ShaderProgram::~ShaderProgram()
     s_shaderCount.fetch_sub(1, std::memory_order_relaxed);
 }
 
-void ShaderProgram::threadedLoad([[maybe_unused]] const bool reloadExisting) {
+void ShaderProgram::threadedLoad(const bool reloadExisting) {
+    OPTICK_EVENT();
+
+    hashMap<U64, PerFileShaderData> loadDataByFile{};
+    reloadShaders(loadDataByFile, reloadExisting);
     RegisterShaderProgram(this);
     CachedResource::load();
 };
@@ -1443,6 +1450,9 @@ bool ShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, boo
 
     Reflection::UniformsSet previousUniforms;
 
+    _descriptorSet.resize(0);
+    _uniformBlockBuffers.clear();
+
     for (auto& [fileHash, loadDataPerFile] : fileData) {
         for (const ShaderModuleDescriptor& data : loadDataPerFile._modules) {
             const ShaderType type = data._moduleType;
@@ -1508,8 +1518,6 @@ namespace {
 void ShaderProgram::initUniformUploader(const PerFileShaderData& shaderFileData) {
     const ShaderLoadData& programLoadData = shaderFileData._loadData;
 
-    _descriptorSet.resize(0);
-    _uniformBlockBuffers.clear();
     for (const LoadData& stageData : programLoadData) {
         auto uniformBlock = Reflection::FindUniformBlock(stageData._reflectionData);
 

@@ -37,6 +37,7 @@
 
 namespace Divide {
     class DisplayWindow;
+    class VK_API;
     class VKDevice;
     class GFXDevice;
 
@@ -45,14 +46,14 @@ namespace Divide {
         static constexpr U8 MAX_FRAMES_IN_FLIGHT = 3u;
 
     public:
-        VKSwapChain(const VKDevice& device, const DisplayWindow& window);
+        VKSwapChain(VK_API& context, const VKDevice& device, const DisplayWindow& window);
         ~VKSwapChain();
 
         ErrorCode create(bool vSync, bool adaptiveSync, VkSurfaceKHR targetSurface);
         void destroy();
 
         [[nodiscard]] VkResult beginFrame();
-        [[nodiscard]] VkResult endFrame(VkQueue queue, VkCommandBuffer& cmdBuffer);
+        [[nodiscard]] VkResult endFrame(vkb::QueueType queue, VkCommandBuffer& cmdBuffer);
 
         [[nodiscard]] vkb::Swapchain getSwapChain() const noexcept;
         [[nodiscard]] VkRenderPass   getRenderPass() const noexcept;
@@ -63,6 +64,7 @@ namespace Divide {
         [[nodiscard]] ErrorCode createFramebuffersInternal(VkExtent2D windowExtents, VkSurfaceKHR targetSurface);
 
     private:
+        VK_API& _context;
         const VKDevice& _device;
         const DisplayWindow& _window;
 

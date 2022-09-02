@@ -238,7 +238,7 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     static SharedMutex s_programLock;
 
 protected:
-    virtual void threadedLoad(bool reloadExisting);
+    void threadedLoad(bool reloadExisting);
     virtual bool reloadShaders(hashMap<U64, PerFileShaderData>& fileData, bool reloadExisting);
 
     bool loadSourceCode(const ModuleDefines& defines,

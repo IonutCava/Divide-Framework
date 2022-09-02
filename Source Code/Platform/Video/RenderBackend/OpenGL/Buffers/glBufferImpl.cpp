@@ -127,7 +127,7 @@ bool glBufferImpl::waitByteRange(const size_t offsetInBytes, const size_t rangeI
     return true;
 }
 
-void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t rangeInBytes, const bufferPtr data, const bool zeroMem, const bool firstWrite) {
+void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t rangeInBytes, const bufferPtr data, const bool firstWrite) {
 
     assert(rangeInBytes > 0u && offsetInBytes + rangeInBytes <= _memoryBlock._size);
 
@@ -140,17 +140,18 @@ void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t ra
         Console::errorfn(Locale::Get(_ID("ERROR_BUFFER_LOCK_MANAGER_WAIT")));
     }
 
+    UniqueLock<Mutex> w_lock(_mapLock);
     if (_memoryBlock._ptr != nullptr) {
-        if (zeroMem) {
+        if (data == nullptr) {
             memset(&_memoryBlock._ptr[offsetInBytes], 0, rangeInBytes);
         } else {
             memcpy(&_memoryBlock._ptr[offsetInBytes], data, rangeInBytes);
         }
     } else {
-        DIVIDE_ASSERT(zeroMem || firstWrite, "glBufferImpl: trying to write to a buffer create with BufferUpdateFrequency::ONCE");
+        DIVIDE_ASSERT(data == nullptr || firstWrite, "glBufferImpl: trying to write to a buffer create with BufferUpdateFrequency::ONCE");
 
         Byte* ptr = (Byte*)glMapNamedBufferRange(_memoryBlock._bufferHandle, _memoryBlock._offset + offsetInBytes, rangeInBytes, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
-        if (zeroMem) {
+        if (data == nullptr) {
             memset(ptr, 0, rangeInBytes);
         } else {
             memcpy(ptr, data, rangeInBytes);
@@ -165,6 +166,7 @@ void glBufferImpl::readBytes(const size_t offsetInBytes, const size_t rangeInByt
         DIVIDE_UNEXPECTED_CALL();
     }
 
+    UniqueLock<Mutex> w_lock(_mapLock);
     if (_memoryBlock._ptr != nullptr) {
         memcpy(outData.first,
                _memoryBlock._ptr + offsetInBytes,

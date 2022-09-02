@@ -50,17 +50,23 @@ namespace Divide {
 
     VertexInputDescription getVertexDescription(const AttributeMap& vertexFormat);
 
-    struct AllocatedBuffer {
-        AllocatedBuffer() = default;
+    struct AllocatedBuffer : private NonCopyable {
+        explicit AllocatedBuffer(const BufferUsageType type) : _usageType(type) {}
+
         ~AllocatedBuffer();
 
         VkBuffer _buffer{VK_NULL_HANDLE};
         VmaAllocation _allocation{ VK_NULL_HANDLE };
         VmaAllocationInfo _allocInfo{};
-        BufferUsageType _usageType{ BufferUsageType::COUNT };
         BufferParams _params{};
+
+        const BufferUsageType _usageType{ BufferUsageType::COUNT };
     };
     FWD_DECLARE_MANAGED_STRUCT(AllocatedBuffer);
+
+    namespace VKUtil {
+        AllocatedBuffer_uptr createStagingBuffer(size_t size);
+    } //namespace VKUtil
 } //namespace Divide
 
 #endif //VK_BUFFER_IMPL_H_

@@ -74,9 +74,30 @@ struct VKDynamicState {
     VkViewport _activeViewport{};
 };
 
+struct VKImmediateCmdContext {
+    explicit VKImmediateCmdContext(VKDevice& context);
+    ~VKImmediateCmdContext();
+
+    VkFence _submitFence{};
+    VkCommandPool _commandPool;
+    VkCommandBuffer _commandBuffer;
+    void flushCommandBuffer(std::function<void(VkCommandBuffer cmd)>&& function);
+
+private:
+   VKDevice& _context;
+   Mutex _submitLock;
+};
+FWD_DECLARE_MANAGED_STRUCT(VKImmediateCmdContext);
+
+struct VMAAllocatorInstance {
+    VmaAllocator* _allocator{ nullptr };
+    Mutex _allocatorLock;
+};
+
 struct VKStateTracker {
-    VKDevice* _device = nullptr;
-    VmaAllocator* _allocator = nullptr;
+    VKDevice* _device{ nullptr };
+    VKImmediateCmdContext* _cmdContext{ nullptr };
+    VMAAllocatorInstance _allocatorInstance{};
     std::array < std::pair<Str64, U32>, 32 > _debugScope;
     U8 _debugScopeDepth = 0u;
     PrimitiveTopology _activeTopology{ PrimitiveTopology::COUNT };
@@ -84,7 +105,6 @@ struct VKStateTracker {
     bool _alphaToCoverage{ false };
     VKDynamicState _dynamicState{};
     DescriptorSet const* _perDrawSet{ nullptr };
-    std::queue<VkPipelineEntry> _tempPipelines;
 };
 FWD_DECLARE_MANAGED_STRUCT(VKStateTracker);
 
@@ -96,17 +116,16 @@ struct VKDeletionQueue
 {
     enum class Flags : U8 {
         TREAT_AS_TRANSIENT = toBit(1),
-        REQUIRE_DEVICE_IDLE = toBit(2),
-        COUNT = 2
+        COUNT = 1
     };
 
-    void push(DELEGATE<void>&& function);
-    void flush(const bool deviceIsIdle);
+    void push(DELEGATE<void, VkDevice>&& function);
+    void flush(VkDevice device);
     [[nodiscard]] bool empty() const;
 
     mutable Mutex _deletionLock;
-    std::deque<DELEGATE<void>> _deletionQueue;
-    PROPERTY_RW(U32, flags, to_base(Flags::REQUIRE_DEVICE_IDLE));
+    std::deque<DELEGATE<void, VkDevice>> _deletionQueue;
+    PROPERTY_RW(U32, flags, 0u);
 };
 
 class RenderStateBlock;
@@ -114,9 +133,11 @@ class VK_API final : public RenderAPIWrapper {
   public:
     VK_API(GFXDevice& context) noexcept;
 
-    [[nodiscard]] VkCommandBuffer getCurrentCommandBuffer() const;
+    [[nodiscard]] VKDevice* getDevice() { return _device.get(); }
 
   protected:
+      [[nodiscard]] VkCommandBuffer getCurrentCommandBuffer() const;
+
       void idle(bool fast) noexcept override;
       [[nodiscard]] bool beginFrame(DisplayWindow& window, bool global = false) noexcept override;
       void endFrame(DisplayWindow& window, bool global = false) noexcept override;
@@ -135,8 +156,6 @@ class VK_API final : public RenderAPIWrapper {
 
 private:
     void initPipelines();
-    void destroyPipeline(VkPipelineEntry& pipelineEntry);
-    bool destroyPipelines(bool keepDefault = false);
 
     void recreateSwapChain(const DisplayWindow& window);
     void drawText(const TextElementBatch& batch);
@@ -147,9 +166,10 @@ private:
 
     ShaderResult bindPipeline(const Pipeline& pipeline, VkCommandBuffer& cmdBuffer) const;
     void bindDynamicState(const RenderStateBlock& currentState, VkCommandBuffer& cmdBuffer) const;
+
 public:
     static const VKStateTracker_uptr& GetStateTracker() noexcept;
-    static void RegisterCustomAPIDelete(DELEGATE<void>&& cbk, bool isResourceTransient);
+    static void RegisterCustomAPIDelete(DELEGATE<void, VkDevice>&& cbk, bool isResourceTransient);
 
 private:
     static void InsertDebugMessage(VkCommandBuffer cmdBuffer, const char* message, U32 id = std::numeric_limits<U32>::max());
@@ -160,9 +180,9 @@ private:
     GFXDevice& _context;
     VmaAllocator _allocator;
 
-    VKDevice_uptr _device = nullptr;
-    VKSwapChain_uptr _swapChain = nullptr;
-
+    VKDevice_uptr _device{ nullptr };
+    VKSwapChain_uptr _swapChain{ nullptr };
+    VKImmediateCmdContext_uptr _cmdContext{ nullptr };
     vkb::Instance _vkbInstance;
 
     VkDebugUtilsMessengerEXT _debugMessenger{ VK_NULL_HANDLE }; // Vulkan debug output handle

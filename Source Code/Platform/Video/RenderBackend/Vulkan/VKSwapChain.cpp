@@ -9,8 +9,9 @@
 
 namespace Divide {
 
-    VKSwapChain::VKSwapChain(const VKDevice& device, const DisplayWindow& window)
-        : _device(device)
+    VKSwapChain::VKSwapChain(VK_API& context, const VKDevice& device, const DisplayWindow& window)
+        : _context(context)
+        , _device(device)
         , _window(window)
     {
     }
@@ -23,8 +24,6 @@ namespace Divide {
     void VKSwapChain::destroy() {
         const VkDevice device = _device.getVKDevice();
 
-        _device.waitIdle();
-       
         vkb::destroy_swapchain(_swapChain);
         _swapChain.swapchain = VK_NULL_HANDLE;
         //destroy swapchain resources
@@ -197,7 +196,7 @@ namespace Divide {
                                      &_swapchainImageIndex);
     }
 
-    VkResult VKSwapChain::endFrame(VkQueue queue, VkCommandBuffer& cmdBuffer) {
+    VkResult VKSwapChain::endFrame(vkb::QueueType queue, VkCommandBuffer& cmdBuffer) {
         //prepare the submission to the queue.
         //we want to wait on the _presentSemaphore, as that semaphore is signaled when the swapchain is ready
         //we will signal the _renderSemaphore, to signal that rendering has finished
@@ -214,7 +213,7 @@ namespace Divide {
         VkSubmitInfo submit = vk::submitInfo();
 
         VkSemaphore waitSemaphores[] = { _imageAvailableSemaphores[_currentFrameIdx] };
-        VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+        const VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
         submit.waitSemaphoreCount = 1;
         submit.pWaitSemaphores = waitSemaphores;
@@ -228,10 +227,9 @@ namespace Divide {
         submit.pCommandBuffers = &cmdBuffer;
 
         VK_CHECK(vkResetFences(_device.getVKDevice(), 1, &_inFlightFences[_currentFrameIdx]));
-        //submit command buffer to the queue and execute it.
+        // submit command buffer to the queue and execute it.
         // _renderFence will now block until the graphic commands finish execution
-        VK_CHECK(vkQueueSubmit(queue, 1, &submit, _inFlightFences[_currentFrameIdx]));
-
+        _device.submitToQueue(queue, submit, _inFlightFences[_currentFrameIdx]);
         // this will put the image we just rendered into the visible window.
         // we want to wait on the _renderSemaphore for that,
         // as it's necessary that drawing commands have finished before the image is displayed to the user
@@ -243,11 +241,8 @@ namespace Divide {
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pImageIndices = &_swapchainImageIndex;
 
-        const VkResult result = vkQueuePresentKHR(queue, &presentInfo);
-
         _currentFrameIdx = (_currentFrameIdx + 1) % MAX_FRAMES_IN_FLIGHT;
-
-        return result;
+        return _device.queuePresent(queue, presentInfo);
     }
 
     vkb::Swapchain VKSwapChain::getSwapChain() const noexcept {

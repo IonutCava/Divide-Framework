@@ -502,24 +502,16 @@ namespace Divide {
         return true;
     }
 
-    void vkShaderProgram::threadedLoad(bool reloadExisting) {
-        OPTICK_EVENT()
-
-        hashMap<U64, PerFileShaderData> loadDataByFile{};
-        reloadShaders(loadDataByFile, reloadExisting);
-
-        // Pass the rest of the loading steps to the parent class
-        ShaderProgram::threadedLoad(reloadExisting);
-    }
-    
     bool vkShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, bool reloadExisting) {
         OPTICK_EVENT();
 
         if (ShaderProgram::reloadShaders(fileData, reloadExisting)) {
             _stagesBound = false;
             _shaderStage.clear();
+
             for (auto& [fileHash, loadDataPerFile] : fileData) {
                 assert(!loadDataPerFile._modules.empty());
+
                 for (auto& loadData : loadDataPerFile._loadData) {
                     if (loadData._type == ShaderType::COUNT) {
                         continue;

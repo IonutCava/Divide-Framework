@@ -80,7 +80,6 @@ class glShaderProgram final : public ShaderProgram {
     void processValidation();
     
     bool recompile(bool& skipped) override;
-    void threadedLoad(bool reloadExisting) override;
 
     /// Returns true if at least one shader linked successfully
     bool reloadShaders(hashMap<U64, PerFileShaderData>& fileData, bool reloadExisting) override;

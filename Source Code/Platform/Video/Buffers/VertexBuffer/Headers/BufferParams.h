@@ -42,6 +42,7 @@ namespace Divide {
         size_t _elementSize{ 0u };     ///< Buffer primitive size in bytes
         BufferUpdateFrequency _updateFrequency{ BufferUpdateFrequency::COUNT };
         BufferUpdateUsage _updateUsage{ BufferUpdateUsage::COUNT };
+        bool _hostVisible{ false };
     };
 
     bool operator==(const BufferParams& lhs, const BufferParams& rhs) noexcept;

@@ -697,12 +697,13 @@ enum class BufferUsageType : U8 {
     VERTEX_BUFFER = 0,
     INDEX_BUFFER,
     SHADER_BUFFER,
+    STAGING_BUFFER,
     COUNT
 };
 
 namespace Names {
     static constexpr const char* bufferUsageType[] = {
-        "VERTEX_BUFFER", "INDEX_BUFFER", "SHADER_BUFFER", "NONE"
+        "VERTEX_BUFFER", "INDEX_BUFFER", "SHADER_BUFFER", "STAGING_BUFFER", "NONE"
     };
 };
 

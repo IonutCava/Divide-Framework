@@ -43,22 +43,13 @@ glShaderBuffer::glShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor&
     // This is quite fast so far so worth it for now.
     if (descriptor._separateReadWrite && descriptor._initialData.second > 0) {
         for (U32 i = 1u; i < descriptor._ringBufferLength; ++i) {
-            bufferImpl()->writeOrClearBytes(_alignedBufferSize * i, descriptor._initialData.second, descriptor._initialData.first, false, true);
+            bufferImpl()->writeOrClearBytes(_alignedBufferSize * i, descriptor._initialData.second, descriptor._initialData.first, true);
         }
     }
 }
 
 BufferLock glShaderBuffer::clearBytes(BufferRange range) {
-    DIVIDE_ASSERT(range._length > 0);
-    OPTICK_EVENT();
-
-    DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected((range._startOffset), AlignmentRequirement(_usage)));
-    assert(range.endOffset() <= _alignedBufferSize && "glShaderBuffer::UpdateData error: was called with an invalid range (buffer overflow)!");
-
-    range._startOffset += queueWriteIndex() * _alignedBufferSize;
-
-    bufferImpl()->writeOrClearBytes(range, nullptr, true);
-    return { this, range };
+    return writeBytes(range, nullptr);
 }
 
 BufferLock glShaderBuffer::writeBytes(BufferRange range, bufferPtr data) {
@@ -68,11 +59,13 @@ BufferLock glShaderBuffer::writeBytes(BufferRange range, bufferPtr data) {
     DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
     range._startOffset += queueWriteIndex() * _alignedBufferSize;
 
-    bufferImpl()->writeOrClearBytes(range, data, false);
+    bufferImpl()->writeOrClearBytes(range, data);
     return { this, range };
 }
 
 void glShaderBuffer::readBytes(BufferRange range, std::pair<bufferPtr, size_t> outData) const {
+    DIVIDE_ASSERT(_usage == ShaderBuffer::Usage::UNBOUND_BUFFER && _params._hostVisible);
+
     if (range._length > 0) {
         OPTICK_EVENT();
 

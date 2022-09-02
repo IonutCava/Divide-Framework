@@ -67,17 +67,11 @@ public:
 
     struct BufferUpdateRange
     {
-        U32 _firstIDX = U32_MAX;
-        U32 _lastIDX = 0u;
+        U32 _firstIDX{ U32_MAX };
+        U32 _lastIDX{ 0u };
 
-        [[nodiscard]] inline U32 range() const noexcept {
-            return _lastIDX >= _firstIDX ? _lastIDX - _firstIDX + 1u : 0u;
-        }
-
-        inline void reset() noexcept {
-            _firstIDX = U32_MAX;
-            _lastIDX = 0u;
-        }
+        U32 range() const noexcept;
+        void reset() noexcept;
     };
 
     using NodeIndirectionData = vec4<U32>;
@@ -93,8 +87,8 @@ public:
         static_assert(Config::MAX_CONCURRENT_MATERIALS <= U16_MAX);
 
         struct LookupInfo {
-            size_t _hash = INVALID_MAT_HASH;
-            U16 _framesSinceLastUsed = g_invalidMaterialIndex;
+            size_t _hash{ INVALID_MAT_HASH };
+            U16 _framesSinceLastUsed{ g_invalidMaterialIndex };
         };
 
         using FlagContainer = std::array<std::atomic_bool, Config::MAX_VISIBLE_NODES>;
@@ -118,8 +112,8 @@ public:
     
     template<typename DataContainer>
     struct ExecutorBuffer {
-        U32 _highWaterMark = 0u;
-        ShaderBuffer_uptr _gpuBuffer = nullptr;
+        U32 _highWaterMark{ 0u };
+        ShaderBuffer_uptr _gpuBuffer{ nullptr };
         Mutex _lock;
         DataContainer _data;
         BufferUpdateRange _bufferUpdateRange;
@@ -160,6 +154,7 @@ private:
                        const RenderTargetID& sourceDepthBuffer,
                        const RenderTargetID& targetDepthBuffer,
                        GFX::CommandBuffer& bufferInOut) const;
+
     void mainPass(const VisibleNodeList<>& nodes,
                   const RenderPassParams& params,
                   const CameraSnapshot& cameraSnapshot,
@@ -190,7 +185,12 @@ private:
 
     [[nodiscard]] U16 processVisibleNodeMaterial(RenderingComponent* rComp, bool& cacheHit);
 
-    U16 buildDrawCommands(const RenderPassParams& params, bool doPrePass, bool doOITPass, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
+    U16 buildDrawCommands(const RenderPassParams& params,
+                          bool doPrePass,
+                          bool doOITPass,
+                          GFX::CommandBuffer& bufferInOut,
+                          GFX::MemoryBarrierCommand& memCmdInOut);
+
     U16 prepareNodeData(VisibleNodeList<>& nodes,
                         const RenderPassParams& params,
                         const CameraSnapshot& cameraSnapshot,

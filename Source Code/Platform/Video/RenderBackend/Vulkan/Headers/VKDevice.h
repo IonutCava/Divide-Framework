@@ -36,19 +36,12 @@
 #include "vkResources.h"
 
 namespace Divide {
+    class VK_API;
+
     class VKDevice final : NonCopyable, NonMovable {
     public:
-        struct Queue {
-            VkQueue _queue{};
-            U32 _queueIndex{ 0u };
-        };
-    public:
-        VKDevice(vkb::Instance& instance, VkSurfaceKHR targetSurface);
+        VKDevice(VK_API& context, vkb::Instance& instance, VkSurfaceKHR targetSurface);
         ~VKDevice();
-
-        void waitIdle() const;
-
-        [[nodiscard]] Queue getQueue(vkb::QueueType type) const noexcept;
 
         [[nodiscard]] VkDevice getVKDevice() const noexcept;
         [[nodiscard]] VkPhysicalDevice getVKPhysicalDevice() const noexcept;
@@ -57,18 +50,23 @@ namespace Divide {
         [[nodiscard]] const vkb::PhysicalDevice& getPhysicalDevice() const noexcept;
 
         [[nodiscard]] VkCommandPool   createCommandPool(uint32_t queueFamilyIndex, VkCommandPoolCreateFlags createFlags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-        [[nodiscard]] VkCommandBuffer createCommandBuffer(VkCommandBufferLevel level, VkCommandPool pool, bool begin = false);
-        [[nodiscard]] VkCommandBuffer createCommandBuffer(VkCommandBufferLevel level, bool begin = false);
-                      void            flushCommandBuffer(VkCommandBuffer commandBuffer, VkQueue queue, VkCommandPool pool, bool free = true);
-                      void            flushCommandBuffer(VkCommandBuffer commandBuffer, VkQueue queue, bool free = true);
-
+                      void            submitToQueue(vkb::QueueType queue, const VkSubmitInfo& submitInfo, VkFence& fence) const;
+                      void            submitToQueueAndWait(vkb::QueueType queue, const VkSubmitInfo& submitInfo, VkFence& fence) const;
+        [[nodiscard]] VkResult        queuePresent(vkb::QueueType queue, const VkPresentInfoKHR& presentInfo) const;
+        [[nodiscard]] U32             getQueueIndex(vkb::QueueType queue) const;
         PROPERTY_R_IW(VkCommandPool, graphicsCommandPool, VK_NULL_HANDLE);
-        PROPERTY_R_IW(VKDevice::Queue, graphicsQueue);
-        PROPERTY_R_IW(VKDevice::Queue, computeQueue);
-        PROPERTY_R_IW(VKDevice::Queue, transferQueue);
+
+
     private:
+        [[nodiscard]] VKQueue getQueue(vkb::QueueType type) const noexcept;
+    private:
+
+        VK_API& _context;
         vkb::Device _device{}; // Vulkan device for commands
         vkb::PhysicalDevice _physicalDevice{}; // GPU chosen as the default device
+
+        std::array<VKQueue, 4> _queues;
+        mutable std::array<Mutex, 4> _queueLocks;
     };
 
     FWD_DECLARE_MANAGED_CLASS(VKDevice);

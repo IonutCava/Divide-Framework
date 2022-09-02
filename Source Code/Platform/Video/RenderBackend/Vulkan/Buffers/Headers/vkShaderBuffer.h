@@ -56,6 +56,8 @@ namespace Divide {
 
     private:
         AllocatedBuffer_uptr _bufferImpl{ nullptr };
+        AllocatedBuffer_uptr _stagingBuffer{ nullptr };
+        Mutex _stagingBufferLock;
     };
 } //namespace Divide
 

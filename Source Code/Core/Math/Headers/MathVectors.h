@@ -804,7 +804,6 @@ static const vec3<F32> WORLD_X_NEG_AXIS{ -1.0f,  0.0f,  0.0f };
 static const vec3<F32> WORLD_Y_NEG_AXIS{  0.0f, -1.0f,  0.0f };
 static const vec3<F32> WORLD_Z_NEG_AXIS{  0.0f,  0.0f, -1.0f };
 static const vec3<F32> DEFAULT_GRAVITY{ 0.0f, -9.81f, 0.0f };
-static const vec4<F32> UNIT_RECT{ -1.0f, 1.0f, -1.0f, 1.0f };
 
 static const vec2<I32> iVECTOR2_ZERO{ 0 };
 static const vec3<I32> iVECTOR3_ZERO{ 0 };
@@ -829,6 +828,9 @@ class Rect : public vec4<T> {
     [[nodiscard]] vec2<T> clamp(T xIn, T yIn) const noexcept { CLAMP_IN_RECT(xIn, yIn, *this); return vec2<T>(xIn, yIn); }
     [[nodiscard]] vec2<T> clamp(const vec2<T>& coords) const noexcept { return clamp(coords.x, coords.y); }
 };
+
+static const Rect<I32> UNIT_VIEWPORT{ 0, 0, 1, 1 };
+static const Rect<I32> UNIT_RECT{ -1, 1, -1, 1 };
 
 }  // namespace Divide
 

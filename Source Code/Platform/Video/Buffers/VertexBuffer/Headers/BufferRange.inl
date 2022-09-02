@@ -41,17 +41,17 @@ namespace Divide {
 
     inline bool operator==(const BufferRange& lhs, const BufferRange& rhs) noexcept {
         return lhs._startOffset == rhs._startOffset &&
-            lhs._length == rhs._length;
+               lhs._length == rhs._length;
     }
 
     inline bool operator!=(const BufferRange& lhs, const BufferRange& rhs) noexcept {
         return lhs._startOffset != rhs._startOffset ||
-            lhs._length != rhs._length;
+               lhs._length != rhs._length;
     }
 
     [[nodiscard]] inline bool Overlaps(const BufferRange& lhs, const BufferRange& rhs) noexcept {
         return lhs._startOffset < rhs.endOffset() &&
-            rhs._startOffset < lhs.endOffset();
+               rhs._startOffset < lhs.endOffset();
     }
 
     inline void Merge(BufferRange& lhs, const BufferRange& rhs) noexcept {
