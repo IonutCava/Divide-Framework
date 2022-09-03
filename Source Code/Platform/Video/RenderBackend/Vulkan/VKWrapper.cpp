@@ -800,9 +800,11 @@ namespace Divide {
             UniqueLock<Mutex> w_lock(s_transferQueue._lock);
             // Check again
             if (!s_transferQueue._requests.empty()) {
+                static eastl::fixed_vector<VkBufferMemoryBarrier2, 32, true> s_barriers{};
+
                 VK_API::GetStateTracker()->_cmdContext->flushCommandBuffer([&cmdBuffer](VkCommandBuffer cmd) {
                     while (!s_transferQueue._requests.empty()) {
-                        auto& request = s_transferQueue._requests.front();
+                        const VKTransferQueue::TransferRequest& request = s_transferQueue._requests.front();
                         if (request.srcBuffer != VK_NULL_HANDLE) {
                             VkBufferCopy copy;
                             copy.dstOffset = request.dstOffset;
@@ -820,14 +822,26 @@ namespace Divide {
                         memoryBarrier.size = request.size;
                         memoryBarrier.buffer = request.dstBuffer;
 
-                        VkDependencyInfo dependencyInfo = vk::dependencyInfo();
-                        dependencyInfo.bufferMemoryBarrierCount = 1;
-                        dependencyInfo.pBufferMemoryBarriers = &memoryBarrier;
+                        if (request.srcBuffer == VK_NULL_HANDLE) {
+                            VkDependencyInfo dependencyInfo = vk::dependencyInfo();
+                            dependencyInfo.bufferMemoryBarrierCount = 1;
+                            dependencyInfo.pBufferMemoryBarriers = &memoryBarrier;
 
-                        //ToDo: batch these up! -Ionut
-                        vkCmdPipelineBarrier2(request.srcBuffer != VK_NULL_HANDLE ? cmd : cmdBuffer, &dependencyInfo);
+                            vkCmdPipelineBarrier2(cmdBuffer, &dependencyInfo);
+                        } else {
+                            s_barriers.emplace_back(memoryBarrier);
+                        }
 
                         s_transferQueue._requests.pop_front();
+                    }
+
+                    if (!s_barriers.empty()) {
+                        VkDependencyInfo dependencyInfo = vk::dependencyInfo();
+                        dependencyInfo.bufferMemoryBarrierCount = to_U32(s_barriers.size());
+                        dependencyInfo.pBufferMemoryBarriers = s_barriers.data();
+
+                        vkCmdPipelineBarrier2(cmd, &dependencyInfo);
+                        s_barriers.resize(0);
                     }
                 });
             }
