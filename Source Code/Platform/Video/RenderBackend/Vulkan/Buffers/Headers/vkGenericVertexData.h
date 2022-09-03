@@ -59,6 +59,7 @@ namespace Divide {
     private:
         struct GenericBufferImpl {
             AllocatedBuffer_uptr _buffer{nullptr};
+            AllocatedBuffer_uptr _stagingBufferVtx;
             size_t _ringSizeFactor{ 1u };
             size_t _elementStride{ 0u };
             BufferRange _writtenRange{};
@@ -69,16 +70,12 @@ namespace Divide {
 
         struct IndexBufferEntry : public NonCopyable {
             AllocatedBuffer_uptr _handle{ nullptr };
+            AllocatedBuffer_uptr _stagingBufferIdx;
             IndexBuffer _data;
         };
 
         vector<IndexBufferEntry> _idxBuffers;
         vector<GenericBufferImpl> _bufferObjects;
-
-        AllocatedBuffer_uptr _stagingBufferVtx;
-        AllocatedBuffer_uptr _stagingBufferIdx;
-        size_t _idxStagingBufferSize{ 0u };
-        size_t _vtxStagingBufferSize{ 0u };
     };
 
 } //namespace Divide

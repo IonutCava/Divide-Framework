@@ -30,8 +30,8 @@ namespace Divide {
         _bufferImpl = eastl::make_unique<AllocatedBuffer>(BufferUsageType::SHADER_BUFFER);
         _bufferImpl->_params = _params;
 
-        AllocatedBuffer_uptr stagingBuffer = VKUtil::createStagingBuffer(dataSize);
-        Byte* mappedRange = (Byte*)stagingBuffer->_allocInfo.pMappedData;
+        _stagingBuffer = VKUtil::createStagingBuffer(dataSize);
+        Byte* mappedRange = (Byte*)_stagingBuffer->_allocInfo.pMappedData;
 
         for (U32 i = 0u; i < queueLength(); ++i) {
             if (descriptor._initialData.first == nullptr) {
@@ -72,15 +72,15 @@ namespace Divide {
         request.srcOffset = 0u;
         request.dstOffset = 0u;
         request.size = dataSize;
-        request.srcBuffer = stagingBuffer->_buffer;
+        request.srcBuffer = _stagingBuffer->_buffer;
         request.dstBuffer = _bufferImpl->_buffer;
         request.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
         request.dstStageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
         request._immediate = true;
         VK_API::RegisterTransferRequest(request);
 
-        if (_params._updateFrequency != BufferUpdateFrequency::ONCE) {
-            _stagingBuffer = VKUtil::createStagingBuffer(_alignedBufferSize);
+        if (_params._updateFrequency == BufferUpdateFrequency::ONCE) {
+            _stagingBuffer.reset();
         }
     }
 
@@ -94,18 +94,19 @@ namespace Divide {
 
         UniqueLock<Mutex> w_lock(_stagingBufferLock);
 
-        if (data == nullptr) {
-            memcpy(_stagingBuffer->_allocInfo.pMappedData, data, range._length);
-        } else {
-            memset(_stagingBuffer->_allocInfo.pMappedData, 0, range._length);
-        }
-
         DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
         range._startOffset += queueWriteIndex() * _alignedBufferSize;
 
+        Byte* mappedRange = (Byte*)_stagingBuffer->_allocInfo.pMappedData;
+        if (data == nullptr) {
+            memcpy(&mappedRange[range._startOffset], data, range._length);
+        } else {
+            memset(&mappedRange[range._startOffset], 0, range._length);
+        }
+
         // Queue a command to copy from the staging buffer to the vertex buffer
         VKTransferQueue::TransferRequest request{};
-        request.srcOffset = 0u;
+        request.srcOffset = range._startOffset;
         request.dstOffset = range._startOffset;
         request.size = range._length;
         request.srcBuffer = _stagingBuffer->_buffer;

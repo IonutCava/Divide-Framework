@@ -8,15 +8,10 @@ AllocatedBuffer::~AllocatedBuffer()
 {
     if (_buffer != VK_NULL_HANDLE) {
         assert(_usageType != BufferUsageType::COUNT);
-        if (_usageType != BufferUsageType::STAGING_BUFFER) {
-            VK_API::RegisterCustomAPIDelete([buf = _buffer, alloc = _allocation]([[maybe_unused]] VkDevice device) {
-                UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()->_allocatorInstance._allocatorLock);
-                vmaDestroyBuffer(*VK_API::GetStateTracker()->_allocatorInstance._allocator, buf, alloc);
-            }, true);
-        } else {
+        VK_API::RegisterCustomAPIDelete([buf = _buffer, alloc = _allocation]([[maybe_unused]] VkDevice device) {
             UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()->_allocatorInstance._allocatorLock);
-            vmaDestroyBuffer(*VK_API::GetStateTracker()->_allocatorInstance._allocator, _buffer, _allocation);
-        }
+            vmaDestroyBuffer(*VK_API::GetStateTracker()->_allocatorInstance._allocator, buf, alloc);
+        }, true);
     }
 }
 

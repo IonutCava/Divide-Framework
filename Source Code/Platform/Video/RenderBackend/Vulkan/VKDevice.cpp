@@ -12,15 +12,45 @@ namespace Divide {
         auto physicalDeviceSelection = selector.set_minimum_version(1, Config::MINIMUM_VULKAN_MINOR_VERSION)
                                                .set_surface(targetSurface)
                                                .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
+                                               //.add_required_extension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)
+                                               .add_required_extension(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME)
+                                               .add_required_extension(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME)
                                                .select();
         if (!physicalDeviceSelection) {
             Console::errorfn(Locale::Get(_ID("ERROR_VK_INIT")), physicalDeviceSelection.error().message().c_str());
         } else {
             _physicalDevice = physicalDeviceSelection.value();
-
+            
             //create the final Vulkan device
             vkb::DeviceBuilder deviceBuilder{ _physicalDevice };
-            //deviceBuilder.add_pNext(extra_features)
+
+            VkPhysicalDeviceVulkan13Features vk13features{};
+            vk13features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+            vk13features.synchronization2 = true;
+            vk13features.dynamicRendering = true;
+            vk13features.maintenance4 = true;
+            VkPhysicalDeviceVulkan12Features vk12features{};
+            vk12features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+            vk12features.samplerMirrorClampToEdge = true;
+            vk12features.timelineSemaphore = true;
+            vk12features.descriptorBindingPartiallyBound = true;
+            vk12features.descriptorBindingUniformBufferUpdateAfterBind = true;
+            vk12features.descriptorBindingSampledImageUpdateAfterBind = true;
+            vk12features.descriptorBindingStorageImageUpdateAfterBind = true;
+            vk12features.descriptorBindingStorageBufferUpdateAfterBind = true;
+            vk12features.descriptorBindingUpdateUnusedWhilePending = true;
+            vk12features.shaderSampledImageArrayNonUniformIndexing = true;
+            vk12features.runtimeDescriptorArray = true;
+            vk12features.descriptorBindingVariableDescriptorCount = true;
+            VkPhysicalDeviceVulkan11Features vk11features{};
+            vk11features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+            vk11features.shaderDrawParameters = true;
+            VkPhysicalDeviceSynchronization2FeaturesKHR sync_feat{};
+            sync_feat.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
+            sync_feat.synchronization2 = true;
+            deviceBuilder.add_pNext(&vk11features)
+                         .add_pNext(&vk12features)
+                         .add_pNext(&vk13features);
 
             auto vkbDevice = deviceBuilder.build();
             if (!vkbDevice) {
@@ -29,14 +59,14 @@ namespace Divide {
                 // Get the VkDevice handle used in the rest of a Vulkan application
                 _device = vkbDevice.value();
             }
+
+            _queues[to_base(vkb::QueueType::graphics)] = getQueue(vkb::QueueType::graphics);
+            _queues[to_base(vkb::QueueType::compute)] = getQueue(vkb::QueueType::compute);
+            _queues[to_base(vkb::QueueType::transfer)] = getQueue(vkb::QueueType::transfer);
+            _queues[to_base(vkb::QueueType::present)] = getQueue(vkb::QueueType::present);
+
+            _graphicsCommandPool = createCommandPool(_queues[to_base(vkb::QueueType::graphics)]._queueIndex, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
         }
-
-        _queues[to_base(vkb::QueueType::graphics)] = getQueue(vkb::QueueType::graphics);
-        _queues[to_base(vkb::QueueType::compute)] = getQueue(vkb::QueueType::compute);
-        _queues[to_base(vkb::QueueType::transfer)] = getQueue(vkb::QueueType::transfer);
-        _queues[to_base(vkb::QueueType::present)] = getQueue(vkb::QueueType::present);
-
-        _graphicsCommandPool = createCommandPool(_queues[to_base(vkb::QueueType::graphics)]._queueIndex, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
     }
 
     VKDevice::~VKDevice()

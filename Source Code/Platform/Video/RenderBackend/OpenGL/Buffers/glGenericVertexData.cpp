@@ -196,6 +196,8 @@ void glGenericVertexData::updateBuffer(const U32 buffer,
     // Calculate the offset in the buffer in bytes from which to start writing
     size_t offsetInBytes = elementCountOffset * bufferParams._elementSize;
 
+    DIVIDE_ASSERT(offsetInBytes + dataCurrentSizeInBytes < bufferParams._elementCount * bufferParams._elementSize);
+
     if (impl->_ringSizeFactor > 1u) {
         offsetInBytes += bufferParams._elementCount * bufferParams._elementSize * queueIndex();
     }

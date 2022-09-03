@@ -361,12 +361,12 @@ namespace Divide {
         //make the Vulkan instance, with basic debug features
         vkb::InstanceBuilder builder{};
         builder.set_app_name(window.title())
-               .set_engine_name(Config::ENGINE_NAME)
-               .set_engine_version(Config::ENGINE_VERSION_MAJOR, Config::ENGINE_VERSION_MINOR, Config::ENGINE_VERSION_PATCH)
-               .request_validation_layers(Config::ENABLE_GPU_VALIDATION)
-               .require_api_version(1, Config::DESIRED_VULKAN_MINOR_VERSION, 0)
-               .set_debug_callback(divide_debug_callback)
-               .set_debug_callback_user_data_pointer(this);
+            .set_engine_name(Config::ENGINE_NAME)
+            .set_engine_version(Config::ENGINE_VERSION_MAJOR, Config::ENGINE_VERSION_MINOR, Config::ENGINE_VERSION_PATCH)
+            .request_validation_layers(Config::ENABLE_GPU_VALIDATION)
+            .require_api_version(1, Config::DESIRED_VULKAN_MINOR_VERSION, 0)
+            .set_debug_callback(divide_debug_callback)
+            .set_debug_callback_user_data_pointer(this);
 
         auto systemInfo = systemInfoRet.value();
         if (Config::ENABLE_GPU_VALIDATION && systemInfo.is_extension_available(VK_EXT_DEBUG_MARKER_EXTENSION_NAME)) {
@@ -534,9 +534,11 @@ namespace Divide {
         vkShaderProgram::DestroyStaticData();
 
         if (_device != nullptr) {
-            vkDeviceWaitIdle(_device->getVKDevice());
-            s_transientDeleteQueue.flush(_device->getVKDevice());
-            s_deviceDeleteQueue.flush(_device->getVKDevice());
+            if (_device->getVKDevice() != VK_NULL_HANDLE) {
+                vkDeviceWaitIdle(_device->getVKDevice());
+                s_transientDeleteQueue.flush(_device->getVKDevice());
+                s_deviceDeleteQueue.flush(_device->getVKDevice());
+            }
             vmaDestroyAllocator(_allocator);
             _commandBuffers.clear();
             _cmdContext.reset();

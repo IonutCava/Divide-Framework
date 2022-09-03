@@ -83,8 +83,8 @@ namespace Divide {
 
         const size_t localDataSize = params._initialData.second > 0 ? params._initialData.second : bufferSizeInBytes;
 
-        AllocatedBuffer_uptr stagingBuffer = VKUtil::createStagingBuffer(dataSize);
-        Byte* mappedRange = (Byte*)stagingBuffer->_allocInfo.pMappedData;
+        impl->_stagingBufferVtx = VKUtil::createStagingBuffer(dataSize);
+        Byte* mappedRange = (Byte*)impl->_stagingBufferVtx->_allocInfo.pMappedData;
         for (U32 i = 0u; i < ringSizeFactor; ++i) {
             if (params._initialData.first == nullptr) {
                 memset(&mappedRange[i * bufferSizeInBytes], 0, bufferSizeInBytes);
@@ -122,12 +122,16 @@ namespace Divide {
         request.srcOffset = 0u;
         request.dstOffset = 0u;
         request.size = dataSize;
-        request.srcBuffer = stagingBuffer->_buffer;
+        request.srcBuffer = impl->_stagingBufferVtx->_buffer;
         request.dstBuffer = impl->_buffer->_buffer;
         request.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
         request.dstStageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
         request._immediate = true;
         VK_API::RegisterTransferRequest(request);
+
+        if (params._bufferParams._updateFrequency == BufferUpdateFrequency::ONCE) {
+            impl->_stagingBufferVtx.reset();
+        }
     }
 
     void vkGenericVertexData::setIndexBuffer(const IndexBuffer& indices) {
@@ -150,7 +154,8 @@ namespace Divide {
                    oldIdxBufferEntry->_handle->_buffer != VK_NULL_HANDLE &&
                   (!AreCompatible(oldIdxBufferEntry->_data, indices) || indices.count == 0u))
         {
-            oldIdxBufferEntry->_handle.reset(nullptr);
+            oldIdxBufferEntry->_handle.reset();
+            oldIdxBufferEntry->_stagingBufferIdx.reset();
         }
 
         if (!oldIdxBufferEntry->_handle) {
@@ -210,28 +215,31 @@ namespace Divide {
 
             const size_t range = indices.count * elementSize;
             DIVIDE_ASSERT(range <= _indexBufferSize);
-            if (_stagingBufferIdx == nullptr || _idxStagingBufferSize < _indexBufferSize) {
-                isNewBuffer = true;
-                _idxStagingBufferSize = _indexBufferSize;
-                _stagingBufferIdx = VKUtil::createStagingBuffer(_indexBufferSize);
+
+            if (oldIdxBufferEntry->_stagingBufferIdx == nullptr) {
+                oldIdxBufferEntry->_stagingBufferIdx = VKUtil::createStagingBuffer(_indexBufferSize);
             }
 
             if (data == nullptr) {
-                memset(_stagingBufferIdx->_allocInfo.pMappedData, 0, range);
+                memset(oldIdxBufferEntry->_stagingBufferIdx->_allocInfo.pMappedData, 0, range);
             } else {
-                memcpy(_stagingBufferIdx->_allocInfo.pMappedData, data, range);
+                memcpy(oldIdxBufferEntry->_stagingBufferIdx->_allocInfo.pMappedData, data, range);
             }
 
             VKTransferQueue::TransferRequest request{};
             request.srcOffset = 0u;
             request.dstOffset = 0u;
             request.size = range;
-            request.srcBuffer = _stagingBufferIdx->_buffer;
+            request.srcBuffer = oldIdxBufferEntry->_stagingBufferIdx->_buffer;
             request.dstBuffer = oldIdxBufferEntry->_handle->_buffer;
             request.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
             request.dstStageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
             request._immediate = isNewBuffer;
             VK_API::RegisterTransferRequest(request);
+
+            if (!indices.dynamic) {
+                oldIdxBufferEntry->_stagingBufferIdx.reset();
+            }
         }
     }
 
@@ -248,7 +256,7 @@ namespace Divide {
             }
         }
 
-        DIVIDE_ASSERT(impl != nullptr && "glGenericVertexData error: set buffer called for invalid buffer index!");
+        DIVIDE_ASSERT(impl != nullptr && impl->_stagingBufferVtx != nullptr, "vkGenericVertexData error: set buffer called for invalid buffer index!");
 
         const BufferParams& bufferParams = impl->_buffer->_params;
         DIVIDE_ASSERT(bufferParams._updateFrequency != BufferUpdateFrequency::ONCE);
@@ -257,27 +265,25 @@ namespace Divide {
         const size_t dataCurrentSizeInBytes = elementCountRange * bufferParams._elementSize;
         // Calculate the offset in the buffer in bytes from which to start writing
         size_t offsetInBytes = elementCountOffset * bufferParams._elementSize;
+        const size_t bufferSizeInBytes = bufferParams._elementCount * bufferParams._elementSize;
+        DIVIDE_ASSERT(offsetInBytes + dataCurrentSizeInBytes < bufferSizeInBytes);
 
         if (impl->_ringSizeFactor > 1u) {
             offsetInBytes += bufferParams._elementCount * bufferParams._elementSize * queueIndex();
         }
 
-        const size_t bufferSizeInBytes = bufferParams._elementCount * bufferParams._elementSize;
-        if (_stagingBufferVtx == nullptr || _vtxStagingBufferSize < bufferSizeInBytes) {
-            _stagingBufferVtx = VKUtil::createStagingBuffer(bufferSizeInBytes);
-        }
-
+        Byte* mappedRange = (Byte*)impl->_stagingBufferVtx->_allocInfo.pMappedData;
         if (data == nullptr) {
-            memset(_stagingBufferVtx->_allocInfo.pMappedData, 0, dataCurrentSizeInBytes);
+            memset(&mappedRange[offsetInBytes], 0, dataCurrentSizeInBytes);
         } else {
-            memcpy(_stagingBufferVtx->_allocInfo.pMappedData, data, dataCurrentSizeInBytes);
+            memcpy(&mappedRange[offsetInBytes], data, dataCurrentSizeInBytes);
         }
 
         VKTransferQueue::TransferRequest request{};
-        request.srcOffset = 0u;
+        request.srcOffset = offsetInBytes;
         request.dstOffset = offsetInBytes;
         request.size = dataCurrentSizeInBytes;
-        request.srcBuffer = _stagingBufferVtx->_buffer;
+        request.srcBuffer = impl->_stagingBufferVtx->_buffer;
         request.dstBuffer = impl->_buffer->_buffer;
         request.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
         request.dstStageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
