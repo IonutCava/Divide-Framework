@@ -65,7 +65,7 @@ bool RenderTarget::create() {
         return att;
     };
 
-    const auto updateInternalAttachment = [&](const InternalRTAttachmentDescriptor& attDesc) {
+    const auto updateInternalAttachment = [&](InternalRTAttachmentDescriptor& attDesc) {
         RTAttachment* att = updateAttachment(attDesc);
 
         const Str64 texName = Util::StringFormat("RT_%s_Att_%s_%d_%d",
@@ -73,6 +73,9 @@ bool RenderTarget::create() {
                                                  getAttachmentName(attDesc._type),
                                                  attDesc._index,
                                                  getGUID()).c_str();
+        
+        attDesc._texDescriptor.colorAttachmentCompatible(attDesc._type == RTAttachmentType::Colour ? true : false);
+        attDesc._texDescriptor.depthAttachmentCompatible(attDesc._type == RTAttachmentType::Colour ? false : true);
 
         ResourceDescriptor textureAttachment(texName);
         textureAttachment.assetName(ResourcePath(texName));

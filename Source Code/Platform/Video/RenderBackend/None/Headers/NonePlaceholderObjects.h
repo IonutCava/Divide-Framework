@@ -119,13 +119,7 @@ namespace Divide {
             return MOV(data);
         }
 
-        void loadDataCompressed([[maybe_unused]] const ImageTools::ImageData& imageData) {
-        }
-
-        void loadDataUncompressed([[maybe_unused]] const ImageTools::ImageData& imageData) {
-        }
-
-        void prepareTextureData([[maybe_unused]] U16 width, [[maybe_unused]] U16 height) {
+        void loadDataInternal([[maybe_unused]] const ImageTools::ImageData& imageData) override {
         }
 
         void submitTextureData() {

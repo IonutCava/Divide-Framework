@@ -478,16 +478,16 @@ bool Sky::load() {
 
     std::atomic_uint loadTasks = 0u;
     I32 x, y, n;
-    Byte* perlWorlData = (Byte*)stbi_load((procLocation() + perlWorlTexName).c_str(), &x, &y, &n, 0);
+    Byte* perlWorlData = (Byte*)stbi_load((procLocation() + perlWorlTexName).c_str(), &x, &y, &n, STBI_rgb_alpha);
     ImageTools::ImageData imgDataPerl = {};
-    if (!imgDataPerl.loadFromMemory(perlWorlData, to_size(x * y * n), to_U16(y), to_U16(y), to_U16(x / y), to_U8(n))) {
+    if (!imgDataPerl.loadFromMemory(perlWorlData, to_size(x * y * n), to_U16(y), to_U16(y), to_U16(x / y), to_U8(STBI_rgb_alpha))) {
         DIVIDE_UNEXPECTED_CALL();
     }
     stbi_image_free(perlWorlData);
 
-    Byte* worlNoise = (Byte*)stbi_load((procLocation() + worlTexName).c_str(), &x, &y, &n, 0);
+    Byte* worlNoise = (Byte*)stbi_load((procLocation() + worlTexName).c_str(), &x, &y, &n, STBI_rgb_alpha);
     ImageTools::ImageData imgDataWorl = {};
-    if (!imgDataWorl.loadFromMemory(worlNoise, to_size(x * y * n), to_U16(y), to_U16(y), to_U16(x / y), to_U8(n))) {
+    if (!imgDataWorl.loadFromMemory(worlNoise, to_size(x * y * n), to_U16(y), to_U16(y), to_U16(x / y), to_U8(STBI_rgb_alpha))) {
         DIVIDE_UNEXPECTED_CALL();
     }
     stbi_image_free(worlNoise);
@@ -508,7 +508,6 @@ bool Sky::load() {
     {
         TextureDescriptor textureDescriptor(TextureType::TEXTURE_3D);
         textureDescriptor.srgb(false);
-        textureDescriptor.layerCount(128);
         textureDescriptor.baseFormat(GFXImageFormat::RGBA);
         textureDescriptor.textureOptions()._alphaChannelTransparency = false;
 
@@ -518,9 +517,6 @@ bool Sky::load() {
         _perWorlNoiseTex = CreateResource<Texture>(_parentCache, perlWorlDescriptor);
         _perWorlNoiseTex->loadData(imgDataPerl);
  
-        textureDescriptor.baseFormat(GFXImageFormat::RGB);
-        textureDescriptor.layerCount(32);
-
         ResourceDescriptor worlDescriptor("worlNoise");
         worlDescriptor.propertyDescriptor(textureDescriptor);
         worlDescriptor.waitForReady(true);

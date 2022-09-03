@@ -65,9 +65,8 @@ class glTexture final : public Texture {
    protected:
     void postLoad() override;
     void reserveStorage();
-    void loadDataCompressed(const ImageTools::ImageData& imageData) override;
-    void loadDataUncompressed(const ImageTools::ImageData& imageData) override;
-    void prepareTextureData(U16 width, U16 height) override;
+    void loadDataInternal(const ImageTools::ImageData& imageData) override;
+    void prepareTextureData(U16 width, U16 height, U16 depth) override;
     void submitTextureData() override;
 
     void clearDataInternal(const UColour4& clearColour, U8 level, bool clearRect, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const;

@@ -539,7 +539,10 @@ namespace Divide {
                 s_transientDeleteQueue.flush(_device->getVKDevice());
                 s_deviceDeleteQueue.flush(_device->getVKDevice());
             }
-            vmaDestroyAllocator(_allocator);
+            if (_allocator != VK_NULL_HANDLE) {
+                vmaDestroyAllocator(_allocator);
+                _allocator = VK_NULL_HANDLE;
+            }
             _commandBuffers.clear();
             _cmdContext.reset();
             _swapChain.reset();

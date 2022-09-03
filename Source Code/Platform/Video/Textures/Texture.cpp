@@ -258,19 +258,34 @@ bool Texture::loadFile(const ResourcePath& path, const ResourcePath& name, Image
     return true;
 }
 
-void Texture::loadData(const Byte* data, const size_t dataSize, const vec2<U16>& dimensions) {
+void Texture::prepareTextureData(const U16 width, const U16 height, const U16 depth) {
+    _loadingData = _defaultView._textureData;
+
+    _width = width;
+    _height = height;
+    _depth = depth;
+    DIVIDE_ASSERT(_width > 0 && _height > 0 && _depth > 0, "Texture error: Invalid texture dimensions!");
+
+    validateDescriptor();
+    _loadingData._textureType = _descriptor.texType();
+}
+
+void Texture::loadData(const Byte* data, size_t dataSize, const vec2<U16>& dimensions) {
+    loadData(data, dataSize, vec3<U16>(dimensions.width, dimensions.height, 1u));
+}
+
+void Texture::loadData(const Byte* data, const size_t dataSize, const vec3<U16>& dimensions) {
     // This should never be called for compressed textures
     assert(!IsCompressed(_descriptor.baseFormat()));
 
-    prepareTextureData(dimensions.width, dimensions.height);
+    prepareTextureData(dimensions.width, dimensions.height, dimensions.depth);
 
     // We can't manually specify data for msaa textures.
     assert(_descriptor.msaaSamples() == 0u || data == nullptr);
-
     if (data != nullptr) {
         ImageTools::ImageData imgData{};
         if (imgData.loadFromMemory(data, dataSize, dimensions.width, dimensions.height, 1, GetSizeFactor(_descriptor.dataType()) * NumChannels(_descriptor.baseFormat()))) {
-            loadDataUncompressed(imgData);
+            loadDataInternal(imgData);
         }
     }
 
@@ -278,16 +293,15 @@ void Texture::loadData(const Byte* data, const size_t dataSize, const vec2<U16>&
 }
 
 void Texture::loadData(const ImageTools::ImageData& imageData) {
-    prepareTextureData(imageData.dimensions(0u, 0u).width, imageData.dimensions(0u, 0u).height);
+    prepareTextureData(imageData.dimensions(0u, 0u).width, imageData.dimensions(0u, 0u).height, imageData.dimensions(0u, 0u).depth);
 
-    if (IsCompressed(_descriptor.baseFormat())) {
-        if (_descriptor.mipMappingState() == TextureDescriptor::MipMappingState::AUTO) {
-            _descriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
-        }
-        loadDataCompressed(imageData);
-    } else {
-        loadDataUncompressed(imageData);
+    if (IsCompressed(_descriptor.baseFormat()) &&
+        _descriptor.mipMappingState() == TextureDescriptor::MipMappingState::AUTO)
+    {
+        _descriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
     }
+
+    loadDataInternal(imageData);
 
     submitTextureData();
 }
@@ -385,7 +399,7 @@ void Texture::setSampleCount(U8 newSampleCount) {
     CLAMP(newSampleCount, to_U8(0u), _context.gpuState().maxMSAASampleCount());
     if (_descriptor.msaaSamples() != newSampleCount) {
         _descriptor.msaaSamples(newSampleCount);
-        loadData(nullptr, 0u, { width(), height() });
+        loadData(nullptr, 0u, { width(), height(), depth()});
     }
 }
 

@@ -195,7 +195,7 @@ private:
 
 private:
     GFXDevice& _context;
-    VmaAllocator _allocator;
+    VmaAllocator _allocator{VK_NULL_HANDLE};
 
     VKDevice_uptr _device{ nullptr };
     VKSwapChain_uptr _swapChain{ nullptr };

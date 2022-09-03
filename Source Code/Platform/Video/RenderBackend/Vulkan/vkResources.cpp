@@ -86,7 +86,7 @@ namespace VKUtil {
         vkTextureTypeTable[to_base(TextureType::TEXTURE_CUBE_MAP)] = VK_IMAGE_TYPE_3D;
         vkTextureTypeTable[to_base(TextureType::TEXTURE_1D_ARRAY)] = VK_IMAGE_TYPE_1D;
         vkTextureTypeTable[to_base(TextureType::TEXTURE_2D_ARRAY)] = VK_IMAGE_TYPE_2D;
-        vkTextureTypeTable[to_base(TextureType::TEXTURE_CUBE_ARRAY)] = VK_IMAGE_TYPE_3D;
+        vkTextureTypeTable[to_base(TextureType::TEXTURE_CUBE_ARRAY)] = VK_IMAGE_TYPE_2D;
 
         vkTextureViewTypeTable[to_base(TextureType::TEXTURE_1D)] = VK_IMAGE_VIEW_TYPE_1D;
         vkTextureViewTypeTable[to_base(TextureType::TEXTURE_2D)] = VK_IMAGE_VIEW_TYPE_2D;

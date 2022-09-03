@@ -8,6 +8,43 @@ namespace Divide {
     VKDevice::VKDevice(VK_API& context, vkb::Instance& instance, VkSurfaceKHR targetSurface)
         : _context(context)
     {
+        VkPhysicalDeviceVulkan13Features vk13features{};
+        vk13features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+        vk13features.synchronization2 = true;
+        vk13features.dynamicRendering = true;
+        vk13features.maintenance4 = true;
+        VkPhysicalDeviceVulkan12Features vk12features{};
+        vk12features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+        vk12features.samplerMirrorClampToEdge = true;
+        vk12features.timelineSemaphore = true;
+        vk12features.descriptorBindingPartiallyBound = true;
+        vk12features.descriptorBindingUniformBufferUpdateAfterBind = true;
+        vk12features.descriptorBindingSampledImageUpdateAfterBind = true;
+        vk12features.descriptorBindingStorageImageUpdateAfterBind = true;
+        vk12features.descriptorBindingStorageBufferUpdateAfterBind = true;
+        vk12features.descriptorBindingUpdateUnusedWhilePending = true;
+        vk12features.shaderSampledImageArrayNonUniformIndexing = true;
+        vk12features.runtimeDescriptorArray = true;
+        vk12features.descriptorBindingVariableDescriptorCount = true;
+        VkPhysicalDeviceVulkan11Features vk11features{};
+        vk11features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+        vk11features.shaderDrawParameters = true;
+        VkPhysicalDeviceFeatures vk10features{};
+        vk10features.imageCubeArray = true;
+        vk10features.geometryShader = true;
+        vk10features.tessellationShader = true;
+        vk10features.multiDrawIndirect = true;
+        vk10features.drawIndirectFirstInstance = true; //???
+        vk10features.depthClamp = true;
+        vk10features.depthBiasClamp = true;
+        vk10features.fillModeNonSolid = true;
+        vk10features.depthBounds = true;
+        vk10features.samplerAnisotropy = true;
+        //vk10features.textureCompressionETC2 = true;
+        vk10features.textureCompressionBC = true;
+        vk10features.shaderClipDistance = true;
+        vk10features.shaderCullDistance = true;
+
         vkb::PhysicalDeviceSelector selector{ instance };
         auto physicalDeviceSelection = selector.set_minimum_version(1, Config::MINIMUM_VULKAN_MINOR_VERSION)
                                                .set_surface(targetSurface)
@@ -15,6 +52,10 @@ namespace Divide {
                                                //.add_required_extension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)
                                                .add_required_extension(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME)
                                                .add_required_extension(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME)
+                                               .set_required_features(vk10features)
+                                               .set_required_features_11(vk11features)
+                                               .set_required_features_12(vk12features)
+                                               .set_required_features_13(vk13features)
                                                .select();
         if (!physicalDeviceSelection) {
             Console::errorfn(Locale::Get(_ID("ERROR_VK_INIT")), physicalDeviceSelection.error().message().c_str());
@@ -23,35 +64,6 @@ namespace Divide {
             
             //create the final Vulkan device
             vkb::DeviceBuilder deviceBuilder{ _physicalDevice };
-
-            VkPhysicalDeviceVulkan13Features vk13features{};
-            vk13features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-            vk13features.synchronization2 = true;
-            vk13features.dynamicRendering = true;
-            vk13features.maintenance4 = true;
-            VkPhysicalDeviceVulkan12Features vk12features{};
-            vk12features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-            vk12features.samplerMirrorClampToEdge = true;
-            vk12features.timelineSemaphore = true;
-            vk12features.descriptorBindingPartiallyBound = true;
-            vk12features.descriptorBindingUniformBufferUpdateAfterBind = true;
-            vk12features.descriptorBindingSampledImageUpdateAfterBind = true;
-            vk12features.descriptorBindingStorageImageUpdateAfterBind = true;
-            vk12features.descriptorBindingStorageBufferUpdateAfterBind = true;
-            vk12features.descriptorBindingUpdateUnusedWhilePending = true;
-            vk12features.shaderSampledImageArrayNonUniformIndexing = true;
-            vk12features.runtimeDescriptorArray = true;
-            vk12features.descriptorBindingVariableDescriptorCount = true;
-            VkPhysicalDeviceVulkan11Features vk11features{};
-            vk11features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
-            vk11features.shaderDrawParameters = true;
-            VkPhysicalDeviceSynchronization2FeaturesKHR sync_feat{};
-            sync_feat.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
-            sync_feat.synchronization2 = true;
-            deviceBuilder.add_pNext(&vk11features)
-                         .add_pNext(&vk12features)
-                         .add_pNext(&vk13features);
-
             auto vkbDevice = deviceBuilder.build();
             if (!vkbDevice) {
                 Console::errorfn(Locale::Get(_ID("ERROR_VK_INIT")), vkbDevice.error().message().c_str());
@@ -74,7 +86,9 @@ namespace Divide {
         if (_graphicsCommandPool != VK_NULL_HANDLE) {
             vkDestroyCommandPool(getVKDevice(), _graphicsCommandPool, nullptr);
         }
-        vkb::destroy_device(_device);
+        if (_device.device != VK_NULL_HANDLE) {
+            vkb::destroy_device(_device);
+        }
     }
 
     VKQueue VKDevice::getQueue(vkb::QueueType type) const noexcept {

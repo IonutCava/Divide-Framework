@@ -35,9 +35,20 @@
 
 #include "Platform/Video/Textures/Headers/Texture.h"
 
-#include <Vulkan/vulkan_core.h>
+//#include <Vulkan/vulkan_core.h>
+#include "Platform/Video/RenderBackend/Vulkan/Headers/VMAInclude.h"
 
 namespace Divide {
+    struct AllocatedImage : private NonCopyable {
+        ~AllocatedImage();
+
+        VkImage _image{VK_NULL_HANDLE};
+        VmaAllocation _allocation{ VK_NULL_HANDLE };
+        VmaAllocationInfo _allocInfo{};
+    };
+
+    FWD_DECLARE_MANAGED_STRUCT(AllocatedImage);
+
     class vkTexture final : public Texture {
     public:
         vkTexture(GFXDevice& context,
@@ -60,24 +71,17 @@ namespace Divide {
 
         TextureReadbackData readData(U16 mipLevel, GFXDataFormat desiredFormat) const noexcept override;
 
-        void updateDescriptor();
-
-        PROPERTY_R_IW(VkImage ,image, VK_NULL_HANDLE);
-        PROPERTY_R_IW(VkDeviceMemory, deviceMemory, VK_NULL_HANDLE);
-        PROPERTY_R_IW(VkImageView, view, VK_NULL_HANDLE);
-        PROPERTY_R_IW(VkSampler, sampler, VK_NULL_HANDLE);
+        PROPERTY_R(AllocatedImage_uptr, image, nullptr);
         PROPERTY_R_IW(VkImageType, type, VK_IMAGE_TYPE_MAX_ENUM);
-        PROPERTY_R_IW(VkImageViewType, viewType, VK_IMAGE_VIEW_TYPE_MAX_ENUM);
-        PROPERTY_R_IW(VkImageLayout, imageLayout, VK_IMAGE_LAYOUT_MAX_ENUM);
-        PROPERTY_R_IW(VkDescriptorImageInfo, vkDescriptor);
+        PROPERTY_R_IW(VkImageView, view, VK_NULL_HANDLE);
+        PROPERTY_R_IW(VkFormat, internalFormat, VK_FORMAT_MAX_ENUM);
 
     private:
         void reserveStorage();
-        void loadDataCompressed(const ImageTools::ImageData& imageData) override;
-        void loadDataUncompressed(const ImageTools::ImageData& imageData) override;
-        void prepareTextureData(U16 width, U16 height) override;
+        void loadDataInternal(const ImageTools::ImageData& imageData) override;
+        void prepareTextureData(U16 width, U16 height, U16 depth) override;
         void submitTextureData() override;
-
+        void generateTextureMipmap(VkCommandBuffer cmd, U8 baseLevel);
         void clearDataInternal(const UColour4& clearColour, U8 level, bool clearRect, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const;
     };
 } //namespace Divide

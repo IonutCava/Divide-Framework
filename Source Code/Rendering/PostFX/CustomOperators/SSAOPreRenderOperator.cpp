@@ -65,10 +65,10 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     _fadeStart[0] = config.FullRes.FadeDistance;
     _fadeStart[1] = config.HalfRes.FadeDistance;
 
-    std::array<vec3<F32>, SQUARED(SSAO_NOISE_SIZE)> noiseData;
+    std::array<vec4<F32>, SQUARED(SSAO_NOISE_SIZE)> noiseData;
 
-    for (vec3<F32>& noise : noiseData) {
-        noise.set(Random(-1.f, 1.f), Random(-1.f, 1.f), 0.f);
+    for (vec4<F32>& noise : noiseData) {
+        noise.set(Random(-1.f, 1.f), Random(-1.f, 1.f), 0.f, 1.f);
         noise.normalize();
     }
 
@@ -94,14 +94,14 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
 
     const Str64 attachmentName("SSAOPreRenderOperator_NoiseTexture");
 
-    TextureDescriptor noiseDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_32, GFXImageFormat::RGB);
+    TextureDescriptor noiseDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_32, GFXImageFormat::RGBA);
     noiseDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
     ResourceDescriptor textureAttachment(attachmentName);
     textureAttachment.propertyDescriptor(noiseDescriptor);
     _noiseTexture = CreateResource<Texture>(cache, textureAttachment);
 
-    _noiseTexture->loadData((Byte*)noiseData.data(), noiseData.size() * sizeof(vec3<F32>), vec2<U16>(SSAO_NOISE_SIZE));
+    _noiseTexture->loadData((Byte*)noiseData.data(), noiseData.size() * sizeof(vec4<F32>), vec2<U16>(SSAO_NOISE_SIZE));
 
     {
         TextureDescriptor outputDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RED);

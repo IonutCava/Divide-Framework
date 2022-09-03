@@ -99,6 +99,7 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     /// API-dependent loading function that uploads ptr data to the GPU using the specified parameters
     void loadData(const ImageTools::ImageData& imageData);
     void loadData(const Byte* data, size_t dataSize, const vec2<U16>& dimensions);
+    void loadData(const Byte* data, size_t dataSize, const vec3<U16>& dimensions);
 
     /// Change the number of MSAA samples for this current texture
     void setSampleCount(U8 newSampleCount);
@@ -121,8 +122,10 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     PROPERTY_RW(U32, numLayers, 1u);
     /// Texture width as returned by STB/DDS loader
     PROPERTY_R(U16, width, 0u);
-    /// Texture height depth as returned by STB/DDS loader
+    /// Texture height as returned by STB/DDS loader
     PROPERTY_R(U16, height, 0u);
+    /// Texture depth as returned by STB/DDS load
+    PROPERTY_R(U16, depth, 0u);
     /// If the texture has an alpha channel and at least one pixel is translucent, return true
     PROPERTY_R(bool, hasTranslucency, false);
     /// If the texture has an alpha channel and at least on pixel is fully transparent and no pixels are partially transparent, return true
@@ -143,9 +146,8 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
 
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Texture"; }
 
-    virtual void loadDataCompressed(const ImageTools::ImageData& imageData) = 0;
-    virtual void loadDataUncompressed(const ImageTools::ImageData& imageData) = 0;
-    virtual void prepareTextureData(U16 width, U16 height) = 0;
+    virtual void loadDataInternal(const ImageTools::ImageData& imageData) = 0;
+    virtual void prepareTextureData(U16 width, U16 height, U16 depth);
     virtual void submitTextureData() = 0;
 
   protected:

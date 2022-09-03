@@ -241,7 +241,7 @@ void Editor::createFontTexture(const F32 DPIScaleFactor) {
 
     io.Fonts->GetTexDataAsRGBA32(&pPixels, &iWidth, &iHeight);
     _fontTexture->loadData((Byte*)pPixels, iWidth * iHeight * 4u, vec2<U16>(iWidth, iHeight));
-    // Store our identifier as reloding data may change the handle!
+    // Store our identifier as reloading data may change the handle!
     io.Fonts->SetTexID((void*)_fontTexture.get());
 }
 

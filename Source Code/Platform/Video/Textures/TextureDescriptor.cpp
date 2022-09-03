@@ -39,6 +39,8 @@ namespace Divide {
                                   to_U32(_texType),
                                   _srgb,
                                   _normalized,
+                                  _colorAttachmentCompatible,
+                                  _depthAttachmentCompatible,
                                   _textureOptions._alphaChannelTransparency,
                                   _textureOptions._fastCompression,
                                   _textureOptions._isNormalMap,
