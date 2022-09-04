@@ -47,11 +47,12 @@ namespace Divide {
 
         vkb::PhysicalDeviceSelector selector{ instance };
         auto physicalDeviceSelection = selector.set_minimum_version(1, Config::MINIMUM_VULKAN_MINOR_VERSION)
+                                               .set_desired_version(1, Config::DESIRED_VULKAN_MINOR_VERSION)
                                                .set_surface(targetSurface)
                                                .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
-                                               //.add_required_extension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)
                                                .add_required_extension(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME)
                                                .add_required_extension(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME)
+                                               .add_required_extension(VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME)
                                                .set_required_features(vk10features)
                                                .set_required_features_11(vk11features)
                                                .set_required_features_12(vk12features)
@@ -67,10 +68,12 @@ namespace Divide {
             auto vkbDevice = deviceBuilder.build();
             if (!vkbDevice) {
                 Console::errorfn(Locale::Get(_ID("ERROR_VK_INIT")), vkbDevice.error().message().c_str());
-            } else {
-                // Get the VkDevice handle used in the rest of a Vulkan application
-                _device = vkbDevice.value();
-            }
+                return;
+            } 
+
+            // Get the VkDevice handle used in the rest of a Vulkan application
+            _device = vkbDevice.value();
+            
 
             _queues[to_base(vkb::QueueType::graphics)] = getQueue(vkb::QueueType::graphics);
             _queues[to_base(vkb::QueueType::compute)] = getQueue(vkb::QueueType::compute);
@@ -78,6 +81,8 @@ namespace Divide {
             _queues[to_base(vkb::QueueType::present)] = getQueue(vkb::QueueType::present);
 
             _graphicsCommandPool = createCommandPool(_queues[to_base(vkb::QueueType::graphics)]._queueIndex, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+
+
         }
     }
 

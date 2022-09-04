@@ -147,6 +147,7 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\VMAInclude.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Shaders\Headers\vkShader.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Shaders\Headers\vkShaderProgram.h" />
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Textures\Headers\vkSamplerObject.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Textures\Headers\vkTexture.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\Headers\GLSLToSPIRV.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\Headers\ShaderDataUploader.h" />
@@ -243,6 +244,7 @@
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\ImGUITestCode.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Shaders\vkShader.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Shaders\vkShaderProgram.cpp" />
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Textures\vkSamplerObject.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Textures\vkTexture.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\VKDevice.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\vkResources.cpp" />

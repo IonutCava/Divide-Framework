@@ -170,7 +170,6 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     SamplerDescriptor heightMapSampler = {};
     heightMapSampler.wrapUVW(TextureWrap::CLAMP_TO_BORDER);
     heightMapSampler.mipSampling(TextureMipSampling::NONE);
-    heightMapSampler.borderColour(DefaultColours::BLACK);
     heightMapSampler.anisotropyLevel(16);
     const size_t heightSamplerHash = heightMapSampler.getHash();
 

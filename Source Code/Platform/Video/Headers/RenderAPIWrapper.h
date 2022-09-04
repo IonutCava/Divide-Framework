@@ -99,33 +99,33 @@ struct PerformanceMetrics
 struct DeviceInformation
 {
     struct VersionInformation {
-        U8 _major = 0u;
-        U8 _minor = 0u;
-        U8 _patch = 0u;
-        U8 _variant = 0u;
+        U8 _major   { 0u };
+        U8 _minor   { 0u };
+        U8 _patch   { 0u };
+        U8 _variant { 0u };
     };
+
     U32 _maxWorgroupCount[3] = {65535u, 65535u, 65535u};
-    U16 _maxWorgroupSize[3] = {1024u, 1024u, 64u};
+    U32 _maxWorgroupSize[3] = {1024u, 1024u, 64u};
     size_t _UBOMaxSizeBytes = 64 * 1024;
     size_t _SSBOMaxSizeBytes = 1024 * 1024 * 1024u;
     size_t _maxComputeSharedMemoryBytes = 1024 * 1024 * 1024;
+    size_t _UBOffsetAlignmentBytes = 256u;
+    size_t _SSBOffsetAlignmentBytes = 16u;
+    size_t _VBOffsetAlignmentBytes = 4u;
     U32 _maxWorgroupInvocations = 1024u;
     U32 _maxVertAttributeBindings = 16u;
     U32 _maxVertAttributes = 16u;
     U32 _maxVertOutputComponents = 16u;
-    U32 _maxAtomicBufferBindingIndices = 4u;
     U32 _maxSSBOBufferBindings = 32u;
     U32 _shaderCompilerThreads = 1u;
+    U32 _maxTextureUnits = 32u;
+    U32 _maxRTColourAttachments = 4u;
+    U32 _maxAnisotropy = 0u;
+    U32 _maxClipDistances = 2u;
+    U32 _maxCullDistances = 6u;
+    U32 _maxClipAndCullDistances = 8u;
     VersionInformation _versionInfo = { 4u, 6u };
-    U16 _UBOffsetAlignmentBytes = 256u;
-    U16 _SSBOffsetAlignmentBytes = 16u;
-    U16 _VBOffsetAlignmentBytes = 4u;
-    U8 _maxTextureUnits = 32u;
-    U8 _maxRTColourAttachments = 4u;
-    U8 _maxAnisotropy = 0u;
-    U8 _maxClipDistances = 2u;
-    U8 _maxCullDistances = 6u;
-    U8 _maxClipAndCullDistances = 8u;
     GPUVendor _vendor = GPUVendor::COUNT;
     GPURenderer _renderer = GPURenderer::COUNT;
 };
@@ -167,6 +167,8 @@ protected:
     virtual void onThreadCreated(const std::thread::id& threadID) = 0;
 
     virtual void createSetLayout(DescriptorSetUsage usage, const DescriptorSet& set) = 0;
+
+    virtual bool makeTextureViewResident(DescriptorSetUsage set, U8 bindingSlot, const ImageView& imageView, size_t samplerHash) const = 0;
 };
 
 FWD_DECLARE_MANAGED_CLASS(RenderAPIWrapper);

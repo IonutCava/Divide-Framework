@@ -376,6 +376,9 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\Headers\IMPrimitiveDescriptors.h">
       <Filter>Video\Headers</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Textures\Headers\vkSamplerObject.h">
+      <Filter>Video\RenderBackend\Vulkan\Textures\Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="../../Source Code/Platform\Input\AutoKeyRepeat.cpp">
@@ -653,6 +656,9 @@
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\Buffers\VertexBuffer\BufferLocks.cpp">
       <Filter>Video\Buffers\VertexBuffer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Textures\vkSamplerObject.cpp">
+      <Filter>Video\RenderBackend\Vulkan\Textures</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

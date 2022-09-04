@@ -256,6 +256,8 @@ public:
         GFXDescriptorSet _perPassSet{ DescriptorSetUsage::PER_PASS };
         GFXDescriptorSet _perBatchSet{ DescriptorSetUsage::PER_BATCH };
 
+        [[nodiscard]] GFXDescriptorSet& getSet(const DescriptorSetUsage usage);
+
         void markDirty() noexcept;
     };
 
@@ -502,6 +504,7 @@ private:
     void shadowingSettings(const F32 lightBleedBias, const F32 minShadowVariance) noexcept;
     RenderTarget_uptr newRTInternal(const RenderTargetDescriptor& descriptor);
     ErrorCode createAPIInstance(RenderAPI api);
+    bool bindShaderResources(DescriptorSetUsage usage, const DescriptorBindings& bindings) const;
 
 private:
     RenderAPIWrapper_uptr _api = nullptr;

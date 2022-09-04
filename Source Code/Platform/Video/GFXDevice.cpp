@@ -321,6 +321,17 @@ void GFXDevice::GFXDescriptorSet::update(const U8 slot, const DescriptorSetBindi
     DIVIDE_UNEXPECTED_CALL();
 }
 
+GFXDevice::GFXDescriptorSet& GFXDevice::GFXDescriptorSets::getSet(const DescriptorSetUsage usage) {
+    switch (usage) {
+        case DescriptorSetUsage::PER_FRAME: return _perFrameSet;
+        case DescriptorSetUsage::PER_PASS: return _perPassSet;
+        case DescriptorSetUsage::PER_BATCH: return _perBatchSet;
+    }
+
+    DIVIDE_UNEXPECTED_CALL();
+    return _perFrameSet;
+}
+
 GFXDevice::GFXDevice(Kernel & parent)
     : KernelComponent(parent),
       PlatformContextComponent(parent.platformContext())
@@ -374,23 +385,64 @@ ErrorCode GFXDevice::initRenderingAPI(const I32 argc, char** argv, const RenderA
         return hardwareState;
     }
 
-    string refreshRates;
+    if (s_deviceInformation._maxTextureUnits <= 16) {
+        Console::errorfn(Locale::Get(_ID("ERROR_INSUFFICIENT_TEXTURE_UNITS")));
+        return ErrorCode::GFX_OLD_HARDWARE;
+    }
+    if (to_base(AttribLocation::COUNT) >= s_deviceInformation._maxVertAttributeBindings) {
+        Console::errorfn(Locale::Get(_ID("ERROR_INSUFFICIENT_ATTRIB_BINDS")));
+        return ErrorCode::GFX_OLD_HARDWARE;
+    }
+    DIVIDE_ASSERT(Config::MAX_CLIP_DISTANCES <= s_deviceInformation._maxClipDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts");
+    DIVIDE_ASSERT(Config::MAX_CULL_DISTANCES <= s_deviceInformation._maxCullDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts");
+    DIVIDE_ASSERT(Config::MAX_CULL_DISTANCES + Config::MAX_CLIP_DISTANCES <= s_deviceInformation._maxClipAndCullDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts");
+
+    DIVIDE_ASSERT(Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS < s_deviceInformation._maxWorgroupSize[0] &&
+                  Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS < s_deviceInformation._maxWorgroupSize[1] &&
+                  Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < s_deviceInformation._maxWorgroupSize[2]);
+
+    DIVIDE_ASSERT(to_U32(Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS) *
+                  Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS *
+                  Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < s_deviceInformation._maxWorgroupInvocations);
+    
     const size_t displayCount = gpuState().getDisplayCount();
+    string refreshRates;
+    GPUState::GPUVideoMode prevMode;
+    const auto printMode = [&prevMode, &refreshRates]() {
+        Console::printfn(Locale::Get(_ID("CURRENT_DISPLAY_MODE")),
+                                     prevMode._resolution.width,
+                                     prevMode._resolution.height,
+                                     prevMode._bitDepth,
+                                     prevMode._formatName.c_str(),
+                                     refreshRates.c_str());
+    };
+
     for (size_t idx = 0; idx < displayCount; ++idx) {
         const vector<GPUState::GPUVideoMode>& registeredModes = gpuState().getDisplayModes(idx);
         if (!registeredModes.empty()) {
             Console::printfn(Locale::Get(_ID("AVAILABLE_VIDEO_MODES")), idx, registeredModes.size());
 
-            for (const GPUState::GPUVideoMode& mode : registeredModes) {
-                // Optionally, output to console/file each display mode
-                refreshRates = Util::StringFormat("%d", mode._refreshRate);
-                Console::printfn(Locale::Get(_ID("CURRENT_DISPLAY_MODE")),
-                    mode._resolution.width,
-                    mode._resolution.height,
-                    mode._bitDepth,
-                    mode._formatName.c_str(),
-                    refreshRates.c_str());
+            prevMode = registeredModes.front();
+
+            for (const GPUState::GPUVideoMode& it : registeredModes) {
+                if (prevMode._resolution != it._resolution ||
+                    prevMode._bitDepth != it._bitDepth ||
+                    prevMode._formatName != it._formatName)
+                {
+                    printMode();
+                    refreshRates = "";
+                    prevMode = it;
+                }
+
+                if (refreshRates.empty()) {
+                    refreshRates = Util::to_string(to_U32(it._refreshRate));
+                } else {
+                    refreshRates.append(Util::StringFormat(", %d", it._refreshRate));
+                }
             }
+        }
+        if (!refreshRates.empty()) {
+            printMode();
         }
     }
 
@@ -1795,6 +1847,63 @@ bool GFXDevice::fitViewportInWindow(const U16 w, const U16 h) {
 #pragma endregion
 
 #pragma region GPU State
+
+bool GFXDevice::bindShaderResources(const DescriptorSetUsage usage, const DescriptorBindings& bindings) const {
+    OPTICK_EVENT("BIND_SHADER_RESOURCES");
+
+    for (auto& srcBinding : bindings) {
+        switch (srcBinding._data.Type()) {
+        case DescriptorSetBindingType::UNIFORM_BUFFER:
+        case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: {
+            if (!srcBinding._data.Has<ShaderBufferEntry>() ||
+                srcBinding._data.As<ShaderBufferEntry>()._buffer == nullptr ||
+                srcBinding._data.As<ShaderBufferEntry>()._range._length == 0u)
+            {
+                continue;
+            }
+
+            const ShaderBufferEntry& bufferEntry = srcBinding._data.As<ShaderBufferEntry>();
+            DIVIDE_ASSERT(bufferEntry._buffer != nullptr);
+            Attorney::ShaderBufferBind::bindRange(*bufferEntry._buffer,
+                usage,
+                srcBinding._slot,
+                bufferEntry._range);
+        } break;
+        case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: {
+            if (srcBinding._slot == INVALID_TEXTURE_BINDING) {
+                continue;
+            }
+
+            const DescriptorCombinedImageSampler& imageSampler = srcBinding._data.As<DescriptorCombinedImageSampler>();
+            const TextureData& data = imageSampler._image._textureData;
+            if (!IsValid(data)) {
+                DIVIDE_UNEXPECTED_CALL();
+            }
+            if (!_api->makeTextureViewResident(usage, srcBinding._slot, imageSampler._image, imageSampler._samplerHash)) {
+                DIVIDE_UNEXPECTED_CALL();
+            }
+        } break;
+        case DescriptorSetBindingType::IMAGE: {
+            if (!srcBinding._data.Has<Image>()) {
+                continue;
+            }
+            const Image& image = srcBinding._data.As<Image>();
+            DIVIDE_ASSERT(image._texture != nullptr);
+            image._texture->bindLayer(srcBinding._slot,
+                                      image._level,
+                                      image._layer,
+                                      image._layered,
+                                      image._flag);
+        } break;
+        case DescriptorSetBindingType::COUNT: {
+            DIVIDE_UNEXPECTED_CALL();
+        } break;
+        };
+    }
+
+    return true;
+}
+
 bool GFXDevice::uploadGPUBlock() {
     OPTICK_EVENT();
 
@@ -1993,25 +2102,31 @@ const GFXShaderData::CamData& GFXDevice::cameraData() const noexcept {
 
 #pragma region Command buffers, occlusion culling, etc
 void GFXDevice::validateAndUploadDescriptorSets() {
+    static DescriptorBindings bindings;
+
     uploadGPUBlock();
 
-    const auto flushResourceCmd = [](RenderAPIWrapper* api, GFXDescriptorSet& set, const bool allowEmpty) {
-        if (set.dirty()) {
-            GFX::BindShaderResourcesCommand bindShaderResourcesCmd{};
-            bindShaderResourcesCmd._usage = set.usage();
-            for (const DescriptorSetBinding& binding : set.impl()) {
-                if (binding._type != DescriptorSetBindingType::COUNT && binding._resource._data.isSet()) {
-                    bindShaderResourcesCmd._bindings.emplace_back(binding._resource);
-                }
-            }
-            api->flushCommand(&bindShaderResourcesCmd);
-            set.dirty(false);
+    for (U8 i = 0u; i < to_base(DescriptorSetUsage::COUNT); ++i) {
+        const DescriptorSetUsage crtUsage = static_cast<DescriptorSetUsage>(i);
+        if (crtUsage == DescriptorSetUsage::PER_DRAW) {
+            continue;
         }
-    };
 
-    flushResourceCmd(_api.get(), _descriptorSets._perFrameSet, true);
-    flushResourceCmd(_api.get(), _descriptorSets._perPassSet, true);
-    flushResourceCmd(_api.get(), _descriptorSets._perBatchSet, true);
+        GFXDescriptorSet& set = _descriptorSets.getSet(crtUsage);
+        if (!set.dirty()) {
+            continue;
+        }
+
+        bindings.resize(0);
+        for (const DescriptorSetBinding& binding : set.impl()) {
+            if (binding._type != DescriptorSetBindingType::COUNT && binding._resource._data.isSet()) {
+                bindings.emplace_back(binding._resource);
+            }
+        }
+
+        bindShaderResources(crtUsage, bindings);
+        set.dirty(false);
+    }
 }
 
 void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool batch) {
@@ -2026,14 +2141,6 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
     }
 
     static GFX::MemoryBarrierCommand gpuBlockMemCommand{};
-
-    const auto[error, lastCmdIndex] = commandBuffer.validate();
-    if (error != GFX::ErrorType::NONE) {
-        Console::errorfn(Locale::Get(_ID("ERROR_GFX_INVALID_COMMAND_BUFFER")), lastCmdIndex, commandBuffer.toString().c_str());
-        Console::flush();
-        DIVIDE_UNEXPECTED_CALL_MSG(Util::StringFormat("GFXDevice::flushCommandBuffer error [ %s ]: Invalid command buffer. Check error log!", GFX::Names::errorType[to_base(error)]).c_str());
-        return;
-    }
 
     _api->preFlushCommandBuffer(commandBuffer);
 
@@ -2167,7 +2274,7 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
                         set.update(binding._slot, binding._data);
                     }
                 } else {
-                    _api->flushCommand(resCmd);
+                    bindShaderResources(resCmd->_usage, resCmd->_bindings);
                 }
             } break;
             case GFX::CommandType::BEGIN_RENDER_PASS: {

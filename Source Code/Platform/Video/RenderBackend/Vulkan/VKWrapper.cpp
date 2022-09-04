@@ -13,6 +13,7 @@
 #include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 
 #include "Buffers/Headers/vkFramebuffer.h"
 #include "Buffers/Headers/vkShaderBuffer.h"
@@ -21,6 +22,7 @@
 #include "Shaders/Headers/vkShaderProgram.h"
 
 #include "Textures/Headers/vkTexture.h"
+#include "Textures/Headers/vkSamplerObject.h"
 
 #include <sdl/include/SDL_vulkan.h>
 
@@ -69,12 +71,20 @@ namespace {
 }
 
 namespace Divide {
+    constexpr U32 VK_VENDOR_ID_AMD = 0x1002;
+    constexpr U32 VK_VENDOR_ID_IMGTECH = 0x1010;
+    constexpr U32 VK_VENDOR_ID_NVIDIA = 0x10DE;
+    constexpr U32 VK_VENDOR_ID_ARM = 0x13B5;
+    constexpr U32 VK_VENDOR_ID_QUALCOMM = 0x5143;
+    constexpr U32 VK_VENDOR_ID_INTEL = 0x8086;
+
     bool VK_API::s_hasDebugMarkerSupport = false;
     VKDeletionQueue VK_API::s_transientDeleteQueue;
     VKDeletionQueue VK_API::s_deviceDeleteQueue;
     VKTransferQueue VK_API::s_transferQueue;
-
     VKStateTracker_uptr VK_API::s_stateTracker = nullptr;
+    SharedMutex VK_API::s_samplerMapLock;
+    VK_API::SamplerObjectMap VK_API::s_samplerMap{};
 
     VkPipeline PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass) {
         //make viewport state from our stored viewport and scissor.
@@ -405,6 +415,119 @@ namespace Divide {
         }
         VKUtil::fillEnumTables(_device->getVKDevice());
 
+        VkPhysicalDeviceProperties deviceProperties{};
+        vkGetPhysicalDeviceProperties(_device->getPhysicalDevice().physical_device, &deviceProperties);
+
+        DeviceInformation deviceInformation{};
+        deviceInformation._renderer = GPURenderer::UNKNOWN;
+        switch (deviceProperties.vendorID) {
+            case VK_VENDOR_ID_NVIDIA:
+                deviceInformation._vendor = GPUVendor::NVIDIA; 
+                deviceInformation._renderer = GPURenderer::GEFORCE;
+                break;
+            case VK_VENDOR_ID_INTEL:
+                deviceInformation._vendor = GPUVendor::INTEL;
+                deviceInformation._renderer = GPURenderer::INTEL;
+                break;
+            case VK_VENDOR_ID_AMD: 
+                deviceInformation._vendor = GPUVendor::AMD;
+                deviceInformation._renderer = GPURenderer::RADEON;
+                break;
+            case VK_VENDOR_ID_ARM:
+                deviceInformation._vendor = GPUVendor::ARM;
+                deviceInformation._renderer = GPURenderer::MALI;
+                break;
+            case VK_VENDOR_ID_QUALCOMM:
+                deviceInformation._vendor = GPUVendor::QUALCOMM;
+                deviceInformation._renderer = GPURenderer::ADRENO;
+                break;
+            case VK_VENDOR_ID_IMGTECH:
+                deviceInformation._vendor = GPUVendor::IMAGINATION_TECH; 
+                deviceInformation._renderer = GPURenderer::POWERVR;
+                break;
+            case VK_VENDOR_ID_MESA: 
+                deviceInformation._vendor = GPUVendor::MESA;
+                deviceInformation._renderer = GPURenderer::SOFTWARE;
+                break;
+            default: 
+                deviceInformation._vendor = GPUVendor::OTHER;
+                break;
+        }
+            
+        Console::printfn(Locale::Get(_ID("VK_VENDOR_STRING")), 
+                            deviceProperties.deviceName,
+                            deviceProperties.vendorID,
+                            deviceProperties.deviceID,
+                            deviceProperties.driverVersion,
+                            deviceProperties.apiVersion);
+
+        deviceInformation._versionInfo._major = 1u;
+        deviceInformation._versionInfo._minor = to_U8(VK_API_VERSION_MINOR(deviceProperties.apiVersion));
+
+        deviceInformation._maxTextureUnits = deviceProperties.limits.maxDescriptorSetSampledImages;
+        deviceInformation._maxVertAttributeBindings = deviceProperties.limits.maxVertexInputBindings;
+        deviceInformation._maxVertAttributes = deviceProperties.limits.maxVertexInputAttributes;
+        deviceInformation._maxRTColourAttachments = deviceProperties.limits.maxColorAttachments;
+        deviceInformation._shaderCompilerThreads = 0xFFFFFFFF;
+        CLAMP(config.rendering.maxAnisotropicFilteringLevel,
+              to_U8(0),
+              to_U8(deviceProperties.limits.maxSamplerAnisotropy));
+        deviceInformation._maxAnisotropy = config.rendering.maxAnisotropicFilteringLevel;
+
+        const VkSampleCountFlags counts = deviceProperties.limits.framebufferColorSampleCounts & deviceProperties.limits.framebufferDepthSampleCounts;
+        U8 maxMSAASamples = 0u;
+        if (counts & VK_SAMPLE_COUNT_2_BIT)  { maxMSAASamples = 2u; }
+        if (counts & VK_SAMPLE_COUNT_4_BIT)  { maxMSAASamples = 4u; }
+        if (counts & VK_SAMPLE_COUNT_8_BIT)  { maxMSAASamples = 8u; }
+        if (counts & VK_SAMPLE_COUNT_16_BIT) { maxMSAASamples = 16u; }
+        if (counts & VK_SAMPLE_COUNT_32_BIT) { maxMSAASamples = 32u; }
+        if (counts & VK_SAMPLE_COUNT_64_BIT) { maxMSAASamples = 64u; }
+        // If we do not support MSAA on a hardware level for whatever reason, override user set MSAA levels
+        config.rendering.MSAASamples = std::min(config.rendering.MSAASamples, maxMSAASamples);
+        config.rendering.shadowMapping.csm.MSAASamples = std::min(config.rendering.shadowMapping.csm.MSAASamples, maxMSAASamples);
+        config.rendering.shadowMapping.spot.MSAASamples = std::min(config.rendering.shadowMapping.spot.MSAASamples, maxMSAASamples);
+        _context.gpuState().maxMSAASampleCount(maxMSAASamples);
+        // How many workgroups can we have per compute dispatch
+        for (U8 i = 0u; i < 3; ++i) {
+            deviceInformation._maxWorgroupCount[i] = deviceProperties.limits.maxComputeWorkGroupCount[i];
+            deviceInformation._maxWorgroupSize[i] = deviceProperties.limits.maxComputeWorkGroupSize[i];
+        }
+        deviceInformation._maxWorgroupInvocations = deviceProperties.limits.maxComputeWorkGroupInvocations;
+        deviceInformation._maxComputeSharedMemoryBytes = deviceProperties.limits.maxComputeSharedMemorySize;
+        Console::printfn(Locale::Get(_ID("MAX_COMPUTE_WORK_GROUP_INFO")),
+                     deviceInformation._maxWorgroupCount[0], deviceInformation._maxWorgroupCount[1], deviceInformation._maxWorgroupCount[2],
+                     deviceInformation._maxWorgroupSize[0],  deviceInformation._maxWorgroupSize[1],  deviceInformation._maxWorgroupSize[2],
+                     deviceInformation._maxWorgroupInvocations);
+        Console::printfn(Locale::Get(_ID("MAX_COMPUTE_SHARED_MEMORY_SIZE")), deviceInformation._maxComputeSharedMemoryBytes / 1024);
+
+        // Maximum number of varying components supported as outputs in the vertex shader
+        deviceInformation._maxVertOutputComponents = deviceProperties.limits.maxVertexOutputComponents;
+        Console::printfn(Locale::Get(_ID("MAX_VERTEX_OUTPUT_COMPONENTS")), deviceInformation._maxVertOutputComponents);
+
+        deviceInformation._UBOffsetAlignmentBytes = deviceProperties.limits.minUniformBufferOffsetAlignment;
+        deviceInformation._UBOMaxSizeBytes = deviceProperties.limits.maxUniformBufferRange;
+        deviceInformation._SSBOffsetAlignmentBytes = deviceProperties.limits.minStorageBufferOffsetAlignment;
+        deviceInformation._SSBOMaxSizeBytes = deviceProperties.limits.maxStorageBufferRange;
+        deviceInformation._maxSSBOBufferBindings = deviceProperties.limits.maxPerStageDescriptorStorageBuffers;
+
+        const bool UBOSizeOver1Mb = deviceInformation._UBOMaxSizeBytes / 1024 > 1024;
+        Console::printfn(Locale::Get(_ID("GL_VK_UBO_INFO")),
+                         deviceProperties.limits.maxDescriptorSetUniformBuffers,
+                         (deviceInformation._UBOMaxSizeBytes / 1024) / (UBOSizeOver1Mb ? 1024 : 1),
+                         UBOSizeOver1Mb ? "Mb" : "Kb",
+                         deviceInformation._UBOffsetAlignmentBytes);
+        Console::printfn(Locale::Get(_ID("GL_VK_SSBO_INFO")),
+                         deviceInformation._maxSSBOBufferBindings,
+                         deviceInformation._SSBOMaxSizeBytes / 1024 / 1024,
+                         deviceProperties.limits.maxDescriptorSetStorageBuffers,
+                         deviceInformation._SSBOffsetAlignmentBytes);
+
+        deviceInformation._maxClipAndCullDistances = deviceProperties.limits.maxCombinedClipAndCullDistances;
+        deviceInformation._maxClipDistances = deviceProperties.limits.maxClipDistances;
+        deviceInformation._maxCullDistances = deviceProperties.limits.maxCullDistances;
+
+        GFXDevice::OverrideDeviceInformation(deviceInformation);
+
         if (_device->getQueueIndex(vkb::QueueType::graphics) == INVALID_VK_QUEUE_INDEX) {
             return ErrorCode::VK_NO_GRAHPICS_QUEUE;
         }
@@ -532,6 +655,14 @@ namespace Divide {
     void VK_API::closeRenderingAPI() {
 
         vkShaderProgram::DestroyStaticData();
+
+        // Destroy sampler objects
+        {
+            for (auto& sampler : s_samplerMap) {
+                vkSamplerObject::Destruct(sampler.second);
+            }
+            s_samplerMap.clear();
+        }
 
         if (_device != nullptr) {
             if (_device->getVKDevice() != VK_NULL_HANDLE) {
@@ -663,6 +794,11 @@ namespace Divide {
             s_lastBuffer->draw(cmd, &userData);
         }
 
+        return true;
+    }
+
+    bool VK_API::makeTextureViewResident([[maybe_unused]] const DescriptorSetUsage set, [[maybe_unused]] const U8 bindingSlot, [[maybe_unused]] const ImageView& imageView, const size_t samplerHash) const {
+        [[maybe_unused]] const VkSampler samplerHandle = GetSamplerHandle(samplerHash);
         return true;
     }
 
@@ -873,8 +1009,6 @@ namespace Divide {
             }break;
             case GFX::CommandType::COPY_TEXTURE: {
             }break;
-            case GFX::CommandType::BIND_SHADER_RESOURCES: {
-            }break;
             case GFX::CommandType::BIND_PIPELINE: {
                 const Pipeline* pipeline = cmd->As<GFX::BindPipelineCommand>()->_pipeline;
                 assert(pipeline != nullptr);
@@ -891,14 +1025,14 @@ namespace Divide {
             }break;
             case GFX::CommandType::BEGIN_DEBUG_SCOPE: {
                  const GFX::BeginDebugScopeCommand* crtCmd = cmd->As<GFX::BeginDebugScopeCommand>();
-                 PushDebugMessage(cmdBuffer, crtCmd->_scopeName.c_str());
+                 PushDebugMessage(cmdBuffer, crtCmd->_scopeName.c_str(), crtCmd->_scopeId);
             } break;
             case GFX::CommandType::END_DEBUG_SCOPE: {
                  PopDebugMessage(cmdBuffer);
             } break;
             case GFX::CommandType::ADD_DEBUG_MESSAGE: {
                 const GFX::AddDebugMessageCommand* crtCmd = cmd->As<GFX::AddDebugMessageCommand>();
-                InsertDebugMessage(cmdBuffer, crtCmd->_msg.c_str());
+                InsertDebugMessage(cmdBuffer, crtCmd->_msg.c_str(), crtCmd->_msgId);
             }break;
             case GFX::CommandType::COMPUTE_MIPMAPS: {
                 const GFX::ComputeMipMapsCommand* crtCmd = cmd->As<GFX::ComputeMipMapsCommand>();
@@ -927,7 +1061,8 @@ namespace Divide {
                 _context.registerDrawCalls(drawCount);
             }break;
             case GFX::CommandType::DISPATCH_COMPUTE: {
-            }break;
+                assert(GetStateTracker()->_activeTopology == PrimitiveTopology::COMPUTE);
+            } break;
             case GFX::CommandType::SET_CLIPING_STATE: {
             } break;
             case GFX::CommandType::MEMORY_BARRIER: {
@@ -1094,4 +1229,33 @@ namespace Divide {
         GetStateTracker()->_debugScope[GetStateTracker()->_debugScopeDepth--] = { "", std::numeric_limits<U32>::max() };
     }
 
+    /// Return the Vulkan sampler object's handle for the given hash value
+    VkSampler VK_API::GetSamplerHandle(const size_t samplerHash) {
+        // If the hash value is 0, we assume the code is trying to unbind a sampler object
+        if (samplerHash > 0) {
+            {
+                SharedLock<SharedMutex> r_lock(s_samplerMapLock);
+                // If we fail to find the sampler object for the given hash, we print an error and return the default OpenGL handle
+                const SamplerObjectMap::const_iterator it = s_samplerMap.find(samplerHash);
+                if (it != std::cend(s_samplerMap)) {
+                    // Return the OpenGL handle for the sampler object matching the specified hash value
+                    return it->second;
+                }
+            }
+            {
+                ScopedLock<SharedMutex> w_lock(s_samplerMapLock);
+                // Check again
+                const SamplerObjectMap::const_iterator it = s_samplerMap.find(samplerHash);
+                if (it == std::cend(s_samplerMap)) {
+                    // Cache miss. Create the sampler object now.
+                    // Create and store the newly created sample object. GL_API is responsible for deleting these!
+                    const VkSampler sampler = vkSamplerObject::Construct(SamplerDescriptor::Get(samplerHash));
+                    emplace(s_samplerMap, samplerHash, sampler);
+                    return sampler;
+                }
+            }
+        }
+
+        return 0u;
+    }
 }; //namespace Divide

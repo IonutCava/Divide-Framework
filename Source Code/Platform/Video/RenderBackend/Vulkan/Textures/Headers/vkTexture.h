@@ -34,8 +34,6 @@
 #define VK_TEXTURE_H
 
 #include "Platform/Video/Textures/Headers/Texture.h"
-
-//#include <Vulkan/vulkan_core.h>
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VMAInclude.h"
 
 namespace Divide {

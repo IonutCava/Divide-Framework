@@ -50,6 +50,7 @@ namespace Divide {
         GLSL_INIT_ERROR,
         GL_OLD_HARDWARE,
         VK_OLD_HARDWARE,
+        GFX_OLD_HARDWARE,
         VK_SURFACE_CREATE,
         VK_DEVICE_CREATE_FAILED,
         VK_NO_GRAHPICS_QUEUE,

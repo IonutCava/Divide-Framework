@@ -507,6 +507,26 @@ namespace Names {
 
 static_assert(std::size(Names::textureType) == to_base(TextureType::COUNT) + 1);
 
+enum class TextureBorderColour : U8 {
+    TRANSPARENT_BLACK_INT = 0,
+    TRANSPARENT_BLACK_F32,
+    OPAQUE_BLACK_INT,
+    OPAQUE_BLACK_F32,
+    OPAQUE_WHITE_INT,
+    OPAQUE_WHITE_F32,
+    CUSTOM_INT,
+    CUSTOM_F32,
+    COUNT
+};
+
+namespace Names {
+    static constexpr const char* textureBorderColour[] = {
+        "TRANSPARENT_BLACK_INT", "TRANSPARENT_BLACK_F32", "OPAQUE_BLACK_INT", "OPAQUE_BLACK_F32", "OPAQUE_WHITE_INT", "OPAQUE_WHITE_F32", "CUSTOM_INT", "CUSTOM_F32", "NONE"
+    };
+};
+
+static_assert(std::size(Names::textureBorderColour) == to_base(TextureBorderColour::COUNT) + 1);
+
 enum class TextureFilter : U8 {
     LINEAR = 0,
     NEAREST,
@@ -656,6 +676,7 @@ enum class GPUVendor : U8 {
     VIVANTE,
     ALPHAMOSAIC,
     WEBGL, //Khronos
+    MESA,
     OTHER,
     COUNT
 };
@@ -663,7 +684,7 @@ enum class GPUVendor : U8 {
 namespace Names {
     static constexpr const char* GPUVendor[] = {
         "NVIDIA", "AMD", "INTEL", "MICROSOFT", "IMAGINATION_TECH", "ARM",
-        "QUALCOMM", "VIVANTE", "ALPHAMOSAIC", "WEBGL", "OTHER", "ERROR"
+        "QUALCOMM", "VIVANTE", "ALPHAMOSAIC", "WEBGL", "MESA", "OTHER", "ERROR"
     };
 };
 
@@ -681,13 +702,14 @@ enum class GPURenderer : U8 {
     VIVANTE,
     WEBGL,
     GDI, //Driver not working properly?
+    SOFTWARE,
     COUNT
 };
 
 namespace Names {
     static constexpr const char* GPURenderer[] = {
         "UNKNOWN", "ADRENO", "GEFORCE", "INTEL", "MALI", "POWERVR",
-        "RADEON", "VIDEOCORE", "VIVANTE", "WEBGL", "GDI", "ERROR"
+        "RADEON", "VIDEOCORE", "VIVANTE", "WEBGL", "GDI", "SOFTWARE", "ERROR"
     };
 };
 

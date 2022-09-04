@@ -53,6 +53,7 @@ inline const char* getErrorCodeName(const ErrorCode code) noexcept {
         case ErrorCode::GLSL_INIT_ERROR:          return "GLSL pre-init failed!";
         case ErrorCode::GL_OLD_HARDWARE:          return "Current hardware does not support the minimum Opengl features required or the maximum supported version is too old!"; 
         case ErrorCode::VK_OLD_HARDWARE:          return "Current hardware does not support the minimum Vulkan features required or the maximum supported version is too old!";
+        case ErrorCode::GFX_OLD_HARDWARE:         return "Current hardware does not support the minimum rendering features required or the maximum supported version is too old!";
         case ErrorCode::VK_SURFACE_CREATE:        return "Failed to create a suitable Vulkan rendering surface for the current window!";
         case ErrorCode::VK_DEVICE_CREATE_FAILED:  return "Failed to initialise a suitable Vulkan device!";
         case ErrorCode::VK_NO_GRAHPICS_QUEUE:     return "Failed to find a suitable graphics queue on the initialised device!";

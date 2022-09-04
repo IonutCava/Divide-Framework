@@ -152,6 +152,9 @@ class VK_API final : public RenderAPIWrapper {
 
     [[nodiscard]] VKDevice* getDevice() { return _device.get(); }
 
+    [[nodiscard]] GFXDevice& context() noexcept { return _context; };
+    [[nodiscard]] const GFXDevice& context() const noexcept { return _context; };
+
   protected:
       [[nodiscard]] VkCommandBuffer getCurrentCommandBuffer() const;
 
@@ -183,11 +186,14 @@ private:
 
     ShaderResult bindPipeline(const Pipeline& pipeline, VkCommandBuffer& cmdBuffer) const;
     void bindDynamicState(const RenderStateBlock& currentState, VkCommandBuffer& cmdBuffer) const;
+    [[nodiscard]] bool makeTextureViewResident(DescriptorSetUsage set, U8 bindingSlot, const ImageView& imageView, size_t samplerHash) const override;
 
 public:
     static const VKStateTracker_uptr& GetStateTracker() noexcept;
     static void RegisterCustomAPIDelete(DELEGATE<void, VkDevice>&& cbk, bool isResourceTransient);
     static void RegisterTransferRequest(const VKTransferQueue::TransferRequest& request);
+    static [[nodiscard]] VkSampler GetSamplerHandle(size_t samplerHash);
+
 private:
     static void InsertDebugMessage(VkCommandBuffer cmdBuffer, const char* message, U32 id = std::numeric_limits<U32>::max());
     static void PushDebugMessage(VkCommandBuffer cmdBuffer, const char* message, U32 id = std::numeric_limits<U32>::max());
@@ -215,6 +221,10 @@ private:
     bool _skipEndFrame{ false };
 
 private:
+    using SamplerObjectMap = hashMap<size_t, VkSampler, NoHash<size_t>>;
+
+    static SharedMutex s_samplerMapLock;
+    static SamplerObjectMap s_samplerMap;
     static VKStateTracker_uptr s_stateTracker;
     static bool s_hasDebugMarkerSupport;
     static VKDeletionQueue s_transientDeleteQueue;

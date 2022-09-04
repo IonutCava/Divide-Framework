@@ -5,6 +5,20 @@
 
 namespace Divide {
     namespace TypeUtil {
+        const char* TextureBorderColourToString(const TextureBorderColour colour) noexcept {
+            return Names::textureBorderColour[to_base(colour)];
+        }
+
+        TextureBorderColour StringToTextureBorderColour(const string& colour) {
+            for (U8 i = 0; i < to_U8(TextureBorderColour::COUNT); ++i) {
+                if (strcmp(colour.c_str(), Names::textureBorderColour[i]) == 0) {
+                    return static_cast<TextureBorderColour>(i);
+                }
+            }
+
+            return TextureBorderColour::COUNT;
+        }
+
         const char* WrapModeToString(const TextureWrap wrapMode) noexcept {
             return Names::textureWrap[to_base(wrapMode)];
         }
@@ -74,10 +88,11 @@ namespace Divide {
                                      _maxLOD,
                                      _biasLOD,
                                      _anisotropyLevel,
-                                     _borderColour.r,
-                                     _borderColour.g,
-                                     _borderColour.b,
-                                     _borderColour.a);
+                                     _borderColour,
+                                     _customBorderColour.r,
+                                     _customBorderColour.g,
+                                     _customBorderColour.b,
+                                     _customBorderColour.a);
         if (tempHash != _hash) {
             ScopedLock<SharedMutex> w_lock(s_samplerDescriptorMapMutex);
             insert(s_samplerDescriptorMap, tempHash, *this);
@@ -127,10 +142,11 @@ namespace Divide {
             pt.put(entryName + ".Sampler.minLOD", sampler.minLOD());
             pt.put(entryName + ".Sampler.maxLOD", sampler.maxLOD());
             pt.put(entryName + ".Sampler.biasLOD", sampler.biasLOD());
-            pt.put(entryName + ".Sampler.borderColour.<xmlattr>.r", sampler.borderColour().r);
-            pt.put(entryName + ".Sampler.borderColour.<xmlattr>.g", sampler.borderColour().g);
-            pt.put(entryName + ".Sampler.borderColour.<xmlattr>.b", sampler.borderColour().b);
-            pt.put(entryName + ".Sampler.borderColour.<xmlattr>.a", sampler.borderColour().a);
+            pt.put(entryName + ".borderColour", TypeUtil::TextureBorderColourToString(sampler.borderColour()));
+            pt.put(entryName + ".Sampler.customBorderColour.<xmlattr>.r", sampler.customBorderColour().r);
+            pt.put(entryName + ".Sampler.customBorderColour.<xmlattr>.g", sampler.customBorderColour().g);
+            pt.put(entryName + ".Sampler.customBorderColour.<xmlattr>.b", sampler.customBorderColour().b);
+            pt.put(entryName + ".Sampler.customBorderColour.<xmlattr>.a", sampler.customBorderColour().a);
         }
 
         size_t loadFromXML(const string& entryName, const boost::property_tree::ptree& pt) {
@@ -144,17 +160,18 @@ namespace Divide {
             sampler.useRefCompare(pt.get(entryName + ".Sampler.useRefCompare", false));
             sampler.cmpFunc(TypeUtil::StringToComparisonFunction(pt.get(entryName + ".Sampler.comparisonFunction", "LEQUAL").c_str()));
             sampler.anisotropyLevel(to_U8(pt.get(entryName + ".Sampler.anisotropy", 255u)));
-            sampler.minLOD(pt.get(entryName + ".Sampler.minLOD", -1000));
-            sampler.maxLOD(pt.get(entryName + ".Sampler.maxLOD", 1000));
-            sampler.biasLOD(pt.get(entryName + ".Sampler.biasLOD", 0));
-            sampler.borderColour(FColour4
+            sampler.minLOD(pt.get(entryName + ".Sampler.minLOD", -1000.f));
+            sampler.maxLOD(pt.get(entryName + ".Sampler.maxLOD", 1000.f));
+            sampler.biasLOD(pt.get(entryName + ".Sampler.biasLOD", 0.f));
+            sampler.borderColour(TypeUtil::StringToTextureBorderColour(pt.get<string>(entryName + ".Sampler.borderColour", TypeUtil::TextureBorderColourToString(TextureBorderColour::OPAQUE_BLACK_F32))));
+            sampler.customBorderColour(UColour4
                 {
-                    pt.get(entryName + ".Sampler.borderColour.<xmlattr>.r", 0.0f),
-                    pt.get(entryName + ".Sampler.borderColour.<xmlattr>.g", 0.0f),
-                    pt.get(entryName + ".Sampler.borderColour.<xmlattr>.b", 0.0f),
-                    pt.get(entryName + ".Sampler.borderColour.<xmlattr>.a", 1.0f)
+                    pt.get(entryName + ".Sampler.customBorderColour.<xmlattr>.r", to_U8(0u)),
+                    pt.get(entryName + ".Sampler.customBorderColour.<xmlattr>.g", to_U8(0u)),
+                    pt.get(entryName + ".Sampler.customBorderColour.<xmlattr>.b", to_U8(0u)),
+                    pt.get(entryName + ".Sampler.customBorderColour.<xmlattr>.a", to_U8(1u))
                 }
-            );
+        );
 
             return sampler.getHash();
         }

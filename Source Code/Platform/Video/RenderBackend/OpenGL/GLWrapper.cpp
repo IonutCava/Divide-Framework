@@ -160,6 +160,8 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
             vendor = GPUVendor::AMD;
         } else if (strstr(gpuVendorStr, "Microsoft") != nullptr) {
             vendor = GPUVendor::MICROSOFT;
+        } else if (strstr(gpuVendorStr, "Mesa") != nullptr) {
+            vendor = GPUVendor::MESA;
         } else {
             vendor = GPUVendor::OTHER;
         }
@@ -196,6 +198,8 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
             vendor = GPUVendor::WEBGL;
         } else if (strstr(gpuRendererStr, "GDI Generic")) {
             renderer = GPURenderer::GDI;
+        } else if (strstr(gpuRendererStr, "Mesa")) {
+            renderer = GPURenderer::SOFTWARE;
         } else {
             renderer = GPURenderer::UNKNOWN;
         }
@@ -228,22 +232,10 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
 
     // If we got here, let's figure out what capabilities we have available
     // Maximum addressable texture image units in the fragment shader
-    deviceInformation._maxTextureUnits = to_U8(CLAMPED(GLUtil::getGLValue(GL_MAX_TEXTURE_IMAGE_UNITS), 16u, 255u));
+    deviceInformation._maxTextureUnits = CLAMPED(GLUtil::getGLValue(GL_MAX_TEXTURE_IMAGE_UNITS), 16u, 255u);
     DIVIDE_ASSERT(deviceInformation._maxTextureUnits >= GLStateTracker::MAX_BOUND_TEXTURE_UNITS);
 
     GLUtil::getGLValue(GL_MAX_VERTEX_ATTRIB_BINDINGS, deviceInformation._maxVertAttributeBindings);
-    GLUtil::getGLValue(GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS, deviceInformation._maxAtomicBufferBindingIndices);
-    Console::printfn(Locale::Get(_ID("GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS")), deviceInformation._maxAtomicBufferBindingIndices);
-
-    if (deviceInformation._maxTextureUnits <= 16) {
-        Console::errorfn(Locale::Get(_ID("ERROR_INSUFFICIENT_TEXTURE_UNITS")));
-        return ErrorCode::GFX_NOT_SUPPORTED;
-    }
-
-    if (to_base(AttribLocation::COUNT) >= deviceInformation._maxVertAttributeBindings) {
-        Console::errorfn(Locale::Get(_ID("ERROR_INSUFFICIENT_ATTRIB_BINDS")));
-        return ErrorCode::GFX_NOT_SUPPORTED;
-    }
 
     deviceInformation._versionInfo._major = to_U8(GLUtil::getGLValue(GL_MAJOR_VERSION));
     deviceInformation._versionInfo._minor = to_U8(GLUtil::getGLValue(GL_MINOR_VERSION));
@@ -306,11 +298,11 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     deviceInformation._maxWorgroupInvocations = GLUtil::getGLValue(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS);
     deviceInformation._maxComputeSharedMemoryBytes = GLUtil::getGLValue(GL_MAX_COMPUTE_SHARED_MEMORY_SIZE);
 
-    Console::printfn(Locale::Get(_ID("GL_MAX_COMPUTE_WORK_GROUP_INFO")),
+    Console::printfn(Locale::Get(_ID("MAX_COMPUTE_WORK_GROUP_INFO")),
                      deviceInformation._maxWorgroupCount[0], deviceInformation._maxWorgroupCount[1], deviceInformation._maxWorgroupCount[2],
                      deviceInformation._maxWorgroupSize[0],  deviceInformation._maxWorgroupSize[1],  deviceInformation._maxWorgroupSize[2],
                      deviceInformation._maxWorgroupInvocations);
-    Console::printfn(Locale::Get(_ID("GL_MAX_COMPUTE_SHARED_MEMORY_SIZE")), deviceInformation._maxComputeSharedMemoryBytes / 1024);
+    Console::printfn(Locale::Get(_ID("MAX_COMPUTE_SHARED_MEMORY_SIZE")), deviceInformation._maxComputeSharedMemoryBytes / 1024);
     
     // Maximum number of texture units we can address in shaders
     Console::printfn(Locale::Get(_ID("GL_MAX_TEX_UNITS")),
@@ -318,7 +310,7 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
                      deviceInformation._maxTextureUnits);
     // Maximum number of varying components supported as outputs in the vertex shader
     deviceInformation._maxVertOutputComponents = GLUtil::getGLValue(GL_MAX_VERTEX_OUTPUT_COMPONENTS);
-    Console::printfn(Locale::Get(_ID("GL_MAX_VERTEX_OUTPUT_COMPONENTS")), deviceInformation._maxVertOutputComponents);
+    Console::printfn(Locale::Get(_ID("MAX_VERTEX_OUTPUT_COMPONENTS")), deviceInformation._maxVertOutputComponents);
 
     // Query shading language version support
     Console::printfn(Locale::Get(_ID("GL_GLSL_SUPPORT")),
@@ -329,7 +321,7 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     GLUtil::getGLValue(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, deviceInformation._UBOffsetAlignmentBytes);
     GLUtil::getGLValue(GL_MAX_UNIFORM_BLOCK_SIZE, deviceInformation._UBOMaxSizeBytes);
     const bool UBOSizeOver1Mb = deviceInformation._UBOMaxSizeBytes / 1024 > 1024;
-    Console::printfn(Locale::Get(_ID("GL_UBO_INFO")),
+    Console::printfn(Locale::Get(_ID("GL_VK_UBO_INFO")),
                      GLUtil::getGLValue(GL_MAX_UNIFORM_BUFFER_BINDINGS),
                      (deviceInformation._UBOMaxSizeBytes / 1024) / (UBOSizeOver1Mb ? 1024 : 1),
                      UBOSizeOver1Mb ? "Mb" : "Kb",
@@ -344,14 +336,11 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     GLUtil::getGLValue(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, deviceInformation._SSBOffsetAlignmentBytes);
     GLUtil::getGLValue(GL_MAX_SHADER_STORAGE_BLOCK_SIZE, deviceInformation._SSBOMaxSizeBytes);
     deviceInformation._maxSSBOBufferBindings = GLUtil::getGLValue(GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS);
-    Console::printfn(
-        Locale::Get(_ID("GL_SSBO_INFO")),
-        deviceInformation._maxSSBOBufferBindings,
-        deviceInformation._SSBOMaxSizeBytes / 1024 / 1024,
-        GLUtil::getGLValue(GL_MAX_COMBINED_SHADER_STORAGE_BLOCKS),
-        deviceInformation._SSBOffsetAlignmentBytes);
-
-    deviceInformation._SSBOffsetAlignmentBytes = sizeof(GLuint);
+    Console::printfn(Locale::Get(_ID("GL_VK_SSBO_INFO")),
+                     deviceInformation._maxSSBOBufferBindings,
+                     deviceInformation._SSBOMaxSizeBytes / 1024 / 1024,
+                     GLUtil::getGLValue(GL_MAX_COMBINED_SHADER_STORAGE_BLOCKS),
+                     deviceInformation._SSBOffsetAlignmentBytes);
 
     // Maximum number of subroutines and maximum number of subroutine uniform
     // locations usable in a shader
@@ -366,20 +355,9 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     const I32 clipDistanceCount = std::max(GLUtil::getGLValue(GL_MAX_CLIP_DISTANCES), 0);
     const I32 cullDistanceCount = std::max(GLUtil::getGLValue(GL_MAX_CULL_DISTANCES), 0);
 
-    deviceInformation._maxClipAndCullDistances = to_U8(GLUtil::getGLValue(GL_MAX_COMBINED_CLIP_AND_CULL_DISTANCES));
-    deviceInformation._maxClipDistances = to_U8(clipDistanceCount);
-    deviceInformation._maxCullDistances = to_U8(cullDistanceCount);
-    DIVIDE_ASSERT(Config::MAX_CLIP_DISTANCES <= deviceInformation._maxClipDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts");
-    DIVIDE_ASSERT(Config::MAX_CULL_DISTANCES <= deviceInformation._maxCullDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts");
-    DIVIDE_ASSERT(Config::MAX_CULL_DISTANCES + Config::MAX_CLIP_DISTANCES <= deviceInformation._maxClipAndCullDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts");
-
-    DIVIDE_ASSERT(Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS < deviceInformation._maxWorgroupSize[0] &&
-                  Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS < deviceInformation._maxWorgroupSize[1] &&
-                  Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < deviceInformation._maxWorgroupSize[2]);
-
-    DIVIDE_ASSERT(to_U32(Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS) *
-                         Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS *
-                         Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < deviceInformation._maxWorgroupInvocations);
+    deviceInformation._maxClipAndCullDistances = GLUtil::getGLValue(GL_MAX_COMBINED_CLIP_AND_CULL_DISTANCES);
+    deviceInformation._maxClipDistances = to_U32(clipDistanceCount);
+    deviceInformation._maxCullDistances = to_U32(cullDistanceCount);
 
     GFXDevice::OverrideDeviceInformation(deviceInformation);
     // Seamless cubemaps are a nice feature to have enabled (core since 3.2)
@@ -460,7 +438,7 @@ void GL_API::closeRenderingAPI() {
     // Destroy sampler objects
     {
         for (auto &sampler : s_samplerMap) {
-            glSamplerObject::destruct(sampler.second);
+            glSamplerObject::Destruct(sampler.second);
         }
         s_samplerMap.clear();
     }
@@ -953,10 +931,6 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             const GFX::CopyTextureCommand* crtCmd = cmd->As<GFX::CopyTextureCommand>();
             glTexture::copy(crtCmd->_source, crtCmd->_sourceMSAASamples, crtCmd->_destination, crtCmd->_destinationMSAASamples, crtCmd->_params);
         }break;
-        case GFX::CommandType::BIND_SHADER_RESOURCES: {
-            const auto resCmd = cmd->As<GFX::BindShaderResourcesCommand>();
-            bindShaderResources(resCmd->_usage, resCmd->_bindings);
-        }break;
         case GFX::CommandType::BIND_PIPELINE: {
             if (pushConstantsNeedLock) {
                 flushCommand(&pushConstantsMemCommand);
@@ -1096,11 +1070,6 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
                 assert(GetStateTracker()->_activeTopology == PrimitiveTopology::COMPUTE);
 
                 const GFX::DispatchComputeCommand* crtCmd = cmd->As<GFX::DispatchComputeCommand>();
-                const vec3<U32>& workGroupCount = crtCmd->_computeGroupSize;
-                DIVIDE_ASSERT(workGroupCount.x > 0 && 
-                              workGroupCount.x < GFXDevice::GetDeviceInformation()._maxWorgroupCount[0] &&
-                              workGroupCount.y < GFXDevice::GetDeviceInformation()._maxWorgroupCount[1] &&
-                              workGroupCount.z < GFXDevice::GetDeviceInformation()._maxWorgroupCount[2]);
                 glDispatchCompute(crtCmd->_computeGroupSize.x, crtCmd->_computeGroupSize.y, crtCmd->_computeGroupSize.z);
             }
         }break;
@@ -1178,7 +1147,7 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             }
 
             if (!crtCmd->_bufferLocks.empty()) {
-                SyncObjectHandle sync = glLockManager::CreateSyncObject(crtCmd->_syncFlag);
+                const SyncObjectHandle sync = glLockManager::CreateSyncObject(crtCmd->_syncFlag);
                 for (const BufferLock& lock : crtCmd->_bufferLocks) {
                     glBufferImpl* buffer = static_cast<const glShaderBuffer*>(lock._targetBuffer)->bufferImpl();
                     if (!buffer->lockByteRange(lock._range, sync)) {
@@ -1328,16 +1297,12 @@ void GL_API::clearStates(const DisplayWindow& window, GLStateTracker& stateTrack
     stateTracker.setDepthWrite(true);
 }
 
+bool GL_API::makeTextureViewResident(const DescriptorSetUsage set, const U8 bindingSlot, const ImageView& imageView, const size_t samplerHash) const {
+    const U8 glBinding = ShaderProgram::GetGLBindingForDescriptorSlot(set, bindingSlot, DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER);
 
-GLStateTracker::BindResult GL_API::makeTextureViewResidentInternal(const U8 bindingSlot, const ImageView& imageView, const size_t samplerHash) const {
     const GLuint samplerHandle = GetSamplerHandle(samplerHash);
 
-    const TextureData& data = imageView._textureData;
-    if (!IsValid(data)) {
-        return GLStateTracker::BindResult::FAILED;
-    }
-
-    GLuint texHandle = static_cast<GLuint>(data._textureHandle);
+    GLuint texHandle = static_cast<GLuint>(imageView._textureData._textureHandle);
     if (!imageView.isDefaultView()) {
         const size_t viewHash = imageView.getHash();
 
@@ -1355,7 +1320,7 @@ GLStateTracker::BindResult GL_API::makeTextureViewResidentInternal(const U8 bind
 
             glTextureView(textureID,
                 GLUtil::internalTextureType(imageView._textureData._textureType, imageView._descriptor._msaaSamples),
-                data._textureHandle,
+                imageView._textureData._textureHandle,
                 glInternalFormat,
                 static_cast<GLuint>(imageView._mipLevels.x),
                 static_cast<GLuint>(imageView._mipLevels.y),
@@ -1368,29 +1333,22 @@ GLStateTracker::BindResult GL_API::makeTextureViewResidentInternal(const U8 bind
         texHandle = textureID;
     }
 
-#if 1
-    const GLubyte slot = static_cast<GLubyte>(bindingSlot);
-
     for (TexBindEntry& it : s_TexBindQueue) {
-        if (it._slot == slot) {
+        if (it._slot == glBinding) {
             it._handle = texHandle;
             it._sampler = samplerHandle;
-            return GLStateTracker::BindResult::ALREADY_BOUND;
+            return true;
         }
     }
 
     TexBindEntry entry{};
-    entry._slot = slot;
+    entry._slot = glBinding;
     entry._handle = texHandle;
     entry._sampler = samplerHandle;
 
     s_TexBindQueue.push_back(MOV(entry));
 
-    return GLStateTracker::BindResult::JUST_BOUND;
-
-#else
-    return GL_API::GetStateTracker()->bindTexture(static_cast<GLubyte>(bindingSlot), texHandle, samplerHandle);
-#endif
+    return true;
 }
 
 bool GL_API::setViewport(const Rect<I32>& viewport) {
@@ -1457,68 +1415,6 @@ ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) {
     }
 
     return ret;
-}
-
-bool GL_API::bindShaderResources(const DescriptorSetUsage usage, const DescriptorBindings& bindings) const {
-    OPTICK_EVENT("BIND_SHADER_RESOURCES");
-
-    struct ImageSamplerBinding {
-        U8 _bindingSlot;
-        TextureType _type;
-        GLuint _handle;
-        GLuint _samplerHandle;
-    };
-
-    for (auto& srcBinding : bindings) {
-        switch (srcBinding._data.Type()) {
-            case DescriptorSetBindingType::UNIFORM_BUFFER:
-            case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: {
-                if (!srcBinding._data.Has<ShaderBufferEntry>() ||
-                    srcBinding._data.As<ShaderBufferEntry>()._buffer == nullptr ||
-                    srcBinding._data.As<ShaderBufferEntry>()._range._length == 0u)
-                {
-                    continue;
-                }
-
-                const ShaderBufferEntry& bufferEntry = srcBinding._data.As<ShaderBufferEntry>();
-                DIVIDE_ASSERT(bufferEntry._buffer != nullptr);
-                Attorney::ShaderBufferBind::bindRange(*bufferEntry._buffer,
-                                                    usage,
-                                                    srcBinding._slot,
-                                                    bufferEntry._range);
-            } break;
-            case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: {
-                if (srcBinding._slot == INVALID_TEXTURE_BINDING) {
-                    continue;
-                }
-
-                const DescriptorCombinedImageSampler& imageSampler = srcBinding._data.As<DescriptorCombinedImageSampler>();
-                if (makeTextureViewResidentInternal(ShaderProgram::GetGLBindingForDescriptorSlot(usage, srcBinding._slot, DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER),
-                                                    imageSampler._image,
-                                                    imageSampler._samplerHash) == GLStateTracker::BindResult::FAILED)
-                {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
-            } break;
-            case DescriptorSetBindingType::IMAGE: {
-                if (!srcBinding._data.Has<Image>()) {
-                    continue;
-                }
-                const Image& image = srcBinding._data.As<Image>();
-                DIVIDE_ASSERT(image._texture != nullptr);
-                image._texture->bindLayer(srcBinding._slot,
-                                          image._level,
-                                          image._layer,
-                                          image._layered,
-                                          image._flag);
-            } break;
-            case DescriptorSetBindingType::COUNT: {
-                DIVIDE_UNEXPECTED_CALL();
-            } break;
-        };
-    }
-
-    return true;
 }
 
 void GL_API::createSetLayout([[maybe_unused]] const DescriptorSetUsage usage, [[maybe_unused]] const DescriptorSet& set) {
@@ -1727,7 +1623,7 @@ GLuint GL_API::GetSamplerHandle(const size_t samplerHash) {
             if (it == std::cend(s_samplerMap)) {
                 // Cache miss. Create the sampler object now.
                 // Create and store the newly created sample object. GL_API is responsible for deleting these!
-                const GLuint sampler = glSamplerObject::construct(SamplerDescriptor::Get(samplerHash));
+                const GLuint sampler = glSamplerObject::Construct(SamplerDescriptor::Get(samplerHash));
                 emplace(s_samplerMap, samplerHash, sampler);
                 return sampler;
             }

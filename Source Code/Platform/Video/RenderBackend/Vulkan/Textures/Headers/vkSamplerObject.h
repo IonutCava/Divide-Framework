@@ -30,20 +30,20 @@
  */
 
 #pragma once
-#ifndef _GL_SAMPLER_H_
-#define _GL_SAMPLER_H_
+#ifndef _VK_SAMPLER_H_
+#define _VK_SAMPLER_H_
 
-#include "Platform/Video/RenderBackend/OpenGL/Headers/glResources.h"
+#include <Vulkan/vulkan_core.h>
 
 namespace Divide {
 
-struct SamplerDescriptor;
+    struct SamplerDescriptor;
 
-class glSamplerObject {
-   public:
-    static GLuint Construct(const SamplerDescriptor& descriptor);
-    static void Destruct(GLuint& handle);
-};
+    class vkSamplerObject {
+    public:
+        static VkSampler Construct(const SamplerDescriptor& descriptor);
+        static void Destruct(VkSampler& handle);
+    };
 
 };  // namespace Divide
-#endif //_GL_SAMPLER_H_
+#endif //_VK_SAMPLER_H_

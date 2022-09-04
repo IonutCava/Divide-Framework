@@ -124,7 +124,7 @@ namespace Divide {
             vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageBarrier);
         }
 
-        //// After the loop, all mip layers are in TRANSFER_SRC layout, so transition all to SHADER_READ
+        // After the loop, all mip layers are in TRANSFER_SRC layout, so transition all to SHADER_READ
         range.baseMipLevel = baseLevel;
         range.levelCount = VK_REMAINING_MIP_LEVELS;
         range.layerCount = VK_REMAINING_ARRAY_LAYERS;

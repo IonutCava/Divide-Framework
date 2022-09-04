@@ -65,12 +65,14 @@ struct SamplerDescriptor final : Hashable {
     /// The value must be in the range [0...255] and is automatically clamped by the max HW supported level
     PROPERTY_RW(U8, anisotropyLevel, 255);
     /// OpenGL eg: used by TEXTURE_MIN_LOD and TEXTURE_MAX_LOD
-    PROPERTY_RW(I32, minLOD, -1000);
-    PROPERTY_RW(I32, maxLOD, 1000);
+    PROPERTY_RW(F32, minLOD, -1000.f);
+    PROPERTY_RW(F32, maxLOD, 1000.f);
     /// OpenGL eg: used by TEXTURE_LOD_BIAS
-    PROPERTY_RW(I32, biasLOD, 0);
+    PROPERTY_RW(F32, biasLOD, 0);
     /// Used with CLAMP_TO_BORDER as the background colour outside of the texture border
-    PROPERTY_RW(FColour4, borderColour, DefaultColours::BLACK);
+    PROPERTY_RW(TextureBorderColour, borderColour, TextureBorderColour::TRANSPARENT_BLACK_INT);
+    /// Used with custom border colours
+    PROPERTY_RW(UColour4, customBorderColour, DefaultColours::BLACK_U8);
 
 public:
     static void Clear();

@@ -1,10 +1,15 @@
 #include "stdafx.h"
 
 #include "Headers/CommandBuffer.h"
+
+#include "Core/Headers/StringHelper.h"
+#include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/Pipeline.h"
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
+
+#include "Utility/Headers/Localization.h"
 
 namespace Divide {
 
@@ -202,6 +207,12 @@ void CommandBuffer::batch() {
     }
 
     _batched = true;
+    const auto [error, lastCmdIndex] = validate();
+    if (error != GFX::ErrorType::NONE) {
+        Console::errorfn(Locale::Get(_ID("ERROR_GFX_INVALID_COMMAND_BUFFER")), lastCmdIndex, toString().c_str());
+        Console::flush();
+        DIVIDE_UNEXPECTED_CALL_MSG(Util::StringFormat("GFX::CommandBuffer::batch error [ %s ]: Invalid command buffer. Check error log!", GFX::Names::errorType[to_base(error)]).c_str());
+    }
 }
 
 void CommandBuffer::clean() {
@@ -421,7 +432,19 @@ std::pair<ErrorType, size_t> CommandBuffer::validate() const {
                 case CommandType::BIND_PIPELINE: {
                     hasPipeline = true;
                 } break;
-                case CommandType::DISPATCH_COMPUTE: 
+                case CommandType::DISPATCH_COMPUTE: {
+                    if (!hasPipeline) {
+                        return { ErrorType::MISSING_VALID_PIPELINE, cmdIndex };
+                    }
+                    const vec3<U32>& workGroupCount = get<GFX::DispatchComputeCommand>(cmd)->_computeGroupSize;
+                    if (!(workGroupCount.x > 0 &&
+                          workGroupCount.x < GFXDevice::GetDeviceInformation()._maxWorgroupCount[0] &&
+                          workGroupCount.y < GFXDevice::GetDeviceInformation()._maxWorgroupCount[1] &&
+                          workGroupCount.z < GFXDevice::GetDeviceInformation()._maxWorgroupCount[2])){
+                        return { ErrorType::INVALID_DISPATCH_COUNT, cmdIndex };
+                    }
+
+                } break;
                 case CommandType::DRAW_TEXT:
                 case CommandType::DRAW_COMMANDS: {
                     if (!hasPipeline) {
