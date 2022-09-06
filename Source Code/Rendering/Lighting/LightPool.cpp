@@ -464,17 +464,17 @@ void LightPool::uploadLightData(const RenderStage stage, GFX::CommandBuffer& buf
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
     cmd->_usage = DescriptorSetUsage::PER_FRAME;
     {
-        auto& binding = cmd->_bindings.emplace_back();
+        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE_AND_DRAW);
         binding._slot = 9;
         binding._data.As<ShaderBufferEntry>() = { *_lightBuffer, { bufferOffset * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, lightCount } };
     }
     {
-        auto& binding = cmd->_bindings.emplace_back();
+        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE_AND_DRAW);
         binding._slot = 8;
         binding._data.As<ShaderBufferEntry>() = { *_sceneBuffer, { bufferOffset, 1u } };
     }
     {
-        auto& binding = cmd->_bindings.emplace_back();
+        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE_AND_DRAW);
         binding._slot = 13;
         binding._data.As<ShaderBufferEntry>() = { *_shadowBuffer, { 0u, 1u } };
     }
@@ -554,7 +554,7 @@ void LightPool::drawLightImpostors(GFX::CommandBuffer& bufferInOut) const {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
-            auto& binding = cmd->_bindings.emplace_back();
+            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
             binding._slot = 0;
             binding._data.As<DescriptorCombinedImageSampler>() = { _lightIconsTexture->defaultView(), s_debugSamplerHash };
         }

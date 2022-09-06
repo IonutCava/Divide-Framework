@@ -360,10 +360,10 @@ bool InitGLSW(const GFXDevice& gfx, const DeviceInformation& deviceInfo, const C
                 } else {
                     const GFXDevice::GFXDescriptorSet& set = gfx.descriptorSet(setUsage);
                     for (const DescriptorSetBinding& binding : set.impl()) {
-                        const U8 glSlot = ShaderProgram::GetGLBindingForDescriptorSlot(setUsage, binding._resource._slot, binding._type);
+                        const U8 glSlot = ShaderProgram::GetGLBindingForDescriptorSlot(setUsage, binding._slot, binding._data.Type());
                         AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define %s_%d %d",
                                                                                    TypeUtil::DescriptorSetUsageToString(setUsage),
-                                                                                   binding._resource._slot,
+                                                                                   binding._slot,
                                                                                    glSlot).c_str());
                     }
                 }
@@ -1015,40 +1015,39 @@ std::pair<DescriptorSetUsage, U8> ShaderProgram::GetDescriptorSlotForGLBinding(c
     return { DescriptorSetUsage::PER_DRAW, binding };
 }
 
-void ShaderProgram::CreateSetLayout(const DescriptorSetUsage usage, const DescriptorSet& set) {
+void ShaderProgram::RegisterSetLayoutBinding(const DescriptorSetUsage usage, const U8 slot, const DescriptorSetBindingType type, const ShaderStageVisibility visibility) {
     DIVIDE_ASSERT(usage != DescriptorSetUsage::PER_DRAW);
 
     static U8 textureSlot = s_reserverdTextureSlotsPerDraw;
     static U8 bufferSlot = textureSlot + s_reserverdBufferSlotsPerDraw;
     static U8 imageSlot = s_reservedImageSlotsPerDraw;
+    DIVIDE_ASSERT(slot < MaxSlotsPerDescriptorSet);
 
-    GLBindingsPerSetArray& bindingsPerSet = s_glBindingsPerSet[to_base(usage)];
+    GLBindingsPerSet& bindingData = s_glBindingsPerSet[to_base(usage)][slot];
+    bindingData._type = type;
+    bindingData._visibility = visibility;
 
-    for (const DescriptorSetBinding& binding : set) {
-        DIVIDE_ASSERT(binding._resource._slot < MaxSlotsPerDescriptorSet);
-
-        bindingsPerSet[binding._resource._slot]._type = binding._type;
-
-        switch (binding._type) {
-            case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER:
-                bindingsPerSet[binding._resource._slot]._glBinding = textureSlot++;
+    switch (type) {
+        case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER:
+            bindingData._glBinding = textureSlot++;
             break;
-            case DescriptorSetBindingType::IMAGE:
-                bindingsPerSet[binding._resource._slot]._glBinding = imageSlot++;
+        case DescriptorSetBindingType::IMAGE:
+            bindingData._glBinding = imageSlot++;
             break;
-            case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
-            case DescriptorSetBindingType::UNIFORM_BUFFER:
-                if (usage == DescriptorSetUsage::PER_BATCH && binding._resource._slot == 0) {
-                    bindingsPerSet[binding._resource._slot]._glBinding = k_commandBufferID;
-                } else {
-                    bindingsPerSet[binding._resource._slot]._glBinding = bufferSlot++;
-                }
+        case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
+        case DescriptorSetBindingType::UNIFORM_BUFFER:
+            if (usage == DescriptorSetUsage::PER_BATCH && slot == 0) {
+                bindingData._glBinding = k_commandBufferID;
+            } else {
+                bindingData._glBinding = bufferSlot++;
+            }
             break;
-            default: DIVIDE_UNEXPECTED_CALL();
+        default:
+            DIVIDE_UNEXPECTED_CALL();
             break;
-        }
     }
 }
+
 bool ShaderProgram::OnThreadCreated(const GFXDevice& gfx, [[maybe_unused]] const std::thread::id& threadID) {
     return InitGLSW(gfx, GFXDevice::GetDeviceInformation(), gfx.context().config());
 }
@@ -1450,7 +1449,6 @@ bool ShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, boo
 
     Reflection::UniformsSet previousUniforms;
 
-    _descriptorSet.resize(0);
     _uniformBlockBuffers.clear();
 
     for (auto& [fileHash, loadDataPerFile] : fileData) {
@@ -1535,57 +1533,25 @@ void ShaderProgram::initUniformUploader(const PerFileShaderData& shaderFileData)
             }
             
             if (!found) {
-                _uniformBlockBuffers.emplace_back(_context, shaderFileData._programName.c_str(), *uniformBlock);
-                auto& blockBinding = _descriptorSet.emplace_back();
-                blockBinding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
-                blockBinding._resource._slot = to_U8(stageData._reflectionData._uniformBlockBindingIndex);
-                SetShaderStageFlag(stageData._type, blockBinding._shaderStageVisibility);
-            }
-        }
-
-        for (auto& image : stageData._reflectionData._images) {
-            assert(image._bindingSet != to_base(DescriptorSetUsage::COUNT));
-            if (image._bindingSet != to_base(DescriptorSetUsage::PER_DRAW)) {
-                continue; // We don't care about global sets here
-            }
-
-            const DescriptorSetBindingType targetType = image._combinedImageSampler ? DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER : DescriptorSetBindingType::IMAGE;
-
-            bool found = false;
-            for (DescriptorSetBinding& binding : _descriptorSet) {
-                if (binding._type == targetType && binding._resource._slot == image._bindingSlot) {
-                    found = true;
-                    SetShaderStageFlag(stageData._type, binding._shaderStageVisibility);
-                    break;
-                }
-            }
-            if (!found) {
-                DescriptorSetBinding& binding = _descriptorSet.emplace_back();
-                binding._resource._slot = image._bindingSlot;
-                binding._type = targetType;
-                SetShaderStageFlag(stageData._type, binding._shaderStageVisibility);
+                U16 visibilityMask = 0u;
+                SetShaderStageFlag(stageData._type, visibilityMask);
+                _uniformBlockBuffers.emplace_back(_context, shaderFileData._programName.c_str(), *uniformBlock, visibilityMask);
             }
         }
     }
 }
 
-void ShaderProgram::uploadPushConstants(const PushConstants& constants, GFX::MemoryBarrierCommand& memCmdInOut) {
+void ShaderProgram::uploadPushConstants(const PushConstants& constants, DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut) {
     OPTICK_EVENT()
 
     for (auto& blockBuffer : _uniformBlockBuffers) {
         for (const GFX::PushConstant& constant : constants.data()) {
             blockBuffer.uploadPushConstant(constant);
         }
-        blockBuffer.commit(memCmdInOut);
+        blockBuffer.commit(set, memCmdInOut);
     }
 
     memCmdInOut._syncFlag = 202u;
-}
-
-void ShaderProgram::preparePushConstants() {
-    for (auto& blockBuffer : _uniformBlockBuffers) {
-        blockBuffer.prepare();
-    }
 }
 
 bool ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExisting, LoadData& loadDataInOut, Reflection::UniformsSet& previousUniformsInOut, U8& blockIndexInOut) {

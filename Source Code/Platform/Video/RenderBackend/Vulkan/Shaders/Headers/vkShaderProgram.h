@@ -41,7 +41,7 @@ namespace Divide {
     struct vkDescriptorSetLayoutData {
         uint32_t set_number;
         VkDescriptorSetLayoutCreateInfo create_info;
-        std::vector<VkDescriptorSetLayoutBinding> bindings;
+        vector<VkDescriptorSetLayoutBinding> bindings;
     };
 
     class vkShader final : public ShaderModule {

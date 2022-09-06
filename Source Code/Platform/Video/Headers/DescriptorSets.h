@@ -62,33 +62,25 @@ namespace Divide {
 
         } _descriptor;
 
-        TextureData _textureData{};
-        vec2<U16> _mipLevels{};
-        vec2<U16> _layerRange{};
+        Texture* _srcTexture{nullptr};
+        vec2<U16> _mipLevels{0u, U16_MAX};  //Offset, Count
+        vec2<U16> _layerRange{0u, U16_MAX}; //Offset, Count
+
+        ImageFlag _flag{ ImageFlag::READ };
+
+        ImageLayout _layout{ ImageLayout::UNDEFINED };
 
         [[nodiscard]] size_t getHash() const override;
 
         [[nodiscard]] bool isDefaultView() const noexcept;
 
+        [[nodiscard]] TextureType targetType() const noexcept;
+                      void targetType(TextureType type) noexcept;
+
     private:
         friend class Texture;
         bool _isDefaultView{ false };
-    };
-
-    struct Image
-    {
-        enum class Flag : U8
-        {
-            READ = 0,
-            WRITE,
-            READ_WRITE
-        };
-
-        Texture* _texture{ nullptr };
-        Flag _flag{ Flag::READ };
-        U8 _layer{ 0u };
-        U8 _level{ 0u };
-        bool _layered{ false };
+        TextureType _targetType{ TextureType::COUNT };
     };
 
     struct DescriptorCombinedImageSampler {
@@ -109,7 +101,7 @@ namespace Divide {
         eastl::variant<eastl::monostate,
                        ShaderBufferEntry,
                        DescriptorCombinedImageSampler,
-                       Image> _resource{};
+                       ImageView> _resource{};
 
         [[nodiscard]] bool isSet() const noexcept;
 
@@ -122,26 +114,23 @@ namespace Divide {
         [[nodiscard]] DescriptorSetBindingType Type() const noexcept;
     };
 
-    struct DescriptorBindingEntry {
+    struct DescriptorSetBinding {
+        DescriptorSetBinding() = default;
+        explicit DescriptorSetBinding(const U16 stageMask) : _shaderStageVisibility(stageMask) {}
+        explicit DescriptorSetBinding(const ShaderStageVisibility stageVisibility) : DescriptorSetBinding(to_base(stageVisibility)) {}
+
         DescriptorSetBindingData _data{};
         U8 _slot{ 0u };
-    };
 
-    struct DescriptorSetBinding {
-        DescriptorBindingEntry _resource{};
-        U16 _shaderStageVisibility{ to_base(ShaderStageVisibility::NONE) };
-        DescriptorSetBindingType _type{ DescriptorSetBindingType::COUNT };
+        U16 _shaderStageVisibility{ to_base(ShaderStageVisibility::COUNT) };
     };
 
     using DescriptorSet = eastl::fixed_vector<DescriptorSetBinding, 16, false>;
-    using DescriptorBindings = eastl::fixed_vector<DescriptorBindingEntry, 16, false>;
 
     bool operator==(const ImageView& lhs, const ImageView& rhs) noexcept;
     bool operator!=(const ImageView& lhs, const ImageView& rhs) noexcept;
     bool operator==(const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs) noexcept;
     bool operator!=(const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs) noexcept;
-    bool operator==(const Image& lhs, const Image& rhs) noexcept;
-    bool operator!=(const Image& lhs, const Image& rhs) noexcept;
     bool operator==(const ShaderBufferEntry& lhs, const ShaderBufferEntry& rhs) noexcept;
     bool operator!=(const ShaderBufferEntry& lhs, const ShaderBufferEntry& rhs) noexcept;
     bool operator==(const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs) noexcept;
@@ -150,8 +139,6 @@ namespace Divide {
     bool operator!=(const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs) noexcept;
     bool operator==(const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs) noexcept;
     bool operator!=(const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs) noexcept;
-    bool operator==(const DescriptorBindingEntry& lhs, const DescriptorBindingEntry& rhs) noexcept;
-    bool operator!=(const DescriptorBindingEntry& lhs, const DescriptorBindingEntry& rhs) noexcept;
 }; //namespace Divide
 
 #endif //_DESCRIPTOR_SETS_H_

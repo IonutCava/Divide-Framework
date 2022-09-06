@@ -31,10 +31,6 @@ void ComputeIndirectionData() {
 
 #endif //VERT_SHADER
 
-#if !defined(NEED_TEXTURE_DATA) && defined(FRAG_SHADER)
-#define NEED_TEXTURE_DATA
-#endif //!NEED_TEXTURE_DATA && FRAG_SHADER
-
 #if defined(FRAG_SHADER)
 DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_BATCH, 5, std430) coherent ACCESS_R buffer dvd_MaterialBlock
 {
@@ -43,7 +39,7 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_BATCH, 5, std430) coherent ACCESS_R buffer dv
 
 #endif //FRAG_SHADER
 
-#if defined(NEED_TEXTURE_DATA)
+#if defined(FRAG_SHADER) || defined(NEED_TEXTURE_DATA_ALL_STAGES)
 
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0)  uniform sampler2DArray texDiffuse0;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1)  uniform sampler2DArray texOpacityMap;
@@ -58,7 +54,7 @@ DESCRIPTOR_SET_RESOURCE(PER_DRAW, 9)  uniform sampler2DArray texDiffuse1;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 10) uniform sampler2D      texReflectPlanar;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 11) uniform sampler2D      texRefractPlanar;
 
-#endif //NEED_TEXTURE_DATA
+#endif //FRAG_SHADE || NEED_TEXTURE_DATA_ALL_STAGES
 
 #include "sceneData.cmn"
 

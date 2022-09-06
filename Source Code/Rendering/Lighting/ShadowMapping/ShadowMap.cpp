@@ -265,7 +265,7 @@ void ShadowMap::bindShadowMaps(GFX::CommandBuffer& bufferInOut) {
         const ShadowType shadowType = static_cast<ShadowType>(i);
         const U8 bindSlot = LightPool::GetShadowBindSlotOffset(shadowType);
         RTAttachment* shadowTexture = sm._rt->getAttachment(RTAttachmentType::Colour, 0);
-        auto& binding = cmd->_bindings.emplace_back();
+        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = bindSlot;
         binding._data.As<DescriptorCombinedImageSampler>() = { shadowTexture->texture()->defaultView(), shadowTexture->descriptor()._samplerHash };
     }

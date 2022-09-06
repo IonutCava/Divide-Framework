@@ -55,7 +55,6 @@ class DisplayWindow;
 class glBufferImpl;
 
 
-
 struct FrameDependendSync {
     GLsync _syncObject{ nullptr };
     U64 _frameNumber{ 0u };
@@ -147,11 +146,9 @@ public:
     std::pair<GLuint, bool> allocate(size_t hash, bool retry = false);
     // no-hash version
     GLuint allocate(bool retry = false);
-    void   deallocate(GLuint& handle, U32 frameDelay = 1);
+    void   deallocate(GLuint handle, U32 frameDelay = 1);
 
 private:
-    static constexpr U32 INVALID_IDX = U32_MAX;
-
     vector<State>  _usageMap;
 
     vector<U32>    _lifeLeft;
@@ -182,6 +179,7 @@ void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
 
 /// Invalid object value. Used to compare handles and determine if they were properly created
 extern GLuint k_invalidObjectID;
+extern size_t k_invalidSyncID;
 extern GLuint s_lastQueryResult;
 extern const DisplayWindow* s_glMainRenderWindow;
 extern thread_local SDL_GLContext s_glSecondaryContext;

@@ -20,7 +20,7 @@ const Texture_ptr& RTAttachment::texture() const {
 }
 
 void RTAttachment::setTexture(const Texture_ptr& tex, const bool isExternal) noexcept {
-    assert(tex == nullptr || IsValid(tex->defaultView()._textureData));
+    assert(tex != nullptr);
 
     _texture = tex;
     changed(true);
@@ -28,6 +28,12 @@ void RTAttachment::setTexture(const Texture_ptr& tex, const bool isExternal) noe
 
 bool RTAttachment::used() const noexcept {
     return _texture != nullptr;
+}
+
+void RTAttachment::setImageLayout(const ImageLayout layout) {
+    if (used()) {
+        texture()->setImageLayout(layout);
+    }
 }
 
 bool RTAttachment::mipWriteLevel(const U16 level) noexcept {
@@ -80,6 +86,5 @@ RenderTarget& RTAttachment::parent() noexcept {
 const RenderTarget& RTAttachment::parent() const  noexcept {
     return _parent;
 }
-
 
 }; //namespace Divide

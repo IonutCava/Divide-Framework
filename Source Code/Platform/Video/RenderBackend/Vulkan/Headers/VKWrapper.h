@@ -33,14 +33,18 @@
 #ifndef _VK_WRAPPER_H_
 #define _VK_WRAPPER_H_
 
-#include "VKPlaceholderObjects.h"
-#include "VKDevice.h"
-#include "VKSwapChain.h"
-#include "VMAInclude.h"
+#include "vkDevice.h"
+#include "vkSwapChain.h"
+#include "vkDescriptors.h"
+#include "vkMemAllocatorInclude.h"
 
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
 
 namespace Divide {
+
+class Pipeline;
+enum class ShaderResult : U8;
 
 class PipelineBuilder {
 public:
@@ -104,7 +108,6 @@ struct VKStateTracker {
     U8 _activeMSAASamples{ 1u };
     bool _alphaToCoverage{ false };
     VKDynamicState _dynamicState{};
-    DescriptorSet const* _perDrawSet{ nullptr };
 };
 FWD_DECLARE_MANAGED_STRUCT(VKStateTracker);
 
@@ -172,7 +175,6 @@ class VK_API final : public RenderAPIWrapper {
       bool setViewport(const Rect<I32>& newViewport) noexcept override;
       bool setScissor(const Rect<I32>& newScissor) noexcept;
       void onThreadCreated(const std::thread::id& threadID) noexcept override;
-      void createSetLayout(DescriptorSetUsage usage, const DescriptorSet& set) override;
 
 private:
     void initPipelines();
@@ -186,7 +188,7 @@ private:
 
     ShaderResult bindPipeline(const Pipeline& pipeline, VkCommandBuffer& cmdBuffer) const;
     void bindDynamicState(const RenderStateBlock& currentState, VkCommandBuffer& cmdBuffer) const;
-    [[nodiscard]] bool makeTextureViewResident(DescriptorSetUsage set, U8 bindingSlot, const ImageView& imageView, size_t samplerHash) const override;
+    [[nodiscard]] bool bindShaderResources(DescriptorSetUsage usage, const DescriptorSet& bindings) override;
 
 public:
     static const VKStateTracker_uptr& GetStateTracker() noexcept;
@@ -208,9 +210,14 @@ private:
     VKImmediateCmdContext_uptr _cmdContext{ nullptr };
     vkb::Instance _vkbInstance;
 
+    DescriptorAllocator_uptr _descriptorAllocator{ nullptr };
+    DescriptorLayoutCache_uptr _descriptorLayoutCache{ nullptr };
+
     VkDebugUtilsMessengerEXT _debugMessenger{ VK_NULL_HANDLE }; // Vulkan debug output handle
 
     VkSurfaceKHR _surface{ VK_NULL_HANDLE }; // Vulkan window surface
+
+    VkBuffer _drawIndirectBuffer{ VK_NULL_HANDLE };
 
     vector<VkCommandBuffer> _commandBuffers{};
     U8 _currentFrameIndex{ 0u };
@@ -220,6 +227,7 @@ private:
     VkExtent2D _windowExtents{};
     bool _skipEndFrame{ false };
 
+    std::array<VkDescriptorSet, to_base(DescriptorSetUsage::COUNT)> _descriptorSets;
 private:
     using SamplerObjectMap = hashMap<size_t, VkSampler, NoHash<size_t>>;
 

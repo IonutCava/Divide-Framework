@@ -637,7 +637,7 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
     DIVIDE_ASSERT(_basePipelineDescriptor._shaderProgramHandle != SHADER_INVALID_HANDLE, "IMPrimitive error: Draw call received without a valid shader defined!");
 
     _additionalConstats.set(_ID("dvd_WorldMatrix"), GFX::PushConstantType::MAT4, worldMatrix);
-    _additionalConstats.set(_ID("useTexture"), GFX::PushConstantType::BOOL, IsValid(_texture._textureData));
+    _additionalConstats.set(_ID("useTexture"), GFX::PushConstantType::BOOL, _texture.targetType() != TextureType::COUNT);
 
     GenericDrawCommand drawCmd{};
     drawCmd._drawCount = 1u;
@@ -646,10 +646,10 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
 
     GFX::EnqueueCommand(commandBufferInOut, GFX::BeginDebugScopeCommand{ _name.c_str() });
     {
-        if (IsValid(_texture._textureData)) {
+        if (_texture.targetType() != TextureType::COUNT) {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(commandBufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
-            auto& binding = cmd->_bindings.emplace_back();
+            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
             binding._slot = 0;
             binding._data.As<DescriptorCombinedImageSampler>() = { _texture, _samplerHash };
         }

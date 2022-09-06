@@ -174,8 +174,7 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
 
     virtual bool recompile(bool& skipped);
 
-    void uploadPushConstants(const PushConstants& constants, GFX::MemoryBarrierCommand& memCmdInOut);
-    void preparePushConstants();
+    void uploadPushConstants(const PushConstants& constants, DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut);
 
     //==================== static methods ===============================//
     static void Idle(PlatformContext& platformContext);
@@ -211,9 +210,9 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     static [[nodiscard]] U8 GetGLBindingForDescriptorSlot(DescriptorSetUsage usage, U8 slot, DescriptorSetBindingType type) noexcept;
     static [[nodiscard]] std::pair<DescriptorSetUsage, U8> GetDescriptorSlotForGLBinding(U8 binding, DescriptorSetBindingType type) noexcept;
 
-    static void CreateSetLayout(DescriptorSetUsage usage, const DescriptorSet& set);
+    static void RegisterSetLayoutBinding(DescriptorSetUsage usage, U8 slot, DescriptorSetBindingType type, ShaderStageVisibility visibility);
 
-    PROPERTY_R_IW(DescriptorSet, descriptorSet);
+    PROPERTY_R_IW();
     PROPERTY_RW(bool, highPriority, true);
     PROPERTY_R_IW(ShaderProgramHandle, handle, SHADER_INVALID_HANDLE);
 
@@ -293,6 +292,7 @@ private:
 
     struct GLBindingsPerSet {
         U8 _glBinding{ INVALID_TEXTURE_BINDING };
+        ShaderStageVisibility _visibility{ ShaderStageVisibility::COUNT };
         DescriptorSetBindingType _type{ DescriptorSetBindingType::COUNT };
     };
     using GLBindingsPerSetArray = std::array<GLBindingsPerSet, MaxSlotsPerDescriptorSet>;

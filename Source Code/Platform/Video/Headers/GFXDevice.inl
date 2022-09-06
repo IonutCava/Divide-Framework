@@ -146,32 +146,13 @@ inline const PerformanceMetrics& GFXDevice::getPerformanceMetrics() const noexce
 }
 
 inline GFXDevice::GFXDescriptorSet& GFXDevice::descriptorSet(const DescriptorSetUsage usage) noexcept {
-    switch (usage) {
-        case DescriptorSetUsage::PER_FRAME: return _descriptorSets._perFrameSet;
-        case DescriptorSetUsage::PER_PASS: return _descriptorSets._perPassSet;
-        case DescriptorSetUsage::PER_BATCH: return _descriptorSets._perBatchSet;
-    }
-    
-    DIVIDE_UNEXPECTED_CALL();
-    return _descriptorSets._perFrameSet;
+    return _descriptorSets[to_base(usage)];
 }
 
 inline const GFXDevice::GFXDescriptorSet& GFXDevice::descriptorSet(const DescriptorSetUsage usage) const noexcept {
-    switch (usage) {
-        case DescriptorSetUsage::PER_FRAME: return _descriptorSets._perFrameSet;
-        case DescriptorSetUsage::PER_PASS: return _descriptorSets._perPassSet;
-        case DescriptorSetUsage::PER_BATCH: return _descriptorSets._perBatchSet;
-    }
-
-    DIVIDE_UNEXPECTED_CALL();
-    return _descriptorSets._perFrameSet;
+    return _descriptorSets[to_base(usage)];
 }
 
-inline void GFXDevice::GFXDescriptorSets::markDirty() noexcept {
-    _perFrameSet.dirty(true);
-    _perPassSet.dirty(true);
-    _perBatchSet.dirty(true);
-}
 };  // namespace Divide
 
 #endif

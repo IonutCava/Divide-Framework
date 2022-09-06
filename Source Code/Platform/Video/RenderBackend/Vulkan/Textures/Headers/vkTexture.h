@@ -34,7 +34,7 @@
 #define VK_TEXTURE_H
 
 #include "Platform/Video/Textures/Headers/Texture.h"
-#include "Platform/Video/RenderBackend/Vulkan/Headers/VMAInclude.h"
+#include "Platform/Video/RenderBackend/Vulkan/Headers/vkMemAllocatorInclude.h"
 
 namespace Divide {
     struct AllocatedImage : private NonCopyable {
@@ -49,6 +49,18 @@ namespace Divide {
 
     class vkTexture final : public Texture {
     public:
+        struct CachedImageView {
+            VkImageView _view;
+            struct Descriptor {
+                vec2<U32> _layers{ 0u };
+                vec2<U32> _mipLevels{ 0u };
+                VkFormat _format {VK_FORMAT_MAX_ENUM };
+                TextureType _type{ TextureType::COUNT };
+                ImageFlag _rwFlag{ ImageFlag::READ };
+                bool operator==(const Descriptor& other) noexcept;
+            } _descriptor; 
+        };
+
         vkTexture(GFXDevice& context,
                   const size_t descriptorHash,
                   const Str256& name,
@@ -61,26 +73,29 @@ namespace Divide {
 
         bool unload() override;
 
-        void bindLayer(U8 slot, U8 level, U8 layer, bool layered, Image::Flag rw_flag) noexcept override;
-
         void clearData(const UColour4& clearColour, U8 level) const noexcept override;
 
         void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const noexcept override;
 
         TextureReadbackData readData(U16 mipLevel, GFXDataFormat desiredFormat) const noexcept override;
 
+        VkImageView getImageView(const CachedImageView::Descriptor& descriptor);
+
         PROPERTY_R(AllocatedImage_uptr, image, nullptr);
-        PROPERTY_R_IW(VkImageType, type, VK_IMAGE_TYPE_MAX_ENUM);
-        PROPERTY_R_IW(VkImageView, view, VK_NULL_HANDLE);
-        PROPERTY_R_IW(VkFormat, internalFormat, VK_FORMAT_MAX_ENUM);
+        PROPERTY_R_IW(VkImageType, vkType, VK_IMAGE_TYPE_MAX_ENUM);
+        PROPERTY_R_IW(VkImageView, vkView, VK_NULL_HANDLE);
+        PROPERTY_R_IW(VkFormat, vkFormat, VK_FORMAT_MAX_ENUM);
 
     private:
-        void reserveStorage();
         void loadDataInternal(const ImageTools::ImageData& imageData) override;
-        void prepareTextureData(U16 width, U16 height, U16 depth) override;
+        void prepareTextureData(U16 width, U16 height, U16 depth, bool emptyAllocation) override;
         void submitTextureData() override;
         void generateTextureMipmap(VkCommandBuffer cmd, U8 baseLevel);
         void clearDataInternal(const UColour4& clearColour, U8 level, bool clearRect, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const;
+
+    private:
+        vector<CachedImageView> _imageViewCache;
+        VkDeviceSize _stagingBufferSize{ 0u };
     };
 } //namespace Divide
 

@@ -198,47 +198,47 @@ void PostFX::apply(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, 
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
     cmd->_usage = DescriptorSetUsage::PER_DRAW;
     {
-        auto& binding = cmd->_bindings.emplace_back();
+        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = 0;
         binding._data.As<DescriptorCombinedImageSampler>() = { prbAtt->texture()->defaultView(), prbAtt->descriptor()._samplerHash };
     }
     {
-        auto& binding = cmd->_bindings.emplace_back();
+        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = 5;
         binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->defaultView(), samplerHash };
     }   
     {
-        auto& binding = cmd->_bindings.emplace_back();
+        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = 4;
         binding._data.As<DescriptorCombinedImageSampler>() = { linDepthDataAtt->texture()->defaultView(), samplerHash };
     }
     {
-        auto& binding = cmd->_bindings.emplace_back();
+        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = 6;
         binding._data.As<DescriptorCombinedImageSampler>() = { ssrDataAtt->texture()->defaultView(), samplerHash };
     }
     {
-        auto& binding = cmd->_bindings.emplace_back();
+        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = 7;
         binding._data.As<DescriptorCombinedImageSampler>() = { sceneDataAtt->texture()->defaultView(), samplerHash };
     }
     {
-        auto& binding = cmd->_bindings.emplace_back();
+        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = 8;
         binding._data.As<DescriptorCombinedImageSampler>() = { velocityAtt->texture()->defaultView(), samplerHash };
     }
     {
-        auto& binding = cmd->_bindings.emplace_back();
+        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = 3;
         binding._data.As<DescriptorCombinedImageSampler>() = { _underwaterTexture->defaultView(), samplerHash };
     }
     {
-        auto& binding = cmd->_bindings.emplace_back();
+        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = 2;
         binding._data.As<DescriptorCombinedImageSampler>() = { _noise->defaultView(), samplerHash };
     }
     {
-        auto& binding = cmd->_bindings.emplace_back();
+        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = 1;
         binding._data.As<DescriptorCombinedImageSampler>() = { _screenBorder->defaultView(), samplerHash };
     }

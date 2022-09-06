@@ -77,6 +77,7 @@ namespace GLUtil {
 /*-----------Object Management----*/
 GLuint k_invalidObjectID = GL_INVALID_INDEX;
 GLuint s_lastQueryResult = GL_INVALID_INDEX;
+size_t k_invalidSyncID = std::numeric_limits<size_t>::max();
 
 const DisplayWindow* s_glMainRenderWindow;
 thread_local SDL_GLContext s_glSecondaryContext = nullptr;
@@ -576,14 +577,14 @@ std::pair<GLuint, bool> glTextureViewCache::allocate(const size_t hash, const bo
         ScopedLock<SharedMutex> w_lock(_lock);
 
         if (hash != 0u) {
-            U32 idx = INVALID_IDX;
+            U32 idx = GLUtil::k_invalidObjectID;
             const auto& cacheIt = _cache.find(hash);
             if (cacheIt != cend(_cache)) {
                 idx = cacheIt->second;
             }
 
 
-            if (idx != INVALID_IDX) {
+            if (idx != GLUtil::k_invalidObjectID) {
                 assert(_usageMap[idx] != State::FREE);
                 _usageMap[idx] = State::USED;
                 _lifeLeft[idx] += 1;
@@ -613,13 +614,12 @@ std::pair<GLuint, bool> glTextureViewCache::allocate(const size_t hash, const bo
     return std::make_pair(0u, false);
 }
 
-void glTextureViewCache::deallocate(GLuint& handle, const U32 frameDelay) {
+void glTextureViewCache::deallocate(const GLuint handle, const U32 frameDelay) {
 
     ScopedLock<SharedMutex> w_lock(_lock);
     const U32 count = to_U32(_handles.size());
     for (U32 i = 0u; i < count; ++i) {
         if (_handles[i] == handle) {
-            handle = 0u;
             _lifeLeft[i] = frameDelay;
             _usageMap[i] = State::CLEAN;
             return;
@@ -698,8 +698,8 @@ void DebugCallback(const GLenum source,
         fullScope.append(GL_API::GetStateTracker()->_debugScope[i].first);
     }
     // Print the message and the details
-    const GLuint activeProgram = GL_API::GetStateTracker()->_activeShaderProgram;
-    const GLuint activePipeline = GL_API::GetStateTracker()->_activeShaderPipeline;
+    const GLuint activeProgram = GL_API::GetStateTracker()->_activeShaderProgramHandle;
+    const GLuint activePipeline = GL_API::GetStateTracker()->_activeShaderPipelineHandle;
 
     const char* programMsg = "[%s Thread][Source: %s][Type: %s][ID: %d][Severity: %s][Bound Program : %d][DebugGroup: %s][Message: %s]";
     const char* pipelineMsg = "[%s Thread][Source: %s][Type: %s][ID: %d][Severity: %s][Bound Pipeline : %d][DebugGroup: %s][Message: %s]";

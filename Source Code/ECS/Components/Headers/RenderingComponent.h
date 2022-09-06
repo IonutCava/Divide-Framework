@@ -173,9 +173,9 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
     [[nodiscard]] bool canDraw(const RenderStagePass& renderStagePass);
 
-    [[nodiscard]] DescriptorBindings& getDescriptorSet(const RenderStagePass& renderStagePass);
-    [[nodiscard]] PushConstants&      getPushConstants(const RenderStagePass& renderStagePass);
-    [[nodiscard]] size_t              getPipelineHash(const RenderStagePass& renderStagePass);
+    [[nodiscard]] DescriptorSet& getDescriptorSet(const RenderStagePass& renderStagePass);
+    [[nodiscard]] PushConstants& getPushConstants(const RenderStagePass& renderStagePass);
+    [[nodiscard]] size_t         getPipelineHash(const RenderStagePass& renderStagePass);
 
     void addAdditionalCommands(const RenderStagePass& renderStagePass, GFX::CommandBuffer* cmdBuffer);
 

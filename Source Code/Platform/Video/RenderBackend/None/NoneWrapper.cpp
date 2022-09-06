@@ -119,10 +119,7 @@ namespace Divide {
     void NONE_API::onThreadCreated([[maybe_unused]] const std::thread::id& threadID) noexcept {
     }
 
-    void NONE_API::createSetLayout([[maybe_unused]] const DescriptorSetUsage usage, [[maybe_unused]] const DescriptorSet& set) {
-    }
-
-    bool NONE_API::makeTextureViewResident([[maybe_unused]] const DescriptorSetUsage set, [[maybe_unused]] const U8 bindingSlot, [[maybe_unused]] const ImageView& imageView, [[maybe_unused]] const size_t samplerHash) const {
+    bool NONE_API::bindShaderResources([[maybe_unused]] DescriptorSetUsage usage, [[maybe_unused]] const DescriptorSet& bindings) {
         return true;
     }
 }; //namespace Divide

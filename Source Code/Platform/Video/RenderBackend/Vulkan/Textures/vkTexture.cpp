@@ -11,10 +11,18 @@ namespace Divide {
             VkImageAspectFlags ret = VK_IMAGE_ASPECT_COLOR_BIT;
 
             if (descriptor.depthAttachmentCompatible()) {
-                ret = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+                ret = VK_IMAGE_ASPECT_DEPTH_BIT;
+            }
+
+            if (descriptor.stencilAttachmentCompatible()) {
+                ret |= VK_IMAGE_ASPECT_STENCIL_BIT;
             }
 
             return ret;
+        }
+
+        FORCE_INLINE [[nodiscard]] U8 GetBytesPerPixel(const GFXDataFormat format, const GFXImageFormat baseFormat) noexcept {
+            return Texture::GetSizeFactor(format) * NumChannels(baseFormat);
         }
     };
 
@@ -38,8 +46,6 @@ namespace Divide {
         : Texture(context, descriptorHash, name, assetNames, assetLocations, texDescriptor, parentCache)
     {
         static std::atomic_uint s_textureHandle = 1u;
-        _defaultView._textureData._textureType = _descriptor.texType();
-        _defaultView._textureData._textureHandle = s_textureHandle.fetch_add(1u);
     }
 
     vkTexture::~vkTexture()
@@ -48,16 +54,16 @@ namespace Divide {
     }
 
     bool vkTexture::unload() {
-        if (_view != VK_NULL_HANDLE) {
-            VK_API::RegisterCustomAPIDelete([view = _view](VkDevice device) {
-                vkDestroyImageView(device, view, nullptr);
-            }, true);
-        }
-        _view = VK_NULL_HANDLE;
-        return true;
-    }
+        VK_API::RegisterCustomAPIDelete([views = _imageViewCache](VkDevice device) {
+            for (auto& it : views) {
+                vkDestroyImageView(device, it._view, nullptr);
+            }
+        }, true);
+        
+        _vkView = VK_NULL_HANDLE;
+        _imageViewCache.clear();
 
-    void vkTexture::bindLayer([[maybe_unused]] U8 slot, [[maybe_unused]] U8 level, [[maybe_unused]] U8 layer, [[maybe_unused]] bool layered, [[maybe_unused]] Image::Flag rw_flag) noexcept {
+        return Texture::unload();
     }
 
     void vkTexture::generateTextureMipmap(VkCommandBuffer cmd, const U8 baseLevel) {
@@ -140,32 +146,95 @@ namespace Divide {
     void vkTexture::submitTextureData() {
 
         if (_image != nullptr) {
-            VkImageSubresourceRange range{};
-            range.aspectMask = GetAspectFlags(_descriptor);
-            range.baseArrayLayer = 0;
-            range.layerCount = VK_REMAINING_ARRAY_LAYERS;
-            range.baseMipLevel = 0;
-            range.levelCount = VK_REMAINING_MIP_LEVELS;
+            CachedImageView::Descriptor defaultViewDescriptor{};
+            defaultViewDescriptor._mipLevels = { 0u, VK_REMAINING_MIP_LEVELS };
+            defaultViewDescriptor._layers = { 0u, VK_REMAINING_ARRAY_LAYERS };
+            defaultViewDescriptor._format = vkFormat();
+            defaultViewDescriptor._type = _descriptor.texType();
+            defaultViewDescriptor._rwFlag = _descriptor.rwFlag();
 
-            VkImageViewCreateInfo imageInfo = vk::imageViewCreateInfo();
-            imageInfo.image = _image->_image;
-            imageInfo.format = internalFormat();
-            imageInfo.viewType = vkTextureViewTypeTable[to_base(_descriptor.texType())];
-            imageInfo.subresourceRange = range;
-
-            VK_CHECK(vkCreateImageView(VK_API::GetStateTracker()->_device->getVKDevice(), &imageInfo, nullptr, &_view));
+            _vkView = getImageView(defaultViewDescriptor);
         }
     }
 
-    void vkTexture::prepareTextureData(const U16 width, const U16 height, const U16 depth) {
-        Texture::prepareTextureData(width, height, depth);
+    void vkTexture::prepareTextureData(const U16 width, const U16 height, const U16 depth, const bool emptyAllocation) {
+        Texture::prepareTextureData(width, height, depth, emptyAllocation);
 
-        _type = vkTextureTypeTable[to_base(_loadingData._textureType)];
+        vkFormat(VKUtil::internalFormat(_descriptor.baseFormat(), _descriptor.dataType(), _descriptor.srgb(), _descriptor.normalized()));
+        _image = eastl::make_unique<AllocatedImage>();
+        _vkType = vkTextureTypeTable[to_base(descriptor().texType())];
+
+        VkImageCreateInfo imageInfo = vk::imageCreateInfo();
+        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.format = vkFormat();
+        imageInfo.imageType = vkType();
+        imageInfo.mipLevels = mipCount();
+        imageInfo.arrayLayers = _numLayers;
+        imageInfo.extent.width = to_U32(_width);
+        imageInfo.extent.height = to_U32(_height);
+        imageInfo.extent.depth = to_U32(_depth);
+
+        if (!emptyAllocation) {
+            imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        }
+        if (_descriptor.rwFlag() == ImageFlag::READ_WRITE || _descriptor.rwFlag() == ImageFlag::READ) {
+            imageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+        }
+        if (_descriptor.rwFlag() == ImageFlag::READ_WRITE || _descriptor.rwFlag() == ImageFlag::WRITE) {
+            imageInfo.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+        }
+        if (!IsCompressed(_descriptor.baseFormat())) {
+            if (_descriptor.colorAttachmentCompatible())
+            {
+                imageInfo.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+            }
+            if (_descriptor.depthAttachmentCompatible() || _descriptor.stencilAttachmentCompatible())
+            {
+                imageInfo.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+            }
+            imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        }
+        if (_descriptor.msaaSamples() > 0u)
+        {
+            assert(isPowerOfTwo(_descriptor.msaaSamples()));
+            imageInfo.samples = static_cast<VkSampleCountFlagBits>(_descriptor.msaaSamples());
+        }
+        if (vkType() == VK_IMAGE_TYPE_3D) {
+            imageInfo.flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
+        }
+        if (IsCubeTexture(_descriptor.texType())) {
+            imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+            imageInfo.arrayLayers *= 6;
+        }
+
+        if (emptyAllocation) {
+            imageInfo.flags |= VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
+        }
+        VmaAllocationCreateInfo vmaallocinfo = {};
+        vmaallocinfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+        vmaallocinfo.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+        vmaallocinfo.priority = 1.f;
+
+        UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()->_allocatorInstance._allocatorLock);
+        VK_CHECK(vmaCreateImage(*VK_API::GetStateTracker()->_allocatorInstance._allocator,
+                                &imageInfo,
+                                &vmaallocinfo,
+                                &_image->_image,
+                                &_image->_allocation,
+                                &_image->_allocInfo));
     }
 
     void vkTexture::loadDataInternal(const ImageTools::ImageData& imageData) {
         const U32 numLayers = imageData.layerCount();
         const U8 numMips = imageData.mipCount();
+        if (vkType() == VK_IMAGE_TYPE_3D) {
+            DIVIDE_ASSERT(_numLayers >= numLayers);
+        } else {
+            DIVIDE_ASSERT(_numLayers * 6 >= numLayers);
+        }
 
         U16 maxDepth = 0u;
         size_t totalSize = 0u;
@@ -177,6 +246,7 @@ namespace Divide {
                 maxDepth = std::max(maxDepth, mip->_dimensions.depth);
             }
         }
+        DIVIDE_ASSERT(_depth >= maxDepth);
 
         const AllocatedBuffer_uptr stagingBuffer = VKUtil::createStagingBuffer(totalSize);
         Byte* target = (Byte*)stagingBuffer->_allocInfo.pMappedData;
@@ -191,61 +261,7 @@ namespace Divide {
             }
         }
 
-        internalFormat(VKUtil::internalFormat(_descriptor.baseFormat(), _descriptor.dataType(), _descriptor.srgb(), _descriptor.normalized()));
-
-        _image = eastl::make_unique<AllocatedImage>();
-        {
-            VkImageCreateInfo imageInfo = vk::imageCreateInfo();
-            imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-            imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-            imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-            imageInfo.format = internalFormat();
-            imageInfo.imageType = _type;
-            imageInfo.mipLevels = mipCount();
-            imageInfo.arrayLayers = numLayers;
-            imageInfo.extent.width = to_U32(_width);
-            imageInfo.extent.height = to_U32(_height);
-            imageInfo.extent.depth = to_U32(maxDepth);
-
-            if (!IsCompressed(_descriptor.baseFormat())) {
-                if (_descriptor.colorAttachmentCompatible())
-                {
-                    imageInfo.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-                }
-                if (_descriptor.depthAttachmentCompatible())
-                {
-                    imageInfo.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-                }
-                imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-            }
-            if (_descriptor.msaaSamples() > 0u)
-            {
-                assert(isPowerOfTwo(_descriptor.msaaSamples()));
-                imageInfo.samples = static_cast<VkSampleCountFlagBits>(_descriptor.msaaSamples());
-            }
-            if (_type == VK_IMAGE_TYPE_3D) {
-                imageInfo.flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
-            }
-            if (_descriptor.texType() == TextureType::TEXTURE_CUBE_MAP ||
-                _descriptor.texType() == TextureType::TEXTURE_CUBE_ARRAY)
-            {
-                imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-            }
-            VmaAllocationCreateInfo vmaallocinfo = {};
-            vmaallocinfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-            vmaallocinfo.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
-            vmaallocinfo.priority = 1.f;
-
-            UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()->_allocatorInstance._allocatorLock);
-            VK_CHECK(vmaCreateImage(*VK_API::GetStateTracker()->_allocatorInstance._allocator,
-                                    &imageInfo,
-                                    &vmaallocinfo,
-                                    &_image->_image,
-                                    &_image->_allocation,
-                                    &_image->_allocInfo));
-        }
+       
         VK_API::GetStateTracker()->_cmdContext->flushCommandBuffer([&](VkCommandBuffer cmd) {
             VkImageMemoryBarrier imageBarrier_toTransfer = {};
             imageBarrier_toTransfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -329,5 +345,57 @@ namespace Divide {
     Texture::TextureReadbackData vkTexture::readData([[maybe_unused]] U16 mipLevel, [[maybe_unused]] GFXDataFormat desiredFormat) const noexcept {
         TextureReadbackData data{};
         return MOV(data);
+    }
+
+    bool vkTexture::CachedImageView::Descriptor::operator==(const Descriptor& other) noexcept {
+        return _rwFlag == other._rwFlag &&
+               _type == other._type &&
+               _format == other._format &&
+               _layers == other._layers &&
+               _mipLevels == other._mipLevels;
+    }
+
+    VkImageView vkTexture::getImageView(const CachedImageView::Descriptor& descriptor) {
+        for (CachedImageView& view : _imageViewCache) {
+            if (view._descriptor == descriptor) {
+                return view._view;
+            }
+        }
+
+        VkImageSubresourceRange range{};
+        range.aspectMask = GetAspectFlags(_descriptor);
+        range.baseArrayLayer = descriptor._layers.min;
+        range.layerCount = descriptor._layers.max;
+        range.baseMipLevel = descriptor._mipLevels.min;
+        range.levelCount = descriptor._mipLevels.max;
+
+        if (IsCubeTexture(descriptor._type) &&
+            range.layerCount != VK_REMAINING_ARRAY_LAYERS) {
+            range.layerCount *= 6;
+        }
+
+        VkImageViewCreateInfo imageInfo = vk::imageViewCreateInfo();
+        imageInfo.image = _image->_image;
+        imageInfo.format = descriptor._format;
+        imageInfo.viewType = vkTextureViewTypeTable[to_base(descriptor._type)];
+        imageInfo.subresourceRange = range;
+
+        VkImageViewUsageCreateInfo viewCreateInfo = vk::imageViewUsageCreateInfo();
+        if (descriptor._rwFlag == ImageFlag::WRITE || descriptor._rwFlag == ImageFlag::READ_WRITE) {
+            viewCreateInfo.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+        }
+        if (descriptor._rwFlag == ImageFlag::READ || descriptor._rwFlag == ImageFlag::READ_WRITE) {
+            viewCreateInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+        }
+        imageInfo.pNext = &viewCreateInfo;
+        
+
+        CachedImageView newView{};
+        newView._descriptor = descriptor;
+        VK_CHECK(vkCreateImageView(VK_API::GetStateTracker()->_device->getVKDevice(), &imageInfo, nullptr, &newView._view));
+        
+
+        _imageViewCache.emplace_back(newView);
+        return newView._view;
     }
 }; //namespace Divide

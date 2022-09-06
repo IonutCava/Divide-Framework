@@ -445,10 +445,10 @@ CEGUI::GUIContext* GUI::getCEGUIContext() noexcept {
 
 ImageView GUI::getCEGUIRenderTextureData() const {
     if (_ceguiRenderTextureTarget != nullptr) {
-        const GFXDevice& gfx = _context->parent().platformContext().gfx();
+        //const GFXDevice& gfx = _context->parent().platformContext().gfx();
         ImageView ret{};
-        ret._textureData._textureHandle = gfx.getHandleFromCEGUITexture(_ceguiRenderTextureTarget->getTexture());
-        ret._textureData._textureType = TextureType::TEXTURE_2D;
+        //ret._textureData._textureHandle = gfx.getHandleFromCEGUITexture(_ceguiRenderTextureTarget->getTexture());
+        //ret._textureData._textureType = TextureType::TEXTURE_2D;
         return ret;
 
     }

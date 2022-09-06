@@ -101,7 +101,7 @@ bool glShaderProgram::unload() {
             g_deletionSet.insert(_handle);
         }
 
-        if (GL_API::GetStateTracker()->_activeShaderPipeline == _handle) {
+        if (GL_API::GetStateTracker()->_activeShaderPipelineHandle == _handle) {
             if (GL_API::GetStateTracker()->setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED) {
                 DIVIDE_UNEXPECTED_CALL();
             }
@@ -223,19 +223,7 @@ bool glShaderProgram::recompile(bool& skipped) {
     }
 
     skipped = false;
-
-    // Remember bind state and unbind it if needed
-    const bool wasBound = GL_API::GetStateTracker()->_activeShaderPipeline == _handle;
-    if (wasBound) {
-        if (GL_API::GetStateTracker()->setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED) {
-            DIVIDE_UNEXPECTED_CALL();
-        }
-    }
     threadedLoad(true);
-    // Restore bind state
-    if (wasBound) {
-        bind();
-    }
 
     return true;
 }
@@ -254,7 +242,6 @@ ShaderResult glShaderProgram::bind() {
     if (GL_API::GetStateTracker()->setActiveShaderPipeline(_handle) == GLStateTracker::BindResult::JUST_BOUND) {
         // All of this needs to be run on an actual bind operation. If we are already bound, we assume we did all this
         processValidation();
-        preparePushConstants();
     }
 
     return ShaderResult::OK;

@@ -374,7 +374,6 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
     grassSampler.anisotropyLevel(8);
 
     TextureDescriptor grassTexDescriptor(TextureType::TEXTURE_2D_ARRAY);
-    grassTexDescriptor.layerCount(vegDetails.billboardCount);
     grassTexDescriptor.srgb(true);
 
     ResourceDescriptor vegetationBillboards("Vegetation Billboards");
@@ -383,7 +382,7 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
     vegetationBillboards.propertyDescriptor(grassTexDescriptor);
     vegetationBillboards.waitForReady(false);
     Texture_ptr grassBillboardArray = CreateResource<Texture>(terrain->parentResourceCache(), vegetationBillboards, loadTasks);
-
+    
     ResourceDescriptor vegetationMaterial("grassMaterial");
     Material_ptr vegMaterial = CreateResource<Material>(terrain->parentResourceCache(), vegetationMaterial);
     vegMaterial->properties().shadingMode(ShadingMode::BLINN_PHONG);
@@ -419,6 +418,7 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
     s_cullShaderTrees = CreateResource<ShaderProgram>(terrain->parentResourceCache(), instanceCullShaderTrees, loadTasks);
 
     WAIT_FOR_CONDITION(loadTasks.load() == 0u);
+    DIVIDE_ASSERT(grassBillboardArray->numLayers() == vegDetails.billboardCount);
 
     vegMaterial->computeShaderCBK([]([[maybe_unused]] Material* material, const RenderStagePass stagePass) {
         ShaderProgramDescriptor shaderDescriptor = {};
@@ -696,7 +696,7 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
-            auto& binding = cmd->_bindings.emplace_back();
+            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
             binding._slot = 0;
             binding._data.As<DescriptorCombinedImageSampler>() = { hizTexture->defaultView(), hizAttachment->descriptor()._samplerHash };
         }
@@ -704,13 +704,13 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_PASS;
             if (s_grassData) {
-                auto& binding = cmd->_bindings.emplace_back();
+                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::ALL);
                 binding._slot = 6;
                 binding._data.As<ShaderBufferEntry>() = { *s_grassData, { 0u, s_grassData->getPrimitiveCount() } };
             }
 
             if (s_treeData) {
-                auto& binding = cmd->_bindings.emplace_back();
+                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::ALL);
                 binding._slot = 5;
                 binding._data.As<ShaderBufferEntry>() = { *s_treeData, { 0u, s_treeData->getPrimitiveCount() } };
             }

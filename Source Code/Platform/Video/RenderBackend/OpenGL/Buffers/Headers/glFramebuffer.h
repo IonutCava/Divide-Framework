@@ -102,9 +102,9 @@ protected:
     void setDefaultState(const RTDrawDescriptor& drawPolicy) override;
 
     void toggleAttachments();
-
+    void setAttachmentLayout(ImageLayout layout);
     void begin(const RTDrawDescriptor& drawPolicy);
-    void end(bool needsUnbind) const;
+    void end(bool needsUnbind);
 
     PROPERTY_R_IW(GLuint, framebufferHandle, GLUtil::k_invalidObjectID);
 
@@ -139,7 +139,7 @@ namespace Attorney {
         static void begin(glFramebuffer& buffer, const RTDrawDescriptor& drawPolicy) {
             buffer.begin(drawPolicy);
         }
-        static void end(const glFramebuffer& buffer, const bool needsUnbind) {
+        static void end(glFramebuffer& buffer, const bool needsUnbind) {
             buffer.end(needsUnbind);
         }
 

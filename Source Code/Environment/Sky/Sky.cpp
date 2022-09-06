@@ -524,8 +524,6 @@ bool Sky::load() {
         _worlNoiseTex->loadData(imgDataWorl);
 
         textureDescriptor.texType(TextureType::TEXTURE_2D_ARRAY);
-        textureDescriptor.layerCount(1u);
-
         // We should still keep mipmaps, but filtering should be set to linear
         //textureDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
         

@@ -5,6 +5,7 @@
 
 #include "Core/Headers/StringHelper.h"
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
+#include "Platform/Video/Textures/Headers/Texture.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
 
@@ -207,7 +208,7 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent) {
         if (binding._data.Has<ShaderBufferEntry>()) {
             ++bufferCount;
         } else if (binding._data.Has<DescriptorCombinedImageSampler>() ||
-                   binding._data.Has<Image>()) {
+                   binding._data.Has<ImageView>()) {
             ++imageCount;
         }
     }
@@ -240,22 +241,31 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent) {
                 ret.append("    ");
             }
             if (binding._data.Has<DescriptorCombinedImageSampler>()) {
-                ret.append(Util::StringFormat("Texture [ %d - %d - %zu ] Layers: [ %d - %d ] MipRange: [ %d - %d ]\n",
+                Texture* srcTex = binding._data.As<DescriptorCombinedImageSampler>()._image._srcTexture;
+
+                ret.append(Util::StringFormat("Texture [ %zu - %s - %d - %zu ] Layers: [ %d - %d ] MipRange: [ %d - %d ]\n",
                            binding._slot,
-                           binding._data.As<DescriptorCombinedImageSampler>()._image._textureData._textureHandle,
+                           srcTex != nullptr ? srcTex->getGUID() : 0u,
+                           srcTex != nullptr ? srcTex->resourceName().c_str() : "no-name",
                            binding._data.As<DescriptorCombinedImageSampler>()._samplerHash,
                            binding._data.As<DescriptorCombinedImageSampler>()._image._layerRange.min,
                            binding._data.As<DescriptorCombinedImageSampler>()._image._layerRange.max,
                            binding._data.As<DescriptorCombinedImageSampler>()._image._mipLevels.min,
                            binding._data.As<DescriptorCombinedImageSampler>()._image._mipLevels.max));
             } else {
-                ret.append(Util::StringFormat("Image binds: [ %d - [%d - %d - %s]",
+                Texture* srcTex = binding._data.As<ImageView>()._srcTexture;
+
+                ret.append(Util::StringFormat("Image binds: Slot [%d] - Src GUID [ %d ] - Src Name [ %s ] - Layers [%d - %d] - Levels [%d - %d] - Flag [ %s ]",
                            binding._slot,
-                           binding._data.As<Image>()._layer,
-                           binding._data.As<Image>()._level,
-                           binding._data.As<Image>()._flag == Image::Flag::READ
+                           srcTex != nullptr ? srcTex->getGUID() : 0u,
+                           srcTex != nullptr ? srcTex->resourceName().c_str() : "no-name",
+                           binding._data.As<ImageView>()._layerRange.min,
+                           binding._data.As<ImageView>()._layerRange.max,
+                           binding._data.As<ImageView>()._mipLevels.min,
+                           binding._data.As<ImageView>()._mipLevels.max,
+                           binding._data.As<ImageView>()._flag == ImageFlag::READ
                                                             ? "READ" 
-                                                            : binding._data.As<Image>()._flag == Image::Flag::WRITE
+                                                            : binding._data.As<ImageView>()._flag == ImageFlag::WRITE
                                                                                                ? "WRITE" : "READ_WRITE"));
             }
         }
@@ -301,7 +311,11 @@ string ToString(const DispatchComputeCommand& cmd, U16 indent) {
 }
 
 string ToString(const MemoryBarrierCommand& cmd, U16 indent) {
-    string ret = Util::StringFormat(" [ Mask: %d ] [ Buffer locks: %zu ] [ Fence locks: %zu ] [ Sync flag: %d ]", cmd._barrierMask, cmd._bufferLocks.size(), cmd._fenceLocks.size(), cmd._syncFlag);
+    string ret = Util::StringFormat(" [ Mask: %d ] [ Buffer locks: %zu ] [ Fence locks: %zu ] [ Sync flag: %d ]", 
+                                      cmd._barrierMask,
+                                      cmd._bufferLocks.size(),
+                                      cmd._fenceLocks.size(),
+                                      cmd._syncFlag);
  
     for (auto it : cmd._bufferLocks) {
         ret.append("    ");

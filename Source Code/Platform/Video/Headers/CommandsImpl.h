@@ -203,8 +203,8 @@ DEFINE_COMMAND_BEGIN(ResetAndClearRenderTargetCommand, CommandType::RESET_AND_CL
 DEFINE_COMMAND_END(ResetAndClearRenderTargetCommand);
 
 DEFINE_COMMAND_BEGIN(CopyTextureCommand, CommandType::COPY_TEXTURE);
-    TextureData _source;
-    TextureData _destination;
+    Texture* _source{ nullptr };
+    Texture* _destination{ nullptr };
     U8 _sourceMSAASamples{ 0u };
     U8 _destinationMSAASamples{ 0u };
     CopyTexParams _params;
@@ -253,7 +253,7 @@ DEFINE_COMMAND_BEGIN(SetClipPlanesCommand, CommandType::SET_CLIP_PLANES);
 DEFINE_COMMAND_END(SetClipPlanesCommand);
 
 DEFINE_COMMAND_BEGIN(BindShaderResourcesCommand, CommandType::BIND_SHADER_RESOURCES);
-    DescriptorBindings _bindings;
+    DescriptorSet _bindings;
     DescriptorSetUsage _usage{ DescriptorSetUsage::COUNT };
 DEFINE_COMMAND_END(BindShaderResourcesCommand);
 

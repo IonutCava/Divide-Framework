@@ -77,10 +77,10 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
     virtual BufferLock writeBytes(BufferRange range, bufferPtr data) = 0;
 
     virtual void readBytes(BufferRange range, std::pair<bufferPtr, size_t> outData) const = 0;
-
-    [[nodiscard]] FORCE_INLINE U32    getPrimitiveCount() const noexcept { return _params._elementCount; }
-    [[nodiscard]] FORCE_INLINE size_t getPrimitiveSize()  const noexcept { return _params._elementSize; }
-    [[nodiscard]] FORCE_INLINE Usage  getUsage()          const noexcept { return _usage;  }
+    [[nodiscard]] FORCE_INLINE size_t getStartOffset(const bool read) const noexcept { return (read ? queueReadIndex() : queueWriteIndex()) * _alignedBufferSize; }
+    [[nodiscard]] FORCE_INLINE U32    getPrimitiveCount()             const noexcept { return _params._elementCount; }
+    [[nodiscard]] FORCE_INLINE size_t getPrimitiveSize()              const noexcept { return _params._elementSize; }
+    [[nodiscard]] FORCE_INLINE Usage  getUsage()                      const noexcept { return _usage;  }
 
     FORCE_INLINE BufferLock writeData(bufferPtr data) { return writeData({ 0u, _params._elementCount }, data); }
     FORCE_INLINE BufferLock clearData() { return clearData({ 0u, _params._elementCount }); }
@@ -89,14 +89,6 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
 
     PROPERTY_R(size_t, alignedBufferSize, 0u);
     PROPERTY_R(string, name);
-
-  protected:
-    virtual bool bindByteRange(DescriptorSetUsage set, U8 bindIndex, BufferRange range) = 0;
-
-    bool bindRange(DescriptorSetUsage set, U8 bindIndex, BufferRange range);
-
-    /// Bind return false if the buffer was already bound
-    FORCE_INLINE bool bind(const DescriptorSetUsage set, U8 bindIndex) { return bindRange(set, bindIndex, { 0u, _params._elementCount }); }
 
    protected:
     BufferParams _params;
@@ -118,29 +110,6 @@ struct ShaderBufferDescriptor {
 };
 
 FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
-
-namespace Attorney {
-    class ShaderBufferBind {
-        static bool bindByteRange(ShaderBuffer& buf, DescriptorSetUsage set, U8 bindIndex, BufferRange range) {
-            return buf.bindByteRange(set, bindIndex, range);
-        }
-
-        static bool bindRange(ShaderBuffer& buf, DescriptorSetUsage set, U8 bindIndex, const BufferRange range) {
-            return buf.bindRange(set, bindIndex, range);
-        }
-
-        /// Bind return false if the buffer was already bound
-        static bool bind(ShaderBuffer& buf, DescriptorSetUsage set, U8 bindIndex) {
-            return buf.bind(set, bindIndex);
-        }
-
-        friend class GFXDevice;
-        friend class GL_API;
-        friend class VK_API;
-        friend class NONE_API;
-        friend class UniformBlockUploader;
-    };
-};
 
 };  // namespace Divide
 #endif //_SHADER_BUFFER_H_

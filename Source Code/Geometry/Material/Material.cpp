@@ -642,7 +642,9 @@ void Material::computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDesc
     if (properties().hardwareSkinning()) {
         moduleDefines[to_base(ShaderType::VERTEX)].emplace_back("USE_GPU_SKINNING", true);
     }
-
+    if (!properties().texturesInFragmentStageOnly()) {
+        shaderDescriptor._globalDefines.emplace_back("NEED_TEXTURE_DATA_ALL_STAGES", true);
+    }
     for (ShaderModuleDescriptor& module : shaderDescriptor._modules) {
         module._defines.insert(eastl::end(module._defines), eastl::begin(moduleDefines[to_base(module._moduleType)]), eastl::end(moduleDefines[to_base(module._moduleType)]));
         module._defines.insert(eastl::end(module._defines), eastl::begin(_extraShaderDefines[to_base(module._moduleType)]), eastl::end(_extraShaderDefines[to_base(module._moduleType)]));
@@ -741,11 +743,11 @@ size_t Material::getOrCreateRenderStateBlock(const RenderStagePass renderStagePa
     return ret;
 }
 
-void Material::getSortKeys(const RenderStagePass renderStagePass, I64& shaderKey, I32& textureKey, bool& transparencyFlag) const {
+void Material::getSortKeys(const RenderStagePass renderStagePass, I64& shaderKey, I64& textureKey, bool& transparencyFlag) const {
     shaderKey = shaderInfo(renderStagePass)._shaderKeyCache;
     SharedLock<SharedMutex> r_lock(_textureLock);
     if (_textures[to_base(TextureSlot::UNIT0)]._ptr != nullptr) {
-        textureKey = _textures[to_base(TextureSlot::UNIT0)]._ptr->handle();
+        textureKey = _textures[to_base(TextureSlot::UNIT0)]._ptr->getGUID();
     } else {
         textureKey = std::numeric_limits<I32>::lowest();
     }
@@ -854,9 +856,9 @@ void Material::getData(const RenderingComponent& parentComp, const U32 bestProbe
     dataOut._textureOperations.w = Util::PACK_UNORM4x8(properties().receivesShadows() ? 1.f : 0.f, 0.f, 0.f, 0.f);
 }
 
-DescriptorBindings& Material::getDescriptorSet(const RenderStagePass& renderStagePass) {
+DescriptorSet& Material::getDescriptorSet(const RenderStagePass& renderStagePass) {
     OPTICK_EVENT();
-
+    ShaderStageVisibility texVisibility = properties().texturesInFragmentStageOnly() ? ShaderStageVisibility::FRAGMENT : ShaderStageVisibility::ALL_DRAW;
     const bool isPrePass = (renderStagePass._passType == RenderPassType::PRE_PASS);
     auto& descriptor = isPrePass ? _descriptorSetPrePass : _descriptorSetMainPass;
     if (descriptor.empty()) {
@@ -866,7 +868,7 @@ DescriptorBindings& Material::getDescriptorSet(const RenderStagePass& renderStag
             const auto addTexture = [&](const U8 usage) {
                 const Texture_ptr& crtTexture = _textures[usage]._ptr;
                 if (crtTexture != nullptr) {
-                    auto& texBinding = descriptor.emplace_back();
+                    auto& texBinding = descriptor.emplace_back(texVisibility);
                     texBinding._slot = usage;
                     texBinding._data.As<DescriptorCombinedImageSampler>() = { crtTexture->defaultView(), _textures[usage]._sampler };
                 }

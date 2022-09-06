@@ -34,6 +34,7 @@
 #define _SHADER_DATA_UPLOADER_H_
 
 #include "Platform/Video/Headers/PushConstant.h"
+#include "Platform/Video/Headers/DescriptorSets.h"
 
 namespace Divide {
 
@@ -143,11 +144,10 @@ namespace Divide {
 
         static void Idle();
 
-        explicit UniformBlockUploader(GFXDevice& context, const eastl::string& parentShaderName, const Reflection::BufferEntry& uniformBlock);
+        explicit UniformBlockUploader(GFXDevice& context, const eastl::string& parentShaderName, const Reflection::BufferEntry& uniformBlock, const U16 shaderStageVisibilityMask);
 
         void uploadPushConstant(const GFX::PushConstant& constant, bool force = false) noexcept;
-        void commit(GFX::MemoryBarrierCommand& memCmdInOut);
-        void prepare();
+        void commit(DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut);
         void onFrameEnd() noexcept;
 
         [[nodiscard]] size_t totalBufferSize() const noexcept;
@@ -156,9 +156,12 @@ namespace Divide {
 
     private:
         void resizeBlockBuffer(bool increaseSize);
+        void prepare(DescriptorSet& set);
 
     private:
         GFXDevice& _context;
+        const U16 _shaderStageVisibilityMask{ to_base(ShaderStageVisibility::COUNT) };
+
         vector<Byte> _localDataCopy;
         vector<BlockMember> _blockMembers;
         eastl::string _parentShaderName;

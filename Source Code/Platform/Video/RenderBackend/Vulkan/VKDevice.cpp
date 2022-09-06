@@ -47,7 +47,7 @@ namespace Divide {
 
         vkb::PhysicalDeviceSelector selector{ instance };
         auto physicalDeviceSelection = selector.set_minimum_version(1, Config::MINIMUM_VULKAN_MINOR_VERSION)
-                                               .set_desired_version(1, Config::DESIRED_VULKAN_MINOR_VERSION)
+                                               //.set_desired_version(1, Config::DESIRED_VULKAN_MINOR_VERSION)
                                                .set_surface(targetSurface)
                                                .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
                                                .add_required_extension(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME)

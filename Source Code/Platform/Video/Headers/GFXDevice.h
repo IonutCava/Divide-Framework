@@ -243,23 +243,13 @@ public:
     };
 
     struct GFXDescriptorSet {
-        explicit GFXDescriptorSet(const DescriptorSetUsage usage) noexcept : _usage(usage) {};
-
         PROPERTY_RW(DescriptorSet, impl);
-        PROPERTY_RW(DescriptorSetUsage, usage, DescriptorSetUsage::COUNT);
         PROPERTY_RW(bool, dirty, true);
-        void update(U8 slot, const DescriptorSetBindingData& newBindingData);
+        void clear();
+        void update(DescriptorSetUsage usage, const DescriptorSetBinding& newBindingData);
     };
 
-    struct GFXDescriptorSets {
-        GFXDescriptorSet _perFrameSet{ DescriptorSetUsage::PER_FRAME };
-        GFXDescriptorSet _perPassSet{ DescriptorSetUsage::PER_PASS };
-        GFXDescriptorSet _perBatchSet{ DescriptorSetUsage::PER_BATCH };
-
-        [[nodiscard]] GFXDescriptorSet& getSet(const DescriptorSetUsage usage);
-
-        void markDirty() noexcept;
-    };
+    using GFXDescriptorSets = std::array<GFXDescriptorSet, to_base(DescriptorSetUsage::COUNT)>;
 
 public:  // GPU interface
     explicit GFXDevice(Kernel& parent);
@@ -272,7 +262,6 @@ public:  // GPU interface
     void idle(bool fast);
     void beginFrame(DisplayWindow& window, bool global);
     void endFrame(DisplayWindow& window, bool global);
-    void createSetLayout(DescriptorSetUsage usage, const DescriptorSet& set);
 
     void debugDraw(const SceneRenderState& sceneRenderState, GFX::CommandBuffer& bufferInOut);
     void debugDrawLines(const I64 ID, IM::LineDescriptor descriptor) noexcept;
@@ -316,8 +305,6 @@ public:  // GPU interface
 
     inline F32 renderingAspectRatio() const noexcept;
     inline const vec2<U16>& renderingResolution() const noexcept;
-
-    bool makeImageResident(const Image& images) const;
 
     /// Switch between fullscreen rendering
     void toggleFullScreen() const;
@@ -437,7 +424,6 @@ public:
     PROPERTY_R_IW(U32, frameDrawCallsPrev, 0u);
     PROPERTY_R_IW(vec4<U32>, lastCullCount, VECTOR4_ZERO);
     PROPERTY_R_IW(Rect<I32>, activeViewport, UNIT_VIEWPORT);
-    PROPERTY_RW(GFXDescriptorSets, descriptorSets);
     POINTER_R(SceneShaderData, sceneData, nullptr);
     
 protected:
@@ -504,7 +490,6 @@ private:
     void shadowingSettings(const F32 lightBleedBias, const F32 minShadowVariance) noexcept;
     RenderTarget_uptr newRTInternal(const RenderTargetDescriptor& descriptor);
     ErrorCode createAPIInstance(RenderAPI api);
-    bool bindShaderResources(DescriptorSetUsage usage, const DescriptorBindings& bindings) const;
 
 private:
     RenderAPIWrapper_uptr _api = nullptr;
@@ -571,7 +556,7 @@ private:
 
     PushConstants _textRenderConstants;
     Pipeline*     _textRenderPipeline = nullptr;
-        
+    GFXDescriptorSets _descriptorSets;
     Mutex _graphicsResourceMutex;
     vector<std::tuple<GraphicsResource::Type, I64, U64>> _graphicResources;
 

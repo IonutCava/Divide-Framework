@@ -294,6 +294,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     heightMapTexture.propertyDescriptor(heightMapDescriptor);
     terrainMaterial->properties().isStatic(true);
     terrainMaterial->properties().isInstanced(true);
+    terrainMaterial->properties().texturesInFragmentStageOnly(false);
     terrainMaterial->setTexture(TextureSlot::UNIT0, CreateResource<Texture>(terrain->parentResourceCache(), textureAlbedoMaps), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
     terrainMaterial->setTexture(TextureSlot::UNIT1, CreateResource<Texture>(terrain->parentResourceCache(), textureNoiseMedium), noiseHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
     terrainMaterial->setTexture(TextureSlot::OPACITY, CreateResource<Texture>(terrain->parentResourceCache(), textureBlendMap), blendMapHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);

@@ -57,9 +57,9 @@ struct RenderBinItem {
     RenderingComponent* _renderable = nullptr;
     size_t _stateHash{ 0u };
     I64 _shaderKey{ std::numeric_limits<I64>::lowest() };
-    I32 _textureKey{ std::numeric_limits<I32>::lowest() };
-    bool _hasTransparency{ false };
+    I64 _textureKey{ std::numeric_limits<I64>::lowest() };
     F32 _distanceToCameraSq{ 0.f };
+    bool _hasTransparency{ false };
 };
 
 enum class RenderingOrder : U8 {

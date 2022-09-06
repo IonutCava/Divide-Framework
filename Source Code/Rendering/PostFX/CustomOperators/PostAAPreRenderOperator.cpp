@@ -201,20 +201,20 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
             {
-                auto& binding = cmd->_bindings.emplace_back();
+                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                 binding._slot = 0;
                 binding._data.As<DescriptorCombinedImageSampler>() = { edgesTex, att->descriptor()._samplerHash };
             }
             samplerDescriptor.mipSampling(TextureMipSampling::NONE);
             {
-                auto& binding = cmd->_bindings.emplace_back();
+                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                 binding._slot = 1;
                 binding._data.As<DescriptorCombinedImageSampler>() = { areaTex, samplerDescriptor.getHash() };
             }
             samplerDescriptor.minFilter(TextureFilter::NEAREST);
             samplerDescriptor.magFilter(TextureFilter::NEAREST);
             {
-                auto& binding = cmd->_bindings.emplace_back();
+                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                 binding._slot = 2;
                 binding._data.As<DescriptorCombinedImageSampler>() = { searchTex, samplerDescriptor.getHash() };
             }
@@ -239,12 +239,12 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
             {
-                auto& binding = cmd->_bindings.emplace_back();
+                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                 binding._slot = 0;
                 binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt->descriptor()._samplerHash };
             }
             {
-                auto& binding = cmd->_bindings.emplace_back();
+                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                 binding._slot = 1;
                 binding._data.As<DescriptorCombinedImageSampler>() = { blendTex, screenAtt->descriptor()._samplerHash };
             }
@@ -270,7 +270,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
         {
-            auto& binding = cmd->_bindings.emplace_back();
+            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
             binding._slot = 0;
             binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt->descriptor()._samplerHash };
         }

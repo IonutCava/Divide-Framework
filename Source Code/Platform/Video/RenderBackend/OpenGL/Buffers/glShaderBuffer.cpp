@@ -57,7 +57,7 @@ BufferLock glShaderBuffer::writeBytes(BufferRange range, bufferPtr data) {
     OPTICK_EVENT();
 
     DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
-    range._startOffset += queueWriteIndex() * _alignedBufferSize;
+    range._startOffset += getStartOffset(false);
 
     bufferImpl()->writeOrClearBytes(range, data);
     return { this, range };
@@ -70,37 +70,32 @@ void glShaderBuffer::readBytes(BufferRange range, std::pair<bufferPtr, size_t> o
         OPTICK_EVENT();
 
         DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
-        range._startOffset += queueReadIndex() * _alignedBufferSize;
+        range._startOffset += getStartOffset(true);
 
         bufferImpl()->readBytes(range, outData);
     }
 }
 
-bool glShaderBuffer::bindByteRange(const DescriptorSetUsage set, const U8 bindIndex, BufferRange range) {
+bool glShaderBuffer::bindByteRange(const U8 bindIndex, BufferRange range) {
     OPTICK_EVENT();
 
     GLStateTracker::BindResult result = GLStateTracker::BindResult::FAILED;
-    const U8 glBindIndex = ShaderProgram::GetGLBindingForDescriptorSlot(set,
-                                                                        bindIndex,
-                                                                        _usage == Usage::CONSTANT_BUFFER
-                                                                                ? DescriptorSetBindingType::UNIFORM_BUFFER
-                                                                                : DescriptorSetBindingType::SHADER_STORAGE_BUFFER);
 
-    if (glBindIndex == ShaderProgram::k_commandBufferID) {
+    if (bindIndex == ShaderProgram::k_commandBufferID) {
         result = GL_API::GetStateTracker()->setActiveBuffer(GL_DRAW_INDIRECT_BUFFER,
                                                             bufferImpl()->memoryBlock()._bufferHandle);
     } else if (range._length > 0) {
         DIVIDE_ASSERT(to_size(range._length) <= _maxSize && "glShaderBuffer::bindByteRange: attempted to bind a larger shader block than is allowed on the current platform");
         DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
 
-        const size_t offset = bufferImpl()->memoryBlock()._offset + range._startOffset + (queueReadIndex() * _alignedBufferSize);
+        const size_t offset = bufferImpl()->memoryBlock()._offset + range._startOffset + getStartOffset(true);
 
         // If we bind the entire buffer, offset == 0u and range == 0u is a hack to bind the entire thing instead of a subrange
         const size_t bindRange = Util::GetAlignmentCorrected((offset == 0u && to_size(range._length) == bufferImpl()->memoryBlock()._size) ? 0u : range._length, AlignmentRequirement(_usage));
 
         result = GL_API::GetStateTracker()->setActiveBufferIndexRange(bufferImpl()->params()._target,
                                                                       bufferImpl()->memoryBlock()._bufferHandle,
-                                                                      glBindIndex,
+                                                                      bindIndex,
                                                                       offset,
                                                                       bindRange);
     }

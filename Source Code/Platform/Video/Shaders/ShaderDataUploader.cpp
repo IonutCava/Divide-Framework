@@ -280,8 +280,9 @@ void UniformBlockUploader::Idle() {
 
 }
 
-UniformBlockUploader::UniformBlockUploader(GFXDevice& context, const eastl::string& parentShaderName, const Reflection::BufferEntry& uniformBlock)
+UniformBlockUploader::UniformBlockUploader(GFXDevice& context, const eastl::string& parentShaderName, const Reflection::BufferEntry& uniformBlock, const U16 shaderStageVisibilityMask)
      : _context(context),
+       _shaderStageVisibilityMask(shaderStageVisibilityMask),
        _parentShaderName(parentShaderName),
        _uniformBlock(uniformBlock)
 {
@@ -414,38 +415,50 @@ void UniformBlockUploader::uploadPushConstant(const GFX::PushConstant& constant,
     }
 }
 
-void UniformBlockUploader::commit(GFX::MemoryBarrierCommand& memCmdInOut) {
-    if (!_uniformBlockDirty) {
-        return;
+void UniformBlockUploader::commit(DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut) {
+    if (_uniformBlockDirty) {
+
+        DIVIDE_ASSERT(_uniformBlock._bindingSlot != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr);
+
+        if (_needsResize) {
+            resizeBlockBuffer(true);
+            _needsResize = false;
+            _needsQueueIncrement = false;
+            _bufferWritesThisFrame = 0u;
+        }
+
+        if (_needsQueueIncrement) {
+            _buffer->incQueue();
+            _needsQueueIncrement = false;
+            ++_bufferWritesThisFrame;
+        }
+
+        memCmdInOut._bufferLocks.push_back(_buffer->writeData(_localDataCopy.data()));
+        _needsQueueIncrement = true;
+        _uniformBlockDirty = false;
     }
 
-    DIVIDE_ASSERT(_uniformBlock._bindingSlot != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr);
-
-    if (_needsResize) {
-        resizeBlockBuffer(true);
-        _needsResize = false;
-        _needsQueueIncrement = false;
-        _bufferWritesThisFrame = 0u;
-    }
-
-    const bool rebind = _needsQueueIncrement;
-    if (_needsQueueIncrement) {
-        _buffer->incQueue();
-        _needsQueueIncrement = false;
-        ++_bufferWritesThisFrame;
-    }
-
-    memCmdInOut._bufferLocks.push_back(_buffer->writeData(_localDataCopy.data()));
-    _needsQueueIncrement = true;
-    _uniformBlockDirty = false;
-    if (rebind) {
-        prepare();
-    }
+    prepare(set);
 }
 
-void UniformBlockUploader::prepare() {
+void UniformBlockUploader::prepare(DescriptorSet& set) {
     if (_uniformBlock._bindingSlot != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr) {
-        Attorney::ShaderBufferBind::bind(*_buffer, DescriptorSetUsage::PER_DRAW, to_U8(_uniformBlock._bindingSlot));
+        const U8 targetBlock = to_U8(_uniformBlock._bindingSlot);
+        const ShaderBufferEntry crtEntry = { *_buffer, {0u, _buffer->getPrimitiveCount()} };
+
+        for (DescriptorSetBinding& it : set) {
+            if (it._slot == targetBlock) {
+                assert(it._data.Type() == DescriptorSetBindingType::UNIFORM_BUFFER);
+
+                it._shaderStageVisibility = _shaderStageVisibilityMask;
+                it._data.As<ShaderBufferEntry>() = crtEntry;
+                return;
+            }
+        }
+
+        DescriptorSetBinding& binding = set.emplace_back(_shaderStageVisibilityMask);
+        binding._slot = targetBlock;
+        binding._data.As<ShaderBufferEntry>() = crtEntry;
     }
 }
 

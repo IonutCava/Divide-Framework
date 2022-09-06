@@ -27,7 +27,7 @@
 #include <sdl/include/SDL_vulkan.h>
 
 #define VMA_IMPLEMENTATION
-#include "Headers/VMAInclude.h"
+#include "Headers/vkMemAllocatorInclude.h"
 
 namespace {
     inline VKAPI_ATTR VkBool32 VKAPI_CALL divide_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -62,15 +62,56 @@ namespace {
             return "Unknown";
         };
 
-        Divide::Console::errorfn("[%s: %s]\n%s\n", to_string_message_severity(messageSeverity), to_string_message_type(messageType), pCallbackData->pMessage);
+        Divide::Console::errorfn("[%s: %s]\n%s\n",
+                                 to_string_message_severity(messageSeverity),
+                                 to_string_message_type(messageType),
+                                 pCallbackData->pMessage);
         if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
             Divide::DIVIDE_UNEXPECTED_CALL();
         }
         return VK_FALSE; // Applications must return false here
     }
+
 }
 
 namespace Divide {
+    namespace {
+        [[nodiscard]] VkShaderStageFlags GetFlagsForStageVisibility(const U16 mask) noexcept {
+            VkShaderStageFlags ret = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
+
+            if (mask != to_base(ShaderStageVisibility::NONE)) {
+                if (mask == to_base(ShaderStageVisibility::ALL)) {
+                    ret = VK_SHADER_STAGE_ALL;
+                } else if (mask == to_base(ShaderStageVisibility::ALL_DRAW)) {
+                    ret = VK_SHADER_STAGE_ALL_GRAPHICS;
+                } else if (mask == to_base(ShaderStageVisibility::COMPUTE)) {
+                    ret = VK_SHADER_STAGE_COMPUTE_BIT;
+                } else {
+                    if (BitCompare(mask, ShaderStageVisibility::VERTEX)) {
+                        ret |= VK_SHADER_STAGE_VERTEX_BIT;
+                    }
+                    if (BitCompare(mask, ShaderStageVisibility::GEOMETRY)) {
+                        ret |= VK_SHADER_STAGE_GEOMETRY_BIT;
+                    }
+                    if (BitCompare(mask, ShaderStageVisibility::TESS_CONTROL)) {
+                        ret |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+                    }
+                    if (BitCompare(mask, ShaderStageVisibility::TESS_EVAL)) {
+                        ret |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+                    }
+                    if (BitCompare(mask, ShaderStageVisibility::FRAGMENT)) {
+                        ret |= VK_SHADER_STAGE_FRAGMENT_BIT;
+                    }
+                    if (BitCompare(mask, ShaderStageVisibility::COMPUTE)) {
+                        ret |= VK_SHADER_STAGE_COMPUTE_BIT;
+                    }
+                }
+            }
+
+            return ret;
+        }
+    }
+
     constexpr U32 VK_VENDOR_ID_AMD = 0x1002;
     constexpr U32 VK_VENDOR_ID_IMGTECH = 0x1010;
     constexpr U32 VK_VENDOR_ID_NVIDIA = 0x10DE;
@@ -341,6 +382,8 @@ namespace Divide {
         //finalize the command buffer (we can no longer add commands, but it can now be executed)
         VK_CHECK(vkEndCommandBuffer(cmd));
 
+        _drawIndirectBuffer = VK_NULL_HANDLE;
+
         const VkResult result = _swapChain->endFrame(vkb::QueueType::graphics, cmd);
         
         if (result != VK_SUCCESS) {
@@ -357,6 +400,7 @@ namespace Divide {
 
     ErrorCode VK_API::initRenderingAPI([[maybe_unused]] I32 argc, [[maybe_unused]] char** argv, [[maybe_unused]] Configuration& config) noexcept {
         s_stateTracker = eastl::make_unique<VKStateTracker>();
+        _descriptorSets.fill(VK_NULL_HANDLE);
 
         s_transientDeleteQueue.flags(s_transientDeleteQueue.flags() | to_base(VKDeletionQueue::Flags::TREAT_AS_TRANSIENT));
 
@@ -538,6 +582,9 @@ namespace Divide {
         _cmdContext = eastl::make_unique<VKImmediateCmdContext>(*_device);
         VK_API::s_stateTracker->_cmdContext = _cmdContext.get();
 
+        _descriptorAllocator = eastl::make_unique<DescriptorAllocator>(_device->getVKDevice());
+        _descriptorLayoutCache = eastl::make_unique<DescriptorLayoutCache>(_device->getVKDevice());
+
         recreateSwapChain(window);
 
         DIVIDE_ASSERT(Config::MINIMUM_VULKAN_MINOR_VERSION > 2);
@@ -667,6 +714,8 @@ namespace Divide {
         if (_device != nullptr) {
             if (_device->getVKDevice() != VK_NULL_HANDLE) {
                 vkDeviceWaitIdle(_device->getVKDevice());
+                _descriptorAllocator.reset();
+                _descriptorLayoutCache.reset();
                 s_transientDeleteQueue.flush(_device->getVKDevice());
                 s_deviceDeleteQueue.flush(_device->getVKDevice());
             }
@@ -797,9 +846,103 @@ namespace Divide {
         return true;
     }
 
-    bool VK_API::makeTextureViewResident([[maybe_unused]] const DescriptorSetUsage set, [[maybe_unused]] const U8 bindingSlot, [[maybe_unused]] const ImageView& imageView, const size_t samplerHash) const {
-        [[maybe_unused]] const VkSampler samplerHandle = GetSamplerHandle(samplerHash);
+    bool VK_API::bindShaderResources(const DescriptorSetUsage usage, const DescriptorSet& bindings) {
+        OPTICK_EVENT("BIND_SHADER_RESOURCES");
+
+        auto builder = DescriptorBuilder::Begin(_descriptorLayoutCache.get(), _descriptorAllocator.get());
+
+        static std::array<VkDescriptorBufferInfo, 16> BufferInfoStructs;
+        static std::array<VkDescriptorImageInfo, 16>  ImageInfoStructs;
+        U8 bufferInfoStructIndex = 0u;
+        U8 imageInfoStructIndex = 0u;
+
+        for (auto& srcBinding : bindings) {
+            const DescriptorSetBindingType type = srcBinding._data.Type();
+            const VkShaderStageFlags stageFlags = GetFlagsForStageVisibility(srcBinding._shaderStageVisibility);
+
+            switch (type) {
+                case DescriptorSetBindingType::UNIFORM_BUFFER:
+                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: {
+                    if (!srcBinding._data.Has<ShaderBufferEntry>() ||
+                        srcBinding._data.As<ShaderBufferEntry>()._buffer == nullptr ||
+                        srcBinding._data.As<ShaderBufferEntry>()._range._length == 0u)
+                    {
+                        continue;
+                    }
+                    const ShaderBufferEntry& bufferEntry = srcBinding._data.As<ShaderBufferEntry>();
+                    DIVIDE_ASSERT(bufferEntry._buffer != nullptr);
+                    const ShaderBuffer::Usage bufferUsage = bufferEntry._buffer->getUsage();
+                    VkBuffer buffer = static_cast<vkShaderBuffer*>(bufferEntry._buffer)->bufferImpl()->_buffer;
+
+                    if (usage == DescriptorSetUsage::PER_BATCH && srcBinding._slot == 0) {
+                        // Draw indirect buffer!
+                        DIVIDE_ASSERT(bufferUsage == ShaderBuffer::Usage::COMMAND_BUFFER);
+                        _drawIndirectBuffer = buffer;
+                    } else {
+                        VkDescriptorBufferInfo& bufferInfo = BufferInfoStructs[bufferInfoStructIndex++];
+                        bufferInfo.buffer = buffer;
+                        bufferInfo.offset = bufferEntry._range._startOffset * bufferEntry._buffer->getPrimitiveSize();
+                        bufferInfo.offset += bufferEntry._buffer->getStartOffset(true);
+                        bufferInfo.range = bufferEntry._range._length * bufferEntry._buffer->getPrimitiveSize();
+
+                        const VkDescriptorType descType = bufferUsage == ShaderBuffer::Usage::CONSTANT_BUFFER
+                                                                ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
+                                                                : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+                            
+                        builder.bindBuffer(srcBinding._slot, &bufferInfo, descType, stageFlags);
+                    }
+                } break;
+                case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: {
+                    if (srcBinding._slot == INVALID_TEXTURE_BINDING) {
+                        continue;
+                    }
+
+                    const DescriptorCombinedImageSampler& imageSampler = srcBinding._data.As<DescriptorCombinedImageSampler>();
+                    DIVIDE_ASSERT(imageSampler._image.targetType() != TextureType::COUNT);
+
+                    const VkSampler samplerHandle = GetSamplerHandle(imageSampler._samplerHash);
+                    const VkImageView view = static_cast<const vkTexture*>(imageSampler._image._srcTexture)->vkView();
+
+                    VkDescriptorImageInfo& imageInfo = ImageInfoStructs[imageInfoStructIndex++];
+                    imageInfo = vk::descriptorImageInfo(samplerHandle, view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                    builder.bindImage(srcBinding._slot, &imageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stageFlags);
+                } break;
+                case DescriptorSetBindingType::IMAGE: {
+                    if (!srcBinding._data.Has<ImageView>()) {
+                        continue;
+                    }
+                    const ImageView& image = srcBinding._data.As<ImageView>();
+                    DIVIDE_ASSERT(image._srcTexture != nullptr && image._mipLevels.max == 1u);
+
+                    vkTexture* vkTex = static_cast<vkTexture*>(image._srcTexture);
+                    VkDescriptorType descriptorType = VK_DESCRIPTOR_TYPE_MAX_ENUM;
+                    vkTexture::CachedImageView::Descriptor descriptor{};
+                    descriptor._rwFlag = image._flag;
+                    switch (image._flag) {
+                        case ImageFlag::READ:       descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE; break;
+                        case ImageFlag::WRITE:      descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; break;
+                        case ImageFlag::READ_WRITE: descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; break;
+                    }
+
+                    descriptor._format = vkTex->vkFormat();
+                    descriptor._type = image.targetType();
+                    descriptor._mipLevels = image._mipLevels;
+                    descriptor._layers = image._layerRange;
+
+                    VkDescriptorImageInfo& imageInfo = ImageInfoStructs[imageInfoStructIndex++];
+                    imageInfo = vk::descriptorImageInfo(VK_NULL_HANDLE, vkTex->getImageView(descriptor), VK_IMAGE_LAYOUT_GENERAL);
+                    builder.bindImage(srcBinding._slot, &imageInfo, descriptorType, stageFlags);
+                } break;
+                case DescriptorSetBindingType::COUNT: {
+                    DIVIDE_UNEXPECTED_CALL();
+                } break;
+            };
+        }
+
+        builder.build(_descriptorSets[to_base(usage)]);
+
         return true;
+
     }
 
     void VK_API::bindDynamicState(const RenderStateBlock& currentState, VkCommandBuffer& cmdBuffer) const {
@@ -826,12 +969,11 @@ namespace Divide {
     ShaderResult VK_API::bindPipeline(const Pipeline& pipeline, VkCommandBuffer& cmdBuffer) const {
         const PipelineDescriptor& pipelineDescriptor = pipeline.descriptor();
         ShaderProgram* program = ShaderProgram::FindShaderProgram(pipelineDescriptor._shaderProgramHandle);
-        GetStateTracker()->_perDrawSet = nullptr;
 
         if (program == nullptr) {
             return ShaderResult::Failed;
         }
-        GetStateTracker()->_perDrawSet = &program->descriptorSet();
+
         GetStateTracker()->_activeTopology = pipelineDescriptor._primitiveTopology;
         size_t stateBlockHash = pipelineDescriptor._stateHash == 0u ? _context.getDefaultStateBlock(false) : pipelineDescriptor._stateHash;
         if (stateBlockHash == 0) {
@@ -1120,72 +1262,6 @@ namespace Divide {
     }
 
     void VK_API::onThreadCreated([[maybe_unused]] const std::thread::id& threadID) noexcept {
-    }
-
-    void VK_API::createSetLayout(const DescriptorSetUsage usage, const DescriptorSet& set) {
-        constexpr U8 s_maxBindings = 32u;
-        if (set.empty()) {
-            return;
-        }
-
-        U8 index = 0u;
-        std::array<VkDescriptorSetLayoutBinding, s_maxBindings> tempBindings{};
-
-        for (const auto& binding : set) {
-            VkDescriptorSetLayoutBinding& tempBinding = tempBindings[index++];
-            assert(index < s_maxBindings);
-
-            if (binding._shaderStageVisibility == to_base(ShaderStageVisibility::NONE)) {
-                continue;
-            } else if (binding._shaderStageVisibility == to_base(ShaderStageVisibility::ALL)) {
-                tempBinding.stageFlags = VK_SHADER_STAGE_ALL;
-            } else if (binding._shaderStageVisibility == to_base(ShaderStageVisibility::ALL_DRAW)) {
-                tempBinding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
-            } else if (binding._shaderStageVisibility == to_base(ShaderStageVisibility::COMPUTE)) {
-                tempBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-            } else {
-                if (BitCompare(binding._shaderStageVisibility, ShaderStageVisibility::VERTEX)) {
-                    tempBinding.stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
-                }
-                if (BitCompare(binding._shaderStageVisibility, ShaderStageVisibility::GEOMETRY)) {
-                    tempBinding.stageFlags |= VK_SHADER_STAGE_GEOMETRY_BIT;
-                }
-                if (BitCompare(binding._shaderStageVisibility, ShaderStageVisibility::TESS_CONTROL)) {
-                    tempBinding.stageFlags |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-                }
-                if (BitCompare(binding._shaderStageVisibility, ShaderStageVisibility::TESS_EVAL)) {
-                    tempBinding.stageFlags |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-                }
-                if (BitCompare(binding._shaderStageVisibility, ShaderStageVisibility::FRAGMENT)) {
-                    tempBinding.stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
-                }
-                if (BitCompare(binding._shaderStageVisibility, ShaderStageVisibility::COMPUTE)) {
-                    tempBinding.stageFlags |= VK_SHADER_STAGE_COMPUTE_BIT;
-                }
-            }
-            tempBinding.binding = binding._resource._slot;
-            tempBinding.descriptorCount = 1u;
-            tempBinding.descriptorType = VKUtil::vkDescriptorType(binding._type);
-        }
-
-        VkDescriptorSetLayoutCreateInfo setinfo = {};
-        setinfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        setinfo.pNext = nullptr;
-
-        setinfo.bindingCount = index;
-        setinfo.pBindings = tempBindings.data();
-        //no flags
-        setinfo.flags = 0;
-
-        VkDescriptorSetLayout setLayout;
-        vkCreateDescriptorSetLayout(_device->getVKDevice(), &setinfo, nullptr, &setLayout);
-
-        // other code ....
-
-        // add descriptor set layout to deletion queues
-        RegisterCustomAPIDelete([setLayout](VkDevice device) {
-            vkDestroyDescriptorSetLayout(device, setLayout, nullptr);
-        }, false);
     }
 
     const VKStateTracker_uptr& VK_API::GetStateTracker() noexcept {

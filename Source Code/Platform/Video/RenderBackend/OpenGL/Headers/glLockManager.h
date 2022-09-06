@@ -56,13 +56,14 @@ struct SyncObject {
 FWD_DECLARE_MANAGED_STRUCT(SyncObject);
 
 struct SyncObjectHandle {
-    static constexpr size_t INVALID_ID = std::numeric_limits<size_t>::max();
-
-    size_t _id{ INVALID_ID };
+    size_t _id{ GLUtil::k_invalidSyncID };
     size_t _generation{ 0u };
 };
 
 struct BufferLockInstance {
+    BufferLockInstance() = default;
+    BufferLockInstance(const BufferRange& range, const SyncObjectHandle& handle) noexcept : _range(range), _syncObjHandle(handle) {}
+
     BufferRange _range{};
     SyncObjectHandle _syncObjHandle{};
 };

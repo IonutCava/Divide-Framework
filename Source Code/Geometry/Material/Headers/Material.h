@@ -195,8 +195,8 @@ class Material final : public CachedResource {
         PROPERTY_R(bool, receivesShadows, true);
         PROPERTY_R(bool, isStatic, false);
         PROPERTY_R(bool, isInstanced, false);
-        PROPERTY_R(bool, specTextureHasAlpha, false);
         PROPERTY_R(bool, hardwareSkinning, false);
+        PROPERTY_R(bool, texturesInFragmentStageOnly, true);
         PROPERTY_R(bool, isRefractive, false);
         PROPERTY_R(bool, doubleSided, false);
         PROPERTY_R(ShadingMode, shadingMode, ShadingMode::COUNT);
@@ -220,6 +220,7 @@ class Material final : public CachedResource {
 
     public:
         void hardwareSkinning(bool state) noexcept;
+        void texturesInFragmentStageOnly(bool state) noexcept;
         void shadingMode(ShadingMode mode) noexcept;
         void doubleSided(bool state) noexcept;
         void receivesShadows(bool state) noexcept;
@@ -297,7 +298,7 @@ class Material final : public CachedResource {
     [[nodiscard]] const TextureInfo& getTextureInfo(TextureSlot usage) const;
     [[nodiscard]] size_t getOrCreateRenderStateBlock(RenderStagePass renderStagePass);
     [[nodiscard]] Texture_wptr getTexture(TextureSlot textureUsage) const;
-    [[nodiscard]] DescriptorBindings& getDescriptorSet(const RenderStagePass& renderStagePass);
+    [[nodiscard]] DescriptorSet& getDescriptorSet(const RenderStagePass& renderStagePass);
     [[nodiscard]] ShaderProgramHandle getProgramHandle(RenderStagePass renderStagePass) const;
     [[nodiscard]] ShaderProgramHandle computeAndGetProgramHandle(RenderStagePass renderStagePass);
     [[nodiscard]] bool hasTransparency() const noexcept;
@@ -318,13 +319,13 @@ class Material final : public CachedResource {
     PROPERTY_RW(ComputeRenderStateCBK, computeRenderStateCBK);
     POINTER_R_IW(Material, baseMaterial, nullptr);
     PROPERTY_RW(UpdatePriority, updatePriorirty, UpdatePriority::Default);
-    PROPERTY_R_IW(DescriptorBindings, descriptorSetMainPass);
-    PROPERTY_R_IW(DescriptorBindings, descriptorSetPrePass);
+    PROPERTY_R_IW(DescriptorSet, descriptorSetMainPass);
+    PROPERTY_R_IW(DescriptorSet, descriptorSetPrePass);
     PROPERTY_RW(bool, ignoreXMLData, false);
     PROPERTY_R_IW(AttributeMap, shaderAttributes);
     PROPERTY_R_IW(PrimitiveTopology, topology, PrimitiveTopology::COUNT);
    private:
-    void getSortKeys(RenderStagePass renderStagePass, I64& shaderKey, I32& textureKey, bool& transparencyFlag) const;
+    void getSortKeys(RenderStagePass renderStagePass, I64& shaderKey, I64& textureKey, bool& transparencyFlag) const;
     void addShaderDefineInternal(ShaderType type, const string& define, bool addPrefix);
 
     void updateTransparency();
@@ -380,7 +381,7 @@ TYPEDEF_SMART_POINTERS_FOR_TYPE(Material);
 
 namespace Attorney {
 class MaterialRenderBin {
-    static void getSortKeys(const Material& material, const RenderStagePass renderStagePass, I64& shaderKey, I32& textureKey, bool& hasTransparency) {
+    static void getSortKeys(const Material& material, const RenderStagePass renderStagePass, I64& shaderKey, I64& textureKey, bool& hasTransparency) {
         material.getSortKeys(renderStagePass, shaderKey, textureKey, hasTransparency);
     }
 

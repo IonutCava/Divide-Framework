@@ -55,18 +55,4 @@ void ShaderBuffer::readData(const BufferRange range, const std::pair<bufferPtr, 
         outData);
 }
 
-bool ShaderBuffer::bindRange(const DescriptorSetUsage set,
-                             const U8 bindIndex,
-                             const BufferRange range) {
-    assert(range._length > 0);
-
-    return bindByteRange(
-        set,
-        bindIndex,
-        {
-            range._startOffset * _params._elementSize,
-            range._length * _params._elementSize
-        });
-}
-
 } //namespace Divide;

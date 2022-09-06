@@ -17,34 +17,37 @@ namespace Divide {
         Util::Hash_combine(_hash, _msaaSamples, _dataType, _baseFormat, _srgb, _normalized);
         return _hash;
     }
+    
+    TextureType ImageView::targetType() const noexcept {
+        if (_targetType != TextureType::COUNT) {
+            return _targetType;
+        }
+
+        if (_srcTexture != nullptr) {
+            return _srcTexture->descriptor().texType();
+        }
+
+        return _targetType;
+    }
+
+    void ImageView::targetType(const TextureType type) noexcept {
+        _targetType = type;
+    }
 
     size_t ImageView::getHash() const {
-        _hash = GetHash(_textureData);
+        _hash = 1337;
         Util::Hash_combine(_hash,
-                           _mipLevels.x,
-                           _mipLevels.y,
-                           _layerRange.x,
-                           _layerRange.y);
+                           _flag,
+                           (_srcTexture != nullptr ? _srcTexture->getGUID() : 17),
+                            targetType(),
+                           _layout,
+                           _mipLevels.min,
+                           _mipLevels.max,
+                           _layerRange.min,
+                           _layerRange.max);
         Util::Hash_combine(_hash, _descriptor.getHash());
 
         return _hash;
-    }
-
-
-    bool operator==(const Image& lhs, const Image& rhs) noexcept {
-        return lhs._flag == rhs._flag &&
-               lhs._layered == rhs._layered &&
-               lhs._layer == rhs._layer &&
-               lhs._level == rhs._level &&
-               Compare(lhs._texture, rhs._texture);
-    }
-
-    bool operator!=(const Image& lhs, const Image& rhs) noexcept {
-        return lhs._flag != rhs._flag ||
-               lhs._layered != rhs._layered ||
-               lhs._layer != rhs._layer ||
-               lhs._level != rhs._level ||
-               !Compare(lhs._texture, rhs._texture);
     }
 
     bool operator==(const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs) noexcept {
@@ -69,11 +72,13 @@ namespace Divide {
     DescriptorSetBindingType DescriptorSetBindingData::Type() const noexcept {
         switch (_resource.index()) {
             case 1: {
-                const ShaderBuffer::Usage usage = As<ShaderBufferEntry>()._buffer->getUsage();
+                ShaderBuffer* buffer = As<ShaderBufferEntry>()._buffer;
+                const ShaderBuffer::Usage usage = buffer->getUsage();
                 switch (usage) {
                     case ShaderBuffer::Usage::COMMAND_BUFFER:
                     case ShaderBuffer::Usage::UNBOUND_BUFFER: return DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
                     case ShaderBuffer::Usage::CONSTANT_BUFFER: return DescriptorSetBindingType::UNIFORM_BUFFER;
+                    default: DIVIDE_UNEXPECTED_CALL();
                 }
             } break;
             case 2: return DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;

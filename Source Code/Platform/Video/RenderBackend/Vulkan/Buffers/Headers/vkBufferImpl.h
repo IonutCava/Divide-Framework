@@ -34,7 +34,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define VK_BUFFER_IMPL_H_
 
 #include "Platform/Video/Headers/RenderAPIEnums.h"
-#include "Platform/Video/RenderBackend/Vulkan/Headers/VMAInclude.h"
+#include "Platform/Video/RenderBackend/Vulkan/Headers/vkMemAllocatorInclude.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/BufferParams.h"
 
 #include "Platform/Video/Headers/AttributeDescriptor.h"
@@ -42,8 +42,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
     struct VertexInputDescription {
 
-        std::vector<VkVertexInputBindingDescription> bindings;
-        std::vector<VkVertexInputAttributeDescription> attributes;
+        vector<VkVertexInputBindingDescription> bindings;
+        vector<VkVertexInputAttributeDescription> attributes;
 
         VkPipelineVertexInputStateCreateFlags flags = 0u;
     };

@@ -119,14 +119,16 @@ private:
     /// Reset as much of the GL default state as possible within the limitations given
     void clearStates(const DisplayWindow& window, GLStateTracker& stateTracker, bool global) const;
 
-    [[nodiscard]] bool makeTextureViewResident(DescriptorSetUsage set, U8 bindingSlot, const ImageView& imageView, size_t samplerHash) const override;
+    [[nodiscard]] bool bindShaderResources(DescriptorSetUsage usage, const DescriptorSet& bindings) override;
+
+    [[nodiscard]] bool makeTextureViewResident(DescriptorSetUsage set, U8 bindingSlot, const ImageView& imageView, size_t samplerHash) const;
 
     bool setViewport(const Rect<I32>& viewport) override;
     ShaderResult bindPipeline(const Pipeline& pipeline);
 
-    void createSetLayout(DescriptorSetUsage usage, const DescriptorSet& set) override;
-
     void flushTextureBindQueue();
+
+    [[nodiscard]] GLuint getGLTextureView(ImageView srcView, U8 lifetimeInFrames);
 
 private:
     void endFrameLocal(const DisplayWindow& window);

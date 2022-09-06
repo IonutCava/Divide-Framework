@@ -95,7 +95,7 @@ namespace Divide {
         UniqueLock<Mutex> w_lock(_stagingBufferLock);
 
         DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
-        range._startOffset += queueWriteIndex() * _alignedBufferSize;
+        range._startOffset += getStartOffset(false);
 
         Byte* mappedRange = (Byte*)_stagingBuffer->_allocInfo.pMappedData;
         if (data == nullptr) {
@@ -123,10 +123,10 @@ namespace Divide {
 
         DIVIDE_ASSERT(_usage == ShaderBuffer::Usage::UNBOUND_BUFFER &&
                       _params._hostVisible &&
-                      range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
+                       range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
 
         if (range._length > 0) {
-            range._startOffset += queueReadIndex() * _alignedBufferSize;
+            range._startOffset += getStartOffset(true);
 
             UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()->_allocatorInstance._allocatorLock);
 
@@ -138,7 +138,4 @@ namespace Divide {
         }
     }
 
-    bool vkShaderBuffer::bindByteRange([[maybe_unused]] DescriptorSetUsage set, [[maybe_unused]] U8 bindIndex, [[maybe_unused]] BufferRange range) noexcept {
-        return true;
-    }
 }; //namespace Divide

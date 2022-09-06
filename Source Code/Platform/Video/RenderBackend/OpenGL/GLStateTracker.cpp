@@ -580,15 +580,18 @@ GLStateTracker::BindResult GLStateTracker::setActiveBufferIndexRange(const GLenu
 GLStateTracker::BindResult GLStateTracker::setActiveProgram(const GLuint programHandle) {
     // Check if we are binding a new program or unbinding all shaders
     // Prevent double bind
-    if (_activeShaderProgram != programHandle) {
+    if (_activeShaderProgramHandle != programHandle) {
         if (setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED) {
             DIVIDE_UNEXPECTED_CALL();
         }
 
         // Remember the new binding for future reference
-        _activeShaderProgram = programHandle;
+        _activeShaderProgramHandle = programHandle;
         // Bind the new program
         glUseProgram(programHandle);
+        if (programHandle == 0u) {
+            _activeShaderProgram = nullptr;
+        }
         return BindResult::JUST_BOUND;
     }
 
@@ -599,15 +602,18 @@ GLStateTracker::BindResult GLStateTracker::setActiveProgram(const GLuint program
 GLStateTracker::BindResult GLStateTracker::setActiveShaderPipeline(const GLuint pipelineHandle) {
     // Check if we are binding a new program or unbinding all shaders
     // Prevent double bind
-    if (_activeShaderPipeline != pipelineHandle) {
+    if (_activeShaderPipelineHandle != pipelineHandle) {
         if (setActiveProgram(0u) == GLStateTracker::BindResult::FAILED) {
             DIVIDE_UNEXPECTED_CALL();
         }
 
         // Remember the new binding for future reference
-        _activeShaderPipeline = pipelineHandle;
+        _activeShaderPipelineHandle = pipelineHandle;
         // Bind the new pipeline
         glBindProgramPipeline(pipelineHandle);
+        if (pipelineHandle == 0u) {
+            _activeShaderProgram = nullptr;
+        }
         return BindResult::JUST_BOUND;
     }
 
@@ -822,7 +828,7 @@ GLuint GLStateTracker::getBoundSamplerHandle(const U8 slot) const noexcept {
 }
 
 GLuint GLStateTracker::getBoundProgramHandle() const noexcept {
-    return _activeShaderPipeline == 0u ? _activeShaderProgram : _activeShaderPipeline;
+    return _activeShaderPipelineHandle == 0u ? _activeShaderProgramHandle : _activeShaderPipelineHandle;
 }
 
 GLuint GLStateTracker::getBoundBuffer(const GLenum target, const GLuint bindIndex) const noexcept {

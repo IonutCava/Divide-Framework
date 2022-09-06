@@ -41,6 +41,7 @@ namespace Divide {
                                   _normalized,
                                   _colorAttachmentCompatible,
                                   _depthAttachmentCompatible,
+                                  _rwFlag,
                                   _textureOptions._alphaChannelTransparency,
                                   _textureOptions._fastCompression,
                                   _textureOptions._isNormalMap,

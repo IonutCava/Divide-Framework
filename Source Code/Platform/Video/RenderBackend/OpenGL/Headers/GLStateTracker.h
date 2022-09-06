@@ -43,6 +43,7 @@ namespace Divide {
 
     class Pipeline;
     class glFramebuffer;
+    class glShaderProgram;
     class RenderStateBlock;
 
     struct GLStateTracker {
@@ -162,6 +163,7 @@ namespace Divide {
         U8 _debugScopeDepth{ 0u };
 
         Pipeline const* _activePipeline{ nullptr };
+        glShaderProgram* _activeShaderProgram{ nullptr };
 
         PrimitiveTopology _activeTopology{ PrimitiveTopology::COUNT };
         glFramebuffer* _activeRenderTarget{ nullptr };
@@ -179,8 +181,8 @@ namespace Divide {
         GLint  _activePackUnpackRowLength[2]  { 0 , 0 };
         GLint  _activePackUnpackSkipPixels[2] { 0 , 0 };
         GLint  _activePackUnpackSkipRows[2]   { 0 , 0 };
-        GLuint _activeShaderProgram{ 0u }; //GLUtil::_invalidObjectID;
-        GLuint _activeShaderPipeline{ 0u };//GLUtil::_invalidObjectID;
+        GLuint _activeShaderProgramHandle{ 0u }; //GLUtil::_invalidObjectID;
+        GLuint _activeShaderPipelineHandle{ 0u };//GLUtil::_invalidObjectID;
         GLfloat _depthNearVal{ -1.f };
         GLfloat _depthFarVal{ -1.f };
         bool _lowerLeftOrigin{ true };

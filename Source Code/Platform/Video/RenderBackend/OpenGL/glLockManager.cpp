@@ -145,7 +145,7 @@ bool glLockManager::waitForLockedRange(const size_t lockBeginBytes,
     ScopedLock<Mutex> w_lock_global(_bufferLockslock);
     _swapLocks.resize(0);
     for (BufferLockInstance& lock : _bufferLocks) {
-        DIVIDE_ASSERT(lock._syncObjHandle._id != SyncObjectHandle::INVALID_ID);
+        DIVIDE_ASSERT(lock._syncObjHandle._id != GLUtil::k_invalidSyncID);
 
         ScopedLock<Mutex> r_lock(s_bufferLockLock);
         BufferLockPoolEntry& syncLockInstance = s_bufferLockPool[lock._syncObjHandle._id];
@@ -192,7 +192,7 @@ bool glLockManager::waitForLockedRange(const size_t lockBeginBytes,
 bool glLockManager::lockRange(const size_t lockBeginBytes, const size_t lockLength, SyncObjectHandle syncObj) {
     OPTICK_EVENT();
 
-    DIVIDE_ASSERT(syncObj._id != SyncObjectHandle::INVALID_ID && lockLength > 0u, "glLockManager::lockRange error: Invalid lock range!");
+    DIVIDE_ASSERT(syncObj._id != GLUtil::k_invalidSyncID && lockLength > 0u, "glLockManager::lockRange error: Invalid lock range!");
 
     const BufferRange testRange{ lockBeginBytes, lockLength };
 
@@ -207,7 +207,7 @@ bool glLockManager::lockRange(const size_t lockBeginBytes, const size_t lockLeng
     }
 
     // No luck with our reuse search. Add a new lock.
-    _bufferLocks.push_back(BufferLockInstance{ testRange, syncObj });
+    _bufferLocks.emplace_back(testRange, syncObj);
     
     return true;
 }

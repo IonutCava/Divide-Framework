@@ -52,6 +52,13 @@ void Material::Properties::hardwareSkinning(const bool state) noexcept {
     }
 }
 
+void Material::Properties::texturesInFragmentStageOnly(const bool state) noexcept {
+    if (_texturesInFragmentStageOnly != state) {
+        _texturesInFragmentStageOnly = state;
+        _needsNewShader = true;
+    }
+}
+
 void Material::Properties::toggleTransparency(const bool state) noexcept {
     if (overrides()._transparencyEnabled != state) {
         overrides()._transparencyEnabled = state;

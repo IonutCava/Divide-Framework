@@ -187,7 +187,7 @@ void CommandBuffer::batch() {
             } break;
             case CommandType::COPY_TEXTURE: {
                 const CopyTextureCommand* crtCmd = get<CopyTextureCommand>(cmd);
-                hasWork = crtCmd->_source._textureType != TextureType::COUNT && crtCmd->_destination._textureType != TextureType::COUNT;
+                hasWork = crtCmd->_source != nullptr && crtCmd->_destination != nullptr;
             }break;
             case CommandType::CLEAR_TEXTURE: {
                 const ClearTextureCommand* crtCmd = get<ClearTextureCommand>(cmd);
@@ -225,7 +225,7 @@ void CommandBuffer::clean() {
     const Pipeline* prevPipeline = nullptr;
     const Rect<I32>* prevScissorRect = nullptr;
     const Rect<I32>* prevViewportRect = nullptr;
-    const DescriptorBindings* prevDescriptorSet = nullptr;
+    const DescriptorSet* prevDescriptorSet = nullptr;
 
     bool keepGoing = false;
     const auto initialCommandOrderSize = _commandOrder.size();
@@ -452,6 +452,15 @@ std::pair<ErrorType, size_t> CommandBuffer::validate() const {
                     }
                 }break;
                 case CommandType::BIND_SHADER_RESOURCES: {
+                    const auto resCmd = get<GFX::BindShaderResourcesCommand>(cmd);
+                    if (resCmd->_usage == DescriptorSetUsage::COUNT) {
+                        return { ErrorType::INVALID_DESCRIPTOR_SET, cmdIndex };
+                    }
+                    for (auto& binding : resCmd->_bindings) {
+                        if (binding._shaderStageVisibility == to_base(ShaderStageVisibility::COUNT)) {
+                            return { ErrorType::INVALID_DESCRIPTOR_SET, cmdIndex };
+                        }
+                    }
                     hasShaderResources = true;
                 }break;
                 default: {

@@ -361,7 +361,6 @@ void main()
 --Geometry
 
 #define NO_CLIP_CULL_IN
-#define NEED_TEXTURE_DATA
 #include "terrainUtils.cmn"
 
 layout(triangles) in;

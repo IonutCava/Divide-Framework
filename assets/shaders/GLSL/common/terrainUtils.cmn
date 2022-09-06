@@ -9,7 +9,6 @@
 #define NO_REFLECTIONS
 #endif //FRAG_SHADER || TESS_EVAL_SHADER || GEOM_SHADER
 
-#define NEED_TEXTURE_DATA
 #include "nodeBufferedInput.cmn"
 
 uniform mat4 dvd_terrainWorld;

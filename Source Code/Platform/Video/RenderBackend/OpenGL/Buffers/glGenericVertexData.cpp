@@ -248,7 +248,7 @@ void glGenericVertexData::lockBuffersInternal(const bool force) {
         }
     }
 
-    if (sync._id != SyncObjectHandle::INVALID_ID) {
+    if (sync._id != GLUtil::k_invalidSyncID) {
         for (auto& buffer : _bufferObjects) {
             if ((buffer._useAutoSyncObjects || force) && buffer._usedAfterWrite) {
                 DIVIDE_ASSERT(buffer._writtenRange._length > 0u);

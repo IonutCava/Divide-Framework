@@ -143,17 +143,17 @@ bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
         {
-            auto& binding = cmd->_bindings.emplace_back();
+            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
             binding._slot = 0;
             binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt->descriptor()._samplerHash };
         }
         {
-            auto& binding = cmd->_bindings.emplace_back();
+            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
             binding._slot = 1;
             binding._data.As<DescriptorCombinedImageSampler>() = { depthTex, depthAtt->descriptor()._samplerHash };
         }
         {
-            auto& binding = cmd->_bindings.emplace_back();
+            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
             binding._slot = 2;
             binding._data.As<DescriptorCombinedImageSampler>() = { normalsTex, normalsAtt->descriptor()._samplerHash };
         }

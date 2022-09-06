@@ -70,7 +70,7 @@ namespace {
 
     struct TextureCallbackData {
         GFXDevice* _gfxDevice = nullptr;
-        const Texture* _texture = nullptr;
+        Texture* _texture = nullptr;
         vec4<I32> _colourData = { 1, 1, 1, 1 };
         vec2<F32> _depthRange = { 0.002f, 1.f };
         U32 _arrayLayer = 0u;
@@ -200,7 +200,6 @@ void Editor::createFontTexture(const F32 DPIScaleFactor) {
         TextureDescriptor texDescriptor(TextureType::TEXTURE_2D,
                                         GFXDataFormat::UNSIGNED_BYTE,
                                         GFXImageFormat::RGBA);
-        texDescriptor.layerCount(1u);
         ResourceDescriptor resDescriptor("IMGUI_font_texture");
         resDescriptor.propertyDescriptor(texDescriptor);
         ResourceCache* parentCache = _context.kernel().resourceCache();
@@ -653,8 +652,7 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     editorSampler.anisotropyLevel(0);
     _editorSamplerHash = editorSampler.getHash();
 
-    TextureDescriptor editorDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGB);
-    editorDescriptor.layerCount(1u);
+    TextureDescriptor editorDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA);
     editorDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
     InternalRTAttachmentDescriptors attachments {
@@ -1252,7 +1250,7 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
                     if (tex != nullptr) {
                         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
                         cmd->_usage = DescriptorSetUsage::PER_DRAW;
-                        auto& binding = cmd->_bindings.emplace_back();
+                        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                         binding._slot = 0;
                         binding._data.As<DescriptorCombinedImageSampler>() = { tex->defaultView(), _editorSamplerHash };
                     }
@@ -1789,7 +1787,7 @@ bool Editor::modalTextureView(const char* modalName, Texture* tex, const vec2<F3
         static SamplerDescriptor defaultSampler{};
         static size_t texSampler = defaultSampler.getHash();
 
-        const TextureCallbackData data = *static_cast<TextureCallbackData*>(imCmd->UserCallbackData);
+        TextureCallbackData data = *static_cast<TextureCallbackData*>(imCmd->UserCallbackData);
 
         assert(renderData != nullptr);
         GFX::CommandBuffer& buffer = *static_cast<GFX::CommandBuffer*>(renderData);
@@ -1797,7 +1795,7 @@ bool Editor::modalTextureView(const char* modalName, Texture* tex, const vec2<F3
         U32 textureType = 0u;
         if (data._texture != nullptr) {
 
-            const TextureType texType = data._texture->data()._textureType;
+            const TextureType texType = data._texture->descriptor().texType();
             const bool isTextureArray = IsArrayTexture(texType);
             const bool isTextureCube = IsCubeTexture(texType);
         
@@ -1806,7 +1804,7 @@ bool Editor::modalTextureView(const char* modalName, Texture* tex, const vec2<F3
 
                 auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(buffer);
                 cmd->_usage = DescriptorSetUsage::PER_DRAW;
-                auto& binding = cmd->_bindings.emplace_back();
+                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                 binding._slot = 1;
 
                 if (isTextureCube) {
@@ -1887,13 +1885,13 @@ bool Editor::modalTextureView(const char* modalName, Texture* tex, const vec2<F3
         ImGui::Text("Flip: ");  ImGui::SameLine(); ImGui::ToggleButton("Flip", &g_modalTextureData._flip);
         if (IsArrayTexture(tex->descriptor().texType())) {
             isArray = true;
-            U16 maxLayers = tex->descriptor().layerCount();
+            U32 maxLayers = tex->numLayers();
             if (IsCubeTexture(tex->descriptor().texType())) {
                 maxLayers *= 6u;
             }
             maxLayers -= 1u;
-            U16 minLayers = 0u;
-            ImGui::Text("Layer: "); ImGui::SameLine(); ImGui::SliderScalar("##modalTextureLayerSelect", ImGuiDataType_U16, &g_modalTextureData._arrayLayer, &minLayers, &maxLayers);
+            U32 minLayers = 0u;
+            ImGui::Text("Layer: "); ImGui::SameLine(); ImGui::SliderScalar("##modalTextureLayerSelect", ImGuiDataType_U32, &g_modalTextureData._arrayLayer, &minLayers, &maxLayers);
         }
         U16 maxMip = tex->mipCount();
         if (maxMip > 1u) {

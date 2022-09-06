@@ -661,27 +661,27 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
     cmd->_usage = DescriptorSetUsage::PER_BATCH;
     {
-        auto& binding = cmd->_bindings.emplace_back();
+        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::NONE); //Command buffer only
         binding._slot = 0;
         binding._data.As<ShaderBufferEntry>() = { *cmdBuffer,  { 0u, cmdBuffer->getPrimitiveCount() } };
     }
     {
-        auto& binding = cmd->_bindings.emplace_back();
+        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
         binding._slot = 2;
         binding._data.As<ShaderBufferEntry>() = { *cmdBuffer, { 0u, cmdBuffer->getPrimitiveCount() } };
     }
     {
-        auto& binding = cmd->_bindings.emplace_back();
+        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::ALL);
         binding._slot = 3;
         binding._data.As<ShaderBufferEntry>() = { *_transformBuffer._gpuBuffer, { 0u, _transformBuffer._highWaterMark } };
     }
     {
-        auto& binding = cmd->_bindings.emplace_back();
+        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::ALL);
         binding._slot = 4;
         binding._data.As<ShaderBufferEntry>() = { *_indirectionBuffer._gpuBuffer, { 0u, _indirectionBuffer._highWaterMark } };
     }
     {
-        auto& binding = cmd->_bindings.emplace_back();
+        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = 5;
         binding._data.As<ShaderBufferEntry>() = { *_materialBuffer._gpuBuffer, { 0u, _materialBuffer._highWaterMark } };
     }
@@ -920,18 +920,18 @@ void RenderPassExecutor::mainPass(const VisibleNodeList<>& nodes, const RenderPa
         cmd->_usage = DescriptorSetUsage::PER_PASS;
 
         if (hasHiZ) {
-            auto& binding = cmd->_bindings.emplace_back();
+            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
             binding._slot = 1;
             const RenderTarget* hizTarget = _context.renderTargetPool().getRenderTarget(params._targetHIZ);
             RTAttachment* hizAtt = hizTarget->getAttachment(RTAttachmentType::Depth_Stencil, 0);
             binding._data.As<DescriptorCombinedImageSampler>() = { hizAtt->texture()->defaultView(), hizAtt->descriptor()._samplerHash };
         } else if (prePassExecuted) {
-            auto& binding = cmd->_bindings.emplace_back();
+            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
             binding._slot = 1;
             RTAttachment* depthAtt = target.getAttachment(RTAttachmentType::Depth_Stencil, 0);
             binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->defaultView(), depthAtt->descriptor()._samplerHash };
         }
-        auto& binding = cmd->_bindings.emplace_back();
+        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = 0;
         binding._data.As<DescriptorCombinedImageSampler>() = { normalsAttMS->texture()->defaultView(), normalsAttMS->descriptor()._samplerHash };
 
@@ -976,7 +976,7 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_PASS;
-        auto& binding = cmd->_bindings.emplace_back();
+        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = 2;
         binding._data.As<DescriptorCombinedImageSampler>() = { colourAtt->texture()->defaultView(), colourAtt->descriptor()._samplerHash };
     }
@@ -1011,12 +1011,12 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
     cmd->_usage = DescriptorSetUsage::PER_DRAW;
     {
-        auto& binding = cmd->_bindings.emplace_back();
+        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = 0;
         binding._data.As<DescriptorCombinedImageSampler>() = { accumAtt->texture()->defaultView(), accumAtt->descriptor()._samplerHash };
     }
     {
-        auto& binding = cmd->_bindings.emplace_back();
+        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = 1;
         binding._data.As<DescriptorCombinedImageSampler>() = { revAtt->texture()->defaultView(), revAtt->descriptor()._samplerHash };
     }
@@ -1107,12 +1107,12 @@ void RenderPassExecutor::resolveMainScreenTarget(const RenderPassParams& params,
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
-                auto& binding = cmd->_bindings.emplace_back();
+                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                 binding._slot = 0;
                 binding._data.As<DescriptorCombinedImageSampler>() = { velocityAtt->texture()->defaultView(), velocityAtt->descriptor()._samplerHash };
             }
             {
-                auto& binding = cmd->_bindings.emplace_back();
+                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                 binding._slot = 1;
                 binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt->texture()->defaultView(), normalsAtt->descriptor()._samplerHash };
             }

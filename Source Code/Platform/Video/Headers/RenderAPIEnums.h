@@ -102,6 +102,22 @@ namespace Names {
 
 static_assert(std::size(Names::refractorType) == to_base(RefractorType::COUNT) + 1);
 
+
+enum class ImageFlag : U8
+{
+    READ = 0,
+    WRITE,
+    READ_WRITE,
+    COUNT
+};
+namespace Names {
+    static constexpr const char* imageFlag[] = {
+        "READ", "WRITE", "READ_WRITE", "UNKNOWN"
+    };
+};
+
+static_assert(std::size(Names::imageFlag) == to_base(ImageFlag::COUNT) + 1);
+
 /// The different types of lights supported
 enum class LightType : U8
 {
@@ -418,11 +434,12 @@ enum class ShaderStageVisibility : U16 {
     COMPUTE = toBit(6),
     /*MESH = toBit(7),
     TASK = toBit(8),*/
+    COUNT = 7,
     ALL_GEOMETRY = /*MESH | TASK |*/ VERTEX | GEOMETRY | TESS_CONTROL | TESS_EVAL,
     ALL_DRAW = ALL_GEOMETRY | FRAGMENT,
     COMPUTE_AND_DRAW = FRAGMENT | COMPUTE,
     COMPUTE_AND_GEOMETRY = ALL_GEOMETRY | COMPUTE,
-    ALL = ALL_DRAW | COMPUTE
+    ALL = ALL_DRAW | COMPUTE,
 };
 
 /// Valid front and back stencil test actions
@@ -664,6 +681,23 @@ enum class MemoryBarrierType : U32 {
     TEXTURE_BARRIER = toBit(16), //This is not included in ALL!
     COUNT = 15
 };
+
+enum class ImageLayout : U8 {
+    UNDEFINED = 0,
+    SAMPLED,
+    RT_WRITE,
+    SHADER_READ,
+    SHADER_WRITE,
+    COUNT
+};
+
+namespace Names {
+    static constexpr const char* imageLayout[] = {
+        "UNDEFINED", "SAMPLED", "RT_WRITE", "SHADER_READ", "SHADER_WRITE", "ERROR"
+    };
+};
+
+static_assert(std::size(Names::imageLayout) == to_base(ImageLayout::COUNT) + 1);
 
 enum class GPUVendor : U8 {
     NVIDIA = 0,

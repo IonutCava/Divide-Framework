@@ -198,23 +198,23 @@ void Renderer::prepareLighting(const RenderStage stage,
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_FRAME;
             {
-                auto& binding = cmd->_bindings.emplace_back();
+                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE_AND_DRAW);
                 binding._slot = 10;
                 binding._data.As<ShaderBufferEntry>() = { *data._lightGridBuffer, { 0u, data._lightGridBuffer->getPrimitiveCount() } };
             }
             {
-                auto& binding = cmd->_bindings.emplace_back();
+                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE_AND_DRAW);
                 binding._slot = 11;
                 binding._data.As<ShaderBufferEntry>() = { *data._lightIndexBuffer, { 0u, data._lightIndexBuffer->getPrimitiveCount() }};
             }
             {
-                auto& binding = cmd->_bindings.emplace_back();
+                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE_AND_DRAW);
                 binding._slot = 12;
                 binding._data.As<ShaderBufferEntry>() = { *data._lightClusterAABBsBuffer, { 0u, data._lightClusterAABBsBuffer->getPrimitiveCount() } };
             }
             {
                 RTAttachment* targetAtt = _context.gfx().renderTargetPool().getRenderTarget(RenderTargetNames::REFLECTION_CUBE)->getAttachment(RTAttachmentType::Colour, 0u);
-                auto& binding = cmd->_bindings.emplace_back();
+                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                 binding._slot = 14;
                 binding._data.As<DescriptorCombinedImageSampler>() = { targetAtt->texture()->defaultView(), targetAtt->descriptor()._samplerHash};
             }
@@ -222,7 +222,7 @@ void Renderer::prepareLighting(const RenderStage stage,
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
         {
-            auto& binding = cmd->_bindings.emplace_back();
+            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
             binding._slot = 0;
             binding._data.As<ShaderBufferEntry>() = { *data._globalIndexCountBuffer, { 0u, data._globalIndexCountBuffer->getPrimitiveCount() } };
         }

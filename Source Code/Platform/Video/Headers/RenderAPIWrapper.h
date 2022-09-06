@@ -166,9 +166,7 @@ protected:
 
     virtual void onThreadCreated(const std::thread::id& threadID) = 0;
 
-    virtual void createSetLayout(DescriptorSetUsage usage, const DescriptorSet& set) = 0;
-
-    virtual bool makeTextureViewResident(DescriptorSetUsage set, U8 bindingSlot, const ImageView& imageView, size_t samplerHash) const = 0;
+    virtual bool bindShaderResources(DescriptorSetUsage usage, const DescriptorSet& bindings) = 0;
 };
 
 FWD_DECLARE_MANAGED_CLASS(RenderAPIWrapper);

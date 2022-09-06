@@ -40,6 +40,7 @@
 namespace Divide {
 
 class glTexture final : public Texture {
+
    public:
     explicit glTexture(GFXDevice& context,
                        size_t descriptorHash,
@@ -53,27 +54,27 @@ class glTexture final : public Texture {
 
     bool unload() override;
 
-    void bindLayer(U8 slot, U8 level, U8 layer, bool layered, Image::Flag rwFlag) override;
-
     void clearData(const UColour4& clearColour, U8 level) const override;
     void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const override;
 
-    static void copy(const TextureData& source, U8 sourceSamples, const TextureData& destination, U8 destinationSamples, const CopyTexParams& params);
+    static void copy(const glTexture* source, U8 sourceSamples, const glTexture* destination, U8 destinationSamples, const CopyTexParams& params);
 
     TextureReadbackData readData(U16 mipLevel, GFXDataFormat desiredFormat) const override;
+
+    PROPERTY_R_IW(GLuint, textureHandle, GLUtil::k_invalidObjectID);
 
    protected:
     void postLoad() override;
     void reserveStorage();
     void loadDataInternal(const ImageTools::ImageData& imageData) override;
-    void prepareTextureData(U16 width, U16 height, U16 depth) override;
+    void prepareTextureData(U16 width, U16 height, U16 depth, bool emptyAllocation) override;
     void submitTextureData() override;
 
     void clearDataInternal(const UColour4& clearColour, U8 level, bool clearRect, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const;
 
-
    private:
     GLenum _type{GL_NONE};
+    GLuint _loadingHandle{ GLUtil::k_invalidObjectID };
     glLockManager _lockManager;
     bool _hasStorage{ false };
 };

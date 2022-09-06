@@ -565,7 +565,7 @@ void SceneGraphNode::prepareRender(RenderingComponent& rComp,
         DIVIDE_ASSERT(data._boneBuffer != nullptr && data._prevBoneBufferRange._length > 0);
         auto& descriptorBindings = rComp.getDescriptorSet(renderStagePass);
 
-        DescriptorBindingEntry *boneEntry = nullptr, *prevBoneEntry = nullptr;
+        DescriptorSetBinding *boneEntry = nullptr, *prevBoneEntry = nullptr;
         for (auto& entry : descriptorBindings) {
             if (entry._slot == 14) {
                 boneEntry = &entry;
@@ -581,12 +581,12 @@ void SceneGraphNode::prepareRender(RenderingComponent& rComp,
             }
         }
         if (!boneEntry) {
-            auto& binding = descriptorBindings.emplace_back();
+            auto& binding = descriptorBindings.emplace_back(ShaderStageVisibility::VERTEX);
             binding._slot = 12;
             boneEntry = &binding;
         }
         if (!prevBoneEntry) {
-            auto& binding = descriptorBindings.emplace_back();
+            auto& binding = descriptorBindings.emplace_back(ShaderStageVisibility::VERTEX);
             binding._slot = 13;
             prevBoneEntry = &binding;
         }

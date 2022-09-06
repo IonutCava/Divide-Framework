@@ -57,14 +57,16 @@ namespace Divide {
     inline bool operator==(const ImageView& lhs, const ImageView&rhs) noexcept {
         return lhs._mipLevels == rhs._mipLevels &&
                lhs._layerRange == rhs._layerRange &&
-               lhs._textureData == rhs._textureData &&
-               lhs._descriptor == rhs._descriptor;
+               lhs.targetType() == rhs.targetType() &&
+               lhs._descriptor == rhs._descriptor &&
+               lhs._srcTexture == rhs._srcTexture;
     }
 
     inline bool operator!=(const ImageView& lhs, const ImageView&rhs) noexcept {
         return lhs._mipLevels != rhs._mipLevels ||
                lhs._layerRange != rhs._layerRange ||
-               lhs._textureData != rhs._textureData ||
+               lhs.targetType() != rhs.targetType() ||
+               lhs._srcTexture != rhs._srcTexture ||
                lhs._descriptor != rhs._descriptor;
     }
 
@@ -80,23 +82,13 @@ namespace Divide {
 
     inline bool operator==(const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs) noexcept {
         return lhs._shaderStageVisibility == rhs._shaderStageVisibility &&
-               lhs._type == rhs._type &&
-               lhs._resource == rhs._resource;
+               lhs._slot == rhs._slot &&
+               lhs._data == rhs._data;
     }
 
     inline bool operator!=(const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs) noexcept {
         return lhs._shaderStageVisibility != rhs._shaderStageVisibility ||
-               lhs._type != rhs._type ||
-               lhs._resource != rhs._resource;
-    }
-
-    inline bool operator==(const DescriptorBindingEntry& lhs, const DescriptorBindingEntry& rhs) noexcept {
-        return lhs._slot == rhs._slot &&
-               lhs._data == rhs._data;
-    }
-
-    inline bool operator!=(const DescriptorBindingEntry& lhs, const DescriptorBindingEntry& rhs) noexcept {
-        return lhs._slot != rhs._slot ||
+               lhs._slot != rhs._slot ||
                lhs._data != rhs._data;
     }
 

@@ -103,8 +103,10 @@ Texture::Texture(GFXDevice& context,
       _numLayers(texDescriptor.layerCount()),
       _parentCache(parentCache)
 {
+    _defaultView._srcTexture = this;
     _defaultView._mipLevels.max = 1u;
     _defaultView._isDefaultView = true;
+    _defaultView._layout = ImageLayout::UNDEFINED;
 }
 
 Texture::~Texture()
@@ -122,8 +124,18 @@ bool Texture::load() {
     return true;
 }
 
+bool Texture::unload() {
+    _defaultView._layout = ImageLayout::UNDEFINED;
+
+    return CachedResource::unload();
+}
+
 void Texture::postLoad() {
-    NOP();
+    _defaultView._descriptor._baseFormat = _descriptor.baseFormat();
+    _defaultView._descriptor._dataType = _descriptor.dataType();
+    _defaultView._descriptor._srgb = _descriptor.srgb();
+    _defaultView._descriptor._normalized = _descriptor.normalized();
+    _defaultView._descriptor._msaaSamples = _descriptor.msaaSamples();
 }
 
 /// Load texture data using the specified file name
@@ -188,8 +200,7 @@ void Texture::threadedLoad() {
             // Uploading to the GPU dependents on the rendering API
             loadData(dataStorage);
 
-            if (_descriptor.texType() == TextureType::TEXTURE_CUBE_MAP ||
-                _descriptor.texType() == TextureType::TEXTURE_CUBE_ARRAY) {
+            if (IsCubeTexture(_descriptor.texType())) {
                 if (dataStorage.layerCount() % 6 != 0) {
                     Console::errorfn(
                         Locale::Get(_ID("ERROR_TEXTURE_LOADER_CUBMAP_INIT_COUNT")),
@@ -258,16 +269,13 @@ bool Texture::loadFile(const ResourcePath& path, const ResourcePath& name, Image
     return true;
 }
 
-void Texture::prepareTextureData(const U16 width, const U16 height, const U16 depth) {
-    _loadingData = _defaultView._textureData;
-
+void Texture::prepareTextureData(const U16 width, const U16 height, const U16 depth, [[maybe_unused]] const bool emptyAllocation) {
     _width = width;
     _height = height;
     _depth = depth;
     DIVIDE_ASSERT(_width > 0 && _height > 0 && _depth > 0, "Texture error: Invalid texture dimensions!");
 
     validateDescriptor();
-    _loadingData._textureType = _descriptor.texType();
 }
 
 void Texture::loadData(const Byte* data, size_t dataSize, const vec2<U16>& dimensions) {
@@ -278,7 +286,7 @@ void Texture::loadData(const Byte* data, const size_t dataSize, const vec3<U16>&
     // This should never be called for compressed textures
     assert(!IsCompressed(_descriptor.baseFormat()));
 
-    prepareTextureData(dimensions.width, dimensions.height, dimensions.depth);
+    prepareTextureData(dimensions.width, dimensions.height, dimensions.depth, dataSize == 0u || data == nullptr);
 
     // We can't manually specify data for msaa textures.
     assert(_descriptor.msaaSamples() == 0u || data == nullptr);
@@ -293,7 +301,7 @@ void Texture::loadData(const Byte* data, const size_t dataSize, const vec3<U16>&
 }
 
 void Texture::loadData(const ImageTools::ImageData& imageData) {
-    prepareTextureData(imageData.dimensions(0u, 0u).width, imageData.dimensions(0u, 0u).height, imageData.dimensions(0u, 0u).depth);
+    prepareTextureData(imageData.dimensions(0u, 0u).width, imageData.dimensions(0u, 0u).height, imageData.dimensions(0u, 0u).depth, false);
 
     if (IsCompressed(_descriptor.baseFormat()) &&
         _descriptor.mipMappingState() == TextureDescriptor::MipMappingState::AUTO)
@@ -403,6 +411,10 @@ void Texture::setSampleCount(U8 newSampleCount) {
     }
 }
 
+void Texture::setImageLayout(const ImageLayout layout) {
+    _layout = layout;
+}
+
 void Texture::validateDescriptor() {
     // Select the proper colour space internal format
     if (_descriptor.baseFormat() == GFXImageFormat::RED ||
@@ -428,25 +440,58 @@ U16 Texture::mipCount() const noexcept {
     return _defaultView._mipLevels.max;
 }
 
-U32 Texture::handle() const noexcept {
-    return data()._textureHandle;
-}
-
-TextureData Texture::data() const noexcept {
-    return _defaultView._textureData;
-}
-
-ImageView Texture::getView(const TextureType targetType, const vec2<U16> mipRange, const vec2<U16> layerRange) const noexcept {
-    ImageView ret{};
-    ret._textureData = _defaultView._textureData;
-    ret._textureData._textureType = targetType;
-    ret._mipLevels = mipRange;
-    ret._layerRange = layerRange;
-    ret._descriptor._msaaSamples = _descriptor.msaaSamples();
-    ret._descriptor._dataType = _descriptor.dataType();
-    ret._descriptor._baseFormat = _descriptor.baseFormat();
-    ret._descriptor._srgb = _descriptor.srgb();
-    ret._descriptor._normalized = _descriptor.normalized();
+ImageView Texture::getView() noexcept {
+    ImageView ret = defaultView();
+    ret._isDefaultView = false;
     return ret;
 }
+
+ImageView Texture::getView(const ImageFlag flag) noexcept {
+    ImageView ret = getView();
+    ret._flag = flag;
+    return ret;
+}
+
+ImageView Texture::getView(const TextureType targetType) noexcept {
+    ImageView ret = getView();
+    ret._targetType = targetType;
+    return ret;
+}
+
+ImageView Texture::getView(const vec2<U16> mipRange) noexcept {
+    ImageView ret = getView();
+    ret._mipLevels = mipRange;
+    return ret;
+}
+
+ImageView Texture::getView(const vec2<U16> mipRange, const vec2<U16> layerRange) noexcept{
+    ImageView ret = getView(mipRange);
+    ret._layerRange = layerRange;
+    return ret;
+}
+
+ImageView Texture::getView(const vec2<U16> mipRange, const vec2<U16> layerRange, const ImageFlag flag) noexcept{
+    ImageView ret = getView(mipRange, layerRange);
+    ret._flag = flag;
+    return ret;
+}
+
+ImageView Texture::getView(const TextureType targetType, const vec2<U16> mipRange) noexcept {
+    ImageView ret = getView(targetType);
+    ret._mipLevels = mipRange;
+    return ret;
+}
+
+ImageView Texture::getView(const TextureType targetType, const vec2<U16> mipRange, const vec2<U16> layerRange) noexcept {
+    ImageView ret = getView(targetType, mipRange);
+    ret._layerRange = layerRange;
+    return ret;
+}
+
+ImageView Texture::getView(const TextureType targetType, const vec2<U16> mipRange, const vec2<U16> layerRange, const ImageFlag flag) noexcept {
+    ImageView ret = getView(targetType, mipRange, layerRange);
+    ret._flag = flag;
+    return ret;
+}
+
 };

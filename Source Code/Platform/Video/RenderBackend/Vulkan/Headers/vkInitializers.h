@@ -178,6 +178,13 @@ namespace Divide {
             VkImageViewCreateInfo imageViewCreateInfo{};
             imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
             return imageViewCreateInfo;
+        }  
+        
+        inline VkImageViewUsageCreateInfo imageViewUsageCreateInfo()
+        {
+            VkImageViewUsageCreateInfo  imageViewUsageCreateInfo{};
+            imageViewUsageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
+            return imageViewUsageCreateInfo;
         }
 
         inline VkFramebufferCreateInfo framebufferCreateInfo()
@@ -248,8 +255,8 @@ namespace Divide {
         }
 
         inline VkDescriptorPoolCreateInfo descriptorPoolCreateInfo(
-            const std::vector<VkDescriptorPoolSize>& poolSizes,
-            uint32_t maxSets)
+            const vector<VkDescriptorPoolSize>& poolSizes,
+            uint32_t maxSets) 
         {
             VkDescriptorPoolCreateInfo descriptorPoolInfo{};
             descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -295,7 +302,7 @@ namespace Divide {
         }
 
         inline VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo(
-            const std::vector<VkDescriptorSetLayoutBinding>& bindings)
+            const vector<VkDescriptorSetLayoutBinding>& bindings)
         {
             VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo{};
             descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -337,13 +344,31 @@ namespace Divide {
             return descriptorSetAllocateInfo;
         }
 
-        inline VkDescriptorImageInfo descriptorImageInfo(VkSampler sampler, VkImageView imageView, VkImageLayout imageLayout)
+        inline VkDescriptorImageInfo descriptorImageInfo(
+            VkSampler sampler,
+            VkImageView imageView,
+            VkImageLayout imageLayout)
         {
             VkDescriptorImageInfo descriptorImageInfo{};
             descriptorImageInfo.sampler = sampler;
             descriptorImageInfo.imageView = imageView;
             descriptorImageInfo.imageLayout = imageLayout;
             return descriptorImageInfo;
+        }
+
+        inline VkWriteDescriptorSet writeDescriptorSet(
+            VkDescriptorType type,
+            uint32_t binding,
+            VkDescriptorBufferInfo* bufferInfo,
+            uint32_t descriptorCount = 1)
+        {
+            VkWriteDescriptorSet writeDescriptorSet{};
+            writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writeDescriptorSet.descriptorType = type;
+            writeDescriptorSet.dstBinding = binding;
+            writeDescriptorSet.pBufferInfo = bufferInfo;
+            writeDescriptorSet.descriptorCount = descriptorCount;
+            return writeDescriptorSet;
         }
 
         inline VkWriteDescriptorSet writeDescriptorSet(
@@ -363,6 +388,21 @@ namespace Divide {
             return writeDescriptorSet;
         }
 
+        inline VkWriteDescriptorSet writeDescriptorSet(
+            VkDescriptorType type,
+            uint32_t binding,
+            VkDescriptorImageInfo* imageInfo,
+            uint32_t descriptorCount = 1)
+        {
+            VkWriteDescriptorSet writeDescriptorSet{};
+            writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writeDescriptorSet.descriptorType = type;
+            writeDescriptorSet.dstBinding = binding;
+            writeDescriptorSet.pImageInfo = imageInfo;
+            writeDescriptorSet.descriptorCount = descriptorCount;
+            return writeDescriptorSet;
+        }  
+        
         inline VkWriteDescriptorSet writeDescriptorSet(
             VkDescriptorSet dstSet,
             VkDescriptorType type,
@@ -414,8 +454,8 @@ namespace Divide {
         }
 
         inline VkPipelineVertexInputStateCreateInfo pipelineVertexInputStateCreateInfo(
-            const std::vector<VkVertexInputBindingDescription>& vertexBindingDescriptions,
-            const std::vector<VkVertexInputAttributeDescription>& vertexAttributeDescriptions
+            const vector<VkVertexInputBindingDescription>& vertexBindingDescriptions,
+            const vector<VkVertexInputAttributeDescription>& vertexAttributeDescriptions
         )
         {
             VkPipelineVertexInputStateCreateInfo pipelineVertexInputStateCreateInfo{};
@@ -530,7 +570,7 @@ namespace Divide {
         }
 
         inline VkPipelineDynamicStateCreateInfo pipelineDynamicStateCreateInfo(
-            const std::vector<VkDynamicState>& pDynamicStates,
+            const vector<VkDynamicState>& pDynamicStates,
             VkPipelineDynamicStateCreateFlags flags = 0)
         {
             VkPipelineDynamicStateCreateInfo pipelineDynamicStateCreateInfo{};
@@ -640,7 +680,7 @@ namespace Divide {
         }
 
         /** @brief Initialize a specialization constant info structure to pass to a shader stage */
-        inline VkSpecializationInfo specializationInfo(const std::vector<VkSpecializationMapEntry>& mapEntries, size_t dataSize, const void* data)
+        inline VkSpecializationInfo specializationInfo(const vector<VkSpecializationMapEntry>& mapEntries, size_t dataSize, const void* data)
         {
             VkSpecializationInfo specializationInfo{};
             specializationInfo.mapEntryCount = static_cast<uint32_t>(mapEntries.size());

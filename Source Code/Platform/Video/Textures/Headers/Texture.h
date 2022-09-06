@@ -93,9 +93,6 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     static [[nodiscard]] const Texture_ptr& DefaultTexture() noexcept;
     static [[nodiscard]] U8 GetSizeFactor(const GFXDataFormat format) noexcept;
 
-    /// Bind a single level
-    virtual void bindLayer(U8 slot, U8 level, U8 layer, bool layered, Image::Flag rw_flag) = 0;
-
     /// API-dependent loading function that uploads ptr data to the GPU using the specified parameters
     void loadData(const ImageTools::ImageData& imageData);
     void loadData(const Byte* data, size_t dataSize, const vec2<U16>& dimensions);
@@ -103,12 +100,19 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
 
     /// Change the number of MSAA samples for this current texture
     void setSampleCount(U8 newSampleCount);
+    void setImageLayout(ImageLayout layout);
 
     [[nodiscard]] U16 mipCount() const noexcept;
-    [[nodiscard]] U32 handle() const noexcept;
-    [[nodiscard]] TextureData data() const noexcept;
 
-    [[nodiscard]] ImageView getView(TextureType targetType, vec2<U16> mipRange, vec2<U16> layerRange) const noexcept;
+    [[nodiscard]] ImageView getView() noexcept;
+    [[nodiscard]] ImageView getView(ImageFlag flag) noexcept;
+    [[nodiscard]] ImageView getView(TextureType targetType) noexcept;
+    [[nodiscard]] ImageView getView(vec2<U16> mipRange/*offset, count*/) noexcept;
+    [[nodiscard]] ImageView getView(vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/) noexcept;
+    [[nodiscard]] ImageView getView(vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/, ImageFlag flag) noexcept;
+    [[nodiscard]] ImageView getView(TextureType targetType, vec2<U16> mipRange/*offset, count*/) noexcept;
+    [[nodiscard]] ImageView getView(TextureType targetType, vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/) noexcept;
+    [[nodiscard]] ImageView getView(TextureType targetType, vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/, ImageFlag flag) noexcept;
 
     virtual void clearData(const UColour4& clearColour, U8 level) const = 0;
     virtual void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const = 0;
@@ -131,6 +135,8 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     /// If the texture has an alpha channel and at least on pixel is fully transparent and no pixels are partially transparent, return true
     PROPERTY_R(bool, hasTransparency, false);
 
+    PROPERTY_R(ImageLayout, layout, ImageLayout::UNDEFINED);
+
     [[nodiscard]] U8 numChannels() const noexcept;
 
    protected:
@@ -141,18 +147,19 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     bool load() override;
     virtual void threadedLoad();
     virtual void postLoad();
+    virtual bool unload();
 
     void validateDescriptor();
 
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Texture"; }
 
     virtual void loadDataInternal(const ImageTools::ImageData& imageData) = 0;
-    virtual void prepareTextureData(U16 width, U16 height, U16 depth);
+    virtual void prepareTextureData(U16 width, U16 height, U16 depth, bool emptyAllocation);
     virtual void submitTextureData() = 0;
 
   protected:
     ResourceCache& _parentCache;
-    TextureData _loadingData;
+    TextureType _type{ TextureType::COUNT };
 
   protected:
     static bool s_useDDSCache;

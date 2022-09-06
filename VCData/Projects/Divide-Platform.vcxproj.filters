@@ -202,16 +202,13 @@
     <ClInclude Include="../../Source Code\Platform\Video\RenderBackend\None\Headers\NoneWrapper.h">
       <Filter>Video\RenderBackend\None\Headers</Filter>
     </ClInclude>
-    <ClInclude Include="../../Source Code\Platform\Video\RenderBackend\Vulkan\Headers\VKWrapper.h">
-      <Filter>Video\RenderBackend\Vulkan\Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="../../Source Code\Platform\Video\RenderBackend\Vulkan\Headers\VKPlaceholderObjects.h">
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\VKWrapper.h">
       <Filter>Video\RenderBackend\Vulkan\Headers</Filter>
     </ClInclude>
     <ClInclude Include="../../Source Code\Platform\Video\RenderBackend\None\Headers\NonePlaceholderObjects.h">
       <Filter>Video\RenderBackend\None\Headers</Filter>
     </ClInclude>
-    <ClInclude Include="../../Source Code\Platform\Video\RenderBackend\OpenGL\Headers\GLStateTracker.h">
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Headers\glStateTracker.h">
       <Filter>Video\RenderBackend\OpenGL\Headers</Filter>
     </ClInclude>
     <ClInclude Include="../../Source Code\Platform\Input\Headers\Input.h">
@@ -304,10 +301,10 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\Headers\ShaderDataUploader.h">
       <Filter>Video\Shaders\Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\VKDevice.h">
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\vkDevice.h">
       <Filter>Video\RenderBackend\Vulkan\Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\VKSwapChain.h">
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\vkSwapChain.h">
       <Filter>Video\RenderBackend\Vulkan\Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\vkResources.h">
@@ -355,7 +352,7 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\Headers\ShaderProgramFwd.h">
       <Filter>Video\Shaders\Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\VMAInclude.h">
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\vkMemAllocatorInclude.h">
       <Filter>Video\RenderBackend\Vulkan\Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\vkInitializers.h">
@@ -378,6 +375,9 @@
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Textures\Headers\vkSamplerObject.h">
       <Filter>Video\RenderBackend\Vulkan\Textures\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\vkDescriptors.h">
+      <Filter>Video\RenderBackend\Vulkan\Headers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -528,7 +528,7 @@
     <ClCompile Include="../../Source Code\Platform\Video\RenderBackend\Vulkan\VKWrapper.cpp">
       <Filter>Video\RenderBackend\Vulkan</Filter>
     </ClCompile>
-    <ClCompile Include="../../Source Code\Platform\Video\RenderBackend\OpenGL\GLStateTracker.cpp">
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\glStateTracker.cpp">
       <Filter>Video\RenderBackend\OpenGL</Filter>
     </ClCompile>
     <ClCompile Include="../../Source Code\Platform\Input\Input.cpp">
@@ -606,13 +606,10 @@
     <ClCompile Include="..\..\Source Code\Platform\Video\Shaders\ShaderDataUploader.cpp">
       <Filter>Video\Shaders</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\VKDevice.cpp">
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\vkDevice.cpp">
       <Filter>Video\RenderBackend\Vulkan</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\VKSwapChain.cpp">
-      <Filter>Video\RenderBackend\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\ImGUITestCode.cpp">
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\vkSwapChain.cpp">
       <Filter>Video\RenderBackend\Vulkan</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Shaders\vkShaderProgram.cpp">
@@ -651,14 +648,14 @@
     <ClCompile Include="..\..\Source Code\Platform\Video\Textures\SamplerDescriptor.cpp">
       <Filter>Video\Textures</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Source Code\Platform\Video\TextureData.cpp">
-      <Filter>Video</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\Buffers\VertexBuffer\BufferLocks.cpp">
       <Filter>Video\Buffers\VertexBuffer</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Textures\vkSamplerObject.cpp">
       <Filter>Video\RenderBackend\Vulkan\Textures</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\vkDescriptors.cpp">
+      <Filter>Video\RenderBackend\Vulkan</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1053,9 +1050,6 @@
     </None>
     <None Include="..\..\assets\shaders\GLSL\computeVSM.glsl">
       <Filter>Video\ShaderSource\GLSL</Filter>
-    </None>
-    <None Include="..\..\Source Code\Platform\Video\Headers\TextureData.inl">
-      <Filter>Video\Headers</Filter>
     </None>
     <None Include="..\..\Source Code\Platform\Threading\Headers\ThreadPool.inl">
       <Filter>Threading\Headers</Filter>

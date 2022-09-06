@@ -512,7 +512,7 @@ void RenderingComponent::getCommandBuffer(RenderPackage* const pkg, GFX::Command
     }
 }
 
-DescriptorBindings& RenderingComponent::getDescriptorSet(const RenderStagePass& renderStagePass) {
+DescriptorSet& RenderingComponent::getDescriptorSet(const RenderStagePass& renderStagePass) {
     return getDrawPackage(renderStagePass).descriptorSetCmd()._bindings;
 }
 

@@ -811,6 +811,30 @@ void GL_API::flushTextureBindQueue() {
     s_TexBindQueue.clear();
 }
 
+GLuint GL_API::getGLTextureView(const ImageView srcView, const U8 lifetimeInFrames) {
+    auto [handle, cacheHit] = s_textureViewCache.allocate(srcView.getHash());
+
+    if (!cacheHit) {
+        const GLenum glInternalFormat = GLUtil::internalFormat(srcView._descriptor._baseFormat,
+                                                               srcView._descriptor._dataType,
+                                                               srcView._descriptor._srgb,
+                                                               srcView._descriptor._normalized);
+        OPTICK_EVENT("GL: cache miss  - Image");
+        glTextureView(handle,
+                      GLUtil::internalTextureType(srcView.targetType(), srcView._descriptor._msaaSamples),
+                      static_cast<glTexture*>(srcView._srcTexture)->textureHandle(),
+                      glInternalFormat,
+                      static_cast<GLuint>(srcView._mipLevels.x),
+                      static_cast<GLuint>(srcView._mipLevels.y),
+                      static_cast<GLuint>(srcView._layerRange.x),
+                      static_cast<GLuint>(srcView._layerRange.y));
+    }
+
+    s_textureViewCache.deallocate(handle, lifetimeInFrames);
+
+    return handle;
+}
+
 void GL_API::preFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer) {
     NOP();
 }
@@ -929,7 +953,11 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
         }break;
         case GFX::CommandType::COPY_TEXTURE: {
             const GFX::CopyTextureCommand* crtCmd = cmd->As<GFX::CopyTextureCommand>();
-            glTexture::copy(crtCmd->_source, crtCmd->_sourceMSAASamples, crtCmd->_destination, crtCmd->_destinationMSAASamples, crtCmd->_params);
+            glTexture::copy(static_cast<glTexture*>(crtCmd->_source),
+                            crtCmd->_sourceMSAASamples,
+                            static_cast<glTexture*>(crtCmd->_destination),
+                            crtCmd->_destinationMSAASamples,
+                            crtCmd->_params);
         }break;
         case GFX::CommandType::BIND_PIPELINE: {
             if (pushConstantsNeedLock) {
@@ -960,15 +988,14 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
                 break;
             }
 
-            ShaderProgram* program = ShaderProgram::FindShaderProgram(activePipeline->descriptor()._shaderProgramHandle);
-            if (program == nullptr) {
+            if (GetStateTracker()->_activeShaderProgram == nullptr) {
                 // Should we skip the upload?
                 dumpLogs();
                 break;
             }
 
             const PushConstants& pushConstants = cmd->As<GFX::SendPushConstantsCommand>()->_constants;
-            program->uploadPushConstants(pushConstants, pushConstantsMemCommand);
+            GetStateTracker()->_activeShaderProgram->uploadPushConstants(pushConstants, _context.descriptorSet(DescriptorSetUsage::PER_DRAW).impl(), pushConstantsMemCommand);
             pushConstantsNeedLock = !pushConstantsMemCommand._bufferLocks.empty();
         } break;
         case GFX::CommandType::SET_SCISSOR: {
@@ -991,12 +1018,9 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
 
             if (crtCmd->_layerRange.x == 0 && crtCmd->_layerRange.y == crtCmd->_texture->descriptor().layerCount()) {
                 OPTICK_EVENT("GL: In-place computation - Full");
-                glGenerateTextureMipmap(crtCmd->_texture->handle());
+                glGenerateTextureMipmap(static_cast<glTexture*>(crtCmd->_texture)->textureHandle());
             } else {
                 OPTICK_EVENT("GL: View-based computation");
-
-                const TextureDescriptor& descriptor = crtCmd->_texture->descriptor();
-                const GLenum glInternalFormat = GLUtil::internalFormat(descriptor.baseFormat(), descriptor.dataType(), descriptor.srgb(), descriptor.normalized());
 
                 ImageView view = crtCmd->_texture->defaultView();
                 view._layerRange.set(crtCmd->_layerRange);
@@ -1004,46 +1028,32 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
                 if (crtCmd->_mipRange.max != 0u) {
                     view._mipLevels.set(crtCmd->_mipRange);
                 }
-                assert(IsValid(view._textureData));
-
-                if (IsArrayTexture(view._textureData._textureType) && view._layerRange.max == 1) {
-                    switch (view._textureData._textureType) {
+                
+                DIVIDE_ASSERT(view.targetType() != TextureType::COUNT);
+                
+                if (IsArrayTexture(view.targetType()) && view._layerRange.max == 1) {
+                    switch (view.targetType()) {
                         case TextureType::TEXTURE_1D_ARRAY:
-                            view._textureData._textureType = TextureType::TEXTURE_1D;
+                            view.targetType(TextureType::TEXTURE_1D);
                             break;
                         case TextureType::TEXTURE_2D_ARRAY:
-                            view._textureData._textureType = TextureType::TEXTURE_2D;
+                            view.targetType(TextureType::TEXTURE_2D);
                             break;
                         case TextureType::TEXTURE_CUBE_ARRAY:
-                            view._textureData._textureType = TextureType::TEXTURE_CUBE_MAP;
+                            view.targetType(TextureType::TEXTURE_CUBE_MAP);
                             break;
                         default: break;
                     }
                 }
 
-                if (IsCubeTexture(view._textureData._textureType)) {
+                if (IsCubeTexture(view.targetType())) {
                     view._layerRange *= 6; //offset and count
                 }
 
-                auto[handle, cacheHit] = s_textureViewCache.allocate(view.getHash());
-
-                if (!cacheHit)
-                {
-                    OPTICK_EVENT("GL: cache miss  - Image");
-                    glTextureView(handle,
-                                  GLUtil::internalTextureType(view._textureData._textureType, descriptor.msaaSamples()),
-                                  view._textureData._textureHandle,
-                                  glInternalFormat,
-                                  static_cast<GLuint>(view._mipLevels.x),
-                                  static_cast<GLuint>(view._mipLevels.y),
-                                  static_cast<GLuint>(view._layerRange.x),
-                                  static_cast<GLuint>(view._layerRange.y));
-                }
                 if (view._mipLevels.x != 0u || view._mipLevels.y != 0u) {
                     OPTICK_EVENT("GL: In-place computation - Image");
-                    glGenerateTextureMipmap(handle);
+                    glGenerateTextureMipmap(getGLTextureView(view, 3));
                 }
-                s_textureViewCache.deallocate(handle, 3);
             }
         }break;
         case GFX::CommandType::DRAW_TEXT: {
@@ -1149,8 +1159,7 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             if (!crtCmd->_bufferLocks.empty()) {
                 const SyncObjectHandle sync = glLockManager::CreateSyncObject(crtCmd->_syncFlag);
                 for (const BufferLock& lock : crtCmd->_bufferLocks) {
-                    glBufferImpl* buffer = static_cast<const glShaderBuffer*>(lock._targetBuffer)->bufferImpl();
-                    if (!buffer->lockByteRange(lock._range, sync)) {
+                    if (!static_cast<const glShaderBuffer*>(lock._targetBuffer)->bufferImpl()->lockByteRange(lock._range, sync)) {
                         DIVIDE_UNEXPECTED_CALL();
                     }
                 }
@@ -1297,12 +1306,97 @@ void GL_API::clearStates(const DisplayWindow& window, GLStateTracker& stateTrack
     stateTracker.setDepthWrite(true);
 }
 
+bool GL_API::bindShaderResources(const DescriptorSetUsage usage, const DescriptorSet& bindings) {
+    OPTICK_EVENT("BIND_SHADER_RESOURCES");
+
+    for (auto& srcBinding : bindings) {
+        const DescriptorSetBindingType type = srcBinding._data.Type();
+
+        switch (type) {
+            case DescriptorSetBindingType::UNIFORM_BUFFER:
+            case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: {
+                if (!srcBinding._data.Has<ShaderBufferEntry>() ||
+                    srcBinding._data.As<ShaderBufferEntry>()._buffer == nullptr ||
+                    srcBinding._data.As<ShaderBufferEntry>()._range._length == 0u)
+                {
+                    continue;
+                }
+
+                const ShaderBufferEntry& bufferEntry = srcBinding._data.As<ShaderBufferEntry>();
+                DIVIDE_ASSERT(bufferEntry._buffer != nullptr);
+                glShaderBuffer* glBuffer = static_cast<glShaderBuffer*>(bufferEntry._buffer);
+
+                if (!glBuffer->bindByteRange(
+                    ShaderProgram::GetGLBindingForDescriptorSlot(usage, srcBinding._slot, type),
+                    {
+                        bufferEntry._range._startOffset * glBuffer->getPrimitiveSize(),
+                        bufferEntry._range._length * glBuffer->getPrimitiveSize()
+                    }))
+                {
+                    NOP();
+                }
+            } break;
+            case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: {
+                if (srcBinding._slot == INVALID_TEXTURE_BINDING) {
+                    continue;
+                }
+
+                const DescriptorCombinedImageSampler& imageSampler = srcBinding._data.As<DescriptorCombinedImageSampler>();
+                    if (!makeTextureViewResident(usage, srcBinding._slot, imageSampler._image, imageSampler._samplerHash)) {
+                    DIVIDE_UNEXPECTED_CALL();
+                }
+            } break;
+            case DescriptorSetBindingType::IMAGE: {
+                if (!srcBinding._data.Has<ImageView>()) {
+                    continue;
+                }
+                const ImageView& image = srcBinding._data.As<ImageView>();
+                DIVIDE_ASSERT(image._srcTexture != nullptr);
+
+                assert(image.targetType() != TextureType::COUNT);
+                assert(image._layerRange.max > 0u);
+
+                GLenum access = GL_NONE;
+                switch (image._flag) {
+                    case ImageFlag::READ: access = GL_READ_ONLY; break;
+                    case ImageFlag::WRITE: access = GL_WRITE_ONLY; break;
+                    case ImageFlag::READ_WRITE: access = GL_READ_WRITE; break;
+                    default: DIVIDE_UNEXPECTED_CALL();  break;
+                }
+
+                DIVIDE_ASSERT(image._mipLevels.max == 1u);
+
+                const GLenum glInternalFormat = GLUtil::internalFormat(image._descriptor._baseFormat,
+                                                                       image._descriptor._dataType,
+                                                                       image._descriptor._srgb,
+                                                                       image._descriptor._normalized);
+
+                if (GL_API::GetStateTracker()->bindTextureImage(srcBinding._slot, 
+                                                                static_cast<glTexture*>(image._srcTexture)->textureHandle(),
+                                                                image._mipLevels.min,
+                                                                image._layerRange.max > 1u,
+                                                                image._layerRange.min,
+                                                                access,
+                                                                glInternalFormat) == GLStateTracker::BindResult::FAILED)
+                {
+                    DIVIDE_UNEXPECTED_CALL();
+                }
+            } break;
+            case DescriptorSetBindingType::COUNT: {
+                DIVIDE_UNEXPECTED_CALL();
+            } break;
+        };
+    }
+
+    return true;
+}
+
 bool GL_API::makeTextureViewResident(const DescriptorSetUsage set, const U8 bindingSlot, const ImageView& imageView, const size_t samplerHash) const {
     const U8 glBinding = ShaderProgram::GetGLBindingForDescriptorSlot(set, bindingSlot, DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER);
 
     const GLuint samplerHandle = GetSamplerHandle(samplerHash);
 
-    GLuint texHandle = static_cast<GLuint>(imageView._textureData._textureHandle);
+    GLuint texHandle = static_cast<glTexture*>(imageView._srcTexture)->textureHandle();
     if (!imageView.isDefaultView()) {
         const size_t viewHash = imageView.getHash();
 
@@ -1316,11 +1410,11 @@ bool GL_API::makeTextureViewResident(const DescriptorSetUsage set, const U8 bind
                 imageView._descriptor._srgb,
                 imageView._descriptor._normalized);
 
-            const bool isCube = IsCubeTexture(imageView._textureData._textureType);
+            const bool isCube = IsCubeTexture(imageView.targetType());
 
             glTextureView(textureID,
-                GLUtil::internalTextureType(imageView._textureData._textureType, imageView._descriptor._msaaSamples),
-                imageView._textureData._textureHandle,
+                GLUtil::internalTextureType(imageView.targetType(), imageView._descriptor._msaaSamples),
+                static_cast<glTexture*>(imageView._srcTexture)->textureHandle(),
                 glInternalFormat,
                 static_cast<GLuint>(imageView._mipLevels.x),
                 static_cast<GLuint>(imageView._mipLevels.y),
@@ -1386,7 +1480,8 @@ ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) {
 
     ShaderResult ret = ShaderResult::Failed;
     ShaderProgram* program = ShaderProgram::FindShaderProgram(pipelineDescriptor._shaderProgramHandle);
-    if (program != nullptr)
+    glShaderProgram* glProgram = static_cast<glShaderProgram*>(program);
+    if (glProgram != nullptr)
     {
         {
             OPTICK_EVENT("Set Vertex Format");
@@ -1397,10 +1492,9 @@ ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) {
         }
         {
             OPTICK_EVENT("Set Shader Program");
-            glShaderProgram& glProgram = static_cast<glShaderProgram&>(*program);
             // We need a valid shader as no fixed function pipeline is available
             // Try to bind the shader program. If it failed to load, or isn't loaded yet, cancel the draw request for this frame
-            ret = Attorney::GLAPIShaderProgram::bind(glProgram);
+            ret = Attorney::GLAPIShaderProgram::bind(*glProgram);
         }
  
         if (ret != ShaderResult::OK) {
@@ -1411,19 +1505,14 @@ ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) {
                 DIVIDE_UNEXPECTED_CALL();
             }
             stateTracker->_activePipeline = nullptr;
+        } else {
+            stateTracker->_activeShaderProgram = glProgram;
+            _context.descriptorSet(DescriptorSetUsage::PER_DRAW).dirty(true);
         }
     }
 
     return ret;
 }
-
-void GL_API::createSetLayout([[maybe_unused]] const DescriptorSetUsage usage, [[maybe_unused]] const DescriptorSet& set) {
-    
-}
-
-/******************************************************************************************************************************/
-/****************************************************STATIC METHODS************************************************************/
-/******************************************************************************************************************************/
 
 const GLStateTracker_uptr& GL_API::GetStateTracker() noexcept {
     DIVIDE_ASSERT(s_stateTracker != nullptr);
@@ -1480,7 +1569,7 @@ void GL_API::PopDebugMessage() {
 bool GL_API::DeleteShaderPrograms(const GLuint count, GLuint* programs) {
     if (count > 0 && programs != nullptr) {
         for (GLuint i = 0; i < count; ++i) {
-            if (GetStateTracker()->_activeShaderProgram == programs[i]) {
+            if (GetStateTracker()->_activeShaderProgramHandle == programs[i]) {
                 if (GetStateTracker()->setActiveProgram(0u) == GLStateTracker::BindResult::FAILED) {
                     DIVIDE_UNEXPECTED_CALL();
                 }

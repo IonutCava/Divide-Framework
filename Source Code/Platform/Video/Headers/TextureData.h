@@ -47,15 +47,6 @@ struct CopyTexParams {
     vec3<U16> _dimensions; //width, height, numlayers
 };
 
-struct TextureData {
-    U32 _textureHandle{ 0u };
-    TextureType _textureType{ TextureType::COUNT };
-};
-bool operator==(const TextureData& lhs, const TextureData& rhs) noexcept;
-bool operator!=(const TextureData& lhs, const TextureData& rhs) noexcept;
-bool IsValid(const TextureData& data) noexcept;
-size_t GetHash(const TextureData& data);
-
 enum class TextureUpdateState : U8 {
     ADDED = 0,
     REPLACED,
@@ -63,21 +54,6 @@ enum class TextureUpdateState : U8 {
     COUNT
 };
 
-struct TextureEntry
-{
-    TextureEntry() = default;
-    explicit TextureEntry(const TextureData& data, const size_t samplerHash, const U8 binding) noexcept;
-
-    TextureData _data{};
-    size_t _sampler = 0u;
-    U8 _binding = 0u;
-};
-bool operator==(const TextureEntry & lhs, const TextureEntry & rhs) noexcept;
-bool operator!=(const TextureEntry & lhs, const TextureEntry & rhs) noexcept;
-[[nodiscard]] bool IsValid(const TextureEntry& entry) noexcept;
-
 }; //namespace Divide
 
 #endif //_TEXTURE_DATA_H_
-
-#include "TextureData.inl"

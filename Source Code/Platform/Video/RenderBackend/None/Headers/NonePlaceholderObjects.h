@@ -101,11 +101,7 @@ namespace Divide {
             : Texture(context, descriptorHash, name, assetNames, assetLocations, texDescriptor, parentCache)
         {
             static std::atomic_uint s_textureHandle = 1u;
-            _defaultView._textureData._textureType = _descriptor.texType();
-            _defaultView._textureData._textureHandle = s_textureHandle.fetch_add(1u);
-        }
-
-        void bindLayer([[maybe_unused]] U8 slot, [[maybe_unused]] U8 level, [[maybe_unused]] U8 layer, [[maybe_unused]] bool layered, [[maybe_unused]] Image::Flag rw_flag) noexcept override {
+            _defaultView._srcTexture = this;
         }
 
         void clearData([[maybe_unused]] const UColour4& clearColour, [[maybe_unused]] U8 level) const noexcept override {
@@ -153,10 +149,6 @@ namespace Divide {
         }
 
         void readBytes([[maybe_unused]] BufferRange range, [[maybe_unused]] std::pair<bufferPtr, size_t> outData) const noexcept override {
-        }
-
-        bool bindByteRange([[maybe_unused]] DescriptorSetUsage set, [[maybe_unused]] U8 bindIndex, [[maybe_unused]] BufferRange range) noexcept override {
-            return true;
         }
     };
 
