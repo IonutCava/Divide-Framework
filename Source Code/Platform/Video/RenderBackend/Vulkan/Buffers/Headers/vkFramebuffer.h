@@ -45,9 +45,6 @@ namespace Divide {
         vkRenderTarget(GFXDevice& context, const RenderTargetDescriptor& descriptor);
         ~vkRenderTarget();
 
-        bool create() override;
-        void destroy();
-
         void clear(const RTClearDescriptor& descriptor) noexcept override;
 
         void setDefaultState(const RTDrawDescriptor& drawPolicy) noexcept override;
@@ -56,12 +53,17 @@ namespace Divide {
 
         void blitFrom(const RTBlitParams& params) noexcept override;
 
-        const VkRenderPassBeginInfo& getRenderPassInfo();
+        const VkRenderingInfo& getRenderingInfo(const RTDrawDescriptor& descriptor, VkPipelineRenderingCreateInfo& pipelineCreateInfoOut);
 
-        PROPERTY_R_IW(VkRenderPass, renderPass, VK_NULL_HANDLE);
-        PROPERTY_R_IW(VkFramebuffer, framebuffer, VK_NULL_HANDLE);
+        PROPERTY_INTERNAL(VkRenderingInfo, renderingInfo);
+    private:
+        std::array<VkRenderingAttachmentInfo, RT_MAX_COLOUR_ATTACHMENTS> _colourAttachmentInfo{};
+        VkRenderingAttachmentInfo _depthAttachmentInfo{};
+        
+        std::array<VkFormat, RT_MAX_COLOUR_ATTACHMENTS> _colourAttachmentFormats{};
 
-        PROPERTY_INTERNAL(VkRenderPassBeginInfo, renderPassBeginInfo);
+        std::array<VkRenderingAttachmentInfo, RT_MAX_COLOUR_ATTACHMENTS> _stagingColourAttachmentInfo{};
+
     };
 } //namespace Divide
 

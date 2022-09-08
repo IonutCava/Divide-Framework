@@ -90,7 +90,7 @@ protected:
 
     void prepareBuffers(const RTDrawDescriptor& drawPolicy);
 
-    bool initAttachment(RTAttachmentType type, U8 index) override;
+    bool initAttachment(RTAttachment* att, RTAttachmentType type, U8 index, bool isExternal) override;
 
     bool hasDepth() const noexcept;
 

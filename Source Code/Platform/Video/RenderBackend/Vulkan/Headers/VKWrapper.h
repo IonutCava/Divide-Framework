@@ -107,8 +107,10 @@ struct VKStateTracker {
     PrimitiveTopology _activeTopology{ PrimitiveTopology::COUNT };
     VkPipeline _activePipeline{ VK_NULL_HANDLE };
     U8 _activeMSAASamples{ 1u };
+    RenderTargetID _activeRenderTargetID{ INVALID_RENDER_TARGET_ID };
     bool _alphaToCoverage{ false };
     VKDynamicState _dynamicState{};
+    VkPipelineRenderingCreateInfo _pipelineCreateInfo{};
 };
 FWD_DECLARE_MANAGED_STRUCT(VKStateTracker);
 

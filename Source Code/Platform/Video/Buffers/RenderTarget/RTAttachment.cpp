@@ -26,13 +26,9 @@ void RTAttachment::setTexture(const Texture_ptr& tex, const bool isExternal) noe
     changed(true);
 }
 
-bool RTAttachment::used() const noexcept {
-    return _texture != nullptr;
-}
-
 void RTAttachment::setImageUsage(const ImageUsage usage) {
-    if (used()) {
-        texture()->setImageUsage(usage);
+    if (_texture != nullptr) {
+        _texture->setImageUsage(usage);
     }
 }
 
@@ -64,7 +60,7 @@ U16 RTAttachment::writeLayer() const noexcept {
 }
 
 U16 RTAttachment::numLayers() const {
-    return used() ? _texture->descriptor().layerCount() : 0u;
+    return _texture != nullptr ? _texture->descriptor().layerCount() : 0u;
 }
 
 void RTAttachment::clearColour(const FColour4& clearColour) noexcept {

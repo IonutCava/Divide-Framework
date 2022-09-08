@@ -38,6 +38,8 @@ RenderTarget::RenderTarget(GFXDevice& context, const RenderTargetDescriptor& des
 }
 
 bool RenderTarget::create() {
+    _attachmentsUsed.fill(false);
+
     // Avoid invalid dimensions
     assert(getWidth() != 0 && getHeight() != 0 && "glFramebuffer error: Invalid frame buffer dimensions!");
 
@@ -48,9 +50,9 @@ bool RenderTarget::create() {
         switch (attDesc._type) {
             case RTAttachmentType::Depth_Stencil: {
                 assert(attDesc._index == 0u);
-                printWarning = _depthAttachment != nullptr;
-                _depthAttachment = eastl::make_unique<RTAttachment>(*this, attDesc);
-                att = _depthAttachment.get();
+                printWarning = _attachments[RT_DEPTH_ATTACHMENT_IDX] != nullptr;
+                _attachments[RT_DEPTH_ATTACHMENT_IDX] = eastl::make_unique<RTAttachment>(*this, attDesc);
+                att = _attachments[RT_DEPTH_ATTACHMENT_IDX].get();
             } break;
             case RTAttachmentType::Colour: {
                 assert(attDesc._index < RT_MAX_COLOUR_ATTACHMENTS);
@@ -68,7 +70,8 @@ bool RenderTarget::create() {
         return att;
     };
 
-    const auto updateInternalAttachment = [&](InternalRTAttachmentDescriptor& attDesc) {
+    for (U8 i = 0u; i < _descriptor._attachmentCount; ++i) {
+        InternalRTAttachmentDescriptor& attDesc = _descriptor._attachments[i];
         RTAttachment* att = updateAttachment(attDesc);
 
         const Str64 texName = Util::StringFormat("RT_%s_Att_%s_%d_%d",
@@ -77,7 +80,9 @@ bool RenderTarget::create() {
                                                  attDesc._index,
                                                  getGUID()).c_str();
         
-        attDesc._texDescriptor.addImageUsageFlag(attDesc._type == RTAttachmentType::Colour ? ImageUsage::RT_COLOUR_ATTACHMENT : ImageUsage::RT_DEPTH_ATTACHMENT);
+        attDesc._texDescriptor.addImageUsageFlag(attDesc._type == RTAttachmentType::Colour 
+                                                                ? ImageUsage::RT_COLOUR_ATTACHMENT
+                                                                : ImageUsage::RT_DEPTH_ATTACHMENT);
 
         ResourceDescriptor textureAttachment(texName);
         textureAttachment.assetName(ResourcePath(texName));
@@ -90,19 +95,16 @@ bool RenderTarget::create() {
 
         tex->loadData(nullptr, 0u, vec2<U16>(getWidth(), getHeight()));
         att->setTexture(tex , false);
-    };
 
-    const auto updateExternalAttachment = [&](const ExternalRTAttachmentDescriptor& attDesc) {
-        RTAttachment* att = updateAttachment(attDesc);
-        att->setTexture(attDesc._attachment->texture(), true);
-    };
-
-    for (U8 i = 0u; i < _descriptor._attachmentCount; ++i) {
-        updateInternalAttachment(_descriptor._attachments[i]);
+        initAttachment(att, attDesc._type, attDesc._index, false);
     }
 
     for (U8 i = 0u; i < _descriptor._externalAttachmentCount; ++i) {
-        updateExternalAttachment(_descriptor._externalAttachments[i]);
+        const ExternalRTAttachmentDescriptor& attDesc = _descriptor._externalAttachments[i];
+
+        RTAttachment* att = updateAttachment(attDesc);
+        att->setTexture(_descriptor._externalAttachments[i]._attachment->texture(), true);
+        initAttachment(att, attDesc._type, attDesc._index, true);
     }
 
     return true;
@@ -113,13 +115,12 @@ bool RenderTarget::hasAttachment(const RTAttachmentType type, const U8 index) co
 }
 
 bool RenderTarget::usesAttachment(const RTAttachmentType type, const U8 index) const {
-    RTAttachment* const att = getAttachment(type, index);
-    return att != nullptr && att->used();
+    return _attachmentsUsed[type == RTAttachmentType::Depth_Stencil ? RT_DEPTH_ATTACHMENT_IDX : index];
 }
 
 RTAttachment* RenderTarget::getAttachment(const RTAttachmentType type, const U8 index) const {
     switch (type) {
-        case RTAttachmentType::Depth_Stencil:  DIVIDE_ASSERT(index == 0u); return _depthAttachment.get();
+        case RTAttachmentType::Depth_Stencil:  DIVIDE_ASSERT(index == 0u); return _attachments[RT_DEPTH_ATTACHMENT_IDX].get();
         case RTAttachmentType::Colour: DIVIDE_ASSERT(index < RT_MAX_COLOUR_ATTACHMENTS); return _attachments[index].get();
     }
 
@@ -129,7 +130,7 @@ RTAttachment* RenderTarget::getAttachment(const RTAttachmentType type, const U8 
 
 U8 RenderTarget::getAttachmentCount(const RTAttachmentType type) const noexcept {
     switch (type) {
-        case RTAttachmentType::Depth_Stencil: return _depthAttachment == nullptr ? 0u : 1;
+        case RTAttachmentType::Depth_Stencil: return _attachments[RT_DEPTH_ATTACHMENT_IDX] == nullptr ? 0u : 1;
         case RTAttachmentType::Colour: {
             U8 count = 0u;
             for (const auto& rt : _attachments) {
@@ -196,35 +197,30 @@ bool RenderTarget::updateSampleCount(U8 newSampleCount) {
     return false;
 }
 
-bool RenderTarget::initAttachment(const RTAttachmentType type, const U8 index) {
-    // Process only valid attachments
-    RTAttachment* attachment = getAttachment(type, index);
-    if (attachment == nullptr || !attachment->used()) {
-        return false;
-    }
-
-    auto& tex = attachment->texture();
-    if (!attachment->isExternal()) {
-        // Do we need to resize the attachment?
-        const bool shouldResize = tex->width() != getWidth() || tex->height() != getHeight();
-        if (shouldResize) {
-            tex->loadData(nullptr, 0u, vec2<U16>(getWidth(), getHeight()));
-        }
-        const bool updateSampleCount = tex->descriptor().msaaSamples() != _descriptor._msaaSamples;
-        if (updateSampleCount) {
-            tex->setSampleCount(_descriptor._msaaSamples);
-        }
-    } else {
+bool RenderTarget::initAttachment(RTAttachment* att, const RTAttachmentType type, const U8 index, const bool isExternal) {
+    if (isExternal) {
         RTAttachment* attachmentTemp = getAttachment(type, index);
         if (attachmentTemp->isExternal()) {
             RenderTarget& parent = attachmentTemp->parent();
             attachmentTemp = parent.getAttachment(attachmentTemp->descriptor()._type, attachmentTemp->descriptor()._index);
         }
 
-        attachment->setTexture(attachmentTemp->texture(), true);
+        att->setTexture(attachmentTemp->texture(), true);
+    } else {
+        // Do we need to resize the attachment?
+        const bool shouldResize = att->texture()->width() != getWidth() || att->texture()->height() != getHeight();
+        if (shouldResize) {
+            att->texture()->loadData(nullptr, 0u, vec2<U16>(getWidth(), getHeight()));
+        }
+        const bool updateSampleCount = att->texture()->descriptor().msaaSamples() != _descriptor._msaaSamples;
+        if (updateSampleCount) {
+            att->texture()->setSampleCount(_descriptor._msaaSamples);
+        }
     }
 
-    attachment->changed(false);
+    att->changed(false);
+    _attachmentsUsed[type == RTAttachmentType::Depth_Stencil ? RT_DEPTH_ATTACHMENT_IDX : index] = true;
+
     return true;
 }
 

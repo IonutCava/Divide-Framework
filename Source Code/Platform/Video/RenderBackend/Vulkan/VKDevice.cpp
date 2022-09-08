@@ -30,6 +30,7 @@ namespace Divide {
         vk11features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
         vk11features.shaderDrawParameters = true;
         VkPhysicalDeviceFeatures vk10features{};
+
         vk10features.imageCubeArray = true;
         vk10features.geometryShader = true;
         vk10features.tessellationShader = true;

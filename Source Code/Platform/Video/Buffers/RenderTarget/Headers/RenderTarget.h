@@ -131,7 +131,7 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
     virtual void setDefaultState(const RTDrawDescriptor& drawPolicy) = 0;
     virtual void readData(const vec4<U16>& rect, GFXImageFormat imageFormat, GFXDataFormat dataType, std::pair<bufferPtr, size_t> outData) const = 0;
     virtual void blitFrom(const RTBlitParams& params) = 0;
-    virtual bool initAttachment(RTAttachmentType type, U8 index);
+    virtual bool initAttachment(RTAttachment* att, RTAttachmentType type, U8 index, bool isExternal);
     /// Resize all attachments
     bool resize(U16 width, U16 height);
     /// Change msaa sampel count for all attachments
@@ -152,8 +152,9 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
    protected:
     RenderTargetDescriptor _descriptor;
 
-    std::array<RTAttachment_uptr, RT_MAX_COLOUR_ATTACHMENTS> _attachments{};
-    RTAttachment_uptr _depthAttachment{ nullptr };
+    constexpr static U32 RT_DEPTH_ATTACHMENT_IDX = RT_MAX_COLOUR_ATTACHMENTS;
+    std::array<RTAttachment_uptr, RT_MAX_COLOUR_ATTACHMENTS + 1> _attachments{};
+    std::array<bool, RT_MAX_COLOUR_ATTACHMENTS + 1> _attachmentsUsed;
 };
 
 FWD_DECLARE_MANAGED_CLASS(RenderTarget);

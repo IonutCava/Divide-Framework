@@ -364,6 +364,7 @@ namespace Divide {
         GetStateTracker()->_activePipeline = VK_NULL_HANDLE;
         GetStateTracker()->_activeTopology = PrimitiveTopology::COUNT;
         GetStateTracker()->_activeMSAASamples = 0u;
+        GetStateTracker()->_activeRenderTargetID = INVALID_RENDER_TARGET_ID;
 
         setViewport({ 0, 0, windowDimensions.width, windowDimensions.height });
         setScissor({ 0, 0, windowDimensions.width, windowDimensions.height });
@@ -1140,6 +1141,7 @@ namespace Divide {
         switch (cmdType) {
             case GFX::CommandType::BEGIN_RENDER_PASS: {
                 const GFX::BeginRenderPassCommand* crtCmd = cmd->As<GFX::BeginRenderPassCommand>();
+                VK_API::GetStateTracker()->_activeRenderTargetID = crtCmd->_target;
                 if (crtCmd->_target == SCREEN_TARGET_ID) {
                     VkClearValue clearValue{};
                     clearValue.color = {
@@ -1153,9 +1155,9 @@ namespace Divide {
                     vkCmdBeginRenderPass(cmdBuffer, &_defaultRenderPass, VK_SUBPASS_CONTENTS_INLINE);
                 } else {
                     vkRenderTarget* rt = static_cast<vkRenderTarget*>(_context.renderTargetPool().getRenderTarget(crtCmd->_target));
-                    DIVIDE_ASSERT(rt->renderPass() != VK_NULL_HANDLE && rt->framebuffer() != VK_NULL_HANDLE);
+                    const VkRenderingInfo& renderingInfo = rt->getRenderingInfo(crtCmd->_descriptor, GetStateTracker()->_pipelineCreateInfo);
 
-                    vkCmdBeginRenderPass(cmdBuffer, &rt->getRenderPassInfo(), VK_SUBPASS_CONTENTS_INLINE);
+                    vkCmdBeginRendering(cmdBuffer, &renderingInfo);
                     GetStateTracker()->_alphaToCoverage = crtCmd->_descriptor._alphaToCoverage;
                     GetStateTracker()->_activeMSAASamples = rt->getSampleCount();
                 }
@@ -1166,8 +1168,13 @@ namespace Divide {
                 PopDebugMessage(cmdBuffer);
                 GetStateTracker()->_alphaToCoverage = false;
                 GetStateTracker()->_activeMSAASamples = _context.context().config().rendering.MSAASamples;
-                //finalize the render pass
-                vkCmdEndRenderPass(cmdBuffer);
+
+                if (VK_API::GetStateTracker()->_activeRenderTargetID == SCREEN_TARGET_ID) {
+                    vkCmdEndRenderPass(cmdBuffer);
+                } else {
+                    vkCmdEndRendering(cmdBuffer);
+                }
+                VK_API::GetStateTracker()->_activeRenderTargetID = INVALID_RENDER_TARGET_ID;
             }break;
             case GFX::CommandType::BEGIN_RENDER_SUB_PASS: {
             }break;

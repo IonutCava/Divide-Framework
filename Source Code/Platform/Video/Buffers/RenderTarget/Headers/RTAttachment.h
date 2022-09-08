@@ -101,8 +101,6 @@ class RTAttachment final {
     public:
         explicit RTAttachment(RenderTarget& parent, const RTAttachmentDescriptor& descriptor) noexcept;
 
-        [[nodiscard]] bool used() const noexcept;
-
         void setImageUsage(ImageUsage layout);
 
         void clearColour(const FColour4& clearColour) noexcept;
