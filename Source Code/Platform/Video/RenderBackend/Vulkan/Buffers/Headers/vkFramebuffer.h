@@ -35,12 +35,18 @@
 
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 
+#include <Vulkan/vulkan_core.h>
+
 namespace Divide {
 
     class GFXDevice;
     class vkRenderTarget final : public RenderTarget {
     public:
         vkRenderTarget(GFXDevice& context, const RenderTargetDescriptor& descriptor);
+        ~vkRenderTarget();
+
+        bool create() override;
+        void destroy();
 
         void clear(const RTClearDescriptor& descriptor) noexcept override;
 
@@ -49,6 +55,13 @@ namespace Divide {
         void readData(const vec4<U16>& rect, GFXImageFormat imageFormat, GFXDataFormat dataType, std::pair<bufferPtr, size_t> outData) const noexcept override;
 
         void blitFrom(const RTBlitParams& params) noexcept override;
+
+        const VkRenderPassBeginInfo& getRenderPassInfo();
+
+        PROPERTY_R_IW(VkRenderPass, renderPass, VK_NULL_HANDLE);
+        PROPERTY_R_IW(VkFramebuffer, framebuffer, VK_NULL_HANDLE);
+
+        PROPERTY_INTERNAL(VkRenderPassBeginInfo, renderPassBeginInfo);
     };
 } //namespace Divide
 

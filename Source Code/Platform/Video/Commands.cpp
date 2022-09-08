@@ -263,10 +263,7 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent) {
                            binding._data.As<ImageView>()._layerRange.max,
                            binding._data.As<ImageView>()._mipLevels.min,
                            binding._data.As<ImageView>()._mipLevels.max,
-                           binding._data.As<ImageView>()._flag == ImageFlag::READ
-                                                            ? "READ" 
-                                                            : binding._data.As<ImageView>()._flag == ImageFlag::WRITE
-                                                                                               ? "WRITE" : "READ_WRITE"));
+                           Divide::Names::imageUsage[to_base(binding._data.As<ImageView>()._usage)]));
             }
         }
     }

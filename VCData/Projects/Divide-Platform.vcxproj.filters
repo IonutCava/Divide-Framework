@@ -310,9 +310,6 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\vkResources.h">
       <Filter>Video\RenderBackend\Vulkan\Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Shaders\Headers\vkShader.h">
-      <Filter>Video\RenderBackend\Vulkan\Shaders\Headers</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Shaders\Headers\vkShaderProgram.h">
       <Filter>Video\RenderBackend\Vulkan\Shaders\Headers</Filter>
     </ClInclude>
@@ -613,9 +610,6 @@
       <Filter>Video\RenderBackend\Vulkan</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Shaders\vkShaderProgram.cpp">
-      <Filter>Video\RenderBackend\Vulkan\Shaders</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Shaders\vkShader.cpp">
       <Filter>Video\RenderBackend\Vulkan\Shaders</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Textures\vkTexture.cpp">

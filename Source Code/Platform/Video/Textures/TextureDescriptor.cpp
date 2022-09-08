@@ -27,6 +27,18 @@ namespace Divide {
     {
     }
 
+    void TextureDescriptor::addImageUsageFlag(const ImageUsage usage) noexcept {
+        SetBit(_usageMask, 1u << to_base(usage));
+    }
+
+    void TextureDescriptor::removeImageUsageFlag(const ImageUsage usage) noexcept {
+        ClearBit(_usageMask, 1u << to_base(usage));
+    }
+
+    bool TextureDescriptor::hasUsageFlagSet(const ImageUsage usage) const noexcept {
+        return BitCompare(_usageMask, 1u << to_base(usage));
+    }
+
     size_t TextureDescriptor::getHash() const noexcept {
         _hash = PropertyDescriptor::getHash();
 
@@ -39,9 +51,7 @@ namespace Divide {
                                   to_U32(_texType),
                                   _srgb,
                                   _normalized,
-                                  _colorAttachmentCompatible,
-                                  _depthAttachmentCompatible,
-                                  _rwFlag,
+                                  _usageMask,
                                   _textureOptions._alphaChannelTransparency,
                                   _textureOptions._fastCompression,
                                   _textureOptions._isNormalMap,

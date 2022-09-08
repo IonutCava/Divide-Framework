@@ -8,17 +8,26 @@
 namespace Divide {
     namespace {
         inline VkImageAspectFlags GetAspectFlags(const TextureDescriptor& descriptor) noexcept {
-            VkImageAspectFlags ret = VK_IMAGE_ASPECT_COLOR_BIT;
+            const bool hasDepthStencil = descriptor.hasUsageFlagSet(ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT);
+            const bool hasDepth =  descriptor.hasUsageFlagSet(ImageUsage::RT_DEPTH_ATTACHMENT) || hasDepthStencil;
 
-            if (descriptor.depthAttachmentCompatible()) {
-                ret = VK_IMAGE_ASPECT_DEPTH_BIT;
+            return hasDepth ? VK_IMAGE_ASPECT_DEPTH_BIT | (hasDepthStencil ? VK_IMAGE_ASPECT_STENCIL_BIT : 0u)
+                            : VK_IMAGE_ASPECT_COLOR_BIT;
+        }
+
+        inline VkImageUsageFlagBits GetFlagForUsage(const ImageUsage usage) noexcept {
+            switch (usage) {
+                case ImageUsage::SHADER_READ:
+                case ImageUsage::SHADER_WRITE:
+                case ImageUsage::SHADER_READ_WRITE: return VK_IMAGE_USAGE_STORAGE_BIT;
+                case ImageUsage::RT_COLOUR_ATTACHMENT: return VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+                case ImageUsage::RT_DEPTH_ATTACHMENT:
+                case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT: return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+                case ImageUsage::SHADER_SAMPLE: return VK_IMAGE_USAGE_SAMPLED_BIT;
             }
 
-            if (descriptor.stencilAttachmentCompatible()) {
-                ret |= VK_IMAGE_ASPECT_STENCIL_BIT;
-            }
-
-            return ret;
+            DIVIDE_UNEXPECTED_CALL();
+            return VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM;
         }
 
         FORCE_INLINE [[nodiscard]] U8 GetBytesPerPixel(const GFXDataFormat format, const GFXImageFormat baseFormat) noexcept {
@@ -146,12 +155,14 @@ namespace Divide {
     void vkTexture::submitTextureData() {
 
         if (_image != nullptr) {
+            DIVIDE_ASSERT(_descriptor.hasUsageFlagSet(ImageUsage::SHADER_SAMPLE));
+
             CachedImageView::Descriptor defaultViewDescriptor{};
             defaultViewDescriptor._mipLevels = { 0u, VK_REMAINING_MIP_LEVELS };
             defaultViewDescriptor._layers = { 0u, VK_REMAINING_ARRAY_LAYERS };
             defaultViewDescriptor._format = vkFormat();
             defaultViewDescriptor._type = _descriptor.texType();
-            defaultViewDescriptor._rwFlag = _descriptor.rwFlag();
+            defaultViewDescriptor._usage = ImageUsage::SHADER_SAMPLE;
 
             _vkView = getImageView(defaultViewDescriptor);
         }
@@ -164,11 +175,18 @@ namespace Divide {
         _image = eastl::make_unique<AllocatedImage>();
         _vkType = vkTextureTypeTable[to_base(descriptor().texType())];
 
+        sampleFlagBits(VK_SAMPLE_COUNT_1_BIT);
+        if (_descriptor.msaaSamples() > 0u)
+        {
+            assert(isPowerOfTwo(_descriptor.msaaSamples()));
+            sampleFlagBits(static_cast<VkSampleCountFlagBits>(_descriptor.msaaSamples()));
+        }
+
         VkImageCreateInfo imageInfo = vk::imageCreateInfo();
         imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.samples = sampleFlagBits();
         imageInfo.format = vkFormat();
         imageInfo.imageType = vkType();
         imageInfo.mipLevels = mipCount();
@@ -180,28 +198,19 @@ namespace Divide {
         if (!emptyAllocation) {
             imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         }
-        if (_descriptor.rwFlag() == ImageFlag::READ_WRITE || _descriptor.rwFlag() == ImageFlag::READ) {
-            imageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+
+        for (U8 i = 0u; i < to_base(ImageUsage::COUNT); ++i) {
+            const ImageUsage testUsage = static_cast<ImageUsage>(i);
+            if (!_descriptor.hasUsageFlagSet(testUsage)) {
+                continue;
+            }
+            imageInfo.usage |= GetFlagForUsage(testUsage);
         }
-        if (_descriptor.rwFlag() == ImageFlag::READ_WRITE || _descriptor.rwFlag() == ImageFlag::WRITE) {
-            imageInfo.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
-        }
+       
         if (!IsCompressed(_descriptor.baseFormat())) {
-            if (_descriptor.colorAttachmentCompatible())
-            {
-                imageInfo.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-            }
-            if (_descriptor.depthAttachmentCompatible() || _descriptor.stencilAttachmentCompatible())
-            {
-                imageInfo.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-            }
             imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         }
-        if (_descriptor.msaaSamples() > 0u)
-        {
-            assert(isPowerOfTwo(_descriptor.msaaSamples()));
-            imageInfo.samples = static_cast<VkSampleCountFlagBits>(_descriptor.msaaSamples());
-        }
+    
         if (vkType() == VK_IMAGE_TYPE_3D) {
             imageInfo.flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
         }
@@ -348,7 +357,7 @@ namespace Divide {
     }
 
     bool vkTexture::CachedImageView::Descriptor::operator==(const Descriptor& other) noexcept {
-        return _rwFlag == other._rwFlag &&
+        return _usage == other._usage &&
                _type == other._type &&
                _format == other._format &&
                _layers == other._layers &&
@@ -361,6 +370,7 @@ namespace Divide {
                 return view._view;
             }
         }
+        DIVIDE_ASSERT(descriptor._usage != ImageUsage::COUNT && descriptor._usage != ImageUsage::UNDEFINED);
 
         VkImageSubresourceRange range{};
         range.aspectMask = GetAspectFlags(_descriptor);
@@ -381,14 +391,8 @@ namespace Divide {
         imageInfo.subresourceRange = range;
 
         VkImageViewUsageCreateInfo viewCreateInfo = vk::imageViewUsageCreateInfo();
-        if (descriptor._rwFlag == ImageFlag::WRITE || descriptor._rwFlag == ImageFlag::READ_WRITE) {
-            viewCreateInfo.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
-        }
-        if (descriptor._rwFlag == ImageFlag::READ || descriptor._rwFlag == ImageFlag::READ_WRITE) {
-            viewCreateInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
-        }
+        viewCreateInfo.usage = GetFlagForUsage(descriptor._usage);
         imageInfo.pNext = &viewCreateInfo;
-        
 
         CachedImageView newView{};
         newView._descriptor = descriptor;

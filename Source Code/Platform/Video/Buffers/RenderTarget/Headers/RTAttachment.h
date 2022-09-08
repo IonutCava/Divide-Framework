@@ -103,7 +103,7 @@ class RTAttachment final {
 
         [[nodiscard]] bool used() const noexcept;
 
-        void setImageLayout(ImageLayout layout);
+        void setImageUsage(ImageUsage layout);
 
         void clearColour(const FColour4& clearColour) noexcept;
         [[nodiscard]] const FColour4& clearColour() const noexcept;

@@ -37,10 +37,9 @@ namespace Divide {
     size_t ImageView::getHash() const {
         _hash = 1337;
         Util::Hash_combine(_hash,
-                           _flag,
+                           _usage,
                            (_srcTexture != nullptr ? _srcTexture->getGUID() : 17),
                             targetType(),
-                           _layout,
                            _mipLevels.min,
                            _mipLevels.max,
                            _layerRange.min,

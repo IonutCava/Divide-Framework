@@ -90,7 +90,7 @@ protected:
 
     void prepareBuffers(const RTDrawDescriptor& drawPolicy);
 
-    void initAttachment(RTAttachmentType type, U8 index);
+    bool initAttachment(RTAttachmentType type, U8 index) override;
 
     bool hasDepth() const noexcept;
 
@@ -102,9 +102,9 @@ protected:
     void setDefaultState(const RTDrawDescriptor& drawPolicy) override;
 
     void toggleAttachments();
-    void setAttachmentLayout(ImageLayout layout);
+    void setAttachmentUsage(RTAttachmentType type, ImageUsage usage);
     void begin(const RTDrawDescriptor& drawPolicy);
-    void end(bool needsUnbind);
+    void end(bool needsUnbind) const;
 
     PROPERTY_R_IW(GLuint, framebufferHandle, GLUtil::k_invalidObjectID);
 
@@ -139,7 +139,7 @@ namespace Attorney {
         static void begin(glFramebuffer& buffer, const RTDrawDescriptor& drawPolicy) {
             buffer.begin(drawPolicy);
         }
-        static void end(glFramebuffer& buffer, const bool needsUnbind) {
+        static void end(const glFramebuffer& buffer, const bool needsUnbind) {
             buffer.end(needsUnbind);
         }
 

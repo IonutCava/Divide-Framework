@@ -856,19 +856,30 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
         case GFX::CommandType::BEGIN_RENDER_PASS: {
             const GFX::BeginRenderPassCommand* crtCmd = cmd->As<GFX::BeginRenderPassCommand>();
 
-            glFramebuffer* rt = static_cast<glFramebuffer*>(_context.renderTargetPool().getRenderTarget(crtCmd->_target));
-            Attorney::GLAPIRenderTarget::begin(*rt, crtCmd->_descriptor);
-            GetStateTracker()->_activeRenderTarget = rt;
-            PushDebugMessage(crtCmd->_name.c_str(), rt->framebufferHandle());
+            if (crtCmd->_target == SCREEN_TARGET_ID) {
+                GetStateTracker()->_activeRenderTarget = nullptr;
+                GetStateTracker()->_activeRenderTargetID = SCREEN_TARGET_ID;
+            } else {
+                glFramebuffer* rt = static_cast<glFramebuffer*>(_context.renderTargetPool().getRenderTarget(crtCmd->_target));
+                Attorney::GLAPIRenderTarget::begin(*rt, crtCmd->_descriptor);
+                GetStateTracker()->_activeRenderTarget = rt;
+                GetStateTracker()->_activeRenderTargetID = crtCmd->_target;
+            }
+            PushDebugMessage(crtCmd->_name.c_str(), crtCmd->_target);
         }break;
         case GFX::CommandType::END_RENDER_PASS: {
             PopDebugMessage();
 
-            assert(GL_API::GetStateTracker()->_activeRenderTarget != nullptr);
-            Attorney::GLAPIRenderTarget::end(
-                *GetStateTracker()->_activeRenderTarget,
-                cmd->As<GFX::EndRenderPassCommand>()->_setDefaultRTState
-            );
+            if (GL_API::GetStateTracker()->_activeRenderTarget == nullptr) {
+                assert(GL_API::GetStateTracker()->_activeRenderTargetID == SCREEN_TARGET_ID);
+            } else {
+                Attorney::GLAPIRenderTarget::end(
+                    *GetStateTracker()->_activeRenderTarget,
+                    cmd->As<GFX::EndRenderPassCommand>()->_setDefaultRTState
+                );
+            }
+            GetStateTracker()->_activeRenderTarget = nullptr;
+            GetStateTracker()->_activeRenderTargetID = INVALID_RENDER_TARGET_ID;
         }break;
         case GFX::CommandType::BEGIN_RENDER_SUB_PASS: {
             const GFX::BeginRenderSubPassCommand* crtCmd = cmd->As<GFX::BeginRenderSubPassCommand>();
@@ -1293,6 +1304,7 @@ void GL_API::clearStates(const DisplayWindow& window, GLStateTracker& stateTrack
 
     stateTracker._activePipeline = nullptr;
     stateTracker._activeRenderTarget = nullptr;
+    stateTracker._activeRenderTargetID = INVALID_RENDER_TARGET_ID;
     if (stateTracker.setActiveProgram(0u) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
@@ -1342,7 +1354,7 @@ bool GL_API::bindShaderResources(const DescriptorSetUsage usage, const Descripto
                 }
 
                 const DescriptorCombinedImageSampler& imageSampler = srcBinding._data.As<DescriptorCombinedImageSampler>();
-                    if (!makeTextureViewResident(usage, srcBinding._slot, imageSampler._image, imageSampler._samplerHash)) {
+                if (!makeTextureViewResident(usage, srcBinding._slot, imageSampler._image, imageSampler._samplerHash)) {
                     DIVIDE_UNEXPECTED_CALL();
                 }
             } break;
@@ -1352,15 +1364,16 @@ bool GL_API::bindShaderResources(const DescriptorSetUsage usage, const Descripto
                 }
                 const ImageView& image = srcBinding._data.As<ImageView>();
                 DIVIDE_ASSERT(image._srcTexture != nullptr);
+                image._srcTexture->setImageUsage(image._usage);
 
                 assert(image.targetType() != TextureType::COUNT);
                 assert(image._layerRange.max > 0u);
 
                 GLenum access = GL_NONE;
-                switch (image._flag) {
-                    case ImageFlag::READ: access = GL_READ_ONLY; break;
-                    case ImageFlag::WRITE: access = GL_WRITE_ONLY; break;
-                    case ImageFlag::READ_WRITE: access = GL_READ_WRITE; break;
+                switch (image._usage) {
+                    case ImageUsage::SHADER_READ: access = GL_READ_ONLY; break;
+                    case ImageUsage::SHADER_WRITE: access = GL_WRITE_ONLY; break;
+                    case ImageUsage::SHADER_READ_WRITE: access = GL_READ_WRITE; break;
                     default: DIVIDE_UNEXPECTED_CALL();  break;
                 }
 
@@ -1397,6 +1410,8 @@ bool GL_API::makeTextureViewResident(const DescriptorSetUsage set, const U8 bind
     const GLuint samplerHandle = GetSamplerHandle(samplerHash);
 
     GLuint texHandle = static_cast<glTexture*>(imageView._srcTexture)->textureHandle();
+    imageView._srcTexture->setImageUsage(ImageUsage::SHADER_SAMPLE);
+
     if (!imageView.isDefaultView()) {
         const size_t viewHash = imageView.getHash();
 
@@ -1406,9 +1421,9 @@ bool GL_API::makeTextureViewResident(const DescriptorSetUsage set, const U8 bind
         if (!cacheHit)
         {
             const GLenum glInternalFormat = GLUtil::internalFormat(imageView._descriptor._baseFormat,
-                imageView._descriptor._dataType,
-                imageView._descriptor._srgb,
-                imageView._descriptor._normalized);
+                                                                   imageView._descriptor._dataType,
+                                                                   imageView._descriptor._srgb,
+                                                                   imageView._descriptor._normalized);
 
             const bool isCube = IsCubeTexture(imageView.targetType());
 

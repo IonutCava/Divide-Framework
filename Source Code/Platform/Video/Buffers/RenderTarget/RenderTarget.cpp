@@ -38,6 +38,9 @@ RenderTarget::RenderTarget(GFXDevice& context, const RenderTargetDescriptor& des
 }
 
 bool RenderTarget::create() {
+    // Avoid invalid dimensions
+    assert(getWidth() != 0 && getHeight() != 0 && "glFramebuffer error: Invalid frame buffer dimensions!");
+
     const auto updateAttachment = [&](const RTAttachmentDescriptor& attDesc) {
         bool printWarning = false;
 
@@ -74,8 +77,7 @@ bool RenderTarget::create() {
                                                  attDesc._index,
                                                  getGUID()).c_str();
         
-        attDesc._texDescriptor.colorAttachmentCompatible(attDesc._type == RTAttachmentType::Colour ? true : false);
-        attDesc._texDescriptor.depthAttachmentCompatible(attDesc._type == RTAttachmentType::Colour ? false : true);
+        attDesc._texDescriptor.addImageUsageFlag(attDesc._type == RTAttachmentType::Colour ? ImageUsage::RT_COLOUR_ATTACHMENT : ImageUsage::RT_DEPTH_ATTACHMENT);
 
         ResourceDescriptor textureAttachment(texName);
         textureAttachment.assetName(ResourcePath(texName));
@@ -192,6 +194,38 @@ bool RenderTarget::updateSampleCount(U8 newSampleCount) {
     }
 
     return false;
+}
+
+bool RenderTarget::initAttachment(const RTAttachmentType type, const U8 index) {
+    // Process only valid attachments
+    RTAttachment* attachment = getAttachment(type, index);
+    if (attachment == nullptr || !attachment->used()) {
+        return false;
+    }
+
+    auto& tex = attachment->texture();
+    if (!attachment->isExternal()) {
+        // Do we need to resize the attachment?
+        const bool shouldResize = tex->width() != getWidth() || tex->height() != getHeight();
+        if (shouldResize) {
+            tex->loadData(nullptr, 0u, vec2<U16>(getWidth(), getHeight()));
+        }
+        const bool updateSampleCount = tex->descriptor().msaaSamples() != _descriptor._msaaSamples;
+        if (updateSampleCount) {
+            tex->setSampleCount(_descriptor._msaaSamples);
+        }
+    } else {
+        RTAttachment* attachmentTemp = getAttachment(type, index);
+        if (attachmentTemp->isExternal()) {
+            RenderTarget& parent = attachmentTemp->parent();
+            attachmentTemp = parent.getAttachment(attachmentTemp->descriptor()._type, attachmentTemp->descriptor()._index);
+        }
+
+        attachment->setTexture(attachmentTemp->texture(), true);
+    }
+
+    attachment->changed(false);
+    return true;
 }
 
 }; //namespace Divide

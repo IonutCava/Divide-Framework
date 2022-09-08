@@ -66,9 +66,7 @@ namespace Divide {
         vec2<U16> _mipLevels{0u, U16_MAX};  //Offset, Count
         vec2<U16> _layerRange{0u, U16_MAX}; //Offset, Count
 
-        ImageFlag _flag{ ImageFlag::READ };
-
-        ImageLayout _layout{ ImageLayout::UNDEFINED };
+        ImageUsage _usage{ ImageUsage::UNDEFINED };
 
         [[nodiscard]] size_t getHash() const override;
 

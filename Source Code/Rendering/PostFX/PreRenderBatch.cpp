@@ -576,7 +576,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             {
                 auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
                 binding._slot = 0;
-                binding._data.As<ImageView>() = screenColour->getView(ImageFlag::READ, {0u, 1u});
+                binding._data.As<ImageView>() = screenColour->getView(ImageUsage::SHADER_READ, {0u, 1u});
             }
 
             GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipelineLumCalcHistogram });
@@ -611,7 +611,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             {
                 auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
                 binding._slot = 0;
-                binding._data.As<ImageView>() = _currentLuminance->getView(ImageFlag::READ_WRITE, { 0u, 1u });
+                binding._data.As<ImageView>() = _currentLuminance->getView(ImageUsage::SHADER_WRITE, { 0u, 1u });
             }
 
             GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipelineLumCalcAverage });

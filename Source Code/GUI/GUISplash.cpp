@@ -63,6 +63,11 @@ void GUISplash::render(GFXDevice& context) const {
     GFX::ScopedCommandBuffer sBuffer = GFX::AllocateScopedCommandBuffer();
     GFX::CommandBuffer& buffer = sBuffer();
 
+    GFX::BeginRenderPassCommand beginRenderPassCmd{};
+    beginRenderPassCmd._target = SCREEN_TARGET_ID;
+    beginRenderPassCmd._name = "BLIT_TO_BACKBUFFER";
+    EnqueueCommand(buffer, beginRenderPassCmd);
+
     GFX::BindPipelineCommand pipelineCmd;
     pipelineCmd._pipeline = context.newPipeline(pipelineDescriptor);
     EnqueueCommand(buffer, pipelineCmd);
@@ -89,6 +94,8 @@ void GUISplash::render(GFXDevice& context) const {
     binding._data.As<DescriptorCombinedImageSampler>() = { _splashImage->defaultView(), splashSampler.getHash() };
 
     GFX::EnqueueCommand<GFX::DrawCommand>(buffer);
+
+    GFX::EnqueueCommand<GFX::EndRenderPassCommand>(buffer);
 
     context.flushCommandBuffer(buffer);
 }

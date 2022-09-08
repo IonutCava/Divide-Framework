@@ -307,6 +307,31 @@ namespace Divide {
         vkShaderProgram::Idle(_context.context());
     }
 
+    void VK_API::renderTestTriangle(VkCommandBuffer cmdBuffer) {
+
+        //make a clear-color from frame number. This will flash with a 120*pi frame period.
+        VkClearValue clearValue{};
+        clearValue.color = { { 0.0f, 0.0f, abs(sin(GFXDevice::FrameCount() / 120.f)), 1.0f } };
+
+        //start the main renderpass.
+        _defaultRenderPass.pClearValues = &clearValue;
+        vkCmdBeginRenderPass(cmdBuffer, &_defaultRenderPass, VK_SUBPASS_CONTENTS_INLINE);
+
+        //once we start adding rendering commands, they will go here
+        vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _trianglePipeline._pipeline);
+
+        { //Draw a triangle;
+            GetStateTracker()->_activeTopology = PrimitiveTopology::TRIANGLES;
+            draw({}, cmdBuffer);
+        }
+
+
+        //finalize the render pass
+        vkCmdEndRenderPass(cmdBuffer);
+        //finalize the command buffer (we can no longer add commands, but it can now be executed)
+        VK_CHECK(vkEndCommandBuffer(cmdBuffer));
+    }
+
     bool VK_API::beginFrame(DisplayWindow& window, [[maybe_unused]] bool global) noexcept {
         const auto& windowDimensions = window.getDrawableSize();
         const VkExtent2D windowExtents{ windowDimensions.width, windowDimensions.height };
@@ -326,45 +351,23 @@ namespace Divide {
             return false;
         }
 
-        //naming it cmd for shorter writing
-        VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
+        _defaultRenderPass.renderPass = _swapChain->getRenderPass();
+        _defaultRenderPass.framebuffer = _swapChain->getCurrentFrameBuffer();
+        _defaultRenderPass.renderArea.extent = windowExtents;
 
         //begin the command buffer recording. We will use this command buffer exactly once, so we want to let Vulkan know that
         VkCommandBufferBeginInfo cmdBeginInfo = vk::commandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
-        VK_CHECK(vkBeginCommandBuffer(cmdBuffer, &cmdBeginInfo));
-
-        //make a clear-color from frame number. This will flash with a 120*pi frame period.
-        VkClearValue clearValue{};
-        clearValue.color = { { 0.0f, 0.0f, abs(sin(GFXDevice::FrameCount() / 120.f)), 1.0f } };
-
-        //start the main renderpass.
-        //We will use the clear color from above, and the framebuffer of the index the swapchain gave us
-        VkRenderPassBeginInfo rpInfo = vk::renderPassBeginInfo();
-
-        rpInfo.renderPass = _swapChain->getRenderPass();
-        rpInfo.renderArea.offset.x = 0;
-        rpInfo.renderArea.offset.y = 0;
-        rpInfo.renderArea.extent = windowExtents;
-        rpInfo.framebuffer = _swapChain->getCurrentFrameBuffer();
-
-        //connect clear values
-        rpInfo.clearValueCount = 1;
-        rpInfo.pClearValues = &clearValue;
-
-        vkCmdBeginRenderPass(cmdBuffer, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-        //once we start adding rendering commands, they will go here
-        vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _trianglePipeline._pipeline);
+        VK_CHECK(vkBeginCommandBuffer(getCurrentCommandBuffer(), &cmdBeginInfo));
 
         // Set dynamic state to default
         GetStateTracker()->_dynamicState = {};
+        GetStateTracker()->_activePipeline = VK_NULL_HANDLE;
+        GetStateTracker()->_activeTopology = PrimitiveTopology::COUNT;
+        GetStateTracker()->_activeMSAASamples = 0u;
+
         setViewport({ 0, 0, windowDimensions.width, windowDimensions.height });
         setScissor({ 0, 0, windowDimensions.width, windowDimensions.height });
-        { //Draw a triangle;
-            GetStateTracker()->_activeTopology = PrimitiveTopology::TRIANGLES;
-            draw({}, cmdBuffer);
-        }
+        _drawIndirectBuffer = VK_NULL_HANDLE;
 
         return true;
     }
@@ -376,14 +379,7 @@ namespace Divide {
         }
 
         VkCommandBuffer cmd = getCurrentCommandBuffer();
-
-        //finalize the render pass
-        vkCmdEndRenderPass(cmd);
-        //finalize the command buffer (we can no longer add commands, but it can now be executed)
-        VK_CHECK(vkEndCommandBuffer(cmd));
-
-        _drawIndirectBuffer = VK_NULL_HANDLE;
-
+        renderTestTriangle(cmd);
         const VkResult result = _swapChain->endFrame(vkb::QueueType::graphics, cmd);
         
         if (result != VK_SUCCESS) {
@@ -697,6 +693,12 @@ namespace Divide {
 
         vkDestroyShaderModule(_device->getVKDevice(), triangleVertexShader, nullptr);
         vkDestroyShaderModule(_device->getVKDevice(), triangleFragShader, nullptr);
+
+
+        _defaultRenderPass = vk::renderPassBeginInfo();
+        _defaultRenderPass.renderArea.offset.x = 0;
+        _defaultRenderPass.renderArea.offset.y = 0;
+        _defaultRenderPass.clearValueCount = 1;
     }
 
     void VK_API::closeRenderingAPI() {
@@ -901,6 +903,8 @@ namespace Divide {
                     DIVIDE_ASSERT(imageSampler._image.targetType() != TextureType::COUNT);
 
                     const VkSampler samplerHandle = GetSamplerHandle(imageSampler._samplerHash);
+                    imageSampler._image._srcTexture->setImageUsage(ImageUsage::SHADER_SAMPLE);
+
                     const VkImageView view = static_cast<const vkTexture*>(imageSampler._image._srcTexture)->vkView();
 
                     VkDescriptorImageInfo& imageInfo = ImageInfoStructs[imageInfoStructIndex++];
@@ -913,15 +917,18 @@ namespace Divide {
                     }
                     const ImageView& image = srcBinding._data.As<ImageView>();
                     DIVIDE_ASSERT(image._srcTexture != nullptr && image._mipLevels.max == 1u);
+                    image._srcTexture->setImageUsage(image._usage);
 
                     vkTexture* vkTex = static_cast<vkTexture*>(image._srcTexture);
                     VkDescriptorType descriptorType = VK_DESCRIPTOR_TYPE_MAX_ENUM;
                     vkTexture::CachedImageView::Descriptor descriptor{};
-                    descriptor._rwFlag = image._flag;
-                    switch (image._flag) {
-                        case ImageFlag::READ:       descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE; break;
-                        case ImageFlag::WRITE:      descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; break;
-                        case ImageFlag::READ_WRITE: descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; break;
+                    descriptor._usage = image._usage;
+                    switch (image._usage) {
+                        case ImageUsage::SHADER_READ:
+                        case ImageUsage::SHADER_WRITE:
+                        case ImageUsage::SHADER_READ_WRITE: descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; break;
+                        case ImageUsage::SHADER_SAMPLE: descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; break;
+                        default: DIVIDE_UNEXPECTED_CALL(); break;
                     }
 
                     descriptor._format = vkTex->vkFormat();
@@ -974,6 +981,7 @@ namespace Divide {
             return ShaderResult::Failed;
         }
 
+        GetStateTracker()->_activePipeline = VK_NULL_HANDLE;
         GetStateTracker()->_activeTopology = pipelineDescriptor._primitiveTopology;
         size_t stateBlockHash = pipelineDescriptor._stateHash == 0u ? _context.getDefaultStateBlock(false) : pipelineDescriptor._stateHash;
         if (stateBlockHash == 0) {
@@ -1074,16 +1082,17 @@ namespace Divide {
         OPTICK_EVENT();
 
         VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
-        OPTICK_TAG("Type", to_base(cmd->Type()));
+        const GFX::CommandType cmdType = cmd->Type();
+        OPTICK_TAG("Type", to_base(cmdType));
 
-        OPTICK_EVENT(GFX::Names::commandType[to_base(cmd->Type())]);
-        if (GFXDevice::IsSubmitCommand(cmd->Type()) && !s_transferQueue._requests.empty()) {
+        OPTICK_EVENT(GFX::Names::commandType[to_base(cmdType)]);
+        if (!s_transferQueue._requests.empty() && GFXDevice::IsSubmitCommand(cmdType)) {
             UniqueLock<Mutex> w_lock(s_transferQueue._lock);
             // Check again
             if (!s_transferQueue._requests.empty()) {
                 static eastl::fixed_vector<VkBufferMemoryBarrier2, 32, true> s_barriers{};
-
-                VK_API::GetStateTracker()->_cmdContext->flushCommandBuffer([&cmdBuffer](VkCommandBuffer cmd) {
+                // ToDo: Use a semaphore here and insert a wait dependency on it into the main command buffer - Ionut
+                VK_API::GetStateTracker()->_cmdContext->flushCommandBuffer([](VkCommandBuffer cmd) {
                     while (!s_transferQueue._requests.empty()) {
                         const VKTransferQueue::TransferRequest& request = s_transferQueue._requests.front();
                         if (request.srcBuffer != VK_NULL_HANDLE) {
@@ -1108,11 +1117,10 @@ namespace Divide {
                             dependencyInfo.bufferMemoryBarrierCount = 1;
                             dependencyInfo.pBufferMemoryBarriers = &memoryBarrier;
 
-                            vkCmdPipelineBarrier2(cmdBuffer, &dependencyInfo);
+                            vkCmdPipelineBarrier2(cmd, &dependencyInfo);
                         } else {
                             s_barriers.emplace_back(memoryBarrier);
                         }
-
                         s_transferQueue._requests.pop_front();
                     }
 
@@ -1124,22 +1132,42 @@ namespace Divide {
                         vkCmdPipelineBarrier2(cmd, &dependencyInfo);
                         s_barriers.resize(0);
                     }
+                    
                 });
             }
         }
 
-        switch (cmd->Type()) {
+        switch (cmdType) {
             case GFX::CommandType::BEGIN_RENDER_PASS: {
                 const GFX::BeginRenderPassCommand* crtCmd = cmd->As<GFX::BeginRenderPassCommand>();
+                if (crtCmd->_target == SCREEN_TARGET_ID) {
+                    VkClearValue clearValue{};
+                    clearValue.color = {
+                        DefaultColours::DIVIDE_BLUE.r,
+                        DefaultColours::DIVIDE_BLUE.g,
+                        DefaultColours::DIVIDE_BLUE.b,
+                        DefaultColours::DIVIDE_BLUE.a
+                    };
+
+                    _defaultRenderPass.pClearValues = &clearValue;
+                    vkCmdBeginRenderPass(cmdBuffer, &_defaultRenderPass, VK_SUBPASS_CONTENTS_INLINE);
+                } else {
+                    vkRenderTarget* rt = static_cast<vkRenderTarget*>(_context.renderTargetPool().getRenderTarget(crtCmd->_target));
+                    DIVIDE_ASSERT(rt->renderPass() != VK_NULL_HANDLE && rt->framebuffer() != VK_NULL_HANDLE);
+
+                    vkCmdBeginRenderPass(cmdBuffer, &rt->getRenderPassInfo(), VK_SUBPASS_CONTENTS_INLINE);
+                    GetStateTracker()->_alphaToCoverage = crtCmd->_descriptor._alphaToCoverage;
+                    GetStateTracker()->_activeMSAASamples = rt->getSampleCount();
+                }
+
                 PushDebugMessage(cmdBuffer, crtCmd->_name.c_str());
-                vkRenderTarget* rt = static_cast<vkRenderTarget*>(_context.renderTargetPool().getRenderTarget(crtCmd->_target));
-                GetStateTracker()->_alphaToCoverage = crtCmd->_descriptor._alphaToCoverage;
-                GetStateTracker()->_activeMSAASamples = rt->getSampleCount();
             }break;
             case GFX::CommandType::END_RENDER_PASS: {
                 PopDebugMessage(cmdBuffer);
                 GetStateTracker()->_alphaToCoverage = false;
                 GetStateTracker()->_activeMSAASamples = _context.context().config().rendering.MSAASamples;
+                //finalize the render pass
+                vkCmdEndRenderPass(cmdBuffer);
             }break;
             case GFX::CommandType::BEGIN_RENDER_SUB_PASS: {
             }break;
@@ -1192,18 +1220,22 @@ namespace Divide {
             case GFX::CommandType::DRAW_COMMANDS : {
                 const GFX::DrawCommand::CommandContainer& drawCommands = cmd->As<GFX::DrawCommand>()->_drawCommands;
 
-                U32 drawCount = 0u;
-                for (const GenericDrawCommand& currentDrawCommand : drawCommands) {
-                    if (draw(currentDrawCommand, cmdBuffer)) {
-                        drawCount += isEnabledOption(currentDrawCommand, CmdRenderOptions::RENDER_WIREFRAME) 
-                                           ? 2 
-                                           : isEnabledOption(currentDrawCommand, CmdRenderOptions::RENDER_GEOMETRY) ? 1 : 0;
+                if (GetStateTracker()->_activePipeline != VK_NULL_HANDLE) {
+                    U32 drawCount = 0u;
+                    for (const GenericDrawCommand& currentDrawCommand : drawCommands) {
+                        if (draw(currentDrawCommand, cmdBuffer)) {
+                            drawCount += isEnabledOption(currentDrawCommand, CmdRenderOptions::RENDER_WIREFRAME) 
+                                               ? 2 
+                                               : isEnabledOption(currentDrawCommand, CmdRenderOptions::RENDER_GEOMETRY) ? 1 : 0;
+                        }
                     }
+                    _context.registerDrawCalls(drawCount);
                 }
-                _context.registerDrawCalls(drawCount);
             }break;
             case GFX::CommandType::DISPATCH_COMPUTE: {
                 assert(GetStateTracker()->_activeTopology == PrimitiveTopology::COMPUTE);
+                if (GetStateTracker()->_activePipeline != VK_NULL_HANDLE) {
+                }
             } break;
             case GFX::CommandType::SET_CLIPING_STATE: {
             } break;

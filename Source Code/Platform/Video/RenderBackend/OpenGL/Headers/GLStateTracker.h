@@ -167,6 +167,7 @@ namespace Divide {
 
         PrimitiveTopology _activeTopology{ PrimitiveTopology::COUNT };
         glFramebuffer* _activeRenderTarget{ nullptr };
+        RenderTargetID _activeRenderTargetID{ INVALID_RENDER_TARGET_ID };
         /// Current active vertex array object's handle
         GLuint _activeVAOID{ GLUtil::k_invalidObjectID };
         /// 0 - current framebuffer, 1 - current read only framebuffer, 2 - current write only framebuffer

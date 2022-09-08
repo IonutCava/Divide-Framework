@@ -30,9 +30,9 @@ bool RTAttachment::used() const noexcept {
     return _texture != nullptr;
 }
 
-void RTAttachment::setImageLayout(const ImageLayout layout) {
+void RTAttachment::setImageUsage(const ImageUsage usage) {
     if (used()) {
-        texture()->setImageLayout(layout);
+        texture()->setImageUsage(usage);
     }
 }
 

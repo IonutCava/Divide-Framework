@@ -106,7 +106,7 @@ Texture::Texture(GFXDevice& context,
     _defaultView._srcTexture = this;
     _defaultView._mipLevels.max = 1u;
     _defaultView._isDefaultView = true;
-    _defaultView._layout = ImageLayout::UNDEFINED;
+    _defaultView._usage = ImageUsage::UNDEFINED;
 }
 
 Texture::~Texture()
@@ -125,7 +125,7 @@ bool Texture::load() {
 }
 
 bool Texture::unload() {
-    _defaultView._layout = ImageLayout::UNDEFINED;
+    _defaultView._usage = ImageUsage::UNDEFINED;
 
     return CachedResource::unload();
 }
@@ -411,8 +411,8 @@ void Texture::setSampleCount(U8 newSampleCount) {
     }
 }
 
-void Texture::setImageLayout(const ImageLayout layout) {
-    _layout = layout;
+void Texture::setImageUsage(const ImageUsage usage) {
+    _usage = usage;
 }
 
 void Texture::validateDescriptor() {
@@ -446,9 +446,9 @@ ImageView Texture::getView() noexcept {
     return ret;
 }
 
-ImageView Texture::getView(const ImageFlag flag) noexcept {
+ImageView Texture::getView(const ImageUsage usage) noexcept {
     ImageView ret = getView();
-    ret._flag = flag;
+    ret._usage = usage;
     return ret;
 }
 
@@ -470,9 +470,9 @@ ImageView Texture::getView(const vec2<U16> mipRange, const vec2<U16> layerRange)
     return ret;
 }
 
-ImageView Texture::getView(const vec2<U16> mipRange, const vec2<U16> layerRange, const ImageFlag flag) noexcept{
+ImageView Texture::getView(const vec2<U16> mipRange, const vec2<U16> layerRange, const ImageUsage usage) noexcept{
     ImageView ret = getView(mipRange, layerRange);
-    ret._flag = flag;
+    ret._usage = usage;
     return ret;
 }
 
@@ -488,9 +488,9 @@ ImageView Texture::getView(const TextureType targetType, const vec2<U16> mipRang
     return ret;
 }
 
-ImageView Texture::getView(const TextureType targetType, const vec2<U16> mipRange, const vec2<U16> layerRange, const ImageFlag flag) noexcept {
+ImageView Texture::getView(const TextureType targetType, const vec2<U16> mipRange, const vec2<U16> layerRange, const ImageUsage usage) noexcept {
     ImageView ret = getView(targetType, mipRange, layerRange);
-    ret._flag = flag;
+    ret._usage = usage;
     return ret;
 }
 

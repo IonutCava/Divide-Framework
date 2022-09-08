@@ -145,7 +145,6 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\vkIMPrimitive.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\vkSwapChain.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\vkMemAllocatorInclude.h" />
-    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Shaders\Headers\vkShader.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Shaders\Headers\vkShaderProgram.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Textures\Headers\vkSamplerObject.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Textures\Headers\vkTexture.h" />
@@ -241,7 +240,6 @@
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkFramebuffer.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkGenericVertexData.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkShaderBuffer.cpp" />
-    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Shaders\vkShader.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Shaders\vkShaderProgram.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Textures\vkSamplerObject.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Textures\vkTexture.cpp" />

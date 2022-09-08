@@ -105,6 +105,7 @@ struct VKStateTracker {
     std::array < std::pair<Str64, U32>, 32 > _debugScope;
     U8 _debugScopeDepth = 0u;
     PrimitiveTopology _activeTopology{ PrimitiveTopology::COUNT };
+    VkPipeline _activePipeline{ VK_NULL_HANDLE };
     U8 _activeMSAASamples{ 1u };
     bool _alphaToCoverage{ false };
     VKDynamicState _dynamicState{};
@@ -190,6 +191,8 @@ private:
     void bindDynamicState(const RenderStateBlock& currentState, VkCommandBuffer& cmdBuffer) const;
     [[nodiscard]] bool bindShaderResources(DescriptorSetUsage usage, const DescriptorSet& bindings) override;
 
+    void renderTestTriangle(VkCommandBuffer cmdBuffer);
+
 public:
     static const VKStateTracker_uptr& GetStateTracker() noexcept;
     static void RegisterCustomAPIDelete(DELEGATE<void, VkDevice>&& cbk, bool isResourceTransient);
@@ -226,6 +229,8 @@ private:
 
     VkExtent2D _windowExtents{};
     bool _skipEndFrame{ false };
+
+    VkRenderPassBeginInfo _defaultRenderPass;
 
     std::array<VkDescriptorSet, to_base(DescriptorSetUsage::COUNT)> _descriptorSets;
 private:

@@ -56,7 +56,7 @@ namespace Divide {
                 vec2<U32> _mipLevels{ 0u };
                 VkFormat _format {VK_FORMAT_MAX_ENUM };
                 TextureType _type{ TextureType::COUNT };
-                ImageFlag _rwFlag{ ImageFlag::READ };
+                ImageUsage _usage{ ImageUsage::COUNT };
                 bool operator==(const Descriptor& other) noexcept;
             } _descriptor; 
         };
@@ -85,7 +85,7 @@ namespace Divide {
         PROPERTY_R_IW(VkImageType, vkType, VK_IMAGE_TYPE_MAX_ENUM);
         PROPERTY_R_IW(VkImageView, vkView, VK_NULL_HANDLE);
         PROPERTY_R_IW(VkFormat, vkFormat, VK_FORMAT_MAX_ENUM);
-
+        PROPERTY_R_IW(VkSampleCountFlagBits, sampleFlagBits, VK_SAMPLE_COUNT_1_BIT);
     private:
         void loadDataInternal(const ImageTools::ImageData& imageData) override;
         void prepareTextureData(U16 width, U16 height, U16 depth, bool emptyAllocation) override;

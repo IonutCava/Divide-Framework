@@ -126,8 +126,16 @@ namespace Divide {
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
         subpass.colorAttachmentCount = 1;
         subpass.pColorAttachments = &color_attachment_ref;
-
+        
         VkRenderPassCreateInfo render_pass_info = vk::renderPassCreateInfo();
+
+        VkSubpassDependency subpass_dependecy{};
+        subpass_dependecy.srcSubpass = 0u;
+        subpass_dependecy.dstSubpass = 0u;
+        subpass_dependecy.srcAccessMask = VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+        subpass_dependecy.dstAccessMask = VK_ACCESS_INDEX_READ_BIT;
+        subpass_dependecy.srcStageMask = VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+        subpass_dependecy.dstStageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
 
         //connect the color attachment to the info
         render_pass_info.attachmentCount = 1;
@@ -135,7 +143,8 @@ namespace Divide {
         //connect the subpass to the info
         render_pass_info.subpassCount = 1;
         render_pass_info.pSubpasses = &subpass;
-
+        render_pass_info.dependencyCount = 1;
+        render_pass_info.pDependencies = &subpass_dependecy;
         VK_CHECK(vkCreateRenderPass(device, &render_pass_info, nullptr, &_renderPass));
 
         //create the framebuffers for the swapchain images. This will connect the render-pass to the images for rendering

@@ -84,60 +84,33 @@ glFramebuffer::~glFramebuffer()
     GL_API::DeleteFramebuffers(1, &_framebufferHandle);
 }
 
-void glFramebuffer::initAttachment(const RTAttachmentType type, const U8 index) {
-    // Avoid invalid dimensions
-    assert(getWidth() != 0 && getHeight() != 0 && "glFramebuffer error: Invalid frame buffer dimensions!");
-
-    // Process only valid attachments
-    RTAttachment* attachment = getAttachment(type, index);
-    if (attachment == nullptr || !attachment->used()) {
-        return;
-    }   
-
-    Texture* tex = nullptr;
-    if (!attachment->isExternal()) {
-        tex = attachment->texture().get();
-        // Do we need to resize the attachment?
-        const bool shouldResize = tex->width() != getWidth() || tex->height() != getHeight();
-        if (shouldResize) {
-            tex->loadData(nullptr, 0u, vec2<U16>(getWidth(), getHeight()));
-        }
-        const bool updateSampleCount = tex->descriptor().msaaSamples() != _descriptor._msaaSamples;
-        if (updateSampleCount) {
-            tex->setSampleCount(_descriptor._msaaSamples);
-        }
-        if (tex->descriptor().mipMappingState() == TextureDescriptor::MipMappingState::AUTO) {
+bool glFramebuffer::initAttachment(const RTAttachmentType type, const U8 index) {
+    if (RenderTarget::initAttachment(type, index)) {
+        RTAttachment* attachment = getAttachment(type, index);
+        auto& tex = attachment->texture();
+        if (!attachment->isExternal() && tex->descriptor().mipMappingState() == TextureDescriptor::MipMappingState::AUTO) {
             // We do this here to avoid any undefined data if we use this attachment as a texture before we actually draw to it
-            glGenerateTextureMipmap(static_cast<glTexture*>(tex)->textureHandle());
-        }
-    } else {
-        RTAttachment* attachmentTemp = getAttachment(type, index);
-        if (attachmentTemp->isExternal()) {
-            RenderTarget& parent = attachmentTemp->parent();
-            attachmentTemp = parent.getAttachment(attachmentTemp->descriptor()._type, attachmentTemp->descriptor()._index);
+            glGenerateTextureMipmap(static_cast<glTexture*>(tex.get())->textureHandle());
         }
 
-        attachment->setTexture(attachmentTemp->texture(), true);
-        attachment->changed(false);
-        tex = attachment->texture().get();
+        // Find the appropriate binding point
+        if (type == RTAttachmentType::Depth_Stencil) {
+            attachment->binding(to_U32(GL_DEPTH_ATTACHMENT));
+
+            const TextureType texType = tex->descriptor().texType();
+            // Most of these aren't even valid, but hey, doesn't hurt to check
+            _isLayeredDepth = texType == TextureType::TEXTURE_1D_ARRAY ||
+                                texType == TextureType::TEXTURE_2D_ARRAY ||
+                                texType == TextureType::TEXTURE_3D ||
+                                IsCubeTexture(texType);
+        } else {
+            attachment->binding(to_U32(GL_COLOR_ATTACHMENT0) + index);
+        }
+        setAttachmentState(static_cast<GLenum>(getAttachment(type, index)->binding()), {});
+        return true;
     }
 
-    // Find the appropriate binding point
-    if (type == RTAttachmentType::Depth_Stencil) {
-        attachment->binding(to_U32(GL_DEPTH_ATTACHMENT));
-
-        const TextureType texType = tex->descriptor().texType();
-        // Most of these aren't even valid, but hey, doesn't hurt to check
-        _isLayeredDepth = texType == TextureType::TEXTURE_1D_ARRAY ||
-                          texType == TextureType::TEXTURE_2D_ARRAY ||
-                          texType == TextureType::TEXTURE_3D ||
-                          IsCubeTexture(texType);
-    } else {
-        attachment->binding(to_U32(GL_COLOR_ATTACHMENT0) + index);
-    }
-
-    attachment->changed(false);
-    setAttachmentState(static_cast<GLenum>(attachment->binding()), {});
+    return false;
 }
 
 void glFramebuffer::toggleAttachment(const RTAttachment_uptr& attachment, const AttachmentState state, bool layeredRendering) {
@@ -418,13 +391,15 @@ void glFramebuffer::toggleAttachmentInternal(const RTAttachment_uptr& attachment
     }
 }
 
-void glFramebuffer::setAttachmentLayout(const ImageLayout layout) {
-    if (_depthAttachment) {
-        _depthAttachment->setImageLayout(layout);
+void glFramebuffer::setAttachmentUsage(const RTAttachmentType type, const ImageUsage usage) {
+    if (type == RTAttachmentType::Depth_Stencil && _depthAttachment) {
+        _depthAttachment->setImageUsage(usage);
     }
-    for (U8 i = 0u; i < RT_MAX_COLOUR_ATTACHMENTS; ++i) {
-        if (_attachments[i]) {
-            _attachments[i]->setImageLayout(layout);
+    if (type == RTAttachmentType::Colour) {
+        for (U8 i = 0u; i < RT_MAX_COLOUR_ATTACHMENTS; ++i) {
+            if (_attachments[i]) {
+                _attachments[i]->setImageUsage(usage);
+            }
         }
     }
 }
@@ -482,13 +457,14 @@ void glFramebuffer::begin(const RTDrawDescriptor& drawPolicy) {
 
     }
 
-    setAttachmentLayout(ImageLayout::RT_WRITE);
+    setAttachmentUsage(RTAttachmentType::Colour, ImageUsage::RT_COLOUR_ATTACHMENT);
+    setAttachmentUsage(RTAttachmentType::Depth_Stencil, ImageUsage::RT_DEPTH_ATTACHMENT);
 
     // Memorize the current draw policy to speed up later calls
     _previousPolicy = drawPolicy;
 }
 
-void glFramebuffer::end(const bool needsUnbind) {
+void glFramebuffer::end(const bool needsUnbind) const {
     OPTICK_EVENT();
 
     if (needsUnbind) {
@@ -506,8 +482,6 @@ void glFramebuffer::end(const bool needsUnbind) {
     }
 
     queueMipMapRecomputation();
-
-    setAttachmentLayout(ImageLayout::SAMPLED);
 
     GL_API::PopDebugMessage();
 }

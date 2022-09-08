@@ -2051,8 +2051,10 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
             } break;
             case GFX::CommandType::BEGIN_RENDER_PASS: {
                 const GFX::BeginRenderPassCommand* crtCmd = commandBuffer.get<GFX::BeginRenderPassCommand>(cmd);
-                const vec2<F32> depthRange = renderTargetPool().getRenderTarget(crtCmd->_target)->getDepthRange();
-                setDepthRange(depthRange);
+                if (crtCmd->_target != SCREEN_TARGET_ID) {
+                    const vec2<F32> depthRange = renderTargetPool().getRenderTarget(crtCmd->_target)->getDepthRange();
+                    setDepthRange(depthRange);
+                }
             } break;
             default: break;
         }

@@ -100,19 +100,19 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
 
     /// Change the number of MSAA samples for this current texture
     void setSampleCount(U8 newSampleCount);
-    void setImageLayout(ImageLayout layout);
+    void setImageUsage(ImageUsage usage);
 
     [[nodiscard]] U16 mipCount() const noexcept;
 
     [[nodiscard]] ImageView getView() noexcept;
-    [[nodiscard]] ImageView getView(ImageFlag flag) noexcept;
+    [[nodiscard]] ImageView getView(ImageUsage usage) noexcept;
     [[nodiscard]] ImageView getView(TextureType targetType) noexcept;
     [[nodiscard]] ImageView getView(vec2<U16> mipRange/*offset, count*/) noexcept;
     [[nodiscard]] ImageView getView(vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/) noexcept;
-    [[nodiscard]] ImageView getView(vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/, ImageFlag flag) noexcept;
+    [[nodiscard]] ImageView getView(vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/, ImageUsage usage) noexcept;
     [[nodiscard]] ImageView getView(TextureType targetType, vec2<U16> mipRange/*offset, count*/) noexcept;
     [[nodiscard]] ImageView getView(TextureType targetType, vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/) noexcept;
-    [[nodiscard]] ImageView getView(TextureType targetType, vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/, ImageFlag flag) noexcept;
+    [[nodiscard]] ImageView getView(TextureType targetType, vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/, ImageUsage usage) noexcept;
 
     virtual void clearData(const UColour4& clearColour, U8 level) const = 0;
     virtual void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const = 0;
@@ -135,7 +135,7 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     /// If the texture has an alpha channel and at least on pixel is fully transparent and no pixels are partially transparent, return true
     PROPERTY_R(bool, hasTransparency, false);
 
-    PROPERTY_R(ImageLayout, layout, ImageLayout::UNDEFINED);
+    PROPERTY_R(ImageUsage, usage, ImageUsage::UNDEFINED);
 
     [[nodiscard]] U8 numChannels() const noexcept;
 

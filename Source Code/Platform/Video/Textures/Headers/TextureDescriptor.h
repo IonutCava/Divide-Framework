@@ -67,12 +67,15 @@ class TextureDescriptor final : public PropertyDescriptor {
     /// Use SRGB colour space
     PROPERTY_RW(bool, srgb, false);
     PROPERTY_RW(bool, normalized, true);
-    PROPERTY_RW(ImageFlag, rwFlag, ImageFlag::READ);
-    PROPERTY_RW(bool, colorAttachmentCompatible, false);
-    PROPERTY_RW(bool, depthAttachmentCompatible, false);
-    PROPERTY_RW(bool, stencilAttachmentCompatible, false);
     PROPERTY_RW(ImageTools::ImportOptions, textureOptions);
     PROPERTY_RW(MipMappingState, mipMappingState, MipMappingState::AUTO);
+
+    void addImageUsageFlag(const ImageUsage usage) noexcept;
+    void removeImageUsageFlag(const ImageUsage usage) noexcept;
+    [[nodiscard]] bool hasUsageFlagSet(const ImageUsage usage) const noexcept;
+
+private:
+    U32 _usageMask{ 1u << to_base(ImageUsage::SHADER_SAMPLE) };
 };
 
 [[nodiscard]] bool IsCompressed(GFXImageFormat format) noexcept;
