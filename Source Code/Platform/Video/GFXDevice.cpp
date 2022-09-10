@@ -2201,7 +2201,7 @@ void GFXDevice::occlusionCull(const RenderPass::BufferData& bufferData,
         readAtomicCounter._target = { &_lastCullCount, 4 * sizeof(U32) };
         readAtomicCounter._offsetElementCount = 0;
         readAtomicCounter._elementCount = 1;
-        EnqueueCommand(bufferInOut, readAtomicCounter);
+        GFX::EnqueueCommand(bufferInOut, readAtomicCounter);
 
         cullBuffer->incQueue();
 
@@ -2221,13 +2221,13 @@ void GFXDevice::drawText(const TextElementBatch& batch, GFX::CommandBuffer& buff
 
 void GFXDevice::drawText(const GFX::DrawTextCommand& cmd, GFX::CommandBuffer& bufferInOut, const bool pushCamera) const {
     if (pushCamera) {
-        EnqueueCommand(bufferInOut, GFX::PushCameraCommand{ Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
+        GFX::EnqueueCommand(bufferInOut, GFX::PushCameraCommand{ Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
     }
-    EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _textRenderPipeline });
-    EnqueueCommand(bufferInOut, GFX::SendPushConstantsCommand{ _textRenderConstants });
-    EnqueueCommand(bufferInOut, cmd);
+    GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _textRenderPipeline });
+    GFX::EnqueueCommand(bufferInOut, GFX::SendPushConstantsCommand{ _textRenderConstants });
+    GFX::EnqueueCommand(bufferInOut, cmd);
     if (pushCamera) {
-        EnqueueCommand(bufferInOut, GFX::PopCameraCommand{});
+        GFX::EnqueueCommand(bufferInOut, GFX::PopCameraCommand{});
     }
 }
 
@@ -2265,7 +2265,7 @@ void GFXDevice::renderDebugUI(const Rect<I32>& targetViewport, GFX::CommandBuffe
 
     // Early out if we didn't request the preview
     if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-        EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Render Debug Views" });
+        GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Render Debug Views" });
 
         renderDebugViews(
             Rect<I32>(targetViewport.x + padding,

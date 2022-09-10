@@ -102,7 +102,6 @@ public:
         Rect<I32> _targetViewport = {};
         Time::ProfileTimer* _parentTimer = nullptr;
         PlayerIndex _playerPass = 0u;
-        bool _editorRunning = false;
     };
 
     explicit RenderPassManager(Kernel& parent, GFXDevice& context);

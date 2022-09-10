@@ -109,8 +109,6 @@ private:
     /// Return the size in pixels that we can render to. This differs from the window size on Retina displays
     vec2<U16> getDrawableSize(const DisplayWindow& window) const noexcept override;
 
-    U32 getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const override;
-
     void onThreadCreated(const std::thread::id& threadID) override;
 
     /// Try to find the requested font in the font cache. Load on cache miss.

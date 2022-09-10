@@ -60,7 +60,7 @@ namespace TypeUtil {
     [[nodiscard]] TextureMipSampling StringToTextureMipSampling(const string& sampling);
 };
 
- TYPEDEF_SMART_POINTERS_FOR_TYPE(Texture);
+FWD_DECLARE_MANAGED_CLASS(Texture);
 
 /// An API-independent representation of a texture
 class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
@@ -166,7 +166,6 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     static Texture_ptr s_defaulTexture;
     static ResourcePath s_missingTextureFileName;
 };
-
 
 namespace Attorney {
     class TextureKernel {

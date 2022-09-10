@@ -46,11 +46,6 @@
 
 namespace Divide {
 
-namespace {
-    // Weird stuff happens if this is enabled (i.e. certain draw calls hang forever)
-    constexpr bool g_runAllQueriesInSameFrame = false;
-}
-
 GLStateTracker_uptr GL_API::s_stateTracker = nullptr;
 GL_API::VAOMap GL_API::s_vaoCache;
 std::atomic_bool GL_API::s_glFlushQueued;
@@ -115,7 +110,19 @@ namespace {
 
         vector<SDLContextEntry> _contexts;
     } g_ContextPool;
-};
+
+
+    // Weird stuff happens if this is enabled (i.e. certain draw calls hang forever)
+    constexpr bool g_runAllQueriesInSameFrame = false;
+
+    [[nodiscard]] inline GLuint GetTextureHandleFromWrapper(const TextureWrapper& wrapper) {
+           return wrapper._internalTexture != nullptr
+                                            ? static_cast<glTexture*>(wrapper._internalTexture)->textureHandle()
+                                            : wrapper._ceguiTex != nullptr
+                                                                ? static_cast<const CEGUI::OpenGLTexture*>(wrapper._ceguiTex)->getOpenGLTexture()
+                                                                : GLUtil::k_invalidObjectID;
+    }
+}
 
 GL_API::GL_API(GFXDevice& context)
     : RenderAPIWrapper(),
@@ -815,6 +822,11 @@ GLuint GL_API::getGLTextureView(const ImageView srcView, const U8 lifetimeInFram
     auto [handle, cacheHit] = s_textureViewCache.allocate(srcView.getHash());
 
     if (!cacheHit) {
+        const GLuint srcHandle = GetTextureHandleFromWrapper(srcView._srcTexture);
+        if (srcHandle == GLUtil::k_invalidObjectID) {
+            return srcHandle;
+        }
+
         const GLenum glInternalFormat = GLUtil::internalFormat(srcView._descriptor._baseFormat,
                                                                srcView._descriptor._dataType,
                                                                srcView._descriptor._srgb,
@@ -822,7 +834,7 @@ GLuint GL_API::getGLTextureView(const ImageView srcView, const U8 lifetimeInFram
         OPTICK_EVENT("GL: cache miss  - Image");
         glTextureView(handle,
                       GLUtil::internalTextureType(srcView.targetType(), srcView._descriptor._msaaSamples),
-                      static_cast<glTexture*>(srcView._srcTexture)->textureHandle(),
+                      srcHandle,
                       glInternalFormat,
                       static_cast<GLuint>(srcView._mipLevels.x),
                       static_cast<GLuint>(srcView._mipLevels.y),
@@ -1216,10 +1228,6 @@ vec2<U16> GL_API::getDrawableSize(const DisplayWindow& window) const noexcept {
     return vec2<U16>(w, h);
 }
 
-U32 GL_API::getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const {
-    return to_U32(static_cast<const CEGUI::OpenGLTexture&>(textureIn).getOpenGLTexture());
-}
-
 void GL_API::onThreadCreated([[maybe_unused]] const std::thread::id& threadID) {
     // Double check so that we don't run into a race condition!
     ScopedLock<Mutex> lock(GLUtil::s_glSecondaryContextMutex);
@@ -1371,8 +1379,9 @@ bool GL_API::bindShaderResources(const DescriptorSetUsage usage, const Descripto
                     continue;
                 }
                 const ImageView& image = srcBinding._data.As<ImageView>();
-                DIVIDE_ASSERT(image._srcTexture != nullptr);
-                image._srcTexture->setImageUsage(image._usage);
+                if (image._srcTexture._internalTexture != nullptr) {
+                    image._srcTexture._internalTexture->setImageUsage(image._usage);
+                }
 
                 assert(image.targetType() != TextureType::COUNT);
                 assert(image._layerRange.max > 0u);
@@ -1392,8 +1401,10 @@ bool GL_API::bindShaderResources(const DescriptorSetUsage usage, const Descripto
                                                                        image._descriptor._srgb,
                                                                        image._descriptor._normalized);
 
-                if (GL_API::GetStateTracker()->bindTextureImage(srcBinding._slot, 
-                                                                static_cast<glTexture*>(image._srcTexture)->textureHandle(),
+                const GLuint handle = GetTextureHandleFromWrapper(image._srcTexture);
+                if (handle != GLUtil::k_invalidObjectID &&
+                    GL_API::GetStateTracker()->bindTextureImage(srcBinding._slot,
+                                                                handle,
                                                                 image._mipLevels.min,
                                                                 image._layerRange.max > 1u,
                                                                 image._layerRange.min,
@@ -1417,8 +1428,15 @@ bool GL_API::makeTextureViewResident(const DescriptorSetUsage set, const U8 bind
 
     const GLuint samplerHandle = GetSamplerHandle(samplerHash);
 
-    GLuint texHandle = static_cast<glTexture*>(imageView._srcTexture)->textureHandle();
-    imageView._srcTexture->setImageUsage(ImageUsage::SHADER_SAMPLE);
+    if (imageView._srcTexture._internalTexture != nullptr) {
+        imageView._srcTexture._internalTexture->setImageUsage(ImageUsage::SHADER_SAMPLE);
+    }
+
+
+    GLuint texHandle = GetTextureHandleFromWrapper(imageView._srcTexture);
+    if (texHandle == GLUtil::k_invalidObjectID) {
+        return false;
+    }
 
     if (!imageView.isDefaultView()) {
         const size_t viewHash = imageView.getHash();
@@ -1436,13 +1454,13 @@ bool GL_API::makeTextureViewResident(const DescriptorSetUsage set, const U8 bind
             const bool isCube = IsCubeTexture(imageView.targetType());
 
             glTextureView(textureID,
-                GLUtil::internalTextureType(imageView.targetType(), imageView._descriptor._msaaSamples),
-                static_cast<glTexture*>(imageView._srcTexture)->textureHandle(),
-                glInternalFormat,
-                static_cast<GLuint>(imageView._mipLevels.x),
-                static_cast<GLuint>(imageView._mipLevels.y),
-                isCube ? imageView._layerRange.min * 6 : imageView._layerRange.min,
-                isCube ? imageView._layerRange.max * 6 : imageView._layerRange.max);
+                          GLUtil::internalTextureType(imageView.targetType(), imageView._descriptor._msaaSamples),
+                          texHandle,
+                          glInternalFormat,
+                          static_cast<GLuint>(imageView._mipLevels.x),
+                          static_cast<GLuint>(imageView._mipLevels.y),
+                          isCube ? imageView._layerRange.min * 6 : imageView._layerRange.min,
+                          isCube ? imageView._layerRange.max * 6 : imageView._layerRange.max);
         }
 
         // Self delete after 3 frames unless we use it again

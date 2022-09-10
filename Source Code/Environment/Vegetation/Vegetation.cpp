@@ -729,8 +729,8 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
             computeCmd._computeGroupSize.set((_instanceCountTrees + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1);
             // Cull trees
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _cullPipelineTrees;
-            EnqueueCommand(bufferInOut, cullConstantsCmd);
-            EnqueueCommand(bufferInOut, computeCmd);
+            GFX::EnqueueCommand(bufferInOut, cullConstantsCmd);
+            GFX::EnqueueCommand(bufferInOut, computeCmd);
         }
 
         GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_barrierMask = to_base(MemoryBarrierType::SHADER_STORAGE);

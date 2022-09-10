@@ -86,17 +86,6 @@ void GUI::onUnloadScene(Scene* const scene) {
     }
 }
 
-void GUI::CEGUIDrawInternal() {
-    OPTICK_EVENT();
-
-    const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
-    if (guiConfig.cegui.enabled) {
-        _ceguiRenderer->beginRendering();
-        _ceguiRenderTextureTarget->clear();
-        _ceguiContext->draw();
-        _ceguiRenderer->endRendering();
-    }
-}
 
 void GUI::draw(GFXDevice& context, const Rect<I32>& viewport, GFX::CommandBuffer& bufferInOut) {
     if (!_init || !_activeScene) {
@@ -104,12 +93,12 @@ void GUI::draw(GFXDevice& context, const Rect<I32>& viewport, GFX::CommandBuffer
     }
     OPTICK_EVENT();
 
-    EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Render GUI" });
+    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Render GUI" });
 
     //Set a 2D camera for rendering
-    EnqueueCommand(bufferInOut, GFX::SetCameraCommand{ Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
+    GFX::EnqueueCommand(bufferInOut, GFX::SetCameraCommand{ Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
 
-    EnqueueCommand(bufferInOut, GFX::SetViewportCommand{ viewport });
+    GFX::EnqueueCommand(bufferInOut, GFX::SetViewportCommand{ viewport });
 
     const GUIMap& elements = _guiElements[to_base(GUIType::GUI_TEXT)];
 
@@ -138,8 +127,26 @@ void GUI::draw(GFXDevice& context, const Rect<I32>& viewport, GFX::CommandBuffer
     const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
 
     if (guiConfig.cegui.enabled) {
-        GFX::EnqueueCommand<GFX::ExternalCommand>(bufferInOut)->_cbk = [this]() { CEGUIDrawInternal(); };
-        context.drawTextureInViewport(getCEGUIRenderTextureData(), 0u, viewport, false, false, true, bufferInOut);
+        GFX::EnqueueCommand<GFX::ExternalCommand>(bufferInOut)->_cbk = [this]() { 
+            _ceguiRenderer->beginRendering();
+            _ceguiRenderTextureTarget->clear();
+            _ceguiContext->draw();
+            _ceguiRenderer->endRendering();
+        };
+
+        ImageView ceguiView{};
+        ceguiView.targetType(TextureType::TEXTURE_2D);
+        ceguiView._srcTexture._ceguiTex = &_ceguiRenderTextureTarget->getTexture();
+        ceguiView._layerRange = { 0u, 1u };
+        ceguiView._mipLevels = { 0u, U16_MAX };
+        ceguiView._usage = ImageUsage::SHADER_SAMPLE;
+        ceguiView._descriptor._baseFormat = GFXImageFormat::RGBA;
+        ceguiView._descriptor._dataType = GFXDataFormat::UNSIGNED_BYTE;
+        ceguiView._descriptor._msaaSamples = 0u;
+        ceguiView._descriptor._normalized = true;
+        ceguiView._descriptor._srgb = false;
+
+        context.drawTextureInViewport(ceguiView, 0u, viewport, false, false, true, bufferInOut);
     }
 
     // Restore full state
@@ -443,16 +450,4 @@ CEGUI::GUIContext* GUI::getCEGUIContext() noexcept {
     return _ceguiContext;
 }
 
-ImageView GUI::getCEGUIRenderTextureData() const {
-    if (_ceguiRenderTextureTarget != nullptr) {
-        //const GFXDevice& gfx = _context->parent().platformContext().gfx();
-        ImageView ret{};
-        //ret._textureData._textureHandle = gfx.getHandleFromCEGUITexture(_ceguiRenderTextureTarget->getTexture());
-        //ret._textureData._textureType = TextureType::TEXTURE_2D;
-        return ret;
-
-    }
-
-    return {};
-}
 };

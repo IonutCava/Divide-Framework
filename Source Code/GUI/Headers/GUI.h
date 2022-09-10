@@ -36,7 +36,7 @@
 #include "GUIInterface.h"
 #include "Core/Headers/KernelComponent.h"
 #include "GUI/CEGUIAddons/Headers/CEGUIInput.h"
-#include "Platform/Video/Headers/TextureData.h"
+#include "Platform/Video/Textures/Headers/Texture.h"
 #include "Platform/Input/Headers/InputAggregatorInterface.h"
 
 namespace CEGUI {
@@ -156,10 +156,8 @@ public:
     void showDebugCursor(bool state);
 
 protected:
-    void CEGUIDrawInternal();
     [[nodiscard]] GUIElement* getGUIElementImpl(I64 sceneID, U64 elementName, GUIType type) const;
     [[nodiscard]] GUIElement* getGUIElementImpl(I64 sceneID, I64 elementID, GUIType type) const;
-    [[nodiscard]] ImageView   getCEGUIRenderTextureData() const;
 
     void recreateDefaultMessageBox();
 

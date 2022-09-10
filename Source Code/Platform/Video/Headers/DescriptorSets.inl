@@ -34,6 +34,17 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _DESCRIPTOR_SETS_INL_
 
 namespace Divide {
+
+    inline bool operator==(const TextureWrapper& lhs, const TextureWrapper& rhs) noexcept {
+        return lhs._internalTexture == rhs._internalTexture &&
+               lhs._ceguiTex == rhs._ceguiTex;
+    }
+
+    inline bool operator!=(const TextureWrapper& lhs, const TextureWrapper& rhs) noexcept {
+        return lhs._internalTexture != rhs._internalTexture ||
+               lhs._ceguiTex != rhs._ceguiTex;
+    }
+
     inline  bool ImageView::isDefaultView() const noexcept {
         return _isDefaultView || (_mipLevels.max == 0u && _layerRange.max == 0u);
     }

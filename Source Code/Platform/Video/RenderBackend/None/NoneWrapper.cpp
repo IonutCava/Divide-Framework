@@ -108,10 +108,6 @@ namespace Divide {
         return vec2<U16>(1);
     }
 
-    U32 NONE_API::getHandleFromCEGUITexture([[maybe_unused]] const CEGUI::Texture& textureIn) const noexcept {
-        return 0u;
-    }
-
     bool NONE_API::setViewport([[maybe_unused]] const Rect<I32>& newViewport) noexcept {
         return true;
     }

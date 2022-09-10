@@ -313,7 +313,7 @@ void LightPool::generateShadowMaps(const Camera& playerCamera, GFX::CommandBuffe
 
         shadowsGenerated[to_base(lType)] = true;
 
-        EnqueueCommand(bufferInOut, computeMipMapsCommand);
+        GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
     }
 
     memCmdInOut._bufferLocks.push_back(_shadowBuffer->writeData(_shadowBufferData.data()));

@@ -566,8 +566,8 @@ void SceneManager::updateSceneState(const U64 deltaGameTimeUS, const U64 deltaAp
 
 void SceneManager::drawCustomUI(const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut) {
     //Set a 2D camera for rendering
-    EnqueueCommand(bufferInOut, GFX::SetCameraCommand{ Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
-    EnqueueCommand(bufferInOut, GFX::SetViewportCommand{ targetViewport });
+    GFX::EnqueueCommand(bufferInOut, GFX::SetCameraCommand{ Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
+    GFX::EnqueueCommand(bufferInOut, GFX::SetViewportCommand{ targetViewport });
 
     Attorney::SceneManager::drawCustomUI(getActiveScene(), targetViewport, bufferInOut);
 }

@@ -546,7 +546,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
 
     // We usually want accurate data when debugging material properties, so tonemapping should probably be disabled
     if (adaptiveExposureControl()) {
-        EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Compute Adaptive Exposure" });
+        GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Compute Adaptive Exposure" });
 
         const F32 logLumRange = _toneMapParams._maxLogLuminance - _toneMapParams._minLogLuminance;
         const F32 histogramParams[4] = {

@@ -340,7 +340,7 @@ void CascadedShadowMapsGenerator::render(const Camera& playerCamera, Light& ligh
     params._clearDescriptorMainPass._clearDepth = true;
     params._clearDescriptorMainPass._clearColourDescriptors[0] = { DefaultColours::WHITE, 0u };
 
-    EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Cascaded Shadow Pass Light: [ %d ]", lightIndex).c_str(), lightIndex));
+    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Cascaded Shadow Pass Light: [ %d ]", lightIndex).c_str(), lightIndex));
 
     RenderPassManager* rpm = _context.parent().renderPassManager();
 

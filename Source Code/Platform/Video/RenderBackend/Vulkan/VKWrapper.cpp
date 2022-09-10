@@ -899,14 +899,16 @@ namespace Divide {
                     if (srcBinding._slot == INVALID_TEXTURE_BINDING) {
                         continue;
                     }
-
                     const DescriptorCombinedImageSampler& imageSampler = srcBinding._data.As<DescriptorCombinedImageSampler>();
                     DIVIDE_ASSERT(imageSampler._image.targetType() != TextureType::COUNT);
-
+                    if (imageSampler._image._srcTexture._internalTexture == nullptr) {
+                        DIVIDE_ASSERT(imageSampler._image._srcTexture._ceguiTex != nullptr);
+                        continue;
+                    }
                     const VkSampler samplerHandle = GetSamplerHandle(imageSampler._samplerHash);
-                    imageSampler._image._srcTexture->setImageUsage(ImageUsage::SHADER_SAMPLE);
+                    imageSampler._image._srcTexture._internalTexture->setImageUsage(ImageUsage::SHADER_SAMPLE);
 
-                    const VkImageView view = static_cast<const vkTexture*>(imageSampler._image._srcTexture)->vkView();
+                    const VkImageView view = static_cast<const vkTexture*>(imageSampler._image._srcTexture._internalTexture)->vkView();
 
                     VkDescriptorImageInfo& imageInfo = ImageInfoStructs[imageInfoStructIndex++];
                     imageInfo = vk::descriptorImageInfo(samplerHandle, view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -917,10 +919,14 @@ namespace Divide {
                         continue;
                     }
                     const ImageView& image = srcBinding._data.As<ImageView>();
-                    DIVIDE_ASSERT(image._srcTexture != nullptr && image._mipLevels.max == 1u);
-                    image._srcTexture->setImageUsage(image._usage);
+                    if (image._srcTexture._internalTexture == nullptr && image._srcTexture._ceguiTex != nullptr) {
+                        continue;
+                    }
 
-                    vkTexture* vkTex = static_cast<vkTexture*>(image._srcTexture);
+                    DIVIDE_ASSERT(image._srcTexture._internalTexture != nullptr && image._mipLevels.max == 1u);
+                    image._srcTexture._internalTexture->setImageUsage(image._usage);
+
+                    vkTexture* vkTex = static_cast<vkTexture*>(image._srcTexture._internalTexture);
                     VkDescriptorType descriptorType = VK_DESCRIPTOR_TYPE_MAX_ENUM;
                     vkTexture::CachedImageView::Descriptor descriptor{};
                     descriptor._usage = image._usage;
@@ -1261,10 +1267,6 @@ namespace Divide {
         int w = 1, h = 1;
         SDL_Vulkan_GetDrawableSize(window.getRawWindow(), &w, &h);
         return vec2<U16>(w, h);
-    }
-
-    U32 VK_API::getHandleFromCEGUITexture([[maybe_unused]] const CEGUI::Texture& textureIn) const noexcept {
-        return 0u;
     }
 
     bool VK_API::setViewport(const Rect<I32>& newViewport) noexcept {

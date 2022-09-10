@@ -68,11 +68,11 @@ void GUISplash::render(GFXDevice& context) const {
     beginRenderPassCmd._name = "BLIT_TO_BACKBUFFER";
     beginRenderPassCmd._clearDescriptor._clearDepth = true;
     beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { DefaultColours::DIVIDE_BLUE, 0u };
-    EnqueueCommand(buffer, beginRenderPassCmd);
+    GFX::EnqueueCommand(buffer, beginRenderPassCmd);
 
     GFX::BindPipelineCommand pipelineCmd;
     pipelineCmd._pipeline = context.newPipeline(pipelineDescriptor);
-    EnqueueCommand(buffer, pipelineCmd);
+    GFX::EnqueueCommand(buffer, pipelineCmd);
 
     GFX::SendPushConstantsCommand pushConstantsCommand = {};
     pushConstantsCommand._constants.set(_ID("lodLevel"), GFX::PushConstantType::FLOAT, 1.f);
@@ -80,11 +80,11 @@ void GUISplash::render(GFXDevice& context) const {
     pushConstantsCommand._constants.set(_ID("channelCount"), GFX::PushConstantType::UINT, 4u);
     pushConstantsCommand._constants.set(_ID("startChannel"), GFX::PushConstantType::UINT, 0u);
     pushConstantsCommand._constants.set(_ID("multiplier"), GFX::PushConstantType::FLOAT, 1.f);
-    EnqueueCommand(buffer, pushConstantsCommand);
+    GFX::EnqueueCommand(buffer, pushConstantsCommand);
 
     GFX::SetViewportCommand viewportCommand;
     viewportCommand._viewport.set(0, 0, _dimensions.width, _dimensions.height);
-    EnqueueCommand(buffer, viewportCommand);
+    GFX::EnqueueCommand(buffer, viewportCommand);
 
     _splashImage->waitForReady();
 

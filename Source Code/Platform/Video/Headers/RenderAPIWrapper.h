@@ -158,10 +158,6 @@ protected:
 
     [[nodiscard]] virtual vec2<U16> getDrawableSize(const DisplayWindow& window) const = 0;
 
-    // The definition of a hack. Feel free to quote this. -Ionut
-    /// Convert a CEGUI texture handle to something that our current rendering API can use
-    [[nodiscard]] virtual U32 getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const = 0;
-
     virtual bool setViewport(const Rect<I32>& newViewport) = 0;
 
     virtual void onThreadCreated(const std::thread::id& threadID) = 0;

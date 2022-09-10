@@ -95,7 +95,7 @@ namespace Divide {
             : Texture(context, descriptorHash, name, assetNames, assetLocations, texDescriptor, parentCache)
         {
             static std::atomic_uint s_textureHandle = 1u;
-            _defaultView._srcTexture = this;
+            _defaultView._srcTexture._internalTexture = this;
         }
 
         void clearData([[maybe_unused]] const UColour4& clearColour, [[maybe_unused]] U8 level) const noexcept override {

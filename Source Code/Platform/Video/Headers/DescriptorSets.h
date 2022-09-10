@@ -49,6 +49,13 @@ namespace Divide {
         COUNT
     };
 
+    struct TextureWrapper final : Hashable {
+        CEGUI::Texture* _ceguiTex{ nullptr };
+        Texture* _internalTexture{nullptr};
+
+        [[nodiscard]] size_t getHash() const noexcept override;
+    };
+
     struct ImageView final : Hashable
     {
         struct Descriptor final : Hashable {
@@ -58,17 +65,17 @@ namespace Divide {
             bool _srgb{ false };
             bool _normalized{ true };
 
-            [[nodiscard]] size_t getHash() const override;
+            [[nodiscard]] size_t getHash() const noexcept override;
 
         } _descriptor;
 
-        Texture* _srcTexture{nullptr};
+        TextureWrapper _srcTexture;
         vec2<U16> _mipLevels{0u, U16_MAX};  //Offset, Count
         vec2<U16> _layerRange{0u, U16_MAX}; //Offset, Count
 
         ImageUsage _usage{ ImageUsage::UNDEFINED };
 
-        [[nodiscard]] size_t getHash() const override;
+        [[nodiscard]] size_t getHash() const noexcept override;
 
         [[nodiscard]] bool isDefaultView() const noexcept;
 
@@ -87,8 +94,8 @@ namespace Divide {
     };
 
     struct ShaderBufferEntry {
-        ShaderBufferEntry() = default;
-        ShaderBufferEntry(ShaderBuffer& buffer, const BufferRange& range);
+        ShaderBufferEntry() noexcept = default;
+        ShaderBufferEntry(ShaderBuffer& buffer, const BufferRange& range) noexcept;
 
         ShaderBuffer* _buffer{ nullptr };
         BufferRange _range{};
@@ -125,6 +132,8 @@ namespace Divide {
 
     using DescriptorSet = eastl::fixed_vector<DescriptorSetBinding, 16, false>;
 
+    bool operator==(const TextureWrapper& lhs, const TextureWrapper& rhs) noexcept;
+    bool operator!=(const TextureWrapper& lhs, const TextureWrapper& rhs) noexcept;
     bool operator==(const ImageView& lhs, const ImageView& rhs) noexcept;
     bool operator!=(const ImageView& lhs, const ImageView& rhs) noexcept;
     bool operator==(const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs) noexcept;

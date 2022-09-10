@@ -549,8 +549,7 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
         ComputeViewports(targetViewport, _editorViewports, playerCount);
     }
 
-    RenderPassManager::RenderParams renderParams = {};
-    renderParams._editorRunning = editorRunning;
+    RenderPassManager::RenderParams renderParams{};
     renderParams._sceneRenderState = &_sceneManager->getActiveScene().state()->renderState();
 
     for (U8 i = 0u; i < playerCount; ++i) {

@@ -122,10 +122,6 @@ inline vec2<U16> GFXDevice::getDrawableSize(const DisplayWindow& window) const {
     return _api->getDrawableSize(window);
 }
 
-inline U32 GFXDevice::getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const {
-    return _api->getHandleFromCEGUITexture(textureIn);
-}
-
 inline const vec2<U16>& GFXDevice::renderingResolution() const noexcept {
     return _renderingResolution;
 }

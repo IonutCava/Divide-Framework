@@ -387,6 +387,8 @@ GLStateTracker::BindResult GLStateTracker::bindTextureImage(const GLubyte unit, 
                                                             const bool layered, const GLint layer, const GLenum access, 
                                                             const GLenum format)
 {
+    DIVIDE_ASSERT(handle != GLUtil::k_invalidObjectID);
+
     ImageBindSettings tempSettings = {handle, level, layered ? GL_TRUE : GL_FALSE, layer, access, format};
 
     ImageBindSettings& settings = _imageBoundMap[unit];

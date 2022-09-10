@@ -174,7 +174,6 @@ class VK_API final : public RenderAPIWrapper {
       void flushCommand(GFX::CommandBase* cmd) noexcept override;
       void postFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) noexcept override;
       [[nodiscard]] vec2<U16> getDrawableSize(const DisplayWindow& window) const noexcept override;
-      [[nodiscard]] U32 getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const noexcept override;
       bool setViewport(const Rect<I32>& newViewport) noexcept override;
       bool setScissor(const Rect<I32>& newScissor) noexcept;
       void onThreadCreated(const std::thread::id& threadID) noexcept override;

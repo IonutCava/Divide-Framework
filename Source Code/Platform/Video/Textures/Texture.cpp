@@ -103,7 +103,7 @@ Texture::Texture(GFXDevice& context,
       _numLayers(texDescriptor.layerCount()),
       _parentCache(parentCache)
 {
-    _defaultView._srcTexture = this;
+    _defaultView._srcTexture._internalTexture = this;
     _defaultView._mipLevels.max = 1u;
     _defaultView._isDefaultView = true;
     _defaultView._usage = ImageUsage::UNDEFINED;

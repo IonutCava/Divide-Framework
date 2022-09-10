@@ -6,14 +6,24 @@
 #include "Platform/Video/Textures/Headers/Texture.h"
 
 namespace Divide {
-    ShaderBufferEntry::ShaderBufferEntry(ShaderBuffer& buffer, const BufferRange& range)
+    ShaderBufferEntry::ShaderBufferEntry(ShaderBuffer& buffer, const BufferRange& range) noexcept
         : _buffer(&buffer)
         , _range(range)
         , _bufferQueueReadIndex(buffer.queueReadIndex())
     {
     }
 
-    size_t ImageView::Descriptor::getHash() const {
+    size_t TextureWrapper::getHash() const noexcept {
+        if (_ceguiTex != nullptr) {
+            Util::Hash_combine(_hash, _ceguiTex->getName().c_str());
+        }
+        if (_internalTexture != nullptr) {
+            Util::Hash_combine(_hash, _internalTexture->getGUID());
+        }
+        return _hash;
+    }
+
+    size_t ImageView::Descriptor::getHash() const noexcept {
         Util::Hash_combine(_hash, _msaaSamples, _dataType, _baseFormat, _srgb, _normalized);
         return _hash;
     }
@@ -23,8 +33,8 @@ namespace Divide {
             return _targetType;
         }
 
-        if (_srcTexture != nullptr) {
-            return _srcTexture->descriptor().texType();
+        if (_srcTexture._internalTexture != nullptr) {
+            return _srcTexture._internalTexture->descriptor().texType();
         }
 
         return _targetType;
@@ -34,11 +44,11 @@ namespace Divide {
         _targetType = type;
     }
 
-    size_t ImageView::getHash() const {
+    size_t ImageView::getHash() const noexcept {
         _hash = 1337;
         Util::Hash_combine(_hash,
                            _usage,
-                           (_srcTexture != nullptr ? _srcTexture->getGUID() : 17),
+                            _srcTexture.getHash(),
                             targetType(),
                            _mipLevels.min,
                            _mipLevels.max,

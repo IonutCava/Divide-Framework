@@ -236,24 +236,26 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent) {
                 ret.append("    ");
             }
             if (binding._data.Has<DescriptorCombinedImageSampler>()) {
-                Texture* srcTex = binding._data.As<DescriptorCombinedImageSampler>()._image._srcTexture;
+                Texture* srcInternalTex = binding._data.As<DescriptorCombinedImageSampler>()._image._srcTexture._internalTexture;
+                CEGUI::Texture* srcExternalTex = binding._data.As<DescriptorCombinedImageSampler>()._image._srcTexture._ceguiTex;
 
                 ret.append(Util::StringFormat("Texture [ %zu - %s - %d - %zu ] Layers: [ %d - %d ] MipRange: [ %d - %d ]\n",
-                           binding._slot,
-                           srcTex != nullptr ? srcTex->getGUID() : 0u,
-                           srcTex != nullptr ? srcTex->resourceName().c_str() : "no-name",
-                           binding._data.As<DescriptorCombinedImageSampler>()._samplerHash,
-                           binding._data.As<DescriptorCombinedImageSampler>()._image._layerRange.min,
-                           binding._data.As<DescriptorCombinedImageSampler>()._image._layerRange.max,
-                           binding._data.As<DescriptorCombinedImageSampler>()._image._mipLevels.min,
-                           binding._data.As<DescriptorCombinedImageSampler>()._image._mipLevels.max));
+                            binding._slot,
+                            srcInternalTex != nullptr ? srcInternalTex->getGUID() : 0u,
+                            srcInternalTex != nullptr ? srcInternalTex->resourceName().c_str() : srcExternalTex != nullptr ? srcExternalTex->getName().c_str() : "no-name",
+                            binding._data.As<DescriptorCombinedImageSampler>()._samplerHash,
+                            binding._data.As<DescriptorCombinedImageSampler>()._image._layerRange.min,
+                            binding._data.As<DescriptorCombinedImageSampler>()._image._layerRange.max,
+                            binding._data.As<DescriptorCombinedImageSampler>()._image._mipLevels.min,
+                            binding._data.As<DescriptorCombinedImageSampler>()._image._mipLevels.max));
             } else {
-                Texture* srcTex = binding._data.As<ImageView>()._srcTexture;
+                Texture* srcInternalTex = binding._data.As<ImageView>()._srcTexture._internalTexture;
+                CEGUI::Texture* srcExternalTex = binding._data.As<ImageView>()._srcTexture._ceguiTex;
 
                 ret.append(Util::StringFormat("Image binds: Slot [%d] - Src GUID [ %d ] - Src Name [ %s ] - Layers [%d - %d] - Levels [%d - %d] - Flag [ %s ]",
                            binding._slot,
-                           srcTex != nullptr ? srcTex->getGUID() : 0u,
-                           srcTex != nullptr ? srcTex->resourceName().c_str() : "no-name",
+                           srcInternalTex != nullptr ? srcInternalTex->getGUID() : 0u,
+                           srcInternalTex != nullptr ? srcInternalTex->resourceName().c_str() : srcExternalTex != nullptr ? srcExternalTex->getName().c_str() : "no-name",
                            binding._data.As<ImageView>()._layerRange.min,
                            binding._data.As<ImageView>()._layerRange.max,
                            binding._data.As<ImageView>()._mipLevels.min,

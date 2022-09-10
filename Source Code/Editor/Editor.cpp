@@ -1827,7 +1827,7 @@ bool Editor::modalTextureView(const char* modalName, Texture* tex, const vec2<F3
 
         GFX::SendPushConstantsCommand pushConstantsCommand = {};
         pushConstantsCommand._constants = pushConstants;
-        EnqueueCommand(buffer, pushConstantsCommand);
+        GFX::EnqueueCommand(buffer, pushConstantsCommand);
     } };
 
     bool closed = false;

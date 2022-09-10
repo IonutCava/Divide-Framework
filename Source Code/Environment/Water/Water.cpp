@@ -381,7 +381,7 @@ void WaterPlane::updateRefraction(RenderPassManager* passManager, RenderCbkParam
 
     GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
     computeMipMapsCommand._texture = rt->getAttachment(RTAttachmentType::Colour, 0)->texture().get();
-    EnqueueCommand(bufferInOut, computeMipMapsCommand);
+    GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 }
 
 /// Update water reflections
@@ -448,7 +448,7 @@ void WaterPlane::updateReflection(RenderPassManager* passManager, RenderCbkParam
 
     GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
     computeMipMapsCommand._texture = rt->getAttachment(RTAttachmentType::Colour, 0)->texture().get();
-    EnqueueCommand(bufferInOut, computeMipMapsCommand);
+    GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 }
 
 void WaterPlane::updatePlaneEquation(const SceneGraphNode* sgn, Plane<F32>& plane, const bool reflection, const F32 offset) const {

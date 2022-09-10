@@ -349,7 +349,6 @@ public:  // Accessors and Mutators
     [[nodiscard]] const PerformanceMetrics& getPerformanceMetrics() const noexcept;
 
     inline vec2<U16> getDrawableSize(const DisplayWindow& window) const;
-    inline U32 getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const;
 
     void onThreadCreated(const std::thread::id& threadID) const;
 
