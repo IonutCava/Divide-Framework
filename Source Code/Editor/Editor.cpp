@@ -380,7 +380,7 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     io.ConfigViewportsNoDecoration = true;
     io.ConfigViewportsNoTaskBarIcon = true;
     io.ConfigDockingTransparentPayload = true;
-    io.ConfigViewportsNoAutoMerge = true;
+    io.ConfigViewportsNoAutoMerge = false;
 
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;         // Enable Multi-Viewport / Platform Windows
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking
@@ -840,54 +840,42 @@ void Editor::update(const U64 deltaTimeUS) {
 bool Editor::render([[maybe_unused]] const U64 deltaTime) {
     OPTICK_EVENT();
 
-    const F32 statusBarHeight = _statusBar->height();
-    
-    static ImGuiDockNodeFlags opt_flags = ImGuiDockNodeFlags_None | ImGuiDockNodeFlags_PassthruCentralNode;
-    // We are using the ImGuiWindowFlags_NoDocking flag to make the parent window not dockable into,
-    // because it would be confusing to have two docking targets within each others.
-    ImGuiWindowFlags windowFlags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
-    
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImGui::SetNextWindowPos(viewport->Pos);
-    ImGui::SetNextWindowSize(viewport->Size + ImVec2(0.0f, -statusBarHeight));
+    ImGui::SetNextWindowPos(viewport->WorkPos);
+    ImGui::SetNextWindowSize(viewport->WorkSize - ImVec2(0.f, _statusBar->height()));
     ImGui::SetNextWindowViewport(viewport->ID);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    windowFlags |= ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove;
-    windowFlags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-    const bool optionsVisible = _showOptionsWindow;
-
-    if (opt_flags & ImGuiDockNodeFlags_PassthruCentralNode) {
-        ImGui::SetNextWindowBgAlpha(0.0f);
-    }
-    if (windowFlags & ImGuiDockNodeFlags_PassthruCentralNode) {
-        windowFlags |= ImGuiWindowFlags_NoBackground;
-    }
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+
+    constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDocking |
+                                             ImGuiWindowFlags_NoTitleBar |
+                                             ImGuiWindowFlags_NoCollapse |
+                                             ImGuiWindowFlags_NoResize |
+                                             ImGuiWindowFlags_NoMove |
+                                             ImGuiWindowFlags_NoBringToFrontOnFocus |
+                                             ImGuiWindowFlags_NoNavFocus;
     ImGui::Begin("Editor", nullptr, windowFlags);
-    ImGui::PopStyleVar();
-    ImGui::PopStyleVar(2);
+    ImGui::PopStyleVar(3);
 
-    {
-        ImGuiStyle& style = ImGui::GetStyle();
-        const F32 originalSize = style.WindowMinSize.x;
-        style.WindowMinSize.x = 300.f;
-        ImGui::DockSpace(ImGui::GetID("EditorDockspace"), ImVec2(0.0f, 0.0f), opt_flags);
-        style.WindowMinSize.x = originalSize;
-    }
+    ImGuiStyle& style = ImGui::GetStyle();
+    const F32 originalSize = style.WindowMinSize.x;
+    style.WindowMinSize.x = 300.f;
+    const ImGuiID dockspace_id = ImGui::GetID("EditorDockspace");
+    ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
+    style.WindowMinSize.x = originalSize;
 
-    if (scenePreviewFocused() || optionsVisible) {
+    if (scenePreviewFocused() || _showOptionsWindow) {
         PushReadOnly();
     }
 
     _menuBar->draw();
-    _statusBar->draw();
-
-    for (DockedWindow* window : _dockedWindows) {
+    for (DockedWindow* const window : _dockedWindows) {
         window->draw();
     }
+    _statusBar->draw();
 
-    if (_showMemoryEditor && !optionsVisible) {
+    if (_showMemoryEditor && !_showOptionsWindow) {
         if (_memoryEditorData.first != nullptr && _memoryEditorData.second > 0) {
             static MemoryEditor memEditor;
             memEditor.DrawWindow("Memory Editor", _memoryEditorData.first, _memoryEditorData.second);
@@ -897,12 +885,12 @@ bool Editor::render([[maybe_unused]] const U64 deltaTime) {
         }
     }
 
-    if (_showSampleWindow && !optionsVisible) {
+    if (_showSampleWindow && !_showOptionsWindow) {
         ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiCond_FirstUseEver);
         ImGui::ShowDemoWindow(&_showSampleWindow);
     }
 
-    if (scenePreviewFocused() || optionsVisible) {
+    if (scenePreviewFocused() || _showOptionsWindow) {
         PopReadOnly();
     }
 
@@ -1126,7 +1114,6 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
     static ImDrawVert vertices[MaxVertices];
     static ImDrawIdx indices[MaxIndices];
 
-    static GFX::BeginDebugScopeCommand s_beginDebugScope{ "Render IMGUI" };
     static GFX::SendPushConstantsCommand s_pushConstants{};
     static bool s_init = false;
     if (!s_init) {
@@ -1189,7 +1176,11 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
     idxBuffer.data = indices;
     buffer->setIndexBuffer(idxBuffer);
 
-    GFX::EnqueueCommand(bufferInOut, s_beginDebugScope);
+    GFX::BeginRenderPassCommand beginRenderPassCmd{};
+    beginRenderPassCmd._target = SCREEN_TARGET_ID;
+    beginRenderPassCmd._name = "Render IMGUI";
+    beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { DefaultColours::DIVIDE_BLUE, 0u };
+    GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
     GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut, { _editorPipeline });
 
@@ -1268,7 +1259,7 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
 
     GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_fenceLocks.push_back(buffer);
 
-    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
+    GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
 }
 
 void Editor::selectionChangeCallback(const PlayerIndex idx, const vector<SceneGraphNode*>& nodes) const {

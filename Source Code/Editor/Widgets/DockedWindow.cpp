@@ -34,14 +34,6 @@ namespace Divide {
     void DockedWindow::draw() {
         OPTICK_EVENT();
 
-        //window_flags |= ImGuiWindowFlags_NoTitleBar;
-        //window_flags |= ImGuiWindowFlags_NoScrollbar;
-        //window_flags |= ImGuiWindowFlags_MenuBar;
-        //window_flags |= ImGuiWindowFlags_NoMove;
-        //window_flags |= ImGuiWindowFlags_NoResize;
-        //window_flags |= ImGuiWindowFlags_NoCollapse;
-        //window_flags |= ImGuiWindowFlags_NoNav;
-
         ImGui::SetNextWindowPos(_descriptor.position, ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(_descriptor.size, ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSizeConstraints(_descriptor.minSize, _descriptor.maxSize);
