@@ -39,38 +39,6 @@
 
 namespace Divide {
 
-constexpr I16 INVALID_COLOUR_LAYER = std::numeric_limits<I16>::lowest();
-constexpr U16 INVALID_DEPTH_LAYER = std::numeric_limits<U16>::max();
-
-struct BlitIndex {
-    I16 _layer{ INVALID_COLOUR_LAYER };
-    I16 _index{ INVALID_COLOUR_LAYER };
-};
-
-struct DepthBlitEntry {
-    U16 _inputLayer{ INVALID_DEPTH_LAYER };
-    U16 _outputLayer{ INVALID_DEPTH_LAYER };
-};
-
-struct ColourBlitEntry {
-    void set(const U16 indexIn, const U16 indexOut, const U16 layerIn = 0u, const U16 layerOut = 0u) noexcept { input(indexIn, layerIn); output(indexOut, layerOut); } 
-    void set(const BlitIndex in, const BlitIndex out) noexcept { input(in); output(out); }
-
-    void input(const BlitIndex in) noexcept { _input = in; }
-    void input(const U16 index, const U16 layer = 0u) noexcept { _input = { to_I16(layer), to_I16(index) }; }
-
-    void output(const BlitIndex out) noexcept { _output = out; }
-    void output(const U16 index, const U16 layer = 0u) noexcept { _output = { to_I16(layer), to_I16(index) }; }
-
-    [[nodiscard]] BlitIndex input()  const noexcept { return _input; }
-    [[nodiscard]] BlitIndex output() const noexcept { return _output; }
-    [[nodiscard]] bool      valid()  const noexcept { return _input._index != INVALID_COLOUR_LAYER || _input._layer != INVALID_COLOUR_LAYER; }
-
-protected:
-    BlitIndex _input;
-    BlitIndex _output;
-};
-
 class RenderTarget;
 struct RenderTargetHandle {
     RenderTarget* _rt{ nullptr };
@@ -91,27 +59,11 @@ struct RenderTargetDescriptor {
 
 class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
    public:
-    enum class RenderTargetUsage : U8 {
+    enum class Usage : U8 {
         RT_READ_WRITE = 0,
         RT_READ_ONLY = 1,
         RT_WRITE_ONLY = 2
     };
-
-    struct DrawLayerParams {
-        RTAttachmentType _type{ RTAttachmentType::COUNT };
-        U8 _index{ 0u };
-        U16 _layer{ 0 };
-        bool _includeDepth{ true };
-    };
-
-    struct RTBlitParams {
-        RenderTarget* _inputFB{ nullptr };
-        DepthBlitEntry _blitDepth;
-        std::array<ColourBlitEntry, RT_MAX_COLOUR_ATTACHMENTS> _blitColours;
-
-        bool hasBlitColours() const;
-    };
-
    protected:
     explicit RenderTarget(GFXDevice& context, const RenderTargetDescriptor& descriptor);
 
@@ -127,11 +79,9 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
     [[nodiscard]] U8 getAttachmentCount(RTAttachmentType type) const noexcept;
     [[nodiscard]] U8 getSampleCount() const noexcept;
 
-    virtual void clear(const RTClearDescriptor& descriptor) = 0;
-    virtual void setDefaultState(const RTDrawDescriptor& drawPolicy) = 0;
     virtual void readData(const vec4<U16>& rect, GFXImageFormat imageFormat, GFXDataFormat dataType, std::pair<bufferPtr, size_t> outData) const = 0;
-    virtual void blitFrom(const RTBlitParams& params) = 0;
-    virtual bool initAttachment(RTAttachment* att, RTAttachmentType type, U8 index, bool isExternal);
+    virtual void blitFrom(RenderTarget* source, const RTBlitParams& params) = 0;
+
     /// Resize all attachments
     bool resize(U16 width, U16 height);
     /// Change msaa sampel count for all attachments
@@ -148,6 +98,9 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
     [[nodiscard]] const Str64& name() const noexcept;
 
     PROPERTY_RW(bool, enableAttachmentChangeValidation, true);
+
+   protected:
+    virtual bool initAttachment(RTAttachment* att, RTAttachmentType type, U8 index, bool isExternal);
 
    protected:
     RenderTargetDescriptor _descriptor;

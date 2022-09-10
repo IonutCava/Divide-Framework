@@ -15,11 +15,37 @@
 namespace Divide {
 
 namespace {
-    FORCE_INLINE bool IsValid(const DepthBlitEntry& entry) noexcept {
-        return entry._inputLayer != INVALID_DEPTH_LAYER &&
-               entry._outputLayer != INVALID_DEPTH_LAYER;
+    [[nodiscard]] FORCE_INLINE bool IsValid(const BlitIndex& entry) noexcept {
+        return entry._index != INVALID_LAYER_INDEX && entry._layer != INVALID_LAYER_INDEX;
     }
-    FORCE_INLINE U32 ColorAttachmentToIndex(const GLenum colorAttachmentEnum) noexcept {
+
+    [[nodiscard]] FORCE_INLINE bool IsValid(const DepthBlitEntry& entry) noexcept {
+        return entry._inputLayer != INVALID_LAYER_INDEX && entry._outputLayer != INVALID_LAYER_INDEX;
+    } 
+    
+    [[nodiscard]] FORCE_INLINE bool IsValid(const ColourBlitEntry& entry) noexcept {
+        return IsValid(entry._input) && IsValid(entry._output);
+    }
+
+    [[nodiscard]] FORCE_INLINE bool IsValid(const RTBlitParams::ColourArray& colours) noexcept {
+        for (const auto& it : colours) {
+            if (IsValid(it)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    [[nodiscard]] FORCE_INLINE bool IsValid(const RTBlitParams& params) noexcept {
+        if (IsValid(params._blitDepth)) {
+            return true;
+        }
+
+        return IsValid(params._blitColours);
+    }
+
+    [[nodiscard]] FORCE_INLINE U32 ColorAttachmentToIndex(const GLenum colorAttachmentEnum) noexcept {
         switch (colorAttachmentEnum) {
             case GL_DEPTH_ATTACHMENT  : return GFXDevice::GetDeviceInformation()._maxRTColourAttachments + 1u;
             case GL_STENCIL_ATTACHMENT: return GFXDevice::GetDeviceInformation()._maxRTColourAttachments + 2u;
@@ -99,9 +125,9 @@ bool glFramebuffer::initAttachment(RTAttachment* att, const RTAttachmentType typ
             const TextureType texType = att->texture()->descriptor().texType();
             // Most of these aren't even valid, but hey, doesn't hurt to check
             _isLayeredDepth = texType == TextureType::TEXTURE_1D_ARRAY ||
-                                texType == TextureType::TEXTURE_2D_ARRAY ||
-                                texType == TextureType::TEXTURE_3D ||
-                                IsCubeTexture(texType);
+                              texType == TextureType::TEXTURE_2D_ARRAY ||
+                              texType == TextureType::TEXTURE_3D ||
+                              IsCubeTexture(texType);
         }
 
         att->binding(binding);
@@ -151,17 +177,23 @@ bool glFramebuffer::create() {
         return false;
     }
 
-    setDefaultState({});
-    RTClearDescriptor initialClear{};
-    initialClear._resetToDefault = false;
-    clear(initialClear);
+    for (U8 i = 0u; i < RT_MAX_COLOUR_ATTACHMENTS + 1; ++i) {
+        setDefaultAttachmentBinding(_attachments[i]);
+    }
+
+    /// Setup draw buffers
+    prepareBuffers({});
+
+    /// Check that everything is valid
+    checkStatus();
+
     return checkStatus();
 }
 
-void glFramebuffer::blitFrom(const RTBlitParams& params) {
+void glFramebuffer::blitFrom(RenderTarget* source, const RTBlitParams& params) {
     OPTICK_EVENT();
 
-    if (!params._inputFB || (!params.hasBlitColours() && !IsValid(params._blitDepth))) {
+    if (source == nullptr || !IsValid(params)) {
         return;
     }
 
@@ -173,28 +205,17 @@ void glFramebuffer::blitFrom(const RTBlitParams& params) {
         }
     };
 
-    glFramebuffer* input = static_cast<glFramebuffer*>(params._inputFB);
+    glFramebuffer* input = static_cast<glFramebuffer*>(source);
     glFramebuffer* output = this;
     const vec2<U16>& inputDim = input->_descriptor._resolution;
     const vec2<U16>& outputDim = output->_descriptor._resolution;
 
     bool blittedDepth = false;
 
-    const bool depthMisMatch = input->hasDepth() != output->hasDepth();
-    if (depthMisMatch) {
-        OPTICK_EVENT("Depth mismatch");
-
-        if (input->hasDepth()) {
-            input->toggleAttachment(input->_attachments[RT_DEPTH_ATTACHMENT_IDX], AttachmentState::STATE_DISABLED, false);
-        }
-
-        if (output->hasDepth()) {
-            output->toggleAttachment(output->_attachments[RT_DEPTH_ATTACHMENT_IDX], AttachmentState::STATE_DISABLED, false);
-        }
-    }
+    const bool depthMismatch = input->_attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX] != output->_attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX];
 
     // Multiple attachments, multiple layers, multiple everything ... what a mess ... -Ionut
-    if (params.hasBlitColours() && hasColour()) {
+    if (IsValid(params._blitColours)) {
         OPTICK_EVENT("Blit Colours");
 
         GLuint prevReadAtt = 0;
@@ -202,18 +223,15 @@ void glFramebuffer::blitFrom(const RTBlitParams& params) {
 
         const std::array<GLenum, MAX_RT_COLOUR_ATTACHMENTS> currentOutputBuffers = output->_activeColourBuffers;
         for (ColourBlitEntry entry : params._blitColours) {
-            if (entry.input()._layer == INVALID_COLOUR_LAYER && entry.input()._index == INVALID_COLOUR_LAYER) {
+            if (entry._input._index == INVALID_LAYER_INDEX ||
+                entry._output._index == INVALID_LAYER_INDEX ||
+                !input->_attachmentsUsed[entry._input._index] ||
+                !output->_attachmentsUsed[entry._output._index])
+            {
                 continue;
             }
-            const I32 inputLayer = std::max(entry.input()._layer, to_I16(0));
-            const I32 inputIndex = std::max(entry.input()._index, to_I16(0));
 
-            const I32 outputLayer = entry.output()._layer == INVALID_COLOUR_LAYER ? inputLayer : entry.output()._layer;
-            const I32 outputIndex = entry.output()._index == INVALID_COLOUR_LAYER ? inputIndex : entry.output()._index;
-
-            const RTAttachment_uptr& inAtt = input->_attachments[to_U8(inputIndex)];
-            const RTAttachment_uptr& outAtt = output->_attachments[to_U8(outputIndex)];
-
+            const RTAttachment_uptr& inAtt = input->_attachments[entry._input._index];
             const GLuint crtReadAtt = inAtt->binding();
             const GLenum readBuffer = static_cast<GLenum>(crtReadAtt);
             if (prevReadAtt != readBuffer) {
@@ -224,6 +242,7 @@ void glFramebuffer::blitFrom(const RTBlitParams& params) {
                 prevReadAtt = crtReadAtt;
             }
 
+            const RTAttachment_uptr& outAtt = output->_attachments[entry._output._index];
             const GLuint crtWriteAtt = outAtt->binding();
             if (prevWriteAtt != crtWriteAtt) {
                 const GLenum colourAttOut = static_cast<GLenum>(crtWriteAtt);
@@ -248,33 +267,24 @@ void glFramebuffer::blitFrom(const RTBlitParams& params) {
             const U8 loopCount = IsCubeTexture(inAtt->texture()->descriptor().texType()) ? 6u : 1u;
             for (U8 i = 0u ; i < loopCount; ++i) {
                 if (i > 0u) {
-                    BlitIndex crtInput = entry.input();
-                    BlitIndex crtOutput = entry.output();
-                    ++crtInput._layer;
-                    ++crtOutput._layer;
-                    entry.set(crtInput, crtOutput);
+                    ++entry._input._layer;
+                    ++entry._output._layer;
                 }
-                prepareAttachments(input, inAtt, entry.input()._layer);
-                prepareAttachments(output, outAtt, entry.output()._layer);
+
+                prepareAttachments(input, inAtt, entry._input._layer);
+                prepareAttachments(output, outAtt, entry._output._layer);
 
                 // If we change layers, then the depth buffer should match that ... I guess ... this sucks!
-                if (!depthMisMatch && loopCount == 1u) {
-                    if (input->hasDepth()) {
-                        prepareAttachments(input, input->_attachments[RT_DEPTH_ATTACHMENT_IDX], entry.input()._layer);
-                    }
-
-                    if (output->hasDepth()) {
-                        prepareAttachments(output, output->_attachments[RT_DEPTH_ATTACHMENT_IDX], entry.output()._layer);
+                if (loopCount == 1u && !depthMismatch && input->_attachments[RT_DEPTH_ATTACHMENT_IDX])
+                {
+                    prepareAttachments(input, input->_attachments[RT_DEPTH_ATTACHMENT_IDX], entry._input._layer);
+                    prepareAttachments(output, output->_attachments[RT_DEPTH_ATTACHMENT_IDX], entry._output._layer);
+                    if (params._blitDepth._inputLayer == entry._input._layer && params._blitDepth._outputLayer == entry._output._layer) {
+                        blittedDepth = true;
                     }
                 }
 
-                blittedDepth = loopCount == 1 &&
-                               !blittedDepth &&
-                               !depthMisMatch &&
-                               params._blitDepth._inputLayer == inputLayer &&
-                               params._blitDepth._outputLayer == outputLayer;
                 checkStatus();
-
                 glBlitNamedFramebuffer(input->_framebufferHandle,
                                        output->_framebufferHandle,
                                        0, 0,
@@ -297,7 +307,11 @@ void glFramebuffer::blitFrom(const RTBlitParams& params) {
         }
     }
 
-    if (!depthMisMatch && !blittedDepth && IsValid(params._blitDepth)) {
+    if (!blittedDepth &&
+        !depthMismatch &&
+        input->_attachments[RT_DEPTH_ATTACHMENT_IDX] &&
+        IsValid(params._blitDepth))
+    {
         OPTICK_EVENT("Blit Depth");
 
         prepareAttachments(input, input->_attachments[RT_DEPTH_ATTACHMENT_IDX], params._blitDepth._inputLayer);
@@ -344,14 +358,14 @@ void glFramebuffer::prepareBuffers(const RTDrawDescriptor& drawPolicy) {
         }
 
         queueCheckStatus();
-
-        _activeDepthBuffer = usesAttachment(RTAttachmentType::Depth_Stencil , 0);
      }
 
     GL_API::GetStateTracker()->setDepthWrite(IsEnabled(drawPolicy._drawMask, RTAttachmentType::Depth_Stencil));
 }
 
-void glFramebuffer::toggleAttachmentInternal(const RTAttachment_uptr& attachment) {
+void glFramebuffer::setDefaultAttachmentBinding(const RTAttachment_uptr& attachment) {
+    OPTICK_EVENT();
+
     if (attachment != nullptr) {
         /// We also draw to mip and layer 0 unless specified otherwise in the drawPolicy
         attachment->writeLayer(0);
@@ -363,6 +377,8 @@ void glFramebuffer::toggleAttachmentInternal(const RTAttachment_uptr& attachment
 }
 
 void glFramebuffer::setAttachmentUsage(const RTAttachmentType type, const ImageUsage usage) {
+    OPTICK_EVENT();
+
     if (type == RTAttachmentType::Depth_Stencil && _attachments[RT_DEPTH_ATTACHMENT_IDX]) {
         _attachments[RT_DEPTH_ATTACHMENT_IDX]->setImageUsage(usage);
     }
@@ -375,73 +391,82 @@ void glFramebuffer::setAttachmentUsage(const RTAttachmentType type, const ImageU
     }
 }
 
-void glFramebuffer::toggleAttachments() {
+void glFramebuffer::begin(const RTDrawDescriptor& drawPolicy, const RTClearDescriptor& clearPolicy) {
     OPTICK_EVENT();
 
-    for (U8 i = 0u; i < RT_MAX_COLOUR_ATTACHMENTS + 1; ++i) {
-        toggleAttachmentInternal(_attachments[i]);
-    }
-}
+    setAttachmentUsage(RTAttachmentType::Colour, ImageUsage::RT_COLOUR_ATTACHMENT);
+    setAttachmentUsage(RTAttachmentType::Depth_Stencil, ImageUsage::RT_DEPTH_ATTACHMENT);
 
-void glFramebuffer::setDefaultState(const RTDrawDescriptor& drawPolicy) {
-    OPTICK_EVENT();
+    const bool needLayeredColour = drawPolicy._writeLayers._depthLayer != INVALID_LAYER_INDEX;
+    U16 targetColourLayer = needLayeredColour ? drawPolicy._writeLayers._depthLayer : 0u;
 
-    toggleAttachments();
+    bool needLayeredDepth = false;
+    U16 targetDepthLayer = 0u;
+    for (U8 i = 0u; i < MAX_RT_COLOUR_ATTACHMENTS; ++i) {
+        if (!_attachmentsUsed[i]) {
+            continue;
+        }
 
-    /// Setup draw buffers
-    prepareBuffers(drawPolicy);
-
-    /// Set the depth range
-    GL_API::GetStateTracker()->setDepthRange(_descriptor._depthRange.min, _descriptor._depthRange.max);
-
-    /// Check that everything is valid
-    checkStatus();
-}
-
-void glFramebuffer::begin(const RTDrawDescriptor& drawPolicy) {
-    OPTICK_EVENT();
-
-    // Push debug state
-    GL_API::PushDebugMessage(_debugMessage.c_str());
-
-    // Activate FBO
-    if (GL_API::GetStateTracker()->setActiveFB(RenderTargetUsage::RT_WRITE_ONLY, _framebufferHandle) == GLStateTracker::BindResult::FAILED) {
-        DIVIDE_UNEXPECTED_CALL();
+        if (drawPolicy._writeLayers._colourLayers[i] != INVALID_LAYER_INDEX) {
+            needLayeredDepth = true;
+            targetDepthLayer = drawPolicy._writeLayers._colourLayers[i];
+            break;
+        }
     }
 
+    if (_attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX]) {
+        if (drawPolicy._writeLayers._depthLayer != INVALID_LAYER_INDEX || needLayeredDepth) {
+            targetDepthLayer = drawPolicy._writeLayers._depthLayer == INVALID_LAYER_INDEX ? targetDepthLayer : drawPolicy._writeLayers._depthLayer;
+            drawToLayer({ RTAttachmentType::Depth_Stencil, 0u, targetDepthLayer, drawPolicy._mipWriteLevel });
+        } else if (drawPolicy._mipWriteLevel != U16_MAX) {
+            setMipLevelInternal(_attachments[RT_DEPTH_ATTACHMENT_IDX], drawPolicy._mipWriteLevel);
+        } else {
+            setDefaultAttachmentBinding(_attachments[RT_DEPTH_ATTACHMENT_IDX]);
+        }
+    }
+
+    for (U8 i = 0u; i < MAX_RT_COLOUR_ATTACHMENTS; ++i) {
+        if (!_attachmentsUsed[i]) {
+            continue;
+        }
+
+        if (drawPolicy._writeLayers._colourLayers[i] != INVALID_LAYER_INDEX || needLayeredColour) {
+            targetColourLayer = drawPolicy._writeLayers._colourLayers[i] == INVALID_LAYER_INDEX ? targetColourLayer : drawPolicy._writeLayers._colourLayers[i];
+            drawToLayer({ RTAttachmentType::Colour, 0u, targetColourLayer, drawPolicy._mipWriteLevel });
+        } else if (drawPolicy._mipWriteLevel != U16_MAX) {
+            setMipLevelInternal(_attachments[i], drawPolicy._mipWriteLevel);
+        } else {
+            setDefaultAttachmentBinding(_attachments[i]);
+        }
+    }
+
+    if_constexpr(Config::Build::IS_DEBUG_BUILD) {
+        checkStatus();
+    } else {
+        _statusCheckQueued = false;
+    }
     // Set the viewport
     if (drawPolicy._setViewport) {
         _prevViewport.set(_context.activeViewport());
         _context.setViewport(0, 0, to_I32(getWidth()), to_I32(getHeight()));
     }
 
-    if (drawPolicy._setDefaultState) {
-        const bool validationEnabled = enableAttachmentChangeValidation();
-        enableAttachmentChangeValidation(false);
-        setDefaultState(drawPolicy);
-        enableAttachmentChangeValidation(validationEnabled);
-    }
+    clear(clearPolicy);
 
     if (_descriptor._msaaSamples > 0u && drawPolicy._alphaToCoverage) {
         glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE);
-
     }
 
-    setAttachmentUsage(RTAttachmentType::Colour, ImageUsage::RT_COLOUR_ATTACHMENT);
-    setAttachmentUsage(RTAttachmentType::Depth_Stencil, ImageUsage::RT_DEPTH_ATTACHMENT);
+    /// Set the depth range
+    GL_API::GetStateTracker()->setDepthRange(_descriptor._depthRange.min, _descriptor._depthRange.max);
+    _context.setDepthRange(_descriptor._depthRange);
 
     // Memorize the current draw policy to speed up later calls
     _previousPolicy = drawPolicy;
 }
 
-void glFramebuffer::end(const bool needsUnbind) const {
+void glFramebuffer::end() const {
     OPTICK_EVENT();
-
-    if (needsUnbind) {
-        if (GL_API::GetStateTracker()->setActiveFB(RenderTargetUsage::RT_WRITE_ONLY, 0) == GLStateTracker::BindResult::FAILED) {
-            DIVIDE_UNEXPECTED_CALL();
-        }
-    }
 
     if (_previousPolicy._setViewport) {
         _context.setViewport(_prevViewport);
@@ -452,8 +477,6 @@ void glFramebuffer::end(const bool needsUnbind) const {
     }
 
     queueMipMapRecomputation();
-
-    GL_API::PopDebugMessage();
 }
 
 void glFramebuffer::queueMipMapRecomputation() const {
@@ -476,76 +499,53 @@ void glFramebuffer::QueueMipMapsRecomputation(const RTAttachment_uptr& attachmen
 void glFramebuffer::clear(const RTClearDescriptor& descriptor)  {
     OPTICK_EVENT();
 
-    const bool validationEnabled = enableAttachmentChangeValidation();
-    if (descriptor._resetToDefault) {
-        enableAttachmentChangeValidation(false);
-        toggleAttachments();
-        prepareBuffers({});
-        enableAttachmentChangeValidation(validationEnabled);
-    }
-
-    if (descriptor._clearColours && hasColour()) {
+    {
         OPTICK_EVENT("Clear Colour Attachments");
-
-        for (U8 i = 0u; i < RT_MAX_COLOUR_ATTACHMENTS; ++i) {
-            RTAttachment* att = getAttachment(RTAttachmentType::Colour, i);
-            if (att == nullptr) {
+        for (U8 i = 0u; i < MAX_RT_COLOUR_ATTACHMENTS; ++i) {
+            if (!_attachmentsUsed[i] || descriptor._clearColourDescriptors[i]._index == MAX_RT_COLOUR_ATTACHMENTS) {
                 continue;
             }
 
+            RTAttachment* att = getAttachment(RTAttachmentType::Colour, descriptor._clearColourDescriptors[i]._index);
+            DIVIDE_ASSERT(att != nullptr, "glFramebuffer::error: Invalid clear target specified!");
+
             const U32 binding = att->binding();
             if (static_cast<GLenum>(binding) != GL_NONE) {
-
-                if (!descriptor._clearExternalColour && att->isExternal()) {
-                    continue;
-                }
-
                 const GLint buffer = static_cast<GLint>(binding - static_cast<GLint>(GL_COLOR_ATTACHMENT0));
-
-                if (descriptor._clearColourAttachment[to_U8(buffer)]) {
-                    const RTClearColourDescriptor* clearColour = descriptor._customClearColour;
-
-                    const FColour4& colour = clearColour != nullptr ? clearColour->_customClearColour[buffer] : att->clearColour();
-                    if (att->texture()->descriptor().normalized()) {
-                        glClearNamedFramebufferfv(_framebufferHandle, GL_COLOR, buffer, colour._v);
-                    } else {
-                        switch (att->texture()->descriptor().dataType()) {
-                            case GFXDataFormat::FLOAT_16:
-                            case GFXDataFormat::FLOAT_32 : {
-                                glClearNamedFramebufferfv(_framebufferHandle, GL_COLOR, buffer, colour._v);
-                            } break;
+                const FColour4& colour = descriptor._clearColourDescriptors[i]._colour;
+                if (att->texture()->descriptor().normalized()) {
+                    glClearNamedFramebufferfv(_framebufferHandle, GL_COLOR, buffer, colour._v);
+                } else {
+                    switch (att->texture()->descriptor().dataType()) {
+                        case GFXDataFormat::FLOAT_16:
+                        case GFXDataFormat::FLOAT_32 : {
+                            glClearNamedFramebufferfv(_framebufferHandle, GL_COLOR, buffer, colour._v);
+                        } break;
                         
-                            case GFXDataFormat::SIGNED_BYTE:
-                            case GFXDataFormat::SIGNED_SHORT:
-                            case GFXDataFormat::SIGNED_INT: {
-                                glClearNamedFramebufferiv(_framebufferHandle, GL_COLOR, buffer, Util::ToIntColour(colour)._v);
-                            } break;
+                        case GFXDataFormat::SIGNED_BYTE:
+                        case GFXDataFormat::SIGNED_SHORT:
+                        case GFXDataFormat::SIGNED_INT: {
+                            glClearNamedFramebufferiv(_framebufferHandle, GL_COLOR, buffer, Util::ToIntColour(colour)._v);
+                        } break;
 
-                            default: {
-                                glClearNamedFramebufferuiv(_framebufferHandle, GL_COLOR, buffer, Util::ToUIntColour(colour)._v);
-                            } break;
-                        }
+                        default: {
+                            glClearNamedFramebufferuiv(_framebufferHandle, GL_COLOR, buffer, Util::ToUIntColour(colour)._v);
+                        } break;
                     }
-                    _context.registerDrawCall();
                 }
+                _context.registerDrawCall();
             }
         }
     }
 
-    if (descriptor._clearDepth && hasDepth()) {
+    if (_attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX] && descriptor._clearDepth) {
         OPTICK_EVENT("Clear Depth");
-
-        if (descriptor._clearExternalDepth && _attachments[RT_DEPTH_ATTACHMENT_IDX]->isExternal()) {
-            return;
-        }
-        const RTClearColourDescriptor* clearColour = descriptor._customClearColour;
-        const F32 depthValue = clearColour != nullptr ? clearColour->_customClearDepth : _descriptor._depthValue;
-        glClearNamedFramebufferfv(_framebufferHandle, GL_DEPTH, 0, &depthValue);
+        glClearNamedFramebufferfv(_framebufferHandle, GL_DEPTH, 0, &descriptor._clearDepthValue);
         _context.registerDrawCall();
     }
 }
 
-void glFramebuffer::drawToLayer(const DrawLayerParams& params) {
+void glFramebuffer::drawToLayer(const RTDrawLayerParams& params) {
     OPTICK_EVENT();
 
     if (params._type == RTAttachmentType::COUNT) {
@@ -558,34 +558,27 @@ void glFramebuffer::drawToLayer(const DrawLayerParams& params) {
     // only for array textures (it's better to simply ignore the command if the format isn't supported (debugging reasons)
     if (textureType != GL_TEXTURE_2D_ARRAY &&
         textureType != GL_TEXTURE_CUBE_MAP_ARRAY &&
-        textureType != GL_TEXTURE_2D_MULTISAMPLE_ARRAY) {
+        textureType != GL_TEXTURE_2D_MULTISAMPLE_ARRAY)
+    {
         DIVIDE_UNEXPECTED_CALL();
         return;
     }
 
-    const bool useDepthLayer =  hasDepth()  && params._includeDepth ||
-                                hasDepth()  && params._type == RTAttachmentType::Depth_Stencil;
-    const bool useColourLayer = hasColour() && params._type == RTAttachmentType::Colour;
+    const U16 targetMip = params._mipLevel == U16_MAX ? 0u : params._mipLevel;
 
-    if (useColourLayer) {
+    if (params._type == RTAttachmentType::Colour && _attachmentsUsed[params._index]) {
         const BindingState& state = getAttachmentState(static_cast<GLenum>(att->binding()));
 
-        if (att->writeLayer(params._layer)) {
+        if (att->writeLayer(params._layer) || att->mipWriteLevel(targetMip)) {
             toggleAttachment(att, state._attState, true);
         }
     }
 
-    if (useDepthLayer && _isLayeredDepth) {
+    if (params._type == RTAttachmentType::Depth_Stencil && _attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX] && _isLayeredDepth) {
         const BindingState& state = getAttachmentState(static_cast<GLenum>(_attachments[RT_DEPTH_ATTACHMENT_IDX]->binding()));
-        if (_attachments[RT_DEPTH_ATTACHMENT_IDX]->writeLayer(params._layer)) {
+        if (_attachments[RT_DEPTH_ATTACHMENT_IDX]->writeLayer(params._layer) || _attachments[RT_DEPTH_ATTACHMENT_IDX]->mipWriteLevel(targetMip)) {
             toggleAttachment(_attachments[RT_DEPTH_ATTACHMENT_IDX], state._attState, true);
         }
-    }
-
-    if_constexpr (Config::Build::IS_DEBUG_BUILD) {
-        checkStatus();
-    } else {
-        _statusCheckQueued = false;
     }
 }
 
@@ -615,7 +608,7 @@ void glFramebuffer::setMipLevel(const U16 writeLevel) {
 
     changedMip = setMipLevelInternal(_attachments[RT_DEPTH_ATTACHMENT_IDX], writeLevel) || changedMip;
     for (U8 i = 0u; i < RT_MAX_COLOUR_ATTACHMENTS; ++i) {
-        changedMip = getAttachment(RTAttachmentType::Colour, i) || changedMip;
+        changedMip = setMipLevelInternal(_attachments[i], writeLevel) || changedMip;
     }
 
     if (changedMip && needsAttachmentDisabled) {
@@ -624,12 +617,6 @@ void glFramebuffer::setMipLevel(const U16 writeLevel) {
                 toggleAttachment(_attachments[i], AttachmentState::STATE_DISABLED, false);
             }
         }
-    }
-
-    if_constexpr(Config::Build::IS_DEBUG_BUILD) {
-        checkStatus();
-    } else {
-        _statusCheckQueued = false;
     }
 }
 
@@ -640,7 +627,7 @@ void glFramebuffer::readData(const vec4<U16>& rect,
     OPTICK_EVENT();
 
     GL_API::GetStateTracker()->setPixelPackUnpackAlignment();
-    if (GL_API::GetStateTracker()->setActiveFB(RenderTargetUsage::RT_READ_ONLY, _framebufferHandle) == GLStateTracker::BindResult::FAILED) {
+    if (GL_API::GetStateTracker()->setActiveFB(Usage::RT_READ_ONLY, _framebufferHandle) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
     glReadnPixels(
@@ -649,20 +636,6 @@ void glFramebuffer::readData(const vec4<U16>& rect,
         GLUtil::glDataFormat[to_U32(dataType)],
         (GLsizei)outData.second,
         outData.first);
-}
-
-bool glFramebuffer::hasDepth() const noexcept {
-    return _activeDepthBuffer;
-}
-
-bool glFramebuffer::hasColour() const noexcept {
-    for (const auto& rt : _attachments) {
-        if (rt != nullptr) {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 void glFramebuffer::setAttachmentState(const GLenum binding, const BindingState state) {

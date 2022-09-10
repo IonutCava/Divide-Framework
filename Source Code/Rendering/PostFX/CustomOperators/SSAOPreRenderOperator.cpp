@@ -108,7 +108,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         outputDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
         const vec2<U16> res = parent.screenRT()._rt->getResolution();
         InternalRTAttachmentDescriptors att{
-            InternalRTAttachmentDescriptor{ outputDescriptor, nearestSampler.getHash(), RTAttachmentType::Colour },
+            InternalRTAttachmentDescriptor{ outputDescriptor, nearestSampler.getHash(), RTAttachmentType::Colour, 0u},
         };
 
         RenderTargetDescriptor desc = {};
@@ -133,7 +133,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         outputDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         InternalRTAttachmentDescriptors att = {
-            InternalRTAttachmentDescriptor{ outputDescriptor, nearestSampler.getHash(), RTAttachmentType::Colour },
+            InternalRTAttachmentDescriptor{ outputDescriptor, nearestSampler.getHash(), RTAttachmentType::Colour, 0u },
         };
 
         RenderTargetDescriptor desc = {};
@@ -477,15 +477,13 @@ void SSAOPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX:
     PreRenderOperator::prepare(idx, bufferInOut);
 
     if (_stateChanged && !_enabled) {
-        RTClearDescriptor clearDescriptor = {};
-        clearDescriptor._clearDepth = true;
-        clearDescriptor._clearColours = true;
-        clearDescriptor._resetToDefault = true;
+        GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
+        renderPassCmd->_name = "DO_SSAO_CLEAR_TARGET";
+        renderPassCmd->_target = RenderTargetNames::SSAO_RESULT;
+        renderPassCmd->_clearDescriptor._clearDepth = true;
+        renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, 0u };
 
-        GFX::ClearRenderTargetCommand clearMainTarget = {};
-        clearMainTarget._target = RenderTargetNames::SSAO_RESULT;
-        clearMainTarget._descriptor = clearDescriptor;
-        EnqueueCommand(bufferInOut, clearMainTarget);
+        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
     }
 
     _stateChanged = false;
@@ -501,17 +499,13 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
     const auto& depthAtt   = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Depth_Stencil, 0);
     const auto& normalsAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS));
 
-    GFX::ClearRenderTargetCommand clearSSAOTargetCmd{};
-    clearSSAOTargetCmd._target = _ssaoOutput._targetID;
-    clearSSAOTargetCmd._descriptor._clearDepth = false;
-    clearSSAOTargetCmd._descriptor._clearColours = true;
-    GFX::EnqueueCommand(bufferInOut, clearSSAOTargetCmd);
-
     if(genHalfRes()) {
         { // DownSample depth and normals
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
             renderPassCmd->_name = "DO_SSAO_DOWNSAMPLE_NORMALS";
             renderPassCmd->_target = _halfDepthAndNormals._targetID;
+            renderPassCmd->_clearDescriptor._clearDepth = true;
+            renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::BLACK, 0u };
 
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _downsamplePipeline;
 
@@ -535,6 +529,8 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
             renderPassCmd->_name = "DO_SSAO_HALF_RES_CALC";
             renderPassCmd->_target = _ssaoHalfResOutput._targetID;
+            renderPassCmd->_clearDescriptor._clearDepth = true;
+            renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::BLACK, 0u };
 
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _generateHalfResPipeline;
 
@@ -562,6 +558,8 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
             renderPassCmd->_name = "DO_SSAO_UPSAMPLE_AO";
             renderPassCmd->_target = _ssaoOutput._targetID;
+            renderPassCmd->_clearDescriptor._clearDepth = true;
+            renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, 0u };
 
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _upsamplePipeline;
 
@@ -603,6 +601,8 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
             renderPassCmd->_name = "DO_SSAO_CALC";
             renderPassCmd->_target = _ssaoOutput._targetID;
+            renderPassCmd->_clearDescriptor._clearDepth = true;
+            renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, 0u };
 
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _generateFullResPipeline;
 
@@ -642,6 +642,8 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
                 renderPassCmd->_name = "DO_SSAO_BLUR_HORIZONTAL";
                 renderPassCmd->_target = _ssaoBlurBuffer._targetID;
+                renderPassCmd->_clearDescriptor._clearDepth = true;
+                renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, 0u };
 
                 GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _blurHorizontalPipeline;
 
@@ -672,6 +674,8 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
                 renderPassCmd->_name = "DO_SSAO_BLUR_VERTICAL";
                 renderPassCmd->_target = RenderTargetNames::SSAO_RESULT;
+                renderPassCmd->_clearDescriptor._clearDepth = true;
+                renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, 0u };
 
                 GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _blurVerticalPipeline;
 
@@ -703,6 +707,8 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
             renderPassCmd->_name = "DO_SSAO_PASS_THROUGH";
             renderPassCmd->_target = RenderTargetNames::SSAO_RESULT;
+            renderPassCmd->_clearDescriptor._clearDepth = true;
+            renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, 0u };
 
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _passThroughPipeline;
 

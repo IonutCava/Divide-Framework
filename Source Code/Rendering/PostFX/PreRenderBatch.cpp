@@ -82,7 +82,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
     outputDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
     {
         InternalRTAttachmentDescriptors att = {
-            InternalRTAttachmentDescriptor{ outputDescriptor, screenSampler.getHash(), RTAttachmentType::Colour }
+            InternalRTAttachmentDescriptor{ outputDescriptor, screenSampler.getHash(), RTAttachmentType::Colour, 0u}
         };
         desc._name = "PostFX Output HDR";
         desc._attachments = att.data();
@@ -93,7 +93,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         outputDescriptor.dataType(GFXDataFormat::UNSIGNED_BYTE);
         //Colour0 holds the LDR screen texture
         InternalRTAttachmentDescriptors att = {
-            InternalRTAttachmentDescriptor{ outputDescriptor, screenSampler.getHash(), RTAttachmentType::Colour }
+            InternalRTAttachmentDescriptor{ outputDescriptor, screenSampler.getHash(), RTAttachmentType::Colour, 0u }
         };
 
         desc._name = "PostFX Output LDR 0";
@@ -109,7 +109,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         edgeDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         InternalRTAttachmentDescriptors att = {
-            InternalRTAttachmentDescriptor{ edgeDescriptor, screenSampler.getHash(), RTAttachmentType::Colour }
+            InternalRTAttachmentDescriptor{ edgeDescriptor, screenSampler.getHash(), RTAttachmentType::Colour, 0u }
         };
 
         desc._name = "SceneEdges";
@@ -143,7 +143,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         linearDepthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         InternalRTAttachmentDescriptors attachments = {
-            InternalRTAttachmentDescriptor{ linearDepthDescriptor, samplerHash, RTAttachmentType::Colour, 0u, VECTOR4_ZERO }
+            InternalRTAttachmentDescriptor{ linearDepthDescriptor, samplerHash, RTAttachmentType::Colour, 0u }
         };
 
         desc._name = "Linear Depth";
@@ -475,15 +475,10 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
     }
 
     { //Linearise depth buffer
-        GFX::ClearRenderTargetCommand clearLinearDepthCmd{};
-        clearLinearDepthCmd._target = _linearDepthRT._targetID;
-        clearLinearDepthCmd._descriptor._clearDepth = false;
-        clearLinearDepthCmd._descriptor._clearColours = true;
-        clearLinearDepthCmd._descriptor._resetToDefault = true;
-
         GFX::BeginRenderPassCommand beginRenderPassCmd{};
         beginRenderPassCmd._name = "LINEARISE_DEPTH_BUFFER";
         beginRenderPassCmd._target = _linearDepthRT._targetID;
+        beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO, 0u };
 
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
@@ -494,7 +489,6 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
         bindPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
 
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "PostFX: Linearise depth buffer";
-        GFX::EnqueueCommand(bufferInOut, clearLinearDepthCmd);
         GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
         GFX::EnqueueCommand(bufferInOut, bindPipelineCmd);
 
@@ -664,7 +658,8 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     GFX::BlitRenderTargetCommand blitScreenColourCmd = {};
     blitScreenColourCmd._source = getInput(true)._targetID;
     blitScreenColourCmd._destination = RenderTargetNames::SCREEN_PREV;
-    blitScreenColourCmd._blitColours[0].set(to_U16(GFXDevice::ScreenTargets::ALBEDO), 0u, 0u, 0u);
+    blitScreenColourCmd._params._blitColours[0]._input._index = to_U16(GFXDevice::ScreenTargets::ALBEDO);
+    blitScreenColourCmd._params._blitColours[0]._output._index = 0u;
     GFX::EnqueueCommand(bufferInOut, blitScreenColourCmd);
 
     RenderTarget* prevScreenRT = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_PREV);
@@ -710,6 +705,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
         renderPassCmd->_name = "DO_TONEMAP_PASS";
         renderPassCmd->_target = getOutput(false)._targetID;
+        renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO, 0u };
 
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ adaptiveExposureControl() ? _pipelineToneMapAdaptive : _pipelineToneMap });
 
@@ -748,14 +744,12 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             binding._slot = 0;
             binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->defaultView(), depthAtt->descriptor()._samplerHash };
         }
-        RTClearDescriptor clearTarget = {};
-        clearTarget._clearColours = true;
-        
-        GFX::EnqueueCommand(bufferInOut, GFX::ClearRenderTargetCommand{ _sceneEdges._targetID, clearTarget });
 
         GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
         renderPassCmd->_target = _sceneEdges._targetID;
         renderPassCmd->_name = "DO_EDGE_DETECT_PASS";
+        renderPassCmd->_clearDescriptor._clearDepth = true;
+        renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO, 0u };
 
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _edgeDetectionPipelines[to_base(edgeDetectionMethod())] });
         

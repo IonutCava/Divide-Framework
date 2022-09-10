@@ -37,6 +37,28 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Platform/Video/Headers/BlendingProperties.h"
 
 namespace Divide {
+    constexpr U16 INVALID_LAYER_INDEX = std::numeric_limits<U16>::max();
+
+struct BlitIndex {
+    U16 _index{ INVALID_LAYER_INDEX };
+    U16 _layer{ 0u };
+};
+
+struct ColourBlitEntry {
+    BlitIndex _input;
+    BlitIndex _output;
+};
+
+struct DepthBlitEntry {
+    U16 _inputLayer{ INVALID_LAYER_INDEX };
+    U16 _outputLayer{ INVALID_LAYER_INDEX };
+};
+
+struct RTBlitParams {
+    using ColourArray = std::array<ColourBlitEntry, RT_MAX_COLOUR_ATTACHMENTS>;
+    DepthBlitEntry _blitDepth{};
+    ColourArray _blitColours{};
+};
 
 struct RTDrawMask {
     std::array<bool, MAX_RT_COLOUR_ATTACHMENTS> _disabledColours = {
@@ -49,39 +71,36 @@ struct RTDrawMask {
     bool _disabledDepth = false;
 };
 
-
-struct RTClearColourDescriptor
+struct ClearColourEntry
 {
-    std::array<FColour4, MAX_RT_COLOUR_ATTACHMENTS> _customClearColour = {
-        DefaultColours::BLACK,
-        DefaultColours::BLACK,
-        DefaultColours::BLACK,
-        DefaultColours::BLACK
-    };
+    FColour4 _colour{ VECTOR4_ZERO };
+    U8 _index{ MAX_RT_COLOUR_ATTACHMENTS };
+};
 
-    F32 _customClearDepth = 1.0f;
+struct RTDrawLayerParams {
+    RTAttachmentType _type{ RTAttachmentType::COUNT };
+    U8 _index{ 0u };
+    U16 _layer{ 0 };
+    U16 _mipLevel{ U16_MAX };
 };
 
 struct RTClearDescriptor {
-    RTClearColourDescriptor* _customClearColour = nullptr;
-    std::array<bool, MAX_RT_COLOUR_ATTACHMENTS> _clearColourAttachment = {
-        true,
-        true,
-        true,
-        true
-    };
-    bool _clearDepth = true;
-    bool _clearColours = true;
-    bool _clearExternalColour = false;
-    bool _clearExternalDepth = false;
-    bool _resetToDefault = true;
+    std::array<ClearColourEntry, MAX_RT_COLOUR_ATTACHMENTS> _clearColourDescriptors;
+    bool _clearDepth = false;
+    F32 _clearDepthValue = 1.f;
+};
+
+struct RTDrawLayerDescriptor {
+    std::array<U16, MAX_RT_COLOUR_ATTACHMENTS> _colourLayers = create_array<MAX_RT_COLOUR_ATTACHMENTS>(INVALID_LAYER_INDEX);
+    U16 _depthLayer = INVALID_LAYER_INDEX;
 };
 
 struct RTDrawDescriptor {
     bool _setViewport = true;
-    bool _setDefaultState = true;
     bool _alphaToCoverage = false;
     RTDrawMask _drawMask{};
+    U16 _mipWriteLevel{ U16_MAX };
+    RTDrawLayerDescriptor _writeLayers{};
 };
 
 [[nodiscard]] bool IsEnabled(const RTDrawMask& mask, RTAttachmentType type) noexcept;

@@ -67,7 +67,7 @@ class glFramebuffer final : public RenderTarget {
     explicit glFramebuffer(GFXDevice& context, const RenderTargetDescriptor& descriptor);
     ~glFramebuffer();
 
-    void drawToLayer(const DrawLayerParams& params);
+    void drawToLayer(const RTDrawLayerParams& params);
 
     void setMipLevel(U16 writeLevel);
 
@@ -76,7 +76,7 @@ class glFramebuffer final : public RenderTarget {
                   GFXDataFormat dataType,
                   std::pair<bufferPtr, size_t> outData) const override;
 
-    void blitFrom(const RTBlitParams& params) override;
+    void blitFrom(RenderTarget* source, const RTBlitParams& params) override;
 
     /// Bake in all settings and attachments to Prepare it for rendering
     bool create() override;
@@ -92,27 +92,22 @@ protected:
 
     bool initAttachment(RTAttachment* att, RTAttachmentType type, U8 index, bool isExternal) override;
 
-    bool hasDepth() const noexcept;
-
-    bool hasColour() const noexcept;
-
     void setAttachmentState(GLenum binding, BindingState state);
 
-    void clear(const RTClearDescriptor& descriptor) override;
-    void setDefaultState(const RTDrawDescriptor& drawPolicy) override;
-
-    void toggleAttachments();
+    void clear(const RTClearDescriptor& descriptor);
     void setAttachmentUsage(RTAttachmentType type, ImageUsage usage);
-    void begin(const RTDrawDescriptor& drawPolicy);
-    void end(bool needsUnbind) const;
+    void begin(const RTDrawDescriptor& drawPolicy, const RTClearDescriptor& clearPolicy);
+    void end() const;
 
+    PROPERTY_R_IW(Str128, debugMessage, "");
     PROPERTY_R_IW(GLuint, framebufferHandle, GLUtil::k_invalidObjectID);
 
    protected:
     bool setMipLevelInternal(const RTAttachment_uptr& attachment, U16 writeLevel);
 
     void queueMipMapRecomputation() const;
-    void toggleAttachmentInternal(const RTAttachment_uptr& attachment);
+    /// Reset layer and mip back to 0 and bind the entire target texture
+    void setDefaultAttachmentBinding(const RTAttachment_uptr& attachment);
 
     static void QueueMipMapsRecomputation(const RTAttachment_uptr& attachment);
 
@@ -124,7 +119,6 @@ protected:
     eastl::fixed_vector<BindingState, 8 + 2, true, eastl::dvd_allocator> _attachmentState;
 
     Rect<I32> _prevViewport;
-    Str128 _debugMessage;
 
     bool _isLayeredDepth = false;
     bool _statusCheckQueued = false;
@@ -136,11 +130,11 @@ bool operator!=(const glFramebuffer::BindingState& lhs, const glFramebuffer::Bin
 
 namespace Attorney {
     class GLAPIRenderTarget {
-        static void begin(glFramebuffer& buffer, const RTDrawDescriptor& drawPolicy) {
-            buffer.begin(drawPolicy);
+        static void begin(glFramebuffer& buffer, const RTDrawDescriptor& drawPolicy, const RTClearDescriptor& clearPolicy) {
+            buffer.begin(drawPolicy, clearPolicy);
         }
-        static void end(const glFramebuffer& buffer, const bool needsUnbind) {
-            buffer.end(needsUnbind);
+        static void end(const glFramebuffer& buffer) {
+            buffer.end();
         }
 
         friend class GL_API;

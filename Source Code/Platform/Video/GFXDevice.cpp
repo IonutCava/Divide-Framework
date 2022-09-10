@@ -440,10 +440,10 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     // Normal, Previous and MSAA
     {
         InternalRTAttachmentDescriptors attachments {
-            InternalRTAttachmentDescriptor{ screenDescriptor,   samplerHash, RTAttachmentType::Colour, to_U8(ScreenTargets::ALBEDO),   DefaultColours::DIVIDE_BLUE},
-            InternalRTAttachmentDescriptor{ velocityDescriptor, samplerHash, RTAttachmentType::Colour, to_U8(ScreenTargets::VELOCITY), VECTOR4_ZERO },
-            InternalRTAttachmentDescriptor{ normalsDescriptor,  samplerHash, RTAttachmentType::Colour, to_U8(ScreenTargets::NORMALS),  VECTOR4_ZERO },
-            InternalRTAttachmentDescriptor{ depthDescriptor,    samplerHash, RTAttachmentType::Depth_Stencil }
+            InternalRTAttachmentDescriptor{ screenDescriptor,   samplerHash, RTAttachmentType::Colour, to_U8(ScreenTargets::ALBEDO) },
+            InternalRTAttachmentDescriptor{ velocityDescriptor, samplerHash, RTAttachmentType::Colour, to_U8(ScreenTargets::VELOCITY) },
+            InternalRTAttachmentDescriptor{ normalsDescriptor,  samplerHash, RTAttachmentType::Colour, to_U8(ScreenTargets::NORMALS) },
+            InternalRTAttachmentDescriptor{ depthDescriptor,    samplerHash, RTAttachmentType::Depth_Stencil, 0u }
         };
 
         RenderTargetDescriptor screenDesc = {};
@@ -475,7 +475,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         ssaoDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         InternalRTAttachmentDescriptors attachments {
-            InternalRTAttachmentDescriptor{ ssaoDescriptor, samplerHash, RTAttachmentType::Colour, 0u, VECTOR4_UNIT }
+            InternalRTAttachmentDescriptor{ ssaoDescriptor, samplerHash, RTAttachmentType::Colour, 0u }
         };
 
         RenderTargetDescriptor ssaoDesc = {};
@@ -491,7 +491,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         ssrDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
         
         InternalRTAttachmentDescriptors attachments {
-            InternalRTAttachmentDescriptor{ ssrDescriptor, samplerHash, RTAttachmentType::Colour, 0u, VECTOR4_ZERO }
+            InternalRTAttachmentDescriptor{ ssrDescriptor, samplerHash, RTAttachmentType::Colour, 0u }
         };
 
         RenderTargetDescriptor ssrResultDesc = {};
@@ -516,7 +516,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     hiZSampler.mipSampling(TextureMipSampling::NEAREST);
 
     InternalRTAttachmentDescriptors hiZAttachments {
-        InternalRTAttachmentDescriptor{ hiZDescriptor, hiZSampler.getHash(), RTAttachmentType::Depth_Stencil, 0, VECTOR4_UNIT },
+        InternalRTAttachmentDescriptor{ hiZDescriptor, hiZSampler.getHash(), RTAttachmentType::Depth_Stencil, 0 },
     };
 
     {
@@ -554,8 +554,8 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
 
         {
             InternalRTAttachmentDescriptors attachments {
-                InternalRTAttachmentDescriptor{ environmentDescriptorPlanar, reflectionSamplerHash, RTAttachmentType::Colour },
-                InternalRTAttachmentDescriptor{ depthDescriptorPlanar,       reflectionSamplerHash, RTAttachmentType::Depth_Stencil },
+                InternalRTAttachmentDescriptor{ environmentDescriptorPlanar, reflectionSamplerHash, RTAttachmentType::Colour, 0u },
+                InternalRTAttachmentDescriptor{ depthDescriptorPlanar,       reflectionSamplerHash, RTAttachmentType::Depth_Stencil, 0u },
             };
 
             RenderTargetDescriptor refDesc = {};
@@ -575,7 +575,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
 
             environmentDescriptorPlanar.mipMappingState(TextureDescriptor::MipMappingState::OFF);
             InternalRTAttachmentDescriptors attachmentsBlur = {//skip depth
-                InternalRTAttachmentDescriptor{ environmentDescriptorPlanar, reflectionSamplerHash, RTAttachmentType::Colour }
+                InternalRTAttachmentDescriptor{ environmentDescriptorPlanar, reflectionSamplerHash, RTAttachmentType::Colour, 0u }
             };
 
             refDesc._attachmentCount = to_U8(attachmentsBlur.size()); 
@@ -600,8 +600,8 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         revealageDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         InternalRTAttachmentDescriptors oitAttachments {
-            InternalRTAttachmentDescriptor{ accumulationDescriptor, accumulationSamplerHash, RTAttachmentType::Colour, to_U8(ScreenTargets::ACCUMULATION), VECTOR4_ZERO },
-            InternalRTAttachmentDescriptor{ revealageDescriptor,    accumulationSamplerHash, RTAttachmentType::Colour, to_U8(ScreenTargets::REVEALAGE), vec4<F32>{1.f, 0.f, 0.f, 0.f} },
+            InternalRTAttachmentDescriptor{ accumulationDescriptor, accumulationSamplerHash, RTAttachmentType::Colour, to_U8(ScreenTargets::ACCUMULATION) },
+            InternalRTAttachmentDescriptor{ revealageDescriptor,    accumulationSamplerHash, RTAttachmentType::Colour, to_U8(ScreenTargets::REVEALAGE) },
         };
 
         const RenderTargetID rtSource[] = {
@@ -624,7 +624,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
 
             ExternalRTAttachmentDescriptors externalAttachments {
                 ExternalRTAttachmentDescriptor{ screenNormalsAttachment,  screenNormalsAttachment->descriptor()._samplerHash, RTAttachmentType::Colour, to_U8(ScreenTargets::NORMALS) },
-                ExternalRTAttachmentDescriptor{ screenDepthAttachment,    screenDepthAttachment->descriptor()._samplerHash, RTAttachmentType::Depth_Stencil }
+                ExternalRTAttachmentDescriptor{ screenDepthAttachment,    screenDepthAttachment->descriptor()._samplerHash, RTAttachmentType::Depth_Stencil, 0u }
             };
 
             if_constexpr(Config::USE_COLOURED_WOIT) {
@@ -658,7 +658,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 RTAttachment* depthAttachment = reflectTarget->getAttachment(RTAttachmentType::Depth_Stencil, 0);
 
                 ExternalRTAttachmentDescriptors externalAttachments{
-                     ExternalRTAttachmentDescriptor{ depthAttachment, depthAttachment->descriptor()._samplerHash, RTAttachmentType::Depth_Stencil }
+                     ExternalRTAttachmentDescriptor{ depthAttachment, depthAttachment->descriptor()._samplerHash, RTAttachmentType::Depth_Stencil, 0u }
                 };
 
                 if_constexpr(Config::USE_COLOURED_WOIT) {
@@ -688,8 +688,8 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         depthDescriptorCube.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         InternalRTAttachmentDescriptors attachments {
-            InternalRTAttachmentDescriptor{ environmentDescriptorCube, reflectionSamplerHash, RTAttachmentType::Colour },
-            InternalRTAttachmentDescriptor{ depthDescriptorCube,       reflectionSamplerHash, RTAttachmentType::Depth_Stencil },
+            InternalRTAttachmentDescriptor{ environmentDescriptorCube, reflectionSamplerHash, RTAttachmentType::Colour, 0u },
+            InternalRTAttachmentDescriptor{ depthDescriptorCube,       reflectionSamplerHash, RTAttachmentType::Depth_Stencil, 0u },
         };
 
         RenderTargetDescriptor refDesc = {};
@@ -1293,35 +1293,25 @@ void GFXDevice::generateCubeMap(RenderPassParams& params,
 
     // For each of the environment's faces (TOP, DOWN, NORTH, SOUTH, EAST, WEST)
     params._passName = "CubeMap";
-    params._layerParams._type = hasColour ? RTAttachmentType::Colour : RTAttachmentType::Depth_Stencil;
-    params._layerParams._includeDepth = hasColour && hasDepth;
-    params._layerParams._index = 0;
-    params._layerParams._layer = arrayOffset * 6;
+    if (hasColour) {
+        params._layerParams._colourLayers[0] = arrayOffset * 6;
+    }
+    if (hasDepth) {
+        params._layerParams._depthLayer = arrayOffset * 6;
+    }
 
     const D64 aspect = to_D64(targetResolution.width) / targetResolution.height;
 
     RenderPassManager* passMgr = parent().renderPassManager();
 
-    GFX::BeginRenderPassCommand beginRenderPassCmd{};
-    beginRenderPassCmd._name = "Clear Target Layers";
-    beginRenderPassCmd._target = params._target;
-
-    GFX::ClearRenderTargetCommand clearRTCmd{};
-    clearRTCmd._target = params._target;
-    clearRTCmd._descriptor._resetToDefault = false;
-
     for (U8 i = 0u; i < 6u; ++i) {
         // Draw to the current cubemap face
-        params._layerParams._layer = i + arrayOffset * 6;
-
-        // Let's clear only our target layers
-        GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(commandsInOut, beginRenderPassCmd);
-        GFX::EnqueueCommand<GFX::BeginRenderSubPassCommand>(commandsInOut)->_writeLayers.push_back(params._layerParams);
-        GFX::EnqueueCommand(commandsInOut, clearRTCmd);
-        // No need to reset back to zero. We will be drawing into it anyway.
-        GFX::EnqueueCommand<GFX::EndRenderSubPassCommand>(commandsInOut);
-        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(commandsInOut);
-
+        if (hasColour) {
+            params._layerParams._colourLayers[0] = i * arrayOffset * 6;
+        }
+        if (hasDepth) {
+            params._layerParams._depthLayer = i * arrayOffset * 6;
+        }
 
         Camera* camera = cameras[i];
         if (camera == nullptr) {
@@ -1376,20 +1366,15 @@ void GFXDevice::generateDualParaboloidMap(RenderPassParams& params,
     }
 
     params._passName = "DualParaboloid";
-    params._layerParams._type = hasColour ? RTAttachmentType::Colour : RTAttachmentType::Depth_Stencil;
-    params._layerParams._index = 0;
-
+    if (hasColour) {
+        params._layerParams._colourLayers[0] = arrayOffset;
+    }
+    if (hasDepth) {
+        params._layerParams._depthLayer = arrayOffset;
+    }
     const D64 aspect = to_D64(targetResolution.width) / targetResolution.height;
 
     RenderPassManager* passMgr = parent().renderPassManager();
-
-    GFX::BeginRenderPassCommand beginRenderPassCmd{};
-    beginRenderPassCmd._name = "Clear Target Layers";
-    beginRenderPassCmd._target = params._target;
-
-    GFX::ClearRenderTargetCommand clearRTCmd{};
-    clearRTCmd._target = params._target;
-    clearRTCmd._descriptor._resetToDefault = false;
 
     for (U8 i = 0u; i < 2u; ++i) {
         Camera* camera = cameras[i];
@@ -1397,16 +1382,12 @@ void GFXDevice::generateDualParaboloidMap(RenderPassParams& params,
             camera = Camera::GetUtilityCamera(Camera::UtilityCamera::DUAL_PARABOLOID);
         }
 
-        params._layerParams._layer = i + arrayOffset;
-
-        // Let's clear only our target layers
-        GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut, beginRenderPassCmd);
-        GFX::EnqueueCommand<GFX::BeginRenderSubPassCommand>(bufferInOut)->_writeLayers.push_back(params._layerParams);
-        GFX::EnqueueCommand(bufferInOut, clearRTCmd);
-        // No need to reset back to zero. We will be drawing into it anyway.
-        GFX::EnqueueCommand<GFX::EndRenderSubPassCommand>(bufferInOut);
-        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
-
+        if (hasColour) {
+            params._layerParams._colourLayers[0] = arrayOffset + i;
+        }
+        if (hasDepth) {
+            params._layerParams._depthLayer = arrayOffset + i;
+        }
         // Point our camera to the correct face
         camera->lookAt(pos, pos + (i == 0 ? WORLD_Z_NEG_AXIS : WORLD_Z_AXIS) * zPlanes.y);
         // Set a 180 degree vertical FoV perspective projection
@@ -1896,7 +1877,7 @@ void GFXDevice::validateAndUploadDescriptorSets() {
         DescriptorSetUsage::PER_DRAW
     };
 
-    for (DescriptorSetUsage usage : prioritySorted) {
+    for (const DescriptorSetUsage usage : prioritySorted) {
         GFXDescriptorSet& set = _descriptorSets[to_base(usage)];
         if (set.dirty()) {
             _api->bindShaderResources(usage, set.impl());
@@ -1934,37 +1915,9 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
                 const GFX::BlitRenderTargetCommand* crtCmd = commandBuffer.get<GFX::BlitRenderTargetCommand>(cmd);
                 RenderTarget* source = renderTargetPool().getRenderTarget(crtCmd->_source);
                 RenderTarget* destination = renderTargetPool().getRenderTarget(crtCmd->_destination);
-
-                RenderTarget::RTBlitParams params = {};
-                params._inputFB = source;
-                params._blitDepth = crtCmd->_blitDepth;
-                params._blitColours = crtCmd->_blitColours;
-
-                destination->blitFrom(params);
+                destination->blitFrom(source, crtCmd->_params);
             } break;
-            case GFX::CommandType::CLEAR_RT: {
-                OPTICK_EVENT("CLEAR_RT");
-
-                const GFX::ClearRenderTargetCommand& crtCmd = *commandBuffer.get<GFX::ClearRenderTargetCommand>(cmd);
-                RenderTarget* source = renderTargetPool().getRenderTarget(crtCmd._target);
-                source->clear(crtCmd._descriptor);
-            }break;
-            case GFX::CommandType::RESET_RT: {
-                OPTICK_EVENT("RESET_RT");
-
-                const GFX::ResetRenderTargetCommand& crtCmd = *commandBuffer.get<GFX::ResetRenderTargetCommand>(cmd);
-                RenderTarget* source = renderTargetPool().getRenderTarget(crtCmd._source);
-                source->setDefaultState(crtCmd._descriptor);
-            } break;
-            case GFX::CommandType::RESET_AND_CLEAR_RT: {
-                OPTICK_EVENT("RESET_AND_CLEAR_RT");
-
-                const GFX::ResetAndClearRenderTargetCommand& crtCmd = *commandBuffer.get<GFX::ResetAndClearRenderTargetCommand>(cmd);
-                RenderTarget* source = renderTargetPool().getRenderTarget(crtCmd._source);
-                source->setDefaultState(crtCmd._drawDescriptor);
-                source->clear(crtCmd._clearDescriptor);
-            } break;
-            case GFX::CommandType::CLEAR_TEXTURE: {
+              case GFX::CommandType::CLEAR_TEXTURE: {
                 OPTICK_EVENT("CLEAR_TEXTURE");
 
                 const GFX::ClearTextureCommand& crtCmd = *commandBuffer.get<GFX::ClearTextureCommand>(cmd);
@@ -2049,13 +2002,6 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
                     set.update(resCmd->_usage, binding);
                 }
             } break;
-            case GFX::CommandType::BEGIN_RENDER_PASS: {
-                const GFX::BeginRenderPassCommand* crtCmd = commandBuffer.get<GFX::BeginRenderPassCommand>(cmd);
-                if (crtCmd->_target != SCREEN_TARGET_ID) {
-                    const vec2<F32> depthRange = renderTargetPool().getRenderTarget(crtCmd->_target)->getDepthRange();
-                    setDepthRange(depthRange);
-                }
-            } break;
             default: break;
         }
 
@@ -2103,13 +2049,12 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
 
     GFX::EnqueueCommand(cmdBufferInOut, GFX::BeginDebugScopeCommand{ "Construct Hi-Z" });
 
-    GFX::EnqueueCommand<GFX::ClearRenderTargetCommand>(cmdBufferInOut)->_target = HiZTarget;
     { // Copy depth buffer to the colour target for compute shaders to use later on
 
         GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(cmdBufferInOut);
         beginRenderPassCmd->_target = HiZTarget;
         beginRenderPassCmd->_name = "CONSTRUCT_HI_Z_DEPTH";
-        
+        beginRenderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, 0u };
 
         const auto& att = _rtPool->getRenderTarget(depthBuffer)->getAttachment(RTAttachmentType::Depth_Stencil, 0);
         drawTextureInViewport(att->texture()->defaultView(),
@@ -2130,12 +2075,12 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
     // We use a special shader that downsamples the buffer
     // We will use a state block that disables colour writes as we will render only a depth image,
     // disables depth testing but allows depth writes
-    GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(cmdBufferInOut);
-    beginRenderPassCmd->_name = "CONSTRUCT_HI_Z";
-    beginRenderPassCmd->_target = HiZTarget;
-    beginRenderPassCmd->_descriptor._setViewport = false;
-    DisableAll(beginRenderPassCmd->_descriptor._drawMask);
-    SetEnabled(beginRenderPassCmd->_descriptor._drawMask, RTAttachmentType::Depth_Stencil, 0, true);
+    GFX::BeginRenderPassCommand beginRenderPassCmd = {};
+    beginRenderPassCmd._name = "CONSTRUCT_HI_Z";
+    beginRenderPassCmd._target = HiZTarget;
+    beginRenderPassCmd._descriptor._setViewport = false;
+    DisableAll(beginRenderPassCmd._descriptor._drawMask);
+    SetEnabled(beginRenderPassCmd._descriptor._drawMask, RTAttachmentType::Depth_Stencil, 0, true);
 
     GFX::EnqueueCommand(cmdBufferInOut, GFX::PushCameraCommand{ Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
 
@@ -2160,7 +2105,8 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
             theight = theight < 1 ? 1 : theight;
 
             // Bind next mip level for rendering but first restrict fetches only to previous level
-            GFX::EnqueueCommand<GFX::BeginRenderSubPassCommand>(cmdBufferInOut)->_mipWriteLevel = level;
+            beginRenderPassCmd._descriptor._mipWriteLevel = level;
+            GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(cmdBufferInOut, beginRenderPassCmd);
 
             // Update the viewport with the new resolution
             GFX::EnqueueCommand<GFX::SetViewportCommand>(cmdBufferInOut)->_viewport.set(0, 0, twidth, theight);
@@ -2169,8 +2115,7 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
 
             // Dummy draw command as the full screen quad is generated completely in the vertex shader
             GFX::EnqueueCommand<GFX::DrawCommand>(cmdBufferInOut);
-
-            GFX::EnqueueCommand<GFX::EndRenderSubPassCommand>(cmdBufferInOut);
+            GFX::EnqueueCommand<GFX::EndRenderPassCommand>(cmdBufferInOut);
         }
 
         // Calculate next viewport size
@@ -2183,11 +2128,8 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
         level++;
     }
 
-    GFX::EnqueueCommand<GFX::BeginRenderSubPassCommand>(cmdBufferInOut)->_mipWriteLevel = 0u;      // Restore mip level
-    GFX::EnqueueCommand<GFX::EndRenderSubPassCommand>(cmdBufferInOut);
     GFX::EnqueueCommand<GFX::SetViewportCommand>(cmdBufferInOut)->_viewport.set(previousViewport); // Restore viewport
     GFX::EnqueueCommand<GFX::PopCameraCommand>(cmdBufferInOut);                                    // Restore camera
-    GFX::EnqueueCommand<GFX::EndRenderPassCommand>(cmdBufferInOut);
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(cmdBufferInOut);
 
     return { hizDepthTex, att->descriptor()._samplerHash };

@@ -35,7 +35,7 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
         weightsDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         InternalRTAttachmentDescriptors att{
-            InternalRTAttachmentDescriptor{ weightsDescriptor, sampler.getHash(), RTAttachmentType::Colour }
+            InternalRTAttachmentDescriptor{ weightsDescriptor, sampler.getHash(), RTAttachmentType::Colour, 0u}
         };
 
         desc._name = "SMAAWeights";
@@ -176,18 +176,11 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
 
     if (useSMAA()) {
         { //Step 1: Compute weights
-            RTClearDescriptor clearTarget{};
-            clearTarget._clearDepth = false;
-            clearTarget._clearColours = true;
-
-            GFX::ClearRenderTargetCommand clearRenderTargetCmd{};
-            clearRenderTargetCmd._target = _smaaWeights._targetID;
-            clearRenderTargetCmd._descriptor = clearTarget;
-            GFX::EnqueueCommand(bufferInOut, clearRenderTargetCmd);
-
             GFX::BeginRenderPassCommand beginRenderPassCmd{};
             beginRenderPassCmd._target = _smaaWeights._targetID;
             beginRenderPassCmd._name = "DO_SMAA_WEIGHT_PASS";
+            beginRenderPassCmd._clearDescriptor._clearDepth = true;
+            beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, 0u };
             GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
             const auto& att = _parent.edgesRT()._rt->getAttachment(RTAttachmentType::Colour, 0);

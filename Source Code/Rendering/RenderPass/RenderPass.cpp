@@ -98,6 +98,14 @@ void RenderPass::render(const PlayerIndex idx, [[maybe_unused]] const Task& pare
             params._targetDescriptorMainPass = mainPassPolicy;
             params._targetDescriptorComposition = oitCompositionPassPolicy;
             params._targetHIZ = RenderTargetNames::HI_Z;
+            //ToDo: Causing issues if disabled with WOIT (e.g. grass) if disabled. Investigate! -Ionut
+            params._clearDescriptorMainPass._clearDepth = false;
+            params._clearDescriptorMainPass._clearColourDescriptors[0] = { DefaultColours::DIVIDE_BLUE, to_U8(GFXDevice::ScreenTargets::ALBEDO) };
+            //Not everything gets drawn during the depth PrePass (E.g. sky)
+            params._clearDescriptorPrePass._clearDepth = true;
+            params._clearDescriptorPrePass._clearColourDescriptors[1] = { VECTOR4_ZERO, to_U8(GFXDevice::ScreenTargets::VELOCITY) };
+            params._clearDescriptorPrePass._clearColourDescriptors[2] = { VECTOR4_ZERO, to_U8(GFXDevice::ScreenTargets::NORMALS) };
+
             if (_config.rendering.MSAASamples > 0u) {
                 params._targetOIT = RenderTargetNames::OIT_MS;
                 params._target = RenderTargetNames::SCREEN_MS;
@@ -106,23 +114,7 @@ void RenderPass::render(const PlayerIndex idx, [[maybe_unused]] const Task& pare
                 params._target = RenderTargetNames::SCREEN;
             }
 
-            RTClearDescriptor clearDescriptor = {};
-            clearDescriptor._clearColours = true;
-            clearDescriptor._clearDepth = true;
-            //ToDo: Causing issues if disabled with WOIT (e.g. grass) if disabled. Investigate! -Ionut
-            clearDescriptor._clearColourAttachment[to_U8(GFXDevice::ScreenTargets::ALBEDO)] = true;
-
-            //Not everything gets drawn during the depth PrePass (E.g. sky)
-            clearDescriptor._clearColourAttachment[to_U8(GFXDevice::ScreenTargets::VELOCITY)] = true;
-            clearDescriptor._clearColourAttachment[to_U8(GFXDevice::ScreenTargets::NORMALS)] = true;
-
-            GFX::ClearRenderTargetCommand clearMainTarget = {};
-            clearMainTarget._descriptor = clearDescriptor;
-            clearMainTarget._target = params._target;
-
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Main Display Pass" });
-
-            GFX::EnqueueCommand(bufferInOut, clearMainTarget);
             GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = false;
 
             Camera* playerCamera = Attorney::SceneManagerCameraAccessor::playerCamera(_parent.parent().sceneManager());

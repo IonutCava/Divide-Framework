@@ -114,8 +114,8 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
 
         InternalRTAttachmentDescriptors att {
-            InternalRTAttachmentDescriptor{ environmentDescriptor, samplerHash, RTAttachmentType::Colour, 0u, DefaultColours::WHITE },
-            InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::Depth_Stencil },
+            InternalRTAttachmentDescriptor{ environmentDescriptor, samplerHash, RTAttachmentType::Colour, 0u, },
+            InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::Depth_Stencil, 0u },
         };
 
         RenderTargetDescriptor desc = {};
@@ -131,7 +131,7 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         environmentDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
         environmentDescriptor.addImageUsageFlag(ImageUsage::SHADER_WRITE);
         InternalRTAttachmentDescriptors att{
-            InternalRTAttachmentDescriptor{ environmentDescriptor, samplerHash, RTAttachmentType::Colour, 0u, DefaultColours::WHITE },
+            InternalRTAttachmentDescriptor{ environmentDescriptor, samplerHash, RTAttachmentType::Colour, 0u },
         };
         RenderTargetDescriptor desc = {};
         desc._name = "PrefilteredEnvMap";
@@ -148,7 +148,7 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         environmentDescriptor.mipMappingState(TextureDescriptor::MipMappingState::AUTO);
         environmentDescriptor.addImageUsageFlag(ImageUsage::SHADER_WRITE);
         InternalRTAttachmentDescriptors att {
-            InternalRTAttachmentDescriptor{ environmentDescriptor, samplerHash, RTAttachmentType::Colour, 0u, DefaultColours::WHITE },
+            InternalRTAttachmentDescriptor{ environmentDescriptor, samplerHash, RTAttachmentType::Colour, 0u },
         };
         RenderTargetDescriptor desc = {};
         desc._name = "BrdfLUT";
@@ -290,13 +290,13 @@ void SceneEnvironmentProbePool::Prepare(GFX::CommandBuffer& bufferInOut) {
     }
 
     if (ProbesDirty()) {
-        GFX::ClearRenderTargetCommand clearMainTarget = {};
-        clearMainTarget._target = s_reflection._targetID;
-        clearMainTarget._descriptor._clearDepth = true;
-        clearMainTarget._descriptor._clearColours = false;
-        clearMainTarget._descriptor._resetToDefault = true;
-        EnqueueCommand(bufferInOut, clearMainTarget);
+        GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
+        renderPassCmd->_name = "DO_REFLECTION_PROBE_CLEAR";
+        renderPassCmd->_target = s_reflection._targetID;
+        renderPassCmd->_clearDescriptor._clearDepth = true;
+        renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, 0u };
 
+        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         ProbesDirty(false);
     }
 }

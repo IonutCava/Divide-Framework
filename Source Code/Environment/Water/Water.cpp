@@ -352,18 +352,12 @@ void WaterPlane::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCom
 
 /// update water refraction
 void WaterPlane::updateRefraction(RenderPassManager* passManager, RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) const {
-    static RTClearColourDescriptor clearColourDescriptor;
-    clearColourDescriptor._customClearColour[0] = DefaultColours::BLUE;
-
     // If we are above water, process the plane's refraction.
     // If we are below, we render the scene normally
     const bool underwater = PointUnderwater(renderParams._sgn, renderParams._camera->getEye());
     Plane<F32> refractionPlane;
     updatePlaneEquation(renderParams._sgn, refractionPlane, underwater, refrPlaneOffset());
     refractionPlane._distance += g_reflectionPlaneCorrectionHeight;
-
-    RTClearDescriptor clearDescriptor = {};
-    clearDescriptor._customClearColour = &clearColourDescriptor;
 
     RenderPassParams params = {};
     params._sourceNode = renderParams._sgn;
@@ -374,14 +368,11 @@ void WaterPlane::updateRefraction(RenderPassManager* passManager, RenderCbkParam
     params._target = renderParams._renderTarget;
     params._clippingPlanes.set(0, refractionPlane);
     params._passName = "Refraction";
+    params._clearDescriptorPrePass._clearDepth = true;
+    params._clearDescriptorMainPass._clearColourDescriptors[0] = { DefaultColours::BLUE, 0u };
     if (!underwater) {
         ClearBit(params._drawMask, to_U8(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES)));
     }
-
-    GFX::ClearRenderTargetCommand clearMainTarget = {};
-    clearMainTarget._target = params._target;
-    clearMainTarget._descriptor = clearDescriptor;
-    EnqueueCommand(bufferInOut, clearMainTarget);
 
     passManager->doCustomPass(renderParams._camera, params, bufferInOut, memCmdInOut);
 
@@ -395,9 +386,6 @@ void WaterPlane::updateRefraction(RenderPassManager* passManager, RenderCbkParam
 
 /// Update water reflections
 void WaterPlane::updateReflection(RenderPassManager* passManager, RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) const {
-    static RTClearColourDescriptor clearColourDescriptor;
-    clearColourDescriptor._customClearColour[0] = DefaultColours::BLUE;
-
     // If we are above water, process the plane's refraction.
     // If we are below, we render the scene normally
     const bool underwater = PointUnderwater(renderParams._sgn, renderParams._camera->getEye());
@@ -416,10 +404,6 @@ void WaterPlane::updateReflection(RenderPassManager* passManager, RenderCbkParam
         _reflectionCam->setReflection(reflectionPlane);
     }
 
-    //Don't clear colour attachment because we'll always draw something for every texel, even if that something is just the sky
-    RTClearDescriptor clearDescriptor = {};
-    clearDescriptor._customClearColour = &clearColourDescriptor;
-
     RenderPassParams params = {};
     params._sourceNode = renderParams._sgn;
     params._targetHIZ = RenderTargetNames::HI_Z_REFLECT;
@@ -429,12 +413,9 @@ void WaterPlane::updateReflection(RenderPassManager* passManager, RenderCbkParam
     params._target = renderParams._renderTarget;
     params._clippingPlanes.set(0, reflectionPlane);
     params._passName = "Reflection";
+    params._clearDescriptorPrePass._clearDepth = true;
+    params._clearDescriptorMainPass._clearColourDescriptors[0] = { DefaultColours::BLUE, 0u };
     ClearBit(params._drawMask, to_U8(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES)));
-
-    GFX::ClearRenderTargetCommand clearMainTarget = {};
-    clearMainTarget._target = params._target;
-    clearMainTarget._descriptor = clearDescriptor;
-    EnqueueCommand(bufferInOut, clearMainTarget);
 
     passManager->doCustomPass(_reflectionCam, params, bufferInOut, memCmdInOut);
 

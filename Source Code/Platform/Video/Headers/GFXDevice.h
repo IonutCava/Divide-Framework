@@ -296,7 +296,7 @@ public:  // GPU interface
     /// Returns true if the viewport was changed
            bool setViewport(const Rect<I32>& viewport);
     inline bool setViewport(I32 x, I32 y, I32 width, I32 height);
-
+           void setDepthRange(const vec2<F32>& depthRange);
     void setPreviousViewProjectionMatrix(const mat4<F32>& prevViewMatrix, const mat4<F32> prevProjectionMatrix);
 
     void setCameraSnapshot(PlayerIndex index, const CameraSnapshot& snapshot) noexcept;
@@ -485,7 +485,6 @@ private:
     bool uploadGPUBlock();
     void resizeGPUBlocks(size_t targetSizeCam, size_t targetSizeCullCounter);
     void setClipPlanes(const FrustumClipPlanes& clipPlanes);
-    void setDepthRange(const vec2<F32>& depthRange);
     void renderFromCamera(const CameraSnapshot& cameraSnapshot);
     void shadowingSettings(const F32 lightBleedBias, const F32 minShadowVariance) noexcept;
     RenderTarget_uptr newRTInternal(const RenderTargetDescriptor& descriptor);

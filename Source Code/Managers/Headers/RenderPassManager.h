@@ -75,14 +75,17 @@ struct RenderPassParams
 
     RTDrawDescriptor _targetDescriptorPrePass = {};
     RTDrawDescriptor _targetDescriptorMainPass = {};
-    RTDrawDescriptor _targetDescriptorComposition= {};
+    RTDrawDescriptor _targetDescriptorComposition = {};
+
+    RTClearDescriptor _clearDescriptorPrePass = {};
+    RTClearDescriptor _clearDescriptorMainPass = {};
 
     RenderTargetID _target = INVALID_RENDER_TARGET_ID;
     RenderTargetID _targetHIZ = INVALID_RENDER_TARGET_ID;
     RenderTargetID _targetOIT = INVALID_RENDER_TARGET_ID;
-    RenderStagePass _stagePass = {};
+    RenderStagePass _stagePass{};
 
-    RenderTarget::DrawLayerParams _layerParams = {};
+    RTDrawLayerDescriptor _layerParams{};
 
     U8 _drawMask = 1 << to_base(Flags::DRAW_DYNAMIC_NODES) |
                    1 << to_base(Flags::DRAW_STATIC_NODES);

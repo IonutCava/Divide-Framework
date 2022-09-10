@@ -147,7 +147,7 @@ namespace Divide {
         explicit UniformBlockUploader(GFXDevice& context, const eastl::string& parentShaderName, const Reflection::BufferEntry& uniformBlock, const U16 shaderStageVisibilityMask);
 
         void uploadPushConstant(const GFX::PushConstant& constant, bool force = false) noexcept;
-        void commit(DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut);
+        [[nodiscard]] bool commit(DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut);
         void onFrameEnd() noexcept;
 
         [[nodiscard]] size_t totalBufferSize() const noexcept;
@@ -156,7 +156,7 @@ namespace Divide {
 
     private:
         void resizeBlockBuffer(bool increaseSize);
-        void prepare(DescriptorSet& set);
+        [[nodiscard]] bool prepare(DescriptorSet& set);
 
     private:
         GFXDevice& _context;

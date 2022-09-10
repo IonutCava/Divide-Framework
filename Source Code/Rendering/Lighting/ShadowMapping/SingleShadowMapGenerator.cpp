@@ -107,8 +107,8 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
         depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         InternalRTAttachmentDescriptors att {
-            InternalRTAttachmentDescriptor{ colourDescriptor, samplerHash, RTAttachmentType::Colour },
-            InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::Depth_Stencil }
+            InternalRTAttachmentDescriptor{ colourDescriptor, samplerHash, RTAttachmentType::Colour, 0u },
+            InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::Depth_Stencil, 0u }
         };
 
         desc._name = "Single_ShadowMap_Draw";
@@ -126,7 +126,7 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
         blurMapDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         InternalRTAttachmentDescriptors att {
-            InternalRTAttachmentDescriptor{ blurMapDescriptor, samplerHash, RTAttachmentType::Colour }
+            InternalRTAttachmentDescriptor{ blurMapDescriptor, samplerHash, RTAttachmentType::Colour, 0u }
         };
 
         RenderTargetDescriptor desc = {};
@@ -173,19 +173,11 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
     params._target = _drawBufferDepth._targetID;
     params._passName = "SingleShadowMap";
     params._maxLoD = -1;
-
-    RTClearDescriptor clearDescriptor = {};
-    clearDescriptor._clearDepth = true;
-    clearDescriptor._clearColours = true;
-    clearDescriptor._resetToDefault = true;
+    params._clearDescriptorMainPass._clearDepth = true;
+    params._clearDescriptorMainPass._clearColourDescriptors[0] = { DefaultColours::WHITE, 0u };
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Single Shadow Pass Light: [ %d ]", lightIndex).c_str(), lightIndex));
     GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = false;
-
-    GFX::ClearRenderTargetCommand clearMainTarget = {};
-    clearMainTarget._target = params._target;
-    clearMainTarget._descriptor = clearDescriptor;
-    GFX::EnqueueCommand(bufferInOut, clearMainTarget);
 
     _context.parent().renderPassManager()->doCustomPass(shadowCameras[0], params, bufferInOut, memCmdInOut);
 
@@ -209,8 +201,11 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
     GFX::BlitRenderTargetCommand blitRenderTargetCommand = {};
     blitRenderTargetCommand._source = _drawBufferDepth._targetID;
     blitRenderTargetCommand._destination = handle._targetID;
-    blitRenderTargetCommand._blitColours[0].set(0u, 0u, 0u, layerOffset);
-    EnqueueCommand(bufferInOut, blitRenderTargetCommand);
+    blitRenderTargetCommand._params._blitColours[0]._input._index = 0u;
+    blitRenderTargetCommand._params._blitColours[0]._input._layer = 0u;
+    blitRenderTargetCommand._params._blitColours[0]._output._index = 0u;
+    blitRenderTargetCommand._params._blitColours[0]._output._index = layerOffset;
+    GFX::EnqueueCommand(bufferInOut, blitRenderTargetCommand);
 
 
     // Now we can either blur our target or just skip to mipmap computation

@@ -437,14 +437,14 @@ GLStateTracker::BindResult GLStateTracker::bindActiveBuffers(const GLuint locati
     return BindResult::ALREADY_BOUND;
 }
 
-GLStateTracker::BindResult GLStateTracker::setActiveFB(const RenderTarget::RenderTargetUsage usage, const GLuint ID) {
+GLStateTracker::BindResult GLStateTracker::setActiveFB(const RenderTarget::Usage usage, const GLuint ID) {
     GLuint temp = 0;
     return setActiveFB(usage, ID, temp);
 }
 
 /// Switch the current framebuffer by binding it as either a R/W buffer, read
 /// buffer or write buffer
-GLStateTracker::BindResult GLStateTracker::setActiveFB(const RenderTarget::RenderTargetUsage usage, GLuint ID, GLuint& previousID) {
+GLStateTracker::BindResult GLStateTracker::setActiveFB(const RenderTarget::Usage usage, GLuint ID, GLuint& previousID) {
     // We may query the active framebuffer handle and get an invalid handle in
     // return and then try to bind the queried handle
     // This is, for example, in save/restore FB scenarios. An invalid handle
@@ -456,9 +456,9 @@ GLStateTracker::BindResult GLStateTracker::setActiveFB(const RenderTarget::Rende
 
     // Prevent double bind
     if (_activeFBID[to_U32(usage)] == ID) {
-        if (usage == RenderTarget::RenderTargetUsage::RT_READ_WRITE) {
-            if (_activeFBID[to_base(RenderTarget::RenderTargetUsage::RT_READ_ONLY)] == ID &&
-                _activeFBID[to_base(RenderTarget::RenderTargetUsage::RT_WRITE_ONLY)] == ID) {
+        if (usage == RenderTarget::Usage::RT_READ_WRITE) {
+            if (_activeFBID[to_base(RenderTarget::Usage::RT_READ_ONLY)] == ID &&
+                _activeFBID[to_base(RenderTarget::Usage::RT_WRITE_ONLY)] == ID) {
                 return BindResult::ALREADY_BOUND;
             }
         } else {
@@ -468,19 +468,19 @@ GLStateTracker::BindResult GLStateTracker::setActiveFB(const RenderTarget::Rende
 
     // Bind the requested buffer to the appropriate target
     switch (usage) {
-        case RenderTarget::RenderTargetUsage::RT_READ_WRITE: {
+        case RenderTarget::Usage::RT_READ_WRITE: {
             // According to documentation this is equivalent to independent
             // calls to
             // bindFramebuffer(read, ID) and bindFramebuffer(write, ID)
             glBindFramebuffer(GL_FRAMEBUFFER, ID);
             // This also overrides the read and write bindings
-            _activeFBID[to_base(RenderTarget::RenderTargetUsage::RT_READ_ONLY)] = ID;
-            _activeFBID[to_base(RenderTarget::RenderTargetUsage::RT_WRITE_ONLY)] = ID;
+            _activeFBID[to_base(RenderTarget::Usage::RT_READ_ONLY)] = ID;
+            _activeFBID[to_base(RenderTarget::Usage::RT_WRITE_ONLY)] = ID;
         } break;
-        case RenderTarget::RenderTargetUsage::RT_READ_ONLY: {
+        case RenderTarget::Usage::RT_READ_ONLY: {
             glBindFramebuffer(GL_READ_FRAMEBUFFER, ID);
         } break;
-        case RenderTarget::RenderTargetUsage::RT_WRITE_ONLY: {
+        case RenderTarget::Usage::RT_WRITE_ONLY: {
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, ID);
         } break;
         default: DIVIDE_UNEXPECTED_CALL(); break;

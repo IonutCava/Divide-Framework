@@ -350,22 +350,12 @@ bool InitGLSW(const GFXDevice& gfx, const DeviceInformation& deviceInfo, const C
 
         if (targetOpenGL) {
             const auto AppendSetBindings = [&](const DescriptorSetUsage setUsage) {
-                if (setUsage == DescriptorSetUsage::PER_DRAW) {
-                    for (U8 i = 0u; i < ShaderProgram::MaxSlotsPerDescriptorSet; ++i) {
-                        AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define %s_%d %d",
-                                                                                   TypeUtil::DescriptorSetUsageToString(DescriptorSetUsage::PER_DRAW),
-                                                                                   i,
-                                                                                   i).c_str());
-                    }
-                } else {
-                    const GFXDevice::GFXDescriptorSet& set = gfx.descriptorSet(setUsage);
-                    for (const DescriptorSetBinding& binding : set.impl()) {
-                        const U8 glSlot = ShaderProgram::GetGLBindingForDescriptorSlot(setUsage, binding._slot, binding._data.Type());
-                        AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define %s_%d %d",
-                                                                                   TypeUtil::DescriptorSetUsageToString(setUsage),
-                                                                                   binding._slot,
-                                                                                   glSlot).c_str());
-                    }
+                for (U8 i = 0u; i < ShaderProgram::MaxSlotsPerDescriptorSet; ++i) {
+                    const U8 glSlot = ShaderProgram::GetGLBindingForDescriptorSlot(setUsage, i);
+                    AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define %s_%d %d",
+                                                                                TypeUtil::DescriptorSetUsageToString(setUsage),
+                                                                                i,
+                                                                                glSlot).c_str());
                 }
             };
 
@@ -925,6 +915,13 @@ ErrorCode ShaderProgram::OnStartup(ResourceCache* parentCache) {
         }
     }
 
+    for (U8 i = 0u; i < MaxSlotsPerDescriptorSet; ++i) {
+        auto& data = s_glBindingsPerSet[to_base(DescriptorSetUsage::PER_DRAW)][i];
+        data._glBinding = i;
+        data._visibility = ShaderStageVisibility::ALL;
+        data._type = DescriptorSetBindingType::COUNT;
+    }
+
     const ResourcePath locPrefix{ Paths::g_assetsLocation + Paths::g_shadersLocation + Paths::Shaders::GLSL::g_GLSLShaderLoc };
 
     shaderAtomLocationPrefix[to_base(ShaderType::FRAGMENT)]          = locPrefix + Paths::Shaders::GLSL::g_fragAtomLoc;
@@ -990,15 +987,8 @@ bool ShaderProgram::OnShutdown() {
 }
 
 
-U8 ShaderProgram::GetGLBindingForDescriptorSlot(const DescriptorSetUsage usage, const U8 slot, const DescriptorSetBindingType type) noexcept {
-    if (usage == DescriptorSetUsage::PER_DRAW) {
-        return slot;
-    }
-
-    const auto& entry = s_glBindingsPerSet[to_base(usage)][slot];
-
-    DIVIDE_ASSERT(type == entry._type);
-    return entry._glBinding;
+U8 ShaderProgram::GetGLBindingForDescriptorSlot(const DescriptorSetUsage usage, const U8 slot) noexcept {
+    return s_glBindingsPerSet[to_base(usage)][slot]._glBinding;
 }
 
 std::pair<DescriptorSetUsage, U8> ShaderProgram::GetDescriptorSlotForGLBinding(const U8 binding, const DescriptorSetBindingType type) noexcept {
@@ -1541,17 +1531,21 @@ void ShaderProgram::initUniformUploader(const PerFileShaderData& shaderFileData)
     }
 }
 
-void ShaderProgram::uploadPushConstants(const PushConstants& constants, DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut) {
-    OPTICK_EVENT()
+bool ShaderProgram::uploadPushConstants(const PushConstants& constants, DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut) {
+    OPTICK_EVENT();
 
+    bool ret = false;
     for (auto& blockBuffer : _uniformBlockBuffers) {
         for (const GFX::PushConstant& constant : constants.data()) {
             blockBuffer.uploadPushConstant(constant);
         }
-        blockBuffer.commit(set, memCmdInOut);
+        if (blockBuffer.commit(set, memCmdInOut)) {
+            ret = true;
+        }
     }
 
     memCmdInOut._syncFlag = 202u;
+    return ret;
 }
 
 bool ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExisting, LoadData& loadDataInOut, Reflection::UniformsSet& previousUniformsInOut, U8& blockIndexInOut) {
@@ -1719,8 +1713,7 @@ void ShaderProgram::loadAndParseGLSL(const ModuleDefines& defines,
         const U8 layoutIndex = _context.renderAPI() == RenderAPI::Vulkan 
                                                         ? loadDataInOut._reflectionData._uniformBlockBindingIndex
                                                         : ShaderProgram::GetGLBindingForDescriptorSlot(DescriptorSetUsage::PER_DRAW,
-                                                                                                    loadDataInOut._reflectionData._uniformBlockBindingIndex,
-                                                                                                    DescriptorSetBindingType::UNIFORM_BUFFER);
+                                                                                                       loadDataInOut._reflectionData._uniformBlockBindingIndex);
 
         uniformBlock = Util::StringFormat(uniformBlock, layoutIndex, Util::StringFormat("dvd_UniformBlock_%lld", blockIndexInOut).c_str());
 

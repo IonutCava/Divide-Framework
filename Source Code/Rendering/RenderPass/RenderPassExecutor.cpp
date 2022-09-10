@@ -834,25 +834,17 @@ void RenderPassExecutor::prePass(const VisibleNodeList<>& nodes, const RenderPas
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ " - PrePass" });
 
-    const bool layeredRendering = params._layerParams._layer > 0;
 
-    GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
-    renderPassCmd->_name = "DO_PRE_PASS";
-    renderPassCmd->_target = params._target;
-    renderPassCmd->_descriptor = params._targetDescriptorPrePass;
+    GFX::BeginRenderPassCommand renderPassCmd{};
+    renderPassCmd._name = "DO_PRE_PASS";
+    renderPassCmd._target = params._target;
+    renderPassCmd._descriptor = params._targetDescriptorPrePass;
+    renderPassCmd._clearDescriptor = params._clearDescriptorPrePass;
+    renderPassCmd._descriptor._writeLayers = params._layerParams;
 
-    if (layeredRendering) {
-        GFX::EnqueueCommand<GFX::BeginRenderSubPassCommand>(bufferInOut)->_writeLayers.push_back(params._layerParams);
-    }
-
+    GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut, renderPassCmd);
     prepareRenderQueues(params, nodes, cameraSnapshot, false, RenderingOrder::COUNT, bufferInOut);
-
-    if (layeredRendering) {
-        GFX::EnqueueCommand(bufferInOut, GFX::EndRenderSubPassCommand{});
-    }
-
     GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
-
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
@@ -902,16 +894,15 @@ void RenderPassExecutor::mainPass(const VisibleNodeList<>& nodes, const RenderPa
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ " - MainPass" });
 
     if (params._target != INVALID_RENDER_TARGET_ID) {
-        const bool layeredRendering = params._layerParams._layer > 0;
 
-        GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
-        renderPassCmd->_name = "DO_MAIN_PASS";
-        renderPassCmd->_target = params._target;
-        renderPassCmd->_descriptor = params._targetDescriptorMainPass;
+        GFX::BeginRenderPassCommand renderPassCmd{};
+        renderPassCmd._name = "DO_MAIN_PASS";
+        renderPassCmd._target = params._target;
+        renderPassCmd._descriptor = params._targetDescriptorMainPass;
+        renderPassCmd._descriptor._writeLayers = params._layerParams;
+        renderPassCmd._clearDescriptor = params._clearDescriptorMainPass;
 
-        if (layeredRendering) {
-            GFX::EnqueueCommand<GFX::BeginRenderSubPassCommand>(bufferInOut)->_writeLayers.push_back(params._layerParams);
-        }
+        GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut, renderPassCmd);
 
         const RenderTarget* screenTargetMS = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_MS);
         const RTAttachment* normalsAttMS = screenTargetMS->getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::NORMALS));
@@ -936,11 +927,6 @@ void RenderPassExecutor::mainPass(const VisibleNodeList<>& nodes, const RenderPa
         binding._data.As<DescriptorCombinedImageSampler>() = { normalsAttMS->texture()->defaultView(), normalsAttMS->descriptor()._samplerHash };
 
         prepareRenderQueues(params, nodes, cameraSnapshot, false, RenderingOrder::COUNT, bufferInOut);
-
-        if (layeredRendering) {
-            GFX::EnqueueCommand(bufferInOut, GFX::EndRenderSubPassCommand{});
-        }
-
         GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
     }
 
@@ -954,21 +940,15 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ " - W-OIT Pass" });
 
-    GFX::ClearRenderTargetCommand clearRTCmd{};
-    clearRTCmd._target = params._targetOIT;
-    if_constexpr(Config::USE_COLOURED_WOIT) {
-        // Don't clear our screen target. That would be BAD.
-        clearRTCmd._descriptor._clearColourAttachment[to_U8(GFXDevice::ScreenTargets::MODULATE)] = false;
-    }
-    // Don't clear and don't write to depth buffer
-    clearRTCmd._descriptor._clearDepth = false;
-    GFX::EnqueueCommand(bufferInOut, clearRTCmd);
-
     // Step1: Draw translucent items into the accumulation and revealage buffers
     GFX::BeginRenderPassCommand* beginRenderPassOitCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
     beginRenderPassOitCmd->_name = "DO_OIT_PASS_1";
     beginRenderPassOitCmd->_target = params._targetOIT;
+    beginRenderPassOitCmd->_clearDescriptor._clearDepth = false;
+    beginRenderPassOitCmd->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO,          to_U8(GFXDevice::ScreenTargets::ACCUMULATION) };
+    beginRenderPassOitCmd->_clearDescriptor._clearColourDescriptors[1] = { { 1.f, 0.f, 0.f, 0.f }, to_U8(GFXDevice::ScreenTargets::REVEALAGE) };
     SetEnabled(beginRenderPassOitCmd->_descriptor._drawMask, RTAttachmentType::Depth_Stencil, 0, false);
+
     //beginRenderPassOitCmd->_descriptor._alphaToCoverage = true;
     {
         const RenderTarget* nonMSTarget = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN);
@@ -984,30 +964,26 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
     prepareRenderQueues(params, nodes, cameraSnapshot, true, RenderingOrder::COUNT, bufferInOut);
 
     // We're gonna do a new bind soon enough
-    GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut)->_setDefaultRTState = params._targetOIT == INVALID_RENDER_TARGET_ID;
+    GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
 
     const bool useMSAA = params._target == RenderTargetNames::SCREEN_MS;
 
-    // Step2: Composition pass
-    // Don't clear depth & colours and do not write to the depth buffer
-    GFX::EnqueueCommand(bufferInOut, GFX::SetCameraCommand{ Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
-
-    const bool layeredRendering = params._layerParams._layer > 0;
-    GFX::BeginRenderPassCommand* beginRenderPassCompCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
-    beginRenderPassCompCmd->_name = "DO_OIT_PASS_2";
-    beginRenderPassCompCmd->_target = params._target;
-    beginRenderPassCompCmd->_descriptor = params._targetDescriptorComposition;
-
-    if (layeredRendering) {
-        GFX::EnqueueCommand<GFX::BeginRenderSubPassCommand>(bufferInOut)->_writeLayers.push_back(params._layerParams);
-    }
-
-    GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ useMSAA ? s_OITCompositionMSPipeline : s_OITCompositionPipeline });
 
     RenderTarget* oitRT = _context.renderTargetPool().getRenderTarget(params._targetOIT);
     const auto& accumAtt = oitRT->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ACCUMULATION));
     const auto& revAtt = oitRT->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::REVEALAGE));
 
+    GFX::BeginRenderPassCommand beginRenderPassCompCmd{};
+    beginRenderPassCompCmd._name = "DO_OIT_PASS_2";
+    beginRenderPassCompCmd._target = params._target;
+    beginRenderPassCompCmd._descriptor = params._targetDescriptorComposition;
+    beginRenderPassCompCmd._descriptor._writeLayers = params._layerParams;
+
+    // Step2: Composition pass
+    // Don't clear depth & colours and do not write to the depth buffer
+    GFX::EnqueueCommand(bufferInOut, GFX::SetCameraCommand{ Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
+    GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut, beginRenderPassCompCmd);
+    GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ useMSAA ? s_OITCompositionMSPipeline : s_OITCompositionPipeline });
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
     cmd->_usage = DescriptorSetUsage::PER_DRAW;
     {
@@ -1022,13 +998,7 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
     }
 
     GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
-
-    if (layeredRendering) {
-        GFX::EnqueueCommand(bufferInOut, GFX::EndRenderSubPassCommand{});
-    }
-
     GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
-
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
@@ -1040,25 +1010,16 @@ void RenderPassExecutor::transparencyPass(const VisibleNodeList<>& nodes, const 
     //Grab all transparent geometry
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ " - Transparency Pass" });
 
-    const bool layeredRendering = params._layerParams._layer > 0;
+    GFX::BeginRenderPassCommand beginRenderPassTransparentCmd{};
+    beginRenderPassTransparentCmd._name = "DO_TRANSPARENCY_PASS";
+    beginRenderPassTransparentCmd._target = params._target;
+    beginRenderPassTransparentCmd._clearDescriptor._clearDepth = false;
+    beginRenderPassTransparentCmd._descriptor._writeLayers = params._layerParams;
+    SetEnabled(beginRenderPassTransparentCmd._descriptor._drawMask, RTAttachmentType::Depth_Stencil, 0, false);
 
-    GFX::BeginRenderPassCommand* beginRenderPassTransparentCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
-    beginRenderPassTransparentCmd->_name = "DO_TRANSPARENCY_PASS";
-    beginRenderPassTransparentCmd->_target = params._target;
-    SetEnabled(beginRenderPassTransparentCmd->_descriptor._drawMask, RTAttachmentType::Depth_Stencil, 0, false);
-
-    if (layeredRendering) {
-        GFX::EnqueueCommand<GFX::BeginRenderSubPassCommand>(bufferInOut)->_writeLayers.push_back(params._layerParams);
-    }
-
+    GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut, beginRenderPassTransparentCmd);
     prepareRenderQueues(params, nodes, cameraSnapshot, true, RenderingOrder::BACK_TO_FRONT, bufferInOut);
-
-    if (layeredRendering) {
-        GFX::EnqueueCommand(bufferInOut, GFX::EndRenderSubPassCommand{});
-    }
-
     GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
-
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
@@ -1084,16 +1045,20 @@ void RenderPassExecutor::resolveMainScreenTarget(const RenderPassParams& params,
             blitCmd->_source = RenderTargetNames::SCREEN_MS;
             blitCmd->_destination = RenderTargetNames::SCREEN;
             if (resolveDepth) {
-                blitCmd->_blitDepth._inputLayer = 0u;
-                blitCmd->_blitDepth._outputLayer = 0u;
+                blitCmd->_params._blitDepth._inputLayer = 0u;
+                blitCmd->_params._blitDepth._outputLayer = 0u;
             }
             if (resolveColourBuffer) {
-                blitCmd->_blitColours[0].set(to_U8(GFXDevice::ScreenTargets::ALBEDO), to_U8(GFXDevice::ScreenTargets::ALBEDO), 0u, 0u);
+                auto& blitParams = blitCmd->_params._blitColours[0];
+                blitParams._input._index = to_U8(GFXDevice::ScreenTargets::ALBEDO);
+                blitParams._output._index = to_U8(GFXDevice::ScreenTargets::ALBEDO);
             }
         }
         if (resolveGBuffer) {
             GFX::BeginRenderPassCommand* beginRenderPassCommand = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
             beginRenderPassCommand->_target = RenderTargetNames::SCREEN;
+            beginRenderPassCommand->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO, to_U8(GFXDevice::ScreenTargets::VELOCITY) };
+            beginRenderPassCommand->_clearDescriptor._clearColourDescriptors[1] = { VECTOR4_ZERO, to_U8(GFXDevice::ScreenTargets::NORMALS) };
             SetEnabled(beginRenderPassCommand->_descriptor._drawMask, RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO), false);
             SetEnabled(beginRenderPassCommand->_descriptor._drawMask, RTAttachmentType::Depth_Stencil, 0, false);
             beginRenderPassCommand->_name = "RESOLVE_MAIN_GBUFFER";
@@ -1154,8 +1119,10 @@ void RenderPassExecutor::doCustomPass(const PlayerIndex playerIdx, Camera* camer
     camCmd->_cameraSnapshot = camera->snapshot();
     const CameraSnapshot& camSnapshot = camCmd->_cameraSnapshot;
 
-    const bool layeredRendering = params._layerParams._layer > 0;
-    if (!layeredRendering) {
+    if (params._layerParams._colourLayers[0] == 0u ||
+        params._layerParams._colourLayers[0] == INVALID_LAYER_INDEX)
+    {
+        // Either the first layer or not specified
         Attorney::SceneManagerRenderPass::prepareLightData(_parent.parent().sceneManager(), _stage, camSnapshot, memCmdInOut);
     }
 
@@ -1283,12 +1250,13 @@ void RenderPassExecutor::doCustomPass(const PlayerIndex playerIdx, Camera* camer
     if (_stage == RenderStage::DISPLAY) {
         GFX::EnqueueCommand(bufferInOut, GFX::PushCameraCommand{ camSnapshot });
 
-        GFX::BeginRenderPassCommand* beginRenderPassTransparentCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
-        beginRenderPassTransparentCmd->_name = "DO_POST_RENDER_PASS";
-        beginRenderPassTransparentCmd->_target = params._target;
-        SetEnabled(beginRenderPassTransparentCmd->_descriptor._drawMask, RTAttachmentType::Colour, 1, false);
-        SetEnabled(beginRenderPassTransparentCmd->_descriptor._drawMask, RTAttachmentType::Colour, 2, false);
-        SetEnabled(beginRenderPassTransparentCmd->_descriptor._drawMask, RTAttachmentType::Depth_Stencil, 0, false);
+        GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
+        beginRenderPassCmd->_name = "DO_POST_RENDER_PASS";
+        beginRenderPassCmd->_target = params._target;
+        beginRenderPassCmd->_clearDescriptor._clearDepth = false;
+        SetEnabled(beginRenderPassCmd->_descriptor._drawMask, RTAttachmentType::Colour, 1, false);
+        SetEnabled(beginRenderPassCmd->_descriptor._drawMask, RTAttachmentType::Colour, 2, false);
+        SetEnabled(beginRenderPassCmd->_descriptor._drawMask, RTAttachmentType::Depth_Stencil, 0, false);
 
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "Debug Draw Pass";
         Attorney::SceneManagerRenderPass::debugDraw(_parent.parent().sceneManager(), bufferInOut);

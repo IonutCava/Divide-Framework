@@ -100,15 +100,13 @@ void SSRPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX::
     PreRenderOperator::prepare(idx, bufferInOut);
 
     if (_stateChanged && !_enabled) {
-        RTClearDescriptor clearDescriptor = {};
-        clearDescriptor._clearDepth = true;
-        clearDescriptor._clearColours = true;
-        clearDescriptor._resetToDefault = true;
+        GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
+        renderPassCmd->_name = "DO_SSR_CLEAR_TARGET";
+        renderPassCmd->_target = RenderTargetNames::SSR_RESULT;
+        renderPassCmd->_clearDescriptor._clearDepth = true;
+        renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO, 0u };
 
-        GFX::ClearRenderTargetCommand clearMainTarget = {};
-        clearMainTarget._target = RenderTargetNames::SSR_RESULT;
-        clearMainTarget._descriptor = clearDescriptor;
-        EnqueueCommand(bufferInOut, clearMainTarget);
+        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
     }
 
     _stateChanged = false;
@@ -162,6 +160,8 @@ bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& 
     renderPassCmd->_target = RenderTargetNames::SSR_RESULT;
     renderPassCmd->_descriptor = _screenOnlyDraw;
     renderPassCmd->_name = "DO_SSR_PASS";
+    renderPassCmd->_clearDescriptor._clearDepth = true;
+    renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO, 0u };
 
     GFX::EnqueueCommand(bufferInOut, _pipelineCmd);
 

@@ -101,8 +101,8 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
         depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         InternalRTAttachmentDescriptors att {
-            InternalRTAttachmentDescriptor{ colourDescriptor, samplerHash, RTAttachmentType::Colour },
-            InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::Depth_Stencil }
+            InternalRTAttachmentDescriptor{ colourDescriptor, samplerHash, RTAttachmentType::Colour, 0u},
+            InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::Depth_Stencil, 0u }
         };
 
         RenderTargetDescriptor desc = {};
@@ -122,7 +122,7 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
         blurMapDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         InternalRTAttachmentDescriptors att = {
-            InternalRTAttachmentDescriptor{ blurMapDescriptor, samplerHash, RTAttachmentType::Colour }
+            InternalRTAttachmentDescriptor{ blurMapDescriptor, samplerHash, RTAttachmentType::Colour, 0u }
         };
 
         RenderTargetDescriptor desc = {};
@@ -336,20 +336,11 @@ void CascadedShadowMapsGenerator::render(const Camera& playerCamera, Light& ligh
     params._stagePass = { RenderStage::SHADOW, RenderPassType::COUNT, lightIndex, static_cast<RenderStagePass::VariantType>(light.getLightType()) };
     params._target = _drawBufferDepth._targetID;
     params._maxLoD = -1;
-    params._layerParams._type = RTAttachmentType::Colour;
-    params._layerParams._index = 0;
+    params._layerParams._colourLayers[0] = 0u;
+    params._clearDescriptorMainPass._clearDepth = true;
+    params._clearDescriptorMainPass._clearColourDescriptors[0] = { DefaultColours::WHITE, 0u };
 
     EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Cascaded Shadow Pass Light: [ %d ]", lightIndex).c_str(), lightIndex));
-
-    RTClearDescriptor clearDescriptor = {}; 
-    clearDescriptor._clearDepth = true;
-    clearDescriptor._clearColours = true;
-    clearDescriptor._resetToDefault = true;
-
-    GFX::ClearRenderTargetCommand clearMainTarget = {};
-    clearMainTarget._target = params._target;
-    clearMainTarget._descriptor = clearDescriptor;
-    EnqueueCommand(bufferInOut, clearMainTarget);
 
     RenderPassManager* rpm = _context.parent().renderPassManager();
 
@@ -360,8 +351,10 @@ void CascadedShadowMapsGenerator::render(const Camera& playerCamera, Light& ligh
       125.0f
     };
     GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = true; //Ortho camera
-    for (U8 i = numSplits - 1; i < numSplits; i--) {
-        params._layerParams._layer = i;
+    for (I8 i = numSplits - 1; i >= 0 && i < numSplits; i--) {
+        params._layerParams._colourLayers[0] = i;
+        params._layerParams._depthLayer = i;
+
         params._passName = Util::StringFormat("CSM_PASS_%d", i).c_str();
         params._stagePass._pass = static_cast<RenderStagePass::PassIndex>(i);
         params._minExtents.set(minExtentsFactors[i]);
@@ -391,7 +384,11 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
     blitRenderTargetCommand->_source = _drawBufferDepth._targetID;
     blitRenderTargetCommand->_destination = rtHandle._targetID;
     for (U8 i = 0u; i < light.csmSplitCount(); ++i) {
-        blitRenderTargetCommand->_blitColours[i].set(0u, 0u, i, to_U16(layerOffset + i));
+        auto& params = blitRenderTargetCommand->_params._blitColours[i];
+        params._input._index = 0u;
+        params._input._layer = i;
+        params._output._index = 0u;
+        params._output._layer = to_U16(layerOffset + i);
     }
 
     // Now we can either blur our target or just skip to mipmap computation

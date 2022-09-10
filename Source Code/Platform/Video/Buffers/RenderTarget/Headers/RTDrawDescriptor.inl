@@ -47,14 +47,12 @@ inline bool operator!=(const RTDrawMask& lhs, const RTDrawMask& rhs) {
 
 inline bool operator==(const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs) {
     return lhs._drawMask == rhs._drawMask &&
-           lhs._setViewport == rhs._setViewport &&
-           lhs._setDefaultState == rhs._setDefaultState;
+           lhs._setViewport == rhs._setViewport;
 }
 
 inline bool operator!=(const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs) {
     return lhs._drawMask != rhs._drawMask ||
-           lhs._setViewport != rhs._setViewport ||
-           lhs._setDefaultState != rhs._setDefaultState;
+           lhs._setViewport != rhs._setViewport;
 }
 }; //namespace Divide
 #endif// _RENDER_TARGET_DRAW_DESCRIPTOR_INL_

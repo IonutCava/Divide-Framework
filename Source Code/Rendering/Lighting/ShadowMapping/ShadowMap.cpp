@@ -126,7 +126,7 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
 
                 {
                     InternalRTAttachmentDescriptors att{
-                        InternalRTAttachmentDescriptor{ shadowMapDescriptor, shadowMapSampler.getHash(), RTAttachmentType::Colour }
+                        InternalRTAttachmentDescriptor{ shadowMapDescriptor, shadowMapSampler.getHash(), RTAttachmentType::Colour, 0u }
                     };
 
                     desc._name = isCSM ? "CSM_ShadowMap" : "Single_ShadowMap";
@@ -139,7 +139,7 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
                     shadowMapCacheDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
                     InternalRTAttachmentDescriptors attCache{
-                        InternalRTAttachmentDescriptor{ shadowMapCacheDescriptor, shadowMapSamplerCache.getHash(), RTAttachmentType::Colour }
+                        InternalRTAttachmentDescriptor{ shadowMapCacheDescriptor, shadowMapSamplerCache.getHash(), RTAttachmentType::Colour, 0u }
                     };
 
                     desc._name = isCSM ? "CSM_ShadowMap_StaticCache" : "Single_ShadowMap_StaticCache";
@@ -172,8 +172,8 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
                 depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
 
                 InternalRTAttachmentDescriptors att {
-                    InternalRTAttachmentDescriptor{ colourMapDescriptor, samplerHash, RTAttachmentType::Colour },
-                    InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::Depth_Stencil },
+                    InternalRTAttachmentDescriptor{ colourMapDescriptor, samplerHash, RTAttachmentType::Colour, 0u},
+                    InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::Depth_Stencil, 0u },
                 };
 
                 RenderTargetDescriptor desc = {};
@@ -189,8 +189,8 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
                     shadowMapCacheDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
                     InternalRTAttachmentDescriptors attCache {
-                        InternalRTAttachmentDescriptor{ shadowMapCacheDescriptor, shadowMapSamplerCache.getHash(), RTAttachmentType::Colour },
-                        InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::Depth_Stencil },
+                        InternalRTAttachmentDescriptor{ shadowMapCacheDescriptor, shadowMapSamplerCache.getHash(), RTAttachmentType::Colour, 0u },
+                        InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::Depth_Stencil, 0u },
                     };
 
                     desc._name = "Cube_ShadowMap_StaticCache";

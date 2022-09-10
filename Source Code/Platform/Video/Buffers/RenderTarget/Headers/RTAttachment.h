@@ -50,18 +50,16 @@ enum class RTAttachmentType : U8 {
 };
 
 struct RTAttachmentDescriptor {
-    explicit RTAttachmentDescriptor(const size_t samplerHash, const RTAttachmentType type, const U8 index, const FColour4& clearColour) noexcept
+    explicit RTAttachmentDescriptor(const size_t samplerHash, const RTAttachmentType type, const U8 index) noexcept
         : _samplerHash(samplerHash)
         , _type(type)
         , _index(index)
-        , _clearColour(clearColour)
     {
     }
 
-    FColour4 _clearColour{ DefaultColours::WHITE };
-    size_t _samplerHash{ 0 };
+    size_t _samplerHash{ 0u };
     RTAttachmentType _type{ RTAttachmentType::COUNT };
-    U8 _index{ 0 };
+    U8 _index{ 0u };
 };
 
 // External attachments get added last and OVERRIDE any normal attachments found at the same type+index location
@@ -69,9 +67,8 @@ struct ExternalRTAttachmentDescriptor final : public RTAttachmentDescriptor {
     explicit ExternalRTAttachmentDescriptor(RTAttachment* attachment,
                                             const size_t samplerHash,
                                             const RTAttachmentType type,
-                                            const U8 index = 0u,
-                                            const FColour4& clearColour = DefaultColours::WHITE)
-        : RTAttachmentDescriptor(samplerHash, type, index, clearColour)
+                                            const U8 index)
+        : RTAttachmentDescriptor(samplerHash, type, index)
         , _attachment(attachment)
     {
     }
@@ -83,9 +80,8 @@ struct InternalRTAttachmentDescriptor final : public RTAttachmentDescriptor {
     explicit InternalRTAttachmentDescriptor(TextureDescriptor& descriptor,
                                             const size_t samplerHash,
                                             const RTAttachmentType type,
-                                            const U8 index = 0u,
-                                            const FColour4& clearColour = DefaultColours::WHITE)
-        : RTAttachmentDescriptor(samplerHash, type, index, clearColour)
+                                            const U8 index)
+        : RTAttachmentDescriptor(samplerHash, type, index)
         , _texDescriptor(descriptor)
     {
     }
@@ -102,9 +98,6 @@ class RTAttachment final {
         explicit RTAttachment(RenderTarget& parent, const RTAttachmentDescriptor& descriptor) noexcept;
 
         void setImageUsage(ImageUsage layout);
-
-        void clearColour(const FColour4& clearColour) noexcept;
-        [[nodiscard]] const FColour4& clearColour() const noexcept;
 
         bool mipWriteLevel(U16 level) noexcept;
         [[nodiscard]] U16  mipWriteLevel() const noexcept;

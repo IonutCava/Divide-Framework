@@ -856,16 +856,34 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
         case GFX::CommandType::BEGIN_RENDER_PASS: {
             const GFX::BeginRenderPassCommand* crtCmd = cmd->As<GFX::BeginRenderPassCommand>();
 
+            GetStateTracker()->_activeRenderTargetID = crtCmd->_target;
+
             if (crtCmd->_target == SCREEN_TARGET_ID) {
+                if (GetStateTracker()->setActiveFB(RenderTarget::Usage::RT_WRITE_ONLY, 0u) == GLStateTracker::BindResult::FAILED) {
+                    DIVIDE_UNEXPECTED_CALL();
+                }
+
                 GetStateTracker()->_activeRenderTarget = nullptr;
-                GetStateTracker()->_activeRenderTargetID = SCREEN_TARGET_ID;
+                if (crtCmd->_clearDescriptor._clearColourDescriptors[0]._index != RT_MAX_COLOUR_ATTACHMENTS) {
+                    const FColour4 clearColour = crtCmd->_clearDescriptor._clearColourDescriptors[0]._colour;
+                    glClearColor(clearColour.r, clearColour.g, clearColour.b, clearColour.a);
+                    if (crtCmd->_clearDescriptor._clearDepth) {
+                        glClearDepth(crtCmd->_clearDescriptor._clearDepthValue);
+                    }
+                }
+                PushDebugMessage(crtCmd->_name.c_str(), SCREEN_TARGET_ID);
             } else {
                 glFramebuffer* rt = static_cast<glFramebuffer*>(_context.renderTargetPool().getRenderTarget(crtCmd->_target));
-                Attorney::GLAPIRenderTarget::begin(*rt, crtCmd->_descriptor);
+
+                const GLStateTracker::BindResult bindResult = GetStateTracker()->setActiveFB(RenderTarget::Usage::RT_WRITE_ONLY, rt->framebufferHandle());
+                if (bindResult == GLStateTracker::BindResult::FAILED) {
+                    DIVIDE_UNEXPECTED_CALL();
+                }
+
+                Attorney::GLAPIRenderTarget::begin(*rt, crtCmd->_descriptor, crtCmd->_clearDescriptor);
                 GetStateTracker()->_activeRenderTarget = rt;
-                GetStateTracker()->_activeRenderTargetID = crtCmd->_target;
+                PushDebugMessage(Util::StringFormat("%s - %s", crtCmd->_name.c_str(), rt->debugMessage().c_str()).c_str(), crtCmd->_target);
             }
-            PushDebugMessage(crtCmd->_name.c_str(), crtCmd->_target);
         }break;
         case GFX::CommandType::END_RENDER_PASS: {
             PopDebugMessage();
@@ -873,26 +891,10 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             if (GL_API::GetStateTracker()->_activeRenderTarget == nullptr) {
                 assert(GL_API::GetStateTracker()->_activeRenderTargetID == SCREEN_TARGET_ID);
             } else {
-                Attorney::GLAPIRenderTarget::end(
-                    *GetStateTracker()->_activeRenderTarget,
-                    cmd->As<GFX::EndRenderPassCommand>()->_setDefaultRTState
-                );
+                Attorney::GLAPIRenderTarget::end(*GetStateTracker()->_activeRenderTarget);
+                GetStateTracker()->_activeRenderTarget = nullptr;
             }
-            GetStateTracker()->_activeRenderTarget = nullptr;
             GetStateTracker()->_activeRenderTargetID = INVALID_RENDER_TARGET_ID;
-        }break;
-        case GFX::CommandType::BEGIN_RENDER_SUB_PASS: {
-            const GFX::BeginRenderSubPassCommand* crtCmd = cmd->As<GFX::BeginRenderSubPassCommand>();
-
-            assert(GL_API::GetStateTracker()->_activeRenderTarget != nullptr);
-            for (const RenderTarget::DrawLayerParams& params : crtCmd->_writeLayers) {
-                GetStateTracker()->_activeRenderTarget->drawToLayer(params);
-            }
-
-            GetStateTracker()->_activeRenderTarget->setMipLevel(crtCmd->_mipWriteLevel);
-        }break;
-        case GFX::CommandType::END_RENDER_SUB_PASS: {
-            NOP();
         }break;
         case GFX::CommandType::BEGIN_GPU_QUERY: {
             const GFX::BeginGPUQuery* crtCmd = cmd->As<GFX::BeginGPUQuery>();
@@ -1006,7 +1008,9 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             }
 
             const PushConstants& pushConstants = cmd->As<GFX::SendPushConstantsCommand>()->_constants;
-            GetStateTracker()->_activeShaderProgram->uploadPushConstants(pushConstants, _context.descriptorSet(DescriptorSetUsage::PER_DRAW).impl(), pushConstantsMemCommand);
+            if (GetStateTracker()->_activeShaderProgram->uploadPushConstants(pushConstants, _context.descriptorSet(DescriptorSetUsage::PER_DRAW).impl(), pushConstantsMemCommand)) {
+                _context.descriptorSet(DescriptorSetUsage::PER_DRAW).dirty(true);
+            }
             pushConstantsNeedLock = !pushConstantsMemCommand._bufferLocks.empty();
         } break;
         case GFX::CommandType::SET_SCISSOR: {
@@ -1200,6 +1204,10 @@ void GL_API::postFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& c
         OPTICK_EVENT("GL_FLUSH");
         glFlush();
     }
+
+    if (GetStateTracker()->setActiveFB(RenderTarget::Usage::RT_WRITE_ONLY, 0u) == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
 }
 
 vec2<U16> GL_API::getDrawableSize(const DisplayWindow& window) const noexcept {
@@ -1289,7 +1297,7 @@ void GL_API::clearStates(const DisplayWindow& window, GLStateTracker& stateTrack
     if (stateTracker.setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, 0) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
-    if (stateTracker.setActiveFB(RenderTarget::RenderTargetUsage::RT_READ_WRITE, 0) == GLStateTracker::BindResult::FAILED) {
+    if (stateTracker.setActiveFB(RenderTarget::Usage::RT_READ_WRITE, 0) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
     stateTracker._activeClearColour.set(window.clearColour());
@@ -1339,7 +1347,7 @@ bool GL_API::bindShaderResources(const DescriptorSetUsage usage, const Descripto
                 glShaderBuffer* glBuffer = static_cast<glShaderBuffer*>(bufferEntry._buffer);
 
                 if (!glBuffer->bindByteRange(
-                    ShaderProgram::GetGLBindingForDescriptorSlot(usage, srcBinding._slot, type),
+                    ShaderProgram::GetGLBindingForDescriptorSlot(usage, srcBinding._slot),
                     {
                         bufferEntry._range._startOffset * glBuffer->getPrimitiveSize(),
                         bufferEntry._range._length * glBuffer->getPrimitiveSize()
@@ -1405,7 +1413,7 @@ bool GL_API::bindShaderResources(const DescriptorSetUsage usage, const Descripto
 }
 
 bool GL_API::makeTextureViewResident(const DescriptorSetUsage set, const U8 bindingSlot, const ImageView& imageView, const size_t samplerHash) const {
-    const U8 glBinding = ShaderProgram::GetGLBindingForDescriptorSlot(set, bindingSlot, DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER);
+    const U8 glBinding = ShaderProgram::GetGLBindingForDescriptorSlot(set, bindingSlot);
 
     const GLuint samplerHandle = GetSamplerHandle(samplerHash);
 

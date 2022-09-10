@@ -55,17 +55,12 @@ namespace GFX {
 enum class CommandType : U8 {
     BEGIN_RENDER_PASS,
     END_RENDER_PASS,
-    BEGIN_RENDER_SUB_PASS,
-    END_RENDER_SUB_PASS,
     BEGIN_GPU_QUERY,
     END_GPU_QUERY,
     SET_VIEWPORT,
     PUSH_VIEWPORT,
     POP_VIEWPORT,
     SET_SCISSOR,
-    CLEAR_RT,
-    RESET_RT,
-    RESET_AND_CLEAR_RT,
     BLIT_RT,
     COPY_TEXTURE,
     CLEAR_TEXTURE,
@@ -94,10 +89,9 @@ enum class CommandType : U8 {
 
 namespace Names {
     static const char* commandType[] = {
-        "BEGIN_RENDER_PASS", "END_RENDER_PASS", "BEGIN_RENDER_SUB_PASS", "BEGIN_GPU_QUERY", "END_GPU_QUERY",
-        "END_RENDER_SUB_PASS", "SET_VIEWPORT", "PUSH_VIEWPORT","POP_VIEWPORT", "SET_SCISSOR", "CLEAR_RT",
-        "RESET_RT", "RESET_AND_CLEAR_RT", "BLIT_RT", "COPY_TEXTURE", "CLEAR_TEXTURE", "COMPUTE_MIPMAPS", "SET_CAMERA",
-        "PUSH_CAMERA", "POP_CAMERA", "SET_CLIP_PLANES", "BIND_PIPELINE", "BIND_SHADER_RESOURCES", "SEND_PUSH_CONSTANTS",
+        "BEGIN_RENDER_PASS", "END_RENDER_PASS", "BEGIN_GPU_QUERY", "END_GPU_QUERY", "SET_VIEWPORT", "PUSH_VIEWPORT","POP_VIEWPORT",
+        "SET_SCISSOR", "BLIT_RT", "COPY_TEXTURE", "CLEAR_TEXTURE", "COMPUTE_MIPMAPS",
+        "SET_CAMERA", "PUSH_CAMERA", "POP_CAMERA", "SET_CLIP_PLANES", "BIND_PIPELINE", "BIND_SHADER_RESOURCES", "SEND_PUSH_CONSTANTS",
         "DRAW_COMMANDS", "DRAW_TEXT", "DISPATCH_COMPUTE", "MEMORY_BARRIER", "READ_BUFFER_DATA", "CLEAR_BUFFER_DATA",
         "BEGIN_DEBUG_SCOPE","END_DEBUG_SCOPE", "ADD_DEBUG_MESSAGE", "SWITCH_WINDOW", "SET_CLIPING_STATE", "EXTERNAL", "UNKNOWN"
     };
@@ -148,19 +142,12 @@ DEFINE_COMMAND(PopViewportCommand, CommandType::POP_VIEWPORT);
 DEFINE_COMMAND_BEGIN(BeginRenderPassCommand, CommandType::BEGIN_RENDER_PASS);
     RenderTargetID _target = INVALID_RENDER_TARGET_ID;
     RTDrawDescriptor _descriptor;
+    RTClearDescriptor _clearDescriptor;
     Str64 _name;
 DEFINE_COMMAND_END(BeginRenderPassCommand);
 
 DEFINE_COMMAND_BEGIN(EndRenderPassCommand, CommandType::END_RENDER_PASS);
-    bool _setDefaultRTState{ true };
 DEFINE_COMMAND_END(EndRenderPassCommand);
-
-DEFINE_COMMAND_BEGIN(BeginRenderSubPassCommand, CommandType::BEGIN_RENDER_SUB_PASS);
-    U16 _mipWriteLevel{ 0u };
-    vector<RenderTarget::DrawLayerParams> _writeLayers;
-DEFINE_COMMAND_END(BeginRenderSubPassCommand);
-
-DEFINE_COMMAND(EndRenderSubPassCommand, CommandType::END_RENDER_SUB_PASS);
 
 DEFINE_COMMAND_BEGIN(BeginGPUQuery, CommandType::BEGIN_GPU_QUERY);
     BeginGPUQuery() noexcept = default;
@@ -176,31 +163,10 @@ DEFINE_COMMAND_BEGIN(EndGPUQuery, CommandType::END_GPU_QUERY);
 DEFINE_COMMAND_END(EndGPUQuery);
 
 DEFINE_COMMAND_BEGIN(BlitRenderTargetCommand, CommandType::BLIT_RT);
-    // Depth layer to blit
-    DepthBlitEntry _blitDepth;
-    // List of colours + colour layer to blit
-    std::array<ColourBlitEntry, RT_MAX_COLOUR_ATTACHMENTS> _blitColours;
     RenderTargetID _source{ INVALID_RENDER_TARGET_ID };
     RenderTargetID _destination{ INVALID_RENDER_TARGET_ID };
+    RTBlitParams _params{};
 DEFINE_COMMAND_END(BlitRenderTargetCommand);
-
-DEFINE_COMMAND_BEGIN(ClearRenderTargetCommand, CommandType::CLEAR_RT);
-    ClearRenderTargetCommand() noexcept = default;
-    ClearRenderTargetCommand(const RenderTargetID& target, const RTClearDescriptor& descriptor) noexcept : _target(target), _descriptor(descriptor) {}
-    RenderTargetID _target{ INVALID_RENDER_TARGET_ID };
-    RTClearDescriptor _descriptor;
-DEFINE_COMMAND_END(ClearRenderTargetCommand);
-
-DEFINE_COMMAND_BEGIN(ResetRenderTargetCommand, CommandType::RESET_RT);
-    RenderTargetID _source{ INVALID_RENDER_TARGET_ID };
-    RTDrawDescriptor _descriptor;
-DEFINE_COMMAND_END(ResetRenderTargetCommand);
-
-DEFINE_COMMAND_BEGIN(ResetAndClearRenderTargetCommand, CommandType::RESET_AND_CLEAR_RT);
-    RenderTargetID _source{ INVALID_RENDER_TARGET_ID };
-    RTDrawDescriptor _drawDescriptor;
-    RTClearDescriptor _clearDescriptor;
-DEFINE_COMMAND_END(ResetAndClearRenderTargetCommand);
 
 DEFINE_COMMAND_BEGIN(CopyTextureCommand, CommandType::COPY_TEXTURE);
     Texture* _source{ nullptr };

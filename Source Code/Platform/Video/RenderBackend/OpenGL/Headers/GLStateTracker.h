@@ -96,10 +96,10 @@ namespace Divide {
         [[nodiscard]] BindResult setActiveBufferIndexRange(GLenum target, GLuint bufferHandle, GLuint bindIndex, size_t offsetInBytes, size_t rangeInBytes, GLuint& previousID);
         /// Switch the current framebuffer by binding it as either a R/W buffer, read
         /// buffer or write buffer
-        [[nodiscard]] BindResult setActiveFB(RenderTarget::RenderTargetUsage usage, GLuint ID);
+        [[nodiscard]] BindResult setActiveFB(RenderTarget::Usage usage, GLuint ID);
         /// Switch the current framebuffer by binding it as either a R/W buffer, read
         /// buffer or write buffer
-        [[nodiscard]] BindResult setActiveFB(RenderTarget::RenderTargetUsage usage, GLuint ID, GLuint& previousID);
+        [[nodiscard]] BindResult setActiveFB(RenderTarget::Usage usage, GLuint ID, GLuint& previousID);
         /// Change the currently active shader program. Returns false if the program was already bound
         [[nodiscard]] BindResult setActiveProgram(GLuint programHandle);
         /// Change the currently active shader pipeline. Returns false if the pipeline was already bound

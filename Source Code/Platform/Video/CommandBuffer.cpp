@@ -130,22 +130,6 @@ void CommandBuffer::batch() {
         }
     } while (EraseEmptyCommands(_commandOrder));
 
-    // Now try and merge ONLY End/Begin render pass (don't unbind a render target if we immediately bind a new one
-    prevCommand = nullptr;
-    for (const CommandEntry& entry : _commandOrder) {
-        if (entry._data != PolyContainerEntry::INVALID_ENTRY_ID && !DoesNotAffectRT(entry._typeIndex)) {
-            CommandBase* crtCommand = get<CommandBase>(entry);
-            if (prevCommand != nullptr && entry._typeIndex == to_base(CommandType::BEGIN_RENDER_PASS)) {
-                static_cast<EndRenderPassCommand*>(prevCommand)->_setDefaultRTState = false;
-                prevCommand = nullptr;
-            } else if (entry._typeIndex == to_base(CommandType::END_RENDER_PASS)) {
-                prevCommand = crtCommand;
-            } else {
-                prevCommand = nullptr;
-            }
-        }
-    }
-
     // If we don't have any actual work to do, clear everything
     bool hasWork = false;
     for (const CommandEntry& cmd : _commandOrder) {
@@ -161,7 +145,6 @@ void CommandBuffer::batch() {
                     break;
                 }
             } break;
-            case CommandType::CLEAR_RT:
             case CommandType::READ_BUFFER_DATA:
             case CommandType::COMPUTE_MIPMAPS:
             case CommandType::CLEAR_BUFFER_DATA:
@@ -171,7 +154,6 @@ void CommandBuffer::batch() {
             case CommandType::DRAW_COMMANDS:
             case CommandType::BIND_SHADER_RESOURCES:
             case CommandType::BLIT_RT:
-            case CommandType::RESET_RT:
             case CommandType::SEND_PUSH_CONSTANTS:
             case CommandType::SET_CAMERA:
             case CommandType::PUSH_CAMERA:
@@ -365,7 +347,7 @@ std::pair<ErrorType, size_t> CommandBuffer::validate() const {
         OPTICK_EVENT();
 
         size_t cmdIndex = 0u;
-        bool pushedPass = false, pushedSubPass = false, pushedQuery = false;
+        bool pushedPass = false, pushedQuery = false;
         bool hasPipeline = false, hasShaderResources = false;
         I32 pushedDebugScope = 0, pushedCamera = 0, pushedViewport = 0;
 
@@ -383,18 +365,6 @@ std::pair<ErrorType, size_t> CommandBuffer::validate() const {
                         return { ErrorType::MISSING_BEGIN_RENDER_PASS, cmdIndex };
                     }
                     pushedPass = false;
-                } break;
-                case CommandType::BEGIN_RENDER_SUB_PASS: {
-                    if (pushedSubPass) {
-                        return { ErrorType::MISSING_END_RENDER_SUB_PASS, cmdIndex };
-                    }
-                    pushedSubPass = true;
-                } break;
-                case CommandType::END_RENDER_SUB_PASS: {
-                    if (!pushedSubPass) {
-                        return { ErrorType::MISSING_BEGIN_RENDER_SUB_PASS, cmdIndex };
-                    }
-                    pushedSubPass = false;
                 } break;
                 case CommandType::BEGIN_GPU_QUERY: {
                     if (pushedQuery) {
@@ -472,9 +442,6 @@ std::pair<ErrorType, size_t> CommandBuffer::validate() const {
         if (pushedPass) {
             return { ErrorType::MISSING_END_RENDER_PASS, cmdIndex };
         }
-        if (pushedSubPass) {
-            return { ErrorType::MISSING_END_RENDER_SUB_PASS, cmdIndex };
-        }
         if (pushedDebugScope != 0) {
             return { ErrorType::MISSING_POP_DEBUG_SCOPE, cmdIndex };
         }
@@ -503,13 +470,11 @@ void CommandBuffer::ToString(const CommandBase& cmd, const CommandType type, I32
 
     switch (type) {
         case CommandType::BEGIN_RENDER_PASS:
-        case CommandType::BEGIN_RENDER_SUB_PASS: 
         case CommandType::BEGIN_DEBUG_SCOPE : {
             append(out, GFX::ToString(cmd, to_U16(crtIndent)), crtIndent);
             ++crtIndent;
         }break;
         case CommandType::END_RENDER_PASS:
-        case CommandType::END_RENDER_SUB_PASS:
         case CommandType::END_DEBUG_SCOPE: {
             --crtIndent;
             append(out, GFX::ToString(cmd, to_U16(crtIndent)), crtIndent);

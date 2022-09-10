@@ -415,7 +415,7 @@ void UniformBlockUploader::uploadPushConstant(const GFX::PushConstant& constant,
     }
 }
 
-void UniformBlockUploader::commit(DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut) {
+bool UniformBlockUploader::commit(DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut) {
     if (_uniformBlockDirty) {
 
         DIVIDE_ASSERT(_uniformBlock._bindingSlot != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr);
@@ -438,10 +438,10 @@ void UniformBlockUploader::commit(DescriptorSet& set, GFX::MemoryBarrierCommand&
         _uniformBlockDirty = false;
     }
 
-    prepare(set);
+    return prepare(set);
 }
 
-void UniformBlockUploader::prepare(DescriptorSet& set) {
+bool UniformBlockUploader::prepare(DescriptorSet& set) {
     if (_uniformBlock._bindingSlot != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr) {
         const U8 targetBlock = to_U8(_uniformBlock._bindingSlot);
         const ShaderBufferEntry crtEntry = { *_buffer, {0u, _buffer->getPrimitiveCount()} };
@@ -452,14 +452,17 @@ void UniformBlockUploader::prepare(DescriptorSet& set) {
 
                 it._shaderStageVisibility = _shaderStageVisibilityMask;
                 it._data.As<ShaderBufferEntry>() = crtEntry;
-                return;
+                return true;
             }
         }
 
         DescriptorSetBinding& binding = set.emplace_back(_shaderStageVisibilityMask);
         binding._slot = targetBlock;
         binding._data.As<ShaderBufferEntry>() = crtEntry;
+        return true;
     }
+
+    return false;
 }
 
 void UniformBlockUploader::onFrameEnd() noexcept {

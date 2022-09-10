@@ -86,8 +86,7 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
             screenDescriptor,
             screenAtt->descriptor()._samplerHash,
             RTAttachmentType::Colour,
-            0,
-            DefaultColours::BLACK
+            0u
         },
     };
 
@@ -160,18 +159,11 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
     GFX::EnqueueCommand(bufferInOut, GFX::SendPushConstantsCommand{ _bloomCalcConstants });
 
     // Step 1: generate bloom - render all of the "bright spots"
-    RTClearDescriptor clearTarget = {};
-    clearTarget._clearDepth = false;
-    clearTarget._clearColours = true;
-
-    GFX::ClearRenderTargetCommand clearRenderTargetCmd = {};
-    clearRenderTargetCmd._target = _bloomOutput._targetID;
-    clearRenderTargetCmd._descriptor = clearTarget;
-    GFX::EnqueueCommand(bufferInOut, clearRenderTargetCmd);
-
     GFX::BeginRenderPassCommand beginRenderPassCmd{};
     beginRenderPassCmd._target = _bloomOutput._targetID;
     beginRenderPassCmd._name = "DO_BLOOM_PASS";
+    beginRenderPassCmd._clearDescriptor._clearDepth = true;
+    beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { DefaultColours::BLACK, 0u };
     GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
     GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);

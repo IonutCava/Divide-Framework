@@ -174,7 +174,7 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
 
     virtual bool recompile(bool& skipped);
 
-    void uploadPushConstants(const PushConstants& constants, DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut);
+    [[nodiscard]] bool uploadPushConstants(const PushConstants& constants, DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut);
 
     //==================== static methods ===============================//
     static void Idle(PlatformContext& platformContext);
@@ -207,7 +207,7 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
 
     static void OnAtomChange(std::string_view atomName, FileUpdateEvent evt);
 
-    static [[nodiscard]] U8 GetGLBindingForDescriptorSlot(DescriptorSetUsage usage, U8 slot, DescriptorSetBindingType type) noexcept;
+    static [[nodiscard]] U8 GetGLBindingForDescriptorSlot(DescriptorSetUsage usage, U8 slot) noexcept;
     static [[nodiscard]] std::pair<DescriptorSetUsage, U8> GetDescriptorSlotForGLBinding(U8 binding, DescriptorSetBindingType type) noexcept;
 
     static void RegisterSetLayoutBinding(DescriptorSetUsage usage, U8 slot, DescriptorSetBindingType type, ShaderStageVisibility visibility);

@@ -1155,7 +1155,9 @@ namespace Divide {
                     vkCmdBeginRenderPass(cmdBuffer, &_defaultRenderPass, VK_SUBPASS_CONTENTS_INLINE);
                 } else {
                     vkRenderTarget* rt = static_cast<vkRenderTarget*>(_context.renderTargetPool().getRenderTarget(crtCmd->_target));
-                    const VkRenderingInfo& renderingInfo = rt->getRenderingInfo(crtCmd->_descriptor, GetStateTracker()->_pipelineCreateInfo);
+                    const VkRenderingInfo& renderingInfo = rt->getRenderingInfo(crtCmd->_descriptor, 
+                                                                                crtCmd->_clearDescriptor,
+                                                                                GetStateTracker()->_pipelineCreateInfo);
 
                     vkCmdBeginRendering(cmdBuffer, &renderingInfo);
                     GetStateTracker()->_alphaToCoverage = crtCmd->_descriptor._alphaToCoverage;
@@ -1175,10 +1177,6 @@ namespace Divide {
                     vkCmdEndRendering(cmdBuffer);
                 }
                 VK_API::GetStateTracker()->_activeRenderTargetID = INVALID_RENDER_TARGET_ID;
-            }break;
-            case GFX::CommandType::BEGIN_RENDER_SUB_PASS: {
-            }break;
-            case GFX::CommandType::END_RENDER_SUB_PASS: {
             }break;
             case GFX::CommandType::BEGIN_GPU_QUERY: {
             }break;

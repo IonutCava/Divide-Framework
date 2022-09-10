@@ -63,14 +63,6 @@ U16 RTAttachment::numLayers() const {
     return _texture != nullptr ? _texture->descriptor().layerCount() : 0u;
 }
 
-void RTAttachment::clearColour(const FColour4& clearColour) noexcept {
-    _descriptor._clearColour.set(clearColour);
-}
-
-const FColour4& RTAttachment::clearColour() const noexcept {
-    return _descriptor._clearColour;
-}
-
 const RTAttachmentDescriptor& RTAttachment::descriptor() const noexcept {
     return _descriptor;
 }

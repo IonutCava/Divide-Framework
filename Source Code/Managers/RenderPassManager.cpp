@@ -202,14 +202,14 @@ void RenderPassManager::render(const RenderParams& params) {
 
        GFX::EnqueueCommand(buf, sceneBufferLocks);
 
+       GFX::EnqueueCommand(buf, GFX::BeginDebugScopeCommand{ "Flush Display" });
+
        if (params._editorRunning) {
            GFX::BeginRenderPassCommand beginRenderPassCmd{};
            beginRenderPassCmd._target = context.editor().getRenderTargetHandle()._targetID;
            beginRenderPassCmd._name = "BLIT_TO_RENDER_TARGET";
            EnqueueCommand(buf, beginRenderPassCmd);
        }
-
-       GFX::EnqueueCommand(buf, GFX::BeginDebugScopeCommand{ "Flush Display" });
 
        RenderTarget* resolvedScreenTarget = gfx.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN);
        const auto& screenAtt = resolvedScreenTarget->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
@@ -227,12 +227,13 @@ void RenderPassManager::render(const RenderParams& params) {
            context.gui().draw(gfx, targetViewport, buf);
            sceneManager->getEnvProbes()->prepareDebugData();
            gfx.renderDebugUI(targetViewport, buf);
-
-           GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(buf);
-           if (params._editorRunning) {
-               EnqueueCommand(buf, GFX::EndRenderPassCommand{});
-           }
        }
+
+       if (params._editorRunning) {
+           EnqueueCommand(buf, GFX::EndRenderPassCommand{});
+       }
+
+       GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(buf);
     }
     TaskPool& pool = context.taskPool(TaskPoolType::HIGH_PRIORITY);
     {

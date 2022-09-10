@@ -45,15 +45,13 @@ namespace Divide {
         vkRenderTarget(GFXDevice& context, const RenderTargetDescriptor& descriptor);
         ~vkRenderTarget();
 
-        void clear(const RTClearDescriptor& descriptor) noexcept override;
-
-        void setDefaultState(const RTDrawDescriptor& drawPolicy) noexcept override;
+        [[nodiscard]] bool create() override;
 
         void readData(const vec4<U16>& rect, GFXImageFormat imageFormat, GFXDataFormat dataType, std::pair<bufferPtr, size_t> outData) const noexcept override;
 
-        void blitFrom(const RTBlitParams& params) noexcept override;
+        void blitFrom(RenderTarget* source, const RTBlitParams& params) noexcept override;
 
-        const VkRenderingInfo& getRenderingInfo(const RTDrawDescriptor& descriptor, VkPipelineRenderingCreateInfo& pipelineCreateInfoOut);
+        const VkRenderingInfo& getRenderingInfo(const RTDrawDescriptor& descriptor, const RTClearDescriptor& clearPolicy, VkPipelineRenderingCreateInfo& pipelineCreateInfoOut);
 
         PROPERTY_INTERNAL(VkRenderingInfo, renderingInfo);
     private:
