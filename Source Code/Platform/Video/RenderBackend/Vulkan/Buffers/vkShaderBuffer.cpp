@@ -44,8 +44,17 @@ namespace Divide {
         // Let the VMA library know that this buffer should be readable by the GPU only
         VmaAllocationCreateInfo vmaallocInfo = {};
         vmaallocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-        vmaallocInfo.flags = _params._hostVisible ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT : 0;
-        
+        vmaallocInfo.flags = 0;
+        if (_params._updateFrequency == BufferUpdateFrequency::OFTEN) {
+            // If we write to this buffer often (e.g. GPU uniform blocks), we might as well persistently map it and use
+            // a lock manager to protect writes (same as GL_API's lockManager system)
+            // A staging buffer is just way too slow for multiple writes per frame.
+            vmaallocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+            vmaallocInfo.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        } else if (_params._hostVisible) {
+            vmaallocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+        }
+
         // Allocate the shader buffer
         {
             const VkBufferCreateInfo bufferInfo = vk::bufferCreateInfo(usageFlags | VK_BUFFER_USAGE_TRANSFER_DST_BIT, dataSize);
@@ -79,7 +88,9 @@ namespace Divide {
         request._immediate = true;
         VK_API::RegisterTransferRequest(request);
 
-        if (_params._updateFrequency == BufferUpdateFrequency::ONCE) {
+        if (_params._updateFrequency == BufferUpdateFrequency::ONCE ||
+            _params._updateFrequency == BufferUpdateFrequency::OFTEN)
+        {
             _stagingBuffer.reset();
         }
     }
@@ -97,23 +108,38 @@ namespace Divide {
         DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
         range._startOffset += getStartOffset(false);
 
-        Byte* mappedRange = (Byte*)_stagingBuffer->_allocInfo.pMappedData;
+        Byte* mappedRange = nullptr;
+        if (_params._updateFrequency != BufferUpdateFrequency::OFTEN) {
+            mappedRange = (Byte*)_stagingBuffer->_allocInfo.pMappedData;
+        } else {
+            if (!_lockManager.waitForLockedRange(range._startOffset, range._length)) {
+                DIVIDE_UNEXPECTED_CALL();
+            }
+            mappedRange = (Byte*)_bufferImpl->_allocInfo.pMappedData;
+        }
+
         if (data == nullptr) {
             memcpy(&mappedRange[range._startOffset], data, range._length);
         } else {
             memset(&mappedRange[range._startOffset], 0, range._length);
         }
 
-        // Queue a command to copy from the staging buffer to the vertex buffer
-        VKTransferQueue::TransferRequest request{};
-        request.srcOffset = range._startOffset;
-        request.dstOffset = range._startOffset;
-        request.size = range._length;
-        request.srcBuffer = _stagingBuffer->_buffer;
-        request.dstBuffer = _bufferImpl->_buffer;
-        request.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        request.dstStageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
-        VK_API::RegisterTransferRequest(request);
+        if (_params._updateFrequency == BufferUpdateFrequency::OFTEN) {
+            if (!_lockManager.lockRange(range._startOffset, range._length, _lockManager.createSyncObject())) {
+                DIVIDE_UNEXPECTED_CALL();
+            }
+        } else {
+            // Queue a command to copy from the staging buffer to the vertex buffer
+            VKTransferQueue::TransferRequest request{};
+            request.srcOffset = range._startOffset;
+            request.dstOffset = range._startOffset;
+            request.size = range._length;
+            request.srcBuffer = _stagingBuffer->_buffer;
+            request.dstBuffer = _bufferImpl->_buffer;
+            request.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            request.dstStageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+            VK_API::RegisterTransferRequest(request);
+        }
 
         return { this, range };
     }
@@ -130,11 +156,16 @@ namespace Divide {
 
             UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()->_allocatorInstance._allocatorLock);
 
-            void* mappedData;
-            vmaMapMemory(*VK_API::GetStateTracker()->_allocatorInstance._allocator, _bufferImpl->_allocation, &mappedData);
-            Byte* mappedRange = (Byte*)mappedData;
-            memcpy(outData.first, &mappedRange[range._startOffset], std::min(std::min(range._length, outData.second), _alignedBufferSize));
-            vmaUnmapMemory(*VK_API::GetStateTracker()->_allocatorInstance._allocator, _bufferImpl->_allocation);
+            if (_params._updateFrequency == BufferUpdateFrequency::OFTEN) {
+                Byte* mappedRange = (Byte*)_bufferImpl->_allocInfo.pMappedData;
+                memcpy(outData.first, &mappedRange[range._startOffset], std::min(std::min(range._length, outData.second), _alignedBufferSize));
+            } else {
+                void* mappedData;
+                vmaMapMemory(*VK_API::GetStateTracker()->_allocatorInstance._allocator, _bufferImpl->_allocation, &mappedData);
+                Byte* mappedRange = (Byte*)mappedData;
+                memcpy(outData.first, &mappedRange[range._startOffset], std::min(std::min(range._length, outData.second), _alignedBufferSize));
+                vmaUnmapMemory(*VK_API::GetStateTracker()->_allocatorInstance._allocator, _bufferImpl->_allocation);
+            }
         }
     }
 

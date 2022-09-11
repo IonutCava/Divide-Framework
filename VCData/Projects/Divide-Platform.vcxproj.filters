@@ -376,6 +376,12 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\vkDescriptors.h">
       <Filter>Video\RenderBackend\Vulkan\Headers</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkLockManager.h">
+      <Filter>Video\RenderBackend\Vulkan\Buffers\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\Headers\LockManager.h">
+      <Filter>Video\Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="../../Source Code/Platform\Input\AutoKeyRepeat.cpp">
@@ -650,6 +656,12 @@
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\vkDescriptors.cpp">
       <Filter>Video\RenderBackend\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkLockManager.cpp">
+      <Filter>Video\RenderBackend\Vulkan\Buffers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\LockManager.cpp">
+      <Filter>Video</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

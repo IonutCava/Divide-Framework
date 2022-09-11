@@ -491,11 +491,11 @@ bool GL_API::beginFrame(DisplayWindow& window, const bool global) {
     auto& stateTracker = GetStateTracker();
     while(!stateTracker->_endFrameFences.empty()) {
         auto& sync = stateTracker->_endFrameFences.front();
-        const GLenum waitRet = glClientWaitSync(sync._syncObject, SyncObjectMask::GL_NONE_BIT, 0u);
+        const GLenum waitRet = glClientWaitSync(sync.first, SyncObjectMask::GL_NONE_BIT, 0u);
         DIVIDE_ASSERT(waitRet != GL_WAIT_FAILED, "GL_API::beginFrame error: Not sure what to do here. Probably raise an exception or something.");
         if (waitRet == GL_ALREADY_SIGNALED || waitRet == GL_CONDITION_SATISFIED) {
-            stateTracker->_lastSyncedFrameNumber = sync._frameNumber;
-            DestroyFenceSync(sync._syncObject);
+            stateTracker->_lastSyncedFrameNumber = sync.second;
+            DestroyFenceSync(sync.first);
             stateTracker->_endFrameFences.pop();
         } else {
             break;
@@ -597,7 +597,6 @@ void GL_API::endFrameGlobal(const DisplayWindow& window) {
     OPTICK_EVENT("GL_API: Post-Swap cleanup");
     s_textureViewCache.onFrameEnd();
     s_glFlushQueued.store(false);
-    glLockManager::CleanExpiredSyncObjects(GFXDevice::FrameCount());
 
     if (_runQueries) {
         OPTICK_EVENT("GL_API: Time Query");
@@ -632,7 +631,7 @@ void GL_API::endFrameGlobal(const DisplayWindow& window) {
     _context.getPerformanceMetrics()._generatedRenderTargetCount = to_U32(_context.renderTargetPool().getRenderTargets().size());
     _runQueries = _context.queryPerformanceStats();
 
-    GetStateTracker()->_endFrameFences.push(CreateFrameFenceSync());
+    GetStateTracker()->_endFrameFences.push(std::make_pair(CreateFenceSync(), GFXDevice::FrameCount()));
     _context.getPerformanceMetrics()._queuedGPUFrames = GetStateTracker()->_endFrameFences.size();
 }
 
@@ -1184,9 +1183,15 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             }
 
             if (!crtCmd->_bufferLocks.empty()) {
-                const SyncObjectHandle sync = glLockManager::CreateSyncObject(crtCmd->_syncFlag);
+                
+                SyncObjectHandle handle{};
                 for (const BufferLock& lock : crtCmd->_bufferLocks) {
-                    if (!static_cast<const glShaderBuffer*>(lock._targetBuffer)->bufferImpl()->lockByteRange(lock._range, sync)) {
+                    const glShaderBuffer* shaderBuffer = static_cast<const glShaderBuffer*>(lock._targetBuffer);
+                    glLockManager& lockManager = shaderBuffer->bufferImpl()->_lockManager;
+                    if (handle._id == SyncObjectHandle::INVALID_SYNC_ID) {
+                        handle = lockManager.createSyncObject();
+                    }
+                    if (!lockManager.lockRange(lock._range._startOffset, lock._range._length, handle)) {
                         DIVIDE_UNEXPECTED_CALL();
                     }
                 }
@@ -1784,20 +1789,6 @@ void GL_API::DestroyFenceSync(GLsync& sync) {
     --s_fenceSyncCounter[s_LockFrameLifetime - 1u];
     glDeleteSync(sync);
     sync = nullptr;
-}
-
-FrameDependendSync GL_API::CreateFrameFenceSync() {
-    return {
-        CreateFenceSync(),
-        GFXDevice::FrameCount()
-    };
-}
-
-void GL_API::DestroyFrameFenceSync(FrameDependendSync& sync) {
-    if (sync._syncObject != nullptr) {
-        DestroyFenceSync(sync._syncObject);
-    }
-    sync._frameNumber = std::numeric_limits<U64>::max();
 }
 
 };

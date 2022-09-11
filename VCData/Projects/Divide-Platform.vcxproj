@@ -97,6 +97,8 @@
     <ClInclude Include="../../Source Code\Platform\Video\Headers\PushConstant.h" />
     <ClInclude Include="../../Source Code\Platform\Video\RenderBackend\None\Headers\NonePlaceholderObjects.h" />
     <ClInclude Include="../../Source Code\Platform\Video\RenderBackend\None\Headers\NoneWrapper.h" />
+    <ClInclude Include="..\..\Source Code\Platform\Video\Headers\LockManager.h" />
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkLockManager.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\VKWrapper.h" />
     <ClInclude Include="../../Source Code\Platform\Headers\SDLEventManager.h" />
     <ClInclude Include="../../Source Code\Platform\Headers\SDLEventListener.h" />
@@ -212,6 +214,7 @@
     <ClCompile Include="../../Source Code\Platform\SDLEventListener.cpp" />
     <ClCompile Include="../../Source Code\Platform\SDLEventManager.cpp" />
     <ClCompile Include="../../Source Code\Platform\Video\Commands.cpp" />
+    <ClCompile Include="..\..\Source Code\Platform\Video\LockManager.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\glStateTracker.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\ConditionalWait.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\File\ResourcePath.cpp" />
@@ -239,6 +242,7 @@
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkBufferImpl.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkFramebuffer.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkGenericVertexData.cpp" />
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkLockManager.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkShaderBuffer.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Shaders\vkShaderProgram.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Textures\vkSamplerObject.cpp" />

@@ -85,7 +85,7 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params, c
     }
 
     if (!Runtime::isMainThread()) {
-        _lockManager.lockRange(0u, _params._dataSize);
+        _lockManager.lockRange(0u, _params._dataSize, _lockManager.createSyncObject(LockManager::DEFAULT_SYNC_FLAG_SSBO));
     }
 
     context.getPerformanceMetrics()._bufferVRAMUsage += params._dataSize;
@@ -94,7 +94,7 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params, c
 glBufferImpl::~glBufferImpl()
 {
     if (_memoryBlock._bufferHandle != GLUtil::k_invalidObjectID) {
-        if (!waitByteRange(0u, _memoryBlock._size, true)) {
+        if (!_lockManager.waitForLockedRange(0u, _memoryBlock._size)) {
             DIVIDE_UNEXPECTED_CALL();
         }
 
@@ -111,22 +111,6 @@ glBufferImpl::~glBufferImpl()
     }
 }
 
-bool glBufferImpl::lockByteRange(const size_t offsetInBytes, const size_t rangeInBytes, SyncObjectHandle sync) {
-    if (_memoryBlock._ptr != nullptr) {
-        return _lockManager.lockRange(_memoryBlock._offset + offsetInBytes, rangeInBytes, sync);
-    }
-
-    return true;
-}
-
-bool glBufferImpl::waitByteRange(const size_t offsetInBytes, const size_t rangeInBytes, const bool blockClient) {
-    if (_memoryBlock._ptr != nullptr) {
-        return _lockManager.waitForLockedRange(_memoryBlock._offset + offsetInBytes, rangeInBytes, blockClient);
-    }
-
-    return true;
-}
-
 void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t rangeInBytes, const bufferPtr data, const bool firstWrite) {
 
     assert(rangeInBytes > 0u && offsetInBytes + rangeInBytes <= _memoryBlock._size);
@@ -136,7 +120,7 @@ void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t ra
     OPTICK_TAG("Offset", to_U32(offsetInBytes));
     OPTICK_TAG("Range", to_U32(rangeInBytes));
 
-    if (!waitByteRange(offsetInBytes, rangeInBytes, true)) {
+    if (!_lockManager.waitForLockedRange(offsetInBytes, rangeInBytes)) {
         Console::errorfn(Locale::Get(_ID("ERROR_BUFFER_LOCK_MANAGER_WAIT")));
     }
 
@@ -162,7 +146,7 @@ void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t ra
 
 void glBufferImpl::readBytes(const size_t offsetInBytes, const size_t rangeInBytes, std::pair<bufferPtr, size_t> outData) {
 
-    if (!waitByteRange(offsetInBytes, rangeInBytes, true)) {
+    if (!_lockManager.waitForLockedRange(offsetInBytes, rangeInBytes)) {
         DIVIDE_UNEXPECTED_CALL();
     }
 

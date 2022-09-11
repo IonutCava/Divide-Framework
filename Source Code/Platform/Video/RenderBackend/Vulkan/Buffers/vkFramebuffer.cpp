@@ -72,6 +72,8 @@ namespace Divide {
                 vkTexture* vkTex = static_cast<vkTexture*>(getAttachment(RTAttachmentType::Colour, i)->texture().get());
                 imageViewDescriptor._format = vkTex->vkFormat();
                 imageViewDescriptor._type = vkTex->descriptor().texType();
+                imageViewDescriptor._usage = ImageUsage::RT_COLOUR_ATTACHMENT;
+
                 info.imageView = vkTex->getImageView(imageViewDescriptor);
 
                 if (clearPolicy._clearColourDescriptors[i]._index != MAX_RT_COLOUR_ATTACHMENTS) {

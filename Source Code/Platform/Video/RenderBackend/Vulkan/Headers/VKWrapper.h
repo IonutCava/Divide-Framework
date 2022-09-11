@@ -100,6 +100,8 @@ struct VMAAllocatorInstance {
 
 struct VKStateTracker {
     VKDevice* _device{ nullptr };
+    VKSwapChain* _swapChain{ nullptr };
+
     VKImmediateCmdContext* _cmdContext{ nullptr };
     VMAAllocatorInstance _allocatorInstance{};
     std::array < std::pair<Str64, U32>, 32 > _debugScope;
@@ -111,6 +113,7 @@ struct VKStateTracker {
     bool _alphaToCoverage{ false };
     VKDynamicState _dynamicState{};
     VkPipelineRenderingCreateInfo _pipelineCreateInfo{};
+    U64 _lastSyncedFrameNumber{ 0u };
 };
 FWD_DECLARE_MANAGED_STRUCT(VKStateTracker);
 

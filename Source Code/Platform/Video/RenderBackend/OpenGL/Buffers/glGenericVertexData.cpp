@@ -31,7 +31,7 @@ void glGenericVertexData::reset() {
 void glGenericVertexData::draw(const GenericDrawCommand& command, [[maybe_unused]]VDIUserData* userData) {
     DIVIDE_ASSERT(GL_API::GetStateTracker()->_primitiveRestartEnabled == primitiveRestartRequired());
     DIVIDE_ASSERT(_idxBuffers.size() > command._bufferFlag);
-    _lockManager.wait(false);
+    _lockManager.waitForLockedRange(0u, std::numeric_limits<size_t>::max());
 
     // Update buffer bindings
     for (const auto& buffer : _bufferObjects) {
@@ -119,7 +119,7 @@ void glGenericVertexData::setIndexBuffer(const IndexBuffer& indices) {
             glNamedBufferSubData(oldIdxBufferEntry->_handle, 0u, range, data);
         }
         if (!Runtime::isMainThread()) {
-            _lockManager.lockRange(0u, range);
+            _lockManager.lockRange(0u, range, _lockManager.createSyncObject(LockManager::DEFAULT_SYNC_FLAG_GVD));
             glFlush();
         }
     }
@@ -243,7 +243,7 @@ void glGenericVertexData::lockBuffersInternal(const bool force) {
     SyncObjectHandle sync{};
     for (const auto& buffer : _bufferObjects) {
         if ((buffer._useAutoSyncObjects || force) && buffer._usedAfterWrite) {
-            sync = glLockManager::CreateSyncObject(glLockManager::DEFAULT_SYNC_FLAG_GVD);
+            sync = _lockManager.createSyncObject(glLockManager::DEFAULT_SYNC_FLAG_GVD);
             break;
         }
     }
@@ -253,7 +253,7 @@ void glGenericVertexData::lockBuffersInternal(const bool force) {
             if ((buffer._useAutoSyncObjects || force) && buffer._usedAfterWrite) {
                 DIVIDE_ASSERT(buffer._writtenRange._length > 0u);
 
-                if (!buffer._buffer->lockByteRange(buffer._writtenRange, sync)) {
+                if (!buffer._buffer->_lockManager.lockRange(buffer._writtenRange._startOffset, buffer._writtenRange._length, sync)) {
                     DIVIDE_UNEXPECTED_CALL();
                 }
                 buffer._writtenRange = {};

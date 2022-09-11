@@ -35,7 +35,7 @@
 
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 
-#include "vkBufferImpl.h"
+#include "vkLockManager.h"
 
 namespace Divide {
 
@@ -54,6 +54,7 @@ namespace Divide {
         AllocatedBuffer_uptr _bufferImpl{ nullptr };
         AllocatedBuffer_uptr _stagingBuffer{ nullptr };
         Mutex _stagingBufferLock;
+        vkLockManager _lockManager;
     };
 } //namespace Divide
 

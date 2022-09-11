@@ -127,6 +127,8 @@ inline std::string VKErrorString(VkResult errorCode)
     extern std::array<VkShaderStageFlagBits, to_base(ShaderType::COUNT)> vkShaderStageTable;
 
 namespace VKUtil {
+    constexpr U8 k_invalidSyncID = std::numeric_limits<U8>::max();
+
     void fillEnumTables(VkDevice device);
 
     [[nodiscard]] VkFormat internalFormat(GFXImageFormat baseFormat, GFXDataFormat dataType, bool srgb, bool normalized) noexcept;

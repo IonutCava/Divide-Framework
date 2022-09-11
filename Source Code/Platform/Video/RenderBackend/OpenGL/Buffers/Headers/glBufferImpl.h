@@ -66,17 +66,6 @@ public:
     explicit glBufferImpl(GFXDevice& context, const BufferImplParams& params, const std::pair<bufferPtr, size_t>& initialData, const char* name);
     virtual ~glBufferImpl();
 
-    // Returns false if we encounter an error
-    [[nodiscard]] bool lockByteRange(size_t offsetInBytes, size_t rangeInBytes, SyncObjectHandle sync);
-    [[nodiscard]] inline bool lockByteRange(const BufferRange range, SyncObjectHandle sync) {
-        return lockByteRange(range._startOffset, range._length, sync);
-    }
-
-    [[nodiscard]] bool waitByteRange(size_t offsetInBytes, size_t rangeInBytes, bool blockClient);
-    [[nodiscard]] inline bool waitByteRange(const BufferRange range, bool blockClient) {
-        return waitByteRange(range._startOffset, range._length, blockClient);
-    }
-
     void writeOrClearBytes(size_t offsetInBytes, size_t rangeInBytes, bufferPtr data, bool firstWrite = false);
     inline void writeOrClearBytes(const BufferRange range, bufferPtr data, bool firstWrite = false) {
         writeOrClearBytes(range._startOffset, range._length, data, firstWrite);
@@ -88,8 +77,9 @@ public:
     }
 
 public:
+    glLockManager _lockManager;
+
     PROPERTY_R(BufferImplParams, params);
-    
     PROPERTY_R(GLUtil::GLMemory::Block, memoryBlock);
 
 protected:
@@ -97,7 +87,6 @@ protected:
 
     GLuint _copyBufferTarget = GLUtil::k_invalidObjectID;
     size_t _copyBufferSize = 0u;
-    glLockManager _lockManager;
     mutable Mutex _mapLock;
 };
 

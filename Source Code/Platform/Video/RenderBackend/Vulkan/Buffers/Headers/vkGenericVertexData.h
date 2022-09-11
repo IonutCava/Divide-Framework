@@ -34,7 +34,7 @@
 #define VK_GENERIC_VERTEX_DATA_H
 
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
-#include "vkBufferImpl.h"
+#include "vkLockManager.h"
 
 namespace Divide {
 
@@ -76,6 +76,8 @@ namespace Divide {
 
         vector<IndexBufferEntry> _idxBuffers;
         vector<GenericBufferImpl> _bufferObjects;
+
+        vkLockManager _lockManager;
     };
 
 } //namespace Divide

@@ -48,7 +48,7 @@ bool glTexture::unload() {
 
 void glTexture::postLoad() {
     DIVIDE_ASSERT(Runtime::isMainThread());
-    _lockManager.wait(true);
+    _lockManager.waitForLockedRange(0, std::numeric_limits<size_t>::max());
     Texture::postLoad();
 }
 
@@ -173,7 +173,7 @@ void glTexture::submitTextureData() {
 
     _textureHandle = _loadingHandle;
     if (!Runtime::isMainThread()) {
-        _lockManager.lock();
+        _lockManager.lockRange(0, std::numeric_limits<size_t>::max(), _lockManager.createSyncObject(LockManager::DEFAULT_SYNC_FLAG_TEXTURE));
         glFlush();
     }
 }

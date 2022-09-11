@@ -96,6 +96,13 @@ namespace Divide {
         VmaAllocationCreateInfo vmaallocInfo{};
         vmaallocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
         vmaallocInfo.flags = 0;
+        if (params._bufferParams._updateFrequency == BufferUpdateFrequency::OFTEN) {
+            // If we write to this buffer often (e.g. GPU uniform blocks), we might as well persistently map it and use
+            // a lock manager to protect writes (same as GL_API's lockManager system)
+            // A staging buffer is just way too slow for multiple writes per frame.
+            vmaallocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+            vmaallocInfo.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        }
 
         // Allocate the vertex buffer (as a vb buffer and transfer destination)
         {
@@ -129,7 +136,10 @@ namespace Divide {
         request._immediate = true;
         VK_API::RegisterTransferRequest(request);
 
-        if (params._bufferParams._updateFrequency == BufferUpdateFrequency::ONCE) {
+        if (params._bufferParams._updateFrequency == BufferUpdateFrequency::ONCE ||
+            params._bufferParams._updateFrequency == BufferUpdateFrequency::OFTEN)
+        {
+            // For single upload we can destroy this now. Make sure the transfer request was immediate!
             impl->_stagingBufferVtx.reset();
         }
     }
@@ -256,10 +266,13 @@ namespace Divide {
             }
         }
 
-        DIVIDE_ASSERT(impl != nullptr && impl->_stagingBufferVtx != nullptr, "vkGenericVertexData error: set buffer called for invalid buffer index!");
-
         const BufferParams& bufferParams = impl->_buffer->_params;
         DIVIDE_ASSERT(bufferParams._updateFrequency != BufferUpdateFrequency::ONCE);
+
+        DIVIDE_ASSERT(impl != nullptr, "vkGenericVertexData error: set buffer called for invalid buffer index!");
+        if (bufferParams._updateFrequency == BufferUpdateFrequency::OFTEN) {
+            DIVIDE_ASSERT(impl->_stagingBufferVtx == nullptr, "vkGenericVertexData error: staging buffer set for buffer that should have been persistently coherently mapped");
+        }
 
         // Calculate the size of the data that needs updating
         const size_t dataCurrentSizeInBytes = elementCountRange * bufferParams._elementSize;
@@ -272,21 +285,36 @@ namespace Divide {
             offsetInBytes += bufferParams._elementCount * bufferParams._elementSize * queueIndex();
         }
 
-        Byte* mappedRange = (Byte*)impl->_stagingBufferVtx->_allocInfo.pMappedData;
+        Byte* mappedRange = nullptr;
+        if (bufferParams._updateFrequency != BufferUpdateFrequency::OFTEN) {
+            mappedRange = (Byte*)impl->_stagingBufferVtx->_allocInfo.pMappedData;
+        } else {
+            if (!_lockManager.waitForLockedRange(offsetInBytes, dataCurrentSizeInBytes)) {
+                DIVIDE_UNEXPECTED_CALL();
+            }
+            mappedRange = (Byte*)impl->_buffer->_allocInfo.pMappedData;
+        }
+
         if (data == nullptr) {
             memset(&mappedRange[offsetInBytes], 0, dataCurrentSizeInBytes);
         } else {
             memcpy(&mappedRange[offsetInBytes], data, dataCurrentSizeInBytes);
         }
 
-        VKTransferQueue::TransferRequest request{};
-        request.srcOffset = offsetInBytes;
-        request.dstOffset = offsetInBytes;
-        request.size = dataCurrentSizeInBytes;
-        request.srcBuffer = impl->_stagingBufferVtx->_buffer;
-        request.dstBuffer = impl->_buffer->_buffer;
-        request.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-        request.dstStageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-        VK_API::RegisterTransferRequest(request);
+        if (bufferParams._updateFrequency == BufferUpdateFrequency::OFTEN) {
+            if (!_lockManager.lockRange(offsetInBytes, dataCurrentSizeInBytes, _lockManager.createSyncObject(LockManager::DEFAULT_SYNC_FLAG_GVD))) {
+                DIVIDE_UNEXPECTED_CALL();
+            }
+        } else {
+            VKTransferQueue::TransferRequest request{};
+            request.srcOffset = offsetInBytes;
+            request.dstOffset = offsetInBytes;
+            request.size = dataCurrentSizeInBytes;
+            request.srcBuffer = impl->_stagingBufferVtx->_buffer;
+            request.dstBuffer = impl->_buffer->_buffer;
+            request.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+            request.dstStageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+            VK_API::RegisterTransferRequest(request);
+        }
     }
 }; //namespace Divide

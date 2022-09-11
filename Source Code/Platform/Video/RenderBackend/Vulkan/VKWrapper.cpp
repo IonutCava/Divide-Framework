@@ -369,6 +369,8 @@ namespace Divide {
         setViewport({ 0, 0, windowDimensions.width, windowDimensions.height });
         setScissor({ 0, 0, windowDimensions.width, windowDimensions.height });
         _drawIndirectBuffer = VK_NULL_HANDLE;
+        VK_API::GetStateTracker()->_lastSyncedFrameNumber = GFXDevice::FrameCount();
+        vkLockManager::CleanExpiredSyncObjects(VK_API::GetStateTracker()->_lastSyncedFrameNumber);
 
         return true;
     }
@@ -574,9 +576,10 @@ namespace Divide {
         }
 
         _swapChain = eastl::make_unique<VKSwapChain>(*this, *_device, window);
-        VK_API::s_stateTracker->_device = _device.get();
-
         _cmdContext = eastl::make_unique<VKImmediateCmdContext>(*_device);
+
+        VK_API::s_stateTracker->_device = _device.get();
+        VK_API::s_stateTracker->_swapChain = _swapChain.get();
         VK_API::s_stateTracker->_cmdContext = _cmdContext.get();
 
         _descriptorAllocator = eastl::make_unique<DescriptorAllocator>(_device->getVKDevice());
@@ -713,7 +716,8 @@ namespace Divide {
             }
             s_samplerMap.clear();
         }
-
+        
+        vkLockManager::Clear();
         if (_device != nullptr) {
             if (_device->getVKDevice() != VK_NULL_HANDLE) {
                 vkDeviceWaitIdle(_device->getVKDevice());

@@ -29,30 +29,30 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _GL_LOCK_MANAGER_H_
-#define _GL_LOCK_MANAGER_H_
+#ifndef _VK_LOCK_MANAGER_H_
+#define _VK_LOCK_MANAGER_H_
 
-#include "glResources.h"
+#include "vkBufferImpl.h"
+#include "Platform/Video/RenderBackend/Vulkan/Headers/vkResources.h"
 #include "Platform/Video/Headers/LockManager.h"
 
 namespace Divide {
 
-struct glSyncObject final : SyncObject {
-    void reset() override;
+    struct vkSyncObject final : SyncObject {
+        void reset() noexcept override;
 
-    GLsync _syncObject{ nullptr };
-};
+        VkFence _fence{ VK_NULL_HANDLE };
+    };
 
-// --------------------------------------------------------------------------------------------------------------------
-class glLockManager final : public LockManager {
-  public:
-      ~glLockManager();
+    class vkLockManager : public LockManager {
+    public:
+        ~vkLockManager();
 
-  protected:
-      bool waitForLockedRangeLocked(const SyncObject_uptr& sync, const BufferRange& testRange, const BufferLockInstance& lock) override;
-      bool initLockPoolEntry(BufferLockPoolEntry& entry) override;
-};
+    protected:
+        bool waitForLockedRangeLocked(const SyncObject_uptr& sync, const BufferRange& testRange, const BufferLockInstance& lock) override;
+        bool initLockPoolEntry(BufferLockPoolEntry& entry) override;
+    };
 
-};  // namespace Divide
+}; //namespace Divide
 
-#endif  //_GL_LOCK_MANAGER_H_
+#endif //_VK_LOCK_MANAGER_H_

@@ -265,4 +265,8 @@ namespace Divide {
     VkFramebuffer VKSwapChain::getCurrentFrameBuffer() const noexcept {
         return _framebuffers[_swapchainImageIndex];
     }
+
+    VkFence VKSwapChain::getCurrentFence() const noexcept {
+        return _inFlightFences[_currentFrameIdx];
+    }
 }; //namespace Divide

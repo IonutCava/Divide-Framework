@@ -220,7 +220,7 @@ namespace Divide {
         SamplerBoundMapDef _samplerBoundMap;
 
         VAOBindings _vaoBufferData;
-        eastl::queue<FrameDependendSync> _endFrameFences;
+        eastl::queue<std::pair<GLsync, U64>> _endFrameFences;
         U64 _lastSyncedFrameNumber{ 0u };
 
     }; //struct GLStateTracker

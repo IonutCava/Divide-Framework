@@ -59,6 +59,8 @@ namespace Divide {
         [[nodiscard]] VkRenderPass   getRenderPass() const noexcept;
         [[nodiscard]] VkFramebuffer  getCurrentFrameBuffer() const noexcept;
 
+        [[nodiscard]] VkFence getCurrentFence() const noexcept;
+
     private:
         [[nodiscard]] ErrorCode createSwapChainInternal(bool vSync, bool adaptiveSync, VkExtent2D windowExtents, VkSurfaceKHR targetSurface);
         [[nodiscard]] ErrorCode createFramebuffersInternal(VkExtent2D windowExtents, VkSurfaceKHR targetSurface);
