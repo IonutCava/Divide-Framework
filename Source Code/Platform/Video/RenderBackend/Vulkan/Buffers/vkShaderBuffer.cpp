@@ -95,26 +95,17 @@ namespace Divide {
         }
     }
 
-    BufferLock vkShaderBuffer::clearBytes(BufferRange range) noexcept {
-        return writeBytes(range, nullptr);
-    }
-
-    BufferLock vkShaderBuffer::writeBytes(BufferRange range, bufferPtr data) noexcept {
-        DIVIDE_ASSERT(range._length > 0 && _params._updateFrequency != BufferUpdateFrequency::ONCE);
-        OPTICK_EVENT();
+    void vkShaderBuffer::writeBytesInternal(const BufferRange range, bufferPtr data) noexcept {
+        if (!_lockManager.waitForLockedRange(range._startOffset, range._length)) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
 
         UniqueLock<Mutex> w_lock(_stagingBufferLock);
-
-        DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
-        range._startOffset += getStartOffset(false);
 
         Byte* mappedRange = nullptr;
         if (_params._updateFrequency != BufferUpdateFrequency::OFTEN) {
             mappedRange = (Byte*)_stagingBuffer->_allocInfo.pMappedData;
         } else {
-            if (!_lockManager.waitForLockedRange(range._startOffset, range._length)) {
-                DIVIDE_UNEXPECTED_CALL();
-            }
             mappedRange = (Byte*)_bufferImpl->_allocInfo.pMappedData;
         }
 
@@ -140,32 +131,23 @@ namespace Divide {
             request.dstStageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
             VK_API::RegisterTransferRequest(request);
         }
-
-        return { this, range };
     }
 
-    void vkShaderBuffer::readBytes(BufferRange range, std::pair<bufferPtr, size_t> outData) const noexcept {
-        OPTICK_EVENT();
+    void vkShaderBuffer::readBytesInternal(BufferRange range, std::pair<bufferPtr, size_t> outData) noexcept {
+        if (!_lockManager.waitForLockedRange(range._startOffset, range._length)) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
 
-        DIVIDE_ASSERT(_usage == ShaderBuffer::Usage::UNBOUND_BUFFER &&
-                      _params._hostVisible &&
-                       range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
-
-        if (range._length > 0) {
-            range._startOffset += getStartOffset(true);
-
-            UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()->_allocatorInstance._allocatorLock);
-
-            if (_params._updateFrequency == BufferUpdateFrequency::OFTEN) {
-                Byte* mappedRange = (Byte*)_bufferImpl->_allocInfo.pMappedData;
-                memcpy(outData.first, &mappedRange[range._startOffset], std::min(std::min(range._length, outData.second), _alignedBufferSize));
-            } else {
-                void* mappedData;
-                vmaMapMemory(*VK_API::GetStateTracker()->_allocatorInstance._allocator, _bufferImpl->_allocation, &mappedData);
-                Byte* mappedRange = (Byte*)mappedData;
-                memcpy(outData.first, &mappedRange[range._startOffset], std::min(std::min(range._length, outData.second), _alignedBufferSize));
-                vmaUnmapMemory(*VK_API::GetStateTracker()->_allocatorInstance._allocator, _bufferImpl->_allocation);
-            }
+        UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()->_allocatorInstance._allocatorLock);
+        if (_params._updateFrequency == BufferUpdateFrequency::OFTEN) {
+            Byte* mappedRange = (Byte*)_bufferImpl->_allocInfo.pMappedData;
+            memcpy(outData.first, &mappedRange[range._startOffset], std::min(std::min(range._length, outData.second), _alignedBufferSize));
+        } else {
+            void* mappedData;
+            vmaMapMemory(*VK_API::GetStateTracker()->_allocatorInstance._allocator, _bufferImpl->_allocation, &mappedData);
+            Byte* mappedRange = (Byte*)mappedData;
+            memcpy(outData.first, &mappedRange[range._startOffset], std::min(std::min(range._length, outData.second), _alignedBufferSize));
+            vmaUnmapMemory(*VK_API::GetStateTracker()->_allocatorInstance._allocator, _bufferImpl->_allocation);
         }
     }
 

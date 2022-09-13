@@ -79,6 +79,8 @@ bool operator!=(const glFramebuffer::BindingState& lhs, const glFramebuffer::Bin
         lhs._layeredRendering != rhs._layeredRendering;
 }
 
+bool glFramebuffer::s_alphaToCoverageEnabled = false;
+
 glFramebuffer::glFramebuffer(GFXDevice& context, const RenderTargetDescriptor& descriptor)
     : RenderTarget(context, descriptor),
       _activeColourBuffers{},
@@ -345,7 +347,7 @@ void glFramebuffer::prepareBuffers(const RTDrawDescriptor& drawPolicy) {
                 temp = GL_NONE;
                 if (IsEnabled(drawPolicy._drawMask, RTAttachmentType::Colour, j) && usesAttachment(RTAttachmentType::Colour, j)) {
                     temp = static_cast<GLenum>(getAttachment(RTAttachmentType::Colour, j)->binding());
-                };
+                }
             }
             if (_activeColourBuffers[j] != temp) {
                 _activeColourBuffers[j] = temp;
@@ -453,8 +455,12 @@ void glFramebuffer::begin(const RTDrawDescriptor& drawPolicy, const RTClearDescr
 
     clear(clearPolicy);
 
-    if (_descriptor._msaaSamples > 0u && drawPolicy._alphaToCoverage) {
+    if (_descriptor._msaaSamples > 0u && drawPolicy._alphaToCoverage && !s_alphaToCoverageEnabled) {
         glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE);
+        s_alphaToCoverageEnabled = true;
+    } else if (s_alphaToCoverageEnabled) {
+        glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
+        s_alphaToCoverageEnabled = false;
     }
 
     /// Set the depth range
@@ -468,18 +474,6 @@ void glFramebuffer::begin(const RTDrawDescriptor& drawPolicy, const RTClearDescr
 void glFramebuffer::end() const {
     OPTICK_EVENT();
 
-    if (_previousPolicy._setViewport) {
-        _context.setViewport(_prevViewport);
-    }
-
-    if (_descriptor._msaaSamples > 0u && _previousPolicy._alphaToCoverage) {
-        glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
-    }
-
-    queueMipMapRecomputation();
-}
-
-void glFramebuffer::queueMipMapRecomputation() const {
     for (U8 i = 0u; i < RT_MAX_COLOUR_ATTACHMENTS + 1; ++i) {
         QueueMipMapsRecomputation(_attachments[i]);
     }

@@ -67,14 +67,7 @@ public:
     virtual ~glBufferImpl();
 
     void writeOrClearBytes(size_t offsetInBytes, size_t rangeInBytes, bufferPtr data, bool firstWrite = false);
-    inline void writeOrClearBytes(const BufferRange range, bufferPtr data, bool firstWrite = false) {
-        writeOrClearBytes(range._startOffset, range._length, data, firstWrite);
-    }
-
     void readBytes(size_t offsetInBytes, size_t rangeInBytes, std::pair<bufferPtr, size_t> outData);
-    inline void readBytes(const BufferRange range, std::pair<bufferPtr, size_t> outData) {
-        readBytes(range._startOffset, range._length, outData);
-    }
 
 public:
     glLockManager _lockManager;

@@ -48,32 +48,12 @@ glShaderBuffer::glShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor&
     }
 }
 
-BufferLock glShaderBuffer::clearBytes(BufferRange range) {
-    return writeBytes(range, nullptr);
+void glShaderBuffer::writeBytesInternal(const BufferRange range, bufferPtr data) {
+    bufferImpl()->writeOrClearBytes(range._startOffset, range._length, data);
 }
 
-BufferLock glShaderBuffer::writeBytes(BufferRange range, bufferPtr data) {
-    DIVIDE_ASSERT(range._length > 0);
-    OPTICK_EVENT();
-
-    DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
-    range._startOffset += getStartOffset(false);
-
-    bufferImpl()->writeOrClearBytes(range, data);
-    return { this, range };
-}
-
-void glShaderBuffer::readBytes(BufferRange range, std::pair<bufferPtr, size_t> outData) const {
-    DIVIDE_ASSERT(_usage == ShaderBuffer::Usage::UNBOUND_BUFFER && _params._hostVisible);
-
-    if (range._length > 0) {
-        OPTICK_EVENT();
-
-        DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
-        range._startOffset += getStartOffset(true);
-
-        bufferImpl()->readBytes(range, outData);
-    }
+void glShaderBuffer::readBytesInternal(const BufferRange range, std::pair<bufferPtr, size_t> outData) {
+    bufferImpl()->readBytes(range._startOffset, range._length, outData);
 }
 
 bool glShaderBuffer::bindByteRange(const U8 bindIndex, BufferRange range) {

@@ -217,7 +217,6 @@ void RenderPassManager::render(const RenderParams& params) {
        const Rect<I32>& targetViewport = params._targetViewport;
        // Apply gamma correction here as PostFX requires everything in linear space
        gfx.drawTextureInViewport(texData, screenAtt->descriptor()._samplerHash, targetViewport, true, false, false, buf);
-
        {
            Time::ScopedTimer timeGUIBuffer(*_processGUITimer);
            Attorney::SceneManagerRenderPass::drawCustomUI(sceneManager, targetViewport, buf);
@@ -228,11 +227,9 @@ void RenderPassManager::render(const RenderParams& params) {
            sceneManager->getEnvProbes()->prepareDebugData();
            gfx.renderDebugUI(targetViewport, buf);
        }
-
        if (editorRunning) {
            GFX::EnqueueCommand(buf, GFX::EndRenderPassCommand{});
        }
-
        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(buf);
     }
     TaskPool& pool = context.taskPool(TaskPoolType::HIGH_PRIORITY);

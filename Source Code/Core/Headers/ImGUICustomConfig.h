@@ -36,7 +36,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 	bool DebugBreak(const bool condition) noexcept;
 	namespace Assert {
-		bool DIVIDE_ASSERT_FUNC(const bool expression, const char* file, int line, const char* failMessage) noexcept;
+		bool DIVIDE_ASSERT_FUNC(const bool expression, const char* expressionStr, const char* file, int line, const char* failMessage) noexcept;
 	};
 };
 
@@ -45,7 +45,7 @@ namespace ImGui {
 
 	inline void SetScrollHere() { SetScrollHereY(0.5f); }
 };
-#define IM_ASSERT(_EXPR) Divide::Assert::DIVIDE_ASSERT_FUNC(_EXPR, __FILE__, __LINE__, "IMGUI_ASSERT")
+#define IM_ASSERT(_EXPR) Divide::Assert::DIVIDE_ASSERT_FUNC(_EXPR, #_EXPR, __FILE__, __LINE__, "IMGUI_ASSERT")
 #define IM_DEBUG_BREAK() Divide::DebugBreak(true)
 
 #define IMGUI_USE_STB_SPRINTF

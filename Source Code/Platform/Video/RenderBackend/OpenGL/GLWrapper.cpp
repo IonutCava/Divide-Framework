@@ -602,7 +602,7 @@ void GL_API::endFrameGlobal(const DisplayWindow& window) {
         OPTICK_EVENT("GL_API: Time Query");
         static std::array<I64, to_base(GlobalQueryTypes::COUNT)> results{};
         if_constexpr(g_runAllQueriesInSameFrame) {
-            for (U8 i = 0; i < to_base(GlobalQueryTypes::COUNT); ++i) {
+            for (U8 i = 0u; i < to_base(GlobalQueryTypes::COUNT); ++i) {
                 results[i] = _performanceQueries[i]->getResultNoWait();
                 _performanceQueries[i]->incQueue();
             }

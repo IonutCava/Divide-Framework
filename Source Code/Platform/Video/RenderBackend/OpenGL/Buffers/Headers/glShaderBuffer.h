@@ -46,13 +46,12 @@ class glShaderBuffer final : public ShaderBuffer {
         glShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor);
         ~glShaderBuffer() = default;
 
-        BufferLock clearBytes(BufferRange range) override;
-        void readBytes(BufferRange range, std::pair<bufferPtr, size_t> outData) const override;
-        BufferLock writeBytes(BufferRange range, bufferPtr data) override;
-
         [[nodiscard]] bool bindByteRange(U8 bindIndex, BufferRange range);
-
         [[nodiscard]] inline const glBufferImpl_uptr& bufferImpl() const noexcept { return _bufferImpl; }
+
+    protected:
+        void readBytesInternal(BufferRange range, std::pair<bufferPtr, size_t> outData) override;
+        void writeBytesInternal(BufferRange range, bufferPtr data) override;
 
     private:
         glBufferImpl_uptr _bufferImpl{ nullptr };

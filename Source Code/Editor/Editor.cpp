@@ -558,7 +558,7 @@ bool Editor::init(const vec2<U16>& renderResolution) {
             const ImDrawData* pDrawData = viewport->DrawData;
             const I32 fb_width = to_I32(pDrawData->DisplaySize.x * ImGui::GetIO().DisplayFramebufferScale.x);
             const I32 fb_height = to_I32(pDrawData->DisplaySize.y * ImGui::GetIO().DisplayFramebufferScale.y);
-            editor->renderDrawList(viewport->DrawData, Rect<I32>(0, 0, fb_width, fb_height), ((DisplayWindow*)viewport->PlatformHandle)->getGUID(), buffer);
+            editor->renderDrawList(viewport->DrawData, Rect<I32>(0, 0, fb_width, fb_height), ((DisplayWindow*)viewport->PlatformHandle)->getGUID(), true, buffer);
             context->gfx().flushCommandBuffer(buffer);
         }
     };
@@ -1066,7 +1066,7 @@ bool Editor::framePostRender(const FrameEvent& evt) {
         ImDrawData* pDrawData = ImGui::GetDrawData();
         const I32 fb_width = to_I32(pDrawData->DisplaySize.x * ImGui::GetIO().DisplayFramebufferScale.x);
         const I32 fb_height = to_I32(pDrawData->DisplaySize.y * ImGui::GetIO().DisplayFramebufferScale.y);
-        renderDrawList(pDrawData, Rect<I32>(0, 0, fb_width, fb_height), _mainWindow->getGUID(), buffer);
+        renderDrawList(pDrawData, Rect<I32>(0, 0, fb_width, fb_height), _mainWindow->getGUID(), true, buffer);
         _context.gfx().flushCommandBuffer(buffer, false);
 
 
@@ -1105,7 +1105,7 @@ Rect<I32> Editor::scenePreviewRect(const bool globalCoords) const noexcept {
 }
 
 // Needs to be rendered immediately. *IM*GUI. IMGUI::NewFrame invalidates this data
-void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewport, I64 windowGUID, GFX::CommandBuffer& bufferInOut) const
+void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewport, I64 windowGUID, const bool editorPass, GFX::CommandBuffer& bufferInOut) const
 {
     static I32 s_maxCommandCount = 16u;
 
@@ -1176,11 +1176,19 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
     idxBuffer.data = indices;
     buffer->setIndexBuffer(idxBuffer);
 
-    GFX::BeginRenderPassCommand beginRenderPassCmd{};
-    beginRenderPassCmd._target = SCREEN_TARGET_ID;
-    beginRenderPassCmd._name = "Render IMGUI";
-    beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { DefaultColours::DIVIDE_BLUE, 0u };
-    GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
+    if (editorPass) {
+        const ImVec4 windowBGColour = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
+
+        GFX::BeginRenderPassCommand beginRenderPassCmd{};
+        beginRenderPassCmd._target = SCREEN_TARGET_ID;
+        beginRenderPassCmd._name = "Render IMGUI [ External ]";
+        beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { {windowBGColour.x, windowBGColour.y, windowBGColour.z, 1.f} , 0u };
+        GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
+    } else {
+        auto scopeCmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut);
+        scopeCmd->_scopeName = "Render IMGUI [ Internal ]";
+        scopeCmd->_scopeId = numVertices;
+    }
 
     GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut, { _editorPipeline });
 
@@ -1203,8 +1211,6 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
     F32* projection = GFX::EnqueueCommand<GFX::SetCameraCommand>(bufferInOut, { _render2DSnapshot })->_cameraSnapshot._projectionMatrix.mat;
     memcpy(projection, ortho_projection, sizeof(F32) * 16);
 
-    const Rect<I32>& viewport = _context.gfx().activeViewport();
-
     GenericDrawCommand drawCmd{};
     drawCmd._sourceBuffer = buffer->handle();
 
@@ -1225,15 +1231,15 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
                     pcmd.ClipRect.w - pDrawData->DisplayPos.y
                 };
 
-                if (clipRect.x < viewport.z &&
-                    clipRect.y < viewport.w &&
+                if (clipRect.x < targetViewport.z &&
+                    clipRect.y < targetViewport.w &&
                     clipRect.z >= 0 &&
                     clipRect.w >= 0)
                 {
                     const I32 tempW = clipRect.w;
                     clipRect.z -= clipRect.x;
                     clipRect.w -= clipRect.y;
-                    clipRect.y = viewport.w - tempW;
+                    clipRect.y = targetViewport.w - tempW;
 
                     GFX::EnqueueCommand<GFX::SetScissorCommand>(bufferInOut)->_rect.set(clipRect);
 
@@ -1258,8 +1264,11 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
     }
 
     GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_fenceLocks.push_back(buffer);
-
-    GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
+    if (editorPass) {
+        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
+    } else {
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
+    }
 }
 
 void Editor::selectionChangeCallback(const PlayerIndex idx, const vector<SceneGraphNode*>& nodes) const {
@@ -2225,13 +2234,24 @@ bool Editor::loadFromXML() {
     return false;
 }
 
-void PushReadOnly() {
+namespace Util {
+    namespace detail {
+        bool g_readOnlyFaded = false;
+    };
+};
+
+void PushReadOnly(const bool fade) {
     ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+    if (fade) {
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+    }
+    Util::detail::g_readOnlyFaded = fade;
 }
 
 void PopReadOnly() {
     ImGui::PopItemFlag();
-    ImGui::PopStyleVar();
+    if (Util::detail::g_readOnlyFaded) {
+        ImGui::PopStyleVar();
+    }
 }
 } //namespace Divide

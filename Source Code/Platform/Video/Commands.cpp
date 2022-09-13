@@ -99,8 +99,11 @@ string ToString(const BindPipelineCommand& cmd, const U16 indent) {
     {
         ret.append("Blending states: \n");
         const RTBlendStates& blendStates = cmd._pipeline->descriptor()._blendStates;
-
-        ret.append(Util::StringFormat("Colour {%d, %d, %d, %d}", blendStates._blendColour.r, blendStates._blendColour.g, blendStates._blendColour.b, blendStates._blendColour.a));
+        ret.append("    ");
+        for (U16 j = 0; j < indent; ++j) {
+            ret.append("    ");
+        }
+        ret.append(Util::StringFormat("Colour {%d, %d, %d, %d}\n", blendStates._blendColour.r, blendStates._blendColour.g, blendStates._blendColour.b, blendStates._blendColour.a));
 
         U8 idx = 0u;
         for (const BlendingSettings& state : blendStates._settings) {
@@ -112,6 +115,10 @@ string ToString(const BindPipelineCommand& cmd, const U16 indent) {
         }
     }
     if (shader) {
+        ret.append("    ");
+        for (U16 j = 0; j < indent; ++j) {
+            ret.append("    ");
+        }
         ret.append("Vertex format: \n");
         U8 idx = 0u;
         for (const AttributeDescriptor& desc : cmd._pipeline->descriptor()._vertexFormat) {
@@ -134,7 +141,7 @@ string ToString(const SendPushConstantsCommand& cmd, const U16 indent) {
         for (U16 j = 0; j < indent; ++j) {
             ret.append("    ");
         }
-        ret.append(Util::StringFormat("Constant binding: %d Type: %d Data size: %zu\n", it.bindingHash(), to_base(it.type()), it.dataSize()));
+        ret.append(Util::StringFormat("Constant binding: %zu Type: %d Data size: %zu\n", it.bindingHash(), to_base(it.type()), it.dataSize()));
     }
 
     return ret;
@@ -239,7 +246,7 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent) {
                 Texture* srcInternalTex = binding._data.As<DescriptorCombinedImageSampler>()._image._srcTexture._internalTexture;
                 CEGUI::Texture* srcExternalTex = binding._data.As<DescriptorCombinedImageSampler>()._image._srcTexture._ceguiTex;
 
-                ret.append(Util::StringFormat("Texture [ %zu - %s - %d - %zu ] Layers: [ %d - %d ] MipRange: [ %d - %d ]\n",
+                ret.append(Util::StringFormat("Texture [ %d - %zu - %s - %zu ] Layers: [ %d - %d ] MipRange: [ %d - %d ]\n",
                             binding._slot,
                             srcInternalTex != nullptr ? srcInternalTex->getGUID() : 0u,
                             srcInternalTex != nullptr ? srcInternalTex->resourceName().c_str() : srcExternalTex != nullptr ? srcExternalTex->getName().c_str() : "no-name",

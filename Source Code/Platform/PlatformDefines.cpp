@@ -38,14 +38,14 @@ void log_delete(void* p) {
 
 namespace Assert {
 
-    bool DIVIDE_ASSERT_FUNC(const bool expression, const char* file, const int line, const char* failMessage) noexcept {
+    bool DIVIDE_ASSERT_FUNC(const bool expression, const char* expressionStr, const char* file, const int line, const char* failMessage) noexcept {
         if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
             if (failMessage == nullptr || strlen(failMessage) == 0) {
-                return DIVIDE_ASSERT_FUNC(expression, file, line, "Message truncated");
+                return DIVIDE_ASSERT_FUNC(expression, expressionStr, file, line, "Message truncated");
             }
 
             if (!expression) {
-                const char* msgOut = FormatText("ASSERT [%s : %d]: %s", file, line, failMessage);
+                const char* msgOut = FormatText("ASSERT [%s : %d]: %s : %s", file, line, expressionStr, failMessage);
                 if_constexpr(Config::Assert::LOG_ASSERTS) {
                     Console::errorfn(msgOut);
                 }

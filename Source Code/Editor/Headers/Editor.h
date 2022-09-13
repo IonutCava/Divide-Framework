@@ -252,7 +252,7 @@ class Editor final : public PlatformContextComponent,
     PROPERTY_INTERNAL(bool, sceneGizmoEnabled, false);
 
   protected: // attorney
-    void renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewport, I64 windowGUID, GFX::CommandBuffer& bufferInOut) const;
+    void renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewport, I64 windowGUID, bool editorPass, GFX::CommandBuffer& bufferInOut) const;
 
     /// Saves all new changes to the current scene and uses the provided callbacks to return progress messages. msgCallback gets called per save-step/process, finishCallback gets called once at the end
     /// sceneNameOverride should be left empty to save the scene in its own folder. Any string passed will create a new scene with the name specified and save everything to that folder instead, leaving the original scene untouched
@@ -338,7 +338,7 @@ class Editor final : public PlatformContextComponent,
 namespace Attorney {
     class EditorGizmo {
         static void renderDrawList(const Editor& editor, ImDrawData* pDrawData, const Rect<I32>& targetViewport, const I64 windowGUID, GFX::CommandBuffer& bufferInOut) {
-            editor.renderDrawList(pDrawData, targetViewport, windowGUID, bufferInOut);
+            editor.renderDrawList(pDrawData, targetViewport, windowGUID, false, bufferInOut);
         }
 
         [[nodiscard]] static ImGuiViewport* findViewportByPlatformHandle(Editor& editor, ImGuiContext* context, DisplayWindow* window) {
@@ -624,12 +624,12 @@ namespace Attorney {
     };
 } //namespace Attorney
 
-void PushReadOnly();
+void PushReadOnly(bool fade = true);
 void PopReadOnly();
 
 struct ScopedReadOnly final : NonCopyable
 {
-    ScopedReadOnly() { PushReadOnly(); }
+    ScopedReadOnly(bool fade = false) { PushReadOnly(fade); }
     ~ScopedReadOnly() { PopReadOnly(); }
 };
 } //namespace Divide

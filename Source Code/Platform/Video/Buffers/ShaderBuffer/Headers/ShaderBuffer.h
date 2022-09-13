@@ -66,17 +66,14 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
 
     virtual ~ShaderBuffer() = default;
 
-    virtual BufferLock clearData(BufferRange range);
+                  void       readData(BufferRange range, std::pair<bufferPtr, size_t> outData);
+                  void       readBytes(BufferRange range, std::pair<bufferPtr, size_t> outData);
+    [[nodiscard]] BufferLock clearData(BufferRange range);
+    [[nodiscard]] BufferLock clearBytes(BufferRange range);
+    [[nodiscard]] BufferLock writeData(BufferRange range, bufferPtr data);
+    [[nodiscard]] BufferLock writeBytes(BufferRange range, bufferPtr data);
 
-    virtual BufferLock writeData(BufferRange range, bufferPtr data);
-
-    virtual void readData(BufferRange range, std::pair<bufferPtr, size_t> outData) const;
-
-    virtual BufferLock clearBytes(BufferRange range) = 0;
-
-    virtual BufferLock writeBytes(BufferRange range, bufferPtr data) = 0;
-
-    virtual void readBytes(BufferRange range, std::pair<bufferPtr, size_t> outData) const = 0;
+    
     [[nodiscard]] FORCE_INLINE size_t getStartOffset(const bool read) const noexcept { return (read ? queueReadIndex() : queueWriteIndex()) * _alignedBufferSize; }
     [[nodiscard]] FORCE_INLINE U32    getPrimitiveCount()             const noexcept { return _params._elementCount; }
     [[nodiscard]] FORCE_INLINE size_t getPrimitiveSize()              const noexcept { return _params._elementSize; }
@@ -89,10 +86,16 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
 
     PROPERTY_R(size_t, alignedBufferSize, 0u);
     PROPERTY_R(string, name);
+    PROPERTY_R(U64, lastWrittenFrame, 0u);
+    PROPERTY_R(U64, lastReadFrame, 0u);
+   protected:
+     virtual void readBytesInternal(BufferRange range, std::pair<bufferPtr, size_t> outData) = 0;
+     virtual void writeBytesInternal(BufferRange range, bufferPtr data) = 0;
 
    protected:
     BufferParams _params;
-    size_t _maxSize = 0u;
+    size_t _maxSize{ 0u };
+    U64 _lastWriteFrameNumber{ 0u };
     const Usage _usage;
 };
 

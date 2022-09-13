@@ -43,13 +43,12 @@ namespace Divide {
     public:
         vkShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor);
 
-        BufferLock clearBytes(BufferRange range) noexcept override;
-
-        BufferLock writeBytes(BufferRange range, [[maybe_unused]] bufferPtr data) noexcept override;
-
-        void readBytes(BufferRange range, [[maybe_unused]] std::pair<bufferPtr, size_t> outData) const noexcept override;
-
         [[nodiscard]] inline AllocatedBuffer* bufferImpl() const { return _bufferImpl.get(); }
+
+    protected:
+        void writeBytesInternal(BufferRange range, [[maybe_unused]] bufferPtr data) noexcept override;
+        void readBytesInternal(BufferRange range, [[maybe_unused]] std::pair<bufferPtr, size_t> outData) noexcept override;
+
     private:
         AllocatedBuffer_uptr _bufferImpl{ nullptr };
         AllocatedBuffer_uptr _stagingBuffer{ nullptr };

@@ -46,7 +46,7 @@ BufferLock ShaderBuffer::writeData(const BufferRange range, const bufferPtr data
                data);
 }
 
-void ShaderBuffer::readData(const BufferRange range, const std::pair<bufferPtr, size_t> outData) const {
+void ShaderBuffer::readData(const BufferRange range, const std::pair<bufferPtr, size_t> outData) {
     readBytes(
         {
             range._startOffset * _params._elementSize,
@@ -55,4 +55,34 @@ void ShaderBuffer::readData(const BufferRange range, const std::pair<bufferPtr, 
         outData);
 }
 
+void ShaderBuffer::readBytes(BufferRange range, std::pair<bufferPtr, size_t> outData) {
+    OPTICK_EVENT();
+
+    DIVIDE_ASSERT(range._length > 0u &&
+                  _params._hostVisible &&
+                  _usage == ShaderBuffer::Usage::UNBOUND_BUFFER  &&
+                  range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
+
+    range._startOffset += getStartOffset(true);
+    readBytesInternal(range, outData);
+    _lastReadFrame = GFXDevice::FrameCount();
+}
+
+BufferLock ShaderBuffer::clearBytes(const BufferRange range) {
+    return writeBytes(range, nullptr);
+}
+
+BufferLock ShaderBuffer::writeBytes(BufferRange range, bufferPtr data) {
+    OPTICK_EVENT();
+
+    DIVIDE_ASSERT(range._length > 0 &&
+                  _params._updateFrequency != BufferUpdateFrequency::ONCE &&
+                  range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
+
+    range._startOffset += getStartOffset(false);
+    writeBytesInternal(range, data);
+    _lastWriteFrameNumber = GFXDevice::FrameCount();
+
+    return { this, range };
+}
 } //namespace Divide;

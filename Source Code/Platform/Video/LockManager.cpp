@@ -14,7 +14,7 @@ namespace Divide {
     }
 
     void SyncObject::reset() {
-        _frameNumber = std::numeric_limits<U64>::max();
+        _frameNumber = INVALID_FRAME_NUMBER;
     }
 
     BufferLockInstance::BufferLockInstance(const BufferRange& range, const SyncObjectHandle& handle) noexcept

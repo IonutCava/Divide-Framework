@@ -49,11 +49,8 @@ namespace Divide {
           : RenderTarget(context, descriptor)
         {}
   
-        void readData([[maybe_unused]] const vec4<U16>& rect, [[maybe_unused]] GFXImageFormat imageFormat, [[maybe_unused]] GFXDataFormat dataType, [[maybe_unused]] std::pair<bufferPtr, size_t> outData) const noexcept override {
-        }
-
-        void blitFrom([[maybe_unused]] RenderTarget* source, [[maybe_unused]] const RTBlitParams& params) noexcept override {
-        }
+        void readData([[maybe_unused]] const vec4<U16>& rect, [[maybe_unused]] GFXImageFormat imageFormat, [[maybe_unused]] GFXDataFormat dataType, [[maybe_unused]] std::pair<bufferPtr, size_t> outData) const noexcept override {}
+        void blitFrom([[maybe_unused]] RenderTarget* source, [[maybe_unused]] const RTBlitParams& params) noexcept override {}
     };
 
     class noGenericVertexData final : public GenericVertexData {
@@ -62,25 +59,14 @@ namespace Divide {
             : GenericVertexData(context, ringBufferLength, name)
         {}
 
-        void reset() override {
-
-        }
-
-        void draw([[maybe_unused]] const GenericDrawCommand& command, [[maybe_unused]] VDIUserData* data) noexcept override {
-        }
-
-        void setBuffer([[maybe_unused]] const SetBufferParams& params) noexcept override {
-        }
-
-        void setIndexBuffer([[maybe_unused]] const IndexBuffer& indices) override {
-        }
-
+        void reset() override {}
+        void draw([[maybe_unused]] const GenericDrawCommand& command, [[maybe_unused]] VDIUserData* data) noexcept override {}
+        void setBuffer([[maybe_unused]] const SetBufferParams& params) noexcept override {}
+        void setIndexBuffer([[maybe_unused]] const IndexBuffer& indices) override {}
         void updateBuffer([[maybe_unused]] U32 buffer,
                           [[maybe_unused]] U32 elementCountOffset,
                           [[maybe_unused]] U32 elementCountRange,
-                          [[maybe_unused]] bufferPtr data) noexcept override 
-        {
-        }
+                          [[maybe_unused]] bufferPtr data) noexcept override{}
     };
 
     class noTexture final : public Texture {
@@ -98,22 +84,16 @@ namespace Divide {
             _defaultView._srcTexture._internalTexture = this;
         }
 
-        void clearData([[maybe_unused]] const UColour4& clearColour, [[maybe_unused]] U8 level) const noexcept override {
-        }
-
-        void clearSubData([[maybe_unused]] const UColour4& clearColour, [[maybe_unused]] U8 level, [[maybe_unused]] const vec4<I32>& rectToClear, [[maybe_unused]] const vec2<I32>& depthRange) const noexcept override {
-        }
+        void clearData([[maybe_unused]] const UColour4& clearColour, [[maybe_unused]] U8 level) const noexcept override {}
+        void clearSubData([[maybe_unused]] const UColour4& clearColour, [[maybe_unused]] U8 level, [[maybe_unused]] const vec4<I32>& rectToClear, [[maybe_unused]] const vec2<I32>& depthRange) const noexcept override {}
 
         TextureReadbackData readData([[maybe_unused]] U16 mipLevel, [[maybe_unused]] GFXDataFormat desiredFormat) const noexcept override {
             TextureReadbackData data{};
             return MOV(data);
         }
 
-        void loadDataInternal([[maybe_unused]] const ImageTools::ImageData& imageData) override {
-        }
-
-        void submitTextureData() {
-        }
+        void loadDataInternal([[maybe_unused]] const ImageTools::ImageData& imageData) override {}
+        void submitTextureData() {}
     };
 
     class noShaderProgram final : public ShaderProgram {
@@ -134,16 +114,8 @@ namespace Divide {
             : ShaderBuffer(context, descriptor)
         {}
 
-        BufferLock clearBytes([[maybe_unused]] BufferRange range) noexcept override {
-            return {};
-        }
-
-        BufferLock writeBytes([[maybe_unused]] BufferRange range, [[maybe_unused]] bufferPtr data) noexcept override {
-            return {};
-        }
-
-        void readBytes([[maybe_unused]] BufferRange range, [[maybe_unused]] std::pair<bufferPtr, size_t> outData) const noexcept override {
-        }
+        void writeBytesInternal([[maybe_unused]] BufferRange range, [[maybe_unused]] bufferPtr data) noexcept override {}
+        void readBytesInternal([[maybe_unused]] BufferRange range, [[maybe_unused]] std::pair<bufferPtr, size_t> outData) noexcept override {}
     };
 
 };  // namespace Divide

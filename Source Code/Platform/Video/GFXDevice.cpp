@@ -88,8 +88,8 @@ namespace TypeUtil {
 
 namespace {
     /// How many writes we can basically issue per frame to our scratch buffers before we have to sync
-    constexpr size_t TargetBufferSizeCam = 512u;
-    constexpr size_t TargetBufferSizeRender = 8u;
+    constexpr size_t TargetBufferSizeCam = 1024u;
+    constexpr size_t TargetBufferSizeRender = 64u;
 
     constexpr U32 GROUP_SIZE_AABB = 64;
     constexpr U32 MAX_INVOCATIONS_BLUR_SHADER_LAYERED = 4;
@@ -1820,6 +1820,8 @@ void GFXDevice::shadowingSettings(const F32 lightBleedBias, const F32 minShadowV
 }
 
 void GFXDevice::setPreviousViewProjectionMatrix(const mat4<F32>& prevViewMatrix, const mat4<F32> prevProjectionMatrix) {
+    OPTICK_EVENT();
+
     bool projectionDirty = false, viewDirty = false;
     if (_gpuBlock._camData._PreviousViewMatrix != prevViewMatrix) {
         _gpuBlock._camData._PreviousViewMatrix = prevViewMatrix;
@@ -1898,6 +1900,8 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
     }
 
     static GFX::MemoryBarrierCommand gpuBlockMemCommand{};
+
+    const Rect<I32> initialViewport = activeViewport();
 
     _api->preFlushCommandBuffer(commandBuffer);
 
@@ -2019,6 +2023,8 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
     }
 
     _api->postFlushCommandBuffer(commandBuffer);
+
+    setViewport(initialViewport);
 
     // Descriptor sets are only valid per command buffer they are submitted in. If we finish the command buffer submission,
     // we mark them as dirty so that the next command buffer can bind them again even if the data is the same

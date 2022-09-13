@@ -366,7 +366,7 @@ namespace Divide {
         GetStateTracker()->_activeMSAASamples = 0u;
         GetStateTracker()->_activeRenderTargetID = INVALID_RENDER_TARGET_ID;
 
-        setViewport({ 0, 0, windowDimensions.width, windowDimensions.height });
+        _context.setViewport({ 0, 0, windowDimensions.width, windowDimensions.height });
         setScissor({ 0, 0, windowDimensions.width, windowDimensions.height });
         _drawIndirectBuffer = VK_NULL_HANDLE;
         VK_API::GetStateTracker()->_lastSyncedFrameNumber = GFXDevice::FrameCount();
@@ -1172,8 +1172,11 @@ namespace Divide {
                     vkCmdBeginRendering(cmdBuffer, &renderingInfo);
                     GetStateTracker()->_alphaToCoverage = crtCmd->_descriptor._alphaToCoverage;
                     GetStateTracker()->_activeMSAASamples = rt->getSampleCount();
+                    if (crtCmd->_descriptor._setViewport) {
+                        _context.setViewport({ 0, 0, rt->getWidth(), rt->getHeight() });
+                    }
                 }
-
+                
                 PushDebugMessage(cmdBuffer, crtCmd->_name.c_str());
             }break;
             case GFX::CommandType::END_RENDER_PASS: {

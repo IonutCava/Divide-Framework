@@ -87,6 +87,7 @@ class glGenericVertexData final : public GenericVertexData {
 
     struct IndexBufferEntry : public NonCopyable {
         IndexBuffer _data;
+        GLsync _idxBufferSync{ nullptr };
         GLuint _handle{ GLUtil::k_invalidObjectID };
     };
 
@@ -100,7 +101,8 @@ class glGenericVertexData final : public GenericVertexData {
     GLuint _lastDrawCount{ 0u };
     GLsizei _lastIndexCount{ 0 };
     GLuint _lastFirstIndex{ 0u };
-    glLockManager _lockManager;
+
+    SharedMutex _idxBufferLock;
 };
 
 

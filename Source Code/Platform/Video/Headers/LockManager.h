@@ -41,11 +41,13 @@ namespace Divide {
     constexpr U8 g_MaxLockWaitRetries = 5u;
 
     struct SyncObject {
+        inline static constexpr U64 INVALID_FRAME_NUMBER = std::numeric_limits<U64>::max();
+
         virtual ~SyncObject();
         virtual void reset();
 
         Mutex _fenceLock;
-        U64 _frameNumber{ std::numeric_limits<U64>::max() };
+        U64 _frameNumber{ INVALID_FRAME_NUMBER };
     };
 
     FWD_DECLARE_MANAGED_STRUCT(SyncObject);

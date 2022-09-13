@@ -105,7 +105,6 @@ protected:
    protected:
     bool setMipLevelInternal(const RTAttachment_uptr& attachment, U16 writeLevel);
 
-    void queueMipMapRecomputation() const;
     /// Reset layer and mip back to 0 and bind the entire target texture
     void setDefaultAttachmentBinding(const RTAttachment_uptr& attachment);
 
@@ -123,6 +122,8 @@ protected:
     bool _isLayeredDepth = false;
     bool _statusCheckQueued = false;
     bool _activeDepthBuffer = false;
+
+    static bool s_alphaToCoverageEnabled;
 };
 
 bool operator==(const glFramebuffer::BindingState& lhs, const glFramebuffer::BindingState& rhs) noexcept;

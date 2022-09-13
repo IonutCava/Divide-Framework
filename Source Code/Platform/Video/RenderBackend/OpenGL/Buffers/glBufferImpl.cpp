@@ -93,11 +93,11 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params, c
 
 glBufferImpl::~glBufferImpl()
 {
-    if (_memoryBlock._bufferHandle != GLUtil::k_invalidObjectID) {
-        if (!_lockManager.waitForLockedRange(0u, _memoryBlock._size)) {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+    if (!_lockManager.waitForLockedRange(0u, _memoryBlock._size)) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
 
+    if (_memoryBlock._bufferHandle != GLUtil::k_invalidObjectID) {
         if (_memoryBlock._ptr != nullptr) {
             const GLUtil::GLMemory::DeviceAllocator& allocator = GL_API::GetMemoryAllocator(GL_API::GetMemoryTypeForUsage(_params._target));
             allocator.deallocate(_memoryBlock);
@@ -145,7 +145,6 @@ void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t ra
 }
 
 void glBufferImpl::readBytes(const size_t offsetInBytes, const size_t rangeInBytes, std::pair<bufferPtr, size_t> outData) {
-
     if (!_lockManager.waitForLockedRange(offsetInBytes, rangeInBytes)) {
         DIVIDE_UNEXPECTED_CALL();
     }

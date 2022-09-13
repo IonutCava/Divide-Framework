@@ -75,7 +75,7 @@ class glTexture final : public Texture {
    private:
     GLenum _type{GL_NONE};
     GLuint _loadingHandle{ GLUtil::k_invalidObjectID };
-    glLockManager _lockManager;
+    GLsync _loadSync{ nullptr };
     bool _hasStorage{ false };
 };
 
