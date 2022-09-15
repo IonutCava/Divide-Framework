@@ -31,8 +31,9 @@ void main()
 layout(location = ATTRIB_FREE_START + 0) in vec3 nearPoint;
 layout(location = ATTRIB_FREE_START + 1) in vec3 farPoint;
 
-uniform float axisWidth = 2.f;
-uniform float gridScale = 1.f;
+#define axisWidth PushData0[0].x
+#define gridScale PushData0[0].y
+
 
 vec4 grid(vec3 fragPos3D, float scale) {
     vec2 coord = fragPos3D.xz * scale;

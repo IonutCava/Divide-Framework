@@ -25,7 +25,8 @@
 
 namespace Divide {
 
-namespace {
+namespace
+{
     Configuration::Rendering::ShadowMapping g_shadowSettings;
 };
 
@@ -63,7 +64,8 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
         blurDepthMapShader.propertyDescriptor(shaderDescriptor);
 
         _blurDepthMapShader = CreateResource<ShaderProgram>(context.parent().resourceCache(), blurDepthMapShader);
-        _blurDepthMapShader->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*) {
+        _blurDepthMapShader->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*)
+        {
             PipelineDescriptor pipelineDescriptor = {};
             pipelineDescriptor._stateHash = _context.get2DStateBlock();
             pipelineDescriptor._shaderProgramHandle = _blurDepthMapShader->handle();
@@ -79,7 +81,8 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
 
     std::array<vec2<F32>, Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT> blurSizes;
     blurSizes.fill(vec2<F32>(1.0f / g_shadowSettings.spot.shadowMapResolution));
-    for (U8 i = 1; i < Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT; ++i) {
+    for (U8 i = 1; i < Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT; ++i)
+    {
         blurSizes[i] = blurSizes[i - 1] / 2;
     }
 
@@ -91,7 +94,7 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
     const size_t samplerHash = sampler.getHash();
 
     const RenderTarget* rt = ShadowMap::getShadowMap(_type)._rt;
-    const TextureDescriptor& texDescriptor = rt->getAttachment(RTAttachmentType::Colour, 0)->texture()->descriptor();
+    const TextureDescriptor& texDescriptor = rt->getAttachment(RTAttachmentType::COLOUR, 0)->texture()->descriptor();
 
     //Draw FBO
     {
@@ -106,9 +109,10 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
         depthDescriptor.msaaSamples(g_shadowSettings.spot.MSAASamples);
         depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        InternalRTAttachmentDescriptors att {
-            InternalRTAttachmentDescriptor{ colourDescriptor, samplerHash, RTAttachmentType::Colour, 0u },
-            InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::Depth_Stencil, 0u }
+        InternalRTAttachmentDescriptors att
+        {
+            InternalRTAttachmentDescriptor{ colourDescriptor, samplerHash, RTAttachmentType::COLOUR, 0u },
+            InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::DEPTH, 0u }
         };
 
         desc._name = "Single_ShadowMap_Draw";
@@ -125,8 +129,9 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
         blurMapDescriptor.layerCount(1u);
         blurMapDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        InternalRTAttachmentDescriptors att {
-            InternalRTAttachmentDescriptor{ blurMapDescriptor, samplerHash, RTAttachmentType::Colour, 0u }
+        InternalRTAttachmentDescriptors att
+        {
+            InternalRTAttachmentDescriptor{ blurMapDescriptor, samplerHash, RTAttachmentType::COLOUR, 0u }
         };
 
         RenderTargetDescriptor desc = {};
@@ -143,12 +148,14 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
 
 SingleShadowMapGenerator::~SingleShadowMapGenerator()
 {
-    if (!_context.renderTargetPool().deallocateRT(_drawBufferDepth)) {
+    if (!_context.renderTargetPool().deallocateRT(_drawBufferDepth))
+    {
         DIVIDE_UNEXPECTED_CALL();
     }
 }
 
-void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
+void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut)
+{
     OPTICK_EVENT();
 
     const SpotLightComponent& spotLight = static_cast<SpotLightComponent&>(light);
@@ -187,13 +194,14 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
-void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::CommandBuffer& bufferInOut) {
+void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::CommandBuffer& bufferInOut)
+{
     OPTICK_EVENT();
 
     const RenderTargetHandle& handle = ShadowMap::getShadowMap(_type);
 
     const RenderTarget* shadowMapRT = handle._rt;
-    const auto& shadowAtt = shadowMapRT->getAttachment(RTAttachmentType::Colour, 0);
+    const auto& shadowAtt = shadowMapRT->getAttachment(RTAttachmentType::COLOUR, 0);
 
     const U16 layerOffset = light.getShadowArrayOffset();
     constexpr I32 layerCount = 1;
@@ -209,7 +217,8 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
 
 
     // Now we can either blur our target or just skip to mipmap computation
-    if (g_shadowSettings.spot.enableBlurring) {
+    if (g_shadowSettings.spot.enableBlurring)
+    {
         _shaderConstants.set(_ID("layerCount"), GFX::PushConstantType::INT, layerCount);
 
         GFX::BeginRenderPassCommand beginRenderPassCmd{};
@@ -241,7 +250,7 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
 
         // Blur vertically
-        const auto& blurAtt = _blurBuffer._rt->getAttachment(RTAttachmentType::Colour, 0);
+        const auto& blurAtt = _blurBuffer._rt->getAttachment(RTAttachmentType::COLOUR, 0);
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -265,8 +274,10 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
     }
 }
 
-void SingleShadowMapGenerator::updateMSAASampleCount(const U8 sampleCount) {
-    if (_context.context().config().rendering.shadowMapping.spot.MSAASamples != sampleCount) {
+void SingleShadowMapGenerator::updateMSAASampleCount(const U8 sampleCount)
+{
+    if (_context.context().config().rendering.shadowMapping.spot.MSAASamples != sampleCount)
+    {
         _context.context().config().rendering.shadowMapping.spot.MSAASamples = sampleCount;
         _drawBufferDepth._rt->updateSampleCount(sampleCount);
     }

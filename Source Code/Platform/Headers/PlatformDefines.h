@@ -249,12 +249,39 @@ template<typename T>
     return 1 << X;
 }
 
-[[nodiscard]] constexpr U32 powerOfTwo(U32 X) noexcept {
+[[nodiscard]] constexpr U32 powerOfTwo(U32 X) noexcept
+{
     U32 r = 0u;
-    while (X >>= 1) {
+    while (X >>= 1)
+    {
         r++;
     }
     return r;
+}
+
+[[nodiscard]] constexpr U32 previousPowerOfTwo(const U32 X) noexcept
+{
+    U32 r = 1u;
+    while (r * 2 < X)
+    {
+        r *= 2;
+    }
+
+    return r;
+}
+
+[[nodiscard]] constexpr U32 mipLevels(U32 width, U32 height) noexcept
+{
+    U32 result = 1u;
+
+    while (width > 1u || height > 1u)
+    {
+        ++result;
+        width /= 2u;
+        height /= 2u;
+    }
+
+    return result;
 }
 
 template<typename T,

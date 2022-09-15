@@ -54,10 +54,16 @@ inline bool operator!=(const TextureDescriptor& lhs, const TextureDescriptor& rh
            texType == TextureType::TEXTURE_CUBE_ARRAY;
 }
 
+[[nodiscard]] inline bool IsDepthTexture(const GFXImageFormat format) noexcept {
+    return format == GFXImageFormat::DEPTH_COMPONENT ||
+           format == GFXImageFormat::DEPTH_STENCIL_COMPONENT;
+}
+
 [[nodiscard]] inline U8 NumChannels(const GFXImageFormat format) noexcept {
     switch (format) {
         case GFXImageFormat::RED:
         case GFXImageFormat::DEPTH_COMPONENT:
+        case GFXImageFormat::DEPTH_STENCIL_COMPONENT:
         case GFXImageFormat::BC4s:
         case GFXImageFormat::BC4u:
             return 1u;

@@ -5,16 +5,10 @@
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 #include "Platform/Video/RenderBackend/Vulkan/Buffers/Headers/vkBufferImpl.h"
 
-namespace Divide {
-    namespace {
-        inline VkImageAspectFlags GetAspectFlags(const TextureDescriptor& descriptor) noexcept {
-            const bool hasDepthStencil = descriptor.hasUsageFlagSet(ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT);
-            const bool hasDepth =  descriptor.hasUsageFlagSet(ImageUsage::RT_DEPTH_ATTACHMENT) || hasDepthStencil;
-
-            return hasDepth ? VK_IMAGE_ASPECT_DEPTH_BIT | (hasDepthStencil ? VK_IMAGE_ASPECT_STENCIL_BIT : 0u)
-                            : VK_IMAGE_ASPECT_COLOR_BIT;
-        }
-
+namespace Divide
+{
+    namespace
+    {
         inline VkImageUsageFlagBits GetFlagForUsage(const ImageUsage usage) noexcept {
             switch (usage) {
                 case ImageUsage::SHADER_READ:
@@ -43,6 +37,14 @@ namespace Divide {
                 vmaDestroyImage(*VK_API::GetStateTracker()->_allocatorInstance._allocator, img, alloc);
             }, true);
         }
+    }
+
+    VkImageAspectFlags vkTexture::GetAspectFlags(const TextureDescriptor& descriptor) noexcept {
+        const bool hasDepthStencil = descriptor.hasUsageFlagSet(ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT);
+        const bool hasDepth =  descriptor.hasUsageFlagSet(ImageUsage::RT_DEPTH_ATTACHMENT) || hasDepthStencil;
+
+        return hasDepth ? VK_IMAGE_ASPECT_DEPTH_BIT | (hasDepthStencil ? VK_IMAGE_ASPECT_STENCIL_BIT : 0u)
+                        : VK_IMAGE_ASPECT_COLOR_BIT;
     }
 
     vkTexture::vkTexture(GFXDevice& context,
@@ -234,6 +236,9 @@ namespace Divide {
                                 &_image->_image,
                                 &_image->_allocation,
                                 &_image->_allocInfo));
+
+        vmaSetAllocationName(*VK_API::GetStateTracker()->_allocatorInstance._allocator, _image->_allocation, resourceName().c_str());
+        Debug::SetObjectName(VK_API::GetStateTracker()->_device->getVKDevice(),  (uint64_t)_image->_image, VK_OBJECT_TYPE_IMAGE, resourceName().c_str());
     }
 
     void vkTexture::loadDataInternal(const ImageTools::ImageData& imageData) {
@@ -257,7 +262,7 @@ namespace Divide {
         }
         DIVIDE_ASSERT(_depth >= maxDepth);
 
-        const AllocatedBuffer_uptr stagingBuffer = VKUtil::createStagingBuffer(totalSize);
+        const AllocatedBuffer_uptr stagingBuffer = VKUtil::createStagingBuffer(totalSize, resourceName());
         Byte* target = (Byte*)stagingBuffer->_allocInfo.pMappedData;
 
         size_t offset = 0u;
@@ -361,7 +366,8 @@ namespace Divide {
                _type == other._type &&
                _format == other._format &&
                _layers == other._layers &&
-               _mipLevels == other._mipLevels;
+               _mipLevels == other._mipLevels &&
+               _aspectFlags == other._aspectFlags;
     }
 
     VkImageView vkTexture::getImageView(const CachedImageView::Descriptor& descriptor) {
@@ -373,7 +379,7 @@ namespace Divide {
         DIVIDE_ASSERT(descriptor._usage != ImageUsage::COUNT && descriptor._usage != ImageUsage::UNDEFINED);
 
         VkImageSubresourceRange range{};
-        range.aspectMask = GetAspectFlags(_descriptor);
+        range.aspectMask = descriptor._aspectFlags == VK_IMAGE_ASPECT_FLAG_BITS_MAX_ENUM ? GetAspectFlags(_descriptor) : descriptor._aspectFlags;
         range.baseArrayLayer = descriptor._layers.min;
         range.layerCount = descriptor._layers.max;
         range.baseMipLevel = descriptor._mipLevels.min;

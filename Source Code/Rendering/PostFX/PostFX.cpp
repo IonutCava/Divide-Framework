@@ -25,8 +25,10 @@
 
 namespace Divide {
 
-const char* PostFX::FilterName(const FilterType filter) noexcept {
-    switch (filter) {
+const char* PostFX::FilterName(const FilterType filter) noexcept
+{
+    switch (filter)
+    {
         case FilterType::FILTER_SS_ANTIALIASING:  return "SS_ANTIALIASING";
         case FilterType::FILTER_SS_REFLECTIONS:  return "SS_REFLECTIONS";
         case FilterType::FILTER_SS_AMBIENT_OCCLUSION:  return "SS_AMBIENT_OCCLUSION";
@@ -52,7 +54,7 @@ PostFX::PostFX(PlatformContext& context, ResourceCache* cache)
     context.paramHandler().setParam<bool>(_ID("postProcessing.enableVignette"), false);
 
     DisableAll(_postFXTarget._drawMask);
-    SetEnabled(_postFXTarget._drawMask, RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO), true);
+    SetEnabled(_postFXTarget._drawMask, RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO), true);
 
     Console::printfn(Locale::Get(_ID("START_POST_FX")));
 
@@ -115,7 +117,8 @@ PostFX::PostFX(PlatformContext& context, ResourceCache* cache)
     ResourceDescriptor postFXShader("postProcessing");
     postFXShader.propertyDescriptor(postFXShaderDescriptor);
     _postProcessingShader = CreateResource<ShaderProgram>(cache, postFXShader, loadTasks);
-    _postProcessingShader->addStateCallback(ResourceState::RES_LOADED, [this, &context](CachedResource*) {
+    _postProcessingShader->addStateCallback(ResourceState::RES_LOADED, [this, &context](CachedResource*)
+    {
         PipelineDescriptor pipelineDescriptor;
         pipelineDescriptor._stateHash = context.gfx().get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _postProcessingShader->handle();
@@ -131,7 +134,8 @@ PostFX::~PostFX()
 {
 }
 
-void PostFX::updateResolution(const U16 newWidth, const U16 newHeight) {
+void PostFX::updateResolution(const U16 newWidth, const U16 newHeight)
+{
     if (_resolutionCache.width == newWidth &&
         _resolutionCache.height == newHeight|| 
         newWidth < 1 || newHeight < 1)
@@ -145,7 +149,8 @@ void PostFX::updateResolution(const U16 newWidth, const U16 newHeight) {
     _setCameraCmd._cameraSnapshot = Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->snapshot();
 }
 
-void PostFX::prePass(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut) {
+void PostFX::prePass(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut)
+{
     static GFX::BeginDebugScopeCommand s_beginScopeCmd{ "PostFX: PrePass" };
     GFX::EnqueueCommand(bufferInOut, s_beginScopeCmd);
     GFX::EnqueueCommand<GFX::PushCameraCommand>(bufferInOut)->_cameraSnapshot = _setCameraCmd._cameraSnapshot;
@@ -156,7 +161,8 @@ void PostFX::prePass(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
-void PostFX::apply(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut) {
+void PostFX::apply(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut)
+{
     static GFX::BeginDebugScopeCommand s_beginScopeCmd{ "PostFX: Apply" };
 
     GFX::EnqueueCommand(bufferInOut, s_beginScopeCmd);
@@ -171,7 +177,8 @@ void PostFX::apply(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, 
     GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _drawPipeline });
 
-    if (_filtersDirty) {
+    if (_filtersDirty)
+    {
         _drawConstantsCmd._constants.set(_ID("vignetteEnabled"),      GFX::PushConstantType::BOOL, getFilterState(FilterType::FILTER_VIGNETTE));
         _drawConstantsCmd._constants.set(_ID("noiseEnabled"),         GFX::PushConstantType::BOOL, getFilterState(FilterType::FILTER_NOISE));
         _drawConstantsCmd._constants.set(_ID("underwaterEnabled"),    GFX::PushConstantType::BOOL, getFilterState(FilterType::FILTER_UNDERWATER));
@@ -184,12 +191,12 @@ void PostFX::apply(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, 
 
     GFX::EnqueueCommand(bufferInOut, _drawConstantsCmd);
     const auto& rtPool = context().gfx().renderTargetPool();
-    const auto& prbAtt = _preRenderBatch.getOutput(false)._rt->getAttachment(RTAttachmentType::Colour, 0);
-    const auto& linDepthDataAtt =_preRenderBatch.getLinearDepthRT()._rt->getAttachment(RTAttachmentType::Colour, 0);
-    const auto& ssrDataAtt = rtPool.getRenderTarget(RenderTargetNames::SSR_RESULT)->getAttachment(RTAttachmentType::Colour, 0);
-    const auto& sceneDataAtt = rtPool.getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::NORMALS));
-    const auto& velocityAtt = rtPool.getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::VELOCITY));
-    const auto& depthAtt = rtPool.getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::Depth_Stencil, 0);
+    const auto& prbAtt = _preRenderBatch.getOutput(false)._rt->getAttachment(RTAttachmentType::COLOUR, 0);
+    const auto& linDepthDataAtt =_preRenderBatch.getLinearDepthRT()._rt->getAttachment(RTAttachmentType::COLOUR, 0);
+    const auto& ssrDataAtt = rtPool.getRenderTarget(RenderTargetNames::SSR_RESULT)->getAttachment(RTAttachmentType::COLOUR, 0);
+    const auto& sceneDataAtt = rtPool.getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::COLOUR, to_base(GFXDevice::ScreenTargets::NORMALS));
+    const auto& velocityAtt = rtPool.getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::COLOUR, to_base(GFXDevice::ScreenTargets::VELOCITY));
+    const auto& depthAtt = rtPool.getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::DEPTH, 0);
 
     SamplerDescriptor defaultSampler = {};
     defaultSampler.wrapUVW(TextureWrap::REPEAT);
@@ -250,13 +257,16 @@ void PostFX::apply(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
-void PostFX::idle(const Configuration& config) {
+void PostFX::idle(const Configuration& config)
+{
     OPTICK_EVENT();
 
     // Update states
-    if (getFilterState(FilterType::FILTER_NOISE)) {
+    if (getFilterState(FilterType::FILTER_NOISE))
+    {
         _noiseTimer += Time::Game::ElapsedMilliseconds();
-        if (_noiseTimer > _tickInterval) {
+        if (_noiseTimer > _tickInterval)
+        {
             _noiseTimer = 0.0;
             _randomNoiseCoefficient = Random(1000) * 0.001f;
             _randomFlashCoefficient = Random(1000) * 0.001f;
@@ -267,23 +277,31 @@ void PostFX::idle(const Configuration& config) {
     }
 }
 
-void PostFX::update(const U64 deltaTimeUSFixed, const U64 deltaTimeUSApp) {
+void PostFX::update(const U64 deltaTimeUSFixed, const U64 deltaTimeUSApp)
+{
     OPTICK_EVENT();
 
-    if (_fadeActive) {
+    if (_fadeActive)
+    {
         _currentFadeTimeMS += Time::MicrosecondsToMilliseconds<D64>(deltaTimeUSApp);
         F32 fadeStrength = to_F32(std::min(_currentFadeTimeMS / _targetFadeTimeMS , 1.0));
-        if (!_fadeOut) {
+        if (!_fadeOut)
+        {
             fadeStrength = 1.0f - fadeStrength;
         }
 
-        if (fadeStrength > 0.99) {
-            if (_fadeWaitDurationMS < std::numeric_limits<D64>::epsilon()) {
-                if (_fadeOutComplete) {
+        if (fadeStrength > 0.99)
+        {
+            if (_fadeWaitDurationMS < std::numeric_limits<D64>::epsilon())
+            {
+                if (_fadeOutComplete)
+                {
                     _fadeOutComplete();
                     _fadeOutComplete = DELEGATE<void>();
                 }
-            } else {
+            }
+            else
+            {
                 _fadeWaitDurationMS -= Time::MicrosecondsToMilliseconds<D64>(deltaTimeUSApp);
             }
         }
@@ -291,9 +309,11 @@ void PostFX::update(const U64 deltaTimeUSFixed, const U64 deltaTimeUSApp) {
         _drawConstantsCmd._constants.set(_ID("_fadeStrength"), GFX::PushConstantType::FLOAT, fadeStrength);
         
         _fadeActive = fadeStrength > std::numeric_limits<D64>::epsilon();
-        if (!_fadeActive) {
+        if (!_fadeActive)
+        {
             _drawConstantsCmd._constants.set(_ID("_fadeActive"), GFX::PushConstantType::BOOL, false);
-            if (_fadeInComplete) {
+            if (_fadeInComplete)
+            {
                 _fadeInComplete();
                 _fadeInComplete = DELEGATE<void>();
             }
@@ -303,7 +323,8 @@ void PostFX::update(const U64 deltaTimeUSFixed, const U64 deltaTimeUSApp) {
     _preRenderBatch.update(deltaTimeUSApp);
 }
 
-void PostFX::setFadeOut(const UColour3& targetColour, const D64 durationMS, const D64 waitDurationMS, DELEGATE<void> onComplete) {
+void PostFX::setFadeOut(const UColour3& targetColour, const D64 durationMS, const D64 waitDurationMS, DELEGATE<void> onComplete)
+{
     _drawConstantsCmd._constants.set(_ID("_fadeColour"), GFX::PushConstantType::VEC4, Util::ToFloatColour(targetColour));
     _drawConstantsCmd._constants.set(_ID("_fadeActive"), GFX::PushConstantType::BOOL, true);
     _targetFadeTimeMS = durationMS;
@@ -316,7 +337,8 @@ void PostFX::setFadeOut(const UColour3& targetColour, const D64 durationMS, cons
 
 // clear any fading effect currently active over the specified time interval
 // set durationMS to instantly clear the fade effect
-void PostFX::setFadeIn(const D64 durationMS, DELEGATE<void> onComplete) {
+void PostFX::setFadeIn(const D64 durationMS, DELEGATE<void> onComplete)
+{
     _targetFadeTimeMS = durationMS;
     _currentFadeTimeMS = 0.0;
     _fadeOut = false;
@@ -325,13 +347,16 @@ void PostFX::setFadeIn(const D64 durationMS, DELEGATE<void> onComplete) {
     _fadeInComplete = MOV(onComplete);
 }
 
-void PostFX::setFadeOutIn(const UColour3& targetColour, const D64 durationFadeOutMS, const D64 waitDurationMS) {
-    if (waitDurationMS > 0.0) {
+void PostFX::setFadeOutIn(const UColour3& targetColour, const D64 durationFadeOutMS, const D64 waitDurationMS)
+{
+    if (waitDurationMS > 0.0)
+    {
         setFadeOutIn(targetColour, waitDurationMS * 0.5, waitDurationMS * 0.5, durationFadeOutMS);
     }
 }
 
-void PostFX::setFadeOutIn(const UColour3& targetColour, const D64 durationFadeOutMS, const D64 durationFadeInMS, const D64 waitDurationMS) {
+void PostFX::setFadeOutIn(const UColour3& targetColour, const D64 durationFadeOutMS, const D64 durationFadeInMS, const D64 waitDurationMS)
+{
     setFadeOut(targetColour, durationFadeOutMS, waitDurationMS, [this, durationFadeInMS]() {setFadeIn(durationFadeInMS); });
 }
 

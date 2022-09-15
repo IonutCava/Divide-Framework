@@ -12,10 +12,11 @@ vec3 getHalfExtents(const in vec3 P, const in float R) {
 
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D HiZBuffer;
 
+#define viewProjectionMatrix PushData0
+#define viewMatrix PushData1
+
 uniform float nearPlane;
 uniform vec2 viewSize;
-uniform mat4 viewMatrix;
-uniform mat4 viewProjectionMatrix;
 uniform vec4 frustumPlanes[6];
 
 bool SphereInFrustum(vec3 pos, float r) {

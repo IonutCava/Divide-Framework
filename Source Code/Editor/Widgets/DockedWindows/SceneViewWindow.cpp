@@ -163,7 +163,7 @@ namespace Divide {
             PopReadOnly();
         }
         const RenderTarget* rt = _parent.getRenderTargetHandle()._rt;
-        const Texture_ptr& gameView = rt->getAttachment(RTAttachmentType::Colour, 0)->texture();
+        const Texture_ptr& gameView = rt->getAttachment(RTAttachmentType::COLOUR, 0)->texture();
 
         const I32 w = to_I32(gameView->width());
         const I32 h = to_I32(gameView->height());

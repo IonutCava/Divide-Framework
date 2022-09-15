@@ -34,8 +34,9 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
         TextureDescriptor weightsDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RGBA);
         weightsDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        InternalRTAttachmentDescriptors att{
-            InternalRTAttachmentDescriptor{ weightsDescriptor, sampler.getHash(), RTAttachmentType::Colour, 0u}
+        InternalRTAttachmentDescriptors att
+        {
+            InternalRTAttachmentDescriptor{ weightsDescriptor, sampler.getHash(), RTAttachmentType::COLOUR, 0u}
         };
 
         desc._name = "SMAAWeights";
@@ -171,7 +172,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
         }
     }
 
-    const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
+    const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO));
     const auto& screenTex = screenAtt->texture()->defaultView();
 
     if (useSMAA()) {
@@ -183,7 +184,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
             beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, 0u };
             GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
-            const auto& att = _parent.edgesRT()._rt->getAttachment(RTAttachmentType::Colour, 0);
+            const auto& att = _parent.edgesRT()._rt->getAttachment(RTAttachmentType::COLOUR, 0);
             const auto& edgesTex = att->texture()->defaultView();
             const auto& areaTex = _areaTexture->defaultView();
             const auto& searchTex = _searchTexture->defaultView();
@@ -225,7 +226,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
             beginRenderPassCmd._name = "DO_SMAA_BLEND_PASS";
             GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
-            const auto& att = _smaaWeights._rt->getAttachment(RTAttachmentType::Colour, 0);
+            const auto& att = _smaaWeights._rt->getAttachment(RTAttachmentType::COLOUR, 0);
             const auto& blendTex = att->texture()->defaultView();
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);

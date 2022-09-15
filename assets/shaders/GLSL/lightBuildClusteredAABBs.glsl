@@ -6,9 +6,9 @@
 #define COMPUTE_LIGHT_CLUSTERS
 #include "lightInput.cmn"
 
-uniform mat4 inverseProjectionMatrix;
-uniform ivec4 viewport;
-uniform vec2 _zPlanes;
+#define inverseProjectionMatrix PushData0
+#define viewport ivec4(PushData1[0])
+#define _zPlanes PushData1[1].xy
 
 //Function prototypes
 vec3 screen2View(in vec4 screen);

@@ -1,11 +1,15 @@
 #include "stdafx.h"
 
 #include "Headers/vkResources.h"
+#include "Headers/VKWrapper.h"
 
 #include "Platform/Video/GLIM/glim.h"
 #include "Platform/Video/Headers/DescriptorSets.h"
 
-namespace Divide {
+
+namespace Divide
+{
+
 std::array<VkBlendFactor, to_base(BlendProperty::COUNT)> vkBlendTable;
 std::array<VkBlendOp, to_base(BlendOperation::COUNT)> vkBlendOpTable;
 std::array<VkCompareOp, to_base(ComparisonFunction::COUNT)> vkCompareFuncTable;
@@ -18,22 +22,55 @@ std::array<VkPrimitiveTopology, to_base(PrimitiveTopology::COUNT)> vkPrimitiveTy
 std::array<VkSamplerAddressMode, to_base(TextureWrap::COUNT)> vkWrapTable;
 std::array<VkShaderStageFlagBits, to_base(ShaderType::COUNT)> vkShaderStageTable;
 
-namespace Debug {
-    PFN_vkDebugMarkerSetObjectTagEXT vkDebugMarkerSetObjectTag = VK_NULL_HANDLE;
-    PFN_vkDebugMarkerSetObjectNameEXT vkDebugMarkerSetObjectName = VK_NULL_HANDLE;
-    PFN_vkCmdDebugMarkerBeginEXT vkCmdDebugMarkerBegin = VK_NULL_HANDLE;
-    PFN_vkCmdDebugMarkerEndEXT vkCmdDebugMarkerEnd = VK_NULL_HANDLE;
-    PFN_vkCmdDebugMarkerInsertEXT vkCmdDebugMarkerInsert = VK_NULL_HANDLE;
+namespace Debug
+{
+    PFN_vkCmdBeginDebugUtilsLabelEXT vkCmdBeginDebugUtilsLabelEXT = VK_NULL_HANDLE;
+    PFN_vkCmdEndDebugUtilsLabelEXT vkCmdEndDebugUtilsLabelEXT = VK_NULL_HANDLE;
+    PFN_vkCmdInsertDebugUtilsLabelEXT vkCmdInsertDebugUtilsLabelEXT = VK_NULL_HANDLE;
+    PFN_vkSetDebugUtilsObjectNameEXT vkSetDebugUtilsObjectNameEXT = VK_NULL_HANDLE;
+    PFN_vkSetDebugUtilsObjectTagEXT vkSetDebugUtilsObjectTagEXT = VK_NULL_HANDLE;
+
+
+    void SetObjectName(const VkDevice device, const uint64_t object, const VkObjectType objectType, const char* name)
+    {
+        if (VK_API::s_hasDebugMarkerSupport)
+        {
+            VkDebugUtilsObjectNameInfoEXT nameInfo{};
+            nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+            nameInfo.objectHandle = object;
+            nameInfo.objectType = objectType;
+            nameInfo.pObjectName = name;
+            vkSetDebugUtilsObjectNameEXT(device, &nameInfo);
+        }
+    }
+
+    void SetObjectTag(const VkDevice device, const uint64_t object, const VkObjectType objectType, const size_t tagSize, void* tagData, const uint64_t tagName)
+    {
+        if (VK_API::s_hasDebugMarkerSupport)
+        {
+            VkDebugUtilsObjectTagInfoEXT tagInfo{};
+            tagInfo.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_TAG_INFO_EXT;
+            tagInfo.objectHandle = object;
+            tagInfo.objectType = objectType;
+            tagInfo.tagSize = tagSize;
+            tagInfo.tagName = tagName;
+            tagInfo.pTag = tagData;
+            vkSetDebugUtilsObjectTagEXT(device, &tagInfo);
+        }
+    }
 }
 
 namespace VKUtil {
-    void fillEnumTables(VkDevice device) {
-        // The debug marker extension is not part of the core, so function pointers need to be loaded manually
-        Debug::vkDebugMarkerSetObjectTag = (PFN_vkDebugMarkerSetObjectTagEXT)vkGetDeviceProcAddr(device, "vkDebugMarkerSetObjectTagEXT");
-        Debug::vkDebugMarkerSetObjectName = (PFN_vkDebugMarkerSetObjectNameEXT)vkGetDeviceProcAddr(device, "vkDebugMarkerSetObjectNameEXT");
-        Debug::vkCmdDebugMarkerBegin = (PFN_vkCmdDebugMarkerBeginEXT)vkGetDeviceProcAddr(device, "vkCmdDebugMarkerBeginEXT");
-        Debug::vkCmdDebugMarkerEnd = (PFN_vkCmdDebugMarkerEndEXT)vkGetDeviceProcAddr(device, "vkCmdDebugMarkerEndEXT");
-        Debug::vkCmdDebugMarkerInsert = (PFN_vkCmdDebugMarkerInsertEXT)vkGetDeviceProcAddr(device, "vkCmdDebugMarkerInsertEXT");
+    void fillEnumTables(VkDevice device)
+    {
+        if (VK_API::s_hasDebugMarkerSupport)
+        {
+            Debug::vkCmdBeginDebugUtilsLabelEXT  = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetDeviceProcAddr(device, "vkCmdBeginDebugUtilsLabelEXT");
+            Debug::vkCmdEndDebugUtilsLabelEXT    = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetDeviceProcAddr(device, "vkCmdEndDebugUtilsLabelEXT");
+            Debug::vkCmdInsertDebugUtilsLabelEXT = (PFN_vkCmdInsertDebugUtilsLabelEXT)vkGetDeviceProcAddr(device, "vkCmdInsertDebugUtilsLabelEXT");
+            Debug::vkSetDebugUtilsObjectNameEXT  = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(device, "vkSetDebugUtilsObjectNameEXT");
+            Debug::vkSetDebugUtilsObjectTagEXT   = (PFN_vkSetDebugUtilsObjectTagEXT)vkGetDeviceProcAddr(device, "vkSetDebugUtilsObjectTagEXT");
+        }
 
         vkBlendTable[to_base(BlendProperty::ZERO)] = VK_BLEND_FACTOR_ZERO;
         vkBlendTable[to_base(BlendProperty::ONE)] = VK_BLEND_FACTOR_ONE;
@@ -121,13 +158,17 @@ namespace VKUtil {
         vkShaderStageTable[to_base(ShaderType::TESSELLATION_CTRL)] = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
         vkShaderStageTable[to_base(ShaderType::TESSELLATION_EVAL)] = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
         vkShaderStageTable[to_base(ShaderType::COMPUTE)] = VK_SHADER_STAGE_COMPUTE_BIT;
-    };
+    }
 
-    VkFormat internalFormat(const GFXImageFormat baseFormat, const GFXDataFormat dataType, const bool srgb, const bool normalized) noexcept {
-        switch (baseFormat) {
-            case GFXImageFormat::RED:{
+    VkFormat internalFormat(const GFXImageFormat baseFormat, const GFXDataFormat dataType, const bool srgb, const bool normalized) noexcept
+    {
+        switch (baseFormat)
+        {
+            case GFXImageFormat::RED:
+            {
                 assert(!srgb);
-                switch (dataType) {
+                switch (dataType)
+                {
                 case GFXDataFormat::UNSIGNED_BYTE: return normalized ? (srgb ? VK_FORMAT_R8_SRGB : VK_FORMAT_R8_UNORM) : VK_FORMAT_R8_UINT;
                     case GFXDataFormat::UNSIGNED_SHORT: return normalized ? VK_FORMAT_R16_UNORM : VK_FORMAT_R16_UINT;
                     case GFXDataFormat::UNSIGNED_INT: { assert(!normalized && "Format not supported"); return VK_FORMAT_R32_UINT; }
@@ -138,9 +179,11 @@ namespace VKUtil {
                     case GFXDataFormat::FLOAT_32: return VK_FORMAT_R32_SFLOAT;
                 };
             }break;
-            case GFXImageFormat::RG: {
+            case GFXImageFormat::RG:
+            {
                 assert(!srgb);
-                switch (dataType) {
+                switch (dataType)
+                {
                     case GFXDataFormat::UNSIGNED_BYTE: return normalized ? (srgb ? VK_FORMAT_R8G8_SRGB : VK_FORMAT_R8G8_UNORM) : VK_FORMAT_R8G8_UINT;
                     case GFXDataFormat::UNSIGNED_SHORT: return normalized ? VK_FORMAT_R16G16_UNORM : VK_FORMAT_R16G16_UINT;
                     case GFXDataFormat::UNSIGNED_INT: { assert(!normalized && "Format not supported"); return VK_FORMAT_R32G32_UINT; }
@@ -154,7 +197,8 @@ namespace VKUtil {
             case GFXImageFormat::BGR:
             {
                 assert(!srgb || srgb == (dataType == GFXDataFormat::UNSIGNED_BYTE && normalized));
-                switch (dataType) {
+                switch (dataType)
+                {
                     case GFXDataFormat::UNSIGNED_BYTE: return normalized ? (srgb ? VK_FORMAT_B8G8R8_SRGB : VK_FORMAT_B8G8R8_UNORM) : VK_FORMAT_B8G8R8_UINT;
                     case GFXDataFormat::SIGNED_BYTE: return normalized ? VK_FORMAT_B8G8R8_SNORM : VK_FORMAT_B8G8R8_SINT;
                 };
@@ -162,7 +206,8 @@ namespace VKUtil {
             case GFXImageFormat::RGB:
             {
                 assert(!srgb || srgb == (dataType == GFXDataFormat::UNSIGNED_BYTE && normalized));
-                switch (dataType) {
+                switch (dataType)
+                {
                     case GFXDataFormat::UNSIGNED_BYTE: return normalized ? (srgb ? VK_FORMAT_R8G8B8_SRGB : VK_FORMAT_R8G8B8_UNORM) : VK_FORMAT_R8G8B8_UINT;
                     case GFXDataFormat::UNSIGNED_SHORT: return normalized ? VK_FORMAT_R16G16B16_UNORM : VK_FORMAT_R16G16B16_UINT;
                     case GFXDataFormat::UNSIGNED_INT: { assert(!normalized && "Format not supported"); return VK_FORMAT_R32G32B32_UINT; }
@@ -173,7 +218,8 @@ namespace VKUtil {
                     case GFXDataFormat::FLOAT_32: return VK_FORMAT_R32G32B32_SFLOAT;
                 };
             }break;
-            case GFXImageFormat::BGRA: {
+            case GFXImageFormat::BGRA:
+            {
                 assert(!srgb || srgb == (dataType == GFXDataFormat::UNSIGNED_BYTE && normalized));
                 switch (dataType) {
                     case GFXDataFormat::UNSIGNED_BYTE: return normalized ? (srgb ? VK_FORMAT_B8G8R8A8_SRGB : VK_FORMAT_B8G8R8A8_UNORM) : VK_FORMAT_B8G8R8A8_UINT;
@@ -183,7 +229,8 @@ namespace VKUtil {
             case GFXImageFormat::RGBA:
             {
                 assert(!srgb || srgb == (dataType == GFXDataFormat::UNSIGNED_BYTE && normalized));
-                switch (dataType) {
+                switch (dataType)
+                {
                     case GFXDataFormat::UNSIGNED_BYTE: return normalized ? (srgb ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM) : VK_FORMAT_R8G8B8A8_UINT;
                     case GFXDataFormat::UNSIGNED_SHORT: return normalized ? VK_FORMAT_R16G16B16A16_UNORM : VK_FORMAT_R16G16B16A16_UINT;
                     case GFXDataFormat::UNSIGNED_INT: { assert(!normalized && "Format not supported"); return VK_FORMAT_R32G32B32A32_UINT; }
@@ -196,15 +243,30 @@ namespace VKUtil {
             }break;
             case GFXImageFormat::DEPTH_COMPONENT:
             {
-                switch (dataType) {
+                switch (dataType)
+                {
                     case GFXDataFormat::SIGNED_BYTE:
                     case GFXDataFormat::UNSIGNED_BYTE:
                     case GFXDataFormat::SIGNED_SHORT:
                     case GFXDataFormat::UNSIGNED_SHORT: return VK_FORMAT_D16_UNORM;
                     case GFXDataFormat::SIGNED_INT:
-                    case GFXDataFormat::UNSIGNED_INT: return VK_FORMAT_D24_UNORM_S8_UINT;
+                    case GFXDataFormat::UNSIGNED_INT: return VK_API::s_depthFormatInformation._d24x8Supported ?  VK_FORMAT_X8_D24_UNORM_PACK32 : VK_FORMAT_D32_SFLOAT;
                     case GFXDataFormat::FLOAT_16:
-                    case GFXDataFormat::FLOAT_32: return VK_FORMAT_D32_SFLOAT;
+                    case GFXDataFormat::FLOAT_32: return VK_API::s_depthFormatInformation._d32FSupported ? VK_FORMAT_D32_SFLOAT : VK_FORMAT_X8_D24_UNORM_PACK32;
+                };
+            }break;
+            case GFXImageFormat::DEPTH_STENCIL_COMPONENT:
+            {
+                switch (dataType)
+                {
+                    case GFXDataFormat::SIGNED_BYTE:
+                    case GFXDataFormat::UNSIGNED_BYTE:
+                    case GFXDataFormat::SIGNED_SHORT:
+                    case GFXDataFormat::UNSIGNED_SHORT:
+                    case GFXDataFormat::SIGNED_INT:
+                    case GFXDataFormat::UNSIGNED_INT: return VK_API::s_depthFormatInformation._d24s8Supported ? VK_FORMAT_D24_UNORM_S8_UINT : VK_FORMAT_D32_SFLOAT_S8_UINT;
+                    case GFXDataFormat::FLOAT_16:
+                    case GFXDataFormat::FLOAT_32: return  VK_API::s_depthFormatInformation._d32s8Supported ? VK_FORMAT_D32_SFLOAT_S8_UINT : VK_FORMAT_D24_UNORM_S8_UINT;
                 };
             }break;
             // compressed formats
@@ -235,66 +297,84 @@ namespace VKUtil {
         return VK_FORMAT_MAX_ENUM;
     }
 
-    VkFormat internalFormat(const GFXDataFormat format, const U8 componentCount, const bool normalized) noexcept {
-        switch (format) {
-            case GFXDataFormat::UNSIGNED_BYTE: {
-                switch (componentCount) {
+    VkFormat internalFormat(const GFXDataFormat format, const U8 componentCount, const bool normalized) noexcept
+    {
+        switch (format)
+        {
+            case GFXDataFormat::UNSIGNED_BYTE:
+            {
+                switch (componentCount)
+                {
                     case 1u: return normalized ? VK_FORMAT_R8_UNORM : VK_FORMAT_R8_UINT;
                     case 2u: return normalized ? VK_FORMAT_R8G8_UNORM : VK_FORMAT_R8G8_UINT;
                     case 3u: return normalized ? VK_FORMAT_R8G8B8_UNORM : VK_FORMAT_R8G8B8_UINT;
                     case 4u: return normalized ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_UINT;
                 };
             } break;
-            case GFXDataFormat::UNSIGNED_SHORT: {
-                switch (componentCount) {
+            case GFXDataFormat::UNSIGNED_SHORT:
+            {
+                switch (componentCount)
+                {
                     case 1u: return normalized ? VK_FORMAT_R16_UNORM : VK_FORMAT_R16_UINT;
                     case 2u: return normalized ? VK_FORMAT_R16G16_UNORM : VK_FORMAT_R16G16_UINT;
                     case 3u: return normalized ? VK_FORMAT_R16G16B16_UNORM : VK_FORMAT_R16G16B16_UINT;
                     case 4u: return normalized ? VK_FORMAT_R16G16B16A16_UNORM : VK_FORMAT_R16G16B16A16_UINT;
                 };
             } break;
-            case GFXDataFormat::UNSIGNED_INT: {
-                switch (componentCount) {
+            case GFXDataFormat::UNSIGNED_INT:
+            {
+                switch (componentCount)
+                {
                     case 1u: return VK_FORMAT_R32_UINT;
                     case 2u: return VK_FORMAT_R32G32_UINT;
                     case 3u: return VK_FORMAT_R32G32B32_UINT;
                     case 4u: return VK_FORMAT_R32G32B32A32_UINT;
                 };
             } break;
-            case GFXDataFormat::SIGNED_BYTE: {
-                switch (componentCount) {
+            case GFXDataFormat::SIGNED_BYTE:
+            {
+                switch (componentCount)
+                {
                     case 1u: return normalized ? VK_FORMAT_R8_SNORM : VK_FORMAT_R8_SINT;
                     case 2u: return normalized ? VK_FORMAT_R8_SNORM : VK_FORMAT_R8_SINT;
                     case 3u: return normalized ? VK_FORMAT_R8_SNORM : VK_FORMAT_R8_SINT;
                     case 4u: return normalized ? VK_FORMAT_R8_SNORM : VK_FORMAT_R8_SINT;
                 };
             } break;
-            case GFXDataFormat::SIGNED_SHORT: {
-                switch (componentCount) {
+            case GFXDataFormat::SIGNED_SHORT:
+            {
+                switch (componentCount)
+                {
                     case 1u: return normalized ? VK_FORMAT_R16_SNORM : VK_FORMAT_R16_SINT;
                     case 2u: return normalized ? VK_FORMAT_R16G16_SNORM : VK_FORMAT_R16G16_SINT;
                     case 3u: return normalized ? VK_FORMAT_R16G16B16_SNORM : VK_FORMAT_R16G16B16_SINT;
                     case 4u: return normalized ? VK_FORMAT_R16G16B16A16_SNORM : VK_FORMAT_R16G16B16A16_SINT;
                 };
             } break;
-            case GFXDataFormat::SIGNED_INT: {
-                switch (componentCount) {
+            case GFXDataFormat::SIGNED_INT:
+            {
+                switch (componentCount)
+                {
                     case 1u: return VK_FORMAT_R32_SINT;
                     case 2u: return VK_FORMAT_R32G32_SINT;
                     case 3u: return VK_FORMAT_R32G32B32_SINT;
                     case 4u: return VK_FORMAT_R32G32B32A32_SINT;
                 };
             } break;
-            case GFXDataFormat::FLOAT_16: {
-                switch (componentCount) {
+            case GFXDataFormat::FLOAT_16:
+            {
+                switch (componentCount)
+                {
                     case 1u: return VK_FORMAT_R16_SFLOAT;
                     case 2u: return VK_FORMAT_R16G16_SFLOAT;
                     case 3u: return VK_FORMAT_R16G16B16_SFLOAT;
                     case 4u: return VK_FORMAT_R16G16B16A16_SFLOAT;
                 };
             } break;
-            case GFXDataFormat::FLOAT_32: {
-                switch (componentCount) {
+            case GFXDataFormat::FLOAT_32:
+            {
+                switch (componentCount)
+                {
                     case 1u: return VK_FORMAT_R32_SFLOAT;
                     case 2u: return VK_FORMAT_R32G32_SFLOAT;
                     case 3u: return VK_FORMAT_R32G32B32_SFLOAT;
@@ -307,8 +387,10 @@ namespace VKUtil {
         return VK_FORMAT_MAX_ENUM;
     }
 
-    VkDescriptorType vkDescriptorType(DescriptorSetBindingType type) noexcept {
-        switch (type) {
+    VkDescriptorType vkDescriptorType(DescriptorSetBindingType type) noexcept
+    {
+        switch (type)
+        {
             case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             case DescriptorSetBindingType::IMAGE: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
             case DescriptorSetBindingType::UNIFORM_BUFFER: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -317,6 +399,5 @@ namespace VKUtil {
 
         return VK_DESCRIPTOR_TYPE_MAX_ENUM;
     }
-};
-
+}; //namespace VKUtil
 }; //namespace Divide

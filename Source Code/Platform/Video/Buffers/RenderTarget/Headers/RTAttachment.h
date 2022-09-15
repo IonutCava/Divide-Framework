@@ -44,8 +44,9 @@ FWD_DECLARE_MANAGED_CLASS(RTAttachment);
 
 /// This enum is used when creating render targets to define the channel that the texture will attach to
 enum class RTAttachmentType : U8 {
-    Colour = 0,
-    Depth_Stencil,
+    COLOUR = 0,
+    DEPTH,
+    DEPTH_STENCIL,
     COUNT
 };
 
@@ -97,7 +98,8 @@ class RTAttachment final {
     public:
         explicit RTAttachment(RenderTarget& parent, const RTAttachmentDescriptor& descriptor) noexcept;
 
-        void setImageUsage(ImageUsage layout);
+        /// Returns true if the specified layout differs from the Texture's current layout
+        [[nodiscard]] bool setImageUsage(ImageUsage layout);
 
         bool mipWriteLevel(U16 level) noexcept;
         [[nodiscard]] U16  mipWriteLevel() const noexcept;

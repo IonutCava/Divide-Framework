@@ -19,7 +19,8 @@ namespace {
     std::set<GLuint> g_deletionSet;
 }
 
-void glShaderProgram::Idle(PlatformContext& platformContext) {
+void glShaderProgram::Idle(PlatformContext& platformContext)
+{
     OPTICK_EVENT();
 
     assert(Runtime::isMainThread());
@@ -28,13 +29,16 @@ void glShaderProgram::Idle(PlatformContext& platformContext) {
     ProcessValidationQueue();
 }
 
-void glShaderProgram::ProcessValidationQueue() {
+void glShaderProgram::ProcessValidationQueue()
+{
     static ValidationEntry s_validationOutputCache;
 
-    if (g_sValidationQueue.try_dequeue(s_validationOutputCache)) {
+    if (g_sValidationQueue.try_dequeue(s_validationOutputCache))
+    {
         {
             SharedLock<SharedMutex> w_lock(g_deletionSetLock);
-            if (g_deletionSet.find(s_validationOutputCache._handle) != std::cend(g_deletionSet)) {
+            if (g_deletionSet.find(s_validationOutputCache._handle) != std::cend(g_deletionSet))
+            {
                 return;
             }
         }
@@ -43,25 +47,29 @@ void glShaderProgram::ProcessValidationQueue() {
         glValidateProgramPipeline(s_validationOutputCache._handle);
 
         GLint status = 1;
-        if (s_validationOutputCache._stageMask != UseProgramStageMask::GL_COMPUTE_SHADER_BIT) {
+        if (s_validationOutputCache._stageMask != UseProgramStageMask::GL_COMPUTE_SHADER_BIT)
+        {
             glGetProgramPipelineiv(s_validationOutputCache._handle, GL_VALIDATE_STATUS, &status);
         }
 
         // we print errors in debug and in release, but everything else only in debug
         // the validation log is only retrieved if we request it. (i.e. in release,
         // if the shader is validated, it isn't retrieved)
-        if (status == 0) {
+        if (status == 0)
+        {
             // Query the size of the log
             GLint length = 0;
             glGetProgramPipelineiv(s_validationOutputCache._handle, GL_INFO_LOG_LENGTH, &length);
             // If we actually have something in the validation log
-            if (length > 1) {
+            if (length > 1)
+            {
                 string validationBuffer;
                 validationBuffer.resize(length);
                 glGetProgramPipelineInfoLog(s_validationOutputCache._handle, length, nullptr, &validationBuffer[0]);
 
                 // To avoid overflowing the output buffers (both CEGUI and Console), limit the maximum output size
-                if (validationBuffer.size() > g_validationBufferMaxSize) {
+                if (validationBuffer.size() > g_validationBufferMaxSize)
+                {
                     // On some systems, the program's disassembly is printed, and that can get quite large
                     validationBuffer.resize(std::strlen(Locale::Get(_ID("GLSL_LINK_PROGRAM_LOG"))) + g_validationBufferMaxSize);
                     // Use the simple "truncate and inform user" system (a.k.a. add dots and delete the rest)
@@ -69,10 +77,14 @@ void glShaderProgram::ProcessValidationQueue() {
                 }
                 // Return the final message, whatever it may contain
                 Console::errorfn(Locale::Get(_ID("GLSL_VALIDATING_PROGRAM")), s_validationOutputCache._handle, s_validationOutputCache._name.c_str(), validationBuffer.c_str());
-            } else {
+            }
+            else
+            {
                 Console::errorfn(Locale::Get(_ID("GLSL_VALIDATING_PROGRAM")), s_validationOutputCache._handle, s_validationOutputCache._name.c_str(), "[ Couldn't retrieve info log! ]");
             }
-        } else {
+        }
+        else
+        {
             Console::d_printfn(Locale::Get(_ID("GLSL_VALIDATING_PROGRAM")), s_validationOutputCache._handle, s_validationOutputCache._name.c_str(), "[ OK! ]");
         }
     }
@@ -94,15 +106,19 @@ glShaderProgram::~glShaderProgram()
     unload();
 }
 
-bool glShaderProgram::unload() {
-    if (_handle != GLUtil::k_invalidObjectID) {
+bool glShaderProgram::unload() 
+{
+    if (_handle != GLUtil::k_invalidObjectID)
+    {
         {
             ScopedLock<SharedMutex> w_lock(g_deletionSetLock);
             g_deletionSet.insert(_handle);
         }
 
-        if (GL_API::GetStateTracker()->_activeShaderPipelineHandle == _handle) {
-            if (GL_API::GetStateTracker()->setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED) {
+        if (GL_API::GetStateTracker()->_activeShaderPipelineHandle == _handle)
+        {
+            if (GL_API::GetStateTracker()->setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED)
+            {
                 DIVIDE_UNEXPECTED_CALL();
             }
         }
@@ -122,19 +138,23 @@ bool glShaderProgram::unload() {
      return ShaderProgram::unload();
 }
 
-void glShaderProgram::processValidation() {
+void glShaderProgram::processValidation()
+{
     OPTICK_EVENT();
 
-    if (!_validationQueued) {
+    if (!_validationQueued)
+    {
         return;
     }
 
     _validationQueued = false;
 
     UseProgramStageMask stageMask = UseProgramStageMask::GL_NONE_BIT;
-    for (glShader* shader : _shaderStage) {
+    for (glShader* shader : _shaderStage)
+    {
 
-        if (!shader->valid()) {
+        if (!shader->valid())
+        {
             continue;
         }
 
@@ -142,15 +162,18 @@ void glShaderProgram::processValidation() {
         stageMask |= shader->stageMask();
     }
 
-    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+    if_constexpr(Config::ENABLE_GPU_VALIDATION)
+    {
         g_sValidationQueue.enqueue({ resourceName(), _handle, stageMask});
     }
 }
 
-ShaderResult glShaderProgram::validatePreBind(const bool rebind) {
+ShaderResult glShaderProgram::validatePreBind(const bool rebind)
+{
     OPTICK_EVENT();
 
-    if (!_stagesBound && rebind) {
+    if (!_stagesBound && rebind)
+    {
 
         assert(getState() == ResourceState::RES_LOADED);
         ShaderResult ret = ShaderResult::OK;
@@ -167,7 +190,8 @@ ShaderResult glShaderProgram::validatePreBind(const bool rebind) {
         if (rebind) {
             assert(_handle != GLUtil::k_invalidObjectID);
 
-            for (glShader* shader : _shaderStage) {
+            for (glShader* shader : _shaderStage)
+            {
                 ret = shader->uploadToGPU(_handle);
                 if (ret != ShaderResult::OK) {
                     _stagesBound = true;
@@ -178,7 +202,8 @@ ShaderResult glShaderProgram::validatePreBind(const bool rebind) {
                 glUseProgramStages(_handle, shader->stageMask(), shader->handle());
             }
 
-            if (ret == ShaderResult::OK) {
+            if (ret == ShaderResult::OK)
+            {
                 _validationQueued = true;
                 _stagesBound = true;
             }
@@ -211,14 +236,17 @@ bool glShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, c
     return false;
 }
 
-bool glShaderProgram::recompile(bool& skipped) {
+bool glShaderProgram::recompile(bool& skipped)
+{
     OPTICK_EVENT();
 
-    if (!ShaderProgram::recompile(skipped)) {
+    if (!ShaderProgram::recompile(skipped))
+    {
         return false;
     }
 
-    if (validatePreBind(false) != ShaderResult::OK) {
+    if (validatePreBind(false) != ShaderResult::OK)
+    {
         return false;
     }
 
@@ -229,17 +257,20 @@ bool glShaderProgram::recompile(bool& skipped) {
 }
 
 /// Bind this shader program
-ShaderResult glShaderProgram::bind() {
+ShaderResult glShaderProgram::bind()
+{
     OPTICK_EVENT();
 
     // If the shader isn't ready or failed to link, stop here
     const ShaderResult ret = validatePreBind(true);
-    if (ret != ShaderResult::OK) {
+    if (ret != ShaderResult::OK)
+    {
         return ret;
     }
 
     // Set this program as the currently active one
-    if (GL_API::GetStateTracker()->setActiveShaderPipeline(_handle) == GLStateTracker::BindResult::JUST_BOUND) {
+    if (GL_API::GetStateTracker()->setActiveShaderPipeline(_handle) == GLStateTracker::BindResult::JUST_BOUND)
+    {
         // All of this needs to be run on an actual bind operation. If we are already bound, we assume we did all this
         processValidation();
     }
@@ -247,4 +278,20 @@ ShaderResult glShaderProgram::bind() {
     return ShaderResult::OK;
 }
 
+void glShaderProgram::uploadPushConstants(const PushConstantsStruct& pushConstants)
+{
+    if (pushConstants._set)
+    {
+        for (glShader* shader : _shaderStage)
+        {
+
+            if (!shader->valid())
+            {
+                continue;
+            }
+
+            shader->uploadPushConstants(pushConstants);
+        }
+    }
+}
 };

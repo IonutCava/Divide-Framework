@@ -340,7 +340,7 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkShaderBuffer.h">
       <Filter>Video\RenderBackend\Vulkan\Buffers\Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkFramebuffer.h">
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkRenderTarget.h">
       <Filter>Video\RenderBackend\Vulkan\Buffers\Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\vkIMPrimitive.h">
@@ -639,7 +639,7 @@
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkShaderBuffer.cpp">
       <Filter>Video\RenderBackend\Vulkan\Buffers</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkFramebuffer.cpp">
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkRenderTarget.cpp">
       <Filter>Video\RenderBackend\Vulkan\Buffers</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\vkResources.cpp">

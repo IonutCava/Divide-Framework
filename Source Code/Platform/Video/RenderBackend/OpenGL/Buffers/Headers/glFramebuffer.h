@@ -95,9 +95,9 @@ protected:
     void setAttachmentState(GLenum binding, BindingState state);
 
     void clear(const RTClearDescriptor& descriptor);
-    void setAttachmentUsage(RTAttachmentType type, ImageUsage usage);
+    void transitionAttachments(bool toWrite);
     void begin(const RTDrawDescriptor& drawPolicy, const RTClearDescriptor& clearPolicy);
-    void end() const;
+    void end();
 
     PROPERTY_R_IW(Str128, debugMessage, "");
     PROPERTY_R_IW(GLuint, framebufferHandle, GLUtil::k_invalidObjectID);
@@ -131,11 +131,11 @@ bool operator!=(const glFramebuffer::BindingState& lhs, const glFramebuffer::Bin
 
 namespace Attorney {
     class GLAPIRenderTarget {
-        static void begin(glFramebuffer& buffer, const RTDrawDescriptor& drawPolicy, const RTClearDescriptor& clearPolicy) {
-            buffer.begin(drawPolicy, clearPolicy);
+        static void begin(glFramebuffer& rt, const RTDrawDescriptor& drawPolicy, const RTClearDescriptor& clearPolicy) {
+            rt.begin(drawPolicy, clearPolicy);
         }
-        static void end(const glFramebuffer& buffer) {
-            buffer.end();
+        static void end(glFramebuffer& rt) {
+            rt.end();
         }
 
         friend class GL_API;

@@ -30,7 +30,9 @@ namespace Divide {
         _bufferImpl = eastl::make_unique<AllocatedBuffer>(BufferUsageType::SHADER_BUFFER);
         _bufferImpl->_params = _params;
 
-        _stagingBuffer = VKUtil::createStagingBuffer(dataSize);
+        const string bufferName = _name.empty() ? Util::StringFormat("DVD_GENERAL_SHADER_BUFFER_%zu", getGUID()) : (_name + "_SHADER_BUFFER");
+
+        _stagingBuffer = VKUtil::createStagingBuffer(dataSize, bufferName);
         Byte* mappedRange = (Byte*)_stagingBuffer->_allocInfo.pMappedData;
 
         for (U32 i = 0u; i < queueLength(); ++i) {
@@ -72,8 +74,8 @@ namespace Divide {
                                              _bufferImpl->_allocation,
                                              &memPropFlags);
 
-            const string bufferName = _name.empty() ? Util::StringFormat("DVD_GENERAL_SHADER_BUFFER_%zu", getGUID()) : (_name + "_SHADER_BUFFER");
             vmaSetAllocationName(*VK_API::GetStateTracker()->_allocatorInstance._allocator, _bufferImpl->_allocation, bufferName.c_str());
+            Debug::SetObjectName(VK_API::GetStateTracker()->_device->getVKDevice(), (uint64_t)_bufferImpl->_buffer, VK_OBJECT_TYPE_BUFFER, bufferName.c_str());
         }
 
         // Queue a command to copy from the staging buffer to the vertex buffer

@@ -137,7 +137,7 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Headers\fontstash.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Headers\glfontstash.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkBufferImpl.h" />
-    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkFramebuffer.h" />
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkRenderTarget.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkGenericVertexData.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkShaderBuffer.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\vkDescriptors.h" />
@@ -240,7 +240,7 @@
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src\TextureTarget.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src\ViewportTarget.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkBufferImpl.cpp" />
-    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkFramebuffer.cpp" />
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkRenderTarget.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkGenericVertexData.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkLockManager.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkShaderBuffer.cpp" />

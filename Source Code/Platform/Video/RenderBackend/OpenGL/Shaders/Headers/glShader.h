@@ -40,6 +40,8 @@ namespace Divide {
 
 enum class ShaderResult : U8;
 
+struct PushConstantsStruct;
+
 /// glShader represents one of a program's rendering stages (vertex, geometry, fragment, etc)
 /// It can be used simultaneously in multiple programs/pipelines
 class glShader final : public ShaderModule {
@@ -66,10 +68,13 @@ class glShader final : public ShaderModule {
 
     void onParentValidation();
 
+    void uploadPushConstants(const PushConstantsStruct& pushConstants);
+
   private:
     ShaderProgram::ShaderLoadData _loadData;
     vector<GLuint> _shaderIDs;
     bool _linked = false;
+    GLint _pushConstantsLocations[2];
 };
 
 };  // namespace Divide

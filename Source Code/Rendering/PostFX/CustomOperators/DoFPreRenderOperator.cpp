@@ -48,7 +48,8 @@ DoFPreRenderOperator::DoFPreRenderOperator(GFXDevice& context, PreRenderBatch& p
     dof.waitForReady(false);
     dof.propertyDescriptor(shaderDescriptor);
     _dofShader = CreateResource<ShaderProgram>(cache, dof);
-    _dofShader->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*) {
+    _dofShader->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*)
+    {
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _dofShader->handle();
@@ -62,15 +63,18 @@ DoFPreRenderOperator::DoFPreRenderOperator(GFXDevice& context, PreRenderBatch& p
     parametersChanged();
 }
 
-bool DoFPreRenderOperator::ready() const noexcept {
-    if (_dofShader->getState() == ResourceState::RES_LOADED) {
+bool DoFPreRenderOperator::ready() const noexcept
+{
+    if (_dofShader->getState() == ResourceState::RES_LOADED)
+    {
         return PreRenderOperator::ready();
     }
 
     return false;
 }
 
-void DoFPreRenderOperator::parametersChanged() noexcept {
+void DoFPreRenderOperator::parametersChanged() noexcept
+{
     const auto& params = _context.context().config().rendering.postFX.dof;
 
     _constants.set(_ID("focus"), GFX::PushConstantType::VEC2, params.focalPoint);
@@ -89,23 +93,25 @@ void DoFPreRenderOperator::parametersChanged() noexcept {
     _constantsDirty = true;
 }
 
-void DoFPreRenderOperator::reshape(const U16 width, const U16 height) {
+void DoFPreRenderOperator::reshape(const U16 width, const U16 height)
+{
     PreRenderOperator::reshape(width, height);
     _constants.set(_ID("size"), GFX::PushConstantType::VEC2, vec2<F32>(width, height));
     _constantsDirty = true;
 }
 
-bool DoFPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
+bool DoFPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut)
+{
     const vec2<F32>& zPlanes = cameraSnapshot._zPlanes;
-    if (_cachedZPlanes != zPlanes) {
+    if (_cachedZPlanes != zPlanes)
+    {
         _constants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, zPlanes);
-
         _cachedZPlanes = zPlanes;
         _constantsDirty = true;
     }
     
-    const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
-    const auto& extraAtt = _parent.getLinearDepthRT()._rt->getAttachment(RTAttachmentType::Colour, 0u);
+    const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO));
+    const auto& extraAtt = _parent.getLinearDepthRT()._rt->getAttachment(RTAttachmentType::COLOUR, 0u);
     const auto& screenTex = screenAtt->texture()->defaultView();
     const auto& extraTex = extraAtt->texture()->defaultView();
 

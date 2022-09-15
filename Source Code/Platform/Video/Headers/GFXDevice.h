@@ -467,7 +467,7 @@ protected:
     friend class RenderPassExecutor;
 
     void occlusionCull(const RenderPass::BufferData& bufferData,
-                       const Texture_ptr& depthBuffer,
+                       const Texture_ptr& hizBuffer,
                        size_t samplerHash,
                        const CameraSnapshot& cameraSnapshot,
                        bool countCulledNodes,

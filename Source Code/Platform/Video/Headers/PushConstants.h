@@ -36,12 +36,24 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "PushConstant.h"
 
 namespace Divide {
+struct PushConstantsStruct {
+    mat4<F32> data0{0.f};
+    mat4<F32> data1{0.f};
+    bool _set{false};
+};
+
+bool operator==(const PushConstantsStruct& lhs,const PushConstantsStruct& rhs) noexcept;
+bool operator!=(const PushConstantsStruct& lhs,const PushConstantsStruct& rhs) noexcept;
+
 struct PushConstants {
     PushConstants() = default;
+    explicit PushConstants(const PushConstantsStruct& pushConstants);
     explicit PushConstants(const GFX::PushConstant& constant);
     explicit PushConstants(GFX::PushConstant&& constant);
 
     void set(const GFX::PushConstant& constant);
+
+    void set(const PushConstantsStruct& fastData);
 
     template<typename T>
     void set(U64 bindingHash, GFX::PushConstantType type, const T* values, size_t count);
@@ -59,10 +71,12 @@ struct PushConstants {
     bool empty() const noexcept;
     void countHint(const size_t count);
 
-    const vector_fast<GFX::PushConstant>& data() const noexcept;
+    [[nodiscard]] const vector_fast<GFX::PushConstant>& data() const noexcept;
+    [[nodiscard]] const PushConstantsStruct& fastData() const noexcept;
 
 private:
     friend bool Merge(PushConstants& lhs, const PushConstants& rhs, bool& partial);
+    PushConstantsStruct _fastData;
     vector_fast<GFX::PushConstant> _data;
 };
 

@@ -27,12 +27,14 @@
 
 namespace Divide {
 
-namespace{
+namespace
+{
     Configuration::Rendering::ShadowMapping g_shadowSettings;
 }
 
 CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
-    : ShadowMapGenerator(context, ShadowType::LAYERED) {
+    : ShadowMapGenerator(context, ShadowType::LAYERED)
+{
     Console::printfn(Locale::Get(_ID("LIGHT_CREATE_SHADOW_FB")), "EVCSM");
 
     const RenderTarget* rt = ShadowMap::getShadowMap(_type)._rt;
@@ -56,7 +58,8 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
         blurDepthMapShader.propertyDescriptor(shaderDescriptor);
 
         _blurDepthMapShader = CreateResource<ShaderProgram>(context.parent().resourceCache(), blurDepthMapShader);
-        _blurDepthMapShader->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*) {
+        _blurDepthMapShader->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*)
+        {
             PipelineDescriptor pipelineDescriptor = {};
             pipelineDescriptor._stateHash = _context.get2DStateBlock();
             pipelineDescriptor._shaderProgramHandle = _blurDepthMapShader->handle();
@@ -73,7 +76,8 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
     std::array<vec2<F32>, Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT> blurSizes;
     blurSizes.fill({1.0f / g_shadowSettings.csm.shadowMapResolution});
 
-    for (U16 i = 1; i < Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT; ++i) {
+    for (U16 i = 1; i < Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT; ++i)
+    {
         blurSizes[i] = blurSizes[i - 1] / 2;
     }
 
@@ -86,7 +90,7 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
     sampler.anisotropyLevel(0);
     const size_t samplerHash = sampler.getHash();
 
-    const TextureDescriptor& texDescriptor = rt->getAttachment(RTAttachmentType::Colour, 0)->texture()->descriptor();
+    const TextureDescriptor& texDescriptor = rt->getAttachment(RTAttachmentType::COLOUR, 0)->texture()->descriptor();
     // Draw FBO
     {
         // MSAA rendering is supported
@@ -100,9 +104,10 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
         depthDescriptor.msaaSamples(g_shadowSettings.csm.MSAASamples);
         depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        InternalRTAttachmentDescriptors att {
-            InternalRTAttachmentDescriptor{ colourDescriptor, samplerHash, RTAttachmentType::Colour, 0u},
-            InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::Depth_Stencil, 0u }
+        InternalRTAttachmentDescriptors att
+        {
+            InternalRTAttachmentDescriptor{ colourDescriptor, samplerHash, RTAttachmentType::COLOUR, 0u},
+            InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::DEPTH, 0u }
         };
 
         RenderTargetDescriptor desc = {};
@@ -121,8 +126,9 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
         blurMapDescriptor.layerCount(Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT);
         blurMapDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        InternalRTAttachmentDescriptors att = {
-            InternalRTAttachmentDescriptor{ blurMapDescriptor, samplerHash, RTAttachmentType::Colour, 0u }
+        InternalRTAttachmentDescriptors att
+        {
+            InternalRTAttachmentDescriptor{ blurMapDescriptor, samplerHash, RTAttachmentType::COLOUR, 0u }
         };
 
         RenderTargetDescriptor desc = {};
@@ -146,7 +152,8 @@ CascadedShadowMapsGenerator::~CascadedShadowMapsGenerator()
     }
 }
 
-CascadedShadowMapsGenerator::SplitDepths CascadedShadowMapsGenerator::calculateSplitDepths(DirectionalLightComponent& light, const vec2<F32>& nearFarPlanes) const noexcept {
+CascadedShadowMapsGenerator::SplitDepths CascadedShadowMapsGenerator::calculateSplitDepths(DirectionalLightComponent& light, const vec2<F32>& nearFarPlanes) const noexcept
+{
     //Between 0 and 1, change these to check the results
     constexpr F32 minDistance = 0.0f;
     constexpr F32 maxDistance = 1.0f;
@@ -165,7 +172,8 @@ CascadedShadowMapsGenerator::SplitDepths CascadedShadowMapsGenerator::calculateS
     const F32 ratio = maxZ / minZ;
 
     U8 i = 0;
-    for (; i < numSplits; ++i) {
+    for (; i < numSplits; ++i)
+    {
         const F32 p = to_F32(i + 1) / numSplits;
         const F32 log = minZ * std::pow(ratio, p);
         const F32 uniform = minZ + range * p;
@@ -174,7 +182,8 @@ CascadedShadowMapsGenerator::SplitDepths CascadedShadowMapsGenerator::calculateS
         light.setShadowFloatValue(i, d);
     }
 
-    for (; i < Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT; ++i) {
+    for (; i < Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT; ++i)
+    {
         depths[i] = std::numeric_limits<F32>::max();
         light.setShadowFloatValue(i, -depths[i]);
     }
@@ -191,13 +200,14 @@ void CascadedShadowMapsGenerator::applyFrustumSplits(DirectionalLightComponent& 
     const mat4<F32> invViewProj = GetInverse(shadowCamera.viewProjectionMatrix());
 
     F32 appliedDiff = 0.0f;
-    for (U8 cascadeIterator = 0; cascadeIterator < numSplits; ++cascadeIterator) {
+    for (U8 cascadeIterator = 0; cascadeIterator < numSplits; ++cascadeIterator)
+    {
         Camera* lightCam = ShadowMap::shadowCameras(ShadowType::LAYERED)[cascadeIterator];
 
         const F32 prevSplitDistance = cascadeIterator == 0 ? 0.0f : splitDepths[cascadeIterator - 1];
         const F32 splitDistance = splitDepths[cascadeIterator];
 
-        vec3<F32> frustumCornersWS[8] =
+        vec3<F32> frustumCornersWS[8]
         {
             {-1.0f,  1.0f, -1.0f},
             { 1.0f,  1.0f, -1.0f},
@@ -209,12 +219,14 @@ void CascadedShadowMapsGenerator::applyFrustumSplits(DirectionalLightComponent& 
             {-1.0f, -1.0f,  1.0f},
         };
 
-        for (vec3<F32> &corner : frustumCornersWS) {
+        for (vec3<F32> &corner : frustumCornersWS)
+        {
             const vec4<F32> inversePoint = invViewProj * vec4<F32>(corner, 1.0f);
             corner.set(inversePoint / inversePoint.w);
         }
 
-        for (U8 i = 0; i < 4; ++i) {
+        for (U8 i = 0; i < 4; ++i)
+        {
             const vec3<F32> cornerRay = frustumCornersWS[i + 4] - frustumCornersWS[i];
             const vec3<F32> nearCornerRay = cornerRay * prevSplitDistance;
             const vec3<F32> farCornerRay = cornerRay * splitDistance;
@@ -224,13 +236,15 @@ void CascadedShadowMapsGenerator::applyFrustumSplits(DirectionalLightComponent& 
         }
 
         vec3<F32> frustumCenter = VECTOR3_ZERO;
-        for (const vec3<F32> &corner : frustumCornersWS) {
+        for (const vec3<F32> &corner : frustumCornersWS)
+        {
             frustumCenter += corner;
         }
         frustumCenter /= 8.0f;
 
         F32 radius = 0.0f;
-        for (const vec3<F32> &corner : frustumCornersWS) {
+        for (const vec3<F32> &corner : frustumCornersWS)
+        {
             const F32 distance = (corner - frustumCenter).lengthSquared();
             radius = std::max(radius, distance);
         }
@@ -244,26 +258,33 @@ void CascadedShadowMapsGenerator::applyFrustumSplits(DirectionalLightComponent& 
         vec3<F32> lightPosition = frustumCenter - light.directionCache() * (light.csmNearClipOffset() - minExtents.z);
         mat4<F32> lightViewMatrix = lightCam->lookAt(lightPosition, frustumCenter, WORLD_Y_AXIS);
 
-        if (cascadeIterator > 0 && light.csmUseSceneAABBFit()[cascadeIterator]) {
+        if (cascadeIterator > 0 && light.csmUseSceneAABBFit()[cascadeIterator])
+        {
             // Only meshes should be enough
             bool validResult = false;
             auto& prevPassResults = light.feedBackContainers()[cascadeIterator];
-            if (!prevPassResults.empty()) {
-                BoundingBox meshAABB = {};
-                for (auto& node : prevPassResults) {
+            if (!prevPassResults.empty())
+            {
+                BoundingBox meshAABB{};
+                for (auto& node : prevPassResults)
+                {
                     const SceneNode& sNode = node._node->getNode();
-                    if (sNode.type() == SceneNodeType::TYPE_OBJECT3D) {
-                        if (static_cast<const Object3D&>(sNode).geometryType() == ObjectType::SUBMESH) {
+                    if (sNode.type() == SceneNodeType::TYPE_OBJECT3D)
+                    {
+                        if (static_cast<const Object3D&>(sNode).geometryType() == ObjectType::SUBMESH)
+                        {
                             meshAABB.add(node._node->get<BoundsComponent>()->getBoundingBox());
                             validResult = true;
                         }
                     }
                 }
 
-                if (validResult) {
+                if (validResult)
+                {
                     meshAABB.transform(lightViewMatrix);
                     appliedDiff = meshAABB.getHalfExtent().y - radius;
-                    if (appliedDiff > 0.5f) {
+                    if (appliedDiff > 0.5f)
+                    {
                         radius += appliedDiff * 0.75f;
 
                         maxExtents.set(radius, radius, radius);
@@ -278,13 +299,16 @@ void CascadedShadowMapsGenerator::applyFrustumSplits(DirectionalLightComponent& 
         }
 
         // Lets store the ortho rect in case we need it;
-        const vec2<F32> clip = {
+        const vec2<F32> clip
+        {
             0.001f,
             maxExtents.z - minExtents.z
         };
 
-        mat4<F32> lightOrthoMatrix{
-            Rect<F32>{
+        mat4<F32> lightOrthoMatrix
+        {
+            Rect<F32>
+            {
                 minExtents.x,
                 maxExtents.x,
                 minExtents.y,
@@ -323,7 +347,8 @@ void CascadedShadowMapsGenerator::applyFrustumSplits(DirectionalLightComponent& 
     }
 }
 
-void CascadedShadowMapsGenerator::render(const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
+void CascadedShadowMapsGenerator::render(const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut)
+{
     OPTICK_EVENT();
 
     auto& dirLight = static_cast<DirectionalLightComponent&>(light);
@@ -344,21 +369,25 @@ void CascadedShadowMapsGenerator::render(const Camera& playerCamera, Light& ligh
 
     RenderPassManager* rpm = _context.parent().renderPassManager();
 
-    constexpr F32 minExtentsFactors[] = {
-      0.025f,
-      1.75f,
-      75.0f,
-      125.0f
+    constexpr F32 minExtentsFactors[]
+    {
+        0.025f,
+        1.75f,
+        75.0f,
+        125.0f
     };
+
     GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = true; //Ortho camera
-    for (I8 i = numSplits - 1; i >= 0 && i < numSplits; i--) {
+    for (I8 i = numSplits - 1; i >= 0 && i < numSplits; i--)
+    {
         params._layerParams._colourLayers[0] = i;
         params._layerParams._depthLayer = i;
 
         params._passName = Util::StringFormat("CSM_PASS_%d", i).c_str();
         params._stagePass._pass = static_cast<RenderStagePass::PassIndex>(i);
         params._minExtents.set(minExtentsFactors[i]);
-        if (i > 0 && dirLight.csmUseSceneAABBFit()[i]) {
+        if (i > 0 && dirLight.csmUseSceneAABBFit()[i])
+        {
             STUBBED("CascadedShadowMapsGenerator::render: Validate AABBFit for first cascade!");
             params._feedBackContainer = &dirLight.feedBackContainers()[i];
             params._feedBackContainer->resize(0);
@@ -372,7 +401,8 @@ void CascadedShadowMapsGenerator::render(const Camera& playerCamera, Light& ligh
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
-void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& light, GFX::CommandBuffer& bufferInOut) {
+void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& light, GFX::CommandBuffer& bufferInOut)
+{
     OPTICK_EVENT();
 
     const I32 layerOffset = to_I32(light.getShadowArrayOffset());
@@ -383,7 +413,8 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
     GFX::BlitRenderTargetCommand* blitRenderTargetCommand = GFX::EnqueueCommand<GFX::BlitRenderTargetCommand>(bufferInOut);
     blitRenderTargetCommand->_source = _drawBufferDepth._targetID;
     blitRenderTargetCommand->_destination = rtHandle._targetID;
-    for (U8 i = 0u; i < light.csmSplitCount(); ++i) {
+    for (U8 i = 0u; i < light.csmSplitCount(); ++i)
+    {
         auto& params = blitRenderTargetCommand->_params._blitColours[i];
         params._input._index = 0u;
         params._input._layer = i;
@@ -392,7 +423,8 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
     }
 
     // Now we can either blur our target or just skip to mipmap computation
-    if (g_shadowSettings.csm.enableBlurring) {
+    if (g_shadowSettings.csm.enableBlurring)
+    {
         _shaderConstantsCmd._constants.set(_ID("layerCount"), GFX::PushConstantType::INT, layerCount);
 
         GFX::BeginRenderPassCommand beginRenderPassHorizontalCmd{};
@@ -404,7 +436,7 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
         beginRenderPassVerticalCmd._name = "DO_CSM_BLUR_PASS_VERTICAL";
 
         // Blur horizontally
-        const auto& shadowAtt = rtHandle._rt->getAttachment(RTAttachmentType::Colour, 0);
+        const auto& shadowAtt = rtHandle._rt->getAttachment(RTAttachmentType::COLOUR, 0);
 
         GFX::EnqueueCommand(bufferInOut, beginRenderPassHorizontalCmd);
 
@@ -427,7 +459,7 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
 
         // Blur vertically
-        const auto& blurAtt = _blurBuffer._rt->getAttachment(RTAttachmentType::Colour, 0);
+        const auto& blurAtt = _blurBuffer._rt->getAttachment(RTAttachmentType::COLOUR, 0);
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -450,8 +482,10 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
     }
 }
 
-void CascadedShadowMapsGenerator::updateMSAASampleCount(const U8 sampleCount) {
-    if (_context.context().config().rendering.shadowMapping.csm.MSAASamples != sampleCount) {
+void CascadedShadowMapsGenerator::updateMSAASampleCount(const U8 sampleCount)
+{
+    if (_context.context().config().rendering.shadowMapping.csm.MSAASamples != sampleCount)
+    {
         _context.context().config().rendering.shadowMapping.csm.MSAASamples = sampleCount;
         _drawBufferDepth._rt->updateSampleCount(sampleCount);
     }

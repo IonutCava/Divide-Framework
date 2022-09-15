@@ -656,7 +656,7 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     editorDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
     InternalRTAttachmentDescriptors attachments {
-        InternalRTAttachmentDescriptor{ editorDescriptor, _editorSamplerHash, RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::ALBEDO)}
+        InternalRTAttachmentDescriptor{ editorDescriptor, _editorSamplerHash, RTAttachmentType::COLOUR, to_base(GFXDevice::ScreenTargets::ALBEDO)}
     };
 
     RenderTargetDescriptor editorDesc = {};
@@ -933,9 +933,10 @@ void Editor::postRender(const CameraSnapshot& cameraSnapshot, const RenderTarget
 
     if (running() && infiniteGridEnabled() && _infiniteGridPrimitive && _isScenePaused) {
         if (_gridSettingsDirty) {
+            PushConstantsStruct fastData{};
+            fastData.data0._vec[0].xy.set(infiniteGridAxisWidth(), infiniteGridScale());
             PushConstants constants{};
-            constants.set(_ID("axisWidth"), GFX::PushConstantType::FLOAT, infiniteGridAxisWidth());
-            constants.set(_ID("gridScale"), GFX::PushConstantType::FLOAT, infiniteGridScale());
+            constants.set(fastData);
             _infiniteGridPrimitive->setPushConstants(constants);
             _gridSettingsDirty = false;
         }
@@ -1118,12 +1119,10 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
     static bool s_init = false;
     if (!s_init) {
         // These are the same for all passes so might as well cache them here
-        PushConstants& pushConstants = s_pushConstants._constants;
-        pushConstants.set(_ID("toggleChannel"), GFX::PushConstantType::IVEC4, vec4<I32>(1, 1, 1, 1));
-        pushConstants.set(_ID("depthTexture"), GFX::PushConstantType::INT, 0);
-        pushConstants.set(_ID("depthRange"), GFX::PushConstantType::VEC2, vec2<F32>(0.0f, 1.0f));
-        pushConstants.set(_ID("flip"), GFX::PushConstantType::INT, 0);
-        pushConstants.set(_ID("layer"), GFX::PushConstantType::UINT, 0u);
+        PushConstantsStruct pushConstants{};
+        pushConstants.data0._vec[0].set(1.f);
+        pushConstants.data0._vec[1].xy.set(0.0f, 1.0f);
+        s_pushConstants._constants.set(pushConstants);
         s_init = true;
     }
     if (windowGUID == -1) {
@@ -1816,18 +1815,16 @@ bool Editor::modalTextureView(const char* modalName, Texture* tex, const vec2<F3
             }
         }
 
-        PushConstants pushConstants = {};
-        pushConstants.set(_ID("toggleChannel"), GFX::PushConstantType::IVEC4, data._colourData);
-        pushConstants.set(_ID("depthTexture"), GFX::PushConstantType::BOOL, data._isDepthTexture);
-        pushConstants.set(_ID("depthRange"), GFX::PushConstantType::VEC2, data._depthRange);
-        pushConstants.set(_ID("flip"), GFX::PushConstantType::BOOL, data._flip);
-        pushConstants.set(_ID("layer"), GFX::PushConstantType::UINT, data._arrayLayer);
-        pushConstants.set(_ID("mip"), GFX::PushConstantType::UINT, data._mip);
-        pushConstants.set(_ID("textureType"), GFX::PushConstantType::UINT, textureType);
+        PushConstantsStruct pushConstants{};
+        pushConstants.data0._vec[0] = data._colourData;
+        pushConstants.data0._vec[1].xy = data._depthRange;
+        pushConstants.data0._vec[1].z = to_F32(data._arrayLayer);
+        pushConstants.data0._vec[1].w = to_F32(data._mip);
+        pushConstants.data0._vec[2].x = to_F32(textureType);
+        pushConstants.data0._vec[2].y = data._isDepthTexture ? 1.f : 0.f;
+        pushConstants.data0._vec[2].z = data._flip ? 1.f : 0.f;
 
-        GFX::SendPushConstantsCommand pushConstantsCommand = {};
-        pushConstantsCommand._constants = pushConstants;
-        GFX::EnqueueCommand(buffer, pushConstantsCommand);
+        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(buffer)->_constants.set(pushConstants);
     } };
 
     bool closed = false;
@@ -1852,7 +1849,7 @@ bool Editor::modalTextureView(const char* modalName, Texture* tex, const vec2<F3
 
         g_modalTextureData._gfxDevice = defaultData._gfxDevice;
         g_modalTextureData._texture = tex;
-        g_modalTextureData._isDepthTexture = tex->descriptor().baseFormat() == GFXImageFormat::DEPTH_COMPONENT;
+        g_modalTextureData._isDepthTexture = IsDepthTexture(tex->descriptor().baseFormat());;
         const U8 numChannels = NumChannels(tex->descriptor().baseFormat());
 
         assert(numChannels > 0);

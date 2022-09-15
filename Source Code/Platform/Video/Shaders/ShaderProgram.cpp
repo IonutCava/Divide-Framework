@@ -676,6 +676,7 @@ bool InitGLSW(const GFXDevice& gfx, const DeviceInformation& deviceInfo, const C
     AppendToShaderHeader(ShaderType::FRAGMENT, "#define VAR _in");
 
     AppendToShaderHeader(ShaderType::COUNT, "//_CUSTOM_UNIFORMS_\\");
+    AppendToShaderHeader(ShaderType::COUNT, "//_PUSH_CONSTANTS_DEFINE_\\");
 
     // Check initialization status for GLSL and glsl-optimizer
     return glswState == 1;
@@ -1531,15 +1532,18 @@ void ShaderProgram::initUniformUploader(const PerFileShaderData& shaderFileData)
     }
 }
 
-bool ShaderProgram::uploadPushConstants(const PushConstants& constants, DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut) {
+bool ShaderProgram::uploadUniformData(const PushConstants& data, DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut) {
     OPTICK_EVENT();
 
     bool ret = false;
-    for (auto& blockBuffer : _uniformBlockBuffers) {
-        for (const GFX::PushConstant& constant : constants.data()) {
+    for (auto& blockBuffer : _uniformBlockBuffers)
+    {
+        for (const GFX::PushConstant& constant : data.data())
+        {
             blockBuffer.uploadPushConstant(constant);
         }
-        if (blockBuffer.commit(set, memCmdInOut)) {
+        if (blockBuffer.commit(set, memCmdInOut))
+        {
             ret = true;
         }
     }
@@ -1720,7 +1724,27 @@ void ShaderProgram::loadAndParseGLSL(const ModuleDefines& defines,
         previousUniformsInOut = loadDataInOut._uniforms;
     }
 
+    string pushConstantCodeBlock{};
+    if (_context.renderAPI() == RenderAPI::Vulkan)
+    {
+        pushConstantCodeBlock = 
+            "layout( push_constant ) uniform constants\n"
+            "{\n"
+            "   mat4 data0;\n"
+            "   mat4 data1;\n"
+            "} PushConstants;\n"
+            "#define PushData0 PushConstants.data0\n"
+            "#define PushData1 PushConstants.data1";
+    }
+    else
+    {
+        pushConstantCodeBlock = 
+            "layout(location = 18) uniform mat4 PushData0;\n"
+            "layout(location = 19) uniform mat4 PushData1;";
+    }
+
     Util::ReplaceStringInPlace(loadDataInOut._sourceCodeGLSL, "//_CUSTOM_UNIFORMS_\\", loadDataInOut._uniformBlock);
+    Util::ReplaceStringInPlace(loadDataInOut._sourceCodeGLSL, "//_PUSH_CONSTANTS_DEFINE_\\", pushConstantCodeBlock);
 }
 
 void ShaderProgram::OnAtomChange(const std::string_view atomName, const FileUpdateEvent evt) {

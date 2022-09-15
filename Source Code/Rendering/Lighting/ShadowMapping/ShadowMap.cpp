@@ -126,7 +126,7 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
 
                 {
                     InternalRTAttachmentDescriptors att{
-                        InternalRTAttachmentDescriptor{ shadowMapDescriptor, shadowMapSampler.getHash(), RTAttachmentType::Colour, 0u }
+                        InternalRTAttachmentDescriptor{ shadowMapDescriptor, shadowMapSampler.getHash(), RTAttachmentType::COLOUR, 0u }
                     };
 
                     desc._name = isCSM ? "CSM_ShadowMap" : "Single_ShadowMap";
@@ -139,7 +139,7 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
                     shadowMapCacheDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
                     InternalRTAttachmentDescriptors attCache{
-                        InternalRTAttachmentDescriptor{ shadowMapCacheDescriptor, shadowMapSamplerCache.getHash(), RTAttachmentType::Colour, 0u }
+                        InternalRTAttachmentDescriptor{ shadowMapCacheDescriptor, shadowMapSamplerCache.getHash(), RTAttachmentType::COLOUR, 0u }
                     };
 
                     desc._name = isCSM ? "CSM_ShadowMap_StaticCache" : "Single_ShadowMap_StaticCache";
@@ -171,9 +171,10 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
                 depthDescriptor.layerCount(colourMapDescriptor.layerCount());
                 depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
 
-                InternalRTAttachmentDescriptors att {
-                    InternalRTAttachmentDescriptor{ colourMapDescriptor, samplerHash, RTAttachmentType::Colour, 0u},
-                    InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::Depth_Stencil, 0u },
+                InternalRTAttachmentDescriptors att
+                {
+                    InternalRTAttachmentDescriptor{ colourMapDescriptor, samplerHash, RTAttachmentType::COLOUR, 0u},
+                    InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::DEPTH, 0u },
                 };
 
                 RenderTargetDescriptor desc = {};
@@ -188,9 +189,10 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
                     TextureDescriptor shadowMapCacheDescriptor = colourMapDescriptor;
                     shadowMapCacheDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-                    InternalRTAttachmentDescriptors attCache {
-                        InternalRTAttachmentDescriptor{ shadowMapCacheDescriptor, shadowMapSamplerCache.getHash(), RTAttachmentType::Colour, 0u },
-                        InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::Depth_Stencil, 0u },
+                    InternalRTAttachmentDescriptors attCache
+                    {
+                        InternalRTAttachmentDescriptor{ shadowMapCacheDescriptor, shadowMapSamplerCache.getHash(), RTAttachmentType::COLOUR, 0u },
+                        InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::DEPTH, 0u },
                     };
 
                     desc._name = "Cube_ShadowMap_StaticCache";
@@ -264,7 +266,7 @@ void ShadowMap::bindShadowMaps(GFX::CommandBuffer& bufferInOut) {
 
         const ShadowType shadowType = static_cast<ShadowType>(i);
         const U8 bindSlot = LightPool::GetShadowBindSlotOffset(shadowType);
-        RTAttachment* shadowTexture = sm._rt->getAttachment(RTAttachmentType::Colour, 0);
+        RTAttachment* shadowTexture = sm._rt->getAttachment(RTAttachmentType::COLOUR, 0);
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = bindSlot;
         binding._data.As<DescriptorCombinedImageSampler>() = { shadowTexture->texture()->defaultView(), shadowTexture->descriptor()._samplerHash };
@@ -468,8 +470,8 @@ void ShadowMap::setDebugViewLight(GFXDevice& context, Light* light) {
                 constexpr I16 Base = 2;
                 for (U8 i = 0; i < splitCount; ++i) {
                     DebugView_ptr shadow = std::make_shared<DebugView>(to_I16(I16_MAX - 1 - splitCount + i));
-                    shadow->_texture = getShadowMap(LightType::DIRECTIONAL)._rt->getAttachment(RTAttachmentType::Colour, 0)->texture();
-                    shadow->_samplerHash = getShadowMap(LightType::DIRECTIONAL)._rt->getAttachment(RTAttachmentType::Colour, 0)->descriptor()._samplerHash;
+                    shadow->_texture = getShadowMap(LightType::DIRECTIONAL)._rt->getAttachment(RTAttachmentType::COLOUR, 0)->texture();
+                    shadow->_samplerHash = getShadowMap(LightType::DIRECTIONAL)._rt->getAttachment(RTAttachmentType::COLOUR, 0)->descriptor()._samplerHash;
                     shadow->_shader = previewShader;
                     shadow->_shaderData.set(_ID("layer"), GFX::PushConstantType::INT, i + light->getShadowArrayOffset());
                     shadow->_name = Util::StringFormat("CSM_%d", i + light->getShadowArrayOffset());
@@ -491,8 +493,8 @@ void ShadowMap::setDebugViewLight(GFXDevice& context, Light* light) {
                 shadowPreviewShader.waitForReady(true);
 
                 DebugView_ptr shadow = std::make_shared<DebugView>(to_I16(I16_MAX - 1));
-                shadow->_texture = getShadowMap(LightType::SPOT)._rt->getAttachment(RTAttachmentType::Colour, 0)->texture();
-                shadow->_samplerHash = getShadowMap(LightType::SPOT)._rt->getAttachment(RTAttachmentType::Colour, 0)->descriptor()._samplerHash;
+                shadow->_texture = getShadowMap(LightType::SPOT)._rt->getAttachment(RTAttachmentType::COLOUR, 0)->texture();
+                shadow->_samplerHash = getShadowMap(LightType::SPOT)._rt->getAttachment(RTAttachmentType::COLOUR, 0)->descriptor()._samplerHash;
                 shadow->_shader = CreateResource<ShaderProgram>(context.parent().resourceCache(), shadowPreviewShader);
                 shadow->_shaderData.set(_ID("layer"), GFX::PushConstantType::INT, light->getShadowArrayOffset());
                 shadow->_name = Util::StringFormat("SM_%d", light->getShadowArrayOffset());
@@ -518,8 +520,8 @@ void ShadowMap::setDebugViewLight(GFXDevice& context, Light* light) {
 
                 for (U8 i = 0u; i < 6u; ++i) {
                     DebugView_ptr shadow = std::make_shared<DebugView>(to_I16(I16_MAX - 1 - 6 + i));
-                    shadow->_texture = getShadowMap(LightType::POINT)._rt->getAttachment(RTAttachmentType::Colour, 0)->texture();
-                    shadow->_samplerHash = getShadowMap(LightType::POINT)._rt->getAttachment(RTAttachmentType::Colour, 0)->descriptor()._samplerHash;
+                    shadow->_texture = getShadowMap(LightType::POINT)._rt->getAttachment(RTAttachmentType::COLOUR, 0)->texture();
+                    shadow->_samplerHash = getShadowMap(LightType::POINT)._rt->getAttachment(RTAttachmentType::COLOUR, 0)->descriptor()._samplerHash;
                     shadow->_shader = previewShader;
                     shadow->_shaderData.set(_ID("layer"), GFX::PushConstantType::INT, light->getShadowArrayOffset());
                     shadow->_shaderData.set(_ID("face"), GFX::PushConstantType::INT, i);

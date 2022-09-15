@@ -124,34 +124,40 @@ bool Texture::load() {
     return true;
 }
 
-bool Texture::unload() {
+bool Texture::unload()
+{
     _defaultView._usage = ImageUsage::UNDEFINED;
 
     return CachedResource::unload();
 }
 
-void Texture::postLoad() {
+void Texture::postLoad()
+{
     _defaultView._descriptor._baseFormat = _descriptor.baseFormat();
     _defaultView._descriptor._dataType = _descriptor.dataType();
     _defaultView._descriptor._srgb = _descriptor.srgb();
     _defaultView._descriptor._normalized = _descriptor.normalized();
     _defaultView._descriptor._msaaSamples = _descriptor.msaaSamples();
+    _defaultView._layerRange = {0u, _numLayers};
+    _defaultView._usage = ImageUsage::SHADER_SAMPLE;
 }
 
 /// Load texture data using the specified file name
-void Texture::threadedLoad() {
+void Texture::threadedLoad()
+{
     OPTICK_EVENT();
 
-    if (!assetLocation().empty()) {
-
+    if (!assetLocation().empty())
+    {
         const GFXDataFormat requestedFormat = _descriptor.dataType();
         assert(requestedFormat == GFXDataFormat::UNSIGNED_BYTE ||  // Regular image format
                requestedFormat == GFXDataFormat::UNSIGNED_SHORT || // 16Bit
                requestedFormat == GFXDataFormat::FLOAT_32 ||       // HDR
                requestedFormat == GFXDataFormat::COUNT);           // Auto
 
-        constexpr std::array<std::string_view, 2> searchPattern = {
-         "//", "\\"
+        constexpr std::array<std::string_view, 2> searchPattern
+        {
+            "//", "\\"
         };
 
 
@@ -411,15 +417,28 @@ void Texture::setSampleCount(U8 newSampleCount) {
     }
 }
 
-void Texture::setImageUsage(const ImageUsage usage) {
-    _usage = usage;
+bool Texture::imageUsage(const ImageUsage usage)
+{
+    if (_defaultView._usage != usage)
+    {
+        _defaultView._usage = usage;
+        return true;
+    }
+
+    return false;
+}
+
+ImageUsage Texture::imageUsage() const noexcept
+{
+    return _defaultView._usage;
 }
 
 void Texture::validateDescriptor() {
     // Select the proper colour space internal format
     if (_descriptor.baseFormat() == GFXImageFormat::RED ||
         _descriptor.baseFormat() == GFXImageFormat::RG ||
-        _descriptor.baseFormat() == GFXImageFormat::DEPTH_COMPONENT)
+        _descriptor.baseFormat() == GFXImageFormat::DEPTH_COMPONENT ||
+        _descriptor.baseFormat() == GFXImageFormat::DEPTH_STENCIL_COMPONENT)
     {
         // We only support 8 bit per pixel - 3 & 4 channel textures
         assert(!_descriptor.srgb());

@@ -242,7 +242,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     const Configuration& _config;
 
     struct PackageEntry { RenderPackage _package; U16 _index{0u}; };
-    using PackagesPerIndex = vector_fast<PackageEntry>;
+    using PackagesPerIndex = vector<PackageEntry>;
     using PackagesPerPassIndex = std::array<PackagesPerIndex, to_base(RenderStagePass::PassIndex::COUNT)>;
     using PackagesPerVariant = std::array<PackagesPerPassIndex, to_base(RenderStagePass::VariantType::COUNT)>;
     using PackagesPerPassType = std::array<PackagesPerVariant, to_base(RenderPassType::COUNT)>;

@@ -143,6 +143,12 @@ string ToString(const SendPushConstantsCommand& cmd, const U16 indent) {
         }
         ret.append(Util::StringFormat("Constant binding: %zu Type: %d Data size: %zu\n", it.bindingHash(), to_base(it.type()), it.dataSize()));
     }
+    
+    ret.append("    ");
+    for (U16 j = 0; j < indent; ++j) {
+        ret.append("    ");
+    }
+    ret.append(cmd._constants.fastData()._set ? "Has push constants specified" : "No push constant data specified");
 
     return ret;
 }

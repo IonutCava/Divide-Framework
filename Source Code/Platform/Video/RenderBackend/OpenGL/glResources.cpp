@@ -157,6 +157,7 @@ void fillEnumTables() {
     glImageFormatTable[to_base(GFXImageFormat::BGRA)] = GL_BGRA;
     glImageFormatTable[to_base(GFXImageFormat::RGBA)] = GL_RGBA;
     glImageFormatTable[to_base(GFXImageFormat::DEPTH_COMPONENT)] = GL_DEPTH_COMPONENT;
+    glImageFormatTable[to_base(GFXImageFormat::DEPTH_STENCIL_COMPONENT)] = GL_DEPTH_COMPONENT;
 
     glImageFormatTable[to_base(GFXImageFormat::BC3n)] = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
     glImageFormatTable[to_base(GFXImageFormat::BC4s)] = GL_COMPRESSED_SIGNED_RED_RGTC1_EXT;
@@ -284,9 +285,23 @@ GLenum internalFormat(const GFXImageFormat baseFormat, const GFXDataFormat dataT
                 case GFXDataFormat::SIGNED_SHORT:
                 case GFXDataFormat::UNSIGNED_SHORT: return GL_DEPTH_COMPONENT16;
                 case GFXDataFormat::SIGNED_INT:
-                case GFXDataFormat::UNSIGNED_INT: return GL_DEPTH_COMPONENT32;
+                case GFXDataFormat::UNSIGNED_INT: return GL_DEPTH_COMPONENT24;
                 case GFXDataFormat::FLOAT_16:
                 case GFXDataFormat::FLOAT_32: return GL_DEPTH_COMPONENT32F;
+                default: DIVIDE_UNEXPECTED_CALL();
+            };
+        }break;  
+        case GFXImageFormat::DEPTH_STENCIL_COMPONENT:
+        {
+            switch (dataType) {
+                case GFXDataFormat::SIGNED_BYTE:
+                case GFXDataFormat::UNSIGNED_BYTE:
+                case GFXDataFormat::SIGNED_SHORT:
+                case GFXDataFormat::UNSIGNED_SHORT:
+                case GFXDataFormat::SIGNED_INT:
+                case GFXDataFormat::UNSIGNED_INT: return GL_DEPTH24_STENCIL8;
+                case GFXDataFormat::FLOAT_16:
+                case GFXDataFormat::FLOAT_32: return GL_DEPTH32F_STENCIL8;
                 default: DIVIDE_UNEXPECTED_CALL();
             };
         }break;

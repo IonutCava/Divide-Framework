@@ -579,7 +579,7 @@ bool RenderingComponent::updateReflection(const U16 reflectionIndex,
         _reflectionCallback(passManager, params, bufferInOut, memCmdInOut);
 
         if (_reflectorType == ReflectorType::PLANAR) {
-            RTAttachment* targetAtt = _context.renderTargetPool().getRenderTarget(reflectRTID)->getAttachment(RTAttachmentType::Colour, 0u);
+            RTAttachment* targetAtt = _context.renderTargetPool().getRenderTarget(reflectRTID)->getAttachment(RTAttachmentType::COLOUR, 0u);
             _materialInstance->setTexture(
                 TextureSlot::REFLECTION_PLANAR,
                 targetAtt->texture(),
@@ -616,7 +616,7 @@ bool RenderingComponent::updateRefraction(const U16 refractionIndex,
         RenderCbkParams params{ _context, _parentSGN, renderState, refractRTID, refractionIndex, 0u, camera };
         _refractionCallback(passManager, params, bufferInOut, memCmdInOut);
 
-        RTAttachment* targetAtt = _context.renderTargetPool().getRenderTarget(refractRTID)->getAttachment(RTAttachmentType::Colour, 0u);
+        RTAttachment* targetAtt = _context.renderTargetPool().getRenderTarget(refractRTID)->getAttachment(RTAttachmentType::COLOUR, 0u);
         _materialInstance->setTexture(
             TextureSlot::REFRACTION_PLANAR,
             targetAtt->texture(),

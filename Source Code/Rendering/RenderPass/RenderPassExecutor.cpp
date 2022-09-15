@@ -854,7 +854,7 @@ void RenderPassExecutor::occlusionPass(const PlayerIndex idx,
                                        [[maybe_unused]] const U32 visibleNodeCount,
                                        RenderStagePass stagePass,
                                        const RenderTargetID& sourceDepthBuffer,
-                                       const RenderTargetID& targetDepthBuffer,
+                                       const RenderTargetID& targetHiZBuffer,
                                        GFX::CommandBuffer& bufferInOut) const {
     OPTICK_EVENT();
 
@@ -864,19 +864,9 @@ void RenderPassExecutor::occlusionPass(const PlayerIndex idx,
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "HiZ Construct & Cull" });
 
     // Update HiZ Target
-    const auto [hizTexture, hizSampler] = _context.constructHIZ(sourceDepthBuffer, targetDepthBuffer, bufferInOut);
-
-    // ToDo: This should not be needed as we unbind the render target before we dispatch the compute task anyway. See if we can remove this -Ionut
-    GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{
-        to_base(MemoryBarrierType::RENDER_TARGET) |
-        to_base(MemoryBarrierType::TEXTURE_FETCH) |
-        to_base(MemoryBarrierType::TEXTURE_BARRIER)
-    });
-
+    const auto [hizTexture, hizSampler] = _context.constructHIZ(sourceDepthBuffer, targetHiZBuffer, bufferInOut);
     // Run occlusion culling CS
-    RenderPass::BufferData bufferData = _parent.getPassForStage(_stage).getBufferData(stagePass);
-
-    _context.occlusionCull(bufferData,
+    _context.occlusionCull(_parent.getPassForStage(_stage).getBufferData(stagePass),
                            hizTexture,
                            hizSampler,
                            cameraSnapshot,
@@ -905,7 +895,7 @@ void RenderPassExecutor::mainPass(const VisibleNodeList<>& nodes, const RenderPa
         GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut, renderPassCmd);
 
         const RenderTarget* screenTargetMS = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_MS);
-        const RTAttachment* normalsAttMS = screenTargetMS->getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::NORMALS));
+        const RTAttachment* normalsAttMS = screenTargetMS->getAttachment(RTAttachmentType::COLOUR, to_base(GFXDevice::ScreenTargets::NORMALS));
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_PASS;
@@ -914,12 +904,12 @@ void RenderPassExecutor::mainPass(const VisibleNodeList<>& nodes, const RenderPa
             auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
             binding._slot = 1;
             const RenderTarget* hizTarget = _context.renderTargetPool().getRenderTarget(params._targetHIZ);
-            RTAttachment* hizAtt = hizTarget->getAttachment(RTAttachmentType::Depth_Stencil, 0);
+            RTAttachment* hizAtt = hizTarget->getAttachment(RTAttachmentType::COLOUR, 0);
             binding._data.As<DescriptorCombinedImageSampler>() = { hizAtt->texture()->defaultView(), hizAtt->descriptor()._samplerHash };
         } else if (prePassExecuted) {
             auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
             binding._slot = 1;
-            RTAttachment* depthAtt = target.getAttachment(RTAttachmentType::Depth_Stencil, 0);
+            RTAttachment* depthAtt = target.getAttachment(RTAttachmentType::DEPTH, 0);
             binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->defaultView(), depthAtt->descriptor()._samplerHash };
         }
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
@@ -947,12 +937,12 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
     beginRenderPassOitCmd->_clearDescriptor._clearDepth = false;
     beginRenderPassOitCmd->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO,          to_U8(GFXDevice::ScreenTargets::ACCUMULATION) };
     beginRenderPassOitCmd->_clearDescriptor._clearColourDescriptors[1] = { { 1.f, 0.f, 0.f, 0.f }, to_U8(GFXDevice::ScreenTargets::REVEALAGE) };
-    SetEnabled(beginRenderPassOitCmd->_descriptor._drawMask, RTAttachmentType::Depth_Stencil, 0, false);
+    SetEnabled(beginRenderPassOitCmd->_descriptor._drawMask, RTAttachmentType::DEPTH, 0, false);
 
     //beginRenderPassOitCmd->_descriptor._alphaToCoverage = true;
     {
         const RenderTarget* nonMSTarget = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN);
-        const auto& colourAtt = nonMSTarget->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
+        const auto& colourAtt = nonMSTarget->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO));
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_PASS;
@@ -970,8 +960,8 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
 
 
     RenderTarget* oitRT = _context.renderTargetPool().getRenderTarget(params._targetOIT);
-    const auto& accumAtt = oitRT->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ACCUMULATION));
-    const auto& revAtt = oitRT->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::REVEALAGE));
+    const auto& accumAtt = oitRT->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ACCUMULATION));
+    const auto& revAtt = oitRT->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::REVEALAGE));
 
     GFX::BeginRenderPassCommand beginRenderPassCompCmd{};
     beginRenderPassCompCmd._name = "DO_OIT_PASS_2";
@@ -1015,7 +1005,7 @@ void RenderPassExecutor::transparencyPass(const VisibleNodeList<>& nodes, const 
     beginRenderPassTransparentCmd._target = params._target;
     beginRenderPassTransparentCmd._clearDescriptor._clearDepth = false;
     beginRenderPassTransparentCmd._descriptor._writeLayers = params._layerParams;
-    SetEnabled(beginRenderPassTransparentCmd._descriptor._drawMask, RTAttachmentType::Depth_Stencil, 0, false);
+    SetEnabled(beginRenderPassTransparentCmd._descriptor._drawMask, RTAttachmentType::DEPTH, 0, false);
 
     GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut, beginRenderPassTransparentCmd);
     prepareRenderQueues(params, nodes, cameraSnapshot, true, RenderingOrder::BACK_TO_FRONT, bufferInOut);
@@ -1059,15 +1049,15 @@ void RenderPassExecutor::resolveMainScreenTarget(const RenderPassParams& params,
             beginRenderPassCommand->_target = RenderTargetNames::SCREEN;
             beginRenderPassCommand->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO, to_U8(GFXDevice::ScreenTargets::VELOCITY) };
             beginRenderPassCommand->_clearDescriptor._clearColourDescriptors[1] = { VECTOR4_ZERO, to_U8(GFXDevice::ScreenTargets::NORMALS) };
-            SetEnabled(beginRenderPassCommand->_descriptor._drawMask, RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO), false);
-            SetEnabled(beginRenderPassCommand->_descriptor._drawMask, RTAttachmentType::Depth_Stencil, 0, false);
+            SetEnabled(beginRenderPassCommand->_descriptor._drawMask, RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO), false);
+            SetEnabled(beginRenderPassCommand->_descriptor._drawMask, RTAttachmentType::DEPTH, 0, false);
             beginRenderPassCommand->_name = "RESOLVE_MAIN_GBUFFER";
 
             GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ s_ResolveGBufferPipeline });
 
             const RenderTarget* MSSource = _context.renderTargetPool().getRenderTarget(params._target);
-            RTAttachment* velocityAtt = MSSource->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::VELOCITY));
-            RTAttachment* normalsAtt = MSSource->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS));
+            RTAttachment* velocityAtt = MSSource->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::VELOCITY));
+            RTAttachment* normalsAtt = MSSource->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::NORMALS));
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -1162,7 +1152,7 @@ void RenderPassExecutor::doCustomPass(const PlayerIndex playerIdx, Camera* camer
     // PrePass requires a depth buffer
     const bool doPrePass = _stage != RenderStage::SHADOW &&
                            params._target != INVALID_RENDER_TARGET_ID &&
-                           target->usesAttachment(RTAttachmentType::Depth_Stencil, 0);
+                           target->usesAttachment(RTAttachmentType::DEPTH, 0);
     const bool doOITPass = params._targetOIT != INVALID_RENDER_TARGET_ID;
     const bool doOcclusionPass = doPrePass && params._targetHIZ != INVALID_RENDER_TARGET_ID;
 
@@ -1254,9 +1244,9 @@ void RenderPassExecutor::doCustomPass(const PlayerIndex playerIdx, Camera* camer
         beginRenderPassCmd->_name = "DO_POST_RENDER_PASS";
         beginRenderPassCmd->_target = params._target;
         beginRenderPassCmd->_clearDescriptor._clearDepth = false;
-        SetEnabled(beginRenderPassCmd->_descriptor._drawMask, RTAttachmentType::Colour, 1, false);
-        SetEnabled(beginRenderPassCmd->_descriptor._drawMask, RTAttachmentType::Colour, 2, false);
-        SetEnabled(beginRenderPassCmd->_descriptor._drawMask, RTAttachmentType::Depth_Stencil, 0, false);
+        SetEnabled(beginRenderPassCmd->_descriptor._drawMask, RTAttachmentType::COLOUR, 1, false);
+        SetEnabled(beginRenderPassCmd->_descriptor._drawMask, RTAttachmentType::COLOUR, 2, false);
+        SetEnabled(beginRenderPassCmd->_descriptor._drawMask, RTAttachmentType::DEPTH, 0, false);
 
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "Debug Draw Pass";
         Attorney::SceneManagerRenderPass::debugDraw(_parent.parent().sceneManager(), bufferInOut);

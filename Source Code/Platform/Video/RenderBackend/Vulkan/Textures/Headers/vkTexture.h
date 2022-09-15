@@ -57,6 +57,7 @@ namespace Divide {
                 VkFormat _format {VK_FORMAT_MAX_ENUM };
                 TextureType _type{ TextureType::COUNT };
                 ImageUsage _usage{ ImageUsage::COUNT };
+                VkImageAspectFlagBits _aspectFlags{VK_IMAGE_ASPECT_FLAG_BITS_MAX_ENUM};
                 bool operator==(const Descriptor& other) noexcept;
             } _descriptor; 
         };
@@ -86,6 +87,8 @@ namespace Divide {
         PROPERTY_R_IW(VkImageView, vkView, VK_NULL_HANDLE);
         PROPERTY_R_IW(VkFormat, vkFormat, VK_FORMAT_MAX_ENUM);
         PROPERTY_R_IW(VkSampleCountFlagBits, sampleFlagBits, VK_SAMPLE_COUNT_1_BIT);
+
+        static [[nodiscard]] VkImageAspectFlags GetAspectFlags(const TextureDescriptor& descriptor) noexcept;
     private:
         void loadDataInternal(const ImageTools::ImageData& imageData) override;
         void prepareTextureData(U16 width, U16 height, U16 depth, bool emptyAllocation) override;

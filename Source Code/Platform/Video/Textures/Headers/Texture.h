@@ -100,7 +100,10 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
 
     /// Change the number of MSAA samples for this current texture
     void setSampleCount(U8 newSampleCount);
-    void setImageUsage(ImageUsage usage);
+
+    /// Returns true if the specified layout differs from the Texture's current layout
+    [[nodiscard]] bool imageUsage(ImageUsage usage);
+    [[nodiscard]] ImageUsage imageUsage() const noexcept;
 
     [[nodiscard]] U16 mipCount() const noexcept;
 
@@ -134,8 +137,6 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     PROPERTY_R(bool, hasTranslucency, false);
     /// If the texture has an alpha channel and at least on pixel is fully transparent and no pixels are partially transparent, return true
     PROPERTY_R(bool, hasTransparency, false);
-
-    PROPERTY_R(ImageUsage, usage, ImageUsage::UNDEFINED);
 
     [[nodiscard]] U8 numChannels() const noexcept;
 

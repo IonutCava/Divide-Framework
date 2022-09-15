@@ -515,7 +515,7 @@ bool GL_API::beginFrame(DisplayWindow& window, const bool global) {
 
     // Clear our buffers
     if (!window.minimized() && !window.hidden()) {
-        bool shouldClearColour = false, shouldClearDepth = false, shouldClearStencil = false;
+        bool shouldClearColour = false, shouldClearDepth = false;
         stateTracker->setClearColour(window.clearColour(shouldClearColour, shouldClearDepth));
         ClearBufferMask mask = ClearBufferMask::GL_NONE_BIT;
         if (shouldClearColour) {
@@ -523,9 +523,6 @@ bool GL_API::beginFrame(DisplayWindow& window, const bool global) {
         }
         if (shouldClearDepth) {
             mask |= ClearBufferMask::GL_DEPTH_BUFFER_BIT;
-        }
-        if (shouldClearStencil) {
-            mask |= ClearBufferMask::GL_STENCIL_BUFFER_BIT;
         }
         if (mask != ClearBufferMask::GL_NONE_BIT) {
             glClear(mask);
@@ -1019,9 +1016,11 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             }
 
             const PushConstants& pushConstants = cmd->As<GFX::SendPushConstantsCommand>()->_constants;
-            if (GetStateTracker()->_activeShaderProgram->uploadPushConstants(pushConstants, _context.descriptorSet(DescriptorSetUsage::PER_DRAW).impl(), pushConstantsMemCommand)) {
+            if (GetStateTracker()->_activeShaderProgram->uploadUniformData(pushConstants, _context.descriptorSet(DescriptorSetUsage::PER_DRAW).impl(), pushConstantsMemCommand)) {
                 _context.descriptorSet(DescriptorSetUsage::PER_DRAW).dirty(true);
             }
+            Attorney::GLAPIShaderProgram::uploadPushConstants(*GetStateTracker()->_activeShaderProgram, pushConstants.fastData());
+
             pushConstantsNeedLock = !pushConstantsMemCommand._bufferLocks.empty();
         } break;
         case GFX::CommandType::SET_SCISSOR: {
@@ -1383,11 +1382,8 @@ bool GL_API::bindShaderResources(const DescriptorSetUsage usage, const Descripto
                 if (!srcBinding._data.Has<ImageView>()) {
                     continue;
                 }
-                const ImageView& image = srcBinding._data.As<ImageView>();
-                if (image._srcTexture._internalTexture != nullptr) {
-                    image._srcTexture._internalTexture->setImageUsage(image._usage);
-                }
 
+                const ImageView& image = srcBinding._data.As<ImageView>();
                 assert(image.targetType() != TextureType::COUNT);
                 assert(image._layerRange.max > 0u);
 
@@ -1428,22 +1424,22 @@ bool GL_API::bindShaderResources(const DescriptorSetUsage usage, const Descripto
     return true;
 }
 
-bool GL_API::makeTextureViewResident(const DescriptorSetUsage set, const U8 bindingSlot, const ImageView& imageView, const size_t samplerHash) const {
+bool GL_API::makeTextureViewResident(const DescriptorSetUsage set, const U8 bindingSlot, const ImageView& imageView, const size_t samplerHash) const
+{
     const U8 glBinding = ShaderProgram::GetGLBindingForDescriptorSlot(set, bindingSlot);
 
     const GLuint samplerHandle = GetSamplerHandle(samplerHash);
 
-    if (imageView._srcTexture._internalTexture != nullptr) {
-        imageView._srcTexture._internalTexture->setImageUsage(ImageUsage::SHADER_SAMPLE);
-    }
-
+    DIVIDE_ASSERT(imageView._usage == ImageUsage::SHADER_SAMPLE);
 
     GLuint texHandle = GetTextureHandleFromWrapper(imageView._srcTexture);
-    if (texHandle == GLUtil::k_invalidObjectID) {
+    if (texHandle == GLUtil::k_invalidObjectID)
+    {
         return false;
     }
 
-    if (!imageView.isDefaultView()) {
+    if (!imageView.isDefaultView())
+    {
         const size_t viewHash = imageView.getHash();
 
         auto [textureID, cacheHit] = s_textureViewCache.allocate(viewHash);
@@ -1473,8 +1469,10 @@ bool GL_API::makeTextureViewResident(const DescriptorSetUsage set, const U8 bind
         texHandle = textureID;
     }
 
-    for (TexBindEntry& it : s_TexBindQueue) {
-        if (it._slot == glBinding) {
+    for (TexBindEntry& it : s_TexBindQueue)
+    {
+        if (it._slot == glBinding)
+        {
             it._handle = texHandle;
             it._sampler = samplerHandle;
             return true;
@@ -1491,15 +1489,18 @@ bool GL_API::makeTextureViewResident(const DescriptorSetUsage set, const U8 bind
     return true;
 }
 
-bool GL_API::setViewport(const Rect<I32>& viewport) {
+bool GL_API::setViewport(const Rect<I32>& viewport)
+{
     return GetStateTracker()->setViewport(viewport);
 }
 
-ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) {
+ShaderResult GL_API::bindPipeline(const Pipeline& pipeline)
+{
     OPTICK_EVENT();
     auto& stateTracker = GetStateTracker();
 
-    if (stateTracker->_activePipeline && *stateTracker->_activePipeline == pipeline) {
+    if (stateTracker->_activePipeline && *stateTracker->_activePipeline == pipeline)
+    {
         return ShaderResult::OK;
     }
    

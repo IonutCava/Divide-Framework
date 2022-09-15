@@ -661,17 +661,25 @@ void MenuBar::drawToolsMenu([[maybe_unused]] const bool modifierPressed) {
         if (ImGui::BeginMenu("Render Targets"))
         {
             const GFXRTPool& pool = _context.gfx().renderTargetPool();
-            for (auto& rt : pool.getRenderTargets()) {
+            for (auto& rt : pool.getRenderTargets()) 
+            {
                 if (ImGui::BeginMenu(rt->name().c_str()))
                 {
-                    for (U8 j = 0; j < to_U8(RTAttachmentType::COUNT); ++j) {
+                    for (U8 j = 0; j < to_U8(RTAttachmentType::COUNT); ++j)
+                    {
                         const RTAttachmentType type = static_cast<RTAttachmentType>(j);
                         const U8 count = rt->getAttachmentCount(type);
 
-                        for (U8 k = 0; k < count; ++k) {
+                        for (U8 k = 0; k < count; ++k)
+                        {
                             RTAttachment* attachment = rt->getAttachment(type, k);
+                            if (attachment == nullptr)
+                            {
+                                continue;
+                            }
                             const Texture_ptr& tex = attachment->texture();
-                            if (tex == nullptr) {
+                            if (tex == nullptr)
+                            {
                                 continue;
                             }
 

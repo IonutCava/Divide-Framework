@@ -213,7 +213,7 @@ void Renderer::prepareLighting(const RenderStage stage,
                 binding._data.As<ShaderBufferEntry>() = { *data._lightClusterAABBsBuffer, { 0u, data._lightClusterAABBsBuffer->getPrimitiveCount() } };
             }
             {
-                RTAttachment* targetAtt = _context.gfx().renderTargetPool().getRenderTarget(RenderTargetNames::REFLECTION_CUBE)->getAttachment(RTAttachmentType::Colour, 0u);
+                RTAttachment* targetAtt = _context.gfx().renderTargetPool().getRenderTarget(RenderTargetNames::REFLECTION_CUBE)->getAttachment(RTAttachmentType::COLOUR, 0u);
                 auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                 binding._slot = 14;
                 binding._data.As<DescriptorCombinedImageSampler>() = { targetAtt->texture()->defaultView(), targetAtt->descriptor()._samplerHash};
@@ -232,13 +232,13 @@ void Renderer::prepareLighting(const RenderStage stage,
 
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Rebuild Light Grid" });
             {
-                GFX::SendPushConstantsCommand pushConstantsCommands{};
-                pushConstantsCommands._constants.set(_ID("inverseProjectionMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix);
-                pushConstantsCommands._constants.set(_ID("viewport"), GFX::PushConstantType::IVEC4, context().gfx().activeViewport());
-                pushConstantsCommands._constants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
+                PushConstantsStruct pushConstants{};
+                pushConstants.data0 = cameraSnapshot._invProjectionMatrix;
+                pushConstants.data1._vec[0] =  context().gfx().activeViewport();
+                pushConstants.data1._vec[1].xy = cameraSnapshot._zPlanes;
 
                 GFX::EnqueueCommand(bufferInOut, _lightBuildClusteredAABBsPipelineCmd);
-                GFX::EnqueueCommand(bufferInOut, pushConstantsCommands);
+                GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(pushConstants);
                 GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ _computeWorkgroupSize });
                 GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{ to_base(MemoryBarrierType::SHADER_STORAGE) });
             }

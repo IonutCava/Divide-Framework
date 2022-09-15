@@ -2,6 +2,7 @@
 
 #include "Headers/vkBufferImpl.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
+#include "Core/Headers/StringHelper.h"
 
 namespace Divide {
 AllocatedBuffer::~AllocatedBuffer()
@@ -43,7 +44,7 @@ VertexInputDescription getVertexDescription(const AttributeMap& vertexFormat) {
 }
 namespace VKUtil {
 
-AllocatedBuffer_uptr createStagingBuffer(const size_t size) {
+AllocatedBuffer_uptr createStagingBuffer(const size_t size, std::string_view bufferName) {
     AllocatedBuffer_uptr ret = eastl::make_unique<AllocatedBuffer>(BufferUsageType::STAGING_BUFFER);
 
     VmaAllocationCreateInfo vmaallocInfo = {};
@@ -62,6 +63,8 @@ AllocatedBuffer_uptr createStagingBuffer(const size_t size) {
                              &ret->_buffer,
                              &ret->_allocation,
                              &ret->_allocInfo));
+
+    Debug::SetObjectName(VK_API::GetStateTracker()->_device->getVKDevice(), (uint64_t)ret->_buffer, VK_OBJECT_TYPE_BUFFER, Util::StringFormat("%s_staging_buffer", bufferName.data()).c_str());
 
     return ret;
 }

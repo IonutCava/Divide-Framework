@@ -19,14 +19,16 @@
 
 namespace Divide {
 
-namespace {
+namespace
+{
     constexpr U8 SSAO_NOISE_SIZE = 4;
     constexpr U8 SSAO_BLUR_SIZE = SSAO_NOISE_SIZE / 2;
     constexpr U8 MAX_KERNEL_SIZE = 64;
     constexpr U8 MIN_KERNEL_SIZE = 8;
     vector<vec4<F32>> g_kernels;
 
-    [[nodiscard]] const vector<vec4<F32>>& ComputeKernel(const U8 sampleCount) {
+    [[nodiscard]] const vector<vec4<F32>>& ComputeKernel(const U8 sampleCount)
+    {
         g_kernels.resize(sampleCount);
         for (U16 i = 0; i < sampleCount; ++i) {
             vec3<F32>& k = g_kernels[i].xyz;
@@ -43,7 +45,8 @@ namespace {
 
 //ref: http://john-chapman-graphics.blogspot.co.uk/2013/01/ssao-tutorial.html
 SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, ResourceCache* cache)
-    : PreRenderOperator(context, parent, FilterType::FILTER_SS_AMBIENT_OCCLUSION) {
+    : PreRenderOperator(context, parent, FilterType::FILTER_SS_AMBIENT_OCCLUSION)
+{
     const auto& config = context.context().config().rendering.postFX.ssao;
     _genHalfRes = config.UseHalfResolution;
     _blurThreshold[0] = config.FullRes.BlurThreshold;
@@ -67,7 +70,8 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
 
     std::array<vec4<F32>, SQUARED(SSAO_NOISE_SIZE)> noiseData;
 
-    for (vec4<F32>& noise : noiseData) {
+    for (vec4<F32>& noise : noiseData)
+    {
         noise.set(Random(-1.f, 1.f), Random(-1.f, 1.f), 0.f, 1.f);
         noise.normalize();
     }
@@ -100,15 +104,14 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     ResourceDescriptor textureAttachment(attachmentName);
     textureAttachment.propertyDescriptor(noiseDescriptor);
     _noiseTexture = CreateResource<Texture>(cache, textureAttachment);
-
     _noiseTexture->loadData((Byte*)noiseData.data(), noiseData.size() * sizeof(vec4<F32>), vec2<U16>(SSAO_NOISE_SIZE));
-
     {
         TextureDescriptor outputDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RED);
         outputDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
         const vec2<U16> res = parent.screenRT()._rt->getResolution();
-        InternalRTAttachmentDescriptors att{
-            InternalRTAttachmentDescriptor{ outputDescriptor, nearestSampler.getHash(), RTAttachmentType::Colour, 0u},
+        InternalRTAttachmentDescriptors att
+        {
+            InternalRTAttachmentDescriptor{ outputDescriptor, nearestSampler.getHash(), RTAttachmentType::COLOUR, 0u},
         };
 
         RenderTargetDescriptor desc = {};
@@ -132,8 +135,9 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         TextureDescriptor outputDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_32, GFXImageFormat::RGBA);
         outputDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        InternalRTAttachmentDescriptors att = {
-            InternalRTAttachmentDescriptor{ outputDescriptor, nearestSampler.getHash(), RTAttachmentType::Colour, 0u },
+        InternalRTAttachmentDescriptors att
+        {
+            InternalRTAttachmentDescriptor{ outputDescriptor, nearestSampler.getHash(), RTAttachmentType::COLOUR, 0u },
         };
 
         RenderTargetDescriptor desc = {};
@@ -301,7 +305,8 @@ SSAOPreRenderOperator::~SSAOPreRenderOperator()
     }
 }
 
-bool SSAOPreRenderOperator::ready() const noexcept {
+bool SSAOPreRenderOperator::ready() const noexcept
+{
     if (_ssaoBlurShaderHorizontal->getState() == ResourceState::RES_LOADED && 
         _ssaoBlurShaderVertical->getState() == ResourceState::RES_LOADED && 
         _ssaoGenerateShader->getState() == ResourceState::RES_LOADED && 
@@ -316,7 +321,8 @@ bool SSAOPreRenderOperator::ready() const noexcept {
     return false;
 }
 
-void SSAOPreRenderOperator::reshape(const U16 width, const U16 height) {
+void SSAOPreRenderOperator::reshape(const U16 width, const U16 height)
+{
     PreRenderOperator::reshape(width, height);
 
     _ssaoOutput._rt->resize(width, height);
@@ -327,8 +333,10 @@ void SSAOPreRenderOperator::reshape(const U16 width, const U16 height) {
     _ssaoGenerateConstantsCmd._constants.set(_ID("SSAO_NOISE_SCALE"), GFX::PushConstantType::VEC2, targetDim  / SSAO_NOISE_SIZE);
 }
 
-void SSAOPreRenderOperator::genHalfRes(const bool state) {
-    if (_genHalfRes != state) {
+void SSAOPreRenderOperator::genHalfRes(const bool state)
+{
+    if (_genHalfRes != state)
+    {
         _genHalfRes = state;
         _context.context().config().rendering.postFX.ssao.UseHalfResolution = state;
         _context.context().config().changed(true);
@@ -349,134 +357,182 @@ void SSAOPreRenderOperator::genHalfRes(const bool state) {
     }
 }
 
-void SSAOPreRenderOperator::radius(const F32 val) {
-    if (!COMPARE(radius(), val)) {
+void SSAOPreRenderOperator::radius(const F32 val)
+{
+    if (!COMPARE(radius(), val))
+    {
         _radius[_genHalfRes ? 1 : 0] = val;
         _ssaoGenerateConstantsCmd._constants.set(_ID("SSAO_RADIUS"), GFX::PushConstantType::FLOAT, val);
-        if (_genHalfRes) {
+        if (_genHalfRes)
+        {
             _context.context().config().rendering.postFX.ssao.HalfRes.Radius = val;
-        } else {
+        }
+        else
+        {
             _context.context().config().rendering.postFX.ssao.FullRes.Radius = val;
         }
         _context.context().config().changed(true);
     }
 }
 
-void SSAOPreRenderOperator::power(const F32 val) {
-    if (!COMPARE(power(), val)) {
+void SSAOPreRenderOperator::power(const F32 val)
+{
+    if (!COMPARE(power(), val))
+    {
         _power[_genHalfRes ? 1 : 0] = val;
         _ssaoGenerateConstantsCmd._constants.set(_ID("SSAO_INTENSITY"), GFX::PushConstantType::FLOAT, val);
-        if (_genHalfRes) {
+        if (_genHalfRes)
+        {
             _context.context().config().rendering.postFX.ssao.HalfRes.Power = val;
-        } else {
+        }
+        else
+        {
             _context.context().config().rendering.postFX.ssao.FullRes.Power = val;
         }
         _context.context().config().changed(true);
     }
 }
 
-void SSAOPreRenderOperator::bias(const F32 val) {
-    if (!COMPARE(bias(), val)) {
+void SSAOPreRenderOperator::bias(const F32 val)
+{
+    if (!COMPARE(bias(), val))
+    {
         _bias[_genHalfRes ? 1 : 0] = val;
         _ssaoGenerateConstantsCmd._constants.set(_ID("SSAO_BIAS"), GFX::PushConstantType::FLOAT, val);
-        if (_genHalfRes) {
+        if (_genHalfRes)
+        {
             _context.context().config().rendering.postFX.ssao.HalfRes.Bias = val;
-        } else {
+        }
+        else
+        {
             _context.context().config().rendering.postFX.ssao.FullRes.Bias = val;
         }
         _context.context().config().changed(true);
     }
 }
 
-void SSAOPreRenderOperator::blurResults(const bool state) noexcept {
-    if (blurResults() != state) {
+void SSAOPreRenderOperator::blurResults(const bool state) noexcept
+{
+    if (blurResults() != state)
+    {
         _blur[_genHalfRes ? 1 : 0] = state;
-        if (_genHalfRes) {
+        if (_genHalfRes)
+        {
             _context.context().config().rendering.postFX.ssao.HalfRes.Blur = state;
-        } else {
+        }
+        else
+        {
             _context.context().config().rendering.postFX.ssao.FullRes.Blur = state;
         }
         _context.context().config().changed(true);
     }
 }
 
-void SSAOPreRenderOperator::blurThreshold(const F32 val) {
-    if (!COMPARE(blurThreshold(), val)) {
+void SSAOPreRenderOperator::blurThreshold(const F32 val)
+{
+    if (!COMPARE(blurThreshold(), val))
+    {
         _blurThreshold[_genHalfRes ? 1 : 0] = val;
         _ssaoBlurConstantsCmd._constants.set(_ID("depthThreshold"), GFX::PushConstantType::FLOAT, val);
-        if (_genHalfRes) {
+        if (_genHalfRes)
+        {
             _context.context().config().rendering.postFX.ssao.HalfRes.BlurThreshold = val;
-        } else {
+        }
+        else
+        {
             _context.context().config().rendering.postFX.ssao.FullRes.BlurThreshold = val;
         }
         _context.context().config().changed(true);
     }
 }
 
-void SSAOPreRenderOperator::blurSharpness(const F32 val) {
-    if (!COMPARE(blurSharpness(), val)) {
+void SSAOPreRenderOperator::blurSharpness(const F32 val)
+{
+    if (!COMPARE(blurSharpness(), val))
+    {
         _blurSharpness[_genHalfRes ? 1 : 0] = val;
         _ssaoBlurConstantsCmd._constants.set(_ID("blurSharpness"), GFX::PushConstantType::FLOAT, val);
-        if (_genHalfRes) {
+        if (_genHalfRes)
+        {
             _context.context().config().rendering.postFX.ssao.HalfRes.BlurSharpness = val;
-        } else {
+        }
+        else
+        {
             _context.context().config().rendering.postFX.ssao.FullRes.BlurSharpness = val;
         }
         _context.context().config().changed(true);
     }
 }
 
-void SSAOPreRenderOperator::blurKernelSize(const I32 val) {
-    if (blurKernelSize() != val) {
+void SSAOPreRenderOperator::blurKernelSize(const I32 val)
+{
+    if (blurKernelSize() != val)
+    {
         _kernelSize[_genHalfRes ? 1 : 0] = val;
         _ssaoBlurConstantsCmd._constants.set(_ID("blurKernelSize"), GFX::PushConstantType::INT, val);
-        if (_genHalfRes) {
+        if (_genHalfRes)
+        {
             _context.context().config().rendering.postFX.ssao.HalfRes.BlurKernelSize = val;
-        } else {
+        }
+        else
+        {
             _context.context().config().rendering.postFX.ssao.FullRes.BlurKernelSize = val;
         }
         _context.context().config().changed(true);
     }
 }
 
-void SSAOPreRenderOperator::maxRange(F32 val) {
+void SSAOPreRenderOperator::maxRange(F32 val)
+{
     val = std::max(0.01f, val);
 
-    if (!COMPARE(maxRange(), val)) {
+    if (!COMPARE(maxRange(), val))
+    {
         _maxRange[_genHalfRes ? 1 : 0] = val;
         _ssaoGenerateConstantsCmd._constants.set(_ID("maxRange"), GFX::PushConstantType::FLOAT, val);
-        if (_genHalfRes) {
+        if (_genHalfRes)
+        {
             _context.context().config().rendering.postFX.ssao.HalfRes.MaxRange = val;
-        } else {
+        }
+        else
+        {
             _context.context().config().rendering.postFX.ssao.FullRes.MaxRange = val;
         }
         _context.context().config().changed(true);
     }
 }
 
-void SSAOPreRenderOperator::fadeStart(F32 val) {
+void SSAOPreRenderOperator::fadeStart(F32 val)
+{
     val = std::max(0.01f, val);
 
-    if (!COMPARE(fadeStart(), val)) {
+    if (!COMPARE(fadeStart(), val))
+    {
         _fadeStart[_genHalfRes ? 1 : 0] = val;
         _ssaoGenerateConstantsCmd._constants.set(_ID("fadeStart"), GFX::PushConstantType::FLOAT, val);
-        if (_genHalfRes) {
+        if (_genHalfRes)
+        {
             _context.context().config().rendering.postFX.ssao.HalfRes.FadeDistance = val;
-        } else {
+        }
+        else
+        {
             _context.context().config().rendering.postFX.ssao.FullRes.FadeDistance = val;
         }
         _context.context().config().changed(true);
     }
 }
 
-U8 SSAOPreRenderOperator::sampleCount() const noexcept {
+U8 SSAOPreRenderOperator::sampleCount() const noexcept
+{
     return _kernelSampleCount[_genHalfRes ? 1 : 0];
 }
 
-void SSAOPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX::CommandBuffer& bufferInOut) {
+void SSAOPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX::CommandBuffer& bufferInOut)
+{
     PreRenderOperator::prepare(idx, bufferInOut);
 
-    if (_stateChanged && !_enabled) {
+    if (_stateChanged && !_enabled)
+    {
         GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
         renderPassCmd->_name = "DO_SSAO_CLEAR_TARGET";
         renderPassCmd->_target = RenderTargetNames::SSAO_RESULT;
@@ -489,17 +545,19 @@ void SSAOPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX:
     _stateChanged = false;
 }
 
-bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, [[maybe_unused]] const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
+bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, [[maybe_unused]] const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut)
+{
     assert(_enabled);
 
     _ssaoGenerateConstantsCmd._constants.set(_ID("_zPlanes"),            GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
     _ssaoGenerateConstantsCmd._constants.set(_ID("projectionMatrix"),    GFX::PushConstantType::MAT4, cameraSnapshot._projectionMatrix);
     _ssaoGenerateConstantsCmd._constants.set(_ID("invProjectionMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix);
 
-    const auto& depthAtt   = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Depth_Stencil, 0);
-    const auto& normalsAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS));
+    const auto& depthAtt   = _parent.screenRT()._rt->getAttachment(RTAttachmentType::DEPTH, 0);
+    const auto& normalsAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::NORMALS));
 
-    if(genHalfRes()) {
+    if(genHalfRes())
+    {
         { // DownSample depth and normals
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
             renderPassCmd->_name = "DO_SSAO_DOWNSAMPLE_NORMALS";
@@ -536,7 +594,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
 
             GFX::EnqueueCommand(bufferInOut, _ssaoGenerateConstantsCmd);
 
-            const auto& halfDepthAtt  = _halfDepthAndNormals._rt->getAttachment(RTAttachmentType::Colour, 0);
+            const auto& halfDepthAtt  = _halfDepthAndNormals._rt->getAttachment(RTAttachmentType::COLOUR, 0);
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -568,8 +626,8 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             linearSampler.mipSampling(TextureMipSampling::NONE);
             linearSampler.anisotropyLevel(0);
 
-            const auto& halfResAOAtt = _ssaoHalfResOutput._rt->getAttachment(RTAttachmentType::Colour, 0);
-            const auto& halfDepthAtt = _halfDepthAndNormals._rt->getAttachment(RTAttachmentType::Colour, 0);
+            const auto& halfResAOAtt = _ssaoHalfResOutput._rt->getAttachment(RTAttachmentType::COLOUR, 0);
+            const auto& halfDepthAtt = _halfDepthAndNormals._rt->getAttachment(RTAttachmentType::COLOUR, 0);
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -596,7 +654,9 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         }
-    } else {
+    }
+    else
+    {
         { // Generate Full Res AO
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
             renderPassCmd->_name = "DO_SSAO_CALC";
@@ -630,9 +690,10 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
         }
     }
     {
-        const auto& ssaoAtt = _ssaoOutput._rt->getAttachment(RTAttachmentType::Colour, 0);
+        const auto& ssaoAtt = _ssaoOutput._rt->getAttachment(RTAttachmentType::COLOUR, 0);
 
-        if (blurResults() && blurKernelSize() > 0) {
+        if (blurResults() && blurKernelSize() > 0)
+        {
             _ssaoBlurConstantsCmd._constants.set(_ID("invProjectionMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix);
             _ssaoBlurConstantsCmd._constants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
             _ssaoBlurConstantsCmd._constants.set(_ID("texelSize"), GFX::PushConstantType::VEC2, vec2<F32>{ 1.f / ssaoAtt->texture()->width(), 1.f / ssaoAtt->texture()->height() });
@@ -681,7 +742,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
 
                 GFX::EnqueueCommand(bufferInOut, _ssaoBlurConstantsCmd);
 
-                const auto& horizBlur = _ssaoBlurBuffer._rt->getAttachment(RTAttachmentType::Colour, 0);
+                const auto& horizBlur = _ssaoBlurBuffer._rt->getAttachment(RTAttachmentType::COLOUR, 0);
                 auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
                 cmd->_usage = DescriptorSetUsage::PER_DRAW;
                 {
@@ -703,7 +764,9 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
                 GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
             }
-        } else {
+        }
+        else
+        {
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
             renderPassCmd->_name = "DO_SSAO_PASS_THROUGH";
             renderPassCmd->_target = RenderTargetNames::SSAO_RESULT;

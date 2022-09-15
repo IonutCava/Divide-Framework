@@ -79,15 +79,15 @@ void RenderPass::render(const PlayerIndex idx, [[maybe_unused]] const Task& pare
 
             RTDrawDescriptor prePassPolicy = {};
             DisableAll(prePassPolicy._drawMask);
-            SetEnabled(prePassPolicy._drawMask, RTAttachmentType::Depth_Stencil, 0, true);
-            SetEnabled(prePassPolicy._drawMask, RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::VELOCITY), true);
-            SetEnabled(prePassPolicy._drawMask, RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::NORMALS), true);
+            SetEnabled(prePassPolicy._drawMask, RTAttachmentType::DEPTH, 0, true);
+            SetEnabled(prePassPolicy._drawMask, RTAttachmentType::COLOUR, to_base(GFXDevice::ScreenTargets::VELOCITY), true);
+            SetEnabled(prePassPolicy._drawMask, RTAttachmentType::COLOUR, to_base(GFXDevice::ScreenTargets::NORMALS), true);
             //prePassPolicy._alphaToCoverage = true;
 
             RTDrawDescriptor mainPassPolicy = {};
-            SetEnabled(mainPassPolicy._drawMask, RTAttachmentType::Depth_Stencil, 0, false);
-            SetEnabled(mainPassPolicy._drawMask, RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::VELOCITY), false);
-            SetEnabled(mainPassPolicy._drawMask, RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS), false);
+            SetEnabled(mainPassPolicy._drawMask, RTAttachmentType::DEPTH, 0, false);
+            SetEnabled(mainPassPolicy._drawMask, RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::VELOCITY), false);
+            SetEnabled(mainPassPolicy._drawMask, RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::NORMALS), false);
 
             const RTDrawDescriptor oitCompositionPassPolicy = mainPassPolicy;
 

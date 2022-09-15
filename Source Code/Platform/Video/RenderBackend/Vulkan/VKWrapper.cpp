@@ -15,7 +15,7 @@
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 
-#include "Buffers/Headers/vkFramebuffer.h"
+#include "Buffers/Headers/vkRenderTarget.h"
 #include "Buffers/Headers/vkShaderBuffer.h"
 #include "Buffers/Headers/vkGenericVertexData.h"
 
@@ -36,8 +36,10 @@ namespace {
                                                                 void*)
     {
 
-        const auto to_string_message_severity = [](VkDebugUtilsMessageSeverityFlagBitsEXT s) -> const char* {
-            switch (s) {
+        const auto to_string_message_severity = [](VkDebugUtilsMessageSeverityFlagBitsEXT s) -> const char*
+        {
+            switch (s)
+            {
                 case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
                     return "VERBOSE";
                 case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
@@ -51,7 +53,8 @@ namespace {
             }
         };
 
-        const auto to_string_message_type = [](VkDebugUtilsMessageTypeFlagsEXT s) -> const char* {
+        const auto to_string_message_type = [](VkDebugUtilsMessageTypeFlagsEXT s) -> const char*
+        {
             if (s == 7) return "General | Validation | Performance";
             if (s == 6) return "Validation | Performance";
             if (s == 5) return "General | Performance";
@@ -126,6 +129,7 @@ namespace Divide {
     VKStateTracker_uptr VK_API::s_stateTracker = nullptr;
     SharedMutex VK_API::s_samplerMapLock;
     VK_API::SamplerObjectMap VK_API::s_samplerMap{};
+    VK_API::DepthFormatInformation VK_API::s_depthFormatInformation;
 
     VkPipeline PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass) {
         //make viewport state from our stored viewport and scissor.
@@ -179,14 +183,21 @@ namespace Divide {
         pipelineInfo.pDepthStencilState = &_depthStencil;
         pipelineInfo.pTessellationState = &_tessellation;
         pipelineInfo.subpass = 0;
+        if (VK_API::GetStateTracker()->_pipelineRenderingCreateInfo.sType == VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO)
+        {
+            pipelineInfo.renderPass = nullptr;
+            pipelineInfo.pNext = &VK_API::GetStateTracker()->_pipelineRenderingCreateInfo;
+        }
 
         //it's easy to error out on create graphics pipeline, so we handle it a bit better than the common VK_CHECK case
         VkPipeline newPipeline;
-        if (vkCreateGraphicsPipelines(
-            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &newPipeline) != VK_SUCCESS) {
+        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &newPipeline) != VK_SUCCESS)
+        {
             Console::errorfn("failed to create pipeline");
             return VK_NULL_HANDLE; // failed to create graphics pipeline
-        } else {
+        }
+        else
+        {
             return newPipeline;
         }
     }
@@ -263,7 +274,7 @@ namespace Divide {
 
     void VK_API::RegisterTransferRequest(const VKTransferQueue::TransferRequest& request) {
         if (request._immediate) {
-            VK_API::GetStateTracker()->_cmdContext->flushCommandBuffer([&request](VkCommandBuffer cmd) {
+            GetStateTracker()->_cmdContext->flushCommandBuffer([&request](VkCommandBuffer cmd) {
                 if (request.srcBuffer != VK_NULL_HANDLE) {
                     VkBufferCopy copy;
                     copy.dstOffset = request.dstOffset;
@@ -332,7 +343,22 @@ namespace Divide {
         VK_CHECK(vkEndCommandBuffer(cmdBuffer));
     }
 
+    void VKStateTracker::reset()
+    {
+        _dynamicState = {};
+        _activePipeline = VK_NULL_HANDLE;
+        _activeTopology = PrimitiveTopology::COUNT;
+        _activeMSAASamples = 0u;
+        _activeRenderTargetID = INVALID_RENDER_TARGET_ID;
+        _pipelineRenderingCreateInfo = {};
+        _lastSyncedFrameNumber = GFXDevice::FrameCount();
+        _drawIndirectBuffer = VK_NULL_HANDLE;
+    }
+
     bool VK_API::beginFrame(DisplayWindow& window, [[maybe_unused]] bool global) noexcept {
+        // Set dynamic state to default
+        GetStateTracker()->reset();
+
         const auto& windowDimensions = window.getDrawableSize();
         const VkExtent2D windowExtents{ windowDimensions.width, windowDimensions.height };
 
@@ -359,17 +385,8 @@ namespace Divide {
         VkCommandBufferBeginInfo cmdBeginInfo = vk::commandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
         VK_CHECK(vkBeginCommandBuffer(getCurrentCommandBuffer(), &cmdBeginInfo));
 
-        // Set dynamic state to default
-        GetStateTracker()->_dynamicState = {};
-        GetStateTracker()->_activePipeline = VK_NULL_HANDLE;
-        GetStateTracker()->_activeTopology = PrimitiveTopology::COUNT;
-        GetStateTracker()->_activeMSAASamples = 0u;
-        GetStateTracker()->_activeRenderTargetID = INVALID_RENDER_TARGET_ID;
-
         _context.setViewport({ 0, 0, windowDimensions.width, windowDimensions.height });
         setScissor({ 0, 0, windowDimensions.width, windowDimensions.height });
-        _drawIndirectBuffer = VK_NULL_HANDLE;
-        VK_API::GetStateTracker()->_lastSyncedFrameNumber = GFXDevice::FrameCount();
         vkLockManager::CleanExpiredSyncObjects(VK_API::GetStateTracker()->_lastSyncedFrameNumber);
 
         return true;
@@ -421,9 +438,9 @@ namespace Divide {
             .set_debug_callback(divide_debug_callback)
             .set_debug_callback_user_data_pointer(this);
 
-        auto systemInfo = systemInfoRet.value();
-        if (Config::ENABLE_GPU_VALIDATION && systemInfo.is_extension_available(VK_EXT_DEBUG_MARKER_EXTENSION_NAME)) {
-            builder.enable_extension(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
+        vkb::SystemInfo& systemInfo = systemInfoRet.value();
+        if (Config::ENABLE_GPU_VALIDATION && systemInfo.is_extension_available(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)) {
+            builder.enable_extension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
             s_hasDebugMarkerSupport = true;
         } else {
             s_hasDebugMarkerSupport = false;
@@ -457,6 +474,22 @@ namespace Divide {
             return ErrorCode::VK_DEVICE_CREATE_FAILED;
         }
         VKUtil::fillEnumTables(_device->getVKDevice());
+
+        VkFormatProperties2 properties{};
+        properties.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2;
+
+        vkGetPhysicalDeviceFormatProperties2(_device->getPhysicalDevice(), VK_FORMAT_D24_UNORM_S8_UINT, &properties);
+        s_depthFormatInformation._d24s8Supported = properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        vkGetPhysicalDeviceFormatProperties2(_device->getPhysicalDevice(), VK_FORMAT_D32_SFLOAT_S8_UINT, &properties);
+        s_depthFormatInformation._d32s8Supported = properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        DIVIDE_ASSERT(s_depthFormatInformation._d24s8Supported || s_depthFormatInformation._d32s8Supported);
+
+
+        vkGetPhysicalDeviceFormatProperties2(_device->getPhysicalDevice(), VK_FORMAT_X8_D24_UNORM_PACK32, &properties);
+        s_depthFormatInformation._d24x8Supported = properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        vkGetPhysicalDeviceFormatProperties2(_device->getPhysicalDevice(), VK_FORMAT_D32_SFLOAT, &properties);
+        s_depthFormatInformation._d32FSupported = properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        DIVIDE_ASSERT(s_depthFormatInformation._d24x8Supported || s_depthFormatInformation._d32FSupported);
 
         VkPhysicalDeviceProperties deviceProperties{};
         vkGetPhysicalDeviceProperties(_device->getPhysicalDevice().physical_device, &deviceProperties);
@@ -884,7 +917,7 @@ namespace Divide {
                     if (usage == DescriptorSetUsage::PER_BATCH && srcBinding._slot == 0) {
                         // Draw indirect buffer!
                         DIVIDE_ASSERT(bufferUsage == ShaderBuffer::Usage::COMMAND_BUFFER);
-                        _drawIndirectBuffer = buffer;
+                        GetStateTracker()->_drawIndirectBuffer = buffer;
                     } else {
                         VkDescriptorBufferInfo& bufferInfo = BufferInfoStructs[bufferInfoStructIndex++];
                         bufferInfo.buffer = buffer;
@@ -910,12 +943,28 @@ namespace Divide {
                         continue;
                     }
                     const VkSampler samplerHandle = GetSamplerHandle(imageSampler._samplerHash);
-                    imageSampler._image._srcTexture._internalTexture->setImageUsage(ImageUsage::SHADER_SAMPLE);
-
-                    const VkImageView view = static_cast<const vkTexture*>(imageSampler._image._srcTexture._internalTexture)->vkView();
+                    //DIVIDE_ASSERT(imageSampler._image._srcTexture._internalTexture->imageUsage() == ImageUsage::SHADER_SAMPLE);
 
                     VkDescriptorImageInfo& imageInfo = ImageInfoStructs[imageInfoStructIndex++];
-                    imageInfo = vk::descriptorImageInfo(samplerHandle, view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+                    vkTexture* vkTex = static_cast<vkTexture*>(imageSampler._image._srcTexture._internalTexture);
+
+                    if (imageSampler._image._srcTexture._internalTexture->descriptor().hasUsageFlagSet(ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT))
+                    {
+                        vkTexture::CachedImageView::Descriptor descriptor{};
+                        descriptor._usage = ImageUsage::SHADER_SAMPLE;
+                        descriptor._format = vkTex->vkFormat();
+                        descriptor._type = vkTex->descriptor().texType();
+                        descriptor._mipLevels = {0u, VK_REMAINING_MIP_LEVELS};
+                        descriptor._layers = {0u, VK_REMAINING_ARRAY_LAYERS};
+                        descriptor._aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
+                        imageInfo = vk::descriptorImageInfo(samplerHandle, vkTex->getImageView(descriptor), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                    }
+                    else
+                    {
+                        imageInfo = vk::descriptorImageInfo(samplerHandle, vkTex->vkView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                    }
+                    
                     builder.bindImage(srcBinding._slot, &imageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stageFlags);
                 } break;
                 case DescriptorSetBindingType::IMAGE: {
@@ -928,7 +977,9 @@ namespace Divide {
                     }
 
                     DIVIDE_ASSERT(image._srcTexture._internalTexture != nullptr && image._mipLevels.max == 1u);
-                    image._srcTexture._internalTexture->setImageUsage(image._usage);
+                    DIVIDE_ASSERT(image._srcTexture._internalTexture->imageUsage() != ImageUsage::RT_COLOUR_ATTACHMENT &&
+                                  image._srcTexture._internalTexture->imageUsage() != ImageUsage::RT_DEPTH_ATTACHMENT &&
+                                  image._srcTexture._internalTexture->imageUsage() != ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT);
 
                     vkTexture* vkTex = static_cast<vkTexture*>(image._srcTexture._internalTexture);
                     VkDescriptorType descriptorType = VK_DESCRIPTOR_TYPE_MAX_ENUM;
@@ -1165,83 +1216,105 @@ namespace Divide {
                     vkCmdBeginRenderPass(cmdBuffer, &_defaultRenderPass, VK_SUBPASS_CONTENTS_INLINE);
                 } else {
                     vkRenderTarget* rt = static_cast<vkRenderTarget*>(_context.renderTargetPool().getRenderTarget(crtCmd->_target));
-                    const VkRenderingInfo& renderingInfo = rt->getRenderingInfo(crtCmd->_descriptor, 
-                                                                                crtCmd->_clearDescriptor,
-                                                                                GetStateTracker()->_pipelineCreateInfo);
+                    Attorney::VKAPIRenderTarget::begin(*rt, cmdBuffer, crtCmd->_descriptor, crtCmd->_clearDescriptor, GetStateTracker()->_pipelineRenderingCreateInfo);
 
-                    vkCmdBeginRendering(cmdBuffer, &renderingInfo);
                     GetStateTracker()->_alphaToCoverage = crtCmd->_descriptor._alphaToCoverage;
                     GetStateTracker()->_activeMSAASamples = rt->getSampleCount();
                     if (crtCmd->_descriptor._setViewport) {
                         _context.setViewport({ 0, 0, rt->getWidth(), rt->getHeight() });
                     }
                 }
-                
+
                 PushDebugMessage(cmdBuffer, crtCmd->_name.c_str());
             }break;
-            case GFX::CommandType::END_RENDER_PASS: {
+            case GFX::CommandType::END_RENDER_PASS:
+            {
                 PopDebugMessage(cmdBuffer);
                 GetStateTracker()->_alphaToCoverage = false;
                 GetStateTracker()->_activeMSAASamples = _context.context().config().rendering.MSAASamples;
 
-                if (VK_API::GetStateTracker()->_activeRenderTargetID == SCREEN_TARGET_ID) {
+                if (GetStateTracker()->_activeRenderTargetID == SCREEN_TARGET_ID)
+                {
                     vkCmdEndRenderPass(cmdBuffer);
-                } else {
-                    vkCmdEndRendering(cmdBuffer);
                 }
-                VK_API::GetStateTracker()->_activeRenderTargetID = INVALID_RENDER_TARGET_ID;
+                else
+                {
+                    vkRenderTarget* rt = static_cast<vkRenderTarget*>(_context.renderTargetPool().getRenderTarget(GetStateTracker()->_activeRenderTargetID));
+                    Attorney::VKAPIRenderTarget::end(*rt, cmdBuffer);
+                }
+                GetStateTracker()->_activeRenderTargetID = INVALID_RENDER_TARGET_ID;
+                GetStateTracker()->_pipelineRenderingCreateInfo = {};
             }break;
-            case GFX::CommandType::BEGIN_GPU_QUERY: {
+            case GFX::CommandType::BEGIN_GPU_QUERY:
+            {
             }break;
-            case GFX::CommandType::END_GPU_QUERY: {
+            case GFX::CommandType::END_GPU_QUERY:
+            {
             }break;
-            case GFX::CommandType::COPY_TEXTURE: {
+            case GFX::CommandType::COPY_TEXTURE:
+            {
             }break;
-            case GFX::CommandType::BIND_PIPELINE: {
+            case GFX::CommandType::BIND_PIPELINE:
+            {
                 const Pipeline* pipeline = cmd->As<GFX::BindPipelineCommand>()->_pipeline;
                 assert(pipeline != nullptr);
                 if (bindPipeline(*pipeline, cmdBuffer) == ShaderResult::Failed) {
                     Console::errorfn(Locale::Get(_ID("ERROR_GLSL_INVALID_BIND")), pipeline->descriptor()._shaderProgramHandle);
                 }
             } break;
-            case GFX::CommandType::SEND_PUSH_CONSTANTS: {
+            case GFX::CommandType::SEND_PUSH_CONSTANTS:
+            {
             } break;
-            case GFX::CommandType::SET_SCISSOR: {
-                if (!setScissor(cmd->As<GFX::SetScissorCommand>()->_rect)) {
+            case GFX::CommandType::SET_SCISSOR:
+            {
+                if (!setScissor(cmd->As<GFX::SetScissorCommand>()->_rect))
+                {
                     NOP();
                 }
             }break;
-            case GFX::CommandType::BEGIN_DEBUG_SCOPE: {
+            case GFX::CommandType::BEGIN_DEBUG_SCOPE:
+            {
                  const GFX::BeginDebugScopeCommand* crtCmd = cmd->As<GFX::BeginDebugScopeCommand>();
                  PushDebugMessage(cmdBuffer, crtCmd->_scopeName.c_str(), crtCmd->_scopeId);
             } break;
-            case GFX::CommandType::END_DEBUG_SCOPE: {
+            case GFX::CommandType::END_DEBUG_SCOPE:
+            {
                  PopDebugMessage(cmdBuffer);
             } break;
-            case GFX::CommandType::ADD_DEBUG_MESSAGE: {
+            case GFX::CommandType::ADD_DEBUG_MESSAGE:
+            {
                 const GFX::AddDebugMessageCommand* crtCmd = cmd->As<GFX::AddDebugMessageCommand>();
                 InsertDebugMessage(cmdBuffer, crtCmd->_msg.c_str(), crtCmd->_msgId);
             }break;
-            case GFX::CommandType::COMPUTE_MIPMAPS: {
+            case GFX::CommandType::COMPUTE_MIPMAPS:
+            {
                 const GFX::ComputeMipMapsCommand* crtCmd = cmd->As<GFX::ComputeMipMapsCommand>();
 
-                if (crtCmd->_layerRange.x == 0 && crtCmd->_layerRange.y == crtCmd->_texture->descriptor().layerCount()) {
+                if (crtCmd->_layerRange.x == 0 && crtCmd->_layerRange.y == crtCmd->_texture->descriptor().layerCount())
+                {
                     OPTICK_EVENT("VK: In-place computation - Full");
-                } else {
+                }
+                else
+                {
                     OPTICK_EVENT("VK: View - based computation");
                 }
             }break;
-            case GFX::CommandType::DRAW_TEXT: {
+            case GFX::CommandType::DRAW_TEXT:
+            {
                 const GFX::DrawTextCommand* crtCmd = cmd->As<GFX::DrawTextCommand>();
                 drawText(crtCmd->_batch);
             }break;
-            case GFX::CommandType::DRAW_COMMANDS : {
+            case GFX::CommandType::DRAW_COMMANDS:
+            {
                 const GFX::DrawCommand::CommandContainer& drawCommands = cmd->As<GFX::DrawCommand>()->_drawCommands;
 
-                if (GetStateTracker()->_activePipeline != VK_NULL_HANDLE) {
+                if (GetStateTracker()->_activePipeline != VK_NULL_HANDLE)
+                {
                     U32 drawCount = 0u;
-                    for (const GenericDrawCommand& currentDrawCommand : drawCommands) {
-                        if (draw(currentDrawCommand, cmdBuffer)) {
+                    for (const GenericDrawCommand& currentDrawCommand : drawCommands)
+                    {
+                        if (draw(currentDrawCommand, cmdBuffer))
+                        {
                             drawCount += isEnabledOption(currentDrawCommand, CmdRenderOptions::RENDER_WIREFRAME) 
                                                ? 2 
                                                : isEnabledOption(currentDrawCommand, CmdRenderOptions::RENDER_GEOMETRY) ? 1 : 0;
@@ -1250,33 +1323,41 @@ namespace Divide {
                     _context.registerDrawCalls(drawCount);
                 }
             }break;
-            case GFX::CommandType::DISPATCH_COMPUTE: {
+            case GFX::CommandType::DISPATCH_COMPUTE:
+            {
                 assert(GetStateTracker()->_activeTopology == PrimitiveTopology::COMPUTE);
-                if (GetStateTracker()->_activePipeline != VK_NULL_HANDLE) {
+                if (GetStateTracker()->_activePipeline != VK_NULL_HANDLE)
+                {
                 }
             } break;
-            case GFX::CommandType::SET_CLIPING_STATE: {
+            case GFX::CommandType::SET_CLIPING_STATE:
+            {
             } break;
-            case GFX::CommandType::MEMORY_BARRIER: {
+            case GFX::CommandType::MEMORY_BARRIER:
+            {
             } break;
             default: break;
         }
     }
 
-    void VK_API::preFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer) {
+    void VK_API::preFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer)
+    {
     }
 
-    void VK_API::postFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer) noexcept {
+    void VK_API::postFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer) noexcept
+    {
         s_transientDeleteQueue.flush(_device->getDevice());
     }
 
-    vec2<U16> VK_API::getDrawableSize(const DisplayWindow& window) const noexcept {
+    vec2<U16> VK_API::getDrawableSize(const DisplayWindow& window) const noexcept
+    {
         int w = 1, h = 1;
         SDL_Vulkan_GetDrawableSize(window.getRawWindow(), &w, &h);
         return vec2<U16>(w, h);
     }
 
-    bool VK_API::setViewport(const Rect<I32>& newViewport) noexcept {
+    bool VK_API::setViewport(const Rect<I32>& newViewport) noexcept
+    {
         VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
         const VkViewport targetViewport{to_F32(newViewport.offsetX),
                                         to_F32(newViewport.sizeY) - to_F32(newViewport.offsetY),
@@ -1284,7 +1365,8 @@ namespace Divide {
                                         -to_F32(newViewport.sizeY),
                                         0.f,
                                         1.f};
-        if (GetStateTracker()->_dynamicState._activeViewport != targetViewport) {
+        if (GetStateTracker()->_dynamicState._activeViewport != targetViewport)
+        {
             vkCmdSetViewport(cmdBuffer, 0, 1, &targetViewport);
             GetStateTracker()->_dynamicState._activeViewport = targetViewport;
             return true;
@@ -1293,13 +1375,15 @@ namespace Divide {
         return false;
     }
 
-    bool VK_API::setScissor(const Rect<I32>& newScissor) noexcept {
+    bool VK_API::setScissor(const Rect<I32>& newScissor) noexcept
+    {
         VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
 
         const VkOffset2D offset{ std::max(0, newScissor.offsetX), std::max(0, newScissor.offsetY) };
         const VkExtent2D extent{ to_U32(newScissor.sizeX),to_U32(newScissor.sizeY) };
         const VkRect2D targetScissor{ offset, extent };
-        if (GetStateTracker()->_dynamicState._activeScissor != targetScissor) {
+        if (GetStateTracker()->_dynamicState._activeScissor != targetScissor)
+        {
             vkCmdSetScissor(cmdBuffer, 0, 1, &targetScissor);
             return true;
         }
@@ -1320,32 +1404,34 @@ namespace Divide {
         if (s_hasDebugMarkerSupport) {
             static F32 color[4] = { 0.0f, 1.0f, 0.0f, 1.f };
 
-            VkDebugMarkerMarkerInfoEXT markerInfo = {};
-            markerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT;
-            memcpy(markerInfo.color, &color[0], sizeof(F32) * 4);
-            markerInfo.pMarkerName = message;
-            Debug::vkCmdDebugMarkerInsert(cmdBuffer, &markerInfo);
+            VkDebugUtilsLabelEXT labelInfo{};
+            labelInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+            labelInfo.pLabelName = message;
+            memcpy(labelInfo.color, &color[0], sizeof(F32) * 4);
+
+            Debug::vkCmdInsertDebugUtilsLabelEXT(cmdBuffer, &labelInfo);
         }
     }
 
     void VK_API::PushDebugMessage(VkCommandBuffer cmdBuffer, const char* message, const U32 id) {
         if (s_hasDebugMarkerSupport) {
             static F32 color[4] = {0.5f, 0.5f, 0.5f, 1.f};
-
-            VkDebugMarkerMarkerInfoEXT markerInfo = {};
-            markerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT;
-            memcpy(markerInfo.color, &color[0], sizeof(F32) * 4);
-            markerInfo.pMarkerName = "Set primary viewport";
-            Debug::vkCmdDebugMarkerBegin(cmdBuffer, &markerInfo);
+            VkDebugUtilsLabelEXT labelInfo{};
+            labelInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+            labelInfo.pLabelName = message;
+            memcpy(labelInfo.color, &color[0], sizeof(F32) * 4);
+            Debug::vkCmdBeginDebugUtilsLabelEXT(cmdBuffer, &labelInfo);
         }
         
         assert(GetStateTracker()->_debugScopeDepth < GetStateTracker()->_debugScope.size());
         GetStateTracker()->_debugScope[GetStateTracker()->_debugScopeDepth++] = { message, id };
     }
 
-    void VK_API::PopDebugMessage(VkCommandBuffer cmdBuffer) {
-        if (s_hasDebugMarkerSupport) {
-            Debug::vkCmdDebugMarkerEnd(cmdBuffer);
+    void VK_API::PopDebugMessage(VkCommandBuffer cmdBuffer)
+    {
+        if (s_hasDebugMarkerSupport)
+        {
+            Debug::vkCmdEndDebugUtilsLabelEXT(cmdBuffer);
         }
 
         GetStateTracker()->_debugScope[GetStateTracker()->_debugScopeDepth--] = { "", std::numeric_limits<U32>::max() };

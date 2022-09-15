@@ -64,7 +64,6 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
 
     _adaptiveExposureControl = configParams.adaptive && _toneMapParams._function != ToneMapParams::MapFunctions::COUNT;
 
-    
     // We only work with the resolved screen target
     _screenRTs._hdr._screenRef._targetID = RenderTargetNames::SCREEN;
     _screenRTs._hdr._screenRef._rt = context.renderTargetPool().getRenderTarget(_screenRTs._hdr._screenRef._targetID);
@@ -78,11 +77,12 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
     desc._resolution = _screenRTs._hdr._screenRef._rt->getResolution();
     desc._attachmentCount = 1u;
 
-    TextureDescriptor outputDescriptor = _screenRTs._hdr._screenRef._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO))->texture()->descriptor();
+    TextureDescriptor outputDescriptor = _screenRTs._hdr._screenRef._rt->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO))->texture()->descriptor();
     outputDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
     {
-        InternalRTAttachmentDescriptors att = {
-            InternalRTAttachmentDescriptor{ outputDescriptor, screenSampler.getHash(), RTAttachmentType::Colour, 0u}
+        InternalRTAttachmentDescriptors att
+        {
+            InternalRTAttachmentDescriptor{ outputDescriptor, screenSampler.getHash(), RTAttachmentType::COLOUR, 0u}
         };
         desc._name = "PostFX Output HDR";
         desc._attachments = att.data();
@@ -92,8 +92,9 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
     {
         outputDescriptor.dataType(GFXDataFormat::UNSIGNED_BYTE);
         //Colour0 holds the LDR screen texture
-        InternalRTAttachmentDescriptors att = {
-            InternalRTAttachmentDescriptor{ outputDescriptor, screenSampler.getHash(), RTAttachmentType::Colour, 0u }
+        InternalRTAttachmentDescriptors att
+        {
+            InternalRTAttachmentDescriptor{ outputDescriptor, screenSampler.getHash(), RTAttachmentType::COLOUR, 0u }
         };
 
         desc._name = "PostFX Output LDR 0";
@@ -108,8 +109,9 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         TextureDescriptor edgeDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RG);
         edgeDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        InternalRTAttachmentDescriptors att = {
-            InternalRTAttachmentDescriptor{ edgeDescriptor, screenSampler.getHash(), RTAttachmentType::Colour, 0u }
+        InternalRTAttachmentDescriptors att
+        {
+            InternalRTAttachmentDescriptor{ edgeDescriptor, screenSampler.getHash(), RTAttachmentType::COLOUR, 0u }
         };
 
         desc._name = "SceneEdges";
@@ -129,7 +131,6 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         F32 val = 1.f;
         _currentLuminance->loadData((Byte*)&val, 1u * sizeof(F32), vec2<U16>(1u));
     }
-
     {
         SamplerDescriptor defaultSampler = {};
         defaultSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
@@ -142,8 +143,9 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         TextureDescriptor linearDepthDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RED);
         linearDepthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        InternalRTAttachmentDescriptors attachments = {
-            InternalRTAttachmentDescriptor{ linearDepthDescriptor, samplerHash, RTAttachmentType::Colour, 0u }
+        InternalRTAttachmentDescriptors attachments
+        {
+            InternalRTAttachmentDescriptor{ linearDepthDescriptor, samplerHash, RTAttachmentType::COLOUR, 0u }
         };
 
         desc._name = "Linear Depth";
@@ -154,11 +156,14 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
 
     // Order is very important!
     OperatorBatch& hdrBatch = _operators[to_base(FilterSpace::FILTER_SPACE_HDR)];
-    for (U16 i = 0u; i < to_base(FilterType::FILTER_COUNT); ++i) {
+    for (U16 i = 0u; i < to_base(FilterType::FILTER_COUNT); ++i)
+    {
         const FilterType fType = static_cast<FilterType>(i);
 
-        if (GetOperatorSpace(fType) == FilterSpace::FILTER_SPACE_HDR) {
-            switch (fType) {
+        if (GetOperatorSpace(fType) == FilterSpace::FILTER_SPACE_HDR)
+        {
+            switch (fType)
+            {
                 case FilterType::FILTER_SS_AMBIENT_OCCLUSION:
                     hdrBatch.emplace_back(eastl::make_unique<SSAOPreRenderOperator>(_context, *this, _resCache));
                     break;
@@ -175,11 +180,14 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
     }
 
     OperatorBatch& hdr2Batch = _operators[to_base(FilterSpace::FILTER_SPACE_HDR_POST_SS)];
-    for (U16 i = 0u; i < to_base(FilterType::FILTER_COUNT); ++i) {
+    for (U16 i = 0u; i < to_base(FilterType::FILTER_COUNT); ++i)
+    {
         const FilterType fType = static_cast<FilterType>(i);
 
-        if (GetOperatorSpace(fType) == FilterSpace::FILTER_SPACE_HDR_POST_SS) {
-            switch (fType) {
+        if (GetOperatorSpace(fType) == FilterSpace::FILTER_SPACE_HDR_POST_SS)
+        {
+            switch (fType)
+            {
                case FilterType::FILTER_DEPTH_OF_FIELD:
                    hdr2Batch.emplace_back(eastl::make_unique<DoFPreRenderOperator>(_context, *this, _resCache));
                    break;
@@ -200,11 +208,14 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
     }
 
     OperatorBatch& ldrBatch = _operators[to_base(FilterSpace::FILTER_SPACE_LDR)];
-    for (U16 i = 0u; i < to_base(FilterType::FILTER_COUNT); ++i) {
+    for (U16 i = 0u; i < to_base(FilterType::FILTER_COUNT); ++i)
+    {
         const FilterType fType = static_cast<FilterType>(i);
 
-        if (GetOperatorSpace(fType) == FilterSpace::FILTER_SPACE_LDR) {
-            switch (fType) {
+        if (GetOperatorSpace(fType) == FilterSpace::FILTER_SPACE_LDR)
+        {
+            switch (fType)
+            {
                 case FilterType::FILTER_SS_ANTIALIASING:
                     ldrBatch.push_back(eastl::make_unique<PostAAPreRenderOperator>(_context, *this, _resCache));
                     break;
@@ -492,7 +503,7 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
         GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
         GFX::EnqueueCommand(bufferInOut, bindPipelineCmd);
 
-        RTAttachment* depthAtt = screenRT()._rt->getAttachment(RTAttachmentType::Depth_Stencil, 0);
+        RTAttachment* depthAtt = screenRT()._rt->getAttachment(RTAttachmentType::DEPTH, 0);
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -522,8 +533,8 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
     }
 
     // Always bind these even if we haven't ran the appropriate operators!
-    RTAttachment* ssrDataAtt = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SSR_RESULT)->getAttachment(RTAttachmentType::Colour, 0);
-    RTAttachment* ssaoDataAtt = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SSAO_RESULT)->getAttachment(RTAttachmentType::Colour, 0u);
+    RTAttachment* ssrDataAtt = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SSR_RESULT)->getAttachment(RTAttachmentType::COLOUR, 0);
+    RTAttachment* ssaoDataAtt = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SSAO_RESULT)->getAttachment(RTAttachmentType::COLOUR, 0u);
 
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
     cmd->_usage = DescriptorSetUsage::PER_PASS;
@@ -557,7 +568,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         };
 
         { // Histogram Pass
-            const Texture_ptr& screenColour = screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO))->texture();
+            const Texture_ptr& screenColour = screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO))->texture();
 
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "CreateLuminanceHistogram" });
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
@@ -664,7 +675,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
 
     RenderTarget* prevScreenRT = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_PREV);
     GFX::ComputeMipMapsCommand computeMipMapsCommand{};
-    computeMipMapsCommand._texture = prevScreenRT->getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::ALBEDO))->texture().get();
+    computeMipMapsCommand._texture = prevScreenRT->getAttachment(RTAttachmentType::COLOUR, to_base(GFXDevice::ScreenTargets::ALBEDO))->texture().get();
     GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 
     { // ToneMap and generate LDR render target (Alpha channel contains pre-toneMapped luminance value)
@@ -679,8 +690,8 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             lumaSamplerHash = lumaSampler.getHash();
         }
 
-        const auto& screenAtt = getInput(true)._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
-        const auto& screenDepthAtt = screenRT()._rt->getAttachment(RTAttachmentType::Depth_Stencil, 0);
+        const auto& screenAtt = getInput(true)._rt->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO));
+        const auto& screenDepthAtt = screenRT()._rt->getAttachment(RTAttachmentType::DEPTH, 0);
 
         GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "PostFX: tone map" });
 
@@ -731,14 +742,14 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
         if (edgeDetectionMethod() != EdgeDetectionMethod::Depth) {
-            const auto& screenAtt = getInput(false)._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
+            const auto& screenAtt = getInput(false)._rt->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO));
 
             auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
             binding._slot = 0;
             binding._data.As<DescriptorCombinedImageSampler>() = { screenAtt->texture()->defaultView(), screenAtt->descriptor()._samplerHash };
 
         } else {
-            const auto& depthAtt = getInput(false)._rt->getAttachment(RTAttachmentType::Depth_Stencil, 0);
+            const auto& depthAtt = getInput(false)._rt->getAttachment(RTAttachmentType::DEPTH, 0);
 
             auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
             binding._slot = 0;

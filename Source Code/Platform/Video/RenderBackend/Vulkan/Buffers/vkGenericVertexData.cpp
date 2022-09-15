@@ -67,6 +67,8 @@ namespace Divide {
             impl = &_bufferObjects.emplace_back();
         }
 
+        const string bufferName = _name.empty() ? Util::StringFormat("DVD_GENERAL_VTX_BUFFER_%d", handle()._id) : (_name + "_VTX_BUFFER");
+
         const size_t ringSizeFactor = params._useRingBuffer ? queueLength() : 1;
         const size_t bufferSizeInBytes = params._bufferParams._elementCount * params._bufferParams._elementSize;
         const size_t dataSize = bufferSizeInBytes * ringSizeFactor;
@@ -83,7 +85,7 @@ namespace Divide {
 
         const size_t localDataSize = params._initialData.second > 0 ? params._initialData.second : bufferSizeInBytes;
 
-        impl->_stagingBufferVtx = VKUtil::createStagingBuffer(dataSize);
+        impl->_stagingBufferVtx = VKUtil::createStagingBuffer(dataSize, bufferName);
         Byte* mappedRange = (Byte*)impl->_stagingBufferVtx->_allocInfo.pMappedData;
         for (U32 i = 0u; i < ringSizeFactor; ++i) {
             if (params._initialData.first == nullptr) {
@@ -120,8 +122,9 @@ namespace Divide {
                                              impl->_buffer->_allocation,
                                              &memPropFlags);
 
-            const string bufferName = _name.empty() ? Util::StringFormat("DVD_GENERAL_VTX_BUFFER_%d", handle()._id) : (_name + "_VTX_BUFFER");
             vmaSetAllocationName(*VK_API::GetStateTracker()->_allocatorInstance._allocator, impl->_buffer->_allocation, bufferName.c_str());
+
+            Debug::SetObjectName(VK_API::GetStateTracker()->_device->getVKDevice(), (uint64_t)impl->_buffer->_buffer, VK_OBJECT_TYPE_BUFFER, bufferName.c_str());
         }
 
         // Queue a command to copy from the staging buffer to the vertex buffer
@@ -190,6 +193,8 @@ namespace Divide {
                 data = smallIndicesTemp.data();
             }
 
+            const string bufferName = _name.empty() ? Util::StringFormat("DVD_GENERAL_IDX_BUFFER_%d", handle()._id) : (_name + "_IDX_BUFFER");
+
             bool isNewBuffer = false;
             if (oldIdxBufferEntry->_handle->_buffer == VK_NULL_HANDLE) {
                 isNewBuffer = true;
@@ -219,15 +224,16 @@ namespace Divide {
                                                  oldIdxBufferEntry->_handle->_allocation,
                                                  &memPropFlags);
 
-                const string bufferName = _name.empty() ? Util::StringFormat("DVD_GENERAL_IDX_BUFFER_%d", handle()._id) : (_name + "_IDX_BUFFER");
                 vmaSetAllocationName(*VK_API::GetStateTracker()->_allocatorInstance._allocator, oldIdxBufferEntry->_handle->_allocation, bufferName.c_str());
+
+                Debug::SetObjectName(VK_API::GetStateTracker()->_device->getVKDevice(), (uint64_t)oldIdxBufferEntry->_handle->_buffer, VK_OBJECT_TYPE_BUFFER, bufferName.c_str());
             }
 
             const size_t range = indices.count * elementSize;
             DIVIDE_ASSERT(range <= _indexBufferSize);
 
             if (oldIdxBufferEntry->_stagingBufferIdx == nullptr) {
-                oldIdxBufferEntry->_stagingBufferIdx = VKUtil::createStagingBuffer(_indexBufferSize);
+                oldIdxBufferEntry->_stagingBufferIdx = VKUtil::createStagingBuffer(_indexBufferSize, bufferName);
             }
 
             if (data == nullptr) {

@@ -65,7 +65,7 @@ namespace Divide {
     FWD_DECLARE_MANAGED_STRUCT(AllocatedBuffer);
 
     namespace VKUtil {
-        AllocatedBuffer_uptr createStagingBuffer(size_t size);
+        AllocatedBuffer_uptr createStagingBuffer(size_t size, std::string_view bufferName);
     } //namespace VKUtil
 } //namespace Divide
 

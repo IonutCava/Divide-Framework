@@ -37,13 +37,21 @@
 
 #include <Vulkan/vulkan_core.h>
 
-namespace Divide {
+namespace Divide
+{
+    namespace Attorney
+    {
+        class VKAPIRenderTarget;
+    }
 
     class GFXDevice;
-    class vkRenderTarget final : public RenderTarget {
+    class vkRenderTarget final : public RenderTarget
+    {
+        friend class Attorney::VKAPIRenderTarget;
+
     public:
         vkRenderTarget(GFXDevice& context, const RenderTargetDescriptor& descriptor);
-        ~vkRenderTarget();
+        ~vkRenderTarget() = default;
 
         [[nodiscard]] bool create() override;
 
@@ -51,9 +59,13 @@ namespace Divide {
 
         void blitFrom(RenderTarget* source, const RTBlitParams& params) noexcept override;
 
-        const VkRenderingInfo& getRenderingInfo(const RTDrawDescriptor& descriptor, const RTClearDescriptor& clearPolicy, VkPipelineRenderingCreateInfo& pipelineCreateInfoOut);
-
         PROPERTY_INTERNAL(VkRenderingInfo, renderingInfo);
+
+    private:
+        void begin(VkCommandBuffer cmdBuffer, const RTDrawDescriptor& descriptor, const RTClearDescriptor& clearPolicy, VkPipelineRenderingCreateInfo& pipelineRenderingCreateInfoOut);
+        void end(VkCommandBuffer cmdBuffer);
+        void transitionAttachments(VkCommandBuffer cmdBuffer, bool toWrite);
+
     private:
         std::array<VkRenderingAttachmentInfo, RT_MAX_COLOUR_ATTACHMENTS> _colourAttachmentInfo{};
         VkRenderingAttachmentInfo _depthAttachmentInfo{};
@@ -61,8 +73,25 @@ namespace Divide {
         std::array<VkFormat, RT_MAX_COLOUR_ATTACHMENTS> _colourAttachmentFormats{};
 
         std::array<VkRenderingAttachmentInfo, RT_MAX_COLOUR_ATTACHMENTS> _stagingColourAttachmentInfo{};
-
+        std::array<VkImageMemoryBarrier2, RT_MAX_COLOUR_ATTACHMENTS + 1> _memBarriers{};
     };
+
+    namespace Attorney
+    {
+        class VKAPIRenderTarget
+        {
+            static void begin(vkRenderTarget& rt, VkCommandBuffer cmdBuffer, const RTDrawDescriptor& descriptor, const RTClearDescriptor& clearPolicy, VkPipelineRenderingCreateInfo& pipelineRenderingCreateInfoOut)
+            {
+                rt.begin(cmdBuffer, descriptor, clearPolicy, pipelineRenderingCreateInfoOut);
+            }
+            static void end(vkRenderTarget& rt, VkCommandBuffer cmdBuffer)
+            {
+                rt.end(cmdBuffer);
+            }
+
+            friend class VK_API;
+        };
+    };  // namespace Attorney
 } //namespace Divide
 
 #endif //VK_FRAME_BUFFER_H

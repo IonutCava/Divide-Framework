@@ -115,9 +115,9 @@ void SSRPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX::
 bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
     assert(_enabled);
 
-    RTAttachment* screenAtt = input._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
-    RTAttachment* normalsAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS));
-    RTAttachment* depthAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Depth_Stencil, 0);
+    RTAttachment* screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO));
+    RTAttachment* normalsAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::NORMALS));
+    RTAttachment* depthAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::DEPTH, 0);
 
     const auto& screenTex = screenAtt->texture()->defaultView();
     const auto& normalsTex = normalsAtt->texture()->defaultView();

@@ -48,16 +48,20 @@ namespace NS_GLIM {
 // Default fence timeout in nanoseconds
 #define DEFAULT_FENCE_TIMEOUT 100000000000
 
+
 namespace Divide {
 
 enum class DescriptorSetBindingType : U8;
 
 namespace Debug {
-    extern PFN_vkDebugMarkerSetObjectTagEXT vkDebugMarkerSetObjectTag;
-    extern PFN_vkDebugMarkerSetObjectNameEXT vkDebugMarkerSetObjectName;
-    extern PFN_vkCmdDebugMarkerBeginEXT vkCmdDebugMarkerBegin;
-    extern PFN_vkCmdDebugMarkerEndEXT vkCmdDebugMarkerEnd;
-    extern PFN_vkCmdDebugMarkerInsertEXT vkCmdDebugMarkerInsert;
+    extern PFN_vkCmdBeginDebugUtilsLabelEXT vkCmdBeginDebugUtilsLabelEXT;
+    extern PFN_vkCmdEndDebugUtilsLabelEXT vkCmdEndDebugUtilsLabelEXT;
+    extern PFN_vkCmdInsertDebugUtilsLabelEXT vkCmdInsertDebugUtilsLabelEXT;
+    extern PFN_vkSetDebugUtilsObjectNameEXT vkSetDebugUtilsObjectNameEXT;
+    extern PFN_vkSetDebugUtilsObjectTagEXT vkSetDebugUtilsObjectTagEXT;
+
+    void SetObjectName(VkDevice device, uint64_t object, VkObjectType objectType, const char* name);
+    void SetObjectTag(VkDevice device, uint64_t object, const VkObjectType objectType, size_t tagSize, void* tagData, uint64_t tagName);
 };
 
 constexpr U32 INVALID_VK_QUEUE_INDEX = std::numeric_limits<U32>::max();

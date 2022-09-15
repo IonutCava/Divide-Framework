@@ -49,6 +49,7 @@ namespace {
 glShader::glShader(GFXDevice& context, const Str256& name)
     : ShaderModule(context, name)
 {
+    _pushConstantsLocations[0] = _pushConstantsLocations[1] = -1;
 }
 
 glShader::~glShader() {
@@ -242,6 +243,11 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
                          perStageTiming.c_str());
     }
 
+    if (_valid)
+    {
+        _pushConstantsLocations[0]  = glGetUniformLocation(_handle, "PushData0");
+        _pushConstantsLocations[1]  = glGetUniformLocation(_handle, "PushData1");
+    }
     return _valid ? ShaderResult::OK : ShaderResult::Failed;
 }
 
@@ -303,9 +309,12 @@ glShader* glShader::LoadShader(GFXDevice& context,
     return static_cast<glShader*>(shader);
 }
 
-void glShader::onParentValidation() {
-    for (auto& shader : _shaderIDs) {
-        if (shader != GLUtil::k_invalidObjectID) {
+void glShader::onParentValidation()
+{
+    for (auto& shader : _shaderIDs)
+    {
+        if (shader != GLUtil::k_invalidObjectID)
+        {
             glDetachShader(_handle, shader);
             glDeleteShader(shader);
         }
@@ -314,4 +323,15 @@ void glShader::onParentValidation() {
     _shaderIDs.resize(0);
 }
 
+void glShader::uploadPushConstants(const PushConstantsStruct& pushConstants)
+{
+    if (_pushConstantsLocations[0] != -1)
+    {
+        glProgramUniformMatrix4fv(_handle, _pushConstantsLocations[0], 1, GL_FALSE, pushConstants.data0.mat);
+    }
+    if (_pushConstantsLocations[1] != -1)
+    {
+        glProgramUniformMatrix4fv(_handle, _pushConstantsLocations[1], 1, GL_FALSE, pushConstants.data1.mat);
+    }
+}
 } // namespace Divide

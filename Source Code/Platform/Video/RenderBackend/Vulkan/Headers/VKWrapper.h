@@ -112,8 +112,11 @@ struct VKStateTracker {
     RenderTargetID _activeRenderTargetID{ INVALID_RENDER_TARGET_ID };
     bool _alphaToCoverage{ false };
     VKDynamicState _dynamicState{};
-    VkPipelineRenderingCreateInfo _pipelineCreateInfo{};
+    VkPipelineRenderingCreateInfo _pipelineRenderingCreateInfo{};
     U64 _lastSyncedFrameNumber{ 0u };
+    VkBuffer _drawIndirectBuffer{ VK_NULL_HANDLE };
+
+    void reset();
 };
 FWD_DECLARE_MANAGED_STRUCT(VKStateTracker);
 
@@ -224,8 +227,6 @@ private:
 
     VkSurfaceKHR _surface{ VK_NULL_HANDLE }; // Vulkan window surface
 
-    VkBuffer _drawIndirectBuffer{ VK_NULL_HANDLE };
-
     vector<VkCommandBuffer> _commandBuffers{};
     U8 _currentFrameIndex{ 0u };
 
@@ -237,16 +238,28 @@ private:
     VkRenderPassBeginInfo _defaultRenderPass;
 
     std::array<VkDescriptorSet, to_base(DescriptorSetUsage::COUNT)> _descriptorSets;
+
 private:
     using SamplerObjectMap = hashMap<size_t, VkSampler, NoHash<size_t>>;
 
     static SharedMutex s_samplerMapLock;
     static SamplerObjectMap s_samplerMap;
     static VKStateTracker_uptr s_stateTracker;
-    static bool s_hasDebugMarkerSupport;
     static VKDeletionQueue s_transientDeleteQueue;
     static VKDeletionQueue s_deviceDeleteQueue;
     static VKTransferQueue s_transferQueue;
+
+public:
+    struct DepthFormatInformation
+    {
+        bool _d24s8Supported{false};
+        bool _d32s8Supported{false};
+        bool _d24x8Supported{false};
+        bool _d32FSupported{false};
+    };
+
+    static bool s_hasDebugMarkerSupport;
+    static DepthFormatInformation s_depthFormatInformation;
 };
 
 };  // namespace Divide

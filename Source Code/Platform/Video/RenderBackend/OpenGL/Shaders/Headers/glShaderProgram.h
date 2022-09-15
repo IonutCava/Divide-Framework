@@ -40,9 +40,11 @@
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 namespace Divide {
+
 class PlatformContext;
 class GL_API;
 class glShader;
+struct PushConstantsStruct;
 
 struct ValidationEntry
 {
@@ -87,6 +89,8 @@ class glShaderProgram final : public ShaderProgram {
     /// Bind this shader program (returns false if the program failed validation)
     ShaderResult bind();
 
+    void uploadPushConstants(const PushConstantsStruct& pushConstants);
+
     static void ProcessValidationQueue();
 
    private:
@@ -97,12 +101,19 @@ class glShaderProgram final : public ShaderProgram {
     vector<glShader*> _shaderStage;
 };
 
-namespace Attorney {
-    class GLAPIShaderProgram {
-        static ShaderResult bind(glShaderProgram& program) {
+namespace Attorney
+{
+    class GLAPIShaderProgram
+    {
+        static ShaderResult bind(glShaderProgram& program)
+        {
             return program.bind();
         }
 
+        static void uploadPushConstants(glShaderProgram& program, const PushConstantsStruct& pushConstants)
+        {
+            program.uploadPushConstants(pushConstants);
+        }
         friend class GL_API;
     };
 };  // namespace Attorney

@@ -605,6 +605,7 @@ enum class GFXImageFormat : U8 {
     BGRA,
     RGBA,
     DEPTH_COMPONENT,
+    DEPTH_STENCIL_COMPONENT,
     BC1,
     BC1a,
     BC2,
@@ -638,7 +639,7 @@ enum class GFXImageFormat : U8 {
 };
 namespace Names {
     static constexpr const char* GFXImageFormat[] = {
-        "RED", "RG", "BGR", "RGB", "BGRA", "RGBA", "DEPTH_COMPONENT", "BC1/DXT1_RGB", "BC1a/DXT1_RGBA", "BC2/DXT3_RGBA",
+        "RED", "RG", "BGR", "RGB", "BGRA", "RGBA", "DEPTH_COMPONENT", "DEPTH_STENCIL_COMPONENT", "BC1/DXT1_RGB", "BC1a/DXT1_RGBA", "BC2/DXT3_RGBA",
         "BC3/DXT5_RGBA", "BC3n", "BC4s", "BC4u", "BC5s", "BC5u", "BC6s", "BC6u", "BC7", "BC7_SRGB",
         "DXT1_RGB_SRGB", "DXT1_RGBA_SRGB", "DXT3_RGBA_SRGB", "DXT5_RGBA_SRGB", "NONE",
     };

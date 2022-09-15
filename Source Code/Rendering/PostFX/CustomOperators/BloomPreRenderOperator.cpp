@@ -45,7 +45,8 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
     bloomCalc.waitForReady(false);
 
     _bloomCalc = CreateResource<ShaderProgram>(cache, bloomCalc);
-    _bloomCalc->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*) {
+    _bloomCalc->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*)
+    {
         PipelineDescriptor pipelineDescriptor;
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _bloomCalc->handle();
@@ -63,7 +64,8 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
     bloomApply.propertyDescriptor(shaderDescriptor);
     bloomApply.waitForReady(false);
     _bloomApply = CreateResource<ShaderProgram>(cache, bloomApply);
-    _bloomApply->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*) {
+    _bloomApply->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*)
+    {
         PipelineDescriptor pipelineDescriptor;
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _bloomApply->handle();
@@ -73,21 +75,18 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
     });
 
     const vec2<U16> res = parent.screenRT()._rt->getResolution();
-    if (res.height > 1440) {
+    if (res.height > 1440)
+    {
         resolutionDownscaleFactor = 4.0f;
     }
 
-    const auto& screenAtt = parent.screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::ALBEDO));
+    const auto& screenAtt = parent.screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, to_base(GFXDevice::ScreenTargets::ALBEDO));
     TextureDescriptor screenDescriptor = screenAtt->texture()->descriptor();
     screenDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-    InternalRTAttachmentDescriptors att{
-        InternalRTAttachmentDescriptor{
-            screenDescriptor,
-            screenAtt->descriptor()._samplerHash,
-            RTAttachmentType::Colour,
-            0u
-        },
+    InternalRTAttachmentDescriptors att
+    {
+        InternalRTAttachmentDescriptor{ screenDescriptor, screenAtt->descriptor()._samplerHash, RTAttachmentType::COLOUR, 0u }
     };
 
     RenderTargetDescriptor desc = {};
@@ -117,15 +116,18 @@ BloomPreRenderOperator::~BloomPreRenderOperator()
     }
 }
 
-bool BloomPreRenderOperator::ready() const noexcept {
-    if (_bloomCalcPipeline != nullptr && _bloomApplyPipeline != nullptr) {
+bool BloomPreRenderOperator::ready() const noexcept
+{
+    if (_bloomCalcPipeline != nullptr && _bloomApplyPipeline != nullptr)
+    {
         return PreRenderOperator::ready();
     }
 
     return false;
 }
 
-void BloomPreRenderOperator::reshape(const U16 width, const U16 height) {
+void BloomPreRenderOperator::reshape(const U16 width, const U16 height)
+{
     PreRenderOperator::reshape(width, height);
 
     const U16 w = to_U16(width / resolutionDownscaleFactor);
@@ -135,7 +137,8 @@ void BloomPreRenderOperator::reshape(const U16 width, const U16 height) {
     _bloomBlurBuffer[1]._rt->resize(width, height);
 }
 
-void BloomPreRenderOperator::luminanceThreshold(const F32 val) {
+void BloomPreRenderOperator::luminanceThreshold(const F32 val)
+{
     _bloomThreshold = val;
     _bloomCalcConstants.set(_ID("luminanceThreshold"), GFX::PushConstantType::FLOAT, _bloomThreshold);
     _context.context().config().rendering.postFX.bloom.threshold = val;
@@ -143,10 +146,11 @@ void BloomPreRenderOperator::luminanceThreshold(const F32 val) {
 }
 
 // Order: luminance calc -> bloom -> toneMap
-bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
+bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut)
+{
     assert(input._targetID != output._targetID);
 
-    const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
+    const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO));
     const auto& screenTex = screenAtt->texture()->defaultView();
     {
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
@@ -173,7 +177,7 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
     _context.blurTarget(_bloomOutput,
                         _bloomBlurBuffer[0],
                         _bloomBlurBuffer[1],
-                        RTAttachmentType::Colour,
+                        RTAttachmentType::COLOUR,
                         0,
                         10,
                         true,
@@ -181,7 +185,7 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
                         bufferInOut);
 
     // Step 3: apply bloom
-    const auto& bloomAtt = _bloomBlurBuffer[1]._rt->getAttachment(RTAttachmentType::Colour, 0); 
+    const auto& bloomAtt = _bloomBlurBuffer[1]._rt->getAttachment(RTAttachmentType::COLOUR, 0); 
     const auto& bloomTex = bloomAtt->texture()->defaultView();
 
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);

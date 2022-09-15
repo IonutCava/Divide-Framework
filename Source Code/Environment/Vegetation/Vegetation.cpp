@@ -666,7 +666,7 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
                                                                         : RenderTargetNames::HI_Z;
 
         const RenderTarget* hizTarget = _context.renderTargetPool().getRenderTarget(hiZSourceTarget);
-        RTAttachment* hizAttachment = hizTarget->getAttachment(RTAttachmentType::Depth_Stencil, 0u);
+        RTAttachment* hizAttachment = hizTarget->getAttachment(RTAttachmentType::DEPTH, 0u);
         const Texture_ptr& hizTexture = hizAttachment->texture();
 
         const PlayerIndex currentPlayerPass = _context.context().kernel().sceneManager()->playerPass();
@@ -674,12 +674,14 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
         mat4<F32> viewProjectionMatrix;
         mat4<F32>::Multiply(prevSnapshot._viewMatrix, prevSnapshot._projectionMatrix, viewProjectionMatrix);
 
+        PushConstantsStruct fastConstants{};
+        fastConstants.data0 = viewProjectionMatrix;
+        fastConstants.data1 = prevSnapshot._viewMatrix;
+
         GFX::SendPushConstantsCommand cullConstantsCmd{};
         PushConstants& constants = cullConstantsCmd._constants;
         constants.set(_ID("nearPlane"), GFX::PushConstantType::FLOAT, prevSnapshot._zPlanes.x);
         constants.set(_ID("viewSize"), GFX::PushConstantType::VEC2, vec2<F32>(hizTexture->width(), hizTexture->height()));
-        constants.set(_ID("viewMatrix"), GFX::PushConstantType::MAT4, prevSnapshot._viewMatrix);
-        constants.set(_ID("viewProjectionMatrix"), GFX::PushConstantType::MAT4, viewProjectionMatrix);
         constants.set(_ID("frustumPlanes"), GFX::PushConstantType::VEC4, prevSnapshot._frustumPlanes);
         constants.set(_ID("cameraPosition"), GFX::PushConstantType::VEC3, prevSnapshot._eye);
         constants.set(_ID("dvd_grassVisibilityDistance"), GFX::PushConstantType::FLOAT, _grassDistance);
@@ -687,6 +689,7 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
         constants.set(_ID("treeExtents"), GFX::PushConstantType::VEC4, _treeExtents);
         constants.set(_ID("grassExtents"), GFX::PushConstantType::VEC4, _grassExtents);
         constants.set(_ID("dvd_terrainChunkOffset"), GFX::PushConstantType::UINT, _terrainChunk.ID());
+        constants.set(fastConstants);
 
         GFX::CommandBuffer& bufferInOut = *_cullVegetationCmds;
         bufferInOut.clear(false);

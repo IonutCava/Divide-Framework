@@ -12,21 +12,24 @@ PreRenderOperator::PreRenderOperator(GFXDevice& context, PreRenderBatch& parent,
       _operatorType(operatorType)
 {
     DisableAll(_screenOnlyDraw._drawMask);
-    SetEnabled(_screenOnlyDraw._drawMask, RTAttachmentType::Colour, 0, true);
+    SetEnabled(_screenOnlyDraw._drawMask, RTAttachmentType::COLOUR, 0, true);
 }
 
-bool PreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[maybe_unused]] const CameraSnapshot& cameraSnapshot, [[maybe_unused]] const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, [[maybe_unused]] GFX::CommandBuffer& bufferInOut) {
+bool PreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[maybe_unused]] const CameraSnapshot& cameraSnapshot, [[maybe_unused]] const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, [[maybe_unused]] GFX::CommandBuffer& bufferInOut)
+{
     return false;
 }
 
-void PreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, [[maybe_unused]] GFX::CommandBuffer& bufferInOut) {
-
+void PreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, [[maybe_unused]] GFX::CommandBuffer& bufferInOut)
+{
 }
 
-void PreRenderOperator::reshape([[maybe_unused]] U16 width, [[maybe_unused]] U16 height) {
+void PreRenderOperator::reshape([[maybe_unused]] U16 width, [[maybe_unused]] U16 height)
+{
 }
 
-void PreRenderOperator::onToggle(const bool state) {
+void PreRenderOperator::onToggle(const bool state)
+{
     _enabled = state;
 }
 } //namespace Divide

@@ -40,7 +40,8 @@ MotionBlurPreRenderOperator::MotionBlurPreRenderOperator(GFXDevice& context, Pre
     motionBlur.waitForReady(false);
 
     _blurApply = CreateResource<ShaderProgram>(cache, motionBlur);
-    _blurApply->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*) {
+    _blurApply->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*)
+    {
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _blurApply->handle();
@@ -52,22 +53,25 @@ MotionBlurPreRenderOperator::MotionBlurPreRenderOperator(GFXDevice& context, Pre
     parametersChanged();
 }
 
-bool MotionBlurPreRenderOperator::ready() const noexcept {
-    if (_blurApplyPipelineCmd._pipeline != nullptr) {
+bool MotionBlurPreRenderOperator::ready() const noexcept
+{
+    if (_blurApplyPipelineCmd._pipeline != nullptr)
+    {
         return PreRenderOperator::ready();
     }
 
     return false;
 }
 
-void MotionBlurPreRenderOperator::parametersChanged() noexcept {
+void MotionBlurPreRenderOperator::parametersChanged() noexcept
+{
     NOP();
 }
 
-bool MotionBlurPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
-
-    const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
-    const auto& velocityAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::VELOCITY));
+bool MotionBlurPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut)
+{
+    const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO));
+    const auto& velocityAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::VELOCITY));
 
     const F32 fps = _context.parent().platformContext().app().timer().getFps();
     const F32 velocityScale = _context.context().config().rendering.postFX.motionBlur.velocityScale;

@@ -6,6 +6,8 @@
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 
+#include "Core/Headers/StringHelper.h"
+
 namespace Divide {
     VkSampler vkSamplerObject::Construct(const SamplerDescriptor& descriptor) {
         VkSamplerCustomBorderColorCreateInfoEXT customBorderColour{};
@@ -71,7 +73,7 @@ namespace Divide {
 
         VkSampler ret;
         vkCreateSampler(VK_API::GetStateTracker()->_device->getVKDevice(), &samplerInfo, nullptr, &ret);
-
+        Debug::SetObjectName(VK_API::GetStateTracker()->_device->getVKDevice(), (uint64_t)ret, VK_OBJECT_TYPE_SAMPLER, Util::StringFormat("SAMPLER_%zu", descriptor.getHash()).c_str());
         return ret;
     }
 

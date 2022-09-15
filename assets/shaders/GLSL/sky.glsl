@@ -29,24 +29,6 @@ void main(void){
 #include "vbInputData.vert"
 #include "lightingDefaults.vert"
 
-uniform vec3  dvd_nightSkyColour;
-uniform vec3  dvd_moonColour;
-uniform ivec2 dvd_useSkyboxes;
-uniform vec3  dvd_RayleighCoeff;
-uniform vec2  dvd_cloudLayerMinMaxHeight;
-uniform uint  dvd_raySteps;
-uniform float dvd_moonScale;
-uniform float dvd_weatherScale;
-uniform float dvd_sunIntensity;
-uniform float dvd_sunPenetrationPower;
-uniform float dvd_planetRadius;
-uniform float dvd_cloudSphereRadius;
-uniform float dvd_atmosphereOffset;
-uniform float dvd_MieCoeff;
-uniform float dvd_RayleighScale;
-uniform float dvd_MieScaleHeight;
-uniform uint  dvd_enableClouds;
-
 layout(location = ATTRIB_FREE_START + 0) out vec4 vSunDirection; // vSunDirection.a = sunFade
 layout(location = ATTRIB_FREE_START + 1) out vec4 vSunColour;  // vSunColour.a = vSunE
 layout(location = ATTRIB_FREE_START + 2) out vec3 vAmbient;
@@ -269,27 +251,6 @@ DESCRIPTOR_SET_RESOURCE(PER_DRAW, 2) uniform sampler3D perlworl;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 3) uniform sampler2DArray weather;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 4) uniform sampler3D worl;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 9) uniform sampler2DArray curl;
-
-uniform vec3 dvd_nightSkyColour;
-uniform vec3 dvd_moonColour;
-uniform ivec2 dvd_useSkyboxes;
-uniform vec3 dvd_RayleighCoeff;
-uniform vec2 dvd_cloudLayerMinMaxHeight;
-uniform uint  dvd_raySteps;
-uniform float dvd_moonScale;
-uniform float dvd_weatherScale;
-uniform float dvd_sunIntensity;
-uniform float dvd_sunPenetrationPower;
-uniform float dvd_planetRadius;
-uniform float dvd_cloudSphereRadius;
-uniform float dvd_atmosphereOffset;
-uniform float dvd_MieCoeff;
-uniform float dvd_RayleighScale;
-uniform float dvd_MieScaleHeight;
-uniform uint  dvd_enableClouds;
-
-#define dvd_useDaySkybox (dvd_useSkyboxes.x == 1)
-#define dvd_useNightSkybox (dvd_useSkyboxes.y == 1)
 
 #define NO_POST_FX
 

@@ -585,6 +585,26 @@ bool Sky::load() {
         fragModule._sourceFile = "sky.glsl";
 
         ShaderProgramDescriptor shaderDescriptor = {};
+        shaderDescriptor._globalDefines.emplace_back("dvd_nightSkyColour PushData0[0].xyz");
+        shaderDescriptor._globalDefines.emplace_back("dvd_raySteps uint(PushData0[0].w)");
+        shaderDescriptor._globalDefines.emplace_back("dvd_moonColour PushData0[1].xyz");
+        shaderDescriptor._globalDefines.emplace_back("dvd_moonScale PushData0[1].w");
+        shaderDescriptor._globalDefines.emplace_back("dvd_useSkyboxes ivec2(PushData0[2].xy)");
+        shaderDescriptor._globalDefines.emplace_back("dvd_cloudLayerMinMaxHeight PushData0[2].zw");
+        shaderDescriptor._globalDefines.emplace_back("dvd_RayleighCoeff PushData0[3].xyz");
+        shaderDescriptor._globalDefines.emplace_back("dvd_weatherScale PushData0[3].w");
+        shaderDescriptor._globalDefines.emplace_back("dvd_sunIntensity PushData1[0].x");
+        shaderDescriptor._globalDefines.emplace_back("dvd_sunPenetrationPower PushData1[0].y");
+        shaderDescriptor._globalDefines.emplace_back("dvd_planetRadius PushData1[0].z");
+        shaderDescriptor._globalDefines.emplace_back("dvd_cloudSphereRadius PushData1[0].w");
+        shaderDescriptor._globalDefines.emplace_back("dvd_atmosphereOffset PushData1[1].x");
+        shaderDescriptor._globalDefines.emplace_back("dvd_MieCoeff PushData1[1].y");
+        shaderDescriptor._globalDefines.emplace_back("dvd_RayleighScale PushData1[1].z");
+        shaderDescriptor._globalDefines.emplace_back("dvd_MieScaleHeight PushData1[1].w");
+        shaderDescriptor._globalDefines.emplace_back("dvd_enableClouds uint(PushData1[2].x)");
+        shaderDescriptor._globalDefines.emplace_back("dvd_useDaySkybox (dvd_useSkyboxes.x == 1)");
+        shaderDescriptor._globalDefines.emplace_back("dvd_useNightSkybox (dvd_useSkyboxes.y == 1)");
+
         if (IsDepthPass(stagePass)) {
             vertModule._variant = "NoClouds";
             shaderDescriptor._modules.push_back(vertModule);
@@ -771,23 +791,16 @@ void Sky::nightSkyColour(const FColour4 val) {
 }
 
 void Sky::setSkyShaderData(const U32 rayCount, PushConstants& constantsInOut) {
-    constantsInOut.set(_ID("dvd_nightSkyColour"), GFX::PushConstantType::FCOLOUR3, nightSkyColour().rgb);
-    constantsInOut.set(_ID("dvd_moonColour"), GFX::PushConstantType::FCOLOUR3, moonColour().rgb);
-    constantsInOut.set(_ID("dvd_useSkyboxes"), GFX::PushConstantType::IVEC2, vec2<I32>(useDaySkybox() ? 1 : 0, useNightSkybox() ? 1 : 0));
-    constantsInOut.set(_ID("dvd_raySteps"), GFX::PushConstantType::UINT, rayCount);
-    constantsInOut.set(_ID("dvd_RayleighCoeff"), GFX::PushConstantType::VEC3, _atmosphere._RayleighCoeff * 1e-6f);
-    constantsInOut.set(_ID("dvd_moonScale"), GFX::PushConstantType::FLOAT, moonScale());
-    constantsInOut.set(_ID("dvd_weatherScale"), GFX::PushConstantType::FLOAT, weatherScale() * 1e-5f);
-    constantsInOut.set(_ID("dvd_sunIntensity"), GFX::PushConstantType::FLOAT, _atmosphere._sunIntensity);
-    constantsInOut.set(_ID("dvd_sunPenetrationPower"), GFX::PushConstantType::FLOAT, _atmosphere._sunPenetrationPower);
-    constantsInOut.set(_ID("dvd_planetRadius"), GFX::PushConstantType::FLOAT, _atmosphere._planetRadius);
-    constantsInOut.set(_ID("dvd_cloudSphereRadius"), GFX::PushConstantType::FLOAT, _atmosphere._cloudSphereRadius);
-    constantsInOut.set(_ID("dvd_atmosphereOffset"), GFX::PushConstantType::FLOAT, _atmosphere._atmosphereOffset);
-    constantsInOut.set(_ID("dvd_cloudLayerMinMaxHeight"), GFX::PushConstantType::VEC2, _atmosphere._cloudLayerMinMaxHeight);
-    constantsInOut.set(_ID("dvd_MieCoeff"), GFX::PushConstantType::FLOAT, _atmosphere._MieCoeff);
-    constantsInOut.set(_ID("dvd_RayleighScale"), GFX::PushConstantType::FLOAT, _atmosphere._RayleighScale);
-    constantsInOut.set(_ID("dvd_MieScaleHeight"), GFX::PushConstantType::FLOAT, _atmosphere._MieScaleHeight);
-    constantsInOut.set(_ID("dvd_enableClouds"), GFX::PushConstantType::BOOL, enableProceduralClouds());
+    PushConstantsStruct fastData{};
+    fastData.data0._vec[0].set(nightSkyColour().rgb, to_F32(rayCount));
+    fastData.data0._vec[1].set(moonColour().rgb, moonScale());
+    fastData.data0._vec[2].set(useDaySkybox() ? 1.f : 0.f, useNightSkybox() ? 1.f : 0.f, _atmosphere._cloudLayerMinMaxHeight.min, _atmosphere._cloudLayerMinMaxHeight.max);
+    fastData.data0._vec[3].set(_atmosphere._RayleighCoeff * 1e-6f, weatherScale() * 1e-5f);
+    fastData.data1._vec[0].set(_atmosphere._sunIntensity, _atmosphere._sunPenetrationPower,  _atmosphere._planetRadius, _atmosphere._cloudSphereRadius);
+    fastData.data1._vec[1].set(_atmosphere._atmosphereOffset,  _atmosphere._MieCoeff, _atmosphere._RayleighScale, _atmosphere._MieScaleHeight);
+    fastData.data1._vec[2].x = enableProceduralClouds() ? 1.f : 0.f;
+
+    constantsInOut.set(fastData);
 }
 
 void Sky::prepareRender(SceneGraphNode* sgn,

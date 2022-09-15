@@ -241,7 +241,7 @@ void LightPool::generateShadowMaps(const Camera& playerCamera, GFX::CommandBuffe
     GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
     for (Light* light : sortedLights) {
         const LightType lType = light->getLightType();
-        computeMipMapsCommand._texture = ShadowMap::getShadowMap(lType)._rt->getAttachment(RTAttachmentType::Colour, 0)->texture().get();
+        computeMipMapsCommand._texture = ShadowMap::getShadowMap(lType)._rt->getAttachment(RTAttachmentType::COLOUR, 0)->texture().get();
 
         // Skip non-shadow casting lights (and free up resources if any are used by it)
         if (!light->enabled() || !light->castsShadows()) {

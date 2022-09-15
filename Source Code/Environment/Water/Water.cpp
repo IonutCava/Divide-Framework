@@ -380,7 +380,7 @@ void WaterPlane::updateRefraction(RenderPassManager* passManager, RenderCbkParam
     const RenderTarget* rt = context.gfx().renderTargetPool().getRenderTarget(params._target);
 
     GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
-    computeMipMapsCommand._texture = rt->getAttachment(RTAttachmentType::Colour, 0)->texture().get();
+    computeMipMapsCommand._texture = rt->getAttachment(RTAttachmentType::COLOUR, 0)->texture().get();
     GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 }
 
@@ -435,7 +435,7 @@ void WaterPlane::updateReflection(RenderPassManager* passManager, RenderCbkParam
         renderParams._context.blurTarget(reflectionTargetHandle,
                                          reflectionBlurBuffer,
                                          reflectionTargetHandle,
-                                         RTAttachmentType::Colour,
+                                         RTAttachmentType::COLOUR,
                                          0, 
                                          _blurKernelSize,
                                          true,
@@ -447,7 +447,7 @@ void WaterPlane::updateReflection(RenderPassManager* passManager, RenderCbkParam
     const RenderTarget* rt = context.gfx().renderTargetPool().getRenderTarget(params._target);
 
     GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
-    computeMipMapsCommand._texture = rt->getAttachment(RTAttachmentType::Colour, 0)->texture().get();
+    computeMipMapsCommand._texture = rt->getAttachment(RTAttachmentType::COLOUR, 0)->texture().get();
     GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 }
 

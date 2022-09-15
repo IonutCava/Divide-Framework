@@ -62,6 +62,29 @@ namespace Divide {
         set(bindingHash, type, values.data(), N);
     }
 
+    inline bool operator==(const PushConstantsStruct& lhs, const PushConstantsStruct& rhs) noexcept
+    {
+        if (!lhs._set && !rhs._set)
+        {
+            return true;
+        }
+
+        return lhs._set  == rhs._set &&
+               lhs.data0 == rhs.data0 &&
+               lhs.data1 == rhs.data1; 
+    }
+
+    inline bool operator!=(const PushConstantsStruct& lhs, const PushConstantsStruct& rhs) noexcept
+    {
+        if (!lhs._set && !rhs._set)
+        {
+            return false;
+        }
+
+        return lhs._set  != rhs._set ||
+               lhs.data0 != rhs.data0 ||
+               lhs.data1 != rhs.data1; 
+    }
 } //namespace Divide
 
 #endif //_PUSH_CONSTANTS_INL_

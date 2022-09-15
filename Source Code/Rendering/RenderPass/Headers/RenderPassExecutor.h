@@ -152,7 +152,7 @@ private:
                        U32 visibleNodeCount,
                        RenderStagePass stagePass,
                        const RenderTargetID& sourceDepthBuffer,
-                       const RenderTargetID& targetDepthBuffer,
+                       const RenderTargetID& targetHiZBuffer,
                        GFX::CommandBuffer& bufferInOut) const;
 
     void mainPass(const VisibleNodeList<>& nodes,

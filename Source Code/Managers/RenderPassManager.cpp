@@ -212,7 +212,7 @@ void RenderPassManager::render(const RenderParams& params) {
            GFX::EnqueueCommand(buf, beginRenderPassCmd);
        }
 
-       const auto& screenAtt = gfx.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
+       const auto& screenAtt = gfx.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO));
        const auto& texData = screenAtt->texture()->defaultView();
        const Rect<I32>& targetViewport = params._targetViewport;
        // Apply gamma correction here as PostFX requires everything in linear space

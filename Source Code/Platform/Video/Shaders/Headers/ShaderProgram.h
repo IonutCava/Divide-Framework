@@ -174,7 +174,7 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
 
     virtual bool recompile(bool& skipped);
 
-    [[nodiscard]] bool uploadPushConstants(const PushConstants& constants, DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut);
+    [[nodiscard]] bool uploadUniformData(const PushConstants& data, DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut);
 
     //==================== static methods ===============================//
     static void Idle(PlatformContext& platformContext);

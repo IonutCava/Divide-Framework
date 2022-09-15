@@ -26,10 +26,12 @@ void RTAttachment::setTexture(const Texture_ptr& tex, const bool isExternal) noe
     changed(true);
 }
 
-void RTAttachment::setImageUsage(const ImageUsage usage) {
+bool RTAttachment::setImageUsage(const ImageUsage usage) {
     if (_texture != nullptr) {
-        _texture->setImageUsage(usage);
+        return _texture->imageUsage(usage);
     }
+
+    return false;
 }
 
 bool RTAttachment::mipWriteLevel(const U16 level) noexcept {
