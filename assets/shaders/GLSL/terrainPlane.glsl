@@ -11,7 +11,7 @@ void main(void) {
     setClipPlanes();
 
 #if !defined(PRE_PASS)
-    const float time2 = MSToSeconds(dvd_TimeMS) * 0.001f;
+    const float time2 = MSToSeconds(dvd_GameTimeMS) * 0.001f;
     _scrollingUV = vec4(VAR._texCoord + time2.xx, 
                         VAR._texCoord + vec2(-time2, time2)) * 25.f;
 #endif //!PRE_PASS

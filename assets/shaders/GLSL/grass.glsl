@@ -48,7 +48,7 @@ void main() {
     _layer = uint(data.data.x);
     VAR._LoDLevel = uint(data.data.y);
 
-    const float timeGrass = dvd_windDetails.w * MSToSeconds(dvd_TimeMS) * 0.5f;
+    const float timeGrass = dvd_windDetails.w * MSToSeconds(dvd_GameTimeMS) * 0.5f;
     const bool animate = VAR._LoDLevel < 2u && dvd_Vertex.y > 0.5f;
 
     const float height = dvd_Vertex.y;

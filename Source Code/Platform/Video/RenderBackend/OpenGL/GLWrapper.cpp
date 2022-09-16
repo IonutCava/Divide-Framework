@@ -1041,18 +1041,16 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
         case GFX::CommandType::COMPUTE_MIPMAPS: {
             const GFX::ComputeMipMapsCommand* crtCmd = cmd->As<GFX::ComputeMipMapsCommand>();
 
-            if (crtCmd->_layerRange.x == 0 && crtCmd->_layerRange.y == crtCmd->_texture->descriptor().layerCount()) {
+            if (crtCmd->_layerRange.min == 0 && crtCmd->_layerRange.max >= crtCmd->_texture->descriptor().layerCount()) {
                 OPTICK_EVENT("GL: In-place computation - Full");
                 glGenerateTextureMipmap(static_cast<glTexture*>(crtCmd->_texture)->textureHandle());
             } else {
                 OPTICK_EVENT("GL: View-based computation");
+                assert(crtCmd->_mipRange.max != 0u);
 
                 ImageView view = crtCmd->_texture->defaultView();
                 view._layerRange.set(crtCmd->_layerRange);
-
-                if (crtCmd->_mipRange.max != 0u) {
-                    view._mipLevels.set(crtCmd->_mipRange);
-                }
+                view._mipLevels.set(crtCmd->_mipRange);
                 
                 DIVIDE_ASSERT(view.targetType() != TextureType::COUNT);
                 
@@ -1075,7 +1073,9 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
                     view._layerRange *= 6; //offset and count
                 }
 
-                if (view._mipLevels.x != 0u || view._mipLevels.y != 0u) {
+                if (view._mipLevels.max > view._mipLevels.min &&
+                    view._mipLevels.max - view._mipLevels.min > 0u)
+                {
                     OPTICK_EVENT("GL: In-place computation - Image");
                     glGenerateTextureMipmap(getGLTextureView(view, 3));
                 }
@@ -1512,7 +1512,8 @@ ShaderResult GL_API::bindPipeline(const Pipeline& pipeline)
         // Set the proper render states
         const size_t stateBlockHash = pipelineDescriptor._stateHash == 0u ? _context.getDefaultStateBlock(false) : pipelineDescriptor._stateHash;
         // Passing 0 is a perfectly acceptable way of enabling the default render state block
-        if (stateTracker->setStateBlock(stateBlockHash) == GLStateTracker::BindResult::FAILED) {
+        if (stateTracker->setStateBlock(stateBlockHash) == GLStateTracker::BindResult::FAILED)
+        {
             DIVIDE_UNEXPECTED_CALL();
         }
     }
@@ -1520,7 +1521,8 @@ ShaderResult GL_API::bindPipeline(const Pipeline& pipeline)
         OPTICK_EVENT("Set Blending");
         U16 i = 0u;
         stateTracker->setBlendColour(pipelineDescriptor._blendStates._blendColour);
-        for (const BlendingSettings& blendState : pipelineDescriptor._blendStates._settings) {
+        for (const BlendingSettings& blendState : pipelineDescriptor._blendStates._settings)
+        {
             stateTracker->setBlending(i++, blendState);
         }
     }
@@ -1544,52 +1546,65 @@ ShaderResult GL_API::bindPipeline(const Pipeline& pipeline)
             ret = Attorney::GLAPIShaderProgram::bind(*glProgram);
         }
  
-        if (ret != ShaderResult::OK) {
-            if (stateTracker->setActiveProgram(0u) == GLStateTracker::BindResult::FAILED) {
+        if (ret != ShaderResult::OK)
+        {
+            if (stateTracker->setActiveProgram(0u) == GLStateTracker::BindResult::FAILED)
+            {
                 DIVIDE_UNEXPECTED_CALL();
             }
-            if (stateTracker->setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED) {
+            if (stateTracker->setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED)
+            {
                 DIVIDE_UNEXPECTED_CALL();
             }
             stateTracker->_activePipeline = nullptr;
-        } else {
+        }
+        else
+        {
             stateTracker->_activeShaderProgram = glProgram;
             _context.descriptorSet(DescriptorSetUsage::PER_DRAW).dirty(true);
         }
+    }
+    else
+    {
+        Console::errorfn(Locale::Get(_ID("ERROR_GLSL_INVALID_HANDLE")), pipelineDescriptor._shaderProgramHandle);
     }
 
     return ret;
 }
 
-const GLStateTracker_uptr& GL_API::GetStateTracker() noexcept {
+const GLStateTracker_uptr& GL_API::GetStateTracker() noexcept
+{
     DIVIDE_ASSERT(s_stateTracker != nullptr);
-
     return s_stateTracker;
 }
 
-GLUtil::GLMemory::GLMemoryType GL_API::GetMemoryTypeForUsage(const GLenum usage) noexcept {
+GLUtil::GLMemory::GLMemoryType GL_API::GetMemoryTypeForUsage(const GLenum usage) noexcept
+{
     assert(usage != GL_NONE);
-    switch (usage) {
+    switch (usage)
+    {
         case GL_UNIFORM_BUFFER:
-        case GL_SHADER_STORAGE_BUFFER:
-            return GLUtil::GLMemory::GLMemoryType::SHADER_BUFFER;
-        case GL_ELEMENT_ARRAY_BUFFER:
-            return GLUtil::GLMemory::GLMemoryType::INDEX_BUFFER;
-        case GL_ARRAY_BUFFER:
-            return GLUtil::GLMemory::GLMemoryType::VERTEX_BUFFER;
+        case GL_SHADER_STORAGE_BUFFER: return GLUtil::GLMemory::GLMemoryType::SHADER_BUFFER;
+        case GL_ELEMENT_ARRAY_BUFFER:  return GLUtil::GLMemory::GLMemoryType::INDEX_BUFFER;
+        case GL_ARRAY_BUFFER:          return GLUtil::GLMemory::GLMemoryType::VERTEX_BUFFER;
     };
 
     return GLUtil::GLMemory::GLMemoryType::OTHER;
 }
 
-GLUtil::GLMemory::DeviceAllocator& GL_API::GetMemoryAllocator(const GLUtil::GLMemory::GLMemoryType memoryType) noexcept {
+GLUtil::GLMemory::DeviceAllocator& GL_API::GetMemoryAllocator(const GLUtil::GLMemory::GLMemoryType memoryType) noexcept
+{
     return s_memoryAllocators[to_base(memoryType)];
 }
 
-void GL_API::QueueFlush() noexcept {
-    if (Runtime::isMainThread()) {
+void GL_API::QueueFlush() noexcept
+{
+    if (Runtime::isMainThread()) 
+    {
         glFlush();
-    } else {
+    } 
+    else
+    {
         s_glFlushQueued.store(true);
     }
 }

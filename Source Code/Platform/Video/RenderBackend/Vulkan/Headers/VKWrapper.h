@@ -98,6 +98,7 @@ struct VMAAllocatorInstance {
     Mutex _allocatorLock;
 };
 
+class vkShaderProgram;
 struct VKStateTracker {
     VKDevice* _device{ nullptr };
     VKSwapChain* _swapChain{ nullptr };
@@ -108,6 +109,8 @@ struct VKStateTracker {
     U8 _debugScopeDepth = 0u;
     PrimitiveTopology _activeTopology{ PrimitiveTopology::COUNT };
     VkPipeline _activePipeline{ VK_NULL_HANDLE };
+    VkPipelineLayout _activePipelineLayout{ VK_NULL_HANDLE };
+    vkShaderProgram* _activeShaderProgram{ nullptr };
     U8 _activeMSAASamples{ 1u };
     RenderTargetID _activeRenderTargetID{ INVALID_RENDER_TARGET_ID };
     bool _alphaToCoverage{ false };

@@ -164,6 +164,14 @@ namespace Divide {
 
     static_assert(ArrayCount(Names::shadingMode) == to_base(ShadingMode::COUNT) + 1, "ShadingMode name array out of sync!");
 
+    enum class MaterialUpdateResult : U8 {
+        OK = toBit(1),
+        NEW_CULL = toBit(2),
+        NEW_SHADER = toBit(3),
+        NEW_TRANSPARENCY = toBit(4),
+        COUNT = 4
+    };
+
 }; //namespace Divide
 
 #endif //_MATERIAL_ENUMS_H_

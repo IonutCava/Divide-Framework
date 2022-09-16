@@ -250,25 +250,16 @@ RenderPassExecutor::RenderPassExecutor(RenderPassManager& parent, GFXDevice& con
     , _stage(stage)
 {
     _renderQueue = eastl::make_unique<RenderQueue>(parent.parent(), stage);
-    const U8 passCount = TotalPassCountForStage(stage);
 
     ShaderBufferDescriptor bufferDescriptor = {};
     bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
     bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
     bufferDescriptor._ringBufferLength = RenderPass::DataBufferRingSize;
-    bufferDescriptor._bufferParams._elementCount = Config::MAX_VISIBLE_NODES;
+    bufferDescriptor._bufferParams._elementCount = Config::MAX_VISIBLE_NODES * TotalPassCountForStage(stage);
     bufferDescriptor._usage = ShaderBuffer::Usage::COMMAND_BUFFER;
     bufferDescriptor._bufferParams._elementSize = sizeof(IndirectDrawCommand);
-    const char* stageName = TypeUtil::RenderStageToString(stage);
-    for (U8 i = 0u; i < passCount; ++i) {
-        bufferDescriptor._name = Util::StringFormat("CMD_DATA_%s_%d", stageName, i);
-        _cmdBuffers.emplace_back(MOV(_context.newSB(bufferDescriptor)));
-    }
-}
-
-ShaderBuffer* RenderPassExecutor::getCommandBufferForStagePass(const RenderStagePass stagePass) {
-    const U16 idx = IndexForStage(stagePass);
-    return _cmdBuffers[idx].get();
+    bufferDescriptor._name = Util::StringFormat("CMD_DATA_%s", TypeUtil::RenderStageToString(stage));
+    _cmdBuffer = _context.newSB(bufferDescriptor);
 }
 
 void RenderPassExecutor::OnStartup(const GFXDevice& gfx) {
@@ -602,14 +593,11 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
         StartAndWait(*updateTask, pool);
     }
 
-    ShaderBuffer* cmdBuffer = getCommandBufferForStagePass(stagePass);
-    cmdBuffer->incQueue();
-    const U32 elementOffset = cmdBuffer->queueWriteIndex() * cmdBuffer->getPrimitiveCount();
-
+    const U32 startOffset = Config::MAX_VISIBLE_NODES * IndexForStage(stagePass);
     const auto retrieveCommands = [&]() {
         for (RenderBin::SortedQueue& queue : _sortedQueues) {
             for (RenderingComponent* rComp : queue) {
-                Attorney::RenderingCompRenderPass::retrieveDrawCommands(*rComp, stagePass, elementOffset, _drawCommands);
+                Attorney::RenderingCompRenderPass::retrieveDrawCommands(*rComp, stagePass, to_U32(startOffset), _drawCommands);
             }
         }
     };
@@ -641,9 +629,11 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
     const U32 cmdCount = to_U32(_drawCommands.size());
     *bufferData._lastCommandCount = cmdCount;
 
-    if (cmdCount > 0u) {
+
+    if (cmdCount > 0u)
+    {
         OPTICK_EVENT("buildDrawCommands - update command buffer");
-        memCmdInOut._bufferLocks.push_back(cmdBuffer->writeData({ 0u, cmdCount }, _drawCommands.data()));
+        memCmdInOut._bufferLocks.push_back(_cmdBuffer->writeData({ startOffset, cmdCount }, _drawCommands.data()));
     }
     {
         OPTICK_EVENT("buildDrawCommands - update material buffer");
@@ -660,15 +650,24 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
 
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
     cmd->_usage = DescriptorSetUsage::PER_BATCH;
+
+    const ShaderBufferEntry cmdBufferEntry
+    {
+        *_cmdBuffer,
+        {
+            startOffset,
+            cmdCount
+        }
+    };
     {
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::NONE); //Command buffer only
         binding._slot = 0;
-        binding._data.As<ShaderBufferEntry>() = { *cmdBuffer,  { 0u, cmdBuffer->getPrimitiveCount() } };
+        binding._data.As<ShaderBufferEntry>() = cmdBufferEntry;
     }
     {
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
         binding._slot = 2;
-        binding._data.As<ShaderBufferEntry>() = { *cmdBuffer, { 0u, cmdBuffer->getPrimitiveCount() } };
+        binding._data.As<ShaderBufferEntry>() = cmdBufferEntry;
     }
     {
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::ALL);
@@ -1285,6 +1284,7 @@ void RenderPassExecutor::postRender() {
     }
 
     _materialBuffer._highWaterMark = _transformBuffer._highWaterMark = 0u;
+    _cmdBuffer->incQueue();
 }
 
 U32 RenderPassExecutor::renderQueueSize() const {

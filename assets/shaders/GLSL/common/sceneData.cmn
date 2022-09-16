@@ -21,7 +21,7 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_FRAME, 6, std140) uniform dvd_SceneData {
     vec4 dvd_sunColour;
     // x,y,z - direction, w - speed
     vec4 dvd_windDetails;
-    // x - elapsed time (ms), y - material debug flag, zw - unused
+    // x - elapsed game time (ms), x - elapsed app time, z - material debug flag, w - unused
     vec4 dvd_appData;
     FogDetails dvd_fogDetails;
     WaterBodyData dvd_waterEntities[GLOBAL_WATER_BODIES_COUNT];
@@ -29,7 +29,8 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_FRAME, 6, std140) uniform dvd_SceneData {
 };
 
 #define GetSunDirection() normalize(-dvd_sunPosition.xyz)
-#define dvd_TimeMS int(dvd_appData.x)
-#define dvd_MaterialDebugFlag int(dvd_appData.y)
+#define dvd_GameTimeMS int(dvd_appData.x)
+#define dvd_GlobalTimeMS int(dvd_appData.y)
+#define dvd_MaterialDebugFlag int(dvd_appData.z)
 
 #endif //_SCENE_DATA_INPUT_CMN_

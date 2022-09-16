@@ -457,7 +457,7 @@ void SubmitIndirectCommand(const IndirectDrawCommand& cmd,
                            const GLenum internalFormat,
                            const GLuint cmdBufferOffset)
 {
-    const size_t offset = cmdBufferOffset * sizeof(IndirectDrawCommand);
+    const size_t offset = (cmdBufferOffset * sizeof(IndirectDrawCommand)) + GL_API::GetStateTracker()->_commandBufferOffset;
 
     if (drawCount > 1u) {
         SubmitMultiIndirectCommand(drawCount, mode, internalFormat, offset);
@@ -497,7 +497,6 @@ void SubmitRenderCommand(const GLenum primitiveType,
                          const GLsizei* const count,
                          const bufferPtr indexData)
 {
-    
     if (useIndirectBuffer) {
         SubmitIndirectCommand(drawCommand._cmd, drawCommand._drawCount, primitiveType, internalFormat, drawCommand._commandOffset);
     } else {

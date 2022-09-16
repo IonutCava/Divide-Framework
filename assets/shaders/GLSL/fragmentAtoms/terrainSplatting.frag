@@ -177,7 +177,7 @@ vec4 GetTerrainNormalWVAndRoughness() {
 
 #else //MAIN_DISPLAY_PASS && PRE_PASS
 vec4 getUnderwaterAlbedo(in vec2 uv, in float waterDepth) {
-    const float time2 = MSToSeconds(dvd_TimeMS) * 0.1f;
+    const float time2 = MSToSeconds(dvd_GameTimeMS) * 0.1f;
     const vec4 uvNormal = vec4(uv + time2.xx, uv + vec2(-time2, time2));
 
     return vec4(mix(0.5f * (GetCaustics(vec3(uvNormal.xy, 0)).rgb + texture(texSpecular, vec3(uvNormal.zw, 0)).rgb),

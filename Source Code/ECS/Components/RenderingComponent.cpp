@@ -199,13 +199,36 @@ void RenderingComponent::setMaxRenderRange(const F32 maxRange) noexcept {
     _renderRange.max = std::min(maxRange,  1.0f * g_renderRangeLimit);
 }
 
-void RenderingComponent::clearDrawPackages() {
+void RenderingComponent::clearDrawPackages(const RenderStage stage, const RenderPassType pass)
+{
     SharedLock<SharedMutex> r_lock(_renderPackagesLock);
-    for (auto& packagesPerPassType : _renderPackages) {
-        for (auto& packagesPerVariant : packagesPerPassType) {
-            for (auto& packagesPerPassIndex : packagesPerVariant) {
-                for (auto& pacakgesPerIndex : packagesPerPassIndex) {
-                    for (PackageEntry& entry : pacakgesPerIndex) {
+    auto& packagesPerPassType = _renderPackages[to_base(stage)];
+    auto& packagesPerVariant = packagesPerPassType[to_base(pass)];
+    for (auto& packagesPerPassIndex : packagesPerVariant)
+    {
+        for (auto& pacakgesPerIndex : packagesPerPassIndex)
+        {
+            for (PackageEntry& entry : pacakgesPerIndex)
+            {
+                Clear(entry._package);
+            }
+        }
+    }
+}
+
+void RenderingComponent::clearDrawPackages()
+{
+    SharedLock<SharedMutex> r_lock(_renderPackagesLock);
+    for (auto& packagesPerPassType : _renderPackages)
+    {
+        for (auto& packagesPerVariant : packagesPerPassType)
+        {
+            for (auto& packagesPerPassIndex : packagesPerVariant)
+            {
+                for (auto& pacakgesPerIndex : packagesPerPassIndex)
+                {
+                    for (PackageEntry& entry : pacakgesPerIndex)
+                    {
                         Clear(entry._package);
                     }
                 }
@@ -350,7 +373,8 @@ bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
 
     bool hasCommands = hasDrawCommands();
 
-    if (refreshData) {
+    if (refreshData)
+    {
         U8 drawCmdOptions = 0u;
         ToggleBit(drawCmdOptions,
                   CmdRenderOptions::RENDER_GEOMETRY,
@@ -396,7 +420,8 @@ bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
         }
     }
 
-    if (hasCommands) {
+    if (hasCommands)
+    {
         RenderPackage& pkg = getDrawPackage(renderStagePass);
         if (pkg.pipelineCmd()._pipeline == nullptr) {
             if (isInstanced()) {

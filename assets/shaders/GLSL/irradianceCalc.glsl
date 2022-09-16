@@ -4,39 +4,43 @@
 
 #define THREADS 8
 
-uniform vec2 imgSize;
-uniform uint cubeFace;
-uniform uint layerIndex;
+#define imgSizeX PushData0[0].x
+#define imgSizeY PushData0[0].y
+#define layerIndex PushData0[0].z
 
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform samplerCubeArray s_source;
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 1, rgba16f) uniform ACCESS_W image2D s_target;
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 1, rgba16f) uniform ACCESS_W imageCube s_target;
 
 
 layout(local_size_x = THREADS, local_size_y = THREADS, local_size_z = 1) in;
 void main()
 {
-    ivec3 globalId = ivec3(gl_GlobalInvocationID.xy, cubeFace);
+    for (uint i = 0; i < 6; ++i) 
+    {
+        ivec3 globalId = ivec3(gl_GlobalInvocationID.xy, i);
 
-    vec3 N = normalize(toWorldCoords(globalId, imgSize.x));
+        vec3 N = normalize(toWorldCoords(globalId, imgSizeX));
 
-    vec3 up = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
-    const vec3 right = normalize(cross(up, N));
-    up = cross(N, right);
+        vec3 up = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+        const vec3 right = normalize(cross(up, N));
+        up = cross(N, right);
 
-    vec3 color = vec3(0.f);
-    uint sampleCount = 0u;
-    float deltaPhi = TWO_PI / 360.0;
-    float deltaTheta = HALF_PI / 90.0;
-    for (float phi = 0.0; phi < TWO_PI; phi += deltaPhi) {
-        for (float theta = 0.0; theta < HALF_PI; theta += deltaTheta) {
-            // Spherical to World Space in two steps...
-            vec3 tempVec = cos(phi) * right + sin(phi) * up;
-            vec3 sampleVector = cos(theta) * N + sin(theta) * tempVec;
-            color += textureLod(s_source, vec4(sampleVector, float(layerIndex)), 0).rgb * cos(theta) * sin(theta);
-            sampleCount++;
+        vec3 color = vec3(0.f);
+        uint sampleCount = 0u;
+        float deltaPhi = TWO_PI / 360.0;
+        float deltaTheta = HALF_PI / 90.0;
+        for (float phi = 0.0; phi < TWO_PI; phi += deltaPhi) {
+            for (float theta = 0.0; theta < HALF_PI; theta += deltaTheta) {
+                // Spherical to World Space in two steps...
+                vec3 tempVec = cos(phi) * right + sin(phi) * up;
+                vec3 sampleVector = cos(theta) * N + sin(theta) * tempVec;
+                color += textureLod(s_source, vec4(sampleVector, layerIndex), 0).rgb * cos(theta) * sin(theta);
+                sampleCount++;
+            }
         }
+
+        imageStore(s_target, ivec3(gl_GlobalInvocationID.xy, (layerIndex * 6) + i), vec4(PI * color / float(sampleCount), 1.f));
     }
-    imageStore(s_target, globalId.xy, vec4(PI * color / float(sampleCount), 1.f));
 }
 
 --Compute.LUT
@@ -110,18 +114,17 @@ void main()
 #define THREADS 8
 #define NUM_SAMPLES 64u
 
-// u_params.x == roughness
-// u_params.y == mipLevel
-uniform vec2 u_params;
-uniform vec2 imgSize;
-uniform uint cubeFace;
-uniform uint layerIndex;
+#define imgSizeX PushData0[0].x
+#define imgSizeY PushData0[0].y
+#define layerIndex PushData0[0].z
+#define mipLevel uint(PushData0[1].x)
+#define roughness PushData0[1].y
 
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform samplerCubeArray s_source;
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 1, rgba16f) uniform ACCESS_W image2D s_target;
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 1, rgba16f) uniform ACCESS_W imageCube s_target;
 
 // From Karis, 2014
-vec3 prefilterEnvMap(float roughness, vec3 R, float imgDimensions)
+vec3 prefilterEnvMap(in vec3 R)
 {
     // Isotropic approximation: we lose stretchy reflections :(
     vec3 N = R;
@@ -149,10 +152,10 @@ vec3 prefilterEnvMap(float roughness, vec3 R, float imgDimensions)
             // Solid angle of current sample -- bigger for less likely samples
             float omegaS = 1.0 / (float(NUM_SAMPLES) * pdf);
             // Solid angle of texel
-            float omegaP = 4.0 * PI / (6.0 * imgDimensions * imgDimensions);
+            float omegaP = 4.0 * PI / (6.0 * imgSizeX * imgSizeX);
             // Mip level is determined by the ratio of our sample's solid angle to a texel's solid angle
-            float mipLevel = max(0.5 * log2(omegaS / omegaP), 0.0);
-            prefilteredColor += textureLod(s_source, vec4(L, layerIndex), mipLevel).rgb * NoL;
+            float mipLevelTemp = max(0.5 * log2(omegaS / omegaP), 0.0);
+            prefilteredColor += textureLod(s_source, vec4(L, layerIndex), mipLevelTemp).rgb * NoL;
             totalWeight += NoL;
         }
     }
@@ -162,27 +165,27 @@ vec3 prefilterEnvMap(float roughness, vec3 R, float imgDimensions)
 layout(local_size_x = THREADS, local_size_y = THREADS, local_size_z = 1) in;
 void main()
 {
-    const float roughness = u_params.x;
-    const float mipLevel = u_params.y;
-
-    const float mipImageSize = imgSize.x / pow(2.f, mipLevel);
-    const ivec3 globalId = ivec3(gl_GlobalInvocationID.xy, cubeFace);
-
-    if (globalId.x >= mipImageSize || globalId.y >= mipImageSize) {
+    const float mipImageSize = imgSizeX / pow(2.f, mipLevel);
+    if (gl_GlobalInvocationID.x >= mipImageSize || gl_GlobalInvocationID.y >= mipImageSize) {
         return;
     }
 
-    vec3 R = normalize(toWorldCoords(globalId, mipImageSize));
+    for (uint i = 0; i < 6; ++i) {
+        vec3 R = normalize(toWorldCoords(ivec3(gl_GlobalInvocationID.xy, i), mipImageSize));
 
-    // Don't need to integrate for roughness == 0, since it's a perfect reflector
-    if (roughness == 0.f) {
-        vec4 color = textureLod(s_source, vec4(R, layerIndex), 0);
-        imageStore(s_target, globalId.xy, color);
-        return;
+        // Don't need to integrate for roughness == 0, since it's a perfect reflector
+        vec4 color;
+        if (roughness == 0.f)
+        {
+            color = textureLod(s_source, vec4(R, layerIndex), 0);
+        }
+        else
+        {
+            color = vec4(prefilterEnvMap(R), 1.f);
+        }
+
+        // We access our target cubemap as a 2D texture array, where z is the face index
+        imageStore(s_target, ivec3(gl_GlobalInvocationID.xy, (layerIndex * 6) + i), color);
     }
-
-    vec3 color = prefilterEnvMap(roughness, R, imgSize.x);
-    // We access our target cubemap as a 2D texture array, where z is the face index
-    imageStore(s_target, globalId.xy, vec4(color, 1.f));
 }
 

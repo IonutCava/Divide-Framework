@@ -138,8 +138,6 @@ public:
     static void OnShutdown(const GFXDevice& gfx);
 
 private:
-    ShaderBuffer* getCommandBufferForStagePass(RenderStagePass stagePass);
-
     // Returns false if we skipped the pre-pass step
     void prePass(const VisibleNodeList<>& nodes,
                  const RenderPassParams& params,
@@ -225,7 +223,7 @@ private:
     DrawCommandContainer _drawCommands{};
     RenderQueuePackages _renderQueuePackages{};
 
-    vector<ShaderBuffer_uptr> _cmdBuffers;
+    ShaderBuffer_uptr _cmdBuffer;
 
     ExecutorBuffer<BufferMaterialData> _materialBuffer;
     ExecutorBuffer<BufferTransformData> _transformBuffer;

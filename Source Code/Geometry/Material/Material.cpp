@@ -199,6 +199,11 @@ Material::Material(GFXDevice& context, ResourceCache* parentCache, const size_t 
 
         return shaderDescriptor;
     };
+
+    _recomputeShadersCBK = []()
+    {
+        NOP();
+    };
 }
 
 Material_ptr Material::clone(const Str256& nameSuffix) {
@@ -237,21 +242,21 @@ Material_ptr Material::clone(const Str256& nameSuffix) {
 }
 
 U32 Material::update([[maybe_unused]] const U64 deltaTimeUS) {
-    U32 ret = to_U32(UpdateResult::OK);
+    U32 ret = to_U32(MaterialUpdateResult::OK);
 
     if (properties()._transparencyUpdated) {
-        SetBit(ret, UpdateResult::TransparencyUpdate);
+        SetBit(ret, MaterialUpdateResult::NEW_TRANSPARENCY);
         updateTransparency();
         properties()._transparencyUpdated = false;
     }
     if (properties()._cullUpdated) {
-        SetBit(ret, UpdateResult::NewCull);
+        SetBit(ret, MaterialUpdateResult::NEW_CULL);
         properties()._cullUpdated = false;
     }
     if (properties()._needsNewShader || s_shadersDirty) {
         recomputeShaders();
         properties()._needsNewShader = false;
-        SetBit(ret, UpdateResult::NewShader);
+        SetBit(ret, MaterialUpdateResult::NEW_SHADER);
     }
 
     return ret;
@@ -404,16 +409,23 @@ void Material::setShaderProgramInternal(const ShaderProgramDescriptor& shaderDes
 
     ShaderProgramInfo& info = shaderInfo(stagePass);
     // if we already have a different shader assigned ...
-    if (info._shaderRef != nullptr && info._shaderRef->resourceName().compare(shaderDescriptorRef._name) != 0)
+    if (info._shaderRef != nullptr)
     {
         // We cannot replace a shader that is still loading in the background
         WAIT_FOR_CONDITION(info._shaderRef->getState() == ResourceState::RES_LOADED);
-        Console::printfn(Locale::Get(_ID("REPLACE_SHADER")),
-            info._shaderRef->resourceName().c_str(),
-            shaderDescriptorRef._name.c_str(),
-            TypeUtil::RenderStageToString(stagePass._stage),
-            TypeUtil::RenderPassTypeToString(stagePass._passType),
-            stagePass._variant);
+        if (info._shaderRef->descriptor().getHash() != shaderDescriptorRef.getHash())
+        {
+            Console::printfn(Locale::Get(_ID("REPLACE_SHADER")),
+                             info._shaderRef->resourceName().c_str(),
+                             shaderDescriptorRef._name.c_str(),
+                             TypeUtil::RenderStageToString(stagePass._stage),
+                             TypeUtil::RenderPassTypeToString(stagePass._passType),
+                             stagePass._variant);
+        }
+        else
+        {
+            return;
+        }
     }
 
     ShaderComputeQueue::ShaderQueueElement shaderElement{ info._shaderRef, shaderDescriptorRef };
@@ -451,6 +463,8 @@ void Material::recomputeShaders() {
             }
         }
     }
+
+    _recomputeShadersCBK();
 }
 
 ShaderProgramHandle Material::computeAndGetProgramHandle(const RenderStagePass renderStagePass) {
@@ -508,9 +522,7 @@ bool Material::canDraw(const RenderStagePass renderStagePass, bool& shaderJustFi
     if (info._shaderCompStage == ShaderBuildStage::COMPUTED) {
         assert(info._shaderRef != nullptr);
         // ... wait for the shader to finish loading
-        if (info._shaderRef->getState() != ResourceState::RES_LOADED) {
-            return false;
-        }
+        info._shaderRef->waitForReady();
         // Once it has finished loading, it is ready for drawing
         shaderJustFinishedLoading = true;
         info._shaderCompStage = ShaderBuildStage::READY;

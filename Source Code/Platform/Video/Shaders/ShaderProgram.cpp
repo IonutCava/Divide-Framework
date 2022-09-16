@@ -72,7 +72,7 @@ Str8 ShaderProgram::shaderAtomExtensionName[to_base(ShaderType::COUNT) + 1];
 ShaderProgram::ShaderQueue ShaderProgram::s_recompileQueue;
 ShaderProgram::ShaderProgramMap ShaderProgram::s_shaderPrograms;
 ShaderProgram::LastRequestedShader ShaderProgram::s_lastRequestedShaderProgram = {};
-U8 ShaderProgram::k_commandBufferID = U8_MAX - ShaderProgram::MaxSlotsPerDescriptorSet;
+U8 ShaderProgram::k_commandBufferID = U8_MAX - ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET;
 
 SharedMutex ShaderProgram::s_programLock;
 std::atomic_int ShaderProgram::s_shaderCount;
@@ -225,8 +225,8 @@ namespace {
     bool s_targetVulkan = false;
 
     constexpr U8 s_reserverdTextureSlotsPerDraw = to_base(TextureSlot::COUNT);
-    constexpr U8 s_reserverdBufferSlotsPerDraw = ShaderProgram::MaxSlotsPerDescriptorSet - s_reserverdTextureSlotsPerDraw;
-    constexpr U8 s_reservedImageSlotsPerDraw = ShaderProgram::MaxSlotsPerDescriptorSet - s_reserverdBufferSlotsPerDraw - s_reserverdTextureSlotsPerDraw;
+    constexpr U8 s_reserverdBufferSlotsPerDraw = ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET - s_reserverdTextureSlotsPerDraw;
+    constexpr U8 s_reservedImageSlotsPerDraw = ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET - s_reserverdBufferSlotsPerDraw - s_reserverdTextureSlotsPerDraw;
     constexpr U8 s_uniformBlockBindingOffset = 14u;
 
     [[nodiscard]] size_t DefinesHash(const ModuleDefines& defines) noexcept {
@@ -347,10 +347,9 @@ bool InitGLSW(const GFXDevice& gfx, const DeviceInformation& deviceInfo, const C
 
     const auto AppendResourceBindingSlots = [&AppendToShaderHeader, &gfx](const bool targetOpenGL) {
 
-
         if (targetOpenGL) {
             const auto AppendSetBindings = [&](const DescriptorSetUsage setUsage) {
-                for (U8 i = 0u; i < ShaderProgram::MaxSlotsPerDescriptorSet; ++i) {
+                for (U8 i = 0u; i < ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET; ++i) {
                     const U8 glSlot = ShaderProgram::GetGLBindingForDescriptorSlot(setUsage, i);
                     AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define %s_%d %d",
                                                                                 TypeUtil::DescriptorSetUsageToString(setUsage),
@@ -364,11 +363,17 @@ bool InitGLSW(const GFXDevice& gfx, const DeviceInformation& deviceInfo, const C
             AppendSetBindings(DescriptorSetUsage::PER_PASS);
             AppendSetBindings(DescriptorSetUsage::PER_FRAME);
 
+            AppendToShaderHeader(ShaderType::VERTEX, Util::StringFormat("#define PER_DRAW_BONE_CRT_BUFFER_BINDING %d", ShaderProgram::BONE_CRT_BUFFER_BINDING_SLOT));
+            AppendToShaderHeader(ShaderType::VERTEX, Util::StringFormat("#define PER_DRAW_BONE_PREV_BUFFER_BINDING %d", ShaderProgram::BONE_PREV_BUFFER_BINDING_SLOT));
+
             AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE(SET, BINDING) layout(binding = CONCATENATE(SET, BINDING))");
             AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_OFFSET(SET, BINDING, OFFSET) layout(binding = CONCATENATE(SET, BINDING), offset = OFFSET)");
             AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_LAYOUT(SET, BINDING, LAYOUT) layout(binding = CONCATENATE(SET, BINDING), LAYOUT)");
             AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_OFFSET_LAYOUT(SET, BINDING, OFFSET, LAYOUT) layout(binding = CONCATENATE(SET, BINDING), offset = OFFSET, LAYOUT)");
         } else {
+            AppendToShaderHeader(ShaderType::VERTEX, Util::StringFormat("#define BONE_CRT_BUFFER_BINDING %d", ShaderProgram::BONE_CRT_BUFFER_BINDING_SLOT));
+            AppendToShaderHeader(ShaderType::VERTEX, Util::StringFormat("#define BONE_PREV_BUFFER_BINDING %d", ShaderProgram::BONE_PREV_BUFFER_BINDING_SLOT));
+
             for (U8 i = 0u; i < to_base(DescriptorSetUsage::COUNT); ++i) {
                 AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define %s %d", TypeUtil::DescriptorSetUsageToString(static_cast<DescriptorSetUsage>(i)), i).c_str());
             }
@@ -711,6 +716,7 @@ size_t ShaderProgramDescriptor::getHash() const noexcept {
                                     desc._sourceFile.data(),
                                     desc._moduleType);
     }
+
     return _hash;
 }
 
@@ -916,7 +922,7 @@ ErrorCode ShaderProgram::OnStartup(ResourceCache* parentCache) {
         }
     }
 
-    for (U8 i = 0u; i < MaxSlotsPerDescriptorSet; ++i) {
+    for (U8 i = 0u; i < MAX_SLOTS_PER_DESCRIPTOR_SET; ++i) {
         auto& data = s_glBindingsPerSet[to_base(DescriptorSetUsage::PER_DRAW)][i];
         data._glBinding = i;
         data._visibility = ShaderStageVisibility::ALL;
@@ -1012,7 +1018,7 @@ void ShaderProgram::RegisterSetLayoutBinding(const DescriptorSetUsage usage, con
     static U8 textureSlot = s_reserverdTextureSlotsPerDraw;
     static U8 bufferSlot = textureSlot + s_reserverdBufferSlotsPerDraw;
     static U8 imageSlot = s_reservedImageSlotsPerDraw;
-    DIVIDE_ASSERT(slot < MaxSlotsPerDescriptorSet);
+    DIVIDE_ASSERT(slot < MAX_SLOTS_PER_DESCRIPTOR_SET);
 
     GLBindingsPerSet& bindingData = s_glBindingsPerSet[to_base(usage)][slot];
     bindingData._type = type;

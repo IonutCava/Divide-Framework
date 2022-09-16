@@ -52,8 +52,8 @@ namespace Divide {
         struct CachedImageView {
             VkImageView _view;
             struct Descriptor {
-                vec2<U32> _layers{ 0u };
-                vec2<U32> _mipLevels{ 0u };
+                vec2<U32> _layers{ 0u, VK_REMAINING_ARRAY_LAYERS };
+                vec2<U32> _mipLevels{ 0u, VK_REMAINING_MIP_LEVELS };
                 VkFormat _format {VK_FORMAT_MAX_ENUM };
                 TextureType _type{ TextureType::COUNT };
                 ImageUsage _usage{ ImageUsage::COUNT };

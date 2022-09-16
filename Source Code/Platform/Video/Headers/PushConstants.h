@@ -39,6 +39,9 @@ namespace Divide {
 struct PushConstantsStruct {
     mat4<F32> data0{0.f};
     mat4<F32> data1{0.f};
+
+    static [[nodiscard]] size_t Size() noexcept { return 2 * sizeof(mat4<F32>); }
+    inline [[nodiscard]] const F32* data() const { return data0.mat; }
     bool _set{false};
 };
 

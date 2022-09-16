@@ -523,7 +523,7 @@ void SceneManager::updateSceneState(const U64 deltaGameTimeUS, const U64 deltaAp
     const GFXDevice& gfx = parent().platformContext().gfx();
     SceneShaderData* sceneData = gfx.sceneData();
     sceneData->sunDetails(activeScene.getSunPosition(), sunColour);
-    sceneData->appData(_elapsedAppTimeMS, gfx.materialDebugFlag());
+    sceneData->appData(_elapsedGameTimeMS, _elapsedAppTimeMS, gfx.materialDebugFlag());
 
     //_sceneData->skyColour(horizonColour, zenithColour);
 

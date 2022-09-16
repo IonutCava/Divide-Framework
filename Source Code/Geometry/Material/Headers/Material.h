@@ -140,7 +140,7 @@ class Material final : public CachedResource {
     using SpecularGlossiness = vec2<F32>;
     using ComputeShaderCBK = DELEGATE_STD<ShaderProgramDescriptor, Material*, RenderStagePass>;
     using ComputeRenderStateCBK = DELEGATE_STD<size_t, Material*, RenderStagePass>;
-
+    using RecomputeShadersCBK = DELEGATE_STD<void>;
 
     template<typename T> using StatesPerVariant = eastl::array<T, to_base(RenderStagePass::VariantType::COUNT)>;
     template<typename T> using StateVariantsPerPass = eastl::array<StatesPerVariant<T>, to_base(RenderPassType::COUNT)>;
@@ -151,14 +151,6 @@ class Material final : public CachedResource {
         Medium,
         High,
         COUNT
-    };
-
-    enum class UpdateResult : U8 {
-        OK = toBit(1),
-        NewCull = toBit(2),
-        NewShader = toBit(3),
-        TransparencyUpdate = toBit(4),
-        COUNT = 4
     };
 
     struct ShaderData {
@@ -317,6 +309,7 @@ class Material final : public CachedResource {
     PROPERTY_RW(ShaderData, baseShaderData);
     PROPERTY_RW(ComputeShaderCBK, computeShaderCBK);
     PROPERTY_RW(ComputeRenderStateCBK, computeRenderStateCBK);
+    PROPERTY_RW(RecomputeShadersCBK, recomputeShadersCBK);
     POINTER_R_IW(Material, baseMaterial, nullptr);
     PROPERTY_RW(UpdatePriority, updatePriorirty, UpdatePriority::Default);
     PROPERTY_R_IW(DescriptorSet, descriptorSetMainPass);

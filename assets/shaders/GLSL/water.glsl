@@ -57,7 +57,7 @@ void main()
 #if defined(MAIN_DISPLAY_PASS) && !defined(PRE_PASS)
     const vec3 normalWV = normalize(unpackNormal(sampleTexSceneNormals().rg));
 #else //MAIN_DISPLAY_PASS && !PRE_PASS
-    const float time2 = MSToSeconds(dvd_TimeMS) * 0.05f;
+    const float time2 = MSToSeconds(dvd_GameTimeMS) * 0.05f;
     const vec2 uvNormal0 = (VAR._texCoord * _noiseTile) + vec2( time2, time2);
     const vec2 uvNormal1 = (VAR._texCoord * _noiseTile) + vec2(-time2, time2);
 

@@ -177,6 +177,7 @@ namespace Divide {
         /// VB, IB, SB, TB, UB, PUB, DIB
         std::array<GLuint, 13> _activeBufferID = create_array<13, GLuint>(GLUtil::k_invalidObjectID);
         hashMap<GLuint, GLuint> _activeVAOIB;
+        size_t _commandBufferOffset{0u};
 
         GLint  _activePackUnpackAlignments[2] { 1 , 1 };
         GLint  _activePackUnpackRowLength[2]  { 0 , 0 };

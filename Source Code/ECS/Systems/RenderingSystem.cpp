@@ -21,10 +21,22 @@ namespace Divide {
 
         Parent::PreUpdate(dt);
 
-        for (RenderingComponent* comp : _componentCache) {
+        const U64 microSec = Time::MillisecondsToMicroseconds(dt);
+
+        for (RenderingComponent* comp : _componentCache)
+        {
+            if (comp->_materialInstance != nullptr)
+            {
+                comp->_materialUpdateMask = comp->_materialInstance->update(microSec);
+            }
+        }
+        for (RenderingComponent* comp : _componentCache)
+        {
             if (comp->rebuildDrawCommands() || comp->parentSGN()->getNode().rebuildDrawCommands()) {
-                comp->packageUpdateState(RenderingComponent::PackageUpdateState::NeedsRefresh);
+                comp->parentSGN()->getNode().rebuildDrawCommands(false);
                 comp->rebuildDrawCommands(false);
+                SetBit(comp->_materialUpdateMask, MaterialUpdateResult::NEW_SHADER);
+                SetBit(comp->_materialUpdateMask, MaterialUpdateResult::NEW_CULL);
             }
         }
     }
@@ -36,78 +48,74 @@ namespace Divide {
 
         const U64 microSec = Time::MillisecondsToMicroseconds(dt);
 
-        for (RenderingComponent* comp : _componentCache) {
-            if (comp->parentSGN()->getNode().rebuildDrawCommands()) {
-                comp->parentSGN()->getNode().rebuildDrawCommands(false);
+        for (RenderingComponent* comp : _componentCache) 
+        {
+            if (comp->_materialUpdateMask == to_base(MaterialUpdateResult::OK))
+            {
+                continue;
             }
-            if (comp->_materialInstance != nullptr) {
-                const U32 materialUpdateMask = comp->_materialInstance->update(microSec);
-                if (BitCompare(materialUpdateMask, Material::UpdateResult::NewShader)) {
-                    comp->rebuildDrawCommands(true);
-                } else if (BitCompare(materialUpdateMask, Material::UpdateResult::NewCull)) {
-                    comp->packageUpdateState(RenderingComponent::PackageUpdateState::NeedsNewCull);
-                }
+            DIVIDE_ASSERT(comp->_materialInstance != nullptr);
+
+            if (BitCompare(comp->_materialUpdateMask, MaterialUpdateResult::NEW_SHADER) ||
+                BitCompare(comp->_materialUpdateMask, MaterialUpdateResult::NEW_CULL))
+            {
+                comp->clearDrawPackages();
+                comp->_materialInstance->clearRenderStates();
             }
+
+            if (BitCompare(comp->_materialUpdateMask, MaterialUpdateResult::NEW_CULL))
+            {
+                comp->_materialInstance->updateCullState();
+            }
+            if (BitCompare(comp->_materialUpdateMask, MaterialUpdateResult::NEW_TRANSPARENCY))
+            {
+                NOP();
+            }
+
         }
 
         Material::Update(microSec);
     }
 
-    void RenderingSystem::PostUpdate(const F32 dt) {
+    void RenderingSystem::PostUpdate(const F32 dt)
+    {
         OPTICK_EVENT();
 
         Parent::PostUpdate(dt);
+
+        for (RenderingComponent* comp : _componentCache) 
+        {
+            comp->_materialUpdateMask = to_base(MaterialUpdateResult::OK);
+        }
     }
 
-    void RenderingSystem::OnFrameStart() {
+    void RenderingSystem::OnFrameStart()
+    {
         Parent::OnFrameStart();
-
-        for (RenderingComponent* comp : _componentCache) {
-            if (comp->packageUpdateState() == RenderingComponent::PackageUpdateState::Processed) {
-                comp->packageUpdateState(RenderingComponent::PackageUpdateState::COUNT);
-            }
-        }
     }
 
-    void RenderingSystem::OnFrameEnd() {
+    void RenderingSystem::OnFrameEnd()
+    {
         Parent::OnFrameEnd();
-
-        for (RenderingComponent* comp : _componentCache) {
-            if (comp->packageUpdateState() == RenderingComponent::PackageUpdateState::NeedsRefresh) {
-                comp->clearDrawPackages();
-                if (comp->_materialInstance) {
-                    comp->_materialInstance->clearRenderStates();
-                }
-                comp->packageUpdateState(RenderingComponent::PackageUpdateState::Processed);
-            } else if (comp->packageUpdateState() == RenderingComponent::PackageUpdateState::NeedsNewCull) {
-                comp->clearDrawPackages();
-                if (comp->_materialInstance) {
-                    comp->_materialInstance->updateCullState();
-                }
-                comp->packageUpdateState(RenderingComponent::PackageUpdateState::Processed);
-            }
-        }
     }
 
-    bool RenderingSystem::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) {
-        if (Parent::saveCache(sgn, outputBuffer)) {
+    bool RenderingSystem::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer)
+    {
+        if (Parent::saveCache(sgn, outputBuffer))
+        {
             const RenderingComponent* rComp = sgn->GetComponent<RenderingComponent>();
-            if (rComp != nullptr && !rComp->saveCache(outputBuffer)) {
-                return false;
-            }
-            return true;
+            return (rComp == nullptr || rComp->saveCache(outputBuffer));
         }
 
         return false;
     }
 
-    bool RenderingSystem::loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer) {
-        if (Parent::loadCache(sgn, inputBuffer)) {
+    bool RenderingSystem::loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer)
+    {
+        if (Parent::loadCache(sgn, inputBuffer))
+        {
             RenderingComponent* rComp = sgn->GetComponent<RenderingComponent>();
-            if (rComp != nullptr && !rComp->loadCache(inputBuffer)) {
-                return false;
-            }
-            return true;
+            return (rComp == nullptr || rComp->loadCache(inputBuffer));
         }
 
         return false;

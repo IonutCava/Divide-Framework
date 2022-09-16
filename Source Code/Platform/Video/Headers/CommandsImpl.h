@@ -188,7 +188,7 @@ DEFINE_COMMAND_END(ClearTextureCommand);
 DEFINE_COMMAND_BEGIN(ComputeMipMapsCommand, CommandType::COMPUTE_MIPMAPS);
     Texture* _texture{ nullptr };
     vec2<U16> _layerRange{ 0u, 1u };
-    vec2<U16> _mipRange{ 0u, 0u };
+    vec2<U16> _mipRange{ 0u, U16_MAX };
 DEFINE_COMMAND_END(ComputeMipMapsCommand);
 
 DEFINE_COMMAND_BEGIN(SetScissorCommand, CommandType::SET_SCISSOR);

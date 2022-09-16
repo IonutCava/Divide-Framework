@@ -24,7 +24,7 @@
 
 namespace Divide {
 namespace {
-    SharedMutex s_queueLock;
+    Mutex s_queueLock;
     constexpr U16 s_IrradianceTextureSize = 64u;
     constexpr U16 s_LUTTextureSize = 128u;
 
@@ -33,7 +33,6 @@ namespace {
     U16 s_queuedLayer = 0u;
 
     static SceneEnvironmentProbePool::ComputationStages s_queuedStage = SceneEnvironmentProbePool::ComputationStages::COUNT;
-    static U8 s_faceID = 0u;
 }
 
 vector<DebugView_ptr> SceneEnvironmentProbePool::s_debugViews;
@@ -254,7 +253,6 @@ void SceneEnvironmentProbePool::OnShutdown(GFXDevice& context) {
     s_computationSet.clear();
     s_queuedLayer = 0u;
     s_queuedStage = SceneEnvironmentProbePool::ComputationStages::COUNT;
-    s_faceID = 0u;
 }
 
 RenderTargetHandle SceneEnvironmentProbePool::ReflectionTarget() noexcept {
@@ -304,21 +302,6 @@ void SceneEnvironmentProbePool::Prepare(GFX::CommandBuffer& bufferInOut) {
 
 void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
     OPTICK_EVENT();
-    {
-        SharedLock<SharedMutex> r_lock(s_queueLock);
-        if (s_queuedStage == ComputationStages::COUNT && !s_computationQueue.empty()) {
-            s_queuedLayer = s_computationQueue.front();
-            s_queuedStage = ComputationStages::MIP_MAP_SOURCE;
-            s_computationQueue.pop();
-            s_computationSet.erase(s_queuedLayer);
-        }
-
-        if (s_queuedStage != ComputationStages::COUNT)
-        //while (queuedStage != ComputationStages::COUNT) 
-        {
-            ProcessEnvironmentMapInternal(context, s_queuedLayer, s_queuedStage, bufferInOut);
-        }
-    }
     if (s_lutTextureDirty) {
         PipelineDescriptor pipelineDescriptor{};
         pipelineDescriptor._stateHash = context.get2DStateBlock();
@@ -346,6 +329,52 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         GFX::EnqueueCommand<GFX::ComputeMipMapsCommand>(bufferInOut)->_texture = brdfLutTexture;
         s_lutTextureDirty = false;
     }
+    if (SkyLightNeedsRefresh() && s_queuedLayer != SkyProbeLayerIndex())
+    {
+        GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand("SkyLight Pass"));
+
+        vector<Camera*>& probeCameras = ProbeCameras();
+        std::array<Camera*, 6> cameras = {};
+        std::copy_n(std::begin(probeCameras), std::min(cameras.size(), probeCameras.size()), std::begin(cameras));
+
+        RenderPassParams params = {};
+        params._target = SceneEnvironmentProbePool::ReflectionTarget()._targetID;
+        params._stagePass = { RenderStage::REFLECTION, RenderPassType::COUNT, Config::MAX_REFLECTIVE_NODES_IN_VIEW + SkyProbeLayerIndex(), static_cast<RenderStagePass::VariantType>(ReflectorType::CUBE) };
+
+        ClearBit(params._drawMask, to_U8(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES)));
+        ClearBit(params._drawMask, to_U8(1u << to_base(RenderPassParams::Flags::DRAW_STATIC_NODES)));
+        SetBit(params._drawMask,   to_U8(1u << to_base(RenderPassParams::Flags::DRAW_SKY_NODES)));
+
+        context.generateCubeMap(params,
+                                SkyProbeLayerIndex(),
+                                VECTOR3_ZERO,
+                                vec2<F32>(0.1f, 10000.f),
+                                bufferInOut,
+                                memCmdInOut,
+                                cameras);
+
+        ProcessEnvironmentMap(context, SkyProbeLayerIndex(), false, bufferInOut);
+
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
+
+        SkyLightNeedsRefresh(false);
+    }
+    {
+        ScopedLock<Mutex> w_lock(s_queueLock);
+        if (s_queuedStage == ComputationStages::COUNT && !s_computationQueue.empty())
+        {
+            s_queuedLayer = s_computationQueue.front();
+            s_queuedStage = ComputationStages::MIP_MAP_SOURCE;
+            s_computationQueue.pop();
+            s_computationSet.erase(s_queuedLayer);
+        }
+
+        if (s_queuedStage != ComputationStages::COUNT)
+        //while (s_queuedStage != ComputationStages::COUNT)
+        {
+            ProcessEnvironmentMapInternal(context, s_queuedLayer, s_queuedStage, bufferInOut);
+        }
+    }
     {
         RTAttachment* prefiltered = SceneEnvironmentProbePool::PrefilteredTarget()._rt->getAttachment(RTAttachmentType::COLOUR, 0);
         RTAttachment* irradiance = SceneEnvironmentProbePool::IrradianceTarget()._rt->getAttachment(RTAttachmentType::COLOUR, 0);
@@ -369,54 +398,26 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
             binding._data.As<DescriptorCombinedImageSampler>() = { brdfLut->texture()->defaultView(), brdfLut->descriptor()._samplerHash };
         }
     }
-
-    if (!SkyLightNeedsRefresh() || s_queuedLayer == SkyProbeLayerIndex()) {
-        return;
-    }
-
-    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand("SkyLight Pass"));
-
-    vector<Camera*>& probeCameras = ProbeCameras();
-    std::array<Camera*, 6> cameras = {};
-    std::copy_n(std::begin(probeCameras), std::min(cameras.size(), probeCameras.size()), std::begin(cameras));
-
-    RenderPassParams params = {};
-    params._target = SceneEnvironmentProbePool::ReflectionTarget()._targetID;
-    params._stagePass = { RenderStage::REFLECTION, RenderPassType::COUNT, Config::MAX_REFLECTIVE_NODES_IN_VIEW + SkyProbeLayerIndex(), static_cast<RenderStagePass::VariantType>(ReflectorType::CUBE) };
-
-    ClearBit(params._drawMask, to_U8(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES)));
-    ClearBit(params._drawMask, to_U8(1u << to_base(RenderPassParams::Flags::DRAW_STATIC_NODES)));
-    SetBit(params._drawMask,   to_U8(1u << to_base(RenderPassParams::Flags::DRAW_SKY_NODES)));
-
-    context.generateCubeMap(params,
-                            SkyProbeLayerIndex(),
-                            VECTOR3_ZERO,
-                            vec2<F32>(0.1f, 10000.f),
-                            bufferInOut,
-                            memCmdInOut,
-                            cameras);
-
-    ProcessEnvironmentMap(context, SkyProbeLayerIndex(), false, bufferInOut);
-
-    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
-
-    SkyLightNeedsRefresh(false);
 }
 
-void SceneEnvironmentProbePool::ProcessEnvironmentMap(GFXDevice& context, const U16 layerID, const bool highPriority, GFX::CommandBuffer& bufferInOut) {
-    ScopedLock<SharedMutex> w_lock(s_queueLock);
-    if (s_computationSet.insert(layerID).second) {
+void SceneEnvironmentProbePool::ProcessEnvironmentMap(GFXDevice& context, const U16 layerID, const bool highPriority, GFX::CommandBuffer& bufferInOut)
+{
+    ScopedLock<Mutex> w_lock(s_queueLock);
+    if (s_computationSet.insert(layerID).second)
+    {
         s_computationQueue.push(layerID);
     }
-
 }
 
-void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal(GFXDevice& context, const U16 layerID, ComputationStages& stage, GFX::CommandBuffer& bufferInOut) {
+void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal(GFXDevice& context, const U16 layerID, ComputationStages& stage, GFX::CommandBuffer& bufferInOut)
+{
     OPTICK_EVENT();
 
     // This entire sequence is based on this awesome blog post by Bruno Opsenica: https://bruop.github.io/ibl/
-    switch (stage) {
-        case ComputationStages::MIP_MAP_SOURCE: {
+    switch (stage)
+    {
+        case ComputationStages::MIP_MAP_SOURCE:
+        {
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Process environment map #%d-MipMapsSource", layerID).c_str()));
             RTAttachment* sourceAtt = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR, 0);
 
@@ -427,69 +428,36 @@ void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal(GFXDevice& context
 
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 
-            s_faceID = 0u;
             stage = ComputationStages::PREFILTER_MAP;
-        }break;
-        case ComputationStages::PREFILTER_MAP: {
-            PrefilterEnvMap(context, layerID, 5u - s_faceID, bufferInOut);
-            if (++s_faceID == 6u) {
-                stage = ComputationStages::IRRADIANCE_CALC;
-                s_faceID = 0u;
-            }
-        }break;
-        case ComputationStages::IRRADIANCE_CALC: {
-            ComputeIrradianceMap(context, layerID, 5u - s_faceID, bufferInOut);
-            if (++s_faceID == 6u) {
-                stage = ComputationStages::MIP_MAP_PREFILTER;
-                s_faceID = 0u;
-            }
-        }break;
-        case ComputationStages::MIP_MAP_PREFILTER: {
-            GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Process environment map #%d-MipMapsPrefilter", layerID).c_str()));
-
-            RTAttachment* destPrefilteredAtt = SceneEnvironmentProbePool::PrefilteredTarget()._rt->getAttachment(RTAttachmentType::COLOUR, 0);
-
-            GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
-            computeMipMapsCommand._layerRange = { layerID, 1 };
-            computeMipMapsCommand._texture = destPrefilteredAtt->texture().get();
-            GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
-
-            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
-
-            stage = ComputationStages::MIP_MAP_IRRADIANCE;
-        }break;
-        case ComputationStages::MIP_MAP_IRRADIANCE: {
-            GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Process environment map #%d-MipMapsIrradiance", layerID).c_str()));
-
-            RTAttachment* destIrradianceAtt = SceneEnvironmentProbePool::IrradianceTarget()._rt->getAttachment(RTAttachmentType::COLOUR, 0);
-
-            GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
-            computeMipMapsCommand._layerRange = { layerID, 1 };
-            computeMipMapsCommand._texture = destIrradianceAtt->texture().get();
-            GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
-
-            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
-
+        } break;
+        case ComputationStages::PREFILTER_MAP:
+        {
+            PrefilterEnvMap(context, layerID, bufferInOut);
+            stage = ComputationStages::IRRADIANCE_CALC;
+        } break;
+        case ComputationStages::IRRADIANCE_CALC:
+        {
+            ComputeIrradianceMap(context, layerID, bufferInOut);
             stage = ComputationStages::COUNT;
             s_queuedLayer = 0u;
-        }break;
+        } break;
     };
 }
 
-void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 layerID, const U8 faceIndex, GFX::CommandBuffer& bufferInOut) {
-
+void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 layerID, GFX::CommandBuffer& bufferInOut)
+{
     RTAttachment* sourceAtt = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR, 0);
     RTAttachment* destinationAtt = SceneEnvironmentProbePool::PrefilteredTarget()._rt->getAttachment(RTAttachmentType::COLOUR, 0);
     const Texture* sourceTex = sourceAtt->texture().get();
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("PreFilter environment map #%d-%d", layerID, faceIndex).c_str()));
+    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("PreFilter environment map #%d", layerID).c_str()));
+
+    GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_barrierMask = to_base(MemoryBarrierType::SHADER_IMAGE);
 
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ s_pipelineCalcPrefiltered });
 
     // width is the width/length of a single face of our cube map
     const U16 width = sourceTex->width();
-    const F32 fWidth = to_F32(width);
-
     {
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -497,49 +465,53 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
         binding._slot = 0;
         binding._data.As<DescriptorCombinedImageSampler>() = { sourceTex->defaultView(), sourceAtt->descriptor()._samplerHash };
     }
-    {
-        PushConstants& constants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants;
-        constants.set(_ID("cubeFace"), GFX::PushConstantType::UINT, to_U32(faceIndex));
-        constants.set(_ID("layerIndex"), GFX::PushConstantType::UINT, to_U32(layerID));
-        constants.set(_ID("imgSize"), GFX::PushConstantType::VEC2, vec2<F32>{fWidth, fWidth});
-    }
 
-    ImageView destinationImage = destinationAtt->texture()->getView(TextureType::TEXTURE_2D, { 0u, 0u }, { to_U8((layerID * 6) + faceIndex) , 1u }, ImageUsage::SHADER_WRITE);
+    ImageView destinationImage = destinationAtt->texture()->getView(TextureType::TEXTURE_CUBE_MAP, { 0u, 1u }, { 0u , U16_MAX }, ImageUsage::SHADER_WRITE);
+
+    const F32 fWidth = to_F32(width);
+
+    PushConstantsStruct fastData{};
+    fastData.data0._vec[0].xyz.set(fWidth, fWidth, to_F32(layerID));
 
     const F32 maxMipLevel = to_F32(std::log2(fWidth));
-    for (F32 mipLevel = 0u; mipLevel <= maxMipLevel; ++mipLevel) {
-        const U16 mipWidth = width / to_U16(std::pow(2.f, mipLevel));
-        const F32 roughness = mipLevel / maxMipLevel;
-        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(_ID("u_params"), GFX::PushConstantType::VEC2, vec2<F32>{ roughness, mipLevel });
-
+    for (F32 mipLevel = 0u; mipLevel <= maxMipLevel; ++mipLevel) 
+    {
         destinationImage._mipLevels = { to_U8(mipLevel), 1u };
+
+        const F32 roughness = mipLevel / maxMipLevel;
+        fastData.data0._vec[1].xy.set(mipLevel, roughness);
+        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(fastData);
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
-
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
         binding._slot = 1u;
         binding._data.As<ImageView>() = destinationImage;
 
         // Dispatch enough groups to cover the entire _mipped_ face
+        const U16 mipWidth = width / to_U16(std::pow(2.f, mipLevel));
         GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ std::max(1u, mipWidth / 8u), std::max(1u, mipWidth / 8u), 1 });
     }
+
+    GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_barrierMask = to_base(MemoryBarrierType::TEXTURE_UPDATE);
+
+    GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
+    computeMipMapsCommand._layerRange = { layerID, 1 };
+    computeMipMapsCommand._texture = destinationAtt->texture().get();
+    GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
+
     GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_barrierMask = to_base(MemoryBarrierType::TEXTURE_FETCH);
 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
-void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U16 layerID, const U8 faceIndex, GFX::CommandBuffer& bufferInOut) {
+void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U16 layerID, GFX::CommandBuffer& bufferInOut) {
     RTAttachment* sourceAtt = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR, 0);
     RTAttachment* destinationAtt = SceneEnvironmentProbePool::IrradianceTarget()._rt->getAttachment(RTAttachmentType::COLOUR, 0);
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Compute Irradiance #%d-%d", layerID, faceIndex).c_str()));
+    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Compute Irradiance #%d", layerID).c_str()));
+    GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_barrierMask = to_base(MemoryBarrierType::SHADER_IMAGE);
 
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ s_pipelineCalcIrradiance });
-
-    PushConstants& constants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants;
-    constants.set(_ID("imgSize"), GFX::PushConstantType::VEC2, vec2<F32>{s_IrradianceTextureSize, s_IrradianceTextureSize});
-    constants.set(_ID("layerIndex"), GFX::PushConstantType::UINT, to_U32(layerID));
-    constants.set(_ID("cubeFace"), GFX::PushConstantType::UINT, to_U32(faceIndex));
 
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
     cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -551,30 +523,46 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U
     {
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
         binding._slot = 1u;
-        binding._data.As<ImageView>() = destinationAtt->texture()->getView(TextureType::TEXTURE_2D, { 0u, 1u }, { to_U8((layerID * 6) + faceIndex) , 1u }, ImageUsage::SHADER_WRITE);
+        binding._data.As<ImageView>() = destinationAtt->texture()->getView(TextureType::TEXTURE_CUBE_MAP, { 0u, 1u }, { 0u , U16_MAX }, ImageUsage::SHADER_WRITE);
     }
+
+    PushConstantsStruct fastData{};
+    fastData.data0._vec[0].xyz.set(to_F32(s_IrradianceTextureSize), to_F32(s_IrradianceTextureSize), to_F32(layerID));
+    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(fastData);
+
     const U32 groupsX = to_U32(std::ceil(s_IrradianceTextureSize / to_F32(8)));
     const U32 groupsY = to_U32(std::ceil(s_IrradianceTextureSize / to_F32(8)));
     GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ groupsX, groupsY, 1 });
+    
+    GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_barrierMask = to_base(MemoryBarrierType::TEXTURE_UPDATE);
+
+    GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
+    computeMipMapsCommand._layerRange = { layerID, 1 };
+    computeMipMapsCommand._texture = destinationAtt->texture().get();
+    GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 
     GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_barrierMask = to_base(MemoryBarrierType::TEXTURE_FETCH);
 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
-void SceneEnvironmentProbePool::lockProbeList() const noexcept {
+void SceneEnvironmentProbePool::lockProbeList() const noexcept
+{
     _probeLock.lock();
 }
 
-void SceneEnvironmentProbePool::unlockProbeList() const noexcept {
+void SceneEnvironmentProbePool::unlockProbeList() const noexcept
+{
     _probeLock.unlock();
 }
 
-const EnvironmentProbeList& SceneEnvironmentProbePool::getLocked() const noexcept {
+const EnvironmentProbeList& SceneEnvironmentProbePool::getLocked() const noexcept
+{
     return _envProbes;
 }
 
-void SceneEnvironmentProbePool::registerProbe(EnvironmentProbeComponent* probe) {
+void SceneEnvironmentProbePool::registerProbe(EnvironmentProbeComponent* probe)
+{
     DebuggingSkyLight(false);
 
     ScopedLock<SharedMutex> w_lock(_probeLock);
@@ -584,7 +572,8 @@ void SceneEnvironmentProbePool::registerProbe(EnvironmentProbeComponent* probe) 
     probe->poolIndex(to_U16(_envProbes.size() - 1u));
 }
 
-void SceneEnvironmentProbePool::unregisterProbe(const EnvironmentProbeComponent* probe) {
+void SceneEnvironmentProbePool::unregisterProbe(const EnvironmentProbeComponent* probe)
+{
     if (probe != nullptr) {
         ScopedLock<SharedMutex> w_lock(_probeLock);
         auto it = _envProbes.erase(eastl::remove_if(begin(_envProbes), end(_envProbes),
@@ -596,12 +585,14 @@ void SceneEnvironmentProbePool::unregisterProbe(const EnvironmentProbeComponent*
         }
     }
 
-    if (probe == _debugProbe) {
+    if (probe == _debugProbe)
+    {
         _debugProbe = nullptr;
     }
 }
 
-namespace {
+namespace
+{
     constexpr I16 g_debugViewBase = 10;
 }
 

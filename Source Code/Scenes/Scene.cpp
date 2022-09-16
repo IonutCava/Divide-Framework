@@ -1419,16 +1419,18 @@ void Scene::processTasks(const U64 deltaTimeUS) {
         const F32 speedFactor = dayNightCycleEnabled() ? _dayNightData._speedFactor : 0.f;
         const F32 deltaSeconds = Time::MillisecondsToSeconds<F32>(delta);
         const F32 addTime = speedFactor * deltaSeconds;
-
-        _dayNightData._timeAccumulatorSec += addTime;
-        _dayNightData._timeAccumulatorHour += addTime;
-        const F32 weatherScale = _dayNightData._skyInstance->weatherScale();
-        if (weatherScale > 8.0f && increaseWeatherScale) {
-            increaseWeatherScale = false;
-        } else if (weatherScale < 1.0f && !increaseWeatherScale) {
-            increaseWeatherScale = true;
+        if (addTime > 0.f)
+        {
+            _dayNightData._timeAccumulatorSec += addTime;
+            _dayNightData._timeAccumulatorHour += addTime;
+            const F32 weatherScale = _dayNightData._skyInstance->weatherScale();
+            if (weatherScale > 8.0f && increaseWeatherScale) {
+                increaseWeatherScale = false;
+            } else if (weatherScale < 1.0f && !increaseWeatherScale) {
+                increaseWeatherScale = true;
+            }
+            _dayNightData._skyInstance->weatherScale(weatherScale + (deltaSeconds * (increaseWeatherScale ? 0.01f : -0.01f)));
         }
-        _dayNightData._skyInstance->weatherScale(weatherScale + (deltaSeconds * (increaseWeatherScale ? 0.01f : -0.01f)));
         if (std::abs(_dayNightData._timeAccumulatorSec) > Time::Seconds(1.f)) {
             timeOfDay.tm_sec += to_I32(_dayNightData._timeAccumulatorSec);
             const time_t now = mktime(&timeOfDay); // normalize it
@@ -1450,19 +1452,23 @@ void Scene::processTasks(const U64 deltaTimeUS) {
             const F32 altitudeDegrees = Angle::RadiansToDegrees(details.altitude);
             const bool isNight = altitudeDegrees < -25.f;
             // Dawn
-            if (IS_IN_RANGE_INCLUSIVE(altitudeDegrees, 0.0f, 25.0f)) {
+            if (IS_IN_RANGE_INCLUSIVE(altitudeDegrees, 0.0f, 25.0f))
+            {
                 light->setDiffuseColour(Lerp(sunsetOrange, DefaultColours::WHITE.rgb, altitudeDegrees / 25.f));
             }
             // Dusk
-            else if (IS_IN_RANGE_INCLUSIVE(altitudeDegrees, -25.0f, 0.0f)) {
+            else if (IS_IN_RANGE_INCLUSIVE(altitudeDegrees, -25.0f, 0.0f))
+            {
                 light->setDiffuseColour(Lerp(sunsetOrange, moonColour, -altitudeDegrees / 25.f));
             }
             // Night
-            else if (isNight) {
+            else if (isNight)
+            {
                 light->setDiffuseColour(moonColour);
             }
             // Day
-            else {
+            else
+            {
                 light->setDiffuseColour(DefaultColours::WHITE.rgb);
             }
             _dayNightData._time._hour = to_U8(timeOfDay.tm_hour);
@@ -1474,7 +1480,8 @@ void Scene::processTasks(const U64 deltaTimeUS) {
 }
 
 void Scene::drawCustomUI(const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut) {
-    if (_linesPrimitive->hasBatch()) {
+    if (_linesPrimitive->hasBatch())
+    {
         GFX::EnqueueCommand(bufferInOut, GFX::SetViewportCommand{ targetViewport });
         _linesPrimitive->getCommandBuffer(bufferInOut);
     }

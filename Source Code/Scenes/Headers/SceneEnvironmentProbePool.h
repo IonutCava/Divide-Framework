@@ -60,8 +60,6 @@ public:
         MIP_MAP_SOURCE,
         PREFILTER_MAP,
         IRRADIANCE_CALC,
-        MIP_MAP_PREFILTER,
-        MIP_MAP_IRRADIANCE,
         COUNT
     };
 
@@ -116,8 +114,8 @@ protected:
 
 private:
     static void ProcessEnvironmentMapInternal(GFXDevice& context, const U16 layerID, ComputationStages& stage, GFX::CommandBuffer& bufferInOut);
-    static void PrefilterEnvMap(GFXDevice& context, const U16 layerID, U8 faceIndex, GFX::CommandBuffer& bufferInOut);
-    static void ComputeIrradianceMap(GFXDevice& context, const U16 layerID, U8 faceIndex, GFX::CommandBuffer& bufferInOut);
+    static void PrefilterEnvMap(GFXDevice& context, const U16 layerID, GFX::CommandBuffer& bufferInOut);
+    static void ComputeIrradianceMap(GFXDevice& context, const U16 layerID, GFX::CommandBuffer& bufferInOut);
 protected:
     mutable SharedMutex _probeLock;
     EnvironmentProbeList _envProbes;

@@ -81,15 +81,16 @@ namespace Divide {
 
         static void Idle(PlatformContext& platformContext);
 
-        const vector<vkShader*>& shaderStages() const { return _shaderStage; }
+        [[nodiscard]] const vector<vkShader*>& shaderStages() const;
+        [[nodiscard]] VkShaderStageFlags stageMask() const;
 
     protected:
-        ShaderResult validatePreBind(bool rebind = true);
+        [[nodiscard]] ShaderResult validatePreBind(bool rebind = true);
         /// Make sure this program is ready for deletion
-        bool unload() override;
-        bool recompile(bool& skipped) override;
+        [[nodiscard]] bool unload() override;
+        [[nodiscard]] bool recompile(bool& skipped) override;
         /// Returns true if at least one shader linked successfully
-        bool reloadShaders(hashMap<U64, PerFileShaderData>& fileData, bool reloadExisting) override;
+        [[nodiscard]] bool reloadShaders(hashMap<U64, PerFileShaderData>& fileData, bool reloadExisting) override;
 
     private:
        bool _validationQueued = false;

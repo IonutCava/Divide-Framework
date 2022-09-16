@@ -665,9 +665,9 @@ void MenuBar::drawToolsMenu([[maybe_unused]] const bool modifierPressed) {
             {
                 if (ImGui::BeginMenu(rt->name().c_str()))
                 {
-                    for (U8 j = 0; j < to_U8(RTAttachmentType::COUNT); ++j)
+                    for (U8 j = 0u; j < 2u; ++j)
                     {
-                        const RTAttachmentType type = static_cast<RTAttachmentType>(j);
+                        const RTAttachmentType type = j == 0 ? RTAttachmentType::COLOUR : RTAttachmentType::DEPTH;
                         const U8 count = rt->getAttachmentCount(type);
 
                         for (U8 k = 0; k < count; ++k)

@@ -45,7 +45,7 @@ vec4 Noise(in vec4 colourIn){
 
 vec4 Underwater() {
     //ToDo: Move this code, and the one in water.glsl, to a common header (like utility.frag) in a function that both shaders can use
-    const float time2 = MSToSeconds(dvd_TimeMS) * 0.015f;
+    const float time2 = MSToSeconds(dvd_GameTimeMS) * 0.015f;
     const vec2 uvNormal0 = (VAR._texCoord * _noiseTile) + vec2( time2, time2);
     const vec2 uvNormal1 = (VAR._texCoord * _noiseTile) + vec2(-time2, time2);
 

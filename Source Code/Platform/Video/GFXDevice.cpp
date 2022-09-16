@@ -362,7 +362,6 @@ void GFXDevice::resizeGPUBlocks(size_t targetSizeCam, size_t targetSizeCullCount
         bufferDescriptor._bufferParams._elementCount = 1;
         bufferDescriptor._usage = ShaderBuffer::Usage::UNBOUND_BUFFER;
         bufferDescriptor._ringBufferLength = to_U32(targetSizeCullCounter);
-        bufferDescriptor._name = "CULL_COUNTER";
         bufferDescriptor._bufferParams._hostVisible = true;
         bufferDescriptor._bufferParams._elementSize = 4 * sizeof(U32);
         bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
@@ -370,6 +369,7 @@ void GFXDevice::resizeGPUBlocks(size_t targetSizeCam, size_t targetSizeCullCount
         bufferDescriptor._separateReadWrite = true;
         bufferDescriptor._initialData = { (bufferPtr)&VECTOR4_ZERO._v[0], 4 * sizeof(U32) };
         for (U8 i = 0u; i < GFXBuffers::PerFrameBufferCount; ++i) {
+            bufferDescriptor._name = Util::StringFormat("CULL_COUNTER_%d", i);
             _gfxBuffers._perFrameBuffers[i]._cullCounter = newSB(bufferDescriptor);
         }
     }
@@ -516,6 +516,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
 
     TextureDescriptor hiZDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_32, GFXImageFormat::RED);
     hiZDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
+    hiZDescriptor.addImageUsageFlag(ImageUsage::SHADER_WRITE);
 
     SamplerDescriptor hiZSampler = {};
     hiZSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
@@ -1301,13 +1302,6 @@ void GFXDevice::generateCubeMap(RenderPassParams& params,
 
     // For each of the environment's faces (TOP, DOWN, NORTH, SOUTH, EAST, WEST)
     params._passName = "CubeMap";
-    if (hasColour) {
-        params._layerParams._colourLayers[0] = arrayOffset * 6;
-    }
-    if (hasDepth) {
-        params._layerParams._depthLayer = arrayOffset * 6;
-    }
-
     const D64 aspect = to_D64(targetResolution.width) / targetResolution.height;
 
     RenderPassManager* passMgr = parent().renderPassManager();
@@ -1315,10 +1309,10 @@ void GFXDevice::generateCubeMap(RenderPassParams& params,
     for (U8 i = 0u; i < 6u; ++i) {
         // Draw to the current cubemap face
         if (hasColour) {
-            params._layerParams._colourLayers[0] = i * arrayOffset * 6;
+            params._layerParams._colourLayers[0] = i + (arrayOffset * 6);
         }
         if (hasDepth) {
-            params._layerParams._depthLayer = i * arrayOffset * 6;
+            params._layerParams._depthLayer = i + (arrayOffset * 6);
         }
 
         Camera* camera = cameras[i];
@@ -1374,14 +1368,7 @@ void GFXDevice::generateDualParaboloidMap(RenderPassParams& params,
     }
 
     params._passName = "DualParaboloid";
-    if (hasColour) {
-        params._layerParams._colourLayers[0] = arrayOffset;
-    }
-    if (hasDepth) {
-        params._layerParams._depthLayer = arrayOffset;
-    }
     const D64 aspect = to_D64(targetResolution.width) / targetResolution.height;
-
     RenderPassManager* passMgr = parent().renderPassManager();
 
     for (U8 i = 0u; i < 2u; ++i) {

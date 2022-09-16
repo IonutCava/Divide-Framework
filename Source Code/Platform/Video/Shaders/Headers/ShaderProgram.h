@@ -112,8 +112,10 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
                                    public GraphicsResource {
    public:
     static constexpr const char* UNIFORM_BLOCK_NAME = "dvd_uniforms";
-    static constexpr U8 MaxSlotsPerDescriptorSet = 16u;
-
+    static constexpr U8 MAX_SLOTS_PER_DESCRIPTOR_SET = 16u;
+    static constexpr U8 BONE_CRT_BUFFER_BINDING_SLOT = 12u;
+    static constexpr U8 BONE_PREV_BUFFER_BINDING_SLOT = 13u;
+    
     static U8 k_commandBufferID;
 
     // one per shader type!
@@ -295,7 +297,7 @@ private:
         ShaderStageVisibility _visibility{ ShaderStageVisibility::COUNT };
         DescriptorSetBindingType _type{ DescriptorSetBindingType::COUNT };
     };
-    using GLBindingsPerSetArray = std::array<GLBindingsPerSet, MaxSlotsPerDescriptorSet>;
+    using GLBindingsPerSetArray = std::array<GLBindingsPerSet, MAX_SLOTS_PER_DESCRIPTOR_SET>;
 
     static std::array<GLBindingsPerSetArray, to_base(DescriptorSetUsage::COUNT)> s_glBindingsPerSet;
 };

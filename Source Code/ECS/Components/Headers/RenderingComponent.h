@@ -122,13 +122,6 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
            IS_VISIBLE = toBit(8)
        };
 
-       enum class PackageUpdateState : U8 {
-           NeedsRefresh = 0,
-           NeedsNewCull,
-           Processed,
-           COUNT
-       };
-
        struct DrawCommands {
            vector_fast<GFX::DrawCommand> _data;
            SharedMutex _dataLock;
@@ -191,7 +184,6 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     PROPERTY_RW(bool, occlusionCull, true);
     PROPERTY_RW(F32, dataFlag, 1.0f);
     PROPERTY_R_IW(bool, isInstanced, false);
-    PROPERTY_RW(PackageUpdateState, packageUpdateState, PackageUpdateState::COUNT);
     PROPERTY_R_IW(bool, rebuildDrawCommands, false);
 
   protected:
@@ -201,6 +193,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
     void toggleBoundsDraw(bool showAABB, bool showBS, bool showOBB, bool recursive);
     void onRenderOptionChanged(RenderOptions option, bool state);
+    void clearDrawPackages(const RenderStage stage, const RenderPassType pass);
     void clearDrawPackages();
 
     [[nodiscard]] bool hasDrawCommands() noexcept;
@@ -279,6 +272,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     bool _drawAABB{ false };
     bool _drawOBB{ false };
     bool _drawBS{ false };
+    U32 _materialUpdateMask{ to_base(MaterialUpdateResult::OK) };
 
 END_COMPONENT(Rendering);
 

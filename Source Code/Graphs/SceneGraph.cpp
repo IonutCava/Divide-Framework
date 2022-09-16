@@ -81,16 +81,20 @@ void SceneGraph::addToDeleteQueue(SceneGraphNode* node, const size_t childIdx) {
     }
 }
 
-void SceneGraph::onNodeUpdated(const SceneGraphNode& node) {
+void SceneGraph::onNodeUpdated(const SceneGraphNode& node)
+{
     OPTICK_EVENT();
 
     //ToDo: Maybe add particles too? -Ionut
-    switch (node.getNode<>().type()) {
-        case SceneNodeType::TYPE_OBJECT3D : {
+    switch (node.getNode<>().type())
+    {
+        case SceneNodeType::TYPE_OBJECT3D :
+        {
             SceneEnvironmentProbePool* probes = Attorney::SceneGraph::getEnvProbes(parentScene());
             probes->onNodeUpdated(node);
         } break;
-        case SceneNodeType::TYPE_SKY: {
+        case SceneNodeType::TYPE_SKY:
+        {
             SceneEnvironmentProbePool::SkyLightNeedsRefresh(true);
         } break;
     }

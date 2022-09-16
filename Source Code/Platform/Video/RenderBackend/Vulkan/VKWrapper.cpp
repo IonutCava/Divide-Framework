@@ -330,6 +330,8 @@ namespace Divide {
 
         //once we start adding rendering commands, they will go here
         vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _trianglePipeline._pipeline);
+        GetStateTracker()->_activePipeline = _trianglePipeline._pipeline;
+        GetStateTracker()->_activePipelineLayout = _trianglePipeline._layout;
 
         { //Draw a triangle;
             GetStateTracker()->_activeTopology = PrimitiveTopology::TRIANGLES;
@@ -346,7 +348,9 @@ namespace Divide {
     void VKStateTracker::reset()
     {
         _dynamicState = {};
+        _activeShaderProgram = nullptr;
         _activePipeline = VK_NULL_HANDLE;
+        _activePipelineLayout = VK_NULL_HANDLE;
         _activeTopology = PrimitiveTopology::COUNT;
         _activeMSAASamples = 0u;
         _activeRenderTargetID = INVALID_RENDER_TARGET_ID;
@@ -549,6 +553,8 @@ namespace Divide {
               to_U8(0),
               to_U8(deviceProperties.limits.maxSamplerAnisotropy));
         deviceInformation._maxAnisotropy = config.rendering.maxAnisotropicFilteringLevel;
+
+        DIVIDE_ASSERT(PushConstantsStruct::Size() <= deviceProperties.limits.maxPushConstantsSize);
 
         const VkSampleCountFlags counts = deviceProperties.limits.framebufferColorSampleCounts & deviceProperties.limits.framebufferDepthSampleCounts;
         U8 maxMSAASamples = 0u;
@@ -1028,41 +1034,60 @@ namespace Divide {
             vkCmdSetStencilReference(cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState.stencilRef());
             stateTrackerDS.stencilRef(currentState.stencilRef());
         }
-        if (!COMPARE(stateTrackerDS.zUnits(), currentState.zUnits()) || !COMPARE(stateTrackerDS.zBias(), currentState.zBias())) {
+        if (!COMPARE(stateTrackerDS.zUnits(), currentState.zUnits()) || !COMPARE(stateTrackerDS.zBias(), currentState.zBias()))
+        {
             vkCmdSetDepthBias(cmdBuffer, currentState.zUnits(), 0.f, currentState.zBias());
             stateTrackerDS.zUnits(currentState.zUnits());
             stateTrackerDS.zBias(currentState.zBias());
         }
     }
 
-    ShaderResult VK_API::bindPipeline(const Pipeline& pipeline, VkCommandBuffer& cmdBuffer) const {
+    ShaderResult VK_API::bindPipeline(const Pipeline& pipeline, VkCommandBuffer& cmdBuffer) const
+    {
         const PipelineDescriptor& pipelineDescriptor = pipeline.descriptor();
         ShaderProgram* program = ShaderProgram::FindShaderProgram(pipelineDescriptor._shaderProgramHandle);
 
-        if (program == nullptr) {
+        if (program == nullptr)
+        {
+            Console::errorfn(Locale::Get(_ID("ERROR_GLSL_INVALID_HANDLE")), pipelineDescriptor._shaderProgramHandle);
             return ShaderResult::Failed;
         }
 
         GetStateTracker()->_activePipeline = VK_NULL_HANDLE;
         GetStateTracker()->_activeTopology = pipelineDescriptor._primitiveTopology;
         size_t stateBlockHash = pipelineDescriptor._stateHash == 0u ? _context.getDefaultStateBlock(false) : pipelineDescriptor._stateHash;
-        if (stateBlockHash == 0) {
+        if (stateBlockHash == 0)
+        {
             stateBlockHash = RenderStateBlock::DefaultHash();
         }
         bool currentStateValid = false;
         const RenderStateBlock& currentState = RenderStateBlock::Get(stateBlockHash, currentStateValid);
         DIVIDE_ASSERT(currentStateValid, "GL_API error: Invalid state blocks detected on activation!");
 
-        /*const vkShaderProgram& vkProgram = static_cast<vkShaderProgram&>(*program);
-        const auto& shaderStages = vkProgram.shaderStages();
+        GetStateTracker()->_activeShaderProgram = static_cast<vkShaderProgram*>(program);
+        const vkShaderProgram& vkProgram = *GetStateTracker()->_activeShaderProgram;
+        VkPushConstantRange push_constant;
+        push_constant.offset = 0u;
+        push_constant.size = to_U32(PushConstantsStruct::Size());
+        push_constant.stageFlags = vkProgram.stageMask();
 
-        //build the pipeline layout that controls the inputs/outputs of the shader
-        //we are not using descriptor sets or other systems yet, so no need to use anything other than empty default
+        VkPipelineLayoutCreateInfo pipeline_layout_info = vk::pipelineLayoutCreateInfo(0u);
+        pipeline_layout_info.pPushConstantRanges = &push_constant;
+        pipeline_layout_info.pushConstantRangeCount = 1;
+
         VkPipelineLayout tempPipelineLayout{VK_NULL_HANDLE};
-        const VkPipelineLayoutCreateInfo pipeline_layout_info = vk::pipelineLayoutCreateInfo(0u);
         VK_CHECK(vkCreatePipelineLayout(_device->getVKDevice(), &pipeline_layout_info, nullptr, &tempPipelineLayout));
+        VK_API::RegisterCustomAPIDelete([tempPipelineLayout](VkDevice device)
+        {
+            vkDestroyPipelineLayout(device, tempPipelineLayout, nullptr);
+        }, false);
+
+        GetStateTracker()->_activePipelineLayout = tempPipelineLayout;
 
         //build the stage-create-info for both vertex and fragment stages. This lets the pipeline know the shader modules per stage
+        /*
+        const auto& shaderStages = vkProgram.shaderStages();
+
         PipelineBuilder pipelineBuilder;
 
         bool isGraphicsPipeline = false;
@@ -1140,7 +1165,11 @@ namespace Divide {
         return ShaderResult::OK;
     }
 
-    void VK_API::flushCommand(GFX::CommandBase* cmd) noexcept {
+    void VK_API::flushCommand(GFX::CommandBase* cmd) noexcept
+    {
+        static GFX::MemoryBarrierCommand pushConstantsMemCommand{};
+        static bool pushConstantsNeedLock = false;
+
         OPTICK_EVENT();
 
         VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
@@ -1148,16 +1177,21 @@ namespace Divide {
         OPTICK_TAG("Type", to_base(cmdType));
 
         OPTICK_EVENT(GFX::Names::commandType[to_base(cmdType)]);
-        if (!s_transferQueue._requests.empty() && GFXDevice::IsSubmitCommand(cmdType)) {
+        if (!s_transferQueue._requests.empty() && GFXDevice::IsSubmitCommand(cmdType))
+        {
             UniqueLock<Mutex> w_lock(s_transferQueue._lock);
             // Check again
-            if (!s_transferQueue._requests.empty()) {
+            if (!s_transferQueue._requests.empty())
+            {
                 static eastl::fixed_vector<VkBufferMemoryBarrier2, 32, true> s_barriers{};
                 // ToDo: Use a semaphore here and insert a wait dependency on it into the main command buffer - Ionut
-                VK_API::GetStateTracker()->_cmdContext->flushCommandBuffer([](VkCommandBuffer cmd) {
-                    while (!s_transferQueue._requests.empty()) {
+                VK_API::GetStateTracker()->_cmdContext->flushCommandBuffer([](VkCommandBuffer cmd)
+                {
+                    while (!s_transferQueue._requests.empty())
+                    {
                         const VKTransferQueue::TransferRequest& request = s_transferQueue._requests.front();
-                        if (request.srcBuffer != VK_NULL_HANDLE) {
+                        if (request.srcBuffer != VK_NULL_HANDLE)
+                        {
                             VkBufferCopy copy;
                             copy.dstOffset = request.dstOffset;
                             copy.srcOffset = request.srcOffset;
@@ -1174,19 +1208,23 @@ namespace Divide {
                         memoryBarrier.size = request.size;
                         memoryBarrier.buffer = request.dstBuffer;
 
-                        if (request.srcBuffer == VK_NULL_HANDLE) {
+                        if (request.srcBuffer == VK_NULL_HANDLE)
+                        {
                             VkDependencyInfo dependencyInfo = vk::dependencyInfo();
                             dependencyInfo.bufferMemoryBarrierCount = 1;
                             dependencyInfo.pBufferMemoryBarriers = &memoryBarrier;
 
                             vkCmdPipelineBarrier2(cmd, &dependencyInfo);
-                        } else {
+                        }
+                        else
+                        {
                             s_barriers.emplace_back(memoryBarrier);
                         }
                         s_transferQueue._requests.pop_front();
                     }
 
-                    if (!s_barriers.empty()) {
+                    if (!s_barriers.empty())
+                    {
                         VkDependencyInfo dependencyInfo = vk::dependencyInfo();
                         dependencyInfo.bufferMemoryBarrierCount = to_U32(s_barriers.size());
                         dependencyInfo.pBufferMemoryBarriers = s_barriers.data();
@@ -1199,13 +1237,17 @@ namespace Divide {
             }
         }
 
-        switch (cmdType) {
-            case GFX::CommandType::BEGIN_RENDER_PASS: {
+        switch (cmdType)
+        {
+            case GFX::CommandType::BEGIN_RENDER_PASS:
+            {
                 const GFX::BeginRenderPassCommand* crtCmd = cmd->As<GFX::BeginRenderPassCommand>();
                 VK_API::GetStateTracker()->_activeRenderTargetID = crtCmd->_target;
-                if (crtCmd->_target == SCREEN_TARGET_ID) {
+                if (crtCmd->_target == SCREEN_TARGET_ID)
+                {
                     VkClearValue clearValue{};
-                    clearValue.color = {
+                    clearValue.color =
+                    {
                         DefaultColours::DIVIDE_BLUE.r,
                         DefaultColours::DIVIDE_BLUE.g,
                         DefaultColours::DIVIDE_BLUE.b,
@@ -1214,19 +1256,22 @@ namespace Divide {
 
                     _defaultRenderPass.pClearValues = &clearValue;
                     vkCmdBeginRenderPass(cmdBuffer, &_defaultRenderPass, VK_SUBPASS_CONTENTS_INLINE);
-                } else {
+                }
+                else
+                {
                     vkRenderTarget* rt = static_cast<vkRenderTarget*>(_context.renderTargetPool().getRenderTarget(crtCmd->_target));
                     Attorney::VKAPIRenderTarget::begin(*rt, cmdBuffer, crtCmd->_descriptor, crtCmd->_clearDescriptor, GetStateTracker()->_pipelineRenderingCreateInfo);
 
                     GetStateTracker()->_alphaToCoverage = crtCmd->_descriptor._alphaToCoverage;
                     GetStateTracker()->_activeMSAASamples = rt->getSampleCount();
-                    if (crtCmd->_descriptor._setViewport) {
+                    if (crtCmd->_descriptor._setViewport)
+                    {
                         _context.setViewport({ 0, 0, rt->getWidth(), rt->getHeight() });
                     }
                 }
 
                 PushDebugMessage(cmdBuffer, crtCmd->_name.c_str());
-            }break;
+            } break;
             case GFX::CommandType::END_RENDER_PASS:
             {
                 PopDebugMessage(cmdBuffer);
@@ -1256,6 +1301,12 @@ namespace Divide {
             }break;
             case GFX::CommandType::BIND_PIPELINE:
             {
+                if (pushConstantsNeedLock) {
+                    flushCommand(&pushConstantsMemCommand);
+                    pushConstantsMemCommand._bufferLocks.clear();
+                    pushConstantsNeedLock = false;
+                }
+
                 const Pipeline* pipeline = cmd->As<GFX::BindPipelineCommand>()->_pipeline;
                 assert(pipeline != nullptr);
                 if (bindPipeline(*pipeline, cmdBuffer) == ShaderResult::Failed) {
@@ -1264,6 +1315,25 @@ namespace Divide {
             } break;
             case GFX::CommandType::SEND_PUSH_CONSTANTS:
             {
+                if (GetStateTracker()->_activePipeline != VK_NULL_HANDLE)
+                {
+                    const PushConstants& pushConstants = cmd->As<GFX::SendPushConstantsCommand>()->_constants;
+                    if (GetStateTracker()->_activeShaderProgram->uploadUniformData(pushConstants, _context.descriptorSet(DescriptorSetUsage::PER_DRAW).impl(), pushConstantsMemCommand)) {
+                        _context.descriptorSet(DescriptorSetUsage::PER_DRAW).dirty(true);
+                    }
+                    if (pushConstants.fastData()._set)
+                    {
+                        const F32* constantData = pushConstants.fastData().data();
+                        vkCmdPushConstants(cmdBuffer,
+                                           GetStateTracker()->_activePipelineLayout,
+                                           GetStateTracker()->_activeShaderProgram->stageMask(),
+                                           0,
+                                           to_U32(PushConstantsStruct::Size()),
+                                           &constantData);
+                    }
+
+                    pushConstantsNeedLock = !pushConstantsMemCommand._bufferLocks.empty();
+                }
             } break;
             case GFX::CommandType::SET_SCISSOR:
             {
@@ -1337,6 +1407,14 @@ namespace Divide {
             {
             } break;
             default: break;
+        }
+
+        if (GFXDevice::IsSubmitCommand(cmd->Type())) {
+            if (pushConstantsNeedLock) {
+                flushCommand(&pushConstantsMemCommand);
+                pushConstantsMemCommand._bufferLocks.clear();
+                pushConstantsNeedLock = false;
+            }
         }
     }
 

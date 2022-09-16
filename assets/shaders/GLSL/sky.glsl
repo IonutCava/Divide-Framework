@@ -455,7 +455,7 @@ float intersectSphere(in vec3 pos, in vec3 dir, in float r) {
 }
 
 float density(vec3 p, in vec3 weather, in bool hq, in float LOD) {
-    const float time = MSToSeconds(dvd_TimeMS);
+    const float time = MSToSeconds(dvd_GameTimeMS);
 
     p.x += time * 20.f;
     //p.z -= time * 5.f;
