@@ -42,9 +42,12 @@ namespace Divide {
 
 namespace ImGui {
 	void SetScrollHereY(float center_y_ratio);
+	void SetNextFrameWantCaptureMouse(bool want_capture_mouse);
 
 	inline void SetScrollHere() { SetScrollHereY(0.5f); }
+	inline void CaptureMouseFromApp() { SetNextFrameWantCaptureMouse(true); }
 };
+
 #define IM_ASSERT(_EXPR) Divide::Assert::DIVIDE_ASSERT_FUNC(_EXPR, #_EXPR, __FILE__, __LINE__, "IMGUI_ASSERT")
 #define IM_DEBUG_BREAK() Divide::DebugBreak(true)
 
