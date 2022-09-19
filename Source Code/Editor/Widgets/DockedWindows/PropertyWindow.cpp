@@ -316,7 +316,7 @@ namespace Divide {
                         frust = cam->getFrustum();
                     }
                     ImGui::PushID(cam->resourceName().c_str());
-                    ImGui::ColorEdit3("Frust Colour", colour._v, ImGuiColorEditFlags__OptionsDefault);
+                    ImGui::ColorEdit3("Frust Colour", colour._v, ImGuiColorEditFlags_DefaultOptions_);
                     ImGui::PopID();
                 }
                 ImGui::PopID();

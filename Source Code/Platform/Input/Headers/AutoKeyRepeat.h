@@ -55,7 +55,7 @@ class AutoRepeatKey {
 
    protected:
     /// Override this to define custom events for key repeats
-    virtual void repeatKey(I32 inKey, U32 Char) = 0;
+    virtual void repeatKey(const Input::KeyEvent& evt) = 0;
 
    public:
     virtual ~AutoRepeatKey() = default;

@@ -268,6 +268,7 @@ namespace Input {
         KC_MYCOMPUTER = 0xEB, // My Computer
         KC_MAIL = 0xEC, // Mail
         KC_MEDIASELECT = 0xED, // Media Select
+        KC_PRINTSCREEN = 0xEE, // Print Screen
     };
 
     enum class InputState : U8 {

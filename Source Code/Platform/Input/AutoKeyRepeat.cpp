@@ -21,10 +21,6 @@ void AutoRepeatKey::begin(const KeyEvent &evt) noexcept {
 }
 
 void AutoRepeatKey::end(const KeyEvent &evt) noexcept {
-    if (_key._text != evt._text) {
-        return;
-    }
-
     _key._key = KeyCode::KC_UNASSIGNED;
 }
 
@@ -41,8 +37,7 @@ void AutoRepeatKey::update(const U64 deltaTimeUS) {
     _delay = _repeatDelay;
 
     do {
-        repeatKey(to_I32(_key._key), _key._text[0]);
-
+        repeatKey(_key);
         _elapsed -= _repeatDelay;
     } while (_elapsed >= _repeatDelay);
 

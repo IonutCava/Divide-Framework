@@ -66,8 +66,9 @@ bool InputHandler::onSDLEvent(SDL_Event event) {
             KeyEvent arg(eventWindow, 0);
             arg._key = KeyCodeFromSDLKey(event.key.keysym.sym);
             arg._pressed = event.type == SDL_KEYDOWN;
-            arg._text = nullptr;// SDL_GetKeyName(event.key.keysym.sym);
             arg._isRepeat = event.key.repeat;
+            arg.scancode = event.key.keysym.scancode;
+            arg.sym = event.key.keysym.sym;
 
             if ((event.key.keysym.mod & KMOD_LSHIFT) != 0) {
                 arg._modMask |= to_base(KeyModifier::LSHIFT);

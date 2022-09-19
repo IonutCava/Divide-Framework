@@ -118,7 +118,9 @@ namespace Input {
         {SDLK_INSERT, KeyCode::KC_INSERT},
         {SDLK_DELETE, KeyCode::KC_DELETE},
         {SDLK_LGUI, KeyCode::KC_LWIN},
-        {SDLK_RGUI, KeyCode::KC_RWIN}
+        {SDLK_RGUI, KeyCode::KC_RWIN},
+        {SDLK_PRINTSCREEN, KeyCode::KC_PRINTSCREEN},
+        {SDLK_APPLICATION, KeyCode::KC_APPS},
     };
 
     SDL_Keycode SDLKeyCodeFromKey(const KeyCode code) noexcept {

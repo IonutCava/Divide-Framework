@@ -280,7 +280,7 @@ namespace Divide {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Only visible nodes");
         }
-        ImGui::BeginChild("SceneGraph", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * .5f), true, 0);
+        ImGui::BeginChild("SceneGraph", ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetWindowHeight() * .5f), true, 0);
         if (ImGui::TreeNodeEx(Util::StringFormat("%s%s",ICON_FK_HOME, activeScene.resourceName().c_str()).c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth))
         {
             ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, ImGui::GetFontSize() * 3); // Increase spacing to differentiate leaves from expanded contents.

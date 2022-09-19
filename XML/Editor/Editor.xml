@@ -16,7 +16,7 @@
             <accumPitchDegrees>-14.9972277</accumPitchDegrees>
             <frustumLocked>false</frustumLocked>
             <euler x="-14.999999" y="39.9882622" z="0"/>
-            <eye x="1.6128155" y="0.672310174" z="1.92271304"/>
+            <eye x="7.23056412" y="2.6715765" z="6.95108604"/>
             <orientation x="-0.122639529" y="0.339052707" z="0.0446371362" w="0.931539714"/>
             <aspectRatio>1.77777779</aspectRatio>
             <zPlanes min="0.100000001" max="1000"/>

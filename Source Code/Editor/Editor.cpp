@@ -46,7 +46,7 @@
 
 #include <imgui_internal.h>
 #include <imgui_club/imgui_memory_editor/imgui_memory_editor.h>
-#include <ImGuiMisc/imguivariouscontrols/imguivariouscontrols.h>
+//#include <ImGuiMisc/imguivariouscontrols/imguivariouscontrols.h>
 
 #include <IconFontCppHeaders/IconsForkAwesome.h>
 
@@ -105,28 +105,6 @@ namespace ImGuiCustom {
 void InitBasicImGUIState(ImGuiIO& io) noexcept {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
     io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
-    io.KeyMap[ImGuiKey_Tab] = to_I32(Input::KeyCode::KC_TAB);
-    io.KeyMap[ImGuiKey_LeftArrow] = to_I32(Input::KeyCode::KC_LEFT);
-    io.KeyMap[ImGuiKey_RightArrow] = to_I32(Input::KeyCode::KC_RIGHT);
-    io.KeyMap[ImGuiKey_UpArrow] = to_I32(Input::KeyCode::KC_UP);
-    io.KeyMap[ImGuiKey_DownArrow] = to_I32(Input::KeyCode::KC_DOWN);
-    io.KeyMap[ImGuiKey_PageUp] = to_I32(Input::KeyCode::KC_PGUP);
-    io.KeyMap[ImGuiKey_PageDown] = to_I32(Input::KeyCode::KC_PGDOWN);
-    io.KeyMap[ImGuiKey_Home] = to_I32(Input::KeyCode::KC_HOME);
-    io.KeyMap[ImGuiKey_End] = to_I32(Input::KeyCode::KC_END);
-    io.KeyMap[ImGuiKey_Delete] = to_I32(Input::KeyCode::KC_DELETE);
-    io.KeyMap[ImGuiKey_Backspace] = to_I32(Input::KeyCode::KC_BACK);
-    io.KeyMap[ImGuiKey_Enter] = to_I32(Input::KeyCode::KC_RETURN);
-    io.KeyMap[ImGuiKey_KeyPadEnter] = to_I32(Input::KeyCode::KC_NUMPADENTER);
-    io.KeyMap[ImGuiKey_Escape] = to_I32(Input::KeyCode::KC_ESCAPE);
-    io.KeyMap[ImGuiKey_Space] = to_I32(Input::KeyCode::KC_SPACE);
-    io.KeyMap[ImGuiKey_A] = to_I32(Input::KeyCode::KC_A);
-    io.KeyMap[ImGuiKey_C] = to_I32(Input::KeyCode::KC_C);
-    io.KeyMap[ImGuiKey_V] = to_I32(Input::KeyCode::KC_V);
-    io.KeyMap[ImGuiKey_X] = to_I32(Input::KeyCode::KC_X);
-    io.KeyMap[ImGuiKey_Y] = to_I32(Input::KeyCode::KC_Y);
-    io.KeyMap[ImGuiKey_Z] = to_I32(Input::KeyCode::KC_Z);
-
     io.SetClipboardTextFn = SetClipboardText;
     io.GetClipboardTextFn = GetClipboardText;
     io.ClipboardUserData = nullptr;
@@ -842,7 +820,7 @@ bool Editor::render([[maybe_unused]] const U64 deltaTime) {
 
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->WorkPos);
-    ImGui::SetNextWindowSize(viewport->WorkSize - ImVec2(0.f, _statusBar->height()));
+    ImGui::SetNextWindowSize(viewport->WorkSize);
     ImGui::SetNextWindowViewport(viewport->ID);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -1046,14 +1024,20 @@ bool Editor::framePostRender(const FrameEvent& evt) {
 
     ImGuiIO& io = ImGui::GetIO();
     if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-        io.MouseHoveredViewport = 0;
+        
+        bool found = false;
         ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
         for (I32 n = 0; n < platform_io.Viewports.Size; n++) {
             const ImGuiViewport* viewport = platform_io.Viewports[n];
             const DisplayWindow* window = static_cast<DisplayWindow*>(viewport->PlatformHandle);
             if (window != nullptr && window->isHovered() && !(viewport->Flags & ImGuiViewportFlags_NoInputs)) {
-                ImGui::GetIO().MouseHoveredViewport = viewport->ID;
+                ImGui::GetIO().AddMouseViewportEvent(viewport->ID);
+                found = true;
             }
+        }
+        if (!found)
+        {
+            ImGui::GetIO().AddMouseViewportEvent(0);
         }
     }
 
@@ -1306,6 +1290,7 @@ bool Editor::Undo() const {
         return true;
     }
 
+    showStatusMessage("Nothing to Undo", Time::SecondsToMilliseconds<F32>(2.0f), true);
     return false;
 }
 
@@ -1314,7 +1299,8 @@ bool Editor::Redo() const {
         showStatusMessage(Util::StringFormat("Redo: %s", _undoManager->lasActionName().c_str()), Time::SecondsToMilliseconds<F32>(2.0f), false);
         return true;
     }
-
+     
+    showStatusMessage("Nothing to Redo", Time::SecondsToMilliseconds<F32>(2.0f), true);
     return false;
 }
 
@@ -1329,24 +1315,22 @@ bool Editor::onKeyDown(const Input::KeyEvent& key) {
     }
 
     ImGuiIO& io = _imguiContexts[to_base(ImGuiContextType::Editor)]->IO;
-
-    io.KeysDown[to_I32(key._key)] = true;
-    if (key._text != nullptr) {
-        io.AddInputCharactersUTF8(key._text);
-    }
-
+    
     if (key._key == Input::KeyCode::KC_LCONTROL || key._key == Input::KeyCode::KC_RCONTROL) {
-        io.KeyCtrl = true;
+        io.AddKeyEvent(ImGuiKey_ModCtrl, true);
     }
     if (key._key == Input::KeyCode::KC_LSHIFT || key._key == Input::KeyCode::KC_RSHIFT) {
-        io.KeyShift = true;
+        io.AddKeyEvent(ImGuiKey_ModShift, true);
     }
     if (key._key == Input::KeyCode::KC_LMENU || key._key == Input::KeyCode::KC_RMENU) {
-        io.KeyAlt = true;
+        io.AddKeyEvent(ImGuiKey_ModAlt, true);
     }
     if (key._key == Input::KeyCode::KC_LWIN || key._key == Input::KeyCode::KC_RWIN) {
-        io.KeySuper = true;
+        io.AddKeyEvent(ImGuiKey_ModSuper, true);
     }
+    const ImGuiKey imguiKey = DivideKeyToImGuiKey(key._key);
+    io.AddKeyEvent(imguiKey, true);
+    io.SetKeyEventNativeData(imguiKey, key.sym, key.scancode, key.scancode);
 
     return wantsKeyboard();
 }
@@ -1374,23 +1358,21 @@ bool Editor::onKeyUp(const Input::KeyEvent& key) {
         return true;
     }
 
-    io.KeysDown[to_I32(key._key)] = false;
-
     if (key._key == Input::KeyCode::KC_LCONTROL || key._key == Input::KeyCode::KC_RCONTROL) {
-        io.KeyCtrl = false;
+        io.AddKeyEvent(ImGuiKey_ModCtrl, false);
     }
-
     if (key._key == Input::KeyCode::KC_LSHIFT || key._key == Input::KeyCode::KC_RSHIFT) {
-        io.KeyShift = false;
+        io.AddKeyEvent(ImGuiKey_ModShift, false);
     }
-
     if (key._key == Input::KeyCode::KC_LMENU || key._key == Input::KeyCode::KC_RMENU) {
-        io.KeyAlt = false;
+        io.AddKeyEvent(ImGuiKey_ModAlt, false);
     }
-
     if (key._key == Input::KeyCode::KC_LWIN || key._key == Input::KeyCode::KC_RWIN) {
-        io.KeySuper = false;
+        io.AddKeyEvent(ImGuiKey_ModSuper, false);
     }
+    const ImGuiKey imguiKey = DivideKeyToImGuiKey(key._key);
+    io.AddKeyEvent(imguiKey, false);
+    io.SetKeyEventNativeData(imguiKey, key.sym, key.scancode, key.scancode);
 
     return wantsKeyboard();
 }
@@ -1398,7 +1380,7 @@ bool Editor::onKeyUp(const Input::KeyEvent& key) {
 ImGuiViewport* Editor::FindViewportByPlatformHandle(ImGuiContext* context, const DisplayWindow* window) {
     if (window != nullptr) {
         for (I32 i = 0; i != context->Viewports.Size; i++) {
-            const DisplayWindow* it = static_cast<DisplayWindow*>(context->Viewports[i]->PlatformHandle);
+            const DisplayWindow* it = static_cast<DisplayWindow*>(context->Viewports[i]->PlatformHandleRaw);
 
             if (it != nullptr && it->getGUID() == window->getGUID()) {
                 return context->Viewports[i];
@@ -1415,12 +1397,17 @@ bool Editor::mouseMoved(const Input::MouseMoveEvent& arg) {
         return false;
     }
 
+    SCOPE_EXIT {
+        ImGui::SetCurrentContext(_imguiContexts[to_base(ImGuiContextType::Editor)]);
+    };
+    
     if (!arg.wheelEvent()) {
         ImGuiViewport* viewport = nullptr;
                 
         DisplayWindow* focusedWindow = g_windowManager->getFocusedWindow();
         if (focusedWindow == nullptr) {
             focusedWindow = g_windowManager->mainWindow();
+            assert(focusedWindow != nullptr);
         }
 
         ImGuiContext* editorContext = _imguiContexts[to_base(ImGuiContextType::Editor)];
@@ -1431,59 +1418,54 @@ bool Editor::mouseMoved(const Input::MouseMoveEvent& arg) {
         vec2<I32> mPosGlobal(-1);
         Rect<I32> viewportSize(-1);
         WindowManager::GetMouseState(mPosGlobal, true);
-        if (viewport == nullptr) {
-            mPosGlobal -= focusedWindow->getPosition();
+        if (viewport == nullptr) 
+        {
+            //mPosGlobal -= focusedWindow->getPosition();
             viewportSize = {mPosGlobal.x, mPosGlobal.y, focusedWindow->getDrawableSize().x, focusedWindow->getDrawableSize().y };
         } else {
             viewportSize = {viewport->Pos.x, viewport->Pos.y, viewport->Size.x, viewport->Size.y };
         }
 
-        bool anyDown = false;
-        for (U8 i = 0; i < to_U8(ImGuiContextType::COUNT); ++i) {
-            ImGuiIO& io = _imguiContexts[i]->IO;
-
-            if (io.WantSetMousePos) {
-                WindowManager::SetGlobalCursorPosition(to_I32(io.MousePos.x), to_I32(io.MousePos.y));
+        for (ImGuiContext* ctx : _imguiContexts) {
+            ImGui::SetCurrentContext(ctx);
+            if (ctx->IO.WantSetMousePos) {
+                WindowManager::SetGlobalCursorPosition(to_I32(ctx->IO.MousePos.x), to_I32(ctx->IO.MousePos.y));
             } else {
-                io.MousePos = ImVec2(to_F32(mPosGlobal.x), to_F32(mPosGlobal.y));
-            }
-
-            for (const bool down : io.MouseDown) {
-                if (down) {
-                    anyDown = true;
-                    break;
-                }
+                ctx->IO.AddMousePosEvent(to_F32(mPosGlobal.x), to_F32(mPosGlobal.y));
             }
         }
-        WindowManager::SetCaptureMouse(anyDown);
+
+        WindowManager::SetCaptureMouse(ImGui::IsAnyMouseDown());
         const SceneViewWindow* sceneView = static_cast<SceneViewWindow*>(_dockedWindows[to_base(WindowType::SceneView)]);
         const ImVec2 editorMousePos = _imguiContexts[to_base(ImGuiContextType::Editor)]->IO.MousePos;
         scenePreviewHovered(sceneView->isHovered() && sceneView->sceneRect().contains(editorMousePos.x, editorMousePos.y));
 
+        ImGui::SetCurrentContext(_imguiContexts[to_base(ImGuiContextType::Gizmo)]);
         vec2<I32> gizmoMousePos(editorMousePos.x, editorMousePos.y);
         const Rect<I32>& sceneRect = scenePreviewRect(true);
         gizmoMousePos = COORD_REMAP(gizmoMousePos, sceneRect, Rect<I32>(0, 0, viewportSize.z, viewportSize.w));
-        gizmoContext->IO.MousePos = ImVec2(to_F32(gizmoMousePos.x), to_F32(gizmoMousePos.y));
+        gizmoContext->IO.AddMousePosEvent(to_F32(gizmoMousePos.x), to_F32(gizmoMousePos.y));
         if (_gizmo->hovered()) {
             return true;
         }
     } else {
         for (ImGuiContext* ctx : _imguiContexts) {
+            ImGui::SetCurrentContext(ctx);
             if (arg.WheelH() > 0) {
-                ctx->IO.MouseWheelH += 1;
+                ctx->IO.AddMouseWheelEvent(ctx->IO.MouseWheelH + 1, ctx->IO.MouseWheel);
             }
             if (arg.WheelH() < 0) {
-                ctx->IO.MouseWheelH -= 1;
+                ctx->IO.AddMouseWheelEvent(ctx->IO.MouseWheelH - 1, ctx->IO.MouseWheel);
             }
             if (arg.WheelV() > 0) {
-                ctx->IO.MouseWheel += 1;
+                ctx->IO.AddMouseWheelEvent(ctx->IO.MouseWheelH, ctx->IO.MouseWheel + 1);
             }
             if (arg.WheelV() < 0) {
-                ctx->IO.MouseWheel -= 1;
+                ctx->IO.AddMouseWheelEvent(ctx->IO.MouseWheelH, ctx->IO.MouseWheel - 1);
             }
         }
     }
-
+    
     return wantsMouse();
 }
 
@@ -1493,10 +1475,16 @@ bool Editor::mouseButtonPressed(const Input::MouseButtonEvent& arg) {
         return false;
     }
 
+
+    SCOPE_EXIT {
+        ImGui::SetCurrentContext(_imguiContexts[to_base(ImGuiContextType::Editor)]);
+    };
+
     for (ImGuiContext* ctx : _imguiContexts) {
+        ImGui::SetCurrentContext(ctx);
         for (U8 i = 0; i < 5; ++i) {
             if (arg.button() == g_oisButtons[i]) {
-                ctx->IO.MouseDown[i] = true;
+                ctx->IO.AddMouseButtonEvent(i, true);
                 break;
             }
         }
@@ -1515,6 +1503,11 @@ bool Editor::mouseButtonReleased(const Input::MouseButtonEvent& arg) {
         return false;
     }
 
+
+    SCOPE_EXIT {
+        ImGui::SetCurrentContext(_imguiContexts[to_base(ImGuiContextType::Editor)]);
+    };
+
     if (scenePreviewFocused() != scenePreviewHovered()) {
         scenePreviewFocused(scenePreviewHovered());
         onPreviewFocus(scenePreviewHovered());
@@ -1524,9 +1517,10 @@ bool Editor::mouseButtonReleased(const Input::MouseButtonEvent& arg) {
     }
 
     for (ImGuiContext* ctx : _imguiContexts) {
+        ImGui::SetCurrentContext(ctx);
         for (U8 i = 0; i < 5; ++i) {
             if (arg.button() == g_oisButtons[i]) {
-                ctx->IO.MouseDown[i] = false;
+                ctx->IO.AddMouseButtonEvent(i, false);
                 break;
             }
         }
@@ -1630,7 +1624,7 @@ bool Editor::wantsKeyboard() const noexcept {
         return false;
     }
     for (const ImGuiContext* ctx : _imguiContexts) {
-        if (ctx->IO.WantCaptureKeyboard) {
+        if (ctx->IO.WantCaptureKeyboard || ctx->IO.WantTextInput)  {
             return true;
         }
     }
@@ -1660,11 +1654,12 @@ bool Editor::onUTF8(const Input::UTF8Event& arg) {
     }
 
     bool wantsCapture = false;
-    for (U8 i = 0; i < to_U8(ImGuiContextType::COUNT); ++i) {
-        ImGuiIO& io = _imguiContexts[i]->IO;
-        io.AddInputCharactersUTF8(arg._text);
-        wantsCapture = io.WantCaptureKeyboard || wantsCapture;
+    for (ImGuiContext* ctx : _imguiContexts) {
+        ImGui::SetCurrentContext(ctx);
+        ctx->IO.AddInputCharactersUTF8(arg._text);
+        wantsCapture = ctx->IO.WantCaptureKeyboard || wantsCapture;
     }
+    ImGui::SetCurrentContext(_imguiContexts[to_base(ImGuiContextType::Editor)]);
 
     return wantsCapture;
 }
@@ -1683,12 +1678,11 @@ void Editor::onWindowSizeChange(const SizeChangeParams& params) {
 
     const vec2<U16> displaySize = _mainWindow->getDrawableSize();
 
-    for (U8 i = 0u; i < to_U8(ImGuiContextType::COUNT); ++i) {
-        ImGuiIO& io = _imguiContexts[i]->IO;
-        io.DisplaySize.x = to_F32(params.width);
-        io.DisplaySize.y = to_F32(params.height);
-        io.DisplayFramebufferScale = ImVec2(params.width > 0u ? to_F32(displaySize.width) / params.width : 0.f,
-                                            params.height > 0u ? to_F32(displaySize.height) / params.height : 0.f);
+    for (ImGuiContext* ctx : _imguiContexts) {
+        ctx->IO.DisplaySize.x = to_F32(params.width);
+        ctx->IO.DisplaySize.y = to_F32(params.height);
+        ctx->IO.DisplayFramebufferScale = ImVec2(params.width > 0u ? to_F32(displaySize.width) / params.width : 0.f,
+                                                 params.height > 0u ? to_F32(displaySize.height) / params.height : 0.f);
     }
 }
 

@@ -199,7 +199,7 @@ namespace Divide {
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
 
         {
-            ImGui::BeginChild("Folders", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.3f, -1), true, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_HorizontalScrollbar);
+            ImGui::BeginChild("Folders", ImVec2(ImGui::GetContentRegionAvail().x * 0.3f, -1), true, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_HorizontalScrollbar);
             if (ImGui::BeginMenuBar()) {
                 if (ImGui::BeginMenu("Menu")) {
                     ImGui::MenuItem("Refresh", nullptr, nullptr, false);
@@ -256,8 +256,8 @@ namespace Divide {
                         const U16 w = tex->width();
                         const U16 h = tex->height();
                         const F32 aspect = w / to_F32(h);
-
-                        if (ImGui::ImageButton((void*)tex.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1)) {
+                        ;
+                        if (ImGui::ImageButton(tex->resourceName().c_str(), (void*)tex.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1)) {
                             previewTexture = tex;
                         }
                     } else if (format != GeometryFormat::COUNT) {
@@ -268,7 +268,7 @@ namespace Divide {
 
                         const bool modifierPressed = imguiContext.IO.KeyShift;
                         const ImVec4 bgColour(modifierPressed ? 1.f : 0.f, 0.f, 0.f, modifierPressed ? 1.f : 0.f);
-                        if (ImGui::ImageButton((void*)icon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1, 2, bgColour, ImVec4(1, 1, 1, 1))) {
+                        if (ImGui::ImageButton(icon->resourceName().c_str(), (void*)icon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1, bgColour, ImVec4(1, 1, 1, 1))) {
                             spawnMesh = getModelForPath(ResourcePath(file.first), ResourcePath(file.second._path));
                             if (spawnMesh == nullptr) {
                                 Attorney::EditorGeneralWidget::showStatusMessage(_parent, "ERROR: Couldn't load specified mesh!", Time::SecondsToMilliseconds<F32>(3), true);
@@ -283,7 +283,7 @@ namespace Divide {
                         const U16 h = _soundIcon->height();
                          const F32 aspect = w / to_F32(h);
 
-                        if (ImGui::ImageButton((void*)_soundIcon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1)) {
+                        if (ImGui::ImageButton(_soundIcon->resourceName().c_str(), (void*)_soundIcon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1)) {
                             //ToDo: Play sound file -Ionut
                         }
                     } else if (isShaderFile(file.second._extension.c_str())) {
@@ -291,7 +291,7 @@ namespace Divide {
                         const U16 h = _shaderIcon->height();
                         const F32 aspect = w / to_F32(h);
 
-                        if (ImGui::ImageButton((void*)_shaderIcon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1)) {
+                        if (ImGui::ImageButton(_shaderIcon->resourceName().c_str(), (void*)_shaderIcon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1)) {
                             openFileInEditor(file);
                         }
                     } else {
@@ -299,7 +299,7 @@ namespace Divide {
                         const U16 h = _fileIcon->height();
                         const F32 aspect = w / to_F32(h);
 
-                        if (ImGui::ImageButton((void*)_fileIcon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1)) {
+                        if (ImGui::ImageButton(_fileIcon->resourceName().c_str(), (void*)_fileIcon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1)) {
                             openFileInEditor(file);
                         }
                     }

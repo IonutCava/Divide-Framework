@@ -560,7 +560,6 @@
     <ClInclude Include="..\..\3rdParty\ImGuiMisc\imguifilesystem\minizip\unzip.h" />
     <ClInclude Include="..\..\3rdParty\ImGuiMisc\imguifilesystem\minizip\zip.h" />
     <ClInclude Include="..\..\3rdParty\ImGuiMisc\imguistyleserializer\imguistyleserializer.h" />
-    <ClInclude Include="..\..\3rdParty\ImGuiMisc\imguivariouscontrols\imguivariouscontrols.h" />
     <ClInclude Include="..\..\3rdParty\ImGuizmo\GraphEditor.h" />
     <ClInclude Include="..\..\3rdParty\ImGuizmo\ImCurveEdit.h" />
     <ClInclude Include="..\..\3rdParty\ImGuizmo\ImGradient.h" />
@@ -740,7 +739,6 @@
     <ClCompile Include="..\..\3rdParty\ImGuiMisc\imguifilesystem\minizip\unzip.c" />
     <ClCompile Include="..\..\3rdParty\ImGuiMisc\imguifilesystem\minizip\zip.c" />
     <ClCompile Include="..\..\3rdParty\ImGuiMisc\imguistyleserializer\imguistyleserializer.cpp" />
-    <ClCompile Include="..\..\3rdParty\ImGuiMisc\imguivariouscontrols\imguivariouscontrols.cpp" />
     <ClCompile Include="..\..\3rdParty\ImGuizmo\GraphEditor.cpp" />
     <ClCompile Include="..\..\3rdParty\ImGuizmo\ImCurveEdit.cpp" />
     <ClCompile Include="..\..\3rdParty\ImGuizmo\ImGradient.cpp" />

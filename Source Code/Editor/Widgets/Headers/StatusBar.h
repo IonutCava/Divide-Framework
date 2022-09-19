@@ -48,8 +48,6 @@ namespace Divide {
         void draw() const;
         void update(U64 deltaTimeUS) noexcept;
 
-        [[nodiscard]] F32 height() const noexcept;
-
         void showMessage(const string& message, F32 durationMS, bool error);
 
     private:

@@ -166,7 +166,7 @@ inline bool colourInput4(Editor& parent, const char* name, FColour4& col, const 
         PushReadOnly();
     }
     ImGui::PushID(name);
-    const bool ret = ImGui::ColorEdit4("", col._v, ImGuiColorEditFlags__OptionsDefault);
+    const bool ret = ImGui::ColorEdit4("", col._v, ImGuiColorEditFlags_DefaultOptions_);
     ImGui::PopID();
     if (readOnly) {
         PopReadOnly();
@@ -187,7 +187,7 @@ inline bool colourInput3(Editor& parent, const char* name, FColour3& col, const 
         PushReadOnly();
     }
     ImGui::PushID(name);
-    const bool ret = ImGui::ColorEdit3("", col._v, ImGuiColorEditFlags__OptionsDefault);
+    const bool ret = ImGui::ColorEdit3("", col._v, ImGuiColorEditFlags_DefaultOptions_);
     ImGui::PopID();
     if (readOnly) {
         PopReadOnly();

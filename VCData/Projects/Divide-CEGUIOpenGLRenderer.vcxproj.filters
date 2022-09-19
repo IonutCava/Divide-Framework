@@ -136,14 +136,8 @@
     <Filter Include="ImGuiMisc\imguifilesystem">
       <UniqueIdentifier>{fff7c466-cd3f-46ed-8611-0751593c413a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ImGuiMisc\imguistyleserializer">
-      <UniqueIdentifier>{3a1c2161-45a4-4503-aa6b-5bf3aef46761}</UniqueIdentifier>
-    </Filter>
     <Filter Include="ImGuiMisc\imguifilesystem\minizip">
       <UniqueIdentifier>{e0d6019a-049e-4434-b916-2c4bb7d6c7b7}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ImGuiMisc\imguivariouscontrols">
-      <UniqueIdentifier>{6fd26474-c101-4891-9e02-da82e06e734a}</UniqueIdentifier>
     </Filter>
     <Filter Include="imgui-node-editor">
       <UniqueIdentifier>{4d068bfc-0c20-4a5e-a006-a75e55938723}</UniqueIdentifier>
@@ -153,6 +147,9 @@
     </Filter>
     <Filter Include="SPIRV-Reflect">
       <UniqueIdentifier>{228b9fc4-a9be-4a10-83b3-5df433924f86}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ImGuiMisc\imguistyleserializer">
+      <UniqueIdentifier>{34db3e3a-d7e9-475a-be30-af2d8caba5a0}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -474,12 +471,6 @@
     <ClInclude Include="..\..\3rdParty\ImGuiMisc\imguifilesystem\minizip\zip.h">
       <Filter>ImGuiMisc\imguifilesystem\minizip</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\3rdParty\ImGuiMisc\imguistyleserializer\imguistyleserializer.h">
-      <Filter>ImGuiMisc\imguistyleserializer</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\3rdParty\ImGuiMisc\imguivariouscontrols\imguivariouscontrols.h">
-      <Filter>ImGuiMisc\imguivariouscontrols</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\3rdParty\imgui-node-editor\crude_json.h">
       <Filter>imgui-node-editor</Filter>
     </ClInclude>
@@ -512,6 +503,9 @@
     </ClInclude>
     <ClInclude Include="..\..\3rdParty\SPIRV-Reflect\spirv_reflect.h">
       <Filter>SPIRV-Reflect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rdParty\ImGuiMisc\imguistyleserializer\imguistyleserializer.h">
+      <Filter>ImGuiMisc\imguistyleserializer</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -866,12 +860,6 @@
     <ClCompile Include="..\..\3rdParty\ImGuiMisc\imguifilesystem\minizip\zip.c">
       <Filter>ImGuiMisc\imguifilesystem\minizip</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\3rdParty\ImGuiMisc\imguistyleserializer\imguistyleserializer.cpp">
-      <Filter>ImGuiMisc\imguistyleserializer</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\ImGuiMisc\imguivariouscontrols\imguivariouscontrols.cpp">
-      <Filter>ImGuiMisc\imguivariouscontrols</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\3rdParty\imgui-node-editor\crude_json.cpp">
       <Filter>imgui-node-editor</Filter>
     </ClCompile>
@@ -898,6 +886,9 @@
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\SPIRV-Reflect\spirv_reflect.cpp">
       <Filter>SPIRV-Reflect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rdParty\ImGuiMisc\imguistyleserializer\imguistyleserializer.cpp">
+      <Filter>ImGuiMisc\imguistyleserializer</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

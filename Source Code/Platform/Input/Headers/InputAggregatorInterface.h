@@ -35,6 +35,8 @@
 
 #include "Input.h"
 
+#include <sdl/include/SDL_keycode.h>
+
 namespace Divide {
 
 class DisplayWindow;
@@ -124,11 +126,13 @@ struct KeyEvent final : InputEvent {
 
     explicit KeyEvent(DisplayWindow* sourceWindow, U8 deviceIndex) noexcept;
 
-    KeyCode _key = KeyCode::KC_UNASSIGNED;
-    bool _pressed = false;
-    bool _isRepeat = false;
-    const char* _text = nullptr;
-    U16 _modMask = 0;
+    KeyCode _key{ KeyCode::KC_UNASSIGNED };
+    bool _pressed{ false };
+    bool _isRepeat{ false };
+    U16 _modMask{0u};
+    //Native data:
+    SDL_Scancode scancode;      /**< SDL physical key code - see ::SDL_Scancode for details */
+    SDL_Keycode sym;            /**< SDL virtual key code - see ::SDL_Keycode for details */
 };
 
 class InputAggregatorInterface {

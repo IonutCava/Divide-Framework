@@ -75,8 +75,8 @@ class CEGUIInput final : public Input::InputAggregatorInterface,
     GUI& _parent;
     bool _enabled{ false };
     /// Called on key events: return true if the input was consumed
-    bool injectKey(bool pressed, const Input::KeyEvent& inKey);
-    void repeatKey(I32 inKey, U32 Char) override;
+    bool injectKey(bool pressed, const Input::KeyEvent& evt);
+    void repeatKey(const Input::KeyEvent& evt) override;
 };
 
 };  // namespace Divide

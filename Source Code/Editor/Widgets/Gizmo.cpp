@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "Headers/Gizmo.h"
+#include "Headers/Utils.h"
 #include "Editor/Headers/Editor.h"
 #include "Managers/Headers/SceneManager.h"
 #include "ECS/Components/Headers/BoundsComponent.h"
@@ -301,23 +302,24 @@ namespace Divide {
 
         ImGuiIO & io = _imguiContext->IO;
 
-        io.KeysDown[to_I32(key._key)] = pressed;
+        ImGuiContext* crtContext = ImGui::GetCurrentContext();
+        ImGui::SetCurrentContext(_imguiContext);
 
         if (key._key == Input::KeyCode::KC_LCONTROL || key._key == Input::KeyCode::KC_RCONTROL) {
-            io.KeyCtrl = pressed;
+            io.AddKeyEvent(ImGuiKey_ModCtrl, pressed);
         }
-
         if (key._key == Input::KeyCode::KC_LSHIFT || key._key == Input::KeyCode::KC_RSHIFT) {
-            io.KeyShift = pressed;
+            io.AddKeyEvent(ImGuiKey_ModShift, pressed);
         }
-
         if (key._key == Input::KeyCode::KC_LMENU || key._key == Input::KeyCode::KC_RMENU) {
-            io.KeyAlt = pressed;
+            io.AddKeyEvent(ImGuiKey_ModAlt, pressed);
         }
-
         if (key._key == Input::KeyCode::KC_LWIN || key._key == Input::KeyCode::KC_RWIN) {
-            io.KeySuper = pressed;
+            io.AddKeyEvent(ImGuiKey_ModSuper, pressed);
         }
+        const ImGuiKey imguiKey = DivideKeyToImGuiKey(key._key);
+        io.AddKeyEvent(imguiKey, pressed);
+        io.SetKeyEventNativeData(imguiKey, key.sym, key.scancode, key.scancode);
 
         bool ret = false;
         if (active() && io.KeyCtrl) {
@@ -336,7 +338,7 @@ namespace Divide {
                 _parent.setTransformSettings(settings);
             }
         }
-
+        ImGui::SetCurrentContext(crtContext);
         return ret;
     }
 

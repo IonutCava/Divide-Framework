@@ -43,9 +43,12 @@ namespace ImGui {
     bool InputDouble3(const char* label, double v[3], const char* display_format, ImGuiInputTextFlags extra_flags);
     bool InputDouble4(const char* label, double v[4], const char* display_format, ImGuiInputTextFlags extra_flags);
     typedef int ImGuiPopupFlags;
+
 } // namespace ImGui
 
 namespace Divide {
+
+    [[nodiscard]] ImGuiKey DivideKeyToImGuiKey(const Input::KeyCode key) noexcept;
 
 namespace Util {
     constexpr F32 LabelColumnWidth = 200.f;
