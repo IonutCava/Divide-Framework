@@ -134,6 +134,7 @@ namespace Divide {
         bool setViewport(const I32 x, const I32 y, const I32 width, const I32 height) { return setViewport({ x, y, width, height }); }
         bool setClearColour(const FColour4& colour);
         bool setClearColour(const UColour4& colour) { return setClearColour(Util::ToFloatColour(colour)); }
+        bool setClearDepth(F32 value);
 
         bool setDepthWrite(bool state);
 
@@ -206,7 +207,7 @@ namespace Divide {
         Rect<I32> _activeViewport{ -1, -1, -1, -1 };
         Rect<I32> _activeScissor{ -1, -1, -1, -1 };
         FColour4  _activeClearColour{ DefaultColours::BLACK_U8 };
-
+        F32       _clearDepthValue{ 1.f };
         /// Boolean value used to verify if primitive restart index is enabled or disabled
         bool _primitiveRestartEnabled{ false };
         bool _rasterizationEnabled{ true };

@@ -513,21 +513,6 @@ bool GL_API::beginFrame(DisplayWindow& window, const bool global) {
         _currentContext._context = glContext;
     }
 
-    // Clear our buffers
-    if (!window.minimized() && !window.hidden()) {
-        bool shouldClearColour = false, shouldClearDepth = false;
-        stateTracker->setClearColour(window.clearColour(shouldClearColour, shouldClearDepth));
-        ClearBufferMask mask = ClearBufferMask::GL_NONE_BIT;
-        if (shouldClearColour) {
-            mask |= ClearBufferMask::GL_COLOR_BUFFER_BIT;
-        }
-        if (shouldClearDepth) {
-            mask |= ClearBufferMask::GL_DEPTH_BUFFER_BIT;
-        }
-        if (mask != ClearBufferMask::GL_NONE_BIT) {
-            glClear(mask);
-        }
-    }
     // Clears are registered as draw calls by most software, so we do the same
     // to stay in sync with third party software
     _context.registerDrawCall();
@@ -873,11 +858,14 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
 
                 GetStateTracker()->_activeRenderTarget = nullptr;
                 if (crtCmd->_clearDescriptor._clearColourDescriptors[0]._index != RT_MAX_COLOUR_ATTACHMENTS) {
-                    const FColour4 clearColour = crtCmd->_clearDescriptor._clearColourDescriptors[0]._colour;
-                    glClearColor(clearColour.r, clearColour.g, clearColour.b, clearColour.a);
+                    ClearBufferMask mask = ClearBufferMask::GL_COLOR_BUFFER_BIT;
+
+                    GetStateTracker()->setClearColour(crtCmd->_clearDescriptor._clearColourDescriptors[0]._colour);
                     if (crtCmd->_clearDescriptor._clearDepth) {
-                        glClearDepth(crtCmd->_clearDescriptor._clearDepthValue);
+                        GetStateTracker()->setClearDepth(crtCmd->_clearDescriptor._clearDepthValue);
+                        mask |= ClearBufferMask::GL_DEPTH_BUFFER_BIT ;
                     }
+                    glClear(mask);
                 }
                 PushDebugMessage(crtCmd->_name.c_str(), SCREEN_TARGET_ID);
             } else {
@@ -1312,9 +1300,10 @@ void GL_API::clearStates(const DisplayWindow& window, GLStateTracker& stateTrack
     if (stateTracker.setActiveFB(RenderTarget::Usage::RT_READ_WRITE, 0) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
-    stateTracker._activeClearColour.set(window.clearColour());
+
     const U8 blendCount = to_U8(stateTracker._blendEnabled.size());
-    for (U8 i = 0u; i < blendCount; ++i) {
+    for (U8 i = 0u; i < blendCount; ++i)
+    {
         stateTracker.setBlending(i, {});
     }
     stateTracker.setBlendColour({ 0u, 0u, 0u, 0u });
@@ -1325,13 +1314,16 @@ void GL_API::clearStates(const DisplayWindow& window, GLStateTracker& stateTrack
     stateTracker._activePipeline = nullptr;
     stateTracker._activeRenderTarget = nullptr;
     stateTracker._activeRenderTargetID = INVALID_RENDER_TARGET_ID;
-    if (stateTracker.setActiveProgram(0u) == GLStateTracker::BindResult::FAILED) {
+    if (stateTracker.setActiveProgram(0u) == GLStateTracker::BindResult::FAILED)
+    {
         DIVIDE_UNEXPECTED_CALL();
     }
-    if (stateTracker.setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED) {
+    if (stateTracker.setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED)
+    {
         DIVIDE_UNEXPECTED_CALL();
     }
-    if (stateTracker.setStateBlock(RenderStateBlock::DefaultHash()) == GLStateTracker::BindResult::FAILED) {
+    if (stateTracker.setStateBlock(RenderStateBlock::DefaultHash()) == GLStateTracker::BindResult::FAILED)
+    {
         DIVIDE_UNEXPECTED_CALL();
     }
 

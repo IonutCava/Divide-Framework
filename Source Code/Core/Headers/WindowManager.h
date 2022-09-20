@@ -55,14 +55,11 @@ struct WindowDescriptor {
         HIDDEN = toBit(5),
         ALLOW_HIGH_DPI = toBit(6),
         ALWAYS_ON_TOP = toBit(7),
-        CLEAR_DEPTH = toBit(8),
-        CLEAR_COLOUR = toBit(9),
-        VSYNC = toBit(10),
-        SHARE_CONTEXT = toBit(11)
+        VSYNC = toBit(8),
+        SHARE_CONTEXT = toBit(9)
     };
 
     string title = "";
-    FColour4 clearColour = DefaultColours::BLACK;
     vec2<I16> position = {};
     vec2<U16> dimensions = {};
     U32 targetDisplay = 0u;

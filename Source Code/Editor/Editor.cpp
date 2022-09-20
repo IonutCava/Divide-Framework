@@ -46,7 +46,6 @@
 
 #include <imgui_internal.h>
 #include <imgui_club/imgui_memory_editor/imgui_memory_editor.h>
-//#include <ImGuiMisc/imguivariouscontrols/imguivariouscontrols.h>
 
 #include <IconFontCppHeaders/IconsForkAwesome.h>
 
@@ -393,10 +392,7 @@ bool Editor::init(const vec2<U16>& renderResolution) {
             WindowDescriptor winDescriptor = {};
             winDescriptor.title = "No Title Yet";
             winDescriptor.targetDisplay = to_U32(window.currentDisplayIndex());
-            winDescriptor.clearColour.set(0.0f, 0.0f, 0.0f, 1.0f);
-            winDescriptor.flags = to_U16(WindowDescriptor::Flags::HIDDEN) | 
-                                    to_U16(WindowDescriptor::Flags::CLEAR_COLOUR) |
-                                    to_U16(WindowDescriptor::Flags::CLEAR_DEPTH);
+            winDescriptor.flags = to_U16(WindowDescriptor::Flags::HIDDEN);
             // We don't enable SDL_WINDOW_RESIZABLE because it enforce windows decorations
             winDescriptor.flags |= viewport->Flags & ImGuiViewportFlags_NoDecoration ? 0 : to_U32(WindowDescriptor::Flags::DECORATED);
             winDescriptor.flags |= viewport->Flags & ImGuiViewportFlags_NoDecoration ? 0 : to_U32(WindowDescriptor::Flags::RESIZEABLE);

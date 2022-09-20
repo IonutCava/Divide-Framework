@@ -66,26 +66,6 @@ namespace Divide {
         return _prevOpacity;
     }
 
-    inline void DisplayWindow::clearColour(const FColour4& colour) noexcept {
-        _clearColour.set(colour);
-    }
-
-    void DisplayWindow::clearFlags(const bool clearColour, const bool clearDepth)noexcept {
-        ToggleBit(_flags, WindowFlags::CLEAR_COLOUR, clearColour);
-        ToggleBit(_flags, WindowFlags::CLEAR_DEPTH, clearDepth);
-    }
-
-    inline const FColour4& DisplayWindow::clearColour() const noexcept {
-        bool shouldClearColour, shouldClearDepth;
-        return clearColour(shouldClearColour, shouldClearDepth);
-    }
-
-    inline const FColour4& DisplayWindow::clearColour(bool &clearColour, bool &clearDepth) const noexcept {
-        clearColour = BitCompare(_flags, WindowFlags::CLEAR_COLOUR);
-        clearDepth = BitCompare(_flags, WindowFlags::CLEAR_DEPTH);
-        return _clearColour;
-    }
-
     inline bool DisplayWindow::minimized() const noexcept {
         return BitCompare(_flags, WindowFlags::MINIMIZED);
     }

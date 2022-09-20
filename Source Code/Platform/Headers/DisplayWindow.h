@@ -82,16 +82,14 @@ enum class WindowEvent : U8 {
 
 enum class WindowFlags : U16 {
     VSYNC = toBit(1),
-    CLEAR_COLOUR = toBit(2),
-    CLEAR_DEPTH = toBit(3),
-    HAS_FOCUS = toBit(4),
-    IS_HOVERED = toBit(5),
-    MINIMIZED = toBit(6),
-    MAXIMIZED = toBit(7),
-    HIDDEN = toBit(8),
-    DECORATED = toBit(9),
-    OWNS_RENDER_CONTEXT = toBit(10), //BAD
-    COUNT
+    HAS_FOCUS = toBit(2),
+    IS_HOVERED = toBit(3),
+    MINIMIZED = toBit(4),
+    MAXIMIZED = toBit(5),
+    HIDDEN = toBit(6),
+    DECORATED = toBit(7),
+    OWNS_RENDER_CONTEXT = toBit(8), //BAD
+    COUNT = 8
 };
 
 class WindowManager;
@@ -167,12 +165,6 @@ public:
            void opacity(U8 opacity) noexcept;
     [[nodiscard]] inline U8   opacity() const noexcept;
     [[nodiscard]] inline U8   prevOpacity() const noexcept;
-
-    inline void clearColour(const FColour4& colour) noexcept;
-    inline void clearFlags(bool clearColour, bool clearDepth) noexcept;
-
-    [[nodiscard]] inline const FColour4& clearColour() const noexcept;
-    [[nodiscard]] inline const FColour4& clearColour(bool &clearColour, bool &clearDepth) const noexcept;
 
     /// width and height get adjusted to the closest supported value
     [[nodiscard]] bool setDimensions(U16 width, U16 height);

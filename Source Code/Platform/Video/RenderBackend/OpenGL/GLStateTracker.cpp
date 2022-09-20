@@ -801,6 +801,17 @@ bool GLStateTracker::setClearColour(const FColour4& colour) {
     return false;
 }
 
+bool GLStateTracker::setClearDepth(const F32 value) {
+    if (!COMPARE(_clearDepthValue, value))
+    {
+        glClearDepth(value);
+        _clearDepthValue = value;
+        return true;
+    }
+
+    return false;
+}
+
 bool GLStateTracker::setScissor(const Rect<I32>& rect) {
     if (rect != _activeScissor) {
         glScissor(rect.x, rect.y, rect.z, rect.w);

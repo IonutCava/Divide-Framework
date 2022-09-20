@@ -200,17 +200,15 @@ void RenderPassManager::render(const RenderParams& params) {
        GFX::CommandBuffer& buf = *_postRenderBuffer;
        buf.clear(false);
 
+       const bool editorRunning = Config::Build::ENABLE_EDITOR && context.editor().running();
+
        GFX::EnqueueCommand(buf, sceneBufferLocks);
 
-       GFX::EnqueueCommand(buf, GFX::BeginDebugScopeCommand{ "Flush Display" });
-       
-       const bool editorRunning = Config::Build::ENABLE_EDITOR && context.editor().running();
-       if (editorRunning) {
-           GFX::BeginRenderPassCommand beginRenderPassCmd{};
-           beginRenderPassCmd._target = context.editor().getRenderTargetHandle()._targetID;
-           beginRenderPassCmd._name = "BLIT_TO_RENDER_TARGET";
-           GFX::EnqueueCommand(buf, beginRenderPassCmd);
-       }
+       GFX::BeginRenderPassCommand beginRenderPassCmd{};
+       beginRenderPassCmd._name = "Flush Display";
+       beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { DefaultColours::DIVIDE_BLUE, 0u };
+       beginRenderPassCmd._target = editorRunning ? context.editor().getRenderTargetHandle()._targetID : SCREEN_TARGET_ID;
+       GFX::EnqueueCommand(buf, beginRenderPassCmd);
 
        const auto& screenAtt = gfx.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO));
        const auto& texData = screenAtt->texture()->defaultView();
@@ -227,10 +225,8 @@ void RenderPassManager::render(const RenderParams& params) {
            sceneManager->getEnvProbes()->prepareDebugData();
            gfx.renderDebugUI(targetViewport, buf);
        }
-       if (editorRunning) {
-           GFX::EnqueueCommand(buf, GFX::EndRenderPassCommand{});
-       }
-       GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(buf);
+       
+       GFX::EnqueueCommand(buf, GFX::EndRenderPassCommand{});
     }
     TaskPool& pool = context.taskPool(TaskPoolType::HIGH_PRIORITY);
     {

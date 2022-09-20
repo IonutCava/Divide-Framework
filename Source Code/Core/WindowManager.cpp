@@ -139,10 +139,6 @@ ErrorCode WindowManager::init(PlatformContext& context,
         ClearBit(descriptor.flags, WindowDescriptor::Flags::RESIZEABLE);
     }
 
-    // We don't need to clear colour and depth for the main window as we always render a single textured quad. Rendering is done offscreen.
-    ClearBit(descriptor.flags, WindowDescriptor::Flags::CLEAR_COLOUR);
-    ClearBit(descriptor.flags, WindowDescriptor::Flags::CLEAR_DEPTH);
-
     ErrorCode err = ErrorCode::NO_ERR;
     DisplayWindow* window = createWindow(descriptor, err);
 
@@ -266,10 +262,6 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
                        descriptor);
 
     if (err == ErrorCode::NO_ERR) {
-        window->clearColour(descriptor.clearColour);
-        window->clearFlags(BitCompare(descriptor.flags, WindowDescriptor::Flags::CLEAR_COLOUR),
-                           BitCompare(descriptor.flags, WindowDescriptor::Flags::CLEAR_DEPTH));
-
         err = applyAPISettings(descriptor.targetAPI, window);
     }
 
@@ -330,33 +322,41 @@ bool WindowManager::destroyWindow(DisplayWindow*& window) {
     return false;
 }
 
-void WindowManager::update(const U64 deltaTimeUS) {
+void WindowManager::update(const U64 deltaTimeUS)
+{
     OPTICK_EVENT();
 
-    for (DisplayWindow* win : _windows) {
+    for (DisplayWindow* win : _windows)
+    {
         win->update(deltaTimeUS);
     }
 }
 
-bool WindowManager::onSDLEvent(SDL_Event event) noexcept {
+bool WindowManager::onSDLEvent(SDL_Event event) noexcept
+{
     // Nothing yet? Wow ...
     return false;
 }
 
-bool WindowManager::anyWindowFocus() const noexcept {
+bool WindowManager::anyWindowFocus() const noexcept
+{
     return getFocusedWindow() != nullptr;
 }
 
-U32 WindowManager::CreateAPIFlags(const RenderAPI api) noexcept {
+U32 WindowManager::CreateAPIFlags(const RenderAPI api) noexcept
+{
     return api == RenderAPI::Vulkan ? SDL_WINDOW_VULKAN : SDL_WINDOW_OPENGL;
 }
 
-void WindowManager::DestroyAPISettings(DisplayWindow* window) noexcept {
-    if (!window || !BitCompare(SDL_GetWindowFlags(window->getRawWindow()), to_U32(SDL_WINDOW_OPENGL))) {
+void WindowManager::DestroyAPISettings(DisplayWindow* window) noexcept
+{
+    if (!window || !BitCompare(SDL_GetWindowFlags(window->getRawWindow()), to_U32(SDL_WINDOW_OPENGL)))
+    {
         return;
     }
 
-    if (BitCompare(window->_flags, WindowFlags::OWNS_RENDER_CONTEXT)) {
+    if (BitCompare(window->_flags, WindowFlags::OWNS_RENDER_CONTEXT))
+    {
         SDL_GL_DeleteContext(static_cast<SDL_GLContext>(window->_userData));
         window->_userData = nullptr;
     }
@@ -364,16 +364,21 @@ void WindowManager::DestroyAPISettings(DisplayWindow* window) noexcept {
 
 ErrorCode WindowManager::configureAPISettings(const RenderAPI api, const U16 descriptorFlags) const
 {
-    if (api == RenderAPI::Vulkan) {
-
-    } else if (api == RenderAPI::OpenGL || api == RenderAPI::None) {
+    if (api == RenderAPI::Vulkan)
+    {
+        NOP();
+    }
+    else if (api == RenderAPI::OpenGL || api == RenderAPI::None)
+    {
         Uint32 OpenGLFlags = SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG | SDL_GL_CONTEXT_RESET_ISOLATION_FLAG;
 
         bool useDebugContext = false;
-        if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+        if_constexpr(Config::ENABLE_GPU_VALIDATION)
+        {
             // OpenGL error handling is available in any build configuration if the proper defines are in place.
             OpenGLFlags |= SDL_GL_CONTEXT_ROBUST_ACCESS_FLAG;
-            if (_context->config().debug.enableRenderAPIDebugging) {
+            if (_context->config().debug.enableRenderAPIDebugging)
+            {
                 useDebugContext = true;
                 OpenGLFlags |= SDL_GL_CONTEXT_DEBUG_FLAG;
             }
@@ -390,23 +395,30 @@ ErrorCode WindowManager::configureAPISettings(const RenderAPI api, const U16 des
         ValidateAssert(SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8));
         ValidateAssert(SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24));
 
-        if (!useDebugContext) {
+        if (!useDebugContext)
+        {
             ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_NO_ERROR, 1));
         }
 
         Validate(SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE));
         ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4));
-        if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6) != 0) {
+        if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6) != 0)
+        {
             ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5));
         }
-        if (BitCompare(descriptorFlags, to_base(WindowDescriptor::Flags::SHARE_CONTEXT))) {
+        if (BitCompare(descriptorFlags, to_base(WindowDescriptor::Flags::SHARE_CONTEXT)))
+        {
             Validate(SDL_GL_MakeCurrent(mainWindow()->getRawWindow(), mainWindow()->userData()->_glContext));
-        } else {
+        }
+        else
+        {
             ValidateAssert(SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1));
             ValidateAssert(SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4));
             ValidateAssert(SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1));
         }
-    } else {
+    }
+    else
+    {
         return ErrorCode::GFX_NOT_SUPPORTED;
     }
 
