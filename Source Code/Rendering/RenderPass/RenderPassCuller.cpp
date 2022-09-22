@@ -94,13 +94,11 @@ void RenderPassCuller::postCullNodes(const PlatformContext& context, const NodeC
     }
 }
 
-VisibleNodeList<>& RenderPassCuller::frustumCull(const NodeCullParams& params, U16 cullFlags, const SceneGraph& sceneGraph, const SceneState& sceneState, PlatformContext& context)
+void RenderPassCuller::frustumCull(const NodeCullParams& params, U16 cullFlags, const SceneGraph& sceneGraph, const SceneState& sceneState, PlatformContext& context, VisibleNodeList<>& nodesOut)
 {
     OPTICK_EVENT();
 
-    const RenderStage stage = params._stage;
-    VisibleNodeList<>& nodeCache = getNodeCache(stage);
-    nodeCache.reset();
+    nodesOut.reset();
 
     if (sceneState.renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_GEOMETRY) ||
         sceneState.renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_WIREFRAME))
@@ -125,20 +123,18 @@ VisibleNodeList<>& RenderPassCuller::frustumCull(const NodeCullParams& params, U
             descriptor._useCurrentThread = true;
             descriptor._cbk = [&](const Task*, const U32 start, const U32 end) {
                                 for (U32 i = start; i < end; ++i) {
-                                    frustumCullNode(rootChildren._data[i], params, cullFlags, 0u, nodeCache);
+                                    frustumCullNode(rootChildren._data[i], params, cullFlags, 0u, nodesOut);
                                 }
                             };
             parallel_for(context, descriptor);
         } else {
             for (U32 i = 0u; i < descriptor._iterCount; ++i){
-                frustumCullNode(rootChildren._data[i], params, cullFlags, 0u, nodeCache);
+                frustumCullNode(rootChildren._data[i], params, cullFlags, 0u, nodesOut);
             };
         }
     }
 
-    postCullNodes(context, params, cullFlags, nodeCache);
-
-    return nodeCache;
+    postCullNodes(context, params, cullFlags, nodesOut);
 }
 
 /// This method performs the visibility check on the given node and all of its children and adds them to the RenderQueue

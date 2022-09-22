@@ -142,11 +142,17 @@ inline F32 BoundingSphere::getRadius() const noexcept { return _radius; }
 
 inline F32 BoundingSphere::getDiameter() const noexcept { return _radius * 2; }
 
-inline F32 BoundingSphere::getDistanceFromPoint(const vec3<F32>& point) const noexcept {
+inline F32 BoundingSphere::getDistanceFromPoint(const vec3<F32>& point) const noexcept
+{
     return getCenter().distance(point) - getRadius();
 }
-
-inline vec4<F32> BoundingSphere::asVec4() const noexcept {
+inline F32 BoundingSphere::getDistanceSQFromPoint(const vec3<F32>& point) const noexcept
+{
+    // If this is negative, than the sphere contains the point, so we clamp min distance
+    return std::max(getCenter().distanceSquared(point) - SQUARED(getRadius()), 0.f);
+}
+inline vec4<F32> BoundingSphere::asVec4() const noexcept
+{
     return vec4<F32>(getCenter(), getRadius());
 }
 }  // namespace Divide

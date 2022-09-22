@@ -58,6 +58,9 @@
       <Filter>Widgets</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Editor\Utils.cpp" />
+    <ClCompile Include="..\..\Source Code\Editor\Widgets\DockedWindows\NodePreviewWindow.cpp">
+      <Filter>Widgets\DockedWindows</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="../../Source Code\Editor\Widgets\DockedWindows\Headers\SceneViewWindow.h">
@@ -107,6 +110,9 @@
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Editor\Headers\Utils.h">
       <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Editor\Widgets\DockedWindows\Headers\NodePreviewWindow.h">
+      <Filter>Widgets\DockedWindows\Headers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

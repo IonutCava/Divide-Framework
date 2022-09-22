@@ -77,7 +77,7 @@ class OrbitCamera : public FreeFlyCamera {
     F32 _currentRotationX = 0.0f;
     F32 _currentRotationY = 0.0f;
     bool _rotationDirty = true;
-    vec3<F32> _offsetDir = VECTOR3_ZERO;
+    vec3<F32> _offsetDir = WORLD_Z_AXIS;
     vec3<F32> _cameraRotation = VECTOR3_ZERO;
     TransformComponent* _targetTransform = nullptr;
 };

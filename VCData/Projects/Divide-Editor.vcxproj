@@ -38,6 +38,7 @@
     <ClCompile Include="../../Source Code\Editor\Widgets\ImGuiExtensions.cpp" />
     <ClCompile Include="..\..\Source Code\Editor\UndoManager.cpp" />
     <ClCompile Include="..\..\Source Code\Editor\Utils.cpp" />
+    <ClCompile Include="..\..\Source Code\Editor\Widgets\DockedWindows\NodePreviewWindow.cpp" />
     <ClCompile Include="..\..\Source Code\Editor\Widgets\DockedWindows\PostFXWindow.cpp" />
     <ClCompile Include="..\..\Source Code\Editor\Widgets\EditorOptionsWindow.cpp" />
     <ClCompile Include="..\..\Source Code\Editor\Widgets\StatusBar.cpp" />
@@ -57,6 +58,7 @@
     <ClInclude Include="..\..\Source Code\Editor\Headers\Sample.h" />
     <ClInclude Include="..\..\Source Code\Editor\Headers\UndoManager.h" />
     <ClInclude Include="..\..\Source Code\Editor\Headers\Utils.h" />
+    <ClInclude Include="..\..\Source Code\Editor\Widgets\DockedWindows\Headers\NodePreviewWindow.h" />
     <ClInclude Include="..\..\Source Code\Editor\Widgets\DockedWindows\Headers\PostFXWindow.h" />
     <ClInclude Include="..\..\Source Code\Editor\Widgets\Headers\EditorOptionsWindow.h" />
     <ClInclude Include="..\..\Source Code\Editor\Widgets\Headers\StatusBar.h" />

@@ -71,6 +71,7 @@ struct RenderPassParams
     FeedBackContainer* _feedBackContainer = nullptr;
     const SceneGraphNode* _sourceNode = nullptr;
     Str64 _passName = "";
+    I64 _singleNodeRenderGUID{-1};  //-1 = none;
     I32 _maxLoD = -1; //-1 = all
 
     RTDrawDescriptor _targetDescriptorPrePass = {};
@@ -89,6 +90,8 @@ struct RenderPassParams
 
     U8 _drawMask = 1 << to_base(Flags::DRAW_DYNAMIC_NODES) |
                    1 << to_base(Flags::DRAW_STATIC_NODES);
+
+
 };
 
 class RenderPassManager final : public KernelComponent {
@@ -116,7 +119,7 @@ public:
     [[nodiscard]] U32 getLastTotalBinSize(RenderStage renderStage) const noexcept;
     [[nodiscard]] I32 drawCallCount(const RenderStage stage) const noexcept { return _drawCallCount[to_base(stage)]; }
 
-    void doCustomPass(Camera* camera, RenderPassParams params, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
+    void doCustomPass(Camera* const camera, RenderPassParams params, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
     void postInit();
 
 private:

@@ -14,6 +14,7 @@
 #include "Editor/Headers/Editor.h"
 
 #include "Managers/Headers/SceneManager.h"
+#include "Rendering/Camera/Headers/OrbitCamera.h"
 #include "Rendering/Camera/Headers/FreeFlyCamera.h"
 #include "Rendering/Headers/Renderer.h"
 #include "Rendering/PostFX/Headers/PostFX.h"
@@ -1277,17 +1278,15 @@ bool Scene::mouseMoved(const Input::MouseMoveEvent& arg) {
             data._endDragPos = arg.absolutePos();
             updateSelectionData(idx, data, arg.remapped());
         } else {
-            bool sceneFocused = true;
-            bool sceneHovered = true;
-            if_constexpr (Config::Build::ENABLE_EDITOR) {
-                const Editor& editor = _context.editor();
-                sceneFocused = !editor.running() || editor.scenePreviewFocused();
-                sceneHovered = !editor.running() || editor.scenePreviewHovered();
-            }
+            const bool sceneFocused = Config::Build::ENABLE_EDITOR ? !_context.editor().hasFocus() : true;
+            const bool sceneHovered = Config::Build::ENABLE_EDITOR ? !_context.editor().isHovered() : true;
 
-            if (sceneFocused && sceneHovered  && !state()->playerState(idx).cameraLockedToMouse()) {
+            if (sceneFocused && sceneHovered  && !state()->playerState(idx).cameraLockedToMouse())
+            {
                 findHoverTarget(idx, arg.absolutePos());
-            } else if (!sceneHovered) {
+            }
+            else if (!sceneHovered)
+            {
                 clearHoverTarget(idx);
             }
         }
@@ -1313,7 +1312,11 @@ bool Scene::updateCameraControls(const U64 deltaTimeUS, const PlayerIndex idx) c
                                             to_base(playerState.angleLR()), //yaw
                                             to_base(playerState.roll()))) || updated; //roll
     updated = cam->zoom(to_base(playerState.zoom())) || updated;
-
+    if (cam->type() == Camera::CameraType::ORBIT ||
+        cam->type() == Camera::CameraType::THIRD_PERSON)
+    {
+        updated = static_cast<OrbitCamera*>(camIn)->zoom(to_base(playerState.zoom())) || updated;
+    }
     playerState.cameraUpdated(updated);
     if (updated) {
         playerState.cameraUnderwater(checkCameraUnderwater(*cam));
@@ -1734,8 +1737,7 @@ void Scene::beginDragSelection(const PlayerIndex idx, const vec2<I32>& mousePos)
     const bool editorRunning = Config::Build::ENABLE_EDITOR ? _context.editor().running() : false;
 
     if_constexpr(Config::Build::ENABLE_EDITOR) {
-        const Editor& editor = _context.editor();
-        if (editor.running() && (!editor.scenePreviewFocused() || !editor.scenePreviewHovered())) {
+        if (_context.editor().isHovered()) {
             return;
         }
     }
@@ -1763,15 +1765,15 @@ void Scene::updateSelectionData(PlayerIndex idx, DragSelectData& data, bool rema
 
     if_constexpr(Config::Build::ENABLE_EDITOR) {
         const Editor& editor = _context.editor();
-        if (editor.running()) {
-            if (!editor.scenePreviewFocused()) {
-                endDragSelection(idx, false);
-                return;
-            }
-            if (!remapped) {
-                const Rect<I32> previewRect = _context.editor().scenePreviewRect(false);
-                data._endDragPos = COORD_REMAP(previewRect.clamp(data._endDragPos), previewRect, _context.gfx().activeViewport());
-            }
+        if (editor.hasFocus()) {
+            endDragSelection(idx, false);
+            return;
+        }
+
+        if (editor.running() && !remapped)
+        {
+            const Rect<I32> previewRect = _context.editor().scenePreviewRect(false);
+            data._endDragPos = COORD_REMAP(previewRect.clamp(data._endDragPos), previewRect, _context.gfx().activeViewport());
         }
     }
 

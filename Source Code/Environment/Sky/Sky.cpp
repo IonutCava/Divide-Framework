@@ -811,7 +811,7 @@ void Sky::prepareRender(SceneGraphNode* sgn,
 
     EditorDataState& state = _atmosphereChanged[to_base(renderStagePass._stage)];
     if (state == EditorDataState::CHANGED || state == EditorDataState::PROCESSED) {
-        setSkyShaderData(renderStagePass._stage == RenderStage::DISPLAY ? 16 : 8, rComp.getPushConstants(renderStagePass));
+        setSkyShaderData(renderStagePass._stage == RenderStage::DISPLAY || renderStagePass._stage == RenderStage::NODE_PREVIEW ? 16 : 8, rComp.getPushConstants(renderStagePass));
         state = EditorDataState::PROCESSED;
     }
 

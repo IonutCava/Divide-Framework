@@ -4,8 +4,9 @@
     <showSampleWindow>false</showSampleWindow>
     <themeIndex>6</themeIndex>
     <textEditor/>
-    <lastOpenSceneGUID>453</lastOpenSceneGUID>
-    <grid enabled="true" axisWidth="2" scale="1"/>
+    <lastOpenSceneName>DefaultScene</lastOpenSceneName>
+    <grid enabled_scene="true" enabled_node="true" axisWidth="2" scale="1"/>
+    <nodeBGColour r="0.349999994" g="0.319999993" b="0.449999988"/>
     <camera>
         <Editor__Camera>
             <reflectionPlane>
@@ -13,19 +14,39 @@
                 <distance>0</distance>
                 <active>false</active>
             </reflectionPlane>
-            <accumPitchDegrees>-14.9972277</accumPitchDegrees>
+            <accumPitchDegrees>-14.9944563</accumPitchDegrees>
             <frustumLocked>false</frustumLocked>
-            <euler x="-14.999999" y="39.9882622" z="0"/>
-            <eye x="7.23056412" y="2.6715765" z="6.95108604"/>
-            <orientation x="-0.122639529" y="0.339052707" z="0.0446371362" w="0.931539714"/>
+            <euler x="-14.9952774" y="39.9795837" z="0.00303464173"/>
+            <eye x="4.96746826" y="2.070714" z="5.92327166"/>
+            <orientation x="-0.122613497" y="0.338980705" z="0.0446385443" w="0.931569278"/>
             <aspectRatio>1.77777779</aspectRatio>
             <zPlanes min="0.100000001" max="1000"/>
             <FoV>58.7155075</FoV>
-            <speedFactor turn="5" move="4" zoom="5"/>
+            <speedFactor turn="45" move="4" zoom="5"/>
             <fixedYawAxis x="0" y="1" z="0"/>
             <yawFixed>true</yawFixed>
             <rotationLocked>false</rotationLocked>
             <movementLocked>false</movementLocked>
         </Editor__Camera>
+        <Node__Preview__Camera>
+            <reflectionPlane>
+                <normal x="0" y="0" z="0"/>
+                <distance>0</distance>
+                <active>false</active>
+            </reflectionPlane>
+            <accumPitchDegrees>-26.1453991</accumPitchDegrees>
+            <frustumLocked>false</frustumLocked>
+            <euler x="-26.1454163" y="16.046051" z="-3.33144726e-06"/>
+            <eye x="0.884237707" y="1.80498981" z="3.51143289"/>
+            <orientation x="-0.223973349" y="0.135953948" z="0.0315691866" w="0.964549184"/>
+            <aspectRatio>1.77777779</aspectRatio>
+            <zPlanes min="0.100000001" max="1000"/>
+            <FoV>58.7155075</FoV>
+            <speedFactor turn="45" move="4" zoom="5"/>
+            <fixedYawAxis x="0" y="1" z="0"/>
+            <yawFixed>true</yawFixed>
+            <rotationLocked>false</rotationLocked>
+            <movementLocked>false</movementLocked>
+        </Node__Preview__Camera>
     </camera>
 </editor>

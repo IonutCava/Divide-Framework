@@ -544,7 +544,7 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
     }
 
     if (editorRunning) {
-        const vec2<U16> editorRTSize = _platformContext.editor().getRenderTargetHandle()._rt->getResolution();
+        const vec2<U16> editorRTSize = _platformContext.editor().getEditorTarget()._rt->getResolution();
         const Rect<I32> targetViewport{ 0, 0, to_I32(editorRTSize.width), to_I32(editorRTSize.height) };
         ComputeViewports(targetViewport, _editorViewports, playerCount);
     }
@@ -737,10 +737,11 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
     _inputConsumers[to_base(InputConsumerType::Scene)] = _sceneManager;
 
     // Add our needed app-wide render passes. RenderPassManager is responsible for deleting these!
-    _renderPassManager->setRenderPass(RenderStage::SHADOW,     {   });
-    _renderPassManager->setRenderPass(RenderStage::REFLECTION, { RenderStage::SHADOW });
-    _renderPassManager->setRenderPass(RenderStage::REFRACTION, { RenderStage::SHADOW });
-    _renderPassManager->setRenderPass(RenderStage::DISPLAY,    { RenderStage::REFLECTION, RenderStage::REFRACTION });
+    _renderPassManager->setRenderPass(RenderStage::SHADOW,       {   });
+    _renderPassManager->setRenderPass(RenderStage::REFLECTION,   { RenderStage::SHADOW });
+    _renderPassManager->setRenderPass(RenderStage::REFRACTION,   { RenderStage::SHADOW });
+    _renderPassManager->setRenderPass(RenderStage::DISPLAY,      { RenderStage::REFLECTION, RenderStage::REFRACTION });
+    _renderPassManager->setRenderPass(RenderStage::NODE_PREVIEW, { RenderStage::REFLECTION, RenderStage::REFRACTION });
 
     Console::printfn(Locale::Get(_ID("SCENE_ADD_DEFAULT_CAMERA")));
 
@@ -870,11 +871,13 @@ void Kernel::onResolutionChange(const SizeChangeParams& params) {
 #pragma region Input Management
 vec2<I32> Kernel::remapMouseCoords(const vec2<I32>& absPositionIn, bool& remappedOut) const noexcept {
     remappedOut = false;
-    if_constexpr(Config::Build::ENABLE_EDITOR) {
-        const Editor& editor = _platformContext.editor();
-        if (editor.running() && editor.scenePreviewFocused()) {
-            const Rect<I32>& sceneRect = editor.scenePreviewRect(false);
-            if (sceneRect.contains(absPositionIn)) {
+    if_constexpr(Config::Build::ENABLE_EDITOR)
+    {
+        if (!_platformContext.editor().hasFocus())
+        {
+            const Rect<I32>& sceneRect = _platformContext.editor().scenePreviewRect(false);
+            if (sceneRect.contains(absPositionIn))
+            {
                 remappedOut = true;
                 return COORD_REMAP(absPositionIn, sceneRect, _platformContext.gfx().activeViewport());
             }

@@ -41,11 +41,6 @@ namespace {
 
         return 0;
     }
-
-    U32 LightBufferIndex(const RenderStage stage) noexcept{
-        assert(stage != RenderStage::SHADOW);
-        return to_base(stage) - 1;
-    }
 }
 
 bool LightPool::IsLightInViewFrustum(const Frustum& frustum, const Light* const light) noexcept {
@@ -422,8 +417,7 @@ void LightPool::sortLightData(const RenderStage stage, const CameraSnapshot& cam
 void LightPool::uploadLightData(const RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut) {
     OPTICK_EVENT();
 
-    const U8 stageIndex = to_U8(stage);
-    const U32 bufferOffset = LightBufferIndex(stage);
+    const size_t stageIndex = to_size(stage);
     LightList& sortedLights = _sortedLights[stageIndex];
 
     U32& totalLightCount = _sortedLightPropertiesCount[stageIndex];
@@ -445,33 +439,32 @@ void LightPool::uploadLightData(const RenderStage stage, const CameraSnapshot& c
     {
         OPTICK_EVENT("LightPool::UploadLightDataToGPU");
         memCmdInOut._bufferLocks.push_back(
-            _lightBuffer->writeData({ bufferOffset * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, totalLightCount },
+            _lightBuffer->writeData({ stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, totalLightCount },
                                     &_sortedLightProperties[stageIndex]));
     }
 
     {
         OPTICK_EVENT("LightPool::UploadSceneDataToGPU");
-        memCmdInOut._bufferLocks.push_back(_sceneBuffer->writeData({ bufferOffset, 1 }, &_sortedSceneProperties[stageIndex]));
+        memCmdInOut._bufferLocks.push_back(_sceneBuffer->writeData({ stageIndex, 1 }, &_sortedSceneProperties[stageIndex]));
     }
     memCmdInOut._syncFlag = 2u;
 }
 
 void LightPool::uploadLightData(const RenderStage stage, GFX::CommandBuffer& bufferInOut) {
-    const U8 stageIndex = to_U8(stage);
+    const size_t stageIndex = to_size(stage);
     const U32 lightCount = _sortedLightPropertiesCount[stageIndex];
-    const size_t bufferOffset = to_size(LightBufferIndex(stage));
 
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
     cmd->_usage = DescriptorSetUsage::PER_FRAME;
     {
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE_AND_DRAW);
         binding._slot = 9;
-        binding._data.As<ShaderBufferEntry>() = { *_lightBuffer, { bufferOffset * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, lightCount } };
+        binding._data.As<ShaderBufferEntry>() = { *_lightBuffer, { stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, lightCount } };
     }
     {
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE_AND_DRAW);
         binding._slot = 8;
-        binding._data.As<ShaderBufferEntry>() = { *_sceneBuffer, { bufferOffset, 1u } };
+        binding._data.As<ShaderBufferEntry>() = { *_sceneBuffer, { stageIndex, 1u } };
     }
     {
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE_AND_DRAW);

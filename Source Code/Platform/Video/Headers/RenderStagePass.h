@@ -122,6 +122,10 @@ struct RenderStagePass {
                 // Refraction targets are only planar for now
                 return renderStagePass._index;
             }
+            case RenderStage::NODE_PREVIEW:
+            {
+                return renderStagePass._index;
+            }
             case RenderStage::SHADOW:
             {
                 // The really complicated one:
@@ -162,6 +166,8 @@ struct RenderStagePass {
                 return Config::MAX_REFRACTIVE_NODES_IN_VIEW;
             case RenderStage::SHADOW:
                 return Config::Lighting::MAX_SHADOW_PASSES;
+            case RenderStage::NODE_PREVIEW:
+                return 1u;
             default:
                 DIVIDE_UNEXPECTED_CALL();
         }
@@ -185,6 +191,8 @@ struct RenderStagePass {
             case RenderStage::REFLECTION:
                 return 6u; //Worst case, all nodes need cubemaps
             case RenderStage::REFRACTION:
+                return 1u;
+            case RenderStage::NODE_PREVIEW:
                 return 1u;
             case RenderStage::SHADOW:
                 switch (renderStagePass._variant) {

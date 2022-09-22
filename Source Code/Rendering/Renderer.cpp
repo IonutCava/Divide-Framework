@@ -25,29 +25,6 @@ vec3<U8> Renderer::CLUSTER_SIZE {
     24u
 };
 
-namespace {
-    U8 GetIndexForStage(const RenderStage stage) noexcept {
-        switch (stage) {
-            case RenderStage::DISPLAY:    return 0u;
-            case RenderStage::REFLECTION: return 1u;
-            case RenderStage::REFRACTION: return 2u;
-        }
-        DIVIDE_UNEXPECTED_CALL();
-        return 0u;
-    }
-
-    RenderStage GetStageForIndex(const U8 index) noexcept {
-        switch (index) {
-            case 0u: return RenderStage::DISPLAY;
-            case 1u: return RenderStage::REFLECTION;
-            case 2u: return RenderStage::REFRACTION;
-        }
-
-        DIVIDE_UNEXPECTED_CALL();
-        return RenderStage::DISPLAY;
-    }
-};
-
 Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
     : PlatformContextComponent(context)
 {
@@ -120,7 +97,7 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
         bufferDescriptor._bufferParams._elementCount = totalLights;
         bufferDescriptor._bufferParams._elementSize = sizeof(U32);
         for (U8 i = 0u; i < to_base(RenderStage::COUNT) - 1; ++i) {
-            bufferDescriptor._name = Util::StringFormat("LIGHT_INDEX_SSBO_%s", TypeUtil::RenderStageToString(GetStageForIndex(i)));
+            bufferDescriptor._name = Util::StringFormat("LIGHT_INDEX_SSBO_%s", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
             _lightDataPerStage[i]._lightIndexBuffer = _context.gfx().newSB(bufferDescriptor);
         }
     }
@@ -128,7 +105,7 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
         bufferDescriptor._bufferParams._elementCount = numClusters;
         bufferDescriptor._bufferParams._elementSize = 2 * (4 * sizeof(F32));
         for (U8 i = 0u; i < to_base(RenderStage::COUNT) - 1; ++i) {
-            bufferDescriptor._name = Util::StringFormat("GLOBAL_CLUSTER_AABB_SSBO_%s", TypeUtil::RenderStageToString(GetStageForIndex(i)));
+            bufferDescriptor._name = Util::StringFormat("GLOBAL_CLUSTER_AABB_SSBO_%s", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
             _lightDataPerStage[i]._lightClusterAABBsBuffer = _context.gfx().newSB(bufferDescriptor);
         }
     }
@@ -136,7 +113,7 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
         bufferDescriptor._bufferParams._elementCount = numClusters;
         bufferDescriptor._bufferParams._elementSize = sizeof(vec4<U32>);
         for (U8 i = 0u; i < to_base(RenderStage::COUNT) - 1; ++i) {
-            bufferDescriptor._name = Util::StringFormat("LIGHT_GRID_SSBO_%s", TypeUtil::RenderStageToString(GetStageForIndex(i)));
+            bufferDescriptor._name = Util::StringFormat("LIGHT_GRID_SSBO_%s", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
             _lightDataPerStage[i]._lightGridBuffer = _context.gfx().newSB(bufferDescriptor);
         }
     }
@@ -145,7 +122,7 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
         bufferDescriptor._bufferParams._elementCount = 1u;
         bufferDescriptor._bufferParams._elementSize =  sizeof(vec4<U32>);
         for (U8 i = 0u; i < to_base(RenderStage::COUNT) - 1; ++i) {
-            bufferDescriptor._name = Util::StringFormat("GLOBAL_INDEX_COUNT_SSBO_%s", TypeUtil::RenderStageToString(GetStageForIndex(i)));
+            bufferDescriptor._name = Util::StringFormat("GLOBAL_INDEX_COUNT_SSBO_%s", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
             _lightDataPerStage[i]._globalIndexCountBuffer = _context.gfx().newSB(bufferDescriptor);
         }
     }
@@ -193,7 +170,7 @@ void Renderer::prepareLighting(const RenderStage stage,
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Cull Lights" });
     {
         context().kernel().sceneManager()->getActiveScene().lightPool()->uploadLightData(stage, bufferInOut);
-        PerRenderStageData& data = _lightDataPerStage[GetIndexForStage(stage)];
+        PerRenderStageData& data = _lightDataPerStage[to_base(stage)];
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_FRAME;

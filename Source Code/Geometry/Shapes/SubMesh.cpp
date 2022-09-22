@@ -66,9 +66,9 @@ void SubMesh::buildBoundingBoxesForAnim([[maybe_unused]] const Task& parentTask,
             const vec3<F32>& curentVert = parentVB->getPosition(idx);
 
             currentBB.add(wgh.x * (matrices[ind.b[0]] * curentVert) +
-                wgh.y * (matrices[ind.b[1]] * curentVert) +
-                wgh.z * (matrices[ind.b[2]] * curentVert) +
-                wgh.w * (matrices[ind.b[3]] * curentVert));
+                          wgh.y * (matrices[ind.b[1]] * curentVert) +
+                          wgh.z * (matrices[ind.b[2]] * curentVert) +
+                          wgh.w * (matrices[ind.b[3]] * curentVert));
         }
     }
 }

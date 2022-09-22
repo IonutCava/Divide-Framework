@@ -205,28 +205,24 @@ bool SceneInput::joystickRemap(const Input::JoystickEvent &arg) {
 }
 
 bool SceneInput::mouseMoved(const Input::MouseMoveEvent& arg) {
-    if (!arg.wheelEvent()) {
-        const PlayerIndex idx = getPlayerIndexForDevice(arg._deviceIndex);
-        SceneStatePerPlayer& state = _parentScene.state()->playerState(idx);
-        if (state.cameraLockedToMouse()) {
-            
-            if (arg.wheelEvent()) {
-                const I32 wheel = arg.WheelV();
-                state.zoom(wheel > 0 ? MoveDirection::POSITIVE
-                                     : wheel < 0 ? MoveDirection::NEGATIVE
-                                                   : MoveDirection::NONE);
-            } else {
-                const I32 xRel = arg.relativePos().x;
-                const I32 yRel = arg.relativePos().y;
-                state.angleLR(xRel > 0 ? MoveDirection::POSITIVE
-                                         : xRel < 0 ? MoveDirection::NEGATIVE
-                                                      : MoveDirection::NONE);
+    const PlayerIndex idx = getPlayerIndexForDevice(arg._deviceIndex);
+    SceneStatePerPlayer& state = _parentScene.state()->playerState(idx);
 
-                state.angleUD(yRel > 0 ? MoveDirection::POSITIVE
-                                                        : yRel < 0 ? MoveDirection::NEGATIVE
-                                                                     : MoveDirection::NONE);
-            }
-        }
+    if (arg.wheelEvent()) {
+        const I32 wheel = arg.WheelV();
+        state.zoom(wheel > 0 ? MoveDirection::POSITIVE
+                                : wheel < 0 ? MoveDirection::NEGATIVE
+                                            : MoveDirection::NONE);
+    } else if (state.cameraLockedToMouse()) {
+        const I32 xRel = arg.relativePos().x;
+        const I32 yRel = arg.relativePos().y;
+        state.angleLR(xRel > 0 ? MoveDirection::POSITIVE
+                                    : xRel < 0 ? MoveDirection::NEGATIVE
+                                                : MoveDirection::NONE);
+
+        state.angleUD(yRel > 0 ? MoveDirection::POSITIVE
+                                                : yRel < 0 ? MoveDirection::NEGATIVE
+                                                                : MoveDirection::NONE);
     }
 
     return Attorney::SceneInput::mouseMoved(_parentScene, arg);

@@ -30,21 +30,32 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _SCENE_VIEW_WINDOW_H_
-#define _SCENE_VIEW_WINDOW_H_
+#ifndef _EDITOR_NODE_PREVIEW_WINDOW_H_
+#define _EDITOR_NODE_PREVIEW_WINDOW_H_
 
-#include "NodePreviewWindow.h"
+#include "Editor/Widgets/Headers/DockedWindow.h"
 
-struct ImGuiWindow;
+namespace Divide
+{
+    class Texture;
+    class NodePreviewWindow : public DockedWindow {
+        public:
+            NodePreviewWindow(Editor& parent, const Descriptor& descriptor);
 
-namespace Divide {
+            void drawInternal() override;
 
-    class SceneViewWindow final : public NodePreviewWindow {
-    public:
-        SceneViewWindow(Editor& parent, const Descriptor& descriptor);
+            [[nodiscard]] const Rect<I32>& sceneRect(bool globalCoords) const noexcept;
 
-        void drawInternal() override;
+        protected:
+            void drawInternal(Texture* tex);
+            void updateBounds(Rect<I32> imageRect);
+
+            bool button(bool enabled, const char* label, const char* tooltip, bool small = false);
+
+        protected:
+            Rect<I32> _sceneRect[2];
+            string    _originalName;
     };
 } //namespace Divide
 
-#endif //_SCENE_VIEW_WINDOW_H_
+#endif //_EDITOR_NODE_PREVIEW_WINDOW_H_

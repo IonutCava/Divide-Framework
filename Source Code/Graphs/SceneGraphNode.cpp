@@ -756,12 +756,6 @@ namespace
         const RenderingComponent* rComp = node->get<RenderingComponent>();
         return rComp != nullptr &&  rComp->renderOptionEnabled(RenderingComponent::RenderOptions::CAST_SHADOWS);
     }
-
-    [[nodiscard]] FORCE_INLINE F32 distanceSquareToPos(const vec3<F32>& pos, const BoundingSphere& sphere) noexcept
-    {
-        // If this is negative, than the sphere contains the point, so we clamp min distance
-        return std::max(sphere.getCenter().distanceSquared(pos) - SQUARED(sphere.getRadius()), 0.f);
-    }
 };
 
 FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
@@ -875,7 +869,7 @@ FrustumCollision SceneGraphNode::frustumCullNode(const NodeCullParams& params,
     const F32 maxDistanceSQ = SQUARED(params._cullMaxDistance);
     const BoundsComponent* bComp = get<BoundsComponent>();
 
-    distanceToClosestPointSQ = bComp == nullptr ? 0.f : distanceSquareToPos(params._cameraEyePos, bComp->getBoundingSphere());
+    distanceToClosestPointSQ = bComp == nullptr ? 0.f : bComp->getBoundingSphere().getDistanceSQFromPoint(params._cameraEyePos);
     
     // We may wish to skip frustum culling but still grab the distance to the node
     // We may also wish to always render this node for whatever reason (e.g. to preload shaders)

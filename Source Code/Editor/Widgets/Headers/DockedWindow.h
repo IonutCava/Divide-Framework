@@ -60,26 +60,26 @@ class DockedWindow : NonCopyable, NonMovable {
         void backgroundUpdate();
 
         [[nodiscard]] virtual const char* name() const { return _descriptor.name.c_str(); }
-        
-        [[nodiscard]] virtual bool hasFocus() const noexcept { return _focused; }
-        [[nodiscard]] virtual bool isHovered() const noexcept { return _isHovered; }
+
 
         [[nodiscard]] const Descriptor& descriptor() const noexcept { return _descriptor; }
 
         virtual void onRemoveComponent([[maybe_unused]] const EditorComponent& comp) {};
 
         PROPERTY_RW(ImGuiWindowFlags, windowFlags, 0);
+        PROPERTY_RW(bool, enabled, true);
+        PROPERTY_R_IW(bool, focused, false);
+        PROPERTY_R_IW(bool, hovered, false);
+        PROPERTY_R_IW(bool, visible, false);
 
     protected:
         virtual void drawInternal() = 0;
         virtual void backgroundUpdateInternal() {}
 
         const char* getIconForNode(const SceneGraphNode* sgn) noexcept;
+
     protected:
         Editor & _parent;
-
-        bool _focused;
-        bool _isHovered;
         Descriptor _descriptor;
 };
 } //namespace Divide

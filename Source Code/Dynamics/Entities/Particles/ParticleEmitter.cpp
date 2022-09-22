@@ -136,9 +136,12 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
         particleRenderState.setCullMode(CullMode::NONE);
         particleRenderState.setZFunc(IsDepthPass(stagePass) ? ComparisonFunction::LEQUAL : ComparisonFunction::EQUAL);
 
-        if (IsShadowPass(stagePass)) {
+        if (IsShadowPass(stagePass))
+        {
             particleRenderState.setColourWrites(true, true, false, false);
-        } else if (IsDepthPrePass(stagePass) && stagePass._stage != RenderStage::DISPLAY) {
+        }
+        else if (IsDepthPrePass(stagePass) && stagePass._stage != RenderStage::DISPLAY)
+        {
             particleRenderState.setColourWrites(false, false, false, false);
         }
 

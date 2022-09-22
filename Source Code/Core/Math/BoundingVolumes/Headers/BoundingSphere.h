@@ -74,6 +74,7 @@ class BoundingSphere {
     [[nodiscard]] F32 getDiameter() const noexcept;
 
     [[nodiscard]] F32 getDistanceFromPoint(const vec3<F32>& point) const noexcept;
+    [[nodiscard]] F32 getDistanceSQFromPoint(const vec3<F32>& point) const noexcept;
 
     void reset() noexcept;
     [[nodiscard]] vec4<F32> asVec4() const noexcept;

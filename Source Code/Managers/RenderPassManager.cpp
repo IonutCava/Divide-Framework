@@ -207,7 +207,7 @@ void RenderPassManager::render(const RenderParams& params) {
        GFX::BeginRenderPassCommand beginRenderPassCmd{};
        beginRenderPassCmd._name = "Flush Display";
        beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { DefaultColours::DIVIDE_BLUE, 0u };
-       beginRenderPassCmd._target = editorRunning ? context.editor().getRenderTargetHandle()._targetID : SCREEN_TARGET_ID;
+       beginRenderPassCmd._target = editorRunning ? context.editor().getEditorTarget()._targetID : SCREEN_TARGET_ID;
        GFX::EnqueueCommand(buf, beginRenderPassCmd);
 
        const auto& screenAtt = gfx.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO));
@@ -218,7 +218,8 @@ void RenderPassManager::render(const RenderParams& params) {
        {
            Time::ScopedTimer timeGUIBuffer(*_processGUITimer);
            Attorney::SceneManagerRenderPass::drawCustomUI(sceneManager, targetViewport, buf);
-           if_constexpr(Config::Build::ENABLE_EDITOR) {
+           if_constexpr(Config::Build::ENABLE_EDITOR)
+           {
                context.editor().drawScreenOverlay(cam, targetViewport, buf);
            }
            context.gui().draw(gfx, targetViewport, buf);
@@ -365,7 +366,7 @@ const RenderPass& RenderPassManager::getPassForStage(const RenderStage renderSta
     return *_renderPassData[to_base(renderStage)]._pass;
 }
 
-void RenderPassManager::doCustomPass(Camera* camera, const RenderPassParams params, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
+void RenderPassManager::doCustomPass(Camera* const camera, const RenderPassParams params, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
     const PlayerIndex playerPass = _parent.sceneManager()->playerPass();
     _executors[to_base(params._stagePass._stage)]->doCustomPass(playerPass, camera, params, bufferInOut, memCmdInOut);
 }

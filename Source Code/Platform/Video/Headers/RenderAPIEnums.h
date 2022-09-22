@@ -224,16 +224,17 @@ namespace Names {
 static_assert(std::size(Names::attribLocation) == to_base(AttribLocation::COUNT) + 1);
 
 enum class RenderStage : U8 {
-    SHADOW = 0,
-    REFLECTION = 1,
-    REFRACTION = 2,
-    DISPLAY = 3,
+    DISPLAY = 0,
+    REFLECTION,
+    REFRACTION,
+    NODE_PREVIEW,
+    SHADOW,
     COUNT
 };
 
 namespace Names {
     static constexpr const char* renderStage[] = {
-        "SHADOW", "REFLECTION", "REFRACTION", "DISPLAY", "NONE"
+        "DISPLAY", "REFLECTION", "REFRACTION", "NODE_PREVIEW", "SHADOW", "NONE"
     };
 };
 

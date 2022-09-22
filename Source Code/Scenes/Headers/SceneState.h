@@ -123,7 +123,7 @@ class SceneRenderState : public SceneComponent {
     PROPERTY_RW(F32, treeVisibility, 1000.0f);
     PROPERTY_RW(U8, renderPass, 0u);
     PROPERTY_RW(FogDetails, fogDetails);
-
+    PROPERTY_RW(I64, singleNodeRenderGUID, -1);
     [[nodiscard]] vec4<U16>& lodThresholds() noexcept { return _lodThresholds; }
     [[nodiscard]] vec4<U16> lodThresholds(RenderStage stage = RenderStage::DISPLAY) const noexcept;
 

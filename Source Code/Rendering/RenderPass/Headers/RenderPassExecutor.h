@@ -139,13 +139,11 @@ public:
 
 private:
     // Returns false if we skipped the pre-pass step
-    void prePass(const VisibleNodeList<>& nodes,
-                 const RenderPassParams& params,
+    void prePass(const RenderPassParams& params,
                  const CameraSnapshot& cameraSnapshot,
                  GFX::CommandBuffer& bufferInOut);
 
     void occlusionPass(PlayerIndex idx, 
-                       const VisibleNodeList<>& nodes,
                        const CameraSnapshot& cameraSnapshot,
                        U32 visibleNodeCount,
                        RenderStagePass stagePass,
@@ -153,26 +151,22 @@ private:
                        const RenderTargetID& targetHiZBuffer,
                        GFX::CommandBuffer& bufferInOut) const;
 
-    void mainPass(const VisibleNodeList<>& nodes,
-                  const RenderPassParams& params,
+    void mainPass(const RenderPassParams& params,
                   const CameraSnapshot& cameraSnapshot,
                   RenderTarget& target,
                   bool prePassExecuted,
                   bool hasHiZ,
                   GFX::CommandBuffer& bufferInOut);
 
-    void transparencyPass(const VisibleNodeList<>& nodes,
-                          const RenderPassParams& params,
+    void transparencyPass(const RenderPassParams& params,
                           const CameraSnapshot& cameraSnapshot,
                           GFX::CommandBuffer& bufferInOut);
 
-    void woitPass(const VisibleNodeList<>& nodes,
-                  const RenderPassParams& params,
+    void woitPass(const RenderPassParams& params,
                   const CameraSnapshot& cameraSnapshot,
                   GFX::CommandBuffer& bufferInOut);
 
     void prepareRenderQueues(const RenderPassParams& params,
-                             const VisibleNodeList<>& nodes,
                              const CameraSnapshot& cameraSnapshot,
                              bool transparencyPass,
                              RenderingOrder renderOrder,
@@ -189,8 +183,7 @@ private:
                           GFX::CommandBuffer& bufferInOut,
                           GFX::MemoryBarrierCommand& memCmdInOut);
 
-    U16 prepareNodeData(VisibleNodeList<>& nodes,
-                        const RenderPassParams& params,
+    U16 prepareNodeData(const RenderPassParams& params,
                         const CameraSnapshot& cameraSnapshot,
                         bool hasInvalidNodes,
                         const bool doPrePass,
@@ -206,7 +199,7 @@ private:
                                  bool resolveColourBuffer,
                                  GFX::CommandBuffer& bufferInOut) const;
 
-    [[nodiscard]] bool validateNodesForStagePass(VisibleNodeList<>& nodes, RenderStagePass stagePass);
+    [[nodiscard]] bool validateNodesForStagePass(RenderStagePass stagePass);
     void parseMaterialRange(RenderBin::SortedQueue& queue, U32 start, U32 end);
 
 private:
@@ -228,6 +221,7 @@ private:
     ExecutorBuffer<BufferMaterialData> _materialBuffer;
     ExecutorBuffer<BufferTransformData> _transformBuffer;
     ExecutorBuffer<BufferIndirectionData> _indirectionBuffer;
+    VisibleNodeList<> _visibleNodesCache;
 
     static bool s_globalDataInit;
     static std::array<bool, MAX_INDIRECTION_ENTRIES> s_indirectionFreeList;

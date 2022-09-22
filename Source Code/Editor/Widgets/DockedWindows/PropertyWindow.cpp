@@ -10,6 +10,7 @@
 #include "Editor/Headers/Editor.h"
 #include "Managers/Headers/SceneManager.h"
 #include "Rendering/Camera/Headers/Camera.h"
+#include "Rendering/Camera/Headers/OrbitCamera.h"
 #include "Rendering/Camera/Headers/FreeFlyCamera.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Platform/Video/Headers/GFXDevice.h"
@@ -320,6 +321,53 @@ namespace Divide {
                     ImGui::PopID();
                 }
                 ImGui::PopID();
+            }
+            if (cam->type() == Camera::CameraType::ORBIT ||
+                cam->type() == Camera::CameraType::THIRD_PERSON) 
+            {
+                OrbitCamera* orbitCam = static_cast<OrbitCamera*>(cam);
+                {
+                    F32 radius = orbitCam->maxRadius();
+                    EditorComponentField camField = {};
+                    camField._name = "MAX Radius";
+                    camField._basicType = GFX::PushConstantType::FLOAT;
+                    camField._type = EditorComponentFieldType::PUSH_TYPE;
+                    camField._readOnly = false;
+                    camField._data = &radius;
+                    camField._dataSetter = [orbitCam](const void* radius) noexcept
+                    {
+                        orbitCam->maxRadius(*static_cast<const F32*>(radius));
+                    };
+                    sceneChanged = processField(camField) || sceneChanged;
+                }  
+                {
+                    F32 radius = orbitCam->maxRadius();
+                    EditorComponentField camField = {};
+                    camField._name = "MIN Radius";
+                    camField._basicType = GFX::PushConstantType::FLOAT;
+                    camField._type = EditorComponentFieldType::PUSH_TYPE;
+                    camField._readOnly = false;
+                    camField._data = &radius;
+                    camField._dataSetter = [orbitCam](const void* radius) noexcept
+                    {
+                        orbitCam->maxRadius(*static_cast<const F32*>(radius));
+                    };
+                    sceneChanged = processField(camField) || sceneChanged;
+                }
+                {
+                    F32 radius = orbitCam->curRadius();
+                    EditorComponentField camField = {};
+                    camField._name = "Current Radius";
+                    camField._basicType = GFX::PushConstantType::FLOAT;
+                    camField._type = EditorComponentFieldType::PUSH_TYPE;
+                    camField._readOnly = false;
+                    camField._data = &radius;
+                    camField._dataSetter = [orbitCam](const void* radius) noexcept
+                    {
+                        orbitCam->curRadius(*static_cast<const F32*>(radius));
+                    };
+                    sceneChanged = processField(camField) || sceneChanged;
+                }
             }
             Util::PopNarrowLabelWidth();
         }

@@ -11,6 +11,7 @@
 #include "Geometry/Shapes/Headers/Object3D.h"
 #include "Managers/Headers/RenderPassManager.h"
 #include "Managers/Headers/SceneManager.h"
+#include "Rendering/Camera/Headers/OrbitCamera.h"
 #include "Rendering/Camera/Headers/FreeFlyCamera.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
@@ -175,6 +176,11 @@ namespace Divide {
                                         // | ImGuiTreeNodeFlags_OpenOnDoubleClick;
         const bool wasSelected = secondaryView ? _tempParent != nullptr && _tempParent->getGUID() == sgn->getGUID() : sgn->hasFlag(SceneGraphNode::Flags::SELECTED);
 
+        if (sgn->hasFlag(SceneGraphNode::Flags::SELECTED))
+        {
+            Attorney::EditorGeneralWidget::setPreviewNode(_parent, sgn);
+        }
+
         if (open) {
             node_flags |= ImGuiTreeNodeFlags_DefaultOpen;
         }
@@ -256,17 +262,20 @@ namespace Divide {
         }
     }
 
-    void SolutionExplorerWindow::drawInternal() {
+    void SolutionExplorerWindow::drawInternal()
+    {
         OPTICK_EVENT();
 
         SceneManager* sceneManager = context().kernel().sceneManager();
         Scene& activeScene = sceneManager->getActiveScene();
         SceneGraphNode* root = activeScene.sceneGraph()->getRoot();
+        Attorney::EditorGeneralWidget::setPreviewNode(_parent, nullptr);
 
         const bool lockExplorer = Attorney::EditorSolutionExplorerWindow::lockSolutionExplorer(_parent);
         const ImGuiContext& imguiContext = Attorney::EditorGeneralWidget::getImGuiContext(_context.editor(), Editor::ImGuiContextType::Editor);
         const bool modifierPressed = imguiContext.IO.KeyShift;
-        if (lockExplorer) {
+        if (lockExplorer)
+        {
             PushReadOnly();
         }
         ImGui::AlignTextToFramePadding();
@@ -277,7 +286,8 @@ namespace Divide {
         ImGui::PopID();
         ImGui::SameLine();
         ImGui::Checkbox(ICON_FK_EYE, &s_onlyVisibleNodes);
-        if (ImGui::IsItemHovered()) {
+        if (ImGui::IsItemHovered())
+        {
             ImGui::SetTooltip("Only visible nodes");
         }
         ImGui::BeginChild("SceneGraph", ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetWindowHeight() * .5f), true, 0);
@@ -285,7 +295,9 @@ namespace Divide {
         {
             ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, ImGui::GetFontSize() * 3); // Increase spacing to differentiate leaves from expanded contents.
             printCameraNode(sceneManager, _parent.editorCamera());
-            for (PlayerIndex i = 0; i < static_cast<PlayerIndex>(Config::MAX_LOCAL_PLAYER_COUNT); ++i) {
+            printCameraNode(sceneManager, _parent.nodePreviewCamera());
+            for (PlayerIndex i = 0; i < static_cast<PlayerIndex>(Config::MAX_LOCAL_PLAYER_COUNT); ++i)
+            {
                 printCameraNode(sceneManager, Attorney::SceneManagerCameraAccessor::playerCamera(sceneManager, i, true));
             }
             {
@@ -297,10 +309,10 @@ namespace Divide {
         }
 
         ImGui::EndChild();
-        if (lockExplorer) {
+        if (lockExplorer)
+        {
             PopReadOnly();
         }
-
         ImGui::Separator();
 
         // Calculate and show framerate
@@ -320,7 +332,8 @@ namespace Divide {
 
         // We need this bit to get a nice "flowing" feel
         g_framerateBuffer.push_back(ms_per_frame_avg);
-        if (g_framerateBuffer.size() > g_maxEntryCount) {
+        if (g_framerateBuffer.size() > g_maxEntryCount)
+        {
             g_framerateBuffer.pop_front();
         }
         g_framerateBufferCont.resize(0);
@@ -342,21 +355,26 @@ namespace Divide {
 
         static bool performanceStatsWereEnabled = false;
         static U32 s_maxLocksInFlight = 0u;
-        if (ImGui::CollapsingHeader(ICON_FK_TACHOMETER" Performance Stats")) {
+        if (ImGui::CollapsingHeader(ICON_FK_TACHOMETER" Performance Stats"))
+        {
             I32 fpsLimit = to_I32(context().config().runtime.frameRateLimit);
             bool limit = fpsLimit > 0;
-            if (ImGui::Checkbox("Limit FPS", &limit)) {
+            if (ImGui::Checkbox("Limit FPS", &limit))
+            {
                 context().config().runtime.frameRateLimit = limit ? 120 : 0;
                 context().config().changed(true);
             }
-            if (!limit) {
+            if (!limit)
+            {
                 PushReadOnly();
             }
-            if (ImGui::SliderInt("FPS limit", &fpsLimit, 10, 320)) {
+            if (ImGui::SliderInt("FPS limit", &fpsLimit, 10, 320))
+            {
                 context().config().runtime.frameRateLimit = to_I16(fpsLimit);
                 context().config().changed(true);
             }
-            if (!limit) {
+            if (!limit)
+            {
                 PopReadOnly();
             }
             OPTICK_EVENT("Get/Print Performance Stats");
@@ -364,24 +382,26 @@ namespace Divide {
             context().gfx().queryPerformanceStats(true);
             const auto& rpm = _context.kernel().renderPassManager();
 
-            static I32 maxDrawCallCount[4] = {0, 0, 0, 0};
-            static I32 crtDrawCallCount[4] = {0, 0, 0, 0};
-            crtDrawCallCount[0] = rpm->drawCallCount(RenderStage::DISPLAY);
-            crtDrawCallCount[1] = rpm->drawCallCount(RenderStage::SHADOW);
-            crtDrawCallCount[2] = rpm->drawCallCount(RenderStage::REFLECTION);
-            crtDrawCallCount[3] = rpm->drawCallCount(RenderStage::REFRACTION);
+            static std::array<I32, to_base(RenderStage::COUNT)> maxDrawCallCount{};
+            static std::array<I32, to_base(RenderStage::COUNT)> crtDrawCallCount{};
+            for (U8 i = 0u; i < to_base(RenderStage::COUNT); ++i)
+            {
+                crtDrawCallCount[i] = rpm->drawCallCount(static_cast<RenderStage>(i));
+            }
+
             const PerformanceMetrics perfMetrics = context().gfx().getPerformanceMetrics();
             const vec4<U32>& cullCount = context().gfx().lastCullCount();
             static U32 cachedSyncCount[3]{};
             static U32 cachedCamWrites[2]{};
-            if (ms_per_frame_idx % 2 == 0) {
+            if (ms_per_frame_idx % 2 == 0)
+            {
                 std::memcpy(cachedSyncCount, perfMetrics._syncObjectsInFlight, 3 * sizeof(U32));
                 std::memcpy(cachedCamWrites, perfMetrics._scratchBufferQueueUsage, 2 * sizeof(U32));
                 s_maxLocksInFlight = std::max(cachedSyncCount[0], s_maxLocksInFlight);
             }
 
             ImGui::NewLine();
-            ImGui::Columns(5, "draw_call_columns");
+            ImGui::Columns(to_base(RenderStage::COUNT) + 1u, "draw_call_columns");
             ImGui::Separator();
 
             ImGui::Text("Data");        ImGui::NextColumn();
@@ -392,45 +412,65 @@ namespace Divide {
             ImGui::Separator();
 
             static bool maxCalls = false;
-            if (maxCalls) {
+            if (maxCalls)
+            {
                 ImGui::Text(ICON_FK_PENCIL" (Max)");
-            } else {
+            }
+            else
+            {
                 ImGui::Text(ICON_FK_PENCIL);
             }
-            if (ImGui::IsItemHovered()) {
+            if (ImGui::IsItemHovered())
+            {
                 ImGui::SetTooltip("Draw Calls. Click to toggle between Max Calls and Current Calls"); 
             }
-            if (ImGui::IsItemClicked()) {
+            if (ImGui::IsItemClicked())
+            {
                 maxCalls = !maxCalls;
             }
             ImGui::NextColumn();
 
-            for (U8 i = 0u; i < 4u; ++i) {
+            for (U8 i = 0u; i < to_base(RenderStage::COUNT); ++i)
+            {
                 ImGui::Text("%d", maxCalls ? maxDrawCallCount[i] : crtDrawCallCount[i]);
-                if (ImGui::IsItemHovered()) { 
-                    if (maxCalls) {
+                if (ImGui::IsItemHovered())
+                { 
+                    if (maxCalls)
+                    {
                         ImGui::SetTooltip("Current calls: %d", crtDrawCallCount[i]);
-                    } else {
+                    }
+                    else
+                    {
                         ImGui::SetTooltip("Max calls: %d", maxDrawCallCount[i]); 
                     }
                 }
                 ImGui::NextColumn();
             }
   
-            ImGui::Text(ICON_FK_EYE); if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Visible Nodes"); } ImGui::NextColumn();
-            ImGui::Text("%d", rpm->getLastTotalBinSize(RenderStage::DISPLAY));                            ImGui::NextColumn();
-            ImGui::Text("%d", rpm->getLastTotalBinSize(RenderStage::SHADOW));                             ImGui::NextColumn();
-            ImGui::Text("%d", rpm->getLastTotalBinSize(RenderStage::REFLECTION));                         ImGui::NextColumn();
-            ImGui::Text("%d", rpm->getLastTotalBinSize(RenderStage::REFRACTION));                         ImGui::NextColumn();
+            ImGui::Text(ICON_FK_EYE);
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::SetTooltip("Visible Nodes");
+            }
+            ImGui::NextColumn();
+
+            for (U8 i = 0u; i < to_base(RenderStage::COUNT); ++i)
+            {
+                ImGui::Text("%d", rpm->getLastTotalBinSize(static_cast<RenderStage>(i)));
+                ImGui::NextColumn();
+            }
+
             ImGui::Columns(1);
             ImGui::Separator();
             ImGui::NewLine();
             bool enableHiZ = context().gfx().enableOcclusionCulling();
             ImGui::PushID("ToggleHiZCheckBox");
-            if (ImGui::Checkbox("", &enableHiZ)) {
+            if (ImGui::Checkbox("", &enableHiZ))
+            {
                 context().gfx().enableOcclusionCulling(enableHiZ);
             }
-            if (ImGui::IsItemHovered()) {
+            if (ImGui::IsItemHovered())
+            {
                 ImGui::SetTooltip("Enable / Disable GPU Hi-Z occlusion culling");
             }
             ImGui::PopID();
@@ -458,7 +498,8 @@ namespace Divide {
             ImGui::NewLine();
             ImGui::Text("Sync objects in flight : %d / %d / %d   Max: %d", cachedSyncCount[0], cachedSyncCount[1], cachedSyncCount[2], s_maxLocksInFlight);
 
-            if (ImGui::IsItemHovered()) {
+            if (ImGui::IsItemHovered())
+            {
                 ImGui::SetTooltip("[ Current Frame - 2 ] / [ Current Frame - 1] / [ Current Frame ]");
             }
 
@@ -467,13 +508,15 @@ namespace Divide {
             ImGui::NewLine();
             ImGui::Separator();
             ImGui::NewLine();
-
-            maxDrawCallCount[0] = std::max(rpm->drawCallCount(RenderStage::DISPLAY), maxDrawCallCount[0]);
-            maxDrawCallCount[1] = std::max(rpm->drawCallCount(RenderStage::SHADOW), maxDrawCallCount[1]);
-            maxDrawCallCount[2] = std::max(rpm->drawCallCount(RenderStage::REFLECTION), maxDrawCallCount[2]);
-            maxDrawCallCount[3] = std::max(rpm->drawCallCount(RenderStage::REFRACTION), maxDrawCallCount[3]);
-        } else {
-            if (!performanceStatsWereEnabled && context().gfx().queryPerformanceStats()) {
+            for (U8 i = 0u; i < to_base(RenderStage::COUNT); ++i)
+            {
+                maxDrawCallCount[i] = std::max(rpm->drawCallCount(static_cast<RenderStage>(i)), maxDrawCallCount[i]);
+            }
+        }
+        else
+        {
+            if (!performanceStatsWereEnabled && context().gfx().queryPerformanceStats())
+            {
                 context().gfx().queryPerformanceStats(false);
             }
             s_maxLocksInFlight = 0u;
@@ -481,9 +524,11 @@ namespace Divide {
         
         static string dayNightText = Util::StringFormat("%s/%s Day/Night Settings", ICON_FK_SUN_O, ICON_FK_MOON_O).c_str();
 
-        if (ImGui::CollapsingHeader(dayNightText.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth)) {
+        if (ImGui::CollapsingHeader(dayNightText.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth))
+        {
             bool dayNightEnabled = activeScene.dayNightCycleEnabled();
-            if (ImGui::Checkbox("Enable day/night cycle", &dayNightEnabled)) {
+            if (ImGui::Checkbox("Enable day/night cycle", &dayNightEnabled))
+            {
                 activeScene.dayNightCycleEnabled(dayNightEnabled);
             }
 
@@ -497,22 +542,26 @@ namespace Divide {
 
             const bool hourChanged = ImGui::SliderScalar("Hour", ImGuiDataType_U8, &time._hour, &min, &maxHour, "%02d");
             const bool minutesChanged = ImGui::SliderScalar("Minute", ImGuiDataType_U8, &time._minutes, &min, &maxMinute, "%02d");
-            if (hourChanged || minutesChanged) {
+            if (hourChanged || minutesChanged)
+            {
                 activeScene.setTimeOfDay(time);
             }
             F32 timeFactor = activeScene.getDayNightCycleTimeFactor();
-            if (ImGui::InputFloat("Time factor", &timeFactor)) {
+            if (ImGui::InputFloat("Time factor", &timeFactor))
+            {
                 activeScene.setDayNightCycleTimeFactor(CLAMPED(timeFactor, -500.f, 500.f));
             }
 
             ImGui::Text(ICON_FK_GLOBE_W" Global positioning:");
             const bool latitudeChanged = ImGui::SliderFloat("Latitude", &location._latitude, -90.f, 90.f, "%.6f");
             const bool longitudeChanged = ImGui::SliderFloat("Longitude", &location._longitude, -180.f, 180.f, "%.6f");
-            if (latitudeChanged || longitudeChanged) {
+            if (latitudeChanged || longitudeChanged)
+            {
                 activeScene.setGeographicLocation(location);
             }
 
-            if (!dayNightEnabled) {
+            if (!dayNightEnabled)
+            {
                 PushReadOnly();
             }
 
@@ -530,7 +579,8 @@ namespace Divide {
             ImGui::Text("Sun Pos|Dir: (%1.2f, %1.2f, %1.2f) | (%1.2f, %1.2f, %1.2f)", sunPosition.x, sunPosition.y, sunPosition.z, sunDirection.x, sunDirection.y, sunDirection.z);
             ImGui::Text("Sun altitude(max) | azimuth : (%3.2f | %3.2f) degrees", Angle::RadiansToDegrees(sun.altitude), sun.altitudeMax, Angle::RadiansToDegrees(sun.azimuth));
 
-            if (!dayNightEnabled) {
+            if (!dayNightEnabled)
+            {
                 PopReadOnly();
             }
         }
@@ -541,24 +591,29 @@ namespace Divide {
         drawReparentNodeDialog();
     }
 
-    void SolutionExplorerWindow::drawRemoveNodeDialog() {
-        if (_nodeToRemove == -1) {
+    void SolutionExplorerWindow::drawRemoveNodeDialog()
+    {
+        if (_nodeToRemove == -1)
+        {
             return;
         }
 
         Util::OpenCenteredPopup("Confirm Remove");
 
-        if (ImGui::BeginPopupModal("Confirm Remove", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal("Confirm Remove", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        {
             ImGui::Text("Are you sure you want remove the selected node [ %zu ]?", _nodeToRemove);
             ImGui::Separator();
 
-            if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+            if (ImGui::Button("Cancel", ImVec2(120, 0)))
+            {
                 ImGui::CloseCurrentPopup();
                 _nodeToRemove = -1;
             }
             ImGui::SetItemDefaultFocus();
             ImGui::SameLine();
-            if (ImGui::Button("Yes", ImVec2(120, 0))) {
+            if (ImGui::Button("Yes", ImVec2(120, 0)))
+            {
 
                 ImGui::CloseCurrentPopup();
                 Attorney::EditorSolutionExplorerWindow::queueRemoveNode(_parent, _nodeToRemove);
@@ -568,25 +623,30 @@ namespace Divide {
         }
     }
 
-    void SolutionExplorerWindow::drawReparentNodeDialog() {
-        if (!_reparentConfirmRequested) {
+    void SolutionExplorerWindow::drawReparentNodeDialog()
+    {
+        if (!_reparentConfirmRequested)
+        {
             return;
         }
 
         Util::OpenCenteredPopup("Confirm Re-parent");
 
-        if (ImGui::BeginPopupModal("Confirm Re-parent", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal("Confirm Re-parent", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        {
             ImGui::Text("Are you sure you want change the selected node's [ %s ] parent?", _childNode->name().c_str());
             ImGui::Text("Old Parent [ %s ] | New Parent [ %s ]", _childNode->parent()->name().c_str(), _tempParent->name().c_str());
             ImGui::Separator();
 
-            if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+            if (ImGui::Button("Cancel", ImVec2(120, 0)))
+            {
                 ImGui::CloseCurrentPopup();
                 _reparentConfirmRequested = false;
             }
             ImGui::SetItemDefaultFocus();
             ImGui::SameLine();
-            if (ImGui::Button("Yes", ImVec2(120, 0))) {
+            if (ImGui::Button("Yes", ImVec2(120, 0)))
+            {
                 _childNode->setParent(_tempParent, true);
                 _childNode = nullptr;
                 _tempParent = nullptr;
@@ -598,8 +658,10 @@ namespace Divide {
         }
     }
 
-    void SolutionExplorerWindow::drawAddNodeDialog() {
-        if (_parentNode == nullptr) {
+    void SolutionExplorerWindow::drawAddNodeDialog()
+    {
+        if (_parentNode == nullptr)
+        {
             return;
         }
 
@@ -616,15 +678,18 @@ namespace Divide {
             }
 
             const char* currentType = Names::sceneNodeType[to_base(g_currentNodeType)];
-            if (ImGui::BeginCombo("Node Type", currentType, ImGuiComboFlags_PopupAlignLeft)) {
-                for (U8 t = 0; t < to_U8(SceneNodeType::COUNT); ++t) {
+            if (ImGui::BeginCombo("Node Type", currentType, ImGuiComboFlags_PopupAlignLeft))
+            {
+                for (U8 t = 0; t < to_U8(SceneNodeType::COUNT); ++t)
+                {
                     const SceneNodeType type = static_cast<SceneNodeType>(t);
                     const bool isSelected = g_currentNodeType == type;
                     const bool valid = type != SceneNodeType::TYPE_SKY &&
                                        type != SceneNodeType::TYPE_VEGETATION &&
                                        type != SceneNodeType::TYPE_OBJECT3D;
 
-                    if (ImGui::Selectable(Names::sceneNodeType[t], isSelected, valid ? 0 : ImGuiSelectableFlags_Disabled)) {
+                    if (ImGui::Selectable(Names::sceneNodeType[t], isSelected, valid ? 0 : ImGuiSelectableFlags_Disabled))
+                    {
                         g_currentNodeType = type;
                     }
                 }
@@ -633,54 +698,72 @@ namespace Divide {
             ImGui::BeginChild("Components", ImVec2(0, 260), true, 0);
 
             U32& componentMask = g_nodeDescriptor._componentMask;
-            if (g_currentNodeType == SceneNodeType::TYPE_WATER || g_currentNodeType == SceneNodeType::TYPE_PARTICLE_EMITTER) {
+            if (g_currentNodeType == SceneNodeType::TYPE_WATER || g_currentNodeType == SceneNodeType::TYPE_PARTICLE_EMITTER)
+            {
                 componentMask |= to_U32(ComponentType::NAVIGATION) | 
                                  to_U32(ComponentType::RIGID_BODY) |
                                  to_U32(ComponentType::RENDERING);
-            } else if (g_currentNodeType == SceneNodeType::TYPE_INFINITEPLANE) {
+            }
+            else if (g_currentNodeType == SceneNodeType::TYPE_INFINITEPLANE)
+            {
                 componentMask |= to_U32(ComponentType::RENDERING);
             }
 
-            if (g_currentNodeType == SceneNodeType::TYPE_PARTICLE_EMITTER) {
+            if (g_currentNodeType == SceneNodeType::TYPE_PARTICLE_EMITTER)
+            {
                 componentMask |= to_U32(ComponentType::SELECTION);
             }
 
-            for (auto i = 1u; i < to_base(ComponentType::COUNT) + 1; ++i) {
+            for (auto i = 1u; i < to_base(ComponentType::COUNT) + 1; ++i)
+            {
                 const U32 componentBit = 1 << i;
                 bool required = componentBit == to_U32(ComponentType::TRANSFORM) || 
                                 componentBit == to_U32(ComponentType::BOUNDS);
-                if (g_currentNodeType == SceneNodeType::TYPE_WATER || g_currentNodeType == SceneNodeType::TYPE_PARTICLE_EMITTER) {
+
+                if (g_currentNodeType == SceneNodeType::TYPE_WATER ||
+                    g_currentNodeType == SceneNodeType::TYPE_PARTICLE_EMITTER)
+                {
                     required = required ||
                                componentBit == to_U32(ComponentType::NAVIGATION) ||
                                componentBit == to_U32(ComponentType::RIGID_BODY) ||
                                componentBit == to_U32(ComponentType::RENDERING);
-                    if (g_currentNodeType == SceneNodeType::TYPE_PARTICLE_EMITTER) {
+                    if (g_currentNodeType == SceneNodeType::TYPE_PARTICLE_EMITTER)
+                    {
                         required = required || componentBit == to_U32(ComponentType::SELECTION);
                     }
-                } else if (g_currentNodeType == SceneNodeType::TYPE_INFINITEPLANE) {
+                }
+                else if (g_currentNodeType == SceneNodeType::TYPE_INFINITEPLANE)
+                {
                     required = required || componentBit == to_U32(ComponentType::RENDERING);
                 }
 
                 const bool invalid = componentBit == to_U32(ComponentType::INVERSE_KINEMATICS) ||
                                      componentBit == to_U32(ComponentType::ANIMATION) ||
                                      componentBit == to_U32(ComponentType::RAGDOLL);
-                if (required || invalid) {
+                if (required || invalid)
+                {
                     PushReadOnly();
                 }
 
                 bool componentEnabled = BitCompare(componentMask, componentBit);
                 const char* compLabel = TypeUtil::ComponentTypeToString(static_cast<ComponentType>(componentBit));
-                if (ImGui::Checkbox(compLabel, &componentEnabled)) {
+                if (ImGui::Checkbox(compLabel, &componentEnabled))
+                {
                     SetBit(componentMask, componentBit);
                 }
-                if (ImGui::IsItemHovered()) {
-                    if (required) {
+                if (ImGui::IsItemHovered())
+                {
+                    if (required)
+                    {
                         ImGui::SetTooltip("Required component for current node type!");
-                    } else if (invalid) {
+                    }
+                    else if (invalid)
+                    {
                         ImGui::SetTooltip("Component type not (yet) supported!");
                     }
                 }
-                if (required || invalid) {
+                if (required || invalid)
+                {
                     PopReadOnly();
                 }
             }
@@ -688,15 +771,18 @@ namespace Divide {
             ImGui::EndChild();
             ImGui::Separator();
             bool nodeDynamic = g_nodeDescriptor._usageContext == NodeUsageContext::NODE_DYNAMIC;
-            if (ImGui::Checkbox("Dynamic", &nodeDynamic)) {
+            if (ImGui::Checkbox("Dynamic", &nodeDynamic))
+            {
                 g_nodeDescriptor._usageContext = nodeDynamic ? NodeUsageContext::NODE_DYNAMIC : NodeUsageContext::NODE_STATIC;
             }
-            if (ImGui::IsItemHovered()) {
+            if (ImGui::IsItemHovered())
+            {
                 ImGui::SetTooltip("Static or dynamic node? Affects navigation, collision detection and other systems.");
             }
 
             ImGui::Checkbox("Serializable", &g_nodeDescriptor._serialize);
-            if (ImGui::IsItemHovered()) {
+            if (ImGui::IsItemHovered())
+            {
                 ImGui::SetTooltip("State is saved and loaded to and from external files?");
             }
             ImGui::EndChild();
@@ -704,13 +790,15 @@ namespace Divide {
 
             drawNodeParametersChildWindow();
 
-            if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+            if (ImGui::Button("Cancel", ImVec2(120, 0)))
+            {
                 ImGui::CloseCurrentPopup();
                 _parentNode = nullptr;
             }
             ImGui::SetItemDefaultFocus();
             ImGui::SameLine();
-            if (ImGui::Button("Yes", ImVec2(120, 0))) {
+            if (ImGui::Button("Yes", ImVec2(120, 0)))
+            {
                 g_nodeDescriptor._node = createNode();
                 _parentNode->addChildNode(g_nodeDescriptor);
                 Attorney::EditorGeneralWidget::registerUnsavedSceneChanges(_context.editor());
@@ -723,11 +811,14 @@ namespace Divide {
         }
     }
 
-    void SolutionExplorerWindow::drawNodeParametersChildWindow() {
-        if (g_currentNodeType == SceneNodeType::TYPE_PARTICLE_EMITTER) {
+    void SolutionExplorerWindow::drawNodeParametersChildWindow()
+    {
+        if (g_currentNodeType == SceneNodeType::TYPE_PARTICLE_EMITTER)
+        {
             ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
             ImGui::BeginChild("Type Specific Properties", ImVec2(0, 200), true, 0);
-            if (g_particleEmitterData == nullptr) {
+            if (g_particleEmitterData == nullptr)
+            {
                 constexpr U32 options =
                     to_U32(ParticleDataProperties::PROPERTIES_POS) |
                     to_U32(ParticleDataProperties::PROPERTIES_VEL) |
@@ -767,26 +858,32 @@ namespace Divide {
 
             U32 componentMask = g_particleEmitterData->optionsMask();
             U32 particleCount = g_particleEmitterData->totalCount();
-            if (ImGui::InputScalar("Particle Count", ImGuiDataType_U32, &particleCount)) {
-                if (particleCount == 0) {
+            if (ImGui::InputScalar("Particle Count", ImGuiDataType_U32, &particleCount))
+            {
+                if (particleCount == 0)
+                {
                     particleCount = 1;
                 }
                 g_particleEmitterData->generateParticles(particleCount, componentMask);
             }
             
             F32 emitRate = g_particleSource->emitRate();
-            if (ImGui::InputFloat("Emit rate", &emitRate)) {
-                if (emitRate <= std::numeric_limits<F32>::epsilon()) {
+            if (ImGui::InputFloat("Emit rate", &emitRate))
+            {
+                if (emitRate <= std::numeric_limits<F32>::epsilon())
+                {
                     emitRate = 1.0f;
                 }
                 g_particleSource->updateEmitRate(emitRate);
             }
 
-            for (U8 i = 1; i < to_U8(ParticleDataProperties::COUNT) + 1; ++i) {
+            for (U8 i = 1; i < to_U8(ParticleDataProperties::COUNT) + 1; ++i)
+            {
                 const U32 componentBit = 1 << i;
                 bool componentEnabled = BitCompare(componentMask, componentBit);
                 const char* compLabel = Names::particleDataProperties[i - 1];
-                if (ImGui::Checkbox(compLabel, &componentEnabled)) {
+                if (ImGui::Checkbox(compLabel, &componentEnabled))
+                {
                     SetBit(componentMask, componentBit);
                     g_particleEmitterData->generateParticles(particleCount, componentMask);
                 }
@@ -797,25 +894,32 @@ namespace Divide {
         }
     }
 
-    void SolutionExplorerWindow::goToNode(const SceneGraphNode* sgn) const {
-        Attorney::EditorSolutionExplorerWindow::teleportToNode(_parent, sgn);
+    void SolutionExplorerWindow::goToNode(const SceneGraphNode* sgn) const
+    {
+        Attorney::EditorSolutionExplorerWindow::teleportToNode(_parent, _parent.editorCamera(), sgn);
     }
 
-    void SolutionExplorerWindow::saveNode(const SceneGraphNode* sgn) const {
+    void SolutionExplorerWindow::saveNode(const SceneGraphNode* sgn) const
+    {
         Attorney::EditorSolutionExplorerWindow::saveNode(_parent, sgn);
     }
 
-    void SolutionExplorerWindow::loadNode(SceneGraphNode* sgn) const {
+    void SolutionExplorerWindow::loadNode(SceneGraphNode* sgn) const
+    {
         Attorney::EditorSolutionExplorerWindow::loadNode(_parent, sgn);
     }
 
-    SceneNode_ptr SolutionExplorerWindow::createNode() {
+    SceneNode_ptr SolutionExplorerWindow::createNode()
+    {
         const ResourceDescriptor descriptor(Util::StringFormat("%s_node", g_nodeDescriptor._name.c_str()));
         SceneNode_ptr ptr =  Attorney::EditorSolutionExplorerWindow::createNode(_parent, g_currentNodeType, descriptor);
-        if (ptr) {
-            if (g_currentNodeType == SceneNodeType::TYPE_PARTICLE_EMITTER) {
+        if (ptr)
+        {
+            if (g_currentNodeType == SceneNodeType::TYPE_PARTICLE_EMITTER)
+            {
                 ParticleEmitter* emitter = static_cast<ParticleEmitter*>(ptr.get());
-                if (emitter->initData(g_particleEmitterData)) {
+                if (emitter->initData(g_particleEmitterData))
+                {
                     emitter->addSource(g_particleSource);
 
                     std::shared_ptr<ParticleEulerUpdater> eulerUpdater = std::make_shared<ParticleEulerUpdater>(context());
@@ -826,7 +930,9 @@ namespace Divide {
                     emitter->addUpdater(floorUpdater);
                     emitter->addUpdater(std::make_shared<ParticleBasicTimeUpdater>(context()));
                     emitter->addUpdater(std::make_shared<ParticleBasicColourUpdater>(context()));
-                } else {
+                }
+                else
+                {
                     ptr.reset();
                 }
                 g_particleEmitterData.reset();
@@ -836,18 +942,22 @@ namespace Divide {
         return ptr;
     }
 
-    void SolutionExplorerWindow::drawChangeParentWindow() {
-        if (_reparentSelectRequested) {
+    void SolutionExplorerWindow::drawChangeParentWindow()
+    {
+        if (_reparentSelectRequested)
+        {
             Util::OpenCenteredPopup("Select New Parent");
 
-            if (ImGui::BeginPopupModal("Select New Parent", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            if (ImGui::BeginPopupModal("Select New Parent", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+            {
                 SceneManager* sceneManager = context().kernel().sceneManager();
                 const Scene& activeScene = sceneManager->getActiveScene();
                 SceneGraphNode* root = activeScene.sceneGraph()->getRoot();
 
                 ImGui::Text("Selecting a new parent for SGN [ %d ][ %s ]?", _childNode->getGUID(), _childNode->name().c_str());
 
-                if (ImGui::BeginChild("SceneGraph", ImVec2(0, 400), true, 0)) {
+                if (ImGui::BeginChild("SceneGraph", ImVec2(0, 400), true, 0))
+                {
                     ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, ImGui::GetFontSize() * 3); // Increase spacing to differentiate leaves from expanded contents.
                     printSceneGraphNode(sceneManager, root, 0, true, true, false);
                     ImGui::PopStyleVar();
@@ -855,7 +965,8 @@ namespace Divide {
                     ImGui::EndChild();
                 }
 
-                if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+                if (ImGui::Button("Cancel", ImVec2(120, 0)))
+                {
                     _childNode = nullptr;
                     _tempParent = nullptr;
 
@@ -864,7 +975,8 @@ namespace Divide {
                 }
 
                 ImGui::SameLine();
-                if (ImGui::Button("Done", ImVec2(120, 0))) {
+                if (ImGui::Button("Done", ImVec2(120, 0)))
+                {
                     _reparentConfirmRequested = true;
 
                     ImGui::CloseCurrentPopup();
