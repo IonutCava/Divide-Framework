@@ -88,14 +88,14 @@ GUIButton::~GUIButton()
     }
 }
 
-void GUIButton::active(const bool& active) noexcept {
+void GUIButton::active(const bool active) noexcept {
     if (_btnWindow != nullptr && GUIElement::active() != active) {
         GUIElement::active(active);
         _btnWindow->setEnabled(active);
     }
 }
 
-void GUIButton::visible(const bool& visible) noexcept {
+void GUIButton::visible(const bool visible) noexcept {
     if (_btnWindow != nullptr && GUIElement::visible() != visible) {
         GUIElement::visible(visible);
         _btnWindow->setVisible(visible);

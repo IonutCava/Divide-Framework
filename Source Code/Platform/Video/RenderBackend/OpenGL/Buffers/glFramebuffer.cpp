@@ -428,7 +428,7 @@ void glFramebuffer::prepareBuffers(const RTDrawDescriptor& drawPolicy)
         queueCheckStatus();
      }
 
-    GL_API::GetStateTracker()->setDepthWrite(IsEnabled(drawPolicy._drawMask, RTAttachmentType::DEPTH));
+    GL_API::GetStateTracker().setDepthWrite(IsEnabled(drawPolicy._drawMask, RTAttachmentType::DEPTH));
 }
 
 void glFramebuffer::setDefaultAttachmentBinding(const RTAttachment_uptr& attachment)
@@ -565,7 +565,7 @@ void glFramebuffer::begin(const RTDrawDescriptor& drawPolicy, const RTClearDescr
     }
 
     /// Set the depth range
-    GL_API::GetStateTracker()->setDepthRange(_descriptor._depthRange.min, _descriptor._depthRange.max);
+    GL_API::GetStateTracker().setDepthRange(_descriptor._depthRange.min, _descriptor._depthRange.max);
     _context.setDepthRange(_descriptor._depthRange);
 
     // Memorize the current draw policy to speed up later calls
@@ -636,12 +636,22 @@ void glFramebuffer::clear(const RTClearDescriptor& descriptor)
                         case GFXDataFormat::SIGNED_SHORT:
                         case GFXDataFormat::SIGNED_INT:
                         {
-                            glClearNamedFramebufferiv(_framebufferHandle, GL_COLOR, buffer, Util::ToIntColour(colour)._v);
+                            static vec4<I32> clearColour;
+                            clearColour.set( FLOAT_TO_CHAR_SNORM(colour.r),
+                                             FLOAT_TO_CHAR_SNORM(colour.g),
+                                             FLOAT_TO_CHAR_SNORM(colour.b),
+                                             FLOAT_TO_CHAR_SNORM(colour.a));
+                            glClearNamedFramebufferiv(_framebufferHandle, GL_COLOR, buffer, clearColour._v);
                         } break;
 
                         default:
                         {
-                            glClearNamedFramebufferuiv(_framebufferHandle, GL_COLOR, buffer, Util::ToUIntColour(colour)._v);
+                            static vec4<U32> clearColour;
+                            clearColour.set( FLOAT_TO_CHAR_UNORM( colour.r ),
+                                             FLOAT_TO_CHAR_UNORM( colour.g ),
+                                             FLOAT_TO_CHAR_UNORM( colour.b ),
+                                             FLOAT_TO_CHAR_UNORM( colour.a ) );
+                            glClearNamedFramebufferuiv(_framebufferHandle, GL_COLOR, buffer, clearColour._v);
                         } break;
                     }
                 }
@@ -703,6 +713,8 @@ void glFramebuffer::drawToLayer(const RTDrawLayerParams& params)
 
 bool glFramebuffer::setMipLevelInternal(const RTAttachment_uptr& attachment, U16 writeLevel)
 {
+    OPTICK_EVENT();
+
     if (attachment == nullptr)
     {
         return false;
@@ -755,8 +767,8 @@ void glFramebuffer::readData(const vec4<U16>& rect,
 {
     OPTICK_EVENT();
 
-    GL_API::GetStateTracker()->setPixelPackUnpackAlignment();
-    if (GL_API::GetStateTracker()->setActiveFB(Usage::RT_READ_ONLY, _framebufferHandle) == GLStateTracker::BindResult::FAILED)
+    GL_API::GetStateTracker().setPixelPackUnpackAlignment();
+    if (GL_API::GetStateTracker().setActiveFB(Usage::RT_READ_ONLY, _framebufferHandle) == GLStateTracker::BindResult::FAILED)
     {
         DIVIDE_UNEXPECTED_CALL();
     }

@@ -7,7 +7,7 @@
 #include "Core/Headers/PlatformContext.h"
 #include "Managers/Headers/SceneManager.h"
 #include "Rendering/PostFX/Headers/PostFX.h"
-#include "Rendering/Camera/Headers/FreeFlyCamera.h"
+#include "Rendering/Camera/Headers/Camera.h"
 
 #include "Dynamics/Entities/Units/Headers/Player.h"
 

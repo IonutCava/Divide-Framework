@@ -7,28 +7,31 @@
 #include <imgui_internal.h>
 #include <IconFontCppHeaders/IconsForkAwesome.h>
 
-namespace Divide {
+namespace Divide
+{
     constexpr U16 g_maxLogEntries = 512;
 
     std::atomic_size_t g_writeIndex = 0;
     std::array<Console::OutputEntry, g_maxLogEntries> g_log;
 
-    OutputWindow::OutputWindow(Editor& parent, const Descriptor& descriptor)
-        : DockedWindow(parent, descriptor),
-         _inputBuf{}
+    OutputWindow::OutputWindow( Editor& parent, const Descriptor& descriptor )
+        : DockedWindow( parent, descriptor ),
+        _inputBuf{}
     {
-        memset(_inputBuf, 0, sizeof _inputBuf);
+        memset( _inputBuf, 0, sizeof _inputBuf );
 
-        std::atomic_init(&g_writeIndex, 0);
-        _consoleCallbackIndex = Console::bindConsoleOutput([this](const Console::OutputEntry& entry) {
-            PrintText(entry);
-            _scrollToButtomReset = true;
-        });
+        std::atomic_init( &g_writeIndex, 0 );
+        _consoleCallbackIndex = Console::bindConsoleOutput( [this]( const Console::OutputEntry& entry )
+                                                            {
+                                                                PrintText( entry );
+                                                                _scrollToButtomReset = true;
+                                                            } );
     }
 
     OutputWindow::~OutputWindow()
     {
-        if (!Console::unbindConsoleOutput(_consoleCallbackIndex)) {
+        if ( !Console::unbindConsoleOutput( _consoleCallbackIndex ) )
+        {
             DIVIDE_UNEXPECTED_CALL();
         }
 
@@ -36,95 +39,114 @@ namespace Divide {
     }
 
 
-    void OutputWindow::clearLog() {
-        g_log.fill({ "", Console::EntryType::INFO });
-        g_writeIndex.store(0);
+    void OutputWindow::clearLog()
+    {
+        g_log.fill( { "", Console::EntryType::INFO } );
+        g_writeIndex.store( 0 );
         _scrollToBottom = true;
     }
 
-    void OutputWindow::drawInternal() {
+    void OutputWindow::drawInternal()
+    {
         OPTICK_EVENT();
 
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
+        ImGui::PushStyleColor( ImGuiCol_ChildBg, ImVec4( 0.3f, 0.3f, 0.3f, 1.0f ) );
         {
             bool tooltip = false;
-            ImGui::Text(ICON_FK_SEARCH); tooltip = tooltip || ImGui::IsItemHovered();
+            ImGui::Text( ICON_FK_SEARCH ); tooltip = tooltip || ImGui::IsItemHovered();
             ImGui::SameLine();
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
-            _filter.Draw("##Filter", 180); tooltip = tooltip || ImGui::IsItemHovered();
-            if (tooltip) {
-                ImGui::SetTooltip("Search/Filter (\"incl,-excl\") (\"error\")");
+            ImGui::PushStyleVar( ImGuiStyleVar_FramePadding, ImVec2( 0, 0 ) );
+            _filter.Draw( "##Filter", 180 ); tooltip = tooltip || ImGui::IsItemHovered();
+            if ( tooltip )
+            {
+                ImGui::SetTooltip( "Search/Filter (\"incl,-excl\") (\"error\")" );
             }
         }
         ImGui::PopStyleVar();
         ImGuiWindow* window = ImGui::GetCurrentWindow();
-        ImGui::SameLine(window->SizeFull.x - 100);
-        if (ImGui::SmallButton("Clear")) {
+        ImGui::SameLine( window->SizeFull.x - 100 );
+        if ( ImGui::SmallButton( "Clear" ) )
+        {
             clearLog();
         }
         ImGui::SameLine();
-        const bool copy_to_clipboard = ImGui::SmallButton("Copy");
+        const bool copy_to_clipboard = ImGui::SmallButton( "Copy" );
         ImGui::Separator();
 
-        ImGui::BeginChild("ScrollingRegion", ImVec2(0, -ImGui::GetFrameHeightWithSpacing()), false, ImGuiWindowFlags_HorizontalScrollbar);
-        if (ImGui::BeginPopupContextWindow())
+        ImGui::BeginChild( "ScrollingRegion", ImVec2( 0, -ImGui::GetFrameHeightWithSpacing() ), false, ImGuiWindowFlags_HorizontalScrollbar );
+        if ( ImGui::BeginPopupContextWindow() )
         {
-            if (ImGui::Selectable("Clear")) {
+            if ( ImGui::Selectable( "Clear" ) )
+            {
                 clearLog();
             }
             ImGui::EndPopup();
         }
 
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1)); // Tighten spacing
+        ImGui::PushStyleVar( ImGuiStyleVar_ItemSpacing, ImVec2( 4, 1 ) ); // Tighten spacing
 
-        if (copy_to_clipboard) {
+        if ( copy_to_clipboard )
+        {
             ImGui::LogToClipboard();
         }
 
         static ImVec4 colours[] = {
-            ImVec4(1.0f, 1.0f, 1.0f, 1.0f),
-            ImVec4(1.0f, 1.0f, 0.0f, 1.0f),
-            ImVec4(1.0f, 0.4f, 0.4f, 1.0f),
-            ImVec4(0.0f, 0.0f, 1.0f, 1.0f)
+            ImVec4( 1.0f, 1.0f, 1.0f, 1.0f ),
+            ImVec4( 1.0f, 1.0f, 0.0f, 1.0f ),
+            ImVec4( 1.0f, 0.4f, 0.4f, 1.0f ),
+            ImVec4( 0.0f, 0.0f, 1.0f, 1.0f )
         };
 
         size_t readIndex = g_writeIndex.load();
-        if (readIndex == 0u) {
+        if ( readIndex == 0u )
+        {
             readIndex = g_maxLogEntries - 1u;
-        } else {
+        }
+        else
+        {
             readIndex -= 1u;
         }
-
         bool typePushed = false;
-        Console::EntryType previousType = Console::EntryType::INFO;
-        for (U16 i = 0u; i < g_maxLogEntries;  ++i) {
-            const size_t index = (readIndex + i) % g_maxLogEntries;
-            const Console::OutputEntry& message = g_log[index];
-            const char* textStart = message._text.c_str();
-            const char* textEnd = textStart + message._text.length();
+        {
+            OPTICK_EVENT( "Print Scrolling region " );
 
-            if (!_filter.PassFilter(textStart, textEnd)) {
-                continue;
-            }
-            const Console::EntryType currentType = message._type;
-            if (previousType != currentType) {
-                if (typePushed) {
-                    ImGui::PopStyleColor();
+            Console::EntryType previousType = Console::EntryType::INFO;
+            for ( U16 i = 0u; i < g_maxLogEntries; ++i )
+            {
+                const size_t index = (readIndex + i) % g_maxLogEntries;
+                const Console::OutputEntry& message = g_log[index];
+                const char* textStart = message._text.c_str();
+                const char* textEnd = textStart + message._text.length();
+
+                if ( !_filter.PassFilter( textStart, textEnd ) )
+                {
+                    continue;
                 }
-                ImGui::PushStyleColor(ImGuiCol_Text, colours[to_U8(currentType)]);
-                typePushed = true;
-                previousType = currentType;
+                const Console::EntryType currentType = message._type;
+                if ( previousType != currentType )
+                {
+                    if ( typePushed )
+                    {
+                        ImGui::PopStyleColor();
+                    }
+                    ImGui::PushStyleColor( ImGuiCol_Text, colours[to_U8( currentType )] );
+                    typePushed = true;
+                    previousType = currentType;
+                }
+
+                ImGui::TextUnformatted( textStart, textEnd );
             }
-            
-            ImGui::TextUnformatted(textStart, textEnd);
         }
-        if (typePushed) {
+        if ( typePushed )
+        {
             ImGui::PopStyleColor();
         }
-        if (copy_to_clipboard) {
+        if ( copy_to_clipboard )
+        {
             ImGui::LogFinish();
         }
-        if (_scrollToBottom && _scrollToButtomReset) {
+        if ( _scrollToBottom && _scrollToButtomReset )
+        {
             ImGui::SetScrollHereY();
         }
         _scrollToButtomReset = false;
@@ -133,62 +155,70 @@ namespace Divide {
         ImGui::EndChild();
         ImGui::Separator();
 
-        if (ImGui::InputText("Input",
-                             _inputBuf,
-                             IM_ARRAYSIZE(_inputBuf),
-                             ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackCompletion | ImGuiInputTextFlags_CallbackHistory,
-                             [](ImGuiInputTextCallbackData* data) noexcept {
-                                const OutputWindow* console = static_cast<OutputWindow*>(data->UserData);
-                                return console->TextEditCallback(data);
-                             },
-                             (void*)this))
+        if ( ImGui::InputText( "Input",
+                               _inputBuf,
+                               IM_ARRAYSIZE( _inputBuf ),
+                               ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackCompletion | ImGuiInputTextFlags_CallbackHistory,
+                               []( ImGuiInputTextCallbackData* data ) noexcept
+                               {
+                                   const OutputWindow* console = static_cast<OutputWindow*>(data->UserData);
+                                   return console->TextEditCallback( data );
+                               },
+                               (void*)this ) )
         {
-            char* input_end = _inputBuf + strlen(_inputBuf);
-            while (input_end > _inputBuf && input_end[-1] == ' ') {
+            char* input_end = _inputBuf + strlen( _inputBuf );
+            while ( input_end > _inputBuf && input_end[-1] == ' ' )
+            {
                 input_end--;
             }
             *input_end = 0;
 
-            if (_inputBuf[0]) {
-                executeCommand(_inputBuf);
+            if ( _inputBuf[0] )
+            {
+                executeCommand( _inputBuf );
             }
-            strcpy(_inputBuf, "");
+            strcpy( _inputBuf, "" );
         }
-        {
-            bool tooltip = false;
-            ImGui::SameLine(window->SizeFull.x - 55);
-            ImGui::Text(ICON_FK_ARROW_CIRCLE_DOWN); tooltip = tooltip || ImGui::IsItemHovered();
-            ImGui::SameLine();
-            ImGui::PushID(ICON_FK_ARROW_CIRCLE_DOWN"_ID");
-            ImGui::Checkbox("", &_scrollToBottom); tooltip = tooltip || ImGui::IsItemHovered();
-            ImGui::PopID();
-            if (tooltip) {
-                ImGui::SetTooltip("Auto-scroll to bottom");
-            }
-        }
-        // Demonstrate keeping auto focus on the input box
-        if (ImGui::IsItemHovered() || ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && !ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0)) {
-            ImGui::SetKeyboardFocusHere(-1); // Auto focus previous widget
-        }
-        ImGui::PopStyleColor();
+                               {
+                                   bool tooltip = false;
+                                   ImGui::SameLine( window->SizeFull.x - 55 );
+                                   ImGui::Text( ICON_FK_ARROW_CIRCLE_DOWN ); tooltip = tooltip || ImGui::IsItemHovered();
+                                   ImGui::SameLine();
+                                   ImGui::PushID( ICON_FK_ARROW_CIRCLE_DOWN"_ID" );
+                                   ImGui::Checkbox( "", &_scrollToBottom ); tooltip = tooltip || ImGui::IsItemHovered();
+                                   ImGui::PopID();
+                                   if ( tooltip )
+                                   {
+                                       ImGui::SetTooltip( "Auto-scroll to bottom" );
+                                   }
+                               }
+                               // Demonstrate keeping auto focus on the input box
+                               if ( ImGui::IsItemHovered() || ImGui::IsWindowFocused( ImGuiFocusedFlags_RootAndChildWindows ) && !ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked( 0 ) )
+                               {
+                                   ImGui::SetKeyboardFocusHere( -1 ); // Auto focus previous widget
+                               }
+                               ImGui::PopStyleColor();
     }
 
-    void OutputWindow::PrintText(const Console::OutputEntry& entry) {
-        g_log[g_writeIndex.fetch_add(1) % g_maxLogEntries] = entry;
+    void OutputWindow::PrintText( const Console::OutputEntry& entry )
+    {
+        g_log[g_writeIndex.fetch_add( 1 ) % g_maxLogEntries] = entry;
     }
 
-    void OutputWindow::executeCommand(const char* command_line) {
+    void OutputWindow::executeCommand( const char* command_line )
+    {
         PrintText(
             {
-                Util::StringFormat("# %s\n", command_line),
+                Util::StringFormat( "# %s\n", command_line ),
                 Console::EntryType::COMMAND
             }
         );
         _scrollToButtomReset = true;
     }
 
-    I32 OutputWindow::TextEditCallback(const ImGuiInputTextCallbackData* data) noexcept {
-        switch (data->EventFlag)
+    I32 OutputWindow::TextEditCallback( const ImGuiInputTextCallbackData* data ) noexcept
+    {
+        switch ( data->EventFlag )
         {
             case ImGuiInputTextFlags_CallbackCompletion:
             case ImGuiInputTextFlags_CallbackHistory:

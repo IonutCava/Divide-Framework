@@ -49,9 +49,6 @@ namespace Divide {
     struct GLStateTracker {
         static constexpr U8 MAX_BOUND_TEXTURE_UNITS = 32u;
 
-        GLStateTracker() noexcept;
-        ~GLStateTracker() = default;
-
         using AttribHashes = std::array<size_t, to_base(AttribLocation::COUNT)>;
 
         enum class BindResult : U8 {
@@ -60,6 +57,9 @@ namespace Divide {
             FAILED,
             COUNT
         };
+
+        void setDefaultState();
+
         /// Enable or disable primitive restart and ensure that the correct index size is used
         void togglePrimitiveRestart(bool state);
         /// Enable or disable primitive rasterization

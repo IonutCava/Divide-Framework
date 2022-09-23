@@ -10,8 +10,8 @@ AllocatedBuffer::~AllocatedBuffer()
     if (_buffer != VK_NULL_HANDLE) {
         assert(_usageType != BufferUsageType::COUNT);
         VK_API::RegisterCustomAPIDelete([buf = _buffer, alloc = _allocation]([[maybe_unused]] VkDevice device) {
-            UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()->_allocatorInstance._allocatorLock);
-            vmaDestroyBuffer(*VK_API::GetStateTracker()->_allocatorInstance._allocator, buf, alloc);
+            UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()._allocatorInstance._allocatorLock);
+            vmaDestroyBuffer(*VK_API::GetStateTracker()._allocatorInstance._allocator, buf, alloc);
         }, true);
     }
 }
@@ -56,15 +56,15 @@ AllocatedBuffer_uptr createStagingBuffer(const size_t size, std::string_view buf
     // Allocate staging buffer
     const VkBufferCreateInfo bufferInfo = vk::bufferCreateInfo(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, size);
     // Allocate the buffer
-    UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()->_allocatorInstance._allocatorLock);
-    VK_CHECK(vmaCreateBuffer(*VK_API::GetStateTracker()->_allocatorInstance._allocator,
+    UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()._allocatorInstance._allocatorLock);
+    VK_CHECK(vmaCreateBuffer(*VK_API::GetStateTracker()._allocatorInstance._allocator,
                              &bufferInfo,
                              &vmaallocInfo,
                              &ret->_buffer,
                              &ret->_allocation,
                              &ret->_allocInfo));
 
-    Debug::SetObjectName(VK_API::GetStateTracker()->_device->getVKDevice(), (uint64_t)ret->_buffer, VK_OBJECT_TYPE_BUFFER, Util::StringFormat("%s_staging_buffer", bufferName.data()).c_str());
+    Debug::SetObjectName(VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)ret->_buffer, VK_OBJECT_TYPE_BUFFER, Util::StringFormat("%s_staging_buffer", bufferName.data()).c_str());
 
     return ret;
 }

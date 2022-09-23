@@ -36,6 +36,8 @@
 #include "Scenes/Headers/Scene.h"
 
 #include "Core/Headers/KernelComponent.h"
+#include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
+
 #include "Rendering/Headers/FrameListener.h"
 #include "Rendering/RenderPass/Headers/RenderPassCuller.h"
 
@@ -272,7 +274,7 @@ namespace Divide
         [[nodiscard]] Camera* playerCamera( PlayerIndex idx, bool skipOverride = false ) const noexcept;
         void editorPreviewNode( const I64 editorPreviewNode ) noexcept;
         void currentPlayerPass( U64 deltaTimeUS, PlayerIndex idx );
-        void moveCameraToNode( Camera* camera, const SceneGraphNode* targetNode ) const;
+        BoundingSphere moveCameraToNode( Camera* camera, const SceneGraphNode* targetNode ) const;
         bool saveNode( const SceneGraphNode* targetNode ) const;
         bool loadNode( SceneGraphNode* targetNode ) const;
         SceneNode_ptr createNode( SceneNodeType type, const ResourceDescriptor& descriptor );
@@ -445,9 +447,9 @@ namespace Divide
                 return mgr.playerCamera( idx, skipOverride );
             }
 
-            static void moveCameraToNode( const Divide::SceneManager* mgr, Camera* camera, const SceneGraphNode* targetNode )
+            static BoundingSphere moveCameraToNode( const Divide::SceneManager* mgr, Camera* camera, const SceneGraphNode* targetNode )
             {
-                mgr->moveCameraToNode( camera, targetNode );
+                return mgr->moveCameraToNode( camera, targetNode );
             }
 
             friend class Divide::Scene;

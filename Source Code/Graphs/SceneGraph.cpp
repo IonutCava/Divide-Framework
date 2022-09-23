@@ -18,6 +18,7 @@
 
 #include "ECS/Systems/Headers/ECSManager.h"
 #include "ECS/Components/Headers/BoundsComponent.h"
+#include "ECS/Components/Headers/TransformComponent.h"
 
 namespace Divide {
 
@@ -26,12 +27,35 @@ namespace {
     constexpr std::array<U32, 2> g_cacheMarkerByteValue = { 0xDEADBEEF, 0xBADDCAFE };
     constexpr U32 g_nodesPerPartition = 32u;
 
-    [[nodiscard]] bool IsTransformNode(const SceneNodeType nodeType, const ObjectType objType) noexcept {
+    [[nodiscard]] constexpr bool IsTransformNode(const SceneNodeType nodeType, const ObjectType objType) noexcept
+    {
         return nodeType == SceneNodeType::TYPE_TRANSFORM ||
                nodeType == SceneNodeType::TYPE_TRIGGER ||
                objType  == ObjectType::MESH;
     }
 };
+
+BoundingSphere SceneGraph::GetBounds( const SceneGraphNode* sgn )
+{
+    BoundingSphere ret{ VECTOR3_ZERO , EPSILON_F32 };
+    if ( sgn != nullptr)
+    {
+        const BoundsComponent* bComp = sgn->get<BoundsComponent>();
+        if ( bComp != nullptr )
+        {
+            return bComp->getBoundingSphere();
+        }
+
+        const TransformComponent* tComp = sgn->get<TransformComponent>();
+        if ( tComp != nullptr )
+        {
+            ret.setCenter(tComp->getWorldPosition());
+            ret.setRadius(std::max(tComp->getLocalScale().maxComponent() * 2.f, 1.f));
+        }
+    }
+
+    return ret;
+}
 
 SceneGraph::SceneGraph(Scene& parentScene)
     : FrameListener("SceneGraph", parentScene.context().kernel().frameListenerMgr(), 1),

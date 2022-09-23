@@ -109,8 +109,8 @@ namespace Divide {
         // Allocate the vertex buffer (as a vb buffer and transfer destination)
         {
             VkBufferCreateInfo bufferInfo = vk::bufferCreateInfo(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, dataSize);
-            UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()->_allocatorInstance._allocatorLock);
-            VK_CHECK(vmaCreateBuffer(*VK_API::GetStateTracker()->_allocatorInstance._allocator,
+            UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()._allocatorInstance._allocatorLock);
+            VK_CHECK(vmaCreateBuffer(*VK_API::GetStateTracker()._allocatorInstance._allocator,
                                      &bufferInfo,
                                      &vmaallocInfo,
                                      &impl->_buffer->_buffer,
@@ -118,13 +118,13 @@ namespace Divide {
                                      &impl->_buffer->_allocInfo));
 
             VkMemoryPropertyFlags memPropFlags;
-            vmaGetAllocationMemoryProperties(*VK_API::GetStateTracker()->_allocatorInstance._allocator,
+            vmaGetAllocationMemoryProperties(*VK_API::GetStateTracker()._allocatorInstance._allocator,
                                              impl->_buffer->_allocation,
                                              &memPropFlags);
 
-            vmaSetAllocationName(*VK_API::GetStateTracker()->_allocatorInstance._allocator, impl->_buffer->_allocation, bufferName.c_str());
+            vmaSetAllocationName(*VK_API::GetStateTracker()._allocatorInstance._allocator, impl->_buffer->_allocation, bufferName.c_str());
 
-            Debug::SetObjectName(VK_API::GetStateTracker()->_device->getVKDevice(), (uint64_t)impl->_buffer->_buffer, VK_OBJECT_TYPE_BUFFER, bufferName.c_str());
+            Debug::SetObjectName(VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)impl->_buffer->_buffer, VK_OBJECT_TYPE_BUFFER, bufferName.c_str());
         }
 
         // Queue a command to copy from the staging buffer to the vertex buffer
@@ -211,8 +211,8 @@ namespace Divide {
                 vmaallocInfo.flags = 0;
 
                 //allocate the buffer
-                UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()->_allocatorInstance._allocatorLock);
-                VK_CHECK(vmaCreateBuffer(*VK_API::GetStateTracker()->_allocatorInstance._allocator,
+                UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()._allocatorInstance._allocatorLock);
+                VK_CHECK(vmaCreateBuffer(*VK_API::GetStateTracker()._allocatorInstance._allocator,
                                          &bufferInfo,
                                          &vmaallocInfo,
                                          &oldIdxBufferEntry->_handle->_buffer,
@@ -220,13 +220,13 @@ namespace Divide {
                                          &oldIdxBufferEntry->_handle->_allocInfo));
 
                 VkMemoryPropertyFlags memPropFlags;
-                vmaGetAllocationMemoryProperties(*VK_API::GetStateTracker()->_allocatorInstance._allocator,
+                vmaGetAllocationMemoryProperties(*VK_API::GetStateTracker()._allocatorInstance._allocator,
                                                  oldIdxBufferEntry->_handle->_allocation,
                                                  &memPropFlags);
 
-                vmaSetAllocationName(*VK_API::GetStateTracker()->_allocatorInstance._allocator, oldIdxBufferEntry->_handle->_allocation, bufferName.c_str());
+                vmaSetAllocationName(*VK_API::GetStateTracker()._allocatorInstance._allocator, oldIdxBufferEntry->_handle->_allocation, bufferName.c_str());
 
-                Debug::SetObjectName(VK_API::GetStateTracker()->_device->getVKDevice(), (uint64_t)oldIdxBufferEntry->_handle->_buffer, VK_OBJECT_TYPE_BUFFER, bufferName.c_str());
+                Debug::SetObjectName(VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)oldIdxBufferEntry->_handle->_buffer, VK_OBJECT_TYPE_BUFFER, bufferName.c_str());
             }
 
             const size_t range = indices.count * elementSize;

@@ -126,7 +126,7 @@ namespace Divide {
     VKDeletionQueue VK_API::s_transientDeleteQueue;
     VKDeletionQueue VK_API::s_deviceDeleteQueue;
     VKTransferQueue VK_API::s_transferQueue;
-    VKStateTracker_uptr VK_API::s_stateTracker = nullptr;
+    VKStateTracker VK_API::s_stateTracker;
     SharedMutex VK_API::s_samplerMapLock;
     VK_API::SamplerObjectMap VK_API::s_samplerMap{};
     VK_API::DepthFormatInformation VK_API::s_depthFormatInformation;
@@ -183,10 +183,10 @@ namespace Divide {
         pipelineInfo.pDepthStencilState = &_depthStencil;
         pipelineInfo.pTessellationState = &_tessellation;
         pipelineInfo.subpass = 0;
-        if (VK_API::GetStateTracker()->_pipelineRenderingCreateInfo.sType == VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO)
+        if (VK_API::GetStateTracker()._pipelineRenderingCreateInfo.sType == VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO)
         {
             pipelineInfo.renderPass = nullptr;
-            pipelineInfo.pNext = &VK_API::GetStateTracker()->_pipelineRenderingCreateInfo;
+            pipelineInfo.pNext = &VK_API::GetStateTracker()._pipelineRenderingCreateInfo;
         }
 
         //it's easy to error out on create graphics pipeline, so we handle it a bit better than the common VK_CHECK case
@@ -274,7 +274,7 @@ namespace Divide {
 
     void VK_API::RegisterTransferRequest(const VKTransferQueue::TransferRequest& request) {
         if (request._immediate) {
-            GetStateTracker()->_cmdContext->flushCommandBuffer([&request](VkCommandBuffer cmd) {
+            GetStateTracker()._cmdContext->flushCommandBuffer([&request](VkCommandBuffer cmd) {
                 if (request.srcBuffer != VK_NULL_HANDLE) {
                     VkBufferCopy copy;
                     copy.dstOffset = request.dstOffset;
@@ -330,11 +330,11 @@ namespace Divide {
 
         //once we start adding rendering commands, they will go here
         vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _trianglePipeline._pipeline);
-        GetStateTracker()->_activePipeline = _trianglePipeline._pipeline;
-        GetStateTracker()->_activePipelineLayout = _trianglePipeline._layout;
+        GetStateTracker()._activePipeline = _trianglePipeline._pipeline;
+        GetStateTracker()._activePipelineLayout = _trianglePipeline._layout;
 
         { //Draw a triangle;
-            GetStateTracker()->_activeTopology = PrimitiveTopology::TRIANGLES;
+            GetStateTracker()._activeTopology = PrimitiveTopology::TRIANGLES;
             draw({}, cmdBuffer);
         }
 
@@ -345,7 +345,7 @@ namespace Divide {
         VK_CHECK(vkEndCommandBuffer(cmdBuffer));
     }
 
-    void VKStateTracker::reset()
+    void VKStateTracker::setDefaultState()
     {
         _dynamicState = {};
         _activeShaderProgram = nullptr;
@@ -361,7 +361,7 @@ namespace Divide {
 
     bool VK_API::beginFrame(DisplayWindow& window, [[maybe_unused]] bool global) noexcept {
         // Set dynamic state to default
-        GetStateTracker()->reset();
+        GetStateTracker().setDefaultState();
 
         const auto& windowDimensions = window.getDrawableSize();
         const VkExtent2D windowExtents{ windowDimensions.width, windowDimensions.height };
@@ -391,7 +391,7 @@ namespace Divide {
 
         _context.setViewport({ 0, 0, windowDimensions.width, windowDimensions.height });
         setScissor({ 0, 0, windowDimensions.width, windowDimensions.height });
-        vkLockManager::CleanExpiredSyncObjects(VK_API::GetStateTracker()->_lastSyncedFrameNumber);
+        vkLockManager::CleanExpiredSyncObjects(VK_API::GetStateTracker()._lastSyncedFrameNumber);
 
         return true;
     }
@@ -419,7 +419,6 @@ namespace Divide {
     }
 
     ErrorCode VK_API::initRenderingAPI([[maybe_unused]] I32 argc, [[maybe_unused]] char** argv, [[maybe_unused]] Configuration& config) noexcept {
-        s_stateTracker = eastl::make_unique<VKStateTracker>();
         _descriptorSets.fill(VK_NULL_HANDLE);
 
         s_transientDeleteQueue.flags(s_transientDeleteQueue.flags() | to_base(VKDeletionQueue::Flags::TREAT_AS_TRANSIENT));
@@ -617,9 +616,9 @@ namespace Divide {
         _swapChain = eastl::make_unique<VKSwapChain>(*this, *_device, window);
         _cmdContext = eastl::make_unique<VKImmediateCmdContext>(*_device);
 
-        VK_API::s_stateTracker->_device = _device.get();
-        VK_API::s_stateTracker->_swapChain = _swapChain.get();
-        VK_API::s_stateTracker->_cmdContext = _cmdContext.get();
+        VK_API::s_stateTracker._device = _device.get();
+        VK_API::s_stateTracker._swapChain = _swapChain.get();
+        VK_API::s_stateTracker._cmdContext = _cmdContext.get();
 
         _descriptorAllocator = eastl::make_unique<DescriptorAllocator>(_device->getVKDevice());
         _descriptorLayoutCache = eastl::make_unique<DescriptorLayoutCache>(_device->getVKDevice());
@@ -635,13 +634,15 @@ namespace Divide {
         allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_3;
         
         vmaCreateAllocator(&allocatorInfo, &_allocator);
-        GetStateTracker()->_allocatorInstance._allocator = &_allocator;
+        GetStateTracker()._allocatorInstance._allocator = &_allocator;
 
         _commandBuffers.resize(VKSwapChain::MAX_FRAMES_IN_FLIGHT);
 
         //allocate the default command buffer that we will use for rendering
         const VkCommandBufferAllocateInfo cmdAllocInfo = vk::commandBufferAllocateInfo(_device->graphicsCommandPool(), VK_COMMAND_BUFFER_LEVEL_PRIMARY, VKSwapChain::MAX_FRAMES_IN_FLIGHT);
         VK_CHECK(vkAllocateCommandBuffers(_device->getVKDevice(), &cmdAllocInfo, _commandBuffers.data()));
+        
+        s_stateTracker.setDefaultState();
 
         return ErrorCode::NO_ERR;
     }
@@ -775,7 +776,7 @@ namespace Divide {
             _device.reset();
         }
 
-        s_stateTracker.reset();
+        s_stateTracker.setDefaultState();
 
         if (_vkbInstance.instance != nullptr) {
             vkDestroySurfaceKHR(_vkbInstance.instance, _surface, nullptr);
@@ -862,7 +863,7 @@ namespace Divide {
 
         if (cmd._sourceBuffer._id == 0) {
             U32 indexCount = 0u;
-            switch (VK_API::GetStateTracker()->_activeTopology) {
+            switch (VK_API::GetStateTracker()._activeTopology) {
                 case PrimitiveTopology::COMPUTE:
                 case PrimitiveTopology::COUNT     : DIVIDE_UNEXPECTED_CALL();         break;
                 case PrimitiveTopology::TRIANGLES : indexCount = cmd._drawCount * 3;  break;
@@ -923,7 +924,7 @@ namespace Divide {
                     if (usage == DescriptorSetUsage::PER_BATCH && srcBinding._slot == 0) {
                         // Draw indirect buffer!
                         DIVIDE_ASSERT(bufferUsage == ShaderBuffer::Usage::COMMAND_BUFFER);
-                        GetStateTracker()->_drawIndirectBuffer = buffer;
+                        GetStateTracker()._drawIndirectBuffer = buffer;
                     } else {
                         VkDescriptorBufferInfo& bufferInfo = BufferInfoStructs[bufferInfoStructIndex++];
                         bufferInfo.buffer = buffer;
@@ -1021,7 +1022,7 @@ namespace Divide {
     }
 
     void VK_API::bindDynamicState(const RenderStateBlock& currentState, VkCommandBuffer& cmdBuffer) const {
-        auto& stateTrackerDS = GetStateTracker()->_dynamicState;
+        auto& stateTrackerDS = GetStateTracker()._dynamicState;
         if (stateTrackerDS.stencilMask() != currentState.stencilMask()) {
             vkCmdSetStencilCompareMask(cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState.stencilMask());
             stateTrackerDS.stencilMask(currentState.stencilMask());
@@ -1053,8 +1054,8 @@ namespace Divide {
             return ShaderResult::Failed;
         }
 
-        GetStateTracker()->_activePipeline = VK_NULL_HANDLE;
-        GetStateTracker()->_activeTopology = pipelineDescriptor._primitiveTopology;
+        GetStateTracker()._activePipeline = VK_NULL_HANDLE;
+        GetStateTracker()._activeTopology = pipelineDescriptor._primitiveTopology;
         size_t stateBlockHash = pipelineDescriptor._stateHash == 0u ? _context.getDefaultStateBlock(false) : pipelineDescriptor._stateHash;
         if (stateBlockHash == 0)
         {
@@ -1064,8 +1065,8 @@ namespace Divide {
         const RenderStateBlock& currentState = RenderStateBlock::Get(stateBlockHash, currentStateValid);
         DIVIDE_ASSERT(currentStateValid, "GL_API error: Invalid state blocks detected on activation!");
 
-        GetStateTracker()->_activeShaderProgram = static_cast<vkShaderProgram*>(program);
-        const vkShaderProgram& vkProgram = *GetStateTracker()->_activeShaderProgram;
+        GetStateTracker()._activeShaderProgram = static_cast<vkShaderProgram*>(program);
+        const vkShaderProgram& vkProgram = *GetStateTracker()._activeShaderProgram;
         VkPushConstantRange push_constant;
         push_constant.offset = 0u;
         push_constant.size = to_U32(PushConstantsStruct::Size());
@@ -1082,7 +1083,7 @@ namespace Divide {
             vkDestroyPipelineLayout(device, tempPipelineLayout, nullptr);
         }, false);
 
-        GetStateTracker()->_activePipelineLayout = tempPipelineLayout;
+        GetStateTracker()._activePipelineLayout = tempPipelineLayout;
 
         //build the stage-create-info for both vertex and fragment stages. This lets the pipeline know the shader modules per stage
         /*
@@ -1118,7 +1119,7 @@ namespace Divide {
                                                     : VK_FRONT_FACE_COUNTER_CLOCKWISE);
         //we don't use multisampling, so just run the default one
         VkSampleCountFlagBits msaaSampleFlags = VK_SAMPLE_COUNT_1_BIT;
-        const U8 msaaSamples = GetStateTracker()->_activeMSAASamples;
+        const U8 msaaSamples = GetStateTracker()._activeMSAASamples;
         if (msaaSamples > 0u) {
             assert(isPowerOfTwo(msaaSamples));
             msaaSampleFlags = static_cast<VkSampleCountFlagBits>(msaaSamples);
@@ -1126,7 +1127,7 @@ namespace Divide {
 
         pipelineBuilder._multisampling = vk::pipelineMultisampleStateCreateInfo(msaaSampleFlags);
         pipelineBuilder._multisampling.minSampleShading = 1.f;
-        pipelineBuilder._multisampling.alphaToCoverageEnable = GetStateTracker()->_alphaToCoverage ? VK_TRUE : VK_FALSE;
+        pipelineBuilder._multisampling.alphaToCoverageEnable = GetStateTracker()._alphaToCoverage ? VK_TRUE : VK_FALSE;
         VkStencilOpState stencilOpState{};
         stencilOpState.failOp = vkStencilOpTable[to_base(currentState.stencilFailOp())];
         stencilOpState.passOp = vkStencilOpTable[to_base(currentState.stencilPassOp())];
@@ -1158,7 +1159,7 @@ namespace Divide {
             vkDestroyPipelineLayout(device, tempPipelineLayout, nullptr);
         }, false);
 
-        vkCmdBindPipeline(cmdBuffer, isGraphicsPipeline ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE, GetStateTracker()->_tempPipelines.back()._pipeline);
+        vkCmdBindPipeline(cmdBuffer, isGraphicsPipeline ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE, GetStateTracker()._tempPipelines.back()._pipeline);
         */
 
         bindDynamicState(currentState, cmdBuffer);
@@ -1185,7 +1186,7 @@ namespace Divide {
             {
                 static eastl::fixed_vector<VkBufferMemoryBarrier2, 32, true> s_barriers{};
                 // ToDo: Use a semaphore here and insert a wait dependency on it into the main command buffer - Ionut
-                VK_API::GetStateTracker()->_cmdContext->flushCommandBuffer([](VkCommandBuffer cmd)
+                VK_API::GetStateTracker()._cmdContext->flushCommandBuffer([](VkCommandBuffer cmd)
                 {
                     while (!s_transferQueue._requests.empty())
                     {
@@ -1242,7 +1243,7 @@ namespace Divide {
             case GFX::CommandType::BEGIN_RENDER_PASS:
             {
                 const GFX::BeginRenderPassCommand* crtCmd = cmd->As<GFX::BeginRenderPassCommand>();
-                VK_API::GetStateTracker()->_activeRenderTargetID = crtCmd->_target;
+                VK_API::GetStateTracker()._activeRenderTargetID = crtCmd->_target;
                 if (crtCmd->_target == SCREEN_TARGET_ID)
                 {
                     VkClearValue clearValue{};
@@ -1260,10 +1261,10 @@ namespace Divide {
                 else
                 {
                     vkRenderTarget* rt = static_cast<vkRenderTarget*>(_context.renderTargetPool().getRenderTarget(crtCmd->_target));
-                    Attorney::VKAPIRenderTarget::begin(*rt, cmdBuffer, crtCmd->_descriptor, crtCmd->_clearDescriptor, GetStateTracker()->_pipelineRenderingCreateInfo);
+                    Attorney::VKAPIRenderTarget::begin(*rt, cmdBuffer, crtCmd->_descriptor, crtCmd->_clearDescriptor, GetStateTracker()._pipelineRenderingCreateInfo);
 
-                    GetStateTracker()->_alphaToCoverage = crtCmd->_descriptor._alphaToCoverage;
-                    GetStateTracker()->_activeMSAASamples = rt->getSampleCount();
+                    GetStateTracker()._alphaToCoverage = crtCmd->_descriptor._alphaToCoverage;
+                    GetStateTracker()._activeMSAASamples = rt->getSampleCount();
                     if (crtCmd->_descriptor._setViewport)
                     {
                         _context.setViewport({ 0, 0, rt->getWidth(), rt->getHeight() });
@@ -1275,20 +1276,20 @@ namespace Divide {
             case GFX::CommandType::END_RENDER_PASS:
             {
                 PopDebugMessage(cmdBuffer);
-                GetStateTracker()->_alphaToCoverage = false;
-                GetStateTracker()->_activeMSAASamples = _context.context().config().rendering.MSAASamples;
+                GetStateTracker()._alphaToCoverage = false;
+                GetStateTracker()._activeMSAASamples = _context.context().config().rendering.MSAASamples;
 
-                if (GetStateTracker()->_activeRenderTargetID == SCREEN_TARGET_ID)
+                if (GetStateTracker()._activeRenderTargetID == SCREEN_TARGET_ID)
                 {
                     vkCmdEndRenderPass(cmdBuffer);
                 }
                 else
                 {
-                    vkRenderTarget* rt = static_cast<vkRenderTarget*>(_context.renderTargetPool().getRenderTarget(GetStateTracker()->_activeRenderTargetID));
+                    vkRenderTarget* rt = static_cast<vkRenderTarget*>(_context.renderTargetPool().getRenderTarget(GetStateTracker()._activeRenderTargetID));
                     Attorney::VKAPIRenderTarget::end(*rt, cmdBuffer);
                 }
-                GetStateTracker()->_activeRenderTargetID = INVALID_RENDER_TARGET_ID;
-                GetStateTracker()->_pipelineRenderingCreateInfo = {};
+                GetStateTracker()._activeRenderTargetID = INVALID_RENDER_TARGET_ID;
+                GetStateTracker()._pipelineRenderingCreateInfo = {};
             }break;
             case GFX::CommandType::BEGIN_GPU_QUERY:
             {
@@ -1315,18 +1316,18 @@ namespace Divide {
             } break;
             case GFX::CommandType::SEND_PUSH_CONSTANTS:
             {
-                if (GetStateTracker()->_activePipeline != VK_NULL_HANDLE)
+                if (GetStateTracker()._activePipeline != VK_NULL_HANDLE)
                 {
                     const PushConstants& pushConstants = cmd->As<GFX::SendPushConstantsCommand>()->_constants;
-                    if (GetStateTracker()->_activeShaderProgram->uploadUniformData(pushConstants, _context.descriptorSet(DescriptorSetUsage::PER_DRAW).impl(), pushConstantsMemCommand)) {
+                    if (GetStateTracker()._activeShaderProgram->uploadUniformData(pushConstants, _context.descriptorSet(DescriptorSetUsage::PER_DRAW).impl(), pushConstantsMemCommand)) {
                         _context.descriptorSet(DescriptorSetUsage::PER_DRAW).dirty(true);
                     }
                     if (pushConstants.fastData()._set)
                     {
                         const F32* constantData = pushConstants.fastData().data();
                         vkCmdPushConstants(cmdBuffer,
-                                           GetStateTracker()->_activePipelineLayout,
-                                           GetStateTracker()->_activeShaderProgram->stageMask(),
+                                           GetStateTracker()._activePipelineLayout,
+                                           GetStateTracker()._activeShaderProgram->stageMask(),
                                            0,
                                            to_U32(PushConstantsStruct::Size()),
                                            &constantData);
@@ -1378,7 +1379,7 @@ namespace Divide {
             {
                 const GFX::DrawCommand::CommandContainer& drawCommands = cmd->As<GFX::DrawCommand>()->_drawCommands;
 
-                if (GetStateTracker()->_activePipeline != VK_NULL_HANDLE)
+                if (GetStateTracker()._activePipeline != VK_NULL_HANDLE)
                 {
                     U32 drawCount = 0u;
                     for (const GenericDrawCommand& currentDrawCommand : drawCommands)
@@ -1395,8 +1396,8 @@ namespace Divide {
             }break;
             case GFX::CommandType::DISPATCH_COMPUTE:
             {
-                assert(GetStateTracker()->_activeTopology == PrimitiveTopology::COMPUTE);
-                if (GetStateTracker()->_activePipeline != VK_NULL_HANDLE)
+                assert(GetStateTracker()._activeTopology == PrimitiveTopology::COMPUTE);
+                if (GetStateTracker()._activePipeline != VK_NULL_HANDLE)
                 {
                 }
             } break;
@@ -1443,10 +1444,10 @@ namespace Divide {
                                         -to_F32(newViewport.sizeY),
                                         0.f,
                                         1.f};
-        if (GetStateTracker()->_dynamicState._activeViewport != targetViewport)
+        if (GetStateTracker()._dynamicState._activeViewport != targetViewport)
         {
             vkCmdSetViewport(cmdBuffer, 0, 1, &targetViewport);
-            GetStateTracker()->_dynamicState._activeViewport = targetViewport;
+            GetStateTracker()._dynamicState._activeViewport = targetViewport;
             return true;
         } 
 
@@ -1460,7 +1461,7 @@ namespace Divide {
         const VkOffset2D offset{ std::max(0, newScissor.offsetX), std::max(0, newScissor.offsetY) };
         const VkExtent2D extent{ to_U32(newScissor.sizeX),to_U32(newScissor.sizeY) };
         const VkRect2D targetScissor{ offset, extent };
-        if (GetStateTracker()->_dynamicState._activeScissor != targetScissor)
+        if (GetStateTracker()._dynamicState._activeScissor != targetScissor)
         {
             vkCmdSetScissor(cmdBuffer, 0, 1, &targetScissor);
             return true;
@@ -1472,9 +1473,7 @@ namespace Divide {
     void VK_API::onThreadCreated([[maybe_unused]] const std::thread::id& threadID) noexcept {
     }
 
-    const VKStateTracker_uptr& VK_API::GetStateTracker() noexcept {
-        DIVIDE_ASSERT(s_stateTracker != nullptr);
-
+    VKStateTracker& VK_API::GetStateTracker() noexcept {
         return s_stateTracker;
     }
 
@@ -1501,8 +1500,8 @@ namespace Divide {
             Debug::vkCmdBeginDebugUtilsLabelEXT(cmdBuffer, &labelInfo);
         }
         
-        assert(GetStateTracker()->_debugScopeDepth < GetStateTracker()->_debugScope.size());
-        GetStateTracker()->_debugScope[GetStateTracker()->_debugScopeDepth++] = { message, id };
+        assert(GetStateTracker()._debugScopeDepth < GetStateTracker()._debugScope.size());
+        GetStateTracker()._debugScope[GetStateTracker()._debugScopeDepth++] = { message, id };
     }
 
     void VK_API::PopDebugMessage(VkCommandBuffer cmdBuffer)
@@ -1512,7 +1511,7 @@ namespace Divide {
             Debug::vkCmdEndDebugUtilsLabelEXT(cmdBuffer);
         }
 
-        GetStateTracker()->_debugScope[GetStateTracker()->_debugScopeDepth--] = { "", std::numeric_limits<U32>::max() };
+        GetStateTracker()._debugScope[GetStateTracker()._debugScopeDepth--] = { "", std::numeric_limits<U32>::max() };
     }
 
     /// Return the Vulkan sampler object's handle for the given hash value

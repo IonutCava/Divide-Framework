@@ -37,7 +37,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Core/Headers/PlatformContextComponent.h"
-
+#include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
 #include "Rendering/Headers/FrameListener.h"
 #include "Rendering/Camera/Headers/CameraSnapshot.h"
 #include "Editor/Widgets/Headers/Gizmo.h"
@@ -84,8 +84,6 @@ namespace Divide
     class PanelManager;
     class PostFXWindow;
     class DisplayWindow;
-    class OrbitCamera;
-    class FreeFlyCamera;
     class PropertyWindow;
     class SceneGraphNode;
     class SceneViewWindow;
@@ -244,7 +242,7 @@ namespace Divide
         [[nodiscard]] inline bool isInit() const noexcept;
         [[nodiscard]] bool render( U64 deltaTime );
 
-        void teleportToNode( Camera* camera, const SceneGraphNode* sgn ) const;
+        BoundingSphere teleportToNode( Camera* camera, const SceneGraphNode* sgn ) const;
         void saveNode( const SceneGraphNode* sgn ) const;
         void loadNode( SceneGraphNode* sgn ) const;
         void queueRemoveNode( I64 nodeGUID );
@@ -266,8 +264,8 @@ namespace Divide
         PROPERTY_R_IW( bool, unsavedSceneChanges, false );
         PROPERTY_R_IW( FocusedWindowState, windowFocusState );
         POINTER_R_IW( Camera, selectedCamera, nullptr );
-        POINTER_R_IW( FreeFlyCamera, editorCamera, nullptr );
-        POINTER_R_IW( FreeFlyCamera, nodePreviewCamera, nullptr );
+        POINTER_R_IW( Camera, editorCamera, nullptr );
+        POINTER_R_IW( Camera, nodePreviewCamera, nullptr );
         PROPERTY_RW( bool, infiniteGridEnabledScene, true );
         PROPERTY_RW( bool, infiniteGridEnabledNode, true );
         PROPERTY_R( F32, infiniteGridAxisWidth, 2.f );
@@ -296,7 +294,6 @@ namespace Divide
 
         void onRemoveComponent( const EditorComponent& comp ) const;
 
-        [[nodiscard]] ECSManager& getECSManager() const;
         [[nodiscard]] LightPool& getActiveLightPool() const;
         [[nodiscard]] SceneEnvironmentProbePool* getActiveEnvProbePool() const noexcept;
 
@@ -305,7 +302,6 @@ namespace Divide
         void copyPlayerCamToEditorCam() noexcept;
         void setEditorCamLookAt( const vec3<F32>& eye, const vec3<F32>& fwd, const vec3<F32>& up );
         void setEditorCameraSpeed( const vec3<F32>& speed ) noexcept;
-        [[nodiscard]] vec3<F32> getEditorCameraSpeed() const noexcept;
 
         [[nodiscard]] bool addComponent( SceneGraphNode* selection, ComponentType newComponentType ) const;
         [[nodiscard]] bool addComponent( const Selections& selections, ComponentType newComponentType ) const;
@@ -404,11 +400,6 @@ namespace Divide
                 editor.setEditorCamLookAt( eye, fwd, up );
             }
 
-            static vec3<F32> getEditorCameraSpeed( const Editor& editor ) noexcept
-            {
-                return editor.getEditorCameraSpeed();
-            }
-
             static void setEditorCameraSpeed( Editor& editor, const vec3<F32>& speed ) noexcept
             {
                 editor.setEditorCameraSpeed( speed );
@@ -454,9 +445,9 @@ namespace Divide
                 editor._gizmo->enable( state );
             }
 
-            static void teleportToNode( const Editor& editor, Camera* camera, const SceneGraphNode* targetNode )
+            static BoundingSphere teleportToNode( const Editor& editor, Camera* camera, const SceneGraphNode* targetNode )
             {
-                editor.teleportToNode( camera, targetNode );
+                return editor.teleportToNode( camera, targetNode );
             }
 
             static void saveNode( const Editor& editor, const SceneGraphNode* targetNode )
@@ -587,11 +578,6 @@ namespace Divide
             [[nodiscard]] static LightPool& getActiveLightPool( const Editor& editor )
             {
                 return editor.getActiveLightPool();
-            }
-
-            [[nodiscard]] static ECSManager& getECSManager( const Editor& editor )
-            {
-                return editor.getECSManager();
             }
 
             [[nodiscard]] static SceneEnvironmentProbePool* getActiveEnvProbePool( const Editor& editor )

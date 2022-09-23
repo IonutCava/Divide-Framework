@@ -20,7 +20,7 @@
 #include "GUI/Headers/GUIButton.h"
 
 #include "AI/PathFinding/Headers/DivideRecast.h"
-#include "Rendering/Camera/Headers/FreeFlyCamera.h"
+#include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Headers/Renderer.h"
 #include "Rendering/PostFX/Headers/PostFX.h"
 #include "Rendering/Lighting/Headers/LightPool.h"
@@ -440,8 +440,8 @@ namespace Divide
         static VisibleNodeList<VisibleNode, 1024> LoSList;
 
         const auto& sceneGraph = getActiveScene().sceneGraph();
-        const vec3<F32>& eye = camera.getEye();
-        const vec2<F32>& zPlanes = camera.getZPlanes();
+        const vec3<F32>& eye = camera.snapshot()._eye;
+        const vec2<F32>& zPlanes = camera.snapshot()._zPlanes;
 
         SGNIntersectionParams intersectionParams = {};
         intersectionParams._includeTransformNodes = false;
@@ -717,10 +717,11 @@ namespace Divide
         getActiveScene().state()->renderState().singleNodeRenderGUID( editorPreviewNode );
     }
 
-    void SceneManager::moveCameraToNode( Camera* camera, const SceneGraphNode* targetNode ) const
+    BoundingSphere SceneManager::moveCameraToNode( Camera* camera, const SceneGraphNode* targetNode ) const
     {
         OPTICK_EVENT();
 
+        BoundingSphere bSphere;
         vec3<F32> targetPos = WORLD_Z_NEG_AXIS;
         vec3<F32> eyePos = VECTOR3_ZERO;
 
@@ -732,26 +733,18 @@ namespace Divide
         /// Root node just means a teleport to (0,0,0)
         if ( targetNode->parent() != nullptr )
         {
-            eyePos = camera->getEye();
-            const BoundsComponent* bComp = targetNode->get<BoundsComponent>();
-            if ( bComp != nullptr )
-            {
-                const BoundingSphere& bSphere = bComp->getBoundingSphere();
-                targetPos = bSphere.getCenter();
-                eyePos = targetPos - (bSphere.getRadius() * 1.5f * camera->getForwardDir());
-            }
-            else
-            {
-                const TransformComponent* tComp = targetNode->get<TransformComponent>();
-                if ( tComp != nullptr )
-                {
-                    targetPos = tComp->getWorldPosition();
-                    eyePos = targetPos - (camera->getForwardDir() * 3.0f);
-                }
-            }
+            bSphere = SceneGraph::GetBounds(targetNode);
+            targetPos = bSphere.getCenter();
+            eyePos = targetPos - (bSphere.getRadius() * 1.5f * camera->viewMatrix().getForwardDirection());
+        }
+        else
+        {
+            bSphere.setCenter(VECTOR3_ZERO);
+            bSphere.setRadius(1.f);
         }
 
-        camera->lookAt( eyePos, targetPos  );
+        camera->lookAt( eyePos, targetPos );
+        return bSphere;
     }
 
     bool SceneManager::saveNode( const SceneGraphNode* targetNode ) const
@@ -785,9 +778,9 @@ namespace Divide
             NodeCullParams cullParams = {};
             cullParams._lodThresholds = getActiveScene().state()->renderState().lodThresholds();
             cullParams._stage = stage;
-            cullParams._cameraEyePos = camera->getEye();
+            cullParams._cameraEyePos = camera->snapshot()._eye;
             cullParams._frustum = &camera->getFrustum();
-            cullParams._cullMaxDistance = camera->getZPlanes().y;
+            cullParams._cullMaxDistance = camera->snapshot()._zPlanes.max;
 
             _renderPassCuller->frustumCull( parent().platformContext(), cullParams, to_base( CullOptions::DEFAULT_CULL_OPTIONS ), allNodes, nodesOut );
         }
@@ -817,9 +810,9 @@ namespace Divide
             NodeCullParams cullParams = {};
             cullParams._lodThresholds = getActiveScene().state()->renderState().lodThresholds();
             cullParams._stage = stage;
-            cullParams._cameraEyePos = camera->getEye();
+            cullParams._cameraEyePos = camera->snapshot()._eye;
             cullParams._frustum = &camera->getFrustum();
-            cullParams._cullMaxDistance = camera->getZPlanes().y;
+            cullParams._cullMaxDistance = camera->snapshot()._zPlanes.max;
 
             _renderPassCuller->frustumCull( parent().platformContext(), cullParams, to_base( CullOptions::DEFAULT_CULL_OPTIONS ), allNodes, nodesOut );
         }

@@ -35,41 +35,44 @@
 
 #include "Scenes/Headers/Scene.h"
 
-namespace Divide {
+namespace Divide
+{
 
-class Sphere3D;
+    class Sphere3D;
 
-namespace GFX {
-    enum class PushConstantType : U8;
-};
+    namespace GFX
+    {
+        enum class PushConstantType : U8;
+    };
 
-class FreeFlyCamera;
-BEGIN_SCENE(PingPongScene)
-    explicit PingPongScene(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name);
+    BEGIN_SCENE( PingPongScene )
+        explicit PingPongScene( PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name );
 
-    ~PingPongScene() {}
+    ~PingPongScene()
+    {
+    }
 
     bool load() override;
     void postLoadMainThread() override;
-    void processInput(PlayerIndex idx, U64 deltaTimeUS) override;
-    void processTasks(U64 deltaTimeUS) override;
-    void processGUI(U64 deltaTimeUS) override;
+    void processInput( PlayerIndex idx, U64 deltaTimeUS ) override;
+    void processTasks( U64 deltaTimeUS ) override;
+    void processGUI( U64 deltaTimeUS ) override;
     U16  registerInputActions() override;
 
-   private:
-    void test(std::any a, GFX::PushConstantType type);
+    private:
+    void test( std::any a, GFX::PushConstantType type );
     void serveBall();
     void resetGame();
 
-   private:
+    private:
     I8 _score;
     vector<string> _quotes;
     vec3<F32> _sunvector;
     std::shared_ptr<Sphere3D> _ball;
     SceneGraphNode* _ballSGN = nullptr;
-    FreeFlyCamera* _paddleCam;
+    Camera* _paddleCam;
 
-   private:  // Game stuff:
+    private:  // Game stuff:
     bool _directionTowardsAdversary;
     bool _upwardsDirection;
     bool _touchedOwnTableHalf;
@@ -78,7 +81,7 @@ BEGIN_SCENE(PingPongScene)
     bool _freeFly;
     bool _wasInFreeFly;
     F32 _sideDrift;
-END_SCENE(PingPongScene)
+    END_SCENE( PingPongScene )
 
 }  // namespace Divide
 

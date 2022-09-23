@@ -286,21 +286,6 @@
     <ClCompile Include="../../Source Code/GUI\GUIConsoleCommandParser.cpp">
       <Filter>GUI</Filter>
     </ClCompile>
-    <ClCompile Include="../../Source Code/Rendering\Camera\ThirdPersonCamera.cpp">
-      <Filter>Rendering\Camera</Filter>
-    </ClCompile>
-    <ClCompile Include="../../Source Code/Rendering\Camera\FirstPersonCamera.cpp">
-      <Filter>Rendering\Camera</Filter>
-    </ClCompile>
-    <ClCompile Include="../../Source Code/Rendering\Camera\FreeFlyCamera.cpp">
-      <Filter>Rendering\Camera</Filter>
-    </ClCompile>
-    <ClCompile Include="../../Source Code/Rendering\Camera\ScriptedCamera.cpp">
-      <Filter>Rendering\Camera</Filter>
-    </ClCompile>
-    <ClCompile Include="../../Source Code/Rendering\Camera\OrbitCamera.cpp">
-      <Filter>Rendering\Camera</Filter>
-    </ClCompile>
     <ClCompile Include="../../Source Code/Rendering\RenderPass\RenderPassCuller.cpp">
       <Filter>Rendering\RenderPass</Filter>
     </ClCompile>
@@ -610,18 +595,6 @@
     <ClInclude Include="../../Source Code/Rendering\Camera\Headers\Camera.h">
       <Filter>Rendering\Camera\Headers</Filter>
     </ClInclude>
-    <ClInclude Include="../../Source Code/Rendering\Camera\Headers\FirstPersonCamera.h">
-      <Filter>Rendering\Camera\Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="../../Source Code/Rendering\Camera\Headers\FreeFlyCamera.h">
-      <Filter>Rendering\Camera\Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="../../Source Code/Rendering\Camera\Headers\OrbitCamera.h">
-      <Filter>Rendering\Camera\Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="../../Source Code/Rendering\Camera\Headers\ThirdPersonCamera.h">
-      <Filter>Rendering\Camera\Headers</Filter>
-    </ClInclude>
     <ClInclude Include="../../Source Code/Rendering\PostFX\Headers\PostFX.h">
       <Filter>Rendering\PostFX\Headers</Filter>
     </ClInclude>
@@ -711,9 +684,6 @@
     </ClInclude>
     <ClInclude Include="../../Source Code/GUI\Headers\GUIConsoleCommandParser.h">
       <Filter>GUI\Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="../../Source Code/Rendering\Camera\Headers\ScriptedCamera.h">
-      <Filter>Rendering\Camera\Headers</Filter>
     </ClInclude>
     <ClInclude Include="../../Source Code/Rendering\RenderPass\Headers\RenderPassCuller.h">
       <Filter>Rendering\RenderPass\Headers</Filter>
@@ -1104,6 +1074,9 @@
     </None>
     <None Include="..\..\Source Code\Rendering\PostFX\Headers\PreRenderBatch.inl">
       <Filter>Rendering\PostFX\Headers</Filter>
+    </None>
+    <None Include="..\..\Source Code\Rendering\Camera\Headers\Camera.inl">
+      <Filter>Rendering\Camera\Headers</Filter>
     </None>
   </ItemGroup>
 </Project>

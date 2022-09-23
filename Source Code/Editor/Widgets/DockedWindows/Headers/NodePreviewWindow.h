@@ -38,23 +38,24 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide
 {
     class Texture;
-    class NodePreviewWindow : public DockedWindow {
+    class NodePreviewWindow : public DockedWindow
+    {
         public:
-            NodePreviewWindow(Editor& parent, const Descriptor& descriptor);
+        NodePreviewWindow( Editor& parent, const Descriptor& descriptor );
 
-            void drawInternal() override;
+        void drawInternal() override;
 
-            [[nodiscard]] const Rect<I32>& sceneRect(bool globalCoords) const noexcept;
-
-        protected:
-            void drawInternal(Texture* tex);
-            void updateBounds(Rect<I32> imageRect);
-
-            bool button(bool enabled, const char* label, const char* tooltip, bool small = false);
+        [[nodiscard]] const Rect<I32>& sceneRect( bool globalCoords ) const noexcept;
 
         protected:
-            Rect<I32> _sceneRect[2];
-            string    _originalName;
+        void drawInternal( Texture* tex );
+        void updateBounds( Rect<I32> imageRect );
+
+        bool button( bool enabled, const char* label, const char* tooltip, bool small = false );
+
+        protected:
+        Rect<I32> _sceneRect[2];
+        string    _originalName;
     };
 } //namespace Divide
 

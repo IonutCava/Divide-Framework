@@ -611,59 +611,61 @@ constexpr void check_size() {
 #define GET_6TH_ARG(arg1, arg2, arg3, arg4, arg5, arg6, ...) arg6
 #endif //EXP
 
-#define PROPERTY_GET_SET(Type, Name) \
-public: \
-    FORCE_INLINE void Name(const Type& val) noexcept { _##Name = val; } \
-    [[nodiscard]] FORCE_INLINE Type& Name() noexcept { return _##Name; } \
-    [[nodiscard]] FORCE_INLINE const Type& Name() const noexcept { return _##Name; }
+#define GET_RET_TYPE(Type) typename std::conditional<std::is_pod<Type>::value, Type, const Type&>::type
 
-#define PROPERTY_GET(Type, Name) \
-public: \
-    [[nodiscard]] FORCE_INLINE const Type& Name() const noexcept { return _##Name; }
+#define PROPERTY_GET_SET(Type, Name)                                                         \
+public:                                                                                      \
+    FORCE_INLINE void Name(const GET_RET_TYPE(Type) val) noexcept { _##Name = val; }         \
+    [[nodiscard]] FORCE_INLINE Type& Name() noexcept { return _##Name; }                     \
+    [[nodiscard]] FORCE_INLINE GET_RET_TYPE(Type) Name() const noexcept { return _##Name; }
 
-#define VIRTUAL_PROPERTY_GET_SET(Type, Name) \
-public: \
-    virtual void Name(const Type& val) noexcept { _##Name = val; } \
-    [[nodiscard]] virtual Type& Name() noexcept { return _##Name; } \
-    [[nodiscard]] virtual const Type& Name() const noexcept { return _##Name; }
+#define PROPERTY_GET(Type, Name)                                                             \
+public:                                                                                      \
+    [[nodiscard]] FORCE_INLINE GET_RET_TYPE(Type) Name() const noexcept { return _##Name; }
 
-#define VIRTUAL_PROPERTY_GET(Type, Name) \
-public: \
-    [[nodiscard]] virtual const Type& Name() const noexcept { return _##Name; }
+#define VIRTUAL_PROPERTY_GET_SET(Type, Name)                                             \
+public:                                                                                  \
+    virtual void Name(const GET_RET_TYPE(Type) val) noexcept { _##Name = val; }          \
+    [[nodiscard]] virtual Type& Name() noexcept { return _##Name; }                      \
+    [[nodiscard]] virtual GET_RET_TYPE(Type) Name() const noexcept { return _##Name; }
 
-#define POINTER_GET_SET(Type, Name) \
-public: \
-    FORCE_INLINE void Name(Type* const val) noexcept { _##Name = val; } \
-    [[nodiscard]] FORCE_INLINE Type* Name() noexcept { return _##Name; } \
+#define VIRTUAL_PROPERTY_GET(Type, Name)                                              \
+public:                                                                               \
+    [[nodiscard]] virtual GET_RET_TYPE(Type) Name() const noexcept { return _##Name; }
+
+#define POINTER_GET_SET(Type, Name)                                                  \
+public:                                                                              \
+    FORCE_INLINE void Name(Type* const val) noexcept { _##Name = val; }              \
+    [[nodiscard]] FORCE_INLINE Type* Name() noexcept { return _##Name; }             \
     [[nodiscard]] FORCE_INLINE Type* const Name() const noexcept { return _##Name; }
 
-#define POINTER_GET(Type, Name) \
-public: \
+#define POINTER_GET(Type, Name)                                                     \
+public:                                                                             \
    [[nodiscard]] FORCE_INLINE Type* const Name() const noexcept { return _##Name; }
 
-#define PROPERTY_GET_INTERNAL(Type, Name) \
-protected: \
-    [[nodiscard]] FORCE_INLINE const Type& Name() const noexcept { return _##Name; }
+#define PROPERTY_GET_INTERNAL(Type, Name)                                                  \
+protected:                                                                                 \
+    [[nodiscard]] FORCE_INLINE GET_RET_TYPE(Type) Name() const noexcept { return _##Name; }
 
-#define VIRTUAL_PROPERTY_GET_INTERNAL(Type, Name) \
-protected: \
-    [[nodiscard]] virtual const Type& Name() const noexcept { return _##Name; }
+#define VIRTUAL_PROPERTY_GET_INTERNAL(Type, Name)                                     \
+protected:                                                                            \
+    [[nodiscard]] virtual GET_RET_TYPE(Type) Name() const noexcept { return _##Name; }
 
-#define POINTER_GET_INTERNAL(Type, Name) \
-protected: \
+#define POINTER_GET_INTERNAL(Type, Name)                                             \
+protected:                                                                           \
     [[nodiscard]] FORCE_INLINE Type* const Name() const noexcept { return _##Name; }
 
-#define PROPERTY_SET_INTERNAL(Type, Name) \
-protected: \
-    FORCE_INLINE void Name(const Type& val) noexcept { _##Name = val; } \
+#define PROPERTY_SET_INTERNAL(Type, Name)                                            \
+protected:                                                                           \
+    FORCE_INLINE void Name(const GET_RET_TYPE(Type) val) noexcept { _##Name = val; }
 
-#define VIRTUAL_PROPERTY_SET_INTERNAL(Type, Name) \
-protected: \
-    virtual void Name(const Type& val) noexcept { _##Name = val; } \
+#define VIRTUAL_PROPERTY_SET_INTERNAL(Type, Name)                               \
+protected:                                                                      \
+    virtual void Name(const GET_RET_TYPE(Type) val) noexcept { _##Name = val; }
 
-#define POINTER_SET_INTERNAL(Type, Name) \
-protected: \
-    FORCE_INLINE void Name(Type* const val) noexcept { _##Name = val; } \
+#define POINTER_SET_INTERNAL(Type, Name)                                \
+protected:                                                              \
+    FORCE_INLINE void Name(Type* const val) noexcept { _##Name = val; }
 
 #define PROPERTY_GET_SET_INTERNAL(Type, Name) \
 protected: \

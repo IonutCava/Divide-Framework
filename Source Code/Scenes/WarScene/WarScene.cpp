@@ -13,7 +13,7 @@
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Dynamics/Entities/Units/Headers/NPC.h"
-#include "Rendering/Camera/Headers/ThirdPersonCamera.h"
+#include "Rendering/Camera/Headers/Camera.h"
 #include "Dynamics/Entities/Units/Headers/Player.h"
 #include "Managers/Headers/SceneManager.h"
 #include "Managers/Headers/RenderPassManager.h"
@@ -21,7 +21,6 @@
 #include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Headers/IMPrimitive.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
-#include "Rendering/Camera/Headers/FreeFlyCamera.h"
 #include "Rendering/Lighting/Headers/LightPool.h"
 
 #include "Graphs/Headers/SceneGraph.h"
@@ -75,8 +74,8 @@ void WarScene::processGUI(const U64 deltaTimeUS) {
 
     if (_guiTimersMS[0] >= FpsDisplay) {
         const Camera& cam = *_scenePlayers.front()->camera();
-        vec3<F32> eyePos = cam.getEye();
-        const vec3<F32>& euler = cam.getEuler();
+        vec3<F32> eyePos = cam.snapshot()._eye;
+        const vec3<F32>& euler = cam.euler();
 
         _GUI->modifyText("RenderBinCount",
                          Util::StringFormat("Number of items in Render Bin: %d.",
@@ -280,7 +279,7 @@ void WarScene::updateSceneStateInternal(const U64 deltaTimeUS) {
                 }
             }
         } else {
-            vec3<F32> camPos = playerCamera()->getEye();
+            vec3<F32> camPos = playerCamera()->snapshot()._eye;
             if (g_terrain->get<BoundsComponent>()->getBoundingBox().containsPoint(camPos)) {
                 const Terrain& ter = g_terrain->getNode<Terrain>();
 
@@ -704,7 +703,7 @@ void WarScene::toggleCamera(const InputParams param) {
         if (node != nullptr) {
             if (flyCameraActive) {
                 state()->playerState(idx).overrideCamera(tpsCamera);
-                static_cast<ThirdPersonCamera*>(tpsCamera)->setTarget(node->get<TransformComponent>(), vec3<F32>(0.f, 0.75f, 1.f));
+                tpsCamera->setTarget(node->get<TransformComponent>(), vec3<F32>(0.f, 0.75f, 1.f));
                 flyCameraActive = false;
                 tpsCameraActive = true;
                 return;
@@ -778,17 +777,17 @@ void WarScene::postLoadMainThread() {
 
     // Add a first person camera
     {
-        FreeFlyCamera* cam = Camera::CreateCamera<FreeFlyCamera>("fpsCamera");
+        Camera* cam = Camera::CreateCamera("fpsCamera", Camera::Mode::FIRST_PERSON );
         cam->fromCamera(*Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT));
-        cam->setMoveSpeedFactor(10.0f);
-        cam->setTurnSpeedFactor(10.0f);
+        cam->speedFactor().move = 10.f;
+        cam->speedFactor().turn = 10.f;
     }
     // Add a third person camera
     {
-        ThirdPersonCamera* cam = Camera::CreateCamera<ThirdPersonCamera>("tpsCamera");
+        Camera* cam = Camera::CreateCamera("tpsCamera", Camera::Mode::THIRD_PERSON );
         cam->fromCamera(*Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT));
-        cam->setMoveSpeedFactor(0.02f);
-        cam->setTurnSpeedFactor(0.01f);
+        cam->speedFactor().move = 0.02f;
+        cam->speedFactor().turn = 0.01f;
     }
     _guiTimersMS.push_back(0.0);  // Fps
     _guiTimersMS.push_back(0.0);  // AI info

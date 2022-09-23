@@ -115,9 +115,9 @@ bool glShaderProgram::unload()
             g_deletionSet.insert(_handle);
         }
 
-        if (GL_API::GetStateTracker()->_activeShaderPipelineHandle == _handle)
+        if (GL_API::GetStateTracker()._activeShaderPipelineHandle == _handle)
         {
-            if (GL_API::GetStateTracker()->setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED)
+            if (GL_API::GetStateTracker().setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED)
             {
                 DIVIDE_UNEXPECTED_CALL();
             }
@@ -269,7 +269,7 @@ ShaderResult glShaderProgram::bind()
     }
 
     // Set this program as the currently active one
-    if (GL_API::GetStateTracker()->setActiveShaderPipeline(_handle) == GLStateTracker::BindResult::JUST_BOUND)
+    if (GL_API::GetStateTracker().setActiveShaderPipeline(_handle) == GLStateTracker::BindResult::JUST_BOUND)
     {
         // All of this needs to be run on an actual bind operation. If we are already bound, we assume we did all this
         processValidation();

@@ -284,85 +284,82 @@ void IMPrimitive::fromFrustums(const IM::FrustumDescriptor* frustums, size_t cou
             U8 lineCount = 0;
 
             frustums[i].frustum.getCornersWorldSpace(corners);
-            const FColour3& endColour = frustums[i].colour;
-            const FColour3 startColour = endColour * 0.25f;
-
-            const UColour4 startColourU = Util::ToUIntColour(startColour);
-            const UColour4 endColourU = Util::ToUIntColour(endColour);
+            const UColour4& endColour = frustums[i].colour;
+            const UColour4 startColour = Util::ToByteColour( Util::ToFloatColour( frustums[i].colour ) * 0.25f);
 
             // Draw Near Plane
             temp.positionStart(corners[to_base(FrustumPoints::NEAR_LEFT_BOTTOM)]);
             temp.positionEnd(corners[to_base(FrustumPoints::NEAR_RIGHT_BOTTOM)]);
-            temp.colourStart(startColourU);
-            temp.colourEnd(startColourU);
+            temp.colourStart(startColour);
+            temp.colourEnd(startColour);
             lines[lineCount++] = temp;
 
             temp.positionStart(corners[to_base(FrustumPoints::NEAR_RIGHT_BOTTOM)]);
             temp.positionEnd(corners[to_base(FrustumPoints::NEAR_RIGHT_TOP)]);
-            temp.colourStart(startColourU);
-            temp.colourEnd(startColourU);
+            temp.colourStart(startColour);
+            temp.colourEnd(startColour);
             lines[lineCount++] = temp;
 
             temp.positionStart(corners[to_base(FrustumPoints::NEAR_RIGHT_TOP)]);
             temp.positionEnd(corners[to_base(FrustumPoints::NEAR_LEFT_TOP)]);
-            temp.colourStart(startColourU);
-            temp.colourEnd(startColourU);
+            temp.colourStart(startColour);
+            temp.colourEnd(startColour);
             lines[lineCount++] = temp;
 
             temp.positionStart(corners[to_base(FrustumPoints::NEAR_LEFT_TOP)]);
             temp.positionEnd(corners[to_base(FrustumPoints::NEAR_LEFT_BOTTOM)]);
-            temp.colourStart(startColourU);
-            temp.colourEnd(startColourU);
+            temp.colourStart(startColour);
+            temp.colourEnd(startColour);
             lines[lineCount++] = temp;
 
             // Draw Far Plane
             temp.positionStart(corners[to_base(FrustumPoints::FAR_LEFT_BOTTOM)]);
             temp.positionEnd(corners[to_base(FrustumPoints::FAR_RIGHT_BOTTOM)]);
-            temp.colourStart(endColourU);
-            temp.colourEnd(endColourU);
+            temp.colourStart(endColour);
+            temp.colourEnd(endColour);
             lines[lineCount++] = temp;
 
             temp.positionStart(corners[to_base(FrustumPoints::FAR_RIGHT_BOTTOM)]);
             temp.positionEnd(corners[to_base(FrustumPoints::FAR_RIGHT_TOP)]);
-            temp.colourStart(endColourU);
-            temp.colourEnd(endColourU);
+            temp.colourStart(endColour);
+            temp.colourEnd(endColour);
             lines[lineCount++] = temp;
 
             temp.positionStart(corners[to_base(FrustumPoints::FAR_RIGHT_TOP)]);
             temp.positionEnd(corners[to_base(FrustumPoints::FAR_LEFT_TOP)]);
-            temp.colourStart(endColourU);
-            temp.colourEnd(endColourU);
+            temp.colourStart(endColour);
+            temp.colourEnd(endColour);
             lines[lineCount++] = temp;
 
             temp.positionStart(corners[to_base(FrustumPoints::FAR_LEFT_TOP)]);
             temp.positionEnd(corners[to_base(FrustumPoints::FAR_LEFT_BOTTOM)]);
-            temp.colourStart(endColourU);
-            temp.colourEnd(endColourU);
+            temp.colourStart(endColour);
+            temp.colourEnd(endColour);
             lines[lineCount++] = temp;
 
             // Connect Planes
             temp.positionStart(corners[to_base(FrustumPoints::FAR_RIGHT_BOTTOM)]);
             temp.positionEnd(corners[to_base(FrustumPoints::NEAR_RIGHT_BOTTOM)]);
-            temp.colourStart(endColourU);
-            temp.colourEnd(startColourU);
+            temp.colourStart(endColour);
+            temp.colourEnd(startColour);
             lines[lineCount++] = temp;
 
             temp.positionStart(corners[to_base(FrustumPoints::FAR_RIGHT_TOP)]);
             temp.positionEnd(corners[to_base(FrustumPoints::NEAR_RIGHT_TOP)]);
-            temp.colourStart(endColourU);
-            temp.colourEnd(startColourU);
+            temp.colourStart(endColour);
+            temp.colourEnd(startColour);
             lines[lineCount++] = temp;
 
             temp.positionStart(corners[to_base(FrustumPoints::FAR_LEFT_TOP)]);
             temp.positionEnd(corners[to_base(FrustumPoints::NEAR_LEFT_TOP)]);
-            temp.colourStart(endColourU);
-            temp.colourEnd(startColourU);
+            temp.colourStart(endColour);
+            temp.colourEnd(startColour);
             lines[lineCount++] = temp;
 
             temp.positionStart(corners[to_base(FrustumPoints::FAR_LEFT_BOTTOM)]);
             temp.positionEnd(corners[to_base(FrustumPoints::NEAR_LEFT_BOTTOM)]);
-            temp.colourStart(endColourU);
-            temp.colourEnd(startColourU);
+            temp.colourStart(endColour);
+            temp.colourEnd(startColour);
             lines[lineCount++] = temp;
             fromLinesInternal(lines.data(), lineCount);
     }

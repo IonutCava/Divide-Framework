@@ -75,8 +75,8 @@ class GUIMessageBox final : public GUIElementBase<GUIType::GUI_MESSAGE_BOX> {
                   const vec2<I32>& offsetFromCentre = vec2<I32>(0),
                   CEGUI::Window* parent = nullptr);
 
-    void visible(const bool& visible) noexcept override;
-    void active(const bool& active) noexcept override;
+    void visible(bool visible) noexcept override;
+    void active(bool active) noexcept override;
 
    protected:
     vec2<I32> _offsetFromCentre;

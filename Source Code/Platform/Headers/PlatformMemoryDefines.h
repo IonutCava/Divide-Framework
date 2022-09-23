@@ -122,18 +122,18 @@ namespace Divide {
     template <typename T>            \
     friend void MemoryManager::DELETE_ARRAY(T*& ptr);
 
-        /// Deletes every element from the vector and clears it at the end
-        template <template <typename, typename> class Container,
-            typename Value,
-            typename Allocator = std::allocator<Value>>
-            void DELETE_CONTAINER(Container<Value*, Allocator>& container) {
-            for (Value* iter : container) {
-                log_delete(iter);
-                delete iter;
-            }
-
-            container.clear();
+    /// Deletes every element from the vector and clears it at the end
+    template <template <typename, typename> class Container,
+        typename Value,
+        typename Allocator = std::allocator<Value>>
+        void DELETE_CONTAINER(Container<Value*, Allocator>& container) {
+        for (Value* iter : container) {
+            log_delete(iter);
+            delete iter;
         }
+
+        container.clear();
+    }
 
 #define SET_DELETE_CONTAINER_FRIEND \
     template <template <typename, typename> class Container, \

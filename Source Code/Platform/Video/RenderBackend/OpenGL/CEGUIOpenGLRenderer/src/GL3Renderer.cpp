@@ -225,7 +225,7 @@ void OpenGL3Renderer::endRendering()
     if (d_initExtraStates)
         setupExtraStates();
 
-    Divide::GL_API::GetStateTracker()->setBlending(Divide::BlendingSettings());
+    Divide::GL_API::GetStateTracker().setBlending(Divide::BlendingSettings());
 
     Divide::GL_API::PopDebugMessage();
 }
@@ -233,13 +233,13 @@ void OpenGL3Renderer::endRendering()
 //----------------------------------------------------------------------------//
 void OpenGL3Renderer::setupExtraStates()
 {
-    if (Divide::GL_API::GetStateTracker()->bindTexture(0, 0) == Divide::GLStateTracker::BindResult::FAILED) {
+    if (Divide::GL_API::GetStateTracker().bindTexture(0, 0) == Divide::GLStateTracker::BindResult::FAILED) {
         Divide::DIVIDE_UNEXPECTED_CALL();
     }
-    if (Divide::GL_API::GetStateTracker()->setActiveProgram(0) == Divide::GLStateTracker::BindResult::FAILED) {
+    if (Divide::GL_API::GetStateTracker().setActiveProgram(0) == Divide::GLStateTracker::BindResult::FAILED) {
         Divide::DIVIDE_UNEXPECTED_CALL();
     }
-    if (Divide::GL_API::GetStateTracker()->setActiveShaderPipeline(0) == Divide::GLStateTracker::BindResult::FAILED) {
+    if (Divide::GL_API::GetStateTracker().setActiveShaderPipeline(0) == Divide::GLStateTracker::BindResult::FAILED) {
         Divide::DIVIDE_UNEXPECTED_CALL();
     }
 
@@ -275,7 +275,7 @@ void OpenGL3Renderer::setupRenderingBlendMode(const BlendMode mode,
         blend.blendDest(Divide::BlendProperty::INV_SRC_ALPHA);
         blend.blendOp(Divide::BlendOperation::ADD);
 
-        Divide::GL_API::GetStateTracker()->setBlending(blend);
+        Divide::GL_API::GetStateTracker().setBlending(blend);
     }
     else
     {
@@ -288,7 +288,7 @@ void OpenGL3Renderer::setupRenderingBlendMode(const BlendMode mode,
         blend.blendDestAlpha(Divide::BlendProperty::ONE);
         blend.blendOpAlpha(Divide::BlendOperation::ADD);
 
-        Divide::GL_API::GetStateTracker()->setBlending(blend);
+        Divide::GL_API::GetStateTracker().setBlending(blend);
     }
 }
 

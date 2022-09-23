@@ -37,7 +37,7 @@ glTexture::~glTexture()
 
 bool glTexture::unload() {
     if (_textureHandle > 0u) {
-        if (GL_API::GetStateTracker()->unbindTexture(descriptor().texType(), _textureHandle)) { NOP();
+        if (GL_API::GetStateTracker().unbindTexture(descriptor().texType(), _textureHandle)) { NOP();
         }
         glDeleteTextures(1, &_textureHandle);
         _textureHandle = GLUtil::k_invalidObjectID;
@@ -194,7 +194,7 @@ void glTexture::loadDataInternal(const ImageTools::ImageData& imageData) {
     const U32 numLayers = imageData.layerCount();
     const U8 numMips = imageData.mipCount();
 
-    GL_API::GetStateTracker()->setPixelPackUnpackAlignment();
+    GL_API::GetStateTracker().setPixelPackUnpackAlignment();
     for (U32 l = 0u; l < numLayers; ++l) {
         const ImageTools::ImageLayer& layer = imageData.imageLayers()[l];
 
@@ -412,14 +412,14 @@ Texture::TextureReadbackData glTexture::readData(U16 mipLevel, const GFXDataForm
     grabData._data.reset(new Byte[size]);
     grabData._size = size;
 
-    GL_API::GetStateTracker()->setPixelPackAlignment(1);
+    GL_API::GetStateTracker().setPixelPackAlignment(1);
     glGetTextureImage(_textureHandle,
                       0,
                       GLUtil::glImageFormatTable[to_base(_descriptor.baseFormat())],
                       GLUtil::glDataFormat[to_base(dataFormat)],
                       size,
                       (bufferPtr)grabData._data.get());
-    GL_API::GetStateTracker()->setPixelPackAlignment();
+    GL_API::GetStateTracker().setPixelPackAlignment();
 
     return MOV(grabData);
 }

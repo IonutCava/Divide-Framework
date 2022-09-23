@@ -35,24 +35,27 @@
 
 #include "Character.h"
 
-namespace Divide {
+namespace Divide
+{
 
-/// User controlled Unit
-class FreeFlyCamera;
-class Player final : public Character {
-   public:
-    explicit Player(U8 index);
-    ~Player();
+    class Camera;
 
-    /// Do not allow or allow the user again to control this player
-    PROPERTY_R(bool, lockedControls, false);
-    PROPERTY_R(U8, index, 0u);
-    PROPERTY_R(vec3<F32>, extents, VECTOR3_UNIT);
-    POINTER_R(FreeFlyCamera, camera, nullptr);
+    /// User controlled Unit
+    class Player final : public Character
+    {
+        public:
+        explicit Player( U8 index );
+        ~Player();
 
-   protected:
-    void setParentNode(SceneGraphNode* node) override;
-};
+        /// Do not allow or allow the user again to control this player
+        PROPERTY_R( bool, lockedControls, false );
+        PROPERTY_R( U8, index, 0u );
+        PROPERTY_R( vec3<F32>, extents, VECTOR3_UNIT );
+        POINTER_R( Camera, camera, nullptr );
+
+        protected:
+        void setParentNode( SceneGraphNode* node ) override;
+    };
 
 }  // namespace Divide
 

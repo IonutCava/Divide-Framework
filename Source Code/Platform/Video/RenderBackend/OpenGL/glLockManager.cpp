@@ -78,7 +78,7 @@ bool glLockManager::waitForLockedRangeLocked(const SyncObject_uptr& sync, const 
     glSyncObject* glSync = static_cast<glSyncObject*>(sync.get());
 
     if (glSync->_syncObject == nullptr ||
-        glSync->_frameNumber < GL_API::GetStateTracker()->_lastSyncedFrameNumber)
+        glSync->_frameNumber < GL_API::GetStateTracker()._lastSyncedFrameNumber)
     {
         // Lock expired from underneath us
         return true;

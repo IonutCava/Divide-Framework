@@ -72,8 +72,8 @@ namespace Divide {
         //samplerInfo.unnormalizedCoordinates = false;
 
         VkSampler ret;
-        vkCreateSampler(VK_API::GetStateTracker()->_device->getVKDevice(), &samplerInfo, nullptr, &ret);
-        Debug::SetObjectName(VK_API::GetStateTracker()->_device->getVKDevice(), (uint64_t)ret, VK_OBJECT_TYPE_SAMPLER, Util::StringFormat("SAMPLER_%zu", descriptor.getHash()).c_str());
+        vkCreateSampler(VK_API::GetStateTracker()._device->getVKDevice(), &samplerInfo, nullptr, &ret);
+        Debug::SetObjectName(VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)ret, VK_OBJECT_TYPE_SAMPLER, Util::StringFormat("SAMPLER_%zu", descriptor.getHash()).c_str());
         return ret;
     }
 

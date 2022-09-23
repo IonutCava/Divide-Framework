@@ -430,9 +430,19 @@ class mat3 {
     [[nodiscard]] vec3<T> getScale() const noexcept;
     [[nodiscard]] vec3<T> getScaleSq() const noexcept;
 
+    /// Alias for getCol(0)
+    [[nodiscard]] vec3<T> getRightVec( ) const noexcept;
+    /// Alias for getCol(1)
     [[nodiscard]] vec3<T> getUpVec() const noexcept;
-    [[nodiscard]] vec3<T> getRightVec() const noexcept;
+    /// Alias for -getCol(2). Assumes -Z fwd
     [[nodiscard]] vec3<T> getForwardVec() const noexcept;
+
+    /// Returns normalized(getRightVec())
+    [[nodiscard]] vec3<T> getRightDirection( ) const noexcept;
+    /// Returns normalized(getUpVec())
+    [[nodiscard]] vec3<T> getUpDirection() const noexcept;
+    /// Returns normalized(getForwardVec())
+    [[nodiscard]] vec3<T> getForwardDirection() const noexcept;
 
     void orthoNormalize();
 
@@ -638,9 +648,19 @@ class mat4 {
     [[nodiscard]] vec3<T> getScale() const noexcept;
     [[nodiscard]] vec3<T> getScaleSq() const noexcept;
 
-    [[nodiscard]] vec3<T> getUpVec() const noexcept;
-    [[nodiscard]] vec3<T> getRightVec() const noexcept;
-    [[nodiscard]] vec3<T> getForwardVec() const noexcept;
+    /// Alias for getCol(0)
+    [[nodiscard]] vec3<T> getRightVec( ) const noexcept;
+    /// Alias for getCol(1)
+    [[nodiscard]] vec3<T> getUpVec( ) const noexcept;
+    /// Alias for -getCol(2). Assumes -Z fwd
+    [[nodiscard]] vec3<T> getForwardVec( ) const noexcept;
+
+    /// Returns normalized(getRightVec())
+    [[nodiscard]] vec3<T> getRightDirection( ) const noexcept;
+    /// Returns normalized(getUpVec())
+    [[nodiscard]] vec3<T> getUpDirection( ) const noexcept;
+    /// Returns normalized(getForwardVec())
+    [[nodiscard]] vec3<T> getForwardDirection( ) const noexcept;
 
     template<typename U>
     [[nodiscard]] vec3<U> transform(const vec3<U> &v, bool homogeneous) const;

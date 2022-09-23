@@ -31,7 +31,7 @@ void glGenericVertexData::reset() {
 
 /// Submit a draw command to the GPU using this object and the specified command
 void glGenericVertexData::draw(const GenericDrawCommand& command, [[maybe_unused]]VDIUserData* userData) {
-    DIVIDE_ASSERT(GL_API::GetStateTracker()->_primitiveRestartEnabled == primitiveRestartRequired());
+    DIVIDE_ASSERT(GL_API::GetStateTracker()._primitiveRestartEnabled == primitiveRestartRequired());
     DIVIDE_ASSERT(_idxBuffers.size() > command._bufferFlag);
 
     // Update buffer bindings
@@ -46,7 +46,7 @@ void glGenericVertexData::draw(const GenericDrawCommand& command, [[maybe_unused
             glWaitSync(idxBuffer._idxBufferSync, 0u, GL_TIMEOUT_IGNORED);
             GL_API::DestroyFenceSync(idxBuffer._idxBufferSync);
         }
-        if (GL_API::GetStateTracker()->setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, idxBuffer._handle) == GLStateTracker::BindResult::FAILED) {
+        if (GL_API::GetStateTracker().setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, idxBuffer._handle) == GLStateTracker::BindResult::FAILED) {
             DIVIDE_UNEXPECTED_CALL();
         }
 
@@ -239,7 +239,7 @@ void glGenericVertexData::bindBufferInternal(const SetBufferParams::BufferBindCo
     }
 
     const GLStateTracker::BindResult ret = 
-        GL_API::GetStateTracker()->bindActiveBuffer(bindConfig._bindIdx,
+        GL_API::GetStateTracker().bindActiveBuffer(bindConfig._bindIdx,
                                                     impl->_buffer->memoryBlock()._bufferHandle,
                                                     offsetInBytes,
                                                     impl->_elementStride);

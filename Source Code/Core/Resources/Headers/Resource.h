@@ -33,7 +33,8 @@
 #ifndef _RESOURCE_H_
 #define _RESOURCE_H_
 
-namespace Divide {
+namespace Divide
+{
 
 /// When "CreateResource" is called, the resource is in "RES_UNKNOWN" state.
 /// Once it has been instantiated it will move to the "RES_CREATED" state.
@@ -49,101 +50,116 @@ namespace Divide {
 /// It will still exist, but won't contain any data.
 /// RES_UNKNOWN and RES_CREATED are safe to delete
 
-enum class ResourceState : U8 {
-    RES_UNKNOWN = 0,   ///< The resource exists, but it's state is undefined
-    RES_CREATED = 1,   ///< The pointer has been created and instantiated, but no data has been loaded
-    RES_LOADING = 2,   ///< The resource is loading, creating data, parsing scripts, etc
-    RES_LOADED  = 3,   ///< The resource is loaded and available
-    RES_UNLOADING = 4, ///< The resource is unloading, deleting data, etc
-    COUNT
-};
+    enum class ResourceState : U8
+    {
+        RES_UNKNOWN = 0,   ///< The resource exists, but it's state is undefined
+        RES_CREATED = 1,   ///< The pointer has been created and instantiated, but no data has been loaded
+        RES_LOADING = 2,   ///< The resource is loading, creating data, parsing scripts, etc
+        RES_LOADED = 3,   ///< The resource is loaded and available
+        RES_UNLOADING = 4, ///< The resource is unloading, deleting data, etc
+        COUNT
+    };
 
-enum class ResourceType : U8 {
-    DEFAULT = 0,
-    GPU_OBJECT = 1, ///< Textures, Render targets, shaders, etc
-    COUNT
-};
+    enum class ResourceType : U8
+    {
+        DEFAULT = 0,
+        GPU_OBJECT = 1, ///< Textures, Render targets, shaders, etc
+        COUNT
+    };
 
-FWD_DECLARE_MANAGED_CLASS(Resource);
-FWD_DECLARE_MANAGED_CLASS(CachedResource);
+    FWD_DECLARE_MANAGED_CLASS( Resource );
+    FWD_DECLARE_MANAGED_CLASS( CachedResource );
 
-class Resource : public GUIDWrapper
-{
-   public:
-    explicit Resource(ResourceType type, const Str256& resourceName);
+    class Resource : public GUIDWrapper
+    {
+        public:
+        explicit Resource( ResourceType type, const Str256& resourceName );
 
-    [[nodiscard]] ResourceState getState() const noexcept;
+        [[nodiscard]] ResourceState getState() const noexcept;
 
-    PROPERTY_R(Str256, resourceName);
-    PROPERTY_R(ResourceType, resourceType, ResourceType::COUNT);
+        PROPERTY_R( Str256, resourceName );
+        PROPERTY_R( ResourceType, resourceType, ResourceType::COUNT );
 
-    void waitForReady() const;
+        void waitForReady() const;
 
-   protected:
-    virtual void setState(ResourceState currentState);
-    [[nodiscard]] virtual const char* getResourceTypeName() const noexcept { return "Resource"; }
+        protected:
+        virtual void setState( ResourceState currentState );
+        [[nodiscard]] virtual const char* getResourceTypeName() const noexcept
+        {
+            return "Resource";
+        }
 
-   protected:
-    std::atomic<ResourceState> _resourceState;
-};
+        protected:
+        std::atomic<ResourceState> _resourceState;
+    };
 
-class CachedResource : public Resource,
-                       public std::enable_shared_from_this<CachedResource>
-{
-    friend class ResourceCache;
-    friend class ResourceLoader;
-    template <typename X>
-    friend class ImplResourceLoader;
+    class CachedResource : public Resource,
+        public std::enable_shared_from_this<CachedResource>
+    {
+        friend class ResourceCache;
+        friend class ResourceLoader;
+        template <typename X>
+        friend class ImplResourceLoader;
 
-public:
-    explicit CachedResource(ResourceType type,
-                            size_t descriptorHash,
-                            const Str256& resourceName);
-    explicit CachedResource(ResourceType type,
-                            size_t descriptorHash,
-                            const Str256& resourceName,
-                            const ResourcePath& assetName);
-    explicit CachedResource(ResourceType type,
-                            size_t descriptorHash,
-                            const Str256& resourceName,
-                            ResourcePath assetName,
-                            ResourcePath assetLocation);
+        public:
+        explicit CachedResource( ResourceType type,
+                                 size_t descriptorHash,
+                                 const Str256& resourceName );
+        explicit CachedResource( ResourceType type,
+                                 size_t descriptorHash,
+                                 const Str256& resourceName,
+                                 const ResourcePath& assetName );
+        explicit CachedResource( ResourceType type,
+                                 size_t descriptorHash,
+                                 const Str256& resourceName,
+                                 ResourcePath assetName,
+                                 ResourcePath assetLocation );
 
-    /// Loading and unloading interface
-    virtual bool load();
-    virtual bool unload();
+         /// Loading and unloading interface
+        virtual bool load();
+        virtual bool unload();
 
-    [[nodiscard]] string assetPath() const { return assetLocation().str() + "/" + assetName().str(); }
-    void addStateCallback(ResourceState targetState, const DELEGATE<void, CachedResource*>& cbk);
+        [[nodiscard]] string assetPath() const
+        {
+            return assetLocation().str() + "/" + assetName().str();
+        }
+        void addStateCallback( ResourceState targetState, const DELEGATE<void, CachedResource*>& cbk );
 
-protected:
-    void setState(ResourceState currentState) final;
-    [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Cached Resource"; }
-    void flushStateCallbacks();
+        protected:
+        void setState( ResourceState currentState ) final;
+        [[nodiscard]] const char* getResourceTypeName() const noexcept override
+        {
+            return "Cached Resource";
+        }
+        void flushStateCallbacks();
 
-protected:
-    using CallbackList = vector<DELEGATE<void, CachedResource*>>;
-    std::array<CallbackList, to_base(ResourceState::COUNT)> _loadingCallbacks{};
-    mutable Mutex _callbackLock{};
-    PROPERTY_RW(ResourcePath, assetLocation);
-    PROPERTY_RW(ResourcePath, assetName);
-    PROPERTY_R(size_t, descriptorHash);
-};
+        protected:
+        using CallbackList = vector<DELEGATE<void, CachedResource*>>;
+        std::array<CallbackList, to_base( ResourceState::COUNT )> _loadingCallbacks{};
+        mutable Mutex _callbackLock{};
+        PROPERTY_RW( ResourcePath, assetLocation );
+        PROPERTY_RW( ResourcePath, assetName );
+        PROPERTY_R( size_t, descriptorHash );
+    };
 
-struct TerrainInfo {
-    TerrainInfo() noexcept { position.set(0, 0, 0); }
-    /// "variables" contains the various strings needed for each terrain such as
-    /// texture names,
-    /// terrain name etc.
-    hashMap<U64, string> variables;
-    F32 grassScale = 1.0f;
-    F32 treeScale = 1.0f;
-    vec3<F32> position;
-    vec2<F32> scale;
-    bool active = false;
-};
+    struct TerrainInfo
+    {
+        TerrainInfo() noexcept
+        {
+            position.set( 0, 0, 0 );
+        }
+/// "variables" contains the various strings needed for each terrain such as
+/// texture names,
+/// terrain name etc.
+        hashMap<U64, string> variables;
+        F32 grassScale = 1.0f;
+        F32 treeScale = 1.0f;
+        vec3<F32> position;
+        vec2<F32> scale;
+        bool active = false;
+    };
 
-FWD_DECLARE_MANAGED_CLASS(Resource);
+    FWD_DECLARE_MANAGED_CLASS( Resource );
 
 }  // namespace Divide
 

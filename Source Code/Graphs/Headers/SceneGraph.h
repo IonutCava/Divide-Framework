@@ -130,6 +130,11 @@ class SceneGraph final : NonCopyable,
     ECS::ECSEngine& GetECSEngine() noexcept { return _ecsEngine; }
     const ECS::ECSEngine& GetECSEngine() const noexcept { return _ecsEngine; }
 
+
+    /// This will return a bounding sphere even for nodes that don't have a BoundsComponent by
+    /// doing some rough estimations based on the TransformComponent (which all nodes do have)
+    [[nodiscard]] static BoundingSphere GetBounds( const SceneGraphNode* sgn );
+
    protected:
     void onNodeMoved(const SceneGraphNode& node);
     void onNodeDestroy(SceneGraphNode* oldNode);

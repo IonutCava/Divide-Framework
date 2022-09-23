@@ -24,7 +24,7 @@ namespace Divide {
     {
         if (_handle != VK_NULL_HANDLE)
         {
-            vkDestroyShaderModule(VK_API::GetStateTracker()->_device->getVKDevice(), _handle, nullptr);
+            vkDestroyShaderModule(VK_API::GetStateTracker()._device->getVKDevice(), _handle, nullptr);
             _handle = VK_NULL_HANDLE;
             _createInfo = {};
         }
@@ -88,7 +88,7 @@ namespace Divide {
             //create a new shader module, using the buffer we loaded
             const VkShaderModuleCreateInfo createInfo = vk::shaderModuleCreateInfo(data._sourceCodeSpirV.size() * sizeof(uint32_t), data._sourceCodeSpirV.data());
 
-            VK_CHECK(vkCreateShaderModule(VK_API::GetStateTracker()->_device->getVKDevice(), &createInfo, nullptr, &_handle));
+            VK_CHECK(vkCreateShaderModule(VK_API::GetStateTracker()._device->getVKDevice(), &createInfo, nullptr, &_handle));
 
             _createInfo = vk::pipelineShaderStageCreateInfo(vkShaderStageTable[to_base(data._type)], _handle);
             _stageMask = vkShaderStageTable[to_base(data._type)];

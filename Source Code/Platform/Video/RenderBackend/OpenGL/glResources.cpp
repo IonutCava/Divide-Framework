@@ -457,7 +457,7 @@ void SubmitIndirectCommand(const IndirectDrawCommand& cmd,
                            const GLenum internalFormat,
                            const GLuint cmdBufferOffset)
 {
-    const size_t offset = (cmdBufferOffset * sizeof(IndirectDrawCommand)) + GL_API::GetStateTracker()->_commandBufferOffset;
+    const size_t offset = (cmdBufferOffset * sizeof(IndirectDrawCommand)) + GL_API::GetStateTracker()._commandBufferOffset;
 
     if (drawCount > 1u) {
         SubmitMultiIndirectCommand(drawCount, mode, internalFormat, offset);
@@ -514,10 +514,10 @@ void SubmitRenderCommand(const GenericDrawCommand& drawCommand,
 {
     auto& stateTracker = GL_API::GetStateTracker();
 
-    stateTracker->toggleRasterization(!isEnabledOption(drawCommand, CmdRenderOptions::RENDER_NO_RASTERIZE));
+    stateTracker.toggleRasterization(!isEnabledOption(drawCommand, CmdRenderOptions::RENDER_NO_RASTERIZE));
 
     if (isEnabledOption(drawCommand, CmdRenderOptions::RENDER_GEOMETRY)) {
-        SubmitRenderCommand(glPrimitiveTypeTable[to_base(stateTracker->_activeTopology)], drawCommand, useIndirectBuffer, internalFormat, count, indexData);
+        SubmitRenderCommand(glPrimitiveTypeTable[to_base(stateTracker._activeTopology)], drawCommand, useIndirectBuffer, internalFormat, count, indexData);
     }
     if (isEnabledOption(drawCommand, CmdRenderOptions::RENDER_WIREFRAME)) {
         SubmitRenderCommand(GL_LINE_LOOP, drawCommand, useIndirectBuffer, internalFormat, count, indexData);
@@ -707,13 +707,13 @@ void DebugCallback(const GLenum source,
     }
 
     std::string fullScope = "GL";
-    for (U8 i = 0u; i < GL_API::GetStateTracker()->_debugScopeDepth; ++i) {
+    for (U8 i = 0u; i < GL_API::GetStateTracker()._debugScopeDepth; ++i) {
         fullScope.append("::");
-        fullScope.append(GL_API::GetStateTracker()->_debugScope[i].first);
+        fullScope.append(GL_API::GetStateTracker()._debugScope[i].first);
     }
     // Print the message and the details
-    const GLuint activeProgram = GL_API::GetStateTracker()->_activeShaderProgramHandle;
-    const GLuint activePipeline = GL_API::GetStateTracker()->_activeShaderPipelineHandle;
+    const GLuint activeProgram = GL_API::GetStateTracker()._activeShaderProgramHandle;
+    const GLuint activePipeline = GL_API::GetStateTracker()._activeShaderPipelineHandle;
 
     const char* programMsg = "[%s Thread][Source: %s][Type: %s][ID: %d][Severity: %s][Bound Program : %d][DebugGroup: %s][Message: %s]";
     const char* pipelineMsg = "[%s Thread][Source: %s][Type: %s][ID: %d][Severity: %s][Bound Pipeline : %d][DebugGroup: %s][Message: %s]";

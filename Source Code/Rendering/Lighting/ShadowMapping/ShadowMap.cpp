@@ -13,7 +13,7 @@
 #include "Scenes/Headers/SceneState.h"
 
 #include "Managers/Headers/SceneManager.h"
-#include "Rendering/Camera/Headers/FreeFlyCamera.h"
+#include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Lighting/Headers/LightPool.h"
 
 #include "Platform/Video/Headers/CommandBuffer.h"
@@ -74,7 +74,7 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
         const U8 cameraCount = type == ShadowType::SINGLE ? 1 : type == ShadowType::CUBEMAP ? 6 : Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT;
 
         for (U32 i = 0; i < cameraCount; ++i) {
-            s_shadowCameras[t].emplace_back(Camera::CreateCamera<FreeFlyCamera>(Util::StringFormat("ShadowCamera_%s_%d", Names::shadowType[t], i)));
+            s_shadowCameras[t].emplace_back(Camera::CreateCamera(Util::StringFormat("ShadowCamera_%s_%d", Names::shadowType[t], i), Camera::Mode::STATIC));
         }
     }
 
@@ -516,7 +516,7 @@ void ShadowMap::setDebugViewLight(GFXDevice& context, Light* light) {
                 shadowPreviewShader.waitForReady(true);
                 ShaderProgram_ptr previewShader = CreateResource<ShaderProgram>(context.parent().resourceCache(), shadowPreviewShader);
 
-                const vec2<F32> zPlanes = shadowCameras(ShadowType::CUBEMAP)[0]->getZPlanes();
+                const vec2<F32> zPlanes = shadowCameras(ShadowType::CUBEMAP)[0]->snapshot()._zPlanes;
 
                 for (U8 i = 0u; i < 6u; ++i) {
                     DebugView_ptr shadow = std::make_shared<DebugView>(to_I16(I16_MAX - 1 - 6 + i));

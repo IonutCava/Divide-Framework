@@ -133,7 +133,7 @@ private:
     void endFrameGlobal(const DisplayWindow& window);
 
 public:
-    static [[nodiscard]] const GLStateTracker_uptr& GetStateTracker() noexcept;
+    static [[nodiscard]] GLStateTracker& GetStateTracker() noexcept;
     static [[nodiscard]] GLUtil::GLMemory::GLMemoryType GetMemoryTypeForUsage(GLenum usage) noexcept;
     static [[nodiscard]] GLUtil::GLMemory::DeviceAllocator& GetMemoryAllocator(GLUtil::GLMemory::GLMemoryType memoryType) noexcept;
 
@@ -222,7 +222,7 @@ private:
 
     static SharedMutex s_samplerMapLock;
     static SamplerObjectMap s_samplerMap;
-    static GLStateTracker_uptr s_stateTracker;
+    static GLStateTracker s_stateTracker;
 
     static std::array<GLUtil::GLMemory::DeviceAllocator, to_base(GLUtil::GLMemory::GLMemoryType::COUNT)> s_memoryAllocators;
     static std::array<size_t, to_base(GLUtil::GLMemory::GLMemoryType::COUNT)> s_memoryAllocatorSizes;

@@ -18,7 +18,7 @@
 #include "Managers/Headers/RenderPassManager.h"
 #include "Managers/Headers/SceneManager.h"
 
-#include "Rendering/Camera/Headers/FreeFlyCamera.h"
+#include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Headers/Renderer.h"
 #include "Rendering/PostFX/Headers/PostFX.h"
 
@@ -1601,13 +1601,13 @@ void GFXDevice::onResolutionChange(const SizeChangeParams& params) {
 
     // Update the 2D camera so it matches our new rendering viewport
     if (Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->setProjection(vec4<F32>(0, to_F32(w), 0, to_F32(h)), vec2<F32>(-1, 1))) {
-        Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->updateFrustum();
+        Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->updateLookAt();
     }
     if (Camera::GetUtilityCamera(Camera::UtilityCamera::_2D_FLIP_Y)->setProjection(vec4<F32>(0, to_F32(w), to_F32(h), 0), vec2<F32>(-1, 1))) {
-        Camera::GetUtilityCamera(Camera::UtilityCamera::_2D_FLIP_Y)->updateFrustum();
+        Camera::GetUtilityCamera(Camera::UtilityCamera::_2D_FLIP_Y)->updateLookAt();
     }
     if (Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT)->setProjection(aspectRatio, vFoV, zPlanes)) {
-        Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT)->updateFrustum();
+        Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT)->updateLookAt();
     }
 
     // Update render targets with the new resolution

@@ -747,7 +747,7 @@ void MenuBar::drawDebugMenu([[maybe_unused]] const bool modifierPressed) {
 
         SceneEnvironmentProbePool* envProbPool = Attorney::EditorGeneralWidget::getActiveEnvProbePool(_context.editor());
         LightPool& pool = Attorney::EditorGeneralWidget::getActiveLightPool(_context.editor());
-        const ECSManager& ecsManager = Attorney::EditorGeneralWidget::getECSManager(_context.editor());
+
         if (ImGui::BeginMenu("Render Filters")) {
             Configuration::Debug::RenderFilter& renderFilters = _context.config().debug.renderFilter;
             bool configDirty = false;
@@ -903,6 +903,7 @@ void MenuBar::drawDebugMenu([[maybe_unused]] const bool modifierPressed) {
             pool.lightImpostorsEnabled(lightImpostors);
         }
         
+        const ECSManager& ecsManager =  _context.kernel().sceneManager()->getActiveScene().sceneGraph()->GetECSManager();
         bool playAnimations = ecsManager.getSystem<AnimationSystem>()->getAnimationState();
 
         if (ImGui::MenuItem("Play animations", "", &playAnimations)) {

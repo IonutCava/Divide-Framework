@@ -102,7 +102,7 @@ class WaterPlane : public SceneNode {
     /// the water's "geometry"
     std::shared_ptr<Quad3D> _plane = nullptr;
 
-    StaticCamera* _reflectionCam = nullptr;
+    Camera* _reflectionCam = nullptr;
     std::array<EditorDataState, to_base(RenderStage::COUNT)> _editorDataDirtyState;
 };
 

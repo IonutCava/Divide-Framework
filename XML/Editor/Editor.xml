@@ -14,11 +14,11 @@
                 <distance>0</distance>
                 <active>false</active>
             </reflectionPlane>
-            <accumPitchDegrees>-14.9944563</accumPitchDegrees>
+            <accumPitchDegrees>-14.9972277</accumPitchDegrees>
             <frustumLocked>false</frustumLocked>
-            <euler x="-14.9952774" y="39.9795837" z="0.00303464173"/>
-            <eye x="4.96746826" y="2.070714" z="5.92327166"/>
-            <orientation x="-0.122613497" y="0.338980705" z="0.0446385443" w="0.931569278"/>
+            <euler x="-14.999999" y="39.9882622" z="0"/>
+            <eye x="60" y="45" z="60"/>
+            <orientation x="-0.122639529" y="0.339052707" z="0.0446371362" w="0.931539714"/>
             <aspectRatio>1.77777779</aspectRatio>
             <zPlanes min="0.100000001" max="1000"/>
             <FoV>58.7155075</FoV>
@@ -27,6 +27,11 @@
             <yawFixed>true</yawFixed>
             <rotationLocked>false</rotationLocked>
             <movementLocked>false</movementLocked>
+            <maxRadius>10</maxRadius>
+            <minRadius>0.100000001</minRadius>
+            <curRadius>8</curRadius>
+            <cameraRotation x="0" y="0" z="0"/>
+            <offsetDir x="0" y="0" z="1"/>
         </Editor__Camera>
         <Node__Preview__Camera>
             <reflectionPlane>
@@ -34,19 +39,24 @@
                 <distance>0</distance>
                 <active>false</active>
             </reflectionPlane>
-            <accumPitchDegrees>-26.1453991</accumPitchDegrees>
+            <accumPitchDegrees>-29.1227837</accumPitchDegrees>
             <frustumLocked>false</frustumLocked>
-            <euler x="-26.1454163" y="16.046051" z="-3.33144726e-06"/>
-            <eye x="0.884237707" y="1.80498981" z="3.51143289"/>
-            <orientation x="-0.223973349" y="0.135953948" z="0.0315691866" w="0.964549184"/>
+            <euler x="150.877228" y="-30.6778831" z="180"/>
+            <eye x="-1.89765799" y="2.07210612" z="-3.19883204"/>
+            <orientation x="-0.066507034" y="-0.933400869" z="-0.24246116" w="0.256031603"/>
             <aspectRatio>1.77777779</aspectRatio>
             <zPlanes min="0.100000001" max="1000"/>
             <FoV>58.7155075</FoV>
-            <speedFactor turn="45" move="4" zoom="5"/>
+            <speedFactor turn="125" move="4" zoom="175"/>
             <fixedYawAxis x="0" y="1" z="0"/>
             <yawFixed>true</yawFixed>
             <rotationLocked>false</rotationLocked>
             <movementLocked>false</movementLocked>
+            <maxRadius>17.320507</maxRadius>
+            <minRadius>1.29903805</minRadius>
+            <curRadius>4.25761175</curRadius>
+            <cameraRotation x="-0.508288383" y="0.535430312" z="0"/>
+            <offsetDir x="0" y="0" z="0"/>
         </Node__Preview__Camera>
     </camera>
 </editor>

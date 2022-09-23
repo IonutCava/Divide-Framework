@@ -655,12 +655,7 @@
     <ClCompile Include="../../Source Code/Physics\PhysX\PhysXSceneInterface.cpp" />
     <ClCompile Include="../../Source Code/Physics\PhysX\pxShapeScaling.cpp" />
     <ClCompile Include="../../Source Code/Physics\PXDevice.cpp" />
-    <ClCompile Include="../../Source Code/Rendering\Camera\FirstPersonCamera.cpp" />
-    <ClCompile Include="../../Source Code/Rendering\Camera\FreeFlyCamera.cpp" />
     <ClCompile Include="../../Source Code/Rendering\Camera\Frustum.cpp" />
-    <ClCompile Include="../../Source Code/Rendering\Camera\OrbitCamera.cpp" />
-    <ClCompile Include="../../Source Code/Rendering\Camera\ScriptedCamera.cpp" />
-    <ClCompile Include="../../Source Code/Rendering\Camera\ThirdPersonCamera.cpp" />
     <ClCompile Include="../../Source Code/Rendering\Renderer.cpp" />
     <ClCompile Include="../../Source Code/Rendering\Camera\Camera.cpp" />
     <ClCompile Include="../../Source Code/Rendering\Lighting\LightPool.cpp" />
@@ -804,12 +799,7 @@
     <ClInclude Include="../../Source Code/Physics\PhysX\Headers\PhysXSceneInterface.h" />
     <ClInclude Include="../../Source Code/Physics\PhysX\Headers\pxShapeScaling.h" />
     <ClInclude Include="../../Source Code/Rendering\Camera\Headers\Camera.h" />
-    <ClInclude Include="../../Source Code/Rendering\Camera\Headers\FirstPersonCamera.h" />
-    <ClInclude Include="../../Source Code/Rendering\Camera\Headers\FreeFlyCamera.h" />
     <ClInclude Include="../../Source Code/Rendering\Camera\Headers\Frustum.h" />
-    <ClInclude Include="../../Source Code/Rendering\Camera\Headers\OrbitCamera.h" />
-    <ClInclude Include="../../Source Code/Rendering\Camera\Headers\ScriptedCamera.h" />
-    <ClInclude Include="../../Source Code/Rendering\Camera\Headers\ThirdPersonCamera.h" />
     <ClInclude Include="../../Source Code/Rendering\Headers\ClipRegion.h" />
     <ClInclude Include="../../Source Code/Rendering\Headers\FrameListener.h" />
     <ClInclude Include="../../Source Code/Rendering\Headers\Renderer.h" />
@@ -919,6 +909,7 @@
     <None Include="..\..\Source Code\ECS\Components\Headers\SGNComponent.inl" />
     <None Include="..\..\Source Code\ECS\Systems\Headers\ECSSystem.inl" />
     <None Include="..\..\Source Code\Graphs\Headers\SceneGraphNode.inl" />
+    <None Include="..\..\Source Code\Rendering\Camera\Headers\Camera.inl" />
     <None Include="..\..\Source Code\Rendering\PostFX\Headers\PreRenderBatch.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

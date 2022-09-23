@@ -61,8 +61,8 @@ namespace Divide {
         {
             const VkBufferCreateInfo bufferInfo = vk::bufferCreateInfo(usageFlags | VK_BUFFER_USAGE_TRANSFER_DST_BIT, dataSize);
 
-            UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()->_allocatorInstance._allocatorLock);
-            VK_CHECK(vmaCreateBuffer(*VK_API::GetStateTracker()->_allocatorInstance._allocator,
+            UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()._allocatorInstance._allocatorLock);
+            VK_CHECK(vmaCreateBuffer(*VK_API::GetStateTracker()._allocatorInstance._allocator,
                                      &bufferInfo,
                                      &vmaallocInfo,
                                      &_bufferImpl->_buffer,
@@ -70,12 +70,12 @@ namespace Divide {
                                      &_bufferImpl->_allocInfo));
 
             VkMemoryPropertyFlags memPropFlags;
-            vmaGetAllocationMemoryProperties(*VK_API::GetStateTracker()->_allocatorInstance._allocator,
+            vmaGetAllocationMemoryProperties(*VK_API::GetStateTracker()._allocatorInstance._allocator,
                                              _bufferImpl->_allocation,
                                              &memPropFlags);
 
-            vmaSetAllocationName(*VK_API::GetStateTracker()->_allocatorInstance._allocator, _bufferImpl->_allocation, bufferName.c_str());
-            Debug::SetObjectName(VK_API::GetStateTracker()->_device->getVKDevice(), (uint64_t)_bufferImpl->_buffer, VK_OBJECT_TYPE_BUFFER, bufferName.c_str());
+            vmaSetAllocationName(*VK_API::GetStateTracker()._allocatorInstance._allocator, _bufferImpl->_allocation, bufferName.c_str());
+            Debug::SetObjectName(VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)_bufferImpl->_buffer, VK_OBJECT_TYPE_BUFFER, bufferName.c_str());
         }
 
         // Queue a command to copy from the staging buffer to the vertex buffer
@@ -140,16 +140,16 @@ namespace Divide {
             DIVIDE_UNEXPECTED_CALL();
         }
 
-        UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()->_allocatorInstance._allocatorLock);
+        UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()._allocatorInstance._allocatorLock);
         if (_params._updateFrequency == BufferUpdateFrequency::OFTEN) {
             Byte* mappedRange = (Byte*)_bufferImpl->_allocInfo.pMappedData;
             memcpy(outData.first, &mappedRange[range._startOffset], std::min(std::min(range._length, outData.second), _alignedBufferSize));
         } else {
             void* mappedData;
-            vmaMapMemory(*VK_API::GetStateTracker()->_allocatorInstance._allocator, _bufferImpl->_allocation, &mappedData);
+            vmaMapMemory(*VK_API::GetStateTracker()._allocatorInstance._allocator, _bufferImpl->_allocation, &mappedData);
             Byte* mappedRange = (Byte*)mappedData;
             memcpy(outData.first, &mappedRange[range._startOffset], std::min(std::min(range._length, outData.second), _alignedBufferSize));
-            vmaUnmapMemory(*VK_API::GetStateTracker()->_allocatorInstance._allocator, _bufferImpl->_allocation);
+            vmaUnmapMemory(*VK_API::GetStateTracker()._allocatorInstance._allocator, _bufferImpl->_allocation);
         }
     }
 

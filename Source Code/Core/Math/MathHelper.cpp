@@ -223,32 +223,6 @@ void ToByteColour(const FColour3& floatColour, UColour3& colourOut) noexcept {
                   FLOAT_TO_CHAR_UNORM(floatColour.b));
 }
 
-void ToIntColour(const FColour4& floatColour, vec4<I32>& colourOut) noexcept {
-    colourOut.set(FLOAT_TO_CHAR_SNORM(floatColour.r),
-                  FLOAT_TO_CHAR_SNORM(floatColour.g),
-                  FLOAT_TO_CHAR_SNORM(floatColour.b),
-                  FLOAT_TO_CHAR_SNORM(floatColour.a));
-}
-
-void ToIntColour(const FColour3& floatColour, vec3<I32>& colourOut) noexcept {
-    colourOut.set(FLOAT_TO_CHAR_SNORM(floatColour.r),
-                  FLOAT_TO_CHAR_SNORM(floatColour.g),
-                  FLOAT_TO_CHAR_SNORM(floatColour.b));
-}
-
-void ToUIntColour(const FColour4& floatColour, vec4<U32>& colourOut) noexcept {
-    colourOut.set(FLOAT_TO_CHAR_UNORM(floatColour.r),
-                  FLOAT_TO_CHAR_UNORM(floatColour.g),
-                  FLOAT_TO_CHAR_UNORM(floatColour.b),
-                  FLOAT_TO_CHAR_UNORM(floatColour.a));
-}
-
-void ToUIntColour(const FColour3& floatColour, vec3<U32>& colourOut) noexcept {
-    colourOut.set(FLOAT_TO_CHAR_UNORM(floatColour.r),
-                  FLOAT_TO_CHAR_UNORM(floatColour.g),
-                  FLOAT_TO_CHAR_UNORM(floatColour.b));
-}
-
 void ToFloatColour(const UColour4& byteColour, FColour4& colourOut) noexcept {
     colourOut.set(UNORM_CHAR_TO_FLOAT(byteColour.r),
                   UNORM_CHAR_TO_FLOAT(byteColour.g),
@@ -284,30 +258,6 @@ UColour4 ToByteColour(const FColour4& floatColour) noexcept {
 UColour3 ToByteColour(const FColour3& floatColour) noexcept {
     UColour3 tempColour;
     ToByteColour(floatColour, tempColour);
-    return tempColour;
-}
-
-vec4<I32> ToIntColour(const FColour4& floatColour) noexcept {
-    vec4<I32> tempColour;
-    ToIntColour(floatColour, tempColour);
-    return tempColour;
-}
-
-vec3<I32> ToIntColour(const FColour3& floatColour) noexcept {
-    vec3<I32> tempColour;
-    ToIntColour(floatColour, tempColour);
-    return tempColour;
-}
-
-vec4<U32> ToUIntColour(const FColour4& floatColour) noexcept {
-    vec4<U32> tempColour;
-    ToUIntColour(floatColour, tempColour);
-    return tempColour;
-}
-
-vec3<U32> ToUIntColour(const FColour3& floatColour) noexcept {
-    vec3<U32> tempColour;
-    ToUIntColour(floatColour, tempColour);
     return tempColour;
 }
 

@@ -7,7 +7,7 @@
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "ECS/Components/Headers/BoundsComponent.h"
-#include "Rendering/Camera/Headers/FreeFlyCamera.h"
+#include "Rendering/Camera/Headers/Camera.h"
 #include "Managers/Headers/RenderPassManager.h"
 #include "Scenes/Headers/Scene.h"
 #include "Graphs/Headers/SceneNode.h"
@@ -89,7 +89,7 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
     SkyLightNeedsRefresh(true);
 
     for (U32 i = 0; i < 6; ++i) {
-        s_probeCameras.emplace_back(Camera::CreateCamera<FreeFlyCamera>(Util::StringFormat("ProbeCamera_%d", i)));
+        s_probeCameras.emplace_back(Camera::CreateCamera(Util::StringFormat("ProbeCamera_%d", i), Camera::Mode::STATIC ));
     }
 
     s_availableSlices.fill({});

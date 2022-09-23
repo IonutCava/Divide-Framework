@@ -11,8 +11,7 @@
 #include "Geometry/Shapes/Headers/Object3D.h"
 #include "Managers/Headers/RenderPassManager.h"
 #include "Managers/Headers/SceneManager.h"
-#include "Rendering/Camera/Headers/OrbitCamera.h"
-#include "Rendering/Camera/Headers/FreeFlyCamera.h"
+#include "Rendering/Camera/Headers/Camera.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
 

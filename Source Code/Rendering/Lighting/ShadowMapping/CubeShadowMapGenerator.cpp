@@ -55,7 +55,7 @@ void CubeShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera,
 
     for (U8 i = 0u; i < 6u; ++i) {
         light.setShadowLightPos(  i, lightPos);
-        light.setShadowFloatValue(i, shadowCameras[i]->getZPlanes().y);
+        light.setShadowFloatValue(i, shadowCameras[i]->snapshot()._zPlanes.max);
         light.setShadowVPMatrix(  i, mat4<F32>::Multiply(shadowCameras[i]->viewProjectionMatrix(), MAT4_BIAS));
     }
 

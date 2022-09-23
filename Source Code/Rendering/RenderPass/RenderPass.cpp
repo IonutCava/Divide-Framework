@@ -17,7 +17,6 @@
 
 #include "Rendering/Lighting/Headers/LightPool.h"
 #include "Rendering/Camera/Headers/Camera.h"
-#include "Rendering/Camera/Headers/OrbitCamera.h"
 #include "Geometry/Material/Headers/Material.h"
 
 #include "Scenes/Headers/Scene.h"
@@ -210,7 +209,7 @@ namespace Divide
 
                     SceneEnvironmentProbePool* envProbPool = Attorney::SceneRenderPass::getEnvProbes( mgr->getActiveScene() );
                     envProbPool->lockProbeList();
-                    const EnvironmentProbeList& probes = envProbPool->sortAndGetLocked( camera->getEye() );
+                    const EnvironmentProbeList& probes = envProbPool->sortAndGetLocked( camera->snapshot()._eye );
                     U32 probeIdx = 0u;
                     for ( const auto& probe : probes )
                     {
@@ -289,8 +288,8 @@ namespace Divide
             } break;
 
             case RenderStage::COUNT:
-            DIVIDE_UNEXPECTED_CALL();
-            break;
+                DIVIDE_UNEXPECTED_CALL();
+                break;
         };
     }
 

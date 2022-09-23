@@ -33,8 +33,8 @@ namespace Divide
     {
         if (_image != VK_NULL_HANDLE) {
             VK_API::RegisterCustomAPIDelete([img = _image, alloc = _allocation]([[maybe_unused]] VkDevice device) {
-                UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()->_allocatorInstance._allocatorLock);
-                vmaDestroyImage(*VK_API::GetStateTracker()->_allocatorInstance._allocator, img, alloc);
+                UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()._allocatorInstance._allocatorLock);
+                vmaDestroyImage(*VK_API::GetStateTracker()._allocatorInstance._allocator, img, alloc);
             }, true);
         }
     }
@@ -229,16 +229,16 @@ namespace Divide
         vmaallocinfo.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
         vmaallocinfo.priority = 1.f;
 
-        UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()->_allocatorInstance._allocatorLock);
-        VK_CHECK(vmaCreateImage(*VK_API::GetStateTracker()->_allocatorInstance._allocator,
+        UniqueLock<Mutex> w_lock(VK_API::GetStateTracker()._allocatorInstance._allocatorLock);
+        VK_CHECK(vmaCreateImage(*VK_API::GetStateTracker()._allocatorInstance._allocator,
                                 &imageInfo,
                                 &vmaallocinfo,
                                 &_image->_image,
                                 &_image->_allocation,
                                 &_image->_allocInfo));
 
-        vmaSetAllocationName(*VK_API::GetStateTracker()->_allocatorInstance._allocator, _image->_allocation, resourceName().c_str());
-        Debug::SetObjectName(VK_API::GetStateTracker()->_device->getVKDevice(),  (uint64_t)_image->_image, VK_OBJECT_TYPE_IMAGE, resourceName().c_str());
+        vmaSetAllocationName(*VK_API::GetStateTracker()._allocatorInstance._allocator, _image->_allocation, resourceName().c_str());
+        Debug::SetObjectName(VK_API::GetStateTracker()._device->getVKDevice(),  (uint64_t)_image->_image, VK_OBJECT_TYPE_IMAGE, resourceName().c_str());
     }
 
     void vkTexture::loadDataInternal(const ImageTools::ImageData& imageData) {
@@ -276,7 +276,7 @@ namespace Divide
         }
 
        
-        VK_API::GetStateTracker()->_cmdContext->flushCommandBuffer([&](VkCommandBuffer cmd) {
+        VK_API::GetStateTracker()._cmdContext->flushCommandBuffer([&](VkCommandBuffer cmd) {
             VkImageMemoryBarrier imageBarrier_toTransfer = {};
             imageBarrier_toTransfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 
@@ -381,13 +381,19 @@ namespace Divide
         VkImageSubresourceRange range{};
         range.aspectMask = descriptor._aspectFlags == VK_IMAGE_ASPECT_FLAG_BITS_MAX_ENUM ? GetAspectFlags(_descriptor) : descriptor._aspectFlags;
         range.baseArrayLayer = descriptor._layers.min;
-        range.layerCount = descriptor._layers.max;
         range.baseMipLevel = descriptor._mipLevels.min;
-        range.levelCount = descriptor._mipLevels.max;
-
-        if (IsCubeTexture(descriptor._type) &&
-            range.layerCount != VK_REMAINING_ARRAY_LAYERS) {
-            range.layerCount *= 6;
+        range.levelCount = descriptor._mipLevels.max == U16_MAX ? VK_REMAINING_MIP_LEVELS : descriptor._mipLevels.max;
+        if ( descriptor._type == TextureType::TEXTURE_CUBE_MAP )
+        {
+            range.layerCount = 6;
+        }
+        else
+        {
+            range.layerCount = descriptor._layers.max == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : descriptor._layers.max;
+            if ( descriptor._type == TextureType::TEXTURE_CUBE_ARRAY && range.layerCount != VK_REMAINING_ARRAY_LAYERS )
+            {
+                range.layerCount *= 6;
+            }
         }
 
         VkImageViewCreateInfo imageInfo = vk::imageViewCreateInfo();
@@ -402,7 +408,7 @@ namespace Divide
 
         CachedImageView newView{};
         newView._descriptor = descriptor;
-        VK_CHECK(vkCreateImageView(VK_API::GetStateTracker()->_device->getVKDevice(), &imageInfo, nullptr, &newView._view));
+        VK_CHECK(vkCreateImageView(VK_API::GetStateTracker()._device->getVKDevice(), &imageInfo, nullptr, &newView._view));
         
 
         _imageViewCache.emplace_back(newView);

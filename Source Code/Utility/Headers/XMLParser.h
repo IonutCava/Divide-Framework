@@ -35,33 +35,37 @@
 
 #include "Platform/Headers/PlatformDefines.h"
 
-namespace Divide {
+namespace Divide
+{
 
-class Scene;
-class GFXDevice;
-class SceneGraphNode;
-class PlatformContext;
+    class Scene;
+    class GFXDevice;
+    class SceneGraphNode;
+    class PlatformContext;
 
-struct Configuration;
+    struct Configuration;
 
-FWD_DECLARE_MANAGED_CLASS(Material);
+    FWD_DECLARE_MANAGED_CLASS( Material );
 
-namespace XML {
+    namespace XML
+    {
 
-namespace detail {
-    struct LoadSave {
-        bool _saveFileOK = false;
-        string _loadPath = "";
-        string _rootNodePath = "";
+        namespace detail
+        {
+            struct LoadSave
+            {
+                bool _saveFileOK = false;
+                string _loadPath = "";
+                string _rootNodePath = "";
 
-        mutable string _savePath = "";
-        mutable boost::property_tree::iptree XmlTree;
+                mutable string _savePath = "";
+                mutable boost::property_tree::iptree XmlTree;
 
-        bool read(const string& path, const string& rootNode);
-        bool prepareSaveFile(const string& path) const;
-        void write() const;
-    };
-}
+                bool read( const string& path, const string& rootNode );
+                bool prepareSaveFile( const string& path ) const;
+                void write() const;
+            };
+        }
 
 #ifndef GET_PARAM
 #define CONCAT(first, second) first second
@@ -81,37 +85,39 @@ namespace detail {
     LoadSave.XmlTree.put(CONCAT(CONCAT(LoadSave._rootNodePath + TO_STRING(X), ".<xmlattr>."), TO_STRING(Y)), (X.Y))
 #endif
 
-class IXMLSerializable {
-public:
-    virtual ~IXMLSerializable() = default;
+        class IXMLSerializable
+        {
+            public:
+            virtual ~IXMLSerializable() = default;
 
-protected:
-    friend bool loadFromXML(IXMLSerializable& object, const char* file);
-    friend bool saveToXML(const IXMLSerializable& object, const char* file);
+            protected:
+            friend bool loadFromXML( IXMLSerializable& object, const char* file );
+            friend bool saveToXML( const IXMLSerializable& object, const char* file );
 
-    virtual bool fromXML(const char* xmlFile) = 0;
-    virtual bool toXML(const char* xmlFile) const = 0;
+            virtual bool fromXML( const char* xmlFile ) = 0;
+            virtual bool toXML( const char* xmlFile ) const = 0;
 
-    detail::LoadSave LoadSave;
-};
+            detail::LoadSave LoadSave;
+        };
 
-bool loadFromXML(IXMLSerializable& object, const char* file);
-bool saveToXML(const IXMLSerializable& object, const char* file);
+        bool loadFromXML( IXMLSerializable& object, const char* file );
+        bool saveToXML( const IXMLSerializable& object, const char* file );
 
-void writeXML(const string& path, const boost::property_tree::ptree& tree);
-void readXML(const string& path, boost::property_tree::ptree& tree);
-/// Child Functions
-void loadDefaultKeyBindings(const string &file, const Scene* scene);
-void loadMusicPlaylist(const Str256& scenePath, const Str64& fileName, const Scene* const scene, [[maybe_unused]] const Configuration& config);
+        void writeXML( const string& path, const boost::property_tree::ptree& tree );
+        void readXML( const string& path, boost::property_tree::ptree& tree );
+        /// Child Functions
+        void loadDefaultKeyBindings( const string& file, const Scene* scene );
+        void loadMusicPlaylist( const Str256& scenePath, const Str64& fileName, const Scene* const scene, [[maybe_unused]] const Configuration& config );
 
-struct SceneNode {
-    Str64 name;
-    U64 typeHash = 0u;
+        struct SceneNode
+        {
+            Str64 name;
+            U64 typeHash = 0u;
 
-    vector<SceneNode> children;
-};
+            vector<SceneNode> children;
+        };
 
-}  // namespace XML
+    }  // namespace XML
 }  // namespace Divide
 
 #endif

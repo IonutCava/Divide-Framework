@@ -29,7 +29,7 @@
 #include "Platform/Headers/SDLEventManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
-#include "Rendering/Camera/Headers/FreeFlyCamera.h"
+#include "Rendering/Camera/Headers/Camera.h"
 #include "Resources/Headers/ResourceCache.h"
 #include "Scripting/Headers/Script.h"
 #include "Utility/Headers/XMLParser.h"

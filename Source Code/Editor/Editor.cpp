@@ -37,8 +37,7 @@
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
-#include "Rendering/Camera/Headers/FreeFlyCamera.h"
-#include "Rendering/Camera/Headers/OrbitCamera.h"
+#include "Rendering/Camera/Headers/Camera.h"
 
 namespace Divide
 {
@@ -150,8 +149,8 @@ namespace Divide
     };
 
     std::array<const char*, 3> Editor::g_supportedExportPlatforms = { "Windows",
-        "Linux",
-        "macOS" };
+                                                                      "Linux",
+                                                                      "macOS" };
 
     Editor::Editor( PlatformContext& context, const ImGuiStyleEnum theme )
         : PlatformContextComponent( context )
@@ -277,17 +276,19 @@ namespace Divide
 
         _mainWindow = &_context.app().windowManager().getWindow( 0u );
         _render2DSnapshot = Camera::GetUtilityCamera( Camera::UtilityCamera::_2D_FLIP_Y )->snapshot();
-        _editorCamera = Camera::CreateCamera<FreeFlyCamera>( "Editor Camera" );
+        _editorCamera = Camera::CreateCamera( "Editor Camera", Camera::Mode::FREE_FLY );
         _editorCamera->fromCamera( *Camera::GetUtilityCamera( Camera::UtilityCamera::DEFAULT ) );
         _editorCamera->setFixedYawAxis( true );
         _editorCamera->setEye( 60.f, 45.f, 60.f );
         _editorCamera->setEuler( -15.f, 40.f, 0.f );
-        _editorCamera->setTurnSpeedFactor( 45.f );
+        _editorCamera->speedFactor().turn = 45.f;
 
-        _nodePreviewCamera = Camera::CreateCamera<FreeFlyCamera>( "Node Preview Camera" );
+        _nodePreviewCamera = Camera::CreateCamera( "Node Preview Camera", Camera::Mode::ORBIT );
         _nodePreviewCamera->fromCamera( *Camera::GetUtilityCamera( Camera::UtilityCamera::DEFAULT ) );
-        _nodePreviewCamera->setTurnSpeedFactor( 45.f );
         _nodePreviewCamera->setFixedYawAxis( true );
+        _nodePreviewCamera->speedFactor().turn = 125.f;
+        _nodePreviewCamera->speedFactor().zoom = 175.f;
+
         IMGUI_CHECKVERSION();
         assert( _imguiContexts[to_base( ImGuiContextType::Editor )] == nullptr );
 
@@ -395,8 +396,7 @@ namespace Divide
 
         pipelineDesc._shaderProgramHandle = _imguiProgram->handle();
 
-        BlendingSettings& blend = pipelineDesc._blendStates
-            ._settings[to_U8( GFXDevice::ScreenTargets::ALBEDO )];
+        BlendingSettings& blend = pipelineDesc._blendStates._settings[to_U8( GFXDevice::ScreenTargets::ALBEDO )];
         blend.enabled( true );
         blend.blendSrc( BlendProperty::SRC_ALPHA );
         blend.blendDest( BlendProperty::INV_SRC_ALPHA );
@@ -410,18 +410,14 @@ namespace Divide
         io.ConfigDockingTransparentPayload = true;
         io.ConfigViewportsNoAutoMerge = false;
 
-        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; // Enable Multi-Viewport
-        // / Platform Windows
+        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; // Enable Multi-Viewport / Platform Windows
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable; // Enable Docking
 
         io.BackendFlags |= ImGuiBackendFlags_HasMouseHoveredViewport;
         io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
         io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;
-        io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos; // We can honor io.WantSetMousePos
-        // requests (optional, rarely used)
-        io.BackendFlags |= ImGuiBackendFlags_PlatformHasViewports; // We can create multi-viewports
-        // on the Platform side
-        // (optional)
+        io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos; // We can honor io.WantSetMousePos requests (optional, rarely used)
+        io.BackendFlags |= ImGuiBackendFlags_PlatformHasViewports; // We can create multi-viewports on the Platform side (optional)
 
         io.BackendPlatformName = Config::ENGINE_NAME;
         io.BackendRendererName = _context.gfx().renderAPI() == RenderAPI::Vulkan ? "Vulkan" : "OpenGL";
@@ -449,17 +445,16 @@ namespace Divide
                 winDescriptor.title = "No Title Yet";
                 winDescriptor.targetDisplay = to_U32( window.currentDisplayIndex() );
                 winDescriptor.flags = to_U16( WindowDescriptor::Flags::HIDDEN );
-                // We don't enable SDL_WINDOW_RESIZABLE because it enforce windows
-                // decorations
+                // We don't enable SDL_WINDOW_RESIZABLE because it enforce windows decorations
                 winDescriptor.flags |= viewport->Flags & ImGuiViewportFlags_NoDecoration
-                    ? 0
-                    : to_U32( WindowDescriptor::Flags::DECORATED );
+                                                       ? 0
+                                                       : to_U32( WindowDescriptor::Flags::DECORATED );
                 winDescriptor.flags |= viewport->Flags & ImGuiViewportFlags_NoDecoration
-                    ? 0
-                    : to_U32( WindowDescriptor::Flags::RESIZEABLE );
+                                                       ? 0
+                                                       : to_U32( WindowDescriptor::Flags::RESIZEABLE );
                 winDescriptor.flags |= viewport->Flags & ImGuiViewportFlags_TopMost
-                    ? to_U32( WindowDescriptor::Flags::ALWAYS_ON_TOP )
-                    : 0;
+                                                       ? to_U32( WindowDescriptor::Flags::ALWAYS_ON_TOP )
+                                                       : 0;
                 winDescriptor.flags |= to_U32( WindowDescriptor::Flags::SHARE_CONTEXT );
 
                 winDescriptor.dimensions.set( viewport->Size.x, viewport->Size.y );
@@ -480,28 +475,28 @@ namespace Divide
                         WindowEvent::CLOSE_REQUESTED,
                         [viewport]( [[maybe_unused]] const DisplayWindow::WindowEventArgs&
                                     args ) noexcept
-                    {
-                        viewport->PlatformRequestClose = true;
-                        return true;
-                    } );
+                        {
+                            viewport->PlatformRequestClose = true;
+                            return true;
+                        } );
 
                     newWindow->addEventListener(
                         WindowEvent::MOVED,
                         [viewport]( [[maybe_unused]] const DisplayWindow::WindowEventArgs&
                                     args ) noexcept
-                    {
-                        viewport->PlatformRequestMove = true;
-                        return true;
-                    } );
+                        {
+                            viewport->PlatformRequestMove = true;
+                            return true;
+                        } );
 
                     newWindow->addEventListener(
                         WindowEvent::RESIZED,
                         [viewport]( [[maybe_unused]] const DisplayWindow::WindowEventArgs&
                                     args ) noexcept
-                    {
-                        viewport->PlatformRequestResize = true;
-                        return true;
-                    } );
+                        {
+                            viewport->PlatformRequestResize = true;
+                            return true;
+                        } );
 
                     viewport->PlatformHandle = (void*)newWindow;
                     viewport->PlatformUserData = IM_NEW( ImGuiViewportData )
@@ -597,8 +592,7 @@ namespace Divide
         {
             if ( ImGuiViewportData* data = (ImGuiViewportData*)viewport->PlatformUserData )
             {
-                WAIT_FOR_CONDITION(
-                    data->_window->setDimensions( to_U16( size.x ), to_U16( size.y ) ) );
+                WAIT_FOR_CONDITION( data->_window->setDimensions( to_U16( size.x ), to_U16( size.y ) ) );
             }
         };
 
@@ -764,13 +758,10 @@ namespace Divide
                                            GFXDataFormat::FLOAT_16,
                                            GFXImageFormat::DEPTH_COMPONENT );
 
-        InternalRTAttachmentDescriptors attachments{
-            InternalRTAttachmentDescriptor { editorDescriptor,
-                _editorSamplerHash,
-                RTAttachmentType::COLOUR,
-                to_base( GFXDevice::ScreenTargets::ALBEDO ) },
-            InternalRTAttachmentDescriptor {
-                depthDescriptor, _editorSamplerHash, RTAttachmentType::DEPTH, 0u },
+        InternalRTAttachmentDescriptors attachments
+        {
+            InternalRTAttachmentDescriptor { editorDescriptor, _editorSamplerHash, RTAttachmentType::COLOUR, to_base( GFXDevice::ScreenTargets::ALBEDO ) },
+            InternalRTAttachmentDescriptor { depthDescriptor, _editorSamplerHash, RTAttachmentType::DEPTH, 0u },
         };
 
         RenderTargetDescriptor editorDesc = {};
@@ -868,10 +859,8 @@ namespace Divide
         {
             _context.config().save();
             sceneGizmoEnabled( false );
-            activeScene.state()->renderState().disableOption(
-                SceneRenderState::RenderOptions::SELECTION_GIZMO );
-            activeScene.state()->renderState().disableOption(
-                SceneRenderState::RenderOptions::ALL_GIZMOS );
+            activeScene.state()->renderState().disableOption( SceneRenderState::RenderOptions::SELECTION_GIZMO );
+            activeScene.state()->renderState().disableOption( SceneRenderState::RenderOptions::ALL_GIZMOS );
             if ( !_context.kernel().sceneManager()->resetSelection( 0, true ) )
             {
                 NOP();
@@ -881,11 +870,8 @@ namespace Divide
         {
             _stepQueue = 0;
             sceneGizmoEnabled( true );
-            activeScene.state()->renderState().enableOption(
-                SceneRenderState::RenderOptions::SELECTION_GIZMO );
-            static_cast<ContentExplorerWindow*>(
-                _dockedWindows[to_base( WindowType::ContentExplorer )])
-                ->init();
+            activeScene.state()->renderState().enableOption( SceneRenderState::RenderOptions::SELECTION_GIZMO );
+            static_cast<ContentExplorerWindow*>( _dockedWindows[to_base( WindowType::ContentExplorer )] )->init();
             /*const Selections& selections = activeScene.getCurrentSelection();
             if (selections._selectionCount == 0)
             {
@@ -986,30 +972,30 @@ namespace Divide
                 {
                     default:
                     case ImGuiMouseCursor_Arrow:
-                    WindowManager::SetCursorStyle( CursorStyle::ARROW );
-                    break;
+                        WindowManager::SetCursorStyle( CursorStyle::ARROW );
+                        break;
                     case ImGuiMouseCursor_TextInput: // When hovering over InputText, etc.
-                    WindowManager::SetCursorStyle( CursorStyle::TEXT_INPUT );
-                    break;
+                        WindowManager::SetCursorStyle( CursorStyle::TEXT_INPUT );
+                        break;
                     case ImGuiMouseCursor_ResizeAll: // Unused
-                    WindowManager::SetCursorStyle( CursorStyle::RESIZE_ALL );
-                    break;
+                        WindowManager::SetCursorStyle( CursorStyle::RESIZE_ALL );
+                        break;
                     case ImGuiMouseCursor_ResizeNS: // Unused
-                    WindowManager::SetCursorStyle( CursorStyle::RESIZE_NS );
-                    break;
+                        WindowManager::SetCursorStyle( CursorStyle::RESIZE_NS );
+                        break;
                     case ImGuiMouseCursor_ResizeEW: // When hovering over a column
-                    WindowManager::SetCursorStyle( CursorStyle::RESIZE_EW );
-                    break;
+                        WindowManager::SetCursorStyle( CursorStyle::RESIZE_EW );
+                        break;
                     case ImGuiMouseCursor_ResizeNESW: // Unused
-                    WindowManager::SetCursorStyle( CursorStyle::RESIZE_NESW );
-                    break;
+                        WindowManager::SetCursorStyle( CursorStyle::RESIZE_NESW );
+                        break;
                     case ImGuiMouseCursor_ResizeNWSE: // When hovering over the
-                    // bottom-right corner of a window
-                    WindowManager::SetCursorStyle( CursorStyle::RESIZE_NWSE );
-                    break;
+                        // bottom-right corner of a window
+                        WindowManager::SetCursorStyle( CursorStyle::RESIZE_NWSE );
+                        break;
                     case ImGuiMouseCursor_Hand:
-                    WindowManager::SetCursorStyle( CursorStyle::HAND );
-                    break;
+                        WindowManager::SetCursorStyle( CursorStyle::HAND );
+                        break;
                 }
             }
         }
@@ -1020,9 +1006,7 @@ namespace Divide
             _statusBar->update( deltaTimeUS );
             _optionsWindow->update( deltaTimeUS );
 
-            static_cast<ContentExplorerWindow*>(
-                _dockedWindows[to_base( WindowType::ContentExplorer )])
-                ->update( deltaTimeUS );
+            static_cast<ContentExplorerWindow*>(_dockedWindows[to_base( WindowType::ContentExplorer )])->update( deltaTimeUS );
 
             SceneManager* sMgr = _context.kernel().sceneManager();
             const bool scenePaused = (simulationPaused() && _stepQueue == 0);
@@ -1045,23 +1029,18 @@ namespace Divide
                 }
                 if ( _isScenePaused )
                 {
-                    activeScene.state()->renderState().enableOption(
-                        SceneRenderState::RenderOptions::SELECTION_GIZMO );
+                    activeScene.state()->renderState().enableOption( SceneRenderState::RenderOptions::SELECTION_GIZMO );
                     if ( allGizmosEnabled )
                     {
-                        activeScene.state()->renderState().enableOption(
-                            SceneRenderState::RenderOptions::ALL_GIZMOS );
+                        activeScene.state()->renderState().enableOption( SceneRenderState::RenderOptions::ALL_GIZMOS );
                     }
                     sceneGizmoEnabled( true );
                 }
                 else
                 {
-                    allGizmosEnabled = activeScene.state()->renderState().isEnabledOption(
-                        SceneRenderState::RenderOptions::ALL_GIZMOS );
-                    activeScene.state()->renderState().disableOption(
-                        SceneRenderState::RenderOptions::SELECTION_GIZMO );
-                    activeScene.state()->renderState().disableOption(
-                        SceneRenderState::RenderOptions::ALL_GIZMOS );
+                    allGizmosEnabled = activeScene.state()->renderState().isEnabledOption( SceneRenderState::RenderOptions::ALL_GIZMOS );
+                    activeScene.state()->renderState().disableOption( SceneRenderState::RenderOptions::SELECTION_GIZMO );
+                    activeScene.state()->renderState().disableOption( SceneRenderState::RenderOptions::ALL_GIZMOS );
                     sceneGizmoEnabled( false );
                 }
             }
@@ -1071,6 +1050,7 @@ namespace Divide
             {
                 Attorney::SceneManagerEditor::editorPreviewNode( sMgr, -1 );
                 playerState.overrideCamera( nullptr );
+                nodePreviewCamera()->setTarget( nullptr );
                 movedToNode = false;
             }
             else
@@ -1082,6 +1062,11 @@ namespace Divide
                     if ( !movedToNode && _previewNode != nullptr )
                     {
                         teleportToNode( nodePreviewCamera(), _previewNode );
+                        nodePreviewCamera()->setTarget( _previewNode->get<TransformComponent>() );
+                        const F32 radius = SceneGraph::GetBounds( _previewNode ).getRadius();
+                        nodePreviewCamera()->minRadius( radius * 0.75f );
+                        nodePreviewCamera()->maxRadius( radius * 10.f );
+                        nodePreviewCamera()->curRadius( radius );
                         movedToNode = true;
                     }
                 }
@@ -1089,6 +1074,7 @@ namespace Divide
                 {
                     playerState.overrideCamera( editorCamera() );
                     Attorney::SceneManagerEditor::editorPreviewNode( sMgr, -1 );
+                    nodePreviewCamera()->setTarget( nullptr );
                     movedToNode = false;
                 }
             }
@@ -1126,8 +1112,7 @@ namespace Divide
         const F32 originalSize = style.WindowMinSize.x;
         style.WindowMinSize.x = 300.f;
         const ImGuiID dockspace_id = ImGui::GetID( "EditorDockspace" );
-        ImGui::DockSpace(
-            dockspace_id, ImVec2( 0.0f, 0.0f ), ImGuiDockNodeFlags_PassthruCentralNode );
+        ImGui::DockSpace( dockspace_id, ImVec2( 0.0f, 0.0f ), ImGuiDockNodeFlags_PassthruCentralNode );
         style.WindowMinSize.x = originalSize;
 
         if ( Focused( _windowFocusState ) || _showOptionsWindow )
@@ -1147,8 +1132,7 @@ namespace Divide
             if ( _memoryEditorData.first != nullptr && _memoryEditorData.second > 0 )
             {
                 static MemoryEditor memEditor;
-                memEditor.DrawWindow(
-                    "Memory Editor", _memoryEditorData.first, _memoryEditorData.second );
+                memEditor.DrawWindow( "Memory Editor", _memoryEditorData.first, _memoryEditorData.second );
                 if ( !memEditor.Open )
                 {
                     _memoryEditorData = { nullptr, 0 };
@@ -1210,8 +1194,8 @@ namespace Divide
                              GFX::CommandBuffer& bufferInOut )
     {
         const bool infiniteGridEnabled = stage == RenderStage::NODE_PREVIEW
-            ? infiniteGridEnabledNode()
-            : infiniteGridEnabledScene();
+                                                ? infiniteGridEnabledNode()
+                                                : infiniteGridEnabledScene();
 
         if ( !sceneGizmoEnabled() && !infiniteGridEnabled )
         {
@@ -1242,9 +1226,7 @@ namespace Divide
                                                     viewMatrix.getUpVec() )
                                          * cameraSnapshot._invViewMatrix );
 
-            GFX::EnqueueCommand(
-                bufferInOut,
-                GFX::SetViewportCommand{ Rect<I32>( windowWidth - 250, 6, 256, 256 ) } );
+            GFX::EnqueueCommand( bufferInOut, GFX::SetViewportCommand{ Rect<I32>( windowWidth - 250, 6, 256, 256 ) } );
             _axisGizmo->getCommandBuffer( worldMatrix, bufferInOut );
         }
         else if ( _axisGizmo )
@@ -1257,8 +1239,7 @@ namespace Divide
                                     const Rect<I32>& targetViewport,
                                     GFX::CommandBuffer& bufferInOut ) const
     {
-        Attorney::GizmoEditor::render(
-            _gizmo.get(), camera, targetViewport, bufferInOut );
+        Attorney::GizmoEditor::render( _gizmo.get(), camera, targetViewport, bufferInOut );
     }
 
     bool Editor::framePostRender( const FrameEvent& evt )
@@ -1278,7 +1259,7 @@ namespace Divide
         Time::ScopedTimer timer( _editorRenderTimer );
         ImGui::SetCurrentContext( _imguiContexts[to_base( ImGuiContextType::Editor )] );
 
-        ImGuiIO& io = ImGui::GetIO();
+        const ImGuiIO& io = ImGui::GetIO();
         if ( io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable )
         {
             bool found = false;
@@ -1339,17 +1320,19 @@ namespace Divide
         return true;
     }
 
-    Rect<I32>
-        Editor::scenePreviewRect( const bool globalCoords ) const noexcept
+    Rect<I32> Editor::scenePreviewRect( const bool globalCoords ) const noexcept
     {
-        const NodePreviewWindow* viewWindow = static_cast<NodePreviewWindow*>(_dockedWindows[to_base(
-            _windowFocusState._focusedNodePreview ? WindowType::NodePreview
-            : WindowType::SceneView )]);
+        if ( !isInit() )
+        {
+            return {};
+        }
+
+        const WindowType type = _windowFocusState._focusedNodePreview ? WindowType::NodePreview : WindowType::SceneView;
+        const NodePreviewWindow* viewWindow = static_cast<NodePreviewWindow*>(_dockedWindows[to_base( type )]);
         return viewWindow->sceneRect( globalCoords );
     }
 
-    // Needs to be rendered immediately. *IM*GUI. IMGUI::NewFrame invalidates this
-    // data
+    // Needs to be rendered immediately. *IM*GUI. IMGUI::NewFrame invalidates this data
     void Editor::renderDrawList( ImDrawData* pDrawData,
                                  const Rect<I32>& targetViewport,
                                  I64 windowGUID,
@@ -1394,8 +1377,7 @@ namespace Divide
         }
 
         s_maxCommandCount = std::max( s_maxCommandCount, pDrawData->CmdListsCount );
-        GenericVertexData* buffer = _context.gfx().getOrCreateIMGUIBuffer(
-            windowGUID, s_maxCommandCount, MaxVertices );
+        GenericVertexData* buffer = _context.gfx().getOrCreateIMGUIBuffer( windowGUID, s_maxCommandCount, MaxVertices );
         assert( buffer != nullptr );
         buffer->incQueue();
 
@@ -1439,9 +1421,7 @@ namespace Divide
             GFX::BeginRenderPassCommand beginRenderPassCmd{};
             beginRenderPassCmd._target = SCREEN_TARGET_ID;
             beginRenderPassCmd._name = "Render IMGUI [ External ]";
-            beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = {
-                { windowBGColour.x, windowBGColour.y, windowBGColour.z, 1.f }, 0u
-            };
+            beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { { windowBGColour.x, windowBGColour.y, windowBGColour.z, 1.f }, 0u };
             GFX::EnqueueCommand( bufferInOut, beginRenderPassCmd );
         }
         else
@@ -1451,18 +1431,16 @@ namespace Divide
             scopeCmd->_scopeId = numVertices;
         }
 
-        GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut,
-                                                       { _editorPipeline } );
-
+        GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut, { _editorPipeline } );
         GFX::EnqueueCommand( bufferInOut, s_pushConstants );
-
         GFX::EnqueueCommand<GFX::SetViewportCommand>( bufferInOut, { targetViewport } );
 
         const F32 L = pDrawData->DisplayPos.x;
         const F32 R = pDrawData->DisplayPos.x + pDrawData->DisplaySize.x;
         const F32 T = pDrawData->DisplayPos.y;
         const F32 B = pDrawData->DisplayPos.y + pDrawData->DisplaySize.y;
-        const F32 ortho_projection[4][4] = {
+        const F32 ortho_projection[4][4] =
+        {
             { 2.f / (R - L), 0.f, 0.f, 0.f },
             { 0.f, 2.f / (T - B), 0.f, 0.f },
             { 0.f, 0.f, -1.f, 0.f },
@@ -1489,10 +1467,13 @@ namespace Divide
                 }
                 else
                 {
-                    Rect<I32> clipRect{ pcmd.ClipRect.x - pDrawData->DisplayPos.x,
+                    Rect<I32> clipRect
+                    {
+                        pcmd.ClipRect.x - pDrawData->DisplayPos.x,
                         pcmd.ClipRect.y - pDrawData->DisplayPos.y,
                         pcmd.ClipRect.z - pDrawData->DisplayPos.x,
-                        pcmd.ClipRect.w - pDrawData->DisplayPos.y };
+                        pcmd.ClipRect.w - pDrawData->DisplayPos.y
+                    };
 
                     if ( clipRect.x < targetViewport.z && clipRect.y < targetViewport.w && clipRect.z >= 0 && clipRect.w >= 0 )
                     {
@@ -1510,9 +1491,7 @@ namespace Divide
                             cmd->_usage = DescriptorSetUsage::PER_DRAW;
                             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
                             binding._slot = 0;
-                            binding._data.As<DescriptorCombinedImageSampler>() = {
-                                tex->defaultView(), _editorSamplerHash
-                            };
+                            binding._data.As<DescriptorCombinedImageSampler>() = { tex->defaultView(), _editorSamplerHash };
                         }
 
                         drawCmd._cmd.indexCount = pcmd.ElemCount;
@@ -1522,6 +1501,7 @@ namespace Divide
                     }
                 }
             }
+
             indexOffset += cmd_list->IdxBuffer.size();
             baseVertex += cmd_list->VtxBuffer.size();
         }
@@ -1537,8 +1517,7 @@ namespace Divide
         }
     }
 
-    void Editor::selectionChangeCallback( const PlayerIndex idx,
-                                          const vector<SceneGraphNode*>& nodes ) const
+    void Editor::selectionChangeCallback( const PlayerIndex idx, const vector<SceneGraphNode*>& nodes ) const
     {
         if ( idx != 0 )
         {
@@ -1562,18 +1541,7 @@ namespace Divide
 
     void Editor::setEditorCameraSpeed( const vec3<F32>& speed ) noexcept
     {
-        _editorCamera->setMoveSpeedFactor( speed.move );
-        _editorCamera->setTurnSpeedFactor( speed.turn );
-        _editorCamera->setZoomSpeedFactor( speed.zoom );
-    }
-
-    vec3<F32> Editor::getEditorCameraSpeed() const noexcept
-    {
-        return {
-            _editorCamera->getMoveSpeedFactor(),
-            _editorCamera->getTurnSpeedFactor(),
-            _editorCamera->getZoomSpeedFactor()
-        };
+        _editorCamera->speedFactor( speed );
     }
 
     bool Editor::Undo() const
@@ -1587,8 +1555,7 @@ namespace Divide
             return true;
         }
 
-        showStatusMessage(
-            "Nothing to Undo", Time::SecondsToMilliseconds<F32>( 2.0f ), true );
+        showStatusMessage( "Nothing to Undo", Time::SecondsToMilliseconds<F32>( 2.0f ), true );
         return false;
     }
 
@@ -1603,8 +1570,7 @@ namespace Divide
             return true;
         }
 
-        showStatusMessage(
-            "Nothing to Redo", Time::SecondsToMilliseconds<F32>( 2.0f ), true );
+        showStatusMessage( "Nothing to Redo", Time::SecondsToMilliseconds<F32>( 2.0f ), true );
         return false;
     }
 
@@ -1703,9 +1669,7 @@ namespace Divide
         return wantsKeyboard() || ret;
     }
 
-    ImGuiViewport*
-        Editor::FindViewportByPlatformHandle( ImGuiContext* context,
-                                              const DisplayWindow* window )
+    ImGuiViewport* Editor::FindViewportByPlatformHandle( ImGuiContext* context, const DisplayWindow* window )
     {
         if ( window != nullptr )
         {
@@ -1734,28 +1698,32 @@ namespace Divide
 
         Rect<I32> viewportSize( -1 );
 
-        ImGuiViewport* viewport = FindViewportByPlatformHandle(
-            _imguiContexts[to_base( ImGuiContextType::Editor )], focusedWindow );
+        ImGuiViewport* viewport = FindViewportByPlatformHandle( _imguiContexts[to_base( ImGuiContextType::Editor )], focusedWindow );
         if ( viewport == nullptr )
         {
-            viewportSize = { 0u,
+            viewportSize = 
+            {
+                0u,
                 0u,
                 focusedWindow->getDrawableSize().x,
-                focusedWindow->getDrawableSize().y };
+                focusedWindow->getDrawableSize().y
+            };
         }
         else
         {
-            viewportSize = {
-                viewport->Pos.x, viewport->Pos.y, viewport->Size.x, viewport->Size.y
+            viewportSize =
+            {
+                viewport->Pos.x,
+                viewport->Pos.y,
+                viewport->Size.x,
+                viewport->Size.y
             };
         }
 
-        const SceneViewWindow* sceneView = static_cast<SceneViewWindow*>(
-            _dockedWindows[to_base( WindowType::SceneView )]);
+        const SceneViewWindow* sceneView = static_cast<SceneViewWindow*>(_dockedWindows[to_base( WindowType::SceneView )]);
         _windowFocusState._hoveredScenePreview = sceneView->hovered() && sceneView->sceneRect( true ).contains( mousePos.x, mousePos.y );
 
-        const NodePreviewWindow* nodeView = static_cast<SceneViewWindow*>(
-            _dockedWindows[to_base( WindowType::NodePreview )]);
+        const NodePreviewWindow* nodeView = static_cast<SceneViewWindow*>(_dockedWindows[to_base( WindowType::NodePreview )]);
         _windowFocusState._hoveredNodePreview = nodeView->hovered() && nodeView->sceneRect( true ).contains( mousePos.x, mousePos.y );
 
         _windowFocusState._globalMousePos = mousePos;
@@ -1939,38 +1907,32 @@ namespace Divide
         return wantsMouse();
     }
 
-    bool Editor::joystickButtonPressed(
-        [[maybe_unused]] const Input::JoystickEvent& arg ) noexcept
+    bool Editor::joystickButtonPressed( [[maybe_unused]] const Input::JoystickEvent& arg ) noexcept
     {
         return wantsJoystick();
     }
 
-    bool Editor::joystickButtonReleased(
-        [[maybe_unused]] const Input::JoystickEvent& arg ) noexcept
+    bool Editor::joystickButtonReleased( [[maybe_unused]] const Input::JoystickEvent& arg ) noexcept
     {
         return wantsJoystick();
     }
 
-    bool Editor::joystickAxisMoved(
-        [[maybe_unused]] const Input::JoystickEvent& arg ) noexcept
+    bool Editor::joystickAxisMoved( [[maybe_unused]] const Input::JoystickEvent& arg ) noexcept
     {
         return wantsJoystick();
     }
 
-    bool Editor::joystickPovMoved(
-        [[maybe_unused]] const Input::JoystickEvent& arg ) noexcept
+    bool Editor::joystickPovMoved( [[maybe_unused]] const Input::JoystickEvent& arg ) noexcept
     {
         return wantsJoystick();
     }
 
-    bool Editor::joystickBallMoved(
-        [[maybe_unused]] const Input::JoystickEvent& arg ) noexcept
+    bool Editor::joystickBallMoved( [[maybe_unused]] const Input::JoystickEvent& arg ) noexcept
     {
         return wantsJoystick();
     }
 
-    bool Editor::joystickAddRemove(
-        [[maybe_unused]] const Input::JoystickEvent& arg ) noexcept
+    bool Editor::joystickAddRemove( [[maybe_unused]] const Input::JoystickEvent& arg ) noexcept
     {
         return wantsJoystick();
     }
@@ -2107,8 +2069,7 @@ namespace Divide
                                    const DELEGATE<void, bool>& finishCallback,
                                    const char* sceneNameOverride ) const
     {
-        if ( _context.kernel().sceneManager()->saveActiveScene(
-            false, true, msgCallback, finishCallback, sceneNameOverride ) )
+        if ( _context.kernel().sceneManager()->saveActiveScene( false, true, msgCallback, finishCallback, sceneNameOverride ) )
         {
             if ( saveToXML() )
             {
@@ -2205,64 +2166,58 @@ namespace Divide
 
         static std::array<bool, 4> state = { true, true, true, true };
 
-        const ImDrawCallback toggleColours{ []( [[maybe_unused]] const ImDrawList*
-                                                     parent_list,
-                                                 const ImDrawCmd* imCmd,
-                                                 void* renderData ) -> void
-     {
-    static SamplerDescriptor defaultSampler {};
-    static size_t texSampler = defaultSampler.getHash();
+        const ImDrawCallback toggleColours =  []( [[maybe_unused]] const ImDrawList* parent_list, const ImDrawCmd* imCmd, void* renderData ) -> void
+        {
+            static SamplerDescriptor defaultSampler {};
+            static size_t texSampler = defaultSampler.getHash();
 
-    TextureCallbackData data = *static_cast<TextureCallbackData*>(imCmd->UserCallbackData);
+            TextureCallbackData data = *static_cast<TextureCallbackData*>(imCmd->UserCallbackData);
 
-    assert( renderData != nullptr );
-    GFX::CommandBuffer& buffer = *static_cast<GFX::CommandBuffer*>(renderData);
+            assert( renderData != nullptr );
+            GFX::CommandBuffer& buffer = *static_cast<GFX::CommandBuffer*>(renderData);
 
-    U32 textureType = 0u;
-    if ( data._texture != nullptr )
-    {
-    const TextureType texType = data._texture->descriptor().texType();
-    const bool isTextureArray = IsArrayTexture( texType );
-    const bool isTextureCube = IsCubeTexture( texType );
+            U32 textureType = 0u;
+            if ( data._texture != nullptr )
+            {
+                const TextureType texType = data._texture->descriptor().texType();
+                const bool isTextureArray = IsArrayTexture( texType );
+                const bool isTextureCube = IsCubeTexture( texType );
 
-    if ( isTextureArray || isTextureCube )
-    {
-    textureType = 1u;
+                if ( isTextureArray || isTextureCube )
+                {
+                    textureType = 1u;
 
-    auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( buffer );
-    cmd->_usage = DescriptorSetUsage::PER_DRAW;
-    auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-    binding._slot = 1;
+                    auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( buffer );
+                    cmd->_usage = DescriptorSetUsage::PER_DRAW;
+                    auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
+                    binding._slot = 1;
 
-    if ( isTextureCube )
-    {
-    const ImageView texView = data._texture->getView( TextureType::TEXTURE_2D_ARRAY,
-        { 0u, data._texture->mipCount() },
-        { 0u, data._texture->numLayers() * 6u } );
-    binding._data.As<DescriptorCombinedImageSampler>() = { texView,
-        texSampler };
-    }
-    else
-    {
-                 binding._data.As<DescriptorCombinedImageSampler>() = {
-                     data._texture->defaultView(), texSampler
-                 };
-             }
-         }
-     }
+                    if ( isTextureCube )
+                    {
+                        const ImageView texView = data._texture->getView( TextureType::TEXTURE_2D_ARRAY,
+                                                                          { 0u, data._texture->mipCount() },
+                                                                          { 0u, data._texture->numLayers() * 6u });
 
-     PushConstantsStruct pushConstants {};
-     pushConstants.data0._vec[0] = data._colourData;
-     pushConstants.data0._vec[1].xy = data._depthRange;
-     pushConstants.data0._vec[1].z = to_F32( data._arrayLayer );
-     pushConstants.data0._vec[1].w = to_F32( data._mip );
-     pushConstants.data0._vec[2].x = to_F32( textureType );
-     pushConstants.data0._vec[2].y = data._isDepthTexture ? 1.f : 0.f;
-     pushConstants.data0._vec[2].z = data._flip ? 1.f : 0.f;
+                        binding._data.As<DescriptorCombinedImageSampler>() = { texView, texSampler };
+                    }
+                    else
+                    {
+                            binding._data.As<DescriptorCombinedImageSampler>() = { data._texture->defaultView(), texSampler };
+                    }
+                }
+            }
 
-     GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( buffer )->_constants.set(
-         pushConstants );
-    } };
+            PushConstantsStruct pushConstants {};
+            pushConstants.data0._vec[0] = data._colourData;
+            pushConstants.data0._vec[1].xy = data._depthRange;
+            pushConstants.data0._vec[1].z = to_F32( data._arrayLayer );
+            pushConstants.data0._vec[1].w = to_F32( data._mip );
+            pushConstants.data0._vec[2].x = to_F32( textureType );
+            pushConstants.data0._vec[2].y = data._isDepthTexture ? 1.f : 0.f;
+            pushConstants.data0._vec[2].z = data._flip ? 1.f : 0.f;
+
+            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( buffer )->_constants.set( pushConstants );
+        };
 
         bool closed = false;
         bool opened = false;
@@ -2270,8 +2225,7 @@ namespace Divide
         if ( useModal )
         {
             Util::OpenCenteredPopup( modalName );
-            opened = ImGui::BeginPopupModal(
-                modalName, nullptr, ImGuiWindowFlags_AlwaysAutoResize );
+            opened = ImGui::BeginPopupModal( modalName, nullptr, ImGuiWindowFlags_AlwaysAutoResize );
         }
         else
         {
@@ -2292,7 +2246,7 @@ namespace Divide
             g_modalTextureData._gfxDevice = defaultData._gfxDevice;
             g_modalTextureData._texture = tex;
             g_modalTextureData._isDepthTexture = IsDepthTexture( tex->descriptor().baseFormat() );
-            ;
+            
             const U8 numChannels = NumChannels( tex->descriptor().baseFormat() );
 
             assert( numChannels > 0 );
@@ -2380,13 +2334,11 @@ namespace Divide
             }
 
             const bool nonDefaultColours = g_modalTextureData._isDepthTexture || !state[0] || !state[1] || !state[2] || !state[3] || g_modalTextureData._flip || isArray;
-            g_modalTextureData._colourData.set(
-                state[0] ? 1 : 0, state[1] ? 1 : 0, state[2] ? 1 : 0, state[3] ? 1 : 0 );
+            g_modalTextureData._colourData.set( state[0] ? 1 : 0, state[1] ? 1 : 0, state[2] ? 1 : 0, state[3] ? 1 : 0 );
 
             if ( nonDefaultColours )
             {
-                ImGui::GetWindowDrawList()->AddCallback( toggleColours,
-                                                         &g_modalTextureData );
+                ImGui::GetWindowDrawList()->AddCallback( toggleColours, &g_modalTextureData );
             }
 
             F32 aspect = 1.0f;
@@ -2456,11 +2408,10 @@ namespace Divide
         }
         if ( quick )
         {
-            const Camera* playerCam = Attorney::SceneManagerCameraAccessor::playerCamera(
-                _context.kernel().sceneManager() );
+            const Camera* playerCam = Attorney::SceneManagerCameraAccessor::playerCamera( _context.kernel().sceneManager() );
             if ( !spawnGeometry( mesh,
                                  scale,
-                                 playerCam->getEye(),
+                                 playerCam->snapshot()._eye,
                                  position,
                                  mesh->resourceName().c_str() ) )
             {
@@ -2492,8 +2443,7 @@ namespace Divide
         static char inputBuf[256] = {};
 
         Util::OpenCenteredPopup( "Spawn Entity" );
-        if ( ImGui::BeginPopupModal(
-            "Spawn Entity", nullptr, ImGuiWindowFlags_AlwaysAutoResize ) )
+        if ( ImGui::BeginPopupModal( "Spawn Entity", nullptr, ImGuiWindowFlags_AlwaysAutoResize ) )
         {
             if ( wasClosed )
             {
@@ -2509,8 +2459,7 @@ namespace Divide
                           + 1,
                           _queuedModelSpawn._mesh->resourceName().c_str() );
             }
-            ImGui::Text( "Spawn [ %s ]?",
-                         _queuedModelSpawn._mesh->resourceName().c_str() );
+            ImGui::Text( "Spawn [ %s ]?", _queuedModelSpawn._mesh->resourceName().c_str() );
             ImGui::Separator();
 
             if ( ImGui::InputFloat3( "Scale", _queuedModelSpawn._scale._v ) )
@@ -2598,12 +2547,6 @@ namespace Divide
         return false;
     }
 
-    ECSManager& Editor::getECSManager() const
-    {
-        const Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
-        return activeScene.sceneGraph()->GetECSManager();
-    }
-
     LightPool& Editor::getActiveLightPool() const
     {
         const Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
@@ -2615,9 +2558,9 @@ namespace Divide
         return Attorney::SceneManagerEditor::getEnvProbes( _context.kernel().sceneManager() );
     }
 
-    void Editor::teleportToNode( Camera* camera, const SceneGraphNode* sgn ) const
+    BoundingSphere Editor::teleportToNode( Camera* camera, const SceneGraphNode* sgn ) const
     {
-        Attorney::SceneManagerCameraAccessor::moveCameraToNode( _context.kernel().sceneManager(), camera, sgn );
+        return Attorney::SceneManagerCameraAccessor::moveCameraToNode( _context.kernel().sceneManager(), camera, sgn );
     }
 
     void Editor::onRemoveComponent( const EditorComponent& comp ) const

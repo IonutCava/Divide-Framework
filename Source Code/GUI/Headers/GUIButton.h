@@ -71,8 +71,8 @@ class GUIButton final : public GUIElementBase<GUIType::GUI_BUTTON> {
     void setTooltip(const string& tooltipText) override;
     void setText(const std::string_view& text) const;
     void setFont(const string& fontName, const string& fontFileName, U32 size) const;
-    void active(const bool& active) noexcept override;
-    void visible(const bool& visible) noexcept override;
+    void active(bool active) noexcept override;
+    void visible(bool visible) noexcept override;
 
     void setEventCallback(Event event, const ButtonCallback& callback);
     void setEventSound(Event event, const AudioDescriptor_ptr& sound);

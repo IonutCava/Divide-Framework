@@ -323,7 +323,7 @@ namespace Divide {
         }
 
         const Camera* playerCam = Attorney::SceneManagerCameraAccessor::playerCamera(_parent.context().kernel().sceneManager());
-        if (Attorney::EditorGeneralWidget::modalModelSpawn(_parent, spawnMesh, imguiContext.IO.KeyShift, VECTOR3_UNIT, playerCam->getEye())) {
+        if (Attorney::EditorGeneralWidget::modalModelSpawn(_parent, spawnMesh, imguiContext.IO.KeyShift, VECTOR3_UNIT, playerCam->snapshot()._eye)) {
             spawnMesh = nullptr;
         }
 

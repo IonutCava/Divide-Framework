@@ -541,25 +541,13 @@ void Normalize(vec3<F32>& inputRotation, bool degrees = false,
 
 [[nodiscard]] UColour4  ToByteColour(const FColour4& floatColour) noexcept;
 [[nodiscard]] UColour3  ToByteColour(const FColour3& floatColour) noexcept;
-[[nodiscard]] vec4<I32> ToIntColour(const FColour4& floatColour) noexcept;
-[[nodiscard]] vec3<I32> ToIntColour(const FColour3& floatColour) noexcept;
-[[nodiscard]] vec4<U32> ToUIntColour(const FColour4& floatColour) noexcept;
-[[nodiscard]] vec3<U32> ToUIntColour(const FColour3& floatColour) noexcept;
 [[nodiscard]] FColour4 ToFloatColour(const UColour4& byteColour) noexcept;
 [[nodiscard]] FColour3 ToFloatColour(const UColour3& byteColour) noexcept;
-[[nodiscard]] FColour4 ToFloatColour(const vec4<U32>& uintColour) noexcept;
-[[nodiscard]] FColour3 ToFloatColour(const vec3<U32>& uintColour) noexcept;
 
 void ToByteColour(const FColour4& floatColour, UColour4& colourOut) noexcept;
 void ToByteColour(const FColour3& floatColour, UColour3& colourOut) noexcept;
-void ToIntColour(const FColour4& floatColour, vec4<I32>& colourOut) noexcept;
-void ToIntColour(const FColour3& floatColour, vec3<I32>& colourOut) noexcept;
-void ToUIntColour(const FColour4& floatColour, vec4<U32>& colourOut) noexcept;
-void ToUIntColour(const FColour3& floatColour, vec3<U32>& colourOut) noexcept;
 void ToFloatColour(const UColour4& byteColour, FColour4& colourOut) noexcept;
 void ToFloatColour(const UColour3& byteColour, FColour3& colourOut) noexcept;
-void ToFloatColour(const vec4<U32>& uintColour, FColour4& colourOut) noexcept;
-void ToFloatColour(const vec3<U32>& uintColour, FColour3& colourOut) noexcept;
 
 
 bool decomposeMatrix(const mat4<F32>& transform,

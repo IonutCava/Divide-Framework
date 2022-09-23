@@ -19,7 +19,7 @@ vkLockManager::~vkLockManager()
 }
 
 bool vkLockManager::initLockPoolEntry(BufferLockPoolEntry& entry) {
-    const VkFence crtFence = VK_API::GetStateTracker()->_swapChain->getCurrentFence();
+    const VkFence crtFence = VK_API::GetStateTracker()._swapChain->getCurrentFence();
 
     if (entry._ptr == nullptr) {
         entry._ptr = eastl::make_unique<vkSyncObject>();
@@ -44,7 +44,7 @@ bool Wait(const VkFence sync, U8& retryCount) {
         OPTICK_EVENT("Wait - OnLoop");
         OPTICK_TAG("RetryCount", retryCount);
 
-        const VkResult waitRet = vkWaitForFences(VK_API::GetStateTracker()->_device->getVKDevice(),
+        const VkResult waitRet = vkWaitForFences(VK_API::GetStateTracker()._device->getVKDevice(),
                                                  1,
                                                  &sync,
                                                  VK_FALSE,
@@ -73,7 +73,7 @@ bool vkLockManager::waitForLockedRangeLocked(const SyncObject_uptr& sync, const 
 
     vkSyncObject* vkSync = static_cast<vkSyncObject*>(sync.get());
     if (vkSync->_fence == VK_NULL_HANDLE ||
-        vkSync->_frameNumber < VK_API::GetStateTracker()->_lastSyncedFrameNumber)
+        vkSync->_frameNumber < VK_API::GetStateTracker()._lastSyncedFrameNumber)
     {
         // Lock expired from underneath us
         return true;

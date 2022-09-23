@@ -44,7 +44,7 @@ bool GUIMessageBox::onConfirm(const CEGUI::EventArgs& /*e*/) noexcept {
     return true;
 }
 
-void GUIMessageBox::visible(const bool& visible) noexcept {
+void GUIMessageBox::visible(const bool visible) noexcept {
     if (_parent != nullptr) {
         _msgBoxWindow->setVisible(visible);
         _msgBoxWindow->setModalState(visible);
@@ -52,7 +52,7 @@ void GUIMessageBox::visible(const bool& visible) noexcept {
     GUIElement::visible(visible);
 }
 
-void GUIMessageBox::active(const bool& active) noexcept {
+void GUIMessageBox::active(const bool active) noexcept {
     if (_parent != nullptr) {
         _msgBoxWindow->setEnabled(active);
     }

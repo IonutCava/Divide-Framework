@@ -143,7 +143,7 @@ enum class MoveDirection : I8 {
 constexpr F32 DEFAULT_PLAYER_HEIGHT = 1.82f;
 
 struct SceneStatePerPlayer {
-    void resetMovement() noexcept;
+    void resetMoveDirections(bool keepMovement) noexcept;
     void resetAll() noexcept;
 
     PROPERTY_RW(bool, cameraUnderwater, false);

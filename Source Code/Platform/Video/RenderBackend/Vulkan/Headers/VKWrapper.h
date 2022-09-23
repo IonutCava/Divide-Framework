@@ -119,8 +119,9 @@ struct VKStateTracker {
     U64 _lastSyncedFrameNumber{ 0u };
     VkBuffer _drawIndirectBuffer{ VK_NULL_HANDLE };
 
-    void reset();
+    void setDefaultState();
 };
+
 FWD_DECLARE_MANAGED_STRUCT(VKStateTracker);
 
 struct vkUserData : VDIUserData {
@@ -204,7 +205,7 @@ private:
     void renderTestTriangle(VkCommandBuffer cmdBuffer);
 
 public:
-    static const VKStateTracker_uptr& GetStateTracker() noexcept;
+    static VKStateTracker& GetStateTracker() noexcept;
     static void RegisterCustomAPIDelete(DELEGATE<void, VkDevice>&& cbk, bool isResourceTransient);
     static void RegisterTransferRequest(const VKTransferQueue::TransferRequest& request);
     static [[nodiscard]] VkSampler GetSamplerHandle(size_t samplerHash);
@@ -247,7 +248,7 @@ private:
 
     static SharedMutex s_samplerMapLock;
     static SamplerObjectMap s_samplerMap;
-    static VKStateTracker_uptr s_stateTracker;
+    static VKStateTracker s_stateTracker;
     static VKDeletionQueue s_transientDeleteQueue;
     static VKDeletionQueue s_deviceDeleteQueue;
     static VKTransferQueue s_transferQueue;
