@@ -5,10 +5,11 @@
 #include "Graphs/Headers/SceneNode.h"
 #include "Geometry/Material/Headers/Material.h"
 
-namespace Divide {
-    RenderingSystem::RenderingSystem(ECS::ECSEngine& parentEngine, PlatformContext& context)
-        : PlatformContextComponent(context),
-          ECSSystem(parentEngine)
+namespace Divide
+{
+    RenderingSystem::RenderingSystem( ECS::ECSEngine& parentEngine, PlatformContext& context )
+        : PlatformContextComponent( context )
+        , ECSSystem( parentEngine )
     {
     }
 
@@ -16,76 +17,85 @@ namespace Divide {
     {
     }
 
-    void RenderingSystem::PreUpdate(const F32 dt) {
+    void RenderingSystem::PreUpdate( const F32 dt )
+    {
         OPTICK_EVENT();
 
-        Parent::PreUpdate(dt);
+        Parent::PreUpdate( dt );
 
-        const U64 microSec = Time::MillisecondsToMicroseconds(dt);
+        const U64 microSec = Time::MillisecondsToMicroseconds( dt );
 
-        for (RenderingComponent* comp : _componentCache)
+        for ( RenderingComponent* comp : _componentCache )
         {
-            if (comp->_materialInstance != nullptr)
+            if ( comp->_materialInstance != nullptr )
             {
-                comp->_materialUpdateMask = comp->_materialInstance->update(microSec);
+                comp->_materialUpdateMask |= comp->_materialInstance->update( microSec );
             }
         }
-        for (RenderingComponent* comp : _componentCache)
+
+        for ( RenderingComponent* comp : _componentCache )
         {
-            if (comp->rebuildDrawCommands() || comp->parentSGN()->getNode().rebuildDrawCommands()) {
-                comp->parentSGN()->getNode().rebuildDrawCommands(false);
-                comp->rebuildDrawCommands(false);
-                SetBit(comp->_materialUpdateMask, MaterialUpdateResult::NEW_SHADER);
-                SetBit(comp->_materialUpdateMask, MaterialUpdateResult::NEW_CULL);
+            comp->updateReflectRefractDescriptors( false, false );
+            if ( comp->rebuildDrawCommands() || comp->parentSGN()->getNode().rebuildDrawCommands() )
+            {
+                comp->parentSGN()->getNode().rebuildDrawCommands( false );
+                comp->rebuildDrawCommands( false );
+                SetBit( comp->_materialUpdateMask, MaterialUpdateResult::NEW_SHADER );
+                SetBit( comp->_materialUpdateMask, MaterialUpdateResult::NEW_CULL );
             }
         }
     }
 
-    void RenderingSystem::Update(const F32 dt) {
+    void RenderingSystem::Update( const F32 dt )
+    {
         OPTICK_EVENT();
 
-        Parent::Update(dt);
+        Parent::Update( dt );
 
-        const U64 microSec = Time::MillisecondsToMicroseconds(dt);
+        const U64 microSec = Time::MillisecondsToMicroseconds( dt );
 
-        for (RenderingComponent* comp : _componentCache) 
+        for ( RenderingComponent* comp : _componentCache )
         {
-            if (comp->_materialUpdateMask == to_base(MaterialUpdateResult::OK))
+            if ( comp->_materialUpdateMask == to_base( MaterialUpdateResult::OK ) )
             {
                 continue;
             }
-            DIVIDE_ASSERT(comp->_materialInstance != nullptr);
+            DIVIDE_ASSERT( comp->_materialInstance != nullptr );
 
-            if (BitCompare(comp->_materialUpdateMask, MaterialUpdateResult::NEW_SHADER) ||
-                BitCompare(comp->_materialUpdateMask, MaterialUpdateResult::NEW_CULL))
+            bool packagesCleared = false;
+            if ( BitCompare( comp->_materialUpdateMask, MaterialUpdateResult::NEW_SHADER ) ||
+                 BitCompare( comp->_materialUpdateMask, MaterialUpdateResult::NEW_CULL ) )
             {
                 comp->clearDrawPackages();
                 comp->_materialInstance->clearRenderStates();
+                packagesCleared = true;
             }
 
-            if (BitCompare(comp->_materialUpdateMask, MaterialUpdateResult::NEW_CULL))
+            if ( BitCompare( comp->_materialUpdateMask, MaterialUpdateResult::NEW_CULL ) )
             {
                 comp->_materialInstance->updateCullState();
             }
-            if (BitCompare(comp->_materialUpdateMask, MaterialUpdateResult::NEW_TRANSPARENCY))
+            if ( BitCompare( comp->_materialUpdateMask, MaterialUpdateResult::NEW_TRANSPARENCY ) )
             {
                 NOP();
             }
 
+            comp->updateReflectRefractDescriptors( BitCompare( comp->_materialUpdateMask, MaterialUpdateResult::NEW_REFLECTION ),
+                                                   BitCompare( comp->_materialUpdateMask, MaterialUpdateResult::NEW_REFRACTION ) );
         }
 
-        Material::Update(microSec);
+        Material::Update( microSec );
     }
 
-    void RenderingSystem::PostUpdate(const F32 dt)
+    void RenderingSystem::PostUpdate( const F32 dt )
     {
         OPTICK_EVENT();
 
-        Parent::PostUpdate(dt);
+        Parent::PostUpdate( dt );
 
-        for (RenderingComponent* comp : _componentCache) 
+        for ( RenderingComponent* comp : _componentCache )
         {
-            comp->_materialUpdateMask = to_base(MaterialUpdateResult::OK);
+            comp->_materialUpdateMask = to_base( MaterialUpdateResult::OK );
         }
     }
 
@@ -99,23 +109,23 @@ namespace Divide {
         Parent::OnFrameEnd();
     }
 
-    bool RenderingSystem::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer)
+    bool RenderingSystem::saveCache( const SceneGraphNode* sgn, ByteBuffer& outputBuffer )
     {
-        if (Parent::saveCache(sgn, outputBuffer))
+        if ( Parent::saveCache( sgn, outputBuffer ) )
         {
             const RenderingComponent* rComp = sgn->GetComponent<RenderingComponent>();
-            return (rComp == nullptr || rComp->saveCache(outputBuffer));
+            return (rComp == nullptr || rComp->saveCache( outputBuffer ));
         }
 
         return false;
     }
 
-    bool RenderingSystem::loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer)
+    bool RenderingSystem::loadCache( SceneGraphNode* sgn, ByteBuffer& inputBuffer )
     {
-        if (Parent::loadCache(sgn, inputBuffer))
+        if ( Parent::loadCache( sgn, inputBuffer ) )
         {
             RenderingComponent* rComp = sgn->GetComponent<RenderingComponent>();
-            return (rComp == nullptr || rComp->loadCache(inputBuffer));
+            return (rComp == nullptr || rComp->loadCache( inputBuffer ));
         }
 
         return false;

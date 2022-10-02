@@ -246,7 +246,7 @@ namespace Divide
 
         nodesOut.reset();
 
-        F32 distanceSqToCamera = std::numeric_limits<F32>::max();
+        F32 distanceSqToCamera = F32_MAX;
         for ( SceneGraphNode* node : nodes )
         {
             if ( Attorney::SceneGraphNodeRenderPassCuller::frustumCullNode( node, params, cullFlags, distanceSqToCamera ) != FrustumCollision::FRUSTUM_OUT )
@@ -267,7 +267,7 @@ namespace Divide
         const vec3<F32>& cameraEye = camera->snapshot()._eye;
         for ( SceneGraphNode* node : nodes )
         {
-            F32 distanceSqToCamera = std::numeric_limits<F32>::max();
+            F32 distanceSqToCamera = F32_MAX;
             const BoundsComponent* bComp = node->get<BoundsComponent>();
             if ( bComp != nullptr )
             {

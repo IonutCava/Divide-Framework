@@ -70,8 +70,8 @@ void MotionBlurPreRenderOperator::parametersChanged() noexcept
 
 bool MotionBlurPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut)
 {
-    const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO));
-    const auto& velocityAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::VELOCITY));
+    const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
+    const auto& velocityAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::VELOCITY);
 
     const F32 fps = _context.parent().platformContext().app().timer().getFps();
     const F32 velocityScale = _context.context().config().rendering.postFX.motionBlur.velocityScale;
@@ -82,12 +82,12 @@ bool MotionBlurPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx
     {
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = 0;
-        binding._data.As<DescriptorCombinedImageSampler>() = { screenAtt->texture()->defaultView(), screenAtt->descriptor()._samplerHash };
+        binding._data.As<DescriptorCombinedImageSampler>() = { screenAtt->texture()->sampledView(), screenAtt->descriptor()._samplerHash };
     }
     {
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = 1;
-        binding._data.As<DescriptorCombinedImageSampler>() = { velocityAtt->texture()->defaultView(), velocityAtt->descriptor()._samplerHash };
+        binding._data.As<DescriptorCombinedImageSampler>() = { velocityAtt->texture()->sampledView(), velocityAtt->descriptor()._samplerHash };
     }
 
     GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);

@@ -19,9 +19,8 @@
 namespace Divide {
 
 namespace {
-    constexpr size_t g_materialXMLVersion = 1;
-
-    constexpr size_t g_invalidStateHash = std::numeric_limits<size_t>::max();
+    constexpr size_t g_materialXMLVersion = 1u;
+    constexpr size_t g_invalidStateHash = SIZE_MAX;
 };
 
 
@@ -311,6 +310,7 @@ bool Material::setTextureLocked(const TextureSlot textureUsageSlot, const Textur
 {
     // Invalidate our descriptor sets
     _descriptorSetMainPass.resize(0);
+    _descriptorSetSecondaryPass.resize(0);
     _descriptorSetPrePass.resize(0);
 
     const U32 slot = to_U32(textureUsageSlot);
@@ -712,7 +712,6 @@ void Material::setRenderStateBlock(const size_t renderStateBlockHash, const Rend
     }
 }
 
-
 void Material::updateTransparency() {
     const TranslucencySource oldSource = properties()._translucencySource;
     properties()._translucencySource = TranslucencySource::COUNT;
@@ -761,7 +760,7 @@ void Material::getSortKeys(const RenderStagePass renderStagePass, I64& shaderKey
     if (_textures[to_base(TextureSlot::UNIT0)]._ptr != nullptr) {
         textureKey = _textures[to_base(TextureSlot::UNIT0)]._ptr->getGUID();
     } else {
-        textureKey = std::numeric_limits<I32>::lowest();
+        textureKey = I64_LOWEST;
     }
     transparencyFlag = hasTransparency();
 }
@@ -872,7 +871,8 @@ DescriptorSet& Material::getDescriptorSet(const RenderStagePass& renderStagePass
     OPTICK_EVENT();
     ShaderStageVisibility texVisibility = properties().texturesInFragmentStageOnly() ? ShaderStageVisibility::FRAGMENT : ShaderStageVisibility::ALL_DRAW;
     const bool isPrePass = (renderStagePass._passType == RenderPassType::PRE_PASS);
-    auto& descriptor = isPrePass ? _descriptorSetPrePass : _descriptorSetMainPass;
+    auto& descriptor = isPrePass ? _descriptorSetPrePass : renderStagePass._stage == RenderStage::DISPLAY ? _descriptorSetMainPass : _descriptorSetSecondaryPass;
+
     if (descriptor.empty()) {
         SharedLock<SharedMutex> r_lock(_textureLock);
         // Check again
@@ -882,7 +882,7 @@ DescriptorSet& Material::getDescriptorSet(const RenderStagePass& renderStagePass
                 if (crtTexture != nullptr) {
                     auto& texBinding = descriptor.emplace_back(texVisibility);
                     texBinding._slot = usage;
-                    texBinding._data.As<DescriptorCombinedImageSampler>() = { crtTexture->defaultView(), _textures[usage]._sampler };
+                    texBinding._data.As<DescriptorCombinedImageSampler>() = { crtTexture->sampledView(), _textures[usage]._sampler };
                 }
             };
 
@@ -909,17 +909,16 @@ DescriptorSet& Material::getDescriptorSet(const RenderStagePass& renderStagePass
                                     add = hasTransparency() && properties().translucencySource() == TranslucencySource::ALBEDO_TEX;
                                 } break;
                                 case TextureSlot::NORMALMAP: {
-                                    add = renderStagePass._stage == RenderStage::DISPLAY;
+                                    add = true;
                                 } break;
                                 case TextureSlot::SPECULAR: {
-                                    add = renderStagePass._stage == RenderStage::DISPLAY &&
-                                        (properties().shadingMode() != ShadingMode::PBR_MR && properties().shadingMode() != ShadingMode::PBR_SG);
+                                    add = properties().shadingMode() != ShadingMode::PBR_MR && properties().shadingMode() != ShadingMode::PBR_SG;
                                 } break;
                                 case TextureSlot::METALNESS: {
-                                    add = renderStagePass._stage == RenderStage::DISPLAY && properties().usePackedOMR();
+                                    add = properties().usePackedOMR();
                                 } break;
                                 case TextureSlot::ROUGHNESS: {
-                                    add = renderStagePass._stage == RenderStage::DISPLAY && !properties().usePackedOMR();
+                                    add = !properties().usePackedOMR();
                                 } break;
                                 case TextureSlot::HEIGHTMAP: {
                                     add = true;

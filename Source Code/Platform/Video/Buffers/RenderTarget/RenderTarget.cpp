@@ -49,24 +49,23 @@ bool RenderTarget::create()
             case RTAttachmentType::DEPTH:
             case RTAttachmentType::DEPTH_STENCIL:
             {
-                assert(attDesc._index == 0u);
+                assert(attDesc._slot == RTColourAttachmentSlot::SLOT_0 );
                 printWarning = _attachments[RT_DEPTH_ATTACHMENT_IDX] != nullptr;
                 _attachments[RT_DEPTH_ATTACHMENT_IDX] = eastl::make_unique<RTAttachment>(*this, attDesc);
                 att = _attachments[RT_DEPTH_ATTACHMENT_IDX].get();
             } break;
             case RTAttachmentType::COLOUR:
             {
-                assert(attDesc._index < RT_MAX_COLOUR_ATTACHMENTS);
-                printWarning = _attachments[attDesc._index] != nullptr;
-                _attachments[attDesc._index] = eastl::make_unique<RTAttachment>(*this, attDesc);
-                att = _attachments[attDesc._index].get();
+                printWarning = _attachments[to_base(attDesc._slot)] != nullptr;
+                _attachments[to_base(attDesc._slot)] = eastl::make_unique<RTAttachment>(*this, attDesc);
+                att = _attachments[to_base(attDesc._slot)].get();
             } break;
             default: DIVIDE_UNEXPECTED_CALL(); break;
         };
 
         if (printWarning)
         {
-            Console::d_printfn(Locale::Get(_ID("WARNING_REPLACING_RT_ATTACHMENT")), getGUID(), getAttachmentName(attDesc._type), attDesc._index);
+            Console::d_printfn(Locale::Get(_ID("WARNING_REPLACING_RT_ATTACHMENT")), getGUID(), getAttachmentName(attDesc._type), to_base(attDesc._slot));
         }
 
         return att;
@@ -80,7 +79,7 @@ bool RenderTarget::create()
         const Str64 texName = Util::StringFormat("RT_%s_Att_%s_%d_%d",
                                                  name().c_str(),
                                                  getAttachmentName(attDesc._type),
-                                                 attDesc._index,
+                                                 to_base(attDesc._slot),
                                                  getGUID()).c_str();
         
         attDesc._texDescriptor.addImageUsageFlag(attDesc._type == RTAttachmentType::COLOUR 
@@ -101,7 +100,7 @@ bool RenderTarget::create()
         tex->loadData(nullptr, 0u, vec2<U16>(getWidth(), getHeight()));
         att->setTexture(tex , false);
 
-        initAttachment(att, attDesc._type, attDesc._index, false);
+        initAttachment(att, attDesc._type, attDesc._slot, false);
     }
 
     for (U8 i = 0u; i < _descriptor._externalAttachmentCount; ++i)
@@ -110,29 +109,29 @@ bool RenderTarget::create()
 
         RTAttachment* att = updateAttachment(attDesc);
         att->setTexture(_descriptor._externalAttachments[i]._attachment->texture(), true);
-        initAttachment(att, attDesc._type, attDesc._index, true);
+        initAttachment(att, attDesc._type, attDesc._slot, true);
     }
 
     return true;
 }
 
-bool RenderTarget::hasAttachment(const RTAttachmentType type, const U8 index) const
+bool RenderTarget::hasAttachment(const RTAttachmentType type, const RTColourAttachmentSlot slot) const
 {
-    return getAttachment(type, index) != nullptr;
+    return getAttachment(type, slot) != nullptr;
 }
 
-bool RenderTarget::usesAttachment(const RTAttachmentType type, const U8 index) const
+bool RenderTarget::usesAttachment(const RTAttachmentType type, const RTColourAttachmentSlot slot ) const
 {
-    return _attachmentsUsed[type == RTAttachmentType::COLOUR ? index : RT_DEPTH_ATTACHMENT_IDX];
+    return _attachmentsUsed[type == RTAttachmentType::COLOUR ? to_base(slot) : RT_DEPTH_ATTACHMENT_IDX];
 }
 
-RTAttachment* RenderTarget::getAttachment(const RTAttachmentType type, const U8 index) const
+RTAttachment* RenderTarget::getAttachment(const RTAttachmentType type, const RTColourAttachmentSlot slot ) const
 {
     switch (type)
     {
         case RTAttachmentType::DEPTH:
-        case RTAttachmentType::DEPTH_STENCIL:  DIVIDE_ASSERT(index == 0u); return _attachments[RT_DEPTH_ATTACHMENT_IDX].get();
-        case RTAttachmentType::COLOUR:         DIVIDE_ASSERT(index < RT_MAX_COLOUR_ATTACHMENTS); return _attachments[index].get();
+        case RTAttachmentType::DEPTH_STENCIL:  DIVIDE_ASSERT(slot == RTColourAttachmentSlot::SLOT_0); return _attachments[RT_DEPTH_ATTACHMENT_IDX].get();
+        case RTAttachmentType::COLOUR:         return _attachments[to_base(slot)].get();
     }
 
     DIVIDE_UNEXPECTED_CALL();
@@ -228,15 +227,15 @@ bool RenderTarget::updateSampleCount(U8 newSampleCount)
     return false;
 }
 
-bool RenderTarget::initAttachment(RTAttachment* att, const RTAttachmentType type, const U8 index, const bool isExternal)
+bool RenderTarget::initAttachment(RTAttachment* att, const RTAttachmentType type, const RTColourAttachmentSlot slot, const bool isExternal)
 {
     if (isExternal)
     {
-        RTAttachment* attachmentTemp = getAttachment(type, index);
+        RTAttachment* attachmentTemp = getAttachment(type, slot);
         if (attachmentTemp->isExternal())
         {
             RenderTarget& parent = attachmentTemp->parent();
-            attachmentTemp = parent.getAttachment(attachmentTemp->descriptor()._type, attachmentTemp->descriptor()._index);
+            attachmentTemp = parent.getAttachment(attachmentTemp->descriptor()._type, attachmentTemp->descriptor()._slot);
         }
 
         att->setTexture(attachmentTemp->texture(), true);
@@ -257,7 +256,7 @@ bool RenderTarget::initAttachment(RTAttachment* att, const RTAttachmentType type
     }
 
     att->changed(false);
-    _attachmentsUsed[type == RTAttachmentType::COLOUR ? index : RT_DEPTH_ATTACHMENT_IDX] = true;
+    _attachmentsUsed[type == RTAttachmentType::COLOUR ? to_base(slot) : RT_DEPTH_ATTACHMENT_IDX] = true;
 
     return true;
 }

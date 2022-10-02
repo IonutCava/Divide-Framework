@@ -102,7 +102,6 @@ class CommandBuffer final : GUIDWrapper, NonCopyable, NonMovable {
     [[nodiscard]] std::pair<ErrorType, size_t> validate() const;
 
     void add(const CommandBuffer& other);
-    void add(const CommandBuffer** buffers, size_t count);
 
     void clean();
     void batch();

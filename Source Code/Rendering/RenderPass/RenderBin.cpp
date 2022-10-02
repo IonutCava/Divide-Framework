@@ -12,37 +12,44 @@
 namespace Divide
 {
 
-    RenderBin::RenderBin( const RenderBinType rbType, const RenderStage stage )
-        : _rbType( rbType ),
-        _stage( stage )
-
-    {
-        static_assert(ArrayCount( Names::renderBinType ) == to_base( RenderBinType::COUNT ) + 1, "RenderBinType name array out of sync!");
-        std::atomic_init( &_renderBinIndex, 0u );
-    }
-
-    void RenderBin::sort( const RenderingOrder renderOrder )
+    void RenderBin::sort( const RenderBinType type, const RenderingOrder renderOrder )
     {
         constexpr U16 k_parallelSortThreshold = 16u;
 
         OPTICK_EVENT();
 
-        const U16 binSize = getBinSize();
-        const auto binStartIt = begin( _renderBinStack );
-        const auto binEndIt = binStartIt + binSize;
-
-        switch ( renderOrder )
+        if ( renderOrder == RenderingOrder::NONE || renderOrder == RenderingOrder::COUNT )
         {
-            case RenderingOrder::BY_STATE:
+            if ( renderOrder == RenderingOrder::COUNT )
             {
-                // Sorting opaque items is a 3 step process:
-                // 1: sort by shaders
-                // 2: if the shader is identical, sort by state hash
-                // 3: if shader is identical and state hash is identical, sort by albedo ID
-                // 4: finally, sort by distance to camera (front to back)
+                Console::errorfn( Locale::Get( _ID( "ERROR_INVALID_RENDER_BIN_SORT_ORDER" ) ), Names::renderBinType[to_base( type )] );
+            }
 
-                const auto sortFunc = []( const RenderBinItem& a, const RenderBinItem& b ) noexcept -> bool
+            return;
+        }
+   
+        const auto sortFunc = [renderOrder]( const RenderBinItem& a, const RenderBinItem& b ) {
+            switch ( renderOrder )
+            {
+                case RenderingOrder::BACK_TO_FRONT: return a._distanceToCameraSq > b._distanceToCameraSq;
+                case RenderingOrder::FRONT_TO_BACK: return a._distanceToCameraSq < b._distanceToCameraSq;
+                case RenderingOrder::FRONT_TO_BACK_ALPHA_LAST:
                 {
+                    if ( a._hasTransparency == b._hasTransparency )
+                    {
+                        return a._distanceToCameraSq < b._distanceToCameraSq;
+                    }
+
+                    return b._hasTransparency;
+                }
+                case RenderingOrder::BY_STATE:
+                {
+                    // Sorting opaque items is a 3 step process:
+                    // 1: sort by shaders
+                    // 2: if the shader is identical, sort by state hash
+                    // 3: if shader is identical and state hash is identical, sort by albedo ID
+                    // 4: finally, sort by distance to camera (front to back)
+
                     // Sort by shader in all states The sort key is the shader id (for now)
                     if ( a._shaderKey != b._shaderKey )
                     {
@@ -62,76 +69,39 @@ namespace Divide
                     }
                     // ... and then finally fallback to front to back
                     return a._distanceToCameraSq < b._distanceToCameraSq;
-                };
-
-                if ( binSize > k_parallelSortThreshold )
-                {
-                    std::sort( std::execution::par_unseq, binStartIt, binEndIt, sortFunc );
-                }
-                else
-                {
-                    eastl::sort( binStartIt, binEndIt, sortFunc );
                 }
 
-            } break;
-            case RenderingOrder::BACK_TO_FRONT:
-            {
-                const auto sortFunc = []( const RenderBinItem& a, const RenderBinItem& b ) noexcept -> bool
-                {
-                    return a._distanceToCameraSq > b._distanceToCameraSq;
-                };
+                default: break;
+            }
+      
+            return false;
+        };
 
-                if ( binSize > k_parallelSortThreshold )
-                {
-                    std::sort( std::execution::par_unseq, binStartIt, binEndIt, sortFunc );
-                }
-                else
-                {
-                    eastl::sort( binStartIt, binEndIt, sortFunc );
-                }
-            } break;
-            case RenderingOrder::FRONT_TO_BACK:
-            {
-                const auto sortFunc = []( const RenderBinItem& a, const RenderBinItem& b ) noexcept -> bool
-                {
-                    return a._distanceToCameraSq < b._distanceToCameraSq;
-                };
-
-                if ( binSize > k_parallelSortThreshold )
-                {
-                    std::sort( std::execution::par_unseq, binStartIt, binEndIt, sortFunc );
-                }
-                else
-                {
-                    eastl::sort( binStartIt, binEndIt, sortFunc );
-                }
-            } break;
-            case RenderingOrder::FRONT_TO_BACK_ALPHA_LAST:
-            {
-                const auto sortFunc = []( const RenderBinItem& a, const RenderBinItem& b ) noexcept -> bool
-                {
-                    if ( a._hasTransparency == b._hasTransparency ) return a._distanceToCameraSq < b._distanceToCameraSq;
-                    return b._hasTransparency;
-                };
-
-                if ( binSize > k_parallelSortThreshold )
-                {
-                    std::sort( std::execution::par_unseq, binStartIt, binEndIt, sortFunc );
-                }
-                else
-                {
-                    eastl::sort( binStartIt, binEndIt, sortFunc );
-                }
-            } break;
-            case RenderingOrder::NONE:
-            {
-                NOP();// no need to sort
-            } break;
-            case RenderingOrder::COUNT:
-            {
-                Console::errorfn( Locale::Get( _ID( "ERROR_INVALID_RENDER_BIN_SORT_ORDER" ) ), Names::renderBinType[to_base( _rbType )] );
-            } break;
+        const U16 binSize = _renderBinIndex.load();
+        if ( binSize > k_parallelSortThreshold )
+        {
+            std::sort( std::execution::par_unseq, begin( _renderBinStack ), begin( _renderBinStack ) + binSize, sortFunc );
         }
+        else
+        {
+            eastl::sort( begin( _renderBinStack ), begin( _renderBinStack ) + binSize, sortFunc );
+        }
+    }
+
+    void RenderBin::clear() noexcept
+    {
+        _renderBinIndex.store(0u);
+    }
+
+    const RenderBinItem& RenderBin::getItem( const U16 index ) const
+    {
+        assert( index < _renderBinIndex.load() );
+        return _renderBinStack[index];
+    }
+
+    U16 RenderBin::getBinSize() const noexcept
+    {
+        return _renderBinIndex.load();
     }
 
     U16 RenderBin::getSortedNodes( SortedQueue& nodes ) const
@@ -151,7 +121,7 @@ namespace Divide
 
     void RenderBin::addNodeToBin( const SceneGraphNode* sgn, const RenderStagePass renderStagePass, const F32 minDistToCameraSq )
     {
-        RenderBinItem& item = _renderBinStack[_renderBinIndex.fetch_add( 1 )];
+        RenderBinItem& item = _renderBinStack[_renderBinIndex.fetch_add(1u)];
         item._distanceToCameraSq = minDistToCameraSq;
         item._renderable = sgn->get<RenderingComponent>();
 
@@ -177,7 +147,7 @@ namespace Divide
             queueInOut.push_back( {
                 rComp,
                 &Attorney::RenderingCompRenderBin::getDrawPackage( rComp, stagePass )
-                                  } );
+            } );
         }
     }
 
@@ -186,10 +156,10 @@ namespace Divide
         const U16 binSize = getBinSize();
         for ( U16 i = 0u; i < binSize; ++i )
         {
-            Attorney::RenderingCompRenderBin::postRender(_renderBinStack[i]._renderable,
-                                                         renderState,
-                                                         stagePass,
-                                                         bufferInOut );
+            Attorney::RenderingCompRenderBin::postRender( _renderBinStack[i]._renderable,
+                                                          renderState,
+                                                          stagePass,
+                                                          bufferInOut );
         }
     }
 

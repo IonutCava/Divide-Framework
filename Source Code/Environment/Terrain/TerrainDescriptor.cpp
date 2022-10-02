@@ -10,7 +10,7 @@ namespace Divide {
         constexpr U8 g_minTerrainSideLength = 8u;
     }
 
-    TerrainDescriptor::TerrainDescriptor(const string& name) noexcept
+    TerrainDescriptor::TerrainDescriptor( std::string_view name ) noexcept
         : PropertyDescriptor(DescriptorType::DESCRIPTOR_TERRAIN_INFO)
         , _name(name)
         , _altitudeRange{ 0.f, 1.f }

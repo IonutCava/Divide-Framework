@@ -42,7 +42,7 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_FRAME, 7, std140) uniform dvd_ProbeBlock {
     ProbeData dvd_Probes[GLOBAL_PROBE_COUNT];
 };
 
-DESCRIPTOR_SET_RESOURCE(PER_FRAME, 14) uniform samplerCube    texReflectCube;
+DESCRIPTOR_SET_RESOURCE(PER_FRAME, 3) uniform samplerCube    texReflectCube;
 
 #define IsProbeEnabled(P) (uint(P._positionW.w) == 1u)
 

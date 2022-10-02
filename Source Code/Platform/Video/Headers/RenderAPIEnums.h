@@ -35,11 +35,19 @@
 
 namespace Divide {
 
-constexpr U32 RT_MAX_COLOUR_ATTACHMENTS = 6;
-
 using RenderTargetID = U32;
 constexpr RenderTargetID INVALID_RENDER_TARGET_ID = std::numeric_limits<RenderTargetID>::max();
 constexpr RenderTargetID SCREEN_TARGET_ID = std::numeric_limits<RenderTargetID>::max() - 1u;
+
+// 4 should be more than enough even for batching multiple render targets together
+enum class RTColourAttachmentSlot : U8
+{
+    SLOT_0 = 0,
+    SLOT_1,
+    SLOT_2,
+    SLOT_3,
+    COUNT
+};
 
 enum class RenderAPI : U8 {
     None,      ///< No rendering. Used for testing or server code

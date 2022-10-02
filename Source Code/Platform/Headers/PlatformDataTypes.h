@@ -105,15 +105,8 @@ using Byte = std::byte;
 #define I16_MAX std::numeric_limits<I16>::max()
 #define I32_MAX std::numeric_limits<I32>::max()
 #define I64_MAX std::numeric_limits<I64>::max()
-
-#define u8_MAX U8_MAX
-#define u16_MAX U16_MAX
-#define u32_MAX U32_MAX
-#define u64_MAX U64_MAX
-#define s8_MAX I8_MAX
-#define s16_MAX I16_MAX
-#define s32_MAX I32_MAX
-#define s64_MAX I64_MAX
+#define F32_MAX std::numeric_limits<F32>::max()
+#define D64_MAX std::numeric_limits<D64>::max()
 
 #define U8x_MAX  std::numeric_limits<U8x>::max()
 #define U16x_MAX std::numeric_limits<U16x>::max()
@@ -124,6 +117,15 @@ using Byte = std::byte;
 #define I32x_MAX std::numeric_limits<I32x>::max()
 #define I64x_MAX std::numeric_limits<I64x>::max()
 
+#define u8_MAX U8_MAX
+#define u16_MAX U16_MAX
+#define u32_MAX U32_MAX
+#define u64_MAX U64_MAX
+#define s8_MAX I8_MAX
+#define s16_MAX I16_MAX
+#define s32_MAX I32_MAX
+#define s64_MAX I64_MAX
+
 #define u8x_MAX U8x_MAX
 #define u16x_MAX U16x_MAX
 #define u32x_MAX U32x_MAX
@@ -132,6 +134,11 @@ using Byte = std::byte;
 #define s16x_MAX I16x_MAX
 #define s32x_MAX I32x_MAX
 #define s64x_MAX I64x_MAX
+
+#define F32_INFINITY std::numeric_limits<F32>::infinity()
+
+#define F32_LOWEST std::numeric_limits<F32>::lowest()
+#define I64_LOWEST std::numeric_limits<I64>::lowest()
 
 union P32 {
     U32 i = 0u;

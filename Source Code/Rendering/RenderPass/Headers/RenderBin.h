@@ -54,10 +54,10 @@ namespace GFX {
 };
 
 struct RenderBinItem {
-    RenderingComponent* _renderable = nullptr;
+    RenderingComponent* _renderable{ nullptr };
     size_t _stateHash{ 0u };
-    I64 _shaderKey{ std::numeric_limits<I64>::lowest() };
-    I64 _textureKey{ std::numeric_limits<I64>::lowest() };
+    I64 _shaderKey{ I64_LOWEST };
+    I64 _textureKey{ I64_LOWEST };
     F32 _distanceToCameraSq{ 0.f };
     bool _hasTransparency{ false };
 };
@@ -89,6 +89,8 @@ namespace Names {
     };
 };
 
+static_assert(ArrayCount( Names::renderBinType ) == to_base( RenderBinType::COUNT ) + 1, "RenderBinType name array out of sync!");
+
 struct RenderPackage;
 
 class SceneRenderState;
@@ -115,30 +117,24 @@ class RenderBin {
     using SortedQueue = vector<RenderingComponent*>;
     using SortedQueues = std::array<SortedQueue, to_base(RenderBinType::COUNT)>;
 
-    friend class RenderQueue;
+    RenderBin() = default;
 
-    explicit RenderBin(RenderBinType rbType, RenderStage stage);
-
-    void sort(RenderingOrder renderOrder);
+    void sort(RenderBinType type, RenderingOrder renderOrder);
     void populateRenderQueue(RenderStagePass stagePass, RenderQueuePackages& queueInOut) const;
     void postRender(const SceneRenderState& renderState, RenderStagePass stagePass, GFX::CommandBuffer& bufferInOut);
 
     void addNodeToBin(const SceneGraphNode* sgn, RenderStagePass renderStagePass, F32 minDistToCameraSq);
+    void clear() noexcept;
 
-    [[nodiscard]] U16 getSortedNodes(SortedQueue& nodes) const;
+    [[nodiscard]]       U16            getSortedNodes(SortedQueue& nodes) const;
+    [[nodiscard]]       U16            getBinSize()                       const noexcept;
+    [[nodiscard]] const RenderBinItem& getItem(const U16 index)           const;
 
-    inline               void                 refresh()                      noexcept { _renderBinIndex.store(0u); }
-    inline [[nodiscard]] const RenderBinItem& getItem(const U16 index) const          { assert(index < getBinSize()); return _renderBinStack[index]; }
-    inline [[nodiscard]] U16                  getBinSize()             const noexcept { return _renderBinIndex.load(); }
     inline [[nodiscard]] bool                 empty()                  const noexcept { return getBinSize() == 0; }
-    inline [[nodiscard]] RenderBinType        getType()                const noexcept { return _rbType; }
 
    private:
-    const RenderBinType _rbType;
-    const RenderStage _stage;
-
-    RenderBinStack _renderBinStack{};
     std::atomic_ushort _renderBinIndex;
+    RenderBinStack _renderBinStack;
 };
 
 FWD_DECLARE_MANAGED_CLASS(RenderBin);

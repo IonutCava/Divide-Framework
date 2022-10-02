@@ -15,7 +15,7 @@ void vkSyncObject::reset() noexcept {
 
 vkLockManager::~vkLockManager()
 {
-    waitForLockedRange(0u, std::numeric_limits<size_t>::max());
+    waitForLockedRange(0u, SIZE_MAX);
 }
 
 bool vkLockManager::initLockPoolEntry(BufferLockPoolEntry& entry) {

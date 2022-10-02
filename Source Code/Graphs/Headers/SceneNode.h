@@ -94,6 +94,7 @@ class SceneNode : public CachedResource {
     /// If the node isn't ready for rendering and should be skipped this frame, the return value is false
     virtual void prepareRender(SceneGraphNode* sgn,
                                RenderingComponent& rComp,
+                               RenderPackage& pkg,
                                RenderStagePass renderStagePass,
                                const CameraSnapshot& cameraSnapshot,
                                bool refreshData);

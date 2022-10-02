@@ -698,8 +698,8 @@ namespace Divide
         Console::printfn( Locale::Get( _ID( "XML_LOAD_TERRAIN" ) ), nodeName.c_str() );
 
         // Load the rest of the terrain
-        std::shared_ptr<TerrainDescriptor> ter = std::make_shared<TerrainDescriptor>( (nodeName + "_descriptor").c_str() );
-        if ( !ter->loadFromXML( pt, nodeName.c_str() ) )
+        TerrainDescriptor ter(nodeName + "_descriptor");
+        if ( !ter.loadFromXML( pt, nodeName.c_str() ) )
         {
             return;
         }
@@ -727,9 +727,9 @@ namespace Divide
             _loadingTasks.fetch_sub( 1 );
         };
 
-        ResourceDescriptor descriptor( ter->getVariable( "terrainName" ) );
-        descriptor.propertyDescriptor( *ter );
-        descriptor.flag( ter->active() );
+        ResourceDescriptor descriptor( ter.getVariable( "terrainName" ) );
+        descriptor.propertyDescriptor( ter );
+        descriptor.flag( ter.active() );
         descriptor.waitForReady( false );
         Terrain_ptr ret = CreateResource<Terrain>( resourceCache(), descriptor );
         ret->addStateCallback( ResourceState::RES_LOADED, registerTerrain );
@@ -1670,29 +1670,39 @@ namespace Divide
         }
     }
 
-    void Scene::processInput( [[maybe_unused]] PlayerIndex idx, [[maybe_unused]] const U64 deltaTimeUS )
+    void Scene::processInput( [[maybe_unused]] PlayerIndex idx, [[maybe_unused]] const U64 gameDeltaTimeUS, [[maybe_unused]] const U64 appDeltaTimeUS )
     {
     }
 
-    void Scene::processGUI( const U64 deltaTimeUS )
+    void Scene::processGUI( const U64 gameDeltaTimeUS, const U64 appDeltaTimeUS )
     {
-        const D64 delta = Time::MicrosecondsToMilliseconds<D64>( deltaTimeUS );
+        const D64 appDelta = Time::MicrosecondsToMilliseconds<D64>( appDeltaTimeUS );
+        const D64 gameDelta = Time::MicrosecondsToMilliseconds<D64>( gameDeltaTimeUS );
 
-        eastl::transform( begin( _guiTimersMS ), end( _guiTimersMS ), begin( _guiTimersMS ), [delta]( const D64 timer )
+        eastl::for_each( begin( _guiTimersMS[to_base(TimerClass::APP_TIME)]), end(_guiTimersMS[to_base( TimerClass::APP_TIME )] ), [appDelta](D64& timer)
         {
-            return timer + delta;
-        } );
+            timer += appDelta;
+        });
+        eastl::for_each( begin( _guiTimersMS[to_base( TimerClass::GAME_TIME )] ), end( _guiTimersMS[to_base( TimerClass::GAME_TIME )] ), [gameDelta](D64& timer )
+        {
+            timer += gameDelta;
+        });
     }
 
-    void Scene::processTasks( const U64 deltaTimeUS )
+    void Scene::processTasks( const U64 gameDeltaTimeUS, const U64 appDeltaTimeUS )
     {
         static bool increaseWeatherScale = true;
 
-        const D64 delta = Time::MicrosecondsToMilliseconds<D64>( deltaTimeUS );
+        const D64 gameDelta = Time::MicrosecondsToMilliseconds<D64>( gameDeltaTimeUS );
+        const D64 appDelta = Time::MicrosecondsToMilliseconds<D64>( gameDeltaTimeUS );
 
-        eastl::for_each( begin( _taskTimers ), end( _taskTimers ), [delta]( D64& timer )
+        eastl::for_each( begin( _taskTimers[to_base( TimerClass::APP_TIME )]), end(_taskTimers[to_base( TimerClass::APP_TIME )] ), [appDelta](D64& timer)
         {
-            timer += delta;
+            timer += appDelta;
+        } ); 
+        eastl::for_each( begin( _taskTimers[to_base( TimerClass::GAME_TIME )]), end(_taskTimers[to_base( TimerClass::GAME_TIME )] ), [gameDelta](D64& timer)
+        {
+            timer += gameDelta;
         } );
 
         if ( _dayNightData._skyInstance != nullptr )
@@ -1715,7 +1725,7 @@ namespace Divide
             }
 
             const F32 speedFactor = dayNightCycleEnabled() ? _dayNightData._speedFactor : 0.f;
-            const F32 deltaSeconds = Time::MillisecondsToSeconds<F32>( delta );
+            const F32 deltaSeconds = Time::MillisecondsToSeconds<F32>( gameDeltaTimeUS );
             const F32 addTime = speedFactor * deltaSeconds;
             if ( addTime > 0.f )
             {

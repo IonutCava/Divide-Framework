@@ -66,7 +66,6 @@ public:
   public:
 
     explicit TaskPool() noexcept;
-    explicit TaskPool(U32 threadCount, TaskPoolType poolType, const DELEGATE<void, const std::thread::id&>& onThreadCreate = {}, const string& workerName = "DVD_WORKER");
 
     ~TaskPool();
     

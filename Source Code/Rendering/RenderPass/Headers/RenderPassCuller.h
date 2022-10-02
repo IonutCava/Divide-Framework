@@ -74,7 +74,7 @@ struct NodeCullParams {
     GUIDList _ignoredGUIDS = {};
     vec3<F32> _cameraEyePos;
     const Frustum* _frustum = nullptr;
-    F32 _cullMaxDistance = std::numeric_limits<F32>::max();
+    F32 _cullMaxDistance = F32_MAX;
     I32 _maxLoD = -1;
     RenderStage _stage = RenderStage::COUNT;
 };

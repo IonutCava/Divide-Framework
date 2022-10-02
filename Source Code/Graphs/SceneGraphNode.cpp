@@ -663,10 +663,11 @@ void SceneGraphNode::processEvents()
     }
 }
 
-void SceneGraphNode::prepareRender(RenderingComponent& rComp,
-                                   const RenderStagePass& renderStagePass,
-                                   const CameraSnapshot& cameraSnapshot,
-                                   const bool refreshData)
+void SceneGraphNode::prepareRender( RenderingComponent& rComp,
+                                    RenderPackage& pkg,
+                                    const RenderStagePass& renderStagePass,
+                                    const CameraSnapshot& cameraSnapshot,
+                                    const bool refreshData)
 {
     OPTICK_EVENT();
 
@@ -675,7 +676,7 @@ void SceneGraphNode::prepareRender(RenderingComponent& rComp,
         const AnimationComponent::AnimData data = get<AnimationComponent>()->getAnimationData();
         // We always bind a bone buffer if we have animation data available as the shaders will expect the data to be there
         DIVIDE_ASSERT(data._boneBuffer != nullptr && data._prevBoneBufferRange._length > 0);
-        auto& descriptorBindings = rComp.getDescriptorSet(renderStagePass);
+        auto& descriptorBindings = pkg.descriptorSetCmd()._bindings;
 
         DescriptorSetBinding *boneEntry = nullptr, *prevBoneEntry = nullptr;
         for (auto& entry : descriptorBindings)
@@ -713,7 +714,7 @@ void SceneGraphNode::prepareRender(RenderingComponent& rComp,
         prevBoneEntry->_data.As<ShaderBufferEntry>() = { *data._boneBuffer, data._prevBoneBufferRange};
     }
 
-    _node->prepareRender(this, rComp, renderStagePass, cameraSnapshot, refreshData);
+    _node->prepareRender(this, rComp, pkg, renderStagePass, cameraSnapshot, refreshData);
 }
 
 void SceneGraphNode::onNetworkSend(U32 frameCount) const

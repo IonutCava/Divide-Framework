@@ -58,24 +58,21 @@ float getShadowMultiplier(in vec3 normalWV) {
     return ret;
 }
 
-vec3 getLightContribution(in PBRMaterial material, in vec3 N, in vec3 V, in bool receivesShadows, in vec3 radianceIn)
+vec3 getLightContribution(in PBRMaterial material, in vec3 N, in vec3 V, in bool receivesShadows, vec3 radianceIn)
 {
 #if defined(SHADING_MODE_FLAT)
     radianceIn += material._diffuseColour * material._occlusion * (receivesShadows ? getShadowMultiplier(N) : 1.f);
 #else //SHADING_MODE_FLAT
-    const uint dirLightCount = DIRECTIONAL_LIGHT_COUNT;
-    uint pointLightCount = 0u, spotLightCount = 0u, lightIndexOffset = 0u;
 
-    {
-        const LightGrid grid = lightGrid[GetClusterIndex(gl_FragCoord)];
-        pointLightCount = grid._countPoint;
-        spotLightCount = grid._countSpot;
-        lightIndexOffset = grid._offset;
-    }
+    const LightGrid grid = lightGrid[GetClusterIndex(gl_FragCoord)];
+    const uint dirLightCount = DIRECTIONAL_LIGHT_COUNT;
+    const uint pointLightCount = grid._countPoint;
+    const uint spotLightCount = grid._countSpot;
+    const uint lightIndexOffset = grid._offset;
 
     const float ndv = abs(dot(N, V)) + M_EPSILON;
 
-    for (uint lightIdx = 0u; lightIdx < dirLightCount; ++lightIdx) {
+    for ( uint lightIdx = 0u; lightIdx < dirLightCount; ++lightIdx ) {
         const Light light = dvd_LightSource[lightIdx];
         const vec3 lightVec = normalize(-light._directionWV.xyz);
         const float ndl = GetNdotL(N, lightVec);
@@ -119,6 +116,7 @@ vec3 getLightContribution(in PBRMaterial material, in vec3 N, in vec3 V, in bool
         radianceIn += GetBRDF(lightVec, V, N, light._colour.rgb, att * shadowMultiplier, ndl, ndv, material);
     }
 #endif //SHADING_MODE_FLAT
+
     return radianceIn + material._emissive;
 }
 

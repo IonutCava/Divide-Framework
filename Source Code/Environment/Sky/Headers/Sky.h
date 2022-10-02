@@ -103,8 +103,9 @@ class Sky final : public SceneNode {
 
     void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) override;
 
-    void prepareRender(SceneGraphNode* sgn,
+    void prepareRender( SceneGraphNode* sgn,
                         RenderingComponent& rComp,
+                        RenderPackage& pkg,
                         RenderStagePass renderStagePass,
                         const CameraSnapshot& cameraSnapshot,
                         bool refreshData) override;
@@ -121,14 +122,14 @@ class Sky final : public SceneNode {
 protected:
     GFXDevice& _context;
     Sun _sun;
-    Texture_ptr  _skybox = nullptr;
-    Texture_ptr _weatherTex = nullptr;
-    Texture_ptr _curlNoiseTex = nullptr;
-    Texture_ptr _worlNoiseTex = nullptr;
-    Texture_ptr _perWorlNoiseTex = nullptr;
-    Sphere3D_ptr _sky = nullptr;
-    U32  _diameter = 1u;
-    std::array<EditorDataState, to_base(RenderStage::COUNT)> _atmosphereChanged;
+    Texture_ptr _skybox{ nullptr };
+    Texture_ptr _weatherTex{ nullptr };
+    Texture_ptr _curlNoiseTex{ nullptr };
+    Texture_ptr _worlNoiseTex{ nullptr };
+    Texture_ptr _perWorlNoiseTex{ nullptr };
+    Sphere3D_ptr _sky{ nullptr };
+    U32  _diameter{1u};
+    bool _atmosphereChanged{true};
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(Sky);

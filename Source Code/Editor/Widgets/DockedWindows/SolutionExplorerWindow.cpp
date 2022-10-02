@@ -869,7 +869,7 @@ namespace Divide {
             F32 emitRate = g_particleSource->emitRate();
             if (ImGui::InputFloat("Emit rate", &emitRate))
             {
-                if (emitRate <= std::numeric_limits<F32>::epsilon())
+                if (emitRate <= EPSILON_F32 )
                 {
                     emitRate = 1.0f;
                 }

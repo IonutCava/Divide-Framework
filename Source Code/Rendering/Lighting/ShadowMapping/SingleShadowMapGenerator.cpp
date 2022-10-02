@@ -94,7 +94,7 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
     const size_t samplerHash = sampler.getHash();
 
     const RenderTarget* rt = ShadowMap::getShadowMap(_type)._rt;
-    const TextureDescriptor& texDescriptor = rt->getAttachment(RTAttachmentType::COLOUR, 0)->texture()->descriptor();
+    const TextureDescriptor& texDescriptor = rt->getAttachment(RTAttachmentType::COLOUR)->texture()->descriptor();
 
     //Draw FBO
     {
@@ -111,8 +111,8 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
 
         InternalRTAttachmentDescriptors att
         {
-            InternalRTAttachmentDescriptor{ colourDescriptor, samplerHash, RTAttachmentType::COLOUR, 0u },
-            InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::DEPTH, 0u }
+            InternalRTAttachmentDescriptor{ colourDescriptor, samplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 },
+            InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 }
         };
 
         desc._name = "Single_ShadowMap_Draw";
@@ -131,7 +131,7 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
 
         InternalRTAttachmentDescriptors att
         {
-            InternalRTAttachmentDescriptor{ blurMapDescriptor, samplerHash, RTAttachmentType::COLOUR, 0u }
+            InternalRTAttachmentDescriptor{ blurMapDescriptor, samplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 }
         };
 
         RenderTargetDescriptor desc = {};
@@ -181,7 +181,7 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
     params._passName = "SingleShadowMap";
     params._maxLoD = -1;
     params._clearDescriptorMainPass._clearDepth = true;
-    params._clearDescriptorMainPass._clearColourDescriptors[0] = { DefaultColours::WHITE, 0u };
+    params._clearDescriptorMainPass._clearColourDescriptors[0] = { DefaultColours::WHITE, RTColourAttachmentSlot::SLOT_0 };
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Single Shadow Pass Light: [ %d ]", lightIndex).c_str(), lightIndex));
     GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = false;
@@ -201,7 +201,7 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
     const RenderTargetHandle& handle = ShadowMap::getShadowMap(_type);
 
     const RenderTarget* shadowMapRT = handle._rt;
-    const auto& shadowAtt = shadowMapRT->getAttachment(RTAttachmentType::COLOUR, 0);
+    const auto& shadowAtt = shadowMapRT->getAttachment(RTAttachmentType::COLOUR);
 
     const U16 layerOffset = light.getShadowArrayOffset();
     constexpr I32 layerCount = 1;
@@ -236,7 +236,7 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
             binding._slot = 0;
-            binding._data.As<DescriptorCombinedImageSampler>() = { shadowAtt->texture()->defaultView(), shadowAtt->descriptor()._samplerHash };
+            binding._data.As<DescriptorCombinedImageSampler>() = { shadowAtt->texture()->sampledView(), shadowAtt->descriptor()._samplerHash };
         }
 
         _shaderConstants.set(_ID("layered"), GFX::PushConstantType::BOOL, true);
@@ -250,13 +250,13 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
 
         // Blur vertically
-        const auto& blurAtt = _blurBuffer._rt->getAttachment(RTAttachmentType::COLOUR, 0);
+        const auto& blurAtt = _blurBuffer._rt->getAttachment(RTAttachmentType::COLOUR);
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
             binding._slot = 0;
-            binding._data.As<DescriptorCombinedImageSampler>() = { blurAtt->texture()->defaultView(), blurAtt->descriptor()._samplerHash };
+            binding._data.As<DescriptorCombinedImageSampler>() = { blurAtt->texture()->sampledView(), blurAtt->descriptor()._samplerHash };
         }
 
         beginRenderPassCmd._target = handle._targetID;

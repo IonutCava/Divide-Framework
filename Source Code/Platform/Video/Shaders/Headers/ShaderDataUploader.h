@@ -45,7 +45,7 @@ namespace Divide {
     };
 
     namespace Reflection {
-        static constexpr U8 INVALID_BINDING_INDEX = std::numeric_limits<U8>::max();
+        static constexpr U8 INVALID_BINDING_INDEX = U8_MAX;
 
         struct DataEntry {
             U8 _bindingSet{ 0u };

@@ -37,7 +37,7 @@ PlatformContext::PlatformContext(Application& app, Kernel& kernel)
   , _server(MemoryManager_NEW Server())                // Network server
   , _editor(Config::Build::ENABLE_EDITOR ? MemoryManager_NEW Editor(*this) : nullptr)
 {
-    for (U8 i = 0; i < to_U8(TaskPoolType::COUNT); ++i) {
+    for (U8 i = 0u; i < to_U8(TaskPoolType::COUNT); ++i) {
         _taskPool[i] = MemoryManager_NEW TaskPool();
     }
 }

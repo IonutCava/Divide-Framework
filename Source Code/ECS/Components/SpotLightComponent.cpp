@@ -21,7 +21,7 @@ SpotLightComponent::SpotLightComponent(SceneGraphNode* sgn, PlatformContext& con
     cutoffAngle._data = &_coneCutoffAngle;
     cutoffAngle._type = EditorComponentFieldType::PUSH_TYPE;
     cutoffAngle._readOnly = false;
-    cutoffAngle._range = { std::numeric_limits<F32>::epsilon(), 179.99f };
+    cutoffAngle._range = { EPSILON_F32, 179.99f };
     cutoffAngle._basicType = GFX::PushConstantType::FLOAT;
     editorComponent().registerField(MOV(cutoffAngle));
 
@@ -30,7 +30,7 @@ SpotLightComponent::SpotLightComponent(SceneGraphNode* sgn, PlatformContext& con
     outerCutoffAngle._data = &_outerConeCutoffAngle;
     outerCutoffAngle._type = EditorComponentFieldType::PUSH_TYPE;
     outerCutoffAngle._readOnly = false;
-    outerCutoffAngle._range = { std::numeric_limits<F32>::epsilon(), 180.0f };
+    outerCutoffAngle._range = { EPSILON_F32, 180.0f };
     outerCutoffAngle._basicType = GFX::PushConstantType::FLOAT;
     editorComponent().registerField(MOV(outerCutoffAngle));
 

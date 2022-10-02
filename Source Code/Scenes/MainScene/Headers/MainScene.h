@@ -52,9 +52,9 @@ namespace Divide
     private:
     /*Specific Scene Requirement*/
     void updateLights();
-    void processInput( PlayerIndex idx, U64 deltaTimeUS )override;
-    void processTasks( U64 deltaTimeUS )override;
-    void processGUI( U64 deltaTimeUS )override;
+    void processInput( PlayerIndex idx, U64 gameDeltaTimeUS, U64 appDeltaTimeUS )override;
+    void processTasks( U64 gameDeltaTimeUS, U64 appDeltaTimeUS )override;
+    void processGUI( U64 gameDeltaTimeUS, U64 appDeltaTimeUS )override;
     void test();
     U16  registerInputActions() override;
 

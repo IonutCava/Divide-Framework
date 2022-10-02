@@ -3,76 +3,78 @@
 // Ref:https://github.com/Angelo1211/HybridRenderingEngine/blob/master/assets/shaders/ComputeShaders/clusterCullLightShader.comp
 // From blog post: http://www.aortiz.me/2018/12/21/CG.html#tiled-shading--forward
 
-#define COMPUTE_LIGHT_CLUSTERS
 #include "lightInput.cmn"
 
-#define inverseProjectionMatrix PushData0
-#define viewport ivec4(PushData1[0])
-#define _zPlanes PushData1[1].xy
-
 //Function prototypes
-vec3 screen2View(in vec4 screen);
+vec3 screen2View( vec4 screen );
+vec3 lineIntersectionToZPlane( vec3 A, vec3 B, float zDistance );
 
-//Creates a line segment from the eye to the screen point, then finds its intersection
-//With a z oriented plane located at the given distance to the origin
-float3 lineIntersectionToZPlane(float3 A, float3 B, float zDistance)
+layout( local_size_x = 1, local_size_y = 1, local_size_z = 1 ) in;
+void main()
 {
-    //all clusters planes are aligned in the same z direction
-    float3 normal = WORLD_Z_AXIS;
-    //getting the line from the eye to the tile
-    float3 ab = B - A;
-    //Computing the intersection length for the line and the plane
-    float t = ((2.f * zDistance - 1.f) - dot(normal, A)) / dot(normal, ab);
-    //Computing the actual xyz position of the point along the line
-    float3 result = A + t * ab;
-    return result;
-}
+    #define zNear _zPlanes.x
+    #define zFar _zPlanes.y
 
-layout(local_size_x = CLUSTERS_X_THREADS, local_size_y = CLUSTERS_Y_THREADS, local_size_z = CLUSTERS_Z_THREADS) in;
-void main() {
-    //Shared between all clusters
-    const float zNear = _zPlanes.x;
-    const float zFar = _zPlanes.y;
-
-    const vec3 eyePos = vec3(0.f);
+    //Eye position is zero in view space
+    const vec3 eyePos = vec3( 0.0 );
 
     //Per Tile variables
-    const uint clusterIndex = gl_GlobalInvocationID.z * gl_WorkGroupSize.x * gl_WorkGroupSize.y +
-                              gl_GlobalInvocationID.y * gl_WorkGroupSize.x +
-                              gl_GlobalInvocationID.x;
+    const uint tileIndex = gl_WorkGroupID.x +
+                           gl_WorkGroupID.y * gl_NumWorkGroups.x +
+                           gl_WorkGroupID.z * (gl_NumWorkGroups.x * gl_NumWorkGroups.y);
+
+    const vec4 minScreen = vec4( (gl_WorkGroupID.xy + vec2( 0, 0 )) * dvd_ClusterSizes, 0.f, 1.f);
+    const vec4 maxScreen = vec4( (gl_WorkGroupID.xy + vec2( 1, 1 )) * dvd_ClusterSizes, 0.f, 1.f);
 
     //Calculating the min and max point in screen space
-    const vec4 minPoint_sS = vec4( gl_GlobalInvocationID.xy               * dvd_ClusterSizes, 0.f, 1.f); // Bottom left
-    const vec4 maxPoint_sS = vec4((gl_GlobalInvocationID.xy + vec2(1, 1)) * dvd_ClusterSizes, 0.f, 1.f); // Top Right
+    const vec4 maxPoint_sS = vec4( vec2( gl_WorkGroupID.x + 1, gl_WorkGroupID.y + 1 ) * dvd_ClusterSizes, -1.f, 1.f ); // Top Right
+    const vec4 minPoint_sS = vec4( vec2( gl_WorkGroupID.x + 0, gl_WorkGroupID.y + 0 ) * dvd_ClusterSizes, -1.f, 1.f ); // Bottom left
 
     //Pass min and max to view space
-    const vec3 minPoint_vS = screen2View(minPoint_sS);
-    const vec3 maxPoint_vS = screen2View(maxPoint_sS);
+    const vec3 maxPoint_vS = screen2View( maxPoint_sS );
+    const vec3 minPoint_vS = screen2View( minPoint_sS );
 
     //Near and far values of the cluster in view space
-    const float tileNear = (zNear * pow(zFar / zNear,  gl_GlobalInvocationID.z      / float(CLUSTERS_Z)));
-    const float tileFar  = (-zNear * pow(zFar / zNear, (gl_GlobalInvocationID.z + 1) / float(CLUSTERS_Z)));
+    const float tileNear = -zNear * pow( zFar / zNear, (gl_WorkGroupID.z + 0) / float( gl_NumWorkGroups.z ) );
+    const float tileFar  = -zNear * pow( zFar / zNear, (gl_WorkGroupID.z + 1) / float( gl_NumWorkGroups.z ) );
 
     //Finding the 4 intersection points made from the maxPoint to the cluster near/far plane
-    const vec3 minPointNear = lineIntersectionToZPlane(eyePos, minPoint_vS, tileNear);
-    const vec3 minPointFar  = lineIntersectionToZPlane(eyePos, minPoint_vS, tileFar);
-    const vec3 maxPointNear = lineIntersectionToZPlane(eyePos, maxPoint_vS, tileNear);
-    const vec3 maxPointFar  = lineIntersectionToZPlane(eyePos, maxPoint_vS, tileFar);
+    const vec3 minPointNear = lineIntersectionToZPlane( eyePos, minPoint_vS, tileNear );
+    const vec3 minPointFar  = lineIntersectionToZPlane( eyePos, minPoint_vS, tileFar );
+    const vec3 maxPointNear = lineIntersectionToZPlane( eyePos, maxPoint_vS, tileNear );
+    const vec3 maxPointFar  = lineIntersectionToZPlane( eyePos, maxPoint_vS, tileFar );
 
-    vec3 minPointAABB = min(min(minPointNear, minPointFar), min(maxPointNear, maxPointFar));
-    vec3 maxPointAABB = max(max(minPointNear, minPointFar), max(maxPointNear, maxPointFar));
+    const vec3 minPointAABB = min( min( minPointNear, minPointFar ), min( maxPointNear, maxPointFar ) );
+    const vec3 maxPointAABB = max( max( minPointNear, minPointFar ), max( maxPointNear, maxPointFar ) );
 
-    lightClusterAABBs[clusterIndex].minPoint = vec4(minPointAABB, 0.f);
-    lightClusterAABBs[clusterIndex].maxPoint = vec4(maxPointAABB, 0.f);
+    lightClusterAABBs[tileIndex].minPoint = vec4( minPointAABB, 0.f );
+    lightClusterAABBs[tileIndex].maxPoint = vec4( maxPointAABB, 0.f );
 }
 
+//Creates a line from the eye to the screenpoint, then finds its intersection
+//With a z oriented plane located at the given distance to the origin
+vec3 lineIntersectionToZPlane( in vec3 A, in vec3 B, in float zDistance )
+{
+    //Because this is a Z based normal this is fixed
+    const vec3 normal = WORLD_Z_AXIS;
 
-vec3 screen2View(in vec4 coord) {
-    const vec3 ndc = vec3
-    (
-        2.f * ((coord.x - dvd_ViewPort.x) / dvd_ViewPort.z) - 1.f,
-        2.f * ((coord.y - dvd_ViewPort.y) / dvd_ViewPort.w) - 1.f,
-        coord.z
-    );
-    return Homogenize(dvd_InverseProjectionMatrix * vec4(ndc, 1.f));
+    const vec3 ab = B - A;
+
+    //Computing the intersection length for the line and the plane
+    const float t = (zDistance - dot( normal, A )) / dot( normal, ab );
+
+    //Computing the actual xyz position of the point along the line
+    return A + t * ab;
+}
+
+vec3 screen2View( in vec4 screen )
+{
+    //Convert to NDC
+    const vec2 texCoord = (screen.xy - viewport.xy) / viewport.zw;
+
+    //Convert to clipSpace
+    const vec4 clip = vec4(2.f * texCoord.xy - 1.f, screen.zw );
+
+    //View space transform + Perspective projection
+    return Homogenize( inverseProjectionMatrix * clip );
 }

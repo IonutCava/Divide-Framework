@@ -25,8 +25,8 @@ void FrameRateHandler::tick(const U64 deltaTimeUS) noexcept {
     if (++_frameCount > FRAME_AVG_RESET_COUNT) {
         _averageFPS = 0.0f;
         _frameCount = 0;
-        _minFPS = std::numeric_limits<F32>::max();
-        _maxFPS = std::numeric_limits<F32>::lowest();
+        _minFPS = F32_MAX;
+        _maxFPS = F32_LOWEST;
     }
 }
 

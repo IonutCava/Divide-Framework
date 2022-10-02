@@ -30,23 +30,4 @@ bool DefaultScene::load() {
     return loadState;
 }
 
-void DefaultScene::processGUI(const U64 deltaTimeUS) {
-    Scene::processGUI(deltaTimeUS);
-}
-
-void DefaultScene::postLoadMainThread() {
-    Scene::postLoadMainThread();
-}
-
-void DefaultScene::processInput(const PlayerIndex idx, const U64 deltaTimeUS) {
-    Scene::processInput(idx, deltaTimeUS);
-}
-
-void DefaultScene::processTasks(const U64 deltaTimeUS) {
-    Scene::processTasks(deltaTimeUS);
-}
-
-void DefaultScene::onSetActive() {
-    Scene::onSetActive();
-}
 }

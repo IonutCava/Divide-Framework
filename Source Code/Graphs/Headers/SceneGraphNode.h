@@ -54,6 +54,7 @@ class RenderPassExecutor;
 class RenderingComponent;
 class TransformComponent;
 
+struct RenderPackage;
 struct NodeCullParams;
 struct CameraSnapshot;
 struct RenderStagePass;
@@ -238,10 +239,11 @@ private:
     FrustumCollision clippingCullNode(const NodeCullParams& params) const;
     FrustumCollision frustumCullNode(const NodeCullParams& params, const U16 cullFlags,F32& distanceToClosestPointSQ) const;
     /// Called after preRender and after we rebuild our command buffers. Useful for modifying the command buffer that's going to be used for this RenderStagePass
-    void prepareRender(RenderingComponent& rComp,
-                       const RenderStagePass& renderStagePass,
-                       const CameraSnapshot& cameraSnapshot,
-                       bool refreshData);
+    void prepareRender( RenderingComponent& rComp,
+                        RenderPackage& pkg,
+                        const RenderStagePass& renderStagePass,
+                        const CameraSnapshot& cameraSnapshot,
+                        bool refreshData);
     /// Called whenever we send a networking packet from our NetworkingComponent (if any). FrameCount is the frame ID sent with the packet.
     void onNetworkSend(U32 frameCount) const;
     /// Returns a bottom-up list(leafs -> root) of all of the nodes parented under the current one.
@@ -363,8 +365,8 @@ namespace Attorney {
     };
 
     class SceneGraphNodeComponent {
-        static void prepareRender(SceneGraphNode* node, RenderingComponent& rComp, const CameraSnapshot& cameraSnapshot, const RenderStagePass& renderStagePass, const bool refreshData) {
-            node->prepareRender(rComp, renderStagePass, cameraSnapshot, refreshData);
+        static void prepareRender(SceneGraphNode* node, RenderingComponent& rComp, RenderPackage& pkg, const CameraSnapshot& cameraSnapshot, const RenderStagePass& renderStagePass, const bool refreshData) {
+            node->prepareRender(rComp, pkg, renderStagePass, cameraSnapshot, refreshData);
         }
 
         friend class Divide::BoundsComponent;
@@ -385,7 +387,7 @@ namespace Attorney {
         }
 
         static FrustumCollision frustumCullNode(const SceneGraphNode* node, const NodeCullParams& params, const U16 cullFlags) {
-            F32 distanceToClosestPointSQ = std::numeric_limits<F32>::max();
+            F32 distanceToClosestPointSQ = F32_MAX;
             return frustumCullNode(node, params, cullFlags, distanceToClosestPointSQ);
         }
 

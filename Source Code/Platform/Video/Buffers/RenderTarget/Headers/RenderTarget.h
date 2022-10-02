@@ -73,9 +73,9 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
     /// Init all attachments. Returns false if already called
     [[nodiscard]] virtual bool create();
 
-    [[nodiscard]] bool hasAttachment(RTAttachmentType type, U8 index) const;
-    [[nodiscard]] bool usesAttachment(RTAttachmentType type, U8 index) const;
-    [[nodiscard]] RTAttachment* getAttachment(RTAttachmentType type, U8 index) const;
+    [[nodiscard]] bool hasAttachment(RTAttachmentType type, RTColourAttachmentSlot slot = RTColourAttachmentSlot::SLOT_0 ) const;
+    [[nodiscard]] bool usesAttachment(RTAttachmentType type, RTColourAttachmentSlot slot = RTColourAttachmentSlot::SLOT_0 ) const;
+    [[nodiscard]] RTAttachment* getAttachment(RTAttachmentType type, RTColourAttachmentSlot slot = RTColourAttachmentSlot::SLOT_0 ) const;
     [[nodiscard]] U8 getAttachmentCount(RTAttachmentType type) const noexcept;
     [[nodiscard]] U8 getSampleCount() const noexcept;
 
@@ -100,14 +100,14 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
     PROPERTY_RW(bool, enableAttachmentChangeValidation, true);
 
    protected:
-    virtual bool initAttachment(RTAttachment* att, RTAttachmentType type, U8 index, bool isExternal);
+    virtual bool initAttachment(RTAttachment* att, RTAttachmentType type, RTColourAttachmentSlot slot, bool isExternal);
 
    protected:
     RenderTargetDescriptor _descriptor;
 
-    constexpr static U32 RT_DEPTH_ATTACHMENT_IDX = RT_MAX_COLOUR_ATTACHMENTS;
-    std::array<RTAttachment_uptr, RT_MAX_COLOUR_ATTACHMENTS + 1> _attachments{};
-    std::array<bool, RT_MAX_COLOUR_ATTACHMENTS + 1> _attachmentsUsed;
+    constexpr static U32 RT_DEPTH_ATTACHMENT_IDX = to_base(RTColourAttachmentSlot::COUNT);
+    std::array<RTAttachment_uptr, to_base( RTColourAttachmentSlot::COUNT ) + 1> _attachments{};
+    std::array<bool, to_base( RTColourAttachmentSlot::COUNT ) + 1> _attachmentsUsed;
 };
 
 FWD_DECLARE_MANAGED_CLASS(RenderTarget);

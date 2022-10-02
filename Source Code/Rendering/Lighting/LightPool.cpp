@@ -22,9 +22,9 @@ namespace Divide
 {
 
     std::array<U8, to_base( ShadowType::COUNT )> LightPool::_shadowLocation = { {
-        3, //TextureUsage::SHADOW_SINGLE,
-        4, //TextureUsage::SHADOW_LAYERED,
-        5  //TextureUsage::SHADOW_CUBE
+        4,  //TextureUsage::SHADOW_LAYERED
+        5,  //TextureUsage::SHADOW_CUBE
+        6   //TextureUsage::SHADOW_SINGLE
     } };
 
     namespace
@@ -59,7 +59,7 @@ namespace Divide
         PlatformContextComponent( context ),
         _shadowPassTimer( Time::ADD_TIMER( "Shadow Pass Timer" ) )
     {
-        for ( U8 i = 0; i < to_U8( RenderStage::COUNT ); ++i )
+        for ( U8 i = 0u; i < to_U8( RenderStage::COUNT ); ++i )
         {
             _activeLightCount[i].fill( 0 );
             _sortedLights[i].reserve( Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME );
@@ -257,7 +257,7 @@ namespace Divide
         for ( Light* light : sortedLights )
         {
             const LightType lType = light->getLightType();
-            computeMipMapsCommand._texture = ShadowMap::getShadowMap( lType )._rt->getAttachment( RTAttachmentType::COLOUR, 0 )->texture().get();
+            computeMipMapsCommand._texture = ShadowMap::getShadowMap( lType )._rt->getAttachment( RTAttachmentType::COLOUR )->texture().get();
 
             // Skip non-shadow casting lights (and free up resources if any are used by it)
             if ( !light->enabled() || !light->castsShadows() )
@@ -344,9 +344,10 @@ namespace Divide
 
         memCmdInOut._bufferLocks.push_back( _shadowBuffer->writeData( _shadowBufferData.data() ) );
         memCmdInOut._syncFlag = 1u;
+        memCmdInOut._barrierMask |= to_base(MemoryBarrierType::SHADER_STORAGE) | to_base(MemoryBarrierType::BUFFER_UPDATE);
         _shadowBufferDirty = true;
 
-        ShadowMap::bindShadowMaps( bufferInOut );
+        ShadowMap::bindShadowMaps( *this, bufferInOut);
     }
 
     void LightPool::debugLight( Light* light )
@@ -487,40 +488,15 @@ namespace Divide
 
         {
             OPTICK_EVENT( "LightPool::UploadLightDataToGPU" );
-            memCmdInOut._bufferLocks.push_back(
-                _lightBuffer->writeData( { stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, totalLightCount },
-                                         &_sortedLightProperties[stageIndex] ) );
+            memCmdInOut._bufferLocks.push_back(_lightBuffer->writeData( { stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, totalLightCount }, &_sortedLightProperties[stageIndex] ) );
         }
 
         {
             OPTICK_EVENT( "LightPool::UploadSceneDataToGPU" );
-            memCmdInOut._bufferLocks.push_back( _sceneBuffer->writeData( { stageIndex, 1 }, &_sortedSceneProperties[stageIndex] ) );
+            memCmdInOut._bufferLocks.push_back( _sceneBuffer->writeData( { stageIndex, 1 }, &crtData ) );
         }
+        memCmdInOut._barrierMask |= to_base( MemoryBarrierType::SHADER_STORAGE ) | to_base (MemoryBarrierType::BUFFER_UPDATE);
         memCmdInOut._syncFlag = 2u;
-    }
-
-    void LightPool::uploadLightData( const RenderStage stage, GFX::CommandBuffer& bufferInOut )
-    {
-        const size_t stageIndex = to_size( stage );
-        const U32 lightCount = _sortedLightPropertiesCount[stageIndex];
-
-        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
-        cmd->_usage = DescriptorSetUsage::PER_FRAME;
-        {
-            auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE_AND_DRAW );
-            binding._slot = 9;
-            binding._data.As<ShaderBufferEntry>() = { *_lightBuffer, { stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, lightCount } };
-        }
-        {
-            auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE_AND_DRAW );
-            binding._slot = 8;
-            binding._data.As<ShaderBufferEntry>() = { *_sceneBuffer, { stageIndex, 1u } };
-        }
-        {
-            auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE_AND_DRAW );
-            binding._slot = 13;
-            binding._data.As<ShaderBufferEntry>() = { *_shadowBuffer, { 0u, 1u } };
-        }
     }
 
     [[nodiscard]] bool LightPool::isShadowCacheInvalidated( const vec3<F32>& cameraPosition, Light* const light )
@@ -562,35 +538,48 @@ namespace Divide
     {
         OPTICK_EVENT();
 
-        SharedLock<SharedMutex> r_lock( _lightLock );
-        std::for_each( std::execution::par_unseq, std::cbegin( _lights ), std::cend( _lights ),
-        [playerCamera]( const LightList& lightList )
+        constexpr U16 k_parallelSortThreshold = 16u;
+
+        const auto lightUpdateFunc = [playerCamera]( const LightList& lightList )
         {
             for ( Light* light : lightList )
             {
                 light->updateBoundingVolume( playerCamera );
             }
-        } );
+        };
+
+        SharedLock<SharedMutex> r_lock( _lightLock );
+        if ( _lights.size() > k_parallelSortThreshold )
+        {
+            std::for_each( std::execution::par_unseq, std::cbegin( _lights ), std::cend( _lights ), lightUpdateFunc );
+        }
+        else
+        {
+            for ( const LightList& list : _lights )
+            {
+                lightUpdateFunc(list);
+            }
+        }
+
+        if ( _shadowBufferDirty )
+        {
+            _shadowBuffer->incQueue();
+            _shadowBufferDirty = false;
+        }
+
+        _lightBuffer->incQueue();
+        _sceneBuffer->incQueue();
     }
 
     void LightPool::postRenderAllPasses() noexcept
     {
-        // Move backwards so that we don't step on our own toes with the lockmanager
-        if ( _shadowBufferDirty )
-        {
-            _shadowBuffer->decQueue();
-            _shadowBufferDirty = false;
-        }
-
-        _lightBuffer->decQueue();
-        _sceneBuffer->decQueue();
     }
 
     void LightPool::drawLightImpostors( GFX::CommandBuffer& bufferInOut ) const
     {
         if ( !lightImpostorsEnabled() )
         {
-            return;
+           return;
         }
         if ( s_debugSamplerHash == 0u )
         {
@@ -616,7 +605,7 @@ namespace Divide
 
                 auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
                 binding._slot = 0;
-                binding._data.As<DescriptorCombinedImageSampler>() = { _lightIconsTexture->defaultView(), s_debugSamplerHash };
+                binding._data.As<DescriptorCombinedImageSampler>() = { _lightIconsTexture->sampledView(), s_debugSamplerHash };
             }
 
             GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.back()._drawCount = to_U16( totalLightCount );

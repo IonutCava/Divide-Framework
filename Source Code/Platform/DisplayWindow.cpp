@@ -13,7 +13,7 @@ namespace Divide {
 DisplayWindow::DisplayWindow(WindowManager& parent, PlatformContext& context)
  : PlatformContextComponent(context),
    _clearColour(DefaultColours::BLACK),
-   _windowID(std::numeric_limits<Uint32>::max()),
+   _windowID(U32_MAX),
    _parent(parent)
 {
     _prevDimensions.set(1u, 1u);

@@ -25,7 +25,7 @@ namespace Divide
     void NodePreviewWindow::drawInternal()
     {
         const RenderTarget* rt = _parent.getNodePreviewTarget()._rt;
-        const Texture_ptr& gameView = rt->getAttachment( RTAttachmentType::COLOUR, 0 )->texture();
+        const Texture_ptr& gameView = rt->getAttachment( RTAttachmentType::COLOUR )->texture();
 
         Attorney::EditorSceneViewWindow::editorEnableGizmo( _parent, true );
         drawInternal( gameView.get() );

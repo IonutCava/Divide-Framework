@@ -40,7 +40,7 @@ namespace Divide {
 
 class TerrainDescriptor final : public PropertyDescriptor {
    public:
-    explicit TerrainDescriptor(const string& name) noexcept;
+    explicit TerrainDescriptor(std::string_view name) noexcept;
     virtual ~TerrainDescriptor();
 
     bool loadFromXML(const boost::property_tree::ptree& pt, const string& name);
@@ -100,7 +100,7 @@ class TerrainDescriptor final : public PropertyDescriptor {
 private:
     hashMap<U64, string> _variables{};
     hashMap<U64, F32> _variablesf{};
-    const string& _name;
+    string _name;
 
 protected:
     friend class Terrain;

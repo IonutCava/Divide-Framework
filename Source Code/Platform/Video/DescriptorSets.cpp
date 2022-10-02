@@ -48,7 +48,7 @@ namespace Divide {
         _hash = 1337;
         Util::Hash_combine(_hash,
                            _usage,
-                            _srcTexture.getHash(),
+                           _srcTexture.getHash(),
                             targetType(),
                            _mipLevels.min,
                            _mipLevels.max,

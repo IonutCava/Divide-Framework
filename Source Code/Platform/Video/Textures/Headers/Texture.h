@@ -107,15 +107,16 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
 
     [[nodiscard]] U16 mipCount() const noexcept;
 
-    [[nodiscard]] ImageView getView() noexcept;
-    [[nodiscard]] ImageView getView(ImageUsage usage) noexcept;
-    [[nodiscard]] ImageView getView(TextureType targetType) noexcept;
-    [[nodiscard]] ImageView getView(vec2<U16> mipRange/*offset, count*/) noexcept;
-    [[nodiscard]] ImageView getView(vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/) noexcept;
-    [[nodiscard]] ImageView getView(vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/, ImageUsage usage) noexcept;
-    [[nodiscard]] ImageView getView(TextureType targetType, vec2<U16> mipRange/*offset, count*/) noexcept;
-    [[nodiscard]] ImageView getView(TextureType targetType, vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/) noexcept;
-    [[nodiscard]] ImageView getView(TextureType targetType, vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/, ImageUsage usage) noexcept;
+    [[nodiscard]] ImageView sampledView() const noexcept;
+    [[nodiscard]] ImageView getView() const noexcept;
+    [[nodiscard]] ImageView getView(ImageUsage usage) const noexcept;
+    [[nodiscard]] ImageView getView(TextureType targetType) const noexcept;
+    [[nodiscard]] ImageView getView(vec2<U16> mipRange/*offset, count*/) const noexcept;
+    [[nodiscard]] ImageView getView(vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/) const noexcept;
+    [[nodiscard]] ImageView getView(vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/, ImageUsage usage) const noexcept;
+    [[nodiscard]] ImageView getView(TextureType targetType, vec2<U16> mipRange/*offset, count*/) const noexcept;
+    [[nodiscard]] ImageView getView(TextureType targetType, vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/) const noexcept;
+    [[nodiscard]] ImageView getView(TextureType targetType, vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/, ImageUsage usage) const noexcept;
 
     virtual void clearData(const UColour4& clearColour, U8 level) const = 0;
     virtual void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const = 0;
@@ -124,7 +125,6 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     [[nodiscard]] virtual TextureReadbackData readData(U16 mipLevel, GFXDataFormat desiredFormat = GFXDataFormat::COUNT) const = 0;
 
     PROPERTY_R(TextureDescriptor, descriptor);
-    PROPERTY_R(ImageView, defaultView);
     /// Set/Get the number of layers (used by texture arrays)
     PROPERTY_RW(U32, numLayers, 1u);
     /// Texture width as returned by STB/DDS loader
@@ -160,8 +160,8 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
 
   protected:
     ResourceCache& _parentCache;
+    ImageView  _defaultView;
     TextureType _type{ TextureType::COUNT };
-
   protected:
     static bool s_useDDSCache;
     static Texture_ptr s_defaulTexture;

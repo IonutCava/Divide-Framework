@@ -290,13 +290,13 @@ FORCE_INLINE vec4<T> operator*(T fl, const vec4<T> &v) noexcept {
 template <typename T>
 FORCE_INLINE bool SimdVector<T, typename std::enable_if<std::is_same<T, float>::value>::type>::operator==(const SimdVector& other) const noexcept
 {
-    return !AVX::Fneq128(_reg, other._reg, std::numeric_limits<F32>::epsilon());
+    return !AVX::Fneq128(_reg, other._reg, EPSILON_F32);
 }
 
 template <typename T>
 FORCE_INLINE bool SimdVector<T, typename std::enable_if<std::is_same<T, float>::value>::type>::operator!=(const SimdVector& other) const noexcept
 {
-    return AVX::Fneq128(_reg, other._reg, std::numeric_limits<F32>::epsilon());
+    return AVX::Fneq128(_reg, other._reg, EPSILON_F32);
 }
 
 /// return the squared distance of the vector
@@ -323,7 +323,7 @@ template <typename T>
 FORCE_INLINE vec2<T>& vec2<T>::normalize() noexcept {
     const T l = this->length();
 
-    if (l >= std::numeric_limits<F32>::epsilon()) {
+    if (l >= EPSILON_F32) {
         *this *= 1.f / l;
     }
 
@@ -472,7 +472,7 @@ template <typename T>
 FORCE_INLINE vec3<T>& vec3<T>::normalize() noexcept {
     const T l = this->length();
 
-    if (l >= std::numeric_limits<F32>::epsilon()) {
+    if (l >= EPSILON_F32 ) {
         // multiply by the inverse length
         *this *= 1.f / l;
     }
@@ -530,7 +530,7 @@ FORCE_INLINE T vec3<T>::distanceSquared(const vec3 &v) const noexcept {
 template <typename T>
 FORCE_INLINE T vec3<T>::angle(vec3 &v) const {
     const T angle = static_cast<T>(std::abs(std::acos(this->dot(v) / (this->length() * v.length()))));
-    return std::max(angle, std::numeric_limits<F32>::epsilon());
+    return std::max(angle, EPSILON_F32 );
 }
 
 /// get the direction vector to the specified point
@@ -800,7 +800,7 @@ template <>
 FORCE_INLINE bool vec4<F32>::compare(const vec4<F32> &v) const noexcept {
     // returns true if at least one element in a is not equal to 
     // the corresponding element in b
-    return compare(v, std::numeric_limits<F32>::epsilon());
+    return compare(v, EPSILON_F32 );
 }
 
 /// compare this vector with the one specified and see if they match within the specified amount
@@ -883,9 +883,9 @@ template <typename T>
 FORCE_INLINE vec4<T>& vec4<T>::normalize() noexcept {
     const T l = this->length();
 
-    if (l >= std::numeric_limits<F32>::epsilon()) {
+    if (l >= EPSILON_F32 ) {
         // multiply by the inverse length
-        *this *= 1.0f / l;
+        *this *= 1.f / l;
     }
 
     return *this;

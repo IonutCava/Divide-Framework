@@ -104,7 +104,7 @@ void SSRPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX::
         renderPassCmd->_name = "DO_SSR_CLEAR_TARGET";
         renderPassCmd->_target = RenderTargetNames::SSR_RESULT;
         renderPassCmd->_clearDescriptor._clearDepth = true;
-        renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO, 0u };
+        renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO, RTColourAttachmentSlot::SLOT_0 };
 
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
     }
@@ -115,13 +115,13 @@ void SSRPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX::
 bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
     assert(_enabled);
 
-    RTAttachment* screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO));
-    RTAttachment* normalsAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::NORMALS));
-    RTAttachment* depthAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::DEPTH, 0);
+    RTAttachment* screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
+    RTAttachment* normalsAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS);
+    RTAttachment* depthAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::DEPTH);
 
-    const auto& screenTex = screenAtt->texture()->defaultView();
-    const auto& normalsTex = normalsAtt->texture()->defaultView();
-    const auto& depthTex = depthAtt->texture()->defaultView();
+    const auto& screenTex = screenAtt->texture()->sampledView();
+    const auto& normalsTex = normalsAtt->texture()->sampledView();
+    const auto& depthTex = depthAtt->texture()->sampledView();
     U16 screenMipCount = screenAtt->texture()->mipCount();
     if (screenMipCount > 2u) {
         screenMipCount -= 2u;
@@ -161,7 +161,7 @@ bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& 
     renderPassCmd->_descriptor = _screenOnlyDraw;
     renderPassCmd->_name = "DO_SSR_PASS";
     renderPassCmd->_clearDescriptor._clearDepth = true;
-    renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO, 0u };
+    renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO, RTColourAttachmentSlot::SLOT_0 };
 
     GFX::EnqueueCommand(bufferInOut, _pipelineCmd);
 

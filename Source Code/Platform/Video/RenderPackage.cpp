@@ -13,7 +13,19 @@ void Clear(RenderPackage& pkg) noexcept {
     pkg.pipelineCmd(GFX::BindPipelineCommand{});
     pkg.descriptorSetCmd(GFX::BindShaderResourcesCommand{});
     pkg.pushConstantsCmd(GFX::SendPushConstantsCommand{});
-    pkg.additionalCommands(nullptr);
+    if ( pkg._additionalCommands != nullptr )
+    {
+        pkg._additionalCommands->clear( false );
+    }
 }
 
+GFX::CommandBuffer* GetCommandBuffer( RenderPackage& pkg )
+{
+    if ( pkg._additionalCommands == nullptr )
+    {
+        pkg._additionalCommands = eastl::make_unique<GFX::CommandBuffer>();
+    }
+
+    return pkg._additionalCommands.get();
+}
 }; //namespace Divide

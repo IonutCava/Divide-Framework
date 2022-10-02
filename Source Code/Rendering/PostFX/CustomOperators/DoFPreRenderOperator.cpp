@@ -110,10 +110,10 @@ bool DoFPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const
         _constantsDirty = true;
     }
     
-    const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO));
-    const auto& extraAtt = _parent.getLinearDepthRT()._rt->getAttachment(RTAttachmentType::COLOUR, 0u);
-    const auto& screenTex = screenAtt->texture()->defaultView();
-    const auto& extraTex = extraAtt->texture()->defaultView();
+    const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
+    const auto& extraAtt = _parent.getLinearDepthRT()._rt->getAttachment(RTAttachmentType::COLOUR);
+    const auto& screenTex = screenAtt->texture()->sampledView();
+    const auto& extraTex = extraAtt->texture()->sampledView();
 
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
     cmd->_usage = DescriptorSetUsage::PER_DRAW;

@@ -55,7 +55,7 @@ namespace Divide
         for ( U8 i = 0u; i < 6u; ++i )
         {
             _shadowProperties._lightVP[i].identity();
-            _shadowProperties._lightPosition[i].w = std::numeric_limits<F32>::max();
+            _shadowProperties._lightPosition[i].w = F32_MAX;
         }
 
         _shadowProperties._lightDetails.x = to_F32( type );
@@ -89,7 +89,7 @@ namespace Divide
         rangeField._data = &_range;
         rangeField._type = EditorComponentFieldType::PUSH_TYPE;
         rangeField._readOnly = false;
-        rangeField._range = { std::numeric_limits<F32>::epsilon(), 10000.f };
+        rangeField._range = { EPSILON_F32, 10000.f };
         rangeField._basicType = GFX::PushConstantType::FLOAT;
         comp.registerField( MOV( rangeField ) );
 
@@ -98,7 +98,7 @@ namespace Divide
         intensityField._data = &_intensity;
         intensityField._type = EditorComponentFieldType::PUSH_TYPE;
         intensityField._readOnly = false;
-        intensityField._range = { std::numeric_limits<F32>::epsilon(), 25.f };
+        intensityField._range = { EPSILON_F32, 25.f };
         intensityField._basicType = GFX::PushConstantType::FLOAT;
         comp.registerField( MOV( intensityField ) );
 
@@ -131,7 +131,7 @@ namespace Divide
         shadowBiasField._type = EditorComponentFieldType::SLIDER_TYPE;
         shadowBiasField._readOnly = false;
         shadowBiasField._format = "%.5f";
-        shadowBiasField._range = { std::numeric_limits<F32>::epsilon(), 1.0f };
+        shadowBiasField._range = { EPSILON_F32, 1.0f };
         shadowBiasField._basicType = GFX::PushConstantType::FLOAT;
         comp.registerField( MOV( shadowBiasField ) );
 
@@ -140,7 +140,7 @@ namespace Divide
         shadowStrengthField._data = &_shadowProperties._lightDetails.w;
         shadowStrengthField._type = EditorComponentFieldType::SLIDER_TYPE;
         shadowStrengthField._readOnly = false;
-        shadowStrengthField._range = { std::numeric_limits<F32>::epsilon(), 10.0f };
+        shadowStrengthField._range = { EPSILON_F32, 10.0f };
         shadowStrengthField._basicType = GFX::PushConstantType::FLOAT;
         comp.registerField( MOV( shadowStrengthField ) );
 

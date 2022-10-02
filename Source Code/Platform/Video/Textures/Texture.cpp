@@ -459,55 +459,63 @@ U16 Texture::mipCount() const noexcept {
     return _defaultView._mipLevels.max;
 }
 
-ImageView Texture::getView() noexcept {
-    ImageView ret = defaultView();
+ImageView Texture::sampledView() const noexcept
+{
+    ImageView ret = _defaultView;
+    ret._isDefaultView = true;
+    ret._usage = ImageUsage::SHADER_SAMPLE;
+    return ret;
+}
+
+ImageView Texture::getView() const noexcept {
+    ImageView ret = _defaultView;
     ret._isDefaultView = false;
     return ret;
 }
 
-ImageView Texture::getView(const ImageUsage usage) noexcept {
+ImageView Texture::getView(const ImageUsage usage) const noexcept {
     ImageView ret = getView();
     ret._usage = usage;
     return ret;
 }
 
-ImageView Texture::getView(const TextureType targetType) noexcept {
+ImageView Texture::getView(const TextureType targetType) const noexcept {
     ImageView ret = getView();
     ret._targetType = targetType;
     return ret;
 }
 
-ImageView Texture::getView(const vec2<U16> mipRange) noexcept {
+ImageView Texture::getView(const vec2<U16> mipRange) const noexcept {
     ImageView ret = getView();
     ret._mipLevels = mipRange;
     return ret;
 }
 
-ImageView Texture::getView(const vec2<U16> mipRange, const vec2<U16> layerRange) noexcept{
+ImageView Texture::getView(const vec2<U16> mipRange, const vec2<U16> layerRange) const noexcept{
     ImageView ret = getView(mipRange);
     ret._layerRange = layerRange;
     return ret;
 }
 
-ImageView Texture::getView(const vec2<U16> mipRange, const vec2<U16> layerRange, const ImageUsage usage) noexcept{
+ImageView Texture::getView(const vec2<U16> mipRange, const vec2<U16> layerRange, const ImageUsage usage) const noexcept{
     ImageView ret = getView(mipRange, layerRange);
     ret._usage = usage;
     return ret;
 }
 
-ImageView Texture::getView(const TextureType targetType, const vec2<U16> mipRange) noexcept {
+ImageView Texture::getView(const TextureType targetType, const vec2<U16> mipRange) const noexcept {
     ImageView ret = getView(targetType);
     ret._mipLevels = mipRange;
     return ret;
 }
 
-ImageView Texture::getView(const TextureType targetType, const vec2<U16> mipRange, const vec2<U16> layerRange) noexcept {
+ImageView Texture::getView(const TextureType targetType, const vec2<U16> mipRange, const vec2<U16> layerRange) const noexcept {
     ImageView ret = getView(targetType, mipRange);
     ret._layerRange = layerRange;
     return ret;
 }
 
-ImageView Texture::getView(const TextureType targetType, const vec2<U16> mipRange, const vec2<U16> layerRange, const ImageUsage usage) noexcept {
+ImageView Texture::getView(const TextureType targetType, const vec2<U16> mipRange, const vec2<U16> layerRange, const ImageUsage usage) const noexcept {
     ImageView ret = getView(targetType, mipRange, layerRange);
     ret._usage = usage;
     return ret;

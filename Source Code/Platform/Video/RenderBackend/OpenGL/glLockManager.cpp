@@ -16,7 +16,7 @@ void glSyncObject::reset() {
 
 glLockManager::~glLockManager()
 {
-    waitForLockedRange(0u, std::numeric_limits<size_t>::max());
+    waitForLockedRange(0u, SIZE_MAX);
 }
 
 

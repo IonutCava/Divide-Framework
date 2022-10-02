@@ -144,7 +144,7 @@ class Console : NonCopyable {
     static bool unbindConsoleOutput(size_t& index) {
         if (index < _guiConsoleCallbacks.size()) {
             _guiConsoleCallbacks.erase(std::begin(_guiConsoleCallbacks) + index);
-            index = std::numeric_limits<size_t>::max();
+            index = SIZE_MAX;
             return true;
         }
         return false;

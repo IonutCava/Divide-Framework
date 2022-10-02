@@ -146,7 +146,7 @@ namespace Divide {
     template <typename T>
     constexpr T MAP(T input, const T in_min, const T in_max, const T out_min, const T out_max, D64& slopeOut) noexcept {
         static_assert(std::is_arithmetic<T>::value, "Only arithmetic values can be mapped!");
-        const D64 diff = in_max > in_min ? to_D64(in_max - in_min) : std::numeric_limits<D64>::epsilon();
+        const D64 diff = in_max > in_min ? to_D64(in_max - in_min) : EPSILON_D64;
         slopeOut = 1.0 * (out_max - out_min) / diff;
         return static_cast<T>(out_min + slopeOut * (input - in_min));
     }

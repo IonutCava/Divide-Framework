@@ -169,7 +169,9 @@ namespace Divide {
         NEW_CULL = toBit(2),
         NEW_SHADER = toBit(3),
         NEW_TRANSPARENCY = toBit(4),
-        COUNT = 4
+        NEW_REFLECTION = toBit(5),
+        NEW_REFRACTION = toBit(6),
+        COUNT = 6
     };
 
 }; //namespace Divide

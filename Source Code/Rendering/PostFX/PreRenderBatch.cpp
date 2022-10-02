@@ -77,12 +77,12 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
     desc._resolution = _screenRTs._hdr._screenRef._rt->getResolution();
     desc._attachmentCount = 1u;
 
-    TextureDescriptor outputDescriptor = _screenRTs._hdr._screenRef._rt->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO))->texture()->descriptor();
+    TextureDescriptor outputDescriptor = _screenRTs._hdr._screenRef._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO)->texture()->descriptor();
     outputDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
     {
         InternalRTAttachmentDescriptors att
         {
-            InternalRTAttachmentDescriptor{ outputDescriptor, screenSampler.getHash(), RTAttachmentType::COLOUR, 0u}
+            InternalRTAttachmentDescriptor{ outputDescriptor, screenSampler.getHash(), RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0}
         };
         desc._name = "PostFX Output HDR";
         desc._attachments = att.data();
@@ -94,7 +94,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         //Colour0 holds the LDR screen texture
         InternalRTAttachmentDescriptors att
         {
-            InternalRTAttachmentDescriptor{ outputDescriptor, screenSampler.getHash(), RTAttachmentType::COLOUR, 0u }
+            InternalRTAttachmentDescriptor{ outputDescriptor, screenSampler.getHash(), RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 }
         };
 
         desc._name = "PostFX Output LDR 0";
@@ -111,7 +111,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
 
         InternalRTAttachmentDescriptors att
         {
-            InternalRTAttachmentDescriptor{ edgeDescriptor, screenSampler.getHash(), RTAttachmentType::COLOUR, 0u }
+            InternalRTAttachmentDescriptor{ edgeDescriptor, screenSampler.getHash(), RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 }
         };
 
         desc._name = "SceneEdges";
@@ -145,7 +145,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
 
         InternalRTAttachmentDescriptors attachments
         {
-            InternalRTAttachmentDescriptor{ linearDepthDescriptor, samplerHash, RTAttachmentType::COLOUR, 0u }
+            InternalRTAttachmentDescriptor{ linearDepthDescriptor, samplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 }
         };
 
         desc._name = "Linear Depth";
@@ -489,7 +489,7 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
         GFX::BeginRenderPassCommand beginRenderPassCmd{};
         beginRenderPassCmd._name = "LINEARISE_DEPTH_BUFFER";
         beginRenderPassCmd._target = _linearDepthRT._targetID;
-        beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO, 0u };
+        beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO, RTColourAttachmentSlot::SLOT_0 };
 
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
@@ -503,13 +503,13 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
         GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
         GFX::EnqueueCommand(bufferInOut, bindPipelineCmd);
 
-        RTAttachment* depthAtt = screenRT()._rt->getAttachment(RTAttachmentType::DEPTH, 0);
+        RTAttachment* depthAtt = screenRT()._rt->getAttachment(RTAttachmentType::DEPTH);
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = 0;
-        binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->defaultView(), depthAtt->descriptor()._samplerHash };
+        binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash };
 
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
 
@@ -533,20 +533,20 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
     }
 
     // Always bind these even if we haven't ran the appropriate operators!
-    RTAttachment* ssrDataAtt = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SSR_RESULT)->getAttachment(RTAttachmentType::COLOUR, 0);
-    RTAttachment* ssaoDataAtt = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SSAO_RESULT)->getAttachment(RTAttachmentType::COLOUR, 0u);
+    RTAttachment* ssrDataAtt = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SSR_RESULT)->getAttachment(RTAttachmentType::COLOUR);
+    RTAttachment* ssaoDataAtt = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SSAO_RESULT)->getAttachment(RTAttachmentType::COLOUR);
 
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
     cmd->_usage = DescriptorSetUsage::PER_PASS;
     {
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = 3;
-        binding._data.As<DescriptorCombinedImageSampler>() = { ssrDataAtt->texture()->defaultView(), ssrDataAtt->descriptor()._samplerHash };
+        binding._data.As<DescriptorCombinedImageSampler>() = { ssrDataAtt->texture()->sampledView(), ssrDataAtt->descriptor()._samplerHash };
     }
     {
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = 4;
-        binding._data.As<DescriptorCombinedImageSampler>() = { ssaoDataAtt->texture()->defaultView(), ssaoDataAtt->descriptor()._samplerHash };
+        binding._data.As<DescriptorCombinedImageSampler>() = { ssaoDataAtt->texture()->sampledView(), ssaoDataAtt->descriptor()._samplerHash };
     }
 }
 
@@ -568,22 +568,21 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         };
 
         { // Histogram Pass
-            const Texture_ptr& screenColour = screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO))->texture();
+            const Texture_ptr& screenColour = screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO)->texture();
 
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "CreateLuminanceHistogram" });
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
                 auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
-                binding._slot = 1;
-                binding._data.As<ShaderBufferEntry>() = { *_histogramBuffer, {0u, _histogramBuffer->getPrimitiveCount()}};
+                binding._slot = 0;
+                binding._data.As<ImageView>() = screenColour->getView(ImageUsage::SHADER_READ);
             }
             {
-                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
-                binding._slot = 0;
-                binding._data.As<ImageView>() = screenColour->getView(ImageUsage::SHADER_READ, {0u, 1u});
+                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE );
+                binding._slot = 1;
+                binding._data.As<ShaderBufferEntry>() = { *_histogramBuffer, {0u, _histogramBuffer->getPrimitiveCount()} };
             }
-
             GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipelineLumCalcHistogram });
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(_ID("u_params"), GFX::PushConstantType::VEC4, histogramParams);
 
@@ -616,7 +615,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             {
                 auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
                 binding._slot = 0;
-                binding._data.As<ImageView>() = _currentLuminance->getView(ImageUsage::SHADER_WRITE, { 0u, 1u });
+                binding._data.As<ImageView>() = _currentLuminance->getView(ImageUsage::SHADER_WRITE);
             }
 
             GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipelineLumCalcAverage });
@@ -675,7 +674,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
 
     RenderTarget* prevScreenRT = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_PREV);
     GFX::ComputeMipMapsCommand computeMipMapsCommand{};
-    computeMipMapsCommand._texture = prevScreenRT->getAttachment(RTAttachmentType::COLOUR, to_base(GFXDevice::ScreenTargets::ALBEDO))->texture().get();
+    computeMipMapsCommand._texture = prevScreenRT->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO)->texture().get();
     GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 
     { // ToneMap and generate LDR render target (Alpha channel contains pre-toneMapped luminance value)
@@ -690,8 +689,8 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             lumaSamplerHash = lumaSampler.getHash();
         }
 
-        const auto& screenAtt = getInput(true)._rt->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO));
-        const auto& screenDepthAtt = screenRT()._rt->getAttachment(RTAttachmentType::DEPTH, 0);
+        const auto& screenAtt = getInput(true)._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
+        const auto& screenDepthAtt = screenRT()._rt->getAttachment(RTAttachmentType::DEPTH);
 
         GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "PostFX: tone map" });
 
@@ -700,23 +699,23 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         {
             auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
             binding._slot = 0;
-            binding._data.As<DescriptorCombinedImageSampler>() = { screenAtt->texture()->defaultView(), screenAtt->descriptor()._samplerHash };
+            binding._data.As<DescriptorCombinedImageSampler>() = { screenAtt->texture()->sampledView(), screenAtt->descriptor()._samplerHash };
         }
         {
             auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
             binding._slot = 1;
-            binding._data.As<DescriptorCombinedImageSampler>() = { _currentLuminance->defaultView(), lumaSamplerHash };
+            binding._data.As<DescriptorCombinedImageSampler>() = { _currentLuminance->sampledView(), lumaSamplerHash };
         }
         {
             auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
             binding._slot = 2;
-            binding._data.As<DescriptorCombinedImageSampler>() = { screenDepthAtt->texture()->defaultView(), screenDepthAtt->descriptor()._samplerHash };
+            binding._data.As<DescriptorCombinedImageSampler>() = { screenDepthAtt->texture()->sampledView(), screenDepthAtt->descriptor()._samplerHash };
         }
 
         GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
         renderPassCmd->_name = "DO_TONEMAP_PASS";
         renderPassCmd->_target = getOutput(false)._targetID;
-        renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO, 0u };
+        renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO, RTColourAttachmentSlot::SLOT_0 };
 
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ adaptiveExposureControl() ? _pipelineToneMapAdaptive : _pipelineToneMap });
 
@@ -742,25 +741,25 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
         if (edgeDetectionMethod() != EdgeDetectionMethod::Depth) {
-            const auto& screenAtt = getInput(false)._rt->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO));
+            const auto& screenAtt = getInput(false)._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
 
             auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
             binding._slot = 0;
-            binding._data.As<DescriptorCombinedImageSampler>() = { screenAtt->texture()->defaultView(), screenAtt->descriptor()._samplerHash };
+            binding._data.As<DescriptorCombinedImageSampler>() = { screenAtt->texture()->sampledView(), screenAtt->descriptor()._samplerHash };
 
         } else {
-            const auto& depthAtt = getInput(false)._rt->getAttachment(RTAttachmentType::DEPTH, 0);
+            const auto& depthAtt = getInput(false)._rt->getAttachment(RTAttachmentType::DEPTH);
 
             auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
             binding._slot = 0;
-            binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->defaultView(), depthAtt->descriptor()._samplerHash };
+            binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash };
         }
 
         GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
         renderPassCmd->_target = _sceneEdges._targetID;
         renderPassCmd->_name = "DO_EDGE_DETECT_PASS";
         renderPassCmd->_clearDescriptor._clearDepth = true;
-        renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO, 0u };
+        renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO, RTColourAttachmentSlot::SLOT_0 };
 
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _edgeDetectionPipelines[to_base(edgeDetectionMethod())] });
         

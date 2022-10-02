@@ -41,12 +41,6 @@ BEGIN_SCENE(DefaultScene)
     explicit DefaultScene(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name);
 
     bool load() override;
-    void postLoadMainThread() override;
-    void processInput(PlayerIndex idx, U64 deltaTimeUS) override;
-    void processTasks(U64 deltaTimeUS) override;
-    void processGUI(U64 deltaTimeUS) override;
-
-    void onSetActive() override;
 END_SCENE(DefaultScene)
 
 } // namespace Divide

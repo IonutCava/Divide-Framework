@@ -40,11 +40,10 @@ namespace Divide
 {
     namespace
     {
-        template<typename T>
         struct BufferCandidate
         {
-            T _index = std::numeric_limits<T>::max();
-            T _framesSinceLastUsed = std::numeric_limits<T>::max();
+            U16 _index{ U16_MAX };
+            U16 _framesSinceLastUsed{ U16_MAX };
         };
 
         // Remove materials that haven't been indexed in this amount of frames to make space for new ones
@@ -535,7 +534,7 @@ namespace Divide
         // If we fail, try and find an empty slot and update it
         OPTICK_EVENT( "processVisibleNode - process unmatched material" );
         // No match found (cache miss) so add a new entry.
-        BufferCandidate<U16> bestCandidate{ g_invalidMaterialIndex, 0u };
+        BufferCandidate bestCandidate{ g_invalidMaterialIndex, 0u };
 
         const U16 count = to_U16( infoContainer.size() );
         for ( U16 idx = 0u; idx < count; ++idx )
@@ -595,7 +594,7 @@ namespace Divide
         }
     }
 
-    U16 RenderPassExecutor::buildDrawCommands( const RenderPassParams& params, const bool doPrePass, const bool doOITPass, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
+    size_t RenderPassExecutor::buildDrawCommands( const RenderPassParams& params, const bool doPrePass, const bool doOITPass, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
         OPTICK_EVENT();
 
@@ -612,7 +611,7 @@ namespace Divide
             sQueue.reserve( Config::MAX_VISIBLE_NODES );
         }
 
-        const U16 queueTotalSize = _renderQueue->getSortedQueues( {}, _sortedQueues );
+        const size_t queueTotalSize = _renderQueue->getSortedQueues( {}, _sortedQueues );
 
         //Erase nodes with no draw commands
         for ( RenderBin::SortedQueue& queue : _sortedQueues )
@@ -687,8 +686,8 @@ namespace Divide
                 }
         }
         {
-            OPTICK_EVENT( "buildDrawCommands - process nodes: Waiting for tasks to finish" )
-                StartAndWait( *updateTask, pool );
+            OPTICK_EVENT( "buildDrawCommands - process nodes: Waiting for tasks to finish" );
+            StartAndWait( *updateTask, pool );
         }
 
         const U32 startOffset = Config::MAX_VISIBLE_NODES * IndexForStage( stagePass );
@@ -707,26 +706,26 @@ namespace Divide
             const RenderPassType prevType = stagePass._passType;
             if ( doPrePass )
             {
-                OPTICK_EVENT( "buildDrawCommands - retrieve draw commands: PRE_PASS" )
-                    stagePass._passType = RenderPassType::PRE_PASS;
+                OPTICK_EVENT( "buildDrawCommands - retrieve draw commands: PRE_PASS" );
+                stagePass._passType = RenderPassType::PRE_PASS;
                 retrieveCommands();
             }
             if ( doMainPass )
             {
-                OPTICK_EVENT( "buildDrawCommands - retrieve draw commands: MAIN_PASS" )
-                    stagePass._passType = RenderPassType::MAIN_PASS;
+                OPTICK_EVENT( "buildDrawCommands - retrieve draw commands: MAIN_PASS" );
+                stagePass._passType = RenderPassType::MAIN_PASS;
                 retrieveCommands();
             }
             if ( doOITPass )
             {
-                OPTICK_EVENT( "buildDrawCommands - retrieve draw commands: OIT_PASS" )
-                    stagePass._passType = RenderPassType::OIT_PASS;
+                OPTICK_EVENT( "buildDrawCommands - retrieve draw commands: OIT_PASS" );
+                stagePass._passType = RenderPassType::OIT_PASS;
                 retrieveCommands();
             }
             else
             {
-                OPTICK_EVENT( "buildDrawCommands - retrieve draw commands: TRANSPARENCY_PASS" )
-                    stagePass._passType = RenderPassType::TRANSPARENCY_PASS;
+                OPTICK_EVENT( "buildDrawCommands - retrieve draw commands: TRANSPARENCY_PASS" );
+                stagePass._passType = RenderPassType::TRANSPARENCY_PASS;
                 retrieveCommands();
             }
             stagePass._passType = prevType;
@@ -790,16 +789,17 @@ namespace Divide
             binding._slot = 5;
             binding._data.As<ShaderBufferEntry>() = { *_materialBuffer._gpuBuffer, { 0u, _materialBuffer._highWaterMark } };
         }
+
         return queueTotalSize;
     }
 
-    U16 RenderPassExecutor::prepareNodeData( const RenderPassParams& params,
-                                             const CameraSnapshot& cameraSnapshot,
-                                             const bool hasInvalidNodes,
-                                             const bool doPrePass,
-                                             const bool doOITPass,
-                                             GFX::CommandBuffer& bufferInOut,
-                                             GFX::MemoryBarrierCommand& memCmdInOut )
+    size_t RenderPassExecutor::prepareNodeData( const RenderPassParams& params,
+                                                const CameraSnapshot& cameraSnapshot,
+                                                const bool hasInvalidNodes,
+                                                const bool doPrePass,
+                                                const bool doOITPass,
+                                                GFX::CommandBuffer& bufferInOut,
+                                                GFX::MemoryBarrierCommand& memCmdInOut )
     {
         OPTICK_EVENT();
 
@@ -824,7 +824,7 @@ namespace Divide
         RenderStagePass stagePass = params._stagePass;
         const SceneRenderState& sceneRenderState = _parent.parent().sceneManager()->getActiveScene().state()->renderState();
         {
-            _renderQueue->refresh();
+            _renderQueue->clear();
             ParallelForDescriptor descriptor = {};
             descriptor._iterCount = to_U32( _visibleNodesCache.size() );
             descriptor._cbk = [&]( const Task* /*parentTask*/, const U32 start, const U32 end )
@@ -877,7 +877,7 @@ namespace Divide
         const RenderBinType targetBin = transparencyPass ? RenderBinType::TRANSLUCENT : RenderBinType::COUNT;
         const SceneRenderState& sceneRenderState = _parent.parent().sceneManager()->getActiveScene().state()->renderState();
 
-        _renderQueue->refresh( targetBin );
+        _renderQueue->clear( targetBin );
 
         const U32 nodeCount = to_U32( _visibleNodesCache.size() );
         ParallelForDescriptor descriptor = {};
@@ -977,7 +977,7 @@ namespace Divide
 
     void RenderPassExecutor::occlusionPass( const PlayerIndex idx,
                                             const CameraSnapshot& cameraSnapshot,
-                                            [[maybe_unused]] const U32 visibleNodeCount,
+                                            [[maybe_unused]] const size_t visibleNodeCount,
                                             RenderStagePass stagePass,
                                             const RenderTargetID& sourceDepthBuffer,
                                             const RenderTargetID& targetHiZBuffer,
@@ -1020,33 +1020,41 @@ namespace Divide
             renderPassCmd._descriptor = params._targetDescriptorMainPass;
             renderPassCmd._descriptor._writeLayers = params._layerParams;
             renderPassCmd._clearDescriptor = params._clearDescriptorMainPass;
+            if ( prePassExecuted )
+            {
+                SetEnabled( renderPassCmd._descriptor._drawMask, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, false );
+            }
+
+            //prePassPolicy._alphaToCoverage = true;
+
 
             GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut, renderPassCmd );
 
             const RenderTarget* screenTargetMS = _context.renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN_MS );
-            const RTAttachment* normalsAttMS = screenTargetMS->getAttachment( RTAttachmentType::COLOUR, to_base( GFXDevice::ScreenTargets::NORMALS ) );
+            const RTAttachment* normalsAttMS = screenTargetMS->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS );
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_PASS;
-
+            {
+                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
+                binding._slot = 0;
+                binding._data.As<DescriptorCombinedImageSampler>() = { normalsAttMS->texture()->sampledView(), normalsAttMS->descriptor()._samplerHash };
+            }
             if ( hasHiZ )
             {
                 auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
                 binding._slot = 1;
                 const RenderTarget* hizTarget = _context.renderTargetPool().getRenderTarget( params._targetHIZ );
-                RTAttachment* hizAtt = hizTarget->getAttachment( RTAttachmentType::COLOUR, 0 );
-                binding._data.As<DescriptorCombinedImageSampler>() = { hizAtt->texture()->defaultView(), hizAtt->descriptor()._samplerHash };
+                RTAttachment* hizAtt = hizTarget->getAttachment( RTAttachmentType::COLOUR);
+                binding._data.As<DescriptorCombinedImageSampler>() = { hizAtt->texture()->sampledView(), hizAtt->descriptor()._samplerHash };
             }
             else if ( prePassExecuted )
             {
                 auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
                 binding._slot = 1;
-                RTAttachment* depthAtt = target.getAttachment( RTAttachmentType::DEPTH, 0 );
-                binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->defaultView(), depthAtt->descriptor()._samplerHash };
+                RTAttachment* depthAtt = target.getAttachment( RTAttachmentType::DEPTH);
+                binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash };
             }
-            auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-            binding._slot = 0;
-            binding._data.As<DescriptorCombinedImageSampler>() = { normalsAttMS->texture()->defaultView(), normalsAttMS->descriptor()._samplerHash };
 
             prepareRenderQueues( params, cameraSnapshot, false, RenderingOrder::COUNT, bufferInOut );
             GFX::EnqueueCommand( bufferInOut, GFX::EndRenderPassCommand{} );
@@ -1068,33 +1076,31 @@ namespace Divide
         beginRenderPassOitCmd->_name = "DO_OIT_PASS_1";
         beginRenderPassOitCmd->_target = params._targetOIT;
         beginRenderPassOitCmd->_clearDescriptor._clearDepth = false;
-        beginRenderPassOitCmd->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO,          to_U8( GFXDevice::ScreenTargets::ACCUMULATION ) };
-        beginRenderPassOitCmd->_clearDescriptor._clearColourDescriptors[1] = { { 1.f, 0.f, 0.f, 0.f }, to_U8( GFXDevice::ScreenTargets::REVEALAGE ) };
-        SetEnabled( beginRenderPassOitCmd->_descriptor._drawMask, RTAttachmentType::DEPTH, 0, false );
+        beginRenderPassOitCmd->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO,           GFXDevice::ScreenTargets::ACCUMULATION };
+        beginRenderPassOitCmd->_clearDescriptor._clearColourDescriptors[1] = { { 1.f, 0.f, 0.f, 0.f }, GFXDevice::ScreenTargets::REVEALAGE };
+        SetEnabled( beginRenderPassOitCmd->_descriptor._drawMask, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, false );
 
         //beginRenderPassOitCmd->_descriptor._alphaToCoverage = true;
         {
             const RenderTarget* nonMSTarget = _context.renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN );
-            const auto& colourAtt = nonMSTarget->getAttachment( RTAttachmentType::COLOUR, to_U8( GFXDevice::ScreenTargets::ALBEDO ) );
+            const auto& colourAtt = nonMSTarget->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_PASS;
             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
             binding._slot = 2;
-            binding._data.As<DescriptorCombinedImageSampler>() = { colourAtt->texture()->defaultView(), colourAtt->descriptor()._samplerHash };
+            binding._data.As<DescriptorCombinedImageSampler>() = { colourAtt->texture()->sampledView(), colourAtt->descriptor()._samplerHash };
         }
 
         prepareRenderQueues( params, cameraSnapshot, true, RenderingOrder::COUNT, bufferInOut );
-
-        // We're gonna do a new bind soon enough
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>( bufferInOut );
 
         const bool useMSAA = params._target == RenderTargetNames::SCREEN_MS;
 
 
         RenderTarget* oitRT = _context.renderTargetPool().getRenderTarget( params._targetOIT );
-        const auto& accumAtt = oitRT->getAttachment( RTAttachmentType::COLOUR, to_U8( GFXDevice::ScreenTargets::ACCUMULATION ) );
-        const auto& revAtt = oitRT->getAttachment( RTAttachmentType::COLOUR, to_U8( GFXDevice::ScreenTargets::REVEALAGE ) );
+        const auto& accumAtt = oitRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ACCUMULATION );
+        const auto& revAtt = oitRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::REVEALAGE );
 
         GFX::BeginRenderPassCommand beginRenderPassCompCmd{};
         beginRenderPassCompCmd._name = "DO_OIT_PASS_2";
@@ -1107,19 +1113,20 @@ namespace Divide
         GFX::EnqueueCommand( bufferInOut, GFX::SetCameraCommand{ Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->snapshot() } );
         GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut, beginRenderPassCompCmd );
         GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ useMSAA ? s_OITCompositionMSPipeline : s_OITCompositionPipeline } );
-        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
-        cmd->_usage = DescriptorSetUsage::PER_DRAW;
         {
-            auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-            binding._slot = 0;
-            binding._data.As<DescriptorCombinedImageSampler>() = { accumAtt->texture()->defaultView(), accumAtt->descriptor()._samplerHash };
+            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
+            cmd->_usage = DescriptorSetUsage::PER_DRAW;
+            {
+                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
+                binding._slot = 0;
+                binding._data.As<DescriptorCombinedImageSampler>() = { accumAtt->texture()->sampledView(), accumAtt->descriptor()._samplerHash };
+            }
+            {
+                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
+                binding._slot = 1;
+                binding._data.As<DescriptorCombinedImageSampler>() = { revAtt->texture()->sampledView(), revAtt->descriptor()._samplerHash };
+            }
         }
-        {
-            auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-            binding._slot = 1;
-            binding._data.As<DescriptorCombinedImageSampler>() = { revAtt->texture()->defaultView(), revAtt->descriptor()._samplerHash };
-        }
-
         GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
         GFX::EnqueueCommand( bufferInOut, GFX::EndRenderPassCommand{} );
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
@@ -1139,7 +1146,7 @@ namespace Divide
         beginRenderPassTransparentCmd._target = params._target;
         beginRenderPassTransparentCmd._clearDescriptor._clearDepth = false;
         beginRenderPassTransparentCmd._descriptor._writeLayers = params._layerParams;
-        SetEnabled( beginRenderPassTransparentCmd._descriptor._drawMask, RTAttachmentType::DEPTH, 0, false );
+        SetEnabled( beginRenderPassTransparentCmd._descriptor._drawMask, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, false );
 
         GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut, beginRenderPassTransparentCmd );
         prepareRenderQueues( params, cameraSnapshot, true, RenderingOrder::BACK_TO_FRONT, bufferInOut );
@@ -1187,29 +1194,29 @@ namespace Divide
             {
                 GFX::BeginRenderPassCommand* beginRenderPassCommand = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
                 beginRenderPassCommand->_target = RenderTargetNames::SCREEN;
-                beginRenderPassCommand->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO, to_U8( GFXDevice::ScreenTargets::VELOCITY ) };
-                beginRenderPassCommand->_clearDescriptor._clearColourDescriptors[1] = { VECTOR4_ZERO, to_U8( GFXDevice::ScreenTargets::NORMALS ) };
-                SetEnabled( beginRenderPassCommand->_descriptor._drawMask, RTAttachmentType::COLOUR, to_U8( GFXDevice::ScreenTargets::ALBEDO ), false );
-                SetEnabled( beginRenderPassCommand->_descriptor._drawMask, RTAttachmentType::DEPTH, 0, false );
+                beginRenderPassCommand->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO,  GFXDevice::ScreenTargets::VELOCITY };
+                beginRenderPassCommand->_clearDescriptor._clearColourDescriptors[1] = { VECTOR4_ZERO,  GFXDevice::ScreenTargets::NORMALS };
+                SetEnabled( beginRenderPassCommand->_descriptor._drawMask, RTAttachmentType::COLOUR,   GFXDevice::ScreenTargets::ALBEDO, false );
+                SetEnabled( beginRenderPassCommand->_descriptor._drawMask, RTAttachmentType::DEPTH,    RTColourAttachmentSlot::SLOT_0, false );
                 beginRenderPassCommand->_name = "RESOLVE_MAIN_GBUFFER";
 
                 GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ s_ResolveGBufferPipeline } );
 
                 const RenderTarget* MSSource = _context.renderTargetPool().getRenderTarget( params._target );
-                RTAttachment* velocityAtt = MSSource->getAttachment( RTAttachmentType::COLOUR, to_U8( GFXDevice::ScreenTargets::VELOCITY ) );
-                RTAttachment* normalsAtt = MSSource->getAttachment( RTAttachmentType::COLOUR, to_U8( GFXDevice::ScreenTargets::NORMALS ) );
+                RTAttachment* velocityAtt = MSSource->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::VELOCITY );
+                RTAttachment* normalsAtt = MSSource->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS );
 
                 auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
                 cmd->_usage = DescriptorSetUsage::PER_DRAW;
                 {
                     auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
                     binding._slot = 0;
-                    binding._data.As<DescriptorCombinedImageSampler>() = { velocityAtt->texture()->defaultView(), velocityAtt->descriptor()._samplerHash };
+                    binding._data.As<DescriptorCombinedImageSampler>() = { velocityAtt->texture()->sampledView(), velocityAtt->descriptor()._samplerHash };
                 }
                 {
                     auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
                     binding._slot = 1;
-                    binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt->texture()->defaultView(), normalsAtt->descriptor()._samplerHash };
+                    binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt->texture()->sampledView(), normalsAtt->descriptor()._samplerHash };
                 }
 
                 GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
@@ -1248,23 +1255,10 @@ namespace Divide
         {
             NOP();
         }
+        const CameraSnapshot& camSnapshot = camera->snapshot();
 
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName =
             Util::StringFormat( "Custom pass ( %s - %s )", TypeUtil::RenderStageToString( _stage ), params._passName.empty() ? "N/A" : params._passName.c_str() );
-
-        // Tell the Rendering API to draw from our desired PoV
-        GFX::SetCameraCommand* camCmd = GFX::EnqueueCommand<GFX::SetCameraCommand>( bufferInOut );
-        camCmd->_cameraSnapshot = camera->snapshot();
-        const CameraSnapshot& camSnapshot = camCmd->_cameraSnapshot;
-
-        if ( params._layerParams._colourLayers[0] == 0u ||
-             params._layerParams._colourLayers[0] == INVALID_LAYER_INDEX )
-        {
-            // Either the first layer or not specified
-            Attorney::SceneManagerRenderPass::prepareLightData( _parent.parent().sceneManager(), _stage, camSnapshot, memCmdInOut );
-        }
-
-        GFX::EnqueueCommand( bufferInOut, GFX::SetClipPlanesCommand{ params._clippingPlanes } );
 
         RenderTarget* target = _context.renderTargetPool().getRenderTarget( params._target );
 
@@ -1314,19 +1308,19 @@ namespace Divide
         constexpr bool doMainPass = true;
         // PrePass requires a depth buffer
         const bool doPrePass = _stage != RenderStage::SHADOW &&
-            params._target != INVALID_RENDER_TARGET_ID &&
-            target->usesAttachment( RTAttachmentType::DEPTH, 0 );
+                               params._target != INVALID_RENDER_TARGET_ID &&
+                               target->usesAttachment( RTAttachmentType::DEPTH );
         const bool doOITPass = params._targetOIT != INVALID_RENDER_TARGET_ID;
         const bool doOcclusionPass = doPrePass && params._targetHIZ != INVALID_RENDER_TARGET_ID;
 
         bool hasInvalidNodes = false;
         {
-            OPTICK_EVENT( "doCustomPass: Validate draw" )
-                if ( doPrePass )
-                {
-                    params._stagePass._passType = RenderPassType::PRE_PASS;
-                    hasInvalidNodes = validateNodesForStagePass( params._stagePass ) || hasInvalidNodes;
-                }
+            OPTICK_EVENT( "doCustomPass: Validate draw" );
+            if ( doPrePass )
+            {
+                params._stagePass._passType = RenderPassType::PRE_PASS;
+                hasInvalidNodes = validateNodesForStagePass( params._stagePass ) || hasInvalidNodes;
+            }
             if ( doMainPass )
             {
                 params._stagePass._passType = RenderPassType::MAIN_PASS;
@@ -1357,9 +1351,36 @@ namespace Divide
                               } );
             };
         }
+
+        // Tell the Rendering API to draw from our desired PoV
+        GFX::SetCameraCommand* camCmd = GFX::EnqueueCommand<GFX::SetCameraCommand>( bufferInOut );
+        camCmd->_cameraSnapshot = camSnapshot;
+
+        if ( params._layerParams._colourLayers[0] == 0u ||
+             params._layerParams._colourLayers[0] == INVALID_LAYER_INDEX )
+        {
+            // Either the first layer or not specified
+            Attorney::SceneManagerRenderPass::prepareLightData( _parent.parent().sceneManager(), _stage, camSnapshot, memCmdInOut );
+        }
+
+        GFX::EnqueueCommand( bufferInOut, GFX::SetClipPlanesCommand{ params._clippingPlanes } );
+
+        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
+        cmd->_usage = DescriptorSetUsage::PER_PASS;
+        {
+            auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
+            binding._slot = 0;
+            binding._data.As<DescriptorCombinedImageSampler>() = {};
+        }
+        {
+            auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
+            binding._slot = 1;
+            binding._data.As<DescriptorCombinedImageSampler>() = {};
+        }
+
         // We prepare all nodes for the MAIN_PASS rendering. PRE_PASS and OIT_PASS are support passes only. Their order and sorting are less important.
         params._stagePass._passType = RenderPassType::MAIN_PASS;
-        const U32 visibleNodeCount = prepareNodeData( params, camSnapshot, hasInvalidNodes, doPrePass, doOITPass, bufferInOut, memCmdInOut );
+        const size_t visibleNodeCount = prepareNodeData( params, camSnapshot, hasInvalidNodes, doPrePass, doOITPass, bufferInOut, memCmdInOut );
 
 #   pragma region PRE_PASS
         // We need the pass to be PRE_PASS even if we skip the prePass draw stage as it is the default state subsequent operations expect
@@ -1384,7 +1405,7 @@ namespace Divide
 #   pragma endregion
 
 #   pragma region LIGHT_PASS
-        _context.getRenderer().prepareLighting( _stage, camSnapshot, bufferInOut );
+        _context.getRenderer().prepareLighting( _stage, {0, 0, target->getWidth(), target->getHeight()}, camSnapshot, bufferInOut);
 #   pragma endregion
 
 #   pragma region MAIN_PASS
@@ -1429,12 +1450,12 @@ namespace Divide
             beginRenderPassCmd->_name = "DO_POST_RENDER_PASS";
             beginRenderPassCmd->_target = params._target;
             beginRenderPassCmd->_clearDescriptor._clearDepth = false;
-            SetEnabled( beginRenderPassCmd->_descriptor._drawMask, RTAttachmentType::DEPTH, 0, false );
+            SetEnabled( beginRenderPassCmd->_descriptor._drawMask, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, false );
 
             if ( _stage == RenderStage::DISPLAY )
             {
-                SetEnabled( beginRenderPassCmd->_descriptor._drawMask, RTAttachmentType::COLOUR, 1, false );
-                SetEnabled( beginRenderPassCmd->_descriptor._drawMask, RTAttachmentType::COLOUR, 2, false );
+                SetEnabled( beginRenderPassCmd->_descriptor._drawMask, RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::VELOCITY, false );
+                SetEnabled( beginRenderPassCmd->_descriptor._drawMask, RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS, false );
                 GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Debug Draw Pass";
                 Attorney::SceneManagerRenderPass::debugDraw( _parent.parent().sceneManager(), bufferInOut );
                 GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );

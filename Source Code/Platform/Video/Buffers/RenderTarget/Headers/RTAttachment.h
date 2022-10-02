@@ -51,16 +51,16 @@ enum class RTAttachmentType : U8 {
 };
 
 struct RTAttachmentDescriptor {
-    explicit RTAttachmentDescriptor(const size_t samplerHash, const RTAttachmentType type, const U8 index) noexcept
+    explicit RTAttachmentDescriptor(const size_t samplerHash, const RTAttachmentType type, const RTColourAttachmentSlot slot) noexcept
         : _samplerHash(samplerHash)
         , _type(type)
-        , _index(index)
+        , _slot(slot)
     {
     }
 
     size_t _samplerHash{ 0u };
     RTAttachmentType _type{ RTAttachmentType::COUNT };
-    U8 _index{ 0u };
+    RTColourAttachmentSlot _slot{ RTColourAttachmentSlot::COUNT };
 };
 
 // External attachments get added last and OVERRIDE any normal attachments found at the same type+index location
@@ -68,8 +68,8 @@ struct ExternalRTAttachmentDescriptor final : public RTAttachmentDescriptor {
     explicit ExternalRTAttachmentDescriptor(RTAttachment* attachment,
                                             const size_t samplerHash,
                                             const RTAttachmentType type,
-                                            const U8 index)
-        : RTAttachmentDescriptor(samplerHash, type, index)
+                                            const RTColourAttachmentSlot slot)
+        : RTAttachmentDescriptor(samplerHash, type, slot)
         , _attachment(attachment)
     {
     }
@@ -81,8 +81,8 @@ struct InternalRTAttachmentDescriptor final : public RTAttachmentDescriptor {
     explicit InternalRTAttachmentDescriptor(TextureDescriptor& descriptor,
                                             const size_t samplerHash,
                                             const RTAttachmentType type,
-                                            const U8 index)
-        : RTAttachmentDescriptor(samplerHash, type, index)
+                                            const RTColourAttachmentSlot slot)
+        : RTAttachmentDescriptor(samplerHash, type, slot)
         , _texDescriptor(descriptor)
     {
     }

@@ -100,7 +100,6 @@ bool glFramebuffer::s_alphaToCoverageEnabled = false;
 
 glFramebuffer::glFramebuffer(GFXDevice& context, const RenderTargetDescriptor& descriptor)
     : RenderTarget(context, descriptor),
-      _activeColourBuffers{},
       _prevViewport(-1),
       _debugMessage("Render Target: [ " + name() + " ]")
 {
@@ -121,7 +120,6 @@ glFramebuffer::glFramebuffer(GFXDevice& context, const RenderTargetDescriptor& d
 
     // Everything disabled so that the initial "begin" will override this
     DisableAll(_previousPolicy._drawMask);
-    _activeColourBuffers.fill(GL_NONE);
     _attachmentState.resize(GFXDevice::GetDeviceInformation()._maxRTColourAttachments + 1u + 1u); //colours + depth-stencil
 }
 
@@ -130,9 +128,9 @@ glFramebuffer::~glFramebuffer()
     GL_API::DeleteFramebuffers(1, &_framebufferHandle);
 }
 
-bool glFramebuffer::initAttachment(RTAttachment* att, const RTAttachmentType type, const U8 index, const bool isExternal)
+bool glFramebuffer::initAttachment(RTAttachment* att, const RTAttachmentType type, const RTColourAttachmentSlot slot, const bool isExternal)
 {
-    if (RenderTarget::initAttachment(att, type, index, isExternal))
+    if (RenderTarget::initAttachment(att, type, slot, isExternal))
     {
         if (!isExternal && att->texture()->descriptor().mipMappingState() == TextureDescriptor::MipMappingState::AUTO)
         {
@@ -141,7 +139,7 @@ bool glFramebuffer::initAttachment(RTAttachment* att, const RTAttachmentType typ
         }
 
         // Find the appropriate binding point
-        U32 binding = to_U32(GL_COLOR_ATTACHMENT0) + index;
+        U32 binding = to_U32(GL_COLOR_ATTACHMENT0) + to_base(slot);
         if (type == RTAttachmentType::DEPTH || type == RTAttachmentType::DEPTH_STENCIL)
         {
             binding = type == RTAttachmentType::DEPTH ? to_U32(GL_DEPTH_ATTACHMENT) : to_U32(GL_DEPTH_STENCIL_ATTACHMENT);
@@ -216,7 +214,7 @@ bool glFramebuffer::create()
         return false;
     }
 
-    for (U8 i = 0u; i < RT_MAX_COLOUR_ATTACHMENTS + 1; ++i)
+    for (size_t i = 0u; i < _attachments.size(); ++i )
     {
         setDefaultAttachmentBinding(_attachments[i]);
     }
@@ -255,7 +253,7 @@ void glFramebuffer::blitFrom(RenderTarget* source, const RTBlitParams& params)
     const vec2<U16>& outputDim = output->_descriptor._resolution;
 
     bool blittedDepth = false;
-
+    bool readBufferDirty = false;
     const bool depthMismatch = input->_attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX] != output->_attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX];
 
     // Multiple attachments, multiple layers, multiple everything ... what a mess ... -Ionut
@@ -266,7 +264,7 @@ void glFramebuffer::blitFrom(RenderTarget* source, const RTBlitParams& params)
         GLuint prevReadAtt = 0;
         GLuint prevWriteAtt = 0;
 
-        const std::array<GLenum, MAX_RT_COLOUR_ATTACHMENTS> currentOutputBuffers = output->_activeColourBuffers;
+        const auto currentOutputBuffers = output->_colourBuffers._glSlot;
         for (ColourBlitEntry entry : params._blitColours)
         {
             if (entry._input._index == INVALID_LAYER_INDEX ||
@@ -286,6 +284,7 @@ void glFramebuffer::blitFrom(RenderTarget* source, const RTBlitParams& params)
                 {
                     input->_activeReadBuffer = readBuffer;
                     glNamedFramebufferReadBuffer(input->_framebufferHandle, readBuffer);
+                    readBufferDirty = true;
                 }
 
                 prevReadAtt = crtReadAtt;
@@ -296,24 +295,23 @@ void glFramebuffer::blitFrom(RenderTarget* source, const RTBlitParams& params)
             if (prevWriteAtt != crtWriteAtt)
             {
                 const GLenum colourAttOut = static_cast<GLenum>(crtWriteAtt);
-                bool set = _activeColourBuffers[0] != colourAttOut;
-                if (!set)
+                bool set = output->_colourBuffers._glSlot[0] != colourAttOut;
+                output->_colourBuffers._glSlot[0] = colourAttOut;
+                for (size_t i = 1; i < output->_colourBuffers._glSlot.size(); ++i )
                 {
-                    for (size_t i = 1; i < _activeColourBuffers.size(); ++i)
+                    if (output->_colourBuffers._glSlot[i] != GL_NONE)
                     {
-                        if (_activeColourBuffers[i] != GL_NONE)
-                        {
-                            set = true;
-                            break;
-                        }
+                        output->_colourBuffers._glSlot[i] = GL_NONE;
+                        set = true;
                     }
                 }
 
                 if (set)
                 {
-                    output->_activeColourBuffers.fill(GL_NONE);
-                    output->_activeColourBuffers[0] = colourAttOut;
-                    glNamedFramebufferDrawBuffer(output->_framebufferHandle, colourAttOut);
+                    output->_colourBuffers._dirty = true;
+                    glNamedFramebufferDrawBuffers(output->_framebufferHandle,
+                                                  (GLsizei)output->_colourBuffers._glSlot.size(),
+                                                  output->_colourBuffers._glSlot.data());
                 }
 
                 prevWriteAtt = crtWriteAtt;
@@ -357,14 +355,6 @@ void glFramebuffer::blitFrom(RenderTarget* source, const RTBlitParams& params)
             }
             QueueMipMapsRecomputation(outAtt);
         }
-
-        if (currentOutputBuffers != output->_activeColourBuffers)
-        {
-            output->_activeColourBuffers = currentOutputBuffers;
-            glNamedFramebufferDrawBuffers(_framebufferHandle,
-                                          MAX_RT_COLOUR_ATTACHMENTS,
-                                          _activeColourBuffers.data());
-        }
     }
 
     if (!blittedDepth &&
@@ -390,41 +380,49 @@ void glFramebuffer::blitFrom(RenderTarget* source, const RTBlitParams& params)
         _context.registerDrawCall();
         QueueMipMapsRecomputation(output->_attachments[RT_DEPTH_ATTACHMENT_IDX]);
     }
+
+    if (readBufferDirty )
+    {
+        glNamedFramebufferReadBuffer( input->_framebufferHandle, GL_NONE );
+        input->_activeReadBuffer = GL_NONE;
+    }
 }
 
 void glFramebuffer::prepareBuffers(const RTDrawDescriptor& drawPolicy)
 {
     OPTICK_EVENT();
 
-    if (_previousPolicy._drawMask != drawPolicy._drawMask)
+    if (_previousPolicy._drawMask != drawPolicy._drawMask || _colourBuffers._dirty )
     {
         bool set = false;
         // handle colour buffers first
-        const U8 count = std::min(MAX_RT_COLOUR_ATTACHMENTS, getAttachmentCount(RTAttachmentType::COLOUR));
-        for (U8 j = 0; j < MAX_RT_COLOUR_ATTACHMENTS; ++j)
+        const U8 count = std::min(to_base(RTColourAttachmentSlot::COUNT), getAttachmentCount(RTAttachmentType::COLOUR));
+        for (U8 j = 0; j < to_base( RTColourAttachmentSlot::COUNT ); ++j)
         {
             GLenum temp = GL_NONE;
             if (j < count)
             {
+                const RTColourAttachmentSlot slot = static_cast<RTColourAttachmentSlot>(j);
                 temp = GL_NONE;
-                if (IsEnabled(drawPolicy._drawMask, RTAttachmentType::COLOUR, j) && usesAttachment(RTAttachmentType::COLOUR, j))
+                if (IsEnabled(drawPolicy._drawMask, RTAttachmentType::COLOUR, slot) && usesAttachment(RTAttachmentType::COLOUR, slot))
                 {
-                    temp = static_cast<GLenum>(getAttachment(RTAttachmentType::COLOUR, j)->binding());
+                    temp = static_cast<GLenum>(getAttachment(RTAttachmentType::COLOUR, slot)->binding());
                 }
             }
 
-            if (_activeColourBuffers[j] != temp)
+            if (_colourBuffers._glSlot[j] != temp)
             {
-                _activeColourBuffers[j] = temp;
+                _colourBuffers._glSlot[j] = temp;
                 set = true;
             }
         }
 
         if (set)
         {
-            glNamedFramebufferDrawBuffers(_framebufferHandle, MAX_RT_COLOUR_ATTACHMENTS, _activeColourBuffers.data());
+            glNamedFramebufferDrawBuffers(_framebufferHandle, to_base( RTColourAttachmentSlot::COUNT ), _colourBuffers._glSlot.data());
         }
 
+        _colourBuffers._dirty = false;
         queueCheckStatus();
      }
 
@@ -446,15 +444,16 @@ void glFramebuffer::setDefaultAttachmentBinding(const RTAttachment_uptr& attachm
     }
 }
 
-void glFramebuffer::transitionAttachments(const bool toWrite)
+void glFramebuffer::transitionAttachments( const RTDrawDescriptor& drawPolicy, const bool toWrite)
 {
     OPTICK_EVENT();
 
-    for (U8 i = 0u; i < RT_MAX_COLOUR_ATTACHMENTS; ++i)
+    for (U8 i = 0u; i < to_base(RTColourAttachmentSlot::COUNT); ++i )
     {
         if (_attachmentsUsed[i])
         {
-            if (!_attachments[i]->setImageUsage(toWrite ? ImageUsage::RT_COLOUR_ATTACHMENT : ImageUsage::SHADER_SAMPLE))
+            const bool prepareForWrite = IsEnabled( drawPolicy._drawMask, RTAttachmentType::COLOUR, static_cast<RTColourAttachmentSlot>(i) ) && toWrite;
+            if (!_attachments[i]->setImageUsage( prepareForWrite ? ImageUsage::RT_COLOUR_ATTACHMENT : ImageUsage::SHADER_SAMPLE ))
             {
                 NOP();
             }
@@ -463,7 +462,8 @@ void glFramebuffer::transitionAttachments(const bool toWrite)
 
     if (_attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX])
     {
-        if (!_attachments[RT_DEPTH_ATTACHMENT_IDX]->setImageUsage(toWrite ? ImageUsage::RT_DEPTH_ATTACHMENT : ImageUsage::SHADER_SAMPLE))
+        const bool prepareForWrite = IsEnabled( drawPolicy._drawMask, RTAttachmentType::DEPTH ) && toWrite;
+        if (!_attachments[RT_DEPTH_ATTACHMENT_IDX]->setImageUsage( prepareForWrite ? ImageUsage::RT_DEPTH_ATTACHMENT : ImageUsage::SHADER_SAMPLE))
         {
             NOP();
         }
@@ -474,14 +474,14 @@ void glFramebuffer::begin(const RTDrawDescriptor& drawPolicy, const RTClearDescr
 {
     OPTICK_EVENT();
 
-    transitionAttachments(true);
+    transitionAttachments(drawPolicy, true);
 
     const bool needLayeredColour = drawPolicy._writeLayers._depthLayer != INVALID_LAYER_INDEX;
     U16 targetColourLayer = needLayeredColour ? drawPolicy._writeLayers._depthLayer : 0u;
 
     bool needLayeredDepth = false;
     U16 targetDepthLayer = 0u;
-    for (U8 i = 0u; i < MAX_RT_COLOUR_ATTACHMENTS; ++i)
+    for (U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i)
     {
         if (!_attachmentsUsed[i])
         {
@@ -501,7 +501,7 @@ void glFramebuffer::begin(const RTDrawDescriptor& drawPolicy, const RTClearDescr
         if (drawPolicy._writeLayers._depthLayer != INVALID_LAYER_INDEX || needLayeredDepth)
         {
             targetDepthLayer = drawPolicy._writeLayers._depthLayer == INVALID_LAYER_INDEX ? targetDepthLayer : drawPolicy._writeLayers._depthLayer;
-            drawToLayer({ RTAttachmentType::DEPTH, 0u, targetDepthLayer, drawPolicy._mipWriteLevel });
+            drawToLayer({ RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, targetDepthLayer, drawPolicy._mipWriteLevel });
         }
         else if (drawPolicy._mipWriteLevel != U16_MAX)
         {
@@ -513,7 +513,7 @@ void glFramebuffer::begin(const RTDrawDescriptor& drawPolicy, const RTClearDescr
         }
     }
 
-    for (U8 i = 0u; i < MAX_RT_COLOUR_ATTACHMENTS; ++i)
+    for (U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i)
     {
         if (!_attachmentsUsed[i])
         {
@@ -523,7 +523,7 @@ void glFramebuffer::begin(const RTDrawDescriptor& drawPolicy, const RTClearDescr
         if (drawPolicy._writeLayers._colourLayers[i] != INVALID_LAYER_INDEX || needLayeredColour)
         {
             targetColourLayer = drawPolicy._writeLayers._colourLayers[i] == INVALID_LAYER_INDEX ? targetColourLayer : drawPolicy._writeLayers._colourLayers[i];
-            drawToLayer({ RTAttachmentType::COLOUR, 0u, targetColourLayer, drawPolicy._mipWriteLevel });
+            drawToLayer({ RTAttachmentType::COLOUR, static_cast<RTColourAttachmentSlot>(i), targetColourLayer, drawPolicy._mipWriteLevel});
         }
         else if (drawPolicy._mipWriteLevel != U16_MAX)
         {
@@ -534,6 +534,8 @@ void glFramebuffer::begin(const RTDrawDescriptor& drawPolicy, const RTClearDescr
             setDefaultAttachmentBinding(_attachments[i]);
         }
     }
+
+    prepareBuffers( drawPolicy );
 
     if_constexpr(Config::Build::IS_DEBUG_BUILD)
     {
@@ -576,9 +578,9 @@ void glFramebuffer::end()
 {
     OPTICK_EVENT();
 
-    transitionAttachments(false);
+    transitionAttachments( _previousPolicy, false);
 
-    for (U8 i = 0u; i < RT_MAX_COLOUR_ATTACHMENTS + 1u; ++i)
+    for (U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ) + 1u; ++i)
     {
         QueueMipMapsRecomputation(_attachments[i]);
     }
@@ -603,9 +605,9 @@ void glFramebuffer::clear(const RTClearDescriptor& descriptor)
     OPTICK_EVENT();
     {
         OPTICK_EVENT("Clear Colour Attachments");
-        for (U8 i = 0u; i < MAX_RT_COLOUR_ATTACHMENTS; ++i)
+        for (U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i)
         {
-            if (!_attachmentsUsed[i] || descriptor._clearColourDescriptors[i]._index == MAX_RT_COLOUR_ATTACHMENTS)
+            if (!_attachmentsUsed[i] || descriptor._clearColourDescriptors[i]._index == RTColourAttachmentSlot::COUNT)
             {
                 continue;
             }
@@ -677,7 +679,7 @@ void glFramebuffer::drawToLayer(const RTDrawLayerParams& params)
         return;
     }
 
-    const RTAttachment_uptr& att = params._type == RTAttachmentType::COLOUR ? _attachments[params._index] : _attachments[RT_DEPTH_ATTACHMENT_IDX];
+    const RTAttachment_uptr& att = params._type == RTAttachmentType::COLOUR ? _attachments[to_base(params._index)] : _attachments[RT_DEPTH_ATTACHMENT_IDX];
 
     const GLenum textureType = GLUtil::internalTextureType(att->texture()->descriptor().texType(), att->texture()->descriptor().msaaSamples());
     // only for array textures (it's better to simply ignore the command if the format isn't supported (debugging reasons)
@@ -691,7 +693,7 @@ void glFramebuffer::drawToLayer(const RTDrawLayerParams& params)
 
     const U16 targetMip = params._mipLevel == U16_MAX ? 0u : params._mipLevel;
 
-    if (params._type == RTAttachmentType::COLOUR && _attachmentsUsed[params._index])
+    if (params._type == RTAttachmentType::COLOUR && _attachmentsUsed[to_base(params._index)])
     {
         const BindingState& state = getAttachmentState(static_cast<GLenum>(att->binding()));
 
@@ -743,14 +745,14 @@ void glFramebuffer::setMipLevel(const U16 writeLevel)
     bool needsAttachmentDisabled = false;
 
     changedMip = setMipLevelInternal(_attachments[RT_DEPTH_ATTACHMENT_IDX], writeLevel) || changedMip;
-    for (U8 i = 0u; i < RT_MAX_COLOUR_ATTACHMENTS; ++i)
+    for (U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i)
     {
         changedMip = setMipLevelInternal(_attachments[i], writeLevel) || changedMip;
     }
 
     if (changedMip && needsAttachmentDisabled)
     {
-        for (U8 i = 0u; i < RT_MAX_COLOUR_ATTACHMENTS + 1; ++i)
+        for (U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ) + 1; ++i)
         {
             if (_attachments[i]->mipWriteLevel() != writeLevel)
             {

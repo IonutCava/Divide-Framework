@@ -53,7 +53,7 @@ namespace Divide {
         if (lhs._blendColour != rhs._blendColour) {
             return false;
         }
-        for (U8 i = 0u; i < MAX_RT_COLOUR_ATTACHMENTS; ++i) {
+        for (size_t i = 0u; i < lhs._settings.size(); ++i ) {
             if (lhs._settings[i] != rhs._settings[i]) {
                 return false;
             }
@@ -67,7 +67,7 @@ namespace Divide {
             return true;
         }
 
-        for (U8 i = 0u; i < MAX_RT_COLOUR_ATTACHMENTS; ++i) {
+        for (size_t i = 0u; i < lhs._settings.size(); ++i ) {
             if (lhs._settings[i] != rhs._settings[i]) {
                 return true;
             }

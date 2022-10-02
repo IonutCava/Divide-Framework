@@ -472,8 +472,8 @@ namespace Divide
                                 textureHandles == nullptr ? 0u : textureHandles[0],
                                 samplerHandles == nullptr ? 0u : samplerHandles[0] );
         }
-
         BindResult result = BindResult::FAILED;
+
         if ( textureCount > 0u && unitOffset + textureCount < GFXDevice::GetDeviceInformation()._maxTextureUnits )
         {
             // Update bound map
@@ -822,7 +822,6 @@ namespace Divide
     {
         if ( _lowerLeftOrigin != lowerLeftOrigin || _negativeOneToOneDepth != negativeOneToOneDepth )
         {
-
             glClipControl(
                 lowerLeftOrigin ? GL_LOWER_LEFT : GL_UPPER_LEFT,
                 negativeOneToOneDepth ? GL_NEGATIVE_ONE_TO_ONE : GL_ZERO_TO_ONE

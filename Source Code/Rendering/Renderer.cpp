@@ -19,26 +19,13 @@
 
 namespace Divide {
 
-vec3<U8> Renderer::CLUSTER_SIZE {
-    Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS,
-    Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS,
-    24u
-};
-
 Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
     : PlatformContextComponent(context)
 {
-    DIVIDE_ASSERT(CLUSTER_SIZE.x % Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS == 0);
-    DIVIDE_ASSERT(CLUSTER_SIZE.y % Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS == 0);
-    DIVIDE_ASSERT(CLUSTER_SIZE.z % Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS == 0);
-    _computeWorkgroupSize.set(
-        CLUSTER_SIZE.x / Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS,
-        CLUSTER_SIZE.y / Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS,
-        CLUSTER_SIZE.z / Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS
-    );
-
     const Configuration& config = context.config();
-    const U32 numClusters = to_U32(CLUSTER_SIZE.x) * CLUSTER_SIZE.y * CLUSTER_SIZE.z;
+    constexpr U32 numClusters = to_U32(Config::Lighting::ClusteredForward::CLUSTERS_X) * 
+                                       Config::Lighting::ClusteredForward::CLUSTERS_Y *
+                                       Config::Lighting::ClusteredForward::CLUSTERS_Z;
 
     ShaderModuleDescriptor computeDescriptor = {};
     computeDescriptor._moduleType = ShaderType::COMPUTE;
@@ -76,6 +63,9 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
         computeDescriptor._variant = "";
         ShaderProgramDescriptor buildDescritpor = {};
         buildDescritpor._modules.push_back(computeDescriptor);
+        buildDescritpor._globalDefines.emplace_back( "inverseProjectionMatrix PushData0" );
+        buildDescritpor._globalDefines.emplace_back( "viewport ivec4(PushData1[0])" );
+        buildDescritpor._globalDefines.emplace_back( "_zPlanes PushData1[1].xy" );
         ResourceDescriptor buildShaderDesc("lightBuildClusteredAABBs");
         buildShaderDesc.propertyDescriptor(buildDescritpor);
         _lightBuildClusteredAABBsComputeShader = CreateResource<ShaderProgram>(cache, buildShaderDesc);
@@ -159,6 +149,7 @@ Renderer::~Renderer()
 }
 
 void Renderer::prepareLighting(const RenderStage stage,
+                               const Rect<I32>& viewport,
                                const CameraSnapshot& cameraSnapshot,
                                GFX::CommandBuffer& bufferInOut)
 {
@@ -166,71 +157,106 @@ void Renderer::prepareLighting(const RenderStage stage,
         // Nothing to do in the shadow pass
         return;
     }
-
+   
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Cull Lights" });
     {
-        context().kernel().sceneManager()->getActiveScene().lightPool()->uploadLightData(stage, bufferInOut);
         PerRenderStageData& data = _lightDataPerStage[to_base(stage)];
         {
-            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-            cmd->_usage = DescriptorSetUsage::PER_FRAME;
+            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
+            cmd->_usage = DescriptorSetUsage::PER_PASS;
+
+            const auto& pool = context().kernel().sceneManager()->getActiveScene().lightPool();
+
+            const size_t stageIndex = to_size( stage );
+            const U32 lightCount = pool->sortedLightCount(stage);
+
+            {
+                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE_AND_DRAW );
+                binding._slot = 8;
+                binding._data.As<ShaderBufferEntry>() = { *pool->sceneBuffer(), {stageIndex, 1u}};
+            }
+            {
+                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE_AND_DRAW );
+                binding._slot = 9;
+                binding._data.As<ShaderBufferEntry>() = { *pool->lightBuffer(), {stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, lightCount}};
+            }
             {
                 auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE_AND_DRAW);
                 binding._slot = 10;
-                binding._data.As<ShaderBufferEntry>() = { *data._lightGridBuffer, { 0u, data._lightGridBuffer->getPrimitiveCount() } };
-            }
-            {
-                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE_AND_DRAW);
-                binding._slot = 11;
                 binding._data.As<ShaderBufferEntry>() = { *data._lightIndexBuffer, { 0u, data._lightIndexBuffer->getPrimitiveCount() }};
             }
             {
-                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE_AND_DRAW);
-                binding._slot = 12;
+                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE_AND_DRAW );
+                binding._slot = 11;
+                binding._data.As<ShaderBufferEntry>() = { *data._lightGridBuffer, { 0u, data._lightGridBuffer->getPrimitiveCount() } };
+            }
+        }
+        {
+            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+            cmd->_usage = DescriptorSetUsage::PER_DRAW;
+            {
+                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
+                binding._slot = 0;
+                binding._data.As<ShaderBufferEntry>() = { *data._globalIndexCountBuffer, { 0u, data._globalIndexCountBuffer->getPrimitiveCount() } };
+            }
+            {
+                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE );
+                binding._slot = 1;
                 binding._data.As<ShaderBufferEntry>() = { *data._lightClusterAABBsBuffer, { 0u, data._lightClusterAABBsBuffer->getPrimitiveCount() } };
             }
-            {
-                RTAttachment* targetAtt = _context.gfx().renderTargetPool().getRenderTarget(RenderTargetNames::REFLECTION_CUBE)->getAttachment(RTAttachmentType::COLOUR, 0u);
-                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-                binding._slot = 14;
-                binding._data.As<DescriptorCombinedImageSampler>() = { targetAtt->texture()->defaultView(), targetAtt->descriptor()._samplerHash};
-            }
         }
-        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-        cmd->_usage = DescriptorSetUsage::PER_DRAW;
+        GFX::EnqueueCommand( bufferInOut, _lightResetCounterPipelineCmd );
+        GFX::EnqueueCommand( bufferInOut, GFX::DispatchComputeCommand{ 1u, 1u, 1u } );
+
+        bool needRebuild = data._invalidated;
+        if (!needRebuild )
         {
-            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
-            binding._slot = 0;
-            binding._data.As<ShaderBufferEntry>() = { *data._globalIndexCountBuffer, { 0u, data._globalIndexCountBuffer->getPrimitiveCount() } };
+            PerRenderStageData::GridBuildData tempData;
+            tempData._invProjectionMatrix = cameraSnapshot._invProjectionMatrix;
+            tempData._viewport = viewport;
+            tempData._zPlanes = cameraSnapshot._zPlanes;
+
+             needRebuild = data._gridData != tempData;
+             if (needRebuild)
+             {
+                 data._gridData = tempData;
+             }
         }
 
-        if (data._previousProjMatrix != cameraSnapshot._projectionMatrix)  {
-            data._previousProjMatrix = cameraSnapshot._projectionMatrix;
+        if ( needRebuild )
+        {
+            data._invalidated = false;
 
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Rebuild Light Grid" });
-            {
-                PushConstantsStruct pushConstants{};
-                pushConstants.data0 = cameraSnapshot._invProjectionMatrix;
-                pushConstants.data1._vec[0] =  context().gfx().activeViewport();
-                pushConstants.data1._vec[1].xy = cameraSnapshot._zPlanes;
+            
+            PushConstantsStruct pushConstants{};
+            pushConstants.data0 = data._gridData._invProjectionMatrix;
+            pushConstants.data1._vec[0] = data._gridData._viewport;
+            pushConstants.data1._vec[1].xy = data._gridData._zPlanes;
 
-                GFX::EnqueueCommand(bufferInOut, _lightBuildClusteredAABBsPipelineCmd);
-                GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(pushConstants);
-                GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ _computeWorkgroupSize });
-                GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{ to_base(MemoryBarrierType::SHADER_STORAGE) });
-            }
+            GFX::EnqueueCommand(bufferInOut, _lightBuildClusteredAABBsPipelineCmd);
+            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(pushConstants);
+            GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand
+            { 
+                Config::Lighting::ClusteredForward::CLUSTERS_X,
+                Config::Lighting::ClusteredForward::CLUSTERS_Y,
+                Config::Lighting::ClusteredForward::CLUSTERS_Z
+            });
+            
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
         }
-        
-        GFX::EnqueueCommand(bufferInOut, _lightResetCounterPipelineCmd);
-        GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ 1u, 1u, 1u }); 
+
         GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{ to_base(MemoryBarrierType::SHADER_STORAGE) });
 
         GFX::EnqueueCommand(bufferInOut, _lightCullPipelineCmd);
-        GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ _computeWorkgroupSize });
+        GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{
+            Config::Lighting::ClusteredForward::CLUSTERS_X / Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS,
+            Config::Lighting::ClusteredForward::CLUSTERS_Y / Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS,
+            Config::Lighting::ClusteredForward::CLUSTERS_Z / Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS
+        });
         GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{ to_base(MemoryBarrierType::SHADER_STORAGE) });
-
     }
+
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
@@ -243,4 +269,12 @@ void Renderer::idle() const {
 void Renderer::updateResolution(const U16 newWidth, const U16 newHeight) const {
     _postFX->updateResolution(newWidth, newHeight);
 }
+
+[[nodiscard]] bool Renderer::PerRenderStageData::GridBuildData::operator!=( const Renderer::PerRenderStageData::GridBuildData& other ) const noexcept
+{
+    return _zPlanes != other._zPlanes ||
+           _viewport != other._viewport ||
+           _invProjectionMatrix != other._invProjectionMatrix;
+}
+
 }

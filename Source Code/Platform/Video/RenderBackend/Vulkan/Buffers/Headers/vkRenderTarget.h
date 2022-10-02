@@ -64,16 +64,17 @@ namespace Divide
     private:
         void begin(VkCommandBuffer cmdBuffer, const RTDrawDescriptor& descriptor, const RTClearDescriptor& clearPolicy, VkPipelineRenderingCreateInfo& pipelineRenderingCreateInfoOut);
         void end(VkCommandBuffer cmdBuffer);
-        void transitionAttachments(VkCommandBuffer cmdBuffer, bool toWrite);
+        void transitionAttachments(VkCommandBuffer cmdBuffer, const RTDrawDescriptor& drawPolicy, bool toWrite);
 
     private:
-        std::array<VkRenderingAttachmentInfo, RT_MAX_COLOUR_ATTACHMENTS> _colourAttachmentInfo{};
+        std::array<VkRenderingAttachmentInfo, to_base(RTColourAttachmentSlot::COUNT)> _colourAttachmentInfo{};
         VkRenderingAttachmentInfo _depthAttachmentInfo{};
         
-        std::array<VkFormat, RT_MAX_COLOUR_ATTACHMENTS> _colourAttachmentFormats{};
+        std::array<VkFormat, to_base( RTColourAttachmentSlot::COUNT )> _colourAttachmentFormats{};
 
-        std::array<VkRenderingAttachmentInfo, RT_MAX_COLOUR_ATTACHMENTS> _stagingColourAttachmentInfo{};
-        std::array<VkImageMemoryBarrier2, RT_MAX_COLOUR_ATTACHMENTS + 1> _memBarriers{};
+        std::array<VkRenderingAttachmentInfo, to_base( RTColourAttachmentSlot::COUNT )> _stagingColourAttachmentInfo{};
+        std::array<VkImageMemoryBarrier2, to_base( RTColourAttachmentSlot::COUNT ) + 1> _memBarriers{};
+        RTDrawDescriptor _previousPolicy;
     };
 
     namespace Attorney

@@ -224,7 +224,7 @@ namespace {
     bool s_useShaderCache = true;
     bool s_targetVulkan = false;
 
-    constexpr U8 s_reserverdTextureSlotsPerDraw = to_base(TextureSlot::COUNT);
+    constexpr U8 s_reserverdTextureSlotsPerDraw = to_base(TextureSlot::COUNT) + 2; /*Reflection and refraction*/
     constexpr U8 s_reserverdBufferSlotsPerDraw = ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET - s_reserverdTextureSlotsPerDraw;
     constexpr U8 s_reservedImageSlotsPerDraw = ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET - s_reserverdBufferSlotsPerDraw - s_reserverdTextureSlotsPerDraw;
     constexpr U8 s_uniformBlockBindingOffset = 14u;
@@ -524,9 +524,9 @@ bool InitGLSW(const GFXDevice& gfx, const DeviceInformation& deviceInfo, const C
     AppendToShaderHeader(ShaderType::COUNT, "#define CLUSTERS_X_THREADS " + Util::to_string(Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS));
     AppendToShaderHeader(ShaderType::COUNT, "#define CLUSTERS_Y_THREADS " + Util::to_string(Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS));
     AppendToShaderHeader(ShaderType::COUNT, "#define CLUSTERS_Z_THREADS " + Util::to_string(Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS));
-    AppendToShaderHeader(ShaderType::COUNT, "#define CLUSTERS_X " + Util::to_string(Renderer::CLUSTER_SIZE.x));
-    AppendToShaderHeader(ShaderType::COUNT, "#define CLUSTERS_Y " + Util::to_string(Renderer::CLUSTER_SIZE.y));
-    AppendToShaderHeader(ShaderType::COUNT, "#define CLUSTERS_Z " + Util::to_string(Renderer::CLUSTER_SIZE.z));
+    AppendToShaderHeader(ShaderType::COUNT, "#define CLUSTERS_X " + Util::to_string(Config::Lighting::ClusteredForward::CLUSTERS_X));
+    AppendToShaderHeader(ShaderType::COUNT, "#define CLUSTERS_Y " + Util::to_string(Config::Lighting::ClusteredForward::CLUSTERS_Y));
+    AppendToShaderHeader(ShaderType::COUNT, "#define CLUSTERS_Z " + Util::to_string(Config::Lighting::ClusteredForward::CLUSTERS_Z));
     AppendToShaderHeader(ShaderType::COUNT, "#define SKY_LIGHT_LAYER_IDX " + Util::to_string(SceneEnvironmentProbePool::SkyProbeLayerIndex()));
     AppendToShaderHeader(ShaderType::COUNT, "#define MAX_LIGHTS_PER_CLUSTER " + Util::to_string(config.rendering.numLightsPerCluster));
     AppendToShaderHeader(ShaderType::COUNT, "#define REFLECTION_PROBE_RESOLUTION " + Util::to_string(reflectionProbeRes));
@@ -1514,13 +1514,14 @@ void ShaderProgram::initUniformUploader(const PerFileShaderData& shaderFileData)
     const ShaderLoadData& programLoadData = shaderFileData._loadData;
 
     for (const LoadData& stageData : programLoadData) {
-        auto uniformBlock = Reflection::FindUniformBlock(stageData._reflectionData);
+        const Reflection::BufferEntry* uniformBlock = Reflection::FindUniformBlock(stageData._reflectionData);
 
         if (uniformBlock != nullptr) {
             bool found = false;
-            for (auto& block : _uniformBlockBuffers) {
-                if (block.uniformBlock()._bindingSet != stageData._reflectionData._uniformBlockBindingSet &&
-                    block.uniformBlock()._bindingSlot != stageData._reflectionData._uniformBlockBindingIndex)
+            for (const UniformBlockUploader& block : _uniformBlockBuffers) {
+                const Reflection::BufferEntry& uploaderBlock = block.uniformBlock();
+                if ( uploaderBlock._bindingSet != stageData._reflectionData._uniformBlockBindingSet ||
+                     uploaderBlock._bindingSlot != stageData._reflectionData._uniformBlockBindingIndex)
                 {
                     continue;
                 }

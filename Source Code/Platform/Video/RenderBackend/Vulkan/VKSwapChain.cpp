@@ -194,12 +194,12 @@ namespace Divide {
                                  1,
                                  &_inFlightFences[_currentFrameIdx],
                                  VK_TRUE,
-                                 std::numeric_limits<uint64_t>::max()));
+                                 U64_MAX));
 
         //request image from the swapchain, one second timeout
         return vkAcquireNextImageKHR(_device.getVKDevice(),
                                      _swapChain.swapchain,
-                                     std::numeric_limits<uint64_t>::max(),
+                                     U64_MAX,
                                      _imageAvailableSemaphores[_currentFrameIdx],
                                      nullptr,
                                      &_swapchainImageIndex);
@@ -215,7 +215,7 @@ namespace Divide {
                             1,
                             &_imagesInFlight[_swapchainImageIndex],
                             VK_TRUE,
-                            std::numeric_limits<U64>::max());
+                            U64_MAX);
         }
         _imagesInFlight[_swapchainImageIndex] = _inFlightFences[_currentFrameIdx];
 

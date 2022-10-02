@@ -105,7 +105,7 @@ struct VKStateTracker {
 
     VKImmediateCmdContext* _cmdContext{ nullptr };
     VMAAllocatorInstance _allocatorInstance{};
-    std::array < std::pair<Str64, U32>, 32 > _debugScope;
+    std::array < std::pair<Str256, U32>, 32 > _debugScope;
     U8 _debugScopeDepth = 0u;
     PrimitiveTopology _activeTopology{ PrimitiveTopology::COUNT };
     VkPipeline _activePipeline{ VK_NULL_HANDLE };
@@ -211,8 +211,8 @@ public:
     static [[nodiscard]] VkSampler GetSamplerHandle(size_t samplerHash);
 
 private:
-    static void InsertDebugMessage(VkCommandBuffer cmdBuffer, const char* message, U32 id = std::numeric_limits<U32>::max());
-    static void PushDebugMessage(VkCommandBuffer cmdBuffer, const char* message, U32 id = std::numeric_limits<U32>::max());
+    static void InsertDebugMessage(VkCommandBuffer cmdBuffer, const char* message, U32 id = U32_MAX);
+    static void PushDebugMessage(VkCommandBuffer cmdBuffer, const char* message, U32 id = U32_MAX);
     static void PopDebugMessage(VkCommandBuffer cmdBuffer);
 
 private:

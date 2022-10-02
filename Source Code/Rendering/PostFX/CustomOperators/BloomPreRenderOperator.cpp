@@ -80,13 +80,13 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
         resolutionDownscaleFactor = 4.0f;
     }
 
-    const auto& screenAtt = parent.screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, to_base(GFXDevice::ScreenTargets::ALBEDO));
+    const auto& screenAtt = parent.screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
     TextureDescriptor screenDescriptor = screenAtt->texture()->descriptor();
     screenDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
     InternalRTAttachmentDescriptors att
     {
-        InternalRTAttachmentDescriptor{ screenDescriptor, screenAtt->descriptor()._samplerHash, RTAttachmentType::COLOUR, 0u }
+        InternalRTAttachmentDescriptor{ screenDescriptor, screenAtt->descriptor()._samplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 }
     };
 
     RenderTargetDescriptor desc = {};
@@ -150,8 +150,8 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
 {
     assert(input._targetID != output._targetID);
 
-    const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO));
-    const auto& screenTex = screenAtt->texture()->defaultView();
+    const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
+    const auto& screenTex = screenAtt->texture()->sampledView();
     {
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -167,7 +167,7 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
     beginRenderPassCmd._target = _bloomOutput._targetID;
     beginRenderPassCmd._name = "DO_BLOOM_PASS";
     beginRenderPassCmd._clearDescriptor._clearDepth = true;
-    beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { DefaultColours::BLACK, 0u };
+    beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { DefaultColours::BLACK, RTColourAttachmentSlot::SLOT_0 };
     GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
     GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
@@ -178,15 +178,15 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
                         _bloomBlurBuffer[0],
                         _bloomBlurBuffer[1],
                         RTAttachmentType::COLOUR,
-                        0,
+                        RTColourAttachmentSlot::SLOT_0,
                         10,
                         true,
                         1,
                         bufferInOut);
 
     // Step 3: apply bloom
-    const auto& bloomAtt = _bloomBlurBuffer[1]._rt->getAttachment(RTAttachmentType::COLOUR, 0); 
-    const auto& bloomTex = bloomAtt->texture()->defaultView();
+    const auto& bloomAtt = _bloomBlurBuffer[1]._rt->getAttachment(RTAttachmentType::COLOUR );
+    const auto& bloomTex = bloomAtt->texture()->sampledView();
 
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
     cmd->_usage = DescriptorSetUsage::PER_DRAW;

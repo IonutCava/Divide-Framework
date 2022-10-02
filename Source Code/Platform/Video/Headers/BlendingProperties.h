@@ -37,9 +37,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-// 4 should be more than enough even for batching multiple render targets together
-constexpr U8 MAX_RT_COLOUR_ATTACHMENTS = 4;
-
 struct BlendingSettings {
 
     PROPERTY_RW(BlendProperty,  blendSrc, BlendProperty::ONE);
@@ -58,7 +55,7 @@ bool operator!=(const BlendingSettings& lhsc, const BlendingSettings& rhs) noexc
 // Blend state 0 with no RT bound == Global blend
 struct RTBlendStates {
     UColour4 _blendColour = { 0u, 0u, 0u, 0u };
-    std::array<BlendingSettings, MAX_RT_COLOUR_ATTACHMENTS> _settings;
+    std::array<BlendingSettings, to_base( RTColourAttachmentSlot::COUNT)> _settings;
 };
 
 [[nodiscard]] size_t GetHash(const RTBlendStates& blendStates);

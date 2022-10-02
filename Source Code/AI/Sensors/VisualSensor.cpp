@@ -87,7 +87,7 @@ SceneGraphNode* VisualSensor::findClosestNode(const U32 containerID) {
         if (unit) {
             const vec3<F32>& currentPosition = unit->getCurrentPosition();
             U64 currentNearest = positions.begin()->first;
-            F32 currentDistanceSq = std::numeric_limits<F32>::max();
+            F32 currentDistanceSq = F32_MAX;
             for (const NodePositions::value_type& entry : positions) {
                 const F32 temp = currentPosition.distanceSquared(entry.second);
                 if (temp < currentDistanceSq) {
@@ -118,7 +118,7 @@ F32 VisualSensor::getDistanceToNodeSq(const U32 containerID, const U64 nodeGUID)
             getNodePosition(containerID, nodeGUID));
     }
 
-    return std::numeric_limits<F32>::max();
+    return F32_MAX;
 }
 
 vec3<F32> VisualSensor::getNodePosition(const U32 containerID, const U64 nodeGUID) {
@@ -134,7 +134,7 @@ vec3<F32> VisualSensor::getNodePosition(const U32 containerID, const U64 nodeGUI
         }
     }
 
-    return vec3<F32>(std::numeric_limits<F32>::max());
+    return vec3<F32>( F32_MAX );
 }
 
 }  // namespace Divide

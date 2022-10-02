@@ -113,8 +113,8 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
 
         InternalRTAttachmentDescriptors att {
-            InternalRTAttachmentDescriptor{ environmentDescriptor, samplerHash, RTAttachmentType::COLOUR, 0u, },
-            InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::DEPTH, 0u },
+            InternalRTAttachmentDescriptor{ environmentDescriptor, samplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0, },
+            InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 },
         };
 
         RenderTargetDescriptor desc = {};
@@ -131,7 +131,7 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         environmentDescriptor.addImageUsageFlag(ImageUsage::SHADER_WRITE);
         InternalRTAttachmentDescriptors att
         {
-            InternalRTAttachmentDescriptor{ environmentDescriptor, samplerHash, RTAttachmentType::COLOUR, 0u },
+            InternalRTAttachmentDescriptor{ environmentDescriptor, samplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 },
         };
         RenderTargetDescriptor desc = {};
         desc._name = "PrefilteredEnvMap";
@@ -148,7 +148,7 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         environmentDescriptor.mipMappingState(TextureDescriptor::MipMappingState::AUTO);
         environmentDescriptor.addImageUsageFlag(ImageUsage::SHADER_WRITE);
         InternalRTAttachmentDescriptors att {
-            InternalRTAttachmentDescriptor{ environmentDescriptor, samplerHash, RTAttachmentType::COLOUR, 0u },
+            InternalRTAttachmentDescriptor{ environmentDescriptor, samplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 },
         };
         RenderTargetDescriptor desc = {};
         desc._name = "BrdfLUT";
@@ -293,7 +293,7 @@ void SceneEnvironmentProbePool::Prepare(GFX::CommandBuffer& bufferInOut) {
         renderPassCmd->_name = "DO_REFLECTION_PROBE_CLEAR";
         renderPassCmd->_target = s_reflection._targetID;
         renderPassCmd->_clearDescriptor._clearDepth = true;
-        renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, 0u };
+        renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, RTColourAttachmentSlot::SLOT_0 };
 
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         ProbesDirty(false);
@@ -312,7 +312,7 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
 
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ pipelineCalcLut });
 
-        Texture* brdfLutTexture = SceneEnvironmentProbePool::BRDFLUTTarget()._rt->getAttachment(RTAttachmentType::COLOUR, 0)->texture().get();
+        Texture* brdfLutTexture = SceneEnvironmentProbePool::BRDFLUTTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->texture().get();
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
@@ -376,26 +376,32 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         }
     }
     {
-        RTAttachment* prefiltered = SceneEnvironmentProbePool::PrefilteredTarget()._rt->getAttachment(RTAttachmentType::COLOUR, 0);
-        RTAttachment* irradiance = SceneEnvironmentProbePool::IrradianceTarget()._rt->getAttachment(RTAttachmentType::COLOUR, 0);
-        RTAttachment* brdfLut = SceneEnvironmentProbePool::BRDFLUTTarget()._rt->getAttachment(RTAttachmentType::COLOUR, 0);
+        RTAttachment* prefiltered = SceneEnvironmentProbePool::PrefilteredTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
+        RTAttachment* irradiance = SceneEnvironmentProbePool::IrradianceTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
+        RTAttachment* brdfLut = SceneEnvironmentProbePool::BRDFLUTTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_FRAME;
         {
             auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
             binding._slot = 0;
-            binding._data.As<DescriptorCombinedImageSampler>() = { prefiltered->texture()->defaultView(), prefiltered->descriptor()._samplerHash };
+            binding._data.As<DescriptorCombinedImageSampler>() = { prefiltered->texture()->sampledView(), prefiltered->descriptor()._samplerHash };
         }
         {
             auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
             binding._slot = 1;
-            binding._data.As<DescriptorCombinedImageSampler>() = { irradiance->texture()->defaultView(), irradiance->descriptor()._samplerHash };
+            binding._data.As<DescriptorCombinedImageSampler>() = { irradiance->texture()->sampledView(), irradiance->descriptor()._samplerHash };
         }
         {
             auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
             binding._slot = 2;
-            binding._data.As<DescriptorCombinedImageSampler>() = { brdfLut->texture()->defaultView(), brdfLut->descriptor()._samplerHash };
+            binding._data.As<DescriptorCombinedImageSampler>() = { brdfLut->texture()->sampledView(), brdfLut->descriptor()._samplerHash };
+        }
+        {
+            RTAttachment* targetAtt = context.renderTargetPool().getRenderTarget( RenderTargetNames::REFLECTION_CUBE )->getAttachment( RTAttachmentType::COLOUR );
+            auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
+            binding._slot = 3;
+            binding._data.As<DescriptorCombinedImageSampler>() = { targetAtt->texture()->sampledView(), targetAtt->descriptor()._samplerHash };
         }
     }
 }
@@ -419,7 +425,7 @@ void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal(GFXDevice& context
         case ComputationStages::MIP_MAP_SOURCE:
         {
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Process environment map #%d-MipMapsSource", layerID).c_str()));
-            RTAttachment* sourceAtt = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR, 0);
+            RTAttachment* sourceAtt = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
 
             GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
             computeMipMapsCommand._layerRange = { layerID, 1 };
@@ -446,8 +452,8 @@ void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal(GFXDevice& context
 
 void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 layerID, GFX::CommandBuffer& bufferInOut)
 {
-    RTAttachment* sourceAtt = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR, 0);
-    RTAttachment* destinationAtt = SceneEnvironmentProbePool::PrefilteredTarget()._rt->getAttachment(RTAttachmentType::COLOUR, 0);
+    RTAttachment* sourceAtt = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
+    RTAttachment* destinationAtt = SceneEnvironmentProbePool::PrefilteredTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
     const Texture* sourceTex = sourceAtt->texture().get();
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("PreFilter environment map #%d", layerID).c_str()));
@@ -463,7 +469,7 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
         binding._slot = 0;
-        binding._data.As<DescriptorCombinedImageSampler>() = { sourceTex->defaultView(), sourceAtt->descriptor()._samplerHash };
+        binding._data.As<DescriptorCombinedImageSampler>() = { sourceTex->sampledView(), sourceAtt->descriptor()._samplerHash };
     }
 
     ImageView destinationImage = destinationAtt->texture()->getView(TextureType::TEXTURE_CUBE_MAP, { 0u, 1u }, { 0u , U16_MAX }, ImageUsage::SHADER_WRITE);
@@ -505,8 +511,8 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
 }
 
 void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U16 layerID, GFX::CommandBuffer& bufferInOut) {
-    RTAttachment* sourceAtt = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR, 0);
-    RTAttachment* destinationAtt = SceneEnvironmentProbePool::IrradianceTarget()._rt->getAttachment(RTAttachmentType::COLOUR, 0);
+    RTAttachment* sourceAtt = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
+    RTAttachment* destinationAtt = SceneEnvironmentProbePool::IrradianceTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Compute Irradiance #%d", layerID).c_str()));
     GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_barrierMask = to_base(MemoryBarrierType::SHADER_IMAGE);
@@ -518,7 +524,7 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U
     {
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
         binding._slot = 0u;
-        binding._data.As<DescriptorCombinedImageSampler>() = { sourceAtt->texture()->defaultView(), sourceAtt->descriptor()._samplerHash };
+        binding._data.As<DescriptorCombinedImageSampler>() = { sourceAtt->texture()->sampledView(), sourceAtt->descriptor()._samplerHash };
     }
     {
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
@@ -629,14 +635,14 @@ void SceneEnvironmentProbePool::createDebugView(const U16 layerIndex) {
         probeView->_cycleMips = true;
 
         if (i > 11) {
-            probeView->_texture = PrefilteredTarget()._rt->getAttachment(RTAttachmentType::COLOUR, 0)->texture();
-            probeView->_samplerHash = PrefilteredTarget()._rt->getAttachment(RTAttachmentType::COLOUR, 0)->descriptor()._samplerHash;
+            probeView->_texture = PrefilteredTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->texture();
+            probeView->_samplerHash = PrefilteredTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->descriptor()._samplerHash;
         } else if (i > 5) {
-            probeView->_texture = IrradianceTarget()._rt->getAttachment(RTAttachmentType::COLOUR, 0)->texture();
-            probeView->_samplerHash = IrradianceTarget()._rt->getAttachment(RTAttachmentType::COLOUR, 0)->descriptor()._samplerHash;
+            probeView->_texture = IrradianceTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->texture();
+            probeView->_samplerHash = IrradianceTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->descriptor()._samplerHash;
         } else {
-            probeView->_texture = ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR, 0)->texture();
-            probeView->_samplerHash = ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR, 0)->descriptor()._samplerHash;
+            probeView->_texture = ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->texture();
+            probeView->_samplerHash = ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->descriptor()._samplerHash;
         }
         probeView->_shader = s_previewShader;
         probeView->_shaderData.set(_ID("layer"), GFX::PushConstantType::INT, layerIndex);

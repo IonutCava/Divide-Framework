@@ -839,7 +839,7 @@ namespace Divide
         }
         else
         {
-            cullParamsInOut._cullMaxDistance = std::numeric_limits<F32>::max();
+            cullParamsInOut._cullMaxDistance = F32_MAX;
         }
     }
 

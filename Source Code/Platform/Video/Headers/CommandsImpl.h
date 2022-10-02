@@ -225,27 +225,27 @@ DEFINE_COMMAND_END(BindShaderResourcesCommand);
 
 DEFINE_COMMAND_BEGIN(BeginDebugScopeCommand, CommandType::BEGIN_DEBUG_SCOPE);
     BeginDebugScopeCommand() noexcept = default;
-    BeginDebugScopeCommand(const char* scopeName, const U32 scopeId = std::numeric_limits<U32>::max()) noexcept 
+    BeginDebugScopeCommand(const char* scopeName, const U32 scopeId = U32_MAX) noexcept 
         : _scopeName(scopeName)
         , _scopeId(scopeId)
     {}
 
     Str64 _scopeName;
-    U32 _scopeId{ std::numeric_limits<U32>::max() };
+    U32 _scopeId{ U32_MAX };
 DEFINE_COMMAND_END(BeginDebugScopeCommand);
 
 DEFINE_COMMAND(EndDebugScopeCommand, CommandType::END_DEBUG_SCOPE);
 
 DEFINE_COMMAND_BEGIN(AddDebugMessageCommand, CommandType::ADD_DEBUG_MESSAGE);
     AddDebugMessageCommand() noexcept = default;
-    AddDebugMessageCommand(const char* msg, const U32 msgId = std::numeric_limits<U32>::max()) noexcept
+    AddDebugMessageCommand(const char* msg, const U32 msgId = U32_MAX ) noexcept
         : _msg(msg)
         , _msgId(msgId)
     {
     }
 
     Str64 _msg;
-    U32 _msgId{ std::numeric_limits<U32>::max() };
+    U32 _msgId{ U32_MAX };
 DEFINE_COMMAND_END(AddDebugMessageCommand);
 
 DEFINE_COMMAND_BEGIN(DrawTextCommand, CommandType::DRAW_TEXT);

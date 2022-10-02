@@ -15,7 +15,7 @@ void ParticleTimeGenerator::generate(Task& packagedTasksParent,
         vec4<F32>& misc = p._misc[i];
         misc.x = time;
         misc.y = 0.0f;
-        misc.z = time > std::numeric_limits<F32>::epsilon() ? 1.0f / misc.x : 0.0f;
+        misc.z = time > EPSILON_F32 ? 1.f / misc.x : 0.f;
     }
 }
 }

@@ -84,8 +84,6 @@ enum class TextureSlot : U8 {
     OCCLUSION,
     EMISSIVE,
     UNIT1,
-    REFLECTION_PLANAR,
-    REFRACTION_PLANAR,
     COUNT
 };
 namespace Names {
@@ -100,8 +98,6 @@ namespace Names {
         "OCCLUSION",
         "EMISSIVE",
         "UNIT1",
-        "REFLECTION_PLANAR",
-        "REFRACTION_PLANAR",
         "NONE"
     };
 };
@@ -312,6 +308,7 @@ class Material final : public CachedResource {
     PROPERTY_RW(RecomputeShadersCBK, recomputeShadersCBK);
     POINTER_R_IW(Material, baseMaterial, nullptr);
     PROPERTY_RW(UpdatePriority, updatePriorirty, UpdatePriority::Default);
+    PROPERTY_R_IW(DescriptorSet, descriptorSetSecondaryPass);
     PROPERTY_R_IW(DescriptorSet, descriptorSetMainPass);
     PROPERTY_R_IW(DescriptorSet, descriptorSetPrePass);
     PROPERTY_RW(bool, ignoreXMLData, false);

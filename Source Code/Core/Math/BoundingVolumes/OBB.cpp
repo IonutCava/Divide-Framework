@@ -204,10 +204,10 @@ namespace Divide {
     }
 
     RayResult OBB::intersect(const Ray& ray, const F32 t0In, const F32 t1In) const noexcept {
-        F32 tNear = -std::numeric_limits<F32>::max();
-        F32 tFar  =  std::numeric_limits<F32>::max();
+        F32 tNear = -F32_MAX;
+        F32 tFar  =  F32_MAX;
         for (U8 i = 0; i < 3; ++i) {
-            if (std::abs(Dot(ray._direction, _axis[i])) < std::numeric_limits<F32>::epsilon())
+            if (std::abs(Dot(ray._direction, _axis[i])) < EPSILON_F32)
             {
                 // Ray parallel to planes
                 const F32 r = Dot(_axis[i], _position - ray._origin);

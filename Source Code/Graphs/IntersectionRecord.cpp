@@ -9,7 +9,7 @@ namespace Divide {
 IntersectionRecord::IntersectionRecord() noexcept
   : _intersectedObject1(nullptr),
     _intersectedObject2(nullptr),
-    _distance(std::numeric_limits<D64>::max()),
+    _distance(D64_MAX),
     _hasHit(false)
 {
 }
@@ -32,7 +32,7 @@ IntersectionRecord::IntersectionRecord(vec3<F32> hitPos,
 IntersectionRecord::IntersectionRecord(BoundsComponent* hitObject)  noexcept :
     _intersectedObject1(hitObject),
     _intersectedObject2(nullptr),
-    _distance(std::numeric_limits<D64>::max()),
+    _distance( D64_MAX ),
     _hasHit(hitObject != nullptr)
 {
 }
@@ -41,7 +41,7 @@ void IntersectionRecord::reset() noexcept
 {
     _ray.identity();
     _hasHit = false;
-    _distance = std::numeric_limits<D64>::max();
+    _distance = D64_MAX;
     _intersectedObject1 = nullptr;
     _intersectedObject2 = nullptr;
 }

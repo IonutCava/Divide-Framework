@@ -51,6 +51,7 @@ void SceneNode::sceneUpdate([[maybe_unused]] const U64 deltaTimeUS,
 
 void SceneNode::prepareRender([[maybe_unused]] SceneGraphNode* sgn,
                               [[maybe_unused]] RenderingComponent& rComp,
+                              [[maybe_unused]] RenderPackage& pkg,
                               [[maybe_unused]] const RenderStagePass renderStagePass,
                               [[maybe_unused]] const CameraSnapshot& cameraSnapshot,
                               [[maybe_unused]] bool refreshData)

@@ -4,7 +4,7 @@
     <showSampleWindow>false</showSampleWindow>
     <themeIndex>6</themeIndex>
     <textEditor/>
-    <lastOpenSceneName>DefaultScene</lastOpenSceneName>
+    <lastOpenSceneName>WarScene</lastOpenSceneName>
     <grid enabled_scene="true" enabled_node="true" axisWidth="2" scale="1"/>
     <nodeBGColour r="0.349999994" g="0.319999993" b="0.449999988"/>
     <camera>
@@ -14,14 +14,14 @@
                 <distance>0</distance>
                 <active>false</active>
             </reflectionPlane>
-            <accumPitchDegrees>-14.9972277</accumPitchDegrees>
+            <accumPitchDegrees>-59.2099953</accumPitchDegrees>
             <frustumLocked>false</frustumLocked>
-            <euler x="-14.999999" y="39.9882622" z="0"/>
+            <euler x="0" y="88.733902" z="180"/>
             <eye x="60" y="45" z="60"/>
-            <orientation x="-0.122639529" y="0.339052707" z="0.0446371362" w="0.931539714"/>
+            <orientation x="-0.122654505" y="0.339094073" z="0.0446425863" w="0.93165338"/>
             <aspectRatio>1.77777779</aspectRatio>
             <zPlanes min="0.100000001" max="1000"/>
-            <FoV>58.7155075</FoV>
+            <FoV>77.5521393</FoV>
             <speedFactor turn="45" move="4" zoom="5"/>
             <fixedYawAxis x="0" y="1" z="0"/>
             <yawFixed>true</yawFixed>
@@ -39,24 +39,24 @@
                 <distance>0</distance>
                 <active>false</active>
             </reflectionPlane>
-            <accumPitchDegrees>-29.1227837</accumPitchDegrees>
+            <accumPitchDegrees>-59.2099953</accumPitchDegrees>
             <frustumLocked>false</frustumLocked>
-            <euler x="150.877228" y="-30.6778831" z="180"/>
-            <eye x="-1.89765799" y="2.07210612" z="-3.19883204"/>
-            <orientation x="-0.066507034" y="-0.933400869" z="-0.24246116" w="0.256031603"/>
+            <euler x="0" y="88.733902" z="180"/>
+            <eye x="43.1300011" y="147.089996" z="-4.40999985"/>
+            <orientation x="-0.349280655" y="0.614720225" z="0.349280655" w="0.614720225"/>
             <aspectRatio>1.77777779</aspectRatio>
             <zPlanes min="0.100000001" max="1000"/>
-            <FoV>58.7155075</FoV>
+            <FoV>77.5521393</FoV>
             <speedFactor turn="125" move="4" zoom="175"/>
             <fixedYawAxis x="0" y="1" z="0"/>
             <yawFixed>true</yawFixed>
             <rotationLocked>false</rotationLocked>
             <movementLocked>false</movementLocked>
-            <maxRadius>17.320507</maxRadius>
-            <minRadius>1.29903805</minRadius>
-            <curRadius>4.25761175</curRadius>
-            <cameraRotation x="-0.508288383" y="0.535430312" z="0"/>
-            <offsetDir x="0" y="0" z="0"/>
+            <maxRadius>10</maxRadius>
+            <minRadius>0.100000001</minRadius>
+            <curRadius>8</curRadius>
+            <cameraRotation x="0" y="0" z="0"/>
+            <offsetDir x="0" y="0" z="1"/>
         </Node__Preview__Camera>
     </camera>
 </editor>

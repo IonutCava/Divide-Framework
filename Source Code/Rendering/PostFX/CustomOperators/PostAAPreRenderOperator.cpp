@@ -36,7 +36,7 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
 
         InternalRTAttachmentDescriptors att
         {
-            InternalRTAttachmentDescriptor{ weightsDescriptor, sampler.getHash(), RTAttachmentType::COLOUR, 0u}
+            InternalRTAttachmentDescriptor{ weightsDescriptor, sampler.getHash(), RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 }
         };
 
         desc._name = "SMAAWeights";
@@ -172,8 +172,8 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
         }
     }
 
-    const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO));
-    const auto& screenTex = screenAtt->texture()->defaultView();
+    const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
+    const auto& screenTex = screenAtt->texture()->sampledView();
 
     if (useSMAA()) {
         { //Step 1: Compute weights
@@ -181,13 +181,13 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
             beginRenderPassCmd._target = _smaaWeights._targetID;
             beginRenderPassCmd._name = "DO_SMAA_WEIGHT_PASS";
             beginRenderPassCmd._clearDescriptor._clearDepth = true;
-            beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, 0u };
+            beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, RTColourAttachmentSlot::SLOT_0 };
             GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
-            const auto& att = _parent.edgesRT()._rt->getAttachment(RTAttachmentType::COLOUR, 0);
-            const auto& edgesTex = att->texture()->defaultView();
-            const auto& areaTex = _areaTexture->defaultView();
-            const auto& searchTex = _searchTexture->defaultView();
+            const auto& att = _parent.edgesRT()._rt->getAttachment(RTAttachmentType::COLOUR);
+            const auto& edgesTex = att->texture()->sampledView();
+            const auto& areaTex = _areaTexture->sampledView();
+            const auto& searchTex = _searchTexture->sampledView();
 
             SamplerDescriptor samplerDescriptor = {};
 
@@ -226,8 +226,8 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
             beginRenderPassCmd._name = "DO_SMAA_BLEND_PASS";
             GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
-            const auto& att = _smaaWeights._rt->getAttachment(RTAttachmentType::COLOUR, 0);
-            const auto& blendTex = att->texture()->defaultView();
+            const auto& att = _smaaWeights._rt->getAttachment(RTAttachmentType::COLOUR);
+            const auto& blendTex = att->texture()->sampledView();
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;

@@ -26,7 +26,7 @@ struct CSMShadowProperties
     mat4  dvd_shadowLightVP[MAX_CSM_SPLITS_PER_LIGHT];
 };
 
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_FRAME, 13, std430) coherent ACCESS_R buffer dvd_ShadowBlock
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_FRAME, 9, std430) coherent ACCESS_R buffer dvd_ShadowBlock
 {
     PointShadowProperties dvd_PointShadowTransforms[MAX_SHADOW_CASTING_POINT_LIGHTS];
     SpotShadowProperties dvd_SpotShadowTransforms[MAX_SHADOW_CASTING_SPOT_LIGHTS];

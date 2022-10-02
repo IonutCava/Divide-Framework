@@ -90,12 +90,12 @@ protected:
 
     void prepareBuffers(const RTDrawDescriptor& drawPolicy);
 
-    bool initAttachment(RTAttachment* att, RTAttachmentType type, U8 index, bool isExternal) override;
+    bool initAttachment(RTAttachment* att, RTAttachmentType type, RTColourAttachmentSlot slot, bool isExternal) override;
 
     void setAttachmentState(GLenum binding, BindingState state);
 
     void clear(const RTClearDescriptor& descriptor);
-    void transitionAttachments(bool toWrite);
+    void transitionAttachments( const RTDrawDescriptor& drawPolicy, bool toWrite);
     void begin(const RTDrawDescriptor& drawPolicy, const RTClearDescriptor& clearPolicy);
     void end();
 
@@ -112,7 +112,13 @@ protected:
 
    protected:
     RTDrawDescriptor _previousPolicy;
-    std::array<GLenum, MAX_RT_COLOUR_ATTACHMENTS> _activeColourBuffers;
+
+    struct ColourBufferState
+    {
+        std::array<GLenum, to_base( RTColourAttachmentSlot::COUNT )> _glSlot = create_array<to_base( RTColourAttachmentSlot::COUNT ), GLenum>(GL_NONE);
+        bool _dirty{ true };
+    } _colourBuffers;
+    
     GLenum _activeReadBuffer = GL_NONE;
 
     eastl::fixed_vector<BindingState, 8 + 2, true, eastl::dvd_allocator> _attachmentState;

@@ -62,7 +62,7 @@ WarScene::~WarScene()
     }
 }
 
-void WarScene::processGUI(const U64 deltaTimeUS) {
+void WarScene::processGUI(const U64 gameDeltaTimeUS, const U64 appDeltaTimeUS ) {
     constexpr D64 FpsDisplay = Time::SecondsToMilliseconds(0.3);
     static SceneGraphNode* terrain = nullptr;
     if (terrain == nullptr) {
@@ -72,7 +72,7 @@ void WarScene::processGUI(const U64 deltaTimeUS) {
         }
     }
 
-    if (_guiTimersMS[0] >= FpsDisplay) {
+    if (_guiTimersMS[to_base(TimerClass::APP_TIME)][0] >= FpsDisplay ) {
         const Camera& cam = *_scenePlayers.front()->camera();
         vec3<F32> eyePos = cam.snapshot()._eye;
         const vec3<F32>& euler = cam.euler();
@@ -106,10 +106,10 @@ void WarScene::processGUI(const U64 deltaTimeUS) {
                                  terTan.x, terTan.y, terTan.z),
                             true);
         }
-        _guiTimersMS[0] = 0.0;
+        _guiTimersMS[to_base(TimerClass::APP_TIME)][0] = 0.0;
     }
 
-    if (_guiTimersMS[1] >= Time::SecondsToMilliseconds(1)) {
+    if (_guiTimersMS[to_base(TimerClass::APP_TIME)][1] >= Time::SecondsToMilliseconds(1) ) {
         string selectionText;
         const Selections& selections = _currentSelection[0];
         for (U8 i = 0u; i < selections._selectionCount; ++i) {
@@ -125,9 +125,10 @@ void WarScene::processGUI(const U64 deltaTimeUS) {
         if (!selectionText.empty()) {
             _GUI->modifyText("entityState", selectionText, true);
         }
+        _guiTimersMS[to_base(TimerClass::APP_TIME)][1] = 0.0;
     }
 
-    if (_guiTimersMS[2] >= 66) {
+    if (_guiTimersMS[to_base(TimerClass::GAME_TIME)][0] >= 66 ) {
         U32 elapsedTimeMinutes = Time::MicrosecondsToSeconds<U32>(_elapsedGameTime) / 60 % 60;
         U32 elapsedTimeSeconds = Time::MicrosecondsToSeconds<U32>(_elapsedGameTime) % 60;
         U32 elapsedTimeMilliseconds = Time::MicrosecondsToMilliseconds<U32>(_elapsedGameTime) % 1000;
@@ -150,10 +151,10 @@ void WarScene::processGUI(const U64 deltaTimeUS) {
                                limitTimeMilliseconds),
                                true);
 
-        _guiTimersMS[2] = 0.0;
+        _guiTimersMS[to_base(TimerClass::GAME_TIME)][0] = 0.0;
     }
 
-    Scene::processGUI(deltaTimeUS);
+    Scene::processGUI(gameDeltaTimeUS, appDeltaTimeUS);
 }
 
 namespace {
@@ -186,7 +187,7 @@ void WarScene::debugDraw(GFX::CommandBuffer& bufferInOut) {
     Scene::debugDraw(bufferInOut);
 }
 
-void WarScene::processTasks(const U64 deltaTimeUS) {
+void WarScene::processTasks(const U64 gameDeltaTimeUS, const U64 appDeltaTimeUS ) {
     if (!_sceneReady) {
         return;
     }
@@ -195,20 +196,20 @@ void WarScene::processTasks(const U64 deltaTimeUS) {
     constexpr D64 AnimationTimer2 = Time::SecondsToMilliseconds(10);
     constexpr D64 updateLights = Time::Milliseconds(32);
 
-    if (_taskTimers[1] >= AnimationTimer1) {
+    if (_taskTimers[to_base( TimerClass::GAME_TIME )][1] >= AnimationTimer1) {
         /*for (SceneGraphNode* npc : _armyNPCs[0]) {
             assert(npc);
             npc->get<UnitComponent>()->getUnit<NPC>()->playNextAnimation();
         }*/
-        _taskTimers[1] = 0.0;
+        _taskTimers[to_base( TimerClass::GAME_TIME )][1] = 0.0;
     }
 
-    if (_taskTimers[2] >= AnimationTimer2) {
+    if (_taskTimers[to_base( TimerClass::GAME_TIME )][2] >= AnimationTimer2) {
         /*for (SceneGraphNode* npc : _armyNPCs[1]) {
             assert(npc);
             npc->get<UnitComponent>()->getUnit<NPC>()->playNextAnimation();
         }*/
-        _taskTimers[2] = 0.0;
+        _taskTimers[to_base( TimerClass::GAME_TIME )][2] = 0.0;
     }
 
     const size_t lightCount = _lightNodeTransforms.size();
@@ -220,7 +221,7 @@ void WarScene::processTasks(const U64 deltaTimeUS) {
         initPosSetLight = true;
     }
 
-    if (_taskTimers[3] >= updateLights) {
+    if (_taskTimers[to_base( TimerClass::GAME_TIME )][3] >= updateLights) {
         constexpr F32 radius = 150.f;
         constexpr F32 height = 25.f;
 
@@ -234,7 +235,7 @@ void WarScene::processTasks(const U64 deltaTimeUS) {
         const F32 s2 = std::sin(-phiLight);
         const F32 c2 = std::cos(-phiLight);
         
-        for (size_t i = 0u; i < lightCount; ++i) {
+        for ( size_t i = 0u; i < lightCount; ++i ) {
             const F32 c = i % 2 == 0 ? c1 : c2;
             const F32 s = i % 2 == 0 ? s1 : s2;
 
@@ -245,10 +246,10 @@ void WarScene::processTasks(const U64 deltaTimeUS) {
                 radius  * s + initPos.z
             );
         }
-        _taskTimers[3] = 0.0;
+        _taskTimers[to_base( TimerClass::GAME_TIME )][3] = 0.0;
     }
 
-    Scene::processTasks(deltaTimeUS);
+    Scene::processTasks(gameDeltaTimeUS, appDeltaTimeUS);
 }
 
 namespace {
@@ -789,13 +790,13 @@ void WarScene::postLoadMainThread() {
         cam->speedFactor().move = 0.02f;
         cam->speedFactor().turn = 0.01f;
     }
-    _guiTimersMS.push_back(0.0);  // Fps
-    _guiTimersMS.push_back(0.0);  // AI info
-    _guiTimersMS.push_back(0.0);  // Game info
-    _taskTimers.push_back(0.0); // Sun animation
-    _taskTimers.push_back(0.0); // animation team 1
-    _taskTimers.push_back(0.0); // animation team 2
-    _taskTimers.push_back(0.0); // light timer
+    _guiTimersMS[to_base( TimerClass::APP_TIME )].push_back(0.0); // Fps
+    _guiTimersMS[to_base( TimerClass::APP_TIME )].push_back(0.0); // AI info
+    _guiTimersMS[to_base( TimerClass::GAME_TIME )].push_back(0.0); // Game info
+    _taskTimers[to_base( TimerClass::GAME_TIME )].push_back(0.0); // Sun animation
+    _taskTimers[to_base( TimerClass::GAME_TIME )].push_back(0.0); // animation team 1
+    _taskTimers[to_base( TimerClass::GAME_TIME )].push_back(0.0); // animation team 2
+    _taskTimers[to_base( TimerClass::GAME_TIME )].push_back(0.0); // light timer
 
     Scene::postLoadMainThread();
 }

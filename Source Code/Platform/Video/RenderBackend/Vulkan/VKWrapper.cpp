@@ -944,35 +944,43 @@ namespace Divide {
                         continue;
                     }
                     const DescriptorCombinedImageSampler& imageSampler = srcBinding._data.As<DescriptorCombinedImageSampler>();
-                    DIVIDE_ASSERT(imageSampler._image.targetType() != TextureType::COUNT);
-                    if (imageSampler._image._srcTexture._internalTexture == nullptr) {
-                        DIVIDE_ASSERT(imageSampler._image._srcTexture._ceguiTex != nullptr);
-                        continue;
-                    }
-                    const VkSampler samplerHandle = GetSamplerHandle(imageSampler._samplerHash);
-                    //DIVIDE_ASSERT(imageSampler._image._srcTexture._internalTexture->imageUsage() == ImageUsage::SHADER_SAMPLE);
-
-                    VkDescriptorImageInfo& imageInfo = ImageInfoStructs[imageInfoStructIndex++];
-
-                    vkTexture* vkTex = static_cast<vkTexture*>(imageSampler._image._srcTexture._internalTexture);
-
-                    if (imageSampler._image._srcTexture._internalTexture->descriptor().hasUsageFlagSet(ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT))
+                    if ( imageSampler._image._srcTexture._ceguiTex == nullptr && imageSampler._image._srcTexture._internalTexture == nullptr )
                     {
-                        vkTexture::CachedImageView::Descriptor descriptor{};
-                        descriptor._usage = ImageUsage::SHADER_SAMPLE;
-                        descriptor._format = vkTex->vkFormat();
-                        descriptor._type = vkTex->descriptor().texType();
-                        descriptor._mipLevels = {0u, VK_REMAINING_MIP_LEVELS};
-                        descriptor._layers = {0u, VK_REMAINING_ARRAY_LAYERS};
-                        descriptor._aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
-                        imageInfo = vk::descriptorImageInfo(samplerHandle, vkTex->getImageView(descriptor), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                        DIVIDE_ASSERT( imageSampler._image._usage == ImageUsage::UNDEFINED );
+                        //unbind request;
                     }
                     else
                     {
-                        imageInfo = vk::descriptorImageInfo(samplerHandle, vkTex->vkView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-                    }
+                        DIVIDE_ASSERT(imageSampler._image.targetType() != TextureType::COUNT);
+                        if (imageSampler._image._srcTexture._internalTexture == nullptr) {
+                            DIVIDE_ASSERT(imageSampler._image._srcTexture._ceguiTex != nullptr);
+                            continue;
+                        }
+                        const VkSampler samplerHandle = GetSamplerHandle(imageSampler._samplerHash);
+                        //DIVIDE_ASSERT(imageSampler._image._srcTexture._internalTexture->imageUsage() == ImageUsage::SHADER_SAMPLE);
+
+                        VkDescriptorImageInfo& imageInfo = ImageInfoStructs[imageInfoStructIndex++];
+
+                        vkTexture* vkTex = static_cast<vkTexture*>(imageSampler._image._srcTexture._internalTexture);
+
+                        if (imageSampler._image._srcTexture._internalTexture->descriptor().hasUsageFlagSet(ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT))
+                        {
+                            vkTexture::CachedImageView::Descriptor descriptor{};
+                            descriptor._usage = ImageUsage::SHADER_SAMPLE;
+                            descriptor._format = vkTex->vkFormat();
+                            descriptor._type = vkTex->descriptor().texType();
+                            descriptor._mipLevels = {0u, VK_REMAINING_MIP_LEVELS};
+                            descriptor._layers = {0u, VK_REMAINING_ARRAY_LAYERS};
+                            descriptor._aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
+                            imageInfo = vk::descriptorImageInfo(samplerHandle, vkTex->getImageView(descriptor), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                        }
+                        else
+                        {
+                            imageInfo = vk::descriptorImageInfo(samplerHandle, vkTex->vkView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                        }
                     
-                    builder.bindImage(srcBinding._slot, &imageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stageFlags);
+                        builder.bindImage(srcBinding._slot, &imageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stageFlags);
+                    }
                 } break;
                 case DescriptorSetBindingType::IMAGE: {
                     if (!srcBinding._data.Has<ImageView>()) {
@@ -1511,7 +1519,7 @@ namespace Divide {
             Debug::vkCmdEndDebugUtilsLabelEXT(cmdBuffer);
         }
 
-        GetStateTracker()._debugScope[GetStateTracker()._debugScopeDepth--] = { "", std::numeric_limits<U32>::max() };
+        GetStateTracker()._debugScope[GetStateTracker()._debugScopeDepth--] = { "", U32_MAX };
     }
 
     /// Return the Vulkan sampler object's handle for the given hash value

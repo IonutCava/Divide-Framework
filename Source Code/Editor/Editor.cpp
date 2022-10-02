@@ -760,8 +760,8 @@ namespace Divide
 
         InternalRTAttachmentDescriptors attachments
         {
-            InternalRTAttachmentDescriptor { editorDescriptor, _editorSamplerHash, RTAttachmentType::COLOUR, to_base( GFXDevice::ScreenTargets::ALBEDO ) },
-            InternalRTAttachmentDescriptor { depthDescriptor, _editorSamplerHash, RTAttachmentType::DEPTH, 0u },
+            InternalRTAttachmentDescriptor { editorDescriptor, _editorSamplerHash, RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO },
+            InternalRTAttachmentDescriptor { depthDescriptor, _editorSamplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 },
         };
 
         RenderTargetDescriptor editorDesc = {};
@@ -855,9 +855,11 @@ namespace Divide
         Reset( _windowFocusState );
         updateEditorFocus();
 
+        SceneStatePerPlayer& playerState = activeScene.state()->playerState( sMgr->playerPass() );
         if ( !state )
         {
             _context.config().save();
+            playerState.overrideCamera( nullptr );
             sceneGizmoEnabled( false );
             activeScene.state()->renderState().disableOption( SceneRenderState::RenderOptions::SELECTION_GIZMO );
             activeScene.state()->renderState().disableOption( SceneRenderState::RenderOptions::ALL_GIZMOS );
@@ -869,6 +871,7 @@ namespace Divide
         else
         {
             _stepQueue = 0;
+            playerState.overrideCamera( editorCamera() );
             sceneGizmoEnabled( true );
             activeScene.state()->renderState().enableOption( SceneRenderState::RenderOptions::SELECTION_GIZMO );
             static_cast<ContentExplorerWindow*>( _dockedWindows[to_base( WindowType::ContentExplorer )] )->init();
@@ -1209,7 +1212,7 @@ namespace Divide
 
         // Debug axis form the axis arrow gizmo in the corner of the screen
         // This is toggleable, so check if it's actually requested
-        if ( sceneGizmoEnabled() )
+        if ( sceneGizmoEnabled() && _axisGizmo )
         {
             // Apply the inverse view matrix so that it cancels out in the shader
             // Submit the draw command, rendering it in a tiny viewport in the lower
@@ -1228,10 +1231,6 @@ namespace Divide
 
             GFX::EnqueueCommand( bufferInOut, GFX::SetViewportCommand{ Rect<I32>( windowWidth - 250, 6, 256, 256 ) } );
             _axisGizmo->getCommandBuffer( worldMatrix, bufferInOut );
-        }
-        else if ( _axisGizmo )
-        {
-            _context.gfx().destroyIMP( _axisGizmo );
         }
     }
 
@@ -1421,7 +1420,7 @@ namespace Divide
             GFX::BeginRenderPassCommand beginRenderPassCmd{};
             beginRenderPassCmd._target = SCREEN_TARGET_ID;
             beginRenderPassCmd._name = "Render IMGUI [ External ]";
-            beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { { windowBGColour.x, windowBGColour.y, windowBGColour.z, 1.f }, 0u };
+            beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { { windowBGColour.x, windowBGColour.y, windowBGColour.z, 1.f }, RTColourAttachmentSlot::SLOT_0 };
             GFX::EnqueueCommand( bufferInOut, beginRenderPassCmd );
         }
         else
@@ -1491,7 +1490,7 @@ namespace Divide
                             cmd->_usage = DescriptorSetUsage::PER_DRAW;
                             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
                             binding._slot = 0;
-                            binding._data.As<DescriptorCombinedImageSampler>() = { tex->defaultView(), _editorSamplerHash };
+                            binding._data.As<DescriptorCombinedImageSampler>() = { tex->sampledView(), _editorSamplerHash };
                         }
 
                         drawCmd._cmd.indexCount = pcmd.ElemCount;
@@ -1737,13 +1736,19 @@ namespace Divide
     /// Mouse moved: return true if input was consumed
     bool Editor::mouseMoved( const Input::MouseMoveEvent& arg )
     {
-        if ( !isInit() || !running() || WindowManager::IsRelativeMouseMode() )
+        if ( !isInit() || !running() )
         {
+            WindowManager::SetCaptureMouse( false );
             return false;
         }
 
         if ( !arg.wheelEvent() )
         {
+            if ( WindowManager::IsRelativeMouseMode() )
+            {
+                return false;
+            }
+
             ImVec2 tempCoords{};
 
             bool positionOverride = false;
@@ -1767,6 +1772,8 @@ namespace Divide
                 WindowManager::GetMouseState( posGlobal, true );
                 tempCoords = { to_F32( posGlobal.x ), to_F32( posGlobal.y ) };
             }
+
+            WindowManager::SetCaptureMouse( positionOverride ? ImGui::IsAnyMouseDown() : false );
 
             updateFocusState( tempCoords );
 
@@ -1815,7 +1822,6 @@ namespace Divide
         }
 
         ImGui::SetCurrentContext( _imguiContexts[to_base( ImGuiContextType::Editor )] );
-        WindowManager::SetCaptureMouse( ImGui::IsAnyMouseDown() );
 
         if ( _windowFocusState._focusedNodePreview )
         {
@@ -2196,13 +2202,14 @@ namespace Divide
                     {
                         const ImageView texView = data._texture->getView( TextureType::TEXTURE_2D_ARRAY,
                                                                           { 0u, data._texture->mipCount() },
-                                                                          { 0u, data._texture->numLayers() * 6u });
+                                                                          { 0u, data._texture->numLayers() * 6u },
+                                                                          ImageUsage::SHADER_SAMPLE);
 
                         binding._data.As<DescriptorCombinedImageSampler>() = { texView, texSampler };
                     }
                     else
                     {
-                            binding._data.As<DescriptorCombinedImageSampler>() = { data._texture->defaultView(), texSampler };
+                        binding._data.As<DescriptorCombinedImageSampler>() = { data._texture->sampledView(), texSampler };
                     }
                 }
             }

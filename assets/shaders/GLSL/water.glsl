@@ -23,13 +23,6 @@ void main(void)
 layout(location = ATTRIB_FREE_START + 0) in flat int _underwater;
 layout(location = ATTRIB_FREE_START + 1) in vec4 _vertexWVP;
 
-uniform vec3 _refractionTint;
-uniform vec3 _waterDistanceFogColour;
-uniform float _specularShininess;
-uniform vec2 _noiseTile;
-uniform vec2 _noiseFactor;
-uniform vec2 _fogStartEndDistances;
-
 #define NO_OMR_TEX
 #define NO_ENV_MAPPING
 #define NO_SSAO

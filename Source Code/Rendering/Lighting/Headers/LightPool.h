@@ -40,6 +40,7 @@
 #include "Scenes/Headers/SceneComponent.h"
 #include "Core/Headers/PlatformContextComponent.h"
 #include "Managers/Headers/FrameListenerManager.h"
+#include "Platform/Video/Headers/DescriptorSets.h"
 
 namespace Divide {
 
@@ -140,8 +141,6 @@ class LightPool final : public FrameListener,
     void sortLightData(RenderStage stage, const CameraSnapshot& cameraSnapshot);
     void uploadLightData(RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut);
 
-    void uploadLightData(RenderStage stage, GFX::CommandBuffer& bufferInOut);
-
     void drawLightImpostors(GFX::CommandBuffer& bufferInOut) const;
 
     void preRenderAllPasses(const Camera* playerCamera);
@@ -204,6 +203,14 @@ class LightPool final : public FrameListener,
 
     [[nodiscard]] static bool IsLightInViewFrustum(const Frustum& frustum, const Light* light) noexcept;
 
+
+    friend class ShadowMap;
+    ShaderBuffer* shadowBuffer() const { return _shadowBuffer.get(); }
+
+    friend class Renderer;
+    [[nodiscard]] ShaderBuffer* lightBuffer() const { return _lightBuffer.get(); }
+    [[nodiscard]] ShaderBuffer* sceneBuffer() const { return _sceneBuffer.get(); }
+    [[nodiscard]] U32           sortedLightCount(const RenderStage stage) const { return _sortedLightPropertiesCount[to_base(stage)]; }
   private:
       void init();
       U32 uploadLightList(RenderStage stage,
@@ -244,7 +251,7 @@ class LightPool final : public FrameListener,
     ShaderBuffer_uptr _sceneBuffer = nullptr;
     ShaderBuffer_uptr _shadowBuffer = nullptr;
     Time::ProfileTimer& _shadowPassTimer;
-    U32              _totalLightCount = 0u;
+    U32               _totalLightCount = 0u;
     bool _shadowBufferDirty = false;
     bool _init = false;
 

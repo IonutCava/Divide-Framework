@@ -70,7 +70,8 @@ namespace Divide {
                lhs._layerRange == rhs._layerRange &&
                lhs.targetType() == rhs.targetType() &&
                lhs._descriptor == rhs._descriptor &&
-               lhs._srcTexture == rhs._srcTexture;
+               lhs._srcTexture == rhs._srcTexture &&
+               lhs._usage == rhs._usage;
     }
 
     inline bool operator!=(const ImageView& lhs, const ImageView&rhs) noexcept {
@@ -78,7 +79,8 @@ namespace Divide {
                lhs._layerRange != rhs._layerRange ||
                lhs.targetType() != rhs.targetType() ||
                lhs._srcTexture != rhs._srcTexture ||
-               lhs._descriptor != rhs._descriptor;
+               lhs._descriptor != rhs._descriptor ||
+               lhs._usage != rhs._usage;
     }
 
     inline bool operator==(const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs) noexcept {

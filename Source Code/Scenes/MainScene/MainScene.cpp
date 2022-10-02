@@ -50,7 +50,7 @@ namespace Divide
         _updateLights = false;
     }
 
-    void MainScene::processInput( PlayerIndex idx, const U64 deltaTimeUS )
+    void MainScene::processInput( PlayerIndex idx, const U64 gameDeltaTimeUS, const U64 appDeltaTimeUS )
     {
         if ( state()->playerState( idx ).cameraUpdated() )
         {
@@ -98,15 +98,15 @@ namespace Divide
             }
         }
 
-        Scene::processInput( idx, deltaTimeUS );
+        Scene::processInput( idx, gameDeltaTimeUS, appDeltaTimeUS );
     }
 
-    void MainScene::processGUI( const U64 deltaTimeUS )
+    void MainScene::processGUI( const U64 gameDeltaTimeUS, const U64 appDeltaTimeUS )
     {
         constexpr D64 FpsDisplay = Time::SecondsToMilliseconds( 0.5 );
         constexpr D64 TimeDisplay = Time::SecondsToMilliseconds( 1.0 );
 
-        if ( _guiTimersMS[0] >= FpsDisplay )
+        if ( _guiTimersMS[to_base(TimerClass::APP_TIME)][0] >= FpsDisplay )
         {
             _GUI->modifyText( "underwater",
                              Util::StringFormat( "Underwater [ %s ] | WaterLevel [%f] ]",
@@ -115,35 +115,36 @@ namespace Divide
             _GUI->modifyText( "RenderBinCount",
                              Util::StringFormat( "Number of items in Render Bin: %d.",
                                                  _context.kernel().renderPassManager()->getLastTotalBinSize( RenderStage::DISPLAY ) ), false );
-            _guiTimersMS[0] = 0.0;
+            _guiTimersMS[to_base( TimerClass::APP_TIME )][0] = 0.0;
         }
 
-        if ( _guiTimersMS[1] >= TimeDisplay )
+        if ( _guiTimersMS[to_base( TimerClass::APP_TIME )][1] >= TimeDisplay )
         {
             _GUI->modifyText( "timeDisplay",
                              Util::StringFormat( "Elapsed time: %5.0f", Time::Game::ElapsedSeconds() ), false );
-            _guiTimersMS[1] = 0.0;
+            _guiTimersMS[to_base( TimerClass::APP_TIME )][1] = 0.0;
         }
 
-        Scene::processGUI( deltaTimeUS );
+        Scene::processGUI( gameDeltaTimeUS, appDeltaTimeUS );
     }
 
-    void MainScene::processTasks( const U64 deltaTimeUS )
+    void MainScene::processTasks( const U64 gameDeltaTimeUS, const U64 appDeltaTimeUS )
     {
         updateLights();
 
         constexpr D64 SunDisplay = Time::SecondsToMilliseconds( 1.50 );
 
-        if ( _taskTimers[0] >= SunDisplay )
+        if ( _taskTimers[to_base( TimerClass::GAME_TIME )][0] >= SunDisplay )
         {
             vector<SceneGraphNode*> terrains = Object3D::filterByType( _sceneGraph->getNodesByType( SceneNodeType::TYPE_OBJECT3D ), ObjectType::TERRAIN );
 
             //for (SceneGraphNode* terrainNode : terrains) {
                 //terrainNode.lock()->get<TransformComponent>()->setPositionY(terrainNode.lock()->get<TransformComponent>()->getPosition().y - 0.5f);
             //}
+            _taskTimers[to_base( TimerClass::GAME_TIME )][0] = 0.0;
         }
 
-        Scene::processTasks( deltaTimeUS );
+        Scene::processTasks( gameDeltaTimeUS, appDeltaTimeUS );
     }
 
     bool MainScene::load()
@@ -172,9 +173,9 @@ namespace Divide
 
         if ( loadState )
         {
-            _taskTimers.push_back( 0.0 ); // Sun
-            _guiTimersMS.push_back( 0.0 );  // Fps
-            _guiTimersMS.push_back( 0.0 );  // Time
+            _taskTimers[to_base( TimerClass::GAME_TIME )].push_back( 0.0 ); // Sun
+            _guiTimersMS[to_base( TimerClass::APP_TIME )].push_back( 0.0 );  // Fps
+            _guiTimersMS[to_base( TimerClass::APP_TIME )].push_back( 0.0 );  // Time
 
             removeTask( *g_boxMoveTaskID );
             g_boxMoveTaskID = CreateTask( [this]( const Task& /*parent*/ )

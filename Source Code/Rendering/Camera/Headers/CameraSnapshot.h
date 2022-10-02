@@ -43,9 +43,9 @@ namespace Divide {
         std::array<Plane<F32>, 6> _frustumPlanes;
         vec3<F32> _eye;
         vec2<F32> _zPlanes;
-        Angle::DEGREES<F32> _FoV = 0.0f;
-        F32 _aspectRatio = 0.0f;
-        bool _isOrthoCamera = false;
+        Angle::DEGREES<F32> _FoV{ 0.f};
+        F32 _aspectRatio{ 0.f };
+        bool _isOrthoCamera{false};
     };
 
     inline bool operator==(const CameraSnapshot& lhs, const CameraSnapshot& rhs) {

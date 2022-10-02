@@ -157,7 +157,7 @@ namespace Divide
         }
 
         const RenderTarget* rt = _parent.getEditorTarget()._rt;
-        const Texture_ptr& gameView = rt->getAttachment(RTAttachmentType::COLOUR, 0)->texture();
+        const Texture_ptr& gameView = rt->getAttachment(RTAttachmentType::COLOUR)->texture();
 
         NodePreviewWindow::drawInternal(gameView.get());
 

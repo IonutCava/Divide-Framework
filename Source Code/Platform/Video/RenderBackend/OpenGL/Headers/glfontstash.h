@@ -169,7 +169,7 @@ static void glfons__renderDraw(void* userPtr, const FONSvert* verts, int nverts)
 
     // Not enough space left in the buffer. Start from the beginning
     if (prevWriteOffsetBytes > writeOffsetBytes) {
-        g_lockManager->waitForLockedRange(0u, std::numeric_limits<size_t>::max());
+        g_lockManager->waitForLockedRange( 0u, SIZE_MAX );
     }
 
     if (writeOffsetBytes + dataSize > GLFONS_VB_BUFFER_SIZE) {

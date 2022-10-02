@@ -672,7 +672,7 @@ void MenuBar::drawToolsMenu([[maybe_unused]] const bool modifierPressed) {
 
                         for (U8 k = 0; k < count; ++k)
                         {
-                            RTAttachment* attachment = rt->getAttachment(type, k);
+                            RTAttachment* attachment = rt->getAttachment(type, static_cast<RTColourAttachmentSlot>(k));
                             if (attachment == nullptr)
                             {
                                 continue;

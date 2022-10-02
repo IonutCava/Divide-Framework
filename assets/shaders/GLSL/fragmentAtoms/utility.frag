@@ -5,7 +5,8 @@
 
 #define overlay(X, Y) ((X < 0.5f) ? (2.f * X * Y) : (1.f - 2.f * (1.f - X) * (1.f - Y)))
 
-vec3 overlayVec(in vec3 base, in vec3 blend) {
+vec3 overlayVec(in vec3 base, in vec3 blend)
+{
     return vec3(overlay(base.r, blend.r),
                 overlay(base.g, blend.g),
                 overlay(base.b, blend.b));
@@ -13,39 +14,29 @@ vec3 overlayVec(in vec3 base, in vec3 blend) {
 
 #define scaledTextureCoords(UV, SCALE) (UV * SCALE)
 
-float ToLinearDepth(in float depth, in vec2 depthRangeIn) {
-    return (2.f * depthRangeIn.y * depthRangeIn.x / (depthRangeIn.y + depthRangeIn.x + (2.f * depth - 1.f) * (depthRangeIn.x - depthRangeIn.y)));
+float ToLinearDepth(in float depth, in vec2 depthRangeIn)
+{
+    const float zNear = depthRangeIn.x;
+    const float zFar = depthRangeIn.y;
+    const float depthRange = 2.f * depth - 1.f;
+
+    return 2.f * zNear * zFar / (zFar + zNear - depthRange * (zFar - zNear));
 }
 
 float ToLinearDepth(in float D, in mat4 projMatrix) { 
     return projMatrix[3][2] / (D - projMatrix[2][2]);
 }
 
-float ViewSpaceZ(in float depthIn, in mat4 invProjMatrix) {
-    return -1.0f / (invProjMatrix[2][3] * (depthIn * 2.f - 1.f) + invProjMatrix[3][3]);
-}
-
-vec3 ClipSpacePos(in vec2 texCoords, in float depthIn) {
-    return vec3(texCoords.s  * 2.f - 1.f,
-                texCoords.t * 2.f - 1.f,
-                depthIn     * 2.f - 1.f);
-}
-
-vec3 ViewSpacePos(in vec2 texCoords, in float depthIn, in mat4 invProjMatrix) {
-    const vec4 viewSpacePos = invProjMatrix * vec4(ClipSpacePos(texCoords, depthIn), 1.f);
-    return Homogenize(viewSpacePos);
-}
+#define ViewSpaceZ(DEPTH, INV_PROJ_MAT) (-1.f / (INV_PROJ_MAT[2][3] * (2.f * DEPTH - 1.f) + INV_PROJ_MAT[3][3]));
+#define ClipSpacePos(TEX_COORD, DEPTH) (2.f * vec3(TEX_COORD, DEPTH) - 1.f)
+#define ViewSpacePos(TEX_COORD, DEPTH, INV_PROJ_MAT) Homogenize( INV_PROJ_MAT * vec4( ClipSpacePos( TEX_COORD, DEPTH ), 1.f ) )
 
 vec3 WorldSpacePos(in vec2 texCoords, in float depthIn, in mat4 invProjMatrix, in mat4 invView) {
-    const vec3 viewSpacePos = ViewSpacePos(texCoords, depthIn, invProjMatrix);
-    return (invView * vec4(viewSpacePos, 1.f)).xyz;
+    return (invView * vec4( ViewSpacePos( texCoords, depthIn, invProjMatrix ), 1.f)).xyz;
 }
 
-// Utility function that maps a value from one range to another. 
-float ReMap(const float V, const float Min0, const float Max0, const float Min1, const float Max1) {
-    return (Min1 + (((V - Min0) / (Max0 - Min0)) * (Max1 - Min1)));
-}
-
+// Utility macro that maps a value from one range to another. 
+#define ReMap(V, Min0, Max0, Min1, Max1) (Min1 + (((V - Min0) / (Max0 - Min0)) * (Max1 - Min1)))
 #define InRangeExclusive(V, MIN, MAX) (VS > MIN && V < MAX)
 #define LinStep(LOW, HIGH, V) Saturate((V - LOW) / (HIGH - LOW))
 #define Luminance(RGB) max(dot(RGB, vec3(0.299f, 0.587f, 0.114f)), 0.0001f)

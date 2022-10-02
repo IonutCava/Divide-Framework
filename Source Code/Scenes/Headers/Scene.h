@@ -152,10 +152,10 @@ class Scene : public Resource, public PlatformContextComponent {
 
 #pragma region Logic Loop
         /// Get all input commands from the user
-        virtual void processInput(PlayerIndex idx, U64 deltaTimeUS);
+        virtual void processInput(PlayerIndex idx, U64 gameDeltaTimeUS, U64 appDeltaTimeUS );
         /// Update the scene based on the inputs
-        virtual void processTasks(U64 deltaTimeUS);
-        virtual void processGUI(U64 deltaTimeUS);
+        virtual void processTasks( U64 gameDeltaTimeUS, U64 appDeltaTimeUS );
+        virtual void processGUI(U64 gameDeltaTimeUS, U64 appDeltaTimeUS);
         /// The application has lost or gained focus
         virtual void onChangeFocus(bool hasFocus);
         virtual void updateSceneStateInternal(U64 deltaTimeUS);
@@ -293,10 +293,17 @@ class Scene : public Resource, public PlatformContextComponent {
         [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Scene"; }
 
     protected:
+        enum class TimerClass : U8
+        {
+            GAME_TIME = 0,
+            APP_TIME,
+            COUNT
+        };
+
         SceneManager&                         _parent;
         vector<Player*>                       _scenePlayers;
-        vector<D64>                           _taskTimers;
-        vector<D64>                           _guiTimersMS;
+        vector<D64>                           _taskTimers[to_base(TimerClass::COUNT)];
+        vector<D64>                           _guiTimersMS[to_base(TimerClass::COUNT)];
         std::atomic_uint                      _loadingTasks;
         XML::SceneNode                        _xmlSceneGraphRootNode;
 

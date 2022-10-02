@@ -36,17 +36,6 @@ GFX::MemoryBarrierCommand SceneShaderData::updateSceneDescriptorSet(GFX::Command
         bindCmd->_usage = DescriptorSetUsage::PER_FRAME;
         auto& set = bindCmd->_bindings;
 
-        if (_sceneDataDirty) {
-            _sceneShaderData->incQueue();
-            memBarrier._bufferLocks.push_back(_sceneShaderData->writeData(&_sceneBufferData));
-
-            auto& binding = set.emplace_back(ShaderStageVisibility::ALL_DRAW);
-            binding._slot = 6;
-            binding._data.As<ShaderBufferEntry>() = { *_sceneShaderData, { 0u, 1u }};
-
-            _sceneDataDirty = false;
-        }
-
         if (_probeDataDirty) {
             _probeShaderData->incQueue();
             memBarrier._bufferLocks.push_back(_probeShaderData->writeData(_probeData.data()));
@@ -56,6 +45,18 @@ GFX::MemoryBarrierCommand SceneShaderData::updateSceneDescriptorSet(GFX::Command
             binding._data.As<ShaderBufferEntry>() = { *_probeShaderData, { 0u, GLOBAL_PROBE_COUNT }};
 
             _probeDataDirty = false;
+        }
+
+        if ( _sceneDataDirty )
+        {
+            _sceneShaderData->incQueue();
+            memBarrier._bufferLocks.push_back( _sceneShaderData->writeData( &_sceneBufferData ) );
+
+            auto& binding = set.emplace_back( ShaderStageVisibility::ALL_DRAW );
+            binding._slot = 8;
+            binding._data.As<ShaderBufferEntry>() = { *_sceneShaderData, { 0u, 1u } };
+
+            _sceneDataDirty = false;
         }
     }
     return memBarrier;

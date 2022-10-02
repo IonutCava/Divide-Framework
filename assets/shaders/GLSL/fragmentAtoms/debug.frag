@@ -114,7 +114,8 @@ bool getDebugColour(in PBRMaterial material, in NodeMaterialData materialData, i
         } break;
         case DEBUG_LIGHT_HEATMAP:
         {
-            uint lights = lightGrid[GetClusterIndex(gl_FragCoord)]._countTotal;
+            LightGrid cluster = lightGrid[GetClusterIndex( gl_FragCoord )];
+            uint lights = cluster._countPoint + cluster._countSpot;
 
             // show possible clipping
             if (lights == 0) {
@@ -128,26 +129,16 @@ bool getDebugColour(in PBRMaterial material, in NodeMaterialData materialData, i
         } break;
         case DEBUG_DEPTH_CLUSTERS:
         {
-            debugColour = vec3(0.5f, 0.25f, 0.75f);
-            switch (GetClusterZIndex(gl_FragCoord.z) % 8) {
-                case 0:  debugColour = vec3(1.0f, 0.0f, 0.0f); break;
-                case 1:  debugColour = vec3(0.0f, 1.0f, 0.0f); break;
-                case 2:  debugColour = vec3(0.0f, 0.0f, 1.0f); break;
-                case 3:  debugColour = vec3(1.0f, 1.0f, 0.0f); break;
-                case 4:  debugColour = vec3(1.0f, 0.0f, 1.0f); break;
-                case 5:  debugColour = vec3(1.0f, 1.0f, 1.0f); break;
-                case 6:  debugColour = vec3(1.0f, 0.5f, 0.5f); break;
-                case 7:  debugColour = vec3(0.0f, 0.0f, 0.0f); break;
-            }
+            const vec3 colors[8] = vec3[](
+                vec3( 0, 0, 0 ), vec3( 0, 0, 1 ), vec3( 0, 1, 0 ), vec3( 0, 1, 1 ),
+                vec3( 1, 0, 0 ), vec3( 1, 0, 1 ), vec3( 1, 1, 0 ), vec3( 1, 1, 1 )
+            );
+            debugColour = colors[uint(mod( GetClusterZIndex( gl_FragCoord.z ), 8 ))];
         } break;
         case DEBUG_DEPTH_CLUSTER_AABBS :
         {
-            /*const uint clusterIdx = GetClusterIndex(gl_FragCoord);
-            VolumeTileAABB currentCluster = lightClusterAABBs[clusterIndex];
-            const vec3 clusterMin = currentCluster.minPoint.xyz;
-            const vec3 clusterMax = currentCluster.maxPoint.xyz;
-
-            debugColour = (clusterMin + clusterMax) * 0.5f;*/
+            const uint clusterIdx = GetClusterIndex(gl_FragCoord);
+            debugColour = turboColormap( float( clusterIdx ) / (CLUSTERS_X * CLUSTERS_Y * CLUSTERS_Z) );
         }break;
         case DEBUG_REFRACTIONS:
         case DEBUG_REFLECTIONS: {

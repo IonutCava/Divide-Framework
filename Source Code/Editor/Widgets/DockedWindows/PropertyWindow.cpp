@@ -1228,7 +1228,7 @@ namespace Divide
             // Scale is tricky as it may invalidate everything if it's set wrong!
             for ( U8 i = 0; i < 3; ++i )
             {
-                scale[i] = std::max( std::numeric_limits<F32>::epsilon(), scale[i] );
+                scale[i] = std::max( EPSILON_F32, scale[i] );
             }
             RegisterUndo<vec3<F32>, false>( _parent,
                                             GFX::PushConstantType::VEC3,

@@ -253,6 +253,7 @@ void Terrain::toggleBoundingBoxes() {
 
 void Terrain::prepareRender(SceneGraphNode* sgn,
                             RenderingComponent& rComp,
+                            RenderPackage& pkg,
                             const RenderStagePass renderStagePass,
                             const CameraSnapshot& cameraSnapshot,
                             const bool refreshData)
@@ -288,7 +289,7 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
     uvEye /= (TessellationParams::PATCHES_PER_TILE_EDGE * 2);
 
     const vec2<F32> dXZ = eyeXZ - snappedXZ;
-    snappedXZ = eyeXZ - dXZ; // Why the 2x?  I'm confused.  But it works.
+    snappedXZ = eyeXZ - dXZ;
         
     cullingEye.x += snappedXZ[0];
     cullingEye.z += snappedXZ[1];
@@ -297,13 +298,13 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
                                     vec3<F32>(tessParams().WorldScale()[0], 1.f, tessParams().WorldScale()[1]),
                                     mat3<F32>());
 
-    PushConstants& constants = rComp.getPushConstants(renderStagePass);
+    PushConstants& constants = pkg.pushConstantsCmd()._constants;
     constants.set(_ID("dvd_terrainWorld"), GFX::PushConstantType::MAT4, terrainWorldMat);
     constants.set(_ID("dvd_uvEyeOffset"), GFX::PushConstantType::VEC2, uvEye);
     constants.set(_ID("dvd_tessTriangleWidth"),  GFX::PushConstantType::FLOAT, triangleWidth);
     
 
-    Object3D::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
+    Object3D::prepareRender(sgn, rComp, pkg, renderStagePass, cameraSnapshot, refreshData);
 }
 
 void Terrain::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut)

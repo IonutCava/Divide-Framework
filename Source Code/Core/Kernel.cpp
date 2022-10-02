@@ -330,6 +330,8 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
             constexpr U8 MAX_FRAME_SKIP = 4u;
 
             const U64 fixedTimestep = _timingData.fixedTimeStep();
+            const U64 appDeltaTimeUS = _timingData.appTimeDeltaUS();
+
             while (_timingData.accumulator() >= FIXED_UPDATE_RATE_US) {
                 OPTICK_EVENT("Run Update Loop");
                 // Everything inside here should use fixed timesteps, apart from GFX updates which should use both!
@@ -340,7 +342,7 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
                 }
                 {
                     OPTICK_EVENT("GUI Update");
-                    _sceneManager->getActiveScene().processGUI(fixedTimestep);
+                    _sceneManager->getActiveScene().processGUI(fixedTimestep, appDeltaTimeUS );
                 }
                 // Flush any pending threaded callbacks
                 for (U8 i = 0u; i < to_U8(TaskPoolType::COUNT); ++i) {
@@ -352,13 +354,13 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
                     OPTICK_EVENT("Process input");
                     for (U8 i = 0u; i < playerCount; ++i) {
                         OPTICK_TAG("Player index", i);
-                        _sceneManager->getActiveScene().processInput(i, fixedTimestep);
+                        _sceneManager->getActiveScene().processInput(i, fixedTimestep, appDeltaTimeUS );
                     }
                 }
                 // process all scene events
                 {
                     OPTICK_EVENT("Process scene events");
-                    _sceneManager->getActiveScene().processTasks(fixedTimestep);
+                    _sceneManager->getActiveScene().processTasks(fixedTimestep, appDeltaTimeUS);
                 }
                 // Update the scene state based on current time (e.g. animation matrices)
                 _sceneManager->updateSceneState(fixedTimestep, _timingData.appTimeDeltaUS());

@@ -54,8 +54,8 @@ public:
 private:
     std::array<F32, FRAME_ARRAY_SIZE> _framerateSecPerFrame = {};
     U32 _frameCount = 0u;
-    F32 _minFPS = std::numeric_limits<F32>::max();
-    F32 _maxFPS = std::numeric_limits<F32>::lowest();
+    F32 _minFPS = F32_MAX;
+    F32 _maxFPS = F32_LOWEST;
     F32 _averageFPS = 0.f;
     F32 _previousElapsedSeconds = 0.f;
     F32 _framerate = 0.f;

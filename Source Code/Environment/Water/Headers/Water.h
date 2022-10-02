@@ -81,6 +81,7 @@ class WaterPlane : public SceneNode {
     void sceneUpdate(U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sceneState) override;
     void prepareRender(SceneGraphNode* sgn,
                        RenderingComponent& rComp,
+                       RenderPackage& pkg,
                        RenderStagePass renderStagePass,
                        const CameraSnapshot& cameraSnapshot,
                        bool refreshData) override;
@@ -98,12 +99,9 @@ class WaterPlane : public SceneNode {
     void updateRefraction(RenderPassManager* passManager, RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) const;
 
    private:
-    vec3<U16> _dimensions;
-    /// the water's "geometry"
-    std::shared_ptr<Quad3D> _plane = nullptr;
-
-    Camera* _reflectionCam = nullptr;
-    std::array<EditorDataState, to_base(RenderStage::COUNT)> _editorDataDirtyState;
+    vec3<U16> _dimensions{1u};
+    Quad3D_ptr _plane{ nullptr };
+    Camera* _reflectionCam{ nullptr };
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(WaterPlane);

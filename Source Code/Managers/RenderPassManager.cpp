@@ -27,9 +27,6 @@
 #include "Scenes/Headers/SceneEnvironmentProbePool.h"
 
 namespace Divide {
-namespace {
-    constexpr bool g_multiThreadedCommandGeneration = true;
-}
 
 RenderPassManager::RenderPassManager(Kernel& parent, GFXDevice& context)
     : KernelComponent(parent),
@@ -119,33 +116,7 @@ void RenderPassManager::postInit() {
 void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& pool, const CameraSnapshot& cameraSnapshot) {
     OPTICK_EVENT();
 
-    const auto GetTaskPriority = [](const I8 renderStageIdx) noexcept {
-        if (renderStageIdx == 0) {
-            return TaskPriority::REALTIME;
-        }
-
-        return g_multiThreadedCommandGeneration ? TaskPriority::DONT_CARE : TaskPriority::REALTIME;
-    }; 
-
-    { //PostFX should be pretty fast
-        PostFX& postFX = _context.getRenderer().postFX();
-        _postFXWorkTask = CreateTask(nullptr,
-                                     [&](const Task& /*parentTask*/)
-                                     {
-                                          OPTICK_EVENT("PostFX: BuildCommandBuffer");
-                                 
-                                          _postFXCmdBuffer->clear(false);
-                                 
-                                          Time::ScopedTimer time(*_postFxRenderTimer);
-                                          postFX.apply(params._playerPass, cameraSnapshot, *_postFXCmdBuffer);
-                                 
-                                          _postFXCmdBuffer->batch();
-                                     },
-                                     false);
-        Start(*_postFXWorkTask, pool, GetTaskPriority(to_I8(RenderStage::COUNT)));
-    }
-
-    for (I8 i = to_I8(RenderStage::COUNT) - 1; i >= 0; i--)
+    for (U8 i = 0u; i < to_base(RenderStage::COUNT); ++i )
     { //All of our render passes should run in parallel
         RenderPassData& passData = _renderPassData[i];
         passData._workTask = CreateTask(nullptr,
@@ -162,7 +133,26 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
                                        },
                                        false);
 
-        Start(*passData._workTask, pool, GetTaskPriority(i));
+        Start(*passData._workTask, pool, TaskPriority::DONT_CARE);
+    }
+
+
+    { //PostFX should be pretty fast
+        PostFX& postFX = _context.getRenderer().postFX();
+        _postFXWorkTask = CreateTask( nullptr,
+                                      [&]( const Task& /*parentTask*/ )
+                                      {
+                                          OPTICK_EVENT( "PostFX: BuildCommandBuffer" );
+
+                                          _postFXCmdBuffer->clear( false );
+
+                                          Time::ScopedTimer time( *_postFxRenderTimer );
+                                          postFX.apply( params._playerPass, cameraSnapshot, *_postFXCmdBuffer );
+
+                                          _postFXCmdBuffer->batch();
+                                      },
+                                      false );
+        Start( *_postFXWorkTask, pool, TaskPriority::REALTIME );
     }
 }
 
@@ -206,12 +196,12 @@ void RenderPassManager::render(const RenderParams& params) {
 
        GFX::BeginRenderPassCommand beginRenderPassCmd{};
        beginRenderPassCmd._name = "Flush Display";
-       beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { DefaultColours::DIVIDE_BLUE, 0u };
+       beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { DefaultColours::DIVIDE_BLUE, RTColourAttachmentSlot::SLOT_0 };
        beginRenderPassCmd._target = editorRunning ? context.editor().getEditorTarget()._targetID : SCREEN_TARGET_ID;
        GFX::EnqueueCommand(buf, beginRenderPassCmd);
 
-       const auto& screenAtt = gfx.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::ALBEDO));
-       const auto& texData = screenAtt->texture()->defaultView();
+       const auto& screenAtt = gfx.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
+       const auto& texData = screenAtt->texture()->sampledView();
        const Rect<I32>& targetViewport = params._targetViewport;
        // Apply gamma correction here as PostFX requires everything in linear space
        gfx.drawTextureInViewport(texData, screenAtt->descriptor()._samplerHash, targetViewport, true, false, false, buf);
@@ -323,7 +313,7 @@ void RenderPassManager::render(const RenderParams& params) {
     activeLightPool.postRenderAllPasses();
 
     Time::ScopedTimer time(*_blitToDisplayTimer);
-    gfx.flushCommandBuffer(*_postRenderBuffer);
+    gfx.flushCommandBuffer(*_postRenderBuffer, false);
 
     _context.setCameraSnapshot(params._playerPass, cam->snapshot());
 

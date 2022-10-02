@@ -166,11 +166,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
     [[nodiscard]] bool canDraw(const RenderStagePass& renderStagePass);
 
-    [[nodiscard]] DescriptorSet& getDescriptorSet(const RenderStagePass& renderStagePass);
-    [[nodiscard]] PushConstants& getPushConstants(const RenderStagePass& renderStagePass);
     [[nodiscard]] size_t         getPipelineHash(const RenderStagePass& renderStagePass);
-
-    void addAdditionalCommands(const RenderStagePass& renderStagePass, GFX::CommandBuffer* cmdBuffer);
 
     void drawDebugAxis();
     void drawSelectionGizmo();
@@ -195,6 +191,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     void onRenderOptionChanged(RenderOptions option, bool state);
     void clearDrawPackages(const RenderStage stage, const RenderPassType pass);
     void clearDrawPackages();
+    void updateReflectRefractDescriptors(bool reflectState, bool refractState);
 
     [[nodiscard]] bool hasDrawCommands() noexcept;
                   void retrieveDrawCommands(const RenderStagePass& stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut);
@@ -234,7 +231,12 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     GFXDevice& _context;
     const Configuration& _config;
 
-    struct PackageEntry { RenderPackage _package; U16 _index{0u}; };
+    struct PackageEntry 
+    {
+        RenderPackage _package;
+        U16 _index{ 0u };
+    };
+
     using PackagesPerIndex = vector<PackageEntry>;
     using PackagesPerPassIndex = std::array<PackagesPerIndex, to_base(RenderStagePass::PassIndex::COUNT)>;
     using PackagesPerVariant = std::array<PackagesPerPassIndex, to_base(RenderStagePass::VariantType::COUNT)>;
@@ -253,6 +255,8 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     SharedMutex _renderPackagesLock;
 
     DrawCommands _drawCommands;
+    std::pair<Texture*, size_t> _reflectionPlanar{nullptr, 0u};
+    std::pair<Texture*, size_t> _refractionPlanar{nullptr, 0u};
 
     std::array<U8, to_base(RenderStage::COUNT)> _lodLevels{};
     std::array<std::pair<size_t, size_t>, MAX_LOD_LEVEL> _lodIndexOffsets{};
@@ -272,6 +276,8 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     bool _drawAABB{ false };
     bool _drawOBB{ false };
     bool _drawBS{ false };
+    bool _updateReflection{ false };
+    bool _updateRefraction{ false };
     U32 _materialUpdateMask{ to_base(MaterialUpdateResult::OK) };
 
 END_COMPONENT(Rendering);

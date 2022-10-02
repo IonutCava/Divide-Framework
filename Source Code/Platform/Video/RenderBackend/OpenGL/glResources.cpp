@@ -77,7 +77,7 @@ namespace GLUtil {
 /*-----------Object Management----*/
 GLuint k_invalidObjectID = GL_INVALID_INDEX;
 GLuint s_lastQueryResult = GL_INVALID_INDEX;
-size_t k_invalidSyncID = std::numeric_limits<size_t>::max();
+size_t k_invalidSyncID = SIZE_MAX;
 
 const DisplayWindow* s_glMainRenderWindow;
 thread_local SDL_GLContext s_glSecondaryContext = nullptr;

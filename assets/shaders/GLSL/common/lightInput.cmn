@@ -29,7 +29,7 @@ struct Light {
 #define _SHADOW_INDEX _options.y
 #define _SPOT_CONE_SLANT_HEIGHT _options.z
 
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_FRAME, 9, std430) coherent ACCESS_R buffer dvd_LightBlock
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_PASS, 9, std430) coherent ACCESS_R buffer dvd_LightBlock
 {
     Light dvd_LightSource[];
     //RenderDoc: vec3 colour; float cosOuterCone; vec3 positionWV; float range; vec3 directionWV; float spotAngle; int lightType; int castsShadows; ivec2 null;
@@ -50,7 +50,7 @@ vec4 getPositionAndRangeForLight(in Light source) {
     return returnValue;
 }
 
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_FRAME, 8, std140) uniform dvd_LightSceneDataBlock
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_PASS, 8, std140) uniform dvd_LightSceneDataBlock
 {
     // x = directional light count, y = point light count, z = spot light count, w = unused
     uvec4 dvd_LightData;
@@ -62,41 +62,28 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_FRAME, 8, std140) uniform dvd_LightSceneDataB
 #define DIRECTIONAL_LIGHT_COUNT dvd_LightData.x
 #define POINT_LIGHT_COUNT       dvd_LightData.y
 #define SPOT_LIGHT_COUNT        dvd_LightData.z
-#define CLUSTERS_COUNT          CLUSTERS_X * CLUSTERS_Y * CLUSTERS_Z
-#define LIGHT_POINT_IDX 0
-#define LIGHT_SPOT_IDX 1
-#define LIGHT_TYPE_COUNT 2
 
 #if defined(FRAG_SHADER) || defined(COMPUTE_SHADER)
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_FRAME, 10, std430)  COMP_ONLY_W buffer lightGridSSBO
+DESCRIPTOR_SET_RESOURCE_LAYOUT( PER_PASS, 10, std430 ) COMP_ONLY_W buffer lightIndexSSBO
 {
-    uvec4 lightGrid[];
+    uint globalLightIndexList[];
+};
+
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_PASS, 11, std430)  COMP_ONLY_W buffer lightGridSSBO
+{
+    uvec4 lightGrid[CLUSTERS_X * CLUSTERS_Y * CLUSTERS_Z];
 };
 
 #define LightGrid uvec4
 #define _offset x
-#define _countTotal y
-#define _countPoint z
-#define _countSpot w
-
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_FRAME, 11, std430) COMP_ONLY_W buffer lightIndexSSBO {
-    uint globalLightIndexList[];
-};
+#define _countPoint y
+#define _countSpot z
+#define _unused w
 
 struct VolumeTileAABB
 {
     vec4 minPoint;
     vec4 maxPoint;
-};
-
-#if defined(COMPUTE_LIGHT_CLUSTERS)
-#define LIGHT_CLUSTER_ACCESS COMP_ONLY_W
-#else //COMPUTE_LIGHT_CLUSTERS
-#define LIGHT_CLUSTER_ACCESS COMP_ONLY_R
-#endif
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_FRAME, 12, std430) LIGHT_CLUSTER_ACCESS buffer lightClusterAABBsBuffer
-{
-    VolumeTileAABB lightClusterAABBs[];
 };
 
 #if !defined(COMPUTE_SHADER)
@@ -105,19 +92,25 @@ float ToLinearDepth(in float depthIn, in vec2 depthRangeIn);
 
 // cluster depth index from depth in screen coordinates (gl_FragCoord.z)
 uint GetClusterZIndex(in float screenDepth) {
-    const float eyeDepth = ToLinearDepth(screenDepth, dvd_ZPlanes);
-    return uint(max(log(eyeDepth) * dvd_LightScale + dvd_LightBias, 0.f));
+    const float eyeDepth = ToLinearDepth( 0.5f * screenDepth + 0.5f, dvd_ZPlanes);
+    
+    return uint( max( log( eyeDepth ) * dvd_LightScale + dvd_LightBias, 0.f ) );
 }
 
 uint GetClusterIndex(in vec4 fragCoord) {
     const uint zIndex = GetClusterZIndex(fragCoord.z);
-    const uvec3 indices = uvec3(uvec2(fragCoord.xy / dvd_ClusterSizes.xy), zIndex);
-
+    const uvec3 indices = uvec3(uvec2(fragCoord.xy / dvd_ClusterSizes), zIndex);
     return (CLUSTERS_X * CLUSTERS_Y) * indices.z +
             CLUSTERS_X * indices.y +
             indices.x;
 }
 
+#else //COMPUTE_SHADER
+
+DESCRIPTOR_SET_RESOURCE_LAYOUT( PER_DRAW, 1, std430 ) COMP_ONLY_RW buffer lightClusterAABBsBuffer
+{
+    VolumeTileAABB lightClusterAABBs[CLUSTERS_X * CLUSTERS_Y * CLUSTERS_Z];
+};
 #endif //COMPUTE_SHADER
 
 #endif //FRAG_SHADER || COMPUTE_SHADER

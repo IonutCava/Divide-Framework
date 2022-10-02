@@ -220,8 +220,8 @@ inline void BoundingBox::set(const vec3<F32>& min, const vec3<F32>& max) noexcep
 }
 
 inline void BoundingBox::reset() noexcept {
-    _min.set( std::numeric_limits<F32>::max());
-    _max.set(-std::numeric_limits<F32>::max());
+    _min.set( F32_MAX);
+    _max.set(-F32_MAX);
 }
 
 inline vec3<F32> BoundingBox::cornerPoint(const U8 cornerIndex) const noexcept {

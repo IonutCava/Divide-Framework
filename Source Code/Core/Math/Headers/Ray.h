@@ -48,7 +48,7 @@ struct RayResult
 {
     bool hit = false;
     bool inside = false;
-    F32 dist = std::numeric_limits<F32>::infinity();
+    F32 dist = F32_INFINITY;
 };
 
 struct Ray {
@@ -70,17 +70,17 @@ struct Ray {
         if (!IS_ZERO(_direction.x)) {
             ret._invDirection.x = 1.0f / _direction.x;
         } else {
-            ret._invDirection.x = std::numeric_limits<F32>::infinity();
+            ret._invDirection.x = F32_INFINITY;
         }
         if (!IS_ZERO(_direction.y)) {
             ret._invDirection.y = 1.0f / _direction.y;
         } else {
-            ret._invDirection.y = std::numeric_limits<F32>::infinity();
+            ret._invDirection.y = F32_INFINITY;
         }
         if (!IS_ZERO(_direction.z)) {
             ret._invDirection.z = 1.0f / _direction.z;
         } else {
-            ret._invDirection.z = std::numeric_limits<F32>::infinity();
+            ret._invDirection.z = F32_INFINITY;
         }
         ret._sign.x = ret._invDirection.x < 0.0f;
         ret._sign.y = ret._invDirection.y < 0.0f;

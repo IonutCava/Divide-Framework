@@ -46,7 +46,7 @@ enum class ShaderBuildStage : U8 {
 };
 
 struct ShaderProgramInfo {
-    I64 _shaderKeyCache = std::numeric_limits<I32>::lowest();
+    I64 _shaderKeyCache = I64_LOWEST;
 
     ShaderProgram_ptr _shaderRef = nullptr;
     ShaderBuildStage _shaderCompStage = ShaderBuildStage::COUNT;

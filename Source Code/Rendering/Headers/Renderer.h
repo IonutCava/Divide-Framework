@@ -49,12 +49,10 @@ FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 /// TiledForwardShading
 class Renderer final : public PlatformContextComponent {
    public:
-       static vec3<U8> CLUSTER_SIZE;
-   public:
     Renderer(PlatformContext& context, ResourceCache* cache);
     ~Renderer();
 
-    void prepareLighting(RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut);
+    void prepareLighting(RenderStage stage, const Rect<I32>& viewport, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut);
 
     void idle() const;
 
@@ -66,11 +64,19 @@ class Renderer final : public PlatformContextComponent {
 
   private:
       struct PerRenderStageData {
-          mat4<F32>     _previousProjMatrix;
-          ShaderBuffer_uptr _lightIndexBuffer = nullptr;
-          ShaderBuffer_uptr _lightGridBuffer = nullptr;
-          ShaderBuffer_uptr _globalIndexCountBuffer = nullptr;
-          ShaderBuffer_uptr _lightClusterAABBsBuffer = nullptr;
+          struct GridBuildData
+          {
+              mat4<F32> _invProjectionMatrix;
+              Rect<I32> _viewport;
+              vec2<F32> _zPlanes;
+              [[nodiscard]] bool operator!=( const GridBuildData& other ) const noexcept;
+          } _gridData;
+
+          ShaderBuffer_uptr _lightIndexBuffer{ nullptr };
+          ShaderBuffer_uptr _lightGridBuffer{ nullptr };
+          ShaderBuffer_uptr _globalIndexCountBuffer{ nullptr };
+          ShaderBuffer_uptr _lightClusterAABBsBuffer{ nullptr };
+          bool _invalidated{true};
       };
     // No shadow stage
     std::array<PerRenderStageData, to_base(RenderStage::COUNT) - 1> _lightDataPerStage;
@@ -83,9 +89,8 @@ class Renderer final : public PlatformContextComponent {
     GFX::BindPipelineCommand _lightCullPipelineCmd;
     GFX::BindPipelineCommand _lightResetCounterPipelineCmd;
     GFX::BindPipelineCommand _lightBuildClusteredAABBsPipelineCmd;
-
-    vec3<U32> _computeWorkgroupSize;
 };
+
 
 FWD_DECLARE_MANAGED_CLASS(Renderer);
 

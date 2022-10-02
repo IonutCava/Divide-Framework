@@ -64,7 +64,7 @@ namespace Debug {
     void SetObjectTag(VkDevice device, uint64_t object, const VkObjectType objectType, size_t tagSize, void* tagData, uint64_t tagName);
 };
 
-constexpr U32 INVALID_VK_QUEUE_INDEX = std::numeric_limits<U32>::max();
+constexpr U32 INVALID_VK_QUEUE_INDEX = U32_MAX;
 
 struct VKQueue {
     VkQueue _queue{};
@@ -131,7 +131,7 @@ inline std::string VKErrorString(VkResult errorCode)
     extern std::array<VkShaderStageFlagBits, to_base(ShaderType::COUNT)> vkShaderStageTable;
 
 namespace VKUtil {
-    constexpr U8 k_invalidSyncID = std::numeric_limits<U8>::max();
+    constexpr U8 k_invalidSyncID = U8_MAX;
 
     void fillEnumTables(VkDevice device);
 

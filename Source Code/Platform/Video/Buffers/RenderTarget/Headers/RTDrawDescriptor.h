@@ -37,7 +37,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Platform/Video/Headers/BlendingProperties.h"
 
 namespace Divide {
-    constexpr U16 INVALID_LAYER_INDEX = std::numeric_limits<U16>::max();
+    constexpr U16 INVALID_LAYER_INDEX = U16_MAX;
 
 struct BlitIndex {
     U16 _index{ INVALID_LAYER_INDEX };
@@ -55,43 +55,37 @@ struct DepthBlitEntry {
 };
 
 struct RTBlitParams {
-    using ColourArray = std::array<ColourBlitEntry, RT_MAX_COLOUR_ATTACHMENTS>;
+    using ColourArray = std::array<ColourBlitEntry, to_base( RTColourAttachmentSlot::COUNT )>;
     DepthBlitEntry _blitDepth{};
     ColourArray _blitColours{};
 };
 
 struct RTDrawMask {
-    std::array<bool, MAX_RT_COLOUR_ATTACHMENTS> _disabledColours = {
-        false,
-        false,
-        false,
-        false
-    };
-
+    std::array<bool, to_base( RTColourAttachmentSlot::COUNT )> _disabledColours = create_array<to_base( RTColourAttachmentSlot::COUNT), bool>(false);
     bool _disabledDepth = false;
 };
 
 struct ClearColourEntry
 {
     FColour4 _colour{ VECTOR4_ZERO };
-    U8 _index{ MAX_RT_COLOUR_ATTACHMENTS };
+    RTColourAttachmentSlot _index{ RTColourAttachmentSlot::COUNT };
 };
 
 struct RTDrawLayerParams {
     RTAttachmentType _type{ RTAttachmentType::COUNT };
-    U8 _index{ 0u };
+    RTColourAttachmentSlot _index{ RTColourAttachmentSlot::COUNT };
     U16 _layer{ 0 };
     U16 _mipLevel{ U16_MAX };
 };
 
 struct RTClearDescriptor {
-    std::array<ClearColourEntry, MAX_RT_COLOUR_ATTACHMENTS> _clearColourDescriptors;
+    std::array<ClearColourEntry, to_base( RTColourAttachmentSlot::COUNT )> _clearColourDescriptors;
     bool _clearDepth = false;
     F32 _clearDepthValue = 1.f;
 };
 
 struct RTDrawLayerDescriptor {
-    std::array<U16, MAX_RT_COLOUR_ATTACHMENTS> _colourLayers = create_array<MAX_RT_COLOUR_ATTACHMENTS>(INVALID_LAYER_INDEX);
+    std::array<U16, to_base( RTColourAttachmentSlot::COUNT )> _colourLayers = create_array<to_base( RTColourAttachmentSlot::COUNT )>(INVALID_LAYER_INDEX);
     U16 _depthLayer = INVALID_LAYER_INDEX;
 };
 
@@ -104,8 +98,8 @@ struct RTDrawDescriptor {
 };
 
 [[nodiscard]] bool IsEnabled(const RTDrawMask& mask, RTAttachmentType type) noexcept;
-[[nodiscard]] bool IsEnabled(const RTDrawMask& mask, RTAttachmentType type, U8 index) noexcept;
-void SetEnabled(RTDrawMask& mask, RTAttachmentType type, U8 index, bool state) noexcept;
+[[nodiscard]] bool IsEnabled(const RTDrawMask& mask, RTAttachmentType type, RTColourAttachmentSlot slot) noexcept;
+void SetEnabled(RTDrawMask& mask, RTAttachmentType type, RTColourAttachmentSlot slot, bool state) noexcept;
 void EnableAll(RTDrawMask& mask);
 void DisableAll(RTDrawMask& mask);
 

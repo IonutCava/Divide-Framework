@@ -91,7 +91,7 @@ namespace Divide
         sampler.anisotropyLevel( 0 );
         const size_t samplerHash = sampler.getHash();
 
-        const TextureDescriptor& texDescriptor = rt->getAttachment( RTAttachmentType::COLOUR, 0 )->texture()->descriptor();
+        const TextureDescriptor& texDescriptor = rt->getAttachment( RTAttachmentType::COLOUR )->texture()->descriptor();
         // Draw FBO
         {
             // MSAA rendering is supported
@@ -107,8 +107,8 @@ namespace Divide
 
             InternalRTAttachmentDescriptors att
             {
-                InternalRTAttachmentDescriptor{ colourDescriptor, samplerHash, RTAttachmentType::COLOUR, 0u},
-                InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::DEPTH, 0u }
+                InternalRTAttachmentDescriptor{ colourDescriptor, samplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0},
+                InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 }
             };
 
             RenderTargetDescriptor desc = {};
@@ -129,7 +129,7 @@ namespace Divide
 
             InternalRTAttachmentDescriptors att
             {
-                InternalRTAttachmentDescriptor{ blurMapDescriptor, samplerHash, RTAttachmentType::COLOUR, 0u }
+                InternalRTAttachmentDescriptor{ blurMapDescriptor, samplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 }
             };
 
             RenderTargetDescriptor desc = {};
@@ -187,7 +187,7 @@ namespace Divide
 
         for ( ; i < Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT; ++i )
         {
-            depths[i] = std::numeric_limits<F32>::max();
+            depths[i] = F32_MAX;
             light.setShadowFloatValue( i, -depths[i] );
         }
 
@@ -333,8 +333,7 @@ namespace Divide
 
                 lightOrthoMatrix.translate( vec3<F32>
                 {
-                    (roundedOrigin.xy - shadowOrigin.xy) * 2.0f / g_shadowSettings.csm.shadowMapResolution,
-                        0.0f
+                    (roundedOrigin.xy - shadowOrigin.xy) * 2.0f / g_shadowSettings.csm.shadowMapResolution, 0.0f
                 } );
 
                 // Use our adjusted matrix for actual rendering
@@ -366,7 +365,7 @@ namespace Divide
         params._maxLoD = -1;
         params._layerParams._colourLayers[0] = 0u;
         params._clearDescriptorMainPass._clearDepth = true;
-        params._clearDescriptorMainPass._clearColourDescriptors[0] = { DefaultColours::WHITE, 0u };
+        params._clearDescriptorMainPass._clearColourDescriptors[0] = { DefaultColours::WHITE, RTColourAttachmentSlot::SLOT_0 };
 
         GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand( Util::StringFormat( "Cascaded Shadow Pass Light: [ %d ]", lightIndex ).c_str(), lightIndex ) );
 
@@ -439,7 +438,7 @@ namespace Divide
             beginRenderPassVerticalCmd._name = "DO_CSM_BLUR_PASS_VERTICAL";
 
             // Blur horizontally
-            const auto& shadowAtt = rtHandle._rt->getAttachment( RTAttachmentType::COLOUR, 0 );
+            const auto& shadowAtt = rtHandle._rt->getAttachment( RTAttachmentType::COLOUR );
 
             GFX::EnqueueCommand( bufferInOut, beginRenderPassHorizontalCmd );
 
@@ -449,7 +448,7 @@ namespace Divide
                 cmd->_usage = DescriptorSetUsage::PER_DRAW;
                 auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
                 binding._slot = 0;
-                binding._data.As<DescriptorCombinedImageSampler>() = { shadowAtt->texture()->defaultView(), shadowAtt->descriptor()._samplerHash };
+                binding._data.As<DescriptorCombinedImageSampler>() = { shadowAtt->texture()->sampledView(), shadowAtt->descriptor()._samplerHash };
             }
             _shaderConstantsCmd._constants.set( _ID( "verticalBlur" ), GFX::PushConstantType::BOOL, false );
             _shaderConstantsCmd._constants.set( _ID( "layerOffsetRead" ), GFX::PushConstantType::INT, layerOffset );
@@ -462,13 +461,13 @@ namespace Divide
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>( bufferInOut );
 
             // Blur vertically
-            const auto& blurAtt = _blurBuffer._rt->getAttachment( RTAttachmentType::COLOUR, 0 );
+            const auto& blurAtt = _blurBuffer._rt->getAttachment( RTAttachmentType::COLOUR );
             {
                 auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
                 cmd->_usage = DescriptorSetUsage::PER_DRAW;
                 auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
                 binding._slot = 0;
-                binding._data.As<DescriptorCombinedImageSampler>() = { blurAtt->texture()->defaultView(), blurAtt->descriptor()._samplerHash };
+                binding._data.As<DescriptorCombinedImageSampler>() = { blurAtt->texture()->sampledView(), blurAtt->descriptor()._samplerHash };
             }
 
             GFX::EnqueueCommand( bufferInOut, beginRenderPassVerticalCmd );

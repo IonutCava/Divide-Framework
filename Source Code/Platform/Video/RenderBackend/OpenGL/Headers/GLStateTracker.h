@@ -160,7 +160,7 @@ namespace Divide {
 
         RenderStateBlock _activeState{};
 
-        std::array<std::pair<Str64, U32>, 32> _debugScope;
+        std::array<std::pair<Str256, U32>, 32> _debugScope;
         U8 _debugScopeDepth{ 0u };
 
         Pipeline const* _activePipeline{ nullptr };

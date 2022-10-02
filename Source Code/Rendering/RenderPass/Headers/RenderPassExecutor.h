@@ -60,8 +60,8 @@ FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 class RenderPassExecutor
 {
 public:
-    static constexpr size_t INVALID_MAT_HASH = std::numeric_limits<size_t>::max();
-    static constexpr size_t INVALID_TEX_HASH = std::numeric_limits<size_t>::max();
+    static constexpr size_t INVALID_MAT_HASH = SIZE_MAX;
+    static constexpr size_t INVALID_TEX_HASH = SIZE_MAX;
     static constexpr U16 g_invalidMaterialIndex = Config::MAX_CONCURRENT_MATERIALS;
     static constexpr U32 g_invalidTexturesIndex = g_invalidMaterialIndex;
 
@@ -145,7 +145,7 @@ private:
 
     void occlusionPass(PlayerIndex idx, 
                        const CameraSnapshot& cameraSnapshot,
-                       U32 visibleNodeCount,
+                       size_t visibleNodeCount,
                        RenderStagePass stagePass,
                        const RenderTargetID& sourceDepthBuffer,
                        const RenderTargetID& targetHiZBuffer,
@@ -177,19 +177,19 @@ private:
 
     [[nodiscard]] U16 processVisibleNodeMaterial(RenderingComponent* rComp, bool& cacheHit);
 
-    U16 buildDrawCommands(const RenderPassParams& params,
-                          bool doPrePass,
-                          bool doOITPass,
-                          GFX::CommandBuffer& bufferInOut,
-                          GFX::MemoryBarrierCommand& memCmdInOut);
+    size_t buildDrawCommands(const RenderPassParams& params,
+                             bool doPrePass,
+                             bool doOITPass,
+                             GFX::CommandBuffer& bufferInOut,
+                             GFX::MemoryBarrierCommand& memCmdInOut);
 
-    U16 prepareNodeData(const RenderPassParams& params,
-                        const CameraSnapshot& cameraSnapshot,
-                        bool hasInvalidNodes,
-                        const bool doPrePass,
-                        const bool doOITPass,
-                        GFX::CommandBuffer& bufferInOut,
-                        GFX::MemoryBarrierCommand& memCmdInOut);
+    size_t prepareNodeData(const RenderPassParams& params,
+                           const CameraSnapshot& cameraSnapshot,
+                           bool hasInvalidNodes,
+                           const bool doPrePass,
+                           const bool doOITPass,
+                           GFX::CommandBuffer& bufferInOut,
+                           GFX::MemoryBarrierCommand& memCmdInOut);
 
     [[nodiscard]] U32 renderQueueSize() const;
 
@@ -211,6 +211,9 @@ private:
     RenderPassManager& _parent;
     GFXDevice& _context;
     const RenderStage _stage;
+
+    bool _lightsUploaded = false;
+
     RenderQueue_uptr _renderQueue{nullptr};
     RenderBin::SortedQueues _sortedQueues{};
     DrawCommandContainer _drawCommands{};

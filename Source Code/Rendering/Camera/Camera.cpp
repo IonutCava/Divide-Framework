@@ -866,7 +866,7 @@ namespace Divide
 
         const vec4<F32> clipSpace = projectionMatrix() * viewSpace;
 
-        const F32 clampedClipW = std::max( clipSpace.w, std::numeric_limits<F32>::epsilon() );
+        const F32 clampedClipW = std::max( clipSpace.w, EPSILON_F32 );
 
         const vec2<F32> ndcSpace = clipSpace.xy / clampedClipW;
 

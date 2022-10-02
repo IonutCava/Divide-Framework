@@ -37,10 +37,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-namespace GFX {
-    class CommandBuffer;
-};
-
 struct RenderPackage {
     static constexpr U32 INVALID_CMD_OFFSET = U32_MAX;
     static constexpr U8 INVALID_STAGE_INDEX = U8_MAX;
@@ -50,11 +46,16 @@ struct RenderPackage {
     PROPERTY_RW(GFX::SendPushConstantsCommand,  pushConstantsCmd);
     PROPERTY_RW(U32, drawCmdOffset, INVALID_CMD_OFFSET);
     PROPERTY_RW(U8,  stagePassBaseIndex, INVALID_STAGE_INDEX);
-    POINTER_RW(GFX::CommandBuffer, additionalCommands, nullptr);
+
+private:
+    friend GFX::CommandBuffer* GetCommandBuffer( RenderPackage& pkg );
+    friend void Clear( RenderPackage& pkg ) noexcept;
+
+    eastl::unique_ptr<GFX::CommandBuffer> _additionalCommands{nullptr};
 };
 
 void Clear(RenderPackage& pkg) noexcept;
-
+GFX::CommandBuffer* GetCommandBuffer(RenderPackage& pkg);
 }; // namespace Divide
 
 #endif //_RENDER_PACKAGE_H_

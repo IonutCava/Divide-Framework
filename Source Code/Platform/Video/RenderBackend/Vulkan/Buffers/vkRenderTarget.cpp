@@ -59,7 +59,9 @@ namespace Divide {
 
     void vkRenderTarget::begin(VkCommandBuffer cmdBuffer, const RTDrawDescriptor& descriptor, const RTClearDescriptor& clearPolicy, VkPipelineRenderingCreateInfo& pipelineRenderingCreateInfoOut)
     {
-        transitionAttachments(cmdBuffer, true);
+        _previousPolicy = descriptor;
+
+        transitionAttachments(cmdBuffer, descriptor, true);
 
         pipelineRenderingCreateInfoOut = {};
         pipelineRenderingCreateInfoOut.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
@@ -78,7 +80,7 @@ namespace Divide {
         imageViewDescriptor._mipLevels = { 0u, 1u };
 
         U8 stagingIndex = 0u;
-        for (U8 i = 0u; i < RT_MAX_COLOUR_ATTACHMENTS; ++i)
+        for (U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
         {
             if (_attachmentsUsed[i])
             {
@@ -91,7 +93,7 @@ namespace Divide {
 
                 info.imageView = vkTex->getImageView(imageViewDescriptor);
 
-                if (clearPolicy._clearColourDescriptors[i]._index != MAX_RT_COLOUR_ATTACHMENTS)
+                if (clearPolicy._clearColourDescriptors[i]._index != RTColourAttachmentSlot::COUNT )
                 {
                     info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
                     info.clearValue.color = {
@@ -151,17 +153,17 @@ namespace Divide {
     void vkRenderTarget::end(VkCommandBuffer cmdBuffer)
     {
         vkCmdEndRendering(cmdBuffer);
-        transitionAttachments(cmdBuffer, false);
+        transitionAttachments(cmdBuffer, _previousPolicy, false);
     }
 
-    void vkRenderTarget::transitionAttachments(VkCommandBuffer cmdBuffer, const bool toWrite)
+    void vkRenderTarget::transitionAttachments(VkCommandBuffer cmdBuffer, const RTDrawDescriptor& descriptor, const bool toWrite)
     {
-        const auto populateBarrier = [toWrite](VkImageMemoryBarrier2& memBarrier, const bool isDepth, const bool hasStencil)
+        const auto populateBarrier = [](VkImageMemoryBarrier2& memBarrier, const bool prepareForWrite, const bool isDepth, const bool hasStencil)
         {
             constexpr VkPipelineStageFlags2 PIPELINE_FRAGMENT_TEST_BITS = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
             const     VkImageLayout         DEPTH_ATTACHMENT_LAYOUT = hasStencil ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
 
-            if (toWrite)
+            if ( prepareForWrite )
             {
                 memBarrier.srcAccessMask = VK_ACCESS_2_NONE;
                 memBarrier.dstAccessMask = isDepth ? VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT : VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
@@ -182,16 +184,16 @@ namespace Divide {
         };
 
         U8 stagingIndex = 0u;
-        for (U8 i = 0u; i < RT_MAX_COLOUR_ATTACHMENTS; ++i)
+        for (U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT); ++i )
         {
             if (_attachmentsUsed[i])
             {
                 const auto& att = _attachments[i];
-
-                if (att->setImageUsage(toWrite ? ImageUsage::RT_COLOUR_ATTACHMENT : ImageUsage::SHADER_SAMPLE))
+                const bool prepareForWrite = IsEnabled( descriptor._drawMask, RTAttachmentType::COLOUR, static_cast<RTColourAttachmentSlot>(i) ) && toWrite;
+                if (att->setImageUsage( prepareForWrite ? ImageUsage::RT_COLOUR_ATTACHMENT : ImageUsage::SHADER_SAMPLE ))
                 {
                     VkImageMemoryBarrier2& memBarrier = _memBarriers[stagingIndex++];
-                    populateBarrier(memBarrier, false, false);
+                    populateBarrier( memBarrier, prepareForWrite, false, false);
                     memBarrier.subresourceRange.aspectMask = vkTexture::GetAspectFlags(att->texture()->descriptor());
                     memBarrier.image = static_cast<vkTexture*>(att->texture().get())->image()->_image;
                 }
@@ -202,10 +204,11 @@ namespace Divide {
         {
             const auto& att = _attachments[RT_DEPTH_ATTACHMENT_IDX];
 
-            if (att->setImageUsage(toWrite ? ImageUsage::RT_DEPTH_ATTACHMENT : ImageUsage::SHADER_SAMPLE))
+            const bool prepareForWrite = IsEnabled( descriptor._drawMask, RTAttachmentType::DEPTH ) && toWrite;
+            if (att->setImageUsage( prepareForWrite ? ImageUsage::RT_DEPTH_ATTACHMENT : ImageUsage::SHADER_SAMPLE))
             {
                 VkImageMemoryBarrier2& memBarrier = _memBarriers[stagingIndex++];
-                populateBarrier(memBarrier, true, att->descriptor()._type == RTAttachmentType::DEPTH_STENCIL);
+                populateBarrier(memBarrier, prepareForWrite, true, att->descriptor()._type == RTAttachmentType::DEPTH_STENCIL);
                 memBarrier.subresourceRange.aspectMask = vkTexture::GetAspectFlags(att->texture()->descriptor());
                 memBarrier.image = static_cast<vkTexture*>(att->texture().get())->image()->_image;
             }

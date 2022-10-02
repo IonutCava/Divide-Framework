@@ -232,20 +232,21 @@ class GFXDevice final : public KernelComponent, public PlatformContextComponent 
     friend class Attorney::GFXDeviceSceneManager;
 
 public:
-    enum class ScreenTargets : U8 {
-        ALBEDO = 0,
-        VELOCITY,
-        NORMALS,
-        MODULATE,
-        COUNT,
-        ACCUMULATION = ALBEDO,
-        REVEALAGE = VELOCITY,
+    struct ScreenTargets
+    {
+        constexpr static RTColourAttachmentSlot ALBEDO = RTColourAttachmentSlot::SLOT_0;
+        constexpr static RTColourAttachmentSlot VELOCITY = RTColourAttachmentSlot::SLOT_1;
+        constexpr static RTColourAttachmentSlot NORMALS = RTColourAttachmentSlot::SLOT_2;
+        constexpr static RTColourAttachmentSlot MODULATE = RTColourAttachmentSlot::SLOT_3;
+        constexpr static RTColourAttachmentSlot ACCUMULATION = ALBEDO;
+        constexpr static RTColourAttachmentSlot REVEALAGE = VELOCITY;
     };
 
     struct GFXDescriptorSet {
         PROPERTY_RW(DescriptorSet, impl);
         PROPERTY_RW(bool, dirty, true);
         void clear();
+        void update(DescriptorSetUsage usage, const DescriptorSet& newBindingData);
         void update(DescriptorSetUsage usage, const DescriptorSetBinding& newBindingData);
     };
 
@@ -404,7 +405,7 @@ public:
                     RenderTargetHandle& blurBuffer,
                     const RenderTargetHandle& blurTarget, ///< can be the same as source
                     RTAttachmentType att,
-                    U8 index,
+                    RTColourAttachmentSlot slot,
                     I32 kernelSize,
                     bool gaussian,
                     U8 layerCount,

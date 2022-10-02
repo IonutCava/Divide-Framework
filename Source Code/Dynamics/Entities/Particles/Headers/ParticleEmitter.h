@@ -52,6 +52,7 @@ class ParticleEmitter final : public SceneNode {
 
     void prepareRender(SceneGraphNode* sgn,
                        RenderingComponent& rComp,
+                       RenderPackage& pkg,
                        RenderStagePass renderStagePass,
                        const CameraSnapshot& cameraSnapshot,
                        bool refreshData) override;

@@ -49,18 +49,18 @@ namespace Divide
         _wasInFreeFly = false;
     }
 
-    void PingPongScene::processGUI( const U64 deltaTimeUS )
+    void PingPongScene::processGUI( const U64 gameDeltaTimeUS, const U64 appDeltaTimeUS )
     {
         constexpr D64 FpsDisplay = Time::SecondsToMilliseconds( 0.3 );
 
-        if ( _guiTimersMS[0] >= FpsDisplay )
+        if ( _guiTimersMS[to_base(TimerClass::APP_TIME)][0] >= FpsDisplay )
         {
-            _guiTimersMS[0] = 0.0;
+            _guiTimersMS[to_base(TimerClass::APP_TIME)][0] = 0.0;
         }
-        Scene::processGUI( deltaTimeUS );
+        Scene::processGUI( gameDeltaTimeUS, appDeltaTimeUS );
     }
 
-    void PingPongScene::processTasks( const U64 deltaTimeUS )
+    void PingPongScene::processTasks( const U64 gameDeltaTimeUS, const U64 appDeltaTimeUS )
     {
         static vec2<F32> _sunAngle =
             vec2<F32>( 0.0f, Angle::to_RADIANS( 45.0f ) );
@@ -86,7 +86,7 @@ namespace Divide
 
         //_currentSky->getNode<Sky>().enableSun(true, _sun->get<DirectionalLightComponent>()->getDiffuseColour(), _sunvector);
 
-        Scene::processTasks( deltaTimeUS );
+        Scene::processTasks( gameDeltaTimeUS, appDeltaTimeUS );
     }
 
     void PingPongScene::resetGame()
@@ -257,12 +257,12 @@ namespace Divide
         std::this_thread::sleep_for( std::chrono::milliseconds( 30 ) );
     }
 
-    void PingPongScene::processInput( const PlayerIndex idx, const U64 deltaTimeUS )
+    void PingPongScene::processInput( const PlayerIndex idx, const U64 gameDeltaTimeUS, const U64 appDeltaTimeUS )
     {
         if ( _freeFly )
         {
             _wasInFreeFly = true;
-            Scene::processInput( idx, deltaTimeUS );
+            Scene::processInput( idx, gameDeltaTimeUS, appDeltaTimeUS );
             return;
         }
         if ( _wasInFreeFly )
@@ -296,7 +296,7 @@ namespace Divide
             if ( state()->playerState( idx ).moveFB() == MoveDirection::POSITIVE && pos.y >= 3 ||
                 state()->playerState( idx ).moveFB() == MoveDirection::NEGATIVE && pos.y <= 0.5f )
             {
-                Scene::processInput( idx, deltaTimeUS );
+                Scene::processInput( idx, gameDeltaTimeUS, appDeltaTimeUS );
                 return;
             }
             paddle->get<TransformComponent>()->translateY( to_I32( state()->playerState( idx ).moveFB() ) / paddleMovementDivisor );
@@ -308,13 +308,13 @@ namespace Divide
             if ( state()->playerState( idx ).moveLR() == MoveDirection::NEGATIVE && pos.x >= 3 ||
                 state()->playerState( idx ).moveLR() == MoveDirection::POSITIVE && pos.x <= -3 )
             {
-                Scene::processInput( idx, deltaTimeUS );
+                Scene::processInput( idx, gameDeltaTimeUS, appDeltaTimeUS );
                 return;
             }
             paddle->get<TransformComponent>()->translateX( to_I32( state()->playerState( idx ).moveLR() ) / paddleMovementDivisor );
         }
 
-        Scene::processInput( idx, deltaTimeUS );
+        Scene::processInput( idx, gameDeltaTimeUS, appDeltaTimeUS );
     }
 
     bool PingPongScene::load()
@@ -357,8 +357,8 @@ namespace Divide
             "you" );
         _quotes.push_back( "It's not the hard. Even a monkey can do it." );
 
-        _guiTimersMS.push_back( 0.0 );  // Fps
-        _taskTimers.push_back( 0.0 );  // Light
+        _guiTimersMS[to_base(TimerClass::APP_TIME)].push_back(0.0);  // Fps
+        _taskTimers[to_base( TimerClass::GAME_TIME )].push_back(0.0);  // Light
 
         _paddleCam = Camera::CreateCamera( "paddleCam", Camera::Mode::FREE_FLY );
         _paddleCam->fromCamera( *playerCamera() );

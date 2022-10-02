@@ -865,11 +865,7 @@ namespace Divide
         }
         else
         {
-            // Reset our cache
-            for ( auto& it : s_textureCache )
-            {
-                it._handle = GLUtil::k_invalidObjectID;
-            }
+            constexpr bool s_useBatchBindTextures = true;
 
             // Sort by slot number
             eastl::sort( eastl::begin( s_TexBindQueue ),
@@ -879,48 +875,67 @@ namespace Divide
                              return lhs._slot < rhs._slot;
                          } );
 
-            // Grab min and max slot and fill in the cache with all of the available data
-            U8 minSlot = U8_MAX, maxSlot = 0u;
-            for ( const TexBindEntry& texEntry : s_TexBindQueue )
+            if ( s_useBatchBindTextures )
             {
-                s_textureCache[texEntry._slot] = texEntry;
-                minSlot = std::min( texEntry._slot, minSlot );
-                maxSlot = std::max( texEntry._slot, maxSlot );
-            }
-
-            U8 idx = 0u, bindOffset = minSlot, texCount = maxSlot - minSlot;
-            for ( U8 i = 0u; i < texCount + 1; ++i )
-            {
-                const U8 slot = i + minSlot;
-                const TexBindEntry& it = s_textureCache[slot];
-
-                if ( it._handle != GLUtil::k_invalidObjectID )
+                // Reset our cache
+                for ( auto& it : s_textureCache )
                 {
-                    s_textureHandles[idx] = it._handle;
-                    s_textureSamplers[idx] = it._sampler;
+                    it._handle = GLUtil::k_invalidObjectID;
+                }
 
-                    if ( idx++ == 0u )
+                // Grab min and max slot and fill in the cache with all of the available data
+                U8 minSlot = U8_MAX, maxSlot = 0u;
+                for ( const TexBindEntry& texEntry : s_TexBindQueue )
+                {
+                    s_textureCache[texEntry._slot] = texEntry;
+                    minSlot = std::min( texEntry._slot, minSlot );
+                    maxSlot = std::max( texEntry._slot, maxSlot );
+                }
+
+                U8 idx = 0u, bindOffset = minSlot, texCount = maxSlot - minSlot;
+                for ( U8 i = 0u; i < texCount + 1; ++i )
+                {
+                    const U8 slot = i + minSlot;
+                    const TexBindEntry& it = s_textureCache[slot];
+
+                    if ( it._handle != GLUtil::k_invalidObjectID )
                     {
-                        // Start a new range so remember the starting offset
-                        bindOffset = slot;
+                        s_textureHandles[idx] = it._handle;
+                        s_textureSamplers[idx] = it._sampler;
+
+                        if ( idx++ == 0u )
+                        {
+                            // Start a new range so remember the starting offset
+                            bindOffset = slot;
+                        }
+                    }
+                    else if ( idx > 0u )
+                    {
+                        // We found a hole in the texture range. Flush the current range and start a new one
+                        if ( s_stateTracker.bindTextures( bindOffset, idx, s_textureHandles.data(), s_textureSamplers.data() ) == GLStateTracker::BindResult::FAILED )
+                        {
+                            DIVIDE_UNEXPECTED_CALL();
+                        }
+                        idx = 0u;
                     }
                 }
-                else if ( idx > 0u )
+                // Handle the final range (if any)
+                if ( idx > 0u )
                 {
-                    // We found a hole in the texture range. Flush the current range and start a new one
                     if ( s_stateTracker.bindTextures( bindOffset, idx, s_textureHandles.data(), s_textureSamplers.data() ) == GLStateTracker::BindResult::FAILED )
                     {
                         DIVIDE_UNEXPECTED_CALL();
                     }
-                    idx = 0u;
                 }
             }
-            // Handle the final range (if any)
-            if ( idx > 0u )
+            else
             {
-                if ( s_stateTracker.bindTextures( bindOffset, idx, s_textureHandles.data(), s_textureSamplers.data() ) == GLStateTracker::BindResult::FAILED )
+                for ( const TexBindEntry& texEntry : s_TexBindQueue )
                 {
-                    DIVIDE_UNEXPECTED_CALL();
+                    if ( s_stateTracker.bindTexture( texEntry._slot, texEntry._handle, texEntry._sampler ) == GLStateTracker::BindResult::FAILED )
+                    {
+                        DIVIDE_UNEXPECTED_CALL();
+                    }
                 }
             }
         }
@@ -1001,7 +1016,7 @@ namespace Divide
                     }
 
                     s_stateTracker._activeRenderTarget = nullptr;
-                    if ( crtCmd->_clearDescriptor._clearColourDescriptors[0]._index != RT_MAX_COLOUR_ATTACHMENTS )
+                    if ( crtCmd->_clearDescriptor._clearColourDescriptors[0]._index != RTColourAttachmentSlot::COUNT )
                     {
                         OPTICK_EVENT( "Clear Screen Target");
 
@@ -1226,7 +1241,7 @@ namespace Divide
                     OPTICK_EVENT( "GL: View-based computation" );
                     assert( crtCmd->_mipRange.max != 0u );
 
-                    ImageView view = crtCmd->_texture->defaultView();
+                    ImageView view = crtCmd->_texture->getView(ImageUsage::SHADER_READ_WRITE);
                     view._layerRange.set( crtCmd->_layerRange );
                     view._mipLevels.set( crtCmd->_mipRange );
 
@@ -1667,57 +1682,68 @@ namespace Divide
     {
         const U8 glBinding = ShaderProgram::GetGLBindingForDescriptorSlot( set, bindingSlot );
 
-        const GLuint samplerHandle = GetSamplerHandle( samplerHash );
-
-        DIVIDE_ASSERT( imageView._usage == ImageUsage::SHADER_SAMPLE );
-
-        GLuint texHandle = GetTextureHandleFromWrapper( imageView._srcTexture );
-        if ( texHandle == GLUtil::k_invalidObjectID )
+        GLuint samplerHandle = 0u;
+        GLuint texHandle = 0u;
+        if ( imageView._srcTexture._ceguiTex == nullptr && imageView._srcTexture._internalTexture == nullptr )
         {
-            return false;
+            DIVIDE_ASSERT(imageView._usage == ImageUsage::UNDEFINED);
+            //unbind request;
         }
-
-        if ( !imageView.isDefaultView() )
+        else
         {
-            const size_t viewHash = imageView.getHash();
-
-            auto [textureID, cacheHit] = s_textureViewCache.allocate( viewHash );
-            DIVIDE_ASSERT( textureID != 0u );
-
-            if ( !cacheHit )
+            DIVIDE_ASSERT( imageView._usage == ImageUsage::SHADER_SAMPLE );
+            if ( imageView._srcTexture._internalTexture != nullptr && imageView._usage != imageView._srcTexture._internalTexture->imageUsage() )
             {
-                const GLenum glInternalFormat = GLUtil::internalFormat( imageView._descriptor._baseFormat,
-                                                                        imageView._descriptor._dataType,
-                                                                        imageView._descriptor._srgb,
-                                                                        imageView._descriptor._normalized );
-
-                const bool isCube = IsCubeTexture( imageView.targetType() );
-
-                glTextureView( textureID,
-                               GLUtil::internalTextureType( imageView.targetType(), imageView._descriptor._msaaSamples ),
-                               texHandle,
-                               glInternalFormat,
-                               static_cast<GLuint>(imageView._mipLevels.x),
-                               static_cast<GLuint>(imageView._mipLevels.y),
-                               isCube ? imageView._layerRange.min * 6 : imageView._layerRange.min,
-                               isCube ? imageView._layerRange.max * 6 : imageView._layerRange.max );
+                DIVIDE_UNEXPECTED_CALL_MSG("Need layout transition here!");
+            }
+            samplerHandle = GetSamplerHandle( samplerHash );
+            texHandle = GetTextureHandleFromWrapper( imageView._srcTexture );
+            if ( texHandle == GLUtil::k_invalidObjectID )
+            {
+                return false;
             }
 
-            // Self delete after 3 frames unless we use it again
-            s_textureViewCache.deallocate( textureID, 3u );
-            texHandle = textureID;
-        }
-
-        for ( TexBindEntry& it : s_TexBindQueue )
-        {
-            if ( it._slot == glBinding )
+            if ( !imageView.isDefaultView() )
             {
-                it._handle = texHandle;
-                it._sampler = samplerHandle;
-                return true;
+                const size_t viewHash = imageView.getHash();
+
+                auto [textureID, cacheHit] = s_textureViewCache.allocate( viewHash );
+                DIVIDE_ASSERT( textureID != 0u );
+
+                if ( !cacheHit )
+                {
+                    const GLenum glInternalFormat = GLUtil::internalFormat( imageView._descriptor._baseFormat,
+                                                                            imageView._descriptor._dataType,
+                                                                            imageView._descriptor._srgb,
+                                                                            imageView._descriptor._normalized );
+
+                    const bool isCube = IsCubeTexture( imageView.targetType() );
+
+                    glTextureView( textureID,
+                                   GLUtil::internalTextureType( imageView.targetType(), imageView._descriptor._msaaSamples ),
+                                   texHandle,
+                                   glInternalFormat,
+                                   static_cast<GLuint>(imageView._mipLevels.x),
+                                   static_cast<GLuint>(imageView._mipLevels.y),
+                                   isCube ? imageView._layerRange.min * 6 : imageView._layerRange.min,
+                                   isCube ? imageView._layerRange.max * 6 : imageView._layerRange.max );
+                }
+
+                // Self delete after 3 frames unless we use it again
+                s_textureViewCache.deallocate( textureID, 3u );
+                texHandle = textureID;
+            }
+
+            for ( TexBindEntry& it : s_TexBindQueue )
+            {
+                if ( it._slot == glBinding )
+                {
+                    it._handle = texHandle;
+                    it._sampler = samplerHandle;
+                    return true;
+                }
             }
         }
-
         TexBindEntry entry{};
         entry._slot = glBinding;
         entry._handle = texHandle;
@@ -1865,7 +1891,7 @@ namespace Divide
         {
             glPopDebugGroup();
         }
-        s_stateTracker._debugScope[s_stateTracker._debugScopeDepth--] = { "", std::numeric_limits<U32>::max() };
+        s_stateTracker._debugScope[s_stateTracker._debugScopeDepth--] = { "", U32_MAX };
     }
 
     bool GL_API::DeleteShaderPrograms( const GLuint count, GLuint* programs )
@@ -2071,7 +2097,7 @@ namespace Divide
     {
         OPTICK_EVENT( "Create Sync" );
 
-        DIVIDE_ASSERT( s_fenceSyncCounter[s_LockFrameLifetime - 1u] < std::numeric_limits<U32>::max() );
+        DIVIDE_ASSERT( s_fenceSyncCounter[s_LockFrameLifetime - 1u] < U32_MAX );
 
         ++s_fenceSyncCounter[s_LockFrameLifetime - 1u];
         return glFenceSync( GL_SYNC_GPU_COMMANDS_COMPLETE, 0 );

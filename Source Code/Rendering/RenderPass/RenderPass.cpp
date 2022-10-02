@@ -113,15 +113,15 @@ namespace Divide
 
                 RTDrawDescriptor prePassPolicy = {};
                 DisableAll( prePassPolicy._drawMask );
-                SetEnabled( prePassPolicy._drawMask, RTAttachmentType::DEPTH, 0, true );
-                SetEnabled( prePassPolicy._drawMask, RTAttachmentType::COLOUR, to_base( GFXDevice::ScreenTargets::VELOCITY ), true );
-                SetEnabled( prePassPolicy._drawMask, RTAttachmentType::COLOUR, to_base( GFXDevice::ScreenTargets::NORMALS ), true );
+                SetEnabled( prePassPolicy._drawMask, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, true );
+                SetEnabled( prePassPolicy._drawMask, RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::VELOCITY, true );
+                SetEnabled( prePassPolicy._drawMask, RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS, true );
                 //prePassPolicy._alphaToCoverage = true;
 
                 RTDrawDescriptor mainPassPolicy = {};
-                SetEnabled( mainPassPolicy._drawMask, RTAttachmentType::DEPTH, 0, false );
-                SetEnabled( mainPassPolicy._drawMask, RTAttachmentType::COLOUR, to_U8( GFXDevice::ScreenTargets::VELOCITY ), false );
-                SetEnabled( mainPassPolicy._drawMask, RTAttachmentType::COLOUR, to_U8( GFXDevice::ScreenTargets::NORMALS ), false );
+                SetEnabled( mainPassPolicy._drawMask, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, false );
+                SetEnabled( mainPassPolicy._drawMask, RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::VELOCITY, false );
+                SetEnabled( mainPassPolicy._drawMask, RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS, false );
 
                 const RTDrawDescriptor oitCompositionPassPolicy = mainPassPolicy;
 
@@ -135,11 +135,11 @@ namespace Divide
                 params._targetHIZ = RenderTargetNames::HI_Z;
                 //ToDo: Causing issues if disabled with WOIT (e.g. grass) if disabled. Investigate! -Ionut
                 params._clearDescriptorMainPass._clearDepth = false;
-                params._clearDescriptorMainPass._clearColourDescriptors[0] = { DefaultColours::DIVIDE_BLUE, to_U8( GFXDevice::ScreenTargets::ALBEDO ) };
+                params._clearDescriptorMainPass._clearColourDescriptors[0] = { DefaultColours::DIVIDE_BLUE, GFXDevice::ScreenTargets::ALBEDO };
                 //Not everything gets drawn during the depth PrePass (E.g. sky)
                 params._clearDescriptorPrePass._clearDepth = true;
-                params._clearDescriptorPrePass._clearColourDescriptors[1] = { VECTOR4_ZERO, to_U8( GFXDevice::ScreenTargets::VELOCITY ) };
-                params._clearDescriptorPrePass._clearColourDescriptors[2] = { VECTOR4_ZERO, to_U8( GFXDevice::ScreenTargets::NORMALS ) };
+                params._clearDescriptorPrePass._clearColourDescriptors[1] = { VECTOR4_ZERO, GFXDevice::ScreenTargets::VELOCITY };
+                params._clearDescriptorPrePass._clearColourDescriptors[2] = { VECTOR4_ZERO, GFXDevice::ScreenTargets::NORMALS };
 
                 if ( _config.rendering.MSAASamples > 0u )
                 {
@@ -173,7 +173,7 @@ namespace Divide
                 params._target = editor.getNodePreviewTarget()._targetID;
                 params._passName = "Node Preview";
                 params._clearDescriptorPrePass._clearDepth = true;
-                params._clearDescriptorMainPass._clearColourDescriptors[0] = { editor.nodePreviewBGColour(), 0u };
+                params._clearDescriptorMainPass._clearColourDescriptors[0] = { editor.nodePreviewBGColour(), RTColourAttachmentSlot::SLOT_0 };
 
                 _parent.doCustomPass( editor.nodePreviewCamera(), params, bufferInOut, memCmdInOut );
 

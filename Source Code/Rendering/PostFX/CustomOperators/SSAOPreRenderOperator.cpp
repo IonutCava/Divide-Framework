@@ -111,7 +111,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         const vec2<U16> res = parent.screenRT()._rt->getResolution();
         InternalRTAttachmentDescriptors att
         {
-            InternalRTAttachmentDescriptor{ outputDescriptor, nearestSampler.getHash(), RTAttachmentType::COLOUR, 0u},
+            InternalRTAttachmentDescriptor{ outputDescriptor, nearestSampler.getHash(), RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0},
         };
 
         RenderTargetDescriptor desc = {};
@@ -137,7 +137,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
 
         InternalRTAttachmentDescriptors att
         {
-            InternalRTAttachmentDescriptor{ outputDescriptor, nearestSampler.getHash(), RTAttachmentType::COLOUR, 0u },
+            InternalRTAttachmentDescriptor{ outputDescriptor, nearestSampler.getHash(), RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 },
         };
 
         RenderTargetDescriptor desc = {};
@@ -537,7 +537,7 @@ void SSAOPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX:
         renderPassCmd->_name = "DO_SSAO_CLEAR_TARGET";
         renderPassCmd->_target = RenderTargetNames::SSAO_RESULT;
         renderPassCmd->_clearDescriptor._clearDepth = true;
-        renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, 0u };
+        renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, RTColourAttachmentSlot::SLOT_0 };
 
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
     }
@@ -553,8 +553,8 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
     _ssaoGenerateConstantsCmd._constants.set(_ID("projectionMatrix"),    GFX::PushConstantType::MAT4, cameraSnapshot._projectionMatrix);
     _ssaoGenerateConstantsCmd._constants.set(_ID("invProjectionMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix);
 
-    const auto& depthAtt   = _parent.screenRT()._rt->getAttachment(RTAttachmentType::DEPTH, 0);
-    const auto& normalsAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, to_U8(GFXDevice::ScreenTargets::NORMALS));
+    const auto& depthAtt   = _parent.screenRT()._rt->getAttachment(RTAttachmentType::DEPTH);
+    const auto& normalsAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS);
 
     if(genHalfRes())
     {
@@ -563,7 +563,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             renderPassCmd->_name = "DO_SSAO_DOWNSAMPLE_NORMALS";
             renderPassCmd->_target = _halfDepthAndNormals._targetID;
             renderPassCmd->_clearDescriptor._clearDepth = true;
-            renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::BLACK, 0u };
+            renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::BLACK, RTColourAttachmentSlot::SLOT_0 };
 
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _downsamplePipeline;
 
@@ -572,12 +572,12 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             {
                 auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                 binding._slot = 1;
-                binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->defaultView(), depthAtt->descriptor()._samplerHash };
+                binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash };
             }
             {
                 auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                 binding._slot = 2;
-                binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt->texture()->defaultView(), normalsAtt->descriptor()._samplerHash };
+                binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt->texture()->sampledView(), normalsAtt->descriptor()._samplerHash };
             }
 
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
@@ -588,25 +588,25 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             renderPassCmd->_name = "DO_SSAO_HALF_RES_CALC";
             renderPassCmd->_target = _ssaoHalfResOutput._targetID;
             renderPassCmd->_clearDescriptor._clearDepth = true;
-            renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::BLACK, 0u };
+            renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::BLACK, RTColourAttachmentSlot::SLOT_0 };
 
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _generateHalfResPipeline;
 
             GFX::EnqueueCommand(bufferInOut, _ssaoGenerateConstantsCmd);
 
-            const auto& halfDepthAtt  = _halfDepthAndNormals._rt->getAttachment(RTAttachmentType::COLOUR, 0);
+            const auto& halfDepthAtt  = _halfDepthAndNormals._rt->getAttachment(RTAttachmentType::COLOUR);
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
                 auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                 binding._slot = 0;
-                binding._data.As<DescriptorCombinedImageSampler>() = { _noiseTexture->defaultView(), _noiseSampler };
+                binding._data.As<DescriptorCombinedImageSampler>() = { _noiseTexture->sampledView(), _noiseSampler };
             }
             {
                 auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                 binding._slot = 1;
-                binding._data.As<DescriptorCombinedImageSampler>() = { halfDepthAtt->texture()->defaultView(), halfDepthAtt->descriptor()._samplerHash };
+                binding._data.As<DescriptorCombinedImageSampler>() = { halfDepthAtt->texture()->sampledView(), halfDepthAtt->descriptor()._samplerHash };
             }
 
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
@@ -617,7 +617,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             renderPassCmd->_name = "DO_SSAO_UPSAMPLE_AO";
             renderPassCmd->_target = _ssaoOutput._targetID;
             renderPassCmd->_clearDescriptor._clearDepth = true;
-            renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, 0u };
+            renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, RTColourAttachmentSlot::SLOT_0 };
 
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _upsamplePipeline;
 
@@ -626,30 +626,30 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             linearSampler.mipSampling(TextureMipSampling::NONE);
             linearSampler.anisotropyLevel(0);
 
-            const auto& halfResAOAtt = _ssaoHalfResOutput._rt->getAttachment(RTAttachmentType::COLOUR, 0);
-            const auto& halfDepthAtt = _halfDepthAndNormals._rt->getAttachment(RTAttachmentType::COLOUR, 0);
+            const auto& halfResAOAtt = _ssaoHalfResOutput._rt->getAttachment(RTAttachmentType::COLOUR );
+            const auto& halfDepthAtt = _halfDepthAndNormals._rt->getAttachment(RTAttachmentType::COLOUR );
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
                 auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                 binding._slot = 0;
-                binding._data.As<DescriptorCombinedImageSampler>() = { halfResAOAtt->texture()->defaultView(), linearSampler.getHash() };
+                binding._data.As<DescriptorCombinedImageSampler>() = { halfResAOAtt->texture()->sampledView(), linearSampler.getHash() };
             }
             {
                 auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                 binding._slot = 1;
-                binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->defaultView(), depthAtt->descriptor()._samplerHash };
+                binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash };
             }
             {
                 auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                 binding._slot = 2;
-                binding._data.As<DescriptorCombinedImageSampler>() = { halfDepthAtt->texture()->defaultView(), halfDepthAtt->descriptor()._samplerHash };
+                binding._data.As<DescriptorCombinedImageSampler>() = { halfDepthAtt->texture()->sampledView(), halfDepthAtt->descriptor()._samplerHash };
             }
             {
                 auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                 binding._slot = 3;
-                binding._data.As<DescriptorCombinedImageSampler>() = { halfResAOAtt->texture()->defaultView(), halfResAOAtt->descriptor()._samplerHash };
+                binding._data.As<DescriptorCombinedImageSampler>() = { halfResAOAtt->texture()->sampledView(), halfResAOAtt->descriptor()._samplerHash };
             }
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
@@ -662,7 +662,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             renderPassCmd->_name = "DO_SSAO_CALC";
             renderPassCmd->_target = _ssaoOutput._targetID;
             renderPassCmd->_clearDescriptor._clearDepth = true;
-            renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, 0u };
+            renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, RTColourAttachmentSlot::SLOT_0 };
 
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _generateFullResPipeline;
 
@@ -671,17 +671,17 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             {
                 auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                 binding._slot = 0;
-                binding._data.As<DescriptorCombinedImageSampler>() = { _noiseTexture->defaultView(), _noiseSampler };
+                binding._data.As<DescriptorCombinedImageSampler>() = { _noiseTexture->sampledView(), _noiseSampler };
             }
             {
                 auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                 binding._slot = 1;
-                binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->defaultView(), depthAtt->descriptor()._samplerHash };
+                binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash };
             }
             {
                 auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                 binding._slot = 2;
-                binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt->texture()->defaultView(), normalsAtt->descriptor()._samplerHash };
+                binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt->texture()->sampledView(), normalsAtt->descriptor()._samplerHash };
             }
             GFX::EnqueueCommand(bufferInOut, _ssaoGenerateConstantsCmd);
 
@@ -690,7 +690,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
         }
     }
     {
-        const auto& ssaoAtt = _ssaoOutput._rt->getAttachment(RTAttachmentType::COLOUR, 0);
+        const auto& ssaoAtt = _ssaoOutput._rt->getAttachment(RTAttachmentType::COLOUR);
 
         if (blurResults() && blurKernelSize() > 0)
         {
@@ -704,7 +704,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 renderPassCmd->_name = "DO_SSAO_BLUR_HORIZONTAL";
                 renderPassCmd->_target = _ssaoBlurBuffer._targetID;
                 renderPassCmd->_clearDescriptor._clearDepth = true;
-                renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, 0u };
+                renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, RTColourAttachmentSlot::SLOT_0 };
 
                 GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _blurHorizontalPipeline;
 
@@ -715,17 +715,17 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 {
                     auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                     binding._slot = 0;
-                    binding._data.As<DescriptorCombinedImageSampler>() = { ssaoAtt->texture()->defaultView(), ssaoAtt->descriptor()._samplerHash };
+                    binding._data.As<DescriptorCombinedImageSampler>() = { ssaoAtt->texture()->sampledView(), ssaoAtt->descriptor()._samplerHash };
                 }
                 {
                     auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                     binding._slot = 1;
-                    binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->defaultView(), depthAtt->descriptor()._samplerHash };
+                    binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash };
                 }
                 {
                     auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                     binding._slot = 2;
-                    binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt->texture()->defaultView(), normalsAtt->descriptor()._samplerHash };
+                    binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt->texture()->sampledView(), normalsAtt->descriptor()._samplerHash };
                 }
 
                 GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
@@ -736,29 +736,29 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 renderPassCmd->_name = "DO_SSAO_BLUR_VERTICAL";
                 renderPassCmd->_target = RenderTargetNames::SSAO_RESULT;
                 renderPassCmd->_clearDescriptor._clearDepth = true;
-                renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, 0u };
+                renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, RTColourAttachmentSlot::SLOT_0 };
 
                 GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _blurVerticalPipeline;
 
                 GFX::EnqueueCommand(bufferInOut, _ssaoBlurConstantsCmd);
 
-                const auto& horizBlur = _ssaoBlurBuffer._rt->getAttachment(RTAttachmentType::COLOUR, 0);
+                const auto& horizBlur = _ssaoBlurBuffer._rt->getAttachment(RTAttachmentType::COLOUR);
                 auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
                 cmd->_usage = DescriptorSetUsage::PER_DRAW;
                 {
                     auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                     binding._slot = 0;
-                    binding._data.As<DescriptorCombinedImageSampler>() = { horizBlur->texture()->defaultView(), ssaoAtt->descriptor()._samplerHash };
+                    binding._data.As<DescriptorCombinedImageSampler>() = { horizBlur->texture()->sampledView(), ssaoAtt->descriptor()._samplerHash };
                 }
                 {
                     auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                     binding._slot = 1;
-                    binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->defaultView(), depthAtt->descriptor()._samplerHash };
+                    binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash };
                 }
                 {
                     auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                     binding._slot = 2;
-                    binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt->texture()->defaultView(), normalsAtt->descriptor()._samplerHash };
+                    binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt->texture()->sampledView(), normalsAtt->descriptor()._samplerHash };
                 }
 
                 GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
@@ -771,7 +771,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             renderPassCmd->_name = "DO_SSAO_PASS_THROUGH";
             renderPassCmd->_target = RenderTargetNames::SSAO_RESULT;
             renderPassCmd->_clearDescriptor._clearDepth = true;
-            renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, 0u };
+            renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, RTColourAttachmentSlot::SLOT_0 };
 
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _passThroughPipeline;
 
@@ -780,7 +780,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             {
                 auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
                 binding._slot = 0;
-                binding._data.As<DescriptorCombinedImageSampler>() = { ssaoAtt->texture()->defaultView(), ssaoAtt->descriptor()._samplerHash };
+                binding._data.As<DescriptorCombinedImageSampler>() = { ssaoAtt->texture()->sampledView(), ssaoAtt->descriptor()._samplerHash };
             }
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);

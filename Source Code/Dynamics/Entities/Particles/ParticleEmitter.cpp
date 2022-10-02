@@ -254,6 +254,7 @@ void ParticleEmitter::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::Dr
 
 void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
                                     RenderingComponent& rComp,
+                                    RenderPackage& pkg,
                                     const RenderStagePass renderStagePass,
                                     const CameraSnapshot& cameraSnapshot,
                                     const bool refreshData) {
@@ -277,6 +278,7 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
             cmd._cmd.primCount = to_U32(_particles->_renderingPositions.size());
             cmd._sourceBuffer = getDataBuffer(renderStagePass._stage, 0).handle();
         }
+
         if (renderStagePass._passType == RenderPassType::PRE_PASS) {
             const vec3<F32>& eyePos = cameraSnapshot._eye;
             const U32 aliveCount = getAliveParticleCount();
@@ -307,7 +309,7 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
         }
     }
 
-    SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
+    SceneNode::prepareRender(sgn, rComp, pkg, renderStagePass, cameraSnapshot, refreshData);
 }
 
 

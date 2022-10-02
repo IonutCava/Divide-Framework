@@ -63,20 +63,11 @@ namespace Divide {
         };
     };
 
-    enum class EditorDataState : U8
-    {
-        CHANGED = 0,
-        QUEUED,
-        PROCESSED,
-        IDLE,
-        COUNT
-    };
-
     FWD_DECLARE_MANAGED_CLASS(SceneNode);
 
     struct SGNRayResult {
         I64 sgnGUID = -1;
-        F32 dist = std::numeric_limits<F32>::max();
+        F32 dist = F32_MAX;
         bool inside = false;
         const char* name = nullptr;
     };

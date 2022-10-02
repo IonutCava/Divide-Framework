@@ -148,10 +148,8 @@ namespace Divide
         getEditorComponent().onChangedCbk( [this]( const std::string_view field ) noexcept
         {
             onEditorChange( field );
-        } );
-
-        _editorDataDirtyState.fill( EditorDataState::QUEUED );
-    }
+        });
+}
 
     WaterPlane::~WaterPlane()
     {
@@ -160,7 +158,6 @@ namespace Divide
 
     void WaterPlane::onEditorChange( std::string_view ) noexcept
     {
-        _editorDataDirtyState.fill( EditorDataState::QUEUED );
 
         if ( _fogStartEnd.y <= _fogStartEnd.y )
         {
@@ -247,6 +244,13 @@ namespace Divide
                 shaderDescriptor._modules.push_back( fragModule );
             }
 
+            shaderDescriptor._globalDefines.emplace_back( "_refractionTint PushData0[0].xyz" );
+            shaderDescriptor._globalDefines.emplace_back( "_specularShininess PushData0[0].w" );
+            shaderDescriptor._globalDefines.emplace_back( "_waterDistanceFogColour PushData0[1].xyz" );
+            shaderDescriptor._globalDefines.emplace_back( "_noiseTile PushData0[2].xy" );
+            shaderDescriptor._globalDefines.emplace_back( "_noiseFactor PushData0[2].zw)" );
+            shaderDescriptor._globalDefines.emplace_back( "_fogStartEndDistances PushData0[3].xy" );
+
             return shaderDescriptor;
         } );
 
@@ -296,14 +300,14 @@ namespace Divide
         }
 
         renderable->setReflectionCallback( [this]( RenderPassManager* passManager, RenderCbkParams& params, GFX::CommandBuffer& commandsInOut, GFX::MemoryBarrierCommand& memCmdInOut )
-        {
-            updateReflection( passManager, params, commandsInOut, memCmdInOut );
-        }, ReflectorType::PLANAR );
+                                           {
+                                               updateReflection( passManager, params, commandsInOut, memCmdInOut );
+                                           }, ReflectorType::PLANAR );
 
         renderable->setRefractionCallback( [this]( RenderPassManager* passManager, RenderCbkParams& params, GFX::CommandBuffer& commandsInOut, GFX::MemoryBarrierCommand& memCmdInOut )
-        {
-            updateRefraction( passManager, params, commandsInOut, memCmdInOut );
-        }, RefractorType::PLANAR );
+                                           {
+                                               updateRefraction( passManager, params, commandsInOut, memCmdInOut );
+                                           }, RefractorType::PLANAR );
 
         renderable->toggleRenderOption( RenderingComponent::RenderOptions::CAST_SHADOWS, false );
 
@@ -312,21 +316,6 @@ namespace Divide
 
     void WaterPlane::sceneUpdate( const U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sceneState )
     {
-        for ( EditorDataState& state : _editorDataDirtyState )
-        {
-            switch ( state )
-            {
-                case EditorDataState::QUEUED:
-                state = EditorDataState::CHANGED;
-                break;
-                case EditorDataState::PROCESSED:
-                state = EditorDataState::IDLE;
-                break;
-                case EditorDataState::CHANGED:
-                case EditorDataState::IDLE:
-                break;
-            }
-        }
         WaterBodyData data;
         data._positionW = sgn->get<TransformComponent>()->getWorldPosition();
         data._extents.xyz = { to_F32( _dimensions.width ),
@@ -338,28 +327,20 @@ namespace Divide
     }
 
     void WaterPlane::prepareRender( SceneGraphNode* sgn,
-                                   RenderingComponent& rComp,
-                                   const RenderStagePass renderStagePass,
-                                   const CameraSnapshot& cameraSnapshot,
-                                   const bool refreshData )
+                                    RenderingComponent& rComp,
+                                    RenderPackage& pkg,
+                                    const RenderStagePass renderStagePass,
+                                    const CameraSnapshot& cameraSnapshot,
+                                    const bool refreshData )
     {
-        EditorDataState& state = _editorDataDirtyState[to_base( renderStagePass._stage )];
-        if ( state == EditorDataState::CHANGED || state == EditorDataState::PROCESSED )
-        {
-            PushConstants& constants = rComp.getPushConstants( renderStagePass );
-            constants.set( _ID( "_noiseFactor" ), GFX::PushConstantType::VEC2, noiseFactor() );
-            constants.set( _ID( "_noiseTile" ), GFX::PushConstantType::VEC2, noiseTile() );
-            constants.set( _ID( "_fogStartEndDistances" ), GFX::PushConstantType::VEC2, fogStartEnd() );
-            constants.set( _ID( "_refractionTint" ), GFX::PushConstantType::FCOLOUR3, refractionTint() );
-            constants.set( _ID( "_waterDistanceFogColour" ), GFX::PushConstantType::FCOLOUR3, waterDistanceFogColour() );
-            constants.set( _ID( "_specularShininess" ), GFX::PushConstantType::FLOAT, specularShininess() );
-            if ( refreshData )
-            {
-                state = EditorDataState::PROCESSED;
-            }
-        }
+        PushConstantsStruct fastData{};
+        fastData.data0._vec[0].set( refractionTint(), specularShininess() );
+        fastData.data0._vec[1].set( waterDistanceFogColour(), 0.f );
+        fastData.data0._vec[2].set( noiseTile(), noiseFactor() );
+        fastData.data0._vec[3].xy = fogStartEnd();
+        pkg.pushConstantsCmd()._constants.set( fastData );
 
-        SceneNode::prepareRender( sgn, rComp, renderStagePass, cameraSnapshot, refreshData );
+        SceneNode::prepareRender( sgn, rComp, pkg, renderStagePass, cameraSnapshot, refreshData );
     }
 
     bool WaterPlane::PointUnderwater( const SceneGraphNode* sgn, const vec3<F32>& point ) noexcept
@@ -374,7 +355,6 @@ namespace Divide
         cmd._sourceBuffer = _plane->geometryBuffer()->handle();
 
         cmdsOut.emplace_back( GFX::DrawCommand{ cmd } );
-        _editorDataDirtyState.fill( EditorDataState::CHANGED );
 
         SceneNode::buildDrawCommands( sgn, cmdsOut );
     }
@@ -399,7 +379,7 @@ namespace Divide
         params._clippingPlanes.set( 0, refractionPlane );
         params._passName = "Refraction";
         params._clearDescriptorPrePass._clearDepth = true;
-        params._clearDescriptorMainPass._clearColourDescriptors[0] = { DefaultColours::BLUE, 0u };
+        params._clearDescriptorMainPass._clearColourDescriptors[0] = { DefaultColours::BLUE, RTColourAttachmentSlot::SLOT_0 };
         if ( !underwater )
         {
             ClearBit( params._drawMask, to_U8( 1u << to_base( RenderPassParams::Flags::DRAW_DYNAMIC_NODES ) ) );
@@ -411,7 +391,7 @@ namespace Divide
         const RenderTarget* rt = context.gfx().renderTargetPool().getRenderTarget( params._target );
 
         GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
-        computeMipMapsCommand._texture = rt->getAttachment( RTAttachmentType::COLOUR, 0 )->texture().get();
+        computeMipMapsCommand._texture = rt->getAttachment( RTAttachmentType::COLOUR )->texture().get();
         GFX::EnqueueCommand( bufferInOut, computeMipMapsCommand );
     }
 
@@ -448,7 +428,7 @@ namespace Divide
         params._clippingPlanes.set( 0, reflectionPlane );
         params._passName = "Reflection";
         params._clearDescriptorPrePass._clearDepth = true;
-        params._clearDescriptorMainPass._clearColourDescriptors[0] = { DefaultColours::BLUE, 0u };
+        params._clearDescriptorMainPass._clearColourDescriptors[0] = { DefaultColours::BLUE, RTColourAttachmentSlot::SLOT_0 };
         ClearBit( params._drawMask, to_U8( 1u << to_base( RenderPassParams::Flags::DRAW_DYNAMIC_NODES ) ) );
 
         passManager->doCustomPass( _reflectionCam, params, bufferInOut, memCmdInOut );
@@ -468,21 +448,21 @@ namespace Divide
             };
 
             renderParams._context.blurTarget( reflectionTargetHandle,
-                                             reflectionBlurBuffer,
-                                             reflectionTargetHandle,
-                                             RTAttachmentType::COLOUR,
-                                             0,
-                                             _blurKernelSize,
-                                             true,
-                                             1,
-                                             bufferInOut );
+                                              reflectionBlurBuffer,
+                                              reflectionTargetHandle,
+                                              RTAttachmentType::COLOUR,
+                                              RTColourAttachmentSlot::SLOT_0,
+                                              _blurKernelSize,
+                                              true,
+                                              1,
+                                              bufferInOut );
         }
 
         const PlatformContext& context = passManager->parent().platformContext();
         const RenderTarget* rt = context.gfx().renderTargetPool().getRenderTarget( params._target );
 
         GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
-        computeMipMapsCommand._texture = rt->getAttachment( RTAttachmentType::COLOUR, 0 )->texture().get();
+        computeMipMapsCommand._texture = rt->getAttachment( RTAttachmentType::COLOUR )->texture().get();
         GFX::EnqueueCommand( bufferInOut, computeMipMapsCommand );
     }
 
