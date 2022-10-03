@@ -295,14 +295,14 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     terrainMaterial->properties().isStatic(true);
     terrainMaterial->properties().isInstanced(true);
     terrainMaterial->properties().texturesInFragmentStageOnly(false);
-    terrainMaterial->setTexture(TextureSlot::UNIT0, CreateResource<Texture>(terrain->parentResourceCache(), textureAlbedoMaps), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
-    terrainMaterial->setTexture(TextureSlot::UNIT1, CreateResource<Texture>(terrain->parentResourceCache(), textureNoiseMedium), noiseHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
-    terrainMaterial->setTexture(TextureSlot::OPACITY, CreateResource<Texture>(terrain->parentResourceCache(), textureBlendMap), blendMapHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
-    terrainMaterial->setTexture(TextureSlot::NORMALMAP, CreateResource<Texture>(terrain->parentResourceCache(), textureNormalMaps), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
-    terrainMaterial->setTexture(TextureSlot::HEIGHTMAP, CreateResource<Texture>(terrain->parentResourceCache(), heightMapTexture), heightSamplerHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
-    terrainMaterial->setTexture(TextureSlot::SPECULAR, CreateResource<Texture>(terrain->parentResourceCache(), textureWaterCaustics), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
-    terrainMaterial->setTexture(TextureSlot::METALNESS, CreateResource<Texture>(terrain->parentResourceCache(), textureExtraMaps), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
-    terrainMaterial->setTexture(TextureSlot::EMISSIVE, Texture::DefaultTexture(), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
+    terrainMaterial->setTexture(TextureSlot::UNIT0, CreateResource<Texture>(terrain->parentResourceCache(), textureAlbedoMaps), albedoHash, TextureOperation::NONE);
+    terrainMaterial->setTexture(TextureSlot::UNIT1, CreateResource<Texture>(terrain->parentResourceCache(), textureNoiseMedium), noiseHash, TextureOperation::NONE);
+    terrainMaterial->setTexture(TextureSlot::OPACITY, CreateResource<Texture>(terrain->parentResourceCache(), textureBlendMap), blendMapHash, TextureOperation::NONE);
+    terrainMaterial->setTexture(TextureSlot::NORMALMAP, CreateResource<Texture>(terrain->parentResourceCache(), textureNormalMaps), albedoHash, TextureOperation::NONE);
+    terrainMaterial->setTexture(TextureSlot::HEIGHTMAP, CreateResource<Texture>(terrain->parentResourceCache(), heightMapTexture), heightSamplerHash, TextureOperation::NONE, true);
+    terrainMaterial->setTexture(TextureSlot::SPECULAR, CreateResource<Texture>(terrain->parentResourceCache(), textureWaterCaustics), albedoHash, TextureOperation::NONE);
+    terrainMaterial->setTexture(TextureSlot::METALNESS, CreateResource<Texture>(terrain->parentResourceCache(), textureExtraMaps), albedoHash, TextureOperation::NONE);
+    terrainMaterial->setTexture(TextureSlot::EMISSIVE, Texture::DefaultTexture(), albedoHash, TextureOperation::NONE);
 
     const Configuration::Terrain terrainConfig = context.config().terrain;
     const vec2<F32> WorldScale = terrain->tessParams().WorldScale();
@@ -459,9 +459,6 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
 
                     shaderModule._defines.emplace_back("LOW_QUALITY");
                     shaderModule._defines.emplace_back("MAX_TESS_LEVEL 16");
-                    if (stagePass._stage == RenderStage::REFLECTION) {
-                        shaderModule._defines.emplace_back("REFLECTION_PASS");
-                    }
                 }
                 if (stagePass._stage == RenderStage::REFLECTION) {
                     shaderDescriptor._name = "Terrain_Colour_LowQuality_Reflect-" + name + propName;

@@ -104,11 +104,6 @@ namespace Names {
 
 static_assert(std::size(Names::textureSlot) == to_base(TextureSlot::COUNT) + 1);
 
-enum class TexturePrePassUsage : U8 {
-    ALWAYS = 0u,
-    NEVER,
-    AUTO
-};
 
 namespace TypeUtil {
     [[nodiscard]] const char* MaterialDebugFlagToString(const MaterialDebugFlag unitType) noexcept;
@@ -229,7 +224,7 @@ class Material final : public CachedResource {
     struct TextureInfo {
         Texture_ptr _ptr{ nullptr };
         size_t _sampler{ 0u };
-        TexturePrePassUsage _useForPrePass{ TexturePrePassUsage::AUTO };
+        bool _useInGeometryPasses{false}; //< Setting this to false will fallback to auto-usage selection (e.g. opacity tex will be used for alpha testing in shadow passes)
         TextureOperation _operation{ TextureOperation::NONE };
     };
 
@@ -258,7 +253,7 @@ class Material final : public CachedResource {
                     const Texture_ptr& texture,
                     size_t samplerHash,
                     TextureOperation op,
-                    TexturePrePassUsage prePassUsage = TexturePrePassUsage::AUTO);
+                    bool useInGeometryPasses = false);
     void setTextureOperation(TextureSlot textureUsageSlot, TextureOperation op);
 
     void lockInstancesForRead() const noexcept;
@@ -311,6 +306,7 @@ class Material final : public CachedResource {
     PROPERTY_R_IW(DescriptorSet, descriptorSetSecondaryPass);
     PROPERTY_R_IW(DescriptorSet, descriptorSetMainPass);
     PROPERTY_R_IW(DescriptorSet, descriptorSetPrePass);
+    PROPERTY_R_IW(DescriptorSet, descriptorSetShadow);
     PROPERTY_RW(bool, ignoreXMLData, false);
     PROPERTY_R_IW(AttributeMap, shaderAttributes);
     PROPERTY_R_IW(PrimitiveTopology, topology, PrimitiveTopology::COUNT);
@@ -346,7 +342,7 @@ class Material final : public CachedResource {
                           const Texture_ptr& texture,
                           size_t samplerHash,
                           TextureOperation op,
-                          TexturePrePassUsage prePassUsage);
+                          bool useInGeometryPasses);
    private:
     GFXDevice& _context;
     ResourceCache* _parentCache = nullptr;

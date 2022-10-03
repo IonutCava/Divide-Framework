@@ -14,9 +14,9 @@
                 <distance>0</distance>
                 <active>false</active>
             </reflectionPlane>
-            <accumPitchDegrees>-59.2099953</accumPitchDegrees>
+            <accumPitchDegrees>-15.000001</accumPitchDegrees>
             <frustumLocked>false</frustumLocked>
-            <euler x="0" y="88.733902" z="180"/>
+            <euler x="-15.0000019" y="39.9999924" z="0"/>
             <eye x="60" y="45" z="60"/>
             <orientation x="-0.122654505" y="0.339094073" z="0.0446425863" w="0.93165338"/>
             <aspectRatio>1.77777779</aspectRatio>
@@ -56,7 +56,7 @@
             <minRadius>0.100000001</minRadius>
             <curRadius>8</curRadius>
             <cameraRotation x="0" y="0" z="0"/>
-            <offsetDir x="0" y="0" z="1"/>
+            <offsetDir x="0" y="0" z="0"/>
         </Node__Preview__Camera>
     </camera>
 </editor>

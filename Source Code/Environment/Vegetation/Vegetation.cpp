@@ -496,7 +496,7 @@ namespace Divide
                                            return shaderDescriptor;
                                        } );
 
-        vegMaterial->setTexture( TextureSlot::UNIT0, grassBillboardArray, grassSampler.getHash(), TextureOperation::REPLACE, TexturePrePassUsage::ALWAYS );
+        vegMaterial->setTexture( TextureSlot::UNIT0, grassBillboardArray, grassSampler.getHash(), TextureOperation::REPLACE, true );
         s_vegetationMaterial = vegMaterial;
     }
 

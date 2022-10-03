@@ -22,9 +22,9 @@ namespace Divide
 {
 
     std::array<U8, to_base( ShadowType::COUNT )> LightPool::_shadowLocation = { {
-        4,  //TextureUsage::SHADOW_LAYERED
-        5,  //TextureUsage::SHADOW_CUBE
-        6   //TextureUsage::SHADOW_SINGLE
+        4,  //SINGLE
+        5,  //LAYERED
+        6   //CUBE
     } };
 
     namespace

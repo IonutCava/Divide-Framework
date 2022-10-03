@@ -1286,20 +1286,21 @@ namespace Divide
             }break;
             case GFX::CommandType::DRAW_COMMANDS:
             {
-                DIVIDE_ASSERT( s_stateTracker._activePipeline != nullptr );
-
-                U32 drawCount = 0u;
-                const GFX::DrawCommand::CommandContainer& drawCommands = cmd->As<GFX::DrawCommand>()->_drawCommands;
-                for ( const GenericDrawCommand& currentDrawCommand : drawCommands )
+                if ( s_stateTracker._activePipeline != nullptr )
                 {
-                    if ( draw( currentDrawCommand ) )
+                    U32 drawCount = 0u;
+                    const GFX::DrawCommand::CommandContainer& drawCommands = cmd->As<GFX::DrawCommand>()->_drawCommands;
+                    for ( const GenericDrawCommand& currentDrawCommand : drawCommands )
                     {
-                        drawCount += isEnabledOption( currentDrawCommand, CmdRenderOptions::RENDER_WIREFRAME )
-                            ? 2
-                            : isEnabledOption( currentDrawCommand, CmdRenderOptions::RENDER_GEOMETRY ) ? 1 : 0;
+                        if ( draw( currentDrawCommand ) )
+                        {
+                            drawCount += isEnabledOption( currentDrawCommand, CmdRenderOptions::RENDER_WIREFRAME )
+                                ? 2
+                                : isEnabledOption( currentDrawCommand, CmdRenderOptions::RENDER_GEOMETRY ) ? 1 : 0;
+                        }
                     }
+                    _context.registerDrawCalls( drawCount );
                 }
-                _context.registerDrawCalls( drawCount );
             }break;
             case GFX::CommandType::DISPATCH_COMPUTE:
             {

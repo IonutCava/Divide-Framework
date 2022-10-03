@@ -16,25 +16,29 @@ uniform vec2 dvd_uvEyeOffset;
 uniform float dvd_tessTriangleWidth;
 
 #define AdjustHeight(H) WORLD_SCALE_Y * H + TERRAIN_HEIGHT_OFFSET
-#define GetAlbedo(UV) texture(texDiffuse0, UV)
-#define GetBlend(UV) texture(texOpacityMap, UV)
-#define GetNormals(UV) texture(texNormalMap, UV)
 #define GetHeight(UV) AdjustHeight(texture(texHeight, vec3(UV, 0)).r)
-#define GetCaustics(UV) texture(texSpecular, UV)
-#define GetHelpers(UV) texture(texMetalness, UV)
+
 #define WorldXZtoHeightUV(WorldXZ) ((WorldXZ / UV_DIV) + 0.5f) - dvd_uvEyeOffset
 #define UV_DIV (PATCHES_PER_TILE_EDGE * 2)
 #define WORLD_SCALE vec3(WORLD_SCALE_X, WORLD_SCALE_Y, WORLD_SCALE_Z)
 
+#if defined(FRAG_SHADER)
+#define GetBlend(UV) texture(texOpacityMap, UV)
+#define GetCaustics(UV) texture(texSpecular, UV)
+#define GetHelpers(UV) texture(texMetalness, UV)
+#endif //FRAG_SHADER
+
+#if defined(TESS_EVAL_SHADER) || defined(GEOM_SHADER)
 vec3 getNormal(in vec2 tex_coord) {
     const vec3 UV = vec3(tex_coord, 0);
-    const float hL = textureOffset(texHeight, UV, ivec2(-1,  0)).r * WORLD_SCALE_Y;
-    const float hR = textureOffset(texHeight, UV, ivec2( 1,  0)).r * WORLD_SCALE_Y;
-    const float hD = textureOffset(texHeight, UV, ivec2( 0, -1)).r * WORLD_SCALE_Y;
-    const float hU = textureOffset(texHeight, UV, ivec2( 0,  1)).r * WORLD_SCALE_Y;
+    const float hL = textureOffset(texHeight, UV, ivec2(-1,  0)).r;
+    const float hR = textureOffset(texHeight, UV, ivec2( 1,  0)).r;
+    const float hD = textureOffset(texHeight, UV, ivec2( 0, -1)).r;
+    const float hU = textureOffset(texHeight, UV, ivec2( 0,  1)).r;
 
     // deduce terrain normal
     return normalize(vec3(hL - hR, 2.f, hD - hU));
 }
+#endif //TESS_EVAL_SHADER || GEOM_SHADER
 
 #endif //_TERRAIN_UTILS_CMN_

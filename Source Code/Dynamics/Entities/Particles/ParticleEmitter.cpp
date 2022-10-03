@@ -182,7 +182,7 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
 
     if (_particleTexture) {
         SamplerDescriptor textureSampler = {};
-        mat->setTexture(TextureSlot::UNIT0, _particleTexture, textureSampler.getHash(),  TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
+        mat->setTexture(TextureSlot::UNIT0, _particleTexture, textureSampler.getHash(), TextureOperation::NONE);
     }
 
     setMaterialTpl(mat);

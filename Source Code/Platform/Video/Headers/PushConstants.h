@@ -79,7 +79,7 @@ struct PushConstants {
 
 private:
     friend bool Merge(PushConstants& lhs, const PushConstants& rhs, bool& partial);
-    PushConstantsStruct _fastData;
+    PushConstantsStruct _fastData{};
     vector_fast<GFX::PushConstant> _data;
 };
 

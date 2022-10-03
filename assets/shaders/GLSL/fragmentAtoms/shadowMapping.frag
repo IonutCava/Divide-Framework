@@ -3,15 +3,15 @@
 
 #if !defined(DISABLE_SHADOW_MAPPING)
 
+#if !defined(DISABLE_SHADOW_MAPPING_SPOT)
+DESCRIPTOR_SET_RESOURCE(PER_FRAME, 4) uniform sampler2DArray    singleDepthMaps;
+#endif //DISABLE_SHADOW_MAPPING_SPOT
 #if !defined(DISABLE_SHADOW_MAPPING_CSM)
-DESCRIPTOR_SET_RESOURCE(PER_FRAME, 4) uniform sampler2DArray    layeredDepthMaps;
+DESCRIPTOR_SET_RESOURCE(PER_FRAME, 5) uniform sampler2DArray    layeredDepthMaps;
 #endif //DISABLE_SHADOW_MAPPING_CSM
 #if !defined(DISABLE_SHADOW_MAPPING_POINT)
-DESCRIPTOR_SET_RESOURCE(PER_FRAME, 5) uniform samplerCubeArray  cubeDepthMaps;
+DESCRIPTOR_SET_RESOURCE(PER_FRAME, 6) uniform samplerCubeArray  cubeDepthMaps;
 #endif //DISABLE_SHADOW_MAPPING_POINT
-#if !defined(DISABLE_SHADOW_MAPPING_SPOT)
-DESCRIPTOR_SET_RESOURCE( PER_FRAME, 6 ) uniform sampler2DArray    singleDepthMaps;
-#endif //DISABLE_SHADOW_MAPPING_SPOT
 
 #include "shadowUtils.frag"
 
@@ -29,6 +29,7 @@ float chebyshevUpperBound(in vec2 moments, in float distance) {
 }
 
 float getShadowMultiplierDirectional(in int shadowIndex, in float TanAcosNdotL) {
+
 #if !defined(DISABLE_SHADOW_MAPPING_CSM)
     const CSMShadowProperties properties = dvd_CSMShadowTransforms[shadowIndex];
 

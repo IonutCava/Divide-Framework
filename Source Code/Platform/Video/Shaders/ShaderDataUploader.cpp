@@ -124,7 +124,6 @@ bool SaveReflectionData(const ResourcePath& path, const ResourcePath& file, cons
 
     ByteBuffer buffer;
     buffer << BYTE_BUFFER_VERSION;
-    buffer << reflectionDataIn._uniformBlockBindingSet;
     buffer << reflectionDataIn._uniformBlockBindingIndex;
     buffer << reflectionDataIn._stageVisibility;
 
@@ -204,7 +203,6 @@ bool LoadReflectionData(const ResourcePath& path, const ResourcePath& file, Refl
         auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
         buffer >> tempVer;
         if (tempVer == BYTE_BUFFER_VERSION) {
-            buffer >> reflectionDataOut._uniformBlockBindingSet;
             buffer >> reflectionDataOut._uniformBlockBindingIndex;
             buffer >> reflectionDataOut._stageVisibility;
 

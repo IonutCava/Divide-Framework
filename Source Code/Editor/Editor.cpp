@@ -1345,17 +1345,6 @@ namespace Divide
         static ImDrawVert vertices[MaxVertices];
         static ImDrawIdx indices[MaxIndices];
 
-        static GFX::SendPushConstantsCommand s_pushConstants{};
-        static bool s_init = false;
-        if ( !s_init )
-        {
-            // These are the same for all passes so might as well cache them here
-            PushConstantsStruct pushConstants{};
-            pushConstants.data0._vec[0].set( 1.f );
-            pushConstants.data0._vec[1].xy.set( 0.0f, 1.0f );
-            s_pushConstants._constants.set( pushConstants );
-            s_init = true;
-        }
         if ( windowGUID == -1 )
         {
             windowGUID = _mainWindow->getGUID();
@@ -1431,7 +1420,12 @@ namespace Divide
         }
 
         GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut, { _editorPipeline } );
-        GFX::EnqueueCommand( bufferInOut, s_pushConstants );
+        
+        PushConstantsStruct pushConstants{};
+        pushConstants.data0._vec[0].set( 1.f );
+        pushConstants.data0._vec[1].xy.set( 0.0f, 1.0f );
+
+        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set(pushConstants);
         GFX::EnqueueCommand<GFX::SetViewportCommand>( bufferInOut, { targetViewport } );
 
         const F32 L = pDrawData->DisplayPos.x;

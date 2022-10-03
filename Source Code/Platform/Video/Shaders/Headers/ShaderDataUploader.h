@@ -46,6 +46,7 @@ namespace Divide {
 
     namespace Reflection {
         static constexpr U8 INVALID_BINDING_INDEX = U8_MAX;
+        static constexpr U8 UNIFORM_BLOCK_BINDING_OFFSET = 14u;
 
         struct DataEntry {
             U8 _bindingSet{ 0u };
@@ -88,8 +89,8 @@ namespace Divide {
         };
 
         struct Data {
-            U8 _uniformBlockBindingSet{ INVALID_BINDING_INDEX };
-            U8 _uniformBlockBindingIndex{ INVALID_BINDING_INDEX };
+            U8 _uniformBlockBindingSet{ to_base(DescriptorSetUsage::PER_DRAW) };
+            U8 _uniformBlockBindingIndex{ UNIFORM_BLOCK_BINDING_OFFSET };
 
             U16 _stageVisibility{ 0u };
 

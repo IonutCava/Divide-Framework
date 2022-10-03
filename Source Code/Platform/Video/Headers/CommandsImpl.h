@@ -110,7 +110,7 @@ DEFINE_COMMAND_BEGIN(SendPushConstantsCommand, CommandType::SEND_PUSH_CONSTANTS)
     SendPushConstantsCommand() noexcept = default;
     SendPushConstantsCommand(const PushConstants& constants) noexcept : _constants(constants) {}
 
-    PushConstants _constants;
+    PushConstants _constants{};
 DEFINE_COMMAND_END(SendPushConstantsCommand);
 
 DEFINE_COMMAND_BEGIN(DrawCommand, CommandType::DRAW_COMMANDS);

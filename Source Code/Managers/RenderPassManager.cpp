@@ -224,6 +224,7 @@ void RenderPassManager::render(const RenderParams& params) {
         Time::ScopedTimer timeAll(*_renderPassTimer);
         startRenderTasks(params, pool, cam->snapshot());
     }
+    GFX::MemoryBarrierCommand flushMemCmd{};
     {
         OPTICK_EVENT("RenderPassManager::FlushCommandBuffers");
         Time::ScopedTimer timeCommands(*_flushCommandBufferTimer);
@@ -243,7 +244,6 @@ void RenderPassManager::render(const RenderParams& params) {
 
             return false;
         };
-
         {
             OPTICK_EVENT("FLUSH_PASSES_WHEN_READY");
             U8 idleCount = 0u;
@@ -283,9 +283,11 @@ void RenderPassManager::render(const RenderParams& params) {
                         // No running dependency so we can flush the command buffer and add the pass to the skip list
                         _drawCallCount[i] = _context.frameDrawCalls();
                         _context.flushCommandBuffer(*_renderPassData[i]._cmdBuffer, false);
-                        _renderPassData[i]._memCmd._syncFlag = 150 + i;
-                        GFX::EnqueueCommand(*_postRenderBuffer, _renderPassData[i]._memCmd);
                         _drawCallCount[i] = _context.frameDrawCalls() - _drawCallCount[i];
+                        if ( !GFX::Merge( &flushMemCmd, &_renderPassData[i]._memCmd ) )
+                        {
+                            NOP();
+                        }
                         s_completedPasses[i] = true;
                         //Wait(*whileRendering, pool);
 
@@ -313,6 +315,7 @@ void RenderPassManager::render(const RenderParams& params) {
     activeLightPool.postRenderAllPasses();
 
     Time::ScopedTimer time(*_blitToDisplayTimer);
+    GFX::EnqueueCommand( *_postRenderBuffer, flushMemCmd );
     gfx.flushCommandBuffer(*_postRenderBuffer, false);
 
     _context.setCameraSnapshot(params._playerPass, cam->snapshot());

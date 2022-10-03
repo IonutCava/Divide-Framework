@@ -227,7 +227,6 @@ namespace {
     constexpr U8 s_reserverdTextureSlotsPerDraw = to_base(TextureSlot::COUNT) + 2; /*Reflection and refraction*/
     constexpr U8 s_reserverdBufferSlotsPerDraw = ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET - s_reserverdTextureSlotsPerDraw;
     constexpr U8 s_reservedImageSlotsPerDraw = ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET - s_reserverdBufferSlotsPerDraw - s_reserverdTextureSlotsPerDraw;
-    constexpr U8 s_uniformBlockBindingOffset = 14u;
 
     [[nodiscard]] size_t DefinesHash(const ModuleDefines& defines) noexcept {
         if (defines.empty()) {
@@ -1639,6 +1638,10 @@ bool ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExis
         // Save reflection data to cache for future use
         SaveToCache(LoadData::ShaderCacheType::REFLECTION, loadDataInOut, atomIDs);
     }
+    else
+    {
+        blockIndexInOut = loadDataInOut._reflectionData._uniformBlockBindingIndex - Reflection::UNIFORM_BLOCK_BINDING_OFFSET;
+    }
 
     if (!loadDataInOut._sourceCodeGLSL.empty() || !loadDataInOut._sourceCodeSpirV.empty()) {
         _usedAtomIDs.insert(begin(atomIDs), end(atomIDs));
@@ -1702,7 +1705,7 @@ void ShaderProgram::loadAndParseGLSL(const ModuleDefines& defines,
         }
 
         loadDataInOut._reflectionData._uniformBlockBindingSet = to_base(DescriptorSetUsage::PER_DRAW);
-        loadDataInOut._reflectionData._uniformBlockBindingIndex = s_uniformBlockBindingOffset + blockIndexInOut;
+        loadDataInOut._reflectionData._uniformBlockBindingIndex = Reflection::UNIFORM_BLOCK_BINDING_OFFSET + blockIndexInOut;
 
         string& uniformBlock = loadDataInOut._uniformBlock;
         uniformBlock = "layout( ";
