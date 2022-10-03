@@ -23,7 +23,7 @@ void Octree::update(const U64 deltaTimeUS) {
     _root->update(deltaTimeUS);
 
     // root node
-    _intersectionsObjectCache.resize(0);
+    efficient_clear( _intersectionsObjectCache );
     _intersectionsObjectCache.reserve(_root->getTotalObjectCount());
 
     _root->updateIntersectionCache(_intersectionsObjectCache);
@@ -333,7 +333,7 @@ void OctreeNode::insert(const SceneGraphNode* object) {
                         child->_region = childOctant[i];
                         {
                             ScopedLock<SharedMutex> w_lock(child->_objectLock);
-                            child->_objects.resize(0);
+                            efficient_clear( child->_objects );
                             child->_objects.push_back(object);
                         }
                         child->active(true);
@@ -445,7 +445,7 @@ void OctreeNode::buildTree() {
             child->_region = octant[i];
             {
                 ScopedLock<SharedMutex> w_lock(child->_objectLock);
-                child->_objects.resize(0);
+                efficient_clear( child->_objects );
                 child->_objects.reserve(octList[i].size());
                 child->_objects.insert(cend(child->_objects), cbegin(octList[i]), cend(octList[i]));
             }
@@ -655,7 +655,7 @@ vector<IntersectionRecord> OctreeNode::getIntersection(const Ray& intersectRay, 
 void OctreeNode::updateIntersectionCache(vector<const SceneGraphNode*>& parentObjects) {
     SharedLock<SharedMutex> w_lock(_objectLock);
 
-    _intersectionsCache.resize(0);
+    efficient_clear( _intersectionsCache );
     //assume all parent objects have already been processed for collisions against each other.
     //check all parent objects against all objects in our local node
     for (const SceneGraphNode* pObjPtr : parentObjects) {

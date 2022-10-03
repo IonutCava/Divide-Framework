@@ -172,11 +172,9 @@ inline const CommandBuffer::CommandOrderContainer& CommandBuffer::operator()() c
 
 inline void CommandBuffer::clear(const bool clearMemory) {
     _commandCount.fill(0u);
+    _commandOrder.clear();
     if (clearMemory) {
-        _commandOrder.clear();
         _commands.clear(true);
-    } else {
-        _commandOrder.resize(0);
     }
 
     _batched = true;

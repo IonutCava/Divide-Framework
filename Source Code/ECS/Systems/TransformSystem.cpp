@@ -73,7 +73,7 @@ namespace Divide {
                 }
             );
         }
-        events.resize(0);
+        efficient_clear( events );
     }
 
     void TransformSystem::PostUpdate(const F32 dt) {

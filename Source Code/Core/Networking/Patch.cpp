@@ -46,7 +46,7 @@ namespace Patch {
     }
 
     void clearModelData() noexcept {
-        s_ModelData.resize(0);
+        efficient_clear( s_ModelData );
     }
 };
 

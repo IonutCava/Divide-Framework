@@ -61,5 +61,6 @@ layout(location = 0) out float _output;
 uniform vec2 _zPlanes;
 
 void main() {
-    _output = ToLinearDepth(texture(texDepth, VAR._texCoord).r, _zPlanes);
+    const float depth = texture(texDepth, VAR._texCoord).r;
+    _output = ToLinearDepth(depth, _zPlanes);
 }

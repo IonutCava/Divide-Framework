@@ -184,7 +184,7 @@ namespace Divide
         OPTICK_EVENT();
 
         ScopedLock<SharedMutex> w_lock( _movedSceneVolumesLock );
-        _movedSceneVolumes.resize( 0 );
+        efficient_clear(_movedSceneVolumes);
         return true;
     }
 

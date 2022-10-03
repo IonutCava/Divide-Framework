@@ -64,6 +64,6 @@ void main()
 
     vec4 outColour = grid(fragPos3D, gridScale) * float(t > 0); 
     outColour.a *= fade_factor;
-    gl_FragDepth = computeDepth(dvd_ViewMatrix * vec4(fragPos3D, 1.f), DEPTH_RANGE);
+    gl_FragDepth = computeDepth(dvd_ViewMatrix * vec4(fragPos3D, 1.f), dvd_ProjectionMatrix, DEPTH_RANGE);
     writeScreenColour(outColour);
 }

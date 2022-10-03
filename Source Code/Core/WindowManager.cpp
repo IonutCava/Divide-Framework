@@ -85,7 +85,7 @@ ErrorCode WindowManager::init(PlatformContext& context,
     
     _context = &context;
 
-    _monitors.resize(0);
+    efficient_clear( _monitors );
     const I32 displayCount = SDL_GetNumVideoDisplays();
     for (I32 i = 0; i < displayCount; ++i) {
         MonitorData data = {};

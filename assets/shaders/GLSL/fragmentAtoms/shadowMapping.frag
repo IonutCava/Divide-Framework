@@ -15,6 +15,8 @@ DESCRIPTOR_SET_RESOURCE(PER_FRAME, 6) uniform samplerCubeArray  cubeDepthMaps;
 
 #include "shadowUtils.frag"
 
+#define LinStep(LOW, HIGH, V) Saturate(((V) - (LOW)) / ((HIGH) - (LOW)))
+
 float chebyshevUpperBound(in vec2 moments, in float distance) {
     // Compute and clamp minimum variance to avoid numeric issues that may occur during filtering
     const float variance = max(moments.y - Squared(moments.x), dvd_MinVariance);
@@ -35,8 +37,8 @@ float getShadowMultiplierDirectional(in int shadowIndex, in float TanAcosNdotL) 
 
     const int Split = getCSMSlice(properties.dvd_shadowLightPosition);
     vec4 sc = properties.dvd_shadowLightVP[Split] * VAR._vertexW;
-    const vec3 shadowCoord = sc.xyz / sc.w;
-    if (isInFrustum(shadowCoord))
+    const vec3 shadowCoord = Homogenize(sc);
+    if (IsInFrustum(shadowCoord))
     {
         const vec4 crtDetails = properties.dvd_shadowLightDetails;
         const float bias = clamp(crtDetails.z * TanAcosNdotL, 0.f, 0.00001f);

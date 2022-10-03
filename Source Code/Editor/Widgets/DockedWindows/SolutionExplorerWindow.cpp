@@ -335,7 +335,7 @@ namespace Divide {
         {
             g_framerateBuffer.pop_front();
         }
-        g_framerateBufferCont.resize(0);
+        efficient_clear( g_framerateBufferCont );
         g_framerateBufferCont.insert(cbegin(g_framerateBufferCont),
                                      cbegin(g_framerateBuffer),
                                      cend(g_framerateBuffer));

@@ -940,7 +940,7 @@ namespace Divide
             }
         }
 
-        s_TexBindQueue.clear();
+        efficient_clear(s_TexBindQueue);
     }
 
     GLuint GL_API::getGLTextureView( const ImageView srcView, const U8 lifetimeInFrames )

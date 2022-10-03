@@ -249,14 +249,14 @@ void IMPrimitive::endBatch() noexcept {
 
     // free the temporary buffer in RAM
     for (auto& [index, data] : batchData.m_Attributes) {
-        data.m_ArrayData.resize(0);
+        efficient_clear( data.m_ArrayData );
     }
 
-    batchData.m_PositionData.resize(0);
-    batchData.m_IndexBuffer_Wireframe.resize(0);
-    batchData.m_IndexBuffer_Triangles.resize(0);
-    batchData.m_IndexBuffer_Lines.resize(0);
-    batchData.m_IndexBuffer_Points.resize(0);
+    efficient_clear( batchData.m_PositionData );
+    efficient_clear( batchData.m_IndexBuffer_Wireframe );
+    efficient_clear( batchData.m_IndexBuffer_Triangles );
+    efficient_clear( batchData.m_IndexBuffer_Lines );
+    efficient_clear( batchData.m_IndexBuffer_Points );
 }
 
 void IMPrimitive::fromLines(const IM::LineDescriptor& lines) {

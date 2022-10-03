@@ -26,9 +26,9 @@ void WaypointGraph::removeWaypoint(Waypoint* wp) {
 }
 
 void WaypointGraph::updateGraph() {
-    _positions.resize(0);
-    _rotations.resize(0);
-    _times.resize(0);
+    efficient_clear( _positions );
+    efficient_clear( _rotations );
+    efficient_clear( _times );
     for (auto& waypoint : _waypoints) {
         _positions.push_back(waypoint.second->position());
         _rotations.push_back(waypoint.second->orientation());

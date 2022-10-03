@@ -65,8 +65,7 @@ public:
 
   public:
 
-    explicit TaskPool() noexcept;
-
+    TaskPool() = default;
     ~TaskPool();
     
     bool init(U32 threadCount, TaskPoolType poolType, const DELEGATE<void, const std::thread::id&>& onThreadCreate = {}, const string& workerName = "DVD_WORKER");
@@ -108,7 +107,8 @@ public:
     void waitAndJoin() const;
 
   private:
-     hashMap<U32, eastl::fixed_vector<DELEGATE<void>, 8, true, eastl::dvd_allocator>> _taskCallbacks{};
+     hashMap<U32, DELEGATE<void>> _taskCallbacks{};
+
      DELEGATE<void, const std::thread::id&> _threadCreateCbk{};
      moodycamel::ConcurrentQueue<U32> _threadedCallbackBuffer{};
      Mutex _taskFinishedMutex;

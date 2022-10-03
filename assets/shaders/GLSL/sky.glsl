@@ -519,6 +519,7 @@ vec4 march(in vec3 colourIn, in vec3 ambientIn, in vec3 pos, in vec3 end, in vec
                 lp += (ldir + (RANDOM_VECTORS[j] * float(j + 1)) * lss);
 
                 const vec3 lweather = texture(weather, vec3(lp.xz * dvd_weatherScale, 0)).xyz;
+
                 const float lt = density(lp, lweather, false, float(j));
 
                 cd += lt;
@@ -590,7 +591,8 @@ vec3 dayColour(in vec3 rayDirection, in float lerpValue) {
 
 //ref: https://github.com/clayjohn/realtime_clouds
 vec3 computeClouds(in vec3 rayDirection, in vec3 skyColour, in float lerpValue) {
-    if (rayDirection.y > 0.0) {
+    if (rayDirection.y > 0.f)
+    {
         const vec3 cloudColour = mix(vSunColour.rgb, dvd_moonColour * 0.05f, lerpValue);
         const vec3 cloudAmbient = mix(vAmbient, vec3(0.05f), lerpValue);
 
@@ -608,6 +610,7 @@ vec3 computeClouds(in vec3 rayDirection, in vec3 skyColour, in float lerpValue) 
         const vec3 raystep = rayDirection * s_dist;
 
         vec4 volume = march(cloudColour, cloudAmbient, start, end, raystep, int(steps));
+
         volume.xyz = sqrt(abs(U2Tone(volume.xyz) * cwhiteScale));
 
         const vec3 background = volume.a < 0.99f ? skyColour : vec3(0.f);
@@ -627,7 +630,8 @@ vec3 getRawAlbedo(in vec3 rayDirection, in float lerpValue) {
 }
 
 vec3 atmosphereColour(in vec3 rayDirection, in float lerpValue) {
-    const vec3 skyColour = getSkyColour(rayDirection, lerpValue);
+    const vec3 skyColour = getSkyColour( rayDirection, lerpValue );
+
     return dvd_enableClouds != 0u ? computeClouds(rayDirection, skyColour, lerpValue) : skyColour;
 }
 
@@ -637,6 +641,7 @@ void main() {
 
     // Guess work based on what "look right"
     const float lerpValue = Saturate(2.95f * (GetSunDirection().y + 0.15f));
+    //const float lerpValue = Saturate(2.95f * (0.93f + 0.15f));
     const vec3 rayDirection = normalize(VAR._vertexW.xyz - dvd_CameraPosition);
 #if defined(MAIN_DISPLAY_PASS)
     vec3 ret = vec3(0.f);

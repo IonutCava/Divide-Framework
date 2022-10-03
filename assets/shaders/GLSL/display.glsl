@@ -15,7 +15,7 @@ void main(void){
 #if !defined(DEPTH_ONLY)
     const vec4 colour = texture(tex, VAR._texCoord);
 
-    _colourOut = convertToSRGB != 0u ? ToSRGBAccurate(colour) : colour;
+    _colourOut = convertToSRGB != 0u ? vec4(ToSRGBAccurate(colour.rgb), colour.a) : colour;
 #else
     gl_FragDepth = texture(tex, VAR._texCoord).r;
 #endif

@@ -1239,7 +1239,7 @@ namespace Divide {
                         dependencyInfo.pBufferMemoryBarriers = s_barriers.data();
 
                         vkCmdPipelineBarrier2(cmd, &dependencyInfo);
-                        s_barriers.resize(0);
+                        efficient_clear( s_barriers );
                     }
                     
                 });

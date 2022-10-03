@@ -74,7 +74,7 @@ namespace Divide {
         bool error = false;
 
         ScopedLock<Mutex> w_lock_global(_bufferLockslock);
-        _swapLocks.resize(0);
+        efficient_clear( _swapLocks );
 
         for (const BufferLockInstance& lock : _bufferLocks) {
             DIVIDE_ASSERT(lock._syncObjHandle._id != SyncObjectHandle::INVALID_SYNC_ID);

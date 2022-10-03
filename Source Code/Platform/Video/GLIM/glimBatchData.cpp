@@ -85,7 +85,7 @@ void glimBatchData::Reset(bool reserveBuffers, unsigned int vertexCount, unsigne
 
     m_Attributes.clear();
     m_Attributes.reserve(attributeCount);
-    m_PositionData.resize(0);
+    Divide::efficient_clear( m_PositionData );
     
     m_IndexBuffer_Points.clear();
     m_IndexBuffer_Lines.clear();

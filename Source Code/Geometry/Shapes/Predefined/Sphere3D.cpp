@@ -80,7 +80,7 @@ void Sphere3D::rebuildInternal() {
     }
 
     geometryBuffer()->create(true, true);
-    _geometryTriangles.resize(0);
+    efficient_clear( _geometryTriangles );
 
     // ToDo: add some depth padding for collision and nav meshes
     setBounds(BoundingBox(vec3<F32>(-_radius), vec3<F32>(_radius)));

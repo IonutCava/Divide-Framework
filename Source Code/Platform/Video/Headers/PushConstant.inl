@@ -59,7 +59,7 @@ namespace GFX {
             std::memcpy(_buffer.data(), data, bufferSize);
             dataSize(bufferSize);
         } else {
-            _buffer.resize(0);
+            efficient_clear( _buffer );
             dataSize(0u);
         }
     }
@@ -85,7 +85,7 @@ namespace GFX {
         assert(data != nullptr);
 
         if (count == 0) {
-            _buffer.resize(0);
+            efficient_clear( _buffer );
             dataSize(0u);
         } else if (count == 1) {
             //fast path

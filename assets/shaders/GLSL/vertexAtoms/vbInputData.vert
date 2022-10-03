@@ -8,6 +8,8 @@
 #include "boneTransforms.vert"
 #endif // USE_GPU_SKINNING
 
+#define UnpackVec3(VAL) (2.f * fract(vec3(1.f, 256.f, 65536.f) * VAL) - 1.f)
+
 NodeTransformData fetchInputData() {
     ComputeIndirectionData();
 

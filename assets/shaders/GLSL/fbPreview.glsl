@@ -72,7 +72,8 @@ DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texDiffuse0;
 
 void main()
 {
-    const float linearDepth = ToLinearDepth(textureLod(texDiffuse0, VAR._texCoord, lodLevel).r, _zPlanes);
+    const float depth = textureLod( texDiffuse0, VAR._texCoord, lodLevel ).r;
+    const float linearDepth = ToLinearDepth(depth, _zPlanes);
     /// Map back to [0 ... 1] range
     _colourOut = vec4(vec3(linearDepth / _zPlanes.y), 1.0);
 }

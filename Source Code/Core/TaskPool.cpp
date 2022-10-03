@@ -16,12 +16,6 @@ namespace Divide
         thread_local U64  g_allocatedTasks = 0u;
     }
 
-    TaskPool::TaskPool() noexcept
-        : GUIDWrapper(),
-        _taskCallbacks( Config::MAX_POOLED_TASKS )
-    {
-    }
-
     TaskPool::~TaskPool()
     {
         shutdown();
@@ -132,12 +126,12 @@ namespace Divide
         {
             if ( onCompletionFunction )
             {
-                _taskCallbacks[taskIndex].push_back( onCompletionFunction );
+                _taskCallbacks[taskIndex] = onCompletionFunction;
             }
 
             return (type() == TaskPoolType::TYPE_BLOCKING)
-                ? _blockingPool->addTask( MOV( poolTask ) )
-                : _lockFreePool->addTask( MOV( poolTask ) );
+                        ? _blockingPool->addTask( MOV( poolTask ) )
+                        : _lockFreePool->addTask( MOV( poolTask ) );
         }
 
         if ( !poolTask( false ) )
@@ -182,15 +176,12 @@ namespace Divide
             count = _threadedCallbackBuffer.try_dequeue_bulk( std::begin( taskIndex ), g_maxDequeueItems );
             for ( size_t i = 0u; i < count; ++i )
             {
-                auto& cbks = _taskCallbacks[taskIndex[i]];
-                for ( auto& cbk : cbks )
+                auto& cbk = _taskCallbacks[taskIndex[i]];
+                if ( cbk )
                 {
-                    if ( cbk )
-                    {
-                        cbk();
-                    }
+                    cbk();
+                    cbk = {};
                 }
-                cbks.resize( 0 );
             }
             ret += count;
         }

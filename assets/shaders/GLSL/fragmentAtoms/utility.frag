@@ -3,7 +3,7 @@
 
 #include "nodeDataInput.cmn"
 
-#define overlay(X, Y) ((X < 0.5f) ? (2.f * X * Y) : (1.f - 2.f * (1.f - X) * (1.f - Y)))
+#define overlay(X, Y) (((X) < 0.5f) ? (2.f * (X) * (Y)) : (1.f - 2.f * (1.f - (X)) * (1.f - (Y))))
 
 vec3 overlayVec(in vec3 base, in vec3 blend)
 {
@@ -12,46 +12,19 @@ vec3 overlayVec(in vec3 base, in vec3 blend)
                 overlay(base.b, blend.b));
 }
 
-#define scaledTextureCoords(UV, SCALE) (UV * SCALE)
-
-float ToLinearDepth(in float depth, in vec2 depthRangeIn)
-{
-    const float zNear = depthRangeIn.x;
-    const float zFar = depthRangeIn.y;
-    const float depthRange = 2.f * depth - 1.f;
-
-    return 2.f * zNear * zFar / (zFar + zNear - depthRange * (zFar - zNear));
-}
-
-float ToLinearDepth(in float D, in mat4 projMatrix) { 
-    return projMatrix[3][2] / (D - projMatrix[2][2]);
-}
-
-#define ViewSpaceZ(DEPTH, INV_PROJ_MAT) (-1.f / (INV_PROJ_MAT[2][3] * (2.f * DEPTH - 1.f) + INV_PROJ_MAT[3][3]));
-#define ClipSpacePos(TEX_COORD, DEPTH) (2.f * vec3(TEX_COORD, DEPTH) - 1.f)
-#define ViewSpacePos(TEX_COORD, DEPTH, INV_PROJ_MAT) Homogenize( INV_PROJ_MAT * vec4( ClipSpacePos( TEX_COORD, DEPTH ), 1.f ) )
-
 vec3 WorldSpacePos(in vec2 texCoords, in float depthIn, in mat4 invProjMatrix, in mat4 invView) {
     return (invView * vec4( ViewSpacePos( texCoords, depthIn, invProjMatrix ), 1.f)).xyz;
 }
 
-// Utility macro that maps a value from one range to another. 
-#define ReMap(V, Min0, Max0, Min1, Max1) (Min1 + (((V - Min0) / (Max0 - Min0)) * (Max1 - Min1)))
-#define InRangeExclusive(V, MIN, MAX) (VS > MIN && V < MAX)
-#define LinStep(LOW, HIGH, V) Saturate((V - LOW) / (HIGH - LOW))
-#define Luminance(RGB) max(dot(RGB, vec3(0.299f, 0.587f, 0.114f)), 0.0001f)
+#define Luminance(RGB) max(dot((RGB), vec3(0.299f, 0.587f, 0.114f)), 0.0001f)
 #define LevelOfGrey(C) vec4(C.rgb * vec3(0.299f, 0.587f, 0.114f), C.a)
 
 #define detail__gamma 2.2f
 #define detail__gamma__inv  1.0f / detail__gamma
 
-#define _ToLinear(SRGB) pow(SRGB, vec3(detail__gamma))
-#define _ToSRGB(RGB) pow(RGB, vec3(detail__gamma__inv))
-
-vec3 ToLinear(in vec3 sRGBCol) { return _ToLinear(sRGBCol); }
-vec4 ToLinear(in vec4 sRGBCol) { return vec4(_ToLinear(sRGBCol.rgb), sRGBCol.a); }
-vec3 ToSRGB(in vec3 linearCol) { return _ToSRGB(linearCol); }
-vec4 ToSRGB(in vec4 linearCol) { return vec4(_ToSRGB(linearCol.rgb), linearCol.a); }
+#define ToLinear(SRGB) pow((SRGB).rgb, vec3(detail__gamma))
+#define ToSRGB(RGB) pow((RGB).rgb, vec3(detail__gamma__inv))
+#define dvd_screenPositionNormalised (gl_FragCoord.xy / dvd_ViewPort.zw)
 
 // Accurate variants from Frostbite notes:
 // https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
@@ -64,10 +37,6 @@ vec3 ToLinearAccurate(in vec3 sRGBCol) {
                 (sRGBCol.b <= 0.04045f) ? linearRGBLo.b : linearRGBHi.b);
 }
 
-vec4 ToLinearAccurate(in vec4 sRGBCol) {
-    return vec4(ToLinearAccurate(sRGBCol.rgb), sRGBCol.a);
-}
-
 vec3 ToSRGBAccurate(in vec3 linearCol) {
     const vec3 sRGBLo = linearCol * 12.92f;
     const vec3 sRGBHi = (pow(abs(linearCol), vec3(1.f / 2.4f)) * 1.055f) - 0.055f;
@@ -77,28 +46,13 @@ vec3 ToSRGBAccurate(in vec3 linearCol) {
                 (linearCol.b <= 0.0031308f) ? sRGBLo.b : sRGBHi.b);
 }
 
-vec4 ToSRGBAccurate(in vec4 linearCol) {
-    return vec4(ToSRGBAccurate(linearCol.rgb), linearCol.a);
-}
-
 float computeDepth(in vec4 posWV, in mat4 projMatrix, in vec2 zPlanes) {
     const vec4 clip_space_pos = projMatrix * posWV;
     return (((zPlanes.y - zPlanes.x) * (clip_space_pos.z / clip_space_pos.w)) + zPlanes.x + zPlanes.y) * 0.5f;
 }
 
-float computeDepth(in vec4 posWV, in vec2 zPlanes) {
-    return computeDepth(posWV, dvd_ProjectionMatrix, zPlanes);
-}
-
-#define dvd_screenPositionNormalised (gl_FragCoord.xy / dvd_ViewPort.zw)
-
-bool isInScreenRect(in vec2 coords) {
-    return all(bvec4(coords.x >= 0.f, coords.x <= 1.f, coords.y >= 0.f, coords.y <= 1.f));
-}
-
-bool isInFrustum(in vec3 coords) {
-    return coords.z <= 1.f && isInScreenRect(coords.xy);
-}
+#define IsInScreenRect(COORDS) all(bvec4(COORDS.x >= 0.f, COORDS.x <= 1.f, COORDS.y >= 0.f, COORDS.y <= 1.f))
+#define IsInFrustum(COORDS)  (COORDS.z <= 1.f && IsInScreenRect(COORDS.xy))
 
 #define packVec2(X, Y) uintBitsToFloat(packHalf2x16(vec2(x, y)))
 vec2 unpackVec2(in uint pckd)  { return unpackHalf2x16(pckd); }
@@ -109,7 +63,7 @@ vec2 unpackVec2(in float pckd) { return unpackHalf2x16(floatBitsToUint(pckd)); }
 vec2 packNormal(in vec3 n) {
     n /= (abs(n.x) + abs(n.y) + abs(n.z));
     n.xy = (n.z >= 0.f) ? n.xy : (1.f - abs(n.yx)) * sign(n.xy);
-    n.xy = n.xy * 0.5f + 0.5f;
+    n.xy = 0.5f * n.xy + 0.5f;
     return n.xy;
 }
 

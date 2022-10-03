@@ -224,7 +224,7 @@ bool SceneGraph::frameStarted(const FrameEvent& evt) {
     // Gather all nodes at the start of the frame only if we added/removed any of them
     if (_nodeListChanged) {
         // Very rarely called
-        _nodeList.resize(0);
+        efficient_clear( _nodeList );
         Attorney::SceneGraphNodeSceneGraph::getAllNodes(_root, _nodeList);
         _nodeListChanged = false;
     }
@@ -249,7 +249,7 @@ bool SceneGraph::frameEnded(const FrameEvent& evt) {
         for (SceneGraphNode* node : _nodeParentChangeQueue) {
             Attorney::SceneGraphNodeSceneGraph::changeParent(node);
         }
-        _nodeParentChangeQueue.clear();
+        efficient_clear( _nodeParentChangeQueue );
     }
     {
         ScopedLock<SharedMutex> lock(_pendingDeletionLock);
@@ -343,7 +343,7 @@ void SceneGraph::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState) {
                 Attorney::SceneGraphNodeSceneGraph::processEvents(node);
             }
         }
-        _nodeEventQueue.clear();
+        efficient_clear( _nodeEventQueue );
     }
 
     if (_octreeUpdateTask != nullptr) {
@@ -356,7 +356,7 @@ void SceneGraph::onNetworkSend(const U32 frameCount) {
 }
 
 bool SceneGraph::intersect(const SGNIntersectionParams& params, vector<SGNRayResult>& intersectionsOut) const {
-    intersectionsOut.resize(0);
+    efficient_clear( intersectionsOut );
 
     // Try to leverage our physics system as it will always be way more faster and accurate
     if (!parentScene().context().pfx().intersect(params._ray, params._range, intersectionsOut)) {

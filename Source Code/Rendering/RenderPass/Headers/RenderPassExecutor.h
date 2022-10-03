@@ -121,7 +121,7 @@ public:
         vector<BufferUpdateRange> _bufferUpdateRangeHistory;
 
         SharedMutex _proccessedLock;
-        eastl::fixed_set<U32, MAX_INDIRECTION_ENTRIES, false> _nodeProcessedThisFrame;
+        eastl::fixed_vector<U32, MAX_INDIRECTION_ENTRIES, false> _nodeProcessedThisFrame;
     };
 
 public:

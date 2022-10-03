@@ -47,7 +47,7 @@ namespace Divide {
 
 
     template <typename K, typename V, typename HashFun = Divide::HashType<K>, typename Predicate = eastl::equal_to<K>>
-    using hashMap = hashAlg::unordered_map<K, V, HashFun, Predicate>;
+    using hashMap = hashAlg::unordered_map<K, V, HashFun, Predicate, eastl::dvd_allocator>;
     template <typename K, typename V, typename HashFun = Divide::HashType<K>, typename Predicate = eastl::equal_to<K>>
     using hashPairReturn = hashAlg::pair<typename hashMap<K, V, HashFun, Predicate>::iterator, bool>;
 

@@ -74,10 +74,10 @@ vec2 ParallaxOcclusionMapping(in vec2 scaledCoords, in vec3 viewDirT, float curr
 #endif //HAS_PARALLAX
 
 #if defined(LOW_QUALITY) || !defined(HAS_PARALLAX)
-#define getScaledCoords(UV, AMNT) scaledTextureCoords(UV, TEXTURE_TILE_SIZE)
+#define getScaledCoords(UV, AMNT) ScaledTextureCoords(UV, TEXTURE_TILE_SIZE)
 #else //LOW_QUALITY || !HAS_PARALLAX
 vec2 getScaledCoords(vec2 uv, in vec4 amnt) {
-    vec2 scaledCoords = scaledTextureCoords(uv, TEXTURE_TILE_SIZE);
+    vec2 scaledCoords = ScaledTextureCoords(uv, TEXTURE_TILE_SIZE);
 #if 0
     //ToDo: Maybe bump this 1 unit? -Ionut
     if (VAR._LoDLevel == 0u) {
@@ -91,7 +91,7 @@ vec2 getScaledCoords(vec2 uv, in vec4 amnt) {
                 const vec2 texCoords = uv - p;
                 const vec2 clippedTexCoord = vec2(texCoords.x - floor(texCoords.x),
                                                   texCoords.y - floor(texCoords.y));
-                scaledCoords = scaledTextureCoords(clippedTexCoord, TEXTURE_TILE_SIZE);
+                scaledCoords = ScaledTextureCoords(clippedTexCoord, TEXTURE_TILE_SIZE);
             } else {
                 scaledCoords = ParallaxOcclusionMapping(uv, viewDirT, currentHeight, dvd_ParallaxFactor(MATERIAL_IDX), amnt);
             }

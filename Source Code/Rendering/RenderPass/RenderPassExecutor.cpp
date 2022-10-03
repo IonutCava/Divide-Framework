@@ -228,15 +228,19 @@ namespace Divide
 
             {
                 SharedLock<SharedMutex> w_lock( executorBuffer._proccessedLock );
-                if ( executorBuffer._nodeProcessedThisFrame.find( indirectionIDX ) != executorBuffer._nodeProcessedThisFrame.cend() )
+                if ( contains(executorBuffer._nodeProcessedThisFrame, indirectionIDX ) )
                 {
                     return false;
                 }
             }
 
             ScopedLock<SharedMutex> w_lock( executorBuffer._proccessedLock );
-            // This does a check anyway, so should be safe
-            return executorBuffer._nodeProcessedThisFrame.insert( indirectionIDX ).second;
+            // Check again
+            if ( !contains( executorBuffer._nodeProcessedThisFrame, indirectionIDX ))
+            {
+                executorBuffer._nodeProcessedThisFrame.push_back( indirectionIDX );
+            }
+            return true;
         }
 
         template<typename DataContainer>
@@ -266,7 +270,7 @@ namespace Divide
             }
             // We need to increment our buffer queue to get the new write range into focus
             executorBuffer._gpuBuffer->incQueue();
-            executorBuffer._nodeProcessedThisFrame.clear();
+            efficient_clear(executorBuffer._nodeProcessedThisFrame);
         }
     }
 
@@ -603,7 +607,7 @@ namespace Divide
         RenderStagePass stagePass = params._stagePass;
         RenderPass::BufferData bufferData = _parent.getPassForStage( _stage ).getBufferData( stagePass );
 
-        _drawCommands.clear();
+        efficient_clear(_drawCommands);
 
         for ( RenderBin::SortedQueue& sQueue : _sortedQueues )
         {

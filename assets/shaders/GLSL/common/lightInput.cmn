@@ -88,8 +88,6 @@ struct VolumeTileAABB
 
 #if !defined(COMPUTE_SHADER)
 
-float ToLinearDepth(in float depthIn, in vec2 depthRangeIn);
-
 // cluster depth index from depth in screen coordinates (gl_FragCoord.z)
 uint GetClusterZIndex(in float screenDepth) {
     const float eyeDepth = ToLinearDepth( 0.5f * screenDepth + 0.5f, dvd_ZPlanes);

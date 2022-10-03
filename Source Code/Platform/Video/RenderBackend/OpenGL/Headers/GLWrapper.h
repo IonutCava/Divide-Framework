@@ -190,7 +190,6 @@ private:
     HardwareQueryContext _primitiveQueries;
     /// /*sampler hash value*/ /*sampler object*/
     using SamplerObjectMap = hashMap<size_t, GLuint, NoHash<size_t>>;
-    using BufferLockQueue = eastl::fixed_vector<BufferLockEntry, 64, true, eastl::dvd_allocator>;
 
 private:
     GFXDevice& _context;

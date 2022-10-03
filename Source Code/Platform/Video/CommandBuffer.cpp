@@ -220,7 +220,7 @@ namespace
         }
         else
         {
-            _commandOrder.resize( 0 );
+            _commandOrder.clear();
             _commandCount.fill( U24( 0u ) );
         }
 
@@ -642,7 +642,7 @@ namespace
         commands.insert( cend( commands ),
                             eastl::make_move_iterator( begin( crtCommand->_drawCommands ) ),
                             eastl::make_move_iterator( end( crtCommand->_drawCommands ) ) );
-        crtCommand->_drawCommands.resize( 0 );
+        efficient_clear( crtCommand->_drawCommands );
 
         {
             OPTICK_EVENT( "Merge by offset" );
