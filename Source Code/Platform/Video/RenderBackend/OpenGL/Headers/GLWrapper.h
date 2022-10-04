@@ -126,7 +126,7 @@ private:
 
     void flushTextureBindQueue();
 
-    [[nodiscard]] GLuint getGLTextureView(ImageView srcView, U8 lifetimeInFrames);
+    [[nodiscard]] GLuint getGLTextureView(ImageView srcView, U8 lifetimeInFrames) const;
 
 private:
     void endFrameLocal(const DisplayWindow& window);

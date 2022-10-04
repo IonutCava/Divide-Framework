@@ -173,22 +173,22 @@ void Renderer::prepareLighting(const RenderStage stage,
             {
                 auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE_AND_DRAW );
                 binding._slot = 8;
-                binding._data.As<ShaderBufferEntry>() = { *pool->sceneBuffer(), {stageIndex, 1u}};
+                As<ShaderBufferEntry>(binding._data) = { *pool->sceneBuffer(), {stageIndex, 1u}};
             }
             {
                 auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE_AND_DRAW );
                 binding._slot = 9;
-                binding._data.As<ShaderBufferEntry>() = { *pool->lightBuffer(), {stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, lightCount}};
+                As<ShaderBufferEntry>(binding._data) = { *pool->lightBuffer(), {stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, lightCount}};
             }
             {
                 auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE_AND_DRAW);
                 binding._slot = 10;
-                binding._data.As<ShaderBufferEntry>() = { *data._lightIndexBuffer, { 0u, data._lightIndexBuffer->getPrimitiveCount() }};
+                As<ShaderBufferEntry>(binding._data) = { *data._lightIndexBuffer, { 0u, data._lightIndexBuffer->getPrimitiveCount() }};
             }
             {
                 auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE_AND_DRAW );
                 binding._slot = 11;
-                binding._data.As<ShaderBufferEntry>() = { *data._lightGridBuffer, { 0u, data._lightGridBuffer->getPrimitiveCount() } };
+                As<ShaderBufferEntry>(binding._data) = { *data._lightGridBuffer, { 0u, data._lightGridBuffer->getPrimitiveCount() } };
             }
         }
         {
@@ -197,12 +197,12 @@ void Renderer::prepareLighting(const RenderStage stage,
             {
                 auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
                 binding._slot = 0;
-                binding._data.As<ShaderBufferEntry>() = { *data._globalIndexCountBuffer, { 0u, data._globalIndexCountBuffer->getPrimitiveCount() } };
+                As<ShaderBufferEntry>(binding._data) = { *data._globalIndexCountBuffer, { 0u, data._globalIndexCountBuffer->getPrimitiveCount() } };
             }
             {
                 auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE );
                 binding._slot = 1;
-                binding._data.As<ShaderBufferEntry>() = { *data._lightClusterAABBsBuffer, { 0u, data._lightClusterAABBsBuffer->getPrimitiveCount() } };
+                As<ShaderBufferEntry>(binding._data) = { *data._lightClusterAABBsBuffer, { 0u, data._lightClusterAABBsBuffer->getPrimitiveCount() } };
             }
         }
         GFX::EnqueueCommand( bufferInOut, _lightResetCounterPipelineCmd );

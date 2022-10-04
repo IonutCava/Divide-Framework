@@ -120,12 +120,12 @@ bool DoFPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const
     {
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = 0;
-        binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt->descriptor()._samplerHash };
+        As<DescriptorCombinedImageSampler>(binding._data) = { screenTex, screenAtt->descriptor()._samplerHash };
     }
     {
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = 1;
-        binding._data.As<DescriptorCombinedImageSampler>() = { extraTex, extraAtt->descriptor()._samplerHash };
+        As<DescriptorCombinedImageSampler>(binding._data) = { extraTex, extraAtt->descriptor()._samplerHash };
     }
 
     GFX::BeginRenderPassCommand beginRenderPassCmd{};

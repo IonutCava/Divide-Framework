@@ -188,12 +188,12 @@ namespace Divide
 
         for ( DescriptorSetBinding& bindingEntry : _impl )
         {
-            assert( bindingEntry._data.Type() != DescriptorSetBindingType::COUNT &&
-                    newBindingData._data.Type() != DescriptorSetBindingType::COUNT );
+            assert( Type( bindingEntry._data ) != DescriptorSetBindingType::COUNT &&
+                    Type( newBindingData._data ) != DescriptorSetBindingType::COUNT );
 
             if ( bindingEntry._slot == newBindingData._slot )
             {
-                DIVIDE_ASSERT( usage == DescriptorSetUsage::PER_DRAW || bindingEntry._data.Type() == newBindingData._data.Type() );
+                DIVIDE_ASSERT( usage == DescriptorSetUsage::PER_DRAW || Type(bindingEntry._data) == Type(newBindingData._data) );
 
                 if ( bindingEntry._data != newBindingData._data )
                 {
@@ -1549,7 +1549,7 @@ namespace Divide
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
             binding._slot = 0;
-            binding._data.As<DescriptorCombinedImageSampler>() = { inputAttachment->texture()->sampledView(), inputAttachment->descriptor()._samplerHash };
+            As<DescriptorCombinedImageSampler>(binding._data) = { inputAttachment->texture()->sampledView(), inputAttachment->descriptor()._samplerHash };
 
             pushConstantsCmd._constants.set( _ID( "verticalBlur" ), GFX::PushConstantType::INT, false );
             if ( gaussian )
@@ -1602,7 +1602,7 @@ namespace Divide
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
             binding._slot = 0;
-            binding._data.As<DescriptorCombinedImageSampler>() = { bufferAttachment->texture()->sampledView(), bufferAttachment->descriptor()._samplerHash };
+            As<DescriptorCombinedImageSampler>(binding._data) = { bufferAttachment->texture()->sampledView(), bufferAttachment->descriptor()._samplerHash };
 
             GFX::EnqueueCommand( bufferInOut, pushConstantsCmd );
 
@@ -1867,7 +1867,7 @@ namespace Divide
 
             static DescriptorSetBinding binding{ ShaderStageVisibility::ALL };
             binding._slot = 1;
-            binding._data.As<ShaderBufferEntry>() = { *_gfxBuffers.crtBuffers()._camDataBuffer, { 0, 1 } };
+            As<ShaderBufferEntry>( binding._data ) = { *_gfxBuffers.crtBuffers()._camDataBuffer, { 0, 1 } };
 
             _descriptorSets[to_base( DescriptorSetUsage::PER_BATCH )].update( DescriptorSetUsage::PER_BATCH, binding );
             return true;
@@ -2289,12 +2289,12 @@ namespace Divide
             {
                 auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE );
                 binding._slot = 0u;
-                binding._data.As<ImageView>() = outImage;
+                As<ImageView>(binding._data) = outImage;
             }
             {
                 auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE );
                 binding._slot = 1u;
-                binding._data.As<DescriptorCombinedImageSampler>() = { inImage, HiZAtt->descriptor()._samplerHash };
+                As<DescriptorCombinedImageSampler>(binding._data) = { inImage, HiZAtt->descriptor()._samplerHash };
             }
 
             pushConstants.data0._vec[0].set( owidth, oheight, twidth, theight );
@@ -2351,14 +2351,14 @@ namespace Divide
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE );
             binding._slot = 0;
-            binding._data.As<DescriptorCombinedImageSampler>() = { hizBuffer->sampledView(), samplerHash };
+            As<DescriptorCombinedImageSampler>(binding._data) = { hizBuffer->sampledView(), samplerHash };
         }
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_PASS;
             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE );
             binding._slot = 7;
-            binding._data.As<ShaderBufferEntry>() = { *cullBuffer, { 0u, 1u } };
+            As<ShaderBufferEntry>( binding._data ) = { *cullBuffer, { 0u, 1u } };
         }
         mat4<F32> viewProjectionMatrix;
         mat4<F32>::Multiply( cameraSnapshot._viewMatrix, cameraSnapshot._projectionMatrix, viewProjectionMatrix );
@@ -2444,7 +2444,7 @@ namespace Divide
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
         auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
         binding._slot = 0;
-        binding._data.As<DescriptorCombinedImageSampler>() = { texture, samplerHash };
+        As<DescriptorCombinedImageSampler>(binding._data) = { texture, samplerHash };
 
         GFX::EnqueueCommand( bufferInOut, GFX::PushViewportCommand{ viewport } );
 
@@ -2708,7 +2708,7 @@ namespace Divide
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
             binding._slot = view->_textureBindSlot;
-            binding._data.As<DescriptorCombinedImageSampler>() = { view->_texture->sampledView(), view->_samplerHash };
+            As<DescriptorCombinedImageSampler>(binding._data) = { view->_texture->sampledView(), view->_samplerHash };
 
             GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
 

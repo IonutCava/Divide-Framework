@@ -64,7 +64,6 @@ namespace Divide
         GLUtil::GLMemory::DeviceAllocator( GLUtil::GLMemory::GLMemoryType::OTHER )
     };
 
-#define TO_MEGABYTES(X) (X * 1024u * 1024u)
     std::array<size_t, to_base( GLUtil::GLMemory::GLMemoryType::COUNT )> GL_API::s_memoryAllocatorSizes{
         TO_MEGABYTES( 512 ),
         TO_MEGABYTES( 1024 ),
@@ -662,6 +661,8 @@ namespace Divide
         }
         _swapBufferTimer.stop();
 
+        GLUtil::GLMemory::OnFrameEnd( GFXDevice::FrameCount() );
+
         for ( U32 i = 0u; i < GL_API::s_LockFrameLifetime - 1; ++i )
         {
             s_fenceSyncCounter[i] = s_fenceSyncCounter[i + 1];
@@ -943,7 +944,7 @@ namespace Divide
         efficient_clear(s_TexBindQueue);
     }
 
-    GLuint GL_API::getGLTextureView( const ImageView srcView, const U8 lifetimeInFrames )
+    GLuint GL_API::getGLTextureView( const ImageView srcView, const U8 lifetimeInFrames ) const
     {
         OPTICK_EVENT();
 
@@ -961,6 +962,9 @@ namespace Divide
                                                                     srcView._descriptor._dataType,
                                                                     srcView._descriptor._srgb,
                                                                     srcView._descriptor._normalized );
+
+            const bool isCube = IsCubeTexture( srcView.targetType() );
+
             OPTICK_EVENT( "GL: cache miss  - Image" );
             glTextureView( handle,
                            GLUtil::internalTextureType( srcView.targetType(), srcView._descriptor._msaaSamples ),
@@ -968,8 +972,8 @@ namespace Divide
                            glInternalFormat,
                            static_cast<GLuint>(srcView._mipLevels.x),
                            static_cast<GLuint>(srcView._mipLevels.y),
-                           static_cast<GLuint>(srcView._layerRange.x),
-                           static_cast<GLuint>(srcView._layerRange.y) );
+                           srcView._layerRange.min * (isCube ? 6 : 1),
+                           srcView._layerRange.max * (isCube ? 6 : 1));
         }
 
         s_textureViewCache.deallocate( handle, lifetimeInFrames );
@@ -1264,16 +1268,11 @@ namespace Divide
                         }
                     }
 
-                    if ( IsCubeTexture( view.targetType() ) )
-                    {
-                        view._layerRange *= 6; //offset and count
-                    }
-
                     if ( view._mipLevels.max > view._mipLevels.min &&
                          view._mipLevels.max - view._mipLevels.min > 0u )
                     {
                         OPTICK_EVENT( "GL: In-place computation - Image" );
-                        glGenerateTextureMipmap( getGLTextureView( view, 3 ) );
+                        glGenerateTextureMipmap( getGLTextureView( view, 6u ) );
                     }
                 }
             }break;
@@ -1588,21 +1587,21 @@ namespace Divide
 
         for ( auto& srcBinding : bindings )
         {
-            const DescriptorSetBindingType type = srcBinding._data.Type();
+            const DescriptorSetBindingType type = Type(srcBinding._data);
 
             switch ( type )
             {
                 case DescriptorSetBindingType::UNIFORM_BUFFER:
                 case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
                 {
-                    if ( !srcBinding._data.Has<ShaderBufferEntry>() ||
-                         srcBinding._data.As<ShaderBufferEntry>()._buffer == nullptr ||
-                         srcBinding._data.As<ShaderBufferEntry>()._range._length == 0u )
+                    if ( !Has<ShaderBufferEntry>( srcBinding._data) ||
+                         As<ShaderBufferEntry>(srcBinding._data)._buffer == nullptr ||
+                         As<ShaderBufferEntry>(srcBinding._data)._range._length == 0u )
                     {
                         continue;
                     }
 
-                    const ShaderBufferEntry& bufferEntry = srcBinding._data.As<ShaderBufferEntry>();
+                    const ShaderBufferEntry& bufferEntry = As<ShaderBufferEntry>( srcBinding._data );
                     DIVIDE_ASSERT( bufferEntry._buffer != nullptr );
                     glShaderBuffer* glBuffer = static_cast<glShaderBuffer*>(bufferEntry._buffer);
 
@@ -1623,7 +1622,7 @@ namespace Divide
                         continue;
                     }
 
-                    const DescriptorCombinedImageSampler& imageSampler = srcBinding._data.As<DescriptorCombinedImageSampler>();
+                    const DescriptorCombinedImageSampler& imageSampler = As<DescriptorCombinedImageSampler>(srcBinding._data);
                     if ( !makeTextureViewResident( usage, srcBinding._slot, imageSampler._image, imageSampler._samplerHash ) )
                     {
                         DIVIDE_UNEXPECTED_CALL();
@@ -1631,12 +1630,12 @@ namespace Divide
                 } break;
                 case DescriptorSetBindingType::IMAGE:
                 {
-                    if ( !srcBinding._data.Has<ImageView>() )
+                    if ( !Has<ImageView>(srcBinding._data) )
                     {
                         continue;
                     }
 
-                    const ImageView& image = srcBinding._data.As<ImageView>();
+                    const ImageView& image = As<ImageView>(srcBinding._data);
                     assert( image.targetType() != TextureType::COUNT );
                     assert( image._layerRange.max > 0u );
 
@@ -1683,74 +1682,59 @@ namespace Divide
     {
         const U8 glBinding = ShaderProgram::GetGLBindingForDescriptorSlot( set, bindingSlot );
 
-        GLuint samplerHandle = 0u;
-        GLuint texHandle = 0u;
         if ( imageView._srcTexture._ceguiTex == nullptr && imageView._srcTexture._internalTexture == nullptr )
         {
             DIVIDE_ASSERT(imageView._usage == ImageUsage::UNDEFINED);
             //unbind request;
+            TexBindEntry entry{};
+            entry._slot = glBinding;
+            entry._handle = 0u;
+            entry._sampler = 0u;
+
+            s_TexBindQueue.push_back( MOV( entry ) );
+            return true;
+        }
+
+        TexBindEntry entry{};
+        entry._slot = glBinding;
+
+        DIVIDE_ASSERT( imageView._usage == ImageUsage::SHADER_SAMPLE );
+        if ( imageView._srcTexture._internalTexture != nullptr && imageView._usage != imageView._srcTexture._internalTexture->imageUsage() )
+        {
+            DIVIDE_UNEXPECTED_CALL_MSG("Need layout transition here!");
+        }
+
+        if ( !imageView.isDefaultView() )
+        {
+            entry._handle = getGLTextureView(imageView, 3u);
         }
         else
         {
-            DIVIDE_ASSERT( imageView._usage == ImageUsage::SHADER_SAMPLE );
-            if ( imageView._srcTexture._internalTexture != nullptr && imageView._usage != imageView._srcTexture._internalTexture->imageUsage() )
+            entry._handle = GetTextureHandleFromWrapper( imageView._srcTexture );
+        }
+
+        if ( entry._handle == GLUtil::k_invalidObjectID )
+        {
+            return false;
+        }
+
+        entry._sampler = GetSamplerHandle( samplerHash );
+        bool found = false;
+
+        for ( TexBindEntry& it : s_TexBindQueue )
+        {
+            if ( it._slot == glBinding )
             {
-                DIVIDE_UNEXPECTED_CALL_MSG("Need layout transition here!");
-            }
-            samplerHandle = GetSamplerHandle( samplerHash );
-            texHandle = GetTextureHandleFromWrapper( imageView._srcTexture );
-            if ( texHandle == GLUtil::k_invalidObjectID )
-            {
-                return false;
-            }
-
-            if ( !imageView.isDefaultView() )
-            {
-                const size_t viewHash = imageView.getHash();
-
-                auto [textureID, cacheHit] = s_textureViewCache.allocate( viewHash );
-                DIVIDE_ASSERT( textureID != 0u );
-
-                if ( !cacheHit )
-                {
-                    const GLenum glInternalFormat = GLUtil::internalFormat( imageView._descriptor._baseFormat,
-                                                                            imageView._descriptor._dataType,
-                                                                            imageView._descriptor._srgb,
-                                                                            imageView._descriptor._normalized );
-
-                    const bool isCube = IsCubeTexture( imageView.targetType() );
-
-                    glTextureView( textureID,
-                                   GLUtil::internalTextureType( imageView.targetType(), imageView._descriptor._msaaSamples ),
-                                   texHandle,
-                                   glInternalFormat,
-                                   static_cast<GLuint>(imageView._mipLevels.x),
-                                   static_cast<GLuint>(imageView._mipLevels.y),
-                                   isCube ? imageView._layerRange.min * 6 : imageView._layerRange.min,
-                                   isCube ? imageView._layerRange.max * 6 : imageView._layerRange.max );
-                }
-
-                // Self delete after 3 frames unless we use it again
-                s_textureViewCache.deallocate( textureID, 3u );
-                texHandle = textureID;
-            }
-
-            for ( TexBindEntry& it : s_TexBindQueue )
-            {
-                if ( it._slot == glBinding )
-                {
-                    it._handle = texHandle;
-                    it._sampler = samplerHandle;
-                    return true;
-                }
+                it = entry;
+                found = true;
+                break;
             }
         }
-        TexBindEntry entry{};
-        entry._slot = glBinding;
-        entry._handle = texHandle;
-        entry._sampler = samplerHandle;
-
-        s_TexBindQueue.push_back( MOV( entry ) );
+        
+        if (!found )
+        {
+            s_TexBindQueue.push_back( MOV( entry ) );
+        }
 
         return true;
     }

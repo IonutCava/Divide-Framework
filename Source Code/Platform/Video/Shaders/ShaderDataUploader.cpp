@@ -446,17 +446,17 @@ bool UniformBlockUploader::prepare(DescriptorSet& set) {
 
         for (DescriptorSetBinding& it : set) {
             if (it._slot == targetBlock) {
-                assert(it._data.Type() == DescriptorSetBindingType::UNIFORM_BUFFER);
+                assert(Type(it._data) == DescriptorSetBindingType::UNIFORM_BUFFER);
 
                 it._shaderStageVisibility = _shaderStageVisibilityMask;
-                it._data.As<ShaderBufferEntry>() = crtEntry;
+                As<ShaderBufferEntry>( it._data ) = crtEntry;
                 return true;
             }
         }
 
         DescriptorSetBinding& binding = set.emplace_back(_shaderStageVisibilityMask);
         binding._slot = targetBlock;
-        binding._data.As<ShaderBufferEntry>() = crtEntry;
+        As<ShaderBufferEntry>( binding._data) = crtEntry;
         return true;
     }
 

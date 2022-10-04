@@ -1003,9 +1003,13 @@ namespace Divide
             }
         }
 
+        nodePreviewWindowVisible(false);
+
         Attorney::GizmoEditor::update( _gizmo.get(), deltaTimeUS );
         if ( running() )
         {
+            nodePreviewWindowVisible( _dockedWindows[to_base( WindowType::NodePreview )]->visible() );
+
             _statusBar->update( deltaTimeUS );
             _optionsWindow->update( deltaTimeUS );
 
@@ -1058,7 +1062,7 @@ namespace Divide
             }
             else
             {
-                if ( _dockedWindows[to_base( WindowType::NodePreview )]->visible() )
+                if ( nodePreviewWindowVisible() )
                 {
                     playerState.overrideCamera( nodePreviewCamera() );
                     Attorney::SceneManagerEditor::editorPreviewNode( sMgr, _previewNode == nullptr ? 0 : _previewNode->getGUID() );
@@ -1484,7 +1488,7 @@ namespace Divide
                             cmd->_usage = DescriptorSetUsage::PER_DRAW;
                             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
                             binding._slot = 0;
-                            binding._data.As<DescriptorCombinedImageSampler>() = { tex->sampledView(), _editorSamplerHash };
+                            As<DescriptorCombinedImageSampler>( binding._data) = { tex->sampledView(), _editorSamplerHash };
                         }
 
                         drawCmd._cmd.indexCount = pcmd.ElemCount;
@@ -2199,11 +2203,11 @@ namespace Divide
                                                                           { 0u, data._texture->numLayers() * 6u },
                                                                           ImageUsage::SHADER_SAMPLE);
 
-                        binding._data.As<DescriptorCombinedImageSampler>() = { texView, texSampler };
+                        As<DescriptorCombinedImageSampler>( binding._data ) = { texView, texSampler };
                     }
                     else
                     {
-                        binding._data.As<DescriptorCombinedImageSampler>() = { data._texture->sampledView(), texSampler };
+                        As<DescriptorCombinedImageSampler>( binding._data ) = { data._texture->sampledView(), texSampler };
                     }
                 }
             }

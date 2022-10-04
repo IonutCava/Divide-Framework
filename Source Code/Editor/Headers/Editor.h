@@ -266,6 +266,7 @@ namespace Divide
         POINTER_R_IW( Camera, selectedCamera, nullptr );
         POINTER_R_IW( Camera, editorCamera, nullptr );
         POINTER_R_IW( Camera, nodePreviewCamera, nullptr );
+        PROPERTY_R_IW( bool, nodePreviewWindowVisible, false);
         PROPERTY_RW( bool, infiniteGridEnabledScene, true );
         PROPERTY_RW( bool, infiniteGridEnabledNode, true );
         PROPERTY_R( F32, infiniteGridAxisWidth, 2.f );

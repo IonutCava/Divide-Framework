@@ -10,6 +10,44 @@ namespace Divide {
 namespace GLUtil {
 
 namespace GLMemory {
+
+namespace
+{
+    namespace detail {
+        constexpr size_t zeroDataBaseSize = TO_MEGABYTES(64u);
+        constexpr Byte zeroByte = Byte{0u};
+    };
+
+    eastl::vector<Byte> g_zeroData( detail::zeroDataBaseSize, detail::zeroByte );
+
+    FORCE_INLINE Byte* GetZeroData( const size_t bufferSize )
+    {
+        while ( g_zeroData.size() < bufferSize )
+        {
+            g_zeroData.resize( g_zeroData.size() + detail::zeroDataBaseSize, detail::zeroByte );
+        }
+
+        return g_zeroData.data();
+    }
+}
+
+void OnFrameEnd(const U64 frameCount )
+{
+    constexpr U64 memoryCleanInterval = 64u;
+
+    static U64 lastSyncedFrame = 0u;
+
+    if ( frameCount - lastSyncedFrame > memoryCleanInterval )
+    {
+        if ( !g_zeroData.empty() )
+        {
+            efficient_clear(g_zeroData);
+        }
+
+        lastSyncedFrame = frameCount;
+    }
+}
+
 Chunk::Chunk(const bool poolAllocations,
              const size_t size,
              const size_t alignment,
@@ -79,14 +117,7 @@ bool Chunk::allocate(const size_t size, const char* name, const std::pair<buffer
         }
 
         if (_poolAllocations) {
-            if (initialData.second == 0 || initialData.first == nullptr) {
-                memset(block._ptr, 0, requestedSize);
-            } else {
-                memcpy(block._ptr, initialData.first, initialData.second);
-                if (requestedSize - size > 0u) {
-                    memset(&block._ptr[initialData.second], 0, requestedSize - size);
-                }
-            }
+            memcpy(block._ptr, initialData.first, initialData.second);
         } else {
             _memory = createAndAllocPersistentBuffer(requestedSize, storageMask(), accessMask(), block._bufferHandle, initialData, name);
             block._ptr = _memory;
@@ -214,17 +245,13 @@ Byte* createAndAllocPersistentBuffer(const size_t bufferSize,
                            : Util::StringFormat("DVD_PERSISTENT_BUFFER_%d", bufferIdOut).c_str());
     }
     assert(bufferIdOut != 0 && "GLUtil::allocPersistentBuffer error: buffer creation failed");
+    const bool hasAllSourceData = initialData.second == bufferSize && initialData.first != nullptr;
 
-    glNamedBufferStorage(bufferIdOut, bufferSize, initialData.second >= bufferSize ? initialData.first : nullptr, storageMask);
+    glNamedBufferStorage(bufferIdOut, bufferSize, hasAllSourceData ? initialData.first : GLMemory::GetZeroData(bufferSize), storageMask);
     Byte* ptr = (Byte*)glMapNamedBufferRange(bufferIdOut, 0, bufferSize, accessMask);
     assert(ptr != nullptr);
-    if (initialData.second < bufferSize) {
-        if (initialData.second > 0 && initialData.first != nullptr) {
-            memcpy(ptr, initialData.first, initialData.second);
-            memset(&ptr[initialData.second], 0, bufferSize - initialData.second);
-        } else {
-            memset(ptr, 0, bufferSize);
-        }
+    if (!hasAllSourceData && initialData.second > 0 && initialData.first != nullptr) {
+        memcpy(ptr, initialData.first, initialData.second);
     }
 
     return ptr;
@@ -256,18 +283,16 @@ void createAndAllocBuffer(const size_t bufferSize,
 {
     createBuffer(bufferSize, bufferIdOut, name);
 
+    const bool hasAllSourceData = initialData.second == bufferSize && initialData.first != nullptr;
+
     assert(bufferIdOut != 0 && "GLUtil::allocBuffer error: buffer creation failed");
-    glNamedBufferData(bufferIdOut, bufferSize, initialData.second >= bufferSize ? initialData.first : nullptr, usageMask);
-    if (initialData.second <= bufferSize) {
+    glNamedBufferData(bufferIdOut, bufferSize, hasAllSourceData ? initialData.first : GLMemory::GetZeroData( bufferSize ), usageMask);
+    if (!hasAllSourceData && initialData.second > 0u && initialData.first != nullptr )
+    {
         const MapBufferAccessMask accessMask = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
         // We don't want undefined, we want zero as a default. Performance considerations be damned!
         Byte* ptr = (Byte*)glMapNamedBufferRange(bufferIdOut, 0, bufferSize, accessMask);
-        if (initialData.second > 0u && initialData.first != nullptr) {
-            memcpy(ptr, initialData.first, initialData.second);
-            memset(ptr + initialData.second, 0, bufferSize - initialData.second);
-        } else {
-            memset(ptr, 0, bufferSize);
-        }
+        memcpy(ptr, initialData.first, initialData.second);
         glUnmapNamedBuffer(bufferIdOut);
     }
 }

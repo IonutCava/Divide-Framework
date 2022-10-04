@@ -318,7 +318,7 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
 
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
         binding._slot = 0;
-        binding._data.As<ImageView>() = brdfLutTexture->getView(TextureType::TEXTURE_2D, {0u, 1u}, { 0u, 1u }, ImageUsage::SHADER_WRITE);
+        As<ImageView>(binding._data) = brdfLutTexture->getView(TextureType::TEXTURE_2D, {0u, 1u}, { 0u, 1u }, ImageUsage::SHADER_WRITE);
 
         const U32 groupsX = to_U32(std::ceil(s_LUTTextureSize / to_F32(8)));
         const U32 groupsY = to_U32(std::ceil(s_LUTTextureSize / to_F32(8)));
@@ -385,23 +385,23 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         {
             auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
             binding._slot = 0;
-            binding._data.As<DescriptorCombinedImageSampler>() = { prefiltered->texture()->sampledView(), prefiltered->descriptor()._samplerHash };
+            As<DescriptorCombinedImageSampler>(binding._data) = { prefiltered->texture()->sampledView(), prefiltered->descriptor()._samplerHash };
         }
         {
             auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
             binding._slot = 1;
-            binding._data.As<DescriptorCombinedImageSampler>() = { irradiance->texture()->sampledView(), irradiance->descriptor()._samplerHash };
+            As<DescriptorCombinedImageSampler>(binding._data) = { irradiance->texture()->sampledView(), irradiance->descriptor()._samplerHash };
         }
         {
             auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
             binding._slot = 2;
-            binding._data.As<DescriptorCombinedImageSampler>() = { brdfLut->texture()->sampledView(), brdfLut->descriptor()._samplerHash };
+            As<DescriptorCombinedImageSampler>(binding._data) = { brdfLut->texture()->sampledView(), brdfLut->descriptor()._samplerHash };
         }
         {
             RTAttachment* targetAtt = context.renderTargetPool().getRenderTarget( RenderTargetNames::REFLECTION_CUBE )->getAttachment( RTAttachmentType::COLOUR );
             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
             binding._slot = 3;
-            binding._data.As<DescriptorCombinedImageSampler>() = { targetAtt->texture()->sampledView(), targetAtt->descriptor()._samplerHash };
+            As<DescriptorCombinedImageSampler>(binding._data) = { targetAtt->texture()->sampledView(), targetAtt->descriptor()._samplerHash };
         }
     }
 }
@@ -469,7 +469,7 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
         binding._slot = 0;
-        binding._data.As<DescriptorCombinedImageSampler>() = { sourceTex->sampledView(), sourceAtt->descriptor()._samplerHash };
+        As<DescriptorCombinedImageSampler>(binding._data) = { sourceTex->sampledView(), sourceAtt->descriptor()._samplerHash };
     }
 
     ImageView destinationImage = destinationAtt->texture()->getView(TextureType::TEXTURE_CUBE_MAP, { 0u, 1u }, { 0u , U16_MAX }, ImageUsage::SHADER_WRITE);
@@ -480,8 +480,7 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
     fastData.data0._vec[0].xyz.set(fWidth, fWidth, to_F32(layerID));
 
     const F32 maxMipLevel = to_F32(std::log2(fWidth));
-    for (F32 mipLevel = 0u; mipLevel <= maxMipLevel; ++mipLevel) 
-    {
+    for (F32 mipLevel = 0u; mipLevel <= maxMipLevel; ++mipLevel)     {
         destinationImage._mipLevels = { to_U8(mipLevel), 1u };
 
         const F32 roughness = mipLevel / maxMipLevel;
@@ -491,7 +490,7 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
         binding._slot = 1u;
-        binding._data.As<ImageView>() = destinationImage;
+        As<ImageView>(binding._data) = destinationImage;
 
         // Dispatch enough groups to cover the entire _mipped_ face
         const U16 mipWidth = width / to_U16(std::pow(2.f, mipLevel));
@@ -524,12 +523,12 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U
     {
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
         binding._slot = 0u;
-        binding._data.As<DescriptorCombinedImageSampler>() = { sourceAtt->texture()->sampledView(), sourceAtt->descriptor()._samplerHash };
+        As<DescriptorCombinedImageSampler>(binding._data) = { sourceAtt->texture()->sampledView(), sourceAtt->descriptor()._samplerHash };
     }
     {
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
         binding._slot = 1u;
-        binding._data.As<ImageView>() = destinationAtt->texture()->getView(TextureType::TEXTURE_CUBE_MAP, { 0u, 1u }, { 0u , U16_MAX }, ImageUsage::SHADER_WRITE);
+        As<ImageView>(binding._data) = destinationAtt->texture()->getView(TextureType::TEXTURE_CUBE_MAP, { 0u, 1u }, { 0u , U16_MAX }, ImageUsage::SHADER_WRITE);
     }
 
     PushConstantsStruct fastData{};

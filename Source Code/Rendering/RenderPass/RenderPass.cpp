@@ -163,20 +163,24 @@ namespace Divide
             } break;
             case RenderStage::NODE_PREVIEW:
             {
-                OPTICK_EVENT( "RenderPass - Node Preview" );
-                const Editor& editor = _context.context().editor();
+                if_constexpr( Config::Build::ENABLE_EDITOR )
+                {
+                    OPTICK_EVENT( "RenderPass - Node Preview" );
+                    const Editor& editor = _context.context().editor();
+                    if (editor.running() && editor.nodePreviewWindowVisible())
+                    {
+                        RenderPassParams params = {};
+                        params._singleNodeRenderGUID = renderState.singleNodeRenderGUID();
+                        params._minExtents.set( 1.0f );
+                        params._stagePass = { _stageFlag, RenderPassType::COUNT };
+                        params._target = editor.getNodePreviewTarget()._targetID;
+                        params._passName = "Node Preview";
+                        params._clearDescriptorPrePass._clearDepth = true;
+                        params._clearDescriptorMainPass._clearColourDescriptors[0] = { editor.nodePreviewBGColour(), RTColourAttachmentSlot::SLOT_0 };
 
-                RenderPassParams params = {};
-                params._singleNodeRenderGUID = renderState.singleNodeRenderGUID();
-                params._minExtents.set( 1.0f );
-                params._stagePass = { _stageFlag, RenderPassType::COUNT };
-                params._target = editor.getNodePreviewTarget()._targetID;
-                params._passName = "Node Preview";
-                params._clearDescriptorPrePass._clearDepth = true;
-                params._clearDescriptorMainPass._clearColourDescriptors[0] = { editor.nodePreviewBGColour(), RTColourAttachmentSlot::SLOT_0 };
-
-                _parent.doCustomPass( editor.nodePreviewCamera(), params, bufferInOut, memCmdInOut );
-
+                        _parent.doCustomPass( editor.nodePreviewCamera(), params, bufferInOut, memCmdInOut );
+                    }
+                }
             } break;
             case RenderStage::SHADOW:
             {

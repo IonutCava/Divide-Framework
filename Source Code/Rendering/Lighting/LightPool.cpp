@@ -605,7 +605,7 @@ namespace Divide
 
                 auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
                 binding._slot = 0;
-                binding._data.As<DescriptorCombinedImageSampler>() = { _lightIconsTexture->sampledView(), s_debugSamplerHash };
+                As<DescriptorCombinedImageSampler>(binding._data) = { _lightIconsTexture->sampledView(), s_debugSamplerHash };
             }
 
             GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.back()._drawCount = to_U16( totalLightCount );

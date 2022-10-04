@@ -40,8 +40,10 @@
 #ifndef _CORE_MATH_MATH_HELPER_H_
 #define _CORE_MATH_MATH_HELPER_H_
 
-
 namespace Divide {
+
+#define TO_MEGABYTES(X) (X * 1024u * 1024u)
+
 template <typename T>
 class mat2;
 template <typename T>

@@ -904,19 +904,19 @@ namespace Divide {
         U8 imageInfoStructIndex = 0u;
 
         for (auto& srcBinding : bindings) {
-            const DescriptorSetBindingType type = srcBinding._data.Type();
+            const DescriptorSetBindingType type = Type(srcBinding._data);
             const VkShaderStageFlags stageFlags = GetFlagsForStageVisibility(srcBinding._shaderStageVisibility);
 
             switch (type) {
                 case DescriptorSetBindingType::UNIFORM_BUFFER:
                 case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: {
-                    if (!srcBinding._data.Has<ShaderBufferEntry>() ||
-                        srcBinding._data.As<ShaderBufferEntry>()._buffer == nullptr ||
-                        srcBinding._data.As<ShaderBufferEntry>()._range._length == 0u)
+                    if (!Has<ShaderBufferEntry>( srcBinding._data ) ||
+                        As<ShaderBufferEntry>(srcBinding._data)._buffer == nullptr ||
+                        As<ShaderBufferEntry>(srcBinding._data)._range._length == 0u)
                     {
                         continue;
                     }
-                    const ShaderBufferEntry& bufferEntry = srcBinding._data.As<ShaderBufferEntry>();
+                    const ShaderBufferEntry& bufferEntry = As<ShaderBufferEntry>( srcBinding._data );
                     DIVIDE_ASSERT(bufferEntry._buffer != nullptr);
                     const ShaderBuffer::Usage bufferUsage = bufferEntry._buffer->getUsage();
                     VkBuffer buffer = static_cast<vkShaderBuffer*>(bufferEntry._buffer)->bufferImpl()->_buffer;
@@ -943,7 +943,7 @@ namespace Divide {
                     if (srcBinding._slot == INVALID_TEXTURE_BINDING) {
                         continue;
                     }
-                    const DescriptorCombinedImageSampler& imageSampler = srcBinding._data.As<DescriptorCombinedImageSampler>();
+                    const DescriptorCombinedImageSampler& imageSampler = As<DescriptorCombinedImageSampler>(srcBinding._data);
                     if ( imageSampler._image._srcTexture._ceguiTex == nullptr && imageSampler._image._srcTexture._internalTexture == nullptr )
                     {
                         DIVIDE_ASSERT( imageSampler._image._usage == ImageUsage::UNDEFINED );
@@ -983,10 +983,10 @@ namespace Divide {
                     }
                 } break;
                 case DescriptorSetBindingType::IMAGE: {
-                    if (!srcBinding._data.Has<ImageView>()) {
+                    if (!Has<ImageView>(srcBinding._data)) {
                         continue;
                     }
-                    const ImageView& image = srcBinding._data.As<ImageView>();
+                    const ImageView& image = As<ImageView>(srcBinding._data);
                     if (image._srcTexture._internalTexture == nullptr && image._srcTexture._ceguiTex != nullptr) {
                         continue;
                     }

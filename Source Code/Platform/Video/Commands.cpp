@@ -213,23 +213,23 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent) {
     U8 bufferCount = 0u;
     U8 imageCount = 0u;
     for (const auto& binding : cmd._bindings) {
-        if (binding._data.Has<ShaderBufferEntry>()) {
+        if ( Has<ShaderBufferEntry>( binding._data)) {
             ++bufferCount;
-        } else if (binding._data.Has<DescriptorCombinedImageSampler>() ||
-                   binding._data.Has<ImageView>()) {
+        } else if ( Has<DescriptorCombinedImageSampler>( binding._data) ||
+                    Has<ImageView>( binding._data)) {
             ++imageCount;
         }
     }
     string ret = Util::StringFormat(" [ Buffers: %d, Images: %d ]\n", bufferCount, imageCount);
 
     for (const auto& binding : cmd._bindings) {
-        if (binding._data.Has<ShaderBufferEntry>()) {
+        if ( Has<ShaderBufferEntry>( binding._data )) {
             ret.append("    ");
             for (U16 j = 0; j < indent; ++j) {
                 ret.append("    ");
             }
             const auto& data = binding._data;
-            const auto& bufferEntry = data.As<ShaderBufferEntry>();
+            const auto& bufferEntry = As<ShaderBufferEntry>( data);
             ret.append(Util::StringFormat("Buffer [ %d - %d ] Range [%zu - %zu] Read Index [ %d ]\n",
                        binding._slot,
                        bufferEntry._buffer->getGUID(),
@@ -239,7 +239,7 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent) {
         }
     }
     for (const auto& binding : cmd._bindings) {
-        if (!binding._data.Has<ShaderBufferEntry>()) {
+        if (!Has<ShaderBufferEntry>(binding._data)) {
             if (binding._slot == INVALID_TEXTURE_BINDING) {
                 continue;
             }
@@ -248,32 +248,32 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent) {
             for (U16 j = 0; j < indent; ++j) {
                 ret.append("    ");
             }
-            if (binding._data.Has<DescriptorCombinedImageSampler>()) {
-                Texture* srcInternalTex = binding._data.As<DescriptorCombinedImageSampler>()._image._srcTexture._internalTexture;
-                CEGUI::Texture* srcExternalTex = binding._data.As<DescriptorCombinedImageSampler>()._image._srcTexture._ceguiTex;
+            if ( Has<DescriptorCombinedImageSampler>( binding._data )) {
+                Texture* srcInternalTex = As<DescriptorCombinedImageSampler>( binding._data)._image._srcTexture._internalTexture;
+                CEGUI::Texture* srcExternalTex = As<DescriptorCombinedImageSampler>( binding._data)._image._srcTexture._ceguiTex;
 
                 ret.append(Util::StringFormat("Texture [ %d - %zu - %s - %zu ] Layers: [ %d - %d ] MipRange: [ %d - %d ]\n",
                             binding._slot,
                             srcInternalTex != nullptr ? srcInternalTex->getGUID() : 0u,
                             srcInternalTex != nullptr ? srcInternalTex->resourceName().c_str() : srcExternalTex != nullptr ? srcExternalTex->getName().c_str() : "no-name",
-                            binding._data.As<DescriptorCombinedImageSampler>()._samplerHash,
-                            binding._data.As<DescriptorCombinedImageSampler>()._image._layerRange.min,
-                            binding._data.As<DescriptorCombinedImageSampler>()._image._layerRange.max,
-                            binding._data.As<DescriptorCombinedImageSampler>()._image._mipLevels.min,
-                            binding._data.As<DescriptorCombinedImageSampler>()._image._mipLevels.max));
+                            As<DescriptorCombinedImageSampler>(binding._data)._samplerHash,
+                            As<DescriptorCombinedImageSampler>(binding._data)._image._layerRange.min,
+                            As<DescriptorCombinedImageSampler>(binding._data)._image._layerRange.max,
+                            As<DescriptorCombinedImageSampler>(binding._data)._image._mipLevels.min,
+                            As<DescriptorCombinedImageSampler>(binding._data)._image._mipLevels.max));
             } else {
-                Texture* srcInternalTex = binding._data.As<ImageView>()._srcTexture._internalTexture;
-                CEGUI::Texture* srcExternalTex = binding._data.As<ImageView>()._srcTexture._ceguiTex;
+                Texture* srcInternalTex = As<ImageView>( binding._data)._srcTexture._internalTexture;
+                CEGUI::Texture* srcExternalTex = As<ImageView>( binding._data)._srcTexture._ceguiTex;
 
                 ret.append(Util::StringFormat("Image binds: Slot [%d] - Src GUID [ %d ] - Src Name [ %s ] - Layers [%d - %d] - Levels [%d - %d] - Flag [ %s ]",
                            binding._slot,
                            srcInternalTex != nullptr ? srcInternalTex->getGUID() : 0u,
                            srcInternalTex != nullptr ? srcInternalTex->resourceName().c_str() : srcExternalTex != nullptr ? srcExternalTex->getName().c_str() : "no-name",
-                           binding._data.As<ImageView>()._layerRange.min,
-                           binding._data.As<ImageView>()._layerRange.max,
-                           binding._data.As<ImageView>()._mipLevels.min,
-                           binding._data.As<ImageView>()._mipLevels.max,
-                           Divide::Names::imageUsage[to_base(binding._data.As<ImageView>()._usage)]));
+                           As<ImageView>(binding._data)._layerRange.min,
+                           As<ImageView>(binding._data)._layerRange.max,
+                           As<ImageView>(binding._data)._mipLevels.min,
+                           As<ImageView>(binding._data)._mipLevels.max,
+                           Divide::Names::imageUsage[to_base( As<ImageView>( binding._data)._usage)]));
             }
         }
     }

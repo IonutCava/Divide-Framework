@@ -105,26 +105,26 @@ namespace Divide {
                lhs._data != rhs._data;
     }
 
-    inline bool DescriptorSetBindingData::isSet() const noexcept {
-        return _resource.index() != 0;
+    inline bool IsSet( const DescriptorSetBindingData& data ) noexcept {
+        return data.index() != 0;
     }
 
     template<typename T>
-    inline T& DescriptorSetBindingData::As() noexcept {
-        if (_resource.index() == 0) {
-            return _resource.emplace<T>();
+    inline T& As( DescriptorSetBindingData& data ) noexcept {
+        if ( data.index() == 0) {
+            return data.emplace<T>();
         }
-        return eastl::get<T>(_resource);
+        return eastl::get<T>( data );
     }
 
     template<typename T>
-    inline bool DescriptorSetBindingData::Has() const noexcept {
-        return eastl::holds_alternative<T>(_resource);
+    inline bool Has( const DescriptorSetBindingData& data ) noexcept {
+        return eastl::holds_alternative<T>( data );
     }
 
     template<typename T>
-    inline const T& DescriptorSetBindingData::As() const noexcept {
-        return eastl::get<T>(_resource);
+    inline const T& As( const DescriptorSetBindingData& data ) noexcept {
+        return eastl::get<T>( data );
     }
 } //namespace Divide
 #endif //_DESCRIPTOR_SETS_INL_

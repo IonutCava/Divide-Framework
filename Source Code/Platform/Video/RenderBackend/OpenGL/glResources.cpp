@@ -610,6 +610,7 @@ std::pair<GLuint, bool> glTextureViewCache::allocate(const size_t hash, const bo
         for (U32 i = 0u; i < count; ++i) {
             if (_usageMap[i] == State::FREE) {
                 _usageMap[i] = State::USED;
+                _lifeLeft[i] = 1u;
                 if (hash != 0u) {
                     _cache[hash] = i;
                 }

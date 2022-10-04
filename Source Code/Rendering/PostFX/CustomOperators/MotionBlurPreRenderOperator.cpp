@@ -82,12 +82,12 @@ bool MotionBlurPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx
     {
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = 0;
-        binding._data.As<DescriptorCombinedImageSampler>() = { screenAtt->texture()->sampledView(), screenAtt->descriptor()._samplerHash };
+        As<DescriptorCombinedImageSampler>(binding._data) = { screenAtt->texture()->sampledView(), screenAtt->descriptor()._samplerHash };
     }
     {
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = 1;
-        binding._data.As<DescriptorCombinedImageSampler>() = { velocityAtt->texture()->sampledView(), velocityAtt->descriptor()._samplerHash };
+        As<DescriptorCombinedImageSampler>(binding._data) = { velocityAtt->texture()->sampledView(), velocityAtt->descriptor()._samplerHash };
     }
 
     GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);

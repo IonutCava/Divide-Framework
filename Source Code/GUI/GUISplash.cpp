@@ -93,7 +93,7 @@ void GUISplash::render(GFXDevice& context) const {
 
     auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
     binding._slot =0;
-    binding._data.As<DescriptorCombinedImageSampler>() = { _splashImage->sampledView(), splashSampler.getHash() };
+    As<DescriptorCombinedImageSampler>(binding._data) = { _splashImage->sampledView(), splashSampler.getHash() };
 
     GFX::EnqueueCommand<GFX::DrawCommand>(buffer);
 

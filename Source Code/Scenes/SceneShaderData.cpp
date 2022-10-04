@@ -42,7 +42,7 @@ GFX::MemoryBarrierCommand SceneShaderData::updateSceneDescriptorSet(GFX::Command
 
             auto& binding = set.emplace_back(ShaderStageVisibility::FRAGMENT);
             binding._slot = 7;
-            binding._data.As<ShaderBufferEntry>() = { *_probeShaderData, { 0u, GLOBAL_PROBE_COUNT }};
+            As<ShaderBufferEntry>(binding._data) = { *_probeShaderData, { 0u, GLOBAL_PROBE_COUNT }};
 
             _probeDataDirty = false;
         }
@@ -54,7 +54,7 @@ GFX::MemoryBarrierCommand SceneShaderData::updateSceneDescriptorSet(GFX::Command
 
             auto& binding = set.emplace_back( ShaderStageVisibility::ALL_DRAW );
             binding._slot = 8;
-            binding._data.As<ShaderBufferEntry>() = { *_sceneShaderData, { 0u, 1u } };
+            As<ShaderBufferEntry>( binding._data ) = { *_sceneShaderData, { 0u, 1u } };
 
             _sceneDataDirty = false;
         }

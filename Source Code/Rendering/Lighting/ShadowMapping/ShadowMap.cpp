@@ -269,14 +269,14 @@ void ShadowMap::bindShadowMaps( LightPool& pool, GFX::CommandBuffer& bufferInOut
         RTAttachment* shadowTexture = sm._rt->getAttachment(RTAttachmentType::COLOUR);
         auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
         binding._slot = bindSlot;
-        binding._data.As<DescriptorCombinedImageSampler>() = { shadowTexture->texture()->sampledView(), shadowTexture->descriptor()._samplerHash };
+        As<DescriptorCombinedImageSampler>(binding._data) = { shadowTexture->texture()->sampledView(), shadowTexture->descriptor()._samplerHash };
     }
 
     if ( pool.shadowBuffer() != nullptr )
     {
         auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
         binding._slot = 9;
-        binding._data.As<ShaderBufferEntry>() = { *pool.shadowBuffer(), {0u, 1u}};
+        As<ShaderBufferEntry>( binding._data ) = { *pool.shadowBuffer(), {0u, 1u}};
     }
 }
 

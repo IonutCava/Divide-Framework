@@ -208,47 +208,47 @@ namespace Divide
         {
             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
             binding._slot = 0;
-            binding._data.As<DescriptorCombinedImageSampler>() = { prbAtt->texture()->sampledView(), prbAtt->descriptor()._samplerHash };
+            As<DescriptorCombinedImageSampler>(binding._data) = { prbAtt->texture()->sampledView(), prbAtt->descriptor()._samplerHash };
         }
         {
             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
             binding._slot = 5;
-            binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->sampledView(), samplerHash };
+            As<DescriptorCombinedImageSampler>(binding._data) = { depthAtt->texture()->sampledView(), samplerHash };
         }
         {
             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
             binding._slot = 4;
-            binding._data.As<DescriptorCombinedImageSampler>() = { linDepthDataAtt->texture()->sampledView(), samplerHash };
+            As<DescriptorCombinedImageSampler>(binding._data) = { linDepthDataAtt->texture()->sampledView(), samplerHash };
         }
         {
             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
             binding._slot = 6;
-            binding._data.As<DescriptorCombinedImageSampler>() = { ssrDataAtt->texture()->sampledView(), samplerHash };
+            As<DescriptorCombinedImageSampler>(binding._data) = { ssrDataAtt->texture()->sampledView(), samplerHash };
         }
         {
             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
             binding._slot = 7;
-            binding._data.As<DescriptorCombinedImageSampler>() = { sceneDataAtt->texture()->sampledView(), samplerHash };
+            As<DescriptorCombinedImageSampler>(binding._data) = { sceneDataAtt->texture()->sampledView(), samplerHash };
         }
         {
             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
             binding._slot = 8;
-            binding._data.As<DescriptorCombinedImageSampler>() = { velocityAtt->texture()->sampledView(), samplerHash };
+            As<DescriptorCombinedImageSampler>(binding._data) = { velocityAtt->texture()->sampledView(), samplerHash };
         }
         {
             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
             binding._slot = 3;
-            binding._data.As<DescriptorCombinedImageSampler>() = { _underwaterTexture->sampledView(), samplerHash };
+            As<DescriptorCombinedImageSampler>(binding._data) = { _underwaterTexture->sampledView(), samplerHash };
         }
         {
             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
             binding._slot = 2;
-            binding._data.As<DescriptorCombinedImageSampler>() = { _noise->sampledView(), samplerHash };
+            As<DescriptorCombinedImageSampler>(binding._data) = { _noise->sampledView(), samplerHash };
         }
         {
             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
             binding._slot = 1;
-            binding._data.As<DescriptorCombinedImageSampler>() = { _screenBorder->sampledView(), samplerHash };
+            As<DescriptorCombinedImageSampler>(binding._data) = { _screenBorder->sampledView(), samplerHash };
         }
 
         GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );

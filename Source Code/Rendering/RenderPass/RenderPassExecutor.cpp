@@ -771,27 +771,27 @@ namespace Divide
         {
             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::NONE ); //Command buffer only
             binding._slot = 0;
-            binding._data.As<ShaderBufferEntry>() = cmdBufferEntry;
+            As<ShaderBufferEntry>(binding._data) = cmdBufferEntry;
         }
         {
             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE );
             binding._slot = 2;
-            binding._data.As<ShaderBufferEntry>() = cmdBufferEntry;
+            As<ShaderBufferEntry>(binding._data) = cmdBufferEntry;
         }
         {
             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::ALL );
             binding._slot = 3;
-            binding._data.As<ShaderBufferEntry>() = { *_transformBuffer._gpuBuffer, { 0u, _transformBuffer._highWaterMark } };
+            As<ShaderBufferEntry>(binding._data) = { *_transformBuffer._gpuBuffer, { 0u, _transformBuffer._highWaterMark } };
         }
         {
             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::ALL );
             binding._slot = 4;
-            binding._data.As<ShaderBufferEntry>() = { *_indirectionBuffer._gpuBuffer, { 0u, _indirectionBuffer._highWaterMark } };
+            As<ShaderBufferEntry>(binding._data) = { *_indirectionBuffer._gpuBuffer, { 0u, _indirectionBuffer._highWaterMark } };
         }
         {
             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
             binding._slot = 5;
-            binding._data.As<ShaderBufferEntry>() = { *_materialBuffer._gpuBuffer, { 0u, _materialBuffer._highWaterMark } };
+            As<ShaderBufferEntry>(binding._data) = { *_materialBuffer._gpuBuffer, { 0u, _materialBuffer._highWaterMark } };
         }
 
         return queueTotalSize;
@@ -1042,7 +1042,7 @@ namespace Divide
             {
                 auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
                 binding._slot = 0;
-                binding._data.As<DescriptorCombinedImageSampler>() = { normalsAttMS->texture()->sampledView(), normalsAttMS->descriptor()._samplerHash };
+                As<DescriptorCombinedImageSampler>(binding._data) = { normalsAttMS->texture()->sampledView(), normalsAttMS->descriptor()._samplerHash };
             }
             if ( hasHiZ )
             {
@@ -1050,14 +1050,14 @@ namespace Divide
                 binding._slot = 1;
                 const RenderTarget* hizTarget = _context.renderTargetPool().getRenderTarget( params._targetHIZ );
                 RTAttachment* hizAtt = hizTarget->getAttachment( RTAttachmentType::COLOUR);
-                binding._data.As<DescriptorCombinedImageSampler>() = { hizAtt->texture()->sampledView(), hizAtt->descriptor()._samplerHash };
+                As<DescriptorCombinedImageSampler>(binding._data) = { hizAtt->texture()->sampledView(), hizAtt->descriptor()._samplerHash };
             }
             else if ( prePassExecuted )
             {
                 auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
                 binding._slot = 1;
                 RTAttachment* depthAtt = target.getAttachment( RTAttachmentType::DEPTH);
-                binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash };
+                As<DescriptorCombinedImageSampler>(binding._data) = { depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash };
             }
 
             prepareRenderQueues( params, cameraSnapshot, false, RenderingOrder::COUNT, bufferInOut );
@@ -1093,7 +1093,7 @@ namespace Divide
             cmd->_usage = DescriptorSetUsage::PER_PASS;
             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
             binding._slot = 2;
-            binding._data.As<DescriptorCombinedImageSampler>() = { colourAtt->texture()->sampledView(), colourAtt->descriptor()._samplerHash };
+            As<DescriptorCombinedImageSampler>(binding._data) = { colourAtt->texture()->sampledView(), colourAtt->descriptor()._samplerHash };
         }
 
         prepareRenderQueues( params, cameraSnapshot, true, RenderingOrder::COUNT, bufferInOut );
@@ -1123,12 +1123,12 @@ namespace Divide
             {
                 auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
                 binding._slot = 0;
-                binding._data.As<DescriptorCombinedImageSampler>() = { accumAtt->texture()->sampledView(), accumAtt->descriptor()._samplerHash };
+                As<DescriptorCombinedImageSampler>(binding._data) = { accumAtt->texture()->sampledView(), accumAtt->descriptor()._samplerHash };
             }
             {
                 auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
                 binding._slot = 1;
-                binding._data.As<DescriptorCombinedImageSampler>() = { revAtt->texture()->sampledView(), revAtt->descriptor()._samplerHash };
+                As<DescriptorCombinedImageSampler>(binding._data) = { revAtt->texture()->sampledView(), revAtt->descriptor()._samplerHash };
             }
         }
         GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
@@ -1215,12 +1215,12 @@ namespace Divide
                 {
                     auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
                     binding._slot = 0;
-                    binding._data.As<DescriptorCombinedImageSampler>() = { velocityAtt->texture()->sampledView(), velocityAtt->descriptor()._samplerHash };
+                    As<DescriptorCombinedImageSampler>(binding._data) = { velocityAtt->texture()->sampledView(), velocityAtt->descriptor()._samplerHash };
                 }
                 {
                     auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
                     binding._slot = 1;
-                    binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt->texture()->sampledView(), normalsAtt->descriptor()._samplerHash };
+                    As<DescriptorCombinedImageSampler>(binding._data) = { normalsAtt->texture()->sampledView(), normalsAtt->descriptor()._samplerHash };
                 }
 
                 GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
@@ -1374,12 +1374,12 @@ namespace Divide
         {
             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
             binding._slot = 0;
-            binding._data.As<DescriptorCombinedImageSampler>() = {};
+            As<DescriptorCombinedImageSampler>(binding._data) = {};
         }
         {
             auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
             binding._slot = 1;
-            binding._data.As<DescriptorCombinedImageSampler>() = {};
+            As<DescriptorCombinedImageSampler>(binding._data) = {};
         }
 
         // We prepare all nodes for the MAIN_PASS rendering. PRE_PASS and OIT_PASS are support passes only. Their order and sorting are less important.

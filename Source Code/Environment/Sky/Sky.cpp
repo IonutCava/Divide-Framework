@@ -43,6 +43,8 @@ namespace Divide
 
     namespace
     {
+        constexpr bool g_alwaysGenerateWeatherTextures = false;
+
         const auto procLocation = []()
         {
             return Paths::g_assetsLocation + Paths::g_texturesLocation + Paths::g_proceduralTxturesLocation;
@@ -53,20 +55,22 @@ namespace Divide
         const char* worlTexName = "worlnoise.bmp";
         const char* perlWorlTexName = "perlworlnoise.tga";
 
+        constexpr Byte g_maxByte = Byte{255u};
+
         void GenerateCurlNoise( const char* fileName, const I32 width, const I32 height )
         {
-            Byte* data = MemoryManager_NEW Byte[width * height * 3];
+            Byte* data = MemoryManager_NEW Byte[width * height * 4];
             constexpr F32 frequency[] = { 8.0f, 6.0f, 4.0f };
 
             for ( U8 pass = 0u; pass < 3; ++pass )
             {
                 CurlNoise::SetCurlSettings( false, frequency[pass], 3, 2.f, 0.5f );
-                for ( I32 i = 0; i < width * height * 3; i += 3 )
+                for ( I32 i = 0; i < width * height * 4; i += 4 )
                 {
                     const Vectormath::Aos::Vector3 pos
                     {
-                        to_F32( (i / 3) % width ) / width,
-                        to_F32( ((i / 3) / height) ) / height,
+                        to_F32( (i / 4) % width ) / width,
+                        to_F32( ((i / 4) / height) ) / height,
                         height / 10000.f
                     };
 
@@ -74,10 +78,10 @@ namespace Divide
                     const vec3<F32> curl = Normalized( vec3<F32>{res.val[0], res.val[1], res.val[2]} );
                     const F32 cellFBM0 = curl.r * 0.5f + curl.g * 0.35f + curl.b * 0.15f;
 
-                    data[i + pass] = to_byte( cellFBM0 * 128.f + 127.f );
+                    data[i + pass] = i % 4 == 0u ? g_maxByte : to_byte( cellFBM0 * 128.f + 127.f );
                 }
             }
-            stbi_write_bmp( fileName, width, height, 3, data );
+            stbi_write_bmp( fileName, width, height, 4, data );
             MemoryManager::SAFE_DELETE( data );
         }
 
@@ -90,11 +94,11 @@ namespace Divide
             };
 
 
-            Byte* data = MemoryManager_NEW Byte[to_size( width ) * height * 3];
-            for ( I32 i = 0; i < width * height * 3; i += 3 )
+            Byte* data = MemoryManager_NEW Byte[to_size( width ) * height * 4];
+            for ( I32 i = 0; i < width * height * 4; i += 4 )
             {
-                const glm::vec3 pos = glm::vec3( to_F32( (i / 3) % width ) / to_F32( width ),
-                                                 to_F32( (i / 3) / height ) / to_F32( height ),
+                const glm::vec3 pos = glm::vec3( to_F32( (i / 4) % width ) / to_F32( width ),
+                                                 to_F32( (i / 4) / height ) / to_F32( height ),
                                                  0.051f );
                 const glm::vec3 offset1 = glm::vec3( 0.f, 0.f, 581.163f );
                 const glm::vec3 offset2 = glm::vec3( 0.f, 0.f, 1245.463f );
@@ -108,19 +112,20 @@ namespace Divide
                 data[i + 0] = to_byte( perlinNoise * 128.f + 127.f );
                 data[i + 1] = to_byte( smoothstep( 0.5f, 0.7f, perlinNoise2 ) * 255.f );
                 data[i + 2] = to_byte( perlinNoise3 * 255.f );
+                data[i + 3] = to_byte( g_maxByte );
             }
-            stbi_write_bmp( fileName, width, height, 3, data );
+            stbi_write_bmp( fileName, width, height, 4, data );
             MemoryManager::SAFE_DELETE( data );
         }
 
         void GenerateWorleyNoise( const char* fileName, const I32 width, const I32 height, const I32 slices )
         {
-            Byte* worlNoiseArray = MemoryManager_NEW Byte[slices * width * height * 3];
-            for ( I32 i = 0; i < slices * width * height * 3; i += 3 )
+            Byte* worlNoiseArray = MemoryManager_NEW Byte[slices * width * height * 4];
+            for ( I32 i = 0; i < slices * width * height * 4; i += 4 )
             {
-                const glm::vec3 pos = glm::vec3( to_F32( (i / 3) % width ) / to_F32( width ),
-                                                 to_F32( ((i / 3) / height) % height ) / to_F32( height ),
-                                                 to_F32( (i / 3) / (slices * slices) ) / to_F32( slices ) );
+                const glm::vec3 pos = glm::vec3( to_F32( (i / 4) % width ) / to_F32( width ),
+                                                 to_F32( ((i / 4) / height) % height ) / to_F32( height ),
+                                                 to_F32( (i / 4) / (slices * slices) ) / to_F32( slices ) );
                 const F32 cell0 = 1.f - Tileable3dNoise::WorleyNoise( pos, 2.f );
                 const F32 cell1 = 1.f - Tileable3dNoise::WorleyNoise( pos, 4.f );
                 const F32 cell2 = 1.f - Tileable3dNoise::WorleyNoise( pos, 8.f );
@@ -132,8 +137,9 @@ namespace Divide
                 worlNoiseArray[i + 0] = to_byte( cellFBM0 * 255 );
                 worlNoiseArray[i + 1] = to_byte( cellFBM1 * 255 );
                 worlNoiseArray[i + 2] = to_byte( cellFBM2 * 255 );
+                worlNoiseArray[i + 3] = g_maxByte;
             }
-            stbi_write_bmp( fileName, width * slices, height, 3, worlNoiseArray );
+            stbi_write_bmp( fileName, width * slices, height, 4, worlNoiseArray );
             MemoryManager::SAFE_DELETE( worlNoiseArray );
         }
 
@@ -210,7 +216,7 @@ void Sky::OnStartup( PlatformContext& context )
     const ResourcePath worlNoise = procLocation() + worlTexName;
     const ResourcePath perWordNoise = procLocation() + perlWorlTexName;
 
-    if ( !fileExists( curlNoise ) )
+    if ( g_alwaysGenerateWeatherTextures || !fileExists( curlNoise ) )
     {
         Console::printfn( "Generating Curl Noise 128x128 RGB" );
         tasks[0] = CreateTask( [&curlNoise]( const Task& )
@@ -221,7 +227,7 @@ void Sky::OnStartup( PlatformContext& context )
         Console::printfn( "Done!" );
     }
 
-    if ( !fileExists( weather ) )
+    if ( g_alwaysGenerateWeatherTextures || !fileExists( weather ) )
     {
         Console::printfn( "Generating Perlin Noise for LUT's" );
         Console::printfn( "Generating weather Noise 512x512 RGB" );
@@ -233,7 +239,7 @@ void Sky::OnStartup( PlatformContext& context )
         Console::printfn( "Done!" );
     }
 
-    if ( !fileExists( worlNoise ) )
+    if ( g_alwaysGenerateWeatherTextures || !fileExists( worlNoise ) )
     {
         //worley and perlin-worley are from github/sebh/TileableVolumeNoise
         //which is in turn based on noise described in 'real time rendering of volumetric cloudscapes for horizon zero dawn'
@@ -246,7 +252,7 @@ void Sky::OnStartup( PlatformContext& context )
         Console::printfn( "Done!" );
     }
 
-    if ( !fileExists( perWordNoise ) )
+    if ( g_alwaysGenerateWeatherTextures || !fileExists( perWordNoise ) )
     {
         Console::printfn( "Generating Perlin-Worley Noise 128x128x128 RGBA" );
         GeneratePerlinWorleyNoise( context, perWordNoise.c_str(), 128, 128, 128 );

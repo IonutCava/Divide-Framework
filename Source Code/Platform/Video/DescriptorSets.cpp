@@ -59,13 +59,6 @@ namespace Divide {
         return _hash;
     }
 
-    bool operator==(const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs) noexcept {
-        return lhs._resource == rhs._resource;
-    }
-    bool operator!=(const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs) noexcept {
-        return lhs._resource != rhs._resource;
-    }
-
     bool operator==(const ShaderBufferEntry& lhs, const ShaderBufferEntry& rhs) noexcept {
         return lhs._bufferQueueReadIndex == rhs._bufferQueueReadIndex &&
                lhs._range == rhs._range &&
@@ -78,11 +71,11 @@ namespace Divide {
                !Compare(lhs._buffer, rhs._buffer);
     }
 
-    DescriptorSetBindingType DescriptorSetBindingData::Type() const noexcept {
-        switch (_resource.index()) {
+    DescriptorSetBindingType Type( const DescriptorSetBindingData& data ) noexcept {
+        switch ( data.index()) {
             case 1: {
-                ShaderBuffer* buffer = As<ShaderBufferEntry>()._buffer;
-                const ShaderBuffer::Usage usage = buffer->getUsage();
+                const ShaderBufferEntry& entry = As<ShaderBufferEntry>( data );
+                const ShaderBuffer::Usage usage = entry._buffer->getUsage();
                 switch (usage) {
                     case ShaderBuffer::Usage::COMMAND_BUFFER:
                     case ShaderBuffer::Usage::UNBOUND_BUFFER: return DescriptorSetBindingType::SHADER_STORAGE_BUFFER;

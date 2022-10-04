@@ -46,6 +46,8 @@ namespace GLMemory{
         COUNT
     };
 
+    void OnFrameEnd(U64 frameCount);
+
     struct Block
     {
         Byte* _ptr{ nullptr };

@@ -102,22 +102,7 @@ namespace Divide {
         I32 _bufferQueueReadIndex{ 0u };
     };
 
-    struct DescriptorSetBindingData {
-        eastl::variant<eastl::monostate,
-                       ShaderBufferEntry,
-                       DescriptorCombinedImageSampler,
-                       ImageView> _resource{};
-
-        [[nodiscard]] bool isSet() const noexcept;
-
-        template<typename T>
-        [[nodiscard]] T& As() noexcept;
-        template<typename T>
-        [[nodiscard]] bool Has() const noexcept;
-        template<typename T>
-        [[nodiscard]] const T& As() const noexcept;
-        [[nodiscard]] DescriptorSetBindingType Type() const noexcept;
-    };
+    using DescriptorSetBindingData = eastl::variant<eastl::monostate, ShaderBufferEntry, DescriptorCombinedImageSampler, ImageView>;
 
     struct DescriptorSetBinding {
         DescriptorSetBinding() = default;
@@ -125,9 +110,8 @@ namespace Divide {
         explicit DescriptorSetBinding(const ShaderStageVisibility stageVisibility) : DescriptorSetBinding(to_base(stageVisibility)) {}
 
         DescriptorSetBindingData _data{};
-        U8 _slot{ 0u };
-
         U16 _shaderStageVisibility{ to_base(ShaderStageVisibility::COUNT) };
+        U8 _slot{ 0u };
     };
 
     using DescriptorSet = eastl::fixed_vector<DescriptorSetBinding, 16, false>;
@@ -142,10 +126,18 @@ namespace Divide {
     bool operator!=(const ShaderBufferEntry& lhs, const ShaderBufferEntry& rhs) noexcept;
     bool operator==(const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs) noexcept;
     bool operator!=(const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs) noexcept;
-    bool operator==(const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs) noexcept;
-    bool operator!=(const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs) noexcept;
     bool operator==(const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs) noexcept;
     bool operator!=(const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs) noexcept;
+
+    [[nodiscard]] bool IsSet( const DescriptorSetBindingData& data ) noexcept;
+    template<typename T>
+    [[nodiscard]] T& As( DescriptorSetBindingData& data ) noexcept;
+    template<typename T>
+    [[nodiscard]] const T& As( const DescriptorSetBindingData& data ) noexcept;
+    template<typename T>
+    [[nodiscard]] bool Has( const DescriptorSetBindingData& data ) noexcept;
+    [[nodiscard]] DescriptorSetBindingType Type( const DescriptorSetBindingData& data ) noexcept;
+
 }; //namespace Divide
 
 #endif //_DESCRIPTOR_SETS_H_

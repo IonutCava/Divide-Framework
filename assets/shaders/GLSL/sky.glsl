@@ -454,13 +454,12 @@ float intersectSphere(in vec3 pos, in vec3 dir, in float r) {
     return max(p, p2) / (2.f * a);
 }
 
-float density(vec3 p, in vec3 weather, in bool hq, in float LOD) {
+float density(vec3 p, in vec3 weather, in float height_fraction, in bool hq, in float LOD) {
     const float time = MSToSeconds(dvd_GameTimeMS);
 
     p.x += time * 20.f;
     //p.z -= time * 5.f;
 
-    const float height_fraction = GetHeightFractionForPoint(length(p));
     const vec4 n = textureLod(perlworl, p * 0.0003f, LOD);
 
     const float fbm = n.g * 0.625f + n.b * 0.25f + n.a * 0.125f;
@@ -505,7 +504,7 @@ vec4 march(in vec3 colourIn, in vec3 ambientIn, in vec3 pos, in vec3 end, in vec
 
         const vec3 weather_sample = texture(weather, vec3(p.xz * dvd_weatherScale, 0)).xyz;
 
-        const float t = density(p, weather_sample, true, 0.f);
+        const float t = density(p, weather_sample, height_fraction, true, 0.f);
         const float dt = exp(-0.5f * t * ss);
 
         T *= dt;
@@ -520,7 +519,7 @@ vec4 march(in vec3 colourIn, in vec3 ambientIn, in vec3 pos, in vec3 end, in vec
 
                 const vec3 lweather = texture(weather, vec3(lp.xz * dvd_weatherScale, 0)).xyz;
 
-                const float lt = density(lp, lweather, false, float(j));
+                const float lt = density(lp, lweather, GetHeightFractionForPoint( length( lp ) ), false, float(j));
 
                 cd += lt;
                 ncd += (lt * (1.f - (cd * (1.f / (lss * 6.f)))));
@@ -528,7 +527,8 @@ vec4 march(in vec3 colourIn, in vec3 ambientIn, in vec3 pos, in vec3 end, in vec
             lp += ldir * 12.f;
 
             const vec3 lweather = texture(weather, vec3(lp.xz * dvd_weatherScale, 0)).xyz;
-            const float lt = density(lp, lweather, false, 5.f);
+
+            const float lt = density(lp, lweather, GetHeightFractionForPoint( length( lp ) ), false, 5.f);
 
             cd += lt;
             ncd += (lt * (1.f - (cd * (1.f / (lss * 18.f)))));

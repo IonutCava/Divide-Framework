@@ -727,14 +727,14 @@ namespace Divide
             {
                 auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::ALL );
                 binding._slot = 6;
-                binding._data.As<ShaderBufferEntry>() = { *s_grassData, { 0u, s_grassData->getPrimitiveCount() } };
+                As<ShaderBufferEntry>( binding._data ) = { *s_grassData, { 0u, s_grassData->getPrimitiveCount() } };
             }
 
             if ( s_treeData )
             {
                 auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::ALL );
                 binding._slot = 5;
-                binding._data.As<ShaderBufferEntry>() = { *s_treeData, { 0u, s_treeData->getPrimitiveCount() } };
+                As<ShaderBufferEntry>( binding._data ) = { *s_treeData, { 0u, s_treeData->getPrimitiveCount() } };
             }
         }
 
@@ -781,7 +781,7 @@ namespace Divide
                     cmd->_usage = DescriptorSetUsage::PER_DRAW;
                     auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE );
                     binding._slot = 0;
-                    binding._data.As<DescriptorCombinedImageSampler>() = { hizTexture->getView( ImageUsage::SHADER_SAMPLE ), hizAttachment->descriptor()._samplerHash };
+                    As<DescriptorCombinedImageSampler>(binding._data) = { hizTexture->getView( ImageUsage::SHADER_SAMPLE ), hizAttachment->descriptor()._samplerHash };
                 }
 
                 GFX::DispatchComputeCommand computeCmd = {};

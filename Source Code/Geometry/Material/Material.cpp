@@ -1057,7 +1057,7 @@ namespace Divide
                     {
                         auto& texBinding = descriptor.emplace_back( texVisibility );
                         texBinding._slot = usage;
-                        texBinding._data.As<DescriptorCombinedImageSampler>() = { crtTexture->sampledView(), _textures[usage]._sampler };
+                        As<DescriptorCombinedImageSampler>(texBinding._data) = { crtTexture->sampledView(), _textures[usage]._sampler };
                     }
                 };
 

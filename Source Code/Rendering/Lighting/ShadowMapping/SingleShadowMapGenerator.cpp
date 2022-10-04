@@ -236,7 +236,7 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
             binding._slot = 0;
-            binding._data.As<DescriptorCombinedImageSampler>() = { shadowAtt->texture()->sampledView(), shadowAtt->descriptor()._samplerHash };
+            As<DescriptorCombinedImageSampler>(binding._data) = { shadowAtt->texture()->sampledView(), shadowAtt->descriptor()._samplerHash };
         }
 
         _shaderConstants.set(_ID("layered"), GFX::PushConstantType::BOOL, true);
@@ -256,7 +256,7 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
             binding._slot = 0;
-            binding._data.As<DescriptorCombinedImageSampler>() = { blurAtt->texture()->sampledView(), blurAtt->descriptor()._samplerHash };
+            As<DescriptorCombinedImageSampler>(binding._data) = { blurAtt->texture()->sampledView(), blurAtt->descriptor()._samplerHash };
         }
 
         beginRenderPassCmd._target = handle._targetID;

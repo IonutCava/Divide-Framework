@@ -710,8 +710,8 @@ void SceneGraphNode::prepareRender( RenderingComponent& rComp,
             prevBoneEntry = &binding;
         }
 
-        boneEntry->_data.As<ShaderBufferEntry>() = { *data._boneBuffer, data._boneBufferRange};
-        prevBoneEntry->_data.As<ShaderBufferEntry>() = { *data._boneBuffer, data._prevBoneBufferRange};
+        As<ShaderBufferEntry>( boneEntry->_data ) = { *data._boneBuffer, data._boneBufferRange};
+        As<ShaderBufferEntry>( prevBoneEntry->_data ) = { *data._boneBuffer, data._prevBoneBufferRange};
     }
 
     _node->prepareRender(this, rComp, pkg, renderStagePass, cameraSnapshot, refreshData);
