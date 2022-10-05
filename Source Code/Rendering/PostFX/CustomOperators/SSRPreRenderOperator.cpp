@@ -45,7 +45,7 @@ SSRPreRenderOperator::SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& p
         _pipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
     });
 
-    const vec2<U16>& res = _parent.screenRT()._rt->getResolution();
+    const vec2<U16> res = _parent.screenRT()._rt->getResolution();
 
     _constantsCmd._constants.set(_ID("size"), GFX::PushConstantType::VEC2, res);
 
@@ -160,8 +160,6 @@ bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& 
     renderPassCmd->_target = RenderTargetNames::SSR_RESULT;
     renderPassCmd->_descriptor = _screenOnlyDraw;
     renderPassCmd->_name = "DO_SSR_PASS";
-    renderPassCmd->_clearDescriptor._clearDepth = true;
-    renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO, RTColourAttachmentSlot::SLOT_0 };
 
     GFX::EnqueueCommand(bufferInOut, _pipelineCmd);
 

@@ -44,9 +44,9 @@ ErrorCode DisplayWindow::init(const U32 windowFlags,
                               const WindowType initialType,
                               const WindowDescriptor& descriptor)
 {
-    const bool vsync = BitCompare(descriptor.flags, to_base(WindowDescriptor::Flags::VSYNC));
+    const bool vsync = TestBit(descriptor.flags, to_base(WindowDescriptor::Flags::VSYNC));
     ToggleBit(_flags, WindowFlags::VSYNC, vsync);
-    ToggleBit(_flags, WindowFlags::OWNS_RENDER_CONTEXT, !BitCompare(descriptor.flags, to_base(WindowDescriptor::Flags::SHARE_CONTEXT)));
+    ToggleBit(_flags, WindowFlags::OWNS_RENDER_CONTEXT, !TestBit(descriptor.flags, to_base(WindowDescriptor::Flags::SHARE_CONTEXT)));
 
     _previousType = _type = initialType;
 
@@ -301,7 +301,7 @@ void DisplayWindow::decorated(const bool state) noexcept {
 }
 
 void DisplayWindow::hidden(const bool state) noexcept {
-    if (BitCompare(SDL_GetWindowFlags(_sdlWindow), to_U32(SDL_WINDOW_SHOWN)) == state) {
+    if (TestBit(SDL_GetWindowFlags(_sdlWindow), to_U32(SDL_WINDOW_SHOWN)) == state) {
         if (state) {
             SDL_HideWindow(_sdlWindow);
         } else {
@@ -320,7 +320,7 @@ void DisplayWindow::restore() noexcept {
 }
 
 void DisplayWindow::minimized(const bool state) noexcept {
-    if (BitCompare(SDL_GetWindowFlags(_sdlWindow), to_U32(SDL_WINDOW_MINIMIZED)) != state) {
+    if (TestBit(SDL_GetWindowFlags(_sdlWindow), to_U32(SDL_WINDOW_MINIMIZED)) != state) {
         if (state) {
             SDL_MinimizeWindow(_sdlWindow);
         } else {
@@ -332,7 +332,7 @@ void DisplayWindow::minimized(const bool state) noexcept {
 }
 
 void DisplayWindow::maximized(const bool state) noexcept {
-    if (BitCompare(SDL_GetWindowFlags(_sdlWindow), to_U32(SDL_WINDOW_MAXIMIZED)) != state) {
+    if (TestBit(SDL_GetWindowFlags(_sdlWindow), to_U32(SDL_WINDOW_MAXIMIZED)) != state) {
         if (state) {
             SDL_MaximizeWindow(_sdlWindow);
         } else {
@@ -435,7 +435,7 @@ bool DisplayWindow::setDimensions(U16 width, U16 height) {
     return false;
 }
 
-bool DisplayWindow::setDimensions(const vec2<U16>& dimensions) {
+bool DisplayWindow::setDimensions(const vec2<U16> dimensions) {
     return setDimensions(dimensions.x, dimensions.y);
 }
 

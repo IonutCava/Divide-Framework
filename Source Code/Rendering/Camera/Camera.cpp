@@ -461,17 +461,17 @@ namespace Divide
         return false;
     }
 
-    const mat4<F32>& Camera::setProjection( const vec2<F32>& zPlanes )
+    const mat4<F32>& Camera::setProjection( const vec2<F32> zPlanes )
     {
         return setProjection( _data._FoV, zPlanes );
     }
 
-    const mat4<F32>& Camera::setProjection( const F32 verticalFoV, const vec2<F32>& zPlanes )
+    const mat4<F32>& Camera::setProjection( const F32 verticalFoV, const vec2<F32> zPlanes )
     {
         return setProjection( _data._aspectRatio, verticalFoV, zPlanes );
     }
 
-    const mat4<F32>& Camera::setProjection( const F32 aspectRatio, const F32 verticalFoV, const vec2<F32>& zPlanes )
+    const mat4<F32>& Camera::setProjection( const F32 aspectRatio, const F32 verticalFoV, const vec2<F32> zPlanes )
     {
         OPTICK_EVENT();
 
@@ -486,7 +486,7 @@ namespace Divide
         return projectionMatrix();
     }
 
-    const mat4<F32>& Camera::setProjection( const vec4<F32>& rect, const vec2<F32>& zPlanes )
+    const mat4<F32>& Camera::setProjection( const vec4<F32>& rect, const vec2<F32> zPlanes )
     {
         OPTICK_EVENT();
 
@@ -499,7 +499,7 @@ namespace Divide
         return projectionMatrix();
     }
 
-    const mat4<F32>& Camera::setProjection( const mat4<F32>& projection, const vec2<F32>& zPlanes, const bool isOrtho ) noexcept
+    const mat4<F32>& Camera::setProjection( const mat4<F32>& projection, const vec2<F32> zPlanes, const bool isOrtho ) noexcept
     {
         OPTICK_EVENT();
 

@@ -597,9 +597,7 @@ namespace Divide
         // to stay in sync with third party software
         _context.registerDrawCall();
 
-        clearStates( window, s_stateTracker, global );
-
-        const vec2<U16>& drawableSize = window.getDrawableSize();
+        const vec2<U16> drawableSize = window.getDrawableSize();
         _context.setViewport( 0, 0, drawableSize.width, drawableSize.height );
 
         return true;
@@ -684,22 +682,22 @@ namespace Divide
                     _performanceQueries[i]->incQueue();
                 }
             }
-        else
-        {
-            results[_queryIdxForCurrentFrame] = _performanceQueries[_queryIdxForCurrentFrame]->getResultNoWait();
-            _performanceQueries[_queryIdxForCurrentFrame]->incQueue();
-        }
+            else
+            {
+                results[_queryIdxForCurrentFrame] = _performanceQueries[_queryIdxForCurrentFrame]->getResultNoWait();
+                _performanceQueries[_queryIdxForCurrentFrame]->incQueue();
+            }
 
-        _queryIdxForCurrentFrame = (_queryIdxForCurrentFrame + 1) % to_base( GlobalQueryTypes::COUNT );
+            _queryIdxForCurrentFrame = (_queryIdxForCurrentFrame + 1) % to_base( GlobalQueryTypes::COUNT );
 
-        if ( g_runAllQueriesInSameFrame || _queryIdxForCurrentFrame == 0 )
-        {
-            _context.getPerformanceMetrics()._gpuTimeInMS = Time::NanosecondsToMilliseconds<F32>( results[to_base( GlobalQueryTypes::GPU_TIME )] );
-            _context.getPerformanceMetrics()._verticesSubmitted = to_U64( results[to_base( GlobalQueryTypes::VERTICES_SUBMITTED )] );
-            _context.getPerformanceMetrics()._primitivesGenerated = to_U64( results[to_base( GlobalQueryTypes::PRIMITIVES_GENERATED )] );
-            _context.getPerformanceMetrics()._tessellationPatches = to_U64( results[to_base( GlobalQueryTypes::TESSELLATION_PATCHES )] );
-            _context.getPerformanceMetrics()._tessellationInvocations = to_U64( results[to_base( GlobalQueryTypes::TESSELLATION_EVAL_INVOCATIONS )] );
-        }
+            if ( g_runAllQueriesInSameFrame || _queryIdxForCurrentFrame == 0 )
+            {
+                _context.getPerformanceMetrics()._gpuTimeInMS = Time::NanosecondsToMilliseconds<F32>( results[to_base( GlobalQueryTypes::GPU_TIME )] );
+                _context.getPerformanceMetrics()._verticesSubmitted = to_U64( results[to_base( GlobalQueryTypes::VERTICES_SUBMITTED )] );
+                _context.getPerformanceMetrics()._primitivesGenerated = to_U64( results[to_base( GlobalQueryTypes::PRIMITIVES_GENERATED )] );
+                _context.getPerformanceMetrics()._tessellationPatches = to_U64( results[to_base( GlobalQueryTypes::TESSELLATION_PATCHES )] );
+                _context.getPerformanceMetrics()._tessellationInvocations = to_U64( results[to_base( GlobalQueryTypes::TESSELLATION_EVAL_INVOCATIONS )] );
+            }
         }
 
         const size_t fenceSize = std::size( s_fenceSyncCounter );
@@ -729,6 +727,7 @@ namespace Divide
         {
             endFrameLocal( window );
         }
+        clearStates( window, s_stateTracker, global );
     }
 
     void GL_API::idle( [[maybe_unused]] const bool fast )
@@ -1078,43 +1077,43 @@ namespace Divide
 
                 U8 i = 0u;
                 auto& queryContext = _queryContext.emplace();
-                if ( BitCompare( crtCmd->_queryMask, QueryType::VERTICES_SUBMITTED ) )
+                if ( TestBit( crtCmd->_queryMask, QueryType::VERTICES_SUBMITTED ) )
                 {
                     queryContext[0]._query = &GL_API::GetHardwareQueryPool()->allocate( GL_VERTICES_SUBMITTED );
                     queryContext[0]._type = QueryType::VERTICES_SUBMITTED;
                     queryContext[0]._index = i++;
                 }
-                if ( BitCompare( crtCmd->_queryMask, QueryType::PRIMITIVES_GENERATED ) )
+                if ( TestBit( crtCmd->_queryMask, QueryType::PRIMITIVES_GENERATED ) )
                 {
                     queryContext[1]._query = &GL_API::GetHardwareQueryPool()->allocate( GL_PRIMITIVES_GENERATED );
                     queryContext[1]._type = QueryType::VERTICES_SUBMITTED;
                     queryContext[1]._index = i++;
                 }
-                if ( BitCompare( crtCmd->_queryMask, QueryType::TESSELLATION_PATCHES ) )
+                if ( TestBit( crtCmd->_queryMask, QueryType::TESSELLATION_PATCHES ) )
                 {
                     queryContext[2]._query = &GL_API::GetHardwareQueryPool()->allocate( GL_TESS_CONTROL_SHADER_PATCHES );
                     queryContext[2]._type = QueryType::VERTICES_SUBMITTED;
                     queryContext[2]._index = i++;
                 }
-                if ( BitCompare( crtCmd->_queryMask, QueryType::TESSELLATION_EVAL_INVOCATIONS ) )
+                if ( TestBit( crtCmd->_queryMask, QueryType::TESSELLATION_EVAL_INVOCATIONS ) )
                 {
                     queryContext[3]._query = &GL_API::GetHardwareQueryPool()->allocate( GL_TESS_EVALUATION_SHADER_INVOCATIONS );
                     queryContext[3]._type = QueryType::VERTICES_SUBMITTED;
                     queryContext[3]._index = i++;
                 }
-                if ( BitCompare( crtCmd->_queryMask, QueryType::GPU_TIME ) )
+                if ( TestBit( crtCmd->_queryMask, QueryType::GPU_TIME ) )
                 {
                     queryContext[4]._query = &GL_API::GetHardwareQueryPool()->allocate( GL_TIME_ELAPSED );
                     queryContext[4]._type = QueryType::VERTICES_SUBMITTED;
                     queryContext[4]._index = i++;
                 }
-                if ( BitCompare( crtCmd->_queryMask, QueryType::SAMPLE_COUNT ) )
+                if ( TestBit( crtCmd->_queryMask, QueryType::SAMPLE_COUNT ) )
                 {
                     queryContext[5]._query = &GL_API::GetHardwareQueryPool()->allocate( GL_SAMPLES_PASSED );
                     queryContext[5]._type = QueryType::VERTICES_SUBMITTED;
                     queryContext[5]._index = i++;
                 }
-                if ( BitCompare( crtCmd->_queryMask, QueryType::ANY_SAMPLE_RENDERED ) )
+                if ( TestBit( crtCmd->_queryMask, QueryType::ANY_SAMPLE_RENDERED ) )
                 {
                     queryContext[6]._query = &GL_API::GetHardwareQueryPool()->allocate( GL_ANY_SAMPLES_PASSED_CONSERVATIVE );
                     queryContext[6]._type = QueryType::VERTICES_SUBMITTED;
@@ -1322,7 +1321,7 @@ namespace Divide
                 const U32 barrierMask = crtCmd->_barrierMask;
                 if ( barrierMask != 0 )
                 {
-                    if ( BitCompare( barrierMask, to_base( MemoryBarrierType::TEXTURE_BARRIER ) ) )
+                    if ( TestBit( barrierMask, to_base( MemoryBarrierType::TEXTURE_BARRIER ) ) )
                     {
                         glTextureBarrier();
                     }
@@ -1335,7 +1334,7 @@ namespace Divide
                         MemoryBarrierMask glMask = MemoryBarrierMask::GL_NONE_BIT;
                         for ( U8 i = 0; i < to_U8( MemoryBarrierType::COUNT ) + 1; ++i )
                         {
-                            if ( BitCompare( barrierMask, 1u << i ) )
+                            if ( TestBit( barrierMask, 1u << i ) )
                             {
                                 switch ( static_cast<MemoryBarrierType>(1 << i) )
                                 {
@@ -1441,11 +1440,6 @@ namespace Divide
         {
             OPTICK_EVENT( "GL_FLUSH" );
             glFlush();
-        }
-
-        if ( s_stateTracker.setActiveFB( RenderTarget::Usage::RT_WRITE_ONLY, 0u ) == GLStateTracker::BindResult::FAILED )
-        {
-            DIVIDE_UNEXPECTED_CALL();
         }
     }
 
@@ -1559,7 +1553,7 @@ namespace Divide
         }
         stateTracker.setBlendColour( { 0u, 0u, 0u, 0u } );
 
-        const vec2<U16>& drawableSize = _context.getDrawableSize( window );
+        const vec2<U16> drawableSize = _context.getDrawableSize( window );
         stateTracker.setScissor( { 0, 0, drawableSize.width, drawableSize.height } );
 
         stateTracker._activePipeline = nullptr;

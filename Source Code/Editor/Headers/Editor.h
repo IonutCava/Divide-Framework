@@ -166,7 +166,7 @@ namespace Divide
         explicit Editor( PlatformContext& context, ImGuiStyleEnum theme = ImGuiStyle_DarkCodz01 );
         ~Editor();
 
-        [[nodiscard]] bool init( const vec2<U16>& renderResolution );
+        [[nodiscard]] bool init( const vec2<U16> renderResolution );
         void close();
         void idle() noexcept;
         void beginFrame();
@@ -240,7 +240,7 @@ namespace Divide
 
         protected:
         [[nodiscard]] inline bool isInit() const noexcept;
-        [[nodiscard]] bool render( U64 deltaTime );
+        [[nodiscard]] bool render( );
 
         BoundingSphere teleportToNode( Camera* camera, const SceneGraphNode* sgn ) const;
         void saveNode( const SceneGraphNode* sgn ) const;
@@ -285,7 +285,7 @@ namespace Divide
         [[nodiscard]] bool switchScene( const char* scenePath );
 
         /// Returns true if the window was closed
-        [[nodiscard]] bool modalTextureView( const char* modalName, Texture* tex, const vec2<F32>& dimensions, bool preserveAspect, bool useModal ) const;
+        [[nodiscard]] bool modalTextureView( const char* modalName, Texture* tex, vec2<F32> dimensions, bool preserveAspect, bool useModal ) const;
         /// Returns true if the model was queued
         [[nodiscard]] bool modalModelSpawn( const Mesh_ptr& mesh, bool quick, const vec3<F32>& scale = VECTOR3_UNIT, const vec3<F32>& position = VECTOR3_ZERO );
         /// Return true if the model was spawned as a scene node
@@ -641,7 +641,7 @@ namespace Divide
                 editor._memoryEditorData = data;
             }
 
-            [[nodiscard]] static bool modalTextureView( const Editor& editor, const char* modalName, Texture* tex, const vec2<F32>& dimensions, const bool preserveAspect, const bool useModal )
+            [[nodiscard]] static bool modalTextureView( const Editor& editor, const char* modalName, Texture* tex, const vec2<F32> dimensions, const bool preserveAspect, const bool useModal )
             {
                 return editor.modalTextureView( modalName, tex, dimensions, preserveAspect, useModal );
             }

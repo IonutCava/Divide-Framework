@@ -319,9 +319,6 @@ void AddTriangle(NavModelData* modelData,
 
 const vec3<F32> g_borderOffset(BORDER_PADDING);
 bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
-    constexpr U32 allowedNodeType = to_base(SceneNodeType::TYPE_WATER) |
-                                    to_base(SceneNodeType::TYPE_OBJECT3D);
-
     assert(sgn != nullptr);
 
     const NavigationComponent* navComp = sgn->get<NavigationComponent>();
@@ -332,46 +329,41 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
         const SceneNodeType nodeType = sgn->getNode().type();
         const char* resourceName = sgn->getNode().resourceName().c_str();
 
-        if (!BitCompare(allowedNodeType, nodeType)) {
+        if (nodeType != SceneNodeType::TYPE_WATER && !Is3DObject(nodeType))
+        {
             Console::printfn(Locale::Get(_ID("WARN_NAV_UNSUPPORTED")), resourceName);
             goto next;
         }
 
-        ObjectType crtType = ObjectType::COUNT;
-        if (nodeType == SceneNodeType::TYPE_OBJECT3D) {
-            crtType = sgn->getNode<Object3D>().geometryType();
-            // Even though we allow Object3Ds, we do not parse MESH nodes, instead we grab its children so we  get an accurate triangle list per node
-            if (crtType == ObjectType::MESH) {
-                goto next;
-            }
-            // This is kind of self-explanatory
-            if (crtType == ObjectType::DECAL) {
-                goto next;
-            }
+        if (nodeType == SceneNodeType::TYPE_MESH || nodeType == SceneNodeType::TYPE_DECAL) {
+            // Even though we allow Object3Ds, we do not parse MESH nodes, instead we grab its children so we get an accurate triangle list per node
+            goto next;
         }
 
         MeshDetailLevel level = MeshDetailLevel::MAXIMUM;
         SamplePolyAreas areaType = SamplePolyAreas::SAMPLE_AREA_OBSTACLE;
-        switch (nodeType) {
-            case SceneNodeType::TYPE_WATER: {
-                if (navComp && !navComp->navMeshDetailOverride()) {
-                    level = MeshDetailLevel::BOUNDINGBOX;
-                }
-                areaType = SamplePolyAreas::SAMPLE_POLYAREA_WATER;
-            } break;
-            case SceneNodeType::TYPE_OBJECT3D: {
-                // Check if we need to override detail level
-                if (navComp && !navComp->navMeshDetailOverride() && sgn->usageContext() == NodeUsageContext::NODE_STATIC) {
-                    level = MeshDetailLevel::BOUNDINGBOX;
-                }
-                if (crtType == ObjectType::TERRAIN) {
-                    areaType = SamplePolyAreas::SAMPLE_POLYAREA_GROUND;
-                }
-            } break;
-            default: {
-                // we should never reach this due to the bit checks above
-                DIVIDE_UNEXPECTED_CALL();
-            } break;
+        if ( Is3DObject(nodeType)) {
+            // Check if we need to override detail level
+            if ( navComp && !navComp->navMeshDetailOverride() && sgn->usageContext() == NodeUsageContext::NODE_STATIC )
+            {
+                level = MeshDetailLevel::BOUNDINGBOX;
+            }
+            if ( nodeType == SceneNodeType::TYPE_TERRAIN )
+            {
+                areaType = SamplePolyAreas::SAMPLE_POLYAREA_GROUND;
+            }
+        }
+        else if ( nodeType == SceneNodeType::TYPE_WATER)
+        {
+            if (navComp && !navComp->navMeshDetailOverride()) {
+                level = MeshDetailLevel::BOUNDINGBOX;
+            }
+            areaType = SamplePolyAreas::SAMPLE_POLYAREA_WATER;
+        }
+        else
+        {
+            // we should never reach this due to the bit checks above
+            DIVIDE_UNEXPECTED_CALL();
         }
 
         Console::d_printfn(Locale::Get(_ID("NAV_MESH_CURRENT_NODE")), resourceName, to_U32(level));
@@ -380,9 +372,12 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
         VertexBuffer* geometry = nullptr;
         if (level == MeshDetailLevel::MAXIMUM) {
             Object3D* obj = nullptr;
-            if (nodeType == SceneNodeType::TYPE_OBJECT3D) {
+            if (Is3DObject(nodeType))
+            {
                 obj = &sgn->getNode<Object3D>();
-            } else if (nodeType == SceneNodeType::TYPE_WATER) {
+            }
+            else if (nodeType == SceneNodeType::TYPE_WATER)
+            {
                 obj = sgn->getNode<WaterPlane>().getQuad().get();
             }
             assert(obj != nullptr);

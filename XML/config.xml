@@ -16,6 +16,7 @@
 			<water>true</water>
 			<sky>true</sky>
 			<particles>true</particles>
+			<decals>true</decals>
 		</renderFilter>
 		<useTextureDDSCache>true</useTextureDDSCache>
 		<!-- memFile: file name that the application should use to write  memory allocation info. Leave empty for none! -->
@@ -95,7 +96,7 @@
 				<qualityLevel>2</qualityLevel>
 			</postAA>
 			<toneMap>
-				<adaptive>false</adaptive>
+				<adaptive>true</adaptive>
 				<manualExposureFactor>1</manualExposureFactor>
 				<minLogLuminance>-4</minLogLuminance>
 				<maxLogLuminance>3</maxLogLuminance>

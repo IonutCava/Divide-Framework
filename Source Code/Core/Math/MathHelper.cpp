@@ -305,7 +305,7 @@ vec3<F32_SNORM> UNPACK_VEC3(const F32 src) noexcept {
     return res;
 }
 
-U32 PACK_HALF2x16(const vec2<F32>& value) {
+U32 PACK_HALF2x16(const vec2<F32> value) {
     return to_U32(glm::packHalf2x16(glm::mediump_vec2(value.x, value.y)));
 }
 
@@ -365,7 +365,7 @@ U32 PACK_UNORM4x8(const vec4<F32_NORM>& value) {
     return PACK_UNORM4x8(value.x, value.y, value.z, value.w);
 }
 
-U32 PACK_UNORM4x8(const vec4<U8>& value) {
+U32 PACK_UNORM4x8(const vec4<U8> value) {
     return PACK_UNORM4x8(value.x, value.y, value.z, value.w);
 }
 

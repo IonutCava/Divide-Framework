@@ -249,8 +249,8 @@ void glFramebuffer::blitFrom(RenderTarget* source, const RTBlitParams& params)
 
     glFramebuffer* input = static_cast<glFramebuffer*>(source);
     glFramebuffer* output = this;
-    const vec2<U16>& inputDim = input->_descriptor._resolution;
-    const vec2<U16>& outputDim = output->_descriptor._resolution;
+    const vec2<U16> inputDim = input->_descriptor._resolution;
+    const vec2<U16> outputDim = output->_descriptor._resolution;
 
     bool blittedDepth = false;
     bool readBufferDirty = false;
@@ -762,7 +762,7 @@ void glFramebuffer::setMipLevel(const U16 writeLevel)
     }
 }
 
-void glFramebuffer::readData(const vec4<U16>& rect,
+void glFramebuffer::readData(const vec4<U16> rect,
                              const GFXImageFormat imageFormat,
                              const GFXDataFormat dataType,
                              const std::pair<bufferPtr, size_t> outData) const

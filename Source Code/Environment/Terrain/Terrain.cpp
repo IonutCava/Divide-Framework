@@ -55,7 +55,7 @@ void TessellationParams::fromDescriptor(const std::shared_ptr<TerrainDescriptor>
 }
 
 Terrain::Terrain(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const Str256& name)
-    : Object3D(context, parentCache, descriptorHash, name, ResourcePath{ name }, {}, ObjectType::TERRAIN, ObjectFlag::OBJECT_FLAG_NO_VB),
+    : Object3D(context, parentCache, descriptorHash, name, ResourcePath{ name }, {}, SceneNodeType::TYPE_TERRAIN, ObjectFlag::OBJECT_FLAG_NO_VB),
       _terrainQuadtree()
 {
     _renderState.addToDrawExclusionMask(RenderStage::SHADOW, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(LightType::SPOT));
@@ -272,7 +272,7 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
         //triangleWidth *= 2.0f;
     }
 
-    const vec2<F32>& SNAP_GRID_SIZE = tessParams().SnapGridSize();
+    const vec2<F32> SNAP_GRID_SIZE = tessParams().SnapGridSize();
     vec3<F32> cullingEye = cameraSnapshot._eye;
     const vec2<F32> eyeXZ = cullingEye.xz();
 

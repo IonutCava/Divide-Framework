@@ -163,13 +163,13 @@ namespace Divide
         assert( tComp != nullptr );
 
         bool transformChanged = false;
-        if ( _type != LightType::DIRECTIONAL && BitCompare( event._flag, to_U32( TransformType::TRANSLATION ) ) )
+        if ( _type != LightType::DIRECTIONAL && TestBit( event._flag, to_U32( TransformType::TRANSLATION ) ) )
         {
             _positionCache = tComp->getWorldPosition();
             transformChanged = true;
         }
 
-        if ( _type != LightType::POINT && BitCompare( event._flag, to_U32( TransformType::ROTATION ) ) )
+        if ( _type != LightType::POINT && TestBit( event._flag, to_U32( TransformType::ROTATION ) ) )
         {
             _directionCache = tComp->getWorldDirection();
             transformChanged = true;

@@ -35,7 +35,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 
     inline bool isEnabledOption(const GenericDrawCommand& cmd, const CmdRenderOptions option) noexcept {
-        return BitCompare(cmd._renderOptions, to_base(option));
+        return TestBit(cmd._renderOptions, to_base(option));
     }
 
     inline void enableOption(GenericDrawCommand& cmd, const CmdRenderOptions option) noexcept {

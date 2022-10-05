@@ -489,7 +489,6 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
         GFX::BeginRenderPassCommand beginRenderPassCmd{};
         beginRenderPassCmd._name = "LINEARISE_DEPTH_BUFFER";
         beginRenderPassCmd._target = _linearDepthRT._targetID;
-        beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO, RTColourAttachmentSlot::SLOT_0 };
 
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
@@ -524,7 +523,7 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
     };
 
     for (auto& op : _operators[to_base(FilterSpace::FILTER_SPACE_HDR)]) {
-        if (BitCompare(filterStack, 1u << to_U32(op->operatorType()))) {
+        if (TestBit(filterStack, 1u << to_U32(op->operatorType()))) {
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ PostFX::FilterName(op->operatorType()) });
             const bool swapTargets = op->execute(idx, cameraSnapshot, prevScreenHandle, getOutput(true), bufferInOut);
             DIVIDE_ASSERT(!swapTargets, "PreRenderBatch::prePass: Swap render target request detected during prePass!");
@@ -629,11 +628,11 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     }
 
     // We handle SSR between the Pre and Main render passes
-    if (BitCompare(filterStack, 1u << to_U32(FilterType::FILTER_SS_REFLECTIONS))) {
+    if (TestBit(filterStack, 1u << to_U32(FilterType::FILTER_SS_REFLECTIONS))) {
         ClearBit(filterStack, 1u << to_U32(FilterType::FILTER_SS_REFLECTIONS));
     }
     // We handle SSAO between the Pre and Main render passes
-    if (BitCompare(filterStack, 1u << to_U32(FilterType::FILTER_SS_AMBIENT_OCCLUSION))) {
+    if (TestBit(filterStack, 1u << to_U32(FilterType::FILTER_SS_AMBIENT_OCCLUSION))) {
         ClearBit(filterStack, 1u << to_U32(FilterType::FILTER_SS_AMBIENT_OCCLUSION));
     }
 
@@ -643,7 +642,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "PostFX: Execute HDR(1) operators"});
     for (auto& op : hdrBatch) {
-        if (BitCompare(filterStack, 1u << to_U32(op->operatorType()))) {
+        if (TestBit(filterStack, 1u << to_U32(op->operatorType()))) {
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ PostFX::FilterName(op->operatorType()) });
             if (op->execute(idx, cameraSnapshot, getInput(true), getOutput(true), bufferInOut)) {
                 _screenRTs._swappedHDR = !_screenRTs._swappedHDR;
@@ -655,7 +654,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
 
     // Execute all HDR based operators that DO NOT need to loop back to the screen target (Bloom, DoF, etc)
     for (auto& op : hdrBatchPostSS) {
-        if (BitCompare(filterStack, 1u << to_U32(op->operatorType()))) {
+        if (TestBit(filterStack, 1u << to_U32(op->operatorType()))) {
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ PostFX::FilterName(op->operatorType()) });
             if (op->execute(idx, cameraSnapshot, getInput(true), getOutput(true), bufferInOut)) {
                 _screenRTs._swappedHDR = !_screenRTs._swappedHDR;
@@ -715,7 +714,6 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
         renderPassCmd->_name = "DO_TONEMAP_PASS";
         renderPassCmd->_target = getOutput(false)._targetID;
-        renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO, RTColourAttachmentSlot::SLOT_0 };
 
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ adaptiveExposureControl() ? _pipelineToneMapAdaptive : _pipelineToneMap });
 
@@ -773,7 +771,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     
     // Execute all LDR based operators
     for (auto& op : ldrBatch) {
-        if (BitCompare(filterStack, 1u << to_U32(op->operatorType()))) {
+        if (TestBit(filterStack, 1u << to_U32(op->operatorType()))) {
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ Util::StringFormat("PostFX: Execute LDR operator [ %s ]", PostFX::FilterName(op->operatorType())).c_str(), to_U32(op->operatorType()) });
             if (op->execute(idx, cameraSnapshot, getInput(false), getOutput(false), bufferInOut)) {
                 _screenRTs._swappedLDR = !_screenRTs._swappedLDR;

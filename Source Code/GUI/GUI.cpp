@@ -205,7 +205,7 @@ bool GUI::init(PlatformContext& context, ResourceCache* cache) {
     const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
     if (guiConfig.cegui.enabled) {
 
-        const vec2<U16>& renderSize = context.gfx().renderingResolution();
+        const vec2<U16> renderSize = context.gfx().renderingResolution();
         const CEGUI::Sizef size(static_cast<float>(renderSize.width), static_cast<float>(renderSize.height));
 
         CEGUI::DefaultResourceProvider* rp = static_cast<CEGUI::DefaultResourceProvider*>(CEGUI::System::getSingleton().getResourceProvider());

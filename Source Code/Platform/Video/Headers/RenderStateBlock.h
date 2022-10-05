@@ -111,8 +111,6 @@ class RenderStateBlock final : public GUIDWrapper, public Hashable {
 
         void setColourWrites(bool red, bool green, bool blue, bool alpha) noexcept;
 
-        bool cullEnabled() const noexcept;
-
         size_t getHash() const override;
 
     private:

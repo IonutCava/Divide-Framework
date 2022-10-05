@@ -99,8 +99,8 @@ public:
     }
 
     [[nodiscard]] bool getFilterState(const FilterType filter) const noexcept {
-        return BitCompare(_filterStack, 1u << to_U32(filter)) ||
-               BitCompare(_overrideFilterStack, 1u << to_U32(filter));
+        return TestBit(_filterStack, 1u << to_U32(filter)) ||
+               TestBit(_overrideFilterStack, 1u << to_U32(filter));
     }
 
     [[nodiscard]] PreRenderBatch& getFilterBatch() noexcept {

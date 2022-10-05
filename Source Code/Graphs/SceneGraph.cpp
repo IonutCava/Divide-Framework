@@ -26,13 +26,6 @@ namespace {
     constexpr U16 BYTE_BUFFER_VERSION = 1u;
     constexpr std::array<U32, 2> g_cacheMarkerByteValue = { 0xDEADBEEF, 0xBADDCAFE };
     constexpr U32 g_nodesPerPartition = 32u;
-
-    [[nodiscard]] constexpr bool IsTransformNode(const SceneNodeType nodeType, const ObjectType objType) noexcept
-    {
-        return nodeType == SceneNodeType::TYPE_TRANSFORM ||
-               nodeType == SceneNodeType::TYPE_TRIGGER ||
-               objType  == ObjectType::MESH;
-    }
 };
 
 BoundingSphere SceneGraph::GetBounds( const SceneGraphNode* sgn )
@@ -110,17 +103,14 @@ void SceneGraph::onNodeUpdated(const SceneGraphNode& node)
     OPTICK_EVENT();
 
     //ToDo: Maybe add particles too? -Ionut
-    switch (node.getNode<>().type())
+    if ( Is3DObject( node.getNode().type() ) )
     {
-        case SceneNodeType::TYPE_OBJECT3D :
-        {
-            SceneEnvironmentProbePool* probes = Attorney::SceneGraph::getEnvProbes(parentScene());
-            probes->onNodeUpdated(node);
-        } break;
-        case SceneNodeType::TYPE_SKY:
-        {
-            SceneEnvironmentProbePool::SkyLightNeedsRefresh(true);
-        } break;
+        SceneEnvironmentProbePool* probes = Attorney::SceneGraph::getEnvProbes( parentScene() );
+        probes->onNodeUpdated( node );
+    }
+    else if ( node.getNode().type()  == SceneNodeType::TYPE_SKY )
+    {
+        SceneEnvironmentProbePool::SkyLightNeedsRefresh( true );
     }
 }
 
@@ -218,7 +208,7 @@ bool SceneGraph::removeNode(SceneGraphNode* node) {
     return false;
 }
 
-bool SceneGraph::frameStarted(const FrameEvent& evt) {
+bool SceneGraph::frameStarted( [[maybe_unused]] const FrameEvent& evt) {
     OPTICK_EVENT();
 
     // Gather all nodes at the start of the frame only if we added/removed any of them
@@ -236,7 +226,7 @@ bool SceneGraph::frameStarted(const FrameEvent& evt) {
     return true;
 }
 
-bool SceneGraph::frameEnded(const FrameEvent& evt) {
+bool SceneGraph::frameEnded( [[maybe_unused]] const FrameEvent& evt) {
     OPTICK_EVENT();
 
     {
@@ -381,12 +371,8 @@ bool SceneGraph::intersect(const SGNIntersectionParams& params, vector<SGNRayRes
     for (SGNRayResult& result : intersectionsOut) {
         SceneGraphNode* node = findNode(result.sgnGUID);
         const SceneNodeType snType =  node->getNode().type();
-        ObjectType objectType = ObjectType::COUNT;
-        if (snType == SceneNodeType::TYPE_OBJECT3D) {
-            objectType = static_cast<const Object3D&>(node->getNode()).geometryType();
-        }
 
-        if (isIgnored(snType) || (!params._includeTransformNodes && IsTransformNode(snType, objectType))) {
+        if (isIgnored(snType) || (!params._includeTransformNodes && IsTransformNode(snType))) {
             result.sgnGUID = -1;
         }
     }
@@ -570,7 +556,7 @@ namespace {
     boost::property_tree::ptree dumpSGNtoAssets(SceneGraphNode* node) {
         boost::property_tree::ptree entry;
         entry.put("<xmlattr>.name", node->name().c_str());
-        entry.put("<xmlattr>.type", node->getNode().getTypeName().c_str());
+        entry.put("<xmlattr>.type", Names::sceneNodeType[to_base(node->getNode().type())]);
 
         const SceneGraphNode::ChildContainer& children = node->getChildren();
         SharedLock<SharedMutex> w_lock(children._lock);

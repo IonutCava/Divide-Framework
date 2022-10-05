@@ -133,7 +133,7 @@ namespace Divide
                                        } );
 
         const SceneNode& node = _parentSGN->getNode();
-        if ( node.type() == SceneNodeType::TYPE_OBJECT3D )
+        if ( Is3DObject (node.type()) )
         {
             // Do not cull the sky
             if ( static_cast<const Object3D&>(node).type() == SceneNodeType::TYPE_SKY )
@@ -383,12 +383,12 @@ namespace Divide
         return CLAMPED( level, to_U8( 0u ), MAX_LOD_LEVEL );
     }
 
-    U8 RenderingComponent::getLoDLevel( const F32 distSQtoCenter, const RenderStage renderStage, const vec4<U16>& lodThresholds )
+    U8 RenderingComponent::getLoDLevel( const F32 distSQtoCenter, const RenderStage renderStage, const vec4<U16> lodThresholds )
     {
         return getLoDLevelInternal( distSQtoCenter, renderStage, lodThresholds );
     }
 
-    U8 RenderingComponent::getLoDLevelInternal( const F32 distSQtoCenter, const RenderStage renderStage, const vec4<U16>& lodThresholds )
+    U8 RenderingComponent::getLoDLevelInternal( const F32 distSQtoCenter, const RenderStage renderStage, const vec4<U16> lodThresholds )
     {
         const auto& [state, level] = _lodLockLevels[to_base( renderStage )];
 
@@ -888,8 +888,7 @@ namespace Divide
     void RenderingComponent::drawSkeleton()
     {
         const SceneNode& node = _parentSGN->getNode();
-        const bool isSubMesh = node.type() == SceneNodeType::TYPE_OBJECT3D && static_cast<const Object3D&>(node).geometryType() == ObjectType::SUBMESH;
-        if ( !isSubMesh )
+        if ( node.type() != SceneNodeType::TYPE_SUBMESH )
         {
             return;
         }
@@ -913,7 +912,7 @@ namespace Divide
         }
 
         const SceneNode& node = _parentSGN->getNode();
-        const bool isSubMesh = node.type() == SceneNodeType::TYPE_OBJECT3D && static_cast<const Object3D&>(node).geometryType() == ObjectType::SUBMESH;
+        const bool isSubMesh = node.type() == SceneNodeType::TYPE_SUBMESH;
 
         if ( AABB )
         {

@@ -89,11 +89,7 @@ SceneGraphNode::SceneGraphNode(SceneGraph* sceneGraph, const SceneGraphNodeDescr
 
     AddComponents(descriptor._componentMask, false);
     AddComponents(_node->requiredComponentMask(), false);
-
-    const SceneNodeType nodeType = _node->type();
-    if (nodeType == SceneNodeType::TYPE_TRANSFORM ||
-        nodeType == SceneNodeType::TYPE_TRIGGER ||
-        (nodeType == SceneNodeType::TYPE_OBJECT3D && getNode<Object3D>().geometryType() == ObjectType::MESH))
+    if (IsTransformNode( _node->type() ))
     {
         setFlag(Flags::IS_CONTAINER);
     }
@@ -133,8 +129,8 @@ void SceneGraphNode::AddComponents(const U32 componentMask, const bool allowDupl
         const U32 componentBit = 1 << i;
 
         // Only add new components;
-        if (BitCompare(componentMask, componentBit) &&
-            (allowDuplicates || !BitCompare(_componentMask, componentBit)))
+        if (TestBit(componentMask, componentBit) &&
+            (allowDuplicates || !TestBit(_componentMask, componentBit)))
         {
             _componentMask |= componentBit;
             SGNComponent::construct(static_cast<ComponentType>(componentBit), this);
@@ -211,8 +207,8 @@ void SceneGraphNode::RemoveComponents(const U32 componentMask)
     for (auto i = 1u; i < to_base(ComponentType::COUNT) + 1; ++i)
     {
         const U32 componentBit = 1 << i;
-        if (BitCompare(componentMask, componentBit) &&
-            BitCompare(_componentMask, componentBit))
+        if (TestBit(componentMask, componentBit) &&
+            TestBit(_componentMask, componentBit))
         {
             SGNComponent::destruct(static_cast<ComponentType>(componentBit), this);
         }
@@ -226,7 +222,7 @@ bool SceneGraphNode::HasComponents(const ComponentType componentType) const
 
 bool SceneGraphNode::HasComponents(const U32 componentMaskIn) const
 {
-    return BitCompare(componentMask(), componentMaskIn);
+    return TestBit(componentMask(), componentMaskIn);
 }
 
 void SceneGraphNode::setTransformDirty(const U32 transformMask)
@@ -473,7 +469,7 @@ bool SceneGraphNode::isChildOfType(const U16 typeMask) const
     SceneGraphNode* parentNode = parent();
     while (parentNode != nullptr)
     {
-        if (BitCompare(typeMask, to_base(parentNode->getNode<>().type())))
+        if (TestBit(typeMask, to_base(parentNode->getNode<>().type())))
         {
             return true;
         }
@@ -520,7 +516,7 @@ SceneGraphNode* SceneGraphNode::findChild(const I64 GUID, const bool sceneNodeGu
                          : findChildInternal<false>(GUID, recursive);
 }
 
-bool SceneGraphNode::intersect(const Ray& intersectionRay, const vec2<F32>& range, vector<SGNRayResult>& intersections) const
+bool SceneGraphNode::intersect(const Ray& intersectionRay, const vec2<F32> range, vector<SGNRayResult>& intersections) const
 {
     vector<SGNRayResult> ret{};
 
@@ -749,7 +745,7 @@ namespace
         if (nodeType == SceneNodeType::TYPE_SKY ||
             nodeType == SceneNodeType::TYPE_WATER ||
             nodeType == SceneNodeType::TYPE_INFINITEPLANE ||
-            (nodeType == SceneNodeType::TYPE_OBJECT3D && node->getNode<Object3D>().geometryType() == ObjectType::DECAL))
+            (nodeType == SceneNodeType::TYPE_DECAL))
         {
             return false;
         }
@@ -759,10 +755,96 @@ namespace
     }
 };
 
+namespace
+{
+    [[nodiscard]] bool FilterCheck(const U32 renderFilter, const SceneNode& node) noexcept
+    {
+        if ( renderFilter == 0u )
+        {
+            return true;
+        }
+
+        bool ret = true;
+
+        if ( TestBit( renderFilter, RenderPassCuller::EntityFilter::PRIMITIVES ) && IsPrimitive( node.type() ))
+        {
+            ret = false;
+        }
+        if ( TestBit( renderFilter, RenderPassCuller::EntityFilter::MESHES ) && IsMesh( node.type() ) )
+        {
+            ret = false;
+        }
+
+        if ( ret )
+        {
+            switch ( node.type() )
+            {
+                default: break;
+                case SceneNodeType::TYPE_TERRAIN:
+                {
+                    if ( TestBit( renderFilter, RenderPassCuller::EntityFilter::TERRAIN ) )
+                    {
+                        ret = false;
+                    }
+
+                } break;
+                case SceneNodeType::TYPE_DECAL:
+                {
+                    if ( TestBit( renderFilter, RenderPassCuller::EntityFilter::DECALS ) )
+                    {
+                        ret = false;
+                    }
+
+                } break;
+                case SceneNodeType::TYPE_WATER:
+                {
+                    if ( TestBit( renderFilter, RenderPassCuller::EntityFilter::WATER ) )
+                    {
+                        ret = false;
+                    }
+                } break;
+                case SceneNodeType::TYPE_PARTICLE_EMITTER:
+                {
+                    if ( TestBit( renderFilter, RenderPassCuller::EntityFilter::PARTICLES ) )
+                    {
+                        ret = false;
+                    }
+                } break;
+                case SceneNodeType::TYPE_SKY:
+                {
+                    if ( TestBit( renderFilter, RenderPassCuller::EntityFilter::SKY ) )
+                    {
+                        ret = false;
+                    }
+                } break;
+                case SceneNodeType::TYPE_INFINITEPLANE:
+                {
+                    if ( TestBit( renderFilter, RenderPassCuller::EntityFilter::PRIMITIVES ) )
+                    {
+                        ret = false;
+                    }
+                } break;
+                case SceneNodeType::TYPE_VEGETATION:
+                {
+                    if ( TestBit( renderFilter, RenderPassCuller::EntityFilter::VEGETATION ) )
+                    {
+                        ret = false;
+                    }
+                } break;
+            }
+        }
+
+        return ret;
+    }
+}
+
 FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
                                                const U16 cullFlags,
+                                               const U32 filterMask,
                                                const F32 distanceToClosestPointSQ) const
 {
+    OPTICK_EVENT();
+
     // Early out for inactive nodes
     if (!hasFlag(SceneGraphNode::Flags::ACTIVE))
     {
@@ -775,27 +857,32 @@ FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
         return FrustumCollision::FRUSTUM_OUT;
     }
 
+    if ( !FilterCheck( filterMask, *_node ) )
+    {
+        return FrustumCollision::FRUSTUM_OUT;
+    }
+
     // Drawing is disabled for this node
     if (!_node->renderState().drawState(RenderStagePass{ params._stage, RenderPassType::COUNT }))
     {
         return FrustumCollision::FRUSTUM_OUT;
     }
 
-    if (BitCompare(cullFlags, CullOptions::KEEP_SKY_NODES) && _node->type() == SceneNodeType::TYPE_SKY)
+    if (TestBit(cullFlags, CullOptions::KEEP_SKY_NODES) && _node->type() == SceneNodeType::TYPE_SKY)
     {
         return FrustumCollision::FRUSTUM_IN;
     }
 
     if (usageContext() == NodeUsageContext::NODE_STATIC)
     {
-        if (BitCompare(cullFlags, CullOptions::CULL_STATIC_NODES))
+        if (TestBit(cullFlags, CullOptions::CULL_STATIC_NODES))
         {
             return FrustumCollision::FRUSTUM_OUT;
         }
     }
     else
     {
-        if (BitCompare(cullFlags, CullOptions::CULL_DYNAMIC_NODES))
+        if (TestBit(cullFlags, CullOptions::CULL_DYNAMIC_NODES))
         {
             return FrustumCollision::FRUSTUM_OUT;
         }
@@ -807,12 +894,12 @@ FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
         return FrustumCollision::FRUSTUM_OUT;
     }
 
-    if (BitCompare(cullFlags, CullOptions::CULL_AGAINST_LOD) && !hasFlag(Flags::IS_CONTAINER))
+    if (TestBit(cullFlags, CullOptions::CULL_AGAINST_LOD) && !hasFlag(Flags::IS_CONTAINER))
     {
         OPTICK_EVENT("cullNode - LoD check")
 
         RenderingComponent* rComp = get<RenderingComponent>();
-        const vec2<F32>& renderRange = rComp->renderRange();
+        const vec2<F32> renderRange = rComp->renderRange();
         const F32 minDistanceSQ = SQUARED(renderRange.min) * (renderRange.min < 0.f ? -1.f : 1.f); //Keep the sign. Might need it for rays or shadows.
         const F32 maxDistanceSQ = SQUARED(renderRange.max);
 
@@ -876,9 +963,9 @@ FrustumCollision SceneGraphNode::frustumCullNode(const NodeCullParams& params,
     // We may also wish to always render this node for whatever reason (e.g. to preload shaders)
     // We may also wish to keep the sky always visible (e.g. for dynamic cubemaps)
     // We may also not have a BoundsComponent for whatever reason
-    if (!BitCompare(cullFlags, CullOptions::CULL_AGAINST_FRUSTUM) ||
+    if (!TestBit(cullFlags, CullOptions::CULL_AGAINST_FRUSTUM) ||
         hasFlag(Flags::VISIBILITY_LOCKED) ||
-        (BitCompare(cullFlags, CullOptions::KEEP_SKY_NODES) && _node->type() == SceneNodeType::TYPE_SKY) ||
+        (TestBit(cullFlags, CullOptions::KEEP_SKY_NODES) && _node->type() == SceneNodeType::TYPE_SKY) ||
         bComp == nullptr) 
     {
         return FrustumCollision::FRUSTUM_IN;
@@ -905,7 +992,7 @@ FrustumCollision SceneGraphNode::frustumCullNode(const NodeCullParams& params,
     }
 
     FrustumCollision collisionType = FrustumCollision::FRUSTUM_IN;
-    if (BitCompare(cullFlags, CullOptions::CULL_AGAINST_FRUSTUM))
+    if (TestBit(cullFlags, CullOptions::CULL_AGAINST_FRUSTUM))
     {
         OPTICK_EVENT("cullNode - Bounding Sphere & Box Frustum Test");
         // Sphere is in range, so check bounds primitives against the frustum

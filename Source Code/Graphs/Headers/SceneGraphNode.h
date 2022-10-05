@@ -48,7 +48,6 @@ class SceneState;
 class PropertyWindow;
 class BoundsComponent;
 class TransformSystem;
-class RenderPassCuller;
 class RenderPassManager;
 class RenderPassExecutor;
 class RenderingComponent;
@@ -58,6 +57,7 @@ struct RenderPackage;
 struct NodeCullParams;
 struct CameraSnapshot;
 struct RenderStagePass;
+struct RenderPassCuller;
 
 FWD_DECLARE_MANAGED_CLASS(SceneNode);
 
@@ -165,7 +165,7 @@ public:
     void postLoad();
 
     /// Find the graph nodes whom's bounding boxes intersects the given ray
-    bool intersect(const Ray& intersectionRay, const vec2<F32>& range, vector<SGNRayResult>& intersections) const;
+    bool intersect(const Ray& intersectionRay, vec2<F32> range, vector<SGNRayResult>& intersections) const;
 
     void changeUsageContext(const NodeUsageContext& newContext);
 
@@ -235,9 +235,9 @@ private:
     /// Process any events that might of queued up during the ECS Update stages
     void processEvents();
     /// Returns a collision result that determines if the node SHOULD be culled (is not visible for the current stage). 
-    FrustumCollision stateCullNode(const NodeCullParams& params, const U16 cullFlags, const F32 distanceToClosestPointSQ) const;
+    FrustumCollision stateCullNode(const NodeCullParams& params, U16 cullFlags, U32 filterMask, const F32 distanceToClosestPointSQ) const;
     FrustumCollision clippingCullNode(const NodeCullParams& params) const;
-    FrustumCollision frustumCullNode(const NodeCullParams& params, const U16 cullFlags,F32& distanceToClosestPointSQ) const;
+    FrustumCollision frustumCullNode(const NodeCullParams& params, U16 cullFlags, F32& distanceToClosestPointSQ) const;
     /// Called after preRender and after we rebuild our command buffers. Useful for modifying the command buffer that's going to be used for this RenderStagePass
     void prepareRender( RenderingComponent& rComp,
                         RenderPackage& pkg,
@@ -379,8 +379,8 @@ namespace Attorney {
         static FrustumCollision frustumCullNode(const SceneGraphNode* node, const NodeCullParams& params, const U16 cullFlags, F32& distanceToClosestPointSQ) {
             return node->frustumCullNode(params, cullFlags, distanceToClosestPointSQ);
         }  
-        static FrustumCollision stateCullNode(const SceneGraphNode* node, const NodeCullParams& params, const U16 cullFlags, F32 distanceToClosestPointSQ) {
-            return node->stateCullNode(params, cullFlags, distanceToClosestPointSQ);
+        static FrustumCollision stateCullNode(const SceneGraphNode* node, const NodeCullParams& params, const U16 cullFlags, const U32 filterMask, F32 distanceToClosestPointSQ) {
+            return node->stateCullNode(params, cullFlags, filterMask, distanceToClosestPointSQ);
         }
         static FrustumCollision clippingCullNode(const SceneGraphNode* node, const NodeCullParams& params) {
             return node->clippingCullNode(params);
@@ -391,7 +391,7 @@ namespace Attorney {
             return frustumCullNode(node, params, cullFlags, distanceToClosestPointSQ);
         }
 
-        friend class Divide::RenderPassCuller;
+        friend struct Divide::RenderPassCuller;
     };
 
     class SceneGraphNodeRenderPassManager

@@ -16,7 +16,7 @@ Quad3D::Quad3D(GFXDevice& context,
                 name,
                 {},
                 {},
-                ObjectType::QUAD_3D,
+                SceneNodeType::TYPE_QUAD_3D,
                 Object3D::ObjectFlag::OBJECT_FLAG_NONE)
 {
     const U16 indices[] = { 2, 0, 1, 1, 2, 3, 1, 0, 2, 2, 1, 3 };

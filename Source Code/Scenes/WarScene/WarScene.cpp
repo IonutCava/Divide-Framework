@@ -66,7 +66,7 @@ void WarScene::processGUI(const U64 gameDeltaTimeUS, const U64 appDeltaTimeUS ) 
     constexpr D64 FpsDisplay = Time::SecondsToMilliseconds(0.3);
     static SceneGraphNode* terrain = nullptr;
     if (terrain == nullptr) {
-        vector<SceneGraphNode*> terrains = Object3D::filterByType(_sceneGraph->getNodesByType(SceneNodeType::TYPE_OBJECT3D), ObjectType::TERRAIN);
+        vector<SceneGraphNode*> terrains =_sceneGraph->getNodesByType(SceneNodeType::TYPE_TERRAIN);
         if (!terrains.empty()) {
             terrain = terrains.front();
         }
@@ -272,12 +272,10 @@ void WarScene::updateSceneStateInternal(const U64 deltaTimeUS) {
 
     if (_terrainMode) {
         if (g_terrain == nullptr) {
-            auto objects = sceneGraph()->getNodesByType(SceneNodeType::TYPE_OBJECT3D);
-            for (SceneGraphNode* object : objects) {
-                if (object->getNode<Object3D>().geometryType() == ObjectType::TERRAIN) {
-                    g_terrain = object;
-                    break;
-                }
+            auto objects = sceneGraph()->getNodesByType(SceneNodeType::TYPE_TERRAIN);
+            if (!objects.empty())
+            {
+                g_terrain = objects.front();
             }
         } else {
             vec3<F32> camPos = playerCamera()->snapshot()._eye;

@@ -86,7 +86,7 @@ public:
     virtual GUIMessageBox* addMsgBox(const char* name,
                                      const string& title,
                                      const string& message,
-                                     const vec2<I32>& offsetFromCentre = vec2<I32>(0));
+                                     vec2<I32> offsetFromCentre = vec2<I32>(0));
 
     virtual GUIButton* addButton(const char* name,
                                  const string& text,

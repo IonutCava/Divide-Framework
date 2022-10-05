@@ -1079,7 +1079,6 @@ namespace Divide
         GFX::BeginRenderPassCommand* beginRenderPassOitCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
         beginRenderPassOitCmd->_name = "DO_OIT_PASS_1";
         beginRenderPassOitCmd->_target = params._targetOIT;
-        beginRenderPassOitCmd->_clearDescriptor._clearDepth = false;
         beginRenderPassOitCmd->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO,           GFXDevice::ScreenTargets::ACCUMULATION };
         beginRenderPassOitCmd->_clearDescriptor._clearColourDescriptors[1] = { { 1.f, 0.f, 0.f, 0.f }, GFXDevice::ScreenTargets::REVEALAGE };
         SetEnabled( beginRenderPassOitCmd->_descriptor._drawMask, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, false );
@@ -1148,7 +1147,6 @@ namespace Divide
         GFX::BeginRenderPassCommand beginRenderPassTransparentCmd{};
         beginRenderPassTransparentCmd._name = "DO_TRANSPARENCY_PASS";
         beginRenderPassTransparentCmd._target = params._target;
-        beginRenderPassTransparentCmd._clearDescriptor._clearDepth = false;
         beginRenderPassTransparentCmd._descriptor._writeLayers = params._layerParams;
         SetEnabled( beginRenderPassTransparentCmd._descriptor._drawMask, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, false );
 
@@ -1290,15 +1288,15 @@ namespace Divide
             cullParams._maxLoD = params._maxLoD;
 
             U16 cullFlags = to_base( CullOptions::DEFAULT_CULL_OPTIONS );
-            if ( !BitCompare( params._drawMask, to_U8( 1 << to_base( RenderPassParams::Flags::DRAW_DYNAMIC_NODES ) ) ) )
+            if ( !TestBit( params._drawMask, to_U8( 1 << to_base( RenderPassParams::Flags::DRAW_DYNAMIC_NODES ) ) ) )
             {
                 cullFlags |= to_base( CullOptions::CULL_DYNAMIC_NODES );
             }
-            if ( !BitCompare( params._drawMask, to_U8( 1 << to_base( RenderPassParams::Flags::DRAW_STATIC_NODES ) ) ) )
+            if ( !TestBit( params._drawMask, to_U8( 1 << to_base( RenderPassParams::Flags::DRAW_STATIC_NODES ) ) ) )
             {
                 cullFlags |= to_base( CullOptions::CULL_STATIC_NODES );
             }
-            if ( BitCompare( params._drawMask, to_U8( 1 << to_base( RenderPassParams::Flags::DRAW_SKY_NODES ) ) ) )
+            if ( TestBit( params._drawMask, to_U8( 1 << to_base( RenderPassParams::Flags::DRAW_SKY_NODES ) ) ) )
             {
                 cullFlags |= to_base( CullOptions::KEEP_SKY_NODES );
             }
@@ -1453,7 +1451,6 @@ namespace Divide
             GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
             beginRenderPassCmd->_name = "DO_POST_RENDER_PASS";
             beginRenderPassCmd->_target = params._target;
-            beginRenderPassCmd->_clearDescriptor._clearDepth = false;
             SetEnabled( beginRenderPassCmd->_descriptor._drawMask, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, false );
 
             if ( _stage == RenderStage::DISPLAY )

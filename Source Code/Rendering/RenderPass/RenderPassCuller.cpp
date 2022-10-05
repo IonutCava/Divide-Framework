@@ -21,86 +21,38 @@ namespace Divide
         constexpr U32 g_nodesPerCullingPartition = 8u;
     }
 
-    void RenderPassCuller::clear() noexcept
+    [[nodiscard]] inline U32 RenderPassCuller::FilterMask(const PlatformContext& context) noexcept
     {
-        for ( VisibleNodeList<>& cache : _visibleNodes )
-        {
-            cache.reset();
-        }
+        const auto& filter = context.config().debug.renderFilter;
+        return  (filter.primitives ? 0u : to_base(EntityFilter::PRIMITIVES)) |
+                (filter.meshes     ? 0u : to_base(EntityFilter::MESHES )) |
+                (filter.terrain    ? 0u : to_base(EntityFilter::TERRAIN )) |
+                (filter.vegetation ? 0u : to_base(EntityFilter::VEGETATION )) |
+                (filter.water      ? 0u : to_base(EntityFilter::WATER )) |
+                (filter.sky        ? 0u : to_base(EntityFilter::SKY )) |
+                (filter.particles  ? 0u : to_base(EntityFilter::PARTICLES )) |
+                (filter.decals     ? 0u : to_base(EntityFilter::DECALS ));
     }
 
-    void RenderPassCuller::postCullNodes( const PlatformContext& context, const NodeCullParams& params, const U16 cullFlags, VisibleNodeList<>& nodesInOut ) const
+    void RenderPassCuller::PostCullNodes( const PlatformContext& context, const NodeCullParams& params, const U16 cullFlags, const U32 filterMask, VisibleNodeList<>& nodesInOut )
     {
         OPTICK_EVENT();
-        {
-            OPTICK_EVENT( "Render filter cull" );
-            const auto removeNodeOfType = []( VisibleNodeList<>& nodes, const SceneNodeType snType, ObjectType objType = ObjectType::COUNT )
-            {
-                const I32 nodeCount = to_I32( nodes.size() );
-                for ( I32 i = nodeCount - 1; i >= 0; i-- )
-                {
-                    const SceneGraphNode* node = nodes.node( i )._node;
-                    assert( node != nullptr );
-                    if ( node->getNode<>().type() != snType )
-                    {
-                        continue;
-                    }
-
-                    if ( snType != SceneNodeType::TYPE_OBJECT3D || node->getNode<Object3D>().geometryType() == objType )
-                    {
-                        nodes.remove( i );
-                    }
-                }
-            };
-
-            const auto& filter = context.config().debug.renderFilter;
-            if ( !filter.primitives )
-            {
-                removeNodeOfType( nodesInOut, SceneNodeType::TYPE_OBJECT3D, ObjectType::BOX_3D );
-                removeNodeOfType( nodesInOut, SceneNodeType::TYPE_OBJECT3D, ObjectType::SPHERE_3D );
-                removeNodeOfType( nodesInOut, SceneNodeType::TYPE_OBJECT3D, ObjectType::QUAD_3D );
-                removeNodeOfType( nodesInOut, SceneNodeType::TYPE_OBJECT3D, ObjectType::PATCH_3D );
-            }
-            if ( !filter.meshes )
-            {
-                removeNodeOfType( nodesInOut, SceneNodeType::TYPE_OBJECT3D, ObjectType::MESH );
-                removeNodeOfType( nodesInOut, SceneNodeType::TYPE_OBJECT3D, ObjectType::SUBMESH );
-            }
-            if ( !filter.terrain )
-            {
-                removeNodeOfType( nodesInOut, SceneNodeType::TYPE_OBJECT3D, ObjectType::TERRAIN );
-            }
-            if ( !filter.vegetation )
-            {
-                removeNodeOfType( nodesInOut, SceneNodeType::TYPE_VEGETATION );
-            }
-            if ( !filter.water )
-            {
-                removeNodeOfType( nodesInOut, SceneNodeType::TYPE_WATER );
-            }
-            if ( !filter.sky )
-            {
-                removeNodeOfType( nodesInOut, SceneNodeType::TYPE_SKY );
-            }
-            if ( !filter.particles )
-            {
-                removeNodeOfType( nodesInOut, SceneNodeType::TYPE_PARTICLE_EMITTER );
-            }
-        }
+       
         {
             OPTICK_EVENT( "State cull" );
             const I32 nodeCount = to_I32( nodesInOut.size() );
             for ( I32 i = nodeCount - 1; i >= 0; i-- )
             {
-                const FrustumCollision collisionResult = Attorney::SceneGraphNodeRenderPassCuller::stateCullNode( nodesInOut.node( i )._node, params, cullFlags, nodesInOut.node( i )._distanceToCameraSq );
-                if ( collisionResult == FrustumCollision::FRUSTUM_OUT )
+                const VisibleNode& node = nodesInOut.node( i );
+
+                if ( Attorney::SceneGraphNodeRenderPassCuller::stateCullNode( node._node, params, cullFlags, filterMask, node._distanceToCameraSq ) == FrustumCollision::FRUSTUM_OUT )
                 {
                     nodesInOut.remove( i );
                 }
             }
         }
 
-        if ( BitCompare( cullFlags, CullOptions::CULL_AGAINST_CLIPPING_PLANES ) )
+        if ( TestBit( cullFlags, CullOptions::CULL_AGAINST_CLIPPING_PLANES ) )
         {
             OPTICK_EVENT( "Clip cull" );
             const I32 nodeCount = to_I32( nodesInOut.size() );
@@ -115,35 +67,33 @@ namespace Divide
         }
     }
 
-    void RenderPassCuller::frustumCull( const NodeCullParams& params, U16 cullFlags, const SceneGraph& sceneGraph, const SceneState& sceneState, PlatformContext& context, VisibleNodeList<>& nodesOut )
+    void RenderPassCuller::FrustumCull( const NodeCullParams& params, U16 cullFlags, const SceneGraph& sceneGraph, const SceneState& sceneState, PlatformContext& context, VisibleNodeList<>& nodesOut )
     {
         OPTICK_EVENT();
 
         nodesOut.reset();
 
         if ( sceneState.renderState().isEnabledOption( SceneRenderState::RenderOptions::RENDER_GEOMETRY ) ||
-            sceneState.renderState().isEnabledOption( SceneRenderState::RenderOptions::RENDER_WIREFRAME ) )
+             sceneState.renderState().isEnabledOption( SceneRenderState::RenderOptions::RENDER_WIREFRAME ) )
         {
-            const bool clippingPlanesSet = std::any_of( begin( params._clippingPlanes.planeState() ),
-                                                       end( params._clippingPlanes.planeState() ),
-                                                       []( const bool x )
+            for ( const bool state : params._clippingPlanes.planeState() )
             {
-                return x;
-            } );
-            if ( !clippingPlanesSet )
-            {
-                ClearBit( cullFlags, CullOptions::CULL_AGAINST_CLIPPING_PLANES );
+                if ( state )
+                {
+                    ClearBit( cullFlags, CullOptions::CULL_AGAINST_CLIPPING_PLANES );
+                    break;
+                }
             }
 
             const SceneGraphNode::ChildContainer& rootChildren = sceneGraph.getRoot()->getChildren();
 
             SharedLock<SharedMutex> r_lock( rootChildren._lock );
-            ParallelForDescriptor descriptor = {};
-            descriptor._iterCount = rootChildren._count.load();
+            const U32 iterCount = rootChildren._count.load();
 
-            if ( descriptor._iterCount > g_nodesPerCullingPartition * 2 )
+            if ( iterCount > g_nodesPerCullingPartition * 2 )
             {
-
+                ParallelForDescriptor descriptor = {};
+                descriptor._iterCount = iterCount;
                 descriptor._partitionSize = g_nodesPerCullingPartition;
                 descriptor._priority = TaskPriority::DONT_CARE;
                 descriptor._useCurrentThread = true;
@@ -151,25 +101,25 @@ namespace Divide
                 {
                     for ( U32 i = start; i < end; ++i )
                     {
-                        frustumCullNode( rootChildren._data[i], params, cullFlags, 0u, nodesOut );
+                        FrustumCullNode( rootChildren._data[i], params, cullFlags, 0u, nodesOut );
                     }
                 };
                 parallel_for( context, descriptor );
             }
             else
             {
-                for ( U32 i = 0u; i < descriptor._iterCount; ++i )
+                for ( U32 i = 0u; i < iterCount; ++i )
                 {
-                    frustumCullNode( rootChildren._data[i], params, cullFlags, 0u, nodesOut );
+                    FrustumCullNode( rootChildren._data[i], params, cullFlags, 0u, nodesOut );
                 };
             }
         }
 
-        postCullNodes( context, params, cullFlags, nodesOut );
+        PostCullNodes( context, params, cullFlags, FilterMask( context ), nodesOut );
     }
 
     /// This method performs the visibility check on the given node and all of its children and adds them to the RenderQueue
-    void RenderPassCuller::frustumCullNode( SceneGraphNode* currentNode, const NodeCullParams& params, U16 cullFlags, U8 recursionLevel, VisibleNodeList<>& nodes ) const
+    void RenderPassCuller::FrustumCullNode( SceneGraphNode* currentNode, const NodeCullParams& params, U16 cullFlags, U8 recursionLevel, VisibleNodeList<>& nodes )
     {
         OPTICK_EVENT();
 
@@ -224,7 +174,7 @@ namespace Divide
                     {
                         for ( U32 i = start; i < end; ++i )
                         {
-                            frustumCullNode( children._data[i], params, cullFlags, recursionLevel + 1, nodes );
+                            FrustumCullNode( children._data[i], params, cullFlags, recursionLevel + 1, nodes );
                         }
                     };
                     parallel_for( currentNode->context(), descriptor );
@@ -233,14 +183,14 @@ namespace Divide
                 {
                     for ( U32 i = 0u; i < descriptor._iterCount; ++i )
                     {
-                        frustumCullNode( children._data[i], params, cullFlags, recursionLevel + 1, nodes );
+                        FrustumCullNode( children._data[i], params, cullFlags, recursionLevel + 1, nodes );
                     };
                 }
             }
         }
     }
 
-    void RenderPassCuller::frustumCull( const PlatformContext& context, const NodeCullParams& params, const U16 cullFlags, const vector<SceneGraphNode*>& nodes, VisibleNodeList<>& nodesOut ) const
+    void RenderPassCuller::FrustumCull( const PlatformContext& context, const NodeCullParams& params, const U16 cullFlags, const vector<SceneGraphNode*>& nodes, VisibleNodeList<>& nodesOut )
     {
         OPTICK_EVENT();
 
@@ -255,10 +205,10 @@ namespace Divide
             }
         }
 
-        postCullNodes( context, params, cullFlags, nodesOut );
+        PostCullNodes( context, params, cullFlags, FilterMask( context ), nodesOut );
     }
 
-    void RenderPassCuller::toVisibleNodes( [[maybe_unused]] const PlatformContext& context, const Camera* camera, const vector<SceneGraphNode*>& nodes, VisibleNodeList<>& nodesOut ) const
+    void RenderPassCuller::ToVisibleNodes(const Camera* camera, const vector<SceneGraphNode*>& nodes, VisibleNodeList<>& nodesOut )
     {
         OPTICK_EVENT();
 
@@ -267,12 +217,8 @@ namespace Divide
         const vec3<F32>& cameraEye = camera->snapshot()._eye;
         for ( SceneGraphNode* node : nodes )
         {
-            F32 distanceSqToCamera = F32_MAX;
-            const BoundsComponent* bComp = node->get<BoundsComponent>();
-            if ( bComp != nullptr )
-            {
-                distanceSqToCamera = bComp->getBoundingSphere().getCenter().distanceSquared( cameraEye );
-            }
+            BoundsComponent* bComp = node->get<BoundsComponent>();
+            const F32 distanceSqToCamera = bComp != nullptr ? bComp->getBoundingSphere().getCenter().distanceSquared( cameraEye ) : F32_MAX;
             nodesOut.append( { node, distanceSqToCamera } );
         }
     }

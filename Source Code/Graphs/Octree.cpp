@@ -54,7 +54,7 @@ void Octree::handleIntersection(const IntersectionRecord& intersection) const {
 
 bool Octree::addNode(SceneGraphNode* node) {
     const U16 nodeType = 1 << to_U16(node->getNode<>().type());
-    if (node && !BitCompare(_nodeExclusionMask, nodeType) && node->HasComponents(ComponentType::BOUNDS)) {
+    if (node && !TestBit(_nodeExclusionMask, nodeType) && node->HasComponents(ComponentType::BOUNDS)) {
         ScopedLock<Mutex> w_lock(_pendingInsertLock);
         _pendingInsertion.push(node);
         _treeReady = false;
@@ -582,7 +582,7 @@ vector<IntersectionRecord> OctreeNode::getIntersection(const Frustum& frustum, c
         assert(objPtr);
         //skip any objects which don't meet our type criteria
         const U16 nodeType = 1 << to_U16(objPtr->getNode<>().type());
-        if (BitCompare(typeFilterMask, nodeType)) {
+        if (TestBit(typeFilterMask, nodeType)) {
             continue;
         }
 
@@ -626,7 +626,7 @@ vector<IntersectionRecord> OctreeNode::getIntersection(const Ray& intersectRay, 
         assert(objPtr);
         //skip any objects which don't meet our type criteria
         const U16 nodeType = 1 << to_U16(objPtr->getNode<>().type());
-        if (BitCompare(typeFilterMask, nodeType)) {
+        if (TestBit(typeFilterMask, nodeType)) {
             continue;
         }
 

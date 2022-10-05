@@ -104,7 +104,7 @@ bool MouseMoveEvent::wheelEvent() const noexcept {
     return _wheelEvent;
 }
 
-void MouseMoveEvent::absolutePos(const vec2<I32>& newPos) noexcept {
+void MouseMoveEvent::absolutePos(const vec2<I32> newPos) noexcept {
     _stateIn.X.abs = newPos.x;
     _stateIn.Y.abs = newPos.y;
 }

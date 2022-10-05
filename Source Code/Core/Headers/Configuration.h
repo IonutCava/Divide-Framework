@@ -54,6 +54,7 @@ struct Configuration final : XML::IXMLSerializable {
             bool water = true;
             bool sky = true;
             bool particles = true;
+            bool decals = true;
         } renderFilter = {};
         string memFile = "none";
     } debug = {};

@@ -141,22 +141,29 @@ private:
     std::atomic_size_t _index = 0;
 };
 
-class RenderPassCuller {
-    public:
-        void clear() noexcept;
+struct RenderPassCuller {
+    enum class EntityFilter : U8
+    {
+        PRIMITIVES = toBit( 0 ),
+        MESHES = toBit( 1 ),
+        TERRAIN = toBit( 2 ),
+        VEGETATION = toBit( 3 ),
+        WATER = toBit( 4 ),
+        SKY = toBit( 5 ),
+        PARTICLES = toBit( 6 ),
+        DECALS = toBit( 7 ),
+        COUNT = 8
+    };
 
-        void frustumCull(const NodeCullParams& params, U16 cullFlags, const SceneGraph& sceneGraph, const SceneState& sceneState, PlatformContext& context, VisibleNodeList<>& nodesOut);
-        void frustumCull(const PlatformContext& context, const NodeCullParams& params, const U16 cullFlags, const vector<SceneGraphNode*>& nodes, VisibleNodeList<>& nodesOut) const;
-        void toVisibleNodes(const PlatformContext& context, const Camera* camera, const vector<SceneGraphNode*>& nodes, VisibleNodeList<>& nodesOut) const;
+    static void FrustumCull(const NodeCullParams& params, U16 cullFlags, const SceneGraph& sceneGraph, const SceneState& sceneState, PlatformContext& context, VisibleNodeList<>& nodesOut);
+    static void FrustumCull(const PlatformContext& context, const NodeCullParams& params, const U16 cullFlags, const vector<SceneGraphNode*>& nodes, VisibleNodeList<>& nodesOut);
+    static void ToVisibleNodes(const Camera* camera, const vector<SceneGraphNode*>& nodes, VisibleNodeList<>& nodesOut);
 
-        const VisibleNodeList<>& getNodeCache(const RenderStage stage) const noexcept { return _visibleNodes[to_U32(stage)]; }
+private:
+    static [[nodiscard]] U32 FilterMask( const PlatformContext& context ) noexcept;
 
-    protected:
-        void postCullNodes(const PlatformContext& context, const NodeCullParams& params, const U16 cullFlags, VisibleNodeList<>& nodesInOut) const;
-        void frustumCullNode(SceneGraphNode* currentNode, const NodeCullParams& params, const U16 cullFlags, U8 recursionLevel, VisibleNodeList<>& nodes) const;
-
-    protected:
-        std::array<VisibleNodeList<>, to_base(RenderStage::COUNT)> _visibleNodes;
+    static void PostCullNodes(const PlatformContext& context, const NodeCullParams& params, U16 cullFlags, U32 filterMask, VisibleNodeList<>& nodesInOut);
+    static void FrustumCullNode(SceneGraphNode* currentNode, const NodeCullParams& params, U16 cullFlags, U8 recursionLevel, VisibleNodeList<>& nodes);
 };
 
 }  // namespace Divide

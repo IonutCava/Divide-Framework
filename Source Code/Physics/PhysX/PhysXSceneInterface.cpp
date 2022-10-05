@@ -224,7 +224,7 @@ void PhysXSceneInterface::updateRigidActor(physx::PxRigidActor* oldActor, physx:
     }
 }
 
-bool PhysXSceneInterface::intersect(const Ray& intersectionRay, const vec2<F32>& range, vector<SGNRayResult>& intersectionsOut) const {
+bool PhysXSceneInterface::intersect(const Ray& intersectionRay, const vec2<F32> range, vector<SGNRayResult>& intersectionsOut) const {
     physx::PxRaycastBuffer hit;
 
     const physx::PxHitFlags outputFlags = physx::PxHitFlag::eMESH_ANY | physx::PxHitFlag::ePOSITION | physx::PxHitFlag::eNORMAL;

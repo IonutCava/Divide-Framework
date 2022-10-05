@@ -64,7 +64,7 @@ class CascadedShadowMapsGenerator final : public ShadowMapGenerator {
 
     void postRender(const DirectionalLightComponent& light, GFX::CommandBuffer& bufferInOut);
 
-    SplitDepths calculateSplitDepths( DirectionalLightComponent& light, const vec2<F32>& nearFarPlanes) const noexcept;
+    SplitDepths calculateSplitDepths( DirectionalLightComponent& light, const vec2<F32> nearFarPlanes) const noexcept;
 
     void applyFrustumSplits(DirectionalLightComponent& light, const Camera& shadowCamera, U8 numSplits) const;
 

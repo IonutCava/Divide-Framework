@@ -257,7 +257,7 @@ public:  // GPU interface
     ~GFXDevice();
 
     ErrorCode initRenderingAPI(I32 argc, char** argv, RenderAPI API);
-    ErrorCode postInitRenderingAPI(const vec2<U16>& renderResolution);
+    ErrorCode postInitRenderingAPI(vec2<U16> renderResolution);
     void closeRenderingAPI();
 
     void idle(bool fast);
@@ -279,7 +279,7 @@ public:  // GPU interface
     void generateCubeMap(RenderPassParams& params,
                          I16 arrayOffset,
                          const vec3<F32>& pos,
-                         const vec2<F32>& zPlanes,
+                         vec2<F32> zPlanes,
                          GFX::CommandBuffer& commandsInOut,
                          GFX::MemoryBarrierCommand& memCmdInOut,
                          std::array<Camera*, 6>& cameras);
@@ -287,7 +287,7 @@ public:  // GPU interface
     void generateDualParaboloidMap(RenderPassParams& params,
                                    I16 arrayOffset,
                                    const vec3<F32>& pos,
-                                   const vec2<F32>& zPlanes,
+                                   vec2<F32> zPlanes,
                                    GFX::CommandBuffer& bufferInOut,
                                    GFX::MemoryBarrierCommand& memCmdInOut,
                                    std::array<Camera*, 2>& cameras);
@@ -297,7 +297,7 @@ public:  // GPU interface
     /// Returns true if the viewport was changed
            bool setViewport(const Rect<I32>& viewport);
     inline bool setViewport(I32 x, I32 y, I32 width, I32 height);
-           void setDepthRange(const vec2<F32>& depthRange);
+           void setDepthRange(vec2<F32> depthRange);
     void setPreviousViewProjectionMatrix(const mat4<F32>& prevViewMatrix, const mat4<F32> prevProjectionMatrix);
 
     void setCameraSnapshot(PlayerIndex index, const CameraSnapshot& snapshot) noexcept;
@@ -305,7 +305,7 @@ public:  // GPU interface
     const CameraSnapshot& getCameraSnapshot(PlayerIndex index) const noexcept;
 
     inline F32 renderingAspectRatio() const noexcept;
-    inline const vec2<U16>& renderingResolution() const noexcept;
+    inline vec2<U16> renderingResolution() const noexcept;
 
     /// Switch between fullscreen rendering
     void toggleFullScreen() const;

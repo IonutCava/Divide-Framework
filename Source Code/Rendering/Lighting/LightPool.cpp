@@ -179,7 +179,7 @@ namespace Divide
         return true;
     }
 
-    bool LightPool::frameEnded( const FrameEvent& evt )
+    bool LightPool::frameEnded( [[maybe_unused]] const FrameEvent& evt )
     {
         OPTICK_EVENT();
 
@@ -439,12 +439,12 @@ namespace Divide
         const auto lightSortCbk = [&eyePos]( Light* a, Light* b ) noexcept
         {
             return  a->getLightType() < b->getLightType() ||
-                (a->getLightType() == b->getLightType() &&
-                a->distanceSquared( eyePos ) < b->distanceSquared( eyePos ));
+                   (a->getLightType() == b->getLightType() &&
+                    a->distanceSquared( eyePos ) < b->distanceSquared( eyePos ));
         };
 
         OPTICK_EVENT( "LightPool::SortLights" );
-        if ( sortedLights.size() > 32 )
+        if ( sortedLights.size() > LightList::kMaxSize )
         {
             std::sort( std::execution::par_unseq, begin( sortedLights ), end( sortedLights ), lightSortCbk );
         }

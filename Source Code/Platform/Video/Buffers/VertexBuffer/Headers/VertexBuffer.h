@@ -74,11 +74,11 @@ class VertexBuffer final : public VertexDataInterface {
 
     [[nodiscard]] const vec3<F32>& getPosition(const U32 index) const;
 
-    [[nodiscard]] const vec2<F32>& getTexCoord(const U32 index) const;
+    [[nodiscard]]  vec2<F32>       getTexCoord(const U32 index) const;
 
-    [[nodiscard]] F32 getNormal(const U32 index) const;
+    [[nodiscard]]  F32 getNormal(const U32 index) const;
 
-    F32 getNormal(const U32 index, vec3<F32>& normalOut) const;
+                   F32 getNormal(const U32 index, vec3<F32>& normalOut) const;
 
     [[nodiscard]] F32 getTangent(const U32 index) const;
 
@@ -122,7 +122,7 @@ class VertexBuffer final : public VertexDataInterface {
 
     void modifyTangentValue(const U32 index, const F32 x, const F32 y, const F32 z);
 
-    void modifyTexCoordValue(const U32 index, const vec2<F32>& newValue);
+    void modifyTexCoordValue(const U32 index, vec2<F32> newValue);
 
     void modifyTexCoordValue(const U32 index, const F32 s, const F32 t);
 

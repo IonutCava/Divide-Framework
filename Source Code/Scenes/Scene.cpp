@@ -1860,7 +1860,7 @@ namespace Divide
         return false;
     }
 
-    void Scene::findHoverTarget( PlayerIndex idx, const vec2<I32>& aimPos )
+    void Scene::findHoverTarget( PlayerIndex idx, const vec2<I32> aimPos )
     {
         constexpr std::array<SceneNodeType, 6> s_ignoredNodes = {
             SceneNodeType::TYPE_TRANSFORM,
@@ -1872,7 +1872,7 @@ namespace Divide
         };
 
         const Camera* crtCamera = playerCamera( idx );
-        const vec2<U16>& renderingResolution = _context.gfx().renderingResolution();
+        const vec2<U16> renderingResolution = _context.gfx().renderingResolution();
         const vec3<F32> direction = crtCamera->unProject( to_F32( aimPos.x ),
                                                          renderingResolution.height - to_F32( aimPos.y ),
                                                          {
@@ -1934,8 +1934,7 @@ namespace Divide
                     break;
                 }
 
-                if ( crtNode->getNode().type() == SceneNodeType::TYPE_OBJECT3D &&
-                    crtNode->getNode<Object3D>().geometryType() == ObjectType::SUBMESH )
+                if ( crtNode->getNode().type() == SceneNodeType::TYPE_SUBMESH )
                 {
                     // In normal gameplay, we need to top node for the selection (i.e. a mesh for submeshe intersections)
                     // Because we use either the physics system or a recursive scenegraph intersection loop, we may end up with
@@ -2093,7 +2092,7 @@ namespace Divide
         return false;
     }
 
-    void Scene::beginDragSelection( const PlayerIndex idx, const vec2<I32>& mousePos )
+    void Scene::beginDragSelection( const PlayerIndex idx, const vec2<I32> mousePos )
     {
         const bool editorRunning = Config::Build::ENABLE_EDITOR ? _context.editor().running() : false;
 
@@ -2109,7 +2108,7 @@ namespace Divide
         data._sourceViewport = editorRunning ? _context.gfx().activeViewport() : _context.mainWindow().renderingViewport();
         if ( data._sourceViewport.contains( mousePos ) )
         {
-            const vec2<U16>& resolution = _context.gfx().renderingResolution();
+            const vec2<U16> resolution = _context.gfx().renderingResolution();
             data._targetViewport.set( 0, 0, resolution.width, resolution.height );
             data._startDragPos = COORD_REMAP( mousePos, data._sourceViewport, data._targetViewport );
             data._endDragPos = data._startDragPos;

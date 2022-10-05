@@ -68,8 +68,8 @@ class QuadtreeNode {
 
     /// recursive node building function
     void build(U8 depth,
-               const vec2<U16>& pos,
-               const vec2<U16>& HMsize,
+               vec2<U16> pos,
+               vec2<U16> HMsize,
                U32 targetChunkDimension,
                Terrain* terrain,
                U32& chunkCount);

@@ -76,7 +76,7 @@ namespace Divide {
 
         void clearData(const UColour4& clearColour, U8 level) const noexcept override;
 
-        void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const noexcept override;
+        void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, vec2<I32> depthRange) const noexcept override;
 
         TextureReadbackData readData(U16 mipLevel, GFXDataFormat desiredFormat) const noexcept override;
 
@@ -94,7 +94,7 @@ namespace Divide {
         void prepareTextureData(U16 width, U16 height, U16 depth, bool emptyAllocation) override;
         void submitTextureData() override;
         void generateTextureMipmap(VkCommandBuffer cmd, U8 baseLevel);
-        void clearDataInternal(const UColour4& clearColour, U8 level, bool clearRect, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const;
+        void clearDataInternal(const UColour4& clearColour, U8 level, bool clearRect, const vec4<I32>& rectToClear, vec2<I32> depthRange) const;
 
     private:
         vector<CachedImageView> _imageViewCache;

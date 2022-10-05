@@ -42,47 +42,20 @@ namespace Divide {
 class BoundingBox;
 enum class RigidBodyShape : U8;
 
-enum class ObjectType : U8 {
-    SPHERE_3D,
-    BOX_3D,
-    QUAD_3D,
-    PATCH_3D,
-    MESH,
-    SUBMESH,
-    TERRAIN,
-    DECAL,
-    COUNT
-};
+FORCE_INLINE [[nodiscard]] constexpr PrimitiveTopology GetGeometryBufferType(const SceneNodeType type) noexcept {
+    if ( Is3DObject( type ) )
+    {
+        switch (type) {
+            case SceneNodeType::TYPE_BOX_3D:
+            case SceneNodeType::TYPE_MESH:
+            case SceneNodeType::TYPE_SUBMESH: return PrimitiveTopology::TRIANGLES;
+        }
 
-namespace Names {
-    static const char* objectType[] = {
-        "SPHERE_3D", "BOX_3D", "QUAD_3D", "PATCH_3D", "MESH", "SUBMESH", "TERRAIN", "DECAL", "UNKNOW",
-    };
-};
-
-static_assert(ArrayCount(Names::objectType) == to_base(ObjectType::COUNT) + 1, "ObjectType name array out of sync!");
-
-FORCE_INLINE constexpr bool IsPrimitive(const ObjectType type) noexcept {
-    return type == ObjectType::BOX_3D ||
-           type == ObjectType::QUAD_3D ||
-           type == ObjectType::PATCH_3D ||
-           type == ObjectType::SPHERE_3D;
-}
-
-FORCE_INLINE [[nodiscard]] constexpr PrimitiveTopology GetGeometryBufferType(const ObjectType type) noexcept {
-    switch (type) {
-        case ObjectType::BOX_3D:
-        case ObjectType::MESH:
-        case ObjectType::SUBMESH: return PrimitiveTopology::TRIANGLES;
+        return PrimitiveTopology::TRIANGLE_STRIP;
     }
 
-    return PrimitiveTopology::TRIANGLE_STRIP;
+    return PrimitiveTopology::COUNT;
 }
-
-namespace TypeUtil {
-    [[nodiscard]] const char* ObjectTypeToString(const ObjectType objectType) noexcept;
-    [[nodiscard]] ObjectType StringToObjectType(const string& name);
-};
 
 class Object3D : public SceneNode {
    public:
@@ -94,8 +67,8 @@ class Object3D : public SceneNode {
         COUNT = 3
     };
 
-    explicit Object3D(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str256& name, const ResourcePath& resourceName, const ResourcePath& resourceLocation, ObjectType type, U32 flagMask);
-    explicit Object3D(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str256& name, const ResourcePath& resourceName, const ResourcePath& resourceLocation, ObjectType type, ObjectFlag flag);
+    explicit Object3D(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str256& name, const ResourcePath& resourceName, const ResourcePath& resourceLocation, SceneNodeType type, U32 flagMask);
+    explicit Object3D(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str256& name, const ResourcePath& resourceName, const ResourcePath& resourceLocation, SceneNodeType type, ObjectFlag flag);
 
     virtual ~Object3D() = default;
 
@@ -110,7 +83,7 @@ class Object3D : public SceneNode {
     }
 
     bool getObjectFlag(const ObjectFlag flag) const noexcept {
-        return BitCompare(_geometryFlagMask, flag);
+        return TestBit(_geometryFlagMask, flag);
     }
 
     U32 getObjectFlagMask() const noexcept {
@@ -162,8 +135,6 @@ class Object3D : public SceneNode {
                                                cend(triangles));
     }
 
-    [[nodiscard]] static vector<SceneGraphNode*> filterByType(const vector<SceneGraphNode*>& nodes, ObjectType filter);
-
     [[nodiscard]] bool saveCache(ByteBuffer& outputBuffer) const override;
     [[nodiscard]] bool loadCache(ByteBuffer& inputBuffer) override;
 
@@ -171,7 +142,6 @@ class Object3D : public SceneNode {
     void loadFromXML(const boost::property_tree::ptree& pt)  override;
 
     PROPERTY_RW(bool, geometryDirty, true);
-    PROPERTY_R(ObjectType, geometryType, ObjectType::COUNT);
     PROPERTY_R_IW(bool, playAnimationsOverride, false);
 
    protected:

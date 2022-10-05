@@ -180,7 +180,6 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
             GFX::BeginRenderPassCommand beginRenderPassCmd{};
             beginRenderPassCmd._target = _smaaWeights._targetID;
             beginRenderPassCmd._name = "DO_SMAA_WEIGHT_PASS";
-            beginRenderPassCmd._clearDescriptor._clearDepth = true;
             beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, RTColourAttachmentSlot::SLOT_0 };
             GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 

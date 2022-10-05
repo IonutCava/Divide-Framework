@@ -55,7 +55,7 @@ namespace Divide
 
         [[nodiscard]] bool create() override;
 
-        void readData(const vec4<U16>& rect, GFXImageFormat imageFormat, GFXDataFormat dataType, std::pair<bufferPtr, size_t> outData) const noexcept override;
+        void readData(vec4<U16> rect, GFXImageFormat imageFormat, GFXDataFormat dataType, std::pair<bufferPtr, size_t> outData) const noexcept override;
 
         void blitFrom(RenderTarget* source, const RTBlitParams& params) noexcept override;
 

@@ -26,8 +26,8 @@ QuadtreeNode::~QuadtreeNode()
 }
 
 void QuadtreeNode::build(const U8 depth,
-                         const vec2<U16>& pos,
-                         const vec2<U16>& HMsize,
+                         const vec2<U16> pos,
+                         const vec2<U16> HMsize,
                          const U32 targetChunkDimension,
                          Terrain* const terrain,
                          U32& chunkCount)

@@ -294,11 +294,11 @@ void glTexture::clearData(const UColour4& clearColour, const U8 level) const {
     clearDataInternal(clearColour, level, false, {}, {});
 }
 
-void glTexture::clearSubData(const UColour4& clearColour, const U8 level, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const {
+void glTexture::clearSubData(const UColour4& clearColour, const U8 level, const vec4<I32>& rectToClear, const vec2<I32> depthRange) const {
     clearDataInternal(clearColour, level, true, rectToClear, depthRange);
 }
 
-void glTexture::clearDataInternal(const UColour4& clearColour, U8 level, bool clearRect, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const{
+void glTexture::clearDataInternal(const UColour4& clearColour, U8 level, bool clearRect, const vec4<I32>& rectToClear, const vec2<I32> depthRange) const{
     FColour4 floatData;
     vec4<U16> shortData;
     vec4<U32> intData;

@@ -61,7 +61,7 @@ class TerrainChunk {
    public:
     TerrainChunk(Terrain* parentTerrain, QuadtreeNode& parentNode) noexcept;
 
-    void load(U8 depth, const vec2<U32>& pos, U32 targetChunkDimension, const vec2<U32>& HMSize, BoundingBox& bbInOut);
+    void load(U8 depth, const vec2<U32> pos, U32 targetChunkDimension, vec2<U32> HMSize, BoundingBox& bbInOut);
 
     [[nodiscard]] U32 ID() const noexcept { return _ID; }
 

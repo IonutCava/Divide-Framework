@@ -47,7 +47,6 @@ namespace Divide {
 namespace {
     I64 DefaultObjectIndex = 0u;
     SceneGraphNodeDescriptor g_nodeDescriptor;
-    SceneNodeType g_currentNodeType = SceneNodeType::TYPE_OBJECT3D;
 
     static ResourcePath g_scenePath;
 
@@ -262,7 +261,6 @@ void MenuBar::draw() {
         static bool doubleSided = true;
 
         const auto createPrimitive = [&]() {
-            g_currentNodeType = SceneNodeType::TYPE_OBJECT3D;
             g_nodeDescriptor._componentMask = to_U32(ComponentType::TRANSFORM) |
                                               to_U32(ComponentType::BOUNDS) |
                                               to_U32(ComponentType::RIGID_BODY) |
@@ -277,13 +275,13 @@ void MenuBar::draw() {
             ResourceCache* parentCache = _context.kernel().resourceCache();
             ResourceDescriptor nodeDescriptor(g_nodeDescriptor._name + "_n");
             switch (_newPrimitiveType) {
-                case ObjectType::SPHERE_3D:
+                case SceneNodeType::TYPE_SPHERE_3D:
                 {
                     nodeDescriptor.ID(resolution);
                     nodeDescriptor.enumValue(Util::FLOAT_TO_UINT(sphereRadius));
                     g_nodeDescriptor._node = CreateResource<Sphere3D>(parentCache, nodeDescriptor);
                 } break;
-                case ObjectType::BOX_3D:
+                case SceneNodeType::TYPE_BOX_3D:
                 {
                     nodeDescriptor.data(
                         {
@@ -294,7 +292,7 @@ void MenuBar::draw() {
                     );
                     g_nodeDescriptor._node = CreateResource<Box3D>(parentCache, nodeDescriptor);
                 } break;
-                case ObjectType::QUAD_3D:
+                case SceneNodeType::TYPE_QUAD_3D:
                 {
                     P32 quadMask;
                     quadMask.i = 0;
@@ -324,16 +322,16 @@ void MenuBar::draw() {
                 g_nodeDescriptor._node.reset();
             }
 
-            _newPrimitiveType = ObjectType::COUNT;
+            _newPrimitiveType = SceneNodeType::COUNT;
         };
 
-        if (_newPrimitiveType != ObjectType::COUNT) {
+        if (_newPrimitiveType != SceneNodeType::COUNT) {
             if (modifierPressed) {
                 createPrimitive();
             } else {
                 Util::OpenCenteredPopup("Create Primitive");
                 if (ImGui::BeginPopupModal("Create Primitive", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-                    ImGui::Text(Util::StringFormat("Create a new [ %s ]?", TypeUtil::ObjectTypeToString(_newPrimitiveType)).c_str());
+                    ImGui::Text("Create a new [ %s ]?", Names::sceneNodeType[to_base(_newPrimitiveType)]);
                     ImGui::Separator();
 
                     static char buf[64];
@@ -342,21 +340,21 @@ void MenuBar::draw() {
                     }
                 
                     switch (_newPrimitiveType) {
-                        case ObjectType::SPHERE_3D:
+                        case SceneNodeType::TYPE_SPHERE_3D:
                             ImGui::InputFloat("Radius", &sphereRadius);
                             ImGui::InputScalar("Resolution", ImGuiDataType_U32, &resolution);
                             break;
-                        case ObjectType::BOX_3D:
+                        case SceneNodeType::TYPE_BOX_3D:
                             Util::DrawVec<F32, 3, false>(ImGuiDataType_Float, "Side length", Util::FieldLabels, sides._v, false, false, 0.1f, 0.001f, 10000.f);
                             break;
-                        case ObjectType::QUAD_3D:
+                        case SceneNodeType::TYPE_QUAD_3D:
                             Util::DrawVec<F32, 2, false>(ImGuiDataType_Float, "Side length", Util::FieldLabels, sides._v, false, false, 0.1f, 0.001f, 10000.f);
                             ImGui::Checkbox("Double Sided", &doubleSided);
                             break;
                     }
                     if (ImGui::Button("Cancel", ImVec2(120, 0))) {
                         ImGui::CloseCurrentPopup();
-                        _newPrimitiveType = ObjectType::COUNT;
+                        _newPrimitiveType = SceneNodeType::COUNT;
                     }
                     ImGui::SetItemDefaultFocus();
                     ImGui::SameLine();
@@ -366,7 +364,7 @@ void MenuBar::draw() {
                     if (ImGui::Button("Create", ImVec2(120, 0))) {
                         createPrimitive();
                         ImGui::CloseCurrentPopup();
-                        _newPrimitiveType = ObjectType::COUNT;
+                        _newPrimitiveType = SceneNodeType::COUNT;
                     }
                     if (g_nodeDescriptor._name.empty()) {
                         PopReadOnly();
@@ -611,21 +609,21 @@ void MenuBar::drawObjectMenu(const bool modifierPressed) {
         if (ImGui::BeginMenu("New Primitive")) {
             if (ImGui::MenuItem("Sphere")) {
                 g_nodeDescriptor = {};
-                _newPrimitiveType = ObjectType::SPHERE_3D;
+                _newPrimitiveType = SceneNodeType::TYPE_SPHERE_3D;
             }
             if (modifierPressed) {
                 Util::AddUnderLine();
             }
             if (ImGui::MenuItem("Box")) {
                 g_nodeDescriptor = {};
-                _newPrimitiveType = ObjectType::BOX_3D;
+                _newPrimitiveType = SceneNodeType::TYPE_BOX_3D;
             }
             if (modifierPressed) {
                 Util::AddUnderLine();
             }
             if (ImGui::MenuItem("Plane")) {
                 g_nodeDescriptor = {};
-                _newPrimitiveType = ObjectType::QUAD_3D;
+                _newPrimitiveType = SceneNodeType::TYPE_QUAD_3D;
             }
             if (modifierPressed) {
                 Util::AddUnderLine();
@@ -770,6 +768,9 @@ void MenuBar::drawDebugMenu([[maybe_unused]] const bool modifierPressed) {
                 configDirty = true;
             }
             if (ImGui::MenuItem("WATER", "", &renderFilters.water)) {
+                configDirty = true;
+            }
+            if (ImGui::MenuItem("DECALS", "", &renderFilters.decals)) {
                 configDirty = true;
             }
             if (configDirty) {

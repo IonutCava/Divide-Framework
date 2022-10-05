@@ -90,22 +90,22 @@ namespace Divide {
                 } else if (mask == to_base(ShaderStageVisibility::COMPUTE)) {
                     ret = VK_SHADER_STAGE_COMPUTE_BIT;
                 } else {
-                    if (BitCompare(mask, ShaderStageVisibility::VERTEX)) {
+                    if (TestBit(mask, ShaderStageVisibility::VERTEX)) {
                         ret |= VK_SHADER_STAGE_VERTEX_BIT;
                     }
-                    if (BitCompare(mask, ShaderStageVisibility::GEOMETRY)) {
+                    if (TestBit(mask, ShaderStageVisibility::GEOMETRY)) {
                         ret |= VK_SHADER_STAGE_GEOMETRY_BIT;
                     }
-                    if (BitCompare(mask, ShaderStageVisibility::TESS_CONTROL)) {
+                    if (TestBit(mask, ShaderStageVisibility::TESS_CONTROL)) {
                         ret |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
                     }
-                    if (BitCompare(mask, ShaderStageVisibility::TESS_EVAL)) {
+                    if (TestBit(mask, ShaderStageVisibility::TESS_EVAL)) {
                         ret |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
                     }
-                    if (BitCompare(mask, ShaderStageVisibility::FRAGMENT)) {
+                    if (TestBit(mask, ShaderStageVisibility::FRAGMENT)) {
                         ret |= VK_SHADER_STAGE_FRAGMENT_BIT;
                     }
-                    if (BitCompare(mask, ShaderStageVisibility::COMPUTE)) {
+                    if (TestBit(mask, ShaderStageVisibility::COMPUTE)) {
                         ret |= VK_SHADER_STAGE_COMPUTE_BIT;
                     }
                 }
@@ -654,7 +654,7 @@ namespace Divide {
         }
 
         vkDeviceWaitIdle(_device->getVKDevice());
-        const ErrorCode err = _swapChain->create(BitCompare(window.flags(), WindowFlags::VSYNC),
+        const ErrorCode err = _swapChain->create(TestBit(window.flags(), WindowFlags::VSYNC),
                                                  _context.context().config().runtime.adaptiveSync,
                                                  _surface);
 

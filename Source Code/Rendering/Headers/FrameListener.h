@@ -54,9 +54,13 @@ enum class FrameEventType : U8 {
 };
 
 struct FrameEvent {
-    U64 _timeSinceLastEventUS;
-    U64 _timeSinceLastFrameUS;
-    U64 _currentTimeUS;
+    struct Time {
+        struct Impl {
+            U64 _deltaTimeUS;
+            U64 _currentTimeUS;
+        } _app, _game;
+    } _time; 
+
     FrameEventType _type;
 };
 

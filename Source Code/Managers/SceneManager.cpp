@@ -137,8 +137,6 @@ namespace Divide
             {
                 _sceneGraphCullTimers[i] = &Time::ADD_TIMER( Util::StringFormat( "SceneGraph cull timer: %s", TypeUtil::RenderStageToString( static_cast<RenderStage>(i) ) ).c_str() );
             }
-
-            _renderPassCuller = MemoryManager_NEW RenderPassCuller();
             _init = true;
         }
         else
@@ -157,7 +155,6 @@ namespace Divide
             // Console::printfn(Locale::Get("SCENE_MANAGER_DELETE"));
             Console::printfn( Locale::Get( _ID( "SCENE_MANAGER_REMOVE_SCENES" ) ) );
             MemoryManager::DELETE( _scenePool );
-            MemoryManager::DELETE( _renderPassCuller );
             _recast.reset();
             _platformContext = nullptr;
             _init = false;
@@ -287,7 +284,6 @@ namespace Divide
                 _scenePool->deleteScene( sceneToUnload != nullptr ? sceneToUnload->getGUID() : -1 );
             }
 
-            _renderPassCuller->clear();
             _parent.platformContext().app().timer().resetFPSCounter();
 
         } );
@@ -441,7 +437,7 @@ namespace Divide
 
         const auto& sceneGraph = getActiveScene().sceneGraph();
         const vec3<F32>& eye = camera.snapshot()._eye;
-        const vec2<F32>& zPlanes = camera.snapshot()._zPlanes;
+        const vec2<F32>  zPlanes = camera.snapshot()._zPlanes;
 
         SGNIntersectionParams intersectionParams = {};
         intersectionParams._includeTransformNodes = false;
@@ -477,7 +473,7 @@ namespace Divide
         {
             I64 parentNodeGUID = -1;
             const I64 nodeGUID = node->getGUID();
-            if ( node->getNode().type() == SceneNodeType::TYPE_OBJECT3D )
+            if ( Is3DObject( node->getNode().type() ) )
             {
                 parentNodeGUID = node->parent()->getGUID();
             }
@@ -488,11 +484,11 @@ namespace Divide
         {
             assert( node != nullptr );
             const SceneNode& sNode = node->getNode();
-            if ( sNode.type() == SceneNodeType::TYPE_OBJECT3D )
+            if ( Is3DObject( sNode.type() ))
             {
                 auto* sComp = node->get<SelectionComponent>();
                 if ( sComp == nullptr &&
-                    (sNode.type() == SceneNodeType::TYPE_OBJECT3D && node->getNode<Object3D>().geometryType() == ObjectType::SUBMESH) )
+                    (sNode.type() == SceneNodeType::TYPE_SUBMESH) )
                 {
                     if ( node->parent() != nullptr )
                     {
@@ -562,7 +558,7 @@ namespace Divide
                 while ( true )
                 {
                     const SceneNode& node = parsedNode->getNode();
-                    if ( node.type() == SceneNodeType::TYPE_OBJECT3D && static_cast<const Object3D&>(node).geometryType() == ObjectType::SUBMESH )
+                    if ( node.type() == SceneNodeType::TYPE_SUBMESH )
                     {
                         parsedNode = parsedNode->parent();
                     }
@@ -757,14 +753,13 @@ namespace Divide
         return LoadSave::loadNodeFromXML( getActiveScene(), targetNode );
     }
 
+    
     void SceneManager::getSortedReflectiveNodes( const Camera* camera, const RenderStage stage, const bool inView, VisibleNodeList<>& nodesOut ) const
     {
         OPTICK_EVENT();
 
-        ScopedLock<Mutex> w_lock( s_searchNodesLock );
-
         static vector<SceneGraphNode*> allNodes = {};
-        getActiveScene().sceneGraph()->getNodesByType( { SceneNodeType::TYPE_WATER, SceneNodeType::TYPE_OBJECT3D }, allNodes );
+        getActiveScene().sceneGraph()->getNodesByType( { SceneNodeType::TYPE_WATER, SceneNodeType::TYPE_SUBMESH, SceneNodeType::TYPE_SPHERE_3D, SceneNodeType::TYPE_BOX_3D, SceneNodeType::TYPE_QUAD_3D }, allNodes );
 
         erase_if( allNodes,
                  []( SceneGraphNode* node ) noexcept ->  bool
@@ -782,11 +777,11 @@ namespace Divide
             cullParams._frustum = &camera->getFrustum();
             cullParams._cullMaxDistance = camera->snapshot()._zPlanes.max;
 
-            _renderPassCuller->frustumCull( parent().platformContext(), cullParams, to_base( CullOptions::DEFAULT_CULL_OPTIONS ), allNodes, nodesOut );
+            RenderPassCuller::FrustumCull( parent().platformContext(), cullParams, to_base( CullOptions::DEFAULT_CULL_OPTIONS ), allNodes, nodesOut );
         }
         else
         {
-            _renderPassCuller->toVisibleNodes( parent().platformContext(), camera, allNodes, nodesOut );
+            RenderPassCuller::ToVisibleNodes( camera, allNodes, nodesOut );
         }
     }
 
@@ -794,10 +789,8 @@ namespace Divide
     {
         OPTICK_EVENT();
 
-        ScopedLock<Mutex> w_lock( s_searchNodesLock );
-
         static vector<SceneGraphNode*> allNodes = {};
-        getActiveScene().sceneGraph()->getNodesByType( { SceneNodeType::TYPE_WATER, SceneNodeType::TYPE_OBJECT3D }, allNodes );
+        getActiveScene().sceneGraph()->getNodesByType( { SceneNodeType::TYPE_WATER, SceneNodeType::TYPE_SUBMESH, SceneNodeType::TYPE_SPHERE_3D, SceneNodeType::TYPE_BOX_3D, SceneNodeType::TYPE_QUAD_3D }, allNodes );
 
         erase_if( allNodes,
                  []( SceneGraphNode* node ) noexcept ->  bool
@@ -814,11 +807,11 @@ namespace Divide
             cullParams._frustum = &camera->getFrustum();
             cullParams._cullMaxDistance = camera->snapshot()._zPlanes.max;
 
-            _renderPassCuller->frustumCull( parent().platformContext(), cullParams, to_base( CullOptions::DEFAULT_CULL_OPTIONS ), allNodes, nodesOut );
+            RenderPassCuller::FrustumCull( parent().platformContext(), cullParams, to_base( CullOptions::DEFAULT_CULL_OPTIONS ), allNodes, nodesOut );
         }
         else
         {
-            _renderPassCuller->toVisibleNodes( parent().platformContext(), camera, allNodes, nodesOut );
+            RenderPassCuller::ToVisibleNodes( camera, allNodes, nodesOut );
         }
     }
 
@@ -850,7 +843,7 @@ namespace Divide
         Time::ScopedTimer timer( *_sceneGraphCullTimers[to_U32( params._stage )] );
 
         const Scene& activeScene = getActiveScene();
-        _renderPassCuller->frustumCull( params, cullFlags, *activeScene.sceneGraph(), *activeScene.state(), _parent.platformContext(), nodesOut );
+        RenderPassCuller::FrustumCull( params, cullFlags, *activeScene.sceneGraph(), *activeScene.state(), _parent.platformContext(), nodesOut );
 
         if ( params._stage == RenderStage::DISPLAY )
         {

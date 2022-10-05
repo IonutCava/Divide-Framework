@@ -22,6 +22,7 @@ bool Configuration::fromXML(const char* xmlFile) {
         GET_PARAM(debug.renderFilter.water);
         GET_PARAM(debug.renderFilter.sky);
         GET_PARAM(debug.renderFilter.particles);
+        GET_PARAM(debug.renderFilter.decals);
         GET_PARAM(debug.useTextureDDSCache);
         GET_PARAM(debug.memFile);
         GET_PARAM(language);
@@ -177,6 +178,7 @@ bool Configuration::toXML(const char* xmlFile) const {
         PUT_PARAM(debug.renderFilter.water);
         PUT_PARAM(debug.renderFilter.sky);
         PUT_PARAM(debug.renderFilter.particles);
+        PUT_PARAM(debug.renderFilter.decals);
         PUT_PARAM(debug.useTextureDDSCache);
         PUT_PARAM(debug.memFile);
         PUT_PARAM(language);

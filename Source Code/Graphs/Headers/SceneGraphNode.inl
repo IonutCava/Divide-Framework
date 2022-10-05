@@ -45,7 +45,7 @@ namespace Divide {
     }
 
     inline [[nodiscard]] bool SceneGraphNode::hasFlag(const Flags flag) const noexcept {
-        return BitCompare(_nodeFlags, flag); 
+        return TestBit(_nodeFlags, flag); 
     }
 
     template <>

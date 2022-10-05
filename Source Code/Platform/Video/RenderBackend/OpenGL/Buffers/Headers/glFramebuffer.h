@@ -71,7 +71,7 @@ class glFramebuffer final : public RenderTarget {
 
     void setMipLevel(U16 writeLevel);
 
-    void readData(const vec4<U16>& rect,
+    void readData(vec4<U16> rect,
                   GFXImageFormat imageFormat,
                   GFXDataFormat dataType,
                   std::pair<bufferPtr, size_t> outData) const override;

@@ -63,25 +63,25 @@ namespace Divide
             DIVIDE_ASSERT( comp->_materialInstance != nullptr );
 
             bool packagesCleared = false;
-            if ( BitCompare( comp->_materialUpdateMask, MaterialUpdateResult::NEW_SHADER ) ||
-                 BitCompare( comp->_materialUpdateMask, MaterialUpdateResult::NEW_CULL ) )
+            if ( TestBit( comp->_materialUpdateMask, MaterialUpdateResult::NEW_SHADER ) ||
+                 TestBit( comp->_materialUpdateMask, MaterialUpdateResult::NEW_CULL ) )
             {
                 comp->clearDrawPackages();
                 comp->_materialInstance->clearRenderStates();
                 packagesCleared = true;
             }
 
-            if ( BitCompare( comp->_materialUpdateMask, MaterialUpdateResult::NEW_CULL ) )
+            if ( TestBit( comp->_materialUpdateMask, MaterialUpdateResult::NEW_CULL ) )
             {
                 comp->_materialInstance->updateCullState();
             }
-            if ( BitCompare( comp->_materialUpdateMask, MaterialUpdateResult::NEW_TRANSPARENCY ) )
+            if ( TestBit( comp->_materialUpdateMask, MaterialUpdateResult::NEW_TRANSPARENCY ) )
             {
                 NOP();
             }
 
-            comp->updateReflectRefractDescriptors( BitCompare( comp->_materialUpdateMask, MaterialUpdateResult::NEW_REFLECTION ),
-                                                   BitCompare( comp->_materialUpdateMask, MaterialUpdateResult::NEW_REFRACTION ) );
+            comp->updateReflectRefractDescriptors( TestBit( comp->_materialUpdateMask, MaterialUpdateResult::NEW_REFLECTION ),
+                                                   TestBit( comp->_materialUpdateMask, MaterialUpdateResult::NEW_REFRACTION ) );
         }
 
         Material::Update( microSec );

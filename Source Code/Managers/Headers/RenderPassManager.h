@@ -74,12 +74,12 @@ struct RenderPassParams
     I64 _singleNodeRenderGUID{-1};  //-1 = none;
     I32 _maxLoD = -1; //-1 = all
 
-    RTDrawDescriptor _targetDescriptorPrePass = {};
-    RTDrawDescriptor _targetDescriptorMainPass = {};
-    RTDrawDescriptor _targetDescriptorComposition = {};
+    RTDrawDescriptor _targetDescriptorPrePass{};
+    RTDrawDescriptor _targetDescriptorMainPass{};
+    RTDrawDescriptor _targetDescriptorComposition{};
 
-    RTClearDescriptor _clearDescriptorPrePass = {};
-    RTClearDescriptor _clearDescriptorMainPass = {};
+    RTClearDescriptor _clearDescriptorPrePass{};
+    RTClearDescriptor _clearDescriptorMainPass{};
 
     RenderTargetID _target = INVALID_RENDER_TARGET_ID;
     RenderTargetID _targetHIZ = INVALID_RENDER_TARGET_ID;

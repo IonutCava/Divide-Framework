@@ -69,17 +69,17 @@ void PlatformContext::terminate() {
 void PlatformContext::beginFrame(const U32 componentMask) {
     OPTICK_EVENT();
 
-    if (BitCompare(componentMask, SystemComponentType::GFXDevice)) {
+    if (TestBit(componentMask, SystemComponentType::GFXDevice)) {
         _gfx->beginFrame(*app().windowManager().mainWindow(), true);
     }
-    if (BitCompare(componentMask, SystemComponentType::SFXDevice)) {
+    if (TestBit(componentMask, SystemComponentType::SFXDevice)) {
         _sfx->beginFrame();
     }
-    if (BitCompare(componentMask, SystemComponentType::PXDevice)) {
+    if (TestBit(componentMask, SystemComponentType::PXDevice)) {
         _pfx->beginFrame();
     }
     if_constexpr(Config::Build::ENABLE_EDITOR) {
-        if (BitCompare(componentMask, SystemComponentType::Editor)) {
+        if (TestBit(componentMask, SystemComponentType::Editor)) {
             _editor->beginFrame();
         }
     }
@@ -92,26 +92,26 @@ void PlatformContext::idle(const bool fast, const U32 componentMask) {
         pool->flushCallbackQueue();
     }
 
-    if (BitCompare(componentMask, SystemComponentType::Application)) {
+    if (TestBit(componentMask, SystemComponentType::Application)) {
         _app.idle();
     }
-    if (BitCompare(componentMask, SystemComponentType::GFXDevice)) {
+    if (TestBit(componentMask, SystemComponentType::GFXDevice)) {
         _gfx->idle(fast);
     }
-    if (BitCompare(componentMask, SystemComponentType::SFXDevice)) {
+    if (TestBit(componentMask, SystemComponentType::SFXDevice)) {
         _sfx->idle();
     }
-    if (BitCompare(componentMask, SystemComponentType::PXDevice)) {
+    if (TestBit(componentMask, SystemComponentType::PXDevice)) {
         _pfx->idle();
     }
-    if (BitCompare(componentMask, SystemComponentType::GUI)) {
+    if (TestBit(componentMask, SystemComponentType::GUI)) {
         _gui->idle();
     }
-    if (BitCompare(componentMask, SystemComponentType::DebugInterface)) {
+    if (TestBit(componentMask, SystemComponentType::DebugInterface)) {
         _debug->idle();
     }
     if_constexpr(Config::Build::ENABLE_EDITOR) {
-        if (BitCompare(componentMask, SystemComponentType::Editor)) {
+        if (TestBit(componentMask, SystemComponentType::Editor)) {
             _editor->idle();
         }
     }
@@ -120,17 +120,17 @@ void PlatformContext::idle(const bool fast, const U32 componentMask) {
 void PlatformContext::endFrame(const U32 componentMask) {
     OPTICK_EVENT();
 
-    if (BitCompare(componentMask, SystemComponentType::GFXDevice)) {
+    if (TestBit(componentMask, SystemComponentType::GFXDevice)) {
         _gfx->endFrame(*app().windowManager().mainWindow(), true);
     }
-    if (BitCompare(componentMask, SystemComponentType::SFXDevice)) {
+    if (TestBit(componentMask, SystemComponentType::SFXDevice)) {
         _sfx->endFrame();
     }
-    if (BitCompare(componentMask, SystemComponentType::PXDevice)) {
+    if (TestBit(componentMask, SystemComponentType::PXDevice)) {
         _pfx->endFrame();
     }
     if_constexpr(Config::Build::ENABLE_EDITOR) {
-        if (BitCompare(componentMask, SystemComponentType::Editor)) {
+        if (TestBit(componentMask, SystemComponentType::Editor)) {
             _editor->endFrame();
         }
     }

@@ -32,17 +32,6 @@ SceneNode::~SceneNode()
     assert(_materialTemplate == nullptr);
 }
 
-string SceneNode::getTypeName() const {
-    if (_type == SceneNodeType::TYPE_OBJECT3D) {
-        const Object3D* obj = static_cast<const Object3D*>(this);
-        if (obj->geometryType() != ObjectType::COUNT) {
-            return TypeUtil::ObjectTypeToString(obj->geometryType());
-        }
-    }
-
-    return Names::sceneNodeType[to_base(_type)];
-}
-
 void SceneNode::sceneUpdate([[maybe_unused]] const U64 deltaTimeUS,
                             [[maybe_unused]] SceneGraphNode* sgn,
                             [[maybe_unused]] SceneState& sceneState)
@@ -61,7 +50,7 @@ void SceneNode::prepareRender([[maybe_unused]] SceneGraphNode* sgn,
 
 void SceneNode::postLoad(SceneGraphNode* sgn) {
     if (getEditorComponent().name().empty()) {
-        getEditorComponent().name(getTypeName());
+        getEditorComponent().name( Names::sceneNodeType[to_base( type() )] );
     }
 
     sgn->postLoad();

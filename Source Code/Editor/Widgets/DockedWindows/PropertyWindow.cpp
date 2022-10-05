@@ -62,7 +62,7 @@ namespace Divide
         {
             if ( selection != nullptr )
             {
-                return BitCompare( selection->getNode().requiredComponentMask(), to_U32( componentType ) );
+                return TestBit( selection->getNode().requiredComponentMask(), to_U32( componentType ) );
             }
 
             return false;
@@ -532,7 +532,7 @@ namespace Divide
                     ImGui::Spacing();
                 }
                 const U32 componentMask = sgnNode->componentMask();
-                if ( BitCompare( componentMask, ComponentType::ENVIRONMENT_PROBE ) )
+                if ( TestBit( componentMask, ComponentType::ENVIRONMENT_PROBE ) )
                 {
                     const EnvironmentProbeComponent* probe = sgnNode->get<EnvironmentProbeComponent>();
                     if ( probe != nullptr )
@@ -550,15 +550,15 @@ namespace Divide
                     }
                 }
                 Light* light = nullptr;
-                if ( BitCompare( componentMask, ComponentType::SPOT_LIGHT ) )
+                if ( TestBit( componentMask, ComponentType::SPOT_LIGHT ) )
                 {
                     light = sgnNode->get<SpotLightComponent>();
                 }
-                else if ( BitCompare( componentMask, ComponentType::POINT_LIGHT ) )
+                else if ( TestBit( componentMask, ComponentType::POINT_LIGHT ) )
                 {
                     light = sgnNode->get<PointLightComponent>();
                 }
-                else if ( BitCompare( componentMask, ComponentType::DIRECTIONAL_LIGHT ) )
+                else if ( TestBit( componentMask, ComponentType::DIRECTIONAL_LIGHT ) )
                 {
                     light = sgnNode->get<DirectionalLightComponent>();
                 }
@@ -786,7 +786,7 @@ namespace Divide
                 for ( U8 i = 0u; i < crtSelections._selectionCount; ++i )
                 {
                     const SceneGraphNode* sgn = node( crtSelections._selections[i] );
-                    if ( sgn != nullptr && !BitCompare( sgn->componentMask(), to_U32( type ) ) )
+                    if ( sgn != nullptr && !TestBit( sgn->componentMask(), to_U32( type ) ) )
                     {
                         missing = true;
                         break;

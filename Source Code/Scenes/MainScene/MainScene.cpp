@@ -61,7 +61,7 @@ namespace Divide
             {
                 F32 terrainHeight = 0.0f;
 
-                vector<SceneGraphNode*> terrains = Object3D::filterByType( _sceneGraph->getNodesByType( SceneNodeType::TYPE_OBJECT3D ), ObjectType::TERRAIN );
+                vector<SceneGraphNode*> terrains = _sceneGraph->getNodesByType( SceneNodeType::TYPE_TERRAIN );
                 // Mutable copy
                 vec3<F32> eyePosition = eyePos;
                 for ( SceneGraphNode* terrainNode : terrains )
@@ -136,7 +136,7 @@ namespace Divide
 
         if ( _taskTimers[to_base( TimerClass::GAME_TIME )][0] >= SunDisplay )
         {
-            vector<SceneGraphNode*> terrains = Object3D::filterByType( _sceneGraph->getNodesByType( SceneNodeType::TYPE_OBJECT3D ), ObjectType::TERRAIN );
+            vector<SceneGraphNode*> terrains = _sceneGraph->getNodesByType( SceneNodeType::TYPE_TERRAIN );
 
             //for (SceneGraphNode* terrainNode : terrains) {
                 //terrainNode.lock()->get<TransformComponent>()->setPositionY(terrainNode.lock()->get<TransformComponent>()->getPosition().y - 0.5f);
@@ -258,7 +258,7 @@ namespace Divide
             actionEntry.releaseIDs().insert( actionID );
             if ( !_input->actionList().registerInputAction( actionID, [this]( InputParams /*param*/ )
             {
-                vector<SceneGraphNode*> terrains = Object3D::filterByType( _sceneGraph->getNodesByType( SceneNodeType::TYPE_OBJECT3D ), ObjectType::TERRAIN );
+                vector<SceneGraphNode*> terrains =  _sceneGraph->getNodesByType( SceneNodeType::TYPE_TERRAIN );
 
                 for ( SceneGraphNode* terrainNode : terrains )
                 {

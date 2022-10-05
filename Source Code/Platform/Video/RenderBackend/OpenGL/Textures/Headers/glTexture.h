@@ -55,7 +55,7 @@ class glTexture final : public Texture {
     bool unload() override;
 
     void clearData(const UColour4& clearColour, U8 level) const override;
-    void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const override;
+    void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, vec2<I32> depthRange) const override;
 
     static void copy(const glTexture* source, U8 sourceSamples, const glTexture* destination, U8 destinationSamples, const CopyTexParams& params);
 
@@ -70,7 +70,7 @@ class glTexture final : public Texture {
     void prepareTextureData(U16 width, U16 height, U16 depth, bool emptyAllocation) override;
     void submitTextureData() override;
 
-    void clearDataInternal(const UColour4& clearColour, U8 level, bool clearRect, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const;
+    void clearDataInternal(const UColour4& clearColour, U8 level, bool clearRect, const vec4<I32>& rectToClear, vec2<I32> depthRange) const;
 
    private:
     GLenum _type{GL_NONE};

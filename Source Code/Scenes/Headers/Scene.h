@@ -176,7 +176,7 @@ class Scene : public Resource, public PlatformContextComponent {
         [[nodiscard]] bool resetSelection(PlayerIndex idx, const bool resetIfLocked);
         void setSelected(PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, bool recursive);
 
-        void beginDragSelection(PlayerIndex idx, const vec2<I32>& mousePos);
+        void beginDragSelection(PlayerIndex idx, vec2<I32> mousePos);
         void endDragSelection(PlayerIndex idx, bool clearSelection);
 #pragma endregion
 
@@ -269,7 +269,7 @@ class Scene : public Resource, public PlatformContextComponent {
 #pragma endregion
 
 #pragma region Player Management
-        void findHoverTarget(PlayerIndex idx, const vec2<I32>& aimPos);
+        void findHoverTarget(PlayerIndex idx, vec2<I32> aimPos);
         void clearHoverTarget(PlayerIndex idx);
         void toggleFlashlight(PlayerIndex idx);
 

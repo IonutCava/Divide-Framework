@@ -52,7 +52,7 @@ namespace Divide {
         return RelativePosition2D(RelativeValue(0.0f, to_F32(x)), RelativeValue(0.0f, to_F32(y)));
     }
 
-    inline RelativePosition2D pixelPosition(const vec2<I32>& offset) {
+    inline RelativePosition2D pixelPosition(const vec2<I32> offset) {
         return pixelPosition(offset.x, offset.y);
     }
 
@@ -60,7 +60,7 @@ namespace Divide {
         return RelativeScale2D(RelativeValue(0.0f, to_F32(x)), RelativeValue(0.0f, to_F32(y)));
     }
 
-    inline RelativeScale2D pixelScale(const vec2<I32>& scale) {
+    inline RelativeScale2D pixelScale(const vec2<I32> scale) {
         return pixelScale(scale.x, scale.y);
     }
 

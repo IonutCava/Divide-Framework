@@ -89,7 +89,7 @@ namespace Divide {
     void SolutionExplorerWindow::drawContextMenu(SceneGraphNode* sgn) {
         if (ImGui::BeginPopupContextItem("Context menu")) {
             const SceneNode& node = sgn->getNode();
-            const bool isSubMesh = node.type() == SceneNodeType::TYPE_OBJECT3D && static_cast<const Object3D&>(node).geometryType() == ObjectType::SUBMESH;
+            const bool isSubMesh = node.type() == SceneNodeType::TYPE_SUBMESH;
             const bool isRoot = sgn->parent() == nullptr;
 
             ImGui::Text(Util::StringFormat("%s [%s]", getIconForNode(sgn), sgn->name().c_str()).c_str());
@@ -685,7 +685,7 @@ namespace Divide {
                     const bool isSelected = g_currentNodeType == type;
                     const bool valid = type != SceneNodeType::TYPE_SKY &&
                                        type != SceneNodeType::TYPE_VEGETATION &&
-                                       type != SceneNodeType::TYPE_OBJECT3D;
+                                       !Is3DObject(type);
 
                     if (ImGui::Selectable(Names::sceneNodeType[t], isSelected, valid ? 0 : ImGuiSelectableFlags_Disabled))
                     {
@@ -744,7 +744,7 @@ namespace Divide {
                     PushReadOnly();
                 }
 
-                bool componentEnabled = BitCompare(componentMask, componentBit);
+                bool componentEnabled = TestBit(componentMask, componentBit);
                 const char* compLabel = TypeUtil::ComponentTypeToString(static_cast<ComponentType>(componentBit));
                 if (ImGui::Checkbox(compLabel, &componentEnabled))
                 {
@@ -879,7 +879,7 @@ namespace Divide {
             for (U8 i = 1; i < to_U8(ParticleDataProperties::COUNT) + 1; ++i)
             {
                 const U32 componentBit = 1 << i;
-                bool componentEnabled = BitCompare(componentMask, componentBit);
+                bool componentEnabled = TestBit(componentMask, componentBit);
                 const char* compLabel = Names::particleDataProperties[i - 1];
                 if (ImGui::Checkbox(compLabel, &componentEnabled))
                 {

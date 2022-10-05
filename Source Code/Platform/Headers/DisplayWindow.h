@@ -168,7 +168,7 @@ public:
 
     /// width and height get adjusted to the closest supported value
     [[nodiscard]] bool setDimensions(U16 width, U16 height);
-    [[nodiscard]] bool setDimensions(const vec2<U16>& dimensions);
+    [[nodiscard]] bool setDimensions(vec2<U16> dimensions);
 
     /// Centering is also easier via SDL
     void centerWindowPosition();
@@ -183,7 +183,7 @@ public:
     [[nodiscard]] vec2<I32> getPosition(bool global = false, bool offset = false) const;
 
            void setPosition(I32 x, I32 y, bool global = false, bool offset = false);
-    inline void setPosition(const vec2<I32>& position, bool global = false);
+    inline void setPosition(vec2<I32> position, bool global = false);
 
     [[nodiscard]] inline const char* title() const noexcept;
     template<typename... Args>

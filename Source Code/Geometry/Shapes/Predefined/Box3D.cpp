@@ -47,7 +47,7 @@ namespace {
     };
 };
 Box3D::Box3D(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const Str256& name, const vec3<F32>& size)
-    : Object3D(context, parentCache, descriptorHash, name, {}, {}, ObjectType::BOX_3D, Object3D::ObjectFlag::OBJECT_FLAG_NONE)
+    : Object3D(context, parentCache, descriptorHash, name, {}, {}, SceneNodeType::TYPE_BOX_3D, Object3D::ObjectFlag::OBJECT_FLAG_NONE)
 {
     static const vec2<F32> texCoords[4] = {
         {0.0f, 0.0f},

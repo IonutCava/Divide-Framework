@@ -195,13 +195,18 @@ void Kernel::onLoop() {
             // Update time at every render loop
             _timingData.update(Time::Game::ElapsedMicroseconds());
             FrameEvent evt = {};
+            evt._time._app._currentTimeUS = Time::App::ElapsedMicroseconds();
+            evt._time._app._deltaTimeUS = _timingData.appTimeDeltaUS();
+            evt._time._game._currentTimeUS = Time::Game::ElapsedMicroseconds();
+            evt._time._game._deltaTimeUS = _timingData.realTimeDeltaUS();
 
             // Restore GPU to default state: clear buffers and set default render state
             _platformContext.beginFrame();
             {
                 Time::ScopedTimer timer3(_frameTimer);
+
                 // Launch the FRAME_STARTED event
-                if (!frameListenerMgr().createAndProcessEvent(Time::Game::ElapsedMicroseconds(), FrameEventType::FRAME_EVENT_STARTED, evt)) {
+                if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_EVENT_STARTED, evt)) {
                     keepAlive(false);
                 }
 
@@ -211,7 +216,7 @@ void Kernel::onLoop() {
                 }
 
                 // Launch the FRAME_PROCESS event (a.k.a. the frame processing has ended event)
-                if (!frameListenerMgr().createAndProcessEvent(Time::App::ElapsedMicroseconds(), FrameEventType::FRAME_EVENT_PROCESS, evt)) {
+                if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_EVENT_PROCESS, evt)) {
                     keepAlive(false);
                 }
             }
@@ -219,7 +224,7 @@ void Kernel::onLoop() {
 
             // Launch the FRAME_ENDED event (buffers have been swapped)
 
-            if (!frameListenerMgr().createAndProcessEvent(Time::App::ElapsedMicroseconds(), FrameEventType::FRAME_EVENT_ENDED, evt)) {
+            if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_EVENT_ENDED, evt)) {
                 keepAlive(false);
             }
 
@@ -529,7 +534,7 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
 
     {
         Time::ScopedTimer time1(_preRenderTimer);
-        if (!frameListenerMgr().createAndProcessEvent(Time::App::ElapsedMicroseconds(), FrameEventType::FRAME_PRERENDER, evt)) {
+        if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_PRERENDER, evt)) {
             return false;
         }
     }
@@ -560,7 +565,7 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
         Attorney::SceneManagerKernel::currentPlayerPass(_sceneManager, deltaTimeUS, i);
         renderParams._playerPass = i;
 
-        if (!frameListenerMgr().createAndProcessEvent(deltaTimeUS, FrameEventType::FRAME_SCENERENDER_START, evt)) {
+        if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_SCENERENDER_START, evt)) {
             return false;
         }
 
@@ -573,14 +578,14 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
             _renderPassManager->render(renderParams);
         }
 
-        if (!frameListenerMgr().createAndProcessEvent(deltaTimeUS, FrameEventType::FRAME_SCENERENDER_END, evt)) {
+        if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_SCENERENDER_END, evt)) {
             return false;
         }
     }
 
     {
         Time::ScopedTimer time4(_postRenderTimer);
-        if(!frameListenerMgr().createAndProcessEvent(Time::App::ElapsedMicroseconds(), FrameEventType::FRAME_POSTRENDER, evt)) {
+        if(!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_POSTRENDER, evt)) {
             return false;
         }
     }
@@ -871,7 +876,7 @@ void Kernel::onResolutionChange(const SizeChangeParams& params) {
 }
 
 #pragma region Input Management
-vec2<I32> Kernel::remapMouseCoords(const vec2<I32>& absPositionIn, bool& remappedOut) const noexcept {
+vec2<I32> Kernel::remapMouseCoords(const vec2<I32> absPositionIn, bool& remappedOut) const noexcept {
     remappedOut = false;
     if_constexpr(Config::Build::ENABLE_EDITOR)
     {

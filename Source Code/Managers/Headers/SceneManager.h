@@ -230,7 +230,6 @@ namespace Divide
 
         [[nodiscard]] bool switchScene( const Str256& name, bool unloadPrevious, bool deferToIdle = true, bool threaded = true );
 
-
         /// Called if a mouse move event was captured by a different system (editor, gui, etc).
         /// Used to cancel scene specific mouse move tracking
         void mouseMovedExternally( const Input::MouseMoveEvent& arg );
@@ -287,11 +286,6 @@ namespace Divide
         PlatformContext* _platformContext = nullptr;
         /// Pointer to the general purpose resource cache
         ResourceCache* _resourceCache = nullptr;
-        /// Pointer to the scene graph culler that's used to determine what nodes are
-        /// visible in the current frame
-        RenderPassCuller* _renderPassCuller = nullptr;
-
-        mutable Mutex s_searchNodesLock;
 
         Task* _saveTask = nullptr;
         PlayerIndex _currentPlayerPass = 0u;
@@ -302,7 +296,7 @@ namespace Divide
         U32 _elapsedGameTimeMS = 0u;
         U64 _saveTimer = 0ULL;
 
-        std::array<Time::ProfileTimer*, to_base( RenderStage::COUNT )> _sceneGraphCullTimers = {};
+        std::array<Time::ProfileTimer*, to_base( RenderStage::COUNT )> _sceneGraphCullTimers;
         PlayerList _players = {};
         U8 _activePlayerCount = 0u;
 

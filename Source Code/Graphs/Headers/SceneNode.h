@@ -108,8 +108,6 @@ class SceneNode : public CachedResource {
     [[nodiscard]] inline SceneNodeRenderState& renderState() noexcept { return _renderState; }
     [[nodiscard]] inline const SceneNodeRenderState& renderState() const noexcept { return _renderState; }
 
-    string getTypeName() const;
-
     [[nodiscard]] inline ResourceCache* parentResourceCache() noexcept { return _parentCache; }
     [[nodiscard]] inline const ResourceCache* parentResourceCache() const noexcept { return _parentCache; }
 

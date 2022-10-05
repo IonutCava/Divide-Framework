@@ -87,7 +87,7 @@ struct MouseMoveEvent final : InputEvent {
     [[nodiscard]] bool wheelEvent() const noexcept;
 
 protected:
-    void absolutePos(const vec2<I32>& newPos) noexcept;
+    void absolutePos(vec2<I32> newPos) noexcept;
 
  private:
     MouseState _stateIn;
@@ -97,12 +97,12 @@ protected:
 namespace Attorney {
     class MouseEventKernel {
         private:
-            static void absolutePos(MouseMoveEvent& evt, const vec2<I32>& newPos) noexcept {
+            static void absolutePos(MouseMoveEvent& evt, const vec2<I32> newPos) noexcept {
                 evt.absolutePos(newPos);
                 evt._remapped = true;
             }
 
-            static void absolutePos(MouseButtonEvent& evt, const vec2<I32>& pos) noexcept {
+            static void absolutePos(MouseButtonEvent& evt, const vec2<I32> pos) noexcept {
                 evt.absPosition(pos);
                 evt._remapped = true;
             }

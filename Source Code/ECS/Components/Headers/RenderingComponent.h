@@ -133,16 +133,12 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
     /// Returns true if the specified render option is enabled
     [[nodiscard]] bool renderOptionEnabled(RenderOptions option) const noexcept;
-    /// Returns true if ALL of the options in the mask are enabled
-    [[nodiscard]] bool renderOptionsEnabledALL(U32 mask) const noexcept;
-    /// Returns true if ANY of the options in the mask are enabled
-    [[nodiscard]] bool renderOptionsEnabledANY(U32 mask) const noexcept;
                   void toggleRenderOption(RenderOptions option, bool state, bool recursive = true);
 
                          void             setMinRenderRange(F32 minRange)                        noexcept;
                          void             setMaxRenderRange(F32 maxRange)                        noexcept;
                   inline void             setRenderRange(const F32 minRange, const F32 maxRange) noexcept { setMinRenderRange(minRange); setMaxRenderRange(maxRange); }
-    [[nodiscard]] inline const vec2<F32>& renderRange()                                    const noexcept { return _renderRange; }
+    [[nodiscard]] inline vec2<F32>        renderRange()                                    const noexcept { return _renderRange; }
 
     [[nodiscard]] inline bool lodLocked(const RenderStage stage)   const noexcept { return _lodLockLevels[to_base(stage)].first; }
                   inline void lockLoD(const U8 level)                             { _lodLockLevels.fill({ true, level }); }
@@ -150,7 +146,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
                   inline void lockLoD(const RenderStage stage, U8 level) noexcept { _lodLockLevels[to_base(stage)] = { true, level }; }
                   inline void unlockLoD(const RenderStage stage)         noexcept { _lodLockLevels[to_base(stage)] = { false, to_U8(0u) }; }
     [[nodiscard]]          U8 getLoDLevel(RenderStage renderStage) const noexcept;
-    [[nodiscard]]          U8 getLoDLevel(const F32 distSQtoCenter, RenderStage renderStage, const vec4<U16>& lodThresholds);
+    [[nodiscard]]          U8 getLoDLevel(const F32 distSQtoCenter, RenderStage renderStage, vec4<U16> lodThresholds);
                          void setLoDIndexOffset(U8 lodIndex, size_t indexOffset, size_t indexCount) noexcept;
 
     void getMaterialData(NodeMaterialData& dataOut) const;
@@ -185,7 +181,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
   protected:
                   void           getCommandBuffer(RenderPackage* const pkg, GFX::CommandBuffer& bufferInOut);
     [[nodiscard]] RenderPackage& getDrawPackage(const RenderStagePass& renderStagePass);
-    [[nodiscard]] U8             getLoDLevelInternal(const F32 distSQtoCenter, RenderStage renderStage, const vec4<U16>& lodThresholds);
+    [[nodiscard]] U8             getLoDLevelInternal(const F32 distSQtoCenter, RenderStage renderStage, vec4<U16> lodThresholds);
 
     void toggleBoundsDraw(bool showAABB, bool showBS, bool showOBB, bool recursive);
     void onRenderOptionChanged(RenderOptions option, bool state);

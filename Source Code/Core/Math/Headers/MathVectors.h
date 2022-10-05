@@ -157,11 +157,11 @@ class vec2 {
     [[nodiscard]] vec2 operator/(U _i) const noexcept { if (!IS_ZERO(_i)) { return vec2(this->x / _i, this->y / _i); } return *this; }
 
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
-    [[nodiscard]] vec2 operator+(const vec2<U> &v) const noexcept { return vec2(this->x + v.x, this->y + v.y); }
+    [[nodiscard]] vec2 operator+(const vec2<U> v) const noexcept { return vec2(this->x + v.x, this->y + v.y); }
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
-    [[nodiscard]] vec2 operator-(const vec2<U> &v) const noexcept { return vec2(this->x - v.x, this->y - v.y); }
+    [[nodiscard]] vec2 operator-(const vec2<U> v) const noexcept { return vec2(this->x - v.x, this->y - v.y); }
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
-    [[nodiscard]] vec2 operator*(const vec2<U> &v) const noexcept { return vec2(this->x * v.x, this->y * v.y); }
+    [[nodiscard]] vec2 operator*(const vec2<U> v) const noexcept { return vec2(this->x * v.x, this->y * v.y); }
 
     [[nodiscard]] vec2 operator-() const noexcept { return vec2(-this->x, -this->y); }
  
@@ -175,13 +175,13 @@ class vec2 {
     vec2 &operator/=(U _f) noexcept { this->set(*this / _f); return *this; }
 
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
-    vec2 &operator*=(const vec2<U> &v) noexcept { this->set(*this * v); return *this; }
+    vec2 &operator*=(const vec2<U> v) noexcept { this->set(*this * v); return *this; }
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
-    vec2 &operator+=(const vec2<U> &v) noexcept { this->set(*this + v); return *this; }
+    vec2 &operator+=(const vec2<U> v) noexcept { this->set(*this + v); return *this; }
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
-    vec2 &operator-=(const vec2<U> &v) noexcept { this->set(*this - v); return *this; }
+    vec2 &operator-=(const vec2<U> v) noexcept { this->set(*this - v); return *this; }
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
-    vec2 &operator/=(const vec2<U> &v) noexcept { this->set(*this / v); return *this; }
+    vec2 &operator/=(const vec2<U> v) noexcept { this->set(*this / v); return *this; }
 
     template<typename U,
         typename = typename std::enable_if<std::is_integral<U>::value>::type,
@@ -253,10 +253,10 @@ class vec2 {
     [[nodiscard]] vec2 closestPointOnSegment(const vec2 &vA, const vec2 &vB);
     /// compare 2 vectors
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
-    [[nodiscard]] bool compare(const vec2<U> &v) const noexcept;
+    [[nodiscard]] bool compare(vec2<U> v) const noexcept;
     /// compare 2 vectors within the specified tolerance
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
-    [[nodiscard]] bool compare(const vec2<U> &v, U epsi) const noexcept;
+    [[nodiscard]] bool compare(vec2<U> v, U epsi) const noexcept;
     /// export the vector's components in the first 2 positions of the specified array
     [[nodiscard]] void get(T *v) const;
 
@@ -271,27 +271,27 @@ class vec2 {
 
 /// lerp between the 2 specified vectors by the specified amount
 template <typename T, typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
-[[nodiscard]] vec2<T> Lerp(const vec2<T> &u, const vec2<T> &v, U factor) noexcept;
+[[nodiscard]] vec2<T> Lerp(vec2<T> u, vec2<T> v, U factor) noexcept;
 /// lerp between the 2 specified vectors by the specified amount for each component
 template <typename T>
-[[nodiscard]] vec2<T> Lerp(const vec2<T> &u, const vec2<T> &v, const vec2<T> &factor) noexcept;
+[[nodiscard]] vec2<T> Lerp(vec2<T> u, vec2<T> v, vec2<T> factor) noexcept;
 template <typename T>
-[[nodiscard]] vec2<T> Cross(const vec2<T> &v1, const vec2<T> &v2) noexcept;
+[[nodiscard]] vec2<T> Cross(vec2<T> v1, vec2<T> v2) noexcept;
 template <typename T>
-[[nodiscard]] vec2<T> Inverse(const vec2<T> &v) noexcept;
+[[nodiscard]] vec2<T> Inverse(vec2<T> v) noexcept;
 template <typename T>
 [[nodiscard]] vec2<T> Normalize(vec2<T> &vector) noexcept;
 template <typename T>
-[[nodiscard]] vec2<T> Normalized(const vec2<T> &vector) noexcept;
+[[nodiscard]] vec2<T> Normalized(vec2<T> vector) noexcept;
 template <typename T>
-[[nodiscard]] T Dot(const vec2<T> &a, const vec2<T> &b) noexcept;
+[[nodiscard]] T Dot(vec2<T> a, vec2<T> b) noexcept;
 template <typename T>
 [[nodiscard]] void OrthoNormalize(vec2<T> &n, vec2<T> &u) noexcept;
 /// multiply a vector by a value
 template <typename T>
-[[nodiscard]] vec2<T> operator*(T fl, const vec2<T> &v) noexcept;
+[[nodiscard]] vec2<T> operator*(T fl, vec2<T> v) noexcept;
 template <typename T>
-[[nodiscard]] vec2<T> Clamped(const vec2<T>& v, const vec2<T> &min, const vec2<T> &max) noexcept;
+[[nodiscard]] vec2<T> Clamped(vec2<T> v, vec2<T> min, vec2<T> max) noexcept;
 
 /***********************************************************************
  * vec3 -  A 3-tuple used to represent things like a vector in 3D space,
@@ -315,12 +315,12 @@ class vec3 {
     template <typename U, typename V, typename W>
     vec3(U xIn, V yIn, W zIn) noexcept : x(static_cast<T>(xIn)), y(static_cast<T>(yIn)), z(static_cast<T>(zIn)) {}
     vec3(const T *v) noexcept : vec3(v[0], v[1], v[2]) {}
-    vec3(const vec2<T> &v) noexcept : vec3(v, static_cast<T>(0)) {}
-    vec3(const vec2<T> &v, T zIn) noexcept : vec3(v.x, v.y, zIn) {}
+    vec3(const vec2<T> v) noexcept : vec3(v, static_cast<T>(0)) {}
+    vec3(const vec2<T> v, T zIn) noexcept : vec3(v.x, v.y, zIn) {}
     vec3(const vec3 &v) noexcept : vec3(v._v) {}
     vec3(const vec4<T> &v) noexcept : vec3(v.x, v.y, v.z) {}
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
-    vec3(const vec2<U> &v) noexcept : vec3(v.x, v.y, static_cast<U>(0)) {}
+    vec3(const vec2<U> v) noexcept : vec3(v.x, v.y, static_cast<U>(0)) {}
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
     vec3(const vec3<U> &v) noexcept : vec3(v.x, v.y, v.z) {}
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
@@ -396,8 +396,8 @@ class vec3 {
     [[nodiscard]] vec2<T> rb() const noexcept { return vec2<T>(this->r, this->b); }
     [[nodiscard]] vec2<T> xz() const noexcept { return this->rb(); }
 
-    void rb(const vec2<T> &rb) noexcept { this->r = rb.x; this->b = rb.y; }
-    void xz(const vec2<T> &xz) noexcept { this->x = xz.x; this->z = xz.y; }
+    void rb(const vec2<T> rb) noexcept { this->r = rb.x; this->b = rb.y; }
+    void xz(const vec2<T> xz) noexcept { this->x = xz.x; this->z = xz.y; }
 
     /// set the 3 components of the vector manually using a source pointer to a (large enough) array
     void set(const T* v) noexcept { std::memcpy(&_v[0], &v[0], 3 * sizeof(T)); }
@@ -408,7 +408,7 @@ class vec3 {
     template <typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
     void set(U xIn, U yIn, U zIn) noexcept { this->x = static_cast<T>(xIn); this->y = static_cast<T>(yIn); this->z = static_cast<T>(zIn); }
     /// set the 3 components of the vector using a smaller source vector
-    void set(const vec2<T> &v)  noexcept { std::memcpy(_v, v._v, 2 * sizeof(T)); }
+    void set(const vec2<T> v)  noexcept { std::memcpy(_v, v._v, 2 * sizeof(T)); }
     /// set the 3 components of the vector using a source vector
     void set(const vec3 &v)  noexcept { std::memcpy(_v, v._v, 3 * sizeof(T)); }
     /// set the 3 components of the vector using the first 3 components of the source vector
@@ -567,14 +567,14 @@ class vec4 {
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
     vec4(U value) noexcept : vec4(value, value, value, value) {}
     vec4(const T *v) noexcept : vec4(v[0], v[1], v[2], v[3]) {}
-    vec4(const vec2<T> &v) noexcept : vec4(v, static_cast<T>(0)) {}
-    vec4(const vec2<T> &v, T zIn) noexcept : vec4(v, zIn, static_cast<T>(1)) {}
-    vec4(const vec2<T> &v, T zIn, T wIn) noexcept : vec4(v.x, v.y, zIn, wIn) {}
+    vec4(const vec2<T> v) noexcept : vec4(v, static_cast<T>(0)) {}
+    vec4(const vec2<T> v, T zIn) noexcept : vec4(v, zIn, static_cast<T>(1)) {}
+    vec4(const vec2<T> v, T zIn, T wIn) noexcept : vec4(v.x, v.y, zIn, wIn) {}
     vec4(const vec3<T> &v) noexcept : vec4(v, static_cast<T>(1)) {}
     vec4(const vec3<T> &v, T wIn) noexcept : vec4(v.x, v.y, v.z, wIn) {}
     vec4(const vec4 &v) noexcept : vec4(v._v) {}
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
-    vec4(const vec2<U> &v) noexcept : vec4(v.x, v.y, static_cast<U>(0), static_cast<U>(0)) {}
+    vec4(const vec2<U> v) noexcept : vec4(v.x, v.y, static_cast<U>(0), static_cast<U>(0)) {}
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
     vec4(const vec3<U> &v) noexcept : vec4(v.x, v.y, v.z, static_cast<U>(0)) {}
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
@@ -667,14 +667,14 @@ class vec4 {
     [[nodiscard]] vec3<T> rga() const noexcept { return vec3<T>(this->r, this->g, this->a); }
     [[nodiscard]] vec3<T> xyw() const noexcept { return this->rga(); }
 
-    void rb(const vec2<T> &rb)  noexcept { this->xz(rb); }
-    void xz(const vec2<T> &xz)  noexcept { this->xz(xz.x, xz.y); }
+    void rb(const vec2<T> rb)  noexcept { this->xz(rb); }
+    void xz(const vec2<T> xz)  noexcept { this->xz(xz.x, xz.y); }
     void xz(T xIn, T zIn) noexcept { this->x = xIn; this->z = zIn; }
-    void ra(const vec2<T> &ra)  noexcept { this->xw(ra); }
-    void xw(const vec2<T> &xw)  noexcept { this->xw(xw.x, xw.y); }
+    void ra(const vec2<T> ra)  noexcept { this->xw(ra); }
+    void xw(const vec2<T> xw)  noexcept { this->xw(xw.x, xw.y); }
     void xw(T xIn, T wIn) noexcept { this->x = xIn; this->w = wIn; }
-    void ga(const vec2<T> &ga)  noexcept { this->yw(ga); }
-    void yw(const vec2<T> &yw)  noexcept { this->yw(yw.x, yw.y); }
+    void ga(const vec2<T> ga)  noexcept { this->yw(ga); }
+    void yw(const vec2<T> yw)  noexcept { this->yw(yw.x, yw.y); }
     void yw(T yIn, T wIn) noexcept { this->y = yIn; this->w = wIn; }
     void bgr(const vec3<T> &bgr) noexcept { this->zyx(bgr); }
     void zyx(const vec3<T> &zyx) noexcept { this->z = zyx.x; this->y = zyx.y; this->x = zyx.z; }
@@ -698,9 +698,9 @@ class vec4 {
     /// set the 4 components of the vector using a smaller source vector
     void set(const vec3<T> &v, T wIn) noexcept { std::memcpy(&_v[0], &v._v[0], 3 * sizeof(T)); w = wIn; }
     /// set the 4 components of the vector using a smaller source vector
-    void set(const vec2<T> &v) noexcept { std::memcpy(&_v[0], &v._v[0], 2 * sizeof(T)); }
+    void set(const vec2<T> v) noexcept { std::memcpy(&_v[0], &v._v[0], 2 * sizeof(T)); }
     /// set the 4 components of the vector using smaller source vectors
-    void set(const vec2<T> &v1, const vec2<T> &v2) noexcept { this->set(v1.x, v1.y, v2.x, v2.y); }
+    void set(const vec2<T> v1, const vec2<T> v2) noexcept { this->set(v1.x, v1.y, v2.x, v2.y); }
     /// set all the components back to 0
     void reset() noexcept { this->set(static_cast<T>(0)); }
     /// compare 2 vectors
@@ -823,10 +823,10 @@ class Rect : public vec4<T> {
 
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
     [[nodiscard]] bool contains(U xIn, U yIn) const noexcept { return COORDS_IN_RECT(static_cast<T>(xIn), static_cast<T>(yIn), *this); }
-    [[nodiscard]] bool contains(const vec2<T>& coords) const noexcept { return contains(coords.x, coords.y); }
+    [[nodiscard]] bool contains(const vec2<T> coords) const noexcept { return contains(coords.x, coords.y); }
     [[nodiscard]] bool contains(T xIn, T yIn) const noexcept { return COORDS_IN_RECT(xIn, yIn, *this); }
     [[nodiscard]] vec2<T> clamp(T xIn, T yIn) const noexcept { CLAMP_IN_RECT(xIn, yIn, *this); return vec2<T>(xIn, yIn); }
-    [[nodiscard]] vec2<T> clamp(const vec2<T>& coords) const noexcept { return clamp(coords.x, coords.y); }
+    [[nodiscard]] vec2<T> clamp(const vec2<T> coords) const noexcept { return clamp(coords.x, coords.y); }
 };
 
 static const Rect<I32> UNIT_VIEWPORT{ 0, 0, 1, 1 };

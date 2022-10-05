@@ -7,7 +7,7 @@ namespace Divide {
 GUIMessageBox::GUIMessageBox(const string& name,
                              const string& title,
                              const string& message,
-                             const vec2<I32>& offsetFromCentre,
+                             const vec2<I32> offsetFromCentre,
                              CEGUI::Window* parent)
     : GUIElementBase(name, parent)
 {
@@ -71,7 +71,7 @@ void GUIMessageBox::setMessage(const string& message) {
     }
 }
 
-void GUIMessageBox::setOffset(const vec2<I32>& offsetFromCentre) {
+void GUIMessageBox::setOffset(const vec2<I32> offsetFromCentre) {
     if (_parent != nullptr) {
         CEGUI::UVector2 crtPosition(_msgBoxWindow->getPosition());
         crtPosition.d_x.d_offset += offsetFromCentre.x;

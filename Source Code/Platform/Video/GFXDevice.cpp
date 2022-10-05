@@ -437,7 +437,7 @@ namespace Divide
         _gpuBlock._camNeedsUpload = true;
     }
 
-    ErrorCode GFXDevice::postInitRenderingAPI( const vec2<U16>& renderResolution )
+    ErrorCode GFXDevice::postInitRenderingAPI( const vec2<U16> renderResolution )
     {
         std::atomic_uint loadTasks = 0;
         ResourceCache* cache = parent().resourceCache();
@@ -1359,7 +1359,7 @@ namespace Divide
     void GFXDevice::generateCubeMap( RenderPassParams& params,
                                      const I16 arrayOffset,
                                      const vec3<F32>& pos,
-                                     const vec2<F32>& zPlanes,
+                                     const vec2<F32> zPlanes,
                                      GFX::CommandBuffer& commandsInOut,
                                      GFX::MemoryBarrierCommand& memCmdInOut,
                                      std::array<Camera*, 6>& cameras )
@@ -1449,7 +1449,7 @@ namespace Divide
     void GFXDevice::generateDualParaboloidMap( RenderPassParams& params,
                                                const I16 arrayOffset,
                                                const vec3<F32>& pos,
-                                               const vec2<F32>& zPlanes,
+                                               const vec2<F32> zPlanes,
                                                GFX::CommandBuffer& bufferInOut,
                                                GFX::MemoryBarrierCommand& memCmdInOut,
                                                std::array<Camera*, 2>& cameras )
@@ -1634,7 +1634,7 @@ namespace Divide
 
     void GFXDevice::stepResolution( const bool increment )
     {
-        const auto compare = []( const vec2<U16>& a, const vec2<U16>& b ) noexcept -> bool
+        const auto compare = []( const vec2<U16> a, const vec2<U16> b ) noexcept -> bool
         {
             return a.x > b.x || a.y > b.y;
         };
@@ -1649,7 +1649,7 @@ namespace Divide
         {
             for ( auto it = displayModes.rbegin(); it != displayModes.rend(); ++it )
             {
-                const vec2<U16>& res = it->_resolution;
+                const vec2<U16> res = it->_resolution;
                 if ( compare( res, _renderingResolution ) )
                 {
                     found = true;
@@ -1662,7 +1662,7 @@ namespace Divide
         {
             for ( const GPUState::GPUVideoMode& mode : displayModes )
             {
-                const vec2<U16>& res = mode._resolution;
+                const vec2<U16> res = mode._resolution;
                 if ( compare( _renderingResolution, res ) )
                 {
                     found = true;
@@ -1904,7 +1904,7 @@ namespace Divide
         }
     }
 
-    void GFXDevice::setDepthRange( const vec2<F32>& depthRange )
+    void GFXDevice::setDepthRange( const vec2<F32> depthRange )
     {
         GFXShaderData::CamData& data = _gpuBlock._camData;
         if ( data._renderTargetInfo.xy != depthRange )

@@ -42,19 +42,19 @@ void ParticleData::generateParticles(const U32 particleCount, const U32 optionsM
     _endColour.clear();
 
     if (_totalCount > 0) {
-        if (BitCompare(_optionsMask, to_U32(ParticleDataProperties::PROPERTIES_POS))) {
+        if (TestBit(_optionsMask, to_U32(ParticleDataProperties::PROPERTIES_POS))) {
             _position.resize(_totalCount, vec4<F32>(0.0f));
         }
-        if (BitCompare(_optionsMask, to_U32(ParticleDataProperties::PROPERTIES_VEL))) {
+        if (TestBit(_optionsMask, to_U32(ParticleDataProperties::PROPERTIES_VEL))) {
             _velocity.resize(_totalCount, vec4<F32>(0.0f));
         }
-        if (BitCompare(_optionsMask, to_U32(ParticleDataProperties::PROPERTIES_ACC))) {
+        if (TestBit(_optionsMask, to_U32(ParticleDataProperties::PROPERTIES_ACC))) {
             _acceleration.resize(_totalCount, vec4<F32>(0.0f));
         }
-        if (BitCompare(_optionsMask, to_U32(ParticleDataProperties::PROPERTIES_COLOR))) {
+        if (TestBit(_optionsMask, to_U32(ParticleDataProperties::PROPERTIES_COLOR))) {
             _colour.resize(_totalCount, FColour4(0.0f));
         }
-        if (BitCompare(_optionsMask, to_U32(ParticleDataProperties::PROPERTIES_COLOR_TRANS))) {
+        if (TestBit(_optionsMask, to_U32(ParticleDataProperties::PROPERTIES_COLOR_TRANS))) {
             _startColour.resize(_totalCount, FColour4(0.0f));
             _endColour.resize(_totalCount, FColour4(0.0f));
         }
@@ -113,19 +113,19 @@ void ParticleData::sort() {
 }
 
 void ParticleData::swapData(const U32 indexA, const U32 indexB) {
-    if (BitCompare(_optionsMask, to_U32(ParticleDataProperties::PROPERTIES_POS))) {
+    if (TestBit(_optionsMask, to_U32(ParticleDataProperties::PROPERTIES_POS))) {
         _position[indexA].set(_position[indexB]);
     }
-    if (BitCompare(_optionsMask, to_U32(ParticleDataProperties::PROPERTIES_VEL))) {
+    if (TestBit(_optionsMask, to_U32(ParticleDataProperties::PROPERTIES_VEL))) {
         _velocity[indexA].set(_velocity[indexB]);
     }
-    if (BitCompare(_optionsMask, to_U32(ParticleDataProperties::PROPERTIES_ACC))) {
+    if (TestBit(_optionsMask, to_U32(ParticleDataProperties::PROPERTIES_ACC))) {
         _acceleration[indexA].set(_acceleration[indexB]);
     }
-    if (BitCompare(_optionsMask, to_U32(ParticleDataProperties::PROPERTIES_COLOR))) {
+    if (TestBit(_optionsMask, to_U32(ParticleDataProperties::PROPERTIES_COLOR))) {
         _colour[indexA].set(_colour[indexB]);
     }
-    if (BitCompare(_optionsMask, to_U32(ParticleDataProperties::PROPERTIES_COLOR_TRANS))) {
+    if (TestBit(_optionsMask, to_U32(ParticleDataProperties::PROPERTIES_COLOR_TRANS))) {
         _startColour[indexA].set(_startColour[indexB]);
         _endColour[indexA].set(_endColour[indexB]);
     }

@@ -153,7 +153,7 @@ namespace Divide
         }
     }
 
-    CascadedShadowMapsGenerator::SplitDepths CascadedShadowMapsGenerator::calculateSplitDepths( DirectionalLightComponent& light, const vec2<F32>& nearFarPlanes ) const noexcept
+    CascadedShadowMapsGenerator::SplitDepths CascadedShadowMapsGenerator::calculateSplitDepths( DirectionalLightComponent& light, const vec2<F32> nearFarPlanes ) const noexcept
     {
         //Between 0 and 1, change these to check the results
         constexpr F32 minDistance = 0.0f;
@@ -272,13 +272,10 @@ namespace Divide
                     for ( auto& node : prevPassResults )
                     {
                         const SceneNode& sNode = node._node->getNode();
-                        if ( sNode.type() == SceneNodeType::TYPE_OBJECT3D )
+                        if ( sNode.type() == SceneNodeType::TYPE_SUBMESH)
                         {
-                            if ( static_cast<const Object3D&>(sNode).geometryType() == ObjectType::SUBMESH )
-                            {
-                                meshAABB.add( node._node->get<BoundsComponent>()->getBoundingBox() );
-                                validResult = true;
-                            }
+                            meshAABB.add( node._node->get<BoundsComponent>()->getBoundingBox() );
+                            validResult = true;
                         }
                     }
 

@@ -25,7 +25,7 @@ TerrainChunk::TerrainChunk(Terrain* const parentTerrain,
 {
 }
 
-void TerrainChunk::load(const U8 depth, const vec2<U32>& pos, const U32 targetChunkDimension, const vec2<U32>& HMSize, BoundingBox& bbInOut) {
+void TerrainChunk::load(const U8 depth, const vec2<U32> pos, const U32 targetChunkDimension, const vec2<U32> HMSize, BoundingBox& bbInOut) {
     _xOffset = to_F32(pos.x) - HMSize.x * 0.5f;
     _yOffset = to_F32(pos.y) - HMSize.y * 0.5f;
     _sizeX = _sizeY = to_F32(targetChunkDimension);

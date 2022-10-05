@@ -95,7 +95,7 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
 
     /// API-dependent loading function that uploads ptr data to the GPU using the specified parameters
     void loadData(const ImageTools::ImageData& imageData);
-    void loadData(const Byte* data, size_t dataSize, const vec2<U16>& dimensions);
+    void loadData(const Byte* data, size_t dataSize, vec2<U16> dimensions);
     void loadData(const Byte* data, size_t dataSize, const vec3<U16>& dimensions);
 
     /// Change the number of MSAA samples for this current texture
@@ -119,7 +119,7 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     [[nodiscard]] ImageView getView(TextureType targetType, vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/, ImageUsage usage) const noexcept;
 
     virtual void clearData(const UColour4& clearColour, U8 level) const = 0;
-    virtual void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const = 0;
+    virtual void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, vec2<I32> depthRange) const = 0;
 
     // MipLevel will automatically clamped to the texture's internal limits
     [[nodiscard]] virtual TextureReadbackData readData(U16 mipLevel, GFXDataFormat desiredFormat = GFXDataFormat::COUNT) const = 0;

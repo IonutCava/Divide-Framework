@@ -51,11 +51,8 @@ class FrameListenerManager {
 
     [[nodiscard]] bool frameEvent(const FrameEvent& evt);
 
-    /// pass the current time in microseconds as the first parameter
-    void createEvent(U64 currentTimeUS, FrameEventType type, FrameEvent& evt);
-
     /// Calls createEvent and frameEvent
-    [[nodiscard]] bool createAndProcessEvent(U64 currentTimeUS, FrameEventType type, FrameEvent& evt);
+    [[nodiscard]] bool createAndProcessEvent(FrameEventType type, FrameEvent& evt);
 
   private:
 
@@ -67,13 +64,8 @@ class FrameListenerManager {
     bool framePostRender(const FrameEvent& evt);
     bool frameEnded(const FrameEvent& evt);
 
-    /// pass the current time in microseconds as the first parameter
-    /// returns the event time in microseconds
-    U64 calculateEventTime(U64 currentTimeUS, FrameEventType type);
-
    private:
     vector<FrameListener*> _listeners;
-    std::array<EventTimeMap, to_base(FrameEventType::FRAME_EVENT_ENDED) + 1> _eventTimers;
 
 };
 

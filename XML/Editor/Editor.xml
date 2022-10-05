@@ -4,7 +4,7 @@
     <showSampleWindow>false</showSampleWindow>
     <themeIndex>6</themeIndex>
     <textEditor/>
-    <lastOpenSceneName>DefaultScene</lastOpenSceneName>
+    <lastOpenSceneName>WarScene</lastOpenSceneName>
     <grid enabled_scene="true" enabled_node="true" axisWidth="2" scale="1"/>
     <nodeBGColour r="0.349999994" g="0.319999993" b="0.449999988"/>
     <camera>
@@ -14,15 +14,15 @@
                 <distance>0</distance>
                 <active>false</active>
             </reflectionPlane>
-            <accumPitchDegrees>6.27147675</accumPitchDegrees>
+            <accumPitchDegrees>-15.8179007</accumPitchDegrees>
             <frustumLocked>false</frustumLocked>
-            <euler x="6.2816596" y="80.5825729" z="0.0103223501"/>
-            <eye x="60" y="45" z="60"/>
-            <orientation x="0.0417340584" y="0.645707011" z="-0.035362944" w="0.761623085"/>
-            <aspectRatio>1.77777779</aspectRatio>
+            <euler x="164.048187" y="-81.0088959" z="-179.864395"/>
+            <eye x="-80.4959564" y="69.1275787" z="571.041992"/>
+            <orientation x="0.0892352909" y="0.753081799" z="0.104739711" w="-0.643369436"/>
+            <aspectRatio>1.76999998</aspectRatio>
             <zPlanes min="0.100000001" max="1000"/>
-            <FoV>77.5521393</FoV>
-            <speedFactor turn="45" move="4" zoom="5"/>
+            <FoV>77.7975693</FoV>
+            <speedFactor turn="50" move="40" zoom="35"/>
             <fixedYawAxis x="0" y="1" z="0"/>
             <yawFixed>true</yawFixed>
             <rotationLocked>false</rotationLocked>

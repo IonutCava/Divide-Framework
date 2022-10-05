@@ -284,7 +284,7 @@ void Texture::prepareTextureData(const U16 width, const U16 height, const U16 de
     validateDescriptor();
 }
 
-void Texture::loadData(const Byte* data, size_t dataSize, const vec2<U16>& dimensions) {
+void Texture::loadData(const Byte* data, size_t dataSize, const vec2<U16> dimensions) {
     loadData(data, dataSize, vec3<U16>(dimensions.width, dimensions.height, 1u));
 }
 

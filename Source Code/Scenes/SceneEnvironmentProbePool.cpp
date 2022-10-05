@@ -293,7 +293,6 @@ void SceneEnvironmentProbePool::Prepare(GFX::CommandBuffer& bufferInOut) {
         renderPassCmd->_name = "DO_REFLECTION_PROBE_CLEAR";
         renderPassCmd->_target = s_reflection._targetID;
         renderPassCmd->_clearDescriptor._clearDepth = true;
-        renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, RTColourAttachmentSlot::SLOT_0 };
 
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         ProbesDirty(false);

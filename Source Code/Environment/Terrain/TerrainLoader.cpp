@@ -230,8 +230,8 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     terrainMaterial->ignoreXMLData(true);
     terrainMaterial->updatePriorirty(Material::UpdatePriority::Medium);
 
-    const vec2<U16> & terrainDimensions = terrainDescriptor->dimensions();
-    const vec2<F32> & altitudeRange = terrainDescriptor->altitudeRange();
+    const vec2<U16> terrainDimensions = terrainDescriptor->dimensions();
+    const vec2<F32> altitudeRange = terrainDescriptor->altitudeRange();
 
     Console::d_printfn(Locale::Get(_ID("TERRAIN_INFO")), terrainDimensions.width, terrainDimensions.height);
 
@@ -258,7 +258,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     for (U8 i = 0u; i < layerCount; ++i) {
         const TerrainDescriptor::LayerDataEntry& entry = layerTileData[i];
         for (U8 j = 0u; j < 4u; ++j) {
-            const vec2<F32>& factors = entry[j];
+            const vec2<F32> factors = entry[j];
             tileFactorStr.append(Util::StringFormat("%*c", 8, ' '));
             tileFactorStr.append(Util::StringFormat("vec2(%3.2f, %3.2f),\n", factors.s, factors.t));
         }
@@ -528,7 +528,7 @@ bool TerrainLoader::loadThreadedResources(const Terrain_ptr& terrain,
     ResourcePath terrainMapLocation{ Paths::g_assetsLocation + Paths::g_heightmapLocation + terrainDescriptor->getVariable("descriptor") };
     ResourcePath terrainRawFile{ terrainDescriptor->getVariable("heightfield") };
 
-    const vec2<U16>& terrainDimensions = terrainDescriptor->dimensions();
+    const vec2<U16> terrainDimensions = terrainDescriptor->dimensions();
     
     const F32 minAltitude = terrainDescriptor->altitudeRange().x;
     const F32 maxAltitude = terrainDescriptor->altitudeRange().y;

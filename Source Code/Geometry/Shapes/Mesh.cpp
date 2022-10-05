@@ -20,7 +20,7 @@ Mesh::Mesh(GFXDevice& context,
            const Str256& name,
            const ResourcePath& resourceName,
            const ResourcePath& resourceLocation)
-    : Object3D(context, parentCache, descriptorHash, name, resourceName, resourceLocation, ObjectType::MESH, Object3D::ObjectFlag::OBJECT_FLAG_NONE),
+    : Object3D(context, parentCache, descriptorHash, name, resourceName, resourceLocation, SceneNodeType::TYPE_MESH, Object3D::ObjectFlag::OBJECT_FLAG_NONE),
       _animator(nullptr)
 {
     setBounds(_boundingBox);

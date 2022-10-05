@@ -36,7 +36,7 @@ namespace Divide {
     }
 
     bool TextureDescriptor::hasUsageFlagSet(const ImageUsage usage) const noexcept {
-        return BitCompare(_usageMask, 1u << to_base(usage));
+        return TestBit(_usageMask, 1u << to_base(usage));
     }
 
     size_t TextureDescriptor::getHash() const noexcept {

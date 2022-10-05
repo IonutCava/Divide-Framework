@@ -76,34 +76,34 @@ namespace AVX {
 */
 /// general vec2 cross function
 template <typename T>
-FORCE_INLINE vec2<T> Cross(const vec2<T> &v1, const vec2<T> &v2) noexcept {
+FORCE_INLINE vec2<T> Cross(const vec2<T> v1, const vec2<T> v2) noexcept {
     return v1.x * v2.y - v1.y * v2.x;
 }
 
 template <typename T>
-FORCE_INLINE vec2<T> Inverse(const vec2<T> &v) noexcept {
+FORCE_INLINE vec2<T> Inverse(const vec2<T> v) noexcept {
     return vec2<T>(v.y, v.x);
 }
 
 template <typename T>
-FORCE_INLINE vec2<T> Normalize(vec2<T> &vector) noexcept {
+FORCE_INLINE vec2<T> Normalize(vec2<T> vector) noexcept {
     return vector.normalize();
 }
 
 template <typename T>
-FORCE_INLINE vec2<T> Normalized(const vec2<T> &vector) noexcept {
+FORCE_INLINE vec2<T> Normalized(const vec2<T> vector) noexcept {
     return vec2<T>(vector).normalize();
 }
 
 /// multiply a vector by a value
 template <typename T>
-FORCE_INLINE vec2<T> operator*(T fl, const vec2<T> &v) noexcept {
+FORCE_INLINE vec2<T> operator*(T fl, const vec2<T> v) noexcept {
     return v * fl;
 }
 
 /// general vec2 dot product
 template <typename T>
-FORCE_INLINE T Dot(const vec2<T> &a, const vec2<T> &b) noexcept {
+FORCE_INLINE T Dot(const vec2<T> a, const vec2<T> b) noexcept {
     return a.x * b.x + a.y * b.y;
 }
 
@@ -115,7 +115,7 @@ FORCE_INLINE void OrthoNormalize(vec2<T> &n, vec2<T> &u) noexcept {
 
 template <typename T>
 [[nodiscard]]
-FORCE_INLINE vec2<T> Clamped(const vec2<T>& v, const vec2<T> &min, const vec2<T> &max) noexcept {
+FORCE_INLINE vec2<T> Clamped(const vec2<T> v, const vec2<T> min, const vec2<T> max) noexcept {
     return vec2<T>{
         CLAMPED(v.x, min.x, max.x),
         CLAMPED(v.y, min.y, max.y)
@@ -344,7 +344,7 @@ FORCE_INLINE T vec2<T>::maxComponent() const noexcept {
 /// compare 2 vectors
 template <typename T>
 template <typename U, std::enable_if_t<std::is_pod_v<U>, bool>>
-FORCE_INLINE bool vec2<T>::compare(const vec2<U> &v) const noexcept {
+FORCE_INLINE bool vec2<T>::compare(const vec2<U> v) const noexcept {
     return COMPARE(this->x, v.x) &&
            COMPARE(this->y, v.y);
 }
@@ -352,7 +352,7 @@ FORCE_INLINE bool vec2<T>::compare(const vec2<U> &v) const noexcept {
 /// compare 2 vectors using the given tolerance
 template <typename T>
 template <typename U, std::enable_if_t<std::is_pod_v<U>, bool>>
-FORCE_INLINE bool vec2<T>::compare(const vec2<U> &v, U epsi) const noexcept {
+FORCE_INLINE bool vec2<T>::compare(const vec2<U> v, U epsi) const noexcept {
     return COMPARE_TOLERANCE(this->x, v.x, epsi) &&
            COMPARE_TOLERANCE(this->y, v.y, epsi);
 }
@@ -418,13 +418,13 @@ FORCE_INLINE void vec2<T>::lerp(const vec2 &v, const vec2 &factor) noexcept {
 
 /// linear interpolation between 2 vectors
 template <typename T, typename U, std::enable_if_t<std::is_pod_v<U>, bool>>
-FORCE_INLINE vec2<T> Lerp(const vec2<T> &u, const vec2<T> &v, U factor) noexcept {
+FORCE_INLINE vec2<T> Lerp(const vec2<T> u, const vec2<T> v, U factor) noexcept {
     return { Lerp(u.x, v.x, factor), Lerp(u.y, v.y, factor) };
 }
 
 /// linear interpolation between 2 vectors based on separate x and y factors
 template <typename T>
-FORCE_INLINE vec2<T> Lerp(const vec2<T> &u, const vec2<T> &v, const vec2<T> &factor) noexcept {
+FORCE_INLINE vec2<T> Lerp(const vec2<T> u, const vec2<T> v, const vec2<T> factor) noexcept {
     return { Lerp(u.x, v.x, factor.x), Lerp(u.y, v.y, factor.y) };
 }
 
@@ -941,7 +941,7 @@ FORCE_INLINE vec4<T> Lerp(const vec4<T> &u, const vec4<T> &v, const vec4<T> &fac
 }
 
 template <typename Type>
-FORCE_INLINE vec2<Type> Random(const vec2<Type>& min, const vec2<Type>& max) {
+FORCE_INLINE vec2<Type> Random(const vec2<Type> min, const vec2<Type> max) {
     return vec2<Type>(Random(min.x, max.x), Random(min.y, max.y));
 }
 

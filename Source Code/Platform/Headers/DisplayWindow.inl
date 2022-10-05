@@ -46,16 +46,16 @@ namespace Divide {
                type() == WindowType::FULLSCREEN_WINDOWED;
     }
 
-    inline void DisplayWindow::setPosition(const vec2<I32>& position, const bool global) {
+    inline void DisplayWindow::setPosition(const vec2<I32> position, const bool global) {
         setPosition(position.x, position.y, global);
     }
 
     inline bool DisplayWindow::isHovered() const noexcept {
-        return BitCompare(_flags, WindowFlags::IS_HOVERED);
+        return TestBit(_flags, WindowFlags::IS_HOVERED);
     }
 
     inline bool DisplayWindow::hasFocus() const noexcept {
-        return BitCompare(_flags, WindowFlags::HAS_FOCUS);
+        return TestBit(_flags, WindowFlags::HAS_FOCUS);
     }
 
     inline U8 DisplayWindow::opacity() const noexcept {
@@ -67,19 +67,19 @@ namespace Divide {
     }
 
     inline bool DisplayWindow::minimized() const noexcept {
-        return BitCompare(_flags, WindowFlags::MINIMIZED);
+        return TestBit(_flags, WindowFlags::MINIMIZED);
     }
 
     inline bool DisplayWindow::maximized() const noexcept {
-        return BitCompare(_flags, WindowFlags::MAXIMIZED);
+        return TestBit(_flags, WindowFlags::MAXIMIZED);
     }
 
     inline bool DisplayWindow::decorated() const noexcept {
-        return BitCompare(_flags, WindowFlags::DECORATED);
+        return TestBit(_flags, WindowFlags::DECORATED);
     }
 
         inline bool DisplayWindow::hidden() const noexcept {
-        return BitCompare(_flags, WindowFlags::HIDDEN);
+        return TestBit(_flags, WindowFlags::HIDDEN);
     }
 
     inline WindowType DisplayWindow::type() const noexcept {
@@ -114,7 +114,7 @@ namespace Divide {
     }
 
     inline Rect<I32> DisplayWindow::windowViewport() const noexcept {
-        const vec2<U16>& dim = getDimensions();
+        const vec2<U16> dim = getDimensions();
         return Rect<I32>(0, 0, to_I32(dim.width), to_I32(dim.height));
     }
 

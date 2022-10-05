@@ -38,7 +38,7 @@ void Quadtree::drawBBox(GFXDevice& context) const {
     context.debugDrawBox(-1, descriptor);
 }
 
-QuadtreeNode* Quadtree::findLeaf(const vec2<F32>& pos) const noexcept
+QuadtreeNode* Quadtree::findLeaf(const vec2<F32> pos) const noexcept
 {
     assert(_root);
 
@@ -63,7 +63,7 @@ QuadtreeNode* Quadtree::findLeaf(const vec2<F32>& pos) const noexcept
 }
 
 void Quadtree::build(const BoundingBox& terrainBBox,
-                     const vec2<U16>& HMSize,
+                     const vec2<U16> HMSize,
                      Terrain* const terrain) {
 
     _targetChunkDimension = std::max(HMSize.maxComponent() / 8u, 8u);

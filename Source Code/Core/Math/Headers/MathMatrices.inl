@@ -353,7 +353,7 @@ namespace Divide
 
     template<typename T>
     template<typename U>
-    vec2<T> mat2<T>::operator*( const vec2<U>& v ) const noexcept
+    vec2<T> mat2<T>::operator*( const vec2<U> v ) const noexcept
     {
         return { mat[0] * v[0] + mat[1] * v[1],
                 mat[2] * v[0] + mat[3] * v[1] };
@@ -681,7 +681,7 @@ namespace Divide
 
     template<typename T>
     template<typename U>
-    void mat2<T>::setRow( const I32 index, const vec2<U>& value ) noexcept
+    void mat2<T>::setRow( const I32 index, const vec2<U> value ) noexcept
     {
         _vec[index].set( value );
     }
@@ -694,14 +694,14 @@ namespace Divide
     }
 
     template<typename T>
-    const vec2<T>& mat2<T>::getRow( const I32 index ) const noexcept
+    vec2<T> mat2<T>::getRow( const I32 index ) const noexcept
     {
         return _vec[index];
     }
 
     template<typename T>
     template<typename U>
-    void mat2<T>::setCol( const I32 index, const vec2<U>& value ) noexcept
+    void mat2<T>::setCol( const I32 index, const vec2<U> value ) noexcept
     {
         m[0][index] = static_cast<T>(value.x);
         m[1][index] = static_cast<T>(value.y);
@@ -946,7 +946,7 @@ namespace Divide
 
     template<typename T>
     template<typename U>
-    vec2<U> mat3<T>::operator*( const vec2<U>& v ) const noexcept
+    vec2<U> mat3<T>::operator*( const vec2<U> v ) const noexcept
     {
         return *this * vec3<U>( v );
     }
@@ -1806,7 +1806,7 @@ namespace Divide
 
     template<typename T>
     template<typename U>
-    mat4<T>::mat4( const Rect<U>& orthoRect, const vec2<U>& clip ) noexcept
+    mat4<T>::mat4( const Rect<U>& orthoRect, const vec2<U> clip ) noexcept
         : mat4()
     {
         ortho( orthoRect.left, orthoRect.right, orthoRect.bottom, orthoRect.top, clip.x, clip.y );
@@ -1822,7 +1822,7 @@ namespace Divide
 
     template<typename T>
     template<typename U>
-    FORCE_INLINE vec2<U> mat4<T>::operator*( const vec2<U>& v ) const noexcept
+    FORCE_INLINE vec2<U> mat4<T>::operator*( const vec2<U> v ) const noexcept
     {
         return *this * vec4<U>( v );
     }

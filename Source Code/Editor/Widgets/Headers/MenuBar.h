@@ -71,7 +71,7 @@ namespace Divide {
         bool _newScenePopup = false;
         bool _closePopup = false;
         bool _savePopup = false;
-        ObjectType _newPrimitiveType = ObjectType::COUNT;
+        SceneNodeType _newPrimitiveType = SceneNodeType::COUNT;
         DebugObject _debugObject = DebugObject::COUNT;
         
         string _errorMsg = "";

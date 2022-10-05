@@ -113,7 +113,7 @@ class LightPool final : public FrameListener,
         BoundingSphere _volume;
         bool _staticSource = false;
     };
-    using LightList = vector<Light*>;
+    using LightList = eastl::fixed_vector<Light*, 32u, true, eastl::dvd_allocator>;
 
     explicit LightPool(Scene& parentScene, PlatformContext& context);
     ~LightPool();

@@ -817,7 +817,7 @@ void ImageData::getColour(const I32 x, const I32 y, U8& r, U8& g, U8& b, U8& a, 
     }
 }
 
-bool SaveImage(const ResourcePath& filename, const vec2<U16>& dimensions, const U8 numberOfComponents, U8* imageData, const SaveImageFormat format) {
+bool SaveImage(const ResourcePath& filename, const vec2<U16> dimensions, const U8 numberOfComponents, U8* imageData, const SaveImageFormat format) {
     switch (format) {
         case SaveImageFormat::PNG: return stbi_write_png(filename.c_str(), dimensions.width, dimensions.height, numberOfComponents, imageData, dimensions.width * numberOfComponents) == TRUE;
         case SaveImageFormat::BMP: return stbi_write_bmp(filename.c_str(), dimensions.width, dimensions.height, numberOfComponents, imageData) == TRUE;
@@ -828,7 +828,7 @@ bool SaveImage(const ResourcePath& filename, const vec2<U16>& dimensions, const 
     return false;
 }
 
-bool SaveImageHDR(const ResourcePath& filename, const vec2<U16>& dimensions, const U8 numberOfComponents, F32* imageData) {
+bool SaveImageHDR(const ResourcePath& filename, const vec2<U16> dimensions, const U8 numberOfComponents, F32* imageData) {
     return stbi_write_hdr(filename.c_str(), dimensions.width, dimensions.height, numberOfComponents, imageData) == TRUE;
 }
 }  // namespace Divide::ImageTools

@@ -193,11 +193,11 @@ namespace Divide
         void setVerticalFoV( Angle::DEGREES<F32> verticalFoV ) noexcept;
         void setHorizontalFoV( Angle::DEGREES<F32> horizontalFoV ) noexcept;
 
-        const mat4<F32>& setProjection( const vec2<F32>& zPlanes );
-        const mat4<F32>& setProjection( F32 verticalFoV, const vec2<F32>& zPlanes );
-        const mat4<F32>& setProjection( F32 aspectRatio, F32 verticalFoV, const vec2<F32>& zPlanes );
-        const mat4<F32>& setProjection( const vec4<F32>& rect, const vec2<F32>& zPlanes );
-        const mat4<F32>& setProjection( const mat4<F32>& projection, const vec2<F32>& zPlanes, bool isOrtho ) noexcept;
+        const mat4<F32>& setProjection( vec2<F32> zPlanes );
+        const mat4<F32>& setProjection( F32 verticalFoV, vec2<F32> zPlanes );
+        const mat4<F32>& setProjection( F32 aspectRatio, F32 verticalFoV, vec2<F32> zPlanes );
+        const mat4<F32>& setProjection( const vec4<F32>& rect, vec2<F32> zPlanes );
+        const mat4<F32>& setProjection( const mat4<F32>& projection, vec2<F32> zPlanes, bool isOrtho ) noexcept;
 
         /// Offset direction is a (eventually normalized) vector that is scaled by curRadius and applied to the camera's eye position
         void setTarget( TransformComponent* tComp, const vec3<F32>& offsetDirection = VECTOR3_ZERO ) noexcept;

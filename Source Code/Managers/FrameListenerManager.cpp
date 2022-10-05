@@ -134,50 +134,14 @@ bool FrameListenerManager::frameEnded(const FrameEvent& evt) {
         }
     }
 
-
     return true;
 }
 
-
-/// Please see the Ogre3D documentation about this
-void FrameListenerManager::createEvent(const U64 currentTimeUS, const FrameEventType type, FrameEvent& evt) {
+bool FrameListenerManager::createAndProcessEvent(const FrameEventType type, FrameEvent& evt) {
     OPTICK_EVENT();
 
-    evt._currentTimeUS = currentTimeUS;
-    evt._timeSinceLastEventUS = calculateEventTime(evt._currentTimeUS, FrameEventType::FRAME_EVENT_ANY);
-    evt._timeSinceLastFrameUS = calculateEventTime(evt._currentTimeUS, type);
     evt._type = type;
-}
-
-bool FrameListenerManager::createAndProcessEvent(const U64 currentTimeUS, const FrameEventType type, FrameEvent& evt) {
-    OPTICK_EVENT();
-
-    createEvent(currentTimeUS, type, evt);
     return frameEvent(evt);
 }
 
-U64 FrameListenerManager::calculateEventTime(const U64 currentTimeUS, const FrameEventType type) {
-    OPTICK_EVENT();
-
-    EventTimeMap& times = _eventTimers[to_U32(type)];
-    times.push_back(currentTimeUS);
-
-    if (times.size() == 1u) {
-        return 0u;
-    }
-
-    EventTimeMap::const_iterator it = cbegin(times);
-    const EventTimeMap::const_iterator end = cend(times) - 2;
-
-    while (it != end) {
-        if (currentTimeUS - *it > 0u) {
-            ++it;
-        } else {
-            break;
-        }
-    }
-
-    times.erase(cbegin(times), it);
-    return times.back() - times.front();
-}
 };

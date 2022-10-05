@@ -66,8 +66,6 @@ void GUISplash::render(GFXDevice& context) const {
     GFX::BeginRenderPassCommand beginRenderPassCmd{};
     beginRenderPassCmd._target = SCREEN_TARGET_ID;
     beginRenderPassCmd._name = "BLIT_TO_BACKBUFFER";
-    beginRenderPassCmd._clearDescriptor._clearDepth = true;
-    beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { DefaultColours::DIVIDE_BLUE, RTColourAttachmentSlot::SLOT_0 };
     GFX::EnqueueCommand(buffer, beginRenderPassCmd);
 
     GFX::BindPipelineCommand pipelineCmd;

@@ -341,7 +341,8 @@ PhysicsAsset* PhysX::createRigidActor(SceneGraphNode* node, RigidBodyComponent& 
     const ResourcePath collMeshPath = Paths::g_cacheLocation + Paths::g_collisionMeshCacheLocation;
     const ResourcePath cachePath = collMeshPath + meshName + "." + g_collisionMeshExtension;
 
-    if (sNode.type() == SceneNodeType::TYPE_OBJECT3D) {
+    if ( Is3DObject(sNode.type()) )
+    {
         newActor->_type = physx::PxGeometryType::eTRIANGLEMESH;
 
         physx::PxTriangleMesh* nodeGeometry = nullptr;
@@ -387,7 +388,7 @@ PhysicsAsset* PhysX::createRigidActor(SceneGraphNode* node, RigidBodyComponent& 
                     meshDesc.triangles.data = triangles.data();
 
                     physx::PxDefaultFileOutputStream outputStream(cachePath.c_str());
-                    if (obj.geometryType() == ObjectType::TERRAIN) {
+                    if (obj.type() == SceneNodeType::TYPE_TERRAIN) {
                         const auto& verts = node->getNode<Terrain>().getVerts();
                         meshDesc.points.count = static_cast<physx::PxU32>(verts.size());
                         meshDesc.points.data = verts[0]._position._v;
@@ -492,7 +493,7 @@ bool PhysX::convertActor(PhysicsAsset* actor, const PhysicsGroup newGroup) {
     return false;
 }
 
-bool PhysX::intersect(const Ray& intersectionRay, const vec2<F32>& range, vector<SGNRayResult>& intersectionsOut) const {
+bool PhysX::intersect(const Ray& intersectionRay, const vec2<F32> range, vector<SGNRayResult>& intersectionsOut) const {
     return _targetScene->intersect(intersectionRay, range, intersectionsOut);
 }
 

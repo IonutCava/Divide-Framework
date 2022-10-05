@@ -262,7 +262,7 @@ namespace Divide
         io.Fonts->SetTexID( (void*)_fontTexture.get() );
     }
 
-    bool Editor::init( const vec2<U16>& renderResolution )
+    bool Editor::init( const vec2<U16> renderResolution )
     {
         if ( isInit() )
         {
@@ -550,7 +550,7 @@ namespace Divide
         {
             if ( const ImGuiViewportData* data = (ImGuiViewportData*)viewport->PlatformUserData )
             {
-                const vec2<I32>& pos = data->_window->getPosition();
+                const vec2<I32> pos = data->_window->getPosition();
                 return ImVec2( (F32)pos.x, (F32)pos.y );
             }
             DIVIDE_UNEXPECTED_CALL_MSG( "Editor::Platform_GetWindowPos failed!" );
@@ -561,7 +561,7 @@ namespace Divide
         {
             if ( const ImGuiViewportData* data = (ImGuiViewportData*)viewport->PlatformUserData )
             {
-                const vec2<U16>& dim = data->_window->getDimensions();
+                const vec2<U16> dim = data->_window->getDimensions();
                 return ImVec2( (F32)dim.width, (F32)dim.height );
             }
             DIVIDE_UNEXPECTED_CALL_MSG( "Editor::Platform_GetWindowSize failed!" );
@@ -1099,7 +1099,7 @@ namespace Divide
         }
     }
 
-    bool Editor::render( [[maybe_unused]] const U64 deltaTime )
+    bool Editor::render()
     {
         OPTICK_EVENT();
 
@@ -1245,7 +1245,7 @@ namespace Divide
         Attorney::GizmoEditor::render( _gizmo.get(), camera, targetViewport, bufferInOut );
     }
 
-    bool Editor::framePostRender( const FrameEvent& evt )
+    bool Editor::framePostRender( [[maybe_unused]] const FrameEvent& evt )
     {
         OPTICK_EVENT();
 
@@ -1285,7 +1285,7 @@ namespace Divide
 
         ImGui::NewFrame();
 
-        if ( render( evt._timeSinceLastFrameUS ) )
+        if ( render() )
         {
             ImGui::Render();
 
@@ -2159,7 +2159,7 @@ namespace Divide
 
     bool Editor::modalTextureView( const char* modalName,
                                    Texture* tex,
-                                   const vec2<F32>& dimensions,
+                                   const vec2<F32> dimensions,
                                    const bool preserveAspect,
                                    const bool useModal ) const
     {
@@ -2628,7 +2628,7 @@ namespace Divide
         if ( selection != nullptr && newComponentType != ComponentType::COUNT )
         {
             selection->AddComponents( to_U32( newComponentType ), true );
-            return BitCompare( selection->componentMask(), to_U32( newComponentType ) );
+            return TestBit( selection->componentMask(), to_U32( newComponentType ) );
         }
 
         return false;
@@ -2658,7 +2658,7 @@ namespace Divide
         if ( selection != nullptr && newComponentType != ComponentType::COUNT )
         {
             selection->RemoveComponents( to_U32( newComponentType ) );
-            return !BitCompare( selection->componentMask(), to_U32( newComponentType ) );
+            return !TestBit( selection->componentMask(), to_U32( newComponentType ) );
         }
 
         return false;

@@ -61,54 +61,41 @@ namespace Divide
     {
         switch ( node->getNode().type() )
         {
+            case SceneNodeType::TYPE_VEGETATION:
+            case SceneNodeType::TYPE_PARTICLE_EMITTER: return RenderBinType::TRANSLUCENT;
+            case SceneNodeType::TYPE_SKY:              return RenderBinType::SKY;
+            case SceneNodeType::TYPE_WATER:            return RenderBinType::WATER;
+            case SceneNodeType::TYPE_INFINITEPLANE:    return RenderBinType::TERRAIN_AUX;
+            case SceneNodeType::TYPE_TERRAIN:          return RenderBinType::TERRAIN;
+            case SceneNodeType::TYPE_DECAL:            return RenderBinType::TRANSLUCENT;
             case SceneNodeType::TYPE_TRANSFORM:
             {
                 constexpr U32 compareMask = to_U32( ComponentType::SPOT_LIGHT ) |
                     to_U32( ComponentType::POINT_LIGHT ) |
                     to_U32( ComponentType::DIRECTIONAL_LIGHT ) |
                     to_U32( ComponentType::ENVIRONMENT_PROBE );
-                if ( AnyCompare( node->componentMask(), compareMask ) )
+                if ( TestBit( node->componentMask(), compareMask ) )
                 {
                     return RenderBinType::IMPOSTOR;
                 }
             } break;
-
-            case SceneNodeType::TYPE_VEGETATION:
-            case SceneNodeType::TYPE_PARTICLE_EMITTER: return RenderBinType::TRANSLUCENT;
-
-            case SceneNodeType::TYPE_SKY: return  RenderBinType::SKY;
-
-            case SceneNodeType::TYPE_WATER: return RenderBinType::WATER;
-
-            case SceneNodeType::TYPE_INFINITEPLANE: return RenderBinType::TERRAIN_AUX;
-
-                // Water is also opaque as refraction and reflection are separate textures
-                // We may want to break this stuff up into mesh rendering components and not care about specifics anymore (i.e. just material checks)
-                //case SceneNodeType::TYPE_WATER:
-            case SceneNodeType::TYPE_OBJECT3D:
-            {
-                if ( node->getNode().type() == SceneNodeType::TYPE_OBJECT3D )
-                {
-                    switch ( node->getNode<Object3D>().geometryType() )
-                    {
-                        case ObjectType::TERRAIN: return RenderBinType::TERRAIN;
-                        case ObjectType::DECAL: return RenderBinType::TRANSLUCENT;
-                        default: break;
-                    }
-                }
-                // Check if the object has a material with transparency/translucency
-                if ( matInstance != nullptr && matInstance->hasTransparency() )
-                {
-                    // Add it to the appropriate bin if so ...
-                    return RenderBinType::TRANSLUCENT;
-                }
-
-                //... else add it to the general geometry bin
-                return RenderBinType::OPAQUE;
-            }
             default:
-            case SceneNodeType::COUNT:
-            case SceneNodeType::TYPE_TRIGGER: break;
+            {
+                if ( Is3DObject( node->getNode().type() ) )
+                {
+                    // Check if the object has a material with transparency/translucency
+                    if ( matInstance != nullptr && matInstance->hasTransparency() )
+                    {
+                        // Add it to the appropriate bin if so ...
+                        return RenderBinType::TRANSLUCENT;
+                    }
+
+                    //... else add it to the general geometry bin
+                    return RenderBinType::OPAQUE;
+                }
+            } break;
+            case SceneNodeType::TYPE_TRIGGER:
+            case SceneNodeType::COUNT: break;
         }
 
         return RenderBinType::COUNT;

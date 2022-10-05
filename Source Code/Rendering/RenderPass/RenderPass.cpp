@@ -133,9 +133,8 @@ namespace Divide
                 params._targetDescriptorMainPass = mainPassPolicy;
                 params._targetDescriptorComposition = oitCompositionPassPolicy;
                 params._targetHIZ = RenderTargetNames::HI_Z;
-                //ToDo: Causing issues if disabled with WOIT (e.g. grass) if disabled. Investigate! -Ionut
                 params._clearDescriptorMainPass._clearDepth = false;
-                params._clearDescriptorMainPass._clearColourDescriptors[0] = { DefaultColours::DIVIDE_BLUE, GFXDevice::ScreenTargets::ALBEDO };
+                //params._clearDescriptorMainPass._clearColourDescriptors[0] = { DefaultColours::DIVIDE_BLUE, GFXDevice::ScreenTargets::ALBEDO };
                 //Not everything gets drawn during the depth PrePass (E.g. sky)
                 params._clearDescriptorPrePass._clearDepth = true;
                 params._clearDescriptorPrePass._clearColourDescriptors[1] = { VECTOR4_ZERO, GFXDevice::ScreenTargets::VELOCITY };

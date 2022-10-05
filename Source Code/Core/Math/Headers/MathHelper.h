@@ -127,7 +127,7 @@ void SeedRandom(U32 seed);
 
 template<typename Mask, typename Type>
 [[nodiscard]] constexpr typename std::enable_if<std::is_enum<Type>::value, bool>::type
-BitCompare(Mask bitMask, Type bit) noexcept;
+TestBit(Mask bitMask, Type bit) noexcept;
 
 template<typename Mask, typename Type>
 constexpr typename std::enable_if<std::is_enum<Type>::value, void>::type
@@ -146,11 +146,7 @@ constexpr typename std::enable_if<std::is_enum<Type>::value, void>::type
 ToggleBit(Mask& bitMask, Type bit, bool state) noexcept;
 
 template<typename Mask>
-[[nodiscard]] constexpr bool AnyCompare(Mask bitMask, Mask checkMask) noexcept;
-template<typename Mask>
-[[nodiscard]] constexpr bool AllCompare(Mask bitMask, Mask checkMask) noexcept;
-template<typename Mask>
-[[nodiscard]] constexpr bool BitCompare(Mask bitMask, Mask bit) noexcept;
+[[nodiscard]] constexpr bool TestBit(Mask bitMask, Mask bit) noexcept;
 template<typename Mask>
 constexpr void SetBit(Mask& bitMask, Mask bit) noexcept;
 template<typename Mask>
@@ -162,7 +158,7 @@ constexpr void ToggleBit(Mask& bitMask, Mask bit, bool state) noexcept;
 
 template<typename Mask, typename Type>
 [[nodiscard]] constexpr typename std::enable_if<std::is_enum<Type>::value, bool>::type
-BitCompare(std::atomic<Mask> bitMask, Type bit) noexcept;
+TestBit(std::atomic<Mask> bitMask, Type bit) noexcept;
 
 template<typename Mask, typename Type>
 constexpr typename std::enable_if<std::is_enum<Type>::value, void>::type
@@ -173,7 +169,7 @@ constexpr typename std::enable_if<std::is_enum<Type>::value, void>::type
 ClearBit(std::atomic<Mask>& bitMask, Type bit) noexcept;
 
 template<typename Mask>
-[[nodiscard]] constexpr bool BitCompare(const std::atomic<Mask>& bitMask, Mask bit) noexcept;
+[[nodiscard]] constexpr bool TestBit(const std::atomic<Mask>& bitMask, Mask bit) noexcept;
 template<typename Mask>
 constexpr void SetBit(std::atomic<Mask>& bitMask, Mask bit) noexcept;
 template<typename Mask>
@@ -337,7 +333,9 @@ template <typename T>
 template <typename T>
 [[nodiscard]] constexpr DEGREES<T> to_DEGREES(RADIANS<T> angle) noexcept;
 template <typename T>
-[[nodiscard]] constexpr vec2<DEGREES<T>> to_DEGREES(const vec2<RADIANS<T>>& angle) noexcept;
+[[nodiscard]] constexpr vec2<RADIANS<T>> to_RADIANS(vec2<DEGREES<T>> angle) noexcept;
+template <typename T>
+[[nodiscard]] constexpr vec2<DEGREES<T>> to_DEGREES(vec2<RADIANS<T>> angle) noexcept;
 template <typename T>
 [[nodiscard]] constexpr vec3<RADIANS<T>> to_RADIANS(const vec3<DEGREES<T>>& angle) noexcept;
 template <typename T>
@@ -577,7 +575,7 @@ bool decomposeMatrix(const mat4<F32>& transform,
 
 [[nodiscard]] F32 PACK_VEC3(const vec3<F32_SNORM>& value) noexcept;
 
-[[nodiscard]] U32 PACK_HALF2x16(const vec2<F32>& value);
+[[nodiscard]] U32 PACK_HALF2x16(vec2<F32> value);
 void UNPACK_HALF2x16(U32 src, vec2<F32>& value);
 [[nodiscard]] vec2<F32> UNPACK_HALF2x16(U32 src);
 
@@ -598,7 +596,7 @@ U32 FLOAT_TO_UINT(F32 src);
 I32 FLOAT_TO_INT(F32 src);
 
 [[nodiscard]] U32 PACK_UNORM4x8(const vec4<F32_NORM>& value);
-[[nodiscard]] U32 PACK_UNORM4x8(const vec4<U8>& value);
+[[nodiscard]] U32 PACK_UNORM4x8(vec4<U8> value);
 void UNPACK_UNORM4x8(U32 src, vec4<F32_NORM>& value);
 
 [[nodiscard]] U32 PACK_UNORM4x8(F32_NORM x, F32_NORM y, F32_NORM z, F32_NORM w);

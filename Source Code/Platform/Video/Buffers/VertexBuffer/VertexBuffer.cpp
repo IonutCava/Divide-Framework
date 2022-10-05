@@ -148,7 +148,7 @@ const vec3<F32>& VertexBuffer::getPosition(const U32 index) const {
     return _data[index]._position;
 }
 
-const vec2<F32>& VertexBuffer::getTexCoord(const U32 index) const {
+vec2<F32> VertexBuffer::getTexCoord(const U32 index) const {
     return _data[index]._texcoord;
 }
 
@@ -310,7 +310,7 @@ void VertexBuffer::modifyTangentValue(const U32 index, const F32 x, const F32 y,
     _refreshQueued = true;
 }
 
-void VertexBuffer::modifyTexCoordValue(const U32 index, const vec2<F32>& newValue) {
+void VertexBuffer::modifyTexCoordValue(const U32 index, const vec2<F32> newValue) {
     modifyTexCoordValue(index, newValue.s, newValue.t);
 }
 
@@ -619,9 +619,9 @@ void VertexBuffer::computeTangents() {
         const vec3<F32>& v2 = getPosition(idx2);
 
         // Shortcuts for UVs
-        const vec2<F32>& uv0 = getTexCoord(idx0);
-        const vec2<F32>& uv1 = getTexCoord(idx1);
-        const vec2<F32>& uv2 = getTexCoord(idx2);
+        const vec2<F32> uv0 = getTexCoord(idx0);
+        const vec2<F32> uv1 = getTexCoord(idx1);
+        const vec2<F32> uv2 = getTexCoord(idx2);
 
         // Edges of the triangle : position delta
         deltaPos1.set(v1 - v0);

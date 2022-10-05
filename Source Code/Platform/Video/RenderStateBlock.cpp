@@ -277,10 +277,6 @@ const RenderStateBlock& RenderStateBlock::Get(const size_t renderStateBlockHash,
     return s_stateBlockMap.find(DefaultHash())->second;
 }
 
-bool RenderStateBlock::cullEnabled() const noexcept {
-    return _cullMode != CullMode::NONE;
-}
-
 size_t RenderStateBlock::getHashInternal() const {
     // Avoid small float rounding errors offsetting the general hash value
     const U32 zBias = to_U32(std::floor(_zBias * 1000.0f + 0.5f));

@@ -45,20 +45,28 @@ namespace Divide {
 
     /// ToDo: Move particle emitter and triggers to components (it will make them way more dynamic) - Ionut
     enum class SceneNodeType : U16 {
-        TYPE_OBJECT3D = 0,       ///< 3d objects in the scene
-        TYPE_TRANSFORM,          ///< dummy node to stack multiple transforms
-        TYPE_WATER,              ///< water node
-        TYPE_TRIGGER,            ///< a scene trigger (perform action on contact)
-        TYPE_PARTICLE_EMITTER,   ///< a particle emitter
-        TYPE_SKY,                ///< sky node
-        TYPE_INFINITEPLANE,      ///< the infinite plane that sits beneath everything in the world
-        TYPE_VEGETATION,         ///< grass node
+        TYPE_SPHERE_3D = 0,
+        TYPE_BOX_3D,
+        TYPE_QUAD_3D,
+        TYPE_PATCH_3D,
+        TYPE_MESH,
+        TYPE_SUBMESH,
+        TYPE_TERRAIN,
+        TYPE_DECAL,
+        TYPE_TRANSFORM,
+        TYPE_WATER,
+        TYPE_TRIGGER,
+        TYPE_PARTICLE_EMITTER,
+        TYPE_SKY,
+        TYPE_INFINITEPLANE,
+        TYPE_VEGETATION,
         COUNT
     };
 
     namespace Names {
         static const char* sceneNodeType[] = {
-              "OBJECT3D", "TRANSFORM", "WATER", "TRIGGER", "PARTICLE_EMITTER", "SKY",
+              "SPHERE_3D", "BOX_3D", "QUAD_3D", "PATCH_3D", "MESH", "SUBMESH", "TERRAIN", "DECAL",
+              "TRANSFORM", "WATER", "TRIGGER", "PARTICLE_EMITTER", "SKY",
               "INFINITE_PLANE", "VEGETATION_GRASS", "UNKNOWN"
         };
     };
@@ -81,6 +89,34 @@ namespace Divide {
         bool _includeTransformNodes = true;
     };
 
+    [[nodiscard]] FORCE_INLINE constexpr bool IsPrimitive( const SceneNodeType type ) noexcept
+    {
+        return type == SceneNodeType::TYPE_BOX_3D ||
+               type == SceneNodeType::TYPE_QUAD_3D ||
+               type == SceneNodeType::TYPE_PATCH_3D ||
+               type == SceneNodeType::TYPE_SPHERE_3D;
+    }
+
+    [[nodiscard]] FORCE_INLINE constexpr bool IsMesh( const SceneNodeType type ) noexcept
+    {
+        return type == SceneNodeType::TYPE_MESH ||
+               type == SceneNodeType::TYPE_SUBMESH;
+    }
+
+    [[nodiscard]] FORCE_INLINE constexpr bool Is3DObject( const SceneNodeType type ) noexcept
+    {
+        return IsPrimitive(type) ||
+               IsMesh(type) ||
+               type == SceneNodeType::TYPE_TERRAIN ||
+               type == SceneNodeType::TYPE_DECAL;
+    }
+
+    [[nodiscard]] FORCE_INLINE constexpr bool IsTransformNode( const SceneNodeType nodeType ) noexcept
+    {
+        return nodeType == SceneNodeType::TYPE_TRANSFORM ||
+               nodeType == SceneNodeType::TYPE_TRIGGER ||
+               nodeType == SceneNodeType::TYPE_MESH;
+    }
 }; //namespace Divide
 
 #endif //_SCENE_NODE_FWD_H_

@@ -75,7 +75,7 @@ public:
     [[nodiscard]] PhysicsAPIWrapper& getImpl() { assert(_api != nullptr); return *_api; }
     [[nodiscard]] const PhysicsAPIWrapper& getImpl() const { assert(_api != nullptr); return *_api; }
 
-    bool intersect(const Ray& intersectionRay, const vec2<F32>& range, vector<SGNRayResult>& intersectionsOut) const override;
+    bool intersect(const Ray& intersectionRay, vec2<F32> range, vector<SGNRayResult>& intersectionsOut) const override;
 
 private:
     F32 _simulationSpeed = 1.0f;

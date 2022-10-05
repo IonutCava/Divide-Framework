@@ -618,7 +618,22 @@ constexpr void check_size() {
 #define GET_6TH_ARG(arg1, arg2, arg3, arg4, arg5, arg6, ...) arg6
 #endif //EXP
 
-#define GET_RET_TYPE(Type) typename std::conditional<std::is_pod<Type>::value, Type, const Type&>::type
+//https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention?view=msvc-170
+//Any argument that doesn't fit in 8 bytes, or isn't 1, 2, 4, or 8 bytes, must be passed by reference. A single argument is never spread across multiple registers.
+template<typename T>
+constexpr bool fits_in_registers()
+{
+    constexpr auto size = sizeof( T );
+    return size == 1u || size == 2u || size == 4u || size == 8u;
+}
+
+template<typename T>
+constexpr bool can_be_returned_by_value() { return std::is_pod<T>::value || std::is_trivially_copyable<T>::value || std::is_copy_assignable<T>::value; }
+
+template<typename T>
+constexpr bool pass_by_value() { return fits_in_registers<T>() && can_be_returned_by_value<T>(); }
+
+#define GET_RET_TYPE(Type) typename std::conditional<pass_by_value<Type>(), Type, const Type&>::type
 
 #define PROPERTY_GET_SET(Type, Name)                                                         \
 public:                                                                                      \

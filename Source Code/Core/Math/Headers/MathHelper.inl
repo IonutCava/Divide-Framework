@@ -196,8 +196,8 @@ namespace Divide {
 
     template<typename Mask, typename Type>
     constexpr typename std::enable_if<std::is_enum<Type>::value, bool>::type
-    BitCompare(const Mask bitMask, const Type bit) noexcept {
-        return BitCompare(bitMask, static_cast<Mask>(bit));
+    TestBit(const Mask bitMask, const Type bit) noexcept {
+        return TestBit(bitMask, static_cast<Mask>(bit));
     }
 
     template<typename Mask, typename Type>
@@ -225,21 +225,9 @@ namespace Divide {
     }
 
     template<typename Mask>
-    constexpr bool AnyCompare(const Mask bitMask, const Mask checkMask) noexcept {
+    constexpr bool TestBit(const Mask bitMask, const Mask bit) noexcept {
         static_assert(std::is_integral<Mask>::value, "Invalid bit mask type!");
-        return (bitMask & checkMask) != 0;
-    }
-
-    template<typename Mask>
-    constexpr bool AllCompare(const Mask bitMask, const Mask checkMask) noexcept {
-        static_assert(std::is_integral<Mask>::value, "Invalid bit mask type!");
-        return (bitMask & checkMask) == checkMask;
-    }
-
-    template<typename Mask>
-    constexpr bool BitCompare(const Mask bitMask, const Mask bit) noexcept {
-        static_assert(std::is_integral<Mask>::value, "Invalid bit mask type!");
-        return (bitMask & bit) == bit;
+        return (bitMask & bit) != 0u;
     }
 
     template<typename Mask>
@@ -272,8 +260,8 @@ namespace Divide {
 
     template<typename Mask, typename Type>
     constexpr typename std::enable_if<std::is_enum<Type>::value, bool>::type
-        BitCompare(const std::atomic<Mask> bitMask, const Type bit) noexcept {
-        return BitCompare(bitMask, static_cast<Mask>(bit));
+        TestBit(const std::atomic<Mask> bitMask, const Type bit) noexcept {
+        return TestBit(bitMask, static_cast<Mask>(bit));
     }
 
     template<typename Mask, typename Type>
@@ -289,15 +277,9 @@ namespace Divide {
     }
 
     template<typename Mask>
-    constexpr bool AnyCompare(const std::atomic<Mask> bitMask, const Mask checkMask) noexcept {
+    constexpr bool TestBit(const std::atomic<Mask>& bitMask, const Mask bit) noexcept {
         static_assert(std::is_integral<Mask>::value, "Invalid bit mask type!");
-        return (bitMask & checkMask) != 0;
-    }
-
-    template<typename Mask>
-    constexpr bool BitCompare(const std::atomic<Mask>& bitMask, const Mask bit) noexcept {
-        static_assert(std::is_integral<Mask>::value, "Invalid bit mask type!");
-        return (bitMask & bit) == bit;
+        return (bitMask & bit) != 0u;
     }
 
     template<typename Mask>
@@ -503,12 +485,12 @@ constexpr DEGREES<F32> to_DEGREES(const RADIANS<F32> angle) noexcept {
 }
 
 template <typename T>
-constexpr vec2<RADIANS<T>> to_RADIANS(const vec2<DEGREES<T>>& angle) noexcept {
+constexpr vec2<RADIANS<T>> to_RADIANS(const vec2<DEGREES<T>> angle) noexcept {
     return vec2<RADIANS<T>>(angle * M_PIDIV180);
 }
 
 template <typename T>
-constexpr vec2<DEGREES<T>> to_DEGREES(const vec2<RADIANS<T>>& angle) noexcept {
+constexpr vec2<DEGREES<T>> to_DEGREES(const vec2<RADIANS<T>> angle) noexcept {
     return vec2<RADIANS<T>>(angle * M_180DIVPI);
 }
 

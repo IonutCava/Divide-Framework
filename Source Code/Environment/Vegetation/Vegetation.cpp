@@ -352,7 +352,7 @@ namespace Divide
                     if ( IntersectCircles( circleA, circleB, intersections ) )
                     {
                         // Add the resulting points if they are within the pattern bounds
-                        for ( const vec2<F32>& record : intersections )
+                        for ( const vec2<F32> record : intersections )
                         {
                             if ( IS_IN_RANGE_EXCLUSIVE( record.x, -to_F32( chunkSize ), to_F32( chunkSize ) ) &&
                                  IS_IN_RANGE_EXCLUSIVE( record.y, -to_F32( chunkSize ), to_F32( chunkSize ) ) )
@@ -913,7 +913,7 @@ namespace Divide
             return bestIndex;
         }
 
-        FORCE_INLINE bool ScaleAndCheckBounds( const vec2<F32>& chunkPos, const vec2<F32>& chunkSize, vec2<F32>& point ) noexcept
+        FORCE_INLINE bool ScaleAndCheckBounds( const vec2<F32> chunkPos, const vec2<F32> chunkSize, vec2<F32>& point ) noexcept
         {
             if ( point.x > -chunkSize.x && point.x < chunkSize.x &&
                  point.y > -chunkSize.y && point.y < chunkSize.y )
@@ -978,8 +978,8 @@ namespace Divide
 
             const U32 meshID = to_U32( ID % _treeMeshNames.size() );
 
-            const vec2<F32>& chunkSize = _terrainChunk.getOffsetAndSize().zw;
-            const vec2<F32>& chunkPos = _terrainChunk.getOffsetAndSize().xy;
+            const vec2<F32> chunkSize = _terrainChunk.getOffsetAndSize().zw;
+            const vec2<F32> chunkPos = _terrainChunk.getOffsetAndSize().xy;
             //const F32 waterLevel = 0.0f;// ToDo: make this dynamic! (cull underwater points later on?)
             const auto& map = treeData ? _treeMap : _grassMap;
             const U16 mapWidth = map->dimensions( 0u, 0u ).width;

@@ -141,7 +141,7 @@ public:
     explicit mat2(const mat4<U> &B) noexcept;
 
     template<typename U>
-    [[nodiscard]] vec2<T> operator*(const vec2<U> &v) const noexcept;
+    [[nodiscard]] vec2<T> operator*(const vec2<U>  v) const noexcept;
     template<typename U>
     [[nodiscard]] vec3<T> operator*(const vec3<U> &v) const noexcept;
     template<typename U>
@@ -217,13 +217,13 @@ public:
     template<typename U>
     void setRow(I32 index, U value) noexcept;
     template<typename U>
-    void setRow(I32 index, const vec2<U> &value) noexcept;
+    void setRow(I32 index, const vec2<U> value) noexcept;
     template<typename U>
     void setRow(I32 index, U x, U y) noexcept;
-    [[nodiscard]] const vec2<T>& getRow(I32 index) const noexcept;
+    [[nodiscard]] vec2<T> getRow(I32 index) const noexcept;
 
     template<typename U>
-    void setCol(I32 index, const vec2<U> &value) noexcept;
+    void setCol(I32 index, vec2<U> value) noexcept;
     template<typename U>
     void setCol(I32 index, U value) noexcept;
     template<typename U>
@@ -296,7 +296,7 @@ class mat3 {
     explicit mat3(const vec3<U>& rotStart, const vec3<U>& rotEnd) noexcept;
 
     template<typename U>
-    [[nodiscard]] vec2<U> operator*(const vec2<U> &v) const noexcept;
+    [[nodiscard]] vec2<U> operator*(const vec2<U>  v) const noexcept;
     template<typename U>
     [[nodiscard]] vec3<U> operator*(const vec3<U> &v) const noexcept;
     template<typename U>
@@ -501,12 +501,12 @@ class mat4 {
     template<typename U>
     explicit mat4(const vec3<U> &eye, const vec3<U> &target, const vec3<U> &up) noexcept;
     template<typename U>
-    explicit mat4(const Rect<U> &orthoRect, const vec2<U> &clip) noexcept;
+    explicit mat4(const Rect<U> &orthoRect, vec2<U> clip) noexcept;
     template<typename U>
     explicit mat4(const Plane<U>& reflectionPlane) noexcept;
 
     template<typename U>
-    [[nodiscard]] vec2<U> operator*(const vec2<U> &v) const noexcept;
+    [[nodiscard]] vec2<U> operator*(const vec2<U>  v) const noexcept;
     template<typename U>
     [[nodiscard]] vec3<U> operator*(const vec3<U> &v) const noexcept;
     template<typename U>

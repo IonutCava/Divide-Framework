@@ -74,7 +74,7 @@ namespace Divide
                 {
                     const U16 bitState = toBit( stateIt );
 
-                    if ( BitCompare( mask, bitState ) )
+                    if ( TestBit( mask, bitState ) )
                     {
                         SetBit( validMask, bitState );
                     }
@@ -95,7 +95,7 @@ namespace Divide
 
     bool SceneRenderState::isEnabledOption( const RenderOptions option ) const noexcept
     {
-        return BitCompare( _stateMask, option );
+        return TestBit( _stateMask, option );
     }
 
     void SceneRenderState::enableOption( const RenderOptions option ) noexcept

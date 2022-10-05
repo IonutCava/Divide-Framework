@@ -77,8 +77,6 @@ namespace Divide
         _currentBindConfig = {};
         _blendProperties.clear();
         _blendEnabled.clear();
-        _currentCullMode = GL_BACK;
-        _currentFrontFace = GL_CCW;
         _blendColour = { 0, 0, 0, 0 };
         _activeViewport = { -1, -1, -1, -1 };
         _activeScissor = { -1, -1, -1, -1 };
@@ -210,14 +208,11 @@ namespace Divide
         togglePrimitiveRestart( primitiveRestartEnabled );
     }
 
-    GLStateTracker::BindResult GLStateTracker::setStateBlock( size_t stateBlockHash )
+    GLStateTracker::BindResult GLStateTracker::setStateBlock( const size_t stateBlockHash )
     {
         OPTICK_EVENT();
 
-        if ( stateBlockHash == 0 )
-        {
-            stateBlockHash = RenderStateBlock::DefaultHash();
-        }
+        DIVIDE_ASSERT( stateBlockHash != 0, "GL_API error: Invalid state blocks detected on activation!" );
 
         // If the new state hash is different from the previous one
         if ( stateBlockHash != _activeState.getHash() )
@@ -327,7 +322,7 @@ namespace Divide
         {
             _primitiveRestartEnabled = state;
             state ? glEnable( GL_PRIMITIVE_RESTART_FIXED_INDEX )
-                  : glDisable( GL_PRIMITIVE_RESTART_FIXED_INDEX );
+                : glDisable( GL_PRIMITIVE_RESTART_FIXED_INDEX );
         }
     }
 
@@ -624,8 +619,7 @@ namespace Divide
         {
             case RenderTarget::Usage::RT_READ_WRITE:
             {
-                // According to documentation this is equivalent to independent
-                // calls to
+                // According to documentation this is equivalent to independent calls to
                 // bindFramebuffer(read, ID) and bindFramebuffer(write, ID)
                 glBindFramebuffer( GL_FRAMEBUFFER, ID );
                 // This also overrides the read and write bindings
@@ -1088,11 +1082,6 @@ namespace Divide
     {
         OPTICK_EVENT();
 
-        if ( _activeState.cullEnabled() != newBlock.cullEnabled() )
-        {
-            newBlock.cullEnabled() ? glEnable( GL_CULL_FACE ) : glDisable( GL_CULL_FACE );
-        }
-
         if ( _activeState.stencilEnable() != newBlock.stencilEnable() )
         {
             newBlock.stencilEnable() ? glEnable( GL_STENCIL_TEST ) : glDisable( GL_STENCIL_TEST );
@@ -1113,19 +1102,22 @@ namespace Divide
         {
             if ( newBlock.cullMode() != CullMode::NONE )
             {
-                const GLenum targetMode = GLUtil::glCullModeTable[to_U32( newBlock.cullMode() )];
-                if ( _currentCullMode != targetMode )
+                if ( _activeState.cullMode() == CullMode::NONE )
                 {
-                    glCullFace( targetMode );
-                    _currentCullMode = targetMode;
+                    glEnable( GL_CULL_FACE );
                 }
+
+                glCullFace( GLUtil::glCullModeTable[to_U32( newBlock.cullMode() )] );
+            }
+            else
+            {
+                glDisable( GL_CULL_FACE );
             }
         }
 
         if ( _activeState.frontFaceCCW() != newBlock.frontFaceCCW() )
         {
-            _currentFrontFace = newBlock.frontFaceCCW() ? GL_CCW : GL_CW;
-            glFrontFace( _currentFrontFace );
+            glFrontFace( newBlock.frontFaceCCW() ? GL_CCW : GL_CW );
         }
 
         // Check rasterization mode
