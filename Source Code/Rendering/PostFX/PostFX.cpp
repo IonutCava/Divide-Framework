@@ -260,7 +260,7 @@ namespace Divide
 
     void PostFX::idle( const Configuration& config )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         // Update states
         if ( getFilterState( FilterType::FILTER_NOISE ) )
@@ -280,7 +280,7 @@ namespace Divide
 
     void PostFX::update( const U64 deltaTimeUSFixed, const U64 deltaTimeUSApp )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( _fadeActive )
         {

@@ -34,11 +34,11 @@ namespace Divide {
     void SDLEventManager::pollEvents() {
         static SDL_Event evt;
 
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         while (SDL_PollEvent(&evt)) {
-            OPTICK_EVENT("OnLoop");
-            OPTICK_TAG("Event", evt.type);
+            PROFILE_SCOPE("OnLoop");
+            PROFILE_TAG("Event", evt.type);
 
             SharedLock<SharedMutex> lock(s_eventListenerLock);
 

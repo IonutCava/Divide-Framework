@@ -131,7 +131,7 @@ namespace Divide
 
     bool Scene::frameStarted()
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         ScopedLock<Mutex> lk( s_perFrameArenaMutex );
         s_perFrameArena.clear();
@@ -1597,9 +1597,9 @@ namespace Divide
 
     void Scene::updateSceneState( const U64 deltaTimeUS )
     {
-        OPTICK_EVENT()
+        PROFILE_SCOPE();
 
-            sceneRuntimeUS( sceneRuntimeUS() + deltaTimeUS );
+        sceneRuntimeUS( sceneRuntimeUS() + deltaTimeUS );
 
         updateSceneStateInternal( deltaTimeUS );
         _state->waterBodies().reset();

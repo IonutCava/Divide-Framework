@@ -31,7 +31,7 @@ struct MeshLoadData {
 };
 
 void threadedMeshLoad(MeshLoadData loadData, ResourcePath modelPath, ResourcePath modelName) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     Import::ImportData tempMeshData(modelPath, modelName);
     if (MeshImporter::loadMeshDataFromFile(*loadData._context, tempMeshData) &&

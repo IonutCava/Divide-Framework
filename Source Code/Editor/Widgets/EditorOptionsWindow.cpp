@@ -24,7 +24,7 @@ namespace Divide {
             return;
         }
 
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         const U32 flags = ImGuiWindowFlags_NoResize |
                           ImGuiWindowFlags_NoCollapse |

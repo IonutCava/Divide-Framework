@@ -65,12 +65,12 @@ namespace Divide {
 
     template<class T, class U>
     void ECSSystem<T, U>::Update(const F32 dt) {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
     }
 
     template<class T, class U>
     void ECSSystem<T, U>::PostUpdate(const F32 dt) {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
     }
 
     template<class T, class U>

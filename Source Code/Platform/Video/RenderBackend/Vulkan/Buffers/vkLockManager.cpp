@@ -37,12 +37,12 @@ bool vkLockManager::initLockPoolEntry(BufferLockPoolEntry& entry) {
 }
 
 bool Wait(const VkFence sync, U8& retryCount) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
     
     U64 waitTimeout = 0u;
     while (true) {
-        OPTICK_EVENT("Wait - OnLoop");
-        OPTICK_TAG("RetryCount", retryCount);
+        PROFILE_SCOPE("Wait - OnLoop");
+        PROFILE_TAG("RetryCount", retryCount);
 
         const VkResult waitRet = vkWaitForFences(VK_API::GetStateTracker()._device->getVKDevice(),
                                                  1,
@@ -69,7 +69,7 @@ bool Wait(const VkFence sync, U8& retryCount) {
 }
 
 bool vkLockManager::waitForLockedRangeLocked(const SyncObject_uptr& sync, const BufferRange& testRange, const BufferLockInstance& lock) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     vkSyncObject* vkSync = static_cast<vkSyncObject*>(sync.get());
     if (vkSync->_fence == VK_NULL_HANDLE ||

@@ -115,10 +115,10 @@ void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t ra
 
     assert(rangeInBytes > 0u && offsetInBytes + rangeInBytes <= _memoryBlock._size);
 
-    OPTICK_EVENT();
-    OPTICK_TAG("Mapped", static_cast<bool>(_memoryBlock._ptr != nullptr));
-    OPTICK_TAG("Offset", to_U32(offsetInBytes));
-    OPTICK_TAG("Range", to_U32(rangeInBytes));
+    PROFILE_SCOPE();
+    PROFILE_TAG("Mapped", static_cast<bool>(_memoryBlock._ptr != nullptr));
+    PROFILE_TAG("Offset", to_U32(offsetInBytes));
+    PROFILE_TAG("Range", to_U32(rangeInBytes));
 
     if (!_lockManager.waitForLockedRange(offsetInBytes, rangeInBytes)) {
         Console::errorfn(Locale::Get(_ID("ERROR_BUFFER_LOCK_MANAGER_WAIT")));

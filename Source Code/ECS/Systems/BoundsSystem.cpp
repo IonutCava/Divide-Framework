@@ -24,7 +24,7 @@ namespace Divide {
 
 
     void BoundsSystem::PreUpdate(const F32 dt) {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         Parent::PreUpdate(dt);
 
@@ -42,7 +42,7 @@ namespace Divide {
     }
 
     void BoundsSystem::Update(const F32 dt) {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         Parent::Update(dt);
         // This is fast and does not need to run in parallel
@@ -60,7 +60,7 @@ namespace Divide {
     }
 
     void BoundsSystem::PostUpdate(const F32 dt) {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         Parent::PostUpdate(dt);
 

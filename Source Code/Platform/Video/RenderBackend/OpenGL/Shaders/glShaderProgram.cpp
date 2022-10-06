@@ -21,7 +21,7 @@ namespace {
 
 void glShaderProgram::Idle(PlatformContext& platformContext)
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     assert(Runtime::isMainThread());
 
@@ -140,7 +140,7 @@ bool glShaderProgram::unload()
 
 void glShaderProgram::processValidation()
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     if (!_validationQueued)
     {
@@ -170,7 +170,7 @@ void glShaderProgram::processValidation()
 
 ShaderResult glShaderProgram::validatePreBind(const bool rebind)
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     if (!_stagesBound && rebind)
     {
@@ -217,7 +217,7 @@ ShaderResult glShaderProgram::validatePreBind(const bool rebind)
 }
 
 bool glShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, const bool reloadExisting) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     if (ShaderProgram::reloadShaders(fileData, reloadExisting)) {
         _stagesBound = false;
@@ -238,7 +238,7 @@ bool glShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, c
 
 bool glShaderProgram::recompile(bool& skipped)
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     if (!ShaderProgram::recompile(skipped))
     {
@@ -259,7 +259,7 @@ bool glShaderProgram::recompile(bool& skipped)
 /// Bind this shader program
 ShaderResult glShaderProgram::bind()
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     // If the shader isn't ready or failed to link, stop here
     const ShaderResult ret = validatePreBind(true);

@@ -132,7 +132,7 @@ void BoundsComponent::showBS(const bool state) {
 }
 
 void BoundsComponent::flagBoundingBoxDirty(const U32 transformMask, const bool recursive) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     if (_transformUpdatedMask.exchange(transformMask) != 0u) {
         // already dirty
@@ -165,7 +165,7 @@ void BoundsComponent::setRefBoundingBox(const BoundingBox& nodeBounds) noexcept 
 }
 
 void BoundsComponent::updateBoundingBoxTransform() {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     if (_transformUpdatedMask == 0u) {
         return;
@@ -176,7 +176,7 @@ void BoundsComponent::updateBoundingBoxTransform() {
 }
 
 void BoundsComponent::appendChildRefBBs() {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
     const SceneGraphNode::ChildContainer& children = _parentSGN->getChildren();
 
     SharedLock<SharedMutex> w_lock(children._lock);
@@ -194,7 +194,7 @@ void BoundsComponent::appendChildRefBBs() {
 }
 
 void BoundsComponent::appendChildBBs() {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     if (_transformUpdatedMask.exchange(0u) == 0u) {
         return;

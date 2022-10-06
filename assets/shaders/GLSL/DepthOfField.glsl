@@ -47,36 +47,6 @@ changelog:
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texScreen;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform sampler2D texLinearDepth;
 
-uniform vec2 size;
-// autofocus point on screen (0.0,0.0 - left lower corner, 1.0,1.0 - upper right)
-uniform vec2 focus;
-uniform vec2 _zPlanes;
-//focal distance value in meters, but you may use autofocus option below
-uniform float focalDepth;
-//focal length in mm
-uniform float focalLength;
-uniform float fstop;
-//near dof blur start
-uniform float ndofstart;
-//near dof blur falloff distance
-uniform float ndofdist;
-//far dof blur start
-uniform float fdofstart;
-//far dof blur falloff distance
-uniform float fdofdist;
-//vignetting outer border
-uniform float vignout;
-//vignetting inner border
-uniform float vignin;
-//show debug focus point and focal range (red = focal point, green = focal range)
-uniform uint showFocus;
-//manual dof calculation
-uniform uint manualdof;
-//use optical lens vignetting?
-uniform uint vignetting;
-//use autofocus in shader? disable if you use external focalDepth value
-uniform uint autofocus;
-
 layout(location = 0) out vec4 _colourOut;
 
 //------------------------------------------

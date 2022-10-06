@@ -171,7 +171,7 @@ class SceneNodeSceneGraph {
 
     static void sceneUpdate(SceneNode* node, const U64 deltaTimeUS,
                             SceneGraphNode* sgn, SceneState& sceneState) {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
         node->sceneUpdate(deltaTimeUS, sgn, sceneState);
     }
 

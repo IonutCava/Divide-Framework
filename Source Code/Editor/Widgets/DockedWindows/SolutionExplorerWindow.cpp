@@ -70,7 +70,7 @@ namespace Divide {
 
         constexpr ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanAvailWidth;
         if (_filter.PassFilter(camera->resourceName().c_str())) {
-            if (ImGui::TreeNodeEx((void*)(intptr_t)camera->getGUID(), node_flags, Util::StringFormat("%s %s", ICON_FK_CAMERA, camera->resourceName().c_str()).c_str())) {
+            if (ImGui::TreeNodeEx((void*)(intptr_t)camera->getGUID(), node_flags, "%s %s", ICON_FK_CAMERA, camera->resourceName().c_str())) {
                 if (ImGui::IsItemClicked()) {
                     if (sceneManager->resetSelection(0, false)) {
                         if (Attorney::EditorSolutionExplorerWindow::getSelectedCamera(_parent) == camera) {
@@ -202,12 +202,12 @@ namespace Divide {
             const bool isRoot = sgn->parent() == nullptr;
             const bool nodeOpen = ImGui::TreeNodeEx((void*)(intptr_t)sgn->getGUID(),
                                                     node_flags,
-                                                    Util::StringFormat("%s [%d] %s %s %s",
-                                                                       icon == nullptr ? ICON_FK_QUESTION : icon,
-                                                                       nodeIDX,
-                                                                       sgn->name().c_str(), 
-                                                                       (modifierPressed && !isRoot) ? ICON_FK_CHECK_SQUARE_O : "",
-                                                                       (wasSelected ? ICON_FK_CHEVRON_CIRCLE_LEFT : isHovered ? ICON_FK_CHEVRON_LEFT : "")).c_str());
+                                                    "%s [%d] %s %s %s",
+                                                    icon == nullptr ? ICON_FK_QUESTION : icon,
+                                                    nodeIDX,
+                                                    sgn->name().c_str(), 
+                                                    (modifierPressed && !isRoot) ? ICON_FK_CHECK_SQUARE_O : "",
+                                                    (wasSelected ? ICON_FK_CHEVRON_CIRCLE_LEFT : isHovered ? ICON_FK_CHEVRON_LEFT : ""));
             
             if (!secondaryView && wasSelected) {
                 drawContextMenu(sgn);
@@ -263,7 +263,7 @@ namespace Divide {
 
     void SolutionExplorerWindow::drawInternal()
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         SceneManager* sceneManager = context().kernel().sceneManager();
         Scene& activeScene = sceneManager->getActiveScene();
@@ -290,7 +290,7 @@ namespace Divide {
             ImGui::SetTooltip("Only visible nodes");
         }
         ImGui::BeginChild("SceneGraph", ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetWindowHeight() * .5f), true, 0);
-        if (ImGui::TreeNodeEx(Util::StringFormat("%s%s",ICON_FK_HOME, activeScene.resourceName().c_str()).c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth))
+        if (ImGui::TreeNodeEx(activeScene.resourceName().c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth, "%s%s", ICON_FK_HOME, activeScene.resourceName().c_str()))
         {
             ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, ImGui::GetFontSize() * 3); // Increase spacing to differentiate leaves from expanded contents.
             printCameraNode(sceneManager, _parent.editorCamera());
@@ -300,7 +300,7 @@ namespace Divide {
                 printCameraNode(sceneManager, Attorney::SceneManagerCameraAccessor::playerCamera(sceneManager, i, true));
             }
             {
-                OPTICK_EVENT("Print SceneGraph");
+                PROFILE_SCOPE("Print SceneGraph");
                 printSceneGraphNode(sceneManager, root, 0, true, false, modifierPressed);
             }
             ImGui::PopStyleVar();
@@ -376,7 +376,7 @@ namespace Divide {
             {
                 PopReadOnly();
             }
-            OPTICK_EVENT("Get/Print Performance Stats");
+            PROFILE_SCOPE("Get/Print Performance Stats");
             performanceStatsWereEnabled = context().gfx().queryPerformanceStats();
             context().gfx().queryPerformanceStats(true);
             const auto& rpm = _context.kernel().renderPassManager();

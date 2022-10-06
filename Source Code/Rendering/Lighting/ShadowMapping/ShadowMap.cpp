@@ -394,7 +394,7 @@ bool ShadowMap::markShadowMapsUsed(Light& light) {
 }
 
 bool ShadowMap::generateShadowMaps(const Camera& playerCamera, Light& light, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     const U8 shadowTypeIdx = to_base(getShadowTypeForLightType(light.getLightType()));
     if (s_shadowMapGenerators[shadowTypeIdx] == nullptr){

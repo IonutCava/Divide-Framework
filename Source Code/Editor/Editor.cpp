@@ -316,6 +316,13 @@ namespace Divide
             ShaderProgramDescriptor shaderDescriptor = {};
             shaderDescriptor._modules.push_back( vertModule );
             shaderDescriptor._modules.push_back( fragModule );
+            shaderDescriptor._globalDefines.emplace_back("toggleChannel ivec4(PushData0[0])");
+            shaderDescriptor._globalDefines.emplace_back("depthRange PushData0[1].xy");
+            shaderDescriptor._globalDefines.emplace_back("layer uint(PushData0[1].z)");
+            shaderDescriptor._globalDefines.emplace_back("mip uint(PushData0[1].w)");
+            shaderDescriptor._globalDefines.emplace_back("textureType uint(PushData0[2].x)");
+            shaderDescriptor._globalDefines.emplace_back("depthTexture uint(PushData0[2].y)");
+            shaderDescriptor._globalDefines.emplace_back("flip uint(PushData0[2].z)");
 
             ResourceDescriptor shaderResDescriptor( "IMGUI" );
             shaderResDescriptor.propertyDescriptor( shaderDescriptor );
@@ -335,6 +342,8 @@ namespace Divide
             ShaderModuleDescriptor fragModule = {};
             fragModule._moduleType = ShaderType::FRAGMENT;
             fragModule._sourceFile = "InfiniteGrid.glsl";
+            fragModule._defines.emplace_back( "axisWidth PushData0[0].x" );
+            fragModule._defines.emplace_back( "gridScale PushData0[0].y" );
 
             ShaderProgramDescriptor shaderDescriptor = {};
             shaderDescriptor._modules.push_back( vertModule );
@@ -951,7 +960,7 @@ namespace Divide
 
     void Editor::update( const U64 deltaTimeUS )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         static bool allGizmosEnabled = false;
 
@@ -1101,7 +1110,7 @@ namespace Divide
 
     bool Editor::render()
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos( viewport->WorkPos );
@@ -1247,7 +1256,7 @@ namespace Divide
 
     bool Editor::framePostRender( [[maybe_unused]] const FrameEvent& evt )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         for ( DockedWindow* window : _dockedWindows )
         {

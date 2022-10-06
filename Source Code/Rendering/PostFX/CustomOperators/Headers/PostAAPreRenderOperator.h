@@ -70,8 +70,6 @@ class PostAAPreRenderOperator final : public PreRenderOperator {
     Pipeline* _fxaaPipeline = nullptr;
     Pipeline* _smaaWeightPipeline = nullptr;
     Pipeline* _smaaBlendPipeline = nullptr;
-
-    GFX::SendPushConstantsCommand _pushConstantsCommand = {};
 };
 
 }  // namespace Divide

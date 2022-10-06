@@ -245,6 +245,10 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         ShaderProgramDescriptor mapDescriptor1 = {};
         mapDescriptor1._modules.push_back(vertModule);
         mapDescriptor1._modules.push_back(fragModule);
+        mapDescriptor1._globalDefines.emplace_back( "manualExposureFactor PushData0[0].x" );
+        mapDescriptor1._globalDefines.emplace_back( "mappingFunction int(PushData0[0].y)" );
+        mapDescriptor1._globalDefines.emplace_back( "useAdaptiveExposure uint(PushData0[0].z)" );
+        mapDescriptor1._globalDefines.emplace_back( "skipToneMapping uint(PushData0[0].w)" );
 
         ResourceDescriptor toneMap("toneMap");
         toneMap.waitForReady(false);
@@ -256,12 +260,17 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         ShaderProgramDescriptor toneMapAdaptiveDescriptor{};
         toneMapAdaptiveDescriptor._modules.push_back(vertModule);
         toneMapAdaptiveDescriptor._modules.push_back(fragModule);
+        toneMapAdaptiveDescriptor._globalDefines.emplace_back( "manualExposureFactor PushData0[0].x" );
+        toneMapAdaptiveDescriptor._globalDefines.emplace_back( "mappingFunction int(PushData0[0].y)" );
+        toneMapAdaptiveDescriptor._globalDefines.emplace_back( "useAdaptiveExposure uint(PushData0[0].z)" );
+        toneMapAdaptiveDescriptor._globalDefines.emplace_back( "skipToneMapping uint(PushData0[0].w)" );
 
         ResourceDescriptor toneMapAdaptive("toneMap.Adaptive");
         toneMapAdaptive.waitForReady(false);
         toneMapAdaptive.propertyDescriptor(toneMapAdaptiveDescriptor);
 
         _toneMapAdaptive = CreateResource<ShaderProgram>(_resCache, toneMapAdaptive, loadTasks);
+
     }
     {
         ShaderModuleDescriptor computeModule = {};
@@ -274,6 +283,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
             computeModule._variant = "Create";
             ShaderProgramDescriptor calcDescriptor = {};
             calcDescriptor._modules.push_back(computeModule);
+            calcDescriptor._globalDefines.emplace_back( "u_params PushData0[0]" );
 
             ResourceDescriptor histogramCreate("luminanceCalc.HistogramCreate");
             histogramCreate.waitForReady(false);
@@ -284,6 +294,10 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
             computeModule._variant = "Average";
             ShaderProgramDescriptor calcDescriptor = {};
             calcDescriptor._modules.push_back(computeModule);
+            calcDescriptor._globalDefines.emplace_back( "dvd_minLogLum PushData0[0].x" );
+            calcDescriptor._globalDefines.emplace_back( "dvd_logLumRange PushData0[0].y" );
+            calcDescriptor._globalDefines.emplace_back( "dvd_timeCoeff PushData0[0].z" );
+            calcDescriptor._globalDefines.emplace_back( "dvd_numPixels PushData0[0].w" );
 
             ResourceDescriptor histogramAverage("luminanceCalc.HistogramAverage");
             histogramAverage.waitForReady(false);
@@ -293,6 +307,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
     }
     {
         ShaderProgramDescriptor edgeDetectionDescriptor = {};
+        edgeDetectionDescriptor._globalDefines.emplace_back( "dvd_edgeThreshold PushData0[0].x" );
 
         ShaderModuleDescriptor vertModule = {};
         vertModule._moduleType = ShaderType::VERTEX;
@@ -344,6 +359,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         fragModule._moduleType = ShaderType::FRAGMENT;
         fragModule._sourceFile = "depthPass.glsl";
         fragModule._variant = "LineariseDepthBuffer";
+        fragModule._defines.emplace_back( "_zPlanes PushData0[0].xy" );
 
         lineariseDepthBufferDescriptor._modules = { vertModule, fragModule };
 
@@ -510,7 +526,9 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
         binding._slot = 0;
         As<DescriptorCombinedImageSampler>(binding._data) = { depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash };
 
-        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
+        PushConstantsStruct pushData{};
+        pushData.data0._vec[0].xy = cameraSnapshot._zPlanes;
+        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(pushData);
 
         GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
@@ -559,12 +577,6 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Compute Adaptive Exposure" });
 
         const F32 logLumRange = _toneMapParams._maxLogLuminance - _toneMapParams._minLogLuminance;
-        const F32 histogramParams[4] = {
-                _toneMapParams._minLogLuminance,
-                1.0f / logLumRange,
-                to_F32(_toneMapParams._width),
-                to_F32(_toneMapParams._height),
-        };
 
         { // Histogram Pass
             const Texture_ptr& screenColour = screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO)->texture();
@@ -583,7 +595,13 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
                 As<ShaderBufferEntry>(binding._data) = { *_histogramBuffer, {0u, _histogramBuffer->getPrimitiveCount()} };
             }
             GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipelineLumCalcHistogram });
-            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(_ID("u_params"), GFX::PushConstantType::VEC4, histogramParams);
+            PushConstantsStruct params{};
+            params.data0._vec[0].set( _toneMapParams._minLogLuminance,
+                                      1.f / logLumRange,
+                                      to_F32( _toneMapParams._width ),
+                                      to_F32( _toneMapParams._height ) );
+
+            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set( params );
 
             const U32 groupsX = to_U32(std::ceil(_toneMapParams._width / to_F32(GROUP_X_THREADS)));
             const U32 groupsY = to_U32(std::ceil(_toneMapParams._height / to_F32(GROUP_Y_THREADS)));
@@ -593,16 +611,6 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         }
 
         { // Averaging pass
-            const F32 deltaTime = Time::MicrosecondsToSeconds<F32>(_lastDeltaTimeUS);
-            const F32 timeCoeff = CLAMPED_01(1.0f - std::exp(-deltaTime * _toneMapParams._tau));
-
-            const F32 avgParams[4] = {
-                _toneMapParams._minLogLuminance,
-                logLumRange,
-                timeCoeff,
-                to_F32(_toneMapParams._width) * _toneMapParams._height,
-            };
-
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "AverageLuminanceHistogram" });
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -618,7 +626,15 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             }
 
             GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipelineLumCalcAverage });
-            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(_ID("u_params"), GFX::PushConstantType::VEC4, avgParams);
+
+            PushConstantsStruct params{};
+            params.data0._vec[0].set(_toneMapParams._minLogLuminance,
+                                     logLumRange,
+                                     CLAMPED_01( 1.0f - std::exp( -Time::MicrosecondsToSeconds<F32>( _lastDeltaTimeUS ) * _toneMapParams._tau ) ),
+                                     to_F32( _toneMapParams._width ) * _toneMapParams._height );
+
+
+            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(params);
             GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ 1, 1, 1, });
             GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_barrierMask = to_base(MemoryBarrierType::SHADER_IMAGE) | to_base(MemoryBarrierType::SHADER_STORAGE);
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
@@ -718,11 +734,14 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ adaptiveExposureControl() ? _pipelineToneMapAdaptive : _pipelineToneMap });
 
         const auto mappingFunction = to_base(_context.materialDebugFlag() == MaterialDebugFlag::COUNT ? _toneMapParams._function : ToneMapParams::MapFunctions::COUNT);
-        _toneMapConstantsCmd._constants.set(_ID("useAdaptiveExposure"),  GFX::PushConstantType::BOOL, adaptiveExposureControl());
-        _toneMapConstantsCmd._constants.set(_ID("manualExposureFactor"), GFX::PushConstantType::FLOAT, _toneMapParams._manualExposureFactor);
-        _toneMapConstantsCmd._constants.set(_ID("mappingFunction"),      GFX::PushConstantType::INT, mappingFunction);
-        _toneMapConstantsCmd._constants.set(_ID("skipToneMapping"),      GFX::PushConstantType::BOOL, _context.materialDebugFlag() != MaterialDebugFlag::COUNT);
-        GFX::EnqueueCommand(bufferInOut, _toneMapConstantsCmd);
+
+        PushConstantsStruct pushData{};
+        pushData.data0._vec[0].set( _toneMapParams._manualExposureFactor,
+                                    to_F32( mappingFunction ),
+                                    adaptiveExposureControl() ? 1.f : 0.f,
+                                    _context.materialDebugFlag() != MaterialDebugFlag::COUNT ? 1.f : 0.f);
+
+        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(pushData);
 
         GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
@@ -760,8 +779,10 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO, RTColourAttachmentSlot::SLOT_0 };
 
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _edgeDetectionPipelines[to_base(edgeDetectionMethod())] });
-        
-        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(_ID("dvd_edgeThreshold"), GFX::PushConstantType::FLOAT, edgeDetectionThreshold());
+
+        PushConstantsStruct pushData{};
+        pushData.data0._vec[0].x = edgeDetectionThreshold();
+        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(pushData);
 
         GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
 

@@ -5,7 +5,6 @@
 #define RGB_TO_LUM vec3(0.2125f, 0.7154f, 0.0721f)
 
 // Uniforms:
-uniform vec4 u_params;
 // u_params.x = minimum log_2 luminance
 // u_params.y = inverse of the log_2 luminance range
 
@@ -66,14 +65,6 @@ void main() {
 
 --Compute.Average
 
-// Uniforms:
-uniform vec4 u_params;
-
-#define minLogLum u_params.x
-#define logLumRange u_params.y
-#define timeCoeff u_params.z
-#define numPixels u_params.w
-
 // We'll be writing our average to s_target
 DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 0, r16f) uniform ACCESS_RW image2D s_target;
 
@@ -109,17 +100,17 @@ void main() {
         // Here we take our weighted sum and divide it by the number of pixels
         // that had luminance greater than zero (since the index == 0, we can
         // use countForThisBin to find the number of black pixels)
-        float weightedLogAverage = (histogramShared[0] / max(numPixels - float(countForThisBin), 1.0f)) - 1.0f;
+        float weightedLogAverage = (histogramShared[0] / max(dvd_numPixels - float(countForThisBin), 1.0f)) - 1.0f;
 
         // Map from our histogram space to actual luminance
-        float weightedAvgLum = exp2(((weightedLogAverage / 254.0f) * logLumRange) + minLogLum);
+        float weightedAvgLum = exp2(((weightedLogAverage / 254.0f) * dvd_logLumRange) + dvd_minLogLum );
 
 
         // The new stored value will be interpolated using the last frames value
         // to prevent sudden shifts in the exposure.
         float lumLastFrame = imageLoad(s_target, ivec2(0, 0)).x;
 
-        float adaptedLum = lumLastFrame + (weightedAvgLum - lumLastFrame) * timeCoeff;
+        float adaptedLum = lumLastFrame + (weightedAvgLum - lumLastFrame) * dvd_timeCoeff;
 
         imageStore(s_target, ivec2(0, 0), vec4(adaptedLum, 0.0, 0.0, 0.0));
     }

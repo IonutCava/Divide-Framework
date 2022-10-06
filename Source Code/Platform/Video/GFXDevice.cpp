@@ -818,6 +818,10 @@ namespace Divide
             ShaderModuleDescriptor compModule = {};
             compModule._moduleType = ShaderType::COMPUTE;
             compModule._defines.emplace_back( Util::StringFormat( "LOCAL_SIZE %d", DEPTH_REDUCE_LOCAL_SIZE ) );
+            compModule._defines.emplace_back( "imageSizeIn PushData0[0].xy");
+            compModule._defines.emplace_back( "imageSizeOut PushData0[0].zw");
+            compModule._defines.emplace_back( "wasEven (uint(PushData0[1].x) == 1u)");
+
             compModule._sourceFile = "HiZConstruct.glsl";
 
             ShaderProgramDescriptor shaderDescriptor = {};
@@ -910,7 +914,10 @@ namespace Divide
             fragModule._moduleType = ShaderType::FRAGMENT;
             fragModule._sourceFile = "blur.glsl";
             fragModule._variant = "Generic";
-
+            fragModule._defines.emplace_back("layer uint(PushData0[0].x)" );
+            fragModule._defines.emplace_back("size PushData0[0].yz");
+            fragModule._defines.emplace_back("kernelSize int(PushData0[0].w)");
+            fragModule._defines.emplace_back("verticalBlur uint(PushData0[1].x)");
             {
                 ShaderProgramDescriptor shaderDescriptorSingle = {};
                 shaderDescriptorSingle._modules.push_back( blurVertModule );
@@ -956,6 +963,11 @@ namespace Divide
                 geomModule._moduleType = ShaderType::GEOMETRY;
                 geomModule._sourceFile = "blur.glsl";
                 geomModule._variant = "GaussBlur";
+
+                geomModule._defines.emplace_back( "verticalBlur uint(PushData0[1].x)" );
+                geomModule._defines.emplace_back( "layerCount int(PushData0[1].y)" );
+                geomModule._defines.emplace_back( "layerOffsetRead int(PushData0[1].z)" );
+                geomModule._defines.emplace_back( "layerOffsetWrite int(PushData0[1].w)" );
 
                 ShaderModuleDescriptor fragModule = {};
                 fragModule._moduleType = ShaderType::FRAGMENT;
@@ -1055,6 +1067,7 @@ namespace Divide
             ShaderModuleDescriptor fragModule = {};
             fragModule._moduleType = ShaderType::FRAGMENT;
             fragModule._sourceFile = "display.glsl";
+            fragModule._defines.emplace_back( "convertToSRGB uint(PushData0[0].x)" );
 
             ResourceDescriptor descriptor3( "display" );
             ShaderProgramDescriptor shaderDescriptor = {};
@@ -1240,7 +1253,7 @@ namespace Divide
     /// After a swap buffer call, the CPU may be idle waiting for the GPU to draw to the screen, so we try to do some processing
     void GFXDevice::idle( const bool fast )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         _api->idle( fast );
 
@@ -1258,7 +1271,7 @@ namespace Divide
 
     void GFXDevice::beginFrame( DisplayWindow& window, const bool global )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( global )
         {
@@ -1318,7 +1331,7 @@ namespace Divide
 
     void GFXDevice::endFrame( DisplayWindow& window, const bool global )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( global )
         {
@@ -1364,7 +1377,7 @@ namespace Divide
                                      GFX::MemoryBarrierCommand& memCmdInOut,
                                      std::array<Camera*, 6>& cameras )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( arrayOffset < 0 )
         {
@@ -1454,7 +1467,7 @@ namespace Divide
                                                GFX::MemoryBarrierCommand& memCmdInOut,
                                                std::array<Camera*, 2>& cameras )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( arrayOffset < 0 )
         {
@@ -1533,11 +1546,20 @@ namespace Divide
         const auto& inputAttachment = blurSource._rt->getAttachment( att, slot );
         const auto& bufferAttachment = blurBuffer._rt->getAttachment( att, slot );
 
-        GFX::SendPushConstantsCommand pushConstantsCmd{};
+        PushConstantsStruct pushData{};
+        pushData.data0._vec[0].w = to_F32( kernelSize );
+        pushData.data0._vec[1].y = to_F32( layerCount );
+        pushData.data0._vec[1].z = 0.f;
+        pushData.data0._vec[1].w = 0.f;
 
         const U8 loopCount = gaussian ? 1u : layerCount;
 
         {// Blur horizontally
+            pushData.data0._vec[0].x = 0.f;
+            pushData.data0._vec[1].x = 0.f;
+            pushData.data0._vec[0].yz = vec2<F32>( blurBuffer._rt->getResolution() );
+            pushData.data0._vec[2].xy.set( 1.f / blurBuffer._rt->getResolution().width, 1.f / blurBuffer._rt->getResolution().height );
+
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
             renderPassCmd->_target = blurBuffer._targetID;
             renderPassCmd->_name = "BLUR_RENDER_TARGET_HORIZONTAL";
@@ -1551,31 +1573,18 @@ namespace Divide
             binding._slot = 0;
             As<DescriptorCombinedImageSampler>(binding._data) = { inputAttachment->texture()->sampledView(), inputAttachment->descriptor()._samplerHash };
 
-            pushConstantsCmd._constants.set( _ID( "verticalBlur" ), GFX::PushConstantType::INT, false );
-            if ( gaussian )
+    
+            if ( !gaussian && layerCount > 1 )
             {
-                const vec2<F32> blurSize( 1.0f / blurBuffer._rt->getResolution().width, 1.0f / blurBuffer._rt->getResolution().height );
-                pushConstantsCmd._constants.set( _ID( "blurSizes" ), GFX::PushConstantType::VEC2, blurSize );
-                pushConstantsCmd._constants.set( _ID( "layerCount" ), GFX::PushConstantType::INT, to_I32( layerCount ) );
-                pushConstantsCmd._constants.set( _ID( "layerOffsetRead" ), GFX::PushConstantType::INT, 0 );
-                pushConstantsCmd._constants.set( _ID( "layerOffsetWrite" ), GFX::PushConstantType::INT, 0 );
-            }
-            else
-            {
-                pushConstantsCmd._constants.set( _ID( "kernelSize" ), GFX::PushConstantType::INT, kernelSize );
-                pushConstantsCmd._constants.set( _ID( "size" ), GFX::PushConstantType::VEC2, vec2<F32>( blurBuffer._rt->getResolution() ) );
-                if ( layerCount > 1 )
-                {
-                    pushConstantsCmd._constants.set( _ID( "layer" ), GFX::PushConstantType::INT, 0 );
-                }
+                pushData.data0._vec[0].x = 0.f;
             }
 
             for ( U8 loop = 0u; loop < loopCount; ++loop )
             {
                 if ( !gaussian && loop > 0u )
                 {
-                    pushConstantsCmd._constants.set( _ID( "layer" ), GFX::PushConstantType::INT, to_I32( loop ) );
-                    GFX::EnqueueCommand( bufferInOut, pushConstantsCmd );
+                    pushData.data0._vec[0].x = to_F32( loop );
+                    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut)->_constants.set( pushData );
                 }
                 GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
             }
@@ -1583,20 +1592,14 @@ namespace Divide
             GFX::EnqueueCommand( bufferInOut, GFX::EndRenderPassCommand{} );
         }
         {// Blur vertically
+            pushData.data0._vec[0].x = 0.f;
+            pushData.data0._vec[1].x = 1.f;
+            pushData.data0._vec[0].yz = vec2<F32>( blurTarget._rt->getResolution() );
+            pushData.data0._vec[2].xy.set( 1.0f / blurTarget._rt->getResolution().width, 1.0f / blurTarget._rt->getResolution().height );
+
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
             renderPassCmd->_target = blurTarget._targetID;
             renderPassCmd->_name = "BLUR_RENDER_TARGET_VERTICAL";
-
-            pushConstantsCmd._constants.set( _ID( "verticalBlur" ), GFX::PushConstantType::INT, true );
-            if ( gaussian )
-            {
-                const vec2<F32> blurSize( 1.0f / blurTarget._rt->getResolution().width, 1.0f / blurTarget._rt->getResolution().height );
-                pushConstantsCmd._constants.set( _ID( "blurSizes" ), GFX::PushConstantType::VEC2, blurSize );
-            }
-            else
-            {
-                pushConstantsCmd._constants.set( _ID( "size" ), GFX::PushConstantType::VEC2, vec2<F32>( blurTarget._rt->getResolution() ) );
-            }
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -1604,14 +1607,14 @@ namespace Divide
             binding._slot = 0;
             As<DescriptorCombinedImageSampler>(binding._data) = { bufferAttachment->texture()->sampledView(), bufferAttachment->descriptor()._samplerHash };
 
-            GFX::EnqueueCommand( bufferInOut, pushConstantsCmd );
+            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( pushData );
 
             for ( U8 loop = 0u; loop < loopCount; ++loop )
             {
                 if ( !gaussian && loop > 0u )
                 {
-                    pushConstantsCmd._constants.set( _ID( "layer" ), GFX::PushConstantType::INT, to_I32( loop ) );
-                    GFX::EnqueueCommand( bufferInOut, pushConstantsCmd );
+                    pushData.data0._vec[0].x = to_F32( loop );
+                    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( pushData );
                 }
                 GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
             }
@@ -1822,7 +1825,7 @@ namespace Divide
 
     bool GFXDevice::uploadGPUBlock()
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         // Put the viewport update here as it is the most common source of gpu data invalidation and not always
         // needed for rendering (e.g. changed by RenderTarget::End())
@@ -1916,7 +1919,7 @@ namespace Divide
 
     void GFXDevice::renderFromCamera( const CameraSnapshot& cameraSnapshot )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         GFXShaderData::CamData& data = _gpuBlock._camData;
 
@@ -1999,7 +2002,7 @@ namespace Divide
 
     void GFXDevice::setPreviousViewProjectionMatrix( const mat4<F32>& prevViewMatrix, const mat4<F32> prevProjectionMatrix )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         bool projectionDirty = false, viewDirty = false;
         if ( _gpuBlock._camData._PreviousViewMatrix != prevViewMatrix )
@@ -2023,7 +2026,7 @@ namespace Divide
     // Update the rendering viewport
     bool GFXDevice::setViewport( const Rect<I32>& viewport )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         // Change the viewport on the Rendering API level
         if ( _api->setViewport( viewport ) )
@@ -2081,7 +2084,7 @@ namespace Divide
 
     void GFXDevice::flushCommandBuffer( GFX::CommandBuffer& commandBuffer, const bool batch )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if_constexpr( Config::ENABLE_GPU_VALIDATION )
         {
@@ -2110,7 +2113,7 @@ namespace Divide
             {
                 case GFX::CommandType::BLIT_RT:
                 {
-                    OPTICK_EVENT( "BLIT_RT" );
+                    PROFILE_SCOPE( "BLIT_RT" );
 
                     const GFX::BlitRenderTargetCommand* crtCmd = commandBuffer.get<GFX::BlitRenderTargetCommand>( cmd );
                     RenderTarget* source = renderTargetPool().getRenderTarget( crtCmd->_source );
@@ -2119,7 +2122,7 @@ namespace Divide
                 } break;
                 case GFX::CommandType::CLEAR_TEXTURE:
                 {
-                    OPTICK_EVENT( "CLEAR_TEXTURE" );
+                    PROFILE_SCOPE( "CLEAR_TEXTURE" );
 
                     const GFX::ClearTextureCommand& crtCmd = *commandBuffer.get<GFX::ClearTextureCommand>( cmd );
                     if ( crtCmd._texture != nullptr )
@@ -2136,14 +2139,14 @@ namespace Divide
                 }break;
                 case GFX::CommandType::READ_BUFFER_DATA:
                 {
-                    OPTICK_EVENT( "READ_BUFFER_DATA" );
+                    PROFILE_SCOPE( "READ_BUFFER_DATA" );
 
                     const GFX::ReadBufferDataCommand& crtCmd = *commandBuffer.get<GFX::ReadBufferDataCommand>( cmd );
                     crtCmd._buffer->readData( { crtCmd._offsetElementCount, crtCmd._elementCount }, crtCmd._target );
                 } break;
                 case GFX::CommandType::CLEAR_BUFFER_DATA:
                 {
-                    OPTICK_EVENT( "CLEAR_BUFFER_DATA" );
+                    PROFILE_SCOPE( "CLEAR_BUFFER_DATA" );
 
                     const GFX::ClearBufferDataCommand& crtCmd = *commandBuffer.get<GFX::ClearBufferDataCommand>( cmd );
                     if ( crtCmd._buffer != nullptr )
@@ -2156,13 +2159,13 @@ namespace Divide
                 } break;
                 case GFX::CommandType::SET_VIEWPORT:
                 {
-                    OPTICK_EVENT( "SET_VIEWPORT" );
+                    PROFILE_SCOPE( "SET_VIEWPORT" );
 
                     setViewport( commandBuffer.get<GFX::SetViewportCommand>( cmd )->_viewport );
                 } break;
                 case GFX::CommandType::PUSH_VIEWPORT:
                 {
-                    OPTICK_EVENT( "PUSH_VIEWPORT" );
+                    PROFILE_SCOPE( "PUSH_VIEWPORT" );
 
                     const GFX::PushViewportCommand* crtCmd = commandBuffer.get<GFX::PushViewportCommand>( cmd );
                     _viewportStack.push( activeViewport() );
@@ -2170,14 +2173,14 @@ namespace Divide
                 } break;
                 case GFX::CommandType::POP_VIEWPORT:
                 {
-                    OPTICK_EVENT( "POP_VIEWPORT" );
+                    PROFILE_SCOPE( "POP_VIEWPORT" );
 
                     setViewport( _viewportStack.top() );
                     _viewportStack.pop();
                 } break;
                 case GFX::CommandType::SET_CAMERA:
                 {
-                    OPTICK_EVENT( "SET_CAMERA" );
+                    PROFILE_SCOPE( "SET_CAMERA" );
 
                     const GFX::SetCameraCommand* crtCmd = commandBuffer.get<GFX::SetCameraCommand>( cmd );
                     // Tell the Rendering API to draw from our desired PoV
@@ -2185,7 +2188,7 @@ namespace Divide
                 } break;
                 case GFX::CommandType::PUSH_CAMERA:
                 {
-                    OPTICK_EVENT( "PUSH_CAMERA" );
+                    PROFILE_SCOPE( "PUSH_CAMERA" );
 
                     const GFX::PushCameraCommand* crtCmd = commandBuffer.get<GFX::PushCameraCommand>( cmd );
                     DIVIDE_ASSERT( _cameraSnapshots.size() < _cameraSnapshots._Get_container().max_size(), "GFXDevice::flushCommandBuffer error: PUSH_CAMERA stack too deep!" );
@@ -2195,20 +2198,20 @@ namespace Divide
                 } break;
                 case GFX::CommandType::POP_CAMERA:
                 {
-                    OPTICK_EVENT( "POP_CAMERA" );
+                    PROFILE_SCOPE( "POP_CAMERA" );
 
                     renderFromCamera( _cameraSnapshots.top() );
                     _cameraSnapshots.pop();
                 } break;
                 case GFX::CommandType::SET_CLIP_PLANES:
                 {
-                    OPTICK_EVENT( "SET_CLIP_PLANES" );
+                    PROFILE_SCOPE( "SET_CLIP_PLANES" );
 
                     setClipPlanes( commandBuffer.get<GFX::SetClipPlanesCommand>( cmd )->_clippingPlanes );
                 } break;
                 case GFX::CommandType::EXTERNAL:
                 {
-                    OPTICK_EVENT( "EXTERNAL" );
+                    PROFILE_SCOPE( "EXTERNAL" );
                     commandBuffer.get<GFX::ExternalCommand>( cmd )->_cbk();
                 } break;
                 case GFX::CommandType::BIND_SHADER_RESOURCES:
@@ -2253,7 +2256,7 @@ namespace Divide
     /// Modified with nVidia sample code: https://github.com/nvpro-samples/gl_occlusion_culling
     std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ( RenderTargetID depthBuffer, RenderTargetID HiZTarget, GFX::CommandBuffer& cmdBufferInOut )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         assert( depthBuffer != HiZTarget );
 
@@ -2330,7 +2333,7 @@ namespace Divide
                                    const bool countCulledNodes,
                                    GFX::CommandBuffer& bufferInOut )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         const U32 cmdCount = *bufferData._lastCommandCount;
         const U32 threadCount = getGroupCount( cmdCount, GROUP_SIZE_AABB );
@@ -2433,8 +2436,6 @@ namespace Divide
     void GFXDevice::drawTextureInViewport( const ImageView& texture, const size_t samplerHash, const Rect<I32>& viewport, const bool convertToSrgb, const bool drawToDepthOnly, bool drawBlend, GFX::CommandBuffer& bufferInOut )
     {
         static GFX::BeginDebugScopeCommand   s_beginDebugScopeCmd{ "Draw Texture In Viewport" };
-        static GFX::SendPushConstantsCommand s_pushConstantsSRGBTrue{ PushConstants{{_ID( "convertToSRGB" ), GFX::PushConstantType::BOOL, true}} };
-        static GFX::SendPushConstantsCommand s_pushConstantsSRGBFalse{ PushConstants{{_ID( "convertToSRGB" ), GFX::PushConstantType::BOOL, false}} };
 
         GFX::EnqueueCommand( bufferInOut, s_beginDebugScopeCmd );
         GFX::EnqueueCommand( bufferInOut, GFX::PushCameraCommand{ Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->snapshot() } );
@@ -2450,7 +2451,9 @@ namespace Divide
 
         if ( !drawToDepthOnly )
         {
-            GFX::EnqueueCommand( bufferInOut, convertToSrgb ? s_pushConstantsSRGBTrue : s_pushConstantsSRGBFalse );
+            PushConstantsStruct pushData{};
+            pushData.data0._vec[0].x = convertToSrgb ? 1.f : 0.f;
+            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut)->_constants.set(pushData);
         }
 
         GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );

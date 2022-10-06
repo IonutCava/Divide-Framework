@@ -25,8 +25,8 @@ vec2 hammersley(uint i, uint N)
     return vec2(float(i) /float(N), rdi);
 }
 
-float D_GGX(float NoH, float roughness) {
-    float alpha = roughness * roughness;
+float D_GGX(in float NoH, in float roughnessIn) {
+    float alpha = roughnessIn * roughnessIn;
     float a = NoH * alpha;
     float k = alpha / (1.0 - NoH * NoH + a * a);
     return k * k * (1.0 / PI);
@@ -39,8 +39,8 @@ vec3 F_Schlick(float VoH, float metallic, vec3 baseColor) {
 }
 // From the filament docs. Geometric Shadowing function
 // https://google.github.io/filament/Filament.html#toc4.4.2
-float V_SmithGGXCorrelated(float NoV, float NoL, float roughness) {
-    float a2 = pow(roughness, 4.0);
+float V_SmithGGXCorrelated(float NoV, float NoL, float roughnessIn) {
+    float a2 = pow( roughnessIn, 4.0);
     float GGXV = NoL * sqrt(NoV * NoV * (1.0 - a2) + a2);
     float GGXL = NoV * sqrt(NoL * NoL * (1.0 - a2) + a2);
     return 0.5 / (GGXV + GGXL);
@@ -49,9 +49,9 @@ vec3 diffuseColor(vec3 baseColor, float metallic) {
     return baseColor * (1.0 - DIELECTRIC_SPECULAR) * (1.0 - metallic);
 }
 // Based on Karis 2014
-vec3 importanceSampleGGX(vec2 Xi, float roughness, vec3 N)
+vec3 importanceSampleGGX(vec2 Xi, float roughnessIn, vec3 N)
 {
-    float a = roughness * roughness;
+    float a = roughnessIn * roughnessIn;
     // Sample in spherical coordinates
     float phi = 2.0 * PI * Xi.x;
     float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a * a - 1.0) * Xi.y));

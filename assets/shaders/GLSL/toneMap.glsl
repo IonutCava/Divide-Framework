@@ -7,11 +7,6 @@
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texScreen;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform sampler2D texExposure;
 
-uniform float manualExposureFactor;
-uniform int mappingFunction;
-uniform uint useAdaptiveExposure;
-uniform uint skipToneMapping;
-
 layout(location = 0) out vec4 _colourOut;
 
 float Reinhard(float x) {

@@ -144,7 +144,7 @@ void Kernel::stopSplashScreen() {
 }
 
 void Kernel::idle(const bool fast) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
         Locale::Idle();
@@ -169,7 +169,7 @@ void Kernel::idle(const bool fast) {
 }
 
 void Kernel::onLoop() {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     {
         Time::ScopedTimer timer(_appLoopTimerMain);
@@ -302,7 +302,7 @@ void Kernel::onLoop() {
 
 bool Kernel::mainLoopScene(FrameEvent& evt)
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     Time::ScopedTimer timer(_appScenePass);
     {
@@ -338,7 +338,7 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
             const U64 appDeltaTimeUS = _timingData.appTimeDeltaUS();
 
             while (_timingData.accumulator() >= FIXED_UPDATE_RATE_US) {
-                OPTICK_EVENT("Run Update Loop");
+                PROFILE_SCOPE("Run Update Loop");
                 // Everything inside here should use fixed timesteps, apart from GFX updates which should use both!
                 // Some things (e.g. tonemapping) need to resolve even if the simulation is paused (might not remain true in the future)
 
@@ -346,7 +346,7 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
                     _sceneUpdateLoopTimer.start();
                 }
                 {
-                    OPTICK_EVENT("GUI Update");
+                    PROFILE_SCOPE("GUI Update");
                     _sceneManager->getActiveScene().processGUI(fixedTimestep, appDeltaTimeUS );
                 }
                 // Flush any pending threaded callbacks
@@ -356,15 +356,15 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
 
                 // Update scene based on input
                 {
-                    OPTICK_EVENT("Process input");
+                    PROFILE_SCOPE("Process input");
                     for (U8 i = 0u; i < playerCount; ++i) {
-                        OPTICK_TAG("Player index", i);
+                        PROFILE_TAG("Player index", i);
                         _sceneManager->getActiveScene().processInput(i, fixedTimestep, appDeltaTimeUS );
                     }
                 }
                 // process all scene events
                 {
-                    OPTICK_EVENT("Process scene events");
+                    PROFILE_SCOPE("Process scene events");
                     _sceneManager->getActiveScene().processTasks(fixedTimestep, appDeltaTimeUS);
                 }
                 // Update the scene state based on current time (e.g. animation matrices)
@@ -419,7 +419,7 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
 }
 
 void ComputeViewports(const Rect<I32>& mainViewport, vector<Rect<I32>>& targetViewports, const U8 count) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     const I32 xOffset = mainViewport.x;
     const I32 yOffset = mainViewport.y;
@@ -528,7 +528,7 @@ Time::ProfileTimer& getTimer(Time::ProfileTimer& parentTimer, vector<Time::Profi
 }
 
 bool Kernel::presentToScreen(FrameEvent& evt) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     Time::ScopedTimer time(_flushToScreenTimer);
 

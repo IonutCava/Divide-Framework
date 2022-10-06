@@ -10,7 +10,7 @@ namespace Divide {
 
 /// Register a new Frame Listener to be processed every frame
 void FrameListenerManager::registerFrameListener(FrameListener* listener, const U32 callOrder) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     assert(Runtime::isMainThread());
     assert(listener != nullptr);
@@ -26,7 +26,7 @@ void FrameListenerManager::registerFrameListener(FrameListener* listener, const 
 
 /// Remove an existent Frame Listener from our collection
 void FrameListenerManager::removeFrameListener(FrameListener* const listener) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     assert(Runtime::isMainThread());
 
@@ -60,7 +60,7 @@ bool FrameListenerManager::frameEvent(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::frameStarted(const FrameEvent& evt) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     for (FrameListener* listener : _listeners) {
         if (listener->enabled() && !listener->frameStarted(evt)) {
@@ -71,7 +71,7 @@ bool FrameListenerManager::frameStarted(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::framePreRender(const FrameEvent& evt) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     for (FrameListener* listener : _listeners) {
         if (listener->enabled() && !listener->framePreRender(evt)) {
@@ -82,7 +82,7 @@ bool FrameListenerManager::framePreRender(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::frameSceneRenderStarted(const FrameEvent& evt) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     for (FrameListener* listener : _listeners) {
         if (listener->enabled() && !listener->frameSceneRenderStarted(evt)) {
@@ -93,7 +93,7 @@ bool FrameListenerManager::frameSceneRenderStarted(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::frameSceneRenderEnded(const FrameEvent& evt) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     for (FrameListener* listener : _listeners) {
         if (listener->enabled() && !listener->frameSceneRenderEnded(evt)) {
@@ -104,7 +104,7 @@ bool FrameListenerManager::frameSceneRenderEnded(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::frameRenderingQueued(const FrameEvent& evt) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     for (FrameListener* listener : _listeners) {
         if (listener->enabled() && !listener->frameRenderingQueued(evt)) {
@@ -115,7 +115,7 @@ bool FrameListenerManager::frameRenderingQueued(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::framePostRender(const FrameEvent& evt) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     for (FrameListener* listener : _listeners) {
         if (listener->enabled() && !listener->framePostRender(evt)) {
@@ -126,7 +126,7 @@ bool FrameListenerManager::framePostRender(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::frameEnded(const FrameEvent& evt) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     for (FrameListener* listener : _listeners) {
         if (!listener->frameEnded(evt)) {
@@ -138,7 +138,7 @@ bool FrameListenerManager::frameEnded(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::createAndProcessEvent(const FrameEventType type, FrameEvent& evt) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     evt._type = type;
     return frameEvent(evt);

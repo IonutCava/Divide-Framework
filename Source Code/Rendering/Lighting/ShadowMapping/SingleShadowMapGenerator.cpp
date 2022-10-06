@@ -53,6 +53,18 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
         fragModule._sourceFile = "blur.glsl";
         fragModule._variant = "GaussBlur.Layered";
 
+        geomModule._defines.emplace_back( "verticalBlur uint(PushData0[1].x)" );
+        geomModule._defines.emplace_back( "layerCount int(PushData0[1].y)" );
+        geomModule._defines.emplace_back( "layerOffsetRead int(PushData0[1].z)" );
+        geomModule._defines.emplace_back( "layerOffsetWrite int(PushData0[1].w)" );
+
+        geomModule._defines.emplace_back( "layerOffsetWrite int(PushData0[1].w)" );
+
+        fragModule._defines.emplace_back( "layer uint(PushData0[0].x)" );
+        fragModule._defines.emplace_back( "size PushData0[0].yz" );
+        fragModule._defines.emplace_back( "kernelSize int(PushData0[0].w)" );
+        fragModule._defines.emplace_back( "verticalBlur uint(PushData0[1].x)" );
+
         ShaderProgramDescriptor shaderDescriptor = {};
         shaderDescriptor._modules.push_back(vertModule);
         shaderDescriptor._modules.push_back(geomModule);
@@ -75,18 +87,31 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
         });
     }
 
-    _shaderConstants.set(_ID("layerCount"), GFX::PushConstantType::INT, 1);
-    _shaderConstants.set(_ID("layerOffsetRead"), GFX::PushConstantType::INT, (I32)0);
-    _shaderConstants.set(_ID("layerOffsetWrite"), GFX::PushConstantType::INT, (I32)0);
+    _shaderConstants.data0._vec[1].y = 1.f;
+    _shaderConstants.data0._vec[1].z = 0.f;
+    _shaderConstants.data0._vec[1].w = 0.f;
 
-    std::array<vec2<F32>, Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT> blurSizes;
-    blurSizes.fill(vec2<F32>(1.0f / g_shadowSettings.spot.shadowMapResolution));
-    for (U8 i = 1; i < Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT; ++i)
+    std::array<vec2<F32>*, 12> blurSizeConstants = {
+            &_shaderConstants.data0._vec[2].xy,
+            &_shaderConstants.data0._vec[2].zw,
+            &_shaderConstants.data0._vec[3].xy,
+            &_shaderConstants.data0._vec[3].zw,
+            &_shaderConstants.data1._vec[0].xy,
+            &_shaderConstants.data1._vec[0].zw,
+            &_shaderConstants.data1._vec[1].xy,
+            &_shaderConstants.data1._vec[1].zw,
+            &_shaderConstants.data1._vec[2].xy,
+            &_shaderConstants.data1._vec[2].zw,
+            &_shaderConstants.data1._vec[3].xy,
+            &_shaderConstants.data1._vec[3].zw
+    };
+
+    blurSizeConstants[0]->set( 1.f / g_shadowSettings.spot.shadowMapResolution );
+    for ( size_t i = 1u; i < blurSizeConstants.size(); ++i )
     {
-        blurSizes[i] = blurSizes[i - 1] / 2;
+        blurSizeConstants[i]->set((*blurSizeConstants[i - 1]) * 0.5f);
     }
 
-    _shaderConstants.set(_ID("blurSizes"), GFX::PushConstantType::VEC2, blurSizes);
     SamplerDescriptor sampler = {};
     sampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
     sampler.mipSampling(TextureMipSampling::NONE);
@@ -156,7 +181,7 @@ SingleShadowMapGenerator::~SingleShadowMapGenerator()
 
 void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut)
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     const SpotLightComponent& spotLight = static_cast<SpotLightComponent&>(light);
 
@@ -196,7 +221,7 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
 
 void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::CommandBuffer& bufferInOut)
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     const RenderTargetHandle& handle = ShadowMap::getShadowMap(_type);
 
@@ -219,10 +244,7 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
     // Now we can either blur our target or just skip to mipmap computation
     if (g_shadowSettings.spot.enableBlurring)
     {
-        _shaderConstants.set(_ID("layerCount"), GFX::PushConstantType::INT, layerCount);
-
         GFX::BeginRenderPassCommand beginRenderPassCmd{};
-        GFX::SendPushConstantsCommand pushConstantsCommand{};
 
         // Blur horizontally
         beginRenderPassCmd._target = _blurBuffer._targetID;
@@ -239,13 +261,12 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
             As<DescriptorCombinedImageSampler>(binding._data) = { shadowAtt->texture()->sampledView(), shadowAtt->descriptor()._samplerHash };
         }
 
-        _shaderConstants.set(_ID("layered"), GFX::PushConstantType::BOOL, true);
-        _shaderConstants.set(_ID("verticalBlur"), GFX::PushConstantType::BOOL, false);
-        _shaderConstants.set(_ID("layerOffsetRead"), GFX::PushConstantType::INT, layerOffset);
-        _shaderConstants.set(_ID("layerOffsetWrite"), GFX::PushConstantType::INT, 0);
+        _shaderConstants.data0._vec[1].x = 0.f;
+        _shaderConstants.data0._vec[1].y = to_F32( layerCount );
+        _shaderConstants.data0._vec[1].z = to_F32(layerOffset);
+        _shaderConstants.data0._vec[1].w = 0.f;
 
-        pushConstantsCommand._constants = _shaderConstants;
-        GFX::EnqueueCommand(bufferInOut, pushConstantsCommand);
+        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set( _shaderConstants );
         GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
 
@@ -264,11 +285,12 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
         beginRenderPassCmd._name = "DO_CSM_BLUR_PASS_VERTICAL";
         GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
-        pushConstantsCommand._constants.set(_ID("verticalBlur"), GFX::PushConstantType::BOOL, true);
-        pushConstantsCommand._constants.set(_ID("layerOffsetRead"), GFX::PushConstantType::INT, 0);
-        pushConstantsCommand._constants.set(_ID("layerOffsetWrite"), GFX::PushConstantType::INT, layerOffset);
+        _shaderConstants.data0._vec[1].x = 1.f;
+        _shaderConstants.data0._vec[1].y = to_F32( layerCount );
+        _shaderConstants.data0._vec[1].z = 0.f;
+        _shaderConstants.data0._vec[1].w = to_F32( layerOffset );
 
-        GFX::EnqueueCommand(bufferInOut, pushConstantsCommand);
+        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( _shaderConstants );
         GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
     }

@@ -132,7 +132,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SDL_MAIN_HANDLED
 #include <sdl/include/SDL.h>
 
-#include <Optick/src/optick.h>
+#include "Core/Headers/Profiler.h"
 
 #if defined(VKAPI_PTR)
 #undef VKAPI_PTR

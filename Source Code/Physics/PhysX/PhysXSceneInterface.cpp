@@ -196,7 +196,7 @@ void PhysXSceneInterface::UpdateActor(physx::PxActor* actor) {
 
 void PhysXSceneInterface::process(const U64 deltaTimeUS) {
     if (_gScene != nullptr) {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         _gScene->simulate(Time::MicrosecondsToMilliseconds<physx::PxReal>(deltaTimeUS));
 

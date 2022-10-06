@@ -68,8 +68,8 @@ namespace Divide
     void TaskPool::onThreadCreate( const U32 threadIndex, const std::thread::id& threadID )
     {
         const string threadName = _threadNamePrefix + Util::to_string( threadIndex );
-        OPTICK_START_THREAD( threadName.c_str() );
 
+        Profiler::OnThreadStart(threadName);
         SetThreadName( threadName.c_str() );
         if ( _threadCreateCbk )
         {
@@ -79,12 +79,12 @@ namespace Divide
 
     void TaskPool::onThreadDestroy( [[maybe_unused]] const std::thread::id& threadID )
     {
-        OPTICK_STOP_THREAD();
+        Profiler::OnThreadStop();
     }
 
     bool TaskPool::enqueue( Task& task, const TaskPriority priority, const U32 taskIndex, const DELEGATE<void>& onCompletionFunction )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         const bool isRealtime = priority == TaskPriority::REALTIME;
         const bool hasOnCompletionFunction = !isRealtime && onCompletionFunction;
@@ -148,7 +148,7 @@ namespace Divide
 
     void TaskPool::waitForTask( const Task& task )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         using namespace std::chrono_literals;
         while ( !Finished( task ) )
@@ -167,7 +167,7 @@ namespace Divide
     {
         size_t ret = 0u;
 
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         std::array<U32, g_maxDequeueItems> taskIndex = {};
         size_t count = 0u;
@@ -192,7 +192,7 @@ namespace Divide
 
     void TaskPool::waitForAllTasks( const bool flushCallbacks )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( type() != TaskPoolType::COUNT )
         {
@@ -213,7 +213,7 @@ namespace Divide
 
     void TaskPool::taskCompleted( Task& task, const bool hasOnCompletionFunction )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         task._callback = {}; //<Needed to cleanup any stale resources (e.g. captured by lamdas)
         if ( hasOnCompletionFunction )
@@ -257,7 +257,7 @@ namespace Divide
 
     Task* TaskPool::AllocateTask( Task* parentTask, const bool allowedInIdle ) noexcept
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( parentTask != nullptr )
         {
@@ -289,7 +289,7 @@ namespace Divide
 
     void TaskPool::threadWaiting( const bool forceExecute )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( !forceExecute && Runtime::isMainThread() )
         {
@@ -310,7 +310,7 @@ namespace Divide
 
     void TaskPool::waitAndJoin() const
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( type() == TaskPoolType::TYPE_BLOCKING )
         {
@@ -334,7 +334,7 @@ namespace Divide
 
     void parallel_for( TaskPool& pool, const ParallelForDescriptor& descriptor )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( descriptor._iterCount == 0u )
         {

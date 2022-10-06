@@ -547,7 +547,7 @@ namespace Divide
     /// Prepare the GPU for rendering a frame
     bool GL_API::beginFrame( DisplayWindow& window, const bool global )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
         // Start a duration query in debug builds
         if ( global && _runQueries )
         {
@@ -605,7 +605,7 @@ namespace Divide
 
     void GL_API::endFrameLocal( const DisplayWindow& window )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         // Swap buffers    
         SDL_GLContext glContext = window.userData()->_glContext;
@@ -613,24 +613,24 @@ namespace Divide
 
         if ( glContext != nullptr && (_currentContext._windowGUID != windowGUID || _currentContext._context != glContext) )
         {
-            OPTICK_EVENT( "GL_API: Swap Context" );
+            PROFILE_SCOPE( "GL_API: Swap Context" );
             SDL_GL_MakeCurrent( window.getRawWindow(), glContext );
             _currentContext._windowGUID = windowGUID;
             _currentContext._context = glContext;
         }
         {
-            OPTICK_EVENT( "GL_API: Swap Buffers" );
+            PROFILE_SCOPE( "GL_API: Swap Buffers" );
             SDL_GL_SwapWindow( window.getRawWindow() );
         }
     }
 
     void GL_API::endFrameGlobal( const DisplayWindow& window )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( _runQueries )
         {
-            OPTICK_EVENT( "End GPU Queries" );
+            PROFILE_SCOPE( "End GPU Queries" );
             // End the timing query started in beginFrame() in debug builds
 
             if_constexpr( g_runAllQueriesInSameFrame )
@@ -654,7 +654,7 @@ namespace Divide
         _swapBufferTimer.start();
         endFrameLocal( window );
         {
-            //OPTICK_EVENT("Post-swap delay");
+            //PROFILE_SCOPE("Post-swap delay");
             //SDL_Delay(1);
         }
         _swapBufferTimer.stop();
@@ -666,13 +666,13 @@ namespace Divide
             s_fenceSyncCounter[i] = s_fenceSyncCounter[i + 1];
         }
 
-        OPTICK_EVENT( "GL_API: Post-Swap cleanup" );
+        PROFILE_SCOPE( "GL_API: Post-Swap cleanup" );
         s_textureViewCache.onFrameEnd();
         s_glFlushQueued.store( false );
 
         if ( _runQueries )
         {
-            OPTICK_EVENT( "GL_API: Time Query" );
+            PROFILE_SCOPE( "GL_API: Time Query" );
             static std::array<I64, to_base( GlobalQueryTypes::COUNT )> results{};
             if_constexpr( g_runAllQueriesInSameFrame )
             {
@@ -717,7 +717,7 @@ namespace Divide
     /// Finish rendering the current frame
     void GL_API::endFrame( DisplayWindow& window, const bool global )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( global )
         {
@@ -739,7 +739,7 @@ namespace Divide
     /// with his OpenGL frontend adapted for core context profiles
     void GL_API::drawText( const TextElementBatch& batch )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         BlendingSettings textBlend{};
         textBlend.blendSrc( BlendProperty::SRC_ALPHA );
@@ -807,7 +807,7 @@ namespace Divide
 
     bool GL_API::draw( const GenericDrawCommand& cmd ) const
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( cmd._sourceBuffer._id == 0 )
         {
@@ -844,7 +844,7 @@ namespace Divide
 
     void GL_API::flushTextureBindQueue()
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         static std::array<TexBindEntry, GLStateTracker::MAX_BOUND_TEXTURE_UNITS> s_textureCache;
         static std::array<GLuint, GLStateTracker::MAX_BOUND_TEXTURE_UNITS> s_textureHandles;
@@ -945,7 +945,7 @@ namespace Divide
 
     GLuint GL_API::getGLTextureView( const ImageView srcView, const U8 lifetimeInFrames ) const
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         auto [handle, cacheHit] = s_textureViewCache.allocate( srcView.getHash() );
 
@@ -964,7 +964,7 @@ namespace Divide
 
             const bool isCube = IsCubeTexture( srcView.targetType() );
 
-            OPTICK_EVENT( "GL: cache miss  - Image" );
+            PROFILE_SCOPE( "GL: cache miss  - Image" );
             glTextureView( handle,
                            GLUtil::internalTextureType( srcView.targetType(), srcView._descriptor._msaaSamples ),
                            srcHandle,
@@ -990,11 +990,11 @@ namespace Divide
         static GFX::MemoryBarrierCommand pushConstantsMemCommand{};
         static bool pushConstantsNeedLock = false;
 
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
-        OPTICK_TAG( "Type", to_base( cmd->Type() ) );
+        PROFILE_TAG( "Type", to_base( cmd->Type() ) );
 
-        OPTICK_EVENT( GFX::Names::commandType[to_base( cmd->Type() )] );
+        PROFILE_SCOPE( GFX::Names::commandType[to_base( cmd->Type() )] );
 
         if ( GFXDevice::IsSubmitCommand( cmd->Type() ) )
         {
@@ -1011,7 +1011,7 @@ namespace Divide
 
                 if ( crtCmd->_target == SCREEN_TARGET_ID )
                 {
-                    OPTICK_EVENT( "Begin Screen Target" );
+                    PROFILE_SCOPE( "Begin Screen Target" );
 
                     if ( s_stateTracker.setActiveFB( RenderTarget::Usage::RT_WRITE_ONLY, 0u ) == GLStateTracker::BindResult::FAILED )
                     {
@@ -1021,7 +1021,7 @@ namespace Divide
                     s_stateTracker._activeRenderTarget = nullptr;
                     if ( crtCmd->_clearDescriptor._clearColourDescriptors[0]._index != RTColourAttachmentSlot::COUNT )
                     {
-                        OPTICK_EVENT( "Clear Screen Target");
+                        PROFILE_SCOPE( "Clear Screen Target");
 
                         ClearBufferMask mask = ClearBufferMask::GL_COLOR_BUFFER_BIT;
 
@@ -1037,7 +1037,7 @@ namespace Divide
                 }
                 else
                 {
-                    OPTICK_EVENT( "Begin Render Target" );
+                    PROFILE_SCOPE( "Begin Render Target" );
 
                     glFramebuffer* rt = static_cast<glFramebuffer*>(_context.renderTargetPool().getRenderTarget( crtCmd->_target ));
 
@@ -1236,12 +1236,12 @@ namespace Divide
 
                 if ( crtCmd->_layerRange.min == 0 && crtCmd->_layerRange.max >= crtCmd->_texture->descriptor().layerCount() )
                 {
-                    OPTICK_EVENT( "GL: In-place computation - Full" );
+                    PROFILE_SCOPE( "GL: In-place computation - Full" );
                     glGenerateTextureMipmap( static_cast<glTexture*>(crtCmd->_texture)->textureHandle() );
                 }
                 else
                 {
-                    OPTICK_EVENT( "GL: View-based computation" );
+                    PROFILE_SCOPE( "GL: View-based computation" );
                     assert( crtCmd->_mipRange.max != 0u );
 
                     ImageView view = crtCmd->_texture->getView(ImageUsage::SHADER_READ_WRITE);
@@ -1270,7 +1270,7 @@ namespace Divide
                     if ( view._mipLevels.max > view._mipLevels.min &&
                          view._mipLevels.max - view._mipLevels.min > 0u )
                     {
-                        OPTICK_EVENT( "GL: In-place computation - Image" );
+                        PROFILE_SCOPE( "GL: In-place computation - Image" );
                         glGenerateTextureMipmap( getGLTextureView( view, 6u ) );
                     }
                 }
@@ -1433,12 +1433,12 @@ namespace Divide
 
     void GL_API::postFlushCommandBuffer( [[maybe_unused]] const GFX::CommandBuffer& commandBuffer )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         bool expected = true;
         if ( s_glFlushQueued.compare_exchange_strong( expected, false ) )
         {
-            OPTICK_EVENT( "GL_FLUSH" );
+            PROFILE_SCOPE( "GL_FLUSH" );
             glFlush();
         }
     }
@@ -1577,7 +1577,7 @@ namespace Divide
 
     bool GL_API::bindShaderResources( const DescriptorSetUsage usage, const DescriptorSet& bindings )
     {
-        OPTICK_EVENT( "BIND_SHADER_RESOURCES" );
+        PROFILE_SCOPE( "BIND_SHADER_RESOURCES" );
 
         for ( auto& srcBinding : bindings )
         {
@@ -1740,7 +1740,7 @@ namespace Divide
 
     ShaderResult GL_API::bindPipeline( const Pipeline& pipeline )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
         if ( s_stateTracker._activePipeline && *s_stateTracker._activePipeline == pipeline )
         {
             return ShaderResult::OK;
@@ -1750,7 +1750,7 @@ namespace Divide
 
         const PipelineDescriptor& pipelineDescriptor = pipeline.descriptor();
         {
-            OPTICK_EVENT( "Set Raster State" );
+            PROFILE_SCOPE( "Set Raster State" );
             // Set the proper render states
             const size_t stateBlockHash = pipelineDescriptor._stateHash == 0u ? _context.getDefaultStateBlock( false ) : pipelineDescriptor._stateHash;
             // Passing 0 is a perfectly acceptable way of enabling the default render state block
@@ -1760,7 +1760,7 @@ namespace Divide
             }
         }
         {
-            OPTICK_EVENT( "Set Blending" );
+            PROFILE_SCOPE( "Set Blending" );
             U16 i = 0u;
             s_stateTracker.setBlendColour( pipelineDescriptor._blendStates._blendColour );
             for ( const BlendingSettings& blendState : pipelineDescriptor._blendStates._settings )
@@ -1775,14 +1775,14 @@ namespace Divide
         if ( glProgram != nullptr )
         {
             {
-                OPTICK_EVENT( "Set Vertex Format" );
+                PROFILE_SCOPE( "Set Vertex Format" );
                 s_stateTracker.setVertexFormat( pipelineDescriptor._primitiveTopology,
                                                 pipelineDescriptor._primitiveRestartEnabled,
                                                 pipelineDescriptor._vertexFormat,
                                                 pipeline.vertexFormatHash() );
             }
             {
-                OPTICK_EVENT( "Set Shader Program" );
+                PROFILE_SCOPE( "Set Shader Program" );
                 // We need a valid shader as no fixed function pipeline is available
                 // Try to bind the shader program. If it failed to load, or isn't loaded yet, cancel the draw request for this frame
                 ret = Attorney::GLAPIShaderProgram::bind( *glProgram );
@@ -1852,7 +1852,7 @@ namespace Divide
 
     void GL_API::PushDebugMessage( const char* message, const U32 id )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if_constexpr( Config::ENABLE_GPU_VALIDATION )
         {
@@ -1864,7 +1864,7 @@ namespace Divide
 
     void GL_API::PopDebugMessage()
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if_constexpr( Config::ENABLE_GPU_VALIDATION )
         {
@@ -2074,7 +2074,7 @@ namespace Divide
 
     GLsync GL_API::CreateFenceSync()
     {
-        OPTICK_EVENT( "Create Sync" );
+        PROFILE_SCOPE( "Create Sync" );
 
         DIVIDE_ASSERT( s_fenceSyncCounter[s_LockFrameLifetime - 1u] < U32_MAX );
 
@@ -2084,7 +2084,7 @@ namespace Divide
 
     void GL_API::DestroyFenceSync( GLsync& sync )
     {
-        OPTICK_EVENT( "Delete Sync" );
+        PROFILE_SCOPE( "Delete Sync" );
 
         DIVIDE_ASSERT( s_fenceSyncCounter[s_LockFrameLifetime - 1u] > 0u );
 

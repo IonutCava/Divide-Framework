@@ -5,17 +5,10 @@
 layout(points, invocations = GS_MAX_INVOCATIONS) in;
 layout(triangle_strip, max_vertices = 4) out;
 
-uniform vec2 blurSizes[GS_MAX_INVOCATIONS];
-
-uniform int layerCount;
-uniform int layerOffsetRead;
-uniform int layerOffsetWrite;
-uniform uint verticalBlur;
-
 layout(location = ATTRIB_FREE_START) out flat int _blurred;
 layout(location = ATTRIB_FREE_START + 1) out vec3 _blurCoords[7];
 
-void computeCoordsH(in float texCoordX, in float texCoordY, in int layer){
+void computeCoordsH(in float texCoordX, in float texCoordY, in int layer, in vec2 blurSizes[12]){
     vec2 blurSize = blurSizes[layer];
 
     _blurCoords[0] = vec3(texCoordX, texCoordY - 3.0 * blurSize.y, layer);
@@ -29,7 +22,7 @@ void computeCoordsH(in float texCoordX, in float texCoordY, in int layer){
     _blurred = 1;
 }
 
-void computeCoordsV(in float texCoordX, in float texCoordY, in int layer){
+void computeCoordsV(in float texCoordX, in float texCoordY, in int layer, in vec2 blurSizes[12] ){
     vec2 blurSize = blurSizes[layer];
 
     _blurCoords[0] = vec3(texCoordX - 3.0 * blurSize.x, texCoordY, layer);
@@ -56,10 +49,12 @@ void passThrough(in float texCoordX, in float texCoordY, in int layer) {
 }
 
 void BlurRoutine(in float texCoordX, in float texCoordY, in int layer) {
+    const vec2 blurSizes[12] = vec2[12]( PushData0[2].xy, PushData0[2].zw, PushData0[3].xy, PushData0[3].zw, PushData1[0].xy, PushData1[0].zw, PushData1[1].xy, PushData1[1].zw, PushData1[2].xy, PushData1[2].zw, PushData1[3].xy, PushData1[3].zw );
+
     if (verticalBlur != 0u) {
-        computeCoordsV(texCoordX, texCoordY, layer);
+        computeCoordsV(texCoordX, texCoordY, layer, blurSizes );
     } else {
-        computeCoordsH(texCoordX, texCoordY, layer);
+        computeCoordsH(texCoordX, texCoordY, layer, blurSizes );
     }
 }
 
@@ -151,15 +146,10 @@ void main(void)
 layout(location = 0) out vec4 _colourOut;
 
 #if defined(LAYERED)
-uniform int layer;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2DArray texScreen;
 #else
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texScreen;
 #endif
-
-uniform vec2 size;
-uniform int kernelSize;
-uniform uint verticalBlur;
 
 #if defined(LAYERED)
 vec3 blurHorizontal() {
@@ -239,9 +229,6 @@ void main() {
 //ref: http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texScreen;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform sampler2D texVelocity;
-
-uniform float dvd_velocityScale;
-uniform int dvd_maxSamples;
 
 layout(location = 0) out vec4 _outColour;
 

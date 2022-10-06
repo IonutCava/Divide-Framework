@@ -63,7 +63,7 @@ namespace ECS
 
 	void EntityManager::RemoveDestroyedEntities()
 	{
-		OPTICK_EVENT();
+		PROFILE_SCOPE();
 
 		for (size_t i = 0; i < this->m_NumPendingDestroyedEntities; ++i)
 		{

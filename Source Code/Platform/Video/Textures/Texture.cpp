@@ -145,7 +145,7 @@ void Texture::postLoad()
 /// Load texture data using the specified file name
 void Texture::threadedLoad()
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     if (!assetLocation().empty())
     {

@@ -56,7 +56,7 @@ void ShaderBuffer::readData(const BufferRange range, const std::pair<bufferPtr, 
 }
 
 void ShaderBuffer::readBytes(BufferRange range, std::pair<bufferPtr, size_t> outData) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     DIVIDE_ASSERT(range._length > 0u &&
                   _params._hostVisible &&
@@ -73,7 +73,7 @@ BufferLock ShaderBuffer::clearBytes(const BufferRange range) {
 }
 
 BufferLock ShaderBuffer::writeBytes(BufferRange range, bufferPtr data) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     DIVIDE_ASSERT(range._length > 0 &&
                   _params._updateFrequency != BufferUpdateFrequency::ONCE &&

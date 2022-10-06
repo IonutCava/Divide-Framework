@@ -121,7 +121,7 @@ namespace Divide
 
     void InfinitePlane::sceneUpdate( const U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sceneState )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         TransformComponent* tComp = sgn->get<TransformComponent>();
 

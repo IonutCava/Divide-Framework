@@ -3,6 +3,7 @@
 #include "Headers/OutputWindow.h"
 #include "Core/Headers/StringHelper.h"
 #include "Editor/Headers/Editor.h"
+#include "Editor/Headers/Utils.h"
 
 #include <imgui_internal.h>
 #include <IconFontCppHeaders/IconsForkAwesome.h>
@@ -48,7 +49,7 @@ namespace Divide
 
     void OutputWindow::drawInternal()
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         ImGui::PushStyleColor( ImGuiCol_ChildBg, ImVec4( 0.3f, 0.3f, 0.3f, 1.0f ) );
         {
@@ -83,13 +84,6 @@ namespace Divide
             ImGui::EndPopup();
         }
 
-        ImGui::PushStyleVar( ImGuiStyleVar_ItemSpacing, ImVec2( 4, 1 ) ); // Tighten spacing
-
-        if ( copy_to_clipboard )
-        {
-            ImGui::LogToClipboard();
-        }
-
         static ImVec4 colours[] = {
             ImVec4( 1.0f, 1.0f, 1.0f, 1.0f ),
             ImVec4( 1.0f, 1.0f, 0.0f, 1.0f ),
@@ -106,50 +100,59 @@ namespace Divide
         {
             readIndex -= 1u;
         }
-        bool typePushed = false;
+
+        ImGui::PushStyleVar( ImGuiStyleVar_ItemSpacing, ImVec2( 4, 1 ) ); // Tighten spacing
+
+        if ( copy_to_clipboard )
         {
-            OPTICK_EVENT( "Print Scrolling region " );
+            ImGui::LogToClipboard();
+        }
+        {
+            PROFILE_SCOPE( "Print Scrolling region " );
+
+            static string currentMessage;
 
             Console::EntryType previousType = Console::EntryType::INFO;
+
             for ( U16 i = 0u; i < g_maxLogEntries; ++i )
             {
-                const size_t index = (readIndex + i) % g_maxLogEntries;
-                const Console::OutputEntry& message = g_log[index];
-                const char* textStart = message._text.c_str();
-                const char* textEnd = textStart + message._text.length();
-
-                if ( !_filter.PassFilter( textStart, textEnd ) )
+                const Console::OutputEntry& message = g_log[(readIndex + i) % g_maxLogEntries];
+                if ( !_filter.PassFilter( message._text.c_str(), message._text.c_str() + message._text.length() ) )
                 {
                     continue;
                 }
-                const Console::EntryType currentType = message._type;
-                if ( previousType != currentType )
+
+                if ( previousType != message._type )
                 {
-                    if ( typePushed )
+                    if ( !currentMessage.empty() )
                     {
-                        ImGui::PopStyleColor();
+                        Util::PrintColouredText(currentMessage, colours[to_U8( previousType )]);
+                        currentMessage.resize(0);
                     }
-                    ImGui::PushStyleColor( ImGuiCol_Text, colours[to_U8( currentType )] );
-                    typePushed = true;
-                    previousType = currentType;
+                    previousType = message._type;
                 }
 
-                ImGui::TextUnformatted( textStart, textEnd );
+                currentMessage.append(message._text);
+                currentMessage.append("\n");
+            }
+
+            if ( !currentMessage.empty() )
+            {
+                Util::PrintColouredText( currentMessage, colours[to_U8( previousType )] );
+                currentMessage.resize(0);
             }
         }
-        if ( typePushed )
+
+        if ( _scrollToBottom && _scrollToButtomReset )
         {
-            ImGui::PopStyleColor();
+            ImGui::SetScrollHereY( 1.f );
+            _scrollToButtomReset = false;
         }
+
         if ( copy_to_clipboard )
         {
             ImGui::LogFinish();
         }
-        if ( _scrollToBottom && _scrollToButtomReset )
-        {
-            ImGui::SetScrollHereY();
-        }
-        _scrollToButtomReset = false;
 
         ImGui::PopStyleVar();
         ImGui::EndChild();
@@ -179,25 +182,25 @@ namespace Divide
             }
             strcpy( _inputBuf, "" );
         }
-                               {
-                                   bool tooltip = false;
-                                   ImGui::SameLine( window->SizeFull.x - 55 );
-                                   ImGui::Text( ICON_FK_ARROW_CIRCLE_DOWN ); tooltip = tooltip || ImGui::IsItemHovered();
-                                   ImGui::SameLine();
-                                   ImGui::PushID( ICON_FK_ARROW_CIRCLE_DOWN"_ID" );
-                                   ImGui::Checkbox( "", &_scrollToBottom ); tooltip = tooltip || ImGui::IsItemHovered();
-                                   ImGui::PopID();
-                                   if ( tooltip )
-                                   {
-                                       ImGui::SetTooltip( "Auto-scroll to bottom" );
-                                   }
-                               }
-                               // Demonstrate keeping auto focus on the input box
-                               if ( ImGui::IsItemHovered() || ImGui::IsWindowFocused( ImGuiFocusedFlags_RootAndChildWindows ) && !ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked( 0 ) )
-                               {
-                                   ImGui::SetKeyboardFocusHere( -1 ); // Auto focus previous widget
-                               }
-                               ImGui::PopStyleColor();
+        {
+            bool tooltip = false;
+            ImGui::SameLine( window->SizeFull.x - 55 );
+            ImGui::Text( ICON_FK_ARROW_CIRCLE_DOWN ); tooltip = tooltip || ImGui::IsItemHovered();
+            ImGui::SameLine();
+            ImGui::PushID( ICON_FK_ARROW_CIRCLE_DOWN"_ID" );
+            ImGui::Checkbox( "", &_scrollToBottom ); tooltip = tooltip || ImGui::IsItemHovered();
+            ImGui::PopID();
+            if ( tooltip )
+            {
+                ImGui::SetTooltip( "Auto-scroll to bottom" );
+            }
+        }
+        // Demonstrate keeping auto focus on the input box
+        if ( ImGui::IsItemHovered() || ImGui::IsWindowFocused( ImGuiFocusedFlags_RootAndChildWindows ) && !ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked( 0 ) )
+        {
+            ImGui::SetKeyboardFocusHere( -1 ); // Auto focus previous widget
+        }
+        ImGui::PopStyleColor();
     }
 
     void OutputWindow::PrintText( const Console::OutputEntry& entry )

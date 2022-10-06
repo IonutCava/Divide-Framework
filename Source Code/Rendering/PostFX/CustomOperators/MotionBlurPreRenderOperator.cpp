@@ -34,6 +34,8 @@ MotionBlurPreRenderOperator::MotionBlurPreRenderOperator(GFXDevice& context, Pre
     ShaderProgramDescriptor shaderDescriptor = {};
     shaderDescriptor._modules.push_back(vertModule);
     shaderDescriptor._modules.push_back(fragModule);
+    shaderDescriptor._globalDefines.emplace_back( "dvd_velocityScale PushData0[0].x" );
+    shaderDescriptor._globalDefines.emplace_back( "dvd_maxSamples int(PushData0[0].y)" );
 
     ResourceDescriptor motionBlur("MotionBlur");
     motionBlur.propertyDescriptor(shaderDescriptor);
@@ -97,9 +99,9 @@ bool MotionBlurPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx
 
     GFX::EnqueueCommand(bufferInOut, _blurApplyPipelineCmd);
 
-    PushConstants& constants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants;
-    constants.set(_ID("dvd_velocityScale"), GFX::PushConstantType::FLOAT, velocityFactor);
-    constants.set(_ID("dvd_maxSamples"),    GFX::PushConstantType::INT,   to_I32(maxSamples()));
+    PushConstantsStruct params{};
+    params.data0._vec[0].xy.set( velocityFactor, to_F32( maxSamples() ) );
+    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(params);
 
     GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
     GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);

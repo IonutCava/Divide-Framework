@@ -32,7 +32,7 @@ namespace Divide {
 
     void DockedWindow::draw()
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         ImGui::SetNextWindowPos(_descriptor.position, ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(_descriptor.size, ImGuiCond_FirstUseEver);

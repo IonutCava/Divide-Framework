@@ -586,7 +586,7 @@ void SceneGraphNode::processDeleteQueue(vector<size_t>& childList)
 // Please call in MAIN THREAD! Nothing is thread safe here (for now) -Ionut
 void SceneGraphNode::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState)
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
     if (hasFlag(Flags::ACTIVE))
     {
         Attorney::SceneNodeSceneGraph::sceneUpdate(_node.get(), deltaTimeUS, this, sceneState);
@@ -597,7 +597,7 @@ void SceneGraphNode::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState)
 
 void SceneGraphNode::processEvents()
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     const ECS::EntityId id = GetEntityID();
     for (size_t idx = 0u; idx < Events.EVENT_QUEUE_SIZE; ++idx)
@@ -612,14 +612,14 @@ void SceneGraphNode::processEvents()
         {
             case ECS::CustomEvent::Type::RelationshipCacheInvalidated:
             {
-                OPTICK_EVENT("RelationshipCacheInvalidated");
+                PROFILE_SCOPE("RelationshipCacheInvalidated");
                 if (!_relationshipCache.isValid()) {
                     _relationshipCache.rebuild();
                 }
             } break;
             case ECS::CustomEvent::Type::EntityFlagChanged:
             {
-                OPTICK_EVENT("EntityFlagChanged");
+                PROFILE_SCOPE("EntityFlagChanged");
                 if (static_cast<Flags>(evt._flag) == Flags::SELECTED)
                 {
                     RenderingComponent* rComp = get<RenderingComponent>();
@@ -633,25 +633,25 @@ void SceneGraphNode::processEvents()
             } break;
             case ECS::CustomEvent::Type::NewShaderReady:
             {
-                OPTICK_EVENT("NewShaderReady");
+                PROFILE_SCOPE("NewShaderReady");
                 Attorney::SceneGraphSGN::onNodeShaderReady(sceneGraph(), *this);
             } break;
             case ECS::CustomEvent::Type::TransformUpdated:
             {
-                OPTICK_EVENT("TransformUpdated");
+                PROFILE_SCOPE("TransformUpdated");
                 Attorney::SceneGraphSGN::onNodeMoved(sceneGraph(), *this);
                 Attorney::SceneGraphSGN::onNodeSpatialChange(sceneGraph(), *this);
             } break;
             case ECS::CustomEvent::Type::AnimationUpdated:
             case ECS::CustomEvent::Type::BoundsUpdated:
             {
-                OPTICK_EVENT("onNodeSpatialChange");
+                PROFILE_SCOPE("onNodeSpatialChange");
                 Attorney::SceneGraphSGN::onNodeSpatialChange(sceneGraph(), *this);
             } break;
             default: break;
         }
         {
-            OPTICK_EVENT("PassDataToAllComponents");
+            PROFILE_SCOPE("PassDataToAllComponents");
             PassDataToAllComponents(evt);
         }
 
@@ -665,7 +665,7 @@ void SceneGraphNode::prepareRender( RenderingComponent& rComp,
                                     const CameraSnapshot& cameraSnapshot,
                                     const bool refreshData)
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     if (HasComponents(ComponentType::ANIMATION))
     {
@@ -843,7 +843,7 @@ FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
                                                const U32 filterMask,
                                                const F32 distanceToClosestPointSQ) const
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     // Early out for inactive nodes
     if (!hasFlag(SceneGraphNode::Flags::ACTIVE))
@@ -896,7 +896,7 @@ FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
 
     if (TestBit(cullFlags, CullOptions::CULL_AGAINST_LOD) && !hasFlag(Flags::IS_CONTAINER))
     {
-        OPTICK_EVENT("cullNode - LoD check")
+        PROFILE_SCOPE("cullNode - LoD check");
 
         RenderingComponent* rComp = get<RenderingComponent>();
         const vec2<F32> renderRange = rComp->renderRange();
@@ -922,7 +922,7 @@ FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
 
 FrustumCollision SceneGraphNode::clippingCullNode(const NodeCullParams& params) const
 {
-    OPTICK_EVENT("cullNode - Bounding Sphere - Clipping Planes Test");
+    PROFILE_SCOPE("cullNode - Bounding Sphere - Clipping Planes Test");
     const BoundsComponent* bComp = get<BoundsComponent>();
     if (bComp)
     {
@@ -952,7 +952,7 @@ FrustumCollision SceneGraphNode::frustumCullNode(const NodeCullParams& params,
                                                  const U16 cullFlags,
                                                  F32& distanceToClosestPointSQ) const
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     const F32 maxDistanceSQ = SQUARED(params._cullMaxDistance);
     const BoundsComponent* bComp = get<BoundsComponent>();
@@ -994,7 +994,7 @@ FrustumCollision SceneGraphNode::frustumCullNode(const NodeCullParams& params,
     FrustumCollision collisionType = FrustumCollision::FRUSTUM_IN;
     if (TestBit(cullFlags, CullOptions::CULL_AGAINST_FRUSTUM))
     {
-        OPTICK_EVENT("cullNode - Bounding Sphere & Box Frustum Test");
+        PROFILE_SCOPE("cullNode - Bounding Sphere & Box Frustum Test");
         // Sphere is in range, so check bounds primitives against the frustum
         if (bComp->getBoundingBox().containsPoint(params._cameraEyePos))
         {

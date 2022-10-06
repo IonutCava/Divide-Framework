@@ -72,7 +72,7 @@ namespace
 
     [[nodiscard]] bool EraseEmptyCommands( CommandBuffer::CommandOrderContainer& commandOrder )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         const size_t initialSize = commandOrder.size();
         erase_if( commandOrder, []( const CommandBuffer::CommandEntry& entry ) noexcept { return entry._data == PolyContainerEntry::INVALID_ENTRY_ID;} );
@@ -83,7 +83,7 @@ namespace
 
     void CommandBuffer::add( const CommandBuffer& other )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         _commands.reserveAdditional( other._commands );
 
@@ -96,7 +96,7 @@ namespace
 
     void CommandBuffer::batch()
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( _batched )
         {
@@ -108,7 +108,7 @@ namespace
         CommandBase* prevCommand = nullptr;
         do
         {
-            OPTICK_EVENT( "TRY_MERGE_LOOP" );
+            PROFILE_SCOPE( "TRY_MERGE_LOOP" );
 
             bool tryMerge = true;
             while ( tryMerge )
@@ -123,7 +123,7 @@ namespace
                         continue;
                     }
 
-                    OPTICK_EVENT( "TRY_MERGE_LOOP_STEP" );
+                    PROFILE_SCOPE( "TRY_MERGE_LOOP_STEP" );
 
                     const CommandType cmdType = static_cast<CommandType>(entry._typeIndex);
                     CommandBase* crtCommand = get<CommandBase>( entry );
@@ -234,7 +234,7 @@ namespace
             return;
         }
 
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         const Pipeline* prevPipeline = nullptr;
         const Rect<I32>* prevScissorRect = nullptr;
@@ -252,7 +252,7 @@ namespace
             {
                 case CommandType::DRAW_COMMANDS:
                 {
-                    OPTICK_EVENT( "Clean Draw Commands" );
+                    PROFILE_SCOPE( "Clean Draw Commands" );
 
                     DrawCommand::CommandContainer& cmds = get<DrawCommand>( cmd )->_drawCommands;
                     if ( cmds.size() == 1 )
@@ -266,7 +266,7 @@ namespace
                 } break;
                 case CommandType::BIND_PIPELINE:
                 {
-                    OPTICK_EVENT( "Clean Pipelines" );
+                    PROFILE_SCOPE( "Clean Pipelines" );
 
                     const Pipeline* pipeline = get<BindPipelineCommand>( cmd )->_pipeline;
                     // If the current pipeline is identical to the previous one, remove it
@@ -281,13 +281,13 @@ namespace
                 }break;
                 case CommandType::SEND_PUSH_CONSTANTS:
                 {
-                    OPTICK_EVENT( "Clean Push Constants" );
+                    PROFILE_SCOPE( "Clean Push Constants" );
 
                     erase = get<SendPushConstantsCommand>( cmd )->_constants.empty();
                 }break;
                 case CommandType::BIND_SHADER_RESOURCES:
                 {
-                    OPTICK_EVENT( "Clean Descriptor Sets" );
+                    PROFILE_SCOPE( "Clean Descriptor Sets" );
 
                     auto bindCmd = get<BindShaderResourcesCommand>(cmd);
                     if ( bindCmd->_usage != DescriptorSetUsage::COUNT && (prevDescriptorSet == nullptr || *prevDescriptorSet != bindCmd->_bindings) )
@@ -309,7 +309,7 @@ namespace
                 } break;
                 case CommandType::DRAW_TEXT:
                 {
-                    OPTICK_EVENT( "Clean Draw Text" );
+                    PROFILE_SCOPE( "Clean Draw Text" );
 
                     const TextElementBatch& textBatch = get<DrawTextCommand>( cmd )->_batch;
 
@@ -325,7 +325,7 @@ namespace
                 }break;
                 case CommandType::SET_SCISSOR:
                 {
-                    OPTICK_EVENT( "Clean Scissor" );
+                    PROFILE_SCOPE( "Clean Scissor" );
 
                     const Rect<I32>& scissorRect = get<SetScissorCommand>( cmd )->_rect;
                     if ( prevScissorRect == nullptr || *prevScissorRect != scissorRect )
@@ -347,7 +347,7 @@ namespace
                 } break;
                 case CommandType::SET_VIEWPORT:
                 {
-                    OPTICK_EVENT( "Clean Viewport" );
+                    PROFILE_SCOPE( "Clean Viewport" );
 
                     const Rect<I32>& viewportRect = get<SetViewportCommand>( cmd )->_viewport;
 
@@ -372,7 +372,7 @@ namespace
         }
 
         {
-            OPTICK_EVENT( "Remove redundant Pipelines" );
+        PROFILE_SCOPE( "Remove redundant Pipelines" );
             // Remove redundant pipeline changes
             auto* entry = eastl::next( begin( _commandOrder ) );
             for ( ; entry != cend( _commandOrder ); ++entry )
@@ -389,7 +389,7 @@ namespace
             }
         }
         {
-            OPTICK_EVENT( "Remove invalid commands" );
+            PROFILE_SCOPE( "Remove invalid commands" );
             erase_if( _commandOrder, []( const CommandEntry& entry ) noexcept
                         {
                             return entry._data == PolyContainerEntry::INVALID_ENTRY_ID;
@@ -414,7 +414,7 @@ namespace
             return { ErrorType::NONE, 0u };
         }
 
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         size_t cmdIndex = 0u;
         bool pushedPass = false, pushedQuery = false;
@@ -636,7 +636,7 @@ namespace
 
     bool Merge( DrawCommand* prevCommand, DrawCommand* crtCommand )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         DrawCommand::CommandContainer& commands = prevCommand->_drawCommands;
         commands.insert( cend( commands ),
@@ -645,7 +645,7 @@ namespace
         efficient_clear( crtCommand->_drawCommands );
 
         {
-            OPTICK_EVENT( "Merge by offset" );
+            PROFILE_SCOPE( "Merge by offset" );
             eastl::sort( begin( commands ),
                             end( commands ),
                             []( const GenericDrawCommand& a, const GenericDrawCommand& b ) noexcept -> bool

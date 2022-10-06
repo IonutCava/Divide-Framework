@@ -37,13 +37,13 @@ bool glLockManager::initLockPoolEntry(BufferLockPoolEntry& entry) {
 }
 
 bool Wait(GLsync sync, U8& retryCount) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     GLuint64 waitTimeout = 0u;
     SyncObjectMask waitFlags = SyncObjectMask::GL_NONE_BIT;
     while (true) {
-        OPTICK_EVENT("Wait - OnLoop");
-        OPTICK_TAG("RetryCount", retryCount);
+        PROFILE_SCOPE("Wait - OnLoop");
+        PROFILE_TAG("RetryCount", retryCount);
 
         const GLenum waitRet = glClientWaitSync(sync, waitFlags, waitTimeout);
         if (waitRet == GL_ALREADY_SIGNALED || waitRet == GL_CONDITION_SATISFIED) {
@@ -73,7 +73,7 @@ bool Wait(GLsync sync, U8& retryCount) {
 }
 
 bool glLockManager::waitForLockedRangeLocked(const SyncObject_uptr& sync, const BufferRange& testRange, const BufferLockInstance& lock) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     glSyncObject* glSync = static_cast<glSyncObject*>(sync.get());
 

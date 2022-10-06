@@ -91,7 +91,7 @@ void GUI::draw(GFXDevice& context, const Rect<I32>& viewport, GFX::CommandBuffer
     if (!_init || !_activeScene) {
         return;
     }
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Render GUI" });
 
@@ -159,7 +159,7 @@ void GUI::idle() {
 }
 
 void GUI::update(const U64 deltaTimeUS) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     if (!_init) {
         return;

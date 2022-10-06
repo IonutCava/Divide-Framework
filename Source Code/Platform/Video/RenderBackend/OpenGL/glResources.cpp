@@ -535,7 +535,7 @@ void glTextureViewCache::init(const U32 poolSize)
 }
 
 void glTextureViewCache::onFrameEnd() {
-    OPTICK_EVENT("Texture Pool: onFrameEnd");
+    PROFILE_SCOPE("Texture Pool: onFrameEnd");
 
     ScopedLock<SharedMutex> w_lock(_lock);
     GLuint count = 0u;

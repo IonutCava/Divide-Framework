@@ -77,7 +77,7 @@ void Object3D::setMaterialTpl(const Material_ptr& material) {
 }
 
 void Object3D::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     if (geometryBuffer() != nullptr) {
         if (cmdsOut.size() == 0u) {

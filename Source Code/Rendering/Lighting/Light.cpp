@@ -157,7 +157,7 @@ namespace Divide
 
     void Light::updateCache( const ECS::CustomEvent& event )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         const TransformComponent* tComp = static_cast<TransformComponent*>(event._sourceCmp);
         assert( tComp != nullptr );

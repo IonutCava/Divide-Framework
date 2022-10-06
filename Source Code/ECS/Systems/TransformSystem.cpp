@@ -20,7 +20,7 @@ namespace Divide {
     }
 
     void TransformSystem::PreUpdate(const F32 dt) {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         Parent::PreUpdate(dt);
         for (TransformComponent* comp : _componentCache) {
@@ -34,7 +34,7 @@ namespace Divide {
     }
 
     void TransformSystem::Update(const F32 dt) {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         static vector<std::pair<TransformComponent*, U32>> events;
 
@@ -89,7 +89,7 @@ namespace Divide {
     }
 
     void TransformSystem::OnFrameEnd() {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         Parent::OnFrameEnd();
         for (TransformComponent* comp : _componentCache) {

@@ -105,7 +105,7 @@ namespace Divide {
 
     void vkShaderProgram::Idle([[maybe_unused]] PlatformContext& platformContext)
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         assert(Runtime::isMainThread());
     }
@@ -160,14 +160,14 @@ namespace Divide {
 
     ShaderResult vkShaderProgram::validatePreBind(const bool rebind)
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         return ShaderResult::OK;
     }
 
     bool vkShaderProgram::recompile(bool& skipped)
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if (!ShaderProgram::recompile(skipped))
         {
@@ -188,7 +188,7 @@ namespace Divide {
 
     bool vkShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, bool reloadExisting)
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if (ShaderProgram::reloadShaders(fileData, reloadExisting))
         {

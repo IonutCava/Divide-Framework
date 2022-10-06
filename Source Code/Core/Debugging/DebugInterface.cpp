@@ -26,7 +26,7 @@ void DebugInterface::idle() {
         return;
     }
 
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
     const LoopTimingData& timingData = Attorney::KernelDebugInterface::timingData(_parent);
     const GFXDevice& gfx = _parent.platformContext().gfx();
     const Application& app = _parent.platformContext().app();

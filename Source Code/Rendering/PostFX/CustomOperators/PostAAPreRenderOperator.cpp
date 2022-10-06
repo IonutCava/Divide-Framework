@@ -47,6 +47,7 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
     }
     { //FXAA Shader
         ShaderProgramDescriptor aaShaderDescriptor = {};
+        aaShaderDescriptor._globalDefines.emplace_back( "dvd_qualityMultiplier int(PushData0[0].x)" );
         aaShaderDescriptor._modules = { 
             ShaderModuleDescriptor{ ShaderType::VERTEX, "baseVertexShaders.glsl", "FullScreenQuad" },
             ShaderModuleDescriptor{ ShaderType::FRAGMENT, "FXAA.glsl" } 
@@ -79,6 +80,7 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
         fragModule._variant = "Weight";
         ShaderProgramDescriptor weightsDescriptor = {};
         weightsDescriptor._modules = { vertModule, fragModule };
+        weightsDescriptor._globalDefines.emplace_back( "dvd_qualityMultiplier int(PushData0[0].x)" );
 
         ResourceDescriptor smaaWeights("SMAA.Weights");
         smaaWeights.propertyDescriptor(weightsDescriptor);
@@ -130,7 +132,6 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
         areaDescriptor.waitForReady(false);
         _areaTexture = CreateResource<Texture>(cache, areaDescriptor);
     }
-    _pushConstantsCommand._constants.set(_ID("dvd_qualityMultiplier"), GFX::PushConstantType::INT, to_I32(postAAQualityLevel() - 1));
 }
 
 bool PostAAPreRenderOperator::ready() const noexcept {
@@ -159,8 +160,6 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
 
     if (postAAQualityLevel() != currentPostAAQualityLevel()) {
         currentPostAAQualityLevel(postAAQualityLevel());
-
-        _pushConstantsCommand._constants.set(_ID("dvd_qualityMultiplier"), GFX::PushConstantType::INT, to_I32(postAAQualityLevel() - 1));
 
         _context.context().config().rendering.postFX.postAA.qualityLevel = postAAQualityLevel();
         _context.context().config().changed(true);
@@ -211,9 +210,12 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
                 binding._slot = 2;
                 As<DescriptorCombinedImageSampler>(binding._data) = { searchTex, samplerDescriptor.getHash() };
             }
-
+            
             GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _smaaWeightPipeline });
-            GFX::EnqueueCommand(bufferInOut, _pushConstantsCommand);
+
+            PushConstantsStruct pushData{};
+            pushData.data0._vec[0].x = to_F32( postAAQualityLevel() - 1 );
+            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(pushData);
 
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
@@ -243,7 +245,6 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
             }
 
             GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _smaaBlendPipeline });
-            GFX::EnqueueCommand(bufferInOut, _pushConstantsCommand);
 
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
@@ -257,7 +258,10 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
         GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _fxaaPipeline });
-        GFX::EnqueueCommand(bufferInOut, _pushConstantsCommand);
+
+        PushConstantsStruct pushData{};
+        pushData.data0._vec[0].x = to_F32( postAAQualityLevel() - 1 );
+        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( pushData );
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;

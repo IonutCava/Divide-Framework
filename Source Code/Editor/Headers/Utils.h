@@ -155,7 +155,7 @@ namespace Util {
 
     void CenterNextWindow();
     void OpenCenteredPopup(const char* name, ImGui::ImGuiPopupFlags popup_flags = 0);
-
+    void PrintColouredText(const std::string_view text, ImVec4 colour);
 } //namespace Util
 } //namespace Divide
 

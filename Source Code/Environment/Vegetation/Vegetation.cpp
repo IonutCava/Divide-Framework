@@ -553,7 +553,7 @@ namespace Divide
 
     void Vegetation::uploadVegetationData( vector<Byte>& grassDataOut, vector<Byte> treeDataOut )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         assert( s_buffer != nullptr );
         Wait( *_buildTask, _context.context().taskPool( TaskPoolType::HIGH_PRIORITY ) );
@@ -816,7 +816,7 @@ namespace Divide
                                   SceneGraphNode* sgn,
                                   SceneState& sceneState )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( !renderState().drawState() )
         {

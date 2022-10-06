@@ -68,7 +68,7 @@ namespace Divide
 
     void NodePreviewWindow::drawInternal( Texture* tex )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         assert( tex != nullptr );
 

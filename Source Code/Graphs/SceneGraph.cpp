@@ -100,7 +100,7 @@ void SceneGraph::addToDeleteQueue(SceneGraphNode* node, const size_t childIdx) {
 
 void SceneGraph::onNodeUpdated(const SceneGraphNode& node)
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     //ToDo: Maybe add particles too? -Ionut
     if ( Is3DObject( node.getNode().type() ) )
@@ -117,7 +117,7 @@ void SceneGraph::onNodeUpdated(const SceneGraphNode& node)
 void SceneGraph::onNodeSpatialChange(const SceneGraphNode& node) {
     BoundsComponent* bComp = node.get<BoundsComponent>();
     if (bComp != nullptr) {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         LightPool* pool = Attorney::SceneGraph::getLightPool(parentScene());
         pool->onVolumeMoved(bComp->getBoundingSphere(), node.usageContext() == NodeUsageContext::NODE_STATIC);
@@ -125,7 +125,7 @@ void SceneGraph::onNodeSpatialChange(const SceneGraphNode& node) {
 }
 
 void SceneGraph::onNodeMoved(const SceneGraphNode& node) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     _octree->onNodeMoved(node);
     onNodeUpdated(node);
@@ -209,7 +209,7 @@ bool SceneGraph::removeNode(SceneGraphNode* node) {
 }
 
 bool SceneGraph::frameStarted( [[maybe_unused]] const FrameEvent& evt) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     // Gather all nodes at the start of the frame only if we added/removed any of them
     if (_nodeListChanged) {
@@ -220,21 +220,21 @@ bool SceneGraph::frameStarted( [[maybe_unused]] const FrameEvent& evt) {
     }
 
     {
-        OPTICK_EVENT("ECS::OnFrameStart");
+        PROFILE_SCOPE("ECS::OnFrameStart");
         GetECSEngine().OnFrameStart();
     }
     return true;
 }
 
 bool SceneGraph::frameEnded( [[maybe_unused]] const FrameEvent& evt) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     {
-        OPTICK_EVENT("ECS::OnFrameEnd");
+        PROFILE_SCOPE("ECS::OnFrameEnd");
         GetECSEngine().OnFrameEnd();
     }
     {
-        OPTICK_EVENT("Process parent change queue");
+        PROFILE_SCOPE("Process parent change queue");
         ScopedLock<Mutex> w_lock(_nodeParentChangeLock);
         for (SceneGraphNode* node : _nodeParentChangeQueue) {
             Attorney::SceneGraphNodeSceneGraph::changeParent(node);
@@ -256,14 +256,14 @@ bool SceneGraph::frameEnded( [[maybe_unused]] const FrameEvent& evt) {
 }
 
 void SceneGraph::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     Task* _octreeUpdateTask = nullptr;
     if (_loadComplete) {
         _octreeUpdateTask = CreateTask(
             [this, deltaTimeUS](const Task& /*parentTask*/) mutable
             {
-                OPTICK_EVENT("Octree Update");
+                PROFILE_SCOPE("Octree Update");
                 _octreeUpdating = true;
                 if (_octreeChanged) {
                     _octree->updateTree();
@@ -278,19 +278,19 @@ void SceneGraph::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState) {
 
     const F32 msTime = Time::MicrosecondsToMilliseconds<F32>(deltaTimeUS);
     {
-        OPTICK_EVENT("ECS::PreUpdate");
+        PROFILE_SCOPE("ECS::PreUpdate");
         GetECSEngine().PreUpdate(msTime);
     }
     {
-        OPTICK_EVENT("ECS::Update");
+        PROFILE_SCOPE("ECS::Update");
         GetECSEngine().Update(msTime);
     }
     {
-        OPTICK_EVENT("ECS::PostUpdate");
+        PROFILE_SCOPE("ECS::PostUpdate");
         GetECSEngine().PostUpdate(msTime);
     }
     {
-        OPTICK_EVENT("Process node scene update");
+        PROFILE_SCOPE("Process node scene update");
         const U32 nodeCount = to_U32(_nodeList.size());
        
           // Only do a parallel for if we have at least 2 partitions to run in parallel, otherwise we just waste a lot of time on setup and destruction
@@ -312,7 +312,7 @@ void SceneGraph::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState) {
         }
     }
     {
-        OPTICK_EVENT("Process event queue");
+        PROFILE_SCOPE("Process event queue");
         const U32 nodeCount = to_U32(_nodeEventQueue.size());
 
         // Only do a parallel for if we have at least 2 partitions to run in parallel, otherwise we just waste a lot of time on setup and destruction

@@ -53,9 +53,7 @@ class DoFPreRenderOperator final : public PreRenderOperator {
    private:
      ShaderProgram_ptr _dofShader = nullptr;
      Pipeline* _pipeline = nullptr;
-     PushConstants _constants;
-     vec2<F32> _cachedZPlanes = VECTOR2_UNIT;
-     bool _constantsDirty = true;
+     PushConstantsStruct _constants{};
 };
 
 }  // namespace Divide

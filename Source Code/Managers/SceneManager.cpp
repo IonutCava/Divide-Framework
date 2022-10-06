@@ -422,7 +422,7 @@ namespace Divide
 
     vector<SceneGraphNode*> SceneManager::getNodesInScreenRect( const Rect<I32>& screenRect, const Camera& camera, const Rect<I32>& viewport ) const
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
         constexpr std::array<SceneNodeType, 6> s_ignoredNodes = {
             SceneNodeType::TYPE_TRANSFORM,
             SceneNodeType::TYPE_WATER,
@@ -590,7 +590,7 @@ namespace Divide
 
     void SceneManager::updateSceneState( const U64 deltaGameTimeUS, const U64 deltaAppTimeUS )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         Scene& activeScene = getActiveScene();
         assert( activeScene.getState() == ResourceState::RES_LOADED );
@@ -666,7 +666,7 @@ namespace Divide
 
     void SceneManager::debugDraw( GFX::CommandBuffer& bufferInOut )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         Scene& activeScene = getActiveScene();
 
@@ -701,7 +701,7 @@ namespace Divide
 
     void SceneManager::currentPlayerPass( const U64 deltaTimeUS, const PlayerIndex idx )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         _currentPlayerPass = idx;
         Attorney::SceneManager::currentPlayerPass( getActiveScene(), deltaTimeUS, _currentPlayerPass );
@@ -715,7 +715,7 @@ namespace Divide
 
     BoundingSphere SceneManager::moveCameraToNode( Camera* camera, const SceneGraphNode* targetNode ) const
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         BoundingSphere bSphere;
         vec3<F32> targetPos = WORLD_Z_NEG_AXIS;
@@ -756,7 +756,7 @@ namespace Divide
     
     void SceneManager::getSortedReflectiveNodes( const Camera* camera, const RenderStage stage, const bool inView, VisibleNodeList<>& nodesOut ) const
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         static vector<SceneGraphNode*> allNodes = {};
         getActiveScene().sceneGraph()->getNodesByType( { SceneNodeType::TYPE_WATER, SceneNodeType::TYPE_SUBMESH, SceneNodeType::TYPE_SPHERE_3D, SceneNodeType::TYPE_BOX_3D, SceneNodeType::TYPE_QUAD_3D }, allNodes );
@@ -787,7 +787,7 @@ namespace Divide
 
     void SceneManager::getSortedRefractiveNodes( const Camera* camera, const RenderStage stage, const bool inView, VisibleNodeList<>& nodesOut ) const
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         static vector<SceneGraphNode*> allNodes = {};
         getActiveScene().sceneGraph()->getNodesByType( { SceneNodeType::TYPE_WATER, SceneNodeType::TYPE_SUBMESH, SceneNodeType::TYPE_SPHERE_3D, SceneNodeType::TYPE_BOX_3D, SceneNodeType::TYPE_QUAD_3D }, allNodes );
@@ -838,7 +838,7 @@ namespace Divide
 
     void SceneManager::cullSceneGraph( const NodeCullParams& params, const U16 cullFlags, VisibleNodeList<>& nodesOut )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         Time::ScopedTimer timer( *_sceneGraphCullTimers[to_U32( params._stage )] );
 
@@ -853,7 +853,7 @@ namespace Divide
 
     void SceneManager::findNode( const vec3<F32>& cameraEye, const I64 nodeGUID, VisibleNodeList<>& nodesOut )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( nodeGUID != -1 )
         {
@@ -889,7 +889,7 @@ namespace Divide
 
     void SceneManager::prepareLightData( const RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( stage != RenderStage::SHADOW )
         {
@@ -910,7 +910,7 @@ namespace Divide
 
     bool SceneManager::resetSelection( const PlayerIndex idx, const bool resetIfLocked )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( Attorney::SceneManager::resetSelection( getActiveScene(), idx, resetIfLocked ) )
         {
@@ -926,7 +926,7 @@ namespace Divide
 
     void SceneManager::setSelected( const PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, const bool recursive )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         Attorney::SceneManager::setSelected( getActiveScene(), idx, SGNs, recursive );
         for ( auto& cbk : _selectionChangeCallbacks )
@@ -1212,7 +1212,7 @@ namespace Divide
 
     bool SceneManager::saveActiveScene( bool toCache, const bool deferred, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback, const char* sceneNameOverride )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         const Scene& activeScene = getActiveScene();
 

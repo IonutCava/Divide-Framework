@@ -260,8 +260,8 @@ namespace Divide
 
     bool RenderingComponent::canDraw( const RenderStagePass& renderStagePass )
     {
-        OPTICK_EVENT();
-        OPTICK_TAG( "Node", (_parentSGN->name().c_str()) );
+        PROFILE_SCOPE();
+        PROFILE_TAG( "Node", (_parentSGN->name().c_str()) );
 
         // Can we render without a material? Maybe. IDK.
         bool shaderJustFinishedLoading = false;
@@ -325,7 +325,7 @@ namespace Divide
 
     void RenderingComponent::getMaterialData( NodeMaterialData& dataOut ) const
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( _materialInstance != nullptr )
         {
@@ -414,7 +414,7 @@ namespace Divide
                                                  const RenderStagePass& renderStagePass,
                                                  const bool refreshData )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         bool hasCommands = hasDrawCommands();
 
@@ -602,7 +602,7 @@ namespace Divide
 
     void RenderingComponent::retrieveDrawCommands( const RenderStagePass& stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         const U32 iBufferEntry = _indirectionBufferEntry;
 

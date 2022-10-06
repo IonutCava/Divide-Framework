@@ -39,6 +39,7 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
     ShaderProgramDescriptor shaderDescriptor = {};
     shaderDescriptor._modules.push_back(vertModule);
     shaderDescriptor._modules.push_back(fragModule);
+    shaderDescriptor._globalDefines.emplace_back( "luminanceThreshold PushData0[0].x" );
 
     ResourceDescriptor bloomCalc("BloomCalc");
     bloomCalc.propertyDescriptor(shaderDescriptor);
@@ -140,7 +141,6 @@ void BloomPreRenderOperator::reshape(const U16 width, const U16 height)
 void BloomPreRenderOperator::luminanceThreshold(const F32 val)
 {
     _bloomThreshold = val;
-    _bloomCalcConstants.set(_ID("luminanceThreshold"), GFX::PushConstantType::FLOAT, _bloomThreshold);
     _context.context().config().rendering.postFX.bloom.threshold = val;
     _context.context().config().changed(true);
 }
@@ -159,8 +159,11 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
         binding._slot = 0;
         As<DescriptorCombinedImageSampler>(binding._data) = { screenTex, screenAtt->descriptor()._samplerHash };
     }
+
+    PushConstantsStruct params{};
+    params.data0._vec[0].x = _bloomThreshold;
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _bloomCalcPipeline });
-    GFX::EnqueueCommand(bufferInOut, GFX::SendPushConstantsCommand{ _bloomCalcConstants });
+    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(params);
 
     // Step 1: generate bloom - render all of the "bright spots"
     GFX::BeginRenderPassCommand beginRenderPassCmd{};
@@ -200,7 +203,6 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
     }
 
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _bloomApplyPipeline });
-    GFX::EnqueueCommand(bufferInOut, GFX::SendPushConstantsCommand{ _bloomApplyConstants });
 
     beginRenderPassCmd._target = output._targetID;
     beginRenderPassCmd._descriptor = _screenOnlyDraw;

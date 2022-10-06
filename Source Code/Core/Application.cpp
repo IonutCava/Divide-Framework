@@ -37,6 +37,8 @@ Application::~Application()
 ErrorCode Application::start(const string& entryPoint, const I32 argc, char** argv) {
     assert(!entryPoint.empty());
 
+    Profiler::Init();
+
     _isInitialized = true;
     _timer.reset();
      
@@ -95,8 +97,7 @@ void Application::stop() {
             memLog.close();
         }
 
-
-        OPTICK_SHUTDOWN();
+        Profiler::Shutdown();
     }
 }
 
@@ -113,7 +114,7 @@ bool Application::step(bool& restartEngineOnClose) {
             restartEngineOnClose = false;
         }
 
-        OPTICK_FRAME("MainThread");
+        Profiler::OnFrame();
         Attorney::KernelApplication::onLoop(_kernel);
         return true;
     }

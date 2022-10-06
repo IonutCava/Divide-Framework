@@ -86,7 +86,7 @@ MenuBar::MenuBar(PlatformContext& context, const bool mainMenu)
 }
 
 void MenuBar::draw() {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     const ImGuiContext& imguiContext = Attorney::EditorGeneralWidget::getImGuiContext(_context.editor(), Editor::ImGuiContextType::Editor);
     const bool modifierPressed = imguiContext.IO.KeyShift;

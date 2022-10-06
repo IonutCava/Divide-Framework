@@ -18,7 +18,7 @@ namespace Divide {
     }
 
     void PointLightSystem::PreUpdate(const F32 dt) {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         Parent::PreUpdate(dt);
         for (PointLightComponent* comp : _componentCache) {

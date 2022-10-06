@@ -159,7 +159,7 @@ void Octree::updateTree() {
 }
 
 void Octree::onNodeMoved(const SceneGraphNode& sgn) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     const I64 targetGUID = sgn.getGUID();
 

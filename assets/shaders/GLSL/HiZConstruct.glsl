@@ -5,14 +5,6 @@
 DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 0, r32f) uniform ACCESS_W image2D outImage;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform sampler2D inImage;
 
-uniform bool wasEven;
-
-#define imageSizes PushData0[0]
-#define wasEven (uint(PushData0[1].x) == 1u)
-
-#define imageSizeIn imageSizes.xy
-#define imageSizeOut imageSizes.zw
-
 layout(local_size_x = LOCAL_SIZE, local_size_y = LOCAL_SIZE, local_size_z = 1) in;
 void main() {
     uvec2 pos = gl_GlobalInvocationID.xy;

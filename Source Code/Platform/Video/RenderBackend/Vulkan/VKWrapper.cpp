@@ -824,7 +824,7 @@ namespace Divide {
     }
 
     void VK_API::drawText(const TextElementBatch& batch) {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         BlendingSettings textBlend{};
         textBlend.blendSrc(BlendProperty::SRC_ALPHA);
@@ -859,7 +859,7 @@ namespace Divide {
     }
 
     bool VK_API::draw(const GenericDrawCommand& cmd, VkCommandBuffer& cmdBuffer) const {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if (cmd._sourceBuffer._id == 0) {
             U32 indexCount = 0u;
@@ -894,7 +894,7 @@ namespace Divide {
     }
 
     bool VK_API::bindShaderResources(const DescriptorSetUsage usage, const DescriptorSet& bindings) {
-        OPTICK_EVENT("BIND_SHADER_RESOURCES");
+        PROFILE_SCOPE("BIND_SHADER_RESOURCES");
 
         auto builder = DescriptorBuilder::Begin(_descriptorLayoutCache.get(), _descriptorAllocator.get());
 
@@ -1179,13 +1179,13 @@ namespace Divide {
         static GFX::MemoryBarrierCommand pushConstantsMemCommand{};
         static bool pushConstantsNeedLock = false;
 
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
         const GFX::CommandType cmdType = cmd->Type();
-        OPTICK_TAG("Type", to_base(cmdType));
+        PROFILE_TAG("Type", to_base(cmdType));
 
-        OPTICK_EVENT(GFX::Names::commandType[to_base(cmdType)]);
+        PROFILE_SCOPE(GFX::Names::commandType[to_base(cmdType)]);
         if (!s_transferQueue._requests.empty() && GFXDevice::IsSubmitCommand(cmdType))
         {
             UniqueLock<Mutex> w_lock(s_transferQueue._lock);
@@ -1371,11 +1371,11 @@ namespace Divide {
 
                 if (crtCmd->_layerRange.x == 0 && crtCmd->_layerRange.y == crtCmd->_texture->descriptor().layerCount())
                 {
-                    OPTICK_EVENT("VK: In-place computation - Full");
+                    PROFILE_SCOPE("VK: In-place computation - Full");
                 }
                 else
                 {
-                    OPTICK_EVENT("VK: View - based computation");
+                    PROFILE_SCOPE("VK: View - based computation");
                 }
             }break;
             case GFX::CommandType::DRAW_TEXT:

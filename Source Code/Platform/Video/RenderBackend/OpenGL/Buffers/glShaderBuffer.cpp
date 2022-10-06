@@ -57,7 +57,7 @@ void glShaderBuffer::readBytesInternal(const BufferRange range, std::pair<buffer
 }
 
 bool glShaderBuffer::bindByteRange(const U8 bindIndex, BufferRange range) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     GLStateTracker::BindResult result = GLStateTracker::BindResult::FAILED;
 

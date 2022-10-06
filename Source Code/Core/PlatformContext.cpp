@@ -67,7 +67,7 @@ void PlatformContext::terminate() {
 }
 
 void PlatformContext::beginFrame(const U32 componentMask) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     if (TestBit(componentMask, SystemComponentType::GFXDevice)) {
         _gfx->beginFrame(*app().windowManager().mainWindow(), true);
@@ -86,7 +86,7 @@ void PlatformContext::beginFrame(const U32 componentMask) {
 }
 
 void PlatformContext::idle(const bool fast, const U32 componentMask) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     for (TaskPool* pool : _taskPool) {
         pool->flushCallbackQueue();
@@ -118,7 +118,7 @@ void PlatformContext::idle(const bool fast, const U32 componentMask) {
 }
 
 void PlatformContext::endFrame(const U32 componentMask) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     if (TestBit(componentMask, SystemComponentType::GFXDevice)) {
         _gfx->endFrame(*app().windowManager().mainWindow(), true);

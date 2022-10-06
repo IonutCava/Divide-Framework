@@ -15,7 +15,7 @@ ShaderComputeQueue::ShaderComputeQueue(ResourceCache* cache)
 }
 
 void ShaderComputeQueue::idle() {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     {
         SharedLock<SharedMutex> r_lock(_queueLock);

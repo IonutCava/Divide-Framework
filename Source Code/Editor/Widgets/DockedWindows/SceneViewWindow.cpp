@@ -25,7 +25,7 @@ namespace Divide
     void SceneViewWindow::drawInternal()
     {
 
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         bool play = !_parent.simulationPaused();
         _descriptor.name = (play ? ICON_FK_PLAY_CIRCLE : ICON_FK_PAUSE_CIRCLE) + _originalName;

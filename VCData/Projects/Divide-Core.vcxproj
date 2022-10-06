@@ -38,6 +38,7 @@
     <ClCompile Include="..\..\Source Code\Core\Math\MathClasses.cpp" />
     <ClCompile Include="..\..\Source Code\Core\Math\MathHelper.cpp" />
     <ClCompile Include="..\..\Source Code\Core\Math\Transform.cpp" />
+    <ClCompile Include="..\..\Source Code\Core\Profiler.cpp" />
     <ClCompile Include="..\..\Source Code\Core\Resources\ConcreteLoaders\AudioDescriptorLoaderImpl.cpp" />
     <ClCompile Include="..\..\Source Code\Core\Resources\ConcreteLoaders\Box3DLoaderImpl.cpp" />
     <ClCompile Include="..\..\Source Code\Core\Resources\ConcreteLoaders\InfinitePlaneLoaderImpl.cpp" />
@@ -125,6 +126,7 @@
     <ClInclude Include="..\..\Source Code\Core\Headers\ImGUICustomConfig.h" />
     <ClInclude Include="..\..\Source Code\Core\Headers\ObjectPool.h" />
     <ClInclude Include="..\..\Source Code\Core\Headers\PoolHandle.h" />
+    <ClInclude Include="..\..\Source Code\Core\Headers\Profiler.h" />
     <ClInclude Include="..\..\Source Code\Core\Math\BoundingVolumes\Headers\OBB.h" />
     <ClInclude Include="..\..\Source Code\Core\TemplateLibraries\Headers\CircularBuffer.h" />
     <ClInclude Include="..\..\Source Code\Utility\Headers\ImageToolsFwd.h" />

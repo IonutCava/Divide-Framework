@@ -4,8 +4,6 @@
 
 #include "nodeDataInput.cmn"
 
-uniform int dvd_qualityMultiplier;
-
 layout(location = ATTRIB_FREE_START + 0) out vec2 vPixCoord;
 layout(location = ATTRIB_FREE_START + 1) out vec4 vOffset[3];
 
@@ -66,8 +64,6 @@ void main(void)
 -- Fragment.Weight
 
 #include "nodeDataInput.cmn"
-
-uniform int dvd_qualityMultiplier;
 
 const int SMAA_MAX_SEARCH_STEPS_VALUES[] = { 4, 8, 16, 32 };
 const int SMAA_MAX_SEARCH_STEPS_DIAG_VALUES[] = { 8, 8, 16, 16 };

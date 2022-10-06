@@ -20,7 +20,7 @@ namespace Divide {
     }
 
     void DirectionalLightSystem::PreUpdate(const F32 dt) {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         Parent::PreUpdate(dt);
         for (DirectionalLightComponent* comp : _componentCache) {

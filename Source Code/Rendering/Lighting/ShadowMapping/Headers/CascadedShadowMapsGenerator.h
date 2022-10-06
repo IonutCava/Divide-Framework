@@ -73,7 +73,7 @@ class CascadedShadowMapsGenerator final : public ShadowMapGenerator {
   protected:
     Pipeline* _blurPipeline = nullptr;
     ShaderProgram_ptr _blurDepthMapShader = nullptr;
-    GFX::SendPushConstantsCommand  _shaderConstantsCmd;
+    PushConstantsStruct _shaderConstants;
     RenderTargetHandle _drawBufferDepth;
     RenderTargetHandle _blurBuffer;
 };

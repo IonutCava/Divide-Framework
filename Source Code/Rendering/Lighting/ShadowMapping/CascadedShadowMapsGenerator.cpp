@@ -46,7 +46,16 @@ namespace Divide
             ShaderModuleDescriptor geomModule{ ShaderType::GEOMETRY, "blur.glsl",              "GaussBlur" };
             ShaderModuleDescriptor fragModule{ ShaderType::FRAGMENT, "blur.glsl",              "GaussBlur.Layered" };
 
+            geomModule._defines.emplace_back( "verticalBlur uint(PushData0[1].x)" );
+            geomModule._defines.emplace_back( "layerCount int(PushData0[1].y)" );
+            geomModule._defines.emplace_back( "layerOffsetRead int(PushData0[1].z)" );
+            geomModule._defines.emplace_back( "layerOffsetWrite int(PushData0[1].w)" );
+
             fragModule._defines.emplace_back( "LAYERED" );
+            fragModule._defines.emplace_back( "layer uint(PushData0[0].x)" );
+            fragModule._defines.emplace_back( "size PushData0[0].yz" );
+            fragModule._defines.emplace_back( "kernelSize int(PushData0[0].w)" );
+            fragModule._defines.emplace_back( "verticalBlur uint(PushData0[1].x)" );
 
             ShaderProgramDescriptor shaderDescriptor = {};
             shaderDescriptor._modules.push_back( vertModule );
@@ -70,19 +79,30 @@ namespace Divide
                                                    } );
         }
 
-        _shaderConstantsCmd._constants.set( _ID( "layerCount" ), GFX::PushConstantType::INT, to_I32( Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT ) );
-        _shaderConstantsCmd._constants.set( _ID( "layerOffsetRead" ), GFX::PushConstantType::INT, to_I32( 0 ) );
-        _shaderConstantsCmd._constants.set( _ID( "layerOffsetWrite" ), GFX::PushConstantType::INT, to_I32( 0 ) );
+        _shaderConstants.data0._vec[1].y = to_F32( Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT );
+        _shaderConstants.data0._vec[1].z = 0.f;
+        _shaderConstants.data0._vec[1].w = 0.f;
 
-        std::array<vec2<F32>, Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT> blurSizes;
-        blurSizes.fill( { 1.0f / g_shadowSettings.csm.shadowMapResolution } );
+        std::array<vec2<F32>*, 12> blurSizeConstants = {
+                &_shaderConstants.data0._vec[2].xy,
+                &_shaderConstants.data0._vec[2].zw,
+                &_shaderConstants.data0._vec[3].xy,
+                &_shaderConstants.data0._vec[3].zw,
+                &_shaderConstants.data1._vec[0].xy,
+                &_shaderConstants.data1._vec[0].zw,
+                &_shaderConstants.data1._vec[1].xy,
+                &_shaderConstants.data1._vec[1].zw,
+                &_shaderConstants.data1._vec[2].xy,
+                &_shaderConstants.data1._vec[2].zw,
+                &_shaderConstants.data1._vec[3].xy,
+                &_shaderConstants.data1._vec[3].zw
+        };
 
-        for ( U16 i = 1; i < Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT; ++i )
+        blurSizeConstants[0]->set( 1.f / g_shadowSettings.csm.shadowMapResolution );
+        for ( size_t i = 1u; i < blurSizeConstants.size(); ++i )
         {
-            blurSizes[i] = blurSizes[i - 1] / 2;
+            blurSizeConstants[i]->set((*blurSizeConstants[i - 1]) * 0.5f);
         }
-
-        _shaderConstantsCmd._constants.set( _ID( "blurSizes" ), GFX::PushConstantType::VEC2, blurSizes );
 
         SamplerDescriptor sampler{};
         sampler.wrapUVW( TextureWrap::CLAMP_TO_EDGE );
@@ -196,7 +216,7 @@ namespace Divide
 
     void CascadedShadowMapsGenerator::applyFrustumSplits( DirectionalLightComponent& light, const Camera& shadowCamera, U8 numSplits ) const
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         const SplitDepths splitDepths = calculateSplitDepths( light, shadowCamera.snapshot()._zPlanes );
 
@@ -348,7 +368,7 @@ namespace Divide
 
     void CascadedShadowMapsGenerator::render( const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         auto& dirLight = static_cast<DirectionalLightComponent&>(light);
 
@@ -402,7 +422,7 @@ namespace Divide
 
     void CascadedShadowMapsGenerator::postRender( const DirectionalLightComponent& light, GFX::CommandBuffer& bufferInOut )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         const I32 layerOffset = to_I32( light.getShadowArrayOffset() );
         const I32 layerCount = to_I32( light.csmSplitCount() );
@@ -424,8 +444,6 @@ namespace Divide
         // Now we can either blur our target or just skip to mipmap computation
         if ( g_shadowSettings.csm.enableBlurring )
         {
-            _shaderConstantsCmd._constants.set( _ID( "layerCount" ), GFX::PushConstantType::INT, layerCount );
-
             GFX::BeginRenderPassCommand beginRenderPassHorizontalCmd{};
             GFX::BeginRenderPassCommand beginRenderPassVerticalCmd{};
 
@@ -447,11 +465,13 @@ namespace Divide
                 binding._slot = 0;
                 As<DescriptorCombinedImageSampler>(binding._data) = { shadowAtt->texture()->sampledView(), shadowAtt->descriptor()._samplerHash };
             }
-            _shaderConstantsCmd._constants.set( _ID( "verticalBlur" ), GFX::PushConstantType::BOOL, false );
-            _shaderConstantsCmd._constants.set( _ID( "layerOffsetRead" ), GFX::PushConstantType::INT, layerOffset );
-            _shaderConstantsCmd._constants.set( _ID( "layerOffsetWrite" ), GFX::PushConstantType::INT, 0 );
 
-            GFX::EnqueueCommand( bufferInOut, _shaderConstantsCmd );
+            _shaderConstants.data0._vec[1].x = 0.f;
+            _shaderConstants.data0._vec[1].y = to_F32( layerCount );
+            _shaderConstants.data0._vec[1].z = to_F32( layerOffset );
+            _shaderConstants.data0._vec[1].w = 0.f;
+
+            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( _shaderConstants );
 
             GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
 
@@ -469,11 +489,12 @@ namespace Divide
 
             GFX::EnqueueCommand( bufferInOut, beginRenderPassVerticalCmd );
 
-            _shaderConstantsCmd._constants.set( _ID( "verticalBlur" ), GFX::PushConstantType::BOOL, true );
-            _shaderConstantsCmd._constants.set( _ID( "layerOffsetRead" ), GFX::PushConstantType::INT, 0 );
-            _shaderConstantsCmd._constants.set( _ID( "layerOffsetWrite" ), GFX::PushConstantType::INT, layerOffset );
+            _shaderConstants.data0._vec[1].x = 1.f;
+            _shaderConstants.data0._vec[1].y = to_F32( layerCount );
+            _shaderConstants.data0._vec[1].z = 0.f;
+            _shaderConstants.data0._vec[1].w = to_F32( layerOffset );
 
-            GFX::EnqueueCommand( bufferInOut, _shaderConstantsCmd );
+            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( _shaderConstants );
 
             GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
 

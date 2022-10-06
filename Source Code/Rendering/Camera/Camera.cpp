@@ -63,7 +63,7 @@ namespace Divide
 
         vec3<F32> ExtractCameraPos2( const mat4<F32>& a_modelView ) noexcept
         {
-            OPTICK_EVENT();
+            PROFILE_SCOPE();
 
             // Get the 3 basis vector planes at the camera origin and transform them into model space.
             //  
@@ -99,7 +99,7 @@ namespace Divide
 
     void Camera::Update( const U64 deltaTimeUS )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         s_lastFrameTimeSec = Time::MicrosecondsToSeconds<F32>( deltaTimeUS );
 
@@ -163,7 +163,7 @@ namespace Divide
 
     Camera* Camera::FindCamera( U64 nameHash )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         SharedLock<SharedMutex> r_lock( s_cameraPoolLock );
         auto it = eastl::find_if( begin( s_cameraPool ),
@@ -182,7 +182,7 @@ namespace Divide
 
     bool Camera::RemoveChangeListener( const U32 id )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         const auto it = s_changeCameraListeners.find( id );
         if ( it != std::cend( s_changeCameraListeners ) )
@@ -196,7 +196,7 @@ namespace Divide
 
     U32 Camera::AddChangeListener( const CameraListener& f )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         insert( s_changeCameraListeners, ++s_changeCameraId, f );
         return s_changeCameraId;
@@ -219,7 +219,7 @@ namespace Divide
 
     void Camera::fromCamera( const Camera& camera )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         _reflectionPlane = camera._reflectionPlane;
         _reflectionActive = camera._reflectionActive;
@@ -244,7 +244,7 @@ namespace Divide
 
     void Camera::fromSnapshot( const CameraSnapshot& snapshot )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         setEye( snapshot._eye );
         setRotation( snapshot._orientation );
@@ -264,7 +264,7 @@ namespace Divide
 
     void Camera::update() noexcept
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( (mode() == Mode::ORBIT || mode() == Mode::THIRD_PERSON) && _targetTransform != nullptr )
         {
@@ -301,7 +301,7 @@ namespace Divide
 
     const mat4<F32>& Camera::lookAt( const mat4<F32>& viewMatrix )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         _data._eye.set( ExtractCameraPos2( viewMatrix ) );
         _data._orientation.fromMatrix( viewMatrix );
@@ -316,7 +316,7 @@ namespace Divide
                                      const vec3<F32>& target,
                                      const vec3<F32>& up )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         _data._eye.set( eye );
         _data._orientation.fromMatrix( mat4<F32>( eye, target, up ) );
@@ -331,7 +331,7 @@ namespace Divide
     /// Tell the rendering API to set up our desired PoV
     bool Camera::updateLookAt()
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         bool cameraUpdated = updateViewMatrix();
         cameraUpdated = updateProjection() || cameraUpdated;
@@ -352,7 +352,7 @@ namespace Divide
 
     void Camera::setGlobalRotation( const F32 yaw, const F32 pitch, const F32 roll ) noexcept
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( _rotationLocked )
         {
@@ -374,7 +374,7 @@ namespace Divide
 
     void Camera::rotate( const Quaternion<F32>& q )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( _rotationLocked )
         {
@@ -397,7 +397,7 @@ namespace Divide
 
     bool Camera::removeUpdateListener( const U32 id )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         const auto& it = _updateCameraListeners.find( id );
         if ( it != std::cend( _updateCameraListeners ) )
@@ -411,7 +411,7 @@ namespace Divide
 
     U32 Camera::addUpdateListener( const CameraListener& f )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         insert( _updateCameraListeners, ++_updateCameraId, f );
         return _updateCameraId;
@@ -432,7 +432,7 @@ namespace Divide
 
     bool Camera::updateProjection() noexcept
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( _projectionDirty )
         {
@@ -473,7 +473,7 @@ namespace Divide
 
     const mat4<F32>& Camera::setProjection( const F32 aspectRatio, const F32 verticalFoV, const vec2<F32> zPlanes )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         setAspectRatio( aspectRatio );
         setVerticalFoV( verticalFoV );
@@ -488,7 +488,7 @@ namespace Divide
 
     const mat4<F32>& Camera::setProjection( const vec4<F32>& rect, const vec2<F32> zPlanes )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         _data._zPlanes = zPlanes;
         _orthoRect = rect;
@@ -501,7 +501,7 @@ namespace Divide
 
     const mat4<F32>& Camera::setProjection( const mat4<F32>& projection, const vec2<F32> zPlanes, const bool isOrtho ) noexcept
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         _data._projectionMatrix.set( projection );
         _data._projectionMatrix.getInverse( _data._invProjectionMatrix );
@@ -544,7 +544,7 @@ namespace Divide
 
     void Camera::rotate( Angle::DEGREES<F32> yaw, Angle::DEGREES<F32> pitch, Angle::DEGREES<F32> roll ) noexcept
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( _rotationLocked )
         {
@@ -615,7 +615,7 @@ namespace Divide
 
     void Camera::move( F32 dx, F32 dy, F32 dz ) noexcept
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( _movementLocked )
         {
@@ -651,7 +651,7 @@ namespace Divide
 
     bool Camera::moveFromPlayerState( const SceneStatePerPlayer& playerState )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         bool updated = false;
         if ( mode() == Mode::FREE_FLY )
@@ -687,7 +687,7 @@ namespace Divide
 
     bool Camera::rotateRelative( const vec3<F32>& relRotation )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( relRotation.lengthSquared() <= 0.f )
         {
@@ -758,7 +758,7 @@ namespace Divide
 
     bool Camera::updateViewMatrix() noexcept
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( !_viewMatrixDirty )
         {
@@ -796,7 +796,7 @@ namespace Divide
 
     bool Camera::updateFrustum()
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( _frustumLocked )
         {
@@ -819,7 +819,7 @@ namespace Divide
 
     vec3<F32> Camera::unProject( const F32 winCoordsX, const F32 winCoordsY, const Rect<I32>& viewport ) const noexcept
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         const F32 offsetWinCoordsX = winCoordsX - viewport.x;
         const F32 offsetWinCoordsY = winCoordsY - viewport.y;
@@ -856,7 +856,7 @@ namespace Divide
 
     vec2<F32> Camera::project( const vec3<F32>& worldCoords, const Rect<I32>& viewport ) const noexcept
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         const vec2<F32> winOffset = viewport.xy;
 

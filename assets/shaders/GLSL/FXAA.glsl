@@ -37,8 +37,6 @@ void main() {
 layout(location = 0) out vec4 _colourOut;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texScreen;
 
-uniform int dvd_qualityMultiplier;
-
 void main(void)
 {
 

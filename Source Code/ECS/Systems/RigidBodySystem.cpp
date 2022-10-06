@@ -29,7 +29,7 @@ namespace Divide {
     }
 
     void RigidBodySystem::OnFrameStart() {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         Parent::OnFrameStart();
         for (RigidBodyComponent* comp : _componentCache) {

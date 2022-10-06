@@ -415,7 +415,7 @@ namespace Divide
 
     void PropertyWindow::backgroundUpdateInternal()
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         I64 guid = 12344231;
         for ( const auto& it : g_debugFrustums )
@@ -672,7 +672,7 @@ namespace Divide
 
     void PropertyWindow::drawInternal()
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         constexpr F32 buttonWidth = 90.0f;
         constexpr F32 smallButtonWidth = 70.0f;

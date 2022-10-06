@@ -17,7 +17,7 @@ namespace Divide {
     }
 
     void EnvironmentProbeSystem::PreUpdate(const F32 dt) {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         Parent::PreUpdate(dt);
 

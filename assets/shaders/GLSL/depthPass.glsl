@@ -58,8 +58,6 @@ DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texDepth;
 //linear depth
 layout(location = 0) out float _output;
 
-uniform vec2 _zPlanes;
-
 void main() {
     const float depth = texture(texDepth, VAR._texCoord).r;
     _output = ToLinearDepth(depth, _zPlanes);

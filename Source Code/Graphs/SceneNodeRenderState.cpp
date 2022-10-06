@@ -9,7 +9,7 @@
 namespace Divide {
 
 bool SceneNodeRenderState::drawState(const RenderStagePass stagePass) const {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     if (!_drawState) {
         return false;

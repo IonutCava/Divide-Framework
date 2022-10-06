@@ -261,7 +261,7 @@ void Renderer::prepareLighting(const RenderStage stage,
 }
 
 void Renderer::idle() const {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     _postFX->idle(_context.config());
 }

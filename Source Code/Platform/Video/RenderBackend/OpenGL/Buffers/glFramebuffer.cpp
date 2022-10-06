@@ -162,7 +162,7 @@ bool glFramebuffer::initAttachment(RTAttachment* att, const RTAttachmentType typ
 
 void glFramebuffer::toggleAttachment(const RTAttachment_uptr& attachment, const AttachmentState state, bool layeredRendering)
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     const Texture_ptr& tex = attachment->texture();
     if (tex == nullptr)
@@ -230,7 +230,7 @@ bool glFramebuffer::create()
 
 void glFramebuffer::blitFrom(RenderTarget* source, const RTBlitParams& params)
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     if (source == nullptr || !IsValid(params))
     {
@@ -259,7 +259,7 @@ void glFramebuffer::blitFrom(RenderTarget* source, const RTBlitParams& params)
     // Multiple attachments, multiple layers, multiple everything ... what a mess ... -Ionut
     if (IsValid(params._blitColours))
     {
-        OPTICK_EVENT("Blit Colours");
+        PROFILE_SCOPE("Blit Colours");
 
         GLuint prevReadAtt = 0;
         GLuint prevWriteAtt = 0;
@@ -362,7 +362,7 @@ void glFramebuffer::blitFrom(RenderTarget* source, const RTBlitParams& params)
         input->_attachments[RT_DEPTH_ATTACHMENT_IDX] &&
         IsValid(params._blitDepth))
     {
-        OPTICK_EVENT("Blit Depth");
+        PROFILE_SCOPE("Blit Depth");
 
         prepareAttachments(input, input->_attachments[RT_DEPTH_ATTACHMENT_IDX], params._blitDepth._inputLayer);
         prepareAttachments(output,  output->_attachments[RT_DEPTH_ATTACHMENT_IDX], params._blitDepth._outputLayer);
@@ -390,7 +390,7 @@ void glFramebuffer::blitFrom(RenderTarget* source, const RTBlitParams& params)
 
 void glFramebuffer::prepareBuffers(const RTDrawDescriptor& drawPolicy)
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     if (_previousPolicy._drawMask != drawPolicy._drawMask || _colourBuffers._dirty )
     {
@@ -431,7 +431,7 @@ void glFramebuffer::prepareBuffers(const RTDrawDescriptor& drawPolicy)
 
 void glFramebuffer::setDefaultAttachmentBinding(const RTAttachment_uptr& attachment)
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     if (attachment != nullptr)
     {
@@ -446,7 +446,7 @@ void glFramebuffer::setDefaultAttachmentBinding(const RTAttachment_uptr& attachm
 
 void glFramebuffer::transitionAttachments( const RTDrawDescriptor& drawPolicy, const bool toWrite)
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     for (U8 i = 0u; i < to_base(RTColourAttachmentSlot::COUNT); ++i )
     {
@@ -472,7 +472,7 @@ void glFramebuffer::transitionAttachments( const RTDrawDescriptor& drawPolicy, c
 
 void glFramebuffer::begin(const RTDrawDescriptor& drawPolicy, const RTClearDescriptor& clearPolicy)
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     transitionAttachments(drawPolicy, true);
 
@@ -576,7 +576,7 @@ void glFramebuffer::begin(const RTDrawDescriptor& drawPolicy, const RTClearDescr
 
 void glFramebuffer::end()
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     transitionAttachments( _previousPolicy, false);
 
@@ -602,9 +602,9 @@ void glFramebuffer::QueueMipMapsRecomputation(const RTAttachment_uptr& attachmen
 
 void glFramebuffer::clear(const RTClearDescriptor& descriptor)
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
     {
-        OPTICK_EVENT("Clear Colour Attachments");
+        PROFILE_SCOPE("Clear Colour Attachments");
         for (U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i)
         {
             if (!_attachmentsUsed[i] || descriptor._clearColourDescriptors[i]._index == RTColourAttachmentSlot::COUNT)
@@ -664,7 +664,7 @@ void glFramebuffer::clear(const RTClearDescriptor& descriptor)
 
     if (_attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX] && descriptor._clearDepth)
     {
-        OPTICK_EVENT("Clear Depth");
+        PROFILE_SCOPE("Clear Depth");
         glClearNamedFramebufferfv(_framebufferHandle, GL_DEPTH, 0, &descriptor._clearDepthValue);
         _context.registerDrawCall();
     }
@@ -672,7 +672,7 @@ void glFramebuffer::clear(const RTClearDescriptor& descriptor)
 
 void glFramebuffer::drawToLayer(const RTDrawLayerParams& params)
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     if (params._type == RTAttachmentType::COUNT)
     {
@@ -715,7 +715,7 @@ void glFramebuffer::drawToLayer(const RTDrawLayerParams& params)
 
 bool glFramebuffer::setMipLevelInternal(const RTAttachment_uptr& attachment, U16 writeLevel)
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     if (attachment == nullptr)
     {
@@ -739,7 +739,7 @@ void glFramebuffer::setMipLevel(const U16 writeLevel)
         return;
     }
 
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     bool changedMip = false;
     bool needsAttachmentDisabled = false;
@@ -767,7 +767,7 @@ void glFramebuffer::readData(const vec4<U16> rect,
                              const GFXDataFormat dataType,
                              const std::pair<bufferPtr, size_t> outData) const
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     GL_API::GetStateTracker().setPixelPackUnpackAlignment();
     if (GL_API::GetStateTracker().setActiveFB(Usage::RT_READ_ONLY, _framebufferHandle) == GLStateTracker::BindResult::FAILED)
@@ -805,7 +805,7 @@ bool glFramebuffer::checkStatus()
         return true;
     }
 
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     _statusCheckQueued = false;
     if_constexpr(Config::ENABLE_GPU_VALIDATION)

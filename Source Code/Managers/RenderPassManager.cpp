@@ -114,15 +114,15 @@ void RenderPassManager::postInit() {
 }
 
 void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& pool, const CameraSnapshot& cameraSnapshot) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     for (U8 i = 0u; i < to_base(RenderStage::COUNT); ++i )
     { //All of our render passes should run in parallel
         RenderPassData& passData = _renderPassData[i];
         passData._workTask = CreateTask(nullptr,
                                         [&](const Task& parentTask) {
-                                           OPTICK_EVENT("RenderPass: BuildCommandBuffer");
-                                           OPTICK_TAG("Pass IDX", i);
+                                             PROFILE_SCOPE("RenderPass: BuildCommandBuffer");
+                                           PROFILE_TAG("Pass IDX", i);
 
                                            passData._cmdBuffer->clear(false);
 
@@ -142,7 +142,7 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
         _postFXWorkTask = CreateTask( nullptr,
                                       [&]( const Task& /*parentTask*/ )
                                       {
-                                          OPTICK_EVENT( "PostFX: BuildCommandBuffer" );
+                                          PROFILE_SCOPE( "PostFX: BuildCommandBuffer" );
 
                                           _postFXCmdBuffer->clear( false );
 
@@ -157,7 +157,7 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
 }
 
 void RenderPassManager::render(const RenderParams& params) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     if (params._parentTimer != nullptr && !params._parentTimer->hasChildTimer(*_renderPassTimer)) {
         params._parentTimer->addChildTimer(*_renderPassTimer);
@@ -182,7 +182,7 @@ void RenderPassManager::render(const RenderParams& params) {
        Time::ScopedTimer timeCommandsBuild(*_buildCommandBufferTimer);
        GFX::MemoryBarrierCommand sceneBufferLocks{};
        {
-           OPTICK_EVENT("RenderPassManager::update sky light");
+           PROFILE_SCOPE("RenderPassManager::update sky light");
             _skyLightRenderBuffer->clear(false);
             sceneBufferLocks = gfx.updateSceneDescriptorSet(*_skyLightRenderBuffer);
             SceneEnvironmentProbePool::UpdateSkyLight(gfx, *_skyLightRenderBuffer, sceneBufferLocks);
@@ -226,7 +226,7 @@ void RenderPassManager::render(const RenderParams& params) {
     }
     GFX::MemoryBarrierCommand flushMemCmd{};
     {
-        OPTICK_EVENT("RenderPassManager::FlushCommandBuffers");
+        PROFILE_SCOPE("RenderPassManager::FlushCommandBuffers");
         Time::ScopedTimer timeCommands(*_flushCommandBufferTimer);
 
         gfx.flushCommandBuffer(*_skyLightRenderBuffer);
@@ -245,7 +245,7 @@ void RenderPassManager::render(const RenderParams& params) {
             return false;
         };
         {
-            OPTICK_EVENT("FLUSH_PASSES_WHEN_READY");
+            PROFILE_SCOPE("FLUSH_PASSES_WHEN_READY");
             U8 idleCount = 0u;
 
             while (stillWorking(s_completedPasses)) {
@@ -276,7 +276,7 @@ void RenderPassManager::render(const RenderParams& params) {
                     }
 
                     if (!dependenciesRunning) {
-                        OPTICK_TAG("Buffer ID: ", i);
+                        PROFILE_TAG("Buffer ID: ", i);
                         Time::ScopedTimer timeGPUFlush(*_processCommandBufferTimer[i]);
 
                         //Start(*whileRendering);
@@ -297,7 +297,7 @@ void RenderPassManager::render(const RenderParams& params) {
                 }
 
                 if (!finished) {
-                    OPTICK_EVENT("IDLING");
+                    PROFILE_SCOPE("IDLING");
                     if (idleCount++ % 2 == 0) {
                         parent().idle(idleCount > 3);
                     } else {
@@ -321,7 +321,7 @@ void RenderPassManager::render(const RenderParams& params) {
     _context.setCameraSnapshot(params._playerPass, cam->snapshot());
 
     {
-        OPTICK_EVENT("Executor post-render");
+        PROFILE_SCOPE("Executor post-render");
         for (auto& executor : _executors) {
             if (executor != nullptr) {
                 executor->postRender();

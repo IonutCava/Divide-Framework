@@ -67,7 +67,7 @@ namespace Divide {
     }
 
     bool LockManager::waitForLockedRange(const size_t lockBeginBytes, const size_t lockLength) {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         const BufferRange testRange{ lockBeginBytes, lockLength };
 
@@ -102,7 +102,7 @@ namespace Divide {
     }
 
     bool LockManager::lockRange(size_t lockBeginBytes, size_t lockLength, SyncObjectHandle syncObj) {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         DIVIDE_ASSERT(syncObj._id != SyncObjectHandle::INVALID_SYNC_ID && lockLength > 0u, "LockManager::lockRange error: Invalid lock range!");
 

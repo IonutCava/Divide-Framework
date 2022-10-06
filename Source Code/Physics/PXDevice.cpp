@@ -61,19 +61,19 @@ void PXDevice::updateTimeStep(const U8 timeStepFactor, const F32 simSpeed) {
 }
 
 void PXDevice::update(const U64 deltaTimeUS) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     _api->update(deltaTimeUS);
 }
 
 void PXDevice::process(const U64 deltaTimeUS) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     _api->process(deltaTimeUS);
 }
 
 void PXDevice::idle() {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     _api->idle();
 }

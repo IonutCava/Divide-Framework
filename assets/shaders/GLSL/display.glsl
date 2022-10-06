@@ -7,7 +7,6 @@
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D tex;
 #if defined(DEPTH_ONLY)
 #else //DEPTH_ONLY
-uniform uint convertToSRGB;
 layout(location = 0) out vec4 _colourOut;
 #endif//DEPTH_ONLY
 

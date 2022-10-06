@@ -432,7 +432,7 @@ namespace Divide
                                              ShaderProgramInfo& shaderInfo,
                                              const RenderStagePass stagePass ) const
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         ShaderProgramDescriptor shaderDescriptorRef = shaderDescriptor;
         computeAndAppendShaderDefines( shaderDescriptorRef, stagePass );
@@ -470,7 +470,7 @@ namespace Divide
     void Material::setShaderProgramInternal( const ShaderProgramDescriptor& shaderDescriptor,
                                              const RenderStagePass stagePass )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         ShaderProgramDescriptor shaderDescriptorRef = shaderDescriptor;
         computeAndAppendShaderDefines( shaderDescriptorRef, stagePass );
@@ -520,7 +520,7 @@ namespace Divide
 
     void Material::recomputeShaders()
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         for ( U8 s = 0u; s < to_U8( RenderStage::COUNT ); ++s )
         {
@@ -586,7 +586,7 @@ namespace Divide
 
     bool Material::canDraw( const RenderStagePass renderStagePass, bool& shaderJustFinishedLoading )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         shaderJustFinishedLoading = false;
         ShaderProgramInfo& info = shaderInfo( renderStagePass );
@@ -640,7 +640,7 @@ namespace Divide
 
     void Material::computeAndAppendShaderDefines( ShaderProgramDescriptor& shaderDescriptor, const RenderStagePass renderStagePass ) const
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         const bool isDepthPass = IsDepthPass( renderStagePass );
 
@@ -1032,7 +1032,7 @@ namespace Divide
 
     DescriptorSet& Material::getDescriptorSet( const RenderStagePass& renderStagePass )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
         ShaderStageVisibility texVisibility = properties().texturesInFragmentStageOnly() ? ShaderStageVisibility::FRAGMENT : ShaderStageVisibility::ALL_DRAW;
         const bool isPrePass = renderStagePass._passType == RenderPassType::PRE_PASS;
         const bool isShadowPass = renderStagePass._stage == RenderStage::SHADOW;

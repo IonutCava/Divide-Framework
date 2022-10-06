@@ -44,7 +44,7 @@ ScopedCommandBuffer::~ScopedCommandBuffer()
 
 
 ScopedCommandBuffer AllocateScopedCommandBuffer() {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     return ScopedCommandBuffer();
 }

@@ -29,14 +29,6 @@ layout(location = ATTRIB_FREE_START + 1) in vec4 Frag_Color;
 
 layout(location = 0) out vec4 Out_Color;
 
-#define toggleChannel ivec4(PushData0[0])
-#define depthRange PushData0[1].xy
-#define layer uint(PushData0[1].z)
-#define mip uint(PushData0[1].w)
-#define textureType uint(PushData0[2].x)
-#define depthTexture uint(PushData0[2].y)
-#define flip uint(PushData0[2].z)
-
 void main()
 {
     Out_Color = Frag_Color;

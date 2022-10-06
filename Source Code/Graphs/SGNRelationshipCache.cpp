@@ -20,7 +20,7 @@ void SGNRelationshipCache::invalidate() noexcept {
 }
 
 bool SGNRelationshipCache::rebuild() {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     updateChildren(0u, _childrenRecursiveCache);
     updateParents(0u, _parentRecursiveCache);

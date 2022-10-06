@@ -264,7 +264,7 @@ namespace{
 }
 
 void WarScene::updateSceneStateInternal(const U64 deltaTimeUS) {
-    //OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     if (!_sceneReady) {
         return;

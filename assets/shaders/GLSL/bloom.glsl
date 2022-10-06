@@ -15,8 +15,6 @@ void main() {
 
 layout(location = 0) out vec4 _bloomOut;
 
-uniform float luminanceThreshold;
-
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texScreen;
 
 void main() {

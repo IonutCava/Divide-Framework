@@ -63,8 +63,6 @@ class BloomPreRenderOperator final : public PreRenderOperator {
 
     Pipeline* _bloomCalcPipeline = nullptr;
     Pipeline* _bloomApplyPipeline = nullptr;
-    PushConstants _bloomApplyConstants;
-    PushConstants _bloomCalcConstants;
 
     F32 _bloomThreshold = 0.99f;
 };

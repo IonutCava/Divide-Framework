@@ -178,8 +178,6 @@ class PreRenderBatch {
     std::array<ShaderProgram_ptr, to_base(EdgeDetectionMethod::COUNT)> _edgeDetection{};
     std::array<Pipeline*, to_base(EdgeDetectionMethod::COUNT)> _edgeDetectionPipelines{};
 
-    GFX::SendPushConstantsCommand _toneMapConstantsCmd{};
-
     ScreenTargets _screenRTs{};
     ShaderBuffer_uptr _histogramBuffer{ nullptr };
     Texture_ptr _currentLuminance{ nullptr };

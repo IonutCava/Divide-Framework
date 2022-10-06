@@ -19,7 +19,7 @@ namespace Divide
 
     void RenderingSystem::PreUpdate( const F32 dt )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         Parent::PreUpdate( dt );
 
@@ -48,7 +48,7 @@ namespace Divide
 
     void RenderingSystem::Update( const F32 dt )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         Parent::Update( dt );
 
@@ -89,7 +89,7 @@ namespace Divide
 
     void RenderingSystem::PostUpdate( const F32 dt )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         Parent::PostUpdate( dt );
 

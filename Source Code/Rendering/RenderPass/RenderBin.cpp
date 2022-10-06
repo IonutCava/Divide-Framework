@@ -16,7 +16,7 @@ namespace Divide
     {
         constexpr U16 k_parallelSortThreshold = 16u;
 
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( renderOrder == RenderingOrder::NONE || renderOrder == RenderingOrder::COUNT )
         {
@@ -106,7 +106,7 @@ namespace Divide
 
     U16 RenderBin::getSortedNodes( SortedQueue& nodes ) const
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         const U16 binSize = getBinSize();
 
@@ -138,7 +138,7 @@ namespace Divide
 
     void RenderBin::populateRenderQueue( const RenderStagePass stagePass, RenderQueuePackages& queueInOut ) const
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         const U16 binSize = getBinSize();
         for ( U16 i = 0u; i < binSize; ++i )

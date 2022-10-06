@@ -61,7 +61,7 @@ class SingleShadowMapGenerator final : public ShadowMapGenerator {
     ShaderProgram_ptr _blurDepthMapShader = nullptr;
     RenderTargetHandle _drawBufferDepth;
     RenderTargetHandle _blurBuffer;
-    PushConstants     _shaderConstants;
+    PushConstantsStruct _shaderConstants;
 };
 
 };  // namespace Divide

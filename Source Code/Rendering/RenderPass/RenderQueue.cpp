@@ -120,7 +120,7 @@ namespace Divide
 
     void RenderQueue::populateRenderQueues( const PopulateQueueParams& params, RenderQueuePackages& queueInOut )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         if ( params._binType == RenderBinType::COUNT )
         {
@@ -170,7 +170,7 @@ namespace Divide
 
     void RenderQueue::sort( const RenderStagePass stagePass, const RenderBinType targetBinType, const RenderingOrder renderOrder )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         // How many elements should a render bin contain before we decide that sorting should happen on a separate thread
         constexpr U16 k_threadBias = 64u;
@@ -241,7 +241,7 @@ namespace Divide
 
     size_t RenderQueue::getSortedQueues( const vector<RenderBinType>& binTypes, RenderBin::SortedQueues& queuesOut ) const
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         size_t countOut = 0u;
 

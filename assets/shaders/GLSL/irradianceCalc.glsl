@@ -4,13 +4,8 @@
 
 #define THREADS 8
 
-#define imgSizeX PushData0[0].x
-#define imgSizeY PushData0[0].y
-#define layerIndex PushData0[0].z
-
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform samplerCubeArray s_source;
 DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 1, rgba16f) uniform ACCESS_W imageCube s_target;
-
 
 layout(local_size_x = THREADS, local_size_y = THREADS, local_size_z = 1) in;
 void main()
@@ -113,12 +108,6 @@ void main()
 
 #define THREADS 8
 #define NUM_SAMPLES 64u
-
-#define imgSizeX PushData0[0].x
-#define imgSizeY PushData0[0].y
-#define layerIndex PushData0[0].z
-#define mipLevel uint(PushData0[1].x)
-#define roughness PushData0[1].y
 
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform samplerCubeArray s_source;
 DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 1, rgba16f) uniform ACCESS_W imageCube s_target;

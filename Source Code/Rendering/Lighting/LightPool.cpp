@@ -174,14 +174,14 @@ namespace Divide
 
     bool LightPool::frameStarted( [[maybe_unused]] const FrameEvent& evt )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         return true;
     }
 
     bool LightPool::frameEnded( [[maybe_unused]] const FrameEvent& evt )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         ScopedLock<SharedMutex> w_lock( _movedSceneVolumesLock );
         efficient_clear(_movedSceneVolumes);
@@ -228,7 +228,7 @@ namespace Divide
 
     void LightPool::onVolumeMoved( const BoundingSphere& volume, const bool staticSource )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         ScopedLock<SharedMutex> w_lock( _movedSceneVolumesLock );
         _movedSceneVolumes.push_back( { volume , staticSource } );
@@ -237,7 +237,7 @@ namespace Divide
     //ToDo: Generate shadow maps in parallel - Ionut
     void LightPool::generateShadowMaps( const Camera& playerCamera, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         Time::ScopedTimer timer( _shadowPassTimer );
 
@@ -420,7 +420,7 @@ namespace Divide
     // This should be called in a separate thread for each RenderStage
     void LightPool::sortLightData( const RenderStage stage, const CameraSnapshot& cameraSnapshot )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         const U8 stageIndex = to_U8( stage );
 
@@ -443,7 +443,7 @@ namespace Divide
                     a->distanceSquared( eyePos ) < b->distanceSquared( eyePos ));
         };
 
-        OPTICK_EVENT( "LightPool::SortLights" );
+        PROFILE_SCOPE( "LightPool::SortLights" );
         if ( sortedLights.size() > LightList::kMaxSize )
         {
             std::sort( std::execution::par_unseq, begin( sortedLights ), end( sortedLights ), lightSortCbk );
@@ -462,7 +462,7 @@ namespace Divide
 
     void LightPool::uploadLightData( const RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         const size_t stageIndex = to_size( stage );
         LightList& sortedLights = _sortedLights[stageIndex];
@@ -487,12 +487,12 @@ namespace Divide
         }
 
         {
-            OPTICK_EVENT( "LightPool::UploadLightDataToGPU" );
+            PROFILE_SCOPE( "LightPool::UploadLightDataToGPU" );
             memCmdInOut._bufferLocks.push_back(_lightBuffer->writeData( { stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, totalLightCount }, &_sortedLightProperties[stageIndex] ) );
         }
 
         {
-            OPTICK_EVENT( "LightPool::UploadSceneDataToGPU" );
+            PROFILE_SCOPE( "LightPool::UploadSceneDataToGPU" );
             memCmdInOut._bufferLocks.push_back( _sceneBuffer->writeData( { stageIndex, 1 }, &crtData ) );
         }
         memCmdInOut._barrierMask |= to_base( MemoryBarrierType::SHADER_STORAGE ) | to_base (MemoryBarrierType::BUFFER_UPDATE);
@@ -536,7 +536,7 @@ namespace Divide
 
     void LightPool::preRenderAllPasses( const Camera* playerCamera )
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         constexpr U16 k_parallelSortThreshold = 16u;
 

@@ -221,6 +221,7 @@
     <ClCompile Include="..\..\Source Code\Utility\Colours.cpp">
       <Filter>Utility</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source Code\Core\Profiler.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="../../Source Code/Core\Headers\GUIDWrapper.h">
@@ -388,6 +389,9 @@
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Utility\Headers\ImageToolsFwd.h">
       <Filter>Utility\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Core\Headers\Profiler.h">
+      <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

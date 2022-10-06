@@ -48,7 +48,7 @@ namespace ECS
 
     void SystemManager::PreUpdate(f32 dt_ms)
     {
-        OPTICK_EVENT();
+		PROFILE_SCOPE();
 
         for (ISystem* system : this->m_SystemWorkOrder)
         {
@@ -67,7 +67,7 @@ namespace ECS
 
     void SystemManager::Update(f32 dt_ms)
     {
-        OPTICK_EVENT();
+		PROFILE_SCOPE();
 
         for (ISystem* system : this->m_SystemWorkOrder)
         {
@@ -83,7 +83,7 @@ namespace ECS
 
     void SystemManager::PostUpdate(f32 dt_ms)
     {
-		OPTICK_EVENT();
+		PROFILE_SCOPE();
 		for (ISystem* system : this->m_SystemWorkOrder)
 		{
 			if (system->m_Enabled == true && system->m_NeedsUpdate == true)
@@ -94,7 +94,7 @@ namespace ECS
 	}
 	void SystemManager::OnFrameStart()
 	{
-		OPTICK_EVENT();
+		PROFILE_SCOPE();
 		for (ISystem* system : this->m_SystemWorkOrder) {
 			if (system->m_Enabled == true) {
 				system->OnFrameStart();
@@ -104,7 +104,7 @@ namespace ECS
 
 	void SystemManager::OnFrameEnd()
 	{
-		OPTICK_EVENT();
+		PROFILE_SCOPE();
 		for (ISystem* system : this->m_SystemWorkOrder) {
 			if (system->m_Enabled == true) {
 				system->OnFrameEnd();

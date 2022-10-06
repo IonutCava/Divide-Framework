@@ -103,13 +103,13 @@ namespace Divide
 
     void RenderPass::render( const PlayerIndex idx, [[maybe_unused]] const Task& parentTask, const SceneRenderState& renderState, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut ) const
     {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         switch ( _stageFlag )
         {
             case RenderStage::DISPLAY:
             {
-                OPTICK_EVENT( "RenderPass - Main" );
+                PROFILE_SCOPE( "RenderPass - Main" );
 
                 RTDrawDescriptor prePassPolicy = {};
                 DisableAll( prePassPolicy._drawMask );
@@ -164,7 +164,7 @@ namespace Divide
             {
                 if_constexpr( Config::Build::ENABLE_EDITOR )
                 {
-                    OPTICK_EVENT( "RenderPass - Node Preview" );
+                    PROFILE_SCOPE( "RenderPass - Node Preview" );
                     const Editor& editor = _context.context().editor();
                     if (editor.running() && editor.nodePreviewWindowVisible())
                     {
@@ -183,7 +183,7 @@ namespace Divide
             } break;
             case RenderStage::SHADOW:
             {
-                OPTICK_EVENT( "RenderPass - Shadow" );
+                PROFILE_SCOPE( "RenderPass - Shadow" );
                 if ( _config.rendering.shadowMapping.enabled )
                 {
                     SceneManager* mgr = _parent.parent().sceneManager();
@@ -207,7 +207,7 @@ namespace Divide
                 GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Reflection Pass" } );
                 GFX::EnqueueCommand<GFX::SetClippingStateCommand>( bufferInOut )->_negativeOneToOneDepth = false;
                 {
-                    OPTICK_EVENT( "RenderPass - Probes" );
+                    PROFILE_SCOPE( "RenderPass - Probes" );
                     SceneEnvironmentProbePool::Prepare( bufferInOut );
 
                     SceneEnvironmentProbePool* envProbPool = Attorney::SceneRenderPass::getEnvProbes( mgr->getActiveScene() );
@@ -224,7 +224,7 @@ namespace Divide
                     envProbPool->unlockProbeList();
                 }
                 {
-                    OPTICK_EVENT( "RenderPass - Reflection" );
+                    PROFILE_SCOPE( "RenderPass - Reflection" );
                     static VisibleNodeList s_Nodes;
                     //Update classic reflectors (e.g. mirrors, water, etc)
                     //Get list of reflective nodes from the scene manager
@@ -260,7 +260,7 @@ namespace Divide
                 GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Refraction Pass" } );
                 GFX::EnqueueCommand<GFX::SetClippingStateCommand>( bufferInOut )->_negativeOneToOneDepth = false;
 
-                OPTICK_EVENT( "RenderPass - Refraction" );
+                PROFILE_SCOPE( "RenderPass - Refraction" );
                 // Get list of refractive nodes from the scene manager
                 const SceneManager* mgr = _parent.parent().sceneManager();
                 Camera* camera = Attorney::SceneManagerCameraAccessor::playerCamera( mgr );

@@ -1054,9 +1054,6 @@
     <None Include="..\..\assets\shaders\GLSL\EdgeDetection.glsl">
       <Filter>Video\ShaderSource\GLSL</Filter>
     </None>
-    <None Include="..\..\assets\shaders\GLSL\computeVSM.glsl">
-      <Filter>Video\ShaderSource\GLSL</Filter>
-    </None>
     <None Include="..\..\Source Code\Platform\Threading\Headers\ThreadPool.inl">
       <Filter>Threading\Headers</Filter>
     </None>

@@ -53,7 +53,7 @@ namespace {
     }
 
     void PostFXWindow::drawInternal() {
-        OPTICK_EVENT();
+        PROFILE_SCOPE();
 
         PreRenderBatch& batch = _postFX.getFilterBatch();
 

@@ -345,7 +345,7 @@ void glTexture::clearDataInternal(const UColour4& clearColour, U8 level, bool cl
 }
 
 /*static*/ void glTexture::copy(const glTexture* source, const U8 sourceSamples, const glTexture* destination, const U8 destinationSamples, const CopyTexParams& params) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     // We could handle this with a custom shader pass and temp render targets, so leaving the option i
     DIVIDE_ASSERT(sourceSamples == destinationSamples == 0u, "glTexcture::copy Multisampled textures is not supported yet!");

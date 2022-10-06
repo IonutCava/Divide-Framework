@@ -184,9 +184,13 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
 
         ShaderProgramDescriptor shaderDescriptor = {};
         shaderDescriptor._modules.push_back(computeModule);
+        shaderDescriptor._globalDefines.emplace_back( "imgSizeX PushData0[0].x" );
+        shaderDescriptor._globalDefines.emplace_back( "imgSizeY PushData0[0].y" );
+        shaderDescriptor._globalDefines.emplace_back( "layerIndex PushData0[0].z" );
 
         {
             shaderDescriptor._modules.back()._variant = "Irradiance";
+
             ResourceDescriptor irradianceShader("IrradianceCalc");
             irradianceShader.propertyDescriptor(shaderDescriptor);
             irradianceShader.waitForReady(true);
@@ -201,6 +205,8 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         }
         {
             shaderDescriptor._modules.back()._variant = "PreFilter";
+            shaderDescriptor._globalDefines.emplace_back( "mipLevel uint(PushData0[1].x)" );
+            shaderDescriptor._globalDefines.emplace_back( "roughness PushData0[1].y" );
             ResourceDescriptor prefilterShader("PrefilterEnv");
             prefilterShader.propertyDescriptor(shaderDescriptor);
             prefilterShader.waitForReady(true);
@@ -300,7 +306,7 @@ void SceneEnvironmentProbePool::Prepare(GFX::CommandBuffer& bufferInOut) {
 }
 
 void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
     if (s_lutTextureDirty) {
         PipelineDescriptor pipelineDescriptor{};
         pipelineDescriptor._stateHash = context.get2DStateBlock();
@@ -416,7 +422,7 @@ void SceneEnvironmentProbePool::ProcessEnvironmentMap(GFXDevice& context, const 
 
 void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal(GFXDevice& context, const U16 layerID, ComputationStages& stage, GFX::CommandBuffer& bufferInOut)
 {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     // This entire sequence is based on this awesome blog post by Bruno Opsenica: https://bruop.github.io/ibl/
     switch (stage)
@@ -659,7 +665,7 @@ void SceneEnvironmentProbePool::createDebugView(const U16 layerIndex) {
 }
 
 void SceneEnvironmentProbePool::onNodeUpdated(const SceneGraphNode& node) noexcept {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     const BoundingSphere& bSphere = node.get<BoundsComponent>()->getBoundingSphere();
     lockProbeList();
@@ -676,7 +682,7 @@ void SceneEnvironmentProbePool::onNodeUpdated(const SceneGraphNode& node) noexce
 }
 
 void SceneEnvironmentProbePool::OnTimeOfDayChange(const SceneEnvironmentProbePool& probePool) noexcept {
-    OPTICK_EVENT();
+    PROFILE_SCOPE();
 
     probePool.lockProbeList();
     const EnvironmentProbeList& probes = probePool.getLocked();
