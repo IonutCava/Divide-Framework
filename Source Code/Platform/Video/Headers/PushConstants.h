@@ -37,11 +37,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 struct PushConstantsStruct {
-    mat4<F32> data0{0.f};
-    mat4<F32> data1{0.f};
+    eastl::array<mat4<F32>, 2> data{MAT4_ZERO, MAT4_ZERO};
 
-    static [[nodiscard]] size_t Size() noexcept { return 2 * sizeof(mat4<F32>); }
-    inline [[nodiscard]] const F32* data() const { return data0.mat; }
+    static [[nodiscard]] constexpr size_t Size() noexcept { return 2 * sizeof(mat4<F32>); }
+    inline [[nodiscard]] const F32* dataPtr() const { return data[0].mat; }
     bool _set{false};
 };
 

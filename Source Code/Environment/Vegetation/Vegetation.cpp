@@ -758,8 +758,8 @@ namespace Divide
                 mat4<F32>::Multiply( cameraSnapshot._viewMatrix, cameraSnapshot._projectionMatrix, viewProjectionMatrix );
 
                 PushConstantsStruct fastConstants{};
-                fastConstants.data0 = viewProjectionMatrix;
-                fastConstants.data1 = cameraSnapshot._viewMatrix;
+                fastConstants.data[0] = viewProjectionMatrix;
+                fastConstants.data[1] = cameraSnapshot._viewMatrix;
 
                 GFX::SendPushConstantsCommand cullConstantsCmd{};
                 PushConstants& constants = cullConstantsCmd._constants;

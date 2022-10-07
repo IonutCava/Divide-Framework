@@ -214,7 +214,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
             GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _smaaWeightPipeline });
 
             PushConstantsStruct pushData{};
-            pushData.data0._vec[0].x = to_F32( postAAQualityLevel() - 1 );
+            pushData.data[0]._vec[0].x = to_F32( postAAQualityLevel() - 1 );
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(pushData);
 
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
@@ -260,7 +260,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _fxaaPipeline });
 
         PushConstantsStruct pushData{};
-        pushData.data0._vec[0].x = to_F32( postAAQualityLevel() - 1 );
+        pushData.data[0]._vec[0].x = to_F32( postAAQualityLevel() - 1 );
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( pushData );
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);

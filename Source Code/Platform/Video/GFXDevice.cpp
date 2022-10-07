@@ -1547,18 +1547,18 @@ namespace Divide
         const auto& bufferAttachment = blurBuffer._rt->getAttachment( att, slot );
 
         PushConstantsStruct pushData{};
-        pushData.data0._vec[0].w = to_F32( kernelSize );
-        pushData.data0._vec[1].y = to_F32( layerCount );
-        pushData.data0._vec[1].z = 0.f;
-        pushData.data0._vec[1].w = 0.f;
+        pushData.data[0]._vec[0].w = to_F32( kernelSize );
+        pushData.data[0]._vec[1].y = to_F32( layerCount );
+        pushData.data[0]._vec[1].z = 0.f;
+        pushData.data[0]._vec[1].w = 0.f;
 
         const U8 loopCount = gaussian ? 1u : layerCount;
 
         {// Blur horizontally
-            pushData.data0._vec[0].x = 0.f;
-            pushData.data0._vec[1].x = 0.f;
-            pushData.data0._vec[0].yz = vec2<F32>( blurBuffer._rt->getResolution() );
-            pushData.data0._vec[2].xy.set( 1.f / blurBuffer._rt->getResolution().width, 1.f / blurBuffer._rt->getResolution().height );
+            pushData.data[0]._vec[0].x = 0.f;
+            pushData.data[0]._vec[1].x = 0.f;
+            pushData.data[0]._vec[0].yz = vec2<F32>( blurBuffer._rt->getResolution() );
+            pushData.data[0]._vec[2].xy.set( 1.f / blurBuffer._rt->getResolution().width, 1.f / blurBuffer._rt->getResolution().height );
 
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
             renderPassCmd->_target = blurBuffer._targetID;
@@ -1576,14 +1576,14 @@ namespace Divide
     
             if ( !gaussian && layerCount > 1 )
             {
-                pushData.data0._vec[0].x = 0.f;
+                pushData.data[0]._vec[0].x = 0.f;
             }
 
             for ( U8 loop = 0u; loop < loopCount; ++loop )
             {
                 if ( !gaussian && loop > 0u )
                 {
-                    pushData.data0._vec[0].x = to_F32( loop );
+                    pushData.data[0]._vec[0].x = to_F32( loop );
                     GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut)->_constants.set( pushData );
                 }
                 GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
@@ -1592,10 +1592,10 @@ namespace Divide
             GFX::EnqueueCommand( bufferInOut, GFX::EndRenderPassCommand{} );
         }
         {// Blur vertically
-            pushData.data0._vec[0].x = 0.f;
-            pushData.data0._vec[1].x = 1.f;
-            pushData.data0._vec[0].yz = vec2<F32>( blurTarget._rt->getResolution() );
-            pushData.data0._vec[2].xy.set( 1.0f / blurTarget._rt->getResolution().width, 1.0f / blurTarget._rt->getResolution().height );
+            pushData.data[0]._vec[0].x = 0.f;
+            pushData.data[0]._vec[1].x = 1.f;
+            pushData.data[0]._vec[0].yz = vec2<F32>( blurTarget._rt->getResolution() );
+            pushData.data[0]._vec[2].xy.set( 1.0f / blurTarget._rt->getResolution().width, 1.0f / blurTarget._rt->getResolution().height );
 
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
             renderPassCmd->_target = blurTarget._targetID;
@@ -1613,7 +1613,7 @@ namespace Divide
             {
                 if ( !gaussian && loop > 0u )
                 {
-                    pushData.data0._vec[0].x = to_F32( loop );
+                    pushData.data[0]._vec[0].x = to_F32( loop );
                     GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( pushData );
                 }
                 GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
@@ -2300,8 +2300,8 @@ namespace Divide
                 As<DescriptorCombinedImageSampler>(binding._data) = { inImage, HiZAtt->descriptor()._samplerHash };
             }
 
-            pushConstants.data0._vec[0].set( owidth, oheight, twidth, theight );
-            pushConstants.data0._vec[1].x = wasEven ? 1.f : 0.f;
+            pushConstants.data[0]._vec[0].set( owidth, oheight, twidth, theight );
+            pushConstants.data[0]._vec[1].x = wasEven ? 1.f : 0.f;
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( cmdBufferInOut )->_constants.set( pushConstants );
 
             // Dummy draw command as the full screen quad is generated completely in the vertex shader
@@ -2367,8 +2367,8 @@ namespace Divide
         mat4<F32>::Multiply( cameraSnapshot._viewMatrix, cameraSnapshot._projectionMatrix, viewProjectionMatrix );
 
         PushConstantsStruct fastConstants{};
-        fastConstants.data0 = viewProjectionMatrix;
-        fastConstants.data1 = cameraSnapshot._viewMatrix;
+        fastConstants.data[0] = viewProjectionMatrix;
+        fastConstants.data[1] = cameraSnapshot._viewMatrix;
 
         GFX::SendPushConstantsCommand HIZPushConstantsCMD = {};
         HIZPushConstantsCMD._constants.set( _ID( "countCulledItems" ), GFX::PushConstantType::UINT, countCulledNodes ? 1u : 0u );
@@ -2452,7 +2452,7 @@ namespace Divide
         if ( !drawToDepthOnly )
         {
             PushConstantsStruct pushData{};
-            pushData.data0._vec[0].x = convertToSrgb ? 1.f : 0.f;
+            pushData.data[0]._vec[0].x = convertToSrgb ? 1.f : 0.f;
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut)->_constants.set(pushData);
         }
 

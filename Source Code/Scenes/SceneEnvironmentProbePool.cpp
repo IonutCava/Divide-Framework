@@ -482,14 +482,14 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
     const F32 fWidth = to_F32(width);
 
     PushConstantsStruct fastData{};
-    fastData.data0._vec[0].xyz.set(fWidth, fWidth, to_F32(layerID));
+    fastData.data[0]._vec[0].xyz.set(fWidth, fWidth, to_F32(layerID));
 
     const F32 maxMipLevel = to_F32(std::log2(fWidth));
     for (F32 mipLevel = 0u; mipLevel <= maxMipLevel; ++mipLevel)     {
         destinationImage._mipLevels = { to_U8(mipLevel), 1u };
 
         const F32 roughness = mipLevel / maxMipLevel;
-        fastData.data0._vec[1].xy.set(mipLevel, roughness);
+        fastData.data[0]._vec[1].xy.set(mipLevel, roughness);
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(fastData);
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -537,7 +537,7 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U
     }
 
     PushConstantsStruct fastData{};
-    fastData.data0._vec[0].xyz.set(to_F32(s_IrradianceTextureSize), to_F32(s_IrradianceTextureSize), to_F32(layerID));
+    fastData.data[0]._vec[0].xyz.set(to_F32(s_IrradianceTextureSize), to_F32(s_IrradianceTextureSize), to_F32(layerID));
     GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(fastData);
 
     const U32 groupsX = to_U32(std::ceil(s_IrradianceTextureSize / to_F32(8)));

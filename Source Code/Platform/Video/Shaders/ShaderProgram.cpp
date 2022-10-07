@@ -1749,8 +1749,9 @@ void ShaderProgram::loadAndParseGLSL(const ModuleDefines& defines,
     else
     {
         pushConstantCodeBlock = 
-            "layout(location = 18) uniform mat4 PushData0;\n"
-            "layout(location = 19) uniform mat4 PushData1;";
+            "layout(location = 18) uniform mat4 PushConstantData[2];\n"
+            "#define PushData0 PushConstantData[0]\n"
+            "#define PushData1 PushConstantData[1]";
     }
 
     Util::ReplaceStringInPlace(loadDataInOut._sourceCodeGLSL, "//_CUSTOM_UNIFORMS_\\", loadDataInOut._uniformBlock);

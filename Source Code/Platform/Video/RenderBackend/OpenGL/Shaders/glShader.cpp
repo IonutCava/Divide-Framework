@@ -49,7 +49,7 @@ namespace {
 glShader::glShader(GFXDevice& context, const Str256& name)
     : ShaderModule(context, name)
 {
-    _pushConstantsLocations[0] = _pushConstantsLocations[1] = -1;
+    _pushConstantsLocation = -1;
 }
 
 glShader::~glShader() {
@@ -245,8 +245,7 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
 
     if (_valid)
     {
-        _pushConstantsLocations[0]  = glGetUniformLocation(_handle, "PushData0");
-        _pushConstantsLocations[1]  = glGetUniformLocation(_handle, "PushData1");
+        _pushConstantsLocation  = glGetUniformLocation(_handle, "PushConstantData");
     }
     return _valid ? ShaderResult::OK : ShaderResult::Failed;
 }
@@ -325,13 +324,9 @@ void glShader::onParentValidation()
 
 void glShader::uploadPushConstants(const PushConstantsStruct& pushConstants)
 {
-    if (_pushConstantsLocations[0] != -1)
+    if (_pushConstantsLocation != -1)
     {
-        glProgramUniformMatrix4fv(_handle, _pushConstantsLocations[0], 1, GL_FALSE, pushConstants.data0.mat);
-    }
-    if (_pushConstantsLocations[1] != -1)
-    {
-        glProgramUniformMatrix4fv(_handle, _pushConstantsLocations[1], 1, GL_FALSE, pushConstants.data1.mat);
+        glProgramUniformMatrix4fv(_handle, _pushConstantsLocation, 2, GL_FALSE, pushConstants.dataPtr());
     }
 }
 } // namespace Divide

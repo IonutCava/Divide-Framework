@@ -230,9 +230,9 @@ void Renderer::prepareLighting(const RenderStage stage,
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Rebuild Light Grid" });
             
             PushConstantsStruct pushConstants{};
-            pushConstants.data0 = data._gridData._invProjectionMatrix;
-            pushConstants.data1._vec[0] = data._gridData._viewport;
-            pushConstants.data1._vec[1].xy = data._gridData._zPlanes;
+            pushConstants.data[0] = data._gridData._invProjectionMatrix;
+            pushConstants.data[1]._vec[0] = data._gridData._viewport;
+            pushConstants.data[1]._vec[1].xy = data._gridData._zPlanes;
 
             GFX::EnqueueCommand(bufferInOut, _lightBuildClusteredAABBsPipelineCmd);
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(pushConstants);

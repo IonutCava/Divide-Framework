@@ -41,7 +41,6 @@
 
 namespace Divide
 {
-
     namespace
     {
         const char* g_editorFontFile = "Roboto-Medium.ttf";
@@ -56,18 +55,6 @@ namespace Divide
         {
             DisplayWindow* _window = nullptr;
             bool _windowOwned = false;
-        };
-
-        struct TextureCallbackData
-        {
-            GFXDevice* _gfxDevice = nullptr;
-            Texture* _texture = nullptr;
-            vec4<I32> _colourData = { 1, 1, 1, 1 };
-            vec2<F32> _depthRange = { 0.002f, 1.f };
-            U32 _arrayLayer = 0u;
-            U32 _mip = 0u;
-            bool _isDepthTexture = false;
-            bool _flip = true;
         };
 
         TextureCallbackData g_modalTextureData;
@@ -151,6 +138,21 @@ namespace Divide
     std::array<const char*, 3> Editor::g_supportedExportPlatforms = { "Windows",
                                                                       "Linux",
                                                                       "macOS" };
+
+    PushConstantsStruct TexCallbackToPushConstants( const TextureCallbackData& data, const bool isArrayTexture )
+    {
+
+        PushConstantsStruct pushConstants{};
+        pushConstants.data[0]._vec[0] = data._colourData;
+        pushConstants.data[0]._vec[1].xy = data._depthRange;
+        pushConstants.data[0]._vec[1].z = to_F32( data._arrayLayer );
+        pushConstants.data[0]._vec[1].w = to_F32( data._mip );
+        pushConstants.data[0]._vec[2].x = isArrayTexture ? 1.f : 0.f;
+        pushConstants.data[0]._vec[2].y = data._isDepthTexture ? 1.f : 0.f;
+        pushConstants.data[0]._vec[2].z = data._flip ? 1.f : 0.f;
+        pushConstants.data[0]._vec[2].w = data._srgb ? 1.f : 0.f;
+        return pushConstants;
+    }
 
     Editor::Editor( PlatformContext& context, const ImGuiStyleEnum theme )
         : PlatformContextComponent( context )
@@ -323,6 +325,7 @@ namespace Divide
             shaderDescriptor._globalDefines.emplace_back("textureType uint(PushData0[2].x)");
             shaderDescriptor._globalDefines.emplace_back("depthTexture uint(PushData0[2].y)");
             shaderDescriptor._globalDefines.emplace_back("flip uint(PushData0[2].z)");
+            shaderDescriptor._globalDefines.emplace_back("convertToSRGB (uint(PushData0[2].w) == 1)");
 
             ResourceDescriptor shaderResDescriptor( "IMGUI" );
             shaderResDescriptor.propertyDescriptor( shaderDescriptor );
@@ -1098,7 +1101,7 @@ namespace Divide
             if ( _gridSettingsDirty )
             {
                 PushConstantsStruct fastData{};
-                fastData.data0._vec[0].xy.set( infiniteGridAxisWidth(),
+                fastData.data[0]._vec[0].xy.set( infiniteGridAxisWidth(),
                                                infiniteGridScale() );
                 PushConstants constants{};
                 constants.set( fastData );
@@ -1380,6 +1383,9 @@ namespace Divide
         s_maxCommandCount = std::max( s_maxCommandCount, pDrawData->CmdListsCount );
         GenericVertexData* buffer = _context.gfx().getOrCreateIMGUIBuffer( windowGUID, s_maxCommandCount, MaxVertices );
         assert( buffer != nullptr );
+
+        GenericDrawCommand drawCmd{};
+        drawCmd._sourceBuffer = buffer->handle();
         buffer->incQueue();
 
         // ref: https://gist.github.com/floooh/10388a0afbe08fce9e617d8aefa7d302
@@ -1433,12 +1439,14 @@ namespace Divide
         }
 
         GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut, { _editorPipeline } );
-        
-        PushConstantsStruct pushConstants{};
-        pushConstants.data0._vec[0].set( 1.f );
-        pushConstants.data0._vec[1].xy.set( 0.0f, 1.0f );
 
-        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set(pushConstants);
+        static TextureCallbackData defaultData{};
+        defaultData._gfxDevice = &_context.gfx();
+        defaultData._isDepthTexture = false;
+        defaultData._flip = false;
+
+        const PushConstantsStruct pushConstants = TexCallbackToPushConstants( defaultData, false );
+        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( pushConstants );
         GFX::EnqueueCommand<GFX::SetViewportCommand>( bufferInOut, { targetViewport } );
 
         const F32 L = pDrawData->DisplayPos.x;
@@ -1456,9 +1464,6 @@ namespace Divide
         F32* projection = GFX::EnqueueCommand<GFX::SetCameraCommand>( bufferInOut, { _render2DSnapshot } )->_cameraSnapshot._projectionMatrix.mat;
         memcpy( projection, ortho_projection, sizeof( F32 ) * 16 );
 
-        GenericDrawCommand drawCmd{};
-        drawCmd._sourceBuffer = buffer->handle();
-
         U32 baseVertex = 0u;
         U32 indexOffset = 0u;
         for ( I32 n = 0; n < pDrawData->CmdListsCount; ++n )
@@ -1468,7 +1473,6 @@ namespace Divide
             {
                 if ( pcmd.UserCallback )
                 {
-                    // User callback (registered via ImDrawList::AddCallback)
                     pcmd.UserCallback( cmd_list, &pcmd, &bufferInOut );
                 }
                 else
@@ -2189,7 +2193,7 @@ namespace Divide
             assert( renderData != nullptr );
             GFX::CommandBuffer& buffer = *static_cast<GFX::CommandBuffer*>(renderData);
 
-            U32 textureType = 0u;
+            bool isArrayTexture = false;
             if ( data._texture != nullptr )
             {
                 const TextureType texType = data._texture->descriptor().texType();
@@ -2198,7 +2202,7 @@ namespace Divide
 
                 if ( isTextureArray || isTextureCube )
                 {
-                    textureType = 1u;
+                    isArrayTexture = true;
 
                     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( buffer );
                     cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -2221,15 +2225,7 @@ namespace Divide
                 }
             }
 
-            PushConstantsStruct pushConstants {};
-            pushConstants.data0._vec[0] = data._colourData;
-            pushConstants.data0._vec[1].xy = data._depthRange;
-            pushConstants.data0._vec[1].z = to_F32( data._arrayLayer );
-            pushConstants.data0._vec[1].w = to_F32( data._mip );
-            pushConstants.data0._vec[2].x = to_F32( textureType );
-            pushConstants.data0._vec[2].y = data._isDepthTexture ? 1.f : 0.f;
-            pushConstants.data0._vec[2].z = data._flip ? 1.f : 0.f;
-
+            const PushConstantsStruct pushConstants = TexCallbackToPushConstants(data, isArrayTexture);
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( buffer )->_constants.set( pushConstants );
         };
 

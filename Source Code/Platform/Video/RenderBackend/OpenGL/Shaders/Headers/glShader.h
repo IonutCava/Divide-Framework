@@ -74,7 +74,7 @@ class glShader final : public ShaderModule {
     ShaderProgram::ShaderLoadData _loadData;
     vector<GLuint> _shaderIDs;
     bool _linked = false;
-    GLint _pushConstantsLocations[2];
+    GLint _pushConstantsLocation{-1};
 };
 
 };  // namespace Divide

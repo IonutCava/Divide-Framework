@@ -69,9 +69,7 @@ namespace Divide {
             return true;
         }
 
-        return lhs._set  == rhs._set &&
-               lhs.data0 == rhs.data0 &&
-               lhs.data1 == rhs.data1; 
+        return lhs._set  == rhs._set && lhs.data == rhs.data;
     }
 
     inline bool operator!=(const PushConstantsStruct& lhs, const PushConstantsStruct& rhs) noexcept
@@ -81,9 +79,7 @@ namespace Divide {
             return false;
         }
 
-        return lhs._set  != rhs._set ||
-               lhs.data0 != rhs.data0 ||
-               lhs.data1 != rhs.data1; 
+        return lhs._set  != rhs._set || lhs.data != rhs.data; 
     }
 } //namespace Divide
 

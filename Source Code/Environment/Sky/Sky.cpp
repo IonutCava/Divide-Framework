@@ -866,13 +866,13 @@ void Sky::nightSkyColour( const FColour4 val )
 void Sky::setSkyShaderData( const U32 rayCount, PushConstants& constantsInOut )
 {
     PushConstantsStruct fastData{};
-    fastData.data0._vec[0].set( nightSkyColour().rgb, to_F32( rayCount ) );
-    fastData.data0._vec[1].set( moonColour().rgb, moonScale() );
-    fastData.data0._vec[2].set( useDaySkybox() ? 1.f : 0.f, useNightSkybox() ? 1.f : 0.f, _atmosphere._cloudLayerMinMaxHeight.min, _atmosphere._cloudLayerMinMaxHeight.max );
-    fastData.data0._vec[3].set( _atmosphere._RayleighCoeff * 1e-6f, weatherScale() * 1e-5f );
-    fastData.data1._vec[0].set( _atmosphere._sunIntensity, _atmosphere._sunPenetrationPower, _atmosphere._planetRadius, _atmosphere._cloudSphereRadius );
-    fastData.data1._vec[1].set( _atmosphere._atmosphereOffset, _atmosphere._MieCoeff, _atmosphere._RayleighScale, _atmosphere._MieScaleHeight );
-    fastData.data1._vec[2].x = enableProceduralClouds() ? 1.f : 0.f;
+    fastData.data[0]._vec[0].set( nightSkyColour().rgb, to_F32( rayCount ) );
+    fastData.data[0]._vec[1].set( moonColour().rgb, moonScale() );
+    fastData.data[0]._vec[2].set( useDaySkybox() ? 1.f : 0.f, useNightSkybox() ? 1.f : 0.f, _atmosphere._cloudLayerMinMaxHeight.min, _atmosphere._cloudLayerMinMaxHeight.max );
+    fastData.data[0]._vec[3].set( _atmosphere._RayleighCoeff * 1e-6f, weatherScale() * 1e-5f );
+    fastData.data[1]._vec[0].set( _atmosphere._sunIntensity, _atmosphere._sunPenetrationPower, _atmosphere._planetRadius, _atmosphere._cloudSphereRadius );
+    fastData.data[1]._vec[1].set( _atmosphere._atmosphereOffset, _atmosphere._MieCoeff, _atmosphere._RayleighScale, _atmosphere._MieScaleHeight );
+    fastData.data[1]._vec[2].x = enableProceduralClouds() ? 1.f : 0.f;
     constantsInOut.set( fastData );
 }
 

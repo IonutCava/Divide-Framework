@@ -161,7 +161,7 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
     }
 
     PushConstantsStruct params{};
-    params.data0._vec[0].x = _bloomThreshold;
+    params.data[0]._vec[0].x = _bloomThreshold;
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _bloomCalcPipeline });
     GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(params);
 

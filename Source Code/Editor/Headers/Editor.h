@@ -105,11 +105,27 @@ namespace Divide
     struct Selections;
     struct SizeChangeParams;
     struct TransformSettings;
+    struct PushConstantsStruct;
 
     template<typename T>
     struct UndoEntry;
-
+    
     void InitBasicImGUIState( ImGuiIO& io ) noexcept;
+
+    struct TextureCallbackData
+    {
+        GFXDevice* _gfxDevice = nullptr;
+        Texture* _texture = nullptr;
+        vec4<I32> _colourData = { 1, 1, 1, 1 };
+        vec2<F32> _depthRange = { 0.002f, 1.f };
+        U32 _arrayLayer = 0u;
+        U32 _mip = 0u;
+        bool _isDepthTexture = false;
+        bool _flip = true;
+        bool _srgb = false;
+    };
+
+    PushConstantsStruct TexCallbackToPushConstants(const TextureCallbackData& data, bool isArrayTexture);
 
     class Editor final : public PlatformContextComponent,
         public FrameListener,
@@ -420,6 +436,7 @@ namespace Divide
             {
                 return editor._nodePreviewBGColour;
             }
+
             friend class Divide::SceneViewWindow;
             friend class Divide::NodePreviewWindow;
         };

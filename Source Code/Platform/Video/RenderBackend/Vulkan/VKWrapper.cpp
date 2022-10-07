@@ -1332,7 +1332,7 @@ namespace Divide {
                     }
                     if (pushConstants.fastData()._set)
                     {
-                        const F32* constantData = pushConstants.fastData().data();
+                        const F32* constantData = pushConstants.fastData().dataPtr();
                         vkCmdPushConstants(cmdBuffer,
                                            GetStateTracker()._activePipelineLayout,
                                            GetStateTracker()._activeShaderProgram->stageMask(),

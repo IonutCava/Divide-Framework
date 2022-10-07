@@ -79,23 +79,23 @@ namespace Divide
                                                    } );
         }
 
-        _shaderConstants.data0._vec[1].y = to_F32( Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT );
-        _shaderConstants.data0._vec[1].z = 0.f;
-        _shaderConstants.data0._vec[1].w = 0.f;
+        _shaderConstants.data[0]._vec[1].y = to_F32( Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT );
+        _shaderConstants.data[0]._vec[1].z = 0.f;
+        _shaderConstants.data[0]._vec[1].w = 0.f;
 
         std::array<vec2<F32>*, 12> blurSizeConstants = {
-                &_shaderConstants.data0._vec[2].xy,
-                &_shaderConstants.data0._vec[2].zw,
-                &_shaderConstants.data0._vec[3].xy,
-                &_shaderConstants.data0._vec[3].zw,
-                &_shaderConstants.data1._vec[0].xy,
-                &_shaderConstants.data1._vec[0].zw,
-                &_shaderConstants.data1._vec[1].xy,
-                &_shaderConstants.data1._vec[1].zw,
-                &_shaderConstants.data1._vec[2].xy,
-                &_shaderConstants.data1._vec[2].zw,
-                &_shaderConstants.data1._vec[3].xy,
-                &_shaderConstants.data1._vec[3].zw
+                &_shaderConstants.data[0]._vec[2].xy,
+                &_shaderConstants.data[0]._vec[2].zw,
+                &_shaderConstants.data[0]._vec[3].xy,
+                &_shaderConstants.data[0]._vec[3].zw,
+                &_shaderConstants.data[1]._vec[0].xy,
+                &_shaderConstants.data[1]._vec[0].zw,
+                &_shaderConstants.data[1]._vec[1].xy,
+                &_shaderConstants.data[1]._vec[1].zw,
+                &_shaderConstants.data[1]._vec[2].xy,
+                &_shaderConstants.data[1]._vec[2].zw,
+                &_shaderConstants.data[1]._vec[3].xy,
+                &_shaderConstants.data[1]._vec[3].zw
         };
 
         blurSizeConstants[0]->set( 1.f / g_shadowSettings.csm.shadowMapResolution );
@@ -466,10 +466,10 @@ namespace Divide
                 As<DescriptorCombinedImageSampler>(binding._data) = { shadowAtt->texture()->sampledView(), shadowAtt->descriptor()._samplerHash };
             }
 
-            _shaderConstants.data0._vec[1].x = 0.f;
-            _shaderConstants.data0._vec[1].y = to_F32( layerCount );
-            _shaderConstants.data0._vec[1].z = to_F32( layerOffset );
-            _shaderConstants.data0._vec[1].w = 0.f;
+            _shaderConstants.data[0]._vec[1].x = 0.f;
+            _shaderConstants.data[0]._vec[1].y = to_F32( layerCount );
+            _shaderConstants.data[0]._vec[1].z = to_F32( layerOffset );
+            _shaderConstants.data[0]._vec[1].w = 0.f;
 
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( _shaderConstants );
 
@@ -489,10 +489,10 @@ namespace Divide
 
             GFX::EnqueueCommand( bufferInOut, beginRenderPassVerticalCmd );
 
-            _shaderConstants.data0._vec[1].x = 1.f;
-            _shaderConstants.data0._vec[1].y = to_F32( layerCount );
-            _shaderConstants.data0._vec[1].z = 0.f;
-            _shaderConstants.data0._vec[1].w = to_F32( layerOffset );
+            _shaderConstants.data[0]._vec[1].x = 1.f;
+            _shaderConstants.data[0]._vec[1].y = to_F32( layerCount );
+            _shaderConstants.data[0]._vec[1].z = 0.f;
+            _shaderConstants.data[0]._vec[1].w = to_F32( layerOffset );
 
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( _shaderConstants );
 

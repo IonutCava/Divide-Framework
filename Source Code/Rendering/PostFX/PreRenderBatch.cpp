@@ -527,7 +527,7 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
         As<DescriptorCombinedImageSampler>(binding._data) = { depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash };
 
         PushConstantsStruct pushData{};
-        pushData.data0._vec[0].xy = cameraSnapshot._zPlanes;
+        pushData.data[0]._vec[0].xy = cameraSnapshot._zPlanes;
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(pushData);
 
         GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
@@ -596,10 +596,10 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             }
             GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipelineLumCalcHistogram });
             PushConstantsStruct params{};
-            params.data0._vec[0].set( _toneMapParams._minLogLuminance,
-                                      1.f / logLumRange,
-                                      to_F32( _toneMapParams._width ),
-                                      to_F32( _toneMapParams._height ) );
+            params.data[0]._vec[0].set( _toneMapParams._minLogLuminance,
+                                        1.f / logLumRange,
+                                        to_F32( _toneMapParams._width ),
+                                        to_F32( _toneMapParams._height ) );
 
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set( params );
 
@@ -628,10 +628,10 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipelineLumCalcAverage });
 
             PushConstantsStruct params{};
-            params.data0._vec[0].set(_toneMapParams._minLogLuminance,
-                                     logLumRange,
-                                     CLAMPED_01( 1.0f - std::exp( -Time::MicrosecondsToSeconds<F32>( _lastDeltaTimeUS ) * _toneMapParams._tau ) ),
-                                     to_F32( _toneMapParams._width ) * _toneMapParams._height );
+            params.data[0]._vec[0].set(_toneMapParams._minLogLuminance,
+                                       logLumRange,
+                                       CLAMPED_01( 1.0f - std::exp( -Time::MicrosecondsToSeconds<F32>( _lastDeltaTimeUS ) * _toneMapParams._tau ) ),
+                                       to_F32( _toneMapParams._width ) * _toneMapParams._height );
 
 
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(params);
@@ -736,10 +736,10 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         const auto mappingFunction = to_base(_context.materialDebugFlag() == MaterialDebugFlag::COUNT ? _toneMapParams._function : ToneMapParams::MapFunctions::COUNT);
 
         PushConstantsStruct pushData{};
-        pushData.data0._vec[0].set( _toneMapParams._manualExposureFactor,
-                                    to_F32( mappingFunction ),
-                                    adaptiveExposureControl() ? 1.f : 0.f,
-                                    _context.materialDebugFlag() != MaterialDebugFlag::COUNT ? 1.f : 0.f);
+        pushData.data[0]._vec[0].set( _toneMapParams._manualExposureFactor,
+                                     to_F32( mappingFunction ),
+                                     adaptiveExposureControl() ? 1.f : 0.f,
+                                     _context.materialDebugFlag() != MaterialDebugFlag::COUNT ? 1.f : 0.f);
 
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(pushData);
 
@@ -781,7 +781,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _edgeDetectionPipelines[to_base(edgeDetectionMethod())] });
 
         PushConstantsStruct pushData{};
-        pushData.data0._vec[0].x = edgeDetectionThreshold();
+        pushData.data[0]._vec[0].x = edgeDetectionThreshold();
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(pushData);
 
         GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);

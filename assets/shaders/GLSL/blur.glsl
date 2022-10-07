@@ -49,7 +49,18 @@ void passThrough(in float texCoordX, in float texCoordY, in int layer) {
 }
 
 void BlurRoutine(in float texCoordX, in float texCoordY, in int layer) {
-    const vec2 blurSizes[12] = vec2[12]( PushData0[2].xy, PushData0[2].zw, PushData0[3].xy, PushData0[3].zw, PushData1[0].xy, PushData1[0].zw, PushData1[1].xy, PushData1[1].zw, PushData1[2].xy, PushData1[2].zw, PushData1[3].xy, PushData1[3].zw );
+    const vec2 blurSizes[12] = vec2[12]( PushData0[2].xy,
+                                         PushData0[2].zw,
+                                         PushData0[3].xy,
+                                         PushData0[3].zw,
+                                         PushData1[0].xy,
+                                         PushData1[0].zw,
+                                         PushData1[1].xy,
+                                         PushData1[1].zw,
+                                         PushData1[2].xy,
+                                         PushData1[2].zw,
+                                         PushData1[3].xy,
+                                         PushData1[3].zw );
 
     if (verticalBlur != 0u) {
         computeCoordsV(texCoordX, texCoordY, layer, blurSizes );

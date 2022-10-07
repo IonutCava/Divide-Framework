@@ -90,7 +90,7 @@ DoFPreRenderOperator::DoFPreRenderOperator(GFXDevice& context, PreRenderBatch& p
     });
 
     const vec2<U16> resolution = _parent.screenRT()._rt->getResolution();
-    _constants.data0._vec[0].xy.set(resolution.width, resolution.height );
+    _constants.data[0]._vec[0].xy.set(resolution.width, resolution.height );
 
     parametersChanged();
 }
@@ -104,31 +104,31 @@ void DoFPreRenderOperator::parametersChanged() noexcept
 {
     const auto& params = _context.context().config().rendering.postFX.dof;
 
-    _constants.data0._vec[0].zw = params.focalPoint;
-    _constants.data0._vec[1].z = params.focalDepth;
-    _constants.data0._vec[1].w = params.focalLength;
-    _constants.data0._vec[2].x = g_FStopValues[to_base( TypeUtil::StringToFStops( params.fStop ) )];
-    _constants.data0._vec[2].y = params.ndofstart;
-    _constants.data0._vec[2].z = params.ndofdist;
-    _constants.data0._vec[2].w = params.fdofstart;
-    _constants.data0._vec[3].x = params.fdofdist;
-    _constants.data0._vec[3].y = params.vignout;
-    _constants.data0._vec[3].z = params.vignin;
-    _constants.data0._vec[3].w = params.debugFocus ? 1.f : 0.f;
-    _constants.data1._vec[0].x = params.manualdof ? 1.f : 0.f;
-    _constants.data1._vec[0].y = params.vignetting ? 1.f : 0.f;
-    _constants.data1._vec[0].z = params.autoFocus ? 1.f : 0.f;
+    _constants.data[0]._vec[0].zw = params.focalPoint;
+    _constants.data[0]._vec[1].z = params.focalDepth;
+    _constants.data[0]._vec[1].w = params.focalLength;
+    _constants.data[0]._vec[2].x = g_FStopValues[to_base( TypeUtil::StringToFStops( params.fStop ) )];
+    _constants.data[0]._vec[2].y = params.ndofstart;
+    _constants.data[0]._vec[2].z = params.ndofdist;
+    _constants.data[0]._vec[2].w = params.fdofstart;
+    _constants.data[0]._vec[3].x = params.fdofdist;
+    _constants.data[0]._vec[3].y = params.vignout;
+    _constants.data[0]._vec[3].z = params.vignin;
+    _constants.data[0]._vec[3].w = params.debugFocus ? 1.f : 0.f;
+    _constants.data[1]._vec[0].x = params.manualdof ? 1.f : 0.f;
+    _constants.data[1]._vec[0].y = params.vignetting ? 1.f : 0.f;
+    _constants.data[1]._vec[0].z = params.autoFocus ? 1.f : 0.f;
 }
 
 void DoFPreRenderOperator::reshape(const U16 width, const U16 height)
 {
     PreRenderOperator::reshape(width, height);
-    _constants.data0._vec[0].xy.set(width, height);
+    _constants.data[0]._vec[0].xy.set(width, height);
 }
 
 bool DoFPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut)
 {
-    _constants.data0._vec[1].xy = cameraSnapshot._zPlanes;
+    _constants.data[0]._vec[1].xy = cameraSnapshot._zPlanes;
 
     const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
     const auto& extraAtt = _parent.getLinearDepthRT()._rt->getAttachment(RTAttachmentType::COLOUR);

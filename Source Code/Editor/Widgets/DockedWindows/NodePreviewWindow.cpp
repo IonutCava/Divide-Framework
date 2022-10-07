@@ -4,12 +4,14 @@
 #include "Headers/Utils.h"
 
 #include "Editor/Headers/Editor.h"
-
 #include "Editor/Widgets/Headers/ImGuiExtensions.h"
+
+#include "Core/Headers/PlatformContext.h"
 
 #include "Platform/Headers/DisplayWindow.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
+#include "Platform/Video/Headers/CommandBuffer.h"
 
 #include <imgui_internal.h>
 #include <IconFontCppHeaders/IconsForkAwesome.h>
@@ -69,6 +71,23 @@ namespace Divide
     void NodePreviewWindow::drawInternal( Texture* tex )
     {
         PROFILE_SCOPE();
+
+        static TextureCallbackData defaultData{}, noAlphaBlendData{};
+        defaultData._gfxDevice = &_parent.context().gfx();
+        defaultData._flip = false;
+
+        noAlphaBlendData = defaultData;
+        noAlphaBlendData._colourData.a = 0;
+
+        const ImDrawCallback ToggleAlphaBlend = []( [[maybe_unused]] const ImDrawList* parent_list, const ImDrawCmd* imCmd, void* renderData ) -> void
+        {
+            TextureCallbackData data = *static_cast<TextureCallbackData*>(imCmd->UserCallbackData);
+
+            const PushConstantsStruct pushConstants = TexCallbackToPushConstants(data, false);
+            assert( renderData != nullptr );
+            GFX::CommandBuffer& buffer = *static_cast<GFX::CommandBuffer*>(renderData);
+            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( buffer )->_constants.set( pushConstants );
+        };
 
         assert( tex != nullptr );
 
@@ -130,7 +149,10 @@ namespace Divide
             startPos.y += remainingWndSize.y * .5f;
             endPos.x = startPos.x + imageSz.x;
             endPos.y = startPos.y + imageSz.y;
+
+            window->DrawList->AddCallback( ToggleAlphaBlend, &noAlphaBlendData );
             window->DrawList->AddImage( (void*)tex, startPos, endPos, ImVec2( 0.0f, 1.0f ), ImVec2( 1.0f, 0.0f ) );
+            window->DrawList->AddCallback( ToggleAlphaBlend, &defaultData );
 
             updateBounds( { startPos.x, startPos.y, imageSz.x, imageSz.y } );
         }

@@ -38,7 +38,7 @@ void main()
     }
 
     const vec2 zPlanes = dvd_ZPlanes * depthRange;
-
+    
     vec4 texColor = vec4(0.f, 0.f, 0.f, 1.f);
     if (textureType == 0u) {
         texColor = textureLod(Texture, uv, mip * 1.f);
@@ -49,12 +49,17 @@ void main()
     if (depthTexture != 0u) {
         texColor.rgb = vec3((ToLinearDepth(texColor.r, zPlanes) / zPlanes.y) * toggleChannel[0]);
     } else {
-        Out_Color.xyz *= toggleChannel.xyz;
-        if (toggleChannel.w == 0) {
+        Out_Color.rgb *= toggleChannel.rgb;
+        if (toggleChannel.w == 0)
+        {
             Out_Color.a = 1.f;
             texColor.a = 1.f;
         }
     }
 
     Out_Color *= texColor;
+    if ( convertToSRGB)
+    {
+        Out_Color.rgb = ToSRGBAccurate( Out_Color.rgb );
+    }
 }

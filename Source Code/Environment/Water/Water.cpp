@@ -334,10 +334,10 @@ namespace Divide
                                     const bool refreshData )
     {
         PushConstantsStruct fastData{};
-        fastData.data0._vec[0].set( refractionTint(), specularShininess() );
-        fastData.data0._vec[1].set( waterDistanceFogColour(), 0.f );
-        fastData.data0._vec[2].set( noiseTile(), noiseFactor() );
-        fastData.data0._vec[3].xy = fogStartEnd();
+        fastData.data[0]._vec[0].set( refractionTint(), specularShininess() );
+        fastData.data[0]._vec[1].set( waterDistanceFogColour(), 0.f );
+        fastData.data[0]._vec[2].set( noiseTile(), noiseFactor() );
+        fastData.data[0]._vec[3].xy = fogStartEnd();
         pkg.pushConstantsCmd()._constants.set( fastData );
 
         SceneNode::prepareRender( sgn, rComp, pkg, renderStagePass, cameraSnapshot, refreshData );
