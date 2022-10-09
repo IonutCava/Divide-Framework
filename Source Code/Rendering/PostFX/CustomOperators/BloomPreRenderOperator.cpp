@@ -155,9 +155,8 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
     {
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
-        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-        binding._slot = 0;
-        As<DescriptorCombinedImageSampler>(binding._data) = { screenTex, screenAtt->descriptor()._samplerHash };
+        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+        Set( binding._data, screenTex, screenAtt->descriptor()._samplerHash );
     }
 
     PushConstantsStruct params{};
@@ -192,14 +191,12 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
     cmd->_usage = DescriptorSetUsage::PER_DRAW;
     {
-        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-        binding._slot = 0;
-        As<DescriptorCombinedImageSampler>(binding._data) = { screenTex, screenAtt->descriptor()._samplerHash };
+        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+        Set( binding._data, screenTex, screenAtt->descriptor()._samplerHash );
     }
     {
-        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-        binding._slot = 1;
-        As<DescriptorCombinedImageSampler>(binding._data) = { bloomTex, bloomAtt->descriptor()._samplerHash };
+        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+        Set( binding._data, bloomTex, bloomAtt->descriptor()._samplerHash );
     }
 
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _bloomApplyPipeline });

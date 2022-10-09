@@ -442,21 +442,18 @@ bool UniformBlockUploader::commit(DescriptorSet& set, GFX::MemoryBarrierCommand&
 bool UniformBlockUploader::prepare(DescriptorSet& set) {
     if (_uniformBlock._bindingSlot != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr) {
         const U8 targetBlock = to_U8(_uniformBlock._bindingSlot);
-        const ShaderBufferEntry crtEntry = { *_buffer, {0u, _buffer->getPrimitiveCount()} };
-
         for (DescriptorSetBinding& it : set) {
             if (it._slot == targetBlock) {
                 assert(Type(it._data) == DescriptorSetBindingType::UNIFORM_BUFFER);
 
                 it._shaderStageVisibility = _shaderStageVisibilityMask;
-                As<ShaderBufferEntry>( it._data ) = crtEntry;
+                Set( it._data, _buffer.get(), { 0u, _buffer->getPrimitiveCount() });
                 return true;
             }
         }
 
-        DescriptorSetBinding& binding = set.emplace_back(_shaderStageVisibilityMask);
-        binding._slot = targetBlock;
-        As<ShaderBufferEntry>( binding._data) = crtEntry;
+        DescriptorSetBinding& binding = AddBinding( set, targetBlock, _shaderStageVisibilityMask );
+        Set( binding._data, _buffer.get(), { 0u, _buffer->getPrimitiveCount() } );
         return true;
     }
 

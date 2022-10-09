@@ -263,7 +263,7 @@ namespace Divide {
 
     void SolutionExplorerWindow::drawInternal()
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
         SceneManager* sceneManager = context().kernel().sceneManager();
         Scene& activeScene = sceneManager->getActiveScene();
@@ -300,7 +300,7 @@ namespace Divide {
                 printCameraNode(sceneManager, Attorney::SceneManagerCameraAccessor::playerCamera(sceneManager, i, true));
             }
             {
-                PROFILE_SCOPE("Print SceneGraph");
+                PROFILE_SCOPE("Print SceneGraph", Profiler::Category::GUI);
                 printSceneGraphNode(sceneManager, root, 0, true, false, modifierPressed);
             }
             ImGui::PopStyleVar();
@@ -376,7 +376,7 @@ namespace Divide {
             {
                 PopReadOnly();
             }
-            PROFILE_SCOPE("Get/Print Performance Stats");
+            PROFILE_SCOPE("Get/Print Performance Stats", Profiler::Category::GUI);
             performanceStatsWereEnabled = context().gfx().queryPerformanceStats();
             context().gfx().queryPerformanceStats(true);
             const auto& rpm = _context.kernel().renderPassManager();

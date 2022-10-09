@@ -46,6 +46,7 @@
 #include "ECS/Components/Headers/SelectionComponent.h"
 #include "ECS/Components/Headers/SpotLightComponent.h"
 #include "ECS/Components/Headers/TransformComponent.h"
+#include "ECS/Components/Headers/BoundsComponent.h"
 
 #include "Dynamics/Entities/Triggers/Headers/Trigger.h"
 #include "Dynamics/Entities/Units/Headers/Player.h"
@@ -131,7 +132,7 @@ namespace Divide
 
     bool Scene::frameStarted()
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
         ScopedLock<Mutex> lk( s_perFrameArenaMutex );
         s_perFrameArena.clear();
@@ -752,6 +753,7 @@ namespace Divide
             SpotLightComponent* spotLight = flashLight->get<SpotLightComponent>();
             spotLight->castsShadows( true );
             spotLight->setDiffuseColour( DefaultColours::WHITE.rgb );
+            flashLight->get<BoundsComponent>()->collisionsEnabled(false);
 
             _flashLight[idx] = flashLight;
 
@@ -793,6 +795,7 @@ namespace Divide
         SceneGraphNode* skyNode = parentNode->addChildNode( skyNodeDescriptor );
         skyNode->setFlag( SceneGraphNode::Flags::VISIBILITY_LOCKED );
         skyNode->loadFromXML( pt );
+        skyNode->get<BoundsComponent>()->collisionsEnabled( false );
 
         return skyNode;
     }
@@ -1126,7 +1129,7 @@ namespace Divide
 
         const auto toggleDebugInterface = [this]( [[maybe_unused]] const InputParams param ) noexcept
         {
-            _context.debug().toggle( !_context.debug().enabled() );
+            _context.debug().enabled( !_context.debug().enabled() );
         };
 
         const auto toggleEditor = [this]( [[maybe_unused]] const InputParams param )
@@ -1284,10 +1287,10 @@ namespace Divide
                 loadAsset( nullptr, rootChildren[i], rootNode );
             }
         }
-        WAIT_FOR_CONDITION( _loadingTasks.load() == 0u )
+        WAIT_FOR_CONDITION( _loadingTasks.load() == 0u );
 
-            // We always add a sky
-            const auto& skies = sceneGraph()->getNodesByType( SceneNodeType::TYPE_SKY );
+        // We always add a sky
+        const auto& skies = sceneGraph()->getNodesByType( SceneNodeType::TYPE_SKY );
         assert( !skies.empty() );
         Sky& currentSky = skies[0]->getNode<Sky>();
         const auto& dirLights = _lightPool->getLights( LightType::DIRECTIONAL );
@@ -1325,9 +1328,9 @@ namespace Divide
     bool Scene::unload()
     {
         _aiManager->stop();
-        WAIT_FOR_CONDITION( !_aiManager->running() )
+        WAIT_FOR_CONDITION( !_aiManager->running() );
 
-            U32 totalLoadingTasks = _loadingTasks.load();
+        U32 totalLoadingTasks = _loadingTasks.load();
         while ( totalLoadingTasks > 0 )
         {
             const U32 actualTasks = _loadingTasks.load();
@@ -1361,6 +1364,8 @@ namespace Divide
 
     bool Scene::postLoad()
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+
         _sceneGraph->postLoad();
 
         return _context.pfx().initPhysicsScene( *this );
@@ -1401,6 +1406,8 @@ namespace Divide
 
     void Scene::currentPlayerPass( const U64 deltaTimeUS, const PlayerIndex idx )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
+
         //ToDo: These don't necessarily need to match -Ionut
         updateCameraControls( deltaTimeUS, idx );
         state()->renderState().renderPass( idx );
@@ -1418,6 +1425,8 @@ namespace Divide
 
     void Scene::onSetActive()
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
+
         _aiManager->pauseUpdate( false );
 
         input()->onSetActive();
@@ -1447,6 +1456,8 @@ namespace Divide
 
     void Scene::onRemoveActive()
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
+
         _aiManager->pauseUpdate( true );
 
         while ( !_scenePlayers.empty() )
@@ -1459,6 +1470,8 @@ namespace Divide
 
     void Scene::addPlayerInternal( const bool queue )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
+
         // Limit max player count
         if ( _parent.getActivePlayerCount() == Config::MAX_LOCAL_PLAYER_COUNT )
         {
@@ -1491,6 +1504,8 @@ namespace Divide
 
     void Scene::removePlayerInternal( const PlayerIndex idx )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
+
         assert( idx < _scenePlayers.size() );
 
         Attorney::SceneManagerScene::removePlayer( _parent, *this, _scenePlayers[getSceneIndexForPlayer( idx )]->getBoundNode(), true );
@@ -1505,6 +1520,8 @@ namespace Divide
 
     void Scene::onPlayerRemove( const Player_ptr& player )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
+
         const PlayerIndex idx = player->index();
 
         input()->onPlayerRemove( idx );
@@ -1575,6 +1592,8 @@ namespace Divide
 
     bool Scene::updateCameraControls( const U64 deltaTimeUS, const PlayerIndex idx ) const
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
+
         Camera* cam = playerCamera( idx );
         if ( cam->mode() == Camera::Mode::STATIC ||
              cam->mode() == Camera::Mode::SCRIPTED )
@@ -1597,7 +1616,7 @@ namespace Divide
 
     void Scene::updateSceneState( const U64 deltaTimeUS )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
         sceneRuntimeUS( sceneRuntimeUS() + deltaTimeUS );
 
@@ -1804,28 +1823,6 @@ namespace Divide
 
     void Scene::debugDraw( GFX::CommandBuffer& bufferInOut )
     {
-        if_constexpr( !Config::Build::IS_SHIPPING_BUILD )
-        {
-            if ( state()->renderState().isEnabledOption( SceneRenderState::RenderOptions::RENDER_OCTREE_REGIONS ) )
-            {
-                static vector<BoundingBox>  octreeBoundingBoxes;
-                octreeBoundingBoxes.resize( 0 );
-                sceneGraph()->getOctree()->getAllRegions( octreeBoundingBoxes );
-
-                const size_t regionCount = octreeBoundingBoxes.size();
-
-                IM::BoxDescriptor descriptor;
-                for ( size_t i = 0u; i < regionCount; ++i )
-                {
-                    const BoundingBox& box = octreeBoundingBoxes[i];
-                    descriptor.min = box.getMin();
-                    descriptor.max = box.getMax();
-                    descriptor.colour = UColour4( 255, 0, 255, 255 );
-                    _context.gfx().debugDrawBox( getGUID() + i, descriptor );
-                }
-            }
-        }
-
         // Show NavMeshes
         _aiManager->debugDraw( bufferInOut, false );
         _lightPool->drawLightImpostors( bufferInOut );

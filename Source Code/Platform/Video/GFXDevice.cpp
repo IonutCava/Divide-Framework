@@ -1253,7 +1253,7 @@ namespace Divide
     /// After a swap buffer call, the CPU may be idle waiting for the GPU to draw to the screen, so we try to do some processing
     void GFXDevice::idle( const bool fast )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO(Profiler::Category::Graphics );
 
         _api->idle( fast );
 
@@ -1271,7 +1271,7 @@ namespace Divide
 
     void GFXDevice::beginFrame( DisplayWindow& window, const bool global )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);
 
         if ( global )
         {
@@ -1331,7 +1331,7 @@ namespace Divide
 
     void GFXDevice::endFrame( DisplayWindow& window, const bool global )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         if ( global )
         {
@@ -1377,7 +1377,7 @@ namespace Divide
                                      GFX::MemoryBarrierCommand& memCmdInOut,
                                      std::array<Camera*, 6>& cameras )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);
 
         if ( arrayOffset < 0 )
         {
@@ -1467,7 +1467,7 @@ namespace Divide
                                                GFX::MemoryBarrierCommand& memCmdInOut,
                                                std::array<Camera*, 2>& cameras )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         if ( arrayOffset < 0 )
         {
@@ -1569,9 +1569,8 @@ namespace Divide
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
-            auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-            binding._slot = 0;
-            As<DescriptorCombinedImageSampler>(binding._data) = { inputAttachment->texture()->sampledView(), inputAttachment->descriptor()._samplerHash };
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, inputAttachment->texture()->sampledView(), inputAttachment->descriptor()._samplerHash );
 
     
             if ( !gaussian && layerCount > 1 )
@@ -1603,9 +1602,8 @@ namespace Divide
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
-            auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-            binding._slot = 0;
-            As<DescriptorCombinedImageSampler>(binding._data) = { bufferAttachment->texture()->sampledView(), bufferAttachment->descriptor()._samplerHash };
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, bufferAttachment->texture()->sampledView(), bufferAttachment->descriptor()._samplerHash );
 
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( pushData );
 
@@ -1825,7 +1823,7 @@ namespace Divide
 
     bool GFXDevice::uploadGPUBlock()
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         // Put the viewport update here as it is the most common source of gpu data invalidation and not always
         // needed for rendering (e.g. changed by RenderTarget::End())
@@ -1868,9 +1866,10 @@ namespace Divide
                 Merge( frameBuffers._camBufferWriteRange, writtenRange );
             }
 
-            static DescriptorSetBinding binding{ ShaderStageVisibility::ALL };
+            DescriptorSetBinding binding{};
+            binding._shaderStageVisibility = to_base( ShaderStageVisibility::ALL );
             binding._slot = 1;
-            As<ShaderBufferEntry>( binding._data ) = { *_gfxBuffers.crtBuffers()._camDataBuffer, { 0, 1 } };
+            Set( binding._data, _gfxBuffers.crtBuffers()._camDataBuffer.get(), { 0, 1 } );
 
             _descriptorSets[to_base( DescriptorSetUsage::PER_BATCH )].update( DescriptorSetUsage::PER_BATCH, binding );
             return true;
@@ -1919,7 +1918,7 @@ namespace Divide
 
     void GFXDevice::renderFromCamera( const CameraSnapshot& cameraSnapshot )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         GFXShaderData::CamData& data = _gpuBlock._camData;
 
@@ -2002,7 +2001,8 @@ namespace Divide
 
     void GFXDevice::setPreviousViewProjectionMatrix( const mat4<F32>& prevViewMatrix, const mat4<F32> prevProjectionMatrix )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
 
         bool projectionDirty = false, viewDirty = false;
         if ( _gpuBlock._camData._PreviousViewMatrix != prevViewMatrix )
@@ -2026,7 +2026,7 @@ namespace Divide
     // Update the rendering viewport
     bool GFXDevice::setViewport( const Rect<I32>& viewport )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         // Change the viewport on the Rendering API level
         if ( _api->setViewport( viewport ) )
@@ -2084,7 +2084,7 @@ namespace Divide
 
     void GFXDevice::flushCommandBuffer( GFX::CommandBuffer& commandBuffer, const bool batch )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         if_constexpr( Config::ENABLE_GPU_VALIDATION )
         {
@@ -2113,7 +2113,7 @@ namespace Divide
             {
                 case GFX::CommandType::BLIT_RT:
                 {
-                    PROFILE_SCOPE( "BLIT_RT" );
+                    PROFILE_SCOPE( "BLIT_RT", Profiler::Category::Graphics );
 
                     const GFX::BlitRenderTargetCommand* crtCmd = commandBuffer.get<GFX::BlitRenderTargetCommand>( cmd );
                     RenderTarget* source = renderTargetPool().getRenderTarget( crtCmd->_source );
@@ -2122,7 +2122,7 @@ namespace Divide
                 } break;
                 case GFX::CommandType::CLEAR_TEXTURE:
                 {
-                    PROFILE_SCOPE( "CLEAR_TEXTURE" );
+                    PROFILE_SCOPE( "CLEAR_TEXTURE", Profiler::Category::Graphics );
 
                     const GFX::ClearTextureCommand& crtCmd = *commandBuffer.get<GFX::ClearTextureCommand>( cmd );
                     if ( crtCmd._texture != nullptr )
@@ -2139,14 +2139,14 @@ namespace Divide
                 }break;
                 case GFX::CommandType::READ_BUFFER_DATA:
                 {
-                    PROFILE_SCOPE( "READ_BUFFER_DATA" );
+                    PROFILE_SCOPE( "READ_BUFFER_DATA", Profiler::Category::Graphics );
 
                     const GFX::ReadBufferDataCommand& crtCmd = *commandBuffer.get<GFX::ReadBufferDataCommand>( cmd );
                     crtCmd._buffer->readData( { crtCmd._offsetElementCount, crtCmd._elementCount }, crtCmd._target );
                 } break;
                 case GFX::CommandType::CLEAR_BUFFER_DATA:
                 {
-                    PROFILE_SCOPE( "CLEAR_BUFFER_DATA" );
+                    PROFILE_SCOPE( "CLEAR_BUFFER_DATA", Profiler::Category::Graphics );
 
                     const GFX::ClearBufferDataCommand& crtCmd = *commandBuffer.get<GFX::ClearBufferDataCommand>( cmd );
                     if ( crtCmd._buffer != nullptr )
@@ -2159,13 +2159,13 @@ namespace Divide
                 } break;
                 case GFX::CommandType::SET_VIEWPORT:
                 {
-                    PROFILE_SCOPE( "SET_VIEWPORT" );
+                    PROFILE_SCOPE( "SET_VIEWPORT", Profiler::Category::Graphics );
 
                     setViewport( commandBuffer.get<GFX::SetViewportCommand>( cmd )->_viewport );
                 } break;
                 case GFX::CommandType::PUSH_VIEWPORT:
                 {
-                    PROFILE_SCOPE( "PUSH_VIEWPORT" );
+                    PROFILE_SCOPE( "PUSH_VIEWPORT", Profiler::Category::Graphics );
 
                     const GFX::PushViewportCommand* crtCmd = commandBuffer.get<GFX::PushViewportCommand>( cmd );
                     _viewportStack.push( activeViewport() );
@@ -2173,14 +2173,14 @@ namespace Divide
                 } break;
                 case GFX::CommandType::POP_VIEWPORT:
                 {
-                    PROFILE_SCOPE( "POP_VIEWPORT" );
+                    PROFILE_SCOPE( "POP_VIEWPORT", Profiler::Category::Graphics );
 
                     setViewport( _viewportStack.top() );
                     _viewportStack.pop();
                 } break;
                 case GFX::CommandType::SET_CAMERA:
                 {
-                    PROFILE_SCOPE( "SET_CAMERA" );
+                    PROFILE_SCOPE( "SET_CAMERA", Profiler::Category::Graphics );
 
                     const GFX::SetCameraCommand* crtCmd = commandBuffer.get<GFX::SetCameraCommand>( cmd );
                     // Tell the Rendering API to draw from our desired PoV
@@ -2188,7 +2188,7 @@ namespace Divide
                 } break;
                 case GFX::CommandType::PUSH_CAMERA:
                 {
-                    PROFILE_SCOPE( "PUSH_CAMERA" );
+                    PROFILE_SCOPE( "PUSH_CAMERA", Profiler::Category::Graphics );
 
                     const GFX::PushCameraCommand* crtCmd = commandBuffer.get<GFX::PushCameraCommand>( cmd );
                     DIVIDE_ASSERT( _cameraSnapshots.size() < _cameraSnapshots._Get_container().max_size(), "GFXDevice::flushCommandBuffer error: PUSH_CAMERA stack too deep!" );
@@ -2198,20 +2198,20 @@ namespace Divide
                 } break;
                 case GFX::CommandType::POP_CAMERA:
                 {
-                    PROFILE_SCOPE( "POP_CAMERA" );
+                    PROFILE_SCOPE( "POP_CAMERA", Profiler::Category::Graphics );
 
                     renderFromCamera( _cameraSnapshots.top() );
                     _cameraSnapshots.pop();
                 } break;
                 case GFX::CommandType::SET_CLIP_PLANES:
                 {
-                    PROFILE_SCOPE( "SET_CLIP_PLANES" );
+                    PROFILE_SCOPE( "SET_CLIP_PLANES", Profiler::Category::Graphics );
 
                     setClipPlanes( commandBuffer.get<GFX::SetClipPlanesCommand>( cmd )->_clippingPlanes );
                 } break;
                 case GFX::CommandType::EXTERNAL:
                 {
-                    PROFILE_SCOPE( "EXTERNAL" );
+                    PROFILE_SCOPE( "EXTERNAL", Profiler::Category::Graphics );
                     commandBuffer.get<GFX::ExternalCommand>( cmd )->_cbk();
                 } break;
                 case GFX::CommandType::BIND_SHADER_RESOURCES:
@@ -2256,7 +2256,7 @@ namespace Divide
     /// Modified with nVidia sample code: https://github.com/nvpro-samples/gl_occlusion_culling
     std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ( RenderTargetID depthBuffer, RenderTargetID HiZTarget, GFX::CommandBuffer& cmdBufferInOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         assert( depthBuffer != HiZTarget );
 
@@ -2290,14 +2290,12 @@ namespace Divide
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( cmdBufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
-                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE );
-                binding._slot = 0u;
-                As<ImageView>(binding._data) = outImage;
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::COMPUTE );
+                Set(binding._data, outImage);
             }
             {
-                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE );
-                binding._slot = 1u;
-                As<DescriptorCombinedImageSampler>(binding._data) = { inImage, HiZAtt->descriptor()._samplerHash };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::COMPUTE );
+                Set( binding._data, inImage, HiZAtt->descriptor()._samplerHash );
             }
 
             pushConstants.data[0]._vec[0].set( owidth, oheight, twidth, theight );
@@ -2333,7 +2331,7 @@ namespace Divide
                                    const bool countCulledNodes,
                                    GFX::CommandBuffer& bufferInOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         const U32 cmdCount = *bufferData._lastCommandCount;
         const U32 threadCount = getGroupCount( cmdCount, GROUP_SIZE_AABB );
@@ -2352,16 +2350,14 @@ namespace Divide
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
-            auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE );
-            binding._slot = 0;
-            As<DescriptorCombinedImageSampler>(binding._data) = { hizBuffer->sampledView(), samplerHash };
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::COMPUTE );
+            Set( binding._data, hizBuffer->sampledView(), samplerHash );
         }
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_PASS;
-            auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE );
-            binding._slot = 7;
-            As<ShaderBufferEntry>( binding._data ) = { *cullBuffer, { 0u, 1u } };
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 7u, ShaderStageVisibility::COMPUTE );
+            Set( binding._data, cullBuffer, { 0u, 1u });
         }
         mat4<F32> viewProjectionMatrix;
         mat4<F32>::Multiply( cameraSnapshot._viewMatrix, cameraSnapshot._projectionMatrix, viewProjectionMatrix );
@@ -2443,9 +2439,8 @@ namespace Divide
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
-        auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-        binding._slot = 0;
-        As<DescriptorCombinedImageSampler>(binding._data) = { texture, samplerHash };
+        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+        Set( binding._data, texture, samplerHash );
 
         GFX::EnqueueCommand( bufferInOut, GFX::PushViewportCommand{ viewport } );
 
@@ -2709,9 +2704,8 @@ namespace Divide
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
-            auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-            binding._slot = view->_textureBindSlot;
-            As<DescriptorCombinedImageSampler>(binding._data) = { view->_texture->sampledView(), view->_samplerHash };
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, view->_textureBindSlot, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, view->_texture->sampledView(), view->_samplerHash );
 
             GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
 

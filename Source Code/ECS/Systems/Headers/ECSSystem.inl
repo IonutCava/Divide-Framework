@@ -65,16 +65,18 @@ namespace Divide {
 
     template<class T, class U>
     void ECSSystem<T, U>::Update(const F32 dt) {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO(Divide::Profiler::Category::GameLogic);
     }
 
     template<class T, class U>
     void ECSSystem<T, U>::PostUpdate(const F32 dt) {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Divide::Profiler::Category::GameLogic );
     }
 
     template<class T, class U>
     void ECSSystem<T, U>::OnFrameStart() {
+        PROFILE_SCOPE_AUTO( Divide::Profiler::Category::GameLogic );
+
         bool expected = true;
         if (ECS::ComponentMonitor<U>::s_ComponentsChanged.compare_exchange_strong(expected, false)) {
             const auto container = _engine.GetComponentManager()->GetComponentContainer<U>();

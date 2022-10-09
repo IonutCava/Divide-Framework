@@ -16,7 +16,7 @@ namespace Divide
     {
         constexpr U16 k_parallelSortThreshold = 16u;
 
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         if ( renderOrder == RenderingOrder::NONE || renderOrder == RenderingOrder::COUNT )
         {
@@ -106,7 +106,7 @@ namespace Divide
 
     U16 RenderBin::getSortedNodes( SortedQueue& nodes ) const
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         const U16 binSize = getBinSize();
 
@@ -138,7 +138,7 @@ namespace Divide
 
     void RenderBin::populateRenderQueue( const RenderStagePass stagePass, RenderQueuePackages& queueInOut ) const
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         const U16 binSize = getBinSize();
         for ( U16 i = 0u; i < binSize; ++i )
@@ -153,6 +153,8 @@ namespace Divide
 
     void RenderBin::postRender( const SceneRenderState& renderState, const RenderStagePass stagePass, GFX::CommandBuffer& bufferInOut )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+
         const U16 binSize = getBinSize();
         for ( U16 i = 0u; i < binSize; ++i )
         {

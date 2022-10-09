@@ -63,7 +63,7 @@ namespace ECS
 
 	void EntityManager::RemoveDestroyedEntities()
 	{
-		PROFILE_SCOPE();
+		PROFILE_SCOPE_AUTO( Divide::Profiler::Category::GameLogic );
 
 		for (size_t i = 0; i < this->m_NumPendingDestroyedEntities; ++i)
 		{

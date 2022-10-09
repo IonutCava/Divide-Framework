@@ -646,9 +646,8 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
         if (_texture.targetType() != TextureType::COUNT) {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(commandBufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
-            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-            binding._slot = 0;
-            As<DescriptorCombinedImageSampler>(binding._data) = { _texture, _samplerHash };
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, _texture, _samplerHash );
         }
 
         for (U8 i = 0u; i < to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT); ++i) {

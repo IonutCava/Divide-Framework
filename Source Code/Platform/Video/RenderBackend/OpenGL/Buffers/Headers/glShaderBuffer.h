@@ -46,7 +46,7 @@ class glShaderBuffer final : public ShaderBuffer {
         glShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor);
         ~glShaderBuffer() = default;
 
-        [[nodiscard]] bool bindByteRange(U8 bindIndex, BufferRange range);
+        [[nodiscard]] bool bindByteRange(U8 bindIndex, BufferRange range, I32 readIndex = -1);
         [[nodiscard]] inline const glBufferImpl_uptr& bufferImpl() const noexcept { return _bufferImpl; }
 
     protected:

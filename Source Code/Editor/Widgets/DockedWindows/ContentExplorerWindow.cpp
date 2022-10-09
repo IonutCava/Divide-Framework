@@ -153,7 +153,7 @@ namespace Divide {
     }
 
     void ContentExplorerWindow::drawInternal() {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO(Profiler::Category::GUI);
 
         const ImGuiContext& imguiContext = Attorney::EditorGeneralWidget::getImGuiContext(_parent, Editor::ImGuiContextType::Editor);
 

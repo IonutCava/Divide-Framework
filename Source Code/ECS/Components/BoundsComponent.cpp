@@ -132,7 +132,7 @@ void BoundsComponent::showBS(const bool state) {
 }
 
 void BoundsComponent::flagBoundingBoxDirty(const U32 transformMask, const bool recursive) {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
     if (_transformUpdatedMask.exchange(transformMask) != 0u) {
         // already dirty
@@ -165,7 +165,7 @@ void BoundsComponent::setRefBoundingBox(const BoundingBox& nodeBounds) noexcept 
 }
 
 void BoundsComponent::updateBoundingBoxTransform() {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
     if (_transformUpdatedMask == 0u) {
         return;
@@ -176,7 +176,8 @@ void BoundsComponent::updateBoundingBoxTransform() {
 }
 
 void BoundsComponent::appendChildRefBBs() {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+
     const SceneGraphNode::ChildContainer& children = _parentSGN->getChildren();
 
     SharedLock<SharedMutex> w_lock(children._lock);
@@ -194,7 +195,7 @@ void BoundsComponent::appendChildRefBBs() {
 }
 
 void BoundsComponent::appendChildBBs() {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
     if (_transformUpdatedMask.exchange(0u) == 0u) {
         return;
@@ -226,4 +227,12 @@ const OBB& BoundsComponent::getOBB() {
 
     return _obb;
 }
+
+bool Collision( const BoundsComponent& lhs, const BoundsComponent& rhs ) noexcept
+{
+    return  lhs.parentSGN()->getGUID() != rhs.parentSGN()->getGUID() &&
+            lhs.getBoundingSphere().collision( rhs.getBoundingSphere() ) &&
+            lhs.getBoundingBox().collision( rhs.getBoundingBox() );
+}
+
 }

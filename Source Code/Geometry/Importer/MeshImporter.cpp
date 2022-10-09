@@ -313,7 +313,7 @@ namespace Import {
 
         Attorney::MeshImporter::setNodeData(*mesh, dataIn._nodeData);
 
-        WAIT_FOR_CONDITION(taskCounter.load() == 0)
+        WAIT_FOR_CONDITION(taskCounter.load() == 0);
 
         if (dataIn.hasAnimations()) {
             std::shared_ptr<SceneAnimator> animator;

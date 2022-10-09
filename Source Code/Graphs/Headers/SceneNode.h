@@ -170,8 +170,9 @@ class SceneNodeSceneGraph {
     }
 
     static void sceneUpdate(SceneNode* node, const U64 deltaTimeUS,
-                            SceneGraphNode* sgn, SceneState& sceneState) {
-        PROFILE_SCOPE();
+                            SceneGraphNode* sgn, SceneState& sceneState)
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
         node->sceneUpdate(deltaTimeUS, sgn, sceneState);
     }
 

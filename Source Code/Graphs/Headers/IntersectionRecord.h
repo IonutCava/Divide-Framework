@@ -37,7 +37,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-class OctreeNode;
 class BoundsComponent;
 
 class IntersectionRecord
@@ -65,10 +64,6 @@ class IntersectionRecord
     /// This is the other object being intersected (may be null, as in the case of a ray-object intersection)
     BoundsComponent* _intersectedObject2;
 
-    /// this is a reference to the current node within the octree for where the collision occurred. In some cases, the collision handler
-    /// will want to be able to spawn new objects and insert them into the tree. This node is a good starting place for inserting these objects
-    /// since it is a very near approximation to where we want to be in the tree.
-    const OctreeNode* _treeNode = nullptr;
     /// This is the distance from the ray to the intersection point. 
     /// You'll usually want to use the nearest collision point if you get multiple intersections.
     D64 _distance = 0.;
@@ -82,5 +77,8 @@ class IntersectionRecord
         return _intersectedObject1 == nullptr && _intersectedObject2 == nullptr;
     }
 };
+
+using IntersectionContainer = eastl::fixed_vector<IntersectionRecord, 32u, true, eastl::dvd_allocator>;
+
 }; //namespace Divide
 #endif //_OCTREE_INTERSECTION_RECORD_H_

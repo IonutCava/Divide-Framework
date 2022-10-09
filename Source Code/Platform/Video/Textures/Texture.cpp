@@ -145,7 +145,7 @@ void Texture::postLoad()
 /// Load texture data using the specified file name
 void Texture::threadedLoad()
 {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
 
     if (!assetLocation().empty())
     {
@@ -321,6 +321,8 @@ void Texture::loadData(const ImageTools::ImageData& imageData) {
 }
 
 bool Texture::checkTransparency(const ResourcePath& path, const ResourcePath& name, ImageTools::ImageData& fileData) {
+
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     if (fileData.ignoreAlphaChannelTransparency() || fileData.hasDummyAlphaChannel()) {
         _hasTransparency = false;

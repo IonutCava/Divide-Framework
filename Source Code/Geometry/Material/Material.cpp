@@ -432,7 +432,7 @@ namespace Divide
                                              ShaderProgramInfo& shaderInfo,
                                              const RenderStagePass stagePass ) const
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
 
         ShaderProgramDescriptor shaderDescriptorRef = shaderDescriptor;
         computeAndAppendShaderDefines( shaderDescriptorRef, stagePass );
@@ -470,7 +470,7 @@ namespace Divide
     void Material::setShaderProgramInternal( const ShaderProgramDescriptor& shaderDescriptor,
                                              const RenderStagePass stagePass )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
 
         ShaderProgramDescriptor shaderDescriptorRef = shaderDescriptor;
         computeAndAppendShaderDefines( shaderDescriptorRef, stagePass );
@@ -520,7 +520,7 @@ namespace Divide
 
     void Material::recomputeShaders()
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
 
         for ( U8 s = 0u; s < to_U8( RenderStage::COUNT ); ++s )
         {
@@ -586,7 +586,7 @@ namespace Divide
 
     bool Material::canDraw( const RenderStagePass renderStagePass, bool& shaderJustFinishedLoading )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         shaderJustFinishedLoading = false;
         ShaderProgramInfo& info = shaderInfo( renderStagePass );
@@ -640,7 +640,7 @@ namespace Divide
 
     void Material::computeAndAppendShaderDefines( ShaderProgramDescriptor& shaderDescriptor, const RenderStagePass renderStagePass ) const
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
 
         const bool isDepthPass = IsDepthPass( renderStagePass );
 
@@ -1032,7 +1032,8 @@ namespace Divide
 
     DescriptorSet& Material::getDescriptorSet( const RenderStagePass& renderStagePass )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+
         ShaderStageVisibility texVisibility = properties().texturesInFragmentStageOnly() ? ShaderStageVisibility::FRAGMENT : ShaderStageVisibility::ALL_DRAW;
         const bool isPrePass = renderStagePass._passType == RenderPassType::PRE_PASS;
         const bool isShadowPass = renderStagePass._stage == RenderStage::SHADOW;
@@ -1055,9 +1056,8 @@ namespace Divide
                     const Texture_ptr& crtTexture = _textures[usage]._ptr;
                     if ( crtTexture != nullptr )
                     {
-                        auto& texBinding = descriptor.emplace_back( texVisibility );
-                        texBinding._slot = usage;
-                        As<DescriptorCombinedImageSampler>(texBinding._data) = { crtTexture->sampledView(), _textures[usage]._sampler };
+                        DescriptorSetBinding& binding = AddBinding( descriptor, usage, texVisibility );
+                        Set(binding._data, crtTexture->sampledView(), _textures[usage]._sampler );
                     }
                 };
 

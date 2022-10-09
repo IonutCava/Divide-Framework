@@ -105,7 +105,7 @@ namespace Divide {
 
     void vkShaderProgram::Idle([[maybe_unused]] PlatformContext& platformContext)
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         assert(Runtime::isMainThread());
     }
@@ -160,14 +160,14 @@ namespace Divide {
 
     ShaderResult vkShaderProgram::validatePreBind(const bool rebind)
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         return ShaderResult::OK;
     }
 
     bool vkShaderProgram::recompile(bool& skipped)
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         if (!ShaderProgram::recompile(skipped))
         {
@@ -188,7 +188,7 @@ namespace Divide {
 
     bool vkShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, bool reloadExisting)
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         if (ShaderProgram::reloadShaders(fileData, reloadExisting))
         {

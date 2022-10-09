@@ -174,14 +174,14 @@ namespace Divide
 
     bool LightPool::frameStarted( [[maybe_unused]] const FrameEvent& evt )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         return true;
     }
 
     bool LightPool::frameEnded( [[maybe_unused]] const FrameEvent& evt )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         ScopedLock<SharedMutex> w_lock( _movedSceneVolumesLock );
         efficient_clear(_movedSceneVolumes);
@@ -228,7 +228,7 @@ namespace Divide
 
     void LightPool::onVolumeMoved( const BoundingSphere& volume, const bool staticSource )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         ScopedLock<SharedMutex> w_lock( _movedSceneVolumesLock );
         _movedSceneVolumes.push_back( { volume , staticSource } );
@@ -237,7 +237,7 @@ namespace Divide
     //ToDo: Generate shadow maps in parallel - Ionut
     void LightPool::generateShadowMaps( const Camera& playerCamera, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         Time::ScopedTimer timer( _shadowPassTimer );
 
@@ -420,7 +420,7 @@ namespace Divide
     // This should be called in a separate thread for each RenderStage
     void LightPool::sortLightData( const RenderStage stage, const CameraSnapshot& cameraSnapshot )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         const U8 stageIndex = to_U8( stage );
 
@@ -443,7 +443,7 @@ namespace Divide
                     a->distanceSquared( eyePos ) < b->distanceSquared( eyePos ));
         };
 
-        PROFILE_SCOPE( "LightPool::SortLights" );
+        PROFILE_SCOPE( "LightPool::SortLights", Profiler::Category::Scene );
         if ( sortedLights.size() > LightList::kMaxSize )
         {
             std::sort( std::execution::par_unseq, begin( sortedLights ), end( sortedLights ), lightSortCbk );
@@ -462,7 +462,7 @@ namespace Divide
 
     void LightPool::uploadLightData( const RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         const size_t stageIndex = to_size( stage );
         LightList& sortedLights = _sortedLights[stageIndex];
@@ -487,12 +487,12 @@ namespace Divide
         }
 
         {
-            PROFILE_SCOPE( "LightPool::UploadLightDataToGPU" );
+            PROFILE_SCOPE( "LightPool::UploadLightDataToGPU", Profiler::Category::Graphics );
             memCmdInOut._bufferLocks.push_back(_lightBuffer->writeData( { stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, totalLightCount }, &_sortedLightProperties[stageIndex] ) );
         }
 
         {
-            PROFILE_SCOPE( "LightPool::UploadSceneDataToGPU" );
+            PROFILE_SCOPE( "LightPool::UploadSceneDataToGPU", Profiler::Category::Graphics );
             memCmdInOut._bufferLocks.push_back( _sceneBuffer->writeData( { stageIndex, 1 }, &crtData ) );
         }
         memCmdInOut._barrierMask |= to_base( MemoryBarrierType::SHADER_STORAGE ) | to_base (MemoryBarrierType::BUFFER_UPDATE);
@@ -536,7 +536,7 @@ namespace Divide
 
     void LightPool::preRenderAllPasses( const Camera* playerCamera )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         constexpr U16 k_parallelSortThreshold = 16u;
 
@@ -603,9 +603,8 @@ namespace Divide
                 auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
                 cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
-                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-                binding._slot = 0;
-                As<DescriptorCombinedImageSampler>(binding._data) = { _lightIconsTexture->sampledView(), s_debugSamplerHash };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+                Set( binding._data, _lightIconsTexture->sampledView(), s_debugSamplerHash );
             }
 
             GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.back()._drawCount = to_U16( totalLightCount );

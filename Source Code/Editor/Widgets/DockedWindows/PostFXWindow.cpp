@@ -53,7 +53,7 @@ namespace {
     }
 
     void PostFXWindow::drawInternal() {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
         PreRenderBatch& batch = _postFX.getFilterBatch();
 

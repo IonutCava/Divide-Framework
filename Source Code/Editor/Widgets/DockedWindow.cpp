@@ -32,7 +32,7 @@ namespace Divide {
 
     void DockedWindow::draw()
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
         ImGui::SetNextWindowPos(_descriptor.position, ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(_descriptor.size, ImGuiCond_FirstUseEver);

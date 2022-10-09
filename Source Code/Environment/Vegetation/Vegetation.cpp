@@ -553,7 +553,7 @@ namespace Divide
 
     void Vegetation::uploadVegetationData( vector<Byte>& grassDataOut, vector<Byte> treeDataOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
 
         assert( s_buffer != nullptr );
         Wait( *_buildTask, _context.context().taskPool( TaskPoolType::HIGH_PRIORITY ) );
@@ -592,6 +592,7 @@ namespace Divide
             sgn->get<RenderingComponent>()->primitiveRestartRequired( true );
             sgn->get<RenderingComponent>()->instantiateMaterial( s_vegetationMaterial );
             sgn->get<RenderingComponent>()->occlusionCull( false ); //< We handle our own culling
+            sgn->get<BoundsComponent>()->collisionsEnabled(false);//< Grass collision detection should be handled in shaders (for now)
 
             WAIT_FOR_CONDITION( s_cullShaderGrass->getState() == ResourceState::RES_LOADED &&
                                 s_cullShaderTrees->getState() == ResourceState::RES_LOADED );
@@ -723,18 +724,15 @@ namespace Divide
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_PASS;
-            if ( s_grassData )
-            {
-                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::ALL );
-                binding._slot = 6;
-                As<ShaderBufferEntry>( binding._data ) = { *s_grassData, { 0u, s_grassData->getPrimitiveCount() } };
-            }
-
             if ( s_treeData )
             {
-                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::ALL );
-                binding._slot = 5;
-                As<ShaderBufferEntry>( binding._data ) = { *s_treeData, { 0u, s_treeData->getPrimitiveCount() } };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 5u, ShaderStageVisibility::ALL );
+                Set( binding._data, s_treeData.get(), { 0u, s_treeData->getPrimitiveCount() } );
+            }
+            if ( s_grassData )
+            {
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 6u, ShaderStageVisibility::ALL );
+                Set( binding._data, s_grassData.get(), {0u, s_grassData->getPrimitiveCount()} );
             }
         }
 
@@ -779,9 +777,8 @@ namespace Divide
                 {
                     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
                     cmd->_usage = DescriptorSetUsage::PER_DRAW;
-                    auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE );
-                    binding._slot = 0;
-                    As<DescriptorCombinedImageSampler>(binding._data) = { hizTexture->getView( ImageUsage::SHADER_SAMPLE ), hizAttachment->descriptor()._samplerHash };
+                    DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::COMPUTE );
+                    Set(binding._data, hizTexture->getView( ImageUsage::SHADER_SAMPLE ), hizAttachment->descriptor()._samplerHash );
                 }
 
                 GFX::DispatchComputeCommand computeCmd = {};
@@ -816,7 +813,7 @@ namespace Divide
                                   SceneGraphNode* sgn,
                                   SceneState& sceneState )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         if ( !renderState().drawState() )
         {

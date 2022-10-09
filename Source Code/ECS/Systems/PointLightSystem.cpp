@@ -18,7 +18,7 @@ namespace Divide {
     }
 
     void PointLightSystem::PreUpdate(const F32 dt) {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         Parent::PreUpdate(dt);
         for (PointLightComponent* comp : _componentCache) {

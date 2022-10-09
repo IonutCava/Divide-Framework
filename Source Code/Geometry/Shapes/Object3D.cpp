@@ -77,7 +77,7 @@ void Object3D::setMaterialTpl(const Material_ptr& material) {
 }
 
 void Object3D::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
     if (geometryBuffer() != nullptr) {
         if (cmdsOut.size() == 0u) {

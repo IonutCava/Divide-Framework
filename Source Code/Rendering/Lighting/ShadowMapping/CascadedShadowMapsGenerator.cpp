@@ -161,7 +161,7 @@ namespace Divide
             _blurBuffer = _context.renderTargetPool().allocateRT( desc );
         }
 
-        WAIT_FOR_CONDITION( _blurPipeline != nullptr )
+        WAIT_FOR_CONDITION( _blurPipeline != nullptr );
     }
 
     CascadedShadowMapsGenerator::~CascadedShadowMapsGenerator()
@@ -216,7 +216,7 @@ namespace Divide
 
     void CascadedShadowMapsGenerator::applyFrustumSplits( DirectionalLightComponent& light, const Camera& shadowCamera, U8 numSplits ) const
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         const SplitDepths splitDepths = calculateSplitDepths( light, shadowCamera.snapshot()._zPlanes );
 
@@ -368,7 +368,7 @@ namespace Divide
 
     void CascadedShadowMapsGenerator::render( const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         auto& dirLight = static_cast<DirectionalLightComponent&>(light);
 
@@ -422,7 +422,7 @@ namespace Divide
 
     void CascadedShadowMapsGenerator::postRender( const DirectionalLightComponent& light, GFX::CommandBuffer& bufferInOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         const I32 layerOffset = to_I32( light.getShadowArrayOffset() );
         const I32 layerCount = to_I32( light.csmSplitCount() );
@@ -461,9 +461,8 @@ namespace Divide
             {
                 auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
                 cmd->_usage = DescriptorSetUsage::PER_DRAW;
-                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-                binding._slot = 0;
-                As<DescriptorCombinedImageSampler>(binding._data) = { shadowAtt->texture()->sampledView(), shadowAtt->descriptor()._samplerHash };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+                Set( binding._data, shadowAtt->texture()->sampledView(), shadowAtt->descriptor()._samplerHash );
             }
 
             _shaderConstants.data[0]._vec[1].x = 0.f;
@@ -482,9 +481,8 @@ namespace Divide
             {
                 auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
                 cmd->_usage = DescriptorSetUsage::PER_DRAW;
-                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-                binding._slot = 0;
-                As<DescriptorCombinedImageSampler>(binding._data) = { blurAtt->texture()->sampledView(), blurAtt->descriptor()._samplerHash };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+                Set( binding._data, blurAtt->texture()->sampledView(), blurAtt->descriptor()._samplerHash );
             }
 
             GFX::EnqueueCommand( bufferInOut, beginRenderPassVerticalCmd );

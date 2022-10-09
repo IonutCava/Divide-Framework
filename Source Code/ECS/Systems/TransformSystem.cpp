@@ -20,7 +20,7 @@ namespace Divide {
     }
 
     void TransformSystem::PreUpdate(const F32 dt) {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         Parent::PreUpdate(dt);
         for (TransformComponent* comp : _componentCache) {
@@ -34,7 +34,7 @@ namespace Divide {
     }
 
     void TransformSystem::Update(const F32 dt) {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         static vector<std::pair<TransformComponent*, U32>> events;
 
@@ -77,6 +77,8 @@ namespace Divide {
     }
 
     void TransformSystem::PostUpdate(const F32 dt) {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+
         Parent::PostUpdate(dt);
 
         for (TransformComponent* comp : _componentCache) {
@@ -89,7 +91,7 @@ namespace Divide {
     }
 
     void TransformSystem::OnFrameEnd() {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         Parent::OnFrameEnd();
         for (TransformComponent* comp : _componentCache) {

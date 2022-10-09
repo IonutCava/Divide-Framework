@@ -20,7 +20,7 @@ namespace Divide {
     }
 
     void DirectionalLightSystem::PreUpdate(const F32 dt) {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         Parent::PreUpdate(dt);
         for (DirectionalLightComponent* comp : _componentCache) {

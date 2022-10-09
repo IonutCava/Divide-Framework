@@ -126,5 +126,33 @@ namespace Divide {
     inline const T& As( const DescriptorSetBindingData& data ) noexcept {
         return eastl::get<T>( data );
     }
+
+    inline void Set( DescriptorSetBindingData& dataInOut, const ImageView& view )
+    {
+        As<ImageView>(dataInOut) = view;
+    } 
+    
+    inline void Set( DescriptorSetBindingData& dataInOut, const DescriptorCombinedImageSampler& combinedImageSampler )
+    {
+        As<DescriptorCombinedImageSampler>(dataInOut) = combinedImageSampler;
+    }
+
+    inline void Set( DescriptorSetBindingData& dataInOut, const ImageView& imageView, size_t samplerHash )
+    {
+        Set(dataInOut, DescriptorCombinedImageSampler{imageView, samplerHash});
+    }
+
+    inline DescriptorSetBinding& AddBinding( DescriptorSet& setInOut, const U8 slot, const U16 stageVisibilityMask )
+    {
+        DescriptorSetBinding& newBinding = setInOut.emplace_back();
+        newBinding._shaderStageVisibility = stageVisibilityMask;
+        newBinding._slot = slot;
+        return newBinding;
+    }
+
+    inline  DescriptorSetBinding& AddBinding( DescriptorSet& setInOut, const U8 slot, const ShaderStageVisibility stageVisibility )
+    {
+        return AddBinding(setInOut, slot, to_U16(stageVisibility));
+    }
 } //namespace Divide
 #endif //_DESCRIPTOR_SETS_INL_

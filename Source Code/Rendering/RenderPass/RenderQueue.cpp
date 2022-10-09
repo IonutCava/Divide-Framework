@@ -120,7 +120,7 @@ namespace Divide
 
     void RenderQueue::populateRenderQueues( const PopulateQueueParams& params, RenderQueuePackages& queueInOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         if ( params._binType == RenderBinType::COUNT )
         {
@@ -170,7 +170,7 @@ namespace Divide
 
     void RenderQueue::sort( const RenderStagePass stagePass, const RenderBinType targetBinType, const RenderingOrder renderOrder )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         // How many elements should a render bin contain before we decide that sorting should happen on a separate thread
         constexpr U16 k_threadBias = 64u;
@@ -241,7 +241,7 @@ namespace Divide
 
     size_t RenderQueue::getSortedQueues( const vector<RenderBinType>& binTypes, RenderBin::SortedQueues& queuesOut ) const
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
         size_t countOut = 0u;
 

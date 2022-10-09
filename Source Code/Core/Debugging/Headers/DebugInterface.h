@@ -37,18 +37,12 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-class DebugInterface final : public KernelComponent {
-public:
-    explicit DebugInterface(Kernel& parent) noexcept;
+struct DebugInterface
+{
+    PROPERTY_RW(bool, enabled, false);
+    PROPERTY_R_IW(string, output);
 
-    [[nodiscard]] const string& output() const noexcept;
-    void toggle(bool state) noexcept;
-    [[nodiscard]] bool enabled() const noexcept;
-    void idle();
-
-private:
-    string _output{};
-    bool _enabled = false;
+    void idle(const PlatformContext& context);
 };
 
 } //namespace Divide

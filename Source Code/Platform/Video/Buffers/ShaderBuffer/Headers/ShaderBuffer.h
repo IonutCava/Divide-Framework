@@ -74,7 +74,8 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
     [[nodiscard]] BufferLock writeBytes(BufferRange range, bufferPtr data);
 
     
-    [[nodiscard]] FORCE_INLINE size_t getStartOffset(const bool read) const noexcept { return (read ? queueReadIndex() : queueWriteIndex()) * _alignedBufferSize; }
+    [[nodiscard]] FORCE_INLINE I32    getStartIndex(const bool read)  const noexcept { return (read ? queueReadIndex() : queueWriteIndex()); }
+    [[nodiscard]] FORCE_INLINE size_t getStartOffset(const bool read) const noexcept { return getStartIndex(read) * _alignedBufferSize; }
     [[nodiscard]] FORCE_INLINE U32    getPrimitiveCount()             const noexcept { return _params._elementCount; }
     [[nodiscard]] FORCE_INLINE size_t getPrimitiveSize()              const noexcept { return _params._elementSize; }
     [[nodiscard]] FORCE_INLINE Usage  getUsage()                      const noexcept { return _usage;  }

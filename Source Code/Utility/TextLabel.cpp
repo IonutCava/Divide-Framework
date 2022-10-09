@@ -87,13 +87,13 @@ TextElement::TextElement(const TextLabelStyle& textLabelStyle, const RelativePos
 
 TextElement::TextElement(const size_t textLabelStyleHash, const RelativePosition2D& position)
     : _textLabelStyleHash(textLabelStyleHash),
-    _position(position)
+      _position(position)
 {
 }
 
 void TextElement::text(const char* text, const bool multiLine) {
     if (multiLine) {
-        Util::Split(text, '\n', _text);
+        Util::Split<TextType, eastl::string>(text, '\n', _text);
         return;
     }
 

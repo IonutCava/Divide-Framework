@@ -48,7 +48,6 @@ class SFXDevice;
 class Application;
 class SceneManager;
 class ResourceCache;
-class DebugInterface;
 class PlatformContext;
 class SceneRenderState;
 class RenderPassManager;
@@ -60,6 +59,7 @@ namespace Input {
 enum class RenderStage : U8;
 
 struct FrameEvent;
+struct DebugInterface;
 
 /// Application update rate
 constexpr U32 TICKS_PER_SECOND = Config::TARGET_FRAME_RATE / Config::TICK_DIVISOR;
@@ -284,7 +284,7 @@ namespace Attorney {
             return kernel._timingData;
         }
 
-        friend class Divide::DebugInterface;
+        friend struct Divide::DebugInterface;
     };
 };
 

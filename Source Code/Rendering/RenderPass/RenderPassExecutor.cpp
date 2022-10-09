@@ -169,7 +169,7 @@ namespace Divide
                 return;
             }
 
-            PROFILE_SCOPE();
+            PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
             const size_t bufferAlignmentRequirement = ShaderBuffer::AlignmentRequirement( executorBuffer._gpuBuffer->getUsage() );
             const size_t bufferPrimitiveSize = executorBuffer._gpuBuffer->getPrimitiveSize();
@@ -192,7 +192,7 @@ namespace Divide
         template<typename DataContainer>
         void WriteToGPUBuffer( ExecutorBuffer<DataContainer>& executorBuffer, GFX::MemoryBarrierCommand& memCmdInOut )
         {
-            PROFILE_SCOPE();
+            PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
             BufferUpdateRange writeRange, prevWriteRange;
             {
@@ -224,7 +224,7 @@ namespace Divide
         template<typename DataContainer>
         bool NodeNeedsUpdate( ExecutorBuffer<DataContainer>& executorBuffer, const U32 indirectionIDX )
         {
-            PROFILE_SCOPE();
+            PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
             {
                 SharedLock<SharedMutex> w_lock( executorBuffer._proccessedLock );
@@ -246,7 +246,7 @@ namespace Divide
         template<typename DataContainer>
         void ExecutorBufferPostRender( ExecutorBuffer<DataContainer>& executorBuffer )
         {
-            PROFILE_SCOPE();
+            PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
             ScopedLock<Mutex> w_lock( executorBuffer._lock );
             const BufferUpdateRange rangeWrittenThisFrame = executorBuffer._bufferUpdateRangeHistory.back();
@@ -254,7 +254,7 @@ namespace Divide
             // At the end of the frame, bump our history queue by one position and prepare the tail for a new write
             if_constexpr( RenderPass::DataBufferRingSize > 1u )
             {
-                PROFILE_SCOPE( "History Update" );
+                PROFILE_SCOPE( "History Update", Profiler::Category::Scene );
                 for ( U8 i = 0u; i < RenderPass::DataBufferRingSize - 1; ++i )
                 {
                     executorBuffer._bufferUpdateRangeHistory[i] = executorBuffer._bufferUpdateRangeHistory[i + 1];
@@ -400,7 +400,7 @@ namespace Divide
 
     void RenderPassExecutor::processVisibleNodeTransform( RenderingComponent* rComp, const D64 interpolationFactor )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         const U32 indirectionIDX = Attorney::RenderingCompRenderPassExecutor::getIndirectionBufferEntry( rComp );
 
@@ -414,7 +414,7 @@ namespace Divide
         const SceneGraphNode* node = rComp->parentSGN();
 
         { // Transform
-            PROFILE_SCOPE( "Transform query" );
+            PROFILE_SCOPE( "Transform query", Profiler::Category::Scene );
             const TransformComponent* const transform = node->get<TransformComponent>();
 
             // Get the node's world matrix properly interpolated
@@ -467,7 +467,7 @@ namespace Divide
             transformOut._normalMatrixW.element( 2, 3 ) = to_F32( boneCount );
         }
         {
-            PROFILE_SCOPE( "Buffer idx update" );
+            PROFILE_SCOPE( "Buffer idx update", Profiler::Category::Scene );
             U32 transformIdx = U32_MAX;
             {
                 ScopedLock<Mutex> w_lock( _transformBuffer._lock );
@@ -495,7 +495,7 @@ namespace Divide
 
     U16 RenderPassExecutor::processVisibleNodeMaterial( RenderingComponent* rComp, bool& cacheHit )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         cacheHit = false;
 
@@ -524,7 +524,7 @@ namespace Divide
         ScopedLock<Mutex> w_lock( _materialBuffer._lock );
         BufferMaterialData::LookupInfoContainer& infoContainer = _materialBuffer._data._lookupInfo;
         {// Try and match an existing material
-            PROFILE_SCOPE( "processVisibleNode - try match material" );
+            PROFILE_SCOPE( "processVisibleNode - try match material", Profiler::Category::Scene );
             const U16 idx = findMaterialMatch( materialHash, infoContainer );
             if ( idx != g_invalidMaterialIndex )
             {
@@ -536,7 +536,7 @@ namespace Divide
         }
 
         // If we fail, try and find an empty slot and update it
-        PROFILE_SCOPE( "processVisibleNode - process unmatched material" );
+        PROFILE_SCOPE( "processVisibleNode - process unmatched material", Profiler::Category::Scene );
         // No match found (cache miss) so add a new entry.
         BufferCandidate bestCandidate{ g_invalidMaterialIndex, 0u };
 
@@ -575,7 +575,7 @@ namespace Divide
 
     void RenderPassExecutor::parseMaterialRange( RenderBin::SortedQueue& queue, const U32 start, const U32 end )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         for ( U32 i = start; i < end; ++i )
         {
@@ -600,7 +600,7 @@ namespace Divide
 
     size_t RenderPassExecutor::buildDrawCommands( const RenderPassParams& params, const bool doPrePass, const bool doOITPass, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         constexpr bool doMainPass = true;
 
@@ -629,7 +629,7 @@ namespace Divide
         TaskPool& pool = _context.context().taskPool( TaskPoolType::HIGH_PRIORITY );
         Task* updateTask = CreateTask( TASK_NOP );
         {
-            PROFILE_SCOPE( "buildDrawCommands - process nodes: Transforms" );
+            PROFILE_SCOPE( "buildDrawCommands - process nodes: Transforms", Profiler::Category::Scene );
 
             U32& nodeCount = *bufferData._lastNodeCount;
             nodeCount = 0u;
@@ -668,7 +668,7 @@ namespace Divide
             assert( nodeCount < Config::MAX_VISIBLE_NODES );
         }
         {
-            PROFILE_SCOPE( "buildDrawCommands - process nodes: Materials" );
+            PROFILE_SCOPE( "buildDrawCommands - process nodes: Materials", Profiler::Category::Scene );
             for ( RenderBin::SortedQueue& queue : _sortedQueues )
             {
                 const U32 queueSize = to_U32( queue.size() );
@@ -691,7 +691,7 @@ namespace Divide
             }
         }
         {
-            PROFILE_SCOPE( "buildDrawCommands - process nodes: Waiting for tasks to finish" );
+            PROFILE_SCOPE( "buildDrawCommands - process nodes: Waiting for tasks to finish", Profiler::Category::Scene );
             StartAndWait( *updateTask, pool );
         }
 
@@ -711,25 +711,25 @@ namespace Divide
             const RenderPassType prevType = stagePass._passType;
             if ( doPrePass )
             {
-                PROFILE_SCOPE( "buildDrawCommands - retrieve draw commands: PRE_PASS" );
+                PROFILE_SCOPE( "buildDrawCommands - retrieve draw commands: PRE_PASS", Profiler::Category::Scene );
                 stagePass._passType = RenderPassType::PRE_PASS;
                 retrieveCommands();
             }
             if ( doMainPass )
             {
-                PROFILE_SCOPE( "buildDrawCommands - retrieve draw commands: MAIN_PASS" );
+                PROFILE_SCOPE( "buildDrawCommands - retrieve draw commands: MAIN_PASS", Profiler::Category::Scene );
                 stagePass._passType = RenderPassType::MAIN_PASS;
                 retrieveCommands();
             }
             if ( doOITPass )
             {
-                PROFILE_SCOPE( "buildDrawCommands - retrieve draw commands: OIT_PASS" );
+                PROFILE_SCOPE( "buildDrawCommands - retrieve draw commands: OIT_PASS", Profiler::Category::Scene );
                 stagePass._passType = RenderPassType::OIT_PASS;
                 retrieveCommands();
             }
             else
             {
-                PROFILE_SCOPE( "buildDrawCommands - retrieve draw commands: TRANSPARENCY_PASS" );
+                PROFILE_SCOPE( "buildDrawCommands - retrieve draw commands: TRANSPARENCY_PASS", Profiler::Category::Scene );
                 stagePass._passType = RenderPassType::TRANSPARENCY_PASS;
                 retrieveCommands();
             }
@@ -742,57 +742,43 @@ namespace Divide
 
         if ( cmdCount > 0u )
         {
-            PROFILE_SCOPE( "buildDrawCommands - update command buffer" );
+            PROFILE_SCOPE( "buildDrawCommands - update command buffer", Profiler::Category::Graphics );
             memCmdInOut._bufferLocks.push_back( _cmdBuffer->writeData( { startOffset, cmdCount }, _drawCommands.data() ) );
         }
         {
-            PROFILE_SCOPE( "buildDrawCommands - update material buffer" );
+            PROFILE_SCOPE( "buildDrawCommands - update material buffer", Profiler::Category::Graphics );
             WriteToGPUBuffer( _materialBuffer, memCmdInOut );
         }
         {
-            PROFILE_SCOPE( "buildDrawCommands - update transform buffer" );
+            PROFILE_SCOPE( "buildDrawCommands - update transform buffer", Profiler::Category::Graphics );
             WriteToGPUBuffer( _transformBuffer, memCmdInOut );
         }
         {
-            PROFILE_SCOPE( "buildDrawCommands - update indirection buffer" );
+            PROFILE_SCOPE( "buildDrawCommands - update indirection buffer", Profiler::Category::Graphics );
             WriteToGPUBuffer( _indirectionBuffer, memCmdInOut );
         }
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
         cmd->_usage = DescriptorSetUsage::PER_BATCH;
-
-        const ShaderBufferEntry cmdBufferEntry
         {
-            *_cmdBuffer,
-            {
-                startOffset,
-                cmdCount
-            }
-        };
-        {
-            auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::NONE ); //Command buffer only
-            binding._slot = 0;
-            As<ShaderBufferEntry>( binding._data ) = cmdBufferEntry;
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::NONE ); //Command buffer only
+            Set( binding._data, _cmdBuffer.get(), { startOffset, cmdCount});
         }
         {
-            auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE );
-            binding._slot = 2;
-            As<ShaderBufferEntry>( binding._data ) = cmdBufferEntry;
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 2u, ShaderStageVisibility::COMPUTE );
+            Set( binding._data, _cmdBuffer.get(), { startOffset, cmdCount } );
         }
         {
-            auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::ALL );
-            binding._slot = 3;
-            As<ShaderBufferEntry>( binding._data ) = { *_transformBuffer._gpuBuffer, { 0u, _transformBuffer._highWaterMark } };
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 3u, ShaderStageVisibility::ALL );
+            Set(binding._data, _transformBuffer._gpuBuffer.get(), { 0u, _transformBuffer._highWaterMark });
         }
         {
-            auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::ALL );
-            binding._slot = 4;
-            As<ShaderBufferEntry>( binding._data ) = { *_indirectionBuffer._gpuBuffer, { 0u, _indirectionBuffer._highWaterMark } };
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 4u, ShaderStageVisibility::ALL );
+            Set( binding._data, _indirectionBuffer._gpuBuffer.get(), { 0u, _indirectionBuffer._highWaterMark });
         }
         {
-            auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-            binding._slot = 5;
-            As<ShaderBufferEntry>( binding._data ) = { *_materialBuffer._gpuBuffer, { 0u, _materialBuffer._highWaterMark } };
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 5u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, _materialBuffer._gpuBuffer.get(), { 0u, _materialBuffer._highWaterMark });
         }
 
         return queueTotalSize;
@@ -806,7 +792,7 @@ namespace Divide
                                                 GFX::CommandBuffer& bufferInOut,
                                                 GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         if ( hasInvalidNodes )
         {
@@ -876,7 +862,7 @@ namespace Divide
                                                   const RenderingOrder renderOrder,
                                                   GFX::CommandBuffer& bufferInOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         RenderStagePass stagePass = params._stagePass;
         const RenderBinType targetBin = transparencyPass ? RenderBinType::TRANSLUCENT : RenderBinType::COUNT;
@@ -904,7 +890,7 @@ namespace Divide
 
         if ( nodeCount > g_nodesPerPrepareDrawPartition * 2 )
         {
-            PROFILE_SCOPE( "prepareRenderQueues - parallel gather" );
+            PROFILE_SCOPE( "prepareRenderQueues - parallel gather", Profiler::Category::Scene );
             descriptor._iterCount = nodeCount;
             descriptor._partitionSize = g_nodesPerPrepareDrawPartition;
             descriptor._priority = TaskPriority::DONT_CARE;
@@ -913,7 +899,7 @@ namespace Divide
         }
         else
         {
-            PROFILE_SCOPE( "prepareRenderQueues - serial gather" );
+            PROFILE_SCOPE( "prepareRenderQueues - serial gather", Profiler::Category::Scene );
             descriptor._cbk( nullptr, 0u, nodeCount );
         }
 
@@ -960,7 +946,7 @@ namespace Divide
 
     void RenderPassExecutor::prePass( const RenderPassParams& params, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         assert( params._stagePass._passType == RenderPassType::PRE_PASS );
 
@@ -988,7 +974,7 @@ namespace Divide
                                             const RenderTargetID& targetHiZBuffer,
                                             GFX::CommandBuffer& bufferInOut ) const
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         //ToDo: Find a way to skip occlusion culling for low number of nodes in view but also keep light culling up and running -Ionut
         assert( stagePass._passType == RenderPassType::PRE_PASS );
@@ -1010,7 +996,7 @@ namespace Divide
 
     void RenderPassExecutor::mainPass( const RenderPassParams& params, const CameraSnapshot& cameraSnapshot, RenderTarget& target, const bool prePassExecuted, const bool hasHiZ, GFX::CommandBuffer& bufferInOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         assert( params._stagePass._passType == RenderPassType::MAIN_PASS );
 
@@ -1041,24 +1027,21 @@ namespace Divide
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_PASS;
             {
-                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-                binding._slot = 0;
-                As<DescriptorCombinedImageSampler>( binding._data ) = { normalsAttMS->texture()->sampledView(), normalsAttMS->descriptor()._samplerHash };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+                Set( binding._data, normalsAttMS->texture()->sampledView(), normalsAttMS->descriptor()._samplerHash );
             }
             if ( hasHiZ )
             {
-                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-                binding._slot = 1;
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
                 const RenderTarget* hizTarget = _context.renderTargetPool().getRenderTarget( params._targetHIZ );
                 RTAttachment* hizAtt = hizTarget->getAttachment( RTAttachmentType::COLOUR );
-                As<DescriptorCombinedImageSampler>( binding._data ) = { hizAtt->texture()->sampledView(), hizAtt->descriptor()._samplerHash };
+                Set( binding._data, hizAtt->texture()->sampledView(), hizAtt->descriptor()._samplerHash );
             }
             else if ( prePassExecuted )
             {
-                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-                binding._slot = 1;
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
                 RTAttachment* depthAtt = target.getAttachment( RTAttachmentType::DEPTH );
-                As<DescriptorCombinedImageSampler>( binding._data ) = { depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash };
+                Set( binding._data, depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash );
             }
 
             prepareRenderQueues( params, cameraSnapshot, false, RenderingOrder::COUNT, bufferInOut );
@@ -1070,7 +1053,7 @@ namespace Divide
 
     void RenderPassExecutor::woitPass( const RenderPassParams& params, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         assert( params._stagePass._passType == RenderPassType::OIT_PASS );
 
@@ -1091,9 +1074,8 @@ namespace Divide
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_PASS;
-            auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-            binding._slot = 2;
-            As<DescriptorCombinedImageSampler>( binding._data ) = { colourAtt->texture()->sampledView(), colourAtt->descriptor()._samplerHash };
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 2u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, colourAtt->texture()->sampledView(), colourAtt->descriptor()._samplerHash );
         }
 
         prepareRenderQueues( params, cameraSnapshot, true, RenderingOrder::COUNT, bufferInOut );
@@ -1121,14 +1103,12 @@ namespace Divide
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
-                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-                binding._slot = 0;
-                As<DescriptorCombinedImageSampler>( binding._data ) = { accumAtt->texture()->sampledView(), accumAtt->descriptor()._samplerHash };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+                Set( binding._data, accumAtt->texture()->sampledView(), accumAtt->descriptor()._samplerHash );
             }
             {
-                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-                binding._slot = 1;
-                As<DescriptorCombinedImageSampler>( binding._data ) = { revAtt->texture()->sampledView(), revAtt->descriptor()._samplerHash };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+                Set( binding._data, revAtt->texture()->sampledView(), revAtt->descriptor()._samplerHash );
             }
         }
         GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
@@ -1138,7 +1118,7 @@ namespace Divide
 
     void RenderPassExecutor::transparencyPass( const RenderPassParams& params, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         assert( params._stagePass._passType == RenderPassType::TRANSPARENCY_PASS );
 
@@ -1168,7 +1148,7 @@ namespace Divide
             return;
         }
 
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         // If we rendered to the multisampled screen target, we can now copy the colour to our regular buffer as we are done with it at this point
         if ( params._target == RenderTargetNames::SCREEN_MS )
@@ -1212,14 +1192,12 @@ namespace Divide
                 auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
                 cmd->_usage = DescriptorSetUsage::PER_DRAW;
                 {
-                    auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-                    binding._slot = 0;
-                    As<DescriptorCombinedImageSampler>( binding._data ) = { velocityAtt->texture()->sampledView(), velocityAtt->descriptor()._samplerHash };
+                    DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+                    Set( binding._data, velocityAtt->texture()->sampledView(), velocityAtt->descriptor()._samplerHash );
                 }
                 {
-                    auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-                    binding._slot = 1;
-                    As<DescriptorCombinedImageSampler>( binding._data ) = { normalsAtt->texture()->sampledView(), normalsAtt->descriptor()._samplerHash };
+                    DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+                    Set( binding._data, normalsAtt->texture()->sampledView(), normalsAtt->descriptor()._samplerHash );
                 }
 
                 GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
@@ -1232,7 +1210,7 @@ namespace Divide
 
     bool RenderPassExecutor::validateNodesForStagePass( const RenderStagePass stagePass )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         bool ret = false;
         const I32 nodeCount = to_I32( _visibleNodesCache.size() );
@@ -1250,7 +1228,7 @@ namespace Divide
 
     void RenderPassExecutor::doCustomPass( const PlayerIndex playerIdx, Camera* camera, RenderPassParams params, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         assert( params._stagePass._stage == _stage );
 
@@ -1318,7 +1296,7 @@ namespace Divide
 
         bool hasInvalidNodes = false;
         {
-            PROFILE_SCOPE( "doCustomPass: Validate draw" );
+            PROFILE_SCOPE( "doCustomPass: Validate draw", Profiler::Category::Scene );
             if ( doPrePass )
             {
                 params._stagePass._passType = RenderPassType::PRE_PASS;
@@ -1371,14 +1349,12 @@ namespace Divide
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
         cmd->_usage = DescriptorSetUsage::PER_PASS;
         {
-            auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-            binding._slot = 0;
-            As<DescriptorCombinedImageSampler>( binding._data ) = {};
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, DescriptorCombinedImageSampler{});
         }
         {
-            auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-            binding._slot = 1;
-            As<DescriptorCombinedImageSampler>( binding._data ) = {};
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, DescriptorCombinedImageSampler{} );
         }
 
         // We prepare all nodes for the MAIN_PASS rendering. PRE_PASS and OIT_PASS are support passes only. Their order and sorting are less important.
@@ -1482,13 +1458,13 @@ namespace Divide
 
     void RenderPassExecutor::postRender()
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         ExecutorBufferPostRender( _indirectionBuffer );
         ExecutorBufferPostRender( _materialBuffer );
         ExecutorBufferPostRender( _transformBuffer );
         {
-            PROFILE_SCOPE( "Increment Lifetime" );
+            PROFILE_SCOPE( "Increment Lifetime", Profiler::Category::Scene );
             for ( BufferMaterialData::LookupInfo& it : _materialBuffer._data._lookupInfo )
             {
                 if ( it._hash != INVALID_MAT_HASH )
@@ -1498,7 +1474,7 @@ namespace Divide
             }
         }
         {
-            PROFILE_SCOPE( "Clear Freelists" );
+            PROFILE_SCOPE( "Clear Freelists", Profiler::Category::Scene );
             ScopedLock<Mutex> w_lock( _transformBuffer._lock );
             _transformBuffer._data._freeList.fill( true );
         }
@@ -1514,7 +1490,7 @@ namespace Divide
 
     void RenderPassExecutor::OnRenderingComponentCreation( RenderingComponent* rComp )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
 
         ScopedLock<Mutex> w_lock( s_indirectionGlobalLock );
         assert( Attorney::RenderingCompRenderPassExecutor::getIndirectionBufferEntry( rComp ) == U32_MAX );
@@ -1534,7 +1510,7 @@ namespace Divide
 
     void RenderPassExecutor::OnRenderingComponentDestruction( RenderingComponent* rComp )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
 
         const U32 entry = Attorney::RenderingCompRenderPassExecutor::getIndirectionBufferEntry( rComp );
         if ( entry == U32_MAX )

@@ -109,7 +109,7 @@ namespace Divide
 
     void GLStateTracker::setAttributesInternal( const GLuint vaoID, const AttributeMap& attributes )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         // Update vertex attributes if needed (e.g. if offsets changed)
         for ( U8 idx = 0u; idx < to_base( AttribLocation::COUNT ); ++idx )
@@ -158,7 +158,7 @@ namespace Divide
 
     bool GLStateTracker::getOrCreateVAO( const size_t attributeHash, GLuint& vaoOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         static U32 s_VAOidx = 0u;
 
@@ -189,7 +189,7 @@ namespace Divide
 
     void GLStateTracker::setVertexFormat( const PrimitiveTopology topology, const bool primitiveRestartEnabled, const AttributeMap& attributes, const size_t attributeHash )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         _activeTopology = topology;
 
@@ -210,7 +210,7 @@ namespace Divide
 
     GLStateTracker::BindResult GLStateTracker::setStateBlock( const size_t stateBlockHash )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         DIVIDE_ASSERT( stateBlockHash != 0, "GL_API error: Invalid state blocks detected on activation!" );
 
@@ -236,7 +236,7 @@ namespace Divide
                                                 const GLint skipRows,
                                                 const GLint skipPixels )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         // Keep track if we actually affect any OpenGL state
         bool changed = false;
@@ -278,7 +278,7 @@ namespace Divide
                                                   const GLint skipRows,
                                                   const GLint skipPixels )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         // Keep track if we actually affect any OpenGL state
         bool changed = false;
@@ -342,7 +342,7 @@ namespace Divide
                                                              const GLuint samplerCount,
                                                              const GLuint* const samplerHandles )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         BindResult result = BindResult::FAILED;
 
@@ -393,7 +393,7 @@ namespace Divide
 
     bool GLStateTracker::unbindTexture( [[maybe_unused]] const TextureType type, const GLuint handle )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         for ( U8 idx = 0u; idx < MAX_BOUND_TEXTURE_UNITS; ++idx )
         {
@@ -414,7 +414,7 @@ namespace Divide
 
     bool GLStateTracker::unbindTextures()
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         _textureBoundMap.fill( GLUtil::k_invalidObjectID );
         _samplerBoundMap.fill( GLUtil::k_invalidObjectID );
@@ -428,7 +428,7 @@ namespace Divide
     /// Bind a texture specified by a GL handle and GL type to the specified unit using the sampler object defined by hash value
     GLStateTracker::BindResult GLStateTracker::bindTexture( const GLubyte unit, const GLuint handle, const GLuint samplerHandle )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         // Fail if we specified an invalid unit. Assert instead of returning false because this might be related to a bad algorithm
         DIVIDE_ASSERT( unit < GFXDevice::GetDeviceInformation()._maxTextureUnits, "GLStates error: invalid texture unit specified as a texture binding slot!" );
@@ -459,7 +459,7 @@ namespace Divide
                                                              const GLuint* const textureHandles,
                                                              const GLuint* const samplerHandles )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         if ( textureCount == 1 )
         {
@@ -510,7 +510,7 @@ namespace Divide
                                                                  const bool layered, const GLint layer, const GLenum access,
                                                                  const GLenum format )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         DIVIDE_ASSERT( handle != GLUtil::k_invalidObjectID );
 
@@ -530,7 +530,7 @@ namespace Divide
     /// Single place to change buffer objects for every target available
     GLStateTracker::BindResult GLStateTracker::bindActiveBuffer( const GLuint location, GLuint bufferID, size_t offset, size_t stride )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         DIVIDE_ASSERT( _activeVAOID != GLUtil::k_invalidObjectID && _activeVAOID != 0u );
 
@@ -551,7 +551,7 @@ namespace Divide
 
     GLStateTracker::BindResult GLStateTracker::bindActiveBuffers( const GLuint location, const GLsizei count, GLuint* bufferIDs, GLintptr* offsets, GLsizei* strides )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         DIVIDE_ASSERT( _activeVAOID != GLUtil::k_invalidObjectID && _activeVAOID != 0u );
 
@@ -585,7 +585,7 @@ namespace Divide
     /// buffer or write buffer
     GLStateTracker::BindResult GLStateTracker::setActiveFB( const RenderTarget::Usage usage, GLuint ID, GLuint& previousID )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         // We may query the active framebuffer handle and get an invalid handle in
         // return and then try to bind the queried handle
@@ -672,7 +672,7 @@ namespace Divide
     /// Single place to change buffer objects for every target available
     GLStateTracker::BindResult GLStateTracker::setActiveBuffer( const GLenum target, const GLuint bufferHandle, GLuint& previousID )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         GLuint& crtBinding = target != GL_ELEMENT_ARRAY_BUFFER
             ? _activeBufferID[GetBufferTargetIndex( target )]
@@ -700,7 +700,7 @@ namespace Divide
 
     GLStateTracker::BindResult GLStateTracker::setActiveBufferIndexRange( const GLenum target, const GLuint bufferHandle, const GLuint bindIndex, const size_t offsetInBytes, const size_t rangeInBytes, GLuint& previousID )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         BindConfig& crtConfig = _currentBindConfig[GetBufferTargetIndex( target )];
         DIVIDE_ASSERT( bindIndex < crtConfig.size() );
@@ -747,7 +747,7 @@ namespace Divide
     /// Change the currently active shader program. Passing null will unbind shaders (will use program 0)
     GLStateTracker::BindResult GLStateTracker::setActiveProgram( const GLuint programHandle )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         // Check if we are binding a new program or unbinding all shaders
         // Prevent double bind
@@ -775,7 +775,7 @@ namespace Divide
     /// Change the currently active shader pipeline. Passing null will unbind shaders (will use pipeline 0)
     GLStateTracker::BindResult GLStateTracker::setActiveShaderPipeline( const GLuint pipelineHandle )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         // Check if we are binding a new program or unbinding all shaders
         // Prevent double bind
@@ -839,7 +839,7 @@ namespace Divide
 
     void GLStateTracker::setBlending( const BlendingSettings& blendingProperties )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         const bool enable = blendingProperties.enabled();
 
@@ -899,7 +899,7 @@ namespace Divide
 
     void GLStateTracker::setBlending( const GLuint drawBufferIdx, const BlendingSettings& blendingProperties )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         const bool enable = blendingProperties.enabled();
 
@@ -1080,7 +1080,7 @@ namespace Divide
     /// Some may be redundant, so we check each one individually
     void GLStateTracker::activateStateBlock( const RenderStateBlock& newBlock )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         if ( _activeState.stencilEnable() != newBlock.stencilEnable() )
         {

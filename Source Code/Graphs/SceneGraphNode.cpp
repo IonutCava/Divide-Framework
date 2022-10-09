@@ -148,15 +148,9 @@ void SceneGraphNode::AddSGNComponentInternal(SGNComponent* comp)
     {   //Ewww
         Hacks._transformComponentCache = (TransformComponent*)comp;
     }
-
     if (comp->type() == ComponentType::BOUNDS)
     {   //Ewww x2
         Hacks._boundsComponentCache = (BoundsComponent*)comp;
-        if (sceneGraph()->getOctree() &&
-            !sceneGraph()->getOctree()->addNode(this))
-        {
-            NOP();
-        }
     }
     if (comp->type() == ComponentType::RENDERING)
     {   //Ewww x3
@@ -190,11 +184,6 @@ void SceneGraphNode::RemoveSGNComponentInternal(SGNComponent* comp)
     if (comp->type() == ComponentType::BOUNDS)
     {
         Hacks._boundsComponentCache = nullptr;
-        if (sceneGraph()->getOctree() &&
-            !sceneGraph()->getOctree()->removeNode(this))
-        {
-            NOP();
-        }
     }
     if (comp->type() == ComponentType::RENDERING)
     {
@@ -481,11 +470,21 @@ bool SceneGraphNode::isChildOfType(const U16 typeMask) const
 
 bool SceneGraphNode::isRelated(const SceneGraphNode* target) const
 {
-    const I64 targetGUID = target->getGUID();
     // We also ignore grandparents as this will usually be the root;
     if (_relationshipCache.isValid())
     {
-        return _relationshipCache.classifyNode(targetGUID) != SGNRelationshipCache::RelationshipType::COUNT;
+        return _relationshipCache.classifyNode( target->getGUID() ) != SGNRelationshipCache::RelationshipType::COUNT;
+    }
+
+    return false;
+}
+
+bool SceneGraphNode::isRelated( const SceneGraphNode* target, const SGNRelationshipCache::RelationshipType relationship ) const
+{
+    // We also ignore grandparents as this will usually be the root;
+    if ( _relationshipCache.isValid() )
+    {
+        return _relationshipCache.validateRelationship( target->getGUID(), relationship );
     }
 
     return false;
@@ -493,6 +492,8 @@ bool SceneGraphNode::isRelated(const SceneGraphNode* target) const
 
 bool SceneGraphNode::isChild(const SceneGraphNode* target, const bool recursive) const
 {
+    PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+
     const I64 targetGUID = target->getGUID();
 
     const SGNRelationshipCache::RelationshipType type = _relationshipCache.classifyNode(targetGUID);
@@ -586,7 +587,8 @@ void SceneGraphNode::processDeleteQueue(vector<size_t>& childList)
 // Please call in MAIN THREAD! Nothing is thread safe here (for now) -Ionut
 void SceneGraphNode::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState)
 {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+
     if (hasFlag(Flags::ACTIVE))
     {
         Attorney::SceneNodeSceneGraph::sceneUpdate(_node.get(), deltaTimeUS, this, sceneState);
@@ -597,7 +599,7 @@ void SceneGraphNode::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState)
 
 void SceneGraphNode::processEvents()
 {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
     const ECS::EntityId id = GetEntityID();
     for (size_t idx = 0u; idx < Events.EVENT_QUEUE_SIZE; ++idx)
@@ -612,14 +614,14 @@ void SceneGraphNode::processEvents()
         {
             case ECS::CustomEvent::Type::RelationshipCacheInvalidated:
             {
-                PROFILE_SCOPE("RelationshipCacheInvalidated");
+                PROFILE_SCOPE("RelationshipCacheInvalidated", Profiler::Category::Scene );
                 if (!_relationshipCache.isValid()) {
                     _relationshipCache.rebuild();
                 }
             } break;
             case ECS::CustomEvent::Type::EntityFlagChanged:
             {
-                PROFILE_SCOPE("EntityFlagChanged");
+                PROFILE_SCOPE("EntityFlagChanged", Profiler::Category::Scene );
                 if (static_cast<Flags>(evt._flag) == Flags::SELECTED)
                 {
                     RenderingComponent* rComp = get<RenderingComponent>();
@@ -633,25 +635,25 @@ void SceneGraphNode::processEvents()
             } break;
             case ECS::CustomEvent::Type::NewShaderReady:
             {
-                PROFILE_SCOPE("NewShaderReady");
+                PROFILE_SCOPE("NewShaderReady", Profiler::Category::Scene );
                 Attorney::SceneGraphSGN::onNodeShaderReady(sceneGraph(), *this);
             } break;
             case ECS::CustomEvent::Type::TransformUpdated:
             {
-                PROFILE_SCOPE("TransformUpdated");
+                PROFILE_SCOPE("TransformUpdated", Profiler::Category::Scene );
                 Attorney::SceneGraphSGN::onNodeMoved(sceneGraph(), *this);
                 Attorney::SceneGraphSGN::onNodeSpatialChange(sceneGraph(), *this);
             } break;
             case ECS::CustomEvent::Type::AnimationUpdated:
             case ECS::CustomEvent::Type::BoundsUpdated:
             {
-                PROFILE_SCOPE("onNodeSpatialChange");
+                PROFILE_SCOPE("onNodeSpatialChange", Profiler::Category::Scene );
                 Attorney::SceneGraphSGN::onNodeSpatialChange(sceneGraph(), *this);
             } break;
             default: break;
         }
         {
-            PROFILE_SCOPE("PassDataToAllComponents");
+            PROFILE_SCOPE("PassDataToAllComponents", Profiler::Category::Scene );
             PassDataToAllComponents(evt);
         }
 
@@ -665,7 +667,7 @@ void SceneGraphNode::prepareRender( RenderingComponent& rComp,
                                     const CameraSnapshot& cameraSnapshot,
                                     const bool refreshData)
 {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
     if (HasComponents(ComponentType::ANIMATION))
     {
@@ -695,19 +697,15 @@ void SceneGraphNode::prepareRender( RenderingComponent& rComp,
         }
         if (!boneEntry)
         {
-            auto& binding = descriptorBindings.emplace_back(ShaderStageVisibility::VERTEX);
-            binding._slot = ShaderProgram::BONE_CRT_BUFFER_BINDING_SLOT;
-            boneEntry = &binding;
+            boneEntry = &AddBinding( descriptorBindings, ShaderProgram::BONE_CRT_BUFFER_BINDING_SLOT, ShaderStageVisibility::VERTEX );
         }
         if (!prevBoneEntry)
         {
-            auto& binding = descriptorBindings.emplace_back(ShaderStageVisibility::VERTEX);
-            binding._slot = ShaderProgram::BONE_PREV_BUFFER_BINDING_SLOT;
-            prevBoneEntry = &binding;
+            prevBoneEntry = &AddBinding( descriptorBindings, ShaderProgram::BONE_PREV_BUFFER_BINDING_SLOT, ShaderStageVisibility::VERTEX );
         }
 
-        As<ShaderBufferEntry>( boneEntry->_data ) = { *data._boneBuffer, data._boneBufferRange};
-        As<ShaderBufferEntry>( prevBoneEntry->_data ) = { *data._boneBuffer, data._prevBoneBufferRange};
+        Set(boneEntry->_data,     data._boneBuffer, data._boneBufferRange);
+        Set(prevBoneEntry->_data, data._boneBuffer, data._prevBoneBufferRange);
     }
 
     _node->prepareRender(this, rComp, pkg, renderStagePass, cameraSnapshot, refreshData);
@@ -843,7 +841,7 @@ FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
                                                const U32 filterMask,
                                                const F32 distanceToClosestPointSQ) const
 {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
     // Early out for inactive nodes
     if (!hasFlag(SceneGraphNode::Flags::ACTIVE))
@@ -896,7 +894,7 @@ FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
 
     if (TestBit(cullFlags, CullOptions::CULL_AGAINST_LOD) && !hasFlag(Flags::IS_CONTAINER))
     {
-        PROFILE_SCOPE("cullNode - LoD check");
+        PROFILE_SCOPE("cullNode - LoD check", Profiler::Category::Scene );
 
         RenderingComponent* rComp = get<RenderingComponent>();
         const vec2<F32> renderRange = rComp->renderRange();
@@ -922,7 +920,7 @@ FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
 
 FrustumCollision SceneGraphNode::clippingCullNode(const NodeCullParams& params) const
 {
-    PROFILE_SCOPE("cullNode - Bounding Sphere - Clipping Planes Test");
+    PROFILE_SCOPE("cullNode - Bounding Sphere - Clipping Planes Test", Profiler::Category::Scene );
     const BoundsComponent* bComp = get<BoundsComponent>();
     if (bComp)
     {
@@ -952,7 +950,7 @@ FrustumCollision SceneGraphNode::frustumCullNode(const NodeCullParams& params,
                                                  const U16 cullFlags,
                                                  F32& distanceToClosestPointSQ) const
 {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
     const F32 maxDistanceSQ = SQUARED(params._cullMaxDistance);
     const BoundsComponent* bComp = get<BoundsComponent>();
@@ -994,7 +992,7 @@ FrustumCollision SceneGraphNode::frustumCullNode(const NodeCullParams& params,
     FrustumCollision collisionType = FrustumCollision::FRUSTUM_IN;
     if (TestBit(cullFlags, CullOptions::CULL_AGAINST_FRUSTUM))
     {
-        PROFILE_SCOPE("cullNode - Bounding Sphere & Box Frustum Test");
+        PROFILE_SCOPE("cullNode - Bounding Sphere & Box Frustum Test", Profiler::Category::Scene );
         // Sphere is in range, so check bounds primitives against the frustum
         if (bComp->getBoundingBox().containsPoint(params._cameraEyePos))
         {
@@ -1234,6 +1232,42 @@ void SceneGraphNode::SendEvent(ECS::CustomEvent&& event)
         {
             processEvents();
         }
+    }
+}
+
+void SceneGraphNode::updateCollisions( const SceneGraphNode& parentNode, IntersectionContainer& intersections, Mutex& intersectionsLock ) const
+{
+    if ( parentNode.getGUID() == getGUID() )
+    {
+        return;
+    }
+    if ( usageContext() == parentNode.usageContext() && usageContext() == NodeUsageContext::NODE_STATIC )
+    {
+        return;
+    }
+
+    BoundsComponent* boundsA = get<BoundsComponent>();
+    BoundsComponent* boundsB = parentNode.get<BoundsComponent>();
+
+    if ( boundsB == nullptr || !boundsB->collisionsEnabled() )
+    {
+        return;
+    }
+
+    if ( Collision( *boundsA, *boundsB) )
+    {
+        UniqueLock<Mutex> w_lock(intersectionsLock);
+        IntersectionRecord& ir = intersections.emplace_back();
+        ir._intersectedObject1 = boundsA;
+        ir._intersectedObject2 = boundsB;
+        ir._hasHit = true;
+    }
+
+    SharedLock<SharedMutex> r_lock( parentNode._children._lock );
+    const U32 childCount = parentNode._children._count;
+    for ( U32 i = 0u; i < childCount; ++i )
+    {
+        updateCollisions(*parentNode._children._data[i], intersections, intersectionsLock );
     }
 }
 

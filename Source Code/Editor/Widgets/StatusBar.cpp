@@ -15,7 +15,7 @@ StatusBar::StatusBar(PlatformContext& context) noexcept
 }
 
 void StatusBar::draw() const {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
     ImGuiViewportP* viewport = (ImGuiViewportP*)(void*)ImGui::GetMainViewport();
     ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;

@@ -32,13 +32,6 @@ namespace Divide::Profiler
         }
     }
 
-    void OnFrame()
-    {
-        if_constexpr( detail::enabled )
-        {
-            OPTICK_FRAME( "Main Thread" );
-        }
-    }
     void OnThreadStart( const std::string_view threadName )
     {
         if_constexpr( detail::enabled )

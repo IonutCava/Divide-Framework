@@ -260,7 +260,7 @@ namespace Divide
 
     bool RenderingComponent::canDraw( const RenderStagePass& renderStagePass )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
         PROFILE_TAG( "Node", (_parentSGN->name().c_str()) );
 
         // Can we render without a material? Maybe. IDK.
@@ -325,7 +325,7 @@ namespace Divide
 
     void RenderingComponent::getMaterialData( NodeMaterialData& dataOut ) const
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         if ( _materialInstance != nullptr )
         {
@@ -414,7 +414,7 @@ namespace Divide
                                                  const RenderStagePass& renderStagePass,
                                                  const bool refreshData )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         bool hasCommands = hasDrawCommands();
 
@@ -559,9 +559,7 @@ namespace Divide
                             return;
                         }
                     }
-                    auto& newBinding = targetSet.emplace_back( ShaderStageVisibility::FRAGMENT );
-                    newBinding._slot = slot;
-                    newBinding._data = data;
+                    AddBinding(targetSet, slot, ShaderStageVisibility::FRAGMENT )._data = data;
                 };
 
                 if ( _updateReflection )
@@ -570,11 +568,11 @@ namespace Divide
                     if ( _reflectionPlanar.first != nullptr && renderStagePass._stage != RenderStage::REFLECTION)
                     {
                         //ToDo: Find a way to render reflected items that also have reflections -Ionut
-                        As<DescriptorCombinedImageSampler>( data) = { _reflectionPlanar.first->sampledView(), _reflectionPlanar.second };
+                        Set( data, _reflectionPlanar.first->sampledView(), _reflectionPlanar.second);
                     }
                     else
                     {
-                        As<DescriptorCombinedImageSampler>( data ) = {};
+                        Set(data, DescriptorCombinedImageSampler{});
                     }
 
                     updateBinding( pkg.descriptorSetCmd()._bindings, 10, data);
@@ -585,11 +583,11 @@ namespace Divide
                     if ( _refractionPlanar.first != nullptr && renderStagePass._stage != RenderStage::REFRACTION )
                     {
                         //ToDo: Find a way to render refracted items that also have refractions -Ionut
-                        As<DescriptorCombinedImageSampler>( data ) = { _refractionPlanar.first->sampledView(), _refractionPlanar.second };
+                        Set( data, _refractionPlanar.first->sampledView(), _refractionPlanar.second );
                     }
                     else
                     {
-                        As<DescriptorCombinedImageSampler>( data ) = {};
+                        Set( data, DescriptorCombinedImageSampler{} );
                     }
                     updateBinding( pkg.descriptorSetCmd()._bindings, 11, data );
                 }
@@ -602,7 +600,7 @@ namespace Divide
 
     void RenderingComponent::retrieveDrawCommands( const RenderStagePass& stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         const U32 iBufferEntry = _indirectionBufferEntry;
 

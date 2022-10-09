@@ -24,7 +24,7 @@ namespace Divide {
             return;
         }
 
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
         const U32 flags = ImGuiWindowFlags_NoResize |
                           ImGuiWindowFlags_NoCollapse |

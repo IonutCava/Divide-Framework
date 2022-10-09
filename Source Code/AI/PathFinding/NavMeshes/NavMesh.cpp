@@ -181,7 +181,7 @@ namespace Divide::AI::Navigation
                                 CreationCallback creationCompleteCallback,
                                 const bool threaded )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Divide::Profiler::Category::Streaming );
 
         if ( !loadConfigFromFile() )
         {
@@ -216,7 +216,7 @@ namespace Divide::AI::Navigation
 
     void NavigationMesh::buildInternal()
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Divide::Profiler::Category::Streaming );
 
         _building = true;
         // Create mesh

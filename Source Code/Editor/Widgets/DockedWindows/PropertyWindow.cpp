@@ -415,7 +415,7 @@ namespace Divide
 
     void PropertyWindow::backgroundUpdateInternal()
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
         I64 guid = 12344231;
         for ( const auto& it : g_debugFrustums )
@@ -430,6 +430,8 @@ namespace Divide
 
     bool PropertyWindow::printComponent( SceneGraphNode* sgnNode, EditorComponent* comp, const F32 xOffset, const F32 smallButtonWidth )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
+
         bool sceneChanged = false;
 
         bool isLockedField = false;
@@ -672,7 +674,7 @@ namespace Divide
 
     void PropertyWindow::drawInternal()
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Divide::Profiler::Category::GUI );
 
         constexpr F32 buttonWidth = 90.0f;
         constexpr F32 smallButtonWidth = 70.0f;

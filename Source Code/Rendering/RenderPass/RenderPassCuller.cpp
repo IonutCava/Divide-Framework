@@ -36,10 +36,10 @@ namespace Divide
 
     void RenderPassCuller::PostCullNodes( const PlatformContext& context, const NodeCullParams& params, const U16 cullFlags, const U32 filterMask, VisibleNodeList<>& nodesInOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
        
         {
-            PROFILE_SCOPE( "State cull" );
+            PROFILE_SCOPE( "State cull", Profiler::Category::Scene );
             const I32 nodeCount = to_I32( nodesInOut.size() );
             for ( I32 i = nodeCount - 1; i >= 0; i-- )
             {
@@ -54,7 +54,7 @@ namespace Divide
 
         if ( TestBit( cullFlags, CullOptions::CULL_AGAINST_CLIPPING_PLANES ) )
         {
-            PROFILE_SCOPE( "Clip cull" );
+            PROFILE_SCOPE( "Clip cull", Profiler::Category::Scene );
             const I32 nodeCount = to_I32( nodesInOut.size() );
             for ( I32 i = nodeCount - 1; i >= 0; i-- )
             {
@@ -69,7 +69,7 @@ namespace Divide
 
     void RenderPassCuller::FrustumCull( const NodeCullParams& params, U16 cullFlags, const SceneGraph& sceneGraph, const SceneState& sceneState, PlatformContext& context, VisibleNodeList<>& nodesOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         nodesOut.reset();
 
@@ -121,7 +121,7 @@ namespace Divide
     /// This method performs the visibility check on the given node and all of its children and adds them to the RenderQueue
     void RenderPassCuller::FrustumCullNode( SceneGraphNode* currentNode, const NodeCullParams& params, U16 cullFlags, U8 recursionLevel, VisibleNodeList<>& nodes )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         // We can manually exclude nodes by GUID, so check that
         if ( params._ignoredGUIDS._count > 0u )
@@ -192,7 +192,7 @@ namespace Divide
 
     void RenderPassCuller::FrustumCull( const PlatformContext& context, const NodeCullParams& params, const U16 cullFlags, const vector<SceneGraphNode*>& nodes, VisibleNodeList<>& nodesOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         nodesOut.reset();
 
@@ -210,7 +210,7 @@ namespace Divide
 
     void RenderPassCuller::ToVisibleNodes(const Camera* camera, const vector<SceneGraphNode*>& nodes, VisibleNodeList<>& nodesOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         nodesOut.reset();
 

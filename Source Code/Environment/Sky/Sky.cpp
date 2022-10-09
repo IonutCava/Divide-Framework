@@ -19,6 +19,7 @@
 #include "Scenes/Headers/SceneEnvironmentProbePool.h"
 
 #include "ECS/Components/Headers/RenderingComponent.h"
+#include "ECS/Components/Headers/BoundsComponent.h"
 
 #ifdef _MSC_VER
 # pragma warning (push)
@@ -734,7 +735,8 @@ void Sky::postLoad( SceneGraphNode* sgn )
                                        to_base( ComponentType::BOUNDS ) |
                                        to_base( ComponentType::RENDERING ) |
                                        to_base( ComponentType::NAVIGATION );
-    sgn->addChildNode( skyNodeDescriptor );
+    sgn->addChildNode( skyNodeDescriptor )->get<BoundsComponent>()->collisionsEnabled(false);
+    sgn->get<BoundsComponent>()->collisionsEnabled( false );
 
     RenderingComponent* renderable = sgn->get<RenderingComponent>();
     if ( renderable )

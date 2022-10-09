@@ -31,7 +31,7 @@ struct MeshLoadData {
 };
 
 void threadedMeshLoad(MeshLoadData loadData, ResourcePath modelPath, ResourcePath modelName) {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
 
     Import::ImportData tempMeshData(modelPath, modelName);
     if (MeshImporter::loadMeshDataFromFile(*loadData._context, tempMeshData) &&

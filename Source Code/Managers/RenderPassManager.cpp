@@ -114,14 +114,14 @@ void RenderPassManager::postInit() {
 }
 
 void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& pool, const CameraSnapshot& cameraSnapshot) {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
     for (U8 i = 0u; i < to_base(RenderStage::COUNT); ++i )
     { //All of our render passes should run in parallel
         RenderPassData& passData = _renderPassData[i];
         passData._workTask = CreateTask(nullptr,
                                         [&](const Task& parentTask) {
-                                             PROFILE_SCOPE("RenderPass: BuildCommandBuffer");
+                                           PROFILE_SCOPE("RenderPass: BuildCommandBuffer", Profiler::Category::Scene );
                                            PROFILE_TAG("Pass IDX", i);
 
                                            passData._cmdBuffer->clear(false);
@@ -142,7 +142,7 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
         _postFXWorkTask = CreateTask( nullptr,
                                       [&]( const Task& /*parentTask*/ )
                                       {
-                                          PROFILE_SCOPE( "PostFX: BuildCommandBuffer" );
+                                          PROFILE_SCOPE( "PostFX: BuildCommandBuffer", Profiler::Category::Scene );
 
                                           _postFXCmdBuffer->clear( false );
 
@@ -157,7 +157,7 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
 }
 
 void RenderPassManager::render(const RenderParams& params) {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
     if (params._parentTimer != nullptr && !params._parentTimer->hasChildTimer(*_renderPassTimer)) {
         params._parentTimer->addChildTimer(*_renderPassTimer);
@@ -182,7 +182,7 @@ void RenderPassManager::render(const RenderParams& params) {
        Time::ScopedTimer timeCommandsBuild(*_buildCommandBufferTimer);
        GFX::MemoryBarrierCommand sceneBufferLocks{};
        {
-           PROFILE_SCOPE("RenderPassManager::update sky light");
+           PROFILE_SCOPE("RenderPassManager::update sky light", Profiler::Category::Scene );
             _skyLightRenderBuffer->clear(false);
             sceneBufferLocks = gfx.updateSceneDescriptorSet(*_skyLightRenderBuffer);
             SceneEnvironmentProbePool::UpdateSkyLight(gfx, *_skyLightRenderBuffer, sceneBufferLocks);
@@ -226,7 +226,7 @@ void RenderPassManager::render(const RenderParams& params) {
     }
     GFX::MemoryBarrierCommand flushMemCmd{};
     {
-        PROFILE_SCOPE("RenderPassManager::FlushCommandBuffers");
+        PROFILE_SCOPE("RenderPassManager::FlushCommandBuffers", Profiler::Category::Scene );
         Time::ScopedTimer timeCommands(*_flushCommandBufferTimer);
 
         gfx.flushCommandBuffer(*_skyLightRenderBuffer);
@@ -245,7 +245,7 @@ void RenderPassManager::render(const RenderParams& params) {
             return false;
         };
         {
-            PROFILE_SCOPE("FLUSH_PASSES_WHEN_READY");
+            PROFILE_SCOPE("FLUSH_PASSES_WHEN_READY", Profiler::Category::Scene );
             U8 idleCount = 0u;
 
             while (stillWorking(s_completedPasses)) {
@@ -297,7 +297,7 @@ void RenderPassManager::render(const RenderParams& params) {
                 }
 
                 if (!finished) {
-                    PROFILE_SCOPE("IDLING");
+                    PROFILE_SCOPE("IDLING", Profiler::Category::Scene );
                     if (idleCount++ % 2 == 0) {
                         parent().idle(idleCount > 3);
                     } else {
@@ -321,7 +321,7 @@ void RenderPassManager::render(const RenderParams& params) {
     _context.setCameraSnapshot(params._playerPass, cam->snapshot());
 
     {
-        PROFILE_SCOPE("Executor post-render");
+        PROFILE_SCOPE("Executor post-render", Profiler::Category::Scene );
         for (auto& executor : _executors) {
             if (executor != nullptr) {
                 executor->postRender();

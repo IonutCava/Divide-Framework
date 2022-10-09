@@ -522,9 +522,8 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
-        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-        binding._slot = 0;
-        As<DescriptorCombinedImageSampler>(binding._data) = { depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash };
+        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+        Set( binding._data, depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash );
 
         PushConstantsStruct pushData{};
         pushData.data[0]._vec[0].xy = cameraSnapshot._zPlanes;
@@ -556,14 +555,12 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
     cmd->_usage = DescriptorSetUsage::PER_PASS;
     {
-        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-        binding._slot = 3;
-        As<DescriptorCombinedImageSampler>(binding._data) = { ssrDataAtt->texture()->sampledView(), ssrDataAtt->descriptor()._samplerHash };
+        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 3u, ShaderStageVisibility::FRAGMENT );
+        Set( binding._data, ssrDataAtt->texture()->sampledView(), ssrDataAtt->descriptor()._samplerHash );
     }
     {
-        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-        binding._slot = 4;
-        As<DescriptorCombinedImageSampler>(binding._data) = { ssaoDataAtt->texture()->sampledView(), ssaoDataAtt->descriptor()._samplerHash };
+        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 4u, ShaderStageVisibility::FRAGMENT );
+        Set( binding._data, ssaoDataAtt->texture()->sampledView(), ssaoDataAtt->descriptor()._samplerHash );
     }
 }
 
@@ -585,14 +582,12 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
-                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
-                binding._slot = 0;
-                As<ImageView>(binding._data) = screenColour->getView(ImageUsage::SHADER_READ);
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::COMPUTE );
+                Set(binding._data, screenColour->getView(ImageUsage::SHADER_READ));
             }
             {
-                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE );
-                binding._slot = 1;
-                As<ShaderBufferEntry>(binding._data) = { *_histogramBuffer, {0u, _histogramBuffer->getPrimitiveCount()} };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::COMPUTE );
+                Set(binding._data, _histogramBuffer.get(), {0u, _histogramBuffer->getPrimitiveCount()});
             }
             GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipelineLumCalcHistogram });
             PushConstantsStruct params{};
@@ -615,14 +610,12 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
-                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
-                binding._slot = 1;
-                As<ShaderBufferEntry>(binding._data) = { *_histogramBuffer, { 0u, _histogramBuffer->getPrimitiveCount() } };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::COMPUTE );
+                Set(binding._data, _histogramBuffer.get(), { 0u, _histogramBuffer->getPrimitiveCount() });
             }
             {
-                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
-                binding._slot = 0;
-                As<ImageView>(binding._data) = _currentLuminance->getView(ImageUsage::SHADER_WRITE);
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::COMPUTE );
+                Set(binding._data, _currentLuminance->getView(ImageUsage::SHADER_WRITE));
             }
 
             GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipelineLumCalcAverage });
@@ -712,19 +705,16 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
         {
-            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-            binding._slot = 0;
-            As<DescriptorCombinedImageSampler>(binding._data) = { screenAtt->texture()->sampledView(), screenAtt->descriptor()._samplerHash };
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, screenAtt->texture()->sampledView(), screenAtt->descriptor()._samplerHash );
         }
         {
-            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-            binding._slot = 1;
-            As<DescriptorCombinedImageSampler>(binding._data) = { _currentLuminance->sampledView(), lumaSamplerHash };
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, _currentLuminance->sampledView(), lumaSamplerHash );
         }
         {
-            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-            binding._slot = 2;
-            As<DescriptorCombinedImageSampler>(binding._data) = { screenDepthAtt->texture()->sampledView(), screenDepthAtt->descriptor()._samplerHash };
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 2u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, screenDepthAtt->texture()->sampledView(), screenDepthAtt->descriptor()._samplerHash );
         }
 
         GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
@@ -760,16 +750,14 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         if (edgeDetectionMethod() != EdgeDetectionMethod::Depth) {
             const auto& screenAtt = getInput(false)._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
 
-            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-            binding._slot = 0;
-            As<DescriptorCombinedImageSampler>(binding._data) = { screenAtt->texture()->sampledView(), screenAtt->descriptor()._samplerHash };
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, screenAtt->texture()->sampledView(), screenAtt->descriptor()._samplerHash );
 
         } else {
             const auto& depthAtt = getInput(false)._rt->getAttachment(RTAttachmentType::DEPTH);
 
-            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-            binding._slot = 0;
-            As<DescriptorCombinedImageSampler>(binding._data) = { depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash };
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash );
         }
 
         GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);

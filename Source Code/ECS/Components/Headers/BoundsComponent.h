@@ -56,6 +56,7 @@ BEGIN_COMPONENT_EXT1(Bounds, ComponentType::BOUNDS, GUIDWrapper)
         PROPERTY_R(bool, showAABB, false);
         PROPERTY_R(bool, showOBB, false);
         PROPERTY_R(bool, showBS, false);
+        PROPERTY_RW(bool, collisionsEnabled, true);
 
         void showAABB(bool state);
         void showOBB(bool state);
@@ -83,6 +84,8 @@ BEGIN_COMPONENT_EXT1(Bounds, ComponentType::BOUNDS, GUIDWrapper)
         OBB _obb{};
         std::atomic_bool _obbDirty = false;
 END_COMPONENT(Bounds)
+
+[[nodiscard]] bool Collision(const BoundsComponent& lhs, const BoundsComponent& rhs) noexcept;
 
 }; //namespace Divide
 

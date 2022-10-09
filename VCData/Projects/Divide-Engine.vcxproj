@@ -631,7 +631,6 @@
     <ClCompile Include="../../Source Code/Geometry\Shapes\Predefined\Quad3D.cpp" />
     <ClCompile Include="../../Source Code/Geometry\Shapes\Predefined\Sphere3D.cpp" />
     <ClCompile Include="../../Source Code/Graphs\IntersectionRecord.cpp" />
-    <ClCompile Include="../../Source Code/Graphs\Octree.cpp" />
     <ClCompile Include="../../Source Code/Graphs\SceneNodeRenderState.cpp" />
     <ClCompile Include="../../Source Code/Graphs\SGNRelationshipCache.cpp" />
     <ClCompile Include="../../Source Code/GUI\CEGUIAddons\CEGUIFormattedListBox.cpp" />
@@ -824,7 +823,6 @@
     <ClInclude Include="../../Source Code/Graphs\Headers\SceneGraph.h" />
     <ClInclude Include="../../Source Code/Graphs\Headers\SceneGraphNode.h" />
     <ClInclude Include="../../Source Code/Graphs\Headers\SceneNode.h" />
-    <ClInclude Include="../../Source Code/Graphs\Headers\Octree.h" />
     <ClInclude Include="../../Source Code/Scripting\Headers\GameScript.h" />
     <ClInclude Include="../../Source Code/Scripting\Headers\Script.h" />
     <ClInclude Include="../../Source Code/Scripting\Headers\ScriptBindings.h" />

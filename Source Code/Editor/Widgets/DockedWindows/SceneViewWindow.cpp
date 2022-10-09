@@ -24,8 +24,7 @@ namespace Divide
 
     void SceneViewWindow::drawInternal()
     {
-
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
         bool play = !_parent.simulationPaused();
         _descriptor.name = (play ? ICON_FK_PLAY_CIRCLE : ICON_FK_PAUSE_CIRCLE) + _originalName;

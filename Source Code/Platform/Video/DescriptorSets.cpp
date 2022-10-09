@@ -6,13 +6,6 @@
 #include "Platform/Video/Textures/Headers/Texture.h"
 
 namespace Divide {
-    ShaderBufferEntry::ShaderBufferEntry(ShaderBuffer& buffer, const BufferRange& range) noexcept
-        : _buffer(&buffer)
-        , _range(range)
-        , _bufferQueueReadIndex(buffer.queueReadIndex())
-    {
-    }
-
     size_t TextureWrapper::getHash() const noexcept {
         if (_ceguiTex != nullptr) {
             Util::Hash_combine(_hash, _ceguiTex->getName().c_str());
@@ -89,4 +82,11 @@ namespace Divide {
         }
         return DescriptorSetBindingType::COUNT;
     }
+
+    void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer, BufferRange range )
+    {
+        assert( buffer != nullptr );
+        As<ShaderBufferEntry>( dataInOut ) = { buffer, range, buffer->queueReadIndex() };
+    }
+
 }; //namespace Divide

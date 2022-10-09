@@ -33,8 +33,8 @@
 #ifndef _SCENE_GRAPH_H_
 #define _SCENE_GRAPH_H_
 
-#include "Octree.h"
 #include "SceneNode.h"
+#include "IntersectionRecord.h"
 #include "Scenes/Headers/SceneComponent.h"
 #include "Rendering/Headers/FrameListener.h"
 
@@ -75,8 +75,6 @@ class SceneGraph final : NonCopyable,
     SceneGraphNode* findNode(const Str128& name, bool sceneNodeName = false) const;
     SceneGraphNode* findNode(U64 nameHash, bool sceneNodeName = false) const;
     SceneGraphNode* findNode(I64 guid) const;
-
-    Octree* getOctree() noexcept { return _octree.get(); }
 
     /// Update all nodes. Called from "updateSceneState" from class Scene
     void sceneUpdate(U64 deltaTimeUS, SceneState& sceneState);
@@ -145,19 +143,20 @@ class SceneGraph final : NonCopyable,
     bool frameStarted(const FrameEvent& evt) override;
     bool frameEnded(const FrameEvent& evt) override;
 
+    void checkCollisions(BoundsComponent* bComp);
+
+    static void HandleIntersection( const IntersectionRecord& intersection );
+
    private:
     ECS::ECSEngine _ecsEngine;
     ECSManager_uptr _ecsManager;
 
-    bool _loadComplete = false;
-    bool _octreeChanged = false;
     bool _nodeListChanged = false;
 
     SceneGraphNode* _root = nullptr;
-    Octree_uptr _octree;
-    std::atomic_bool _octreeUpdating;
     vector<SceneGraphNode*> _nodeList;
-
+    Mutex _intersectionsLock;
+    IntersectionContainer _intersectionsCache;
     std::array<vector<SceneGraphNode*>, to_base(SceneNodeType::COUNT)> _nodesByType;
 
     mutable Mutex _nodeCreateMutex;

@@ -35,6 +35,7 @@
 
 #include "SceneNodeFwd.h"
 #include "SGNRelationshipCache.h"
+#include "IntersectionRecord.h"
 
 #include "Platform/Video/Headers/RenderAPIEnums.h"
 
@@ -119,6 +120,7 @@ public:
             return _data[idx];
         }
     };
+
 public:
     /// Avoid creating SGNs directly. Use the "addChildNode" on an existing node (even root) or "addNode" on the existing SceneGraph
     explicit SceneGraphNode(SceneGraph* sceneGraph, const SceneGraphNodeDescriptor& descriptor);
@@ -151,6 +153,8 @@ public:
 
     /// Returns true if the current node is related somehow to the specified target node (see RelationshipType enum for more details)
     bool isRelated(const SceneGraphNode* target) const;
+    /// Returns true if the current node is related to the specified target node in the specified way (see RelationshipType enum for more details)
+    bool isRelated(const SceneGraphNode* target, SGNRelationshipCache::RelationshipType relationship) const;
 
     /// Returns true if the specified target node is a parent or grandparent(if recursive == true) of the current node
     bool isChild(const SceneGraphNode* target, bool recursive) const;
@@ -231,6 +235,9 @@ public:
     /// Serialization: load from XML file (expressed as a boost property_tree)
     void loadFromXML(const boost::property_tree::ptree& pt);
 
+protected:
+    void updateCollisions( const SceneGraphNode& parentNode, IntersectionContainer& intersections, Mutex& intersectionsLock ) const;
+
 private:
     /// Process any events that might of queued up during the ECS Update stages
     void processEvents();
@@ -254,7 +261,7 @@ private:
     bool saveCache(ByteBuffer& outputBuffer) const;
     /// Similar to the loadFromXML call but is geared towards temporary state (e.g. save game)
     bool loadCache(ByteBuffer& inputBuffer);
-    /// Called by the TransformComponent whenever the transform changed. Useful for Octree updates for example.
+    /// Called by the TransformComponent whenever the transform changed.
     void setTransformDirty(U32 transformMask);
     /// As opposed to "postLoad()" that's called when the SceneNode is ready for processing, this call is used as a callback for when the SceneNode finishes loading as a Resource. postLoad() is called after this always.
     static void PostLoad(SceneNode* sceneNode, SceneGraphNode* sgn);
@@ -269,7 +276,6 @@ private:
 
     void AddSGNComponentInternal(SGNComponent* comp);
     void RemoveSGNComponentInternal(SGNComponent* comp);
-
 
     template<bool checkInternalNode = false>
     SceneGraphNode* findChildInternal(U64 nameHash, bool recursive = false) const;
@@ -351,7 +357,10 @@ namespace Attorney {
         static bool loadCache(SceneGraphNode* node, ByteBuffer& inputBuffer) {
             return node->loadCache(inputBuffer);
         }
-
+        static void updateCollisions( const SceneGraphNode& node, const SceneGraphNode& parentNode, IntersectionContainer& intersections, Mutex& intersectionsLock )
+        {
+            node.updateCollisions( parentNode, intersections, intersectionsLock);
+        }
         friend class Divide::SceneGraph;
     };
 

@@ -42,34 +42,8 @@ namespace Util {
 
 template<typename T_vec, typename T_str>
 typename std::enable_if<std::is_same<T_vec, vector<T_str>>::value ||
-                        std::is_same<T_vec, vector_fast<T_str>>::value, T_vec&>::type
+                        std::is_same<T_vec, vector_fast<T_str>>::value, void>::type
 Split(const char* input, const char delimiter, T_vec& elems) {
-    if (input != nullptr) {
-        {
-            size_t i = 0u;
-            const char* o = input;
-            for (i = 0u; input[i]; input[i] == delimiter ? i++ : *input++) {
-                NOP();
-            }
-            elems.resize(i + 1);
-            input = o;
-        }
-
-        string item;
-        istringstream ss(input);
-        size_t idx = 0u;
-        while (std::getline(ss, item, delimiter)) {
-            elems[idx++] = MOV(item);
-        }
-    } else {
-        elems.clear();
-    }
-
-    return elems;
-}
-
-template<typename T_str>
-vector<T_str>& Split(const char* input, char delimiter, vector<T_str>& elems) {
     assert(input != nullptr);
 
     const T_str original(input);
@@ -97,8 +71,6 @@ vector<T_str>& Split(const char* input, char delimiter, vector<T_str>& elems) {
     } else {
         elems.clear();
     }
-
-    return elems;
 }
 
 template<typename T_vec, typename T_str>
@@ -106,7 +78,8 @@ typename std::enable_if<std::is_same<T_vec, vector_fast<T_str>>::value ||
                         std::is_same<T_vec, vector<T_str>>::value, T_vec>::type
 Split(const char* input, const char delimiter) {
     T_vec elems;
-    return Split<T_vec, T_str>(input, delimiter, elems);
+    Split<T_vec, T_str>(input, delimiter, elems);
+    return elems;
 }
 
 template<typename T_str>

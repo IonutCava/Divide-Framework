@@ -78,18 +78,15 @@ namespace Divide {
         bool CompareIgnoreCase(const char* a, const char* b) noexcept;
 
         /// http://stackoverflow.com/questions/236129/split-a-string-in-c
-        template<typename T_vec, typename T_str = string>
+        template<typename T_vec, typename T_str>
         typename std::enable_if<std::is_same<T_vec, vector_fast<T_str>>::value ||
                                 std::is_same<T_vec, vector<T_str>>::value, T_vec>::type
         Split(const char* input, char delimiter);
 
-        template<typename T_vec, typename T_str = string>
+        template<typename T_vec, typename T_str>
         typename std::enable_if<std::is_same<T_vec, vector<T_str>>::value ||
-                                std::is_same<T_vec, vector_fast<T_str>>::value, T_vec&>::type
+                                std::is_same<T_vec, vector_fast<T_str>>::value, void>::type
         Split(const char* input, char delimiter, T_vec& elems);
-
-        template<typename T_str = string> vector<T_str>&
-        Split(const char* input, char delimiter, vector<T_str>& elems);
 
         /// http://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
         template<typename T_str = string>

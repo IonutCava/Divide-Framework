@@ -267,16 +267,14 @@ void ShadowMap::bindShadowMaps( LightPool& pool, GFX::CommandBuffer& bufferInOut
         const ShadowType shadowType = static_cast<ShadowType>(i);
         const U8 bindSlot = LightPool::GetShadowBindSlotOffset(shadowType);
         RTAttachment* shadowTexture = sm._rt->getAttachment(RTAttachmentType::COLOUR);
-        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-        binding._slot = bindSlot;
-        As<DescriptorCombinedImageSampler>(binding._data) = { shadowTexture->texture()->sampledView(), shadowTexture->descriptor()._samplerHash };
+        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, bindSlot, ShaderStageVisibility::FRAGMENT );
+        Set( binding._data, shadowTexture->texture()->sampledView(), shadowTexture->descriptor()._samplerHash );
     }
 
     if ( pool.shadowBuffer() != nullptr )
     {
-        auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-        binding._slot = 9;
-        As<ShaderBufferEntry>( binding._data ) = { *pool.shadowBuffer(), {0u, 1u}};
+        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 9u, ShaderStageVisibility::FRAGMENT );
+        Set( binding._data, pool.shadowBuffer(), {0u, 1u} );
     }
 }
 
@@ -394,7 +392,7 @@ bool ShadowMap::markShadowMapsUsed(Light& light) {
 }
 
 bool ShadowMap::generateShadowMaps(const Camera& playerCamera, Light& light, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     const U8 shadowTypeIdx = to_base(getShadowTypeForLightType(light.getLightType()));
     if (s_shadowMapGenerators[shadowTypeIdx] == nullptr){

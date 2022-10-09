@@ -10,62 +10,45 @@
 
 #include "Platform/Video/Headers/GFXDevice.h"
 
-namespace Divide {
-
-DebugInterface::DebugInterface(Kernel& parent) noexcept
-    : KernelComponent(parent)
+namespace Divide
 {
-}
-
-void DebugInterface::idle() {
-    if_constexpr (!Config::Profile::ENABLE_FUNCTION_PROFILING) {
-        return;
-    }
-
-    if (!enabled()) {
-        return;
-    }
-
-    PROFILE_SCOPE();
-    const LoopTimingData& timingData = Attorney::KernelDebugInterface::timingData(_parent);
-    const GFXDevice& gfx = _parent.platformContext().gfx();
-    const Application& app = _parent.platformContext().app();
-
-    if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE / (Config::Build::IS_DEBUG_BUILD ? 4 : 2)) == 0)
+    void DebugInterface::idle( const PlatformContext& context )
     {
-        _output = Util::StringFormat("Scene Update Loops: %d", timingData.updateLoops());
+        if_constexpr( !Config::Profile::ENABLE_FUNCTION_PROFILING )
+        {
+            return;
+        }
 
-        if_constexpr (Config::Profile::ENABLE_FUNCTION_PROFILING) {
-            const PerformanceMetrics perfMetrics = gfx.getPerformanceMetrics();
+        PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
-            _output.append("\n");
-            _output.append(app.timer().benchmarkReport());
-            _output.append("\n");
-            _output.append(Util::StringFormat("GPU: [ %5.5f ms] [DrawCalls: %d] [Vertices: %zu] [Primitives: %zu]", 
-                perfMetrics._gpuTimeInMS,
-                gfx.frameDrawCallsPrev(),
-                perfMetrics._verticesSubmitted,
-                perfMetrics._primitivesGenerated));
+        if ( !enabled() )
+        {
+            return;
+        }
 
-            _output.append("\n");
-            _output.append(Time::ProfileTimer::printAll());
+        const LoopTimingData& timingData = Attorney::KernelDebugInterface::timingData( context.kernel() );
+
+        if ( GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE / (Config::Build::IS_DEBUG_BUILD ? 4 : 2)) == 0 )
+        {
+            _output = Util::StringFormat( "Scene Update Loops: %d", timingData.updateLoops() );
+
+            if_constexpr( Config::Profile::ENABLE_FUNCTION_PROFILING )
+            {
+                const PerformanceMetrics perfMetrics = context.gfx().getPerformanceMetrics();
+
+                _output.append( "\n" );
+                _output.append( context.app().timer().benchmarkReport());
+                _output.append( "\n" );
+                _output.append( Util::StringFormat( "GPU: [ %5.5f ms] [DrawCalls: %d] [Vertices: %zu] [Primitives: %zu]",
+                                                    perfMetrics._gpuTimeInMS,
+                                                    context.gfx().frameDrawCallsPrev(),
+                                                    perfMetrics._verticesSubmitted,
+                                                    perfMetrics._primitivesGenerated ) );
+
+                _output.append( "\n" );
+                _output.append( Time::ProfileTimer::printAll() );
+            }
         }
     }
-}
-
-void DebugInterface::toggle(const bool state) noexcept {
-    _enabled = state;
-    if (!_enabled) {
-        _output.clear();
-    }
-}
-
-bool DebugInterface::enabled() const noexcept {
-    return _enabled;
-}
-
-const string& DebugInterface::output() const noexcept {
-    return _output;
-}
 
 } //namespace Divide

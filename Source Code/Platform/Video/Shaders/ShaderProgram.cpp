@@ -817,7 +817,7 @@ ShaderProgram::~ShaderProgram()
 }
 
 void ShaderProgram::threadedLoad(const bool reloadExisting) {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
 
     hashMap<U64, PerFileShaderData> loadDataByFile{};
     reloadShaders(loadDataByFile, reloadExisting);
@@ -852,7 +852,7 @@ bool ShaderProgram::recompile(bool& skipped) {
 }
 
 void ShaderProgram::Idle(PlatformContext& platformContext) {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     // If we don't have any shaders queued for recompilation, return early
     if (!s_recompileQueue.empty()) {
@@ -1539,7 +1539,7 @@ void ShaderProgram::initUniformUploader(const PerFileShaderData& shaderFileData)
 }
 
 bool ShaderProgram::uploadUniformData(const PushConstants& data, DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut) {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     bool ret = false;
     for (auto& blockBuffer : _uniformBlockBuffers)

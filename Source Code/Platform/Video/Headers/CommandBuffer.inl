@@ -187,7 +187,7 @@ inline bool CommandBuffer::empty() const noexcept {
 template<typename T>
 typename std::enable_if<std::is_base_of<CommandBase, T>::value, bool>::type
 CommandBuffer::tryMergeCommands(const CommandType type, T* prevCommand, T* crtCommand) const {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     bool ret = false;
     assert(prevCommand != nullptr && crtCommand != nullptr);

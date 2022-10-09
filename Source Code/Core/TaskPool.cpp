@@ -84,7 +84,7 @@ namespace Divide
 
     bool TaskPool::enqueue( Task& task, const TaskPriority priority, const U32 taskIndex, const DELEGATE<void>& onCompletionFunction )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
         const bool isRealtime = priority == TaskPriority::REALTIME;
         const bool hasOnCompletionFunction = !isRealtime && onCompletionFunction;
@@ -148,7 +148,7 @@ namespace Divide
 
     void TaskPool::waitForTask( const Task& task )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
         using namespace std::chrono_literals;
         while ( !Finished( task ) )
@@ -167,7 +167,7 @@ namespace Divide
     {
         size_t ret = 0u;
 
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
         std::array<U32, g_maxDequeueItems> taskIndex = {};
         size_t count = 0u;
@@ -192,7 +192,7 @@ namespace Divide
 
     void TaskPool::waitForAllTasks( const bool flushCallbacks )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
         if ( type() != TaskPoolType::COUNT )
         {
@@ -213,7 +213,7 @@ namespace Divide
 
     void TaskPool::taskCompleted( Task& task, const bool hasOnCompletionFunction )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
         task._callback = {}; //<Needed to cleanup any stale resources (e.g. captured by lamdas)
         if ( hasOnCompletionFunction )
@@ -257,7 +257,7 @@ namespace Divide
 
     Task* TaskPool::AllocateTask( Task* parentTask, const bool allowedInIdle ) noexcept
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
         if ( parentTask != nullptr )
         {
@@ -289,7 +289,7 @@ namespace Divide
 
     void TaskPool::threadWaiting( const bool forceExecute )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
         if ( !forceExecute && Runtime::isMainThread() )
         {
@@ -310,7 +310,7 @@ namespace Divide
 
     void TaskPool::waitAndJoin() const
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
         if ( type() == TaskPoolType::TYPE_BLOCKING )
         {
@@ -334,7 +334,7 @@ namespace Divide
 
     void parallel_for( TaskPool& pool, const ParallelForDescriptor& descriptor )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
         if ( descriptor._iterCount == 0u )
         {

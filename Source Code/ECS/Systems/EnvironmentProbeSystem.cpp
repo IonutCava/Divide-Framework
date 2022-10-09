@@ -17,7 +17,7 @@ namespace Divide {
     }
 
     void EnvironmentProbeSystem::PreUpdate(const F32 dt) {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         Parent::PreUpdate(dt);
 

@@ -47,9 +47,9 @@ class LocalClient;
 class XMLEntryData;
 class ParamHandler;
 class DisplayWindow;
-class DebugInterface;
 
 struct Configuration;
+struct DebugInterface;
 
 namespace Attorney {
     class PlatformContextKernel;

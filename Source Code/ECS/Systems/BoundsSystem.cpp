@@ -24,7 +24,7 @@ namespace Divide {
 
 
     void BoundsSystem::PreUpdate(const F32 dt) {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         Parent::PreUpdate(dt);
 
@@ -42,7 +42,7 @@ namespace Divide {
     }
 
     void BoundsSystem::Update(const F32 dt) {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         Parent::Update(dt);
         // This is fast and does not need to run in parallel
@@ -60,7 +60,7 @@ namespace Divide {
     }
 
     void BoundsSystem::PostUpdate(const F32 dt) {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         Parent::PostUpdate(dt);
 

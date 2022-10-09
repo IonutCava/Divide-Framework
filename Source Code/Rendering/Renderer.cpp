@@ -157,7 +157,9 @@ void Renderer::prepareLighting(const RenderStage stage,
         // Nothing to do in the shadow pass
         return;
     }
-   
+
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Cull Lights" });
     {
         PerRenderStageData& data = _lightDataPerStage[to_base(stage)];
@@ -171,38 +173,32 @@ void Renderer::prepareLighting(const RenderStage stage,
             const U32 lightCount = pool->sortedLightCount(stage);
 
             {
-                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE_AND_DRAW );
-                binding._slot = 8;
-                As<ShaderBufferEntry>(binding._data) = { *pool->sceneBuffer(), {stageIndex, 1u}};
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 8u, ShaderStageVisibility::COMPUTE_AND_DRAW );
+                Set(binding._data, pool->sceneBuffer(), {stageIndex, 1u});
             }
             {
-                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE_AND_DRAW );
-                binding._slot = 9;
-                As<ShaderBufferEntry>(binding._data) = { *pool->lightBuffer(), {stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, lightCount}};
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 9u, ShaderStageVisibility::COMPUTE_AND_DRAW );
+                Set(binding._data, pool->lightBuffer(), {stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, lightCount} );
             }
             {
-                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE_AND_DRAW);
-                binding._slot = 10;
-                As<ShaderBufferEntry>(binding._data) = { *data._lightIndexBuffer, { 0u, data._lightIndexBuffer->getPrimitiveCount() }};
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 10u, ShaderStageVisibility::COMPUTE_AND_DRAW );
+                Set(binding._data, data._lightIndexBuffer.get(), { 0u, data._lightIndexBuffer->getPrimitiveCount() } );
             }
             {
-                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE_AND_DRAW );
-                binding._slot = 11;
-                As<ShaderBufferEntry>(binding._data) = { *data._lightGridBuffer, { 0u, data._lightGridBuffer->getPrimitiveCount() } };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 11u, ShaderStageVisibility::COMPUTE_AND_DRAW );
+                Set(binding._data, data._lightGridBuffer.get(), { 0u, data._lightGridBuffer->getPrimitiveCount() } );
             }
         }
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
-                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
-                binding._slot = 0;
-                As<ShaderBufferEntry>(binding._data) = { *data._globalIndexCountBuffer, { 0u, data._globalIndexCountBuffer->getPrimitiveCount() } };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::COMPUTE );
+                Set(binding._data, data._globalIndexCountBuffer.get(), { 0u, data._globalIndexCountBuffer->getPrimitiveCount() } );
             }
             {
-                auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::COMPUTE );
-                binding._slot = 1;
-                As<ShaderBufferEntry>(binding._data) = { *data._lightClusterAABBsBuffer, { 0u, data._lightClusterAABBsBuffer->getPrimitiveCount() } };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::COMPUTE );
+                Set(binding._data, data._lightClusterAABBsBuffer.get(), { 0u, data._lightClusterAABBsBuffer->getPrimitiveCount() } );
             }
         }
         GFX::EnqueueCommand( bufferInOut, _lightResetCounterPipelineCmd );
@@ -261,7 +257,7 @@ void Renderer::prepareLighting(const RenderStage stage,
 }
 
 void Renderer::idle() const {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     _postFX->idle(_context.config());
 }

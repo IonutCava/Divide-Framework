@@ -9,7 +9,7 @@
 namespace Divide {
 
 bool SceneNodeRenderState::drawState(const RenderStagePass stagePass) const {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
     if (!_drawState) {
         return false;

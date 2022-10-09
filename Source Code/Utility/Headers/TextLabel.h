@@ -79,7 +79,7 @@ class TextLabelStyle final : public Hashable {
 };
 
 struct TextElement {
-    using TextType = vector<eastl::string>;
+    using TextType = vector_fast<eastl::string>;
 
     TextElement() = default;
     explicit TextElement(const TextLabelStyle& textLabelStyle, const RelativePosition2D& position);

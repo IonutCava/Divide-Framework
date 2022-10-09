@@ -24,6 +24,7 @@ namespace Divide {
     }
 
     void LockManager::CleanExpiredSyncObjects(const U64 frameNumber) {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         ScopedLock<Mutex> r_lock(s_bufferLockLock);
         for (const BufferLockPoolEntry& syncObject : s_bufferLockPool) {
@@ -40,6 +41,8 @@ namespace Divide {
     }
 
     SyncObjectHandle LockManager::createSyncObjectLocked(const U8 flag, const bool isRetry) {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         if (isRetry) {
             // We failed once, so create a new object
             BufferLockPoolEntry newEntry{};
@@ -67,7 +70,7 @@ namespace Divide {
     }
 
     bool LockManager::waitForLockedRange(const size_t lockBeginBytes, const size_t lockLength) {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         const BufferRange testRange{ lockBeginBytes, lockLength };
 
@@ -102,7 +105,7 @@ namespace Divide {
     }
 
     bool LockManager::lockRange(size_t lockBeginBytes, size_t lockLength, SyncObjectHandle syncObj) {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         DIVIDE_ASSERT(syncObj._id != SyncObjectHandle::INVALID_SYNC_ID && lockLength > 0u, "LockManager::lockRange error: Invalid lock range!");
 

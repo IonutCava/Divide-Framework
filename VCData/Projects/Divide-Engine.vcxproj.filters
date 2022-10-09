@@ -323,9 +323,6 @@
     <ClCompile Include="../../Source Code/Geometry\Importer\MeshImporter.cpp">
       <Filter>Geometry\Importer</Filter>
     </ClCompile>
-    <ClCompile Include="../../Source Code/Graphs\Octree.cpp">
-      <Filter>Graphs</Filter>
-    </ClCompile>
     <ClCompile Include="../../Source Code/Rendering\PostFX\PreRenderBatch.cpp">
       <Filter>Rendering\PostFX</Filter>
     </ClCompile>
@@ -724,9 +721,6 @@
     </ClInclude>
     <ClInclude Include="../../Source Code/Geometry\Importer\Headers\MeshImporter.h">
       <Filter>Geometry\Importer\Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="../../Source Code/Graphs\Headers\Octree.h">
-      <Filter>Graphs\Headers</Filter>
     </ClInclude>
     <ClInclude Include="../../Source Code/Rendering\PostFX\Headers\PreRenderBatch.h">
       <Filter>Rendering\PostFX\Headers</Filter>

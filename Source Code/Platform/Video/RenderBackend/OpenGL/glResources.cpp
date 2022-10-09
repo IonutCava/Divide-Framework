@@ -535,7 +535,7 @@ void glTextureViewCache::init(const U32 poolSize)
 }
 
 void glTextureViewCache::onFrameEnd() {
-    PROFILE_SCOPE("Texture Pool: onFrameEnd");
+    PROFILE_SCOPE("Texture Pool: onFrameEnd", Profiler::Category::Graphics);
 
     ScopedLock<SharedMutex> w_lock(_lock);
     GLuint count = 0u;

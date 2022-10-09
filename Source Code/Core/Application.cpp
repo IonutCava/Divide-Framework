@@ -114,7 +114,7 @@ bool Application::step(bool& restartEngineOnClose) {
             restartEngineOnClose = false;
         }
 
-        Profiler::OnFrame();
+        PROFILE_FRAME( "Main Thread" );
         Attorney::KernelApplication::onLoop(_kernel);
         return true;
     }

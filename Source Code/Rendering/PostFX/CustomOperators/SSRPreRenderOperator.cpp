@@ -141,19 +141,16 @@ bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
         {
-            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-            binding._slot = 0;
-            As<DescriptorCombinedImageSampler>(binding._data) = { screenTex, screenAtt->descriptor()._samplerHash };
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, screenTex, screenAtt->descriptor()._samplerHash );
         }
         {
-            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-            binding._slot = 1;
-            As<DescriptorCombinedImageSampler>(binding._data) = { depthTex, depthAtt->descriptor()._samplerHash };
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, depthTex, depthAtt->descriptor()._samplerHash );
         }
         {
-            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-            binding._slot = 2;
-            As<DescriptorCombinedImageSampler>(binding._data) = { normalsTex, normalsAtt->descriptor()._samplerHash };
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 2u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, normalsTex, normalsAtt->descriptor()._samplerHash );
         }
 
     GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);

@@ -115,7 +115,7 @@ void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t ra
 
     assert(rangeInBytes > 0u && offsetInBytes + rangeInBytes <= _memoryBlock._size);
 
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
     PROFILE_TAG("Mapped", static_cast<bool>(_memoryBlock._ptr != nullptr));
     PROFILE_TAG("Offset", to_U32(offsetInBytes));
     PROFILE_TAG("Range", to_U32(rangeInBytes));
@@ -145,6 +145,8 @@ void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t ra
 }
 
 void glBufferImpl::readBytes(const size_t offsetInBytes, const size_t rangeInBytes, std::pair<bufferPtr, size_t> outData) {
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
     if (!_lockManager.waitForLockedRange(offsetInBytes, rangeInBytes)) {
         DIVIDE_UNEXPECTED_CALL();
     }

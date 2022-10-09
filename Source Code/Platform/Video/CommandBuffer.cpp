@@ -72,7 +72,7 @@ namespace
 
     [[nodiscard]] bool EraseEmptyCommands( CommandBuffer::CommandOrderContainer& commandOrder )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         const size_t initialSize = commandOrder.size();
         erase_if( commandOrder, []( const CommandBuffer::CommandEntry& entry ) noexcept { return entry._data == PolyContainerEntry::INVALID_ENTRY_ID;} );
@@ -83,7 +83,7 @@ namespace
 
     void CommandBuffer::add( const CommandBuffer& other )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         _commands.reserveAdditional( other._commands );
 
@@ -96,7 +96,7 @@ namespace
 
     void CommandBuffer::batch()
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         if ( _batched )
         {
@@ -108,7 +108,7 @@ namespace
         CommandBase* prevCommand = nullptr;
         do
         {
-            PROFILE_SCOPE( "TRY_MERGE_LOOP" );
+            PROFILE_SCOPE( "TRY_MERGE_LOOP", Profiler::Category::Graphics );
 
             bool tryMerge = true;
             while ( tryMerge )
@@ -123,7 +123,7 @@ namespace
                         continue;
                     }
 
-                    PROFILE_SCOPE( "TRY_MERGE_LOOP_STEP" );
+                    PROFILE_SCOPE( "TRY_MERGE_LOOP_STEP", Profiler::Category::Graphics );
 
                     const CommandType cmdType = static_cast<CommandType>(entry._typeIndex);
                     CommandBase* crtCommand = get<CommandBase>( entry );
@@ -234,7 +234,7 @@ namespace
             return;
         }
 
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         const Pipeline* prevPipeline = nullptr;
         const Rect<I32>* prevScissorRect = nullptr;
@@ -252,7 +252,7 @@ namespace
             {
                 case CommandType::DRAW_COMMANDS:
                 {
-                    PROFILE_SCOPE( "Clean Draw Commands" );
+                    PROFILE_SCOPE( "Clean Draw Commands", Profiler::Category::Graphics );
 
                     DrawCommand::CommandContainer& cmds = get<DrawCommand>( cmd )->_drawCommands;
                     if ( cmds.size() == 1 )
@@ -266,7 +266,7 @@ namespace
                 } break;
                 case CommandType::BIND_PIPELINE:
                 {
-                    PROFILE_SCOPE( "Clean Pipelines" );
+                    PROFILE_SCOPE( "Clean Pipelines", Profiler::Category::Graphics );
 
                     const Pipeline* pipeline = get<BindPipelineCommand>( cmd )->_pipeline;
                     // If the current pipeline is identical to the previous one, remove it
@@ -281,13 +281,13 @@ namespace
                 }break;
                 case CommandType::SEND_PUSH_CONSTANTS:
                 {
-                    PROFILE_SCOPE( "Clean Push Constants" );
+                    PROFILE_SCOPE( "Clean Push Constants", Profiler::Category::Graphics );
 
                     erase = get<SendPushConstantsCommand>( cmd )->_constants.empty();
                 }break;
                 case CommandType::BIND_SHADER_RESOURCES:
                 {
-                    PROFILE_SCOPE( "Clean Descriptor Sets" );
+                    PROFILE_SCOPE( "Clean Descriptor Sets", Profiler::Category::Graphics );
 
                     auto bindCmd = get<BindShaderResourcesCommand>(cmd);
                     if ( bindCmd->_usage != DescriptorSetUsage::COUNT && (prevDescriptorSet == nullptr || *prevDescriptorSet != bindCmd->_bindings) )
@@ -309,7 +309,7 @@ namespace
                 } break;
                 case CommandType::DRAW_TEXT:
                 {
-                    PROFILE_SCOPE( "Clean Draw Text" );
+                    PROFILE_SCOPE( "Clean Draw Text", Profiler::Category::Graphics );
 
                     const TextElementBatch& textBatch = get<DrawTextCommand>( cmd )->_batch;
 
@@ -325,7 +325,7 @@ namespace
                 }break;
                 case CommandType::SET_SCISSOR:
                 {
-                    PROFILE_SCOPE( "Clean Scissor" );
+                    PROFILE_SCOPE( "Clean Scissor", Profiler::Category::Graphics );
 
                     const Rect<I32>& scissorRect = get<SetScissorCommand>( cmd )->_rect;
                     if ( prevScissorRect == nullptr || *prevScissorRect != scissorRect )
@@ -347,7 +347,7 @@ namespace
                 } break;
                 case CommandType::SET_VIEWPORT:
                 {
-                    PROFILE_SCOPE( "Clean Viewport" );
+                    PROFILE_SCOPE( "Clean Viewport", Profiler::Category::Graphics );
 
                     const Rect<I32>& viewportRect = get<SetViewportCommand>( cmd )->_viewport;
 
@@ -372,7 +372,8 @@ namespace
         }
 
         {
-        PROFILE_SCOPE( "Remove redundant Pipelines" );
+            PROFILE_SCOPE( "Remove redundant Pipelines", Profiler::Category::Graphics );
+
             // Remove redundant pipeline changes
             auto* entry = eastl::next( begin( _commandOrder ) );
             for ( ; entry != cend( _commandOrder ); ++entry )
@@ -389,7 +390,7 @@ namespace
             }
         }
         {
-            PROFILE_SCOPE( "Remove invalid commands" );
+            PROFILE_SCOPE( "Remove invalid commands", Profiler::Category::Graphics );
             erase_if( _commandOrder, []( const CommandEntry& entry ) noexcept
                         {
                             return entry._data == PolyContainerEntry::INVALID_ENTRY_ID;
@@ -414,7 +415,7 @@ namespace
             return { ErrorType::NONE, 0u };
         }
 
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         size_t cmdIndex = 0u;
         bool pushedPass = false, pushedQuery = false;
@@ -636,7 +637,7 @@ namespace
 
     bool Merge( DrawCommand* prevCommand, DrawCommand* crtCommand )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         DrawCommand::CommandContainer& commands = prevCommand->_drawCommands;
         commands.insert( cend( commands ),
@@ -645,7 +646,7 @@ namespace
         efficient_clear( crtCommand->_drawCommands );
 
         {
-            PROFILE_SCOPE( "Merge by offset" );
+            PROFILE_SCOPE( "Merge by offset", Profiler::Category::Graphics );
             eastl::sort( begin( commands ),
                             end( commands ),
                             []( const GenericDrawCommand& a, const GenericDrawCommand& b ) noexcept -> bool

@@ -49,7 +49,7 @@ namespace Divide
 
     void OutputWindow::drawInternal()
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
         ImGui::PushStyleColor( ImGuiCol_ChildBg, ImVec4( 0.3f, 0.3f, 0.3f, 1.0f ) );
         {
@@ -108,7 +108,7 @@ namespace Divide
             ImGui::LogToClipboard();
         }
         {
-            PROFILE_SCOPE( "Print Scrolling region " );
+            PROFILE_SCOPE( "Print Scrolling region ", Profiler::Category::GUI );
 
             static string currentMessage;
 

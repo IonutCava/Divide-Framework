@@ -824,7 +824,7 @@ namespace Divide {
     }
 
     void VK_API::drawText(const TextElementBatch& batch) {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         BlendingSettings textBlend{};
         textBlend.blendSrc(BlendProperty::SRC_ALPHA);
@@ -859,7 +859,7 @@ namespace Divide {
     }
 
     bool VK_API::draw(const GenericDrawCommand& cmd, VkCommandBuffer& cmdBuffer) const {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         if (cmd._sourceBuffer._id == 0) {
             U32 indexCount = 0u;
@@ -894,7 +894,7 @@ namespace Divide {
     }
 
     bool VK_API::bindShaderResources(const DescriptorSetUsage usage, const DescriptorSet& bindings) {
-        PROFILE_SCOPE("BIND_SHADER_RESOURCES");
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         auto builder = DescriptorBuilder::Begin(_descriptorLayoutCache.get(), _descriptorAllocator.get());
 
@@ -929,7 +929,14 @@ namespace Divide {
                         VkDescriptorBufferInfo& bufferInfo = BufferInfoStructs[bufferInfoStructIndex++];
                         bufferInfo.buffer = buffer;
                         bufferInfo.offset = bufferEntry._range._startOffset * bufferEntry._buffer->getPrimitiveSize();
-                        bufferInfo.offset += bufferEntry._buffer->getStartOffset(true);
+                        if ( bufferEntry._bufferQueueReadIndex == -1 )
+                        {
+                            bufferInfo.offset += bufferEntry._bufferQueueReadIndex * bufferEntry._buffer->alignedBufferSize();
+                        }
+                        else
+                        {
+                            bufferInfo.offset += bufferEntry._buffer->getStartOffset( true );
+                        }
                         bufferInfo.range = bufferEntry._range._length * bufferEntry._buffer->getPrimitiveSize();
 
                         const VkDescriptorType descType = bufferUsage == ShaderBuffer::Usage::CONSTANT_BUFFER
@@ -1179,13 +1186,13 @@ namespace Divide {
         static GFX::MemoryBarrierCommand pushConstantsMemCommand{};
         static bool pushConstantsNeedLock = false;
 
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
         const GFX::CommandType cmdType = cmd->Type();
         PROFILE_TAG("Type", to_base(cmdType));
 
-        PROFILE_SCOPE(GFX::Names::commandType[to_base(cmdType)]);
+        PROFILE_SCOPE(GFX::Names::commandType[to_base(cmdType)], Profiler::Category::Graphics );
         if (!s_transferQueue._requests.empty() && GFXDevice::IsSubmitCommand(cmdType))
         {
             UniqueLock<Mutex> w_lock(s_transferQueue._lock);
@@ -1371,11 +1378,11 @@ namespace Divide {
 
                 if (crtCmd->_layerRange.x == 0 && crtCmd->_layerRange.y == crtCmd->_texture->descriptor().layerCount())
                 {
-                    PROFILE_SCOPE("VK: In-place computation - Full");
+                    PROFILE_SCOPE("VK: In-place computation - Full", Profiler::Category::Graphics );
                 }
                 else
                 {
-                    PROFILE_SCOPE("VK: View - based computation");
+                    PROFILE_SCOPE("VK: View - based computation", Profiler::Category::Graphics );
                 }
             }break;
             case GFX::CommandType::DRAW_TEXT:

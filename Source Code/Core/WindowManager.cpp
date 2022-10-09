@@ -324,7 +324,7 @@ bool WindowManager::destroyWindow(DisplayWindow*& window) {
 
 void WindowManager::update(const U64 deltaTimeUS)
 {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
     for (DisplayWindow* win : _windows)
     {

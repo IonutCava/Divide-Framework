@@ -264,7 +264,7 @@ namespace{
 }
 
 void WarScene::updateSceneStateInternal(const U64 deltaTimeUS) {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
     if (!_sceneReady) {
         return;
@@ -583,6 +583,7 @@ bool WarScene::load() {
                                                to_base(ComponentType::BOUNDS) |
                                                to_base(ComponentType::NETWORKING);
     SceneGraphNode* pointLightNode = _sceneGraph->getRoot()->addChildNode(lightParentNodeDescriptor);
+    pointLightNode->get<BoundsComponent>()->collisionsEnabled(false);
 
     SceneGraphNodeDescriptor lightNodeDescriptor;
     lightNodeDescriptor._serialize = false;
@@ -604,6 +605,7 @@ bool WarScene::load() {
             pointLight->setDiffuseColour(DefaultColours::RANDOM().rgb);
             TransformComponent* tComp = lightSGN->get<TransformComponent>();
             tComp->setPosition(vec3<F32>(-21.0f + 115 * row, 20.0f, -21.0f + 115 * col));
+            lightSGN->get<BoundsComponent>()->collisionsEnabled(false);
             _lightNodeTransforms.push_back(tComp);
         }
     }

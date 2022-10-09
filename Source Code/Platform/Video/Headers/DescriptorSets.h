@@ -37,11 +37,13 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Headers/Hashable.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/BufferRange.h"
 
-namespace Divide {
+namespace Divide
+{
     class Texture;
     class ShaderBuffer;
 
-    enum class DescriptorSetBindingType : U8 {
+    enum class DescriptorSetBindingType : U8
+    {
         COMBINED_IMAGE_SAMPLER,
         IMAGE,
         UNIFORM_BUFFER,
@@ -49,16 +51,18 @@ namespace Divide {
         COUNT
     };
 
-    struct TextureWrapper final : Hashable {
+    struct TextureWrapper final : Hashable
+    {
         CEGUI::Texture* _ceguiTex{ nullptr };
-        Texture* _internalTexture{nullptr};
+        Texture* _internalTexture{ nullptr };
 
         [[nodiscard]] size_t getHash() const noexcept override;
     };
 
     struct ImageView final : Hashable
     {
-        struct Descriptor final : Hashable {
+        struct Descriptor final : Hashable
+        {
             U8 _msaaSamples{ 0u };
             GFXDataFormat _dataType{ GFXDataFormat::COUNT };
             GFXImageFormat _baseFormat{ GFXImageFormat::COUNT };
@@ -70,8 +74,8 @@ namespace Divide {
         } _descriptor;
 
         TextureWrapper _srcTexture;
-        vec2<U16> _mipLevels{0u, U16_MAX};  //Offset, Count
-        vec2<U16> _layerRange{0u, U16_MAX}; //Offset, Count
+        vec2<U16> _mipLevels{ 0u, U16_MAX };  //Offset, Count
+        vec2<U16> _layerRange{ 0u, U16_MAX }; //Offset, Count
 
         ImageUsage _usage{ ImageUsage::UNDEFINED };
 
@@ -80,23 +84,22 @@ namespace Divide {
         [[nodiscard]] bool isDefaultView() const noexcept;
 
         [[nodiscard]] TextureType targetType() const noexcept;
-                      void targetType(TextureType type) noexcept;
+        void targetType( TextureType type ) noexcept;
 
-    private:
+        private:
         friend class Texture;
         bool _isDefaultView{ false };
         TextureType _targetType{ TextureType::COUNT };
     };
 
-    struct DescriptorCombinedImageSampler {
+    struct DescriptorCombinedImageSampler
+    {
         ImageView _image{};
         size_t _samplerHash{ 0u };
     };
 
-    struct ShaderBufferEntry {
-        ShaderBufferEntry() noexcept = default;
-        ShaderBufferEntry(ShaderBuffer& buffer, const BufferRange& range) noexcept;
-
+    struct ShaderBufferEntry
+    {
         ShaderBuffer* _buffer{ nullptr };
         BufferRange _range{};
         I32 _bufferQueueReadIndex{ 0u };
@@ -104,30 +107,35 @@ namespace Divide {
 
     using DescriptorSetBindingData = eastl::variant<eastl::monostate, ShaderBufferEntry, DescriptorCombinedImageSampler, ImageView>;
 
-    struct DescriptorSetBinding {
-        DescriptorSetBinding() = default;
-        explicit DescriptorSetBinding(const U16 stageMask) : _shaderStageVisibility(stageMask) {}
-        explicit DescriptorSetBinding(const ShaderStageVisibility stageVisibility) : DescriptorSetBinding(to_base(stageVisibility)) {}
+    void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer, BufferRange range );
+    void Set( DescriptorSetBindingData& dataInOut, const ImageView& view );
+    void Set( DescriptorSetBindingData& dataInOut, const ImageView& imageView, size_t samplerHash );
+    void Set( DescriptorSetBindingData& dataInOut, const DescriptorCombinedImageSampler& combinedImageSampler );
 
+
+    struct DescriptorSetBinding
+    {
         DescriptorSetBindingData _data{};
-        U16 _shaderStageVisibility{ to_base(ShaderStageVisibility::COUNT) };
+        U16 _shaderStageVisibility{ to_base( ShaderStageVisibility::COUNT ) };
         U8 _slot{ 0u };
     };
-
     using DescriptorSet = eastl::fixed_vector<DescriptorSetBinding, 16, false>;
 
-    bool operator==(const TextureWrapper& lhs, const TextureWrapper& rhs) noexcept;
-    bool operator!=(const TextureWrapper& lhs, const TextureWrapper& rhs) noexcept;
-    bool operator==(const ImageView& lhs, const ImageView& rhs) noexcept;
-    bool operator!=(const ImageView& lhs, const ImageView& rhs) noexcept;
-    bool operator==(const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs) noexcept;
-    bool operator!=(const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs) noexcept;
-    bool operator==(const ShaderBufferEntry& lhs, const ShaderBufferEntry& rhs) noexcept;
-    bool operator!=(const ShaderBufferEntry& lhs, const ShaderBufferEntry& rhs) noexcept;
-    bool operator==(const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs) noexcept;
-    bool operator!=(const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs) noexcept;
-    bool operator==(const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs) noexcept;
-    bool operator!=(const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs) noexcept;
+    [[nodiscard]] DescriptorSetBinding& AddBinding(DescriptorSet& setInOut, U8 slot, U16 stageVisibilityMask); 
+    [[nodiscard]] DescriptorSetBinding& AddBinding(DescriptorSet& setInOut, U8 slot, ShaderStageVisibility stageVisibility);
+
+    bool operator==( const TextureWrapper& lhs, const TextureWrapper& rhs ) noexcept;
+    bool operator!=( const TextureWrapper& lhs, const TextureWrapper& rhs ) noexcept;
+    bool operator==( const ImageView& lhs, const ImageView& rhs ) noexcept;
+    bool operator!=( const ImageView& lhs, const ImageView& rhs ) noexcept;
+    bool operator==( const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs ) noexcept;
+    bool operator!=( const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs ) noexcept;
+    bool operator==( const ShaderBufferEntry& lhs, const ShaderBufferEntry& rhs ) noexcept;
+    bool operator!=( const ShaderBufferEntry& lhs, const ShaderBufferEntry& rhs ) noexcept;
+    bool operator==( const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs ) noexcept;
+    bool operator!=( const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs ) noexcept;
+    bool operator==( const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs ) noexcept;
+    bool operator!=( const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs ) noexcept;
 
     [[nodiscard]] bool IsSet( const DescriptorSetBindingData& data ) noexcept;
     template<typename T>

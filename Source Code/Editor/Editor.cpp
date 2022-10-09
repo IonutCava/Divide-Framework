@@ -640,6 +640,8 @@ namespace Divide
         {
             if ( PlatformContext* context = (PlatformContext*)platformContext )
             {
+                PROFILE_SCOPE( "Editor:: Render Platform Window", Profiler::Category::GUI);
+
                 Editor* editor = &context->editor();
 
                 ImGui::SetCurrentContext(
@@ -963,7 +965,7 @@ namespace Divide
 
     void Editor::update( const U64 deltaTimeUS )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
         static bool allGizmosEnabled = false;
 
@@ -1113,7 +1115,7 @@ namespace Divide
 
     bool Editor::render()
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos( viewport->WorkPos );
@@ -1192,6 +1194,8 @@ namespace Divide
 
     bool Editor::isNodeInView( const SceneGraphNode& node ) const noexcept
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
+
         const I64 targetGUID = node.getGUID();
 
         const auto& visibleNodes = _context.kernel().sceneManager()->getRenderedNodeList();
@@ -1212,6 +1216,8 @@ namespace Divide
                              const RenderTargetID target,
                              GFX::CommandBuffer& bufferInOut )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
+
         const bool infiniteGridEnabled = stage == RenderStage::NODE_PREVIEW
                                                 ? infiniteGridEnabledNode()
                                                 : infiniteGridEnabledScene();
@@ -1254,12 +1260,13 @@ namespace Divide
                                     const Rect<I32>& targetViewport,
                                     GFX::CommandBuffer& bufferInOut ) const
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
         Attorney::GizmoEditor::render( _gizmo.get(), camera, targetViewport, bufferInOut );
     }
 
     bool Editor::framePostRender( [[maybe_unused]] const FrameEvent& evt )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
         for ( DockedWindow* window : _dockedWindows )
         {
@@ -1354,6 +1361,8 @@ namespace Divide
                                  const bool editorPass,
                                  GFX::CommandBuffer& bufferInOut ) const
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
+
         static I32 s_maxCommandCount = 16u;
 
         constexpr U32 MaxVertices = (1 << 16);
@@ -1499,9 +1508,9 @@ namespace Divide
                         {
                             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
                             cmd->_usage = DescriptorSetUsage::PER_DRAW;
-                            auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-                            binding._slot = 0;
-                            As<DescriptorCombinedImageSampler>( binding._data) = { tex->sampledView(), _editorSamplerHash };
+
+                            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+                            Set(binding._data, tex->sampledView(), _editorSamplerHash );
                         }
 
                         drawCmd._cmd.indexCount = pcmd.ElemCount;
@@ -2037,6 +2046,8 @@ namespace Divide
 
     void Editor::onWindowSizeChange( const SizeChangeParams& params )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
+
         if ( !isInit() )
         {
             return;
@@ -2100,6 +2111,8 @@ namespace Divide
 
     bool Editor::switchScene( const char* scenePath )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
+
         static CircularBuffer<Str256> tempBuffer( 10 );
 
         if ( Util::IsEmptyOrNull( scenePath ) )
@@ -2181,6 +2194,8 @@ namespace Divide
             return false;
         }
 
+        PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
+
         static std::array<bool, 4> state = { true, true, true, true };
 
         const ImDrawCallback toggleColours =  []( [[maybe_unused]] const ImDrawList* parent_list, const ImDrawCmd* imCmd, void* renderData ) -> void
@@ -2206,8 +2221,7 @@ namespace Divide
 
                     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( buffer );
                     cmd->_usage = DescriptorSetUsage::PER_DRAW;
-                    auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-                    binding._slot = 1;
+                    DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
 
                     if ( isTextureCube )
                     {
@@ -2216,11 +2230,11 @@ namespace Divide
                                                                           { 0u, data._texture->numLayers() * 6u },
                                                                           ImageUsage::SHADER_SAMPLE);
 
-                        As<DescriptorCombinedImageSampler>( binding._data ) = { texView, texSampler };
+                        Set( binding._data, texView, texSampler );
                     }
                     else
                     {
-                        As<DescriptorCombinedImageSampler>( binding._data ) = { data._texture->sampledView(), texSampler };
+                        Set( binding._data, data._texture->sampledView(), texSampler );
                     }
                 }
             }
@@ -2416,6 +2430,9 @@ namespace Divide
         {
             return false;
         }
+
+        PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
+
         if ( quick )
         {
             const Camera* playerCam = Attorney::SceneManagerCameraAccessor::playerCamera( _context.kernel().sceneManager() );
@@ -2447,6 +2464,8 @@ namespace Divide
         {
             return;
         }
+
+        PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
         static bool wasClosed = false;
         static vec3<F32> rotation( 0.0f );

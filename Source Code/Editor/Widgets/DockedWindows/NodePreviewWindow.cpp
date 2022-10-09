@@ -70,7 +70,7 @@ namespace Divide
 
     void NodePreviewWindow::drawInternal( Texture* tex )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
         static TextureCallbackData defaultData{}, noAlphaBlendData{};
         defaultData._gfxDevice = &_parent.context().gfx();

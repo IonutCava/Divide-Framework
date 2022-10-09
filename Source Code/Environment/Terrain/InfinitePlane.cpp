@@ -121,7 +121,7 @@ namespace Divide
 
     void InfinitePlane::sceneUpdate( const U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sceneState )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         TransformComponent* tComp = sgn->get<TransformComponent>();
 

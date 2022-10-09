@@ -306,7 +306,8 @@ void SceneEnvironmentProbePool::Prepare(GFX::CommandBuffer& bufferInOut) {
 }
 
 void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);
+
     if (s_lutTextureDirty) {
         PipelineDescriptor pipelineDescriptor{};
         pipelineDescriptor._stateHash = context.get2DStateBlock();
@@ -321,9 +322,8 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
-        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
-        binding._slot = 0;
-        As<ImageView>(binding._data) = brdfLutTexture->getView(TextureType::TEXTURE_2D, {0u, 1u}, { 0u, 1u }, ImageUsage::SHADER_WRITE);
+        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::COMPUTE );
+        Set(binding._data, brdfLutTexture->getView(TextureType::TEXTURE_2D, {0u, 1u}, { 0u, 1u }, ImageUsage::SHADER_WRITE));
 
         const U32 groupsX = to_U32(std::ceil(s_LUTTextureSize / to_F32(8)));
         const U32 groupsY = to_U32(std::ceil(s_LUTTextureSize / to_F32(8)));
@@ -388,25 +388,21 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_FRAME;
         {
-            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
-            binding._slot = 0;
-            As<DescriptorCombinedImageSampler>(binding._data) = { prefiltered->texture()->sampledView(), prefiltered->descriptor()._samplerHash };
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::COMPUTE );
+            Set( binding._data, prefiltered->texture()->sampledView(), prefiltered->descriptor()._samplerHash );
         }
         {
-            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
-            binding._slot = 1;
-            As<DescriptorCombinedImageSampler>(binding._data) = { irradiance->texture()->sampledView(), irradiance->descriptor()._samplerHash };
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::COMPUTE );
+            Set( binding._data, irradiance->texture()->sampledView(), irradiance->descriptor()._samplerHash );
         }
         {
-            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
-            binding._slot = 2;
-            As<DescriptorCombinedImageSampler>(binding._data) = { brdfLut->texture()->sampledView(), brdfLut->descriptor()._samplerHash };
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 2u, ShaderStageVisibility::COMPUTE );
+            Set( binding._data, brdfLut->texture()->sampledView(), brdfLut->descriptor()._samplerHash );
         }
         {
             RTAttachment* targetAtt = context.renderTargetPool().getRenderTarget( RenderTargetNames::REFLECTION_CUBE )->getAttachment( RTAttachmentType::COLOUR );
-            auto& binding = cmd->_bindings.emplace_back( ShaderStageVisibility::FRAGMENT );
-            binding._slot = 3;
-            As<DescriptorCombinedImageSampler>(binding._data) = { targetAtt->texture()->sampledView(), targetAtt->descriptor()._samplerHash };
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 3u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, targetAtt->texture()->sampledView(), targetAtt->descriptor()._samplerHash );
         }
     }
 }
@@ -422,7 +418,7 @@ void SceneEnvironmentProbePool::ProcessEnvironmentMap(GFXDevice& context, const 
 
 void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal(GFXDevice& context, const U16 layerID, ComputationStages& stage, GFX::CommandBuffer& bufferInOut)
 {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     // This entire sequence is based on this awesome blog post by Bruno Opsenica: https://bruop.github.io/ibl/
     switch (stage)
@@ -472,9 +468,8 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
     {
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
-        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
-        binding._slot = 0;
-        As<DescriptorCombinedImageSampler>(binding._data) = { sourceTex->sampledView(), sourceAtt->descriptor()._samplerHash };
+        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::COMPUTE );
+        Set( binding._data, sourceTex->sampledView(), sourceAtt->descriptor()._samplerHash );
     }
 
     ImageView destinationImage = destinationAtt->texture()->getView(TextureType::TEXTURE_CUBE_MAP, { 0u, 1u }, { 0u , U16_MAX }, ImageUsage::SHADER_WRITE);
@@ -493,9 +488,8 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(fastData);
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
-        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
-        binding._slot = 1u;
-        As<ImageView>(binding._data) = destinationImage;
+        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::COMPUTE );
+        Set(binding._data, destinationImage);
 
         // Dispatch enough groups to cover the entire _mipped_ face
         const U16 mipWidth = width / to_U16(std::pow(2.f, mipLevel));
@@ -526,14 +520,12 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
     cmd->_usage = DescriptorSetUsage::PER_DRAW;
     {
-        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
-        binding._slot = 0u;
-        As<DescriptorCombinedImageSampler>(binding._data) = { sourceAtt->texture()->sampledView(), sourceAtt->descriptor()._samplerHash };
+        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::COMPUTE );
+        Set( binding._data, sourceAtt->texture()->sampledView(), sourceAtt->descriptor()._samplerHash );
     }
     {
-        auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::COMPUTE);
-        binding._slot = 1u;
-        As<ImageView>(binding._data) = destinationAtt->texture()->getView(TextureType::TEXTURE_CUBE_MAP, { 0u, 1u }, { 0u , U16_MAX }, ImageUsage::SHADER_WRITE);
+        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::COMPUTE );
+        Set(binding._data, destinationAtt->texture()->getView(TextureType::TEXTURE_CUBE_MAP, { 0u, 1u }, { 0u , U16_MAX }, ImageUsage::SHADER_WRITE));
     }
 
     PushConstantsStruct fastData{};
@@ -665,7 +657,7 @@ void SceneEnvironmentProbePool::createDebugView(const U16 layerIndex) {
 }
 
 void SceneEnvironmentProbePool::onNodeUpdated(const SceneGraphNode& node) noexcept {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
     const BoundingSphere& bSphere = node.get<BoundsComponent>()->getBoundingSphere();
     lockProbeList();
@@ -682,7 +674,7 @@ void SceneEnvironmentProbePool::onNodeUpdated(const SceneGraphNode& node) noexce
 }
 
 void SceneEnvironmentProbePool::OnTimeOfDayChange(const SceneEnvironmentProbePool& probePool) noexcept {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
     probePool.lockProbeList();
     const EnvironmentProbeList& probes = probePool.getLocked();

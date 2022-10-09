@@ -568,14 +568,12 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
-                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-                binding._slot = 1;
-                As<DescriptorCombinedImageSampler>(binding._data) = { depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+                Set( binding._data, depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash );
             }
             {
-                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-                binding._slot = 2;
-                As<DescriptorCombinedImageSampler>(binding._data) = { normalsAtt->texture()->sampledView(), normalsAtt->descriptor()._samplerHash };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 2u, ShaderStageVisibility::FRAGMENT );
+                Set( binding._data, normalsAtt->texture()->sampledView(), normalsAtt->descriptor()._samplerHash );
             }
 
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
@@ -595,14 +593,12 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
-                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-                binding._slot = 0;
-                As<DescriptorCombinedImageSampler>(binding._data) = { _noiseTexture->sampledView(), _noiseSampler };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+                Set( binding._data, _noiseTexture->sampledView(), _noiseSampler );
             }
             {
-                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-                binding._slot = 1;
-                As<DescriptorCombinedImageSampler>(binding._data) = { halfDepthAtt->texture()->sampledView(), halfDepthAtt->descriptor()._samplerHash };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+                Set( binding._data, halfDepthAtt->texture()->sampledView(), halfDepthAtt->descriptor()._samplerHash );
             }
 
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
@@ -626,24 +622,20 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
-                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-                binding._slot = 0;
-                As<DescriptorCombinedImageSampler>(binding._data) = { halfResAOAtt->texture()->sampledView(), linearSampler.getHash() };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+                Set( binding._data, halfResAOAtt->texture()->sampledView(), linearSampler.getHash() );
             }
             {
-                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-                binding._slot = 1;
-                As<DescriptorCombinedImageSampler>(binding._data) = { depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+                Set( binding._data, depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash );
             }
             {
-                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-                binding._slot = 2;
-                As<DescriptorCombinedImageSampler>(binding._data) = { halfDepthAtt->texture()->sampledView(), halfDepthAtt->descriptor()._samplerHash };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 2u, ShaderStageVisibility::FRAGMENT );
+                Set( binding._data, halfDepthAtt->texture()->sampledView(), halfDepthAtt->descriptor()._samplerHash );
             }
             {
-                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-                binding._slot = 3;
-                As<DescriptorCombinedImageSampler>(binding._data) = { halfResAOAtt->texture()->sampledView(), halfResAOAtt->descriptor()._samplerHash };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 3u, ShaderStageVisibility::FRAGMENT );
+                Set( binding._data, halfResAOAtt->texture()->sampledView(), halfResAOAtt->descriptor()._samplerHash );
             }
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
@@ -661,19 +653,16 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
-                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-                binding._slot = 0;
-                As<DescriptorCombinedImageSampler>(binding._data) = { _noiseTexture->sampledView(), _noiseSampler };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+                Set( binding._data, _noiseTexture->sampledView(), _noiseSampler );
             }
             {
-                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-                binding._slot = 1;
-                As<DescriptorCombinedImageSampler>(binding._data) = { depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+                Set( binding._data, depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash );
             }
             {
-                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-                binding._slot = 2;
-                As<DescriptorCombinedImageSampler>(binding._data) = { normalsAtt->texture()->sampledView(), normalsAtt->descriptor()._samplerHash };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 2u, ShaderStageVisibility::FRAGMENT );
+                Set( binding._data, normalsAtt->texture()->sampledView(), normalsAtt->descriptor()._samplerHash );
             }
             GFX::EnqueueCommand(bufferInOut, _ssaoGenerateConstantsCmd);
 
@@ -703,19 +692,16 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
                 cmd->_usage = DescriptorSetUsage::PER_DRAW;
                 {
-                    auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-                    binding._slot = 0;
-                    As<DescriptorCombinedImageSampler>(binding._data) = { ssaoAtt->texture()->sampledView(), ssaoAtt->descriptor()._samplerHash };
+                    DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+                    Set( binding._data, ssaoAtt->texture()->sampledView(), ssaoAtt->descriptor()._samplerHash );
                 }
                 {
-                    auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-                    binding._slot = 1;
-                    As<DescriptorCombinedImageSampler>(binding._data) = { depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash };
+                    DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+                    Set( binding._data, depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash );
                 }
                 {
-                    auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-                    binding._slot = 2;
-                    As<DescriptorCombinedImageSampler>(binding._data) = { normalsAtt->texture()->sampledView(), normalsAtt->descriptor()._samplerHash };
+                    DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 2u, ShaderStageVisibility::FRAGMENT );
+                    Set( binding._data, normalsAtt->texture()->sampledView(), normalsAtt->descriptor()._samplerHash );
                 }
 
                 GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
@@ -734,19 +720,16 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
                 cmd->_usage = DescriptorSetUsage::PER_DRAW;
                 {
-                    auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-                    binding._slot = 0;
-                    As<DescriptorCombinedImageSampler>(binding._data) = { horizBlur->texture()->sampledView(), ssaoAtt->descriptor()._samplerHash };
+                    DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+                    Set( binding._data, horizBlur->texture()->sampledView(), ssaoAtt->descriptor()._samplerHash );
                 }
                 {
-                    auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-                    binding._slot = 1;
-                    As<DescriptorCombinedImageSampler>(binding._data) = { depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash };
+                    DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+                    Set( binding._data, depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash );
                 }
                 {
-                    auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-                    binding._slot = 2;
-                    As<DescriptorCombinedImageSampler>(binding._data) = { normalsAtt->texture()->sampledView(), normalsAtt->descriptor()._samplerHash };
+                    DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 2u, ShaderStageVisibility::FRAGMENT );
+                    Set( binding._data, normalsAtt->texture()->sampledView(), normalsAtt->descriptor()._samplerHash );
                 }
 
                 GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
@@ -764,9 +747,8 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
-                auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-                binding._slot = 0;
-                As<DescriptorCombinedImageSampler>(binding._data) = { ssaoAtt->texture()->sampledView(), ssaoAtt->descriptor()._samplerHash };
+                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+                Set( binding._data, ssaoAtt->texture()->sampledView(), ssaoAtt->descriptor()._samplerHash );
             }
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);

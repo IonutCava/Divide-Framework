@@ -56,7 +56,7 @@ void ShaderBuffer::readData(const BufferRange range, const std::pair<bufferPtr, 
 }
 
 void ShaderBuffer::readBytes(BufferRange range, std::pair<bufferPtr, size_t> outData) {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     DIVIDE_ASSERT(range._length > 0u &&
                   _params._hostVisible &&
@@ -73,7 +73,7 @@ BufferLock ShaderBuffer::clearBytes(const BufferRange range) {
 }
 
 BufferLock ShaderBuffer::writeBytes(BufferRange range, bufferPtr data) {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     DIVIDE_ASSERT(range._length > 0 &&
                   _params._updateFrequency != BufferUpdateFrequency::ONCE &&

@@ -181,7 +181,7 @@ SingleShadowMapGenerator::~SingleShadowMapGenerator()
 
 void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut)
 {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     const SpotLightComponent& spotLight = static_cast<SpotLightComponent&>(light);
 
@@ -221,7 +221,7 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
 
 void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::CommandBuffer& bufferInOut)
 {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     const RenderTargetHandle& handle = ShadowMap::getShadowMap(_type);
 
@@ -256,9 +256,8 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
-            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-            binding._slot = 0;
-            As<DescriptorCombinedImageSampler>(binding._data) = { shadowAtt->texture()->sampledView(), shadowAtt->descriptor()._samplerHash };
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, shadowAtt->texture()->sampledView(), shadowAtt->descriptor()._samplerHash );
         }
 
         _shaderConstants.data[0]._vec[1].x = 0.f;
@@ -275,9 +274,8 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
-            auto& binding = cmd->_bindings.emplace_back(ShaderStageVisibility::FRAGMENT);
-            binding._slot = 0;
-            As<DescriptorCombinedImageSampler>(binding._data) = { blurAtt->texture()->sampledView(), blurAtt->descriptor()._samplerHash };
+            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, blurAtt->texture()->sampledView(), blurAtt->descriptor()._samplerHash );
         }
 
         beginRenderPassCmd._target = handle._targetID;

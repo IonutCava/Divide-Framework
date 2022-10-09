@@ -422,7 +422,8 @@ namespace Divide
 
     vector<SceneGraphNode*> SceneManager::getNodesInScreenRect( const Rect<I32>& screenRect, const Camera& camera, const Rect<I32>& viewport ) const
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+
         constexpr std::array<SceneNodeType, 6> s_ignoredNodes = {
             SceneNodeType::TYPE_TRANSFORM,
             SceneNodeType::TYPE_WATER,
@@ -590,7 +591,7 @@ namespace Divide
 
     void SceneManager::updateSceneState( const U64 deltaGameTimeUS, const U64 deltaAppTimeUS )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         Scene& activeScene = getActiveScene();
         assert( activeScene.getState() == ResourceState::RES_LOADED );
@@ -666,7 +667,7 @@ namespace Divide
 
     void SceneManager::debugDraw( GFX::CommandBuffer& bufferInOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         Scene& activeScene = getActiveScene();
 
@@ -701,7 +702,7 @@ namespace Divide
 
     void SceneManager::currentPlayerPass( const U64 deltaTimeUS, const PlayerIndex idx )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         _currentPlayerPass = idx;
         Attorney::SceneManager::currentPlayerPass( getActiveScene(), deltaTimeUS, _currentPlayerPass );
@@ -715,7 +716,7 @@ namespace Divide
 
     BoundingSphere SceneManager::moveCameraToNode( Camera* camera, const SceneGraphNode* targetNode ) const
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         BoundingSphere bSphere;
         vec3<F32> targetPos = WORLD_Z_NEG_AXIS;
@@ -756,7 +757,7 @@ namespace Divide
     
     void SceneManager::getSortedReflectiveNodes( const Camera* camera, const RenderStage stage, const bool inView, VisibleNodeList<>& nodesOut ) const
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         static vector<SceneGraphNode*> allNodes = {};
         getActiveScene().sceneGraph()->getNodesByType( { SceneNodeType::TYPE_WATER, SceneNodeType::TYPE_SUBMESH, SceneNodeType::TYPE_SPHERE_3D, SceneNodeType::TYPE_BOX_3D, SceneNodeType::TYPE_QUAD_3D }, allNodes );
@@ -787,7 +788,7 @@ namespace Divide
 
     void SceneManager::getSortedRefractiveNodes( const Camera* camera, const RenderStage stage, const bool inView, VisibleNodeList<>& nodesOut ) const
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         static vector<SceneGraphNode*> allNodes = {};
         getActiveScene().sceneGraph()->getNodesByType( { SceneNodeType::TYPE_WATER, SceneNodeType::TYPE_SUBMESH, SceneNodeType::TYPE_SPHERE_3D, SceneNodeType::TYPE_BOX_3D, SceneNodeType::TYPE_QUAD_3D }, allNodes );
@@ -838,7 +839,7 @@ namespace Divide
 
     void SceneManager::cullSceneGraph( const NodeCullParams& params, const U16 cullFlags, VisibleNodeList<>& nodesOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         Time::ScopedTimer timer( *_sceneGraphCullTimers[to_U32( params._stage )] );
 
@@ -853,7 +854,7 @@ namespace Divide
 
     void SceneManager::findNode( const vec3<F32>& cameraEye, const I64 nodeGUID, VisibleNodeList<>& nodesOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         if ( nodeGUID != -1 )
         {
@@ -889,7 +890,7 @@ namespace Divide
 
     void SceneManager::prepareLightData( const RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         if ( stage != RenderStage::SHADOW )
         {
@@ -910,7 +911,7 @@ namespace Divide
 
     bool SceneManager::resetSelection( const PlayerIndex idx, const bool resetIfLocked )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         if ( Attorney::SceneManager::resetSelection( getActiveScene(), idx, resetIfLocked ) )
         {
@@ -926,7 +927,7 @@ namespace Divide
 
     void SceneManager::setSelected( const PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, const bool recursive )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         Attorney::SceneManager::setSelected( getActiveScene(), idx, SGNs, recursive );
         for ( auto& cbk : _selectionChangeCallbacks )
@@ -1212,7 +1213,7 @@ namespace Divide
 
     bool SceneManager::saveActiveScene( bool toCache, const bool deferred, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback, const char* sceneNameOverride )
     {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         const Scene& activeScene = getActiveScene();
 

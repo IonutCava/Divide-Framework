@@ -29,7 +29,7 @@ namespace Divide {
     }
 
     void RigidBodySystem::OnFrameStart() {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         Parent::OnFrameStart();
         for (RigidBodyComponent* comp : _componentCache) {

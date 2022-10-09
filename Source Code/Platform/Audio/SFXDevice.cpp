@@ -62,6 +62,8 @@ void SFXDevice::idle() {
 }
 
 void SFXDevice::beginFrame() {
+    PROFILE_SCOPE_AUTO( Divide::Profiler::Category::Sound );
+
     _api->beginFrame();
 
     if (_playNextInPlaylist) {
@@ -76,12 +78,15 @@ void SFXDevice::beginFrame() {
 }
 
 void SFXDevice::endFrame() {
+    PROFILE_SCOPE_AUTO( Divide::Profiler::Category::Sound );
+
     _api->endFrame();
 }
 
 void SFXDevice::playSound(const AudioDescriptor_ptr& sound) {
-    DIVIDE_ASSERT(_api != nullptr,
-                "SFXDevice error: playSound called without init!");
+    PROFILE_SCOPE_AUTO( Divide::Profiler::Category::Sound );
+
+    DIVIDE_ASSERT(_api != nullptr, "SFXDevice error: playSound called without init!");
 
     _api->playSound(sound);
 }
@@ -102,6 +107,8 @@ bool SFXDevice::playMusic(const U32 playlistEntry) {
 }
 
 bool SFXDevice::playMusic(const MusicPlaylist& playlist) {
+    PROFILE_SCOPE_AUTO( Divide::Profiler::Category::Sound );
+
     if (!playlist.second.empty()) {
         _currentPlaylist = playlist;
         _api->playMusic(_currentPlaylist.second[_currentPlaylist.first]);
@@ -112,40 +119,37 @@ bool SFXDevice::playMusic(const MusicPlaylist& playlist) {
 }
 
 void SFXDevice::playMusic(const AudioDescriptor_ptr& music) {
+    PROFILE_SCOPE_AUTO( Divide::Profiler::Category::Sound );
+
     _api->playMusic(music);
 }
 
 void SFXDevice::pauseMusic() {
-    DIVIDE_ASSERT(_api != nullptr,
-                "SFXDevice error: pauseMusic called without init!");
+    DIVIDE_ASSERT(_api != nullptr, "SFXDevice error: pauseMusic called without init!");
 
     _api->pauseMusic();
 }
 
 void SFXDevice::stopMusic() {
-    DIVIDE_ASSERT(_api != nullptr,
-                "SFXDevice error: stopMusic called without init!");
+    DIVIDE_ASSERT(_api != nullptr, "SFXDevice error: stopMusic called without init!");
 
     _api->stopMusic();
 }
 
 void SFXDevice::stopAllSounds() {
-    DIVIDE_ASSERT(_api != nullptr,
-                "SFXDevice error: stopAllSounds called without init!");
+    DIVIDE_ASSERT(_api != nullptr, "SFXDevice error: stopAllSounds called without init!");
 
     _api->stopAllSounds();
 }
 
 void SFXDevice::setMusicVolume(const I8 value) {
-    DIVIDE_ASSERT(_api != nullptr,
-                "SFXDevice error: setMusicVolume called without init!");
+    DIVIDE_ASSERT(_api != nullptr, "SFXDevice error: setMusicVolume called without init!");
 
     _api->setMusicVolume(value);
 }
 
 void SFXDevice::setSoundVolume(const I8 value) {
-    DIVIDE_ASSERT(_api != nullptr,
-                "SFXDevice error: setSoundVolume called without init!");
+    DIVIDE_ASSERT(_api != nullptr, "SFXDevice error: setSoundVolume called without init!");
 
     _api->setSoundVolume(value);
 }

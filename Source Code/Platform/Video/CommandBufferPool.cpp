@@ -44,16 +44,20 @@ ScopedCommandBuffer::~ScopedCommandBuffer()
 
 
 ScopedCommandBuffer AllocateScopedCommandBuffer() {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     return ScopedCommandBuffer();
 }
 
 CommandBuffer* AllocateCommandBuffer() {
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
     return g_sCommandBufferPool.allocateBuffer();
 }
 
 void DeallocateCommandBuffer(CommandBuffer*& buffer) {
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
     g_sCommandBufferPool.deallocateBuffer(buffer);
 }
 

@@ -27,7 +27,7 @@ PlatformContext::PlatformContext(Application& app, Kernel& kernel)
   , _paramHandler(MemoryManager_NEW ParamHandler())
   , _config(MemoryManager_NEW Configuration())         // XML based configuration
   , _entryData(MemoryManager_NEW XMLEntryData())       // Initial XML data
-  , _debug(MemoryManager_NEW DebugInterface(_kernel))  // Debug Interface
+  , _debug(MemoryManager_NEW DebugInterface())         // Debug Interface
   , _inputHandler(MemoryManager_NEW Input::InputHandler(_kernel, _app))
   , _gfx(MemoryManager_NEW GFXDevice(_kernel))         // Video
   , _gui(MemoryManager_NEW GUI(_kernel))               // Audio
@@ -67,7 +67,7 @@ void PlatformContext::terminate() {
 }
 
 void PlatformContext::beginFrame(const U32 componentMask) {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::IO );
 
     if (TestBit(componentMask, SystemComponentType::GFXDevice)) {
         _gfx->beginFrame(*app().windowManager().mainWindow(), true);
@@ -86,7 +86,7 @@ void PlatformContext::beginFrame(const U32 componentMask) {
 }
 
 void PlatformContext::idle(const bool fast, const U32 componentMask) {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::IO );
 
     for (TaskPool* pool : _taskPool) {
         pool->flushCallbackQueue();
@@ -108,7 +108,7 @@ void PlatformContext::idle(const bool fast, const U32 componentMask) {
         _gui->idle();
     }
     if (TestBit(componentMask, SystemComponentType::DebugInterface)) {
-        _debug->idle();
+        _debug->idle(*this);
     }
     if_constexpr(Config::Build::ENABLE_EDITOR) {
         if (TestBit(componentMask, SystemComponentType::Editor)) {
@@ -118,7 +118,7 @@ void PlatformContext::idle(const bool fast, const U32 componentMask) {
 }
 
 void PlatformContext::endFrame(const U32 componentMask) {
-    PROFILE_SCOPE();
+    PROFILE_SCOPE_AUTO( Profiler::Category::IO );
 
     if (TestBit(componentMask, SystemComponentType::GFXDevice)) {
         _gfx->endFrame(*app().windowManager().mainWindow(), true);

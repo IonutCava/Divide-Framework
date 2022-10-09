@@ -16,7 +16,7 @@ namespace Divide {
     }
 
     void AnimationSystem::PreUpdate(const F32 dt) {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         Parent::PreUpdate(dt);
 
@@ -30,7 +30,7 @@ namespace Divide {
     }
 
     void AnimationSystem::Update(const F32 dt) {
-        PROFILE_SCOPE();
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         Parent::Update(dt);
 
