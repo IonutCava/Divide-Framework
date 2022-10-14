@@ -35,7 +35,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Networking/Headers/WorldPacket.h"
 
-#include <boost/asio/io_service.hpp>
+#include <boost/asio/io_context.hpp>
 
 //----------------------------------------------------------------------
 namespace Divide {
@@ -55,15 +55,14 @@ class Server {
     void close();
 
   private:
-    void handle_accept(const tcp_session_tpl_ptr& session,
-                       const boost::system::error_code& ec);
+    void handle_accept(const tcp_session_tpl_ptr& session, const boost::system::error_code& ec);
 
   private:
-    boost::asio::io_service io_service_;
-    boost::scoped_ptr<std::thread> thread_;
-    boost::asio::ip::tcp::acceptor* acceptor_;
+    boost::asio::io_context _ioService;
+    eastl::unique_ptr<std::thread> _thread;
+    tcp_acceptor* _acceptor{nullptr};
     channel_ptr _channel;
-    bool _debugOutput = false;
+    bool _debugOutput{false};
 
 };
 

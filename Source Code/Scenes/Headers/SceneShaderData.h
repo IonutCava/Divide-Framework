@@ -94,10 +94,10 @@ class SceneShaderData
 
     void sunDetails(const vec3<F32>& sunPosition, const FColour3& colour) noexcept
     {
-        if (_sceneBufferData._sunPosition != sunPosition ||
-            _sceneBufferData._sunColour != colour)
+        if (_sceneBufferData._sunPosition.xyz != sunPosition ||
+            _sceneBufferData._sunColour.xyz != colour)
         {
-            _sceneBufferData._sunPosition.set(sunPosition);
+            _sceneBufferData._sunPosition.xyz.set(sunPosition);
             _sceneBufferData._sunColour.set(colour);
             _sceneDataDirty = true;
         }

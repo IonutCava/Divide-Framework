@@ -4,7 +4,6 @@
 #include "Headers/OPCodesTpl.h"
 
 #include "Networking/Headers/ASIO.h"
-#include "Networking/Headers/Strand.h"
 
 #include "Core/Headers/StringHelper.h"
 
@@ -18,15 +17,15 @@
 
 namespace Divide {
 
-tcp_session_tpl::tcp_session_tpl(boost::asio::io_service& io_service, channel& ch)
+tcp_session_tpl::tcp_session_tpl(boost::asio::io_context& io_service, channel& ch)
     : _header(0),
       _channel(ch),
       _socket(io_service),
-      _inputDeadline(io_service),
-      _nonEmptyOutputQueue(io_service),
-      _outputDeadline(io_service),
+      _inputDeadline(io_service.get_executor() ),
+      _nonEmptyOutputQueue(io_service.get_executor()),
+      _outputDeadline(io_service.get_executor() ),
       _startTime(time(nullptr)),
-      _strand(eastl::make_unique<Strand>(io_service))
+      _strand(eastl::make_unique<boost::asio::io_context::strand>(io_service))
 {
     _inputDeadline.expires_at(boost::posix_time::pos_infin);
     _outputDeadline.expires_at(boost::posix_time::pos_infin);
@@ -38,11 +37,11 @@ void tcp_session_tpl::start() {
 
     start_read();
 
-    _inputDeadline.async_wait(_strand->get().wrap([&](const auto) {check_deadline(&_inputDeadline); }));
+    _inputDeadline.async_wait(_strand->wrap([&](const auto) {check_deadline(&_inputDeadline); }));
 
     await_output();
 
-    _outputDeadline.async_wait(_strand->get().wrap([&](const auto) {check_deadline(&_outputDeadline); }));
+    _outputDeadline.async_wait(_strand->wrap([&](const auto) {check_deadline(&_outputDeadline); }));
 }
 
 void tcp_session_tpl::stop() {
@@ -74,7 +73,7 @@ void tcp_session_tpl::start_read() {
     async_read(
         _socket, 
         boost::asio::buffer(&_header, sizeof _header),
-        _strand->get().wrap(
+        _strand->wrap(
             [&](const boost::system::error_code ec, const std::size_t N) {
                 handle_read_body(ec, N);
             }));
@@ -89,7 +88,7 @@ void tcp_session_tpl::handle_read_body(const boost::system::error_code& ec, [[ma
         _inputDeadline.expires_from_now(boost::posix_time::seconds(30));
         async_read(
             _socket, _inputBuffer.prepare(_header),
-            _strand->get().wrap(
+            _strand->wrap(
                 [&](const boost::system::error_code code, const std::size_t N) {
                     handle_read_packet(code, N);
                 }));
@@ -144,12 +143,12 @@ void tcp_session_tpl::start_write() {
     if (p.opcode() == OPCodes::SMSG_SEND_FILE) {
         async_write(
             _socket, buffers,
-            _strand->get().wrap(
+            _strand->wrap(
                 [&](const boost::system::error_code code, const size_t) {handle_write_file(code); }));
     } else {
         async_write(
             _socket, buffers,
-            _strand->get().wrap(
+            _strand->wrap(
                 [&](const boost::system::error_code code, const size_t) {handle_write(code); }));
     }
 }
@@ -176,7 +175,7 @@ void tcp_session_tpl::handle_write_file([[maybe_unused]] const boost::system::er
     _outputFileQueue.pop_front();
     async_write(_socket,
                 request_,
-                _strand->get().wrap([&](const boost::system::error_code code, const size_t) {handle_write(code); }));
+                _strand->wrap([&](const boost::system::error_code code, const size_t) {handle_write(code); }));
 }
 
 void tcp_session_tpl::handle_write(const boost::system::error_code& ec) {
@@ -203,7 +202,7 @@ void tcp_session_tpl::await_output() {
     }
 }
 
-void tcp_session_tpl::check_deadline(boost::asio::deadline_timer* deadline) {
+void tcp_session_tpl::check_deadline( deadline_timer* deadline) {
     if (stopped()) return;
 
     // Check whether the deadline has passed. We compare the deadline against
@@ -223,7 +222,7 @@ void tcp_session_tpl::check_deadline(boost::asio::deadline_timer* deadline) {
 //                                     UDP                                           //
 ///////////////////////////////////////////////////////////////////////////////////////
 
-udp_broadcaster::udp_broadcaster(boost::asio::io_service& io_service,
+udp_broadcaster::udp_broadcaster(boost::asio::io_context& io_service,
                       const boost::asio::ip::udp::endpoint& broadcast_endpoint)
     : socket_(io_service) {
     socket_.connect(broadcast_endpoint);

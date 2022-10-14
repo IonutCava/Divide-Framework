@@ -247,7 +247,7 @@
       <CompileAs>CompileAsCpp</CompileAs>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
@@ -314,7 +314,7 @@ $(TargetPath) nopause</Command>
       <CompileAs>CompileAsCpp</CompileAs>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
@@ -380,7 +380,7 @@ $(TargetPath) nopause</Command>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <EnableModules>true</EnableModules>
       <AdditionalOptions> /Zc:twoPhase- /Zc:__cplusplus</AdditionalOptions>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
@@ -440,7 +440,7 @@ $(TargetPath) nopause</Command>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <EnableModules>true</EnableModules>
       <AdditionalOptions> /Zc:twoPhase- /Zc:__cplusplus</AdditionalOptions>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
@@ -502,7 +502,7 @@ $(TargetPath) nopause</Command>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <EnableModules>true</EnableModules>
       <AdditionalOptions> /Zc:__cplusplus</AdditionalOptions>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
@@ -563,7 +563,7 @@ $(TargetPath) nopause</Command>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <EnableModules>true</EnableModules>
       <AdditionalOptions> /Zc:__cplusplus</AdditionalOptions>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>

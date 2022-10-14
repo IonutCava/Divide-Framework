@@ -25,7 +25,7 @@ ApplicationTimer::ApplicationTimer() noexcept
 }
 
 void ApplicationTimer::reset() noexcept {
-    std::atomic_init(&g_elapsedTimeUs, 0ULL);
+    g_elapsedTimeUs.store(0ULL);
     g_startupTicks = std::chrono::high_resolution_clock::now();
     g_frameDelay = g_startupTicks;
     resetFPSCounter();

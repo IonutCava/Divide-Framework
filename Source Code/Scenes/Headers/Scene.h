@@ -304,7 +304,7 @@ class Scene : public Resource, public PlatformContextComponent {
         vector<Player*>                       _scenePlayers;
         vector<D64>                           _taskTimers[to_base(TimerClass::COUNT)];
         vector<D64>                           _guiTimersMS[to_base(TimerClass::COUNT)];
-        std::atomic_uint                      _loadingTasks;
+        std::atomic_uint                      _loadingTasks{0u};
         XML::SceneNode                        _xmlSceneGraphRootNode;
 
         std::array<Selections,      Config::MAX_LOCAL_PLAYER_COUNT> _currentSelection;

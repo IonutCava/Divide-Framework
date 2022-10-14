@@ -5,7 +5,6 @@
 #include "Headers/OPCodesImpl.h"
 #include "Headers/Patch.h"
 
-#include "Networking/Headers/Strand.h"
 #include "Networking/Headers/ASIO.h"
 
 #include "Core/Headers/StringHelper.h"
@@ -15,7 +14,7 @@
 
 namespace Divide {
 
-Session::Session(boost::asio::io_service& io_service, channel& ch)
+Session::Session(boost::asio::io_context& io_service, channel& ch)
     : tcp_session_tpl(io_service, ch)
 {
 }

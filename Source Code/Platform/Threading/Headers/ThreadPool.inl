@@ -36,10 +36,8 @@
 namespace Divide {
     template<bool IsBlocking>
     ThreadPool<IsBlocking>::ThreadPool(TaskPool& parent, const U32 threadCount)
-        : _parent(parent),
-        _isRunning(true)
+        : _parent(parent)
     {
-        std::atomic_init(&_tasksLeft, 0u);
         _threads.reserve(threadCount);
 
         for (U32 idx = 0u; idx < threadCount; ++idx) {

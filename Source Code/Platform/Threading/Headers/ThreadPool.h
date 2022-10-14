@@ -70,8 +70,8 @@ protected:
     using QueueType = std::conditional_t<IsBlocking, moodycamel::BlockingConcurrentQueue<PoolTask>, moodycamel::ConcurrentQueue<PoolTask>>;
     QueueType _queue;
 
-    std::atomic_int _tasksLeft = 0;
-    bool _isRunning = false;
+    std::atomic_int _tasksLeft{0};
+    bool _isRunning{true};
 };
 
 }; //namespace Divide

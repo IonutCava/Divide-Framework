@@ -110,7 +110,7 @@ public:
     struct ChildContainer {
         mutable SharedMutex _lock;
         eastl::fixed_vector<SceneGraphNode*, 32, true, eastl::dvd_allocator> _data;
-        std::atomic_uint _count;
+        std::atomic_uint _count{0u};
 
         /// Return a specific child by index. Does not recurse.
         SceneGraphNode* getChild(const U32 idx) {

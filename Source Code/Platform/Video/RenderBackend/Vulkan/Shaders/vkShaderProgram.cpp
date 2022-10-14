@@ -12,7 +12,6 @@ namespace Divide {
     vkShader::vkShader(GFXDevice& context, const Str256& name)
         : ShaderModule(context, name)
     {
-        std::atomic_init(&_refCount, 0u);
     }
 
     vkShader::~vkShader()

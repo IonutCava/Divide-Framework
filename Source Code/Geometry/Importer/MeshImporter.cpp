@@ -283,8 +283,7 @@ namespace Import {
         mesh->geometryDirty(true);
         mesh->geometryBuffer()->create(true, true);
 
-        std::atomic_uint taskCounter;
-        std::atomic_init(&taskCounter, 0u);
+        std::atomic_uint taskCounter(0u);
 
         for (const Import::SubMeshData& subMeshData : dataIn._subMeshData) {
             // Submesh is created as a resource when added to the scenegraph

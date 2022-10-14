@@ -1247,7 +1247,6 @@ namespace Divide
         const bool errorState = false;
 
         setState( ResourceState::RES_LOADING );
-        std::atomic_init( &_loadingTasks, 0u );
 
         Camera* baseCamera = Camera::GetUtilityCamera( Camera::UtilityCamera::DEFAULT );
         const F32 hFoV = _context.config().runtime.horizontalFOV;

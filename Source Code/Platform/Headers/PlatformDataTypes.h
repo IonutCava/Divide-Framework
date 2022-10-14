@@ -628,7 +628,7 @@ constexpr bool fits_in_registers()
 }
 
 template<typename T>
-constexpr bool can_be_returned_by_value() { return std::is_pod<T>::value || std::is_trivially_copyable<T>::value || std::is_copy_assignable<T>::value; }
+constexpr bool can_be_returned_by_value() { return std::is_trivially_copyable<T>::value || std::is_copy_assignable<T>::value; }
 
 template<typename T>
 constexpr bool pass_by_value() { return fits_in_registers<T>() && can_be_returned_by_value<T>(); }

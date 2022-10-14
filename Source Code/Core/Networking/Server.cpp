@@ -7,84 +7,96 @@
 
 using namespace boost::asio;
 
-namespace Divide {
-
-Server::Server()
-    : acceptor_(nullptr),
-      _channel(std::make_shared<channel>())
+namespace Divide
 {
-}
-
-Server::~Server()
-{
-    close();
-    delete acceptor_;
-}
-
-void Server::close() {
-    if (!thread_) {
-        return; // stopped
+    Server::Server()
+        : _channel( std::make_shared<channel>() )
+    {
     }
 
-    acceptor_->close();
-    io_service_.stop();
-    thread_->join();
-    thread_.reset();
-}
-
-void Server::init(const U16 port, const string& broadcast_endpoint_address, const bool debugOutput) {
-    if (thread_) {
-        return;
+    Server::~Server()
+    {
+        close();
+        MemoryManager::SAFE_DELETE( _acceptor );
     }
 
-    _debugOutput = debugOutput;
-    try {
-        const tcp::endpoint listen_endpoint(tcp::v4(), port);
-        const udp::endpoint broadcast_endpoint(
-            ip::address::from_string(broadcast_endpoint_address.c_str()),
-            port);
-        acceptor_ = new tcp::acceptor(io_service_, listen_endpoint);
-        const subscriber_ptr bc(new udp_broadcaster(io_service_, broadcast_endpoint));
-        _channel->join(bc);
-        tcp_session_ptr new_session(new Session(io_service_, *_channel));
-
-        acceptor_->async_accept(
-            new_session->getSocket(),
-            [&](const boost::system::error_code code) {
-                handle_accept(new_session, code);
-            }
-        );
-        eastl::unique_ptr<io_service::work> work(
-            new io_service::work(io_service_));
-        
-        thread_.reset(new std::thread([this]() {
-            io_service_.run();
-        }));
-
-    } catch (std::exception& e) {
-        ASIO::LOG_PRINT((string("SERVER: ") + e.what()).c_str(), true);
-    }
-}
-
-void Server::handle_accept(const tcp_session_ptr& session, const boost::system::error_code& ec) {
-    if (!ec) {
-        if (_debugOutput) {
-            ASIO::LOG_PRINT("New TCP session accepted");
+    void Server::close()
+    {
+        if ( _thread == nullptr )
+        {
+            return; // stopped
         }
-        session->start();
 
-        tcp_session_ptr new_session(new Session(io_service_, *_channel));
-
-        acceptor_->async_accept(
-            new_session->getSocket(),
-            [&](const boost::system::error_code code) {
-            handle_accept(new_session, code);
-        });
-    } else {
-        std::stringstream ss;
-        ss << "Server::handle_accept ERROR: " << ec;
-        ASIO::LOG_PRINT(ss.str().c_str(), true);
+        _acceptor->close();
+        _ioService.stop();
+        _thread->join();
+        _thread.reset();
     }
-}
+
+    void Server::init( const U16 port, const string& broadcast_endpoint_address, const bool debugOutput )
+    {
+        if ( _thread == nullptr )
+        {
+            return;
+        }
+
+        _debugOutput = debugOutput;
+        try
+        {
+            const boost::asio::ip::tcp::endpoint listen_endpoint( boost::asio::ip::tcp::v4(), port );
+            const boost::asio::ip::udp::endpoint broadcast_endpoint( boost::asio::ip::address::from_string( broadcast_endpoint_address.c_str() ), port );
+
+            _acceptor = MemoryManager_NEW tcp_acceptor( _ioService.get_executor(), listen_endpoint );
+            const subscriber_ptr bc( new udp_broadcaster( _ioService, broadcast_endpoint ) );
+            _channel->join( bc );
+            tcp_session_ptr new_session( new Session( _ioService, *_channel ) );
+
+            _acceptor->async_accept(
+                new_session->getSocket(),
+                [&]( const boost::system::error_code code )
+                {
+                    handle_accept( new_session, code );
+                }
+            );
+
+            eastl::unique_ptr<io_context::work> work( new io_context::work( _ioService ) );
+            _thread = eastl::make_unique<std::thread>( [this]()
+                                                       {
+                                                           _ioService.run();
+                                                       } );
+
+        }
+        catch ( std::exception& e )
+        {
+            ASIO::LOG_PRINT( (string( "SERVER: " ) + e.what()).c_str(), true );
+        }
+    }
+
+    void Server::handle_accept( const tcp_session_ptr& session, const boost::system::error_code& ec )
+    {
+        if ( !ec )
+        {
+            if ( _debugOutput )
+            {
+                ASIO::LOG_PRINT( "New TCP session accepted" );
+            }
+            session->start();
+
+            tcp_session_ptr new_session( new Session( _ioService, *_channel ) );
+
+            _acceptor->async_accept(
+                new_session->getSocket(),
+                [&]( const boost::system::error_code code )
+                {
+                    handle_accept( new_session, code );
+                } );
+        }
+        else
+        {
+            std::stringstream ss;
+            ss << "Server::handle_accept ERROR: " << ec;
+            ASIO::LOG_PRINT( ss.str().c_str(), true );
+        }
+    }
 
 };  // namespace Divide

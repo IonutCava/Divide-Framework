@@ -18,8 +18,6 @@ namespace Divide {
           _parentSGN(parentSGN),
           _type(type)
     {
-        std::atomic_init(&_enabled, true);
-        std::atomic_init(&_hasChanged, false);
     }
 
     bool SGNComponent::saveCache(ByteBuffer& outputBuffer) const {

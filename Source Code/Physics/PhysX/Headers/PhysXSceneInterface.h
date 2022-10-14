@@ -70,7 +70,7 @@ class PhysXSceneInterface final : public PhysicsSceneInterface {
     physx::PxDefaultCpuDispatcher* _cpuDispatcher = nullptr;
     RigidMap _sceneRigidActors;
 
-    std::atomic_bool _rigidActorsQueued;
+    std::atomic_bool _rigidActorsQueued{false};
     LoadQueue _sceneRigidQueue;
 };
 

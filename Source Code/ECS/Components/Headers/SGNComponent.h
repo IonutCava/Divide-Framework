@@ -184,8 +184,8 @@ class SGNComponent : protected PlatformContextComponent,
         PROPERTY_R(EditorComponent, editorComponent);
 
     protected:
-        std::atomic_bool _enabled;
-        mutable std::atomic_bool _hasChanged;
+        std::atomic_bool _enabled{true};
+        mutable std::atomic_bool _hasChanged{false};
 };
 
 template<typename T, ComponentType C>

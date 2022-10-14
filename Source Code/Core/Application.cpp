@@ -17,13 +17,13 @@ bool MemoryManager::MemoryTracker::LogAllAllocations = false;
 MemoryManager::MemoryTracker MemoryManager::AllocTracer;
 
 Application::Application() noexcept
+: _requestShutdown( false ),
+  _requestRestart( false ),
+  _mainLoopPaused( false ),
+  _mainLoopActive( false )
 {
-    std::atomic_init(&_requestShutdown, false);
-    std::atomic_init(&_requestRestart, false);
-    std::atomic_init(&_mainLoopPaused, false);
-    std::atomic_init(&_mainLoopActive, false);
-
-    if_constexpr (Config::Build::IS_DEBUG_BUILD) {
+    if_constexpr (Config::Build::IS_DEBUG_BUILD)
+    {
         MemoryManager::MemoryTracker::Ready = true; ///< faster way of disabling memory tracking
         MemoryManager::MemoryTracker::LogAllAllocations = false;
     }

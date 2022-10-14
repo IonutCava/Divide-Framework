@@ -12,7 +12,6 @@ namespace Divide
         : _cache( cache ),
           _queueComputeTimer( Time::ADD_TIMER( "Shader Queue Timer" ) )
     {
-        std::atomic_init( &_maxShaderLoadsInFlight, 0u );
     }
 
     void ShaderComputeQueue::idle()

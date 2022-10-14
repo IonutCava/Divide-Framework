@@ -78,7 +78,7 @@ private:
 
     SharedMutex _queueLock;
     std::deque<ShaderQueueElement> _shaderComputeQueue;
-    std::atomic_uint _maxShaderLoadsInFlight;
+    std::atomic_uint _maxShaderLoadsInFlight{0u};
 };
 
 }; //namespace Divide

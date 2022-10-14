@@ -6,14 +6,14 @@ if "%~1"=="Release" goto run_Release
 :run_Release
 ECHO Copying Release DLLs
 robocopy assimp/bin/Release/ ../Build/ assimp-vc142-mt.dll /NP /NJH /NJS
+robocopy freetype/bin/ ../Build/ freetype.dll /NP /NJH /NJS
 robocopy sdl/bin/Release/ ../Build/ SDL2.dll /NP /NJH /NJS
 robocopy sdl/bin/Release/ ../Build/ SDL2_mixer.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUIBase-0.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUICommonDialogs-0.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUICoreWindowRendererSet.dll /NP /NJH /NJS
-robocopy cegui/bin/ ../Build/ CEGUILuaScriptModule-0.dll /NP /NJH /NJS
-robocopy cegui/bin/ ../Build/ CEGUISTBImageCodec.dll /NP /NJH /NJS
-robocopy cegui/bin/ ../Build/ CEGUITinyXMLParser.dll /NP /NJH /NJS
+robocopy cegui/bin/ ../Build/ CEGUIDevILImageCodec.dll /NP /NJH /NJS
+robocopy cegui/bin/ ../Build/ CEGUIExpatParser.dll /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/release/ ../Build/ PhysX_64.dll  /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/release/ ../Build/ PhysXCommon_64.dll /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/release/ ../Build/ PhysXCooking_64.dll /NP /NJH /NJS
@@ -25,14 +25,14 @@ goto run_Common
 :run_Profile
 ECHO Copying Profile DLLs
 robocopy assimp/bin/RelWithDebInfo/ ../Build/ assimp-vc142-mt.dll /NP /NJH /NJS
+robocopy freetype/bin/ ../Build/ freetype.dll /NP /NJH /NJS
 robocopy sdl/bin/Release/ ../Build/ SDL2.dll /NP /NJH /NJS
 robocopy sdl/bin/Release/ ../Build/ SDL2_mixer.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUIBase-0.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUICommonDialogs-0.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUICoreWindowRendererSet.dll /NP /NJH /NJS
-robocopy cegui/bin/ ../Build/ CEGUILuaScriptModule-0.dll /NP /NJH /NJS
-robocopy cegui/bin/ ../Build/ CEGUISTBImageCodec.dll /NP /NJH /NJS
-robocopy cegui/bin/ ../Build/ CEGUITinyXMLParser.dll /NP /NJH /NJS
+robocopy cegui/bin/ ../Build/ CEGUIDevILImageCodec.dll /NP /NJH /NJS
+robocopy cegui/bin/ ../Build/ CEGUIExpatParser.dll /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/profile/ ../Build/ PhysX_64.dll  /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/profile/ ../Build/ PhysXCommon_64.dll /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/profile/ ../Build/ PhysXCooking_64.dll /NP /NJH /NJS
@@ -44,14 +44,14 @@ goto run_Common
 :run_Debug
 ECHO Copying Debug DLLs
 robocopy assimp/bin/Debug/ ../Build/ assimp-vc142-mtd.dll /NP /NJH /NJS
+robocopy freetype/bin/ ../Build/ freetype_d.dll /NP /NJH /NJS
 robocopy sdl/bin/Debug/ ../Build/ SDL2.dll /NP /NJH /NJS
 robocopy sdl/bin/Debug/ ../Build/ SDL2_mixer.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUIBase-0_d.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUICommonDialogs-0_d.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUICoreWindowRendererSet_d.dll /NP /NJH /NJS
-robocopy cegui/bin/ ../Build/ CEGUILuaScriptModule-0_d.dll /NP /NJH /NJS
-robocopy cegui/bin/ ../Build/ CEGUISTBImageCodec_d.dll /NP /NJH /NJS
-robocopy cegui/bin/ ../Build/ CEGUITinyXMLParser_d.dll /NP /NJH /NJS
+robocopy cegui/bin/ ../Build/ CEGUIDevILImageCodec_d.dll /NP /NJH /NJS
+robocopy cegui/bin/ ../Build/ CEGUIExpatParser_d.dll /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/debug/ ../Build/ PhysX_64.dll  /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/debug/ ../Build/ PhysXCommon_64.dll /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/debug/ ../Build/ PhysXCooking_64.dll /NP /NJH /NJS

@@ -31,7 +31,6 @@
     <ClCompile Include="../../Source Code/Networking\Client.cpp" />
     <ClCompile Include="../../Source Code/Networking\tcp_session_tpl.cpp" />
     <ClCompile Include="..\..\Source Code\Core\Networking\Session.cpp" />
-    <ClCompile Include="..\..\Source Code\Networking\Strand.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="../../Source Code/Networking\Headers\ASIO.h" />
@@ -40,7 +39,7 @@
     <ClInclude Include="../../Source Code/Networking\Headers\tcp_session_tpl.h" />
     <ClInclude Include="../../Source Code/Networking\Headers\WorldPacket.h" />
     <ClInclude Include="..\..\Source Code\Core\Networking\Headers\Session.h" />
-    <ClInclude Include="..\..\Source Code\Networking\Headers\Strand.h" />
+    <ClInclude Include="..\..\Source Code\Networking\Headers\Utils.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{9D7BBBC8-E5CF-475D-8531-4520B605833C}</ProjectGuid>
@@ -241,7 +240,7 @@
       <InlineFunctionExpansion>Default</InlineFunctionExpansion>
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
       <FloatingPointExceptions>false</FloatingPointExceptions>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <EnableModules>true</EnableModules>
@@ -298,7 +297,7 @@
       <InlineFunctionExpansion>Default</InlineFunctionExpansion>
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
       <FloatingPointExceptions>false</FloatingPointExceptions>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <EnableModules>true</EnableModules>
@@ -355,7 +354,7 @@
       <FloatingPointExceptions>false</FloatingPointExceptions>
       <OmitFramePointers>true</OmitFramePointers>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions> /Zc:twoPhase- /Zc:__cplusplus</AdditionalOptions>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
@@ -407,7 +406,7 @@
       <FloatingPointExceptions>false</FloatingPointExceptions>
       <OmitFramePointers>true</OmitFramePointers>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions> /Zc:twoPhase- /Zc:__cplusplus</AdditionalOptions>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
@@ -458,7 +457,7 @@
       <CompileAsWinRT>false</CompileAsWinRT>
       <FloatingPointExceptions>false</FloatingPointExceptions>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <EnableModules>true</EnableModules>
@@ -511,7 +510,7 @@
       <CompileAsWinRT>false</CompileAsWinRT>
       <FloatingPointExceptions>false</FloatingPointExceptions>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <EnableModules>true</EnableModules>

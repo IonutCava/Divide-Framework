@@ -55,17 +55,30 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #   endif
 #endif 
 
-// As of May 2020
-#if !defined(CPP_17_SUPPORT)
-#error "Divide Framework requires C++17 support at a minimum!."
+// As of October 2022
+#if !defined(CPP_20_SUPPORT)
+#error "Divide Framework requires C++20 support at a minimum!"
 #endif 
 
 #ifndef BOOST_EXCEPTION_DISABLE
 #define BOOST_EXCEPTION_DISABLE
 #endif
 
+#ifndef BOOST_ASIO_NO_DEPRECATED
+//#define BOOST_ASIO_NO_DEPRECATED
+#endif
+
+#ifndef BOOST_ASIO_DISABLE_CONCEPT
+//#define BOOST_ASIO_DISABLE_CONCEPT
+#endif
+
+#ifndef _SILENCE_CXX20_CISO646_REMOVED_WARNING
+#define _SILENCE_CXX20_CISO646_REMOVED_WARNING
+#endif
+
+
 #ifndef BOOST_CONFIG_SUPPRESS_OUTDATED_MESSAGE
-#define BOOST_CONFIG_SUPPRESS_OUTDATED_MESSAGE
+//#define BOOST_CONFIG_SUPPRESS_OUTDATED_MESSAGE
 #endif 
 
 #ifndef GLBINDING_STATIC_DEFINE

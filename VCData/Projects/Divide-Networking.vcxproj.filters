@@ -11,7 +11,6 @@
     <ClCompile Include="../../Source Code/Networking\Client.cpp" />
     <ClCompile Include="../../Source Code/Networking\tcp_session_tpl.cpp" />
     <ClCompile Include="..\..\Source Code\Core\Networking\Session.cpp" />
-    <ClCompile Include="..\..\Source Code\Networking\Strand.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="../../Source Code/Networking\Headers\ASIO.h">
@@ -32,7 +31,7 @@
     <ClInclude Include="..\..\Source Code\Core\Networking\Headers\Session.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Source Code\Networking\Headers\Strand.h">
+    <ClInclude Include="..\..\Source Code\Networking\Headers\Utils.h">
       <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>

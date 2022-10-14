@@ -4,10 +4,10 @@
 
 #include "OPCodesTpl.h"
 
+#include "Utils.h"
 #include "Core/Headers/ByteBuffer.h"
 
 #include <boost/serialization/vector.hpp>
-#include <boost/asio/ip/tcp.hpp>
 
 namespace Divide {
 

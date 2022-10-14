@@ -7,9 +7,9 @@ namespace Divide
 {
 
     SGNRelationshipCache::SGNRelationshipCache( SceneGraphNode* parent ) noexcept
-        : _parentNode( parent )
+        : _parentNode( parent ),
+          _isValid(false)
     {
-        std::atomic_init( &_isValid, false );
     }
 
     bool SGNRelationshipCache::isValid() const noexcept

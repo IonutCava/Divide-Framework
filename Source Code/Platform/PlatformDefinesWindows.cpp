@@ -52,9 +52,8 @@
 #pragma comment(lib, "CEGUIBase-0_d.lib")
 #pragma comment(lib, "CEGUICommonDialogs-0_d.lib")
 #pragma comment(lib, "CEGUICoreWindowRendererSet_d.lib")
-#pragma comment(lib, "CEGUILuaScriptModule-0_d.lib")
-#pragma comment(lib, "CEGUISTBImageCodec_d.lib")
-#pragma comment(lib, "CEGUITinyXMLParser_d.lib")
+#pragma comment(lib, "CEGUIDevILImageCodec_d.lib")
+#pragma comment(lib, "CEGUIExpatParser_d.lib")
 #else  //_DEBUG
 #pragma comment(lib, "SPIRV.lib")
 #pragma comment(lib, "SPVRemapper.lib")
@@ -77,9 +76,8 @@
 #pragma comment(lib, "CEGUIBase-0.lib")
 #pragma comment(lib, "CEGUICommonDialogs-0.lib")
 #pragma comment(lib, "CEGUICoreWindowRendererSet.lib")
-#pragma comment(lib, "CEGUILuaScriptModule-0.lib")
-#pragma comment(lib, "CEGUISTBImageCodec.lib")
-#pragma comment(lib, "CEGUITinyXMLParser.lib")
+#pragma comment(lib, "CEGUIDevILImageCodec.lib")
+#pragma comment(lib, "CEGUIExpatParser.lib")
 #endif  //_DEBUG
 
 #ifdef WIN32_LEAN_AND_MEAN

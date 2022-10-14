@@ -4,8 +4,8 @@
     <showSampleWindow>false</showSampleWindow>
     <themeIndex>6</themeIndex>
     <textEditor/>
-    <lastOpenSceneName>WarScene</lastOpenSceneName>
-    <grid enabled_scene="false" enabled_node="true" axisWidth="2" scale="1"/>
+    <lastOpenSceneName>DefaultScene</lastOpenSceneName>
+    <grid enabled_scene="true" enabled_node="true" axisWidth="2" scale="1"/>
     <nodeBGColour r="0.349999994" g="0.319999993" b="0.449999988"/>
     <camera>
         <Editor__Camera>
@@ -14,11 +14,11 @@
                 <distance>0</distance>
                 <active>false</active>
             </reflectionPlane>
-            <accumPitchDegrees>0.262731612</accumPitchDegrees>
+            <accumPitchDegrees>-24.2895145</accumPitchDegrees>
             <frustumLocked>false</frustumLocked>
-            <euler x="-179.736618" y="1.76789594" z="-179.978653"/>
-            <eye x="-80.4959564" y="69.1275787" z="571.041992"/>
-            <orientation x="-0.000150849868" y="0.999872804" z="-0.00229532598" w="0.0154276639"/>
+            <euler x="155.711273" y="1.37374949" z="-179.978638"/>
+            <eye x="-83.0615616" y="16.3871937" z="681.606384"/>
+            <orientation x="-0.00270416355" y="0.97754395" z="0.210361257" w="0.0116805248"/>
             <aspectRatio>1.76999998</aspectRatio>
             <zPlanes min="0.100000001" max="1000"/>
             <FoV>77.7975693</FoV>

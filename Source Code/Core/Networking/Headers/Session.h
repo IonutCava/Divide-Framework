@@ -35,21 +35,18 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Networking/Headers/tcp_session_tpl.h"
 
-using boost::asio::deadline_timer;
-using boost::asio::ip::tcp;
-using boost::asio::ip::udp;
+namespace Divide
+{
+    class Session final : public tcp_session_tpl
+    {
+        public:
+        Session( boost::asio::io_context& io_service, channel& ch );
 
-namespace Divide {
-
-class Session final : public tcp_session_tpl {
-   public:
-       Session(boost::asio::io_service& io_service, channel& ch);
-
-   private:
-    void handlePacket(WorldPacket& p) override;
-    void HandleGeometryListOpCode(WorldPacket& p);
-    void HandleRequestGeometry(WorldPacket& p);
-};
+        private:
+        void handlePacket( WorldPacket& p ) override;
+        void HandleGeometryListOpCode( WorldPacket& p );
+        void HandleRequestGeometry( WorldPacket& p );
+    };
 
 };  // namespace Divide
 #endif

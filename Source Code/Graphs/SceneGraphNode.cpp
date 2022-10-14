@@ -47,10 +47,9 @@ SceneGraphNode::SceneGraphNode(SceneGraph* sceneGraph, const SceneGraphNodeDescr
       _serialize(descriptor._serialize),
       _usageContext(descriptor._usageContext)
 {
-    std::atomic_init(&_children._count, 0u);
     for (auto& it : Events._eventsFreeList)
     {
-        std::atomic_init(&it, true);
+        it.store(true);
     }
     _name = descriptor._name;
     if (_name.empty())

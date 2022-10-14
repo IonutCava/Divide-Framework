@@ -98,7 +98,7 @@ protected:
     static void RemoveShaderLocked(ShaderModule* s, bool force = false);
 
 protected:
-    std::atomic_size_t _refCount;
+    std::atomic_size_t _refCount{0u};
     /// A list of preprocessor defines (if the bool in the pair is true, #define is automatically added
     vector<ModuleDefine> _definesList;
 

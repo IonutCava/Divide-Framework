@@ -49,7 +49,7 @@ namespace Divide
 
     GLStateTracker GL_API::s_stateTracker;
     GL_API::VAOMap GL_API::s_vaoCache;
-    std::atomic_bool GL_API::s_glFlushQueued;
+    std::atomic_bool GL_API::s_glFlushQueued{false};
     GLUtil::glTextureViewCache GL_API::s_textureViewCache{};
     U32 GL_API::s_fenceSyncCounter[GL_API::s_LockFrameLifetime]{};
     SharedMutex GL_API::s_samplerMapLock;
@@ -140,7 +140,6 @@ namespace Divide
         _context( context ),
         _swapBufferTimer( Time::ADD_TIMER( "Swap Buffer Timer" ) )
     {
-        std::atomic_init( &s_glFlushQueued, false );
     }
 
     /// Try and create a valid OpenGL context taking in account the specified resolution and command line arguments

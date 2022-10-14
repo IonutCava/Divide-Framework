@@ -55,7 +55,6 @@ namespace Divide
     PhysXSceneInterface::PhysXSceneInterface( Scene& parentScene )
         : PhysicsSceneInterface( parentScene )
     {
-        std::atomic_init( &_rigidActorsQueued, false );
     }
 
     PhysXSceneInterface::~PhysXSceneInterface()

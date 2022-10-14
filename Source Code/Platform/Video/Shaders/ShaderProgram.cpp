@@ -783,7 +783,6 @@ ShaderModule::ShaderModule(GFXDevice& context, const Str256& name)
       GraphicsResource(context, Type::SHADER, getGUID(), _ID(name.c_str())),
       _name(name)
 {
-    std::atomic_init(&_refCount, 0u);
 }
 
 ShaderModule::~ShaderModule()

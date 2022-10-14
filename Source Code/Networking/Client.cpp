@@ -15,9 +15,9 @@
 namespace Divide {
 Client::Client(ASIO* asioPointer, boost::asio::io_service& service, const bool debugOutput)
   : _debugOutput(debugOutput),
-    _socket(service),
-    _deadline(service),
-    _heartbeatTimer(service),
+    _socket(service.get_executor()),
+    _deadline(service.get_executor()),
+    _heartbeatTimer(service.get_executor()),
     _asioPointer(asioPointer)
 {
 }

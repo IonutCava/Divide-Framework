@@ -62,12 +62,12 @@ Kernel::Kernel(const I32 argc, char** argv, Application& parentApp)
       _flushToScreenTimer(Time::ADD_TIMER("Flush To Screen Timer")),
       _preRenderTimer(Time::ADD_TIMER("Pre-render Timer")),
       _postRenderTimer(Time::ADD_TIMER("Post-render Timer")),
+      _splashScreenUpdating( false ),
       _argc(argc),
       _argv(argv)
 {
     InitConditionalWait(_platformContext);
 
-    std::atomic_init(&_splashScreenUpdating, false);
     _appLoopTimerMain.addChildTimer(_appLoopTimerInternal);
     _appLoopTimerInternal.addChildTimer(_appIdleTimer);
     _appLoopTimerInternal.addChildTimer(_frameTimer);
