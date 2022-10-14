@@ -2,7 +2,7 @@
 
 // Copyright (c) 2017 Adam Wulkiewicz, Lodz, Poland.
 
-// Copyright (c) 2015-2019, Oracle and/or its affiliates.
+// Copyright (c) 2015-2022, Oracle and/or its affiliates.
 
 // Contributed and/or modified by Menelaos Karavelas, on behalf of Oracle
 // Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
@@ -308,10 +308,35 @@ public:
         BOOST_GEOMETRY_ASSERT(! math::larger(latitude, constants::max_latitude()));
 #endif // BOOST_GEOMETRY_NORMALIZE_LATITUDE
 
-        BOOST_GEOMETRY_ASSERT(math::smaller(constants::min_longitude(), longitude));
+        BOOST_GEOMETRY_ASSERT(! math::larger_or_equals(constants::min_longitude(), longitude));
         BOOST_GEOMETRY_ASSERT(! math::larger(longitude, constants::max_longitude()));
     }
 };
+
+
+template <typename Units, typename CoordinateType>
+inline void normalize_angle_loop(CoordinateType& angle)
+{
+    typedef constants_on_spheroid<CoordinateType, Units> constants;
+    CoordinateType const pi = constants::half_period();
+    CoordinateType const two_pi = constants::period();
+    while (angle > pi)
+        angle -= two_pi;
+    while (angle <= -pi)
+        angle += two_pi;
+}
+
+template <typename Units, typename CoordinateType>
+inline void normalize_angle_cond(CoordinateType& angle)
+{
+    typedef constants_on_spheroid<CoordinateType, Units> constants;
+    CoordinateType const pi = constants::half_period();
+    CoordinateType const two_pi = constants::period();
+    if (angle > pi)
+        angle -= two_pi;
+    else if (angle <= -pi)
+        angle += two_pi;
+}
 
 
 } // namespace detail

@@ -39,7 +39,12 @@ template <typename P> struct channel_type;
 /// \ingroup ColorConvert
 /// \brief Color Convertion function object. To be specialized for every src/dst color space
 template <typename C1, typename C2>
-struct default_color_converter_impl {};
+struct default_color_converter_impl
+{
+    static_assert(
+        std::is_same<C1, C2>::value,
+        "default_color_converter_impl not specialized for given color spaces");
+};
 
 /// \ingroup ColorConvert
 /// \brief When the color space is the same, color convertion performs channel depth conversion
@@ -58,7 +63,8 @@ namespace detail {
 // The default implementation of to_luminance uses float0..1 as the intermediate channel type
 template <typename RedChannel, typename GreenChannel, typename BlueChannel, typename GrayChannelValue>
 struct rgb_to_luminance_fn {
-    GrayChannelValue operator()(const RedChannel& red, const GreenChannel& green, const BlueChannel& blue) const {
+    auto operator()(const RedChannel& red, const GreenChannel& green, const BlueChannel& blue) const -> GrayChannelValue
+    {
         return channel_convert<GrayChannelValue>(float32_t(
             channel_convert<float32_t>(red  )*0.30f +
             channel_convert<float32_t>(green)*0.59f +
@@ -69,14 +75,16 @@ struct rgb_to_luminance_fn {
 // performance specialization for unsigned char
 template <typename GrayChannelValue>
 struct rgb_to_luminance_fn<uint8_t,uint8_t,uint8_t, GrayChannelValue> {
-    GrayChannelValue operator()(uint8_t red, uint8_t green, uint8_t blue) const {
+    auto operator()(uint8_t red, uint8_t green, uint8_t blue) const -> GrayChannelValue
+    {
         return channel_convert<GrayChannelValue>(uint8_t(
             ((uint32_t(red  )*4915 + uint32_t(green)*9667 + uint32_t(blue )*1802) + 8192) >> 14));
     }
 };
 
 template <typename GrayChannel, typename RedChannel, typename GreenChannel, typename BlueChannel>
-typename channel_traits<GrayChannel>::value_type rgb_to_luminance(const RedChannel& red, const GreenChannel& green, const BlueChannel& blue) {
+auto rgb_to_luminance(const RedChannel& red, const GreenChannel& green, const BlueChannel& blue) -> typename channel_traits<GrayChannel>::value_type
+{
     return rgb_to_luminance_fn<RedChannel,GreenChannel,BlueChannel,
                                typename channel_traits<GrayChannel>::value_type>()(red,green,blue);
 }
@@ -100,6 +108,8 @@ struct default_color_converter_impl<gray_t,rgb_t> {
 
 /// \ingroup ColorConvert
 /// \brief Gray to CMYK
+/// \todo FIXME: Where does this calculation come from? Shouldn't gray be inverted?
+///              Currently, white becomes black and black becomes white.
 template <>
 struct default_color_converter_impl<gray_t,cmyk_t> {
     template <typename P1, typename P2>
@@ -136,28 +146,56 @@ struct default_color_converter_impl<rgb_t,gray_t> {
 /// c = (1 - r - k) / (1 - k)
 /// m = (1 - g - k) / (1 - k)
 /// y = (1 - b - k) / (1 - k)
+/// where `1` denotes max value of channel type of destination pixel.
+///
+/// The conversion from RGB to CMYK is based on CMY->CMYK (Version 2)
+/// from the Principles of Digital Image Processing - Fundamental Techniques
+/// by Burger, Wilhelm, Burge, Mark J.
+/// and it is a gross approximation not precise enough for professional work.
+///
 template <>
-struct default_color_converter_impl<rgb_t,cmyk_t> {
-    template <typename P1, typename P2>
-    void operator()(const P1& src, P2& dst) const {
-        using T2 = typename channel_type<P2>::type;
-        get_color(dst,cyan_t())    = channel_invert(channel_convert<T2>(get_color(src,red_t())));          // c = 1 - r
-        get_color(dst,magenta_t()) = channel_invert(channel_convert<T2>(get_color(src,green_t())));        // m = 1 - g
-        get_color(dst,yellow_t())  = channel_invert(channel_convert<T2>(get_color(src,blue_t())));         // y = 1 - b
-        get_color(dst,black_t())   = (std::min)(get_color(dst,cyan_t()),
-                                                (std::min)(get_color(dst,magenta_t()),
-                                                           get_color(dst,yellow_t())));   // k = minimum(c, m, y)
-        T2 x = channel_traits<T2>::max_value()-get_color(dst,black_t());                  // x = 1 - k
-        if (x>0.0001f) {
-            float x1 = channel_traits<T2>::max_value()/float(x);
-            get_color(dst,cyan_t())    = (T2)((get_color(dst,cyan_t())    - get_color(dst,black_t()))*x1);                // c = (c - k) / x
-            get_color(dst,magenta_t()) = (T2)((get_color(dst,magenta_t()) - get_color(dst,black_t()))*x1);                // m = (m - k) / x
-            get_color(dst,yellow_t())  = (T2)((get_color(dst,yellow_t())  - get_color(dst,black_t()))*x1);                // y = (y - k) / x
-        } else {
-            get_color(dst,cyan_t())=get_color(dst,magenta_t())=get_color(dst,yellow_t())=0;
+struct default_color_converter_impl<rgb_t, cmyk_t>
+{
+    template <typename SrcPixel, typename DstPixel>
+    void operator()(SrcPixel const& src, DstPixel& dst) const
+    {
+        using src_t = typename channel_type<SrcPixel>::type;
+        src_t const r = get_color(src, red_t());
+        src_t const g = get_color(src, green_t());
+        src_t const b = get_color(src, blue_t());
+
+        using uint_t = typename channel_type<cmyk8_pixel_t>::type;
+        uint_t c = channel_invert(channel_convert<uint_t>(r)); // c = 1 - r
+        uint_t m = channel_invert(channel_convert<uint_t>(g)); // m = 1 - g
+        uint_t y = channel_invert(channel_convert<uint_t>(b)); // y = 1 - b
+        uint_t k = (std::min)(c,(std::min)(m,y));              // k = minimum(c, m, y)
+
+        // Apply color correction, strengthening, reducing non-zero components by
+        // s = 1 / (1 - k) for k < 1, where 1 denotes dst_t max, otherwise s = 1 (literal).
+        uint_t const dst_max = channel_traits<uint_t>::max_value();
+        uint_t const s_div   = static_cast<uint_t>(dst_max - k);
+        if (s_div != 0)
+        {
+            double const s = dst_max / static_cast<double>(s_div);
+            c = static_cast<uint_t>((c - k) * s);
+            m = static_cast<uint_t>((m - k) * s);
+            y = static_cast<uint_t>((y - k) * s);
         }
+        else
+        {
+            // Black only for k = 1 (max of dst_t)
+            c = channel_traits<uint_t>::min_value();
+            m = channel_traits<uint_t>::min_value();
+            y = channel_traits<uint_t>::min_value();
+        }
+        using dst_t   = typename channel_type<DstPixel>::type;
+        get_color(dst, cyan_t())    = channel_convert<dst_t>(c);
+        get_color(dst, magenta_t()) = channel_convert<dst_t>(m);
+        get_color(dst, yellow_t())  = channel_convert<dst_t>(y);
+        get_color(dst, black_t())   = channel_convert<dst_t>(k);
     }
 };
+
 
 /// \ingroup ColorConvert
 /// \brief CMYK to RGB (not the fastest code in the world)

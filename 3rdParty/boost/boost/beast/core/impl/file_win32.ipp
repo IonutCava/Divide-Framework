@@ -14,10 +14,10 @@
 
 #if BOOST_BEAST_USE_WIN32_FILE
 
+#include <boost/beast/core/detail/win32_unicode_path.hpp>
 #include <boost/core/exchange.hpp>
 #include <boost/winapi/access_rights.hpp>
 #include <boost/winapi/error_codes.hpp>
-#include <boost/winapi/file_management.hpp>
 #include <boost/winapi/get_last_error.hpp>
 #include <limits>
 #include <utility>
@@ -175,7 +175,7 @@ open(char const* path, file_mode mode, error_code& ec)
         desired_access = boost::winapi::GENERIC_READ_ |
                          boost::winapi::GENERIC_WRITE_;
 
-        creation_disposition = boost::winapi::CREATE_ALWAYS_;
+        creation_disposition = boost::winapi::OPEN_ALWAYS_;
         flags_and_attributes = 0x08000000; // FILE_FLAG_SEQUENTIAL_SCAN
         break;
 
@@ -186,19 +186,40 @@ open(char const* path, file_mode mode, error_code& ec)
         flags_and_attributes = 0x08000000; // FILE_FLAG_SEQUENTIAL_SCAN
         break;
     }
-    h_ = ::CreateFileA(
-        path,
+    
+    detail::win32_unicode_path unicode_path(path, ec);
+    if (ec)
+        return;
+    h_ = ::CreateFileW(
+        unicode_path.c_str(),
         desired_access,
         share_mode,
         NULL,
         creation_disposition,
         flags_and_attributes,
         NULL);
-    if(h_ == boost::winapi::INVALID_HANDLE_VALUE_)
+    if (h_ == boost::winapi::INVALID_HANDLE_VALUE_)
+    {
         ec.assign(boost::winapi::GetLastError(),
             system_category());
-    else
-        ec = {};
+        return;
+    }
+    if (mode == file_mode::append ||
+        mode == file_mode::append_existing)
+    {
+        boost::winapi::LARGE_INTEGER_ in;
+        in.QuadPart = 0;
+        if (!detail::set_file_pointer_ex(h_, in, 0,
+            boost::winapi::FILE_END_))
+        {
+            ec.assign(boost::winapi::GetLastError(),
+                system_category());
+            boost::winapi::CloseHandle(h_);
+            h_ = boost::winapi::INVALID_HANDLE_VALUE_;
+            return;
+        }
+    }
+    ec = {};
 }
 
 std::uint64_t

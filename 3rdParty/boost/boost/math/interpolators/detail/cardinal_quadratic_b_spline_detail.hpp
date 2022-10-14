@@ -7,6 +7,8 @@
 #ifndef BOOST_MATH_INTERPOLATORS_CARDINAL_QUADRATIC_B_SPLINE_DETAIL_HPP
 #define BOOST_MATH_INTERPOLATORS_CARDINAL_QUADRATIC_B_SPLINE_DETAIL_HPP
 #include <vector>
+#include <cmath>
+#include <stdexcept>
 
 namespace boost{ namespace math{ namespace interpolators{ namespace detail{
 
@@ -25,7 +27,7 @@ Real b2_spline(Real x) {
         Real y = absx - Real(3)/Real(2);
         return y*y/2;
     }
-    return (Real) 0;
+    return static_cast<Real>(0);
 }
 
 template <class Real>
@@ -42,7 +44,7 @@ Real b2_spline_prime(Real x) {
     {
         return x - Real(3)/Real(2);
     }
-    return (Real) 0;
+    return static_cast<Real>(0);
 }
 
 

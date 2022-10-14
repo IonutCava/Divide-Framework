@@ -7,7 +7,6 @@
 #ifndef BOOST_HISTOGRAM_AXIS_REGULAR_HPP
 #define BOOST_HISTOGRAM_AXIS_REGULAR_HPP
 
-#include <boost/assert.hpp>
 #include <boost/core/nvp.hpp>
 #include <boost/histogram/axis/interval_view.hpp>
 #include <boost/histogram/axis/iterator.hpp>
@@ -19,6 +18,7 @@
 #include <boost/histogram/fwd.hpp>
 #include <boost/mp11/utility.hpp>
 #include <boost/throw_exception.hpp>
+#include <cassert>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
@@ -165,23 +165,32 @@ step_type<T> step(T t) {
   return step_type<T>{t};
 }
 
-/**
-  Axis for equidistant intervals on the real line.
+/** Axis for equidistant intervals on the real line.
 
-  The most common binning strategy. Very fast. Binning is a O(1) operation.
+   The most common binning strategy. Very fast. Binning is a O(1) operation.
 
-  @tparam Value input value type, must be floating point.
-  @tparam Transform builtin or user-defined transform type.
-  @tparam MetaData type to store meta data.
-  @tparam Options see boost::histogram::axis::option (all values allowed).
+   If the axis has an overflow bin (the default), a value on the upper edge of the last
+   bin is put in the overflow bin. The axis range represents a semi-open interval.
+
+   If the overflow bin is deactivated, then a value on the upper edge of the last bin is
+   still counted towards the last bin. The axis range represents a closed interval. This
+   is the desired behavior for random numbers drawn from a bounded interval, which is
+   usually closed.
+
+   @tparam Value input value type, must be floating point.
+   @tparam Transform builtin or user-defined transform type.
+   @tparam MetaData type to store meta data.
+   @tparam Options see boost::histogram::axis::option.
  */
 template <class Value, class Transform, class MetaData, class Options>
 class regular : public iterator_mixin<regular<Value, Transform, MetaData, Options>>,
                 protected detail::replace_default<Transform, transform::id>,
-                public metadata_base<MetaData> {
+                public metadata_base_t<MetaData> {
+  // these must be private, so that they are not automatically inherited
   using value_type = Value;
   using transform_type = detail::replace_default<Transform, transform::id>;
-  using metadata_type = typename metadata_base<MetaData>::metadata_type;
+  using metadata_base = metadata_base_t<MetaData>;
+  using metadata_type = typename metadata_base::metadata_type;
   using options_type =
       detail::replace_default<Options, decltype(option::underflow | option::overflow)>;
 
@@ -205,20 +214,22 @@ public:
   constexpr regular() = default;
 
   /** Construct n bins over real transformed range [start, stop).
-   *
-   * @param trans    transform instance to use.
-   * @param n        number of bins.
-   * @param start    low edge of first bin.
-   * @param stop     high edge of last bin.
-   * @param meta     description of the axis (optional).
+
+     @param trans    transform instance to use.
+     @param n        number of bins.
+     @param start    low edge of first bin.
+     @param stop     high edge of last bin.
+     @param meta     description of the axis (optional).
+     @param options  see boost::histogram::axis::option (optional).
    */
   regular(transform_type trans, unsigned n, value_type start, value_type stop,
-          metadata_type meta = {})
+          metadata_type meta = {}, options_type options = {})
       : transform_type(std::move(trans))
-      , metadata_base<MetaData>(std::move(meta))
+      , metadata_base(std::move(meta))
       , size_(static_cast<index_type>(n))
       , min_(this->forward(detail::get_scale(start)))
       , delta_(this->forward(detail::get_scale(stop)) - min_) {
+    (void)options;
     if (size() == 0) BOOST_THROW_EXCEPTION(std::invalid_argument("bins > 0 required"));
     if (!std::isfinite(min_) || !std::isfinite(delta_))
       BOOST_THROW_EXCEPTION(
@@ -228,57 +239,62 @@ public:
   }
 
   /** Construct n bins over real range [start, stop).
-   *
-   * @param n        number of bins.
-   * @param start    low edge of first bin.
-   * @param stop     high edge of last bin.
-   * @param meta     description of the axis (optional).
+
+     @param n        number of bins.
+     @param start    low edge of first bin.
+     @param stop     high edge of last bin.
+     @param meta     description of the axis (optional).
+     @param options  see boost::histogram::axis::option (optional).
    */
-  regular(unsigned n, value_type start, value_type stop, metadata_type meta = {})
-      : regular({}, n, start, stop, std::move(meta)) {}
+  regular(unsigned n, value_type start, value_type stop, metadata_type meta = {},
+          options_type options = {})
+      : regular({}, n, start, stop, std::move(meta), options) {}
 
   /** Construct bins with the given step size over real transformed range
-   * [start, stop).
-   *
-   * @param trans   transform instance to use.
-   * @param step    width of a single bin.
-   * @param start   low edge of first bin.
-   * @param stop    upper limit of high edge of last bin (see below).
-   * @param meta    description of the axis (optional).
-   *
-   * The axis computes the number of bins as n = abs(stop - start) / step,
-   * rounded down. This means that stop is an upper limit to the actual value
-   * (start + n * step).
+     [start, stop).
+
+     @param trans    transform instance to use.
+     @param step     width of a single bin.
+     @param start    low edge of first bin.
+     @param stop     upper limit of high edge of last bin (see below).
+     @param meta     description of the axis (optional).
+     @param options  see boost::histogram::axis::option (optional).
+
+     The axis computes the number of bins as n = abs(stop - start) / step,
+     rounded down. This means that stop is an upper limit to the actual value
+     (start + n * step).
    */
   template <class T>
   regular(transform_type trans, step_type<T> step, value_type start, value_type stop,
-          metadata_type meta = {})
+          metadata_type meta = {}, options_type options = {})
       : regular(trans, static_cast<index_type>(std::abs(stop - start) / step.value),
                 start,
                 start + static_cast<index_type>(std::abs(stop - start) / step.value) *
                             step.value,
-                std::move(meta)) {}
+                std::move(meta), options) {}
 
   /** Construct bins with the given step size over real range [start, stop).
-   *
-   * @param step    width of a single bin.
-   * @param start   low edge of first bin.
-   * @param stop    upper limit of high edge of last bin (see below).
-   * @param meta    description of the axis (optional).
-   *
-   * The axis computes the number of bins as n = abs(stop - start) / step,
-   * rounded down. This means that stop is an upper limit to the actual value
-   * (start + n * step).
+
+     @param step     width of a single bin.
+     @param start    low edge of first bin.
+     @param stop     upper limit of high edge of last bin (see below).
+     @param meta     description of the axis (optional).
+     @param options  see boost::histogram::axis::option (optional).
+
+     The axis computes the number of bins as n = abs(stop - start) / step,
+     rounded down. This means that stop is an upper limit to the actual value
+     (start + n * step).
    */
   template <class T>
-  regular(step_type<T> step, value_type start, value_type stop, metadata_type meta = {})
-      : regular({}, step, start, stop, std::move(meta)) {}
+  regular(step_type<T> step, value_type start, value_type stop, metadata_type meta = {},
+          options_type options = {})
+      : regular({}, step, start, stop, std::move(meta), options) {}
 
   /// Constructor used by algorithm::reduce to shrink and rebin (not for users).
   regular(const regular& src, index_type begin, index_type end, unsigned merge)
       : regular(src.transform(), (end - begin) / merge, src.value(begin), src.value(end),
                 src.metadata()) {
-    BOOST_ASSERT((end - begin) % merge == 0);
+    assert((end - begin) % merge == 0);
     if (options_type::test(option::circular) && !(begin == 0 && end == src.size()))
       BOOST_THROW_EXCEPTION(std::invalid_argument("cannot shrink circular axis"));
   }
@@ -302,18 +318,20 @@ public:
         else
           return -1;
       }
+      // upper edge of last bin is inclusive if overflow bin is not present
+      if (!options_type::test(option::overflow) && z == 1) return size() - 1;
     }
     return size(); // also returned if x is NaN
   }
 
   /// Returns index and shift (if axis has grown) for the passed argument.
-  auto update(value_type x) noexcept {
-    BOOST_ASSERT(options_type::test(option::growth));
+  std::pair<index_type, index_type> update(value_type x) noexcept {
+    assert(options_type::test(option::growth));
     const auto z = (this->forward(x / unit_type{}) - min_) / delta_;
     if (z < 1) { // don't use i here!
       if (z >= 0) {
         const auto i = static_cast<axis::index_type>(z * size());
-        return std::make_pair(i, 0);
+        return {i, 0};
       }
       if (z != -std::numeric_limits<internal_value_type>::infinity()) {
         const auto stop = min_ + delta_;
@@ -321,10 +339,10 @@ public:
         min_ += i * (delta_ / size());
         delta_ = stop - min_;
         size_ -= i;
-        return std::make_pair(0, -i);
+        return {0, -i};
       }
       // z is -infinity
-      return std::make_pair(-1, 0);
+      return {-1, 0};
     }
     // z either beyond range, infinite, or NaN
     if (z < std::numeric_limits<internal_value_type>::infinity()) {
@@ -333,10 +351,10 @@ public:
       delta_ /= size();
       delta_ *= size() + n;
       size_ += n;
-      return std::make_pair(i, -n);
+      return {i, -n};
     }
     // z either infinite or NaN
-    return std::make_pair(size(), 0);
+    return {size(), 0};
   }
 
   /// Return value for fractional index argument.
@@ -365,8 +383,9 @@ public:
 
   template <class V, class T, class M, class O>
   bool operator==(const regular<V, T, M, O>& o) const noexcept {
-    return detail::relaxed_equal(transform(), o.transform()) && size() == o.size() &&
-           min_ == o.min_ && delta_ == o.delta_ && metadata_base<MetaData>::operator==(o);
+    return detail::relaxed_equal{}(transform(), o.transform()) && size() == o.size() &&
+           min_ == o.min_ && delta_ == o.delta_ &&
+           detail::relaxed_equal{}(this->metadata(), o.metadata());
   }
   template <class V, class T, class M, class O>
   bool operator!=(const regular<V, T, M, O>& o) const noexcept {
@@ -394,20 +413,28 @@ private:
 
 template <class T>
 regular(unsigned, T, T)
-    ->regular<detail::convert_integer<T, double>, transform::id, null_type>;
+    -> regular<detail::convert_integer<T, double>, transform::id, null_type>;
 
 template <class T, class M>
-regular(unsigned, T, T, M)
-    ->regular<detail::convert_integer<T, double>, transform::id,
-              detail::replace_cstring<std::decay_t<M>>>;
+regular(unsigned, T, T, M) -> regular<detail::convert_integer<T, double>, transform::id,
+                                      detail::replace_cstring<std::decay_t<M>>>;
+
+template <class T, class M, unsigned B>
+regular(unsigned, T, T, M, const option::bitset<B>&)
+    -> regular<detail::convert_integer<T, double>, transform::id,
+               detail::replace_cstring<std::decay_t<M>>, option::bitset<B>>;
 
 template <class Tr, class T, class = detail::requires_transform<Tr, T>>
-regular(Tr, unsigned, T, T)->regular<detail::convert_integer<T, double>, Tr, null_type>;
+regular(Tr, unsigned, T, T) -> regular<detail::convert_integer<T, double>, Tr, null_type>;
 
 template <class Tr, class T, class M>
-regular(Tr, unsigned, T, T, M)
-    ->regular<detail::convert_integer<T, double>, Tr,
-              detail::replace_cstring<std::decay_t<M>>>;
+regular(Tr, unsigned, T, T, M) -> regular<detail::convert_integer<T, double>, Tr,
+                                          detail::replace_cstring<std::decay_t<M>>>;
+
+template <class Tr, class T, class M, unsigned B>
+regular(Tr, unsigned, T, T, M, const option::bitset<B>&)
+    -> regular<detail::convert_integer<T, double>, Tr,
+               detail::replace_cstring<std::decay_t<M>>, option::bitset<B>>;
 
 #endif
 

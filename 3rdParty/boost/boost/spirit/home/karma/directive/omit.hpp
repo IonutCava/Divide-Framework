@@ -3,8 +3,8 @@
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-#if !defined(SPIRIT_KARMA_OMIT_JUL_20_2009_1008AM)
-#define SPIRIT_KARMA_OMIT_JUL_20_2009_1008AM
+#ifndef BOOST_SPIRIT_KARMA_DIRECTIVE_OMIT_HPP
+#define BOOST_SPIRIT_KARMA_DIRECTIVE_OMIT_HPP
 
 #if defined(_MSC_VER)
 #pragma once
@@ -19,6 +19,7 @@
 #include <boost/spirit/home/support/has_semantic_action.hpp>
 #include <boost/spirit/home/support/handles_container.hpp>
 #include <boost/spirit/home/karma/detail/attributes.hpp>
+#include <boost/spirit/home/karma/detail/output_iterator.hpp>
 
 namespace boost { namespace spirit
 {

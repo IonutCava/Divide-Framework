@@ -22,7 +22,9 @@
 #include <boost/noncopyable.hpp>
 #include <boost/fusion/include/vector.hpp>
 #include <boost/mpl/assert.hpp>
-#include <boost/range/iterator_range.hpp>
+#include <boost/proto/extends.hpp>
+#include <boost/proto/traits.hpp>
+#include <boost/range/iterator_range_core.hpp>
 #include <iterator> // for std::iterator_traits
 #include <string>
 
@@ -233,19 +235,19 @@ namespace boost { namespace spirit { namespace lex
             {}
 
             // allow to switch states
-            lexer_def_ operator()(char_type const* state) const
+            lexer_def_ operator()(char_type const* state_) const
             {
-                return lexer_def_(def, state);
+                return lexer_def_(def, state_);
             }
-            lexer_def_ operator()(char_type const* state
-              , char_type const* targetstate) const
+            lexer_def_ operator()(char_type const* state_
+              , char_type const* targetstate_) const
             {
-                return lexer_def_(def, state, targetstate);
+                return lexer_def_(def, state_, targetstate_);
             }
-            lexer_def_ operator()(string_type const& state
-              , string_type const& targetstate = string_type()) const
+            lexer_def_ operator()(string_type const& state_
+              , string_type const& targetstate_ = string_type()) const
             {
-                return lexer_def_(def, state, targetstate);
+                return lexer_def_(def, state_, targetstate_);
             }
 
             // allow to assign a token definition expression
@@ -265,9 +267,9 @@ namespace boost { namespace spirit { namespace lex
 
             // explicitly tell the lexer that the given state will be defined
             // (useful in conjunction with "*")
-            std::size_t add_state(char_type const* state = 0)
+            std::size_t add_state(char_type const* state_ = 0)
             {
-                return def.add_state(state ? state : def.initial_state().c_str());
+                return def.add_state(state_ ? state_ : def.initial_state().c_str());
             }
 
             adder add;

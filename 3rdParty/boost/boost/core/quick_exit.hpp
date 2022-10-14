@@ -16,7 +16,7 @@
 //  http://www.boost.org/LICENSE_1_0.txt)
 
 #include <boost/config.hpp>
-#include <cstdlib>
+#include <stdlib.h>
 
 #if defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR)
 
@@ -33,7 +33,7 @@ extern "C" _Noreturn void quick_exit(int);
 namespace boost
 {
 
-BOOST_NORETURN void quick_exit( int code ) BOOST_NOEXCEPT
+BOOST_NORETURN inline void quick_exit( int code ) BOOST_NOEXCEPT
 {
 #if defined(_MSC_VER) && _MSC_VER < 1900
 

@@ -24,7 +24,7 @@
 // is strictly defined as a discrete function:
 // only integral values of k are envisaged.
 // However because the method of calculation uses a continuous gamma function,
-// it is convenient to treat it as if a continous function,
+// it is convenient to treat it as if a continuous function,
 // and permit non-integral values of k.
 // To enforce the strict mathematical model, users should use floor or ceil functions
 // on k outside this function to ensure that k is integral.
@@ -43,11 +43,6 @@
 #include <boost/math/special_functions/fpclassify.hpp> // isnan.
 #include <boost/math/tools/roots.hpp> // for root finding.
 #include <boost/math/distributions/detail/inv_discrete_quantile.hpp>
-
-#include <boost/type_traits/is_floating_point.hpp>
-#include <boost/type_traits/is_integral.hpp>
-#include <boost/type_traits/is_same.hpp>
-#include <boost/mpl/if.hpp>
 
 #include <limits> // using std::numeric_limits;
 #include <utility>
@@ -240,6 +235,11 @@ namespace boost
     }; // template <class RealType, class Policy> class geometric_distribution
 
     typedef geometric_distribution<double> geometric; // Reserved name of type double.
+
+    #ifdef __cpp_deduction_guides
+    template <class RealType>
+    geometric_distribution(RealType)->geometric_distribution<typename boost::math::tools::promote_args<RealType>::type>;
+    #endif
 
     template <class RealType, class Policy>
     inline const std::pair<RealType, RealType> range(const geometric_distribution<RealType, Policy>& /* dist */)

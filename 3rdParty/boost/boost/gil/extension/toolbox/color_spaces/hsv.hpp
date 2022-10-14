@@ -8,8 +8,6 @@
 #ifndef BOOST_GIL_EXTENSION_TOOLBOX_COLOR_SPACES_HSV_HPP
 #define BOOST_GIL_EXTENSION_TOOLBOX_COLOR_SPACES_HSV_HPP
 
-#include <boost/numeric/conversion/cast.hpp>
-
 #include <boost/gil/color_convert.hpp>
 #include <boost/gil/typedefs.hpp>
 #include <boost/gil/detail/mp11.hpp>
@@ -43,7 +41,7 @@ using hsv_t = mp11::mp_list
 /// \ingroup LayoutModel
 using hsv_layout_t = layout<hsv_t>;
 
-GIL_DEFINE_ALL_TYPEDEFS(32f, float32_t, hsv)
+BOOST_GIL_DEFINE_ALL_TYPEDEFS(32f, float32_t, hsv)
 
 /// \ingroup ColorConvert
 /// \brief RGB to HSV
@@ -86,7 +84,7 @@ struct default_color_converter_impl< rgb_t, hsv_t >
       }
       else
       {
-         if( (std::abs)( boost::numeric_cast<float32_t>(temp_red - max_color) ) < 0.0001f )
+         if( (std::abs)( temp_red - max_color ) < 0.0001f )
          {
             hue = ( temp_green - temp_blue )
                 / diff;
@@ -130,7 +128,7 @@ struct default_color_converter_impl<hsv_t,rgb_t>
       float32_t red, green, blue;
 
       //If saturation is 0, the color is a shade of gray
-      if( abs( get_color( src, saturation_t() )) < 0.0001f  )
+      if (std::abs(get_color(src, saturation_t())) < 0.0001f)
       {
          // If saturation is 0, the color is a shade of gray
          red   = get_color( src, value_t() );

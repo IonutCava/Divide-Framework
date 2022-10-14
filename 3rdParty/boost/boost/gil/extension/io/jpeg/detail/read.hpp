@@ -12,10 +12,10 @@
 #include <boost/gil/extension/io/jpeg/detail/base.hpp>
 #include <boost/gil/extension/io/jpeg/detail/is_allowed.hpp>
 
+#include <boost/gil/io/detail/dynamic.hpp>
 #include <boost/gil/io/base.hpp>
 #include <boost/gil/io/conversion_policies.hpp>
 #include <boost/gil/io/device.hpp>
-#include <boost/gil/io/dynamic_io_new.hpp>
 #include <boost/gil/io/reader_base.hpp>
 #include <boost/gil/io/typedefs.hpp>
 
@@ -276,15 +276,15 @@ public:
               )
     {}
 
-    template< typename Images >
-    void apply( any_image< Images >& images )
+    template< typename ...Images >
+    void apply( any_image< Images... >& images )
     {
         detail::jpeg_type_format_checker format_checker( this->_info._color_space != JCS_YCbCr
                                                        ? this->_info._color_space
                                                        : JCS_RGB
                                                        );
 
-        if( !construct_matched( images
+        if( !detail::construct_matched( images
                               , format_checker
                               ))
         {
@@ -300,8 +300,8 @@ public:
                                     , parent_t
                                     > op( this );
 
-            apply_operation( view( images )
-                           , op
+            variant2::visit( op
+                           , view( images )
                            );
         }
     }

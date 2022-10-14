@@ -1,5 +1,6 @@
 //
 // Copyright 2019 Miral Shah <miralshah2211@gmail.com>
+// Copyright 2021 Pranam Lashkari <plashkari628@gmail.com>
 //
 // Use, modification and distribution are subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
@@ -19,8 +20,8 @@
 #include <boost/assert.hpp>
 
 #include <boost/gil/image.hpp>
-#include <boost/gil/extension/numeric/kernel.hpp>
-#include <boost/gil/extension/numeric/convolve.hpp>
+#include <boost/gil/image_processing/kernel.hpp>
+#include <boost/gil/image_processing/convolve.hpp>
 #include <boost/gil/image_processing/numeric.hpp>
 
 namespace boost { namespace gil {
@@ -45,7 +46,7 @@ void threshold_impl(SrcView const& src_view, DstView const& dst_view, Operator c
         typename color_space_type<DstView>::type
     >::value, "Source and destination views must have pixels with the same color space");
 
-    //iterate over the image chaecking each pixel value for the threshold
+    //iterate over the image checking each pixel value for the threshold
     for (std::ptrdiff_t y = 0; y < src_view.height(); y++)
     {
         typename SrcView::x_iterator src_it = src_view.row_begin(y);
@@ -64,7 +65,7 @@ void threshold_impl(SrcView const& src_view, DstView const& dst_view, Operator c
 /// @{
 ///
 /// \brief Direction of image segmentation.
-/// The direction specifieds which pixels are considered as corresponding to object
+/// The direction specifies which pixels are considered as corresponding to object
 /// and which pixels correspond to background.
 enum class threshold_direction
 {
@@ -160,13 +161,13 @@ void threshold_binary(
 
 /// \ingroup ImageProcessing
 /// \brief Applies truncating threshold to each pixel of image view.
-/// Takes an image view and performes truncating threshold operation on each chennel.
+/// Takes an image view and performs truncating threshold operation on each chennel.
 /// If mode is threshold and direction is regular:
 /// values greater than threshold_value will be set to threshold_value else no change
 /// If mode is threshold and direction is inverse:
-/// values less than threshold_value will be set to threshold_value else no change
+/// values less than or equal to threshold_value will be set to threshold_value else no change
 /// If mode is zero and direction is regular:
-/// values less than threshold_value will be set to 0 else no change
+/// values less than or equal to threshold_value will be set to 0 else no change
 /// If mode is zero and direction is inverse:
 /// values more than threshold_value will be set to 0 else no change
 template <typename SrcView, typename DstView>
@@ -372,7 +373,7 @@ void adaptive_impl
         typename color_space_type<DstView>::type
     >::value, "Source and destination views must have pixels with the same color space");
 
-    //iterate over the image chaecking each pixel value for the threshold
+    //iterate over the image checking each pixel value for the threshold
     for (std::ptrdiff_t y = 0; y < src_view.height(); y++)
     {
         typename SrcView::x_iterator src_it = src_view.row_begin(y);

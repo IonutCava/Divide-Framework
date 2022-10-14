@@ -20,6 +20,7 @@ extern "C" {
 
 #include <boost/assert.hpp>
 #include <boost/config.hpp>
+#include <boost/core/ignore_unused.hpp>
 
 #include <boost/context/detail/config.hpp>
 #include <boost/context/stack_context.hpp>
@@ -50,10 +51,7 @@ public:
 
     stack_context allocate() {
         // calculate how many pages are required
-        const std::size_t pages(        
-            static_cast< std::size_t >(
-                std::ceil(
-                    static_cast< float >( size_) / traits_type::page_size() ) ) );
+        const std::size_t pages = (size_ + traits_type::page_size() - 1) / traits_type::page_size();
         // add one page at bottom that will be used as guard-page
         const std::size_t size__ = ( pages + 1) * traits_type::page_size();
 
@@ -67,12 +65,9 @@ public:
         if ( MAP_FAILED == vp) throw std::bad_alloc();
 
         // conforming to POSIX.1-2001
-#if defined(BOOST_DISABLE_ASSERTS)
-        ::mprotect( vp, traits_type::page_size(), PROT_NONE);
-#else
         const int result( ::mprotect( vp, traits_type::page_size(), PROT_NONE) );
+        boost::ignore_unused(result);
         BOOST_ASSERT( 0 == result);
-#endif
 
         stack_context sctx;
         sctx.size = size__;

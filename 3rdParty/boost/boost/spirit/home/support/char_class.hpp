@@ -12,10 +12,6 @@
 #pragma once
 #endif
 
-#include <string>
-
-#include <boost/spirit/include/phoenix_limits.hpp>      // needs to be included before proto
-#include <boost/proto/proto.hpp>
 #include <boost/config.hpp>
 #include <boost/mpl/bool.hpp>
 #include <boost/spirit/home/support/unused.hpp>
@@ -285,7 +281,7 @@ namespace boost { namespace spirit { namespace char_class
     template <typename CharEncoding>
     struct classify
     {
-        typedef typename CharEncoding::char_type char_type;
+        typedef typename CharEncoding::classify_type char_type;
 
 #define BOOST_SPIRIT_CLASSIFY(name, isname)                                     \
         template <typename Char>                                                \
@@ -511,7 +507,7 @@ namespace boost { namespace spirit { namespace char_class
     template <typename CharEncoding>
     struct convert
     {
-        typedef typename CharEncoding::char_type char_type;
+        typedef typename CharEncoding::classify_type char_type;
 
         template <typename Char>
         static Char

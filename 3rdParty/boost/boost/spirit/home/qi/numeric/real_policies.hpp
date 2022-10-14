@@ -5,8 +5,8 @@
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ==============================================================================*/
-#if !defined(SPIRIT_REAL_POLICIES_APRIL_17_2006_1158PM)
-#define SPIRIT_REAL_POLICIES_APRIL_17_2006_1158PM
+#ifndef BOOST_SPIRIT_QI_NUMERIC_REAL_POLICIES_HPP
+#define BOOST_SPIRIT_QI_NUMERIC_REAL_POLICIES_HPP
 
 #if defined(_MSC_VER)
 #pragma once
@@ -79,7 +79,7 @@ namespace boost { namespace spirit { namespace qi
         {
             Iterator save = first;
             if (extract_uint<unused_type, 10, 1, -1>::call(first, last, unused))
-                return std::distance(save, first);
+                return static_cast<std::size_t>(std::distance(save, first));
             return 0;
         }
 

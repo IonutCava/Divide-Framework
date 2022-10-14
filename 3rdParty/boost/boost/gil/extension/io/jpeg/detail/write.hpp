@@ -14,7 +14,7 @@
 
 #include <boost/gil/io/base.hpp>
 #include <boost/gil/io/device.hpp>
-#include <boost/gil/io/dynamic_io_new.hpp>
+#include <boost/gil/io/detail/dynamic.hpp>
 
 #include <vector>
 
@@ -132,6 +132,8 @@ private:
                                 , 1
                                 );
         }
+
+        jpeg_finish_compress ( this->get() );
     }
 };
 
@@ -158,14 +160,14 @@ public:
               )
     {}
 
-    template< typename Views >
-    void apply( const any_image_view< Views >& views )
+    template< typename ...Views >
+    void apply( const any_image_view< Views... >& views )
     {
         detail::dynamic_io_fnobj< detail::jpeg_write_is_supported
                                 , parent_t
                                 > op( this );
 
-        apply_operation( views, op );
+        variant2::visit( op, views );
     }
 };
 
