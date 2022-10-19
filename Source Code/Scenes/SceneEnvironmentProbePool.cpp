@@ -74,7 +74,7 @@ I16 SceneEnvironmentProbePool::AllocateSlice(const bool lock) {
         }
     }
 
-    if_constexpr (Config::Build::IS_DEBUG_BUILD) {
+    if constexpr (Config::Build::IS_DEBUG_BUILD) {
         DIVIDE_UNEXPECTED_CALL();
     }
 

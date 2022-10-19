@@ -257,7 +257,7 @@ void EnvironmentProbeComponent::updateType(const UpdateType type) {
         if (newSlice >= 0) {
             rtLayerIndex(newSlice);
         } else {
-            if_constexpr (Config::Build::IS_DEBUG_BUILD) {
+            if constexpr (Config::Build::IS_DEBUG_BUILD) {
                 DIVIDE_UNEXPECTED_CALL();
             }
             // Failed to allocate a slice. Fallback to manual updates

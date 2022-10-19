@@ -373,7 +373,7 @@ ErrorCode WindowManager::configureAPISettings(const RenderAPI api, const U16 des
         Uint32 OpenGLFlags = SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG | SDL_GL_CONTEXT_RESET_ISOLATION_FLAG;
 
         bool useDebugContext = false;
-        if_constexpr(Config::ENABLE_GPU_VALIDATION)
+        if constexpr(Config::ENABLE_GPU_VALIDATION)
         {
             // OpenGL error handling is available in any build configuration if the proper defines are in place.
             OpenGLFlags |= SDL_GL_CONTEXT_ROBUST_ACCESS_FLAG;

@@ -33,24 +33,28 @@
 #ifndef _PLATFORM_TASK_POOL_INL_
 #define _PLATFORM_TASK_POOL_INL_
 
-namespace Divide {
+namespace Divide
+{
     template<bool IsBlocking>
-    ThreadPool<IsBlocking>::ThreadPool(TaskPool& parent, const U32 threadCount)
-        : _parent(parent)
+    ThreadPool<IsBlocking>::ThreadPool( TaskPool& parent, const U32 threadCount )
+        : _parent( parent )
     {
-        _threads.reserve(threadCount);
+        _threads.reserve( threadCount );
 
-        for (U32 idx = 0u; idx < threadCount; ++idx) {
+        for ( U32 idx = 0u; idx < threadCount; ++idx )
+        {
             _threads.emplace_back(
-            [&, idx]{
-                const std::thread::id threadID = std::this_thread::get_id();
-                _parent.onThreadCreate(idx, threadID);
-                while (_isRunning) {
-                    executeOneTask(true);
-                }
+                [&, idx]
+                {
+                    const std::thread::id threadID = std::this_thread::get_id();
+                    _parent.onThreadCreate( idx, threadID );
+                    while ( _isRunning )
+                    {
+                        executeOneTask( true );
+                    }
 
-                _parent.onThreadDestroy(threadID);
-            });
+                    _parent.onThreadDestroy( threadID );
+                } );
         }
     }
 
@@ -61,38 +65,51 @@ namespace Divide {
     }
 
     template<bool IsBlocking>
-    void ThreadPool<IsBlocking>::join() {
-        if (!_isRunning) {
+    void ThreadPool<IsBlocking>::join()
+    {
+        if ( !_isRunning )
+        {
             return;
         }
         _isRunning = false;
 
         const size_t threadCount = _threads.size();
-        for (size_t idx = 0; idx < threadCount; ++idx) {
-            addTask([]([[maybe_unused]] const bool wait) noexcept { return true; });
+        for ( size_t idx = 0; idx < threadCount; ++idx )
+        {
+            addTask( []( [[maybe_unused]] const bool wait ) noexcept
+                     {
+                         return true;
+                     } );
         }
 
-        for (std::thread& thread : _threads) {
-            if (thread.joinable()) {
+        for ( std::thread& thread : _threads )
+        {
+            if ( thread.joinable() )
+            {
                 thread.join();
             }
         }
     }
 
     template<bool IsBlocking>
-    void ThreadPool<IsBlocking>::wait() const noexcept {
-        if (_isRunning) {
+    void ThreadPool<IsBlocking>::wait() const noexcept
+    {
+        if ( _isRunning )
+        {
             // Busy wait
-            while (_tasksLeft.load() > 0) {
+            while ( _tasksLeft.load() > 0 )
+            {
                 std::this_thread::yield();
             }
         }
     }
 
     template<bool IsBlocking>
-    bool ThreadPool<IsBlocking>::addTask(PoolTask&& job) {
-        if (_queue.enqueue(MOV(job))) {
-            _tasksLeft.fetch_add(1);
+    bool ThreadPool<IsBlocking>::addTask( PoolTask&& job )
+    {
+        if ( _queue.enqueue( MOV( job ) ) )
+        {
+            _tasksLeft.fetch_add( 1 );
             return true;
         }
 
@@ -100,37 +117,49 @@ namespace Divide {
     }
 
     template<bool IsBlocking>
-    void ThreadPool<IsBlocking>::executeOneTask(const bool waitForTask) {
+    void ThreadPool<IsBlocking>::executeOneTask( const bool waitForTask )
+    {
         PoolTask task = {};
-        if (dequeTask(waitForTask, task)) {
-            if (!task(IsBlocking && !waitForTask)) {
-                addTask(MOV(task));
+        if ( dequeTask( waitForTask, task ) )
+        {
+            if ( !task( IsBlocking && !waitForTask ) )
+            {
+                addTask( MOV( task ) );
             }
-            _tasksLeft.fetch_sub(1);
+            _tasksLeft.fetch_sub( 1 );
         }
     }
 
     template<>
-    inline bool ThreadPool<true>::dequeTask(const bool waitForTask, PoolTask& taskOut) {
-        if (waitForTask) {
-            _queue.wait_dequeue(taskOut);
-        } else if (!_queue.try_dequeue(taskOut)) {
+    inline bool ThreadPool<true>::dequeTask( const bool waitForTask, PoolTask& taskOut )
+    {
+        if ( waitForTask ) [[likely]]
+        {
+            _queue.wait_dequeue( taskOut );
+        }
+        else if ( !_queue.try_dequeue( taskOut ) )
+        {
             return false;
         }
-        
+
         return true;
     }
 
     template<>
-    inline bool ThreadPool<false>::dequeTask(const bool waitForTask, PoolTask& taskOut) {
-        if (waitForTask) {
-            while (!_queue.try_dequeue(taskOut)) {
+    inline bool ThreadPool<false>::dequeTask( const bool waitForTask, PoolTask& taskOut )
+    {
+        if ( waitForTask )
+        {
+            while ( !_queue.try_dequeue( taskOut ) )
+            {
                 std::this_thread::yield();
             }
-        } else if (!_queue.try_dequeue(taskOut)) {
+        }
+        else if ( !_queue.try_dequeue( taskOut ) )
+        {
             return false;
         }
-        
+
 
         return true;
     }

@@ -525,7 +525,7 @@ namespace Divide::AI::Navigation
             return false;
         }
 
-        if_constexpr( false )
+        if constexpr( false )
         {
             if ( !rcBuildRegionsMonotone( ctx, *_compactHeightField, cfg.borderSize, cfg.minRegionArea, cfg.mergeRegionArea ) )
             {

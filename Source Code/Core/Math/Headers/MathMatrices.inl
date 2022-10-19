@@ -640,15 +640,15 @@ namespace Divide
     template<typename U>
     void mat2<T>::set( const U* matrix ) noexcept
     {
-        if_constexpr( sizeof( T ) == sizeof( U ) )
+        if constexpr ( sizeof( T ) == sizeof( U ) )
         {
             std::memcpy( mat, matrix, sizeof( U ) * 4 );
         }
- else
- {
- set( matrix[0], matrix[1],
-      matrix[2], matrix[3] );
-    }
+        else
+        {
+            set( matrix[0], matrix[1],
+                 matrix[2], matrix[3] );
+        }
     }
 
     template<typename T>
@@ -2143,17 +2143,17 @@ namespace Divide
     template<typename U>
     FORCE_INLINE void mat4<T>::set( U const* matrix ) noexcept
     {
-        if_constexpr( sizeof( T ) == sizeof( U ) )
+        if constexpr ( sizeof( T ) == sizeof( U ) )
         {
             std::memcpy( mat, matrix, sizeof( U ) * 16 );
         }
- else
- {
- for ( U8 i = 0u; i < 16u; ++i )
- {
-     mat[i] = static_cast<T>(matrix[i]);
- }
-    }
+        else
+        {
+            for ( U8 i = 0u; i < 16u; ++i )
+            {
+                mat[i] = static_cast<T>(matrix[i]);
+            }
+        }
     }
 
     template<typename T>

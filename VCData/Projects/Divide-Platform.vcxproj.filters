@@ -1135,6 +1135,9 @@
     <None Include="..\..\Source Code\Platform\Video\Headers\PushConstants.inl">
       <Filter>Video\Headers</Filter>
     </None>
+    <None Include="..\..\Source Code\Platform\Threading\Headers\Task.inl">
+      <Filter>Threading\Headers</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Text Include="../../assets\shaders\GLSL\toneMap.glsl">

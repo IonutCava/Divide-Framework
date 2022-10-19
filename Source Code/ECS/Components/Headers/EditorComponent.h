@@ -32,7 +32,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _SGN_EDITOR_COMPONENT_H_
 #define _SGN_EDITOR_COMPONENT_H_
 
-#include "Platform/Headers/PlatformDefines.h"
 //Temp
 #include "Platform/Video/Headers/PushConstant.h"
 

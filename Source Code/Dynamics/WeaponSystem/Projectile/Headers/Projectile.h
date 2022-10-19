@@ -33,8 +33,6 @@
 #ifndef _PROJECTILE_H_
 #define _PROJECTILE_H_
 
-#include "Core/Math/Headers/MathHelper.h"
-
 namespace Divide {
 
 /// Defines a projectile object (usually bullets or rockets)

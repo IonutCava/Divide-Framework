@@ -119,7 +119,7 @@ namespace Divide {
                 if (is_regular_file(x.path())) {
                     if (IsValidFile(x.path().generic_string().c_str())) {
                         const auto& filename = x.path().filename().generic_string();
-                        directoryOut._files.push_back({ directoryOut._path, {filename, getExtension(filename.c_str()).substr(1)}});
+                        directoryOut._files.emplace_back(directoryOut._path, File{filename, getExtension(filename.c_str()).substr(1)});
 
                     }
                 } else if (is_directory(x.path())) {

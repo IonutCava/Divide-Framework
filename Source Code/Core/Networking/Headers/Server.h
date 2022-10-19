@@ -35,8 +35,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Networking/Headers/WorldPacket.h"
 
-#include <boost/asio/io_context.hpp>
-
 //----------------------------------------------------------------------
 namespace Divide {
 

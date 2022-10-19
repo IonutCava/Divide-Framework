@@ -33,7 +33,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _SCENE_INPUT_ACTIONS_H_
 #define _SCENE_INPUT_ACTIONS_H_
 
-#include "Platform/Headers/PlatformDefines.h"
 #include "Platform/Input/Headers/Input.h"
 
 namespace Divide {

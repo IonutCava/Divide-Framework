@@ -43,15 +43,14 @@ namespace Divide {
 
 template <typename T>
 class Quaternion {
-    static_assert(std::is_arithmetic<T>::value &&
-                  !std::is_same<T, bool>::value,
-                  "non-arithmetic quaternion type");
+    static_assert(ValidMathType<T>, "Invalid base type!");
+
    public:
     Quaternion() noexcept;
     Quaternion(T x, T y, T z, T w) noexcept;
     explicit Quaternion(const vec4<T>& values) noexcept;
 
-    template<typename U = T, class = typename std::enable_if<std::is_same<U, F32>::value>::type>
+    template<typename U = T> requires std::is_same_v<U, F32>
     explicit Quaternion(__m128 reg) noexcept : _elements(reg) {}
 
     explicit Quaternion(const mat3<T>& rotationMatrix) noexcept;

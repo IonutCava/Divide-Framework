@@ -86,18 +86,12 @@ do {                                                \
     TYPEDEF_SMART_POINTERS_FOR_TYPE(T);
 
 
-#if !defined(if_constexpr)
-#define if_constexpr if constexpr
-#endif
-
 #define CONCATENATE_IMPL(s1, s2) s1##s2
 #define CONCATENATE(s1, s2) CONCATENATE_IMPL(s1, s2)
 #ifdef __COUNTER__
-#define ANONYMOUS_VARIABLE(str) \
-    CONCATENATE(str, __COUNTER__)
+#define ANONYMOUS_VARIABLE(str) CONCATENATE(str, __COUNTER__)
 #else
-#define ANONYMOUSE_VARIABLE(str) \
-    CONCATENATE(str, __LINE__)
+#define ANONYMOUSE_VARIABLE(str) CONCATENATE(str, __LINE__)
 #endif
 
  // Multumesc Andrei A.!
@@ -111,19 +105,17 @@ do {                                                \
 
  //ref: https://foonathan.net/2020/09/move-forward/
  // static_cast to rvalue reference
-#define MOV(...) \
-static_cast<std::remove_reference_t<decltype(__VA_ARGS__)>&&>(__VA_ARGS__)
+#define MOV(...) static_cast<std::remove_reference_t<decltype(__VA_ARGS__)>&&>(__VA_ARGS__)
 
 // static_cast to identity
 // The extra && aren't necessary as discussed above, but make it more robust in case it's used with a non-reference.
-#define FWD(...) \
-  static_cast<decltype(__VA_ARGS__)&&>(__VA_ARGS__)
+#define FWD(...) static_cast<decltype(__VA_ARGS__)&&>(__VA_ARGS__)
 
-#define ALIAS_TEMPLATE_FUNCTION(highLevelF, lowLevelF) \
-template<typename... Args> \
+#define ALIAS_TEMPLATE_FUNCTION(highLevelF, lowLevelF)                         \
+template<typename... Args>                                                     \
 constexpr auto highLevelF(Args&&... args) -> decltype(lowLevelF(FWD(args)...)) \
-{ \
-    return lowLevelF(FWD(args)...); \
+{                                                                              \
+    return lowLevelF(FWD(args)...);                                            \
 }
 
 ALIAS_TEMPLATE_FUNCTION(ArrayCount, std::size)
@@ -141,10 +133,8 @@ class function_view<TReturn(TArgs...)> final
     TReturn(*_erased_fn)(void*, TArgs...);
 
 public:
-    template <typename T, typename = std::enable_if_t <
-        std::is_invocable<T&(TArgs...)>{} &&
-        !std::is_same<std::decay_t<T>, function_view>{} >>
-        function_view(T&& x) noexcept : _ptr{ (void*)std::addressof(x) } {
+    template <typename T> requires std::is_invocable_v<T&(TArgs...)> && !std::is_same_v<std::decay_t<T>, function_view>
+    function_view(T&& x) noexcept : _ptr{ (void*)std::addressof(x) } {
         _erased_fn = [](void* ptr, TArgs... xs) -> TReturn {
             return (*reinterpret_cast<std::add_pointer_t<T>>(ptr))(
                 FWD(xs)...);
@@ -221,6 +211,7 @@ extern void SetThreadName(const char* threadName) noexcept;
 
 extern bool CallSystemCmd(const char* cmd, const char* args);
 
+struct ResourcePath;
 [[nodiscard]] bool CreateDirectories(const char* path);
 [[nodiscard]] bool CreateDirectories(const ResourcePath& path);
 
@@ -284,9 +275,7 @@ template<typename T>
     return result;
 }
 
-template<typename T,
-typename = typename std::enable_if<std::is_integral<T>::value>::type,
-typename = typename std::enable_if<std::is_unsigned<T>::value>::type>
+template<typename T> requires std::is_unsigned_v<T>
 [[nodiscard]] constexpr bool isPowerOfTwo(const T x) noexcept {
     return !(x == 0) && !(x & (x - 1));
 }
@@ -314,55 +303,28 @@ void for_each_interval(Iterator from, Iterator to, std::ptrdiff_t partition_size
 }
 
 //ref: http://stackoverflow.com/questions/9530928/checking-a-member-exists-possibly-in-a-base-class-c11-version
-template< typename C, typename = void >
-struct has_reserve
-    : std::false_type
-{};
+template<typename C>
+concept has_reserve = requires(C c) {
+    c.reserve( std::declval<typename C::size_type>() );
+};
 
-template< typename C >
-struct has_reserve< C, typename std::enable_if<
-                                    std::is_same<
-                                        decltype(std::declval<C>().reserve(std::declval<typename C::size_type>())),
-                                        void
-                                    >::value
-                                >::type >
-    : std::true_type
-{};
-
-template< typename C, typename = void >
-struct has_emplace_back
-    : std::false_type
-{};
-
-template< typename C >
-struct has_emplace_back< C, typename std::enable_if<
-                                        std::is_same<
-                                            decltype(std::declval<C>().emplace_back(std::declval<typename C::value_type>())),
-                                            void
-                                        >::value
-                                    >::type >
-    : std::true_type
-{};
-
-
-template<typename>
-static constexpr std::false_type has_assign(...) { 
-    return std::false_type();
+template<typename C>
+concept has_emplace_back = requires(C c) {
+    c.emplace_back( std::declval<typename C::value_type>() );
 };
 
 //ref: https://github.com/ParBLiSS/kmerind/blob/master/src/utils/container_traits.hpp
-template<typename T>
-static constexpr auto has_assign(T*) ->
-decltype(std::declval<T>().assign(std::declval<decltype(std::declval<T>().begin())>(),
-                                  std::declval<decltype(std::declval<T>().end())>()), std::true_type()) {
-    return std::true_type();
+template<typename C>
+concept has_assign = requires(C c) {
+    c.assign( std::declval<decltype(std::declval<C>().begin())>(),
+              std::declval<decltype(std::declval<C>().end())>());
 };
 
-template< typename C >
-std::enable_if_t< !has_reserve< C >::value > optional_reserve(C&, std::size_t) {}
+template< typename C > requires !has_reserve<C>
+void optional_reserve(C&, std::size_t) {}
 
-template< typename C >
-std::enable_if_t< has_reserve< C >::value > optional_reserve(C& c, std::size_t n) {
+template< typename C > requires has_reserve<C>
+void optional_reserve(C& c, std::size_t n) {
     c.reserve(c.size() + n);
 }
 
@@ -767,7 +729,6 @@ namespace Assert {
 #define DIVIDE_UNEXPECTED_CALL_MSG(X) DIVIDE_ASSERT(false, X)
 #define DIVIDE_UNEXPECTED_CALL() DIVIDE_UNEXPECTED_CALL_MSG("UNEXPECTED CALL")
 
-                                    
 template <typename Ret, typename... Args >
 using DELEGATE_EASTL = eastl::function< Ret(Args...) >;
 
@@ -778,11 +739,6 @@ template <typename Ret, typename... Args >
 using DELEGATE = DELEGATE_STD<Ret, Args...>;
 
 [[nodiscard]] U32 HardwareThreadCount() noexcept;
-
-template<typename T, typename U>
-constexpr void assert_type(const U& ) {
-    static_assert(std::is_same<U, T>::value, "value type not satisfied");
-}
 
 /// Wrapper that allows usage of atomic variables in containers
 /// Copy is not atomic! (e.g. push/pop from containers is not threadsafe!)

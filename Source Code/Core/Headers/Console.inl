@@ -32,10 +32,6 @@
 #ifndef _CORE_CONSOLE_INL_
 #define _CORE_CONSOLE_INL_
 
-#if !defined(if_constexpr)
-#define if_constexpr if constexpr
-#endif
-
 struct sink { 
     template<typename ...Args> 
     explicit sink(Args const& ...) noexcept {}
@@ -44,7 +40,7 @@ struct sink {
 namespace Divide {
 template <typename... Args>
 NO_INLINE void Console::d_printfn(const char* format, Args&&... args) {
-    if_constexpr(Config::Build::IS_DEBUG_BUILD) {
+    if constexpr(Config::Build::IS_DEBUG_BUILD) {
         printfn(format, FWD(args)...);
     } else {
         sink{ format, args ... };
@@ -53,7 +49,7 @@ NO_INLINE void Console::d_printfn(const char* format, Args&&... args) {
 
 template <typename... Args>
 NO_INLINE void Console::d_printf(const char* format, Args&&... args) {
-    if_constexpr(Config::Build::IS_DEBUG_BUILD) {
+    if constexpr(Config::Build::IS_DEBUG_BUILD) {
         printf(format, FWD(args)...);
     } else {
         sink{ format, args ... };
@@ -62,7 +58,7 @@ NO_INLINE void Console::d_printf(const char* format, Args&&... args) {
 
 template <typename... Args>
 NO_INLINE void Console::d_warnfn(const char* format, Args&&... args) {
-    if_constexpr(Config::Build::IS_DEBUG_BUILD) {
+    if constexpr(Config::Build::IS_DEBUG_BUILD) {
         warnfn(format, FWD(args)...);
     } else {
         sink{ format, args ... };
@@ -71,7 +67,7 @@ NO_INLINE void Console::d_warnfn(const char* format, Args&&... args) {
 
 template <typename... Args>
 NO_INLINE void Console::d_warnf(const char* format, Args&&... args) {
-    if_constexpr(Config::Build::IS_DEBUG_BUILD) {
+    if constexpr(Config::Build::IS_DEBUG_BUILD) {
         warnf(format, FWD(args)...);
     } else {
         sink{ format, args ... };
@@ -80,7 +76,7 @@ NO_INLINE void Console::d_warnf(const char* format, Args&&... args) {
 
 template <typename... Args>
 NO_INLINE void Console::d_errorfn(const char* format, Args&&... args) {
-    if_constexpr (Config::Build::IS_DEBUG_BUILD) {
+    if constexpr (Config::Build::IS_DEBUG_BUILD) {
         errorfn(format, FWD(args)...);
     } else {
         sink{ format, args ... };
@@ -89,7 +85,7 @@ NO_INLINE void Console::d_errorfn(const char* format, Args&&... args) {
 
 template <typename... Args>
 NO_INLINE void Console::d_errorf(const char* format, Args&&... args) {
-    if_constexpr (Config::Build::IS_DEBUG_BUILD) {
+    if constexpr (Config::Build::IS_DEBUG_BUILD) {
         errorf(format, FWD(args)...);
     } else {
         sink{ format, args ... };
@@ -158,7 +154,7 @@ NO_INLINE void Console::errorf(std::ofstream& outStream, const char* format, Arg
 
 template <typename... Args>
 NO_INLINE void Console::d_printfn(std::ofstream& outStream, const char* format, Args&&... args) {
-    if_constexpr (Config::Build::IS_DEBUG_BUILD) {
+    if constexpr (Config::Build::IS_DEBUG_BUILD) {
         printfn(outStream, format, FWD(args)...);
     } else {
         sink{ outStream, format, args ... };
@@ -167,7 +163,7 @@ NO_INLINE void Console::d_printfn(std::ofstream& outStream, const char* format, 
 
 template <typename... Args>
 NO_INLINE void Console::d_printf(std::ofstream& outStream, const char* format, Args&&... args) {
-    if_constexpr (Config::Build::IS_DEBUG_BUILD) {
+    if constexpr (Config::Build::IS_DEBUG_BUILD) {
         printf(outStream, format, FWD(args)...);
     } else {
         sink{ outStream, format, args ... };
@@ -176,7 +172,7 @@ NO_INLINE void Console::d_printf(std::ofstream& outStream, const char* format, A
 
 template <typename... Args>
 NO_INLINE void Console::d_warnfn(std::ofstream& outStream, const char* format, Args&&... args) {
-    if_constexpr (Config::Build::IS_DEBUG_BUILD) {
+    if constexpr (Config::Build::IS_DEBUG_BUILD) {
         warnfn(outStream, format, FWD(args)...);
     } else {
         sink{ outStream, format, args ... };
@@ -185,7 +181,7 @@ NO_INLINE void Console::d_warnfn(std::ofstream& outStream, const char* format, A
 
 template <typename... Args>
 NO_INLINE void Console::d_warnf(std::ofstream& outStream, const char* format, Args&&... args) {
-    if_constexpr (Config::Build::IS_DEBUG_BUILD) {
+    if constexpr (Config::Build::IS_DEBUG_BUILD) {
         warnf(outStream, format, FWD(args)...);
     } else {
         sink{ outStream, format, args ... };
@@ -194,7 +190,7 @@ NO_INLINE void Console::d_warnf(std::ofstream& outStream, const char* format, Ar
 
 template <typename... Args>
 NO_INLINE void Console::d_errorfn(std::ofstream& outStream, const char* format, Args&&... args) {
-    if_constexpr (Config::Build::IS_DEBUG_BUILD) {
+    if constexpr (Config::Build::IS_DEBUG_BUILD) {
         errorfn(outStream, format, FWD(args)...);
     } else {
         sink{ outStream, format, args ... };
@@ -203,7 +199,7 @@ NO_INLINE void Console::d_errorfn(std::ofstream& outStream, const char* format, 
 
 template <typename... Args>
 NO_INLINE void Console::d_errorf(std::ofstream& outStream, const char* format, Args&&... args) {
-    if_constexpr (Config::Build::IS_DEBUG_BUILD) {
+    if constexpr (Config::Build::IS_DEBUG_BUILD) {
         errorf(outStream, format, FWD(args)...);
     } else {
         sink{ outStream, format, args ... };

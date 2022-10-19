@@ -6,7 +6,7 @@ namespace Divide::Profiler
 {
     void Init()
     {
-        if_constexpr( detail::enabled )
+        if constexpr( detail::enabled )
         {
             OPTICK_SET_MEMORY_ALLOCATOR( []( size_t size ) -> void*
                                          {
@@ -26,7 +26,7 @@ namespace Divide::Profiler
 
     void Shutdown()
     {
-        if_constexpr (detail::enabled)
+        if constexpr (detail::enabled)
         {
             OPTICK_SHUTDOWN();
         }
@@ -34,14 +34,14 @@ namespace Divide::Profiler
 
     void OnThreadStart( const std::string_view threadName )
     {
-        if_constexpr( detail::enabled )
+        if constexpr( detail::enabled )
         {
             OPTICK_START_THREAD(threadName.data());
         }
     }
     void OnThreadStop()
     {
-        if_constexpr( detail::enabled )
+        if constexpr( detail::enabled )
         {
             OPTICK_STOP_THREAD();
         }

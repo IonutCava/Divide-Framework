@@ -70,7 +70,7 @@ namespace Divide {
             SharedLock<SharedMutex> r_lock(_children._lock);
 
             for (SceneGraphNode* child : _children._data) {
-                if_constexpr(checkInternalNode) {
+                if constexpr(checkInternalNode) {
                     const U64 cmpHash = _ID(child->getNode().resourceName().c_str());
                     if (cmpHash == nameHash) {
                         return child;
@@ -97,7 +97,7 @@ namespace Divide {
         if (GUID != -1) {
             SharedLock<SharedMutex> r_lock(_children._lock);
             for (SceneGraphNode* child : _children._data) {
-                if_constexpr(checkInternalNode) {
+                if constexpr(checkInternalNode) {
                     if (child->getNode().getGUID() == GUID) {
                         return child;
                     }

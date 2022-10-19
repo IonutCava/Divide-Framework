@@ -89,15 +89,12 @@ class CommandBuffer final : GUIDWrapper, NonCopyable, NonMovable {
       using CommandOrderContainer = eastl::fixed_vector<CommandEntry, 512, true, eastl::dvd_allocator>;
 
   public:
-    template<typename T>
-    typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-    add();
-    template<typename T>
-    typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-    add(const T& command);
-    template<typename T>
-    typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-    add(const T&& command);
+    template<typename T> requires std::is_base_of_v<CommandBase, T>
+    T* add();
+    template<typename T> requires std::is_base_of_v<CommandBase, T>
+    T* add(const T& command);
+    template<typename T> requires std::is_base_of_v<CommandBase, T>
+    T* add(const T&& command);
 
     [[nodiscard]] std::pair<ErrorType, size_t> validate() const;
 
@@ -107,37 +104,30 @@ class CommandBuffer final : GUIDWrapper, NonCopyable, NonMovable {
     void batch();
 
     // Return true if merge is successful
-    template<typename T>
-    typename std::enable_if<std::is_base_of<CommandBase, T>::value, bool>::type
-    tryMergeCommands(CommandType type, T* prevCommand, T* crtCommand) const;
+    template<typename T> requires std::is_base_of_v<CommandBase, T>
+    [[nodiscard]] bool tryMergeCommands(CommandType type, T* prevCommand, T* crtCommand) const;
 
     [[nodiscard]] bool exists(const CommandEntry& commandEntry) const noexcept;
 
-    template<typename T>
-    [[nodiscard]] typename std::enable_if<std::is_base_of<CommandBase, T>::value, const Container::EntryList&>::type
-    get() const;
+    template<typename T> requires std::is_base_of_v<CommandBase, T>
+    [[nodiscard]] const Container::EntryList& get() const;
 
-    template<typename T>
-    [[nodiscard]] typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-    get(const CommandEntry& commandEntry) const;
+    template<typename T> requires std::is_base_of_v<CommandBase, T>
+    [[nodiscard]] T* get(const CommandEntry& commandEntry) const;
 
-    template<typename T>
-    [[nodiscard]] typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-    get(const CommandEntry& commandEntry);
+    template<typename T> requires std::is_base_of_v<CommandBase, T>
+    [[nodiscard]] T* get(const CommandEntry& commandEntry);
 
-    template<typename T>
-    [[nodiscard]] typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-    get(U24 index);
+    template<typename T> requires std::is_base_of_v<CommandBase, T>
+    [[nodiscard]] T* get(U24 index);
 
-    template<typename T>
-    [[nodiscard]] typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-    get(U24 index) const;
+    template<typename T> requires std::is_base_of_v<CommandBase, T>
+    [[nodiscard]] T* get(U24 index) const;
 
     [[nodiscard]] bool exists(U8 typeIndex, U24 index) const noexcept;
 
-    template<typename T>
-    typename std::enable_if<std::is_base_of<CommandBase, T>::value, bool>::type
-    exists(U24 index) const noexcept;
+    template<typename T> requires std::is_base_of_v<CommandBase, T>
+    [[nodiscard]] bool exists(U24 index) const noexcept;
 
     inline CommandOrderContainer& operator()() noexcept;
     inline const CommandOrderContainer& operator()() const noexcept;
@@ -149,17 +139,15 @@ class CommandBuffer final : GUIDWrapper, NonCopyable, NonMovable {
     // Multi-line. indented list of all commands (and params for some of them)
     [[nodiscard]] string toString() const;
 
-    template<typename T>
-    [[nodiscard]] typename std::enable_if<std::is_base_of<CommandBase, T>::value, size_t>::type
-    count() const noexcept;
+    template<typename T> requires std::is_base_of_v<CommandBase, T>
+    [[nodiscard]] size_t count() const noexcept;
 
   protected:
     template<typename T, CommandType enumVal>
     friend struct Command;
 
-    template<typename T>
-    typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-    allocateCommand();
+    template<typename T> requires std::is_base_of_v<CommandBase, T>
+    [[nodiscard]] T* allocateCommand();
 
     static void ToString(const CommandBase& cmd, CommandType type, I32& crtIndent, string& out);
 
@@ -175,21 +163,18 @@ class CommandBuffer final : GUIDWrapper, NonCopyable, NonMovable {
 [[nodiscard]] bool Merge(MemoryBarrierCommand* lhs, MemoryBarrierCommand* rhs);
 [[nodiscard]] bool BatchDrawCommands(GenericDrawCommand& previousGDC, GenericDrawCommand& currentGDC) noexcept;
 
-template<typename T>
-typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-EnqueueCommand(CommandBuffer& buffer) {
+template<typename T> requires std::is_base_of_v<CommandBase, T>
+T* EnqueueCommand(CommandBuffer& buffer) {
     return buffer.add<T>();
 }
 
-template<typename T>
-typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-EnqueueCommand(CommandBuffer& buffer, T& cmd) {
+template<typename T>  requires std::is_base_of_v<CommandBase, T>
+T* EnqueueCommand(CommandBuffer& buffer, T& cmd) {
     return buffer.add(cmd);
 }
 
 template<typename T>
-typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-EnqueueCommand(CommandBuffer& buffer, T&& cmd) {
+T* EnqueueCommand(CommandBuffer& buffer, T&& cmd) {
     return buffer.add(cmd);
 }
 

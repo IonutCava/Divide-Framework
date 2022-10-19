@@ -33,7 +33,6 @@
 #ifndef VK_RESOURCES_H
 #define VK_RESOURCES_H
 
-#include "Platform/Headers/PlatformDefines.h"
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
 
 #include "vkInitializers.h"

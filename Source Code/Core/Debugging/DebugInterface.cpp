@@ -14,7 +14,7 @@ namespace Divide
 {
     void DebugInterface::idle( const PlatformContext& context )
     {
-        if_constexpr( !Config::Profile::ENABLE_FUNCTION_PROFILING )
+        if constexpr( !Config::Profile::ENABLE_FUNCTION_PROFILING )
         {
             return;
         }
@@ -32,7 +32,7 @@ namespace Divide
         {
             _output = Util::StringFormat( "Scene Update Loops: %d", timingData.updateLoops() );
 
-            if_constexpr( Config::Profile::ENABLE_FUNCTION_PROFILING )
+            if constexpr( Config::Profile::ENABLE_FUNCTION_PROFILING )
             {
                 const PerformanceMetrics perfMetrics = context.gfx().getPerformanceMetrics();
 

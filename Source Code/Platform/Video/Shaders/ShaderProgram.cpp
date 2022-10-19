@@ -475,9 +475,9 @@ bool InitGLSW(const GFXDevice& gfx, const DeviceInformation& deviceInfo, const C
     AppendToShaderHeader(ShaderType::COUNT, crossTypeGLSLHLSL);
 
     // Add current build environment information to the shaders
-    if_constexpr(Config::Build::IS_DEBUG_BUILD) {
+    if constexpr(Config::Build::IS_DEBUG_BUILD) {
         AppendToShaderHeader(ShaderType::COUNT, "#define _DEBUG");
-    } else if_constexpr(Config::Build::IS_PROFILE_BUILD) {
+    } else if constexpr(Config::Build::IS_PROFILE_BUILD) {
         AppendToShaderHeader(ShaderType::COUNT, "#define _PROFILE");
     } else {
         AppendToShaderHeader(ShaderType::COUNT, "#define _RELEASE");
@@ -496,7 +496,7 @@ bool InitGLSW(const GFXDevice& gfx, const DeviceInformation& deviceInfo, const C
     // This line gets replaced in every shader at load with the custom list of defines specified by the material
     AppendToShaderHeader(ShaderType::COUNT, "_CUSTOM_DEFINES__");
 
-    if_constexpr(Config::USE_COLOURED_WOIT) {
+    if constexpr(Config::USE_COLOURED_WOIT) {
         AppendToShaderHeader(ShaderType::COUNT, "#define USE_COLOURED_WOIT");
     }
 
@@ -905,7 +905,7 @@ bool ShaderProgram::RecompileShaderProgram(const Str256& name) {
 }
 
 ErrorCode ShaderProgram::OnStartup(ResourceCache* parentCache) {
-    if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
+    if constexpr(!Config::Build::IS_SHIPPING_BUILD) {
         FileWatcher& watcher = FileWatcherManager::allocateWatcher();
         s_shaderFileWatcherID = watcher.getGUID();
         g_sFileWatcherListener.addIgnoredEndCharacter('~');

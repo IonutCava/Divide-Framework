@@ -33,7 +33,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _HARDWARE_VIDEO_GFX_RT_POOL_H_
 #define _HARDWARE_VIDEO_GFX_RT_POOL_H_
 
-#include "Platform/Headers/PlatformDefines.h"
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 
 namespace Divide {

@@ -236,7 +236,7 @@ Byte* createAndAllocPersistentBuffer(const size_t bufferSize,
                                      const char* name)
 {
     glCreateBuffers(1, &bufferIdOut);
-    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+    if constexpr(Config::ENABLE_GPU_VALIDATION) {
         glObjectLabel(GL_BUFFER,
                       bufferIdOut,
                       -1,
@@ -264,7 +264,7 @@ void createBuffer(size_t bufferSize,
 
     glCreateBuffers(1, &bufferIdOut);
 
-    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+    if constexpr(Config::ENABLE_GPU_VALIDATION) {
         glObjectLabel(GL_BUFFER,
                       bufferIdOut,
                       -1,

@@ -518,7 +518,7 @@ void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData,
                 lod_indices.resize(source_indices.size());
                 constexpr F32 target_error = 1e-2f;
                 F32 result_error = 0.f;
-                if_constexpr (g_useSloppyMeshSimplification) {
+                if constexpr (g_useSloppyMeshSimplification) {
                     lod_indices.resize(meshopt_simplifySloppy(lod_indices.data(),
                                                               source_indices.data(),
                                                               source_indices.size(),

@@ -2,7 +2,6 @@
 
 #include "Headers/Defines.h"
 #include "Platform/Headers/PlatformDefines.h"
-#include "Core/Math/Headers/MathHelper.h"
 #include "Core/Resources/Headers/ResourceDescriptor.h"
 
 namespace Divide {

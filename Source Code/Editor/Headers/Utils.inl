@@ -97,7 +97,7 @@ inline DrawReturnValue DrawVecComponent(ImGuiDataType data_type,
         
     ImGui::SameLine();
 
-    if_constexpr(isSlider) {
+    if constexpr(isSlider) {
         const ImGuiSliderFlags flags = readOnly ? ImGuiSliderFlags_ReadOnly : 0u;
         ret = ImGui::DragScalar(Util::StringFormat("##_value_%s_", label).c_str(), data_type, &value, 0.1f, &minValue, &maxValue, format, flags) || ret;
     } else {
@@ -233,7 +233,7 @@ inline bool inputOrSlider(Editor& parent, const char* label, const F32 stepIn, c
                                                             cStep,
                                                             GetFormat(data_type, format, field._hexadecimal));
     if (ret.wasDeactivated && max > min) {
-        if_constexpr(num_comp > 1) {
+        if constexpr(num_comp > 1) {
             for (I32 i = 0; i < to_I32(num_comp); ++i) {
                 val[i] = CLAMPED(val[i], min, max);
             }
@@ -285,11 +285,11 @@ inline bool inputMatrix(Editor & parent, const char* label, const F32 stepIn, co
     ret = ImGui::InputScalarN(Util::StringFormat("##%s_1", label).c_str(), data_type, (void*)mat._vec[1]._v, num_rows, step, step_fast, parsedFormat, flags) || ret;
     showTooltip = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) || showTooltip;
     copyToClipboard = (showTooltip && ImGui::IsMouseClicked(0)) || copyToClipboard;
-    if_constexpr(num_rows > 2) {
+    if constexpr(num_rows > 2) {
         ret = ImGui::InputScalarN(Util::StringFormat("##%s_2", label).c_str(), data_type, (void*)mat._vec[2]._v, num_rows, step, step_fast, parsedFormat, flags) || ret;
         showTooltip = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) || showTooltip;
         copyToClipboard = (showTooltip && ImGui::IsMouseClicked(0)) || copyToClipboard;
-        if_constexpr(num_rows > 3) {
+        if constexpr(num_rows > 3) {
             ret = ImGui::InputScalarN(Util::StringFormat("##%s_3", label).c_str(), data_type, (void*)mat._vec[3]._v, num_rows, step, step_fast, parsedFormat, flags) || ret;
             showTooltip = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) || showTooltip;
             copyToClipboard = (showTooltip && ImGui::IsMouseClicked(0)) || copyToClipboard;

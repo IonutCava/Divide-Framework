@@ -274,7 +274,7 @@ namespace Divide
                 backupReturnCode != FileError::FILE_NOT_FOUND &&
                 backupReturnCode != FileError::FILE_EMPTY )
             {
-                if_constexpr( !Config::Build::IS_SHIPPING_BUILD )
+                if constexpr( !Config::Build::IS_SHIPPING_BUILD )
                 {
                     DIVIDE_UNEXPECTED_CALL();
                 }
@@ -1134,7 +1134,7 @@ namespace Divide
 
         const auto toggleEditor = [this]( [[maybe_unused]] const InputParams param )
         {
-            if_constexpr( Config::Build::ENABLE_EDITOR )
+            if constexpr( Config::Build::ENABLE_EDITOR )
             {
                 _context.editor().toggle( !_context.editor().running() );
             }
@@ -1142,7 +1142,7 @@ namespace Divide
 
         const auto toggleConsole = [this]( [[maybe_unused]] const InputParams param )
         {
-            if_constexpr( Config::Build::ENABLE_EDITOR )
+            if constexpr( Config::Build::ENABLE_EDITOR )
             {
                 _context.gui().getConsole().setVisible( !_context.gui().getConsole().isVisible() );
             }
@@ -2092,7 +2092,7 @@ namespace Divide
     {
         const bool editorRunning = Config::Build::ENABLE_EDITOR ? _context.editor().running() : false;
 
-        if_constexpr( Config::Build::ENABLE_EDITOR )
+        if constexpr( Config::Build::ENABLE_EDITOR )
         {
             if ( _context.editor().isHovered() )
             {
@@ -2125,7 +2125,7 @@ namespace Divide
             Line{VECTOR3_ZERO, VECTOR3_UNIT, DefaultColours::GREEN_U8, DefaultColours::GREEN_U8, 2.0f, 1.0f}
         };
 
-        if_constexpr( Config::Build::ENABLE_EDITOR )
+        if constexpr( Config::Build::ENABLE_EDITOR )
         {
             const Editor& editor = _context.editor();
             if ( editor.hasFocus() )

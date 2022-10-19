@@ -52,10 +52,17 @@ namespace Divide
     template <typename Type>
     using vector_fast = vector_impl<Type, true>;
 
+    template<typename T, typename... Ts>
+    concept is_non_fixed_vector = std::is_same_v<T, vector_fast<Ts...>> || std::is_same_v<T, vector<Ts...>>;
+    template<typename T, typename... Ts>
+    concept is_fixed_vector = std::is_same_v<T, eastl::fixed_vector<Ts...>>;
+    template<typename T, typename... Ts>
+    concept is_vector = is_non_fixed_vector<T, Ts...> || is_fixed_vector<T, Ts...>;
+
     template <typename T, size_t nodeCount, bool bEnableOverflow = true, typename OverflowAllocator = typename eastl::type_select<bEnableOverflow, EASTLAllocatorType, EASTLDummyAllocatorType>::type>
     inline void efficient_clear(eastl::fixed_vector<T, nodeCount, bEnableOverflow, OverflowAllocator> & fixed_vector)
     {
-        if_constexpr (bEnableOverflow)
+        if constexpr (bEnableOverflow)
         {
             fixed_vector.resize( 0 );
         }
@@ -70,7 +77,6 @@ namespace Divide
     {
         vec.resize(0);
     }
-
 
     template< typename T, typename Pred, typename A>
     typename eastl::vector<T, A>::iterator insert_sorted( eastl::vector<T, A>& vec, T const& item, Pred&& pred )

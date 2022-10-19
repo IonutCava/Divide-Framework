@@ -146,7 +146,7 @@ void Kernel::stopSplashScreen() {
 void Kernel::idle(const bool fast) {
     PROFILE_SCOPE_AUTO( Profiler::Category::IO );
 
-    if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
+    if constexpr(!Config::Build::IS_SHIPPING_BUILD) {
         Locale::Idle();
     }
 
@@ -160,7 +160,7 @@ void Kernel::idle(const bool fast) {
         g_printTimer = g_printTimerBase;
     }
 
-    if_constexpr(Config::Build::ENABLE_EDITOR) {
+    if constexpr(Config::Build::ENABLE_EDITOR) {
         const bool freezeLoopTime = _platformContext.editor().simulationPaused() && _platformContext.editor().stepQueue() == 0u;
         if (_timingData.freezeTime(freezeLoopTime)) {
             _platformContext.app().mainLoopPaused(_timingData.freezeLoopTime());
@@ -183,7 +183,7 @@ void Kernel::onLoop() {
             return;
         }
 
-        if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
+        if constexpr(!Config::Build::IS_SHIPPING_BUILD) {
             // Check for any file changes (shaders, scripts, etc)
             FileWatcherManager::update();
         }
@@ -260,7 +260,7 @@ void Kernel::onLoop() {
             }
         }
 
-        if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
+        if constexpr(!Config::Build::IS_SHIPPING_BUILD) {
             if (GFXDevice::FrameCount() % 6 == 0u) {
 
                 DisplayWindow& window = _platformContext.mainWindow();
@@ -411,7 +411,7 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
     // Update the graphical user interface
     _platformContext.gui().update(_timingData.realTimeDeltaUS());
 
-    if_constexpr(Config::Build::ENABLE_EDITOR) {
+    if constexpr(Config::Build::ENABLE_EDITOR) {
         _platformContext.editor().update(_timingData.appTimeDeltaUS());
     }
 
@@ -736,7 +736,7 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
     SceneEnvironmentProbePool::OnStartup(_platformContext.gfx());
     _inputConsumers.fill(nullptr);
 
-    if_constexpr(Config::Build::ENABLE_EDITOR) {
+    if constexpr(Config::Build::ENABLE_EDITOR) {
         _inputConsumers[to_base(InputConsumerType::Editor)] = &_platformContext.editor();
     }
 
@@ -811,7 +811,7 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
 
     _renderPassManager->postInit();
 
-    if_constexpr (Config::Build::ENABLE_EDITOR) {
+    if constexpr (Config::Build::ENABLE_EDITOR) {
         if (!_platformContext.editor().init(config.runtime.resolution)) {
             return ErrorCode::EDITOR_INIT_ERROR;
         }
@@ -833,7 +833,7 @@ void Kernel::shutdown() {
         _platformContext.taskPool(static_cast<TaskPoolType>(i)).waitForAllTasks(true);
     }
     
-    if_constexpr (Config::Build::ENABLE_EDITOR) {
+    if constexpr (Config::Build::ENABLE_EDITOR) {
         _platformContext.editor().toggle(false);
     }
     SceneManager::OnShutdown(_platformContext);
@@ -856,7 +856,7 @@ void Kernel::shutdown() {
 void Kernel::onWindowSizeChange(const SizeChangeParams & params) {
     Attorney::GFXDeviceKernel::onWindowSizeChange(_platformContext.gfx(), params);
 
-    if_constexpr (Config::Build::ENABLE_EDITOR) {
+    if constexpr (Config::Build::ENABLE_EDITOR) {
         _platformContext.editor().onWindowSizeChange(params);
     }
 }
@@ -870,7 +870,7 @@ void Kernel::onResolutionChange(const SizeChangeParams& params) {
         _platformContext.gui().onResolutionChange(params);
     }
 
-    if_constexpr(Config::Build::ENABLE_EDITOR) {
+    if constexpr(Config::Build::ENABLE_EDITOR) {
         _platformContext.editor().onResolutionChange(params);
     }
 }
@@ -878,7 +878,7 @@ void Kernel::onResolutionChange(const SizeChangeParams& params) {
 #pragma region Input Management
 vec2<I32> Kernel::remapMouseCoords(const vec2<I32> absPositionIn, bool& remappedOut) const noexcept {
     remappedOut = false;
-    if_constexpr(Config::Build::ENABLE_EDITOR)
+    if constexpr(Config::Build::ENABLE_EDITOR)
     {
         if (!_platformContext.editor().hasFocus())
         {
@@ -903,7 +903,7 @@ bool Kernel::mouseMoved(const Input::MouseMoveEvent& arg) {
 
     //Remap coords in case we are using the Editor's scene view
     Input::MouseMoveEvent remapArg = arg;
-    if_constexpr(Config::Build::ENABLE_EDITOR) {
+    if constexpr(Config::Build::ENABLE_EDITOR) {
         bool remapped = false;
         const vec2<I32> newPos = remapMouseCoords(arg.absolutePos(), remapped);
         if (remapped) {
@@ -928,7 +928,7 @@ bool Kernel::mouseButtonPressed(const Input::MouseButtonEvent& arg) {
     }
 
     Input::MouseButtonEvent remapArg = arg;
-    if_constexpr(Config::Build::ENABLE_EDITOR) {
+    if constexpr(Config::Build::ENABLE_EDITOR) {
         bool remapped = false;
         const vec2<I32> newPos = remapMouseCoords(arg.absPosition(), remapped);
         if (remapped) {
@@ -954,7 +954,7 @@ bool Kernel::mouseButtonReleased(const Input::MouseButtonEvent& arg) {
     }
 
     Input::MouseButtonEvent remapArg = arg;
-    if_constexpr(Config::Build::ENABLE_EDITOR) {
+    if constexpr(Config::Build::ENABLE_EDITOR) {
         bool remapped = false;
         const vec2<I32> newPos = remapMouseCoords(arg.absPosition(), remapped);
         if (remapped) {

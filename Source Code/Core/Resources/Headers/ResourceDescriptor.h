@@ -68,13 +68,11 @@ class ResourceDescriptor final : public Hashable {
     ///resourceName is the name of the resource instance, not an actual asset name! Use "assetName" for that
     explicit ResourceDescriptor(const Str256& resourceName);
 
-    template <typename T>
-    [[nodiscard]] typename std::enable_if<std::is_base_of<PropertyDescriptor, T>::value, const std::shared_ptr<T>>::type
-    propertyDescriptor() const noexcept { return std::dynamic_pointer_cast<T>(_propertyDescriptor); }
+    template <typename T> requires std::is_base_of_v<PropertyDescriptor, T>
+    [[nodiscard]] std::shared_ptr<T> propertyDescriptor() const noexcept { return std::dynamic_pointer_cast<T>(_propertyDescriptor); }
 
-    template <typename T>
-    [[nodiscard]] typename std::enable_if<std::is_base_of<PropertyDescriptor, T>::value, void>::type
-    propertyDescriptor(const T& descriptor) { _propertyDescriptor.reset(new T(descriptor)); }
+    template <typename T> requires std::is_base_of_v<PropertyDescriptor, T>
+    void propertyDescriptor(const T& descriptor) { _propertyDescriptor.reset(new T(descriptor)); }
 
     [[nodiscard]] size_t getHash() const override;
 

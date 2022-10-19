@@ -22,27 +22,27 @@ void FillSmallData5(const vector<VertexBuffer::Vertex>& dataIn, Byte* dataOut) n
         std::memcpy(dataOut, data._position._v, sizeof data._position);
         dataOut += sizeof data._position;
 
-        if_constexpr (TexCoords) {
+        if constexpr (TexCoords) {
             std::memcpy(dataOut, data._texcoord._v, sizeof data._texcoord);
             dataOut += sizeof data._texcoord;
         }
 
-        if_constexpr(Normals) {
+        if constexpr(Normals) {
             std::memcpy(dataOut, &data._normal, sizeof data._normal);
             dataOut += sizeof data._normal;
         }
 
-        if_constexpr(Tangents) {
+        if constexpr(Tangents) {
             std::memcpy(dataOut, &data._tangent, sizeof data._tangent);
             dataOut += sizeof data._tangent;
         }
 
-        if_constexpr(Colour) {
+        if constexpr(Colour) {
             std::memcpy(dataOut, data._colour._v, sizeof data._colour);
             dataOut += sizeof data._colour;
         }
 
-        if_constexpr(Bones) {
+        if constexpr(Bones) {
             std::memcpy(dataOut, &data._weights.i, sizeof data._weights.i);
             dataOut += sizeof data._weights.i;
 

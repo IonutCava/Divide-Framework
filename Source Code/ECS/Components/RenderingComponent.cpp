@@ -534,7 +534,7 @@ namespace Divide
                     state1.blendDest( BlendProperty::INV_SRC_COLOR );
                     state1.blendOp( BlendOperation::ADD );
 
-                    if_constexpr( Config::USE_COLOURED_WOIT )
+                    if constexpr( Config::USE_COLOURED_WOIT )
                     {
                         BlendingSettings& state2 = pipelineDescriptor._blendStates._settings[to_U8( GFXDevice::ScreenTargets::MODULATE )];
                         state2.enabled( true );
@@ -830,7 +830,7 @@ namespace Divide
             _selectionGizmoDirty = false;
 
             UColour4 colour = UColour4( 64, 255, 128, 255 );
-            if_constexpr( Config::Build::ENABLE_EDITOR )
+            if constexpr( Config::Build::ENABLE_EDITOR )
             {
                 if ( _context.parent().platformContext().editor().inEditMode() )
                 {

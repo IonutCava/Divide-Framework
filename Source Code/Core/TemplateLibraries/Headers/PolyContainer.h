@@ -116,9 +116,8 @@ namespace Divide
             clear( true );
         }
 
-        template<typename U>
-        typename std::enable_if<std::is_base_of<T, U>::value, PolyContainerEntry>::type
-            insert( U8 index, T* cmd )
+        template<typename U> requires std::is_base_of_v<T, U>
+        PolyContainerEntry insert( U8 index, T* cmd )
         {
             EntryList& collection = _collection[index];
             collection.emplace_back( cmd );
@@ -126,9 +125,8 @@ namespace Divide
             return PolyContainerEntry{ index, to_U32( collection.size() - 1 ) };
         }
 
-        template<typename U>
-        typename std::enable_if<std::is_base_of<T, U>::value, T*>::type
-            emplace( U8 index )
+        template<typename U>  requires std::is_base_of_v<T, U>
+        T* emplace( U8 index )
         {
             return _collection[index].emplace_back();
         }

@@ -2,8 +2,6 @@
 
 #include "Headers/Defines.h"
 
-#include "Core/Math/Headers/MathHelper.h"
-
 namespace Divide {
 
 TEST(TimeDownCast)

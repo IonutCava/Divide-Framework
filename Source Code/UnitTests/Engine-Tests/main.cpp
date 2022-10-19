@@ -4,7 +4,6 @@
 #include "Optick/src/optick_core.cpp"
 
 #include "Headers/Defines.h"
-#include "Platform/Headers/PlatformDefines.h"
 
 #include <iostream>
 

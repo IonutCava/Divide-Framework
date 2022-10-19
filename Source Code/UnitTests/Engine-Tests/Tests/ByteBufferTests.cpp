@@ -2,7 +2,6 @@
 
 #include "Headers/Defines.h"
 #include "Core/Headers/ByteBuffer.h"
-#include "Platform/Headers/PlatformDefines.h"
 
 namespace Divide{
 

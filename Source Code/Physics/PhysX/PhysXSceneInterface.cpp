@@ -126,7 +126,7 @@ namespace Divide
         //_gScene->setVisualizationParameter(physx::PxVisualizationParameter::eSCALE, 1.0);
         //_gScene->setVisualizationParameter(physx::PxVisualizationParameter::eCOLLISION_SHAPES, 1.0f);
 
-        if_constexpr( !Config::Build::IS_SHIPPING_BUILD )
+        if constexpr( !Config::Build::IS_SHIPPING_BUILD )
         {
             physx::PxPvdSceneClient* pvdClient = _gScene->getScenePvdClient();
             if ( pvdClient != nullptr )

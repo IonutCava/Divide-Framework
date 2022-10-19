@@ -78,7 +78,7 @@ void PlatformContext::beginFrame(const U32 componentMask) {
     if (TestBit(componentMask, SystemComponentType::PXDevice)) {
         _pfx->beginFrame();
     }
-    if_constexpr(Config::Build::ENABLE_EDITOR) {
+    if constexpr(Config::Build::ENABLE_EDITOR) {
         if (TestBit(componentMask, SystemComponentType::Editor)) {
             _editor->beginFrame();
         }
@@ -110,7 +110,7 @@ void PlatformContext::idle(const bool fast, const U32 componentMask) {
     if (TestBit(componentMask, SystemComponentType::DebugInterface)) {
         _debug->idle(*this);
     }
-    if_constexpr(Config::Build::ENABLE_EDITOR) {
+    if constexpr(Config::Build::ENABLE_EDITOR) {
         if (TestBit(componentMask, SystemComponentType::Editor)) {
             _editor->idle();
         }
@@ -129,7 +129,7 @@ void PlatformContext::endFrame(const U32 componentMask) {
     if (TestBit(componentMask, SystemComponentType::PXDevice)) {
         _pfx->endFrame();
     }
-    if_constexpr(Config::Build::ENABLE_EDITOR) {
+    if constexpr(Config::Build::ENABLE_EDITOR) {
         if (TestBit(componentMask, SystemComponentType::Editor)) {
             _editor->endFrame();
         }

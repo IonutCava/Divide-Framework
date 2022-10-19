@@ -162,7 +162,7 @@ void glShaderProgram::processValidation()
         stageMask |= shader->stageMask();
     }
 
-    if_constexpr(Config::ENABLE_GPU_VALIDATION)
+    if constexpr(Config::ENABLE_GPU_VALIDATION)
     {
         g_sValidationQueue.enqueue({ resourceName(), _handle, stageMask});
     }
@@ -179,7 +179,7 @@ ShaderResult glShaderProgram::validatePreBind(const bool rebind)
         ShaderResult ret = ShaderResult::OK;
         if (_handle == GLUtil::k_invalidObjectID) {
             glCreateProgramPipelines(1, &_handle);
-            if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+            if constexpr(Config::ENABLE_GPU_VALIDATION) {
                 glObjectLabel(GL_PROGRAM_PIPELINE, _handle, -1, resourceName().c_str());
             }
             // We can reuse previous handles

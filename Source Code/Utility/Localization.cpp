@@ -89,7 +89,7 @@ const char* LanguageData::get(const U64 key, const char* defaultValue) {
 }
 
 ErrorCode Init(const char* newLanguage) {
-    if_constexpr (!Config::Build::IS_SHIPPING_BUILD && Config::ENABLE_LOCALE_FILE_WATCHER) {
+    if constexpr (!Config::Build::IS_SHIPPING_BUILD && Config::ENABLE_LOCALE_FILE_WATCHER) {
         if (detail::g_LanguageFileWatcher == nullptr) {
             detail::g_LanguageFileWatcher.reset(new FW::FileWatcher());
             detail::g_fileWatcherListener.addIgnoredEndCharacter('~');

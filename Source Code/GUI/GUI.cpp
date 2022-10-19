@@ -32,7 +32,7 @@ namespace Divide
 
     void DIVIDE_ASSERT_MSG_BOX( const char* failMessage ) noexcept
     {
-        if_constexpr( Config::Assert::SHOW_MESSAGE_BOX )
+        if constexpr( Config::Assert::SHOW_MESSAGE_BOX )
         {
             if ( g_assertMsgBox )
             {
@@ -211,7 +211,7 @@ namespace Divide
         {
             CEGUI::System::create( renderer, nullptr, nullptr, nullptr, nullptr, "", (Paths::g_logPath + "CEGUI.log").c_str() );
 
-            if_constexpr( Config::Build::IS_DEBUG_BUILD )
+            if constexpr( Config::Build::IS_DEBUG_BUILD )
             {
                 CEGUI::Logger::getSingleton().setLoggingLevel( CEGUI::Informative );
             }

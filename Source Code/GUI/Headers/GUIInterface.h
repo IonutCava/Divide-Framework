@@ -61,15 +61,13 @@ public:
     GUI& getParentContext() noexcept { return *_context; }
     const GUI& getParentContext() const noexcept { return *_context; }
     /// Get a pointer to an element by name/id
-    template <typename T>
-    typename std::enable_if<std::is_base_of<GUIElement, T>::value, T*>::type
-    getGUIElement(const U64 elementName) const {
+    template <typename T> requires std::is_base_of_v<GUIElement, T>
+    T* getGUIElement(const U64 elementName) const {
         return static_cast<T*>(getGUIElementImpl(elementName, T::Type));
     }
 
-    template <typename T>
-    typename std::enable_if<std::is_base_of<GUIElement, T>::value, T*>::type
-    getGUIElement(const I64 elementID) const {
+    template <typename T> requires std::is_base_of_v<GUIElement, T>
+    T* getGUIElement(const I64 elementID) const {
         return static_cast<T*>(getGUIElementImpl(elementID, T::Type));
     }
 

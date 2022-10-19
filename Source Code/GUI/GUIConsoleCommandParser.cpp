@@ -9,7 +9,6 @@
 #include "Core/Headers/ParamHandler.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/StringHelper.h"
-#include "Core/Math/Headers/MathHelper.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Managers/Headers/SceneManager.h"
 #include "Rendering/Camera/Headers/Camera.h"

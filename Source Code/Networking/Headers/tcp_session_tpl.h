@@ -5,11 +5,9 @@
 #include "WorldPacket.h"
 
 #include <boost/asio/strand.hpp>
-#include <boost/asio/deadline_timer.hpp>
 
 namespace Divide
 {
-
     //----------------------------------------------------------------------
 
     //This is game specific but core functionality
@@ -58,7 +56,7 @@ namespace Divide
         public std::enable_shared_from_this<tcp_session_tpl>
     {
         public:
-        tcp_session_tpl( boost::asio::io_context& io_service, channel& ch );
+        tcp_session_tpl( boost::asio::io_context& io_context, channel& ch );
 
         tcp_socket& getSocket() noexcept
         {
@@ -130,7 +128,7 @@ namespace Divide
     class udp_broadcaster final : public subscriber
     {
         public:
-        udp_broadcaster( boost::asio::io_context& io_service,
+        udp_broadcaster( boost::asio::io_context& io_context,
                          const boost::asio::ip::udp::endpoint& broadcast_endpoint );
 
         [[nodiscard]] inline udp_socket& getSocket() noexcept

@@ -33,8 +33,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _SCENE_POOL_H_
 #define _SCENE_POOL_H_
 
-#include "Platform/Headers/PlatformDefines.h"
-
 namespace Divide {
 
 class Scene;

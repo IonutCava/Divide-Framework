@@ -34,7 +34,6 @@
 #define _TASKS_H_
 
 #include "Platform/Threading/Headers/ThreadPool.h"
-#include "Platform/Headers/PlatformDefines.h"
 
 namespace Divide {
 
@@ -58,14 +57,13 @@ struct alignas(128) Task {
     U8 _padding[48];
 };
 
-static Task EMPTY_TASK{};
-
 void Start(Task& task, TaskPool& pool, TaskPriority priority = TaskPriority::DONT_CARE, const DELEGATE<void>& onCompletionFunction = {});
 void Wait(const Task& task, TaskPool& pool);
 
-void StartAndWait(Task& task, TaskPool& pool, TaskPriority priority = TaskPriority::DONT_CARE, const DELEGATE<void>& onCompletionFunction = {});
-
 [[nodiscard]] bool Finished(const Task& task) noexcept;
+
 };  // namespace Divide
 
-#endif
+#endif //_TASKS_H_
+
+#include "Task.inl"

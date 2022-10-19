@@ -45,10 +45,9 @@ public:
     // This call will take ownership of the specified pointer!
     bool setUnit(const Unit_ptr& unit);
 
-    template <typename T = Unit>
-    [[nodiscard]] std::shared_ptr<T> getUnit() const noexcept {
-        static_assert(std::is_base_of<Unit, T>::value,
-            "UnitComponent::getUnit error: Invalid target unit type!");
+    template <typename T = Unit> requires std::is_base_of_v<Unit, T>
+    [[nodiscard]] std::shared_ptr<T> getUnit() const noexcept
+    {
         return std::static_pointer_cast<T>(_unit);
     }
 

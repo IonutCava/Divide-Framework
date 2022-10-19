@@ -57,7 +57,7 @@ namespace Divide
                 glWaitSync( idxBuffer._idxBufferSync, 0u, GL_TIMEOUT_IGNORED );
                 GL_API::DestroyFenceSync( idxBuffer._idxBufferSync );
             }
-            if ( GL_API::GetStateTracker().setActiveBuffer( GL_ELEMENT_ARRAY_BUFFER, idxBuffer._handle ) == GLStateTracker::BindResult::FAILED )
+            if ( GL_API::GetStateTracker().setActiveBuffer( GL_ELEMENT_ARRAY_BUFFER, idxBuffer._handle ) == GLStateTracker::BindResult::FAILED ) [[unlikely]]
             {
                 DIVIDE_UNEXPECTED_CALL();
             }
@@ -275,7 +275,7 @@ namespace Divide
             }
         }
 
-        if ( impl == nullptr )
+        if ( impl == nullptr ) [[unlikely]]
         {
             return;
         }
@@ -283,7 +283,7 @@ namespace Divide
         const BufferParams& bufferParams = impl->_buffer->params()._bufferParams;
         size_t offsetInBytes = impl->_buffer->memoryBlock()._offset;
 
-        if ( impl->_ringSizeFactor > 1 )
+        if ( impl->_ringSizeFactor > 1 ) [[likely]]
         {
             offsetInBytes += bufferParams._elementCount * bufferParams._elementSize * queueIndex();
         }
@@ -294,7 +294,7 @@ namespace Divide
                                                         offsetInBytes,
                                                         impl->_elementStride );
 
-        if ( ret == GLStateTracker::BindResult::FAILED )
+        if ( ret == GLStateTracker::BindResult::FAILED ) [[unlikely]]
         {
             DIVIDE_UNEXPECTED_CALL();
         }

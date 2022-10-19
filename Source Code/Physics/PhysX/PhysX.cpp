@@ -112,7 +112,7 @@ Console::errorfn( Locale::Get( _ID( "ERROR_START_PHYSX_API" ) ) );
             }
         }
 #endif //PX_SUPPORT_GPU_PHYSX
-        if_constexpr( Config::Build::IS_DEBUG_BUILD || Config::Build::IS_PROFILE_BUILD )
+        if constexpr( Config::Build::IS_DEBUG_BUILD || Config::Build::IS_PROFILE_BUILD )
         {
             createPvdConnection( g_pvd_target_ip,
                                  g_pvd_target_port,

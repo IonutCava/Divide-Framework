@@ -179,7 +179,7 @@ namespace Divide
         // Otherwise allocate a new VAO and save it in the cache
         glCreateVertexArrays( 1, &vaoOut );
         DIVIDE_ASSERT( vaoOut != GLUtil::k_invalidObjectID, Locale::Get( _ID( "ERROR_VAO_INIT" ) ) );
-        if_constexpr( Config::ENABLE_GPU_VALIDATION )
+        if constexpr( Config::ENABLE_GPU_VALIDATION )
         {
             glObjectLabel( GL_VERTEX_ARRAY, vaoOut, -1, Util::StringFormat( "GENERIC_VAO_%d", s_VAOidx++ ).c_str() );
         }

@@ -196,6 +196,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Headers/NonMovable.h"
 #include "Core/Headers/GUIDWrapper.h"
 
+#include "Platform/Headers/PlatformDefines.h"
 #include "Platform/File/Headers/ResourcePath.h"
 #include "Core/Math/Headers/MathMatrices.h"
 #include "Core/Math/Headers/Quaternion.h"

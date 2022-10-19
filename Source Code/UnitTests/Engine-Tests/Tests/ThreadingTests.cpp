@@ -22,6 +22,12 @@ namespace Divide
         {
             printLine( string.c_str() );
         }
+
+        void StartAndWait( Task& task, TaskPool& pool, const TaskPriority priority = TaskPriority::DONT_CARE, const DELEGATE<void>& onCompletionFunction = {})
+        {
+            Start( task, pool, priority, onCompletionFunction );
+            Wait( task, pool );
+        }
     };
 
     TEST( TaskPoolContructionTest )

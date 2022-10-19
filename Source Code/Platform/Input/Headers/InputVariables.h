@@ -33,9 +33,6 @@
 #ifndef _INPUT_VARIABLES_H_
 #define _INPUT_VARIABLES_H_
 
-#include "Core/TemplateLibraries/Headers/STLString.h"
-#include "Platform/Headers/PlatformDefines.h"
-
 namespace Divide {
 namespace Input {
 //////////// Variable classes

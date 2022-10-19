@@ -65,7 +65,7 @@ namespace Divide
     {
         constexpr bool validateRenderMask = false;
 
-        if_constexpr( validateRenderMask )
+        if constexpr( validateRenderMask )
         {
             const auto validateMask = [mask]() -> U16
             {

@@ -1282,7 +1282,7 @@ namespace Divide
         ImGui::SetCurrentContext( _imguiContexts[to_base( ImGuiContextType::Editor )] );
 
         const ImGuiIO& io = ImGui::GetIO();
-        if ( io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable )
+        if ( io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable ) [[likely]]
         {
             bool found = false;
             ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
@@ -1304,7 +1304,7 @@ namespace Divide
 
         ImGui::NewFrame();
 
-        if ( render() )
+        if ( render() ) [[likely]]
         {
             ImGui::Render();
 
@@ -1320,7 +1320,7 @@ namespace Divide
                             buffer );
             _context.gfx().flushCommandBuffer( buffer, false );
 
-            if ( io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable )
+            if ( io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable ) [[likely]]
             {
                 ImGui::UpdatePlatformWindows();
                 ImGui::RenderPlatformWindowsDefault( &context(), &context() );
@@ -1370,21 +1370,21 @@ namespace Divide
         static ImDrawVert vertices[MaxVertices];
         static ImDrawIdx indices[MaxIndices];
 
-        if ( windowGUID == -1 )
+        if ( windowGUID == -1 ) [[unlikely]]
         {
             windowGUID = _mainWindow->getGUID();
         }
 
         const ImGuiIO& io = ImGui::GetIO();
 
-        if ( targetViewport.z <= 0 || targetViewport.w <= 0 )
+        if ( targetViewport.z <= 0 || targetViewport.w <= 0 ) [[unlikely]]
         {
             return;
         }
 
         pDrawData->ScaleClipRects( io.DisplayFramebufferScale );
 
-        if ( pDrawData->CmdListsCount == 0 )
+        if ( pDrawData->CmdListsCount == 0 ) [[unlikely]]
         {
             return;
         }
@@ -1494,7 +1494,7 @@ namespace Divide
                         pcmd.ClipRect.w - pDrawData->DisplayPos.y
                     };
 
-                    if ( clipRect.x < targetViewport.z && clipRect.y < targetViewport.w && clipRect.z >= 0 && clipRect.w >= 0 )
+                    if ( clipRect.x < targetViewport.z && clipRect.y < targetViewport.w && clipRect.z >= 0 && clipRect.w >= 0 ) [[likely]]
                     {
                         const I32 tempW = clipRect.w;
                         clipRect.z -= clipRect.x;

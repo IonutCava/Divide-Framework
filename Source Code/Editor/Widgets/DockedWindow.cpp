@@ -41,12 +41,12 @@ namespace Divide {
         ImGui::GetStyle().WindowMenuButtonPosition = _descriptor.showCornerButton ? ImGuiDir_Left : ImGuiDir_None;
 
   
-        if (ImGui::Begin(_descriptor.name.c_str(), nullptr, windowFlags() | _descriptor.flags))
+        if (ImGui::Begin(_descriptor.name.c_str(), nullptr, windowFlags() | _descriptor.flags)) [[likely]]
         {
             _visible = true;
             _focused = ImGui::IsWindowFocused();
             _hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
-            if (enabled())
+            if (enabled()) [[likely]]
             {
                 drawInternal();
             }

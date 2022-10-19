@@ -205,7 +205,7 @@ namespace Divide
                 writeRange = executorBuffer._bufferUpdateRange;
                 executorBuffer._bufferUpdateRange.reset();
 
-                if_constexpr( RenderPass::DataBufferRingSize > 1u )
+                if constexpr( RenderPass::DataBufferRingSize > 1u )
                 {
                     // We don't need to write everything again as big chunks have been written as part of the normal frame update process
                     // Try and find only the items unoutched this frame
@@ -215,7 +215,7 @@ namespace Divide
             }
 
             WriteToGPUBufferInternal( executorBuffer, writeRange, memCmdInOut );
-            if_constexpr( RenderPass::DataBufferRingSize > 1u )
+            if constexpr( RenderPass::DataBufferRingSize > 1u )
             {
                 WriteToGPUBufferInternal( executorBuffer, prevWriteRange, memCmdInOut );
             }
@@ -252,7 +252,7 @@ namespace Divide
             const BufferUpdateRange rangeWrittenThisFrame = executorBuffer._bufferUpdateRangeHistory.back();
 
             // At the end of the frame, bump our history queue by one position and prepare the tail for a new write
-            if_constexpr( RenderPass::DataBufferRingSize > 1u )
+            if constexpr( RenderPass::DataBufferRingSize > 1u )
             {
                 PROFILE_SCOPE( "History Update", Profiler::Category::Scene );
                 for ( U8 i = 0u; i < RenderPass::DataBufferRingSize - 1; ++i )
@@ -348,7 +348,7 @@ namespace Divide
             BlendingSettings& state0 = pipelineDescriptor._blendStates._settings[to_U8( GFXDevice::ScreenTargets::ALBEDO )];
             state0.enabled( true );
             state0.blendOp( BlendOperation::ADD );
-            if_constexpr( Config::USE_COLOURED_WOIT )
+            if constexpr( Config::USE_COLOURED_WOIT )
             {
                 state0.blendSrc( BlendProperty::INV_SRC_ALPHA );
                 state0.blendDest( BlendProperty::ONE );
@@ -692,7 +692,8 @@ namespace Divide
         }
         {
             PROFILE_SCOPE( "buildDrawCommands - process nodes: Waiting for tasks to finish", Profiler::Category::Scene );
-            StartAndWait( *updateTask, pool );
+            Start( *updateTask, pool );
+            Wait( *updateTask, pool );
         }
 
         const U32 startOffset = Config::MAX_VISIBLE_NODES * IndexForStage( stagePass );
@@ -1002,7 +1003,7 @@ namespace Divide
 
         GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ " - MainPass" } );
 
-        if ( params._target != INVALID_RENDER_TARGET_ID )
+        if ( params._target != INVALID_RENDER_TARGET_ID ) [[likely]]
         {
 
             GFX::BeginRenderPassCommand renderPassCmd{};
@@ -1244,12 +1245,12 @@ namespace Divide
         RenderTarget* target = _context.renderTargetPool().getRenderTarget( params._target );
 
         _visibleNodesCache.reset();
-        if ( params._singleNodeRenderGUID == 0 )
+        if ( params._singleNodeRenderGUID == 0 ) [[unlikely]]
         {
             // Render nothing!
             NOP();
         }
-        else if ( params._singleNodeRenderGUID == -1 )
+        else if ( params._singleNodeRenderGUID == -1 ) [[likely]]
         {
             // Cull the scene and grab the visible nodes
             I64 ignoreGUID = params._sourceNode == nullptr ? -1 : params._sourceNode->getGUID();
@@ -1289,8 +1290,8 @@ namespace Divide
         constexpr bool doMainPass = true;
         // PrePass requires a depth buffer
         const bool doPrePass = _stage != RenderStage::SHADOW &&
-            params._target != INVALID_RENDER_TARGET_ID &&
-            target->usesAttachment( RTAttachmentType::DEPTH );
+                               params._target != INVALID_RENDER_TARGET_ID &&
+                               target->usesAttachment( RTAttachmentType::DEPTH );
         const bool doOITPass = params._targetOIT != INVALID_RENDER_TARGET_ID;
         const bool doOcclusionPass = doPrePass && params._targetHIZ != INVALID_RENDER_TARGET_ID;
 
@@ -1394,11 +1395,11 @@ namespace Divide
         {
             _context.getRenderer().postFX().prePass( playerIdx, camSnapshot, bufferInOut );
         }
-        if ( doMainPass )
+        if ( doMainPass ) [[likely]]
         {
             mainPass( params, camSnapshot, *target, doPrePass, doOcclusionPass, bufferInOut );
         }
-        else
+        else [[unlikely]]
         {
             DIVIDE_UNEXPECTED_CALL();
         }
@@ -1439,7 +1440,7 @@ namespace Divide
                 GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
             }
 
-            if_constexpr( Config::Build::ENABLE_EDITOR )
+            if constexpr( Config::Build::ENABLE_EDITOR )
             {
                 Attorney::EditorRenderPassExecutor::postRender( _context.context().editor(), _stage, camSnapshot, params._target, bufferInOut );
             }

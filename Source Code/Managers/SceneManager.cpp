@@ -299,7 +299,7 @@ namespace Divide
     void SceneManager::initPostLoadState() noexcept
     {
         _processInput = true;
-        if_constexpr( Config::Build::IS_EDITOR_BUILD )
+        if constexpr( Config::Build::IS_EDITOR_BUILD )
         {
             static_assert(Config::Build::ENABLE_EDITOR);
             DisplayWindow& window = _platformContext->mainWindow();

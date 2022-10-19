@@ -53,20 +53,14 @@ namespace Divide {
 
     EditorComponent::~EditorComponent()
     {
-        if_constexpr(Config::Build::ENABLE_EDITOR) {
+        if constexpr(Config::Build::ENABLE_EDITOR) {
             assert(_editor != nullptr);
             Attorney::EditorEditorComponent::onRemoveComponent(*_editor, *this);
         }
     }
 
     void EditorComponent::registerField(EditorComponentField&& field) {
-        _fields.erase(
-            std::remove_if(std::begin(_fields), std::end(_fields),
-                [&field](const EditorComponentField& it)
-                -> bool { return it._name == field._name &&
-                                 it._type == field._type; }),
-            std::end(_fields));
-
+        dvd_erase_if(_fields, [&field](const EditorComponentField& it) { return it._name == field._name && it._type == field._type; });
         assert(field._basicTypeSize == GFX::PushConstantSize::DWORD || field.supportsByteCount());
 
         _fields.push_back(field);
@@ -278,9 +272,9 @@ namespace Divide {
 
             pt.put((entryName + ".<xmlattr>.x").c_str(), data.x);
             pt.put((entryName + ".<xmlattr>.y").c_str(), data.y);
-            if_constexpr (num_comp > 2) {
+            if constexpr (num_comp > 2) {
                 pt.put((entryName + ".<xmlattr>.z").c_str(), data.z);
-                if_constexpr(num_comp > 3) {
+                if constexpr(num_comp > 3) {
                     pt.put((entryName + ".<xmlattr>.w").c_str(), data.w);
                 }
             }
@@ -293,9 +287,9 @@ namespace Divide {
             data.x = pt.get((entryName + ".<xmlattr>.x").c_str(), data.x);
             data.y = pt.get((entryName + ".<xmlattr>.y").c_str(), data.y);
 
-            if_constexpr(num_comp > 2) {
+            if constexpr(num_comp > 2) {
                 data.z = pt.get((entryName + ".<xmlattr>.z").c_str(), data.z);
-                if_constexpr(num_comp > 3) {
+                if constexpr(num_comp > 3) {
                     data.w = pt.get((entryName + ".<xmlattr>.w").c_str(), data.w);
                 }
             }
@@ -303,9 +297,9 @@ namespace Divide {
             if (field._range.max - field._range.min > 1.f) {
                 CLAMP(data.x, field._range.min, field._range.max);
                 CLAMP(data.y, field._range.min, field._range.max);
-                if_constexpr(num_comp > 2) {
+                if constexpr(num_comp > 2) {
                     CLAMP(data.z, field._range.min, field._range.max);
-                    if_constexpr(num_comp > 3) {
+                    if constexpr(num_comp > 3) {
                         CLAMP(data.w, field._range.min, field._range.max);
                     }
                 }
@@ -324,14 +318,14 @@ namespace Divide {
             pt.put((entryName + ".<xmlattr>.10").c_str(), data.m[1][0]);
             pt.put((entryName + ".<xmlattr>.11").c_str(), data.m[1][1]);
 
-            if_constexpr(num_rows > 2) {
+            if constexpr(num_rows > 2) {
                 pt.put((entryName + ".<xmlattr>.02").c_str(), data.m[0][2]);
                 pt.put((entryName + ".<xmlattr>.12").c_str(), data.m[1][2]);
                 pt.put((entryName + ".<xmlattr>.20").c_str(), data.m[2][0]);
                 pt.put((entryName + ".<xmlattr>.21").c_str(), data.m[2][1]);
                 pt.put((entryName + ".<xmlattr>.22").c_str(), data.m[2][2]);
 
-                if_constexpr(num_rows > 3) {
+                if constexpr(num_rows > 3) {
                     pt.put((entryName + ".<xmlattr>.03").c_str(), data.m[0][3]);
                     pt.put((entryName + ".<xmlattr>.13").c_str(), data.m[1][3]);
                     pt.put((entryName + ".<xmlattr>.23").c_str(), data.m[2][3]);
@@ -352,14 +346,14 @@ namespace Divide {
             data.m[1][0] = pt.get((entryName + ".<xmlattr>.10").c_str(), data.m[1][0]);
             data.m[1][1] = pt.get((entryName + ".<xmlattr>.11").c_str(), data.m[1][1]);
 
-            if_constexpr(num_rows > 2) {
+            if constexpr(num_rows > 2) {
                 data.m[0][2] = pt.get((entryName + ".<xmlattr>.02").c_str(), data.m[0][2]);
                 data.m[1][2] = pt.get((entryName + ".<xmlattr>.12").c_str(), data.m[1][2]);
                 data.m[2][0] = pt.get((entryName + ".<xmlattr>.20").c_str(), data.m[2][0]);
                 data.m[2][1] = pt.get((entryName + ".<xmlattr>.21").c_str(), data.m[2][1]);
                 data.m[2][2] = pt.get((entryName + ".<xmlattr>.22").c_str(), data.m[2][2]);
 
-                if_constexpr(num_rows > 3) {
+                if constexpr(num_rows > 3) {
                     data.m[0][3] = pt.get((entryName + ".<xmlattr>.03").c_str(), data.m[0][3]);
                     data.m[1][3] = pt.get((entryName + ".<xmlattr>.13").c_str(), data.m[1][3]);
                     data.m[2][3] = pt.get((entryName + ".<xmlattr>.23").c_str(), data.m[2][3]);

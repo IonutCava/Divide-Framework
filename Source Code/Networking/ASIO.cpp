@@ -10,8 +10,6 @@
 
 #include "Core/Headers/StringHelper.h"
 
-#include <boost/asio/ip/tcp.hpp>
-
 namespace Divide
 {
 

@@ -40,7 +40,7 @@ namespace Divide
     class Session final : public tcp_session_tpl
     {
         public:
-        Session( boost::asio::io_context& io_service, channel& ch );
+        Session( boost::asio::io_context& io_context, channel& ch );
 
         private:
         void handlePacket( WorldPacket& p ) override;

@@ -33,8 +33,6 @@
 #ifndef _PHYSICS_API_WRAPPER_H_
 #define _PHYSICS_API_WRAPPER_H_
 
-#include "Platform/Headers/PlatformDefines.h"
-
 namespace Divide {
 struct SGNRayResult;
 struct Ray;

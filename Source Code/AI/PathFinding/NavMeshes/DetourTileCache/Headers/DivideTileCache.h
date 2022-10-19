@@ -71,7 +71,6 @@
 #pragma once
 #ifndef _DIVIDE_TILE_CACHE_H_
 #define _DIVIDE_TILE_CACHE_H_
-#include "Platform/Headers/PlatformDefines.h"
 #include "AI/PathFinding/NavMeshes/Headers/NavMesh.h"
 
 #include <DetourTileCache/Include/DetourTileCache.h>

@@ -36,8 +36,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-template<typename T,
-typename std::enable_if<std::is_same<decltype(has_assign<T>(nullptr)), std::true_type>::value, bool>::type*>
+template<typename T> requires has_assign<T> || is_vector<T>
 FileError readFile(const char* filePath, const char* fileName, T& contentOut, const FileType fileType) {
     if (!Util::IsEmptyOrNull(filePath) && !Util::IsEmptyOrNull(fileName) && pathExists(filePath)) {
         std::ifstream streamIn(string{ filePath } +fileName,
@@ -74,8 +73,7 @@ FileError readFile(const char* filePath, const char* fileName, T& contentOut, co
     return FileError::FILE_NOT_FOUND;
 }
 
-template<typename T,
-typename std::enable_if<std::is_same<decltype(has_assign<T>(nullptr)), std::true_type>::value, bool>::type*>
+template<typename T> requires has_assign<T> || is_vector<T>
 FileError readFile(const ResourcePath& filePath, const ResourcePath& fileName, T& contentOut, FileType fileType) {
     return readFile(filePath.c_str(), fileName.c_str(), contentOut, fileType);
 }

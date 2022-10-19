@@ -39,11 +39,17 @@ class PlatformContext;
 void InitConditionalWait(PlatformContext&) noexcept;
 void PlatformContextIdleCall();
 
+template<typename T, typename U>
+constexpr void assert_type( const U& )
+{
+    static_assert(std::is_same<U, T>::value, "value type not satisfied");
+}
+
 #define WAIT_FOR_CONDITION_2_ARGS(condition, yld)  \
 {                                                  \
     assert_type<bool>(yld);                        \
                                                    \
-    if (yld) {                                     \
+    if (yld) [[likely]] {                          \
         while (!(condition)) {                     \
             PlatformContextIdleCall();             \
             std::this_thread::yield();             \
@@ -73,7 +79,7 @@ void PlatformContextIdleCall();
                 break;                                                 \
             }                                                          \
                                                                        \
-            if (yld) {                                                 \
+            if (yld) [[likely]] {                                      \
                 std::this_thread::yield();                             \
             }                                                          \
         }                                                              \
@@ -95,7 +101,7 @@ void PlatformContextIdleCall();
     while (!(condition)) {                                               \
         cbk(param);                                                      \
         PlatformContextIdleCall();                                       \
-        if (yld) {                                                       \
+        if (yld) [[likely]] {                                            \
             std::this_thread::yield();                                   \
         }                                                                \
     }                                                                    \
@@ -124,7 +130,7 @@ void PlatformContextIdleCall();
                 break;                                                                      \
             }                                                                               \
                                                                                             \
-            if (yld) {                                                                      \
+            if (yld) [[likely]] {                                                           \
                 std::this_thread::yield();                                                  \
             }                                                                               \
         }                                                                                   \

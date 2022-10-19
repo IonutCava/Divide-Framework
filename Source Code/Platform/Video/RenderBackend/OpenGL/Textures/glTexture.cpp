@@ -155,7 +155,7 @@ void glTexture::prepareTextureData(const U16 width, const U16 height, const U16 
     glCreateTextures(_type, 1, &_loadingHandle);
     _hasStorage = false;
     assert(_loadingHandle != 0 && "glTexture error: failed to generate new texture handle!");
-    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+    if constexpr(Config::ENABLE_GPU_VALIDATION) {
         glObjectLabel(GL_TEXTURE, _loadingHandle, -1, resourceName().c_str());
     }
 

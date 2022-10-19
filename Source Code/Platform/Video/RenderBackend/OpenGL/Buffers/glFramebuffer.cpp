@@ -109,7 +109,7 @@ glFramebuffer::glFramebuffer(GFXDevice& context, const RenderTargetDescriptor& d
 
     _isLayeredDepth = false;
 
-    if_constexpr(Config::ENABLE_GPU_VALIDATION)
+    if constexpr(Config::ENABLE_GPU_VALIDATION)
     {
         // label this FB to be able to tell that it's internally created and nor from a 3rd party lib
         glObjectLabel(GL_FRAMEBUFFER,
@@ -537,7 +537,7 @@ void glFramebuffer::begin(const RTDrawDescriptor& drawPolicy, const RTClearDescr
 
     prepareBuffers( drawPolicy );
 
-    if_constexpr(Config::Build::IS_DEBUG_BUILD)
+    if constexpr(Config::Build::IS_DEBUG_BUILD)
     {
         checkStatus();
     }
@@ -808,7 +808,7 @@ bool glFramebuffer::checkStatus()
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     _statusCheckQueued = false;
-    if_constexpr(Config::ENABLE_GPU_VALIDATION)
+    if constexpr(Config::ENABLE_GPU_VALIDATION)
     {
         // check FB status
         const GLenum status = glCheckNamedFramebufferStatus(_framebufferHandle, GL_FRAMEBUFFER);

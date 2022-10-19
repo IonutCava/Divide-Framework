@@ -162,7 +162,7 @@ namespace Divide
             } break;
             case RenderStage::NODE_PREVIEW:
             {
-                if_constexpr( Config::Build::ENABLE_EDITOR )
+                if constexpr( Config::Build::ENABLE_EDITOR )
                 {
                     PROFILE_SCOPE( "RenderPass - Node Preview", Profiler::Category::Scene );
                     const Editor& editor = _context.context().editor();

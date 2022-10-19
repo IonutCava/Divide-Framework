@@ -35,7 +35,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Core/Headers/PlatformContextComponent.h"
 #include "Geometry/Shapes/Headers/Object3D.h"
-#include "Platform/Headers/PlatformDefines.h"
 
 #include <ImGuiMisc/imguifilesystem/imguifilesystem.h>
 

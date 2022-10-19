@@ -14,6 +14,8 @@ namespace Divide
         std::atomic_uint g_taskIDCounter = 0u;
         thread_local Task g_taskAllocator[Config::MAX_POOLED_TASKS];
         thread_local U64  g_allocatedTasks = 0u;
+
+        std::array<U32, g_maxDequeueItems> g_completedTaskIndices{};
     }
 
     TaskPool::~TaskPool()
@@ -69,7 +71,7 @@ namespace Divide
     {
         const string threadName = _threadNamePrefix + Util::to_string( threadIndex );
 
-        Profiler::OnThreadStart(threadName);
+        Profiler::OnThreadStart( threadName );
         SetThreadName( threadName.c_str() );
         if ( _threadCreateCbk )
         {
@@ -95,20 +97,18 @@ namespace Divide
         {
             while ( task._unfinishedJobs.load() > 1u )
             {
-                if ( threadWaitingCall )
+                if ( !threadWaitingCall )
                 {
-                    threadWaiting();
-                }
-                else
-                {
-                    // Can't be run at this time. It will be executated again later!
+                    // Can't be run at this time. It will be executed again later!
                     return false;
                 }
+
+                threadWaiting();
             }
 
             if ( !threadWaitingCall || task._runWhileIdle )
             {
-                if ( task._callback )
+                if ( task._callback ) [[likely]]
                 {
                     task._callback( task );
                 }
@@ -122,7 +122,7 @@ namespace Divide
 
         _runningTaskCount.fetch_add( 1u );
 
-        if ( !isRealtime )
+        if ( !isRealtime ) [[likely]]
         {
             if ( onCompletionFunction )
             {
@@ -130,11 +130,11 @@ namespace Divide
             }
 
             return (type() == TaskPoolType::TYPE_BLOCKING)
-                        ? _blockingPool->addTask( MOV( poolTask ) )
-                        : _lockFreePool->addTask( MOV( poolTask ) );
+                ? _blockingPool->addTask( MOV( poolTask ) )
+                : _lockFreePool->addTask( MOV( poolTask ) );
         }
 
-        if ( !poolTask( false ) )
+        if ( !poolTask( false ) ) [[unlikely]]
         {
             DIVIDE_UNEXPECTED_CALL();
         }
@@ -165,19 +165,18 @@ namespace Divide
 
     size_t TaskPool::flushCallbackQueue()
     {
-        size_t ret = 0u;
-
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
+        DIVIDE_ASSERT( Runtime::isMainThread() );
 
-        std::array<U32, g_maxDequeueItems> taskIndex = {};
+        size_t ret = 0u;
         size_t count = 0u;
         do
         {
-            count = _threadedCallbackBuffer.try_dequeue_bulk( std::begin( taskIndex ), g_maxDequeueItems );
+            count = _threadedCallbackBuffer.try_dequeue_bulk( std::begin( g_completedTaskIndices ), g_maxDequeueItems );
             for ( size_t i = 0u; i < count; ++i )
             {
-                auto& cbk = _taskCallbacks[taskIndex[i]];
-                if ( cbk )
+                auto& cbk = _taskCallbacks[g_completedTaskIndices[i]];
+                if ( cbk ) [[likely]]
                 {
                     cbk();
                     cbk = {};
@@ -193,8 +192,9 @@ namespace Divide
     void TaskPool::waitForAllTasks( const bool flushCallbacks )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
-
-        if ( type() != TaskPoolType::COUNT )
+        DIVIDE_ASSERT(Runtime::isMainThread());
+        
+        if ( type() != TaskPoolType::COUNT ) [[likely]]
         {
             {
                 UniqueLock<Mutex> lock( _taskFinishedMutex );
@@ -211,11 +211,28 @@ namespace Divide
         }
     }
 
+    namespace
+    {
+        template<typename T>
+        requires std::is_integral<T>::value
+        inline void checked_atom_sub(std::atomic<T>& atom) noexcept
+        {
+            if constexpr ( Config::Build::IS_DEBUG_BUILD )
+            {
+                DIVIDE_ASSERT( atom.fetch_sub( 1 ) >= 1u );
+            }
+            else
+            {
+                atom.fetch_sub( 1 );
+            }
+        }
+    }
+
     void TaskPool::taskCompleted( Task& task, const bool hasOnCompletionFunction )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
-        task._callback = {}; //<Needed to cleanup any stale resources (e.g. captured by lamdas)
+        task._callback = {}; //<Needed to cleanup any stale resources (e.g. captured by lambdas)
         if ( hasOnCompletionFunction )
         {
             _threadedCallbackBuffer.enqueue( task._id );
@@ -223,33 +240,11 @@ namespace Divide
 
         if ( task._parent != nullptr )
         {
-            if_constexpr( Config::Build::IS_DEBUG_BUILD )
-            {
-                DIVIDE_ASSERT( task._parent->_unfinishedJobs.fetch_sub( 1 ) >= 1u );
-            }
-        else
-        {
-            task._parent->_unfinishedJobs.fetch_sub( 1 );
-        }
+            checked_atom_sub(task._parent->_unfinishedJobs);
         }
 
-        if_constexpr( Config::Build::IS_DEBUG_BUILD )
-        {
-            DIVIDE_ASSERT( task._unfinishedJobs.fetch_sub( 1 ) == 1u );
-        }
-        else
-        {
-            task._unfinishedJobs.fetch_sub( 1 );
-        }
-
-        if_constexpr( Config::Build::IS_DEBUG_BUILD )
-        {
-            DIVIDE_ASSERT( _runningTaskCount.fetch_sub( 1 ) >= 1u );
-        }
-        else
-        {
-            _runningTaskCount.fetch_sub( 1 );
-        }
+        checked_atom_sub( task._unfinishedJobs );
+        checked_atom_sub( _runningTaskCount );
 
         ScopedLock<Mutex> lock( _taskFinishedMutex );
         _taskFinishedCV.notify_one();
@@ -326,7 +321,7 @@ namespace Divide
             _lockFreePool->wait();
             _lockFreePool->join();
         }
-        else
+        else [[unlikely]]
         {
             DIVIDE_UNEXPECTED_CALL();
         }
@@ -336,7 +331,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
-        if ( descriptor._iterCount == 0u )
+        if ( descriptor._iterCount == 0u ) [[unlikely]]
         {
             return;
         }

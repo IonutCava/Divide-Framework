@@ -279,7 +279,7 @@ void AIEntity::updatePosition(const U64 deltaTimeUS) {
 
             if (Time::MicrosecondsToSeconds<D64>(_moveWaitTimer) > 5) {
                 // DISABLED FOR NOW!
-                if_constexpr(false) {
+                if constexpr(false) {
                     _moveWaitTimer = 0;
                     stop();
                     if (_detourCrowd) {

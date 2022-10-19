@@ -550,7 +550,7 @@ namespace Divide
         // Start a duration query in debug builds
         if ( global && _runQueries )
         {
-            if_constexpr( g_runAllQueriesInSameFrame )
+            if constexpr( g_runAllQueriesInSameFrame )
             {
                 for ( U8 i = 0u; i < to_base( GlobalQueryTypes::COUNT ); ++i )
                 {
@@ -632,7 +632,7 @@ namespace Divide
             PROFILE_SCOPE( "End GPU Queries", Profiler::Category::Graphics );
             // End the timing query started in beginFrame() in debug builds
 
-            if_constexpr( g_runAllQueriesInSameFrame )
+            if constexpr( g_runAllQueriesInSameFrame )
             {
                 for ( U8 i = 0; i < to_base( GlobalQueryTypes::COUNT ); ++i )
                 {
@@ -673,7 +673,7 @@ namespace Divide
         {
             PROFILE_SCOPE( "GL_API: Time Query", Profiler::Category::Graphics );
             static std::array<I64, to_base( GlobalQueryTypes::COUNT )> results{};
-            if_constexpr( g_runAllQueriesInSameFrame )
+            if constexpr( g_runAllQueriesInSameFrame )
             {
                 for ( U8 i = 0u; i < to_base( GlobalQueryTypes::COUNT ); ++i )
                 {
@@ -822,7 +822,7 @@ namespace Divide
 
             glDrawArrays( GLUtil::glPrimitiveTypeTable[to_base( GL_API::s_stateTracker._activeTopology )], cmd._cmd.firstIndex, indexCount );
         }
-        else
+        else [[likely]]
         {
             // Because this can only happen on the main thread, try and avoid costly lookups for hot-loop drawing
             static VertexDataInterface::Handle s_lastID = VertexDataInterface::INVALID_VDI_HANDLE;
@@ -1464,7 +1464,7 @@ namespace Divide
                                         } );
 
         // Enable OpenGL debug callbacks for this context as well
-        if_constexpr( Config::ENABLE_GPU_VALIDATION )
+        if constexpr( Config::ENABLE_GPU_VALIDATION )
         {
             glEnable( GL_DEBUG_OUTPUT );
             glEnable( GL_DEBUG_OUTPUT_SYNCHRONOUS );
@@ -1584,13 +1584,13 @@ namespace Divide
                 case DescriptorSetBindingType::UNIFORM_BUFFER:
                 case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
                 {
-                    if ( !Has<ShaderBufferEntry>( srcBinding._data) )
+                    if ( !Has<ShaderBufferEntry>( srcBinding._data) ) [[unlikely]]
                     {
                         continue;
                     }
 
                     const ShaderBufferEntry& bufferEntry = As<ShaderBufferEntry>( srcBinding._data );
-                    if ( bufferEntry._buffer == nullptr || bufferEntry._range._length == 0u )
+                    if ( bufferEntry._buffer == nullptr || bufferEntry._range._length == 0u ) [[unlikely]]
                     {
                         continue;
                     }
@@ -1611,7 +1611,7 @@ namespace Divide
                 } break;
                 case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER:
                 {
-                    if ( srcBinding._slot == INVALID_TEXTURE_BINDING )
+                    if ( srcBinding._slot == INVALID_TEXTURE_BINDING ) [[unlikely]]
                     {
                         continue;
                     }
@@ -1624,7 +1624,7 @@ namespace Divide
                 } break;
                 case DescriptorSetBindingType::IMAGE:
                 {
-                    if ( !Has<ImageView>(srcBinding._data) )
+                    if ( !Has<ImageView>(srcBinding._data) ) [[unlikely]]
                     {
                         continue;
                     }
@@ -1693,7 +1693,7 @@ namespace Divide
         entry._slot = glBinding;
 
         DIVIDE_ASSERT( imageView._usage == ImageUsage::SHADER_SAMPLE );
-        if ( imageView._srcTexture._internalTexture != nullptr && imageView._usage != imageView._srcTexture._internalTexture->imageUsage() )
+        if ( imageView._srcTexture._internalTexture != nullptr && imageView._usage != imageView._srcTexture._internalTexture->imageUsage() ) [[unlikely]]
         {
             DIVIDE_UNEXPECTED_CALL_MSG("Need layout transition here!");
         }
@@ -1854,7 +1854,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        if_constexpr( Config::ENABLE_GPU_VALIDATION )
+        if constexpr( Config::ENABLE_GPU_VALIDATION )
         {
             glPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, id, -1, message );
         }
@@ -1866,7 +1866,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        if_constexpr( Config::ENABLE_GPU_VALIDATION )
+        if constexpr( Config::ENABLE_GPU_VALIDATION )
         {
             glPopDebugGroup();
         }

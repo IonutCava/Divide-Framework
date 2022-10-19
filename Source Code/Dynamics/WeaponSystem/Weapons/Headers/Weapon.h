@@ -33,8 +33,6 @@
 #ifndef _WEAPON_H_
 #define _WEAPON_H_
 
-#include "Core/Math/Headers/MathHelper.h"
-
 namespace Divide {
 
 /// Base class for defining a weapon

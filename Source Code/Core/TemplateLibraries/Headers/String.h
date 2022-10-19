@@ -34,7 +34,6 @@
 #define _STRING_H_
 
 #include <boost/beast/core/static_string.hpp>
-#include <boost/utility/string_ref.hpp >
 #include "STLString.h"
 
 namespace Divide {
@@ -49,9 +48,7 @@ namespace Divide {
 
         Str() noexcept : Base() {}
 
-        template<typename T_str,
-                 typename std::enable_if<std::is_same<string_impl<false>, T_str>::value || 
-                                         std::is_same<string_impl<true>, T_str>::value, I32>::type = 0>
+        template<typename T_str> requires is_non_wide_string<T_str>
         Str(const T_str& str) : Base(str.c_str(), str.length())
         {
         }
@@ -70,13 +67,8 @@ namespace Divide {
 
         operator std::string_view() const { return std::string_view{ Base::c_str()}; }
 
-        [[nodiscard]] boost::string_ref as_ref(size_t pos = 0) const {
-            if (pos == 0) {
-                return boost::string_ref(Base::c_str(), Base::size());
-            }
-
-            const auto subStr = Base::substr(pos, Base::size() - pos);
-            return boost::string_ref(subStr.data(), subStr.length());
+        [[nodiscard]] std::string_view as_view(size_t pos = 0) const {
+            return std::string_view( Base::begin() + pos, Base::end());
         }
 
         Str operator+(const char* other) const {
@@ -92,17 +84,13 @@ namespace Divide {
             return ret;
         }
 
-        template<typename T_str>
-        typename std::enable_if<std::is_same<string_impl<false>, T_str>::value ||
-                                std::is_same<string_impl<true>, T_str>::value, Str>::type
-        operator+(const T_str& other) const {
+        template<typename T_str> requires is_non_wide_string<T_str>
+        Str operator+(const T_str& other) const {
             return *this + other.c_str();
         }
 
-        template<typename T_str>
-        typename std::enable_if<std::is_same<string_impl<false>, T_str>::value ||
-                                std::is_same<string_impl<true>, T_str>::value, Str&>::type
-        append(const T_str& other) {
+        template<typename T_str> requires is_non_wide_string<T_str>
+        Str& append(const T_str& other) {
             *this = Str((Base::c_str() + other).c_str());
             return *this;
         }
@@ -121,54 +109,54 @@ namespace Divide {
         }
 
         [[nodiscard]] size_t find(const char other, const size_t pos = 0) const {
-            const size_t ret = as_ref(pos).find(other);
+            const size_t ret = as_view(pos).find(other);
             return ret == Str::npos ? ret : ret + pos;
         }
 
         [[nodiscard]] size_t find(const char* other, const size_t pos = 0) const {
-            const size_t ret = as_ref(pos).find(boost::string_ref(other));
+            const size_t ret = as_view(pos).find( other );
             return ret != Str::npos ? ret + pos : Str::npos;
         }
 
         [[nodiscard]] size_t find(const Str& other, const size_t pos = 0) const {
-            const size_t ret = as_ref(pos).find(other.as_ref());
+            const size_t ret = as_view(pos).find(other.c_str());
             return ret != Str::npos ? ret + pos : Str::npos;
         }
 
         template<size_t N>
         [[nodiscard]] size_t find(const Str<N>& other, const size_t pos = 0) const {
-            const size_t ret = as_ref(pos).find(other.as_ref());
+            const size_t ret = as_view(pos).find(other.c_str());
             return ret != Str::npos ? ret + pos : Str::npos;
         }
 
         [[nodiscard]] size_t rfind(const char other, const size_t pos = 0) const {
-            const size_t ret = as_ref(pos).rfind(other);
+            const size_t ret = as_view(pos).rfind(other);
             return ret != Str::npos ? ret + pos : Str::npos;
         }
 
         [[nodiscard]] size_t rfind(const char* other, const size_t pos = 0) const {
-            const size_t ret = as_ref(pos).rfind(boost::string_ref(other));
+            const size_t ret = as_view(pos).rfind(boost::string_ref(other));
             return ret != Str::npos ? ret + pos : Str::npos;
         }
 
         [[nodiscard]] size_t rfind(const Str& other, const size_t pos = 0) const {
-            const size_t ret = as_ref(pos).rfind(other.as_ref());
+            const size_t ret = as_view(pos).rfind(other.c_str());
             return ret != Str::npos ? ret + pos : Str::npos;
         }
 
         template<size_t N>
         [[nodiscard]] size_t rfind(const Str<N>& other, const size_t pos = 0) const {
-            const size_t ret = as_ref(pos).rfind(other.as_ref());
+            const size_t ret = as_view(pos).rfind(other.c_str());
             return ret != Str::npos ? ret + pos : Str::npos;
         }
 
         [[nodiscard]] size_t find_first_of(const char s, const size_t pos = 0) const {
-            const size_t ret = as_ref(pos).find_first_of(s);
+            const size_t ret = as_view(pos).find_first_of(s);
             return ret != Str::npos ? ret + pos : Str::npos;
         }
 
         [[nodiscard]] size_t find_first_of(const char* s, const size_t pos = 0) const {
-            const size_t ret = as_ref(pos).find_first_of(boost::string_ref(s));
+            const size_t ret = as_view(pos).find_first_of(s);
             return ret != Str::npos ? ret + pos : Str::npos;
         }
 
@@ -190,5 +178,15 @@ namespace Divide {
     using Str64  = Str<64>;
     using Str128 = Str<128>;
     using Str256 = Str<256>;
+
+    template<typename T>
+    concept is_string = is_stl_string<T> ||
+                        is_eastl_string<T> ||
+                        std::is_same_v<T, Str8> ||
+                        std::is_same_v<T, Str16> ||
+                        std::is_same_v<T, Str32> ||
+                        std::is_same_v<T, Str64> ||
+                        std::is_same_v<T, Str128> ||
+                        std::is_same_v<T, Str256>;
 }//namespace Divide
 #endif //_STRING_H_

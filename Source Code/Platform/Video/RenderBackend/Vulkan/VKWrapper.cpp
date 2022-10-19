@@ -449,7 +449,7 @@ namespace Divide {
             s_hasDebugMarkerSupport = false;
         }
 
-        if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+        if constexpr(Config::ENABLE_GPU_VALIDATION) {
             if (systemInfo.validation_layers_available) {
                 builder.enable_validation_layers();
             }

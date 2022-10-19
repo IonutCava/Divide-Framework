@@ -208,7 +208,7 @@ void RenderPassManager::render(const RenderParams& params) {
        {
            Time::ScopedTimer timeGUIBuffer(*_processGUITimer);
            Attorney::SceneManagerRenderPass::drawCustomUI(sceneManager, targetViewport, buf);
-           if_constexpr(Config::Build::ENABLE_EDITOR)
+           if constexpr(Config::Build::ENABLE_EDITOR)
            {
                context.editor().drawScreenOverlay(cam, targetViewport, buf);
            }

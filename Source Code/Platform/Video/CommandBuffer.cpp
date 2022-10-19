@@ -229,7 +229,7 @@ namespace
 
     void CommandBuffer::clean()
     {
-        if ( _commandOrder.empty() )
+        if ( _commandOrder.empty() ) [[unlikely]]
         {
             return;
         }
@@ -410,7 +410,7 @@ namespace
     // New use cases that emerge from production work should be checked here.
     std::pair<ErrorType, size_t> CommandBuffer::validate() const
     {
-        if_constexpr( !Config::ENABLE_GPU_VALIDATION )
+        if constexpr( !Config::ENABLE_GPU_VALIDATION )
         {
             return { ErrorType::NONE, 0u };
         }

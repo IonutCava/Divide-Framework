@@ -128,7 +128,7 @@ namespace Divide {
 
     template<typename... Args>
     void DisplayWindow::title(const char* format, Args&& ...args) noexcept {
-        if_constexpr(sizeof...(Args) > 0) {
+        if constexpr(sizeof...(Args) > 0) {
             SDL_SetWindowTitle(_sdlWindow, Util::StringFormat(format, static_cast<Args&&>(args)...).c_str());
         } else {
             SDL_SetWindowTitle(_sdlWindow, format);

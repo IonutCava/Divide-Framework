@@ -707,7 +707,7 @@ namespace Divide
                     ExternalRTAttachmentDescriptor{ screenDepthAttachment,    screenDepthAttachment->descriptor()._samplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 }
                 };
 
-                if_constexpr( Config::USE_COLOURED_WOIT )
+                if constexpr( Config::USE_COLOURED_WOIT )
                 {
                     RTAttachment* screenAttachment = screenTarget->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::ALBEDO );
                     externalAttachments.push_back(
@@ -746,7 +746,7 @@ namespace Divide
                          ExternalRTAttachmentDescriptor{ depthAttachment, depthAttachment->descriptor()._samplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 }
                     };
 
-                    if_constexpr( Config::USE_COLOURED_WOIT )
+                    if constexpr( Config::USE_COLOURED_WOIT )
                     {
                         RTAttachment* screenAttachment = reflectTarget->getAttachment( RTAttachmentType::COLOUR );
                         externalAttachments.push_back(
@@ -2086,7 +2086,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        if_constexpr( Config::ENABLE_GPU_VALIDATION )
+        if constexpr( Config::ENABLE_GPU_VALIDATION )
         {
             DIVIDE_ASSERT( Runtime::isMainThread(), "GFXDevice::flushCommandBuffer called from worker thread!" );
         }
@@ -2464,7 +2464,7 @@ namespace Divide
         constexpr I32 padding = 5;
 
         // Early out if we didn't request the preview
-        if_constexpr( Config::ENABLE_GPU_VALIDATION )
+        if constexpr( Config::ENABLE_GPU_VALIDATION )
         {
             GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Render Debug Views" } );
 

@@ -56,17 +56,15 @@ FORCE_INLINE size_t RESERVE_CMD(const U8 typeIndex) noexcept {
     return 1;
 }
 
-template<typename T>
-typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-CommandBuffer::allocateCommand() {
+template<typename T> requires std::is_base_of_v<CommandBase, T>
+T* CommandBuffer::allocateCommand() {
     const CommandEntry& newEntry = _commandOrder.emplace_back(to_U8(T::EType), _commandCount[to_U8(T::EType)]++);
 
     return get<T>(newEntry);
 }
 
-template<typename T>
-typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-CommandBuffer::add() {
+template<typename T> requires std::is_base_of_v<CommandBase, T>
+T* CommandBuffer::add() {
     T* mem = allocateCommand<T>();
 
     if (mem != nullptr) {
@@ -80,9 +78,8 @@ CommandBuffer::add() {
     return mem;
 }
 
-template<typename T>
-typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-CommandBuffer::add(const T& command) {
+template<typename T>  requires std::is_base_of_v<CommandBase, T>
+T* CommandBuffer::add(const T& command) {
     T* mem = allocateCommand<T>();
 
     if (mem != nullptr) {
@@ -96,9 +93,8 @@ CommandBuffer::add(const T& command) {
     return mem;
 }
 
-template<typename T>
-typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-CommandBuffer::add(const T&& command) {
+template<typename T> requires std::is_base_of_v<CommandBase, T>
+T* CommandBuffer::add(const T&& command) {
     T* mem = allocateCommand<T>();
 
     if (mem != nullptr) {
@@ -112,21 +108,18 @@ CommandBuffer::add(const T&& command) {
     return mem;
 }
 
-template<typename T>
-[[nodiscard]] typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-CommandBuffer::get(const CommandEntry& commandEntry) {
+template<typename T>  requires std::is_base_of_v<CommandBase, T>
+T* CommandBuffer::get(const CommandEntry& commandEntry) {
     return static_cast<T*>(_commands.get(commandEntry));
 }
 
-template<typename T>
-[[nodiscard]] typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-CommandBuffer::get(const CommandEntry& commandEntry) const {
+template<typename T> requires std::is_base_of_v<CommandBase, T>
+T* CommandBuffer::get(const CommandEntry& commandEntry) const {
     return static_cast<T*>(_commands.get(commandEntry));
 }
 
-template<typename T>
-[[nodiscard]] typename std::enable_if<std::is_base_of<CommandBase, T>::value, const CommandBuffer::Container::EntryList&>::type
-CommandBuffer::get() const {
+template<typename T> requires std::is_base_of_v<CommandBase, T>
+const CommandBuffer::Container::EntryList& CommandBuffer::get() const {
     return _commands.get(to_base(T::EType));
 }
 
@@ -134,21 +127,18 @@ inline bool CommandBuffer::exists(const CommandEntry& commandEntry) const noexce
     return _commands.exists(commandEntry);
 }
 
-template<typename T>
-typename std::enable_if<std::is_base_of<CommandBase, T>::value, bool>::type
-CommandBuffer::exists(const U24 index) const noexcept {
+template<typename T> requires std::is_base_of_v<CommandBase, T>
+bool CommandBuffer::exists(const U24 index) const noexcept {
     return exists(to_base(T::EType), index);
 }
 
-template<typename T>
-[[nodiscard]] typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-CommandBuffer::get(const U24 index) {
+template<typename T> requires std::is_base_of_v<CommandBase, T>
+T* CommandBuffer::get(const U24 index) {
     return get<T>({to_base(T::EType), index});
 }
 
-template<typename T>
-[[nodiscard]] typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-CommandBuffer::get(const U24 index) const {
+template<typename T> requires std::is_base_of_v<CommandBase, T>
+T* CommandBuffer::get(const U24 index) const {
     return get<T>({to_base(T::EType), index });
 }
 
@@ -156,9 +146,8 @@ inline bool CommandBuffer::exists(const U8 typeIndex, const U24 index) const noe
     return _commands.exists({ typeIndex, index });
 }
 
-template<typename T>
-typename std::enable_if<std::is_base_of<CommandBase, T>::value, size_t>::type
-CommandBuffer::count() const noexcept {
+template<typename T> requires std::is_base_of_v<CommandBase, T>
+size_t CommandBuffer::count() const noexcept {
     return _commands.get(to_base(T::EType)).size();
 }
 
@@ -184,9 +173,8 @@ inline bool CommandBuffer::empty() const noexcept {
     return _commandOrder.empty();
 }
 
-template<typename T>
-typename std::enable_if<std::is_base_of<CommandBase, T>::value, bool>::type
-CommandBuffer::tryMergeCommands(const CommandType type, T* prevCommand, T* crtCommand) const {
+template<typename T> requires std::is_base_of_v<CommandBase, T>
+bool CommandBuffer::tryMergeCommands(const CommandType type, T* prevCommand, T* crtCommand) const {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     bool ret = false;

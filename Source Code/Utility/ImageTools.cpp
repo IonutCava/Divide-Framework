@@ -145,7 +145,7 @@ namespace nvttHelpers {
     [[nodiscard]] nvtt::Format getNVTTFormat(const ImageOutputFormat outputFormat, const bool isNormalMap, const bool hasAlpha, const bool isGreyscale) noexcept {
         assert(outputFormat != ImageOutputFormat::COUNT);
 
-        if_constexpr(g_KeepDevILDDSCompatibility) {
+        if constexpr(g_KeepDevILDDSCompatibility) {
             return isNormalMap ? nvtt::Format::Format_BC3n : hasAlpha ? nvtt::Format::Format_BC3 : nvtt::Format::Format_BC1;
         } else {
             if (outputFormat != ImageOutputFormat::AUTO) {

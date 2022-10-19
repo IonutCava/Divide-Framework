@@ -109,7 +109,8 @@ void ParticleData::sort() {
     Task* updateTask = CreateTask(TASK_NOP);
     Start(*CreateTask(updateTask, parsePositions), pool);
     Start(*CreateTask(updateTask, parseColours), pool);
-    StartAndWait(*updateTask, pool);
+    Start(*updateTask, pool);
+    Wait(*updateTask, pool);
 }
 
 void ParticleData::swapData(const U32 indexA, const U32 indexB) {

@@ -289,7 +289,7 @@ void WarScene::updateSceneStateInternal(const U64 deltaTimeUS) {
         }
     }
 
-    if_constexpr(g_enableOldGameLogic) {
+    if constexpr(g_enableOldGameLogic) {
         if (_resetUnits) {
             resetUnits();
             _resetUnits = false;

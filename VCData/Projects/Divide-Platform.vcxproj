@@ -340,6 +340,7 @@
     <None Include="..\..\assets\shaders\GLSL\ScreenSpaceReflections.glsl" />
     <None Include="..\..\assets\shaders\SPIRV\triangle.frag.spv" />
     <None Include="..\..\assets\shaders\SPIRV\triangle.vert.spv" />
+    <None Include="..\..\Source Code\Platform\Threading\Headers\Task.inl" />
     <None Include="..\..\Source Code\Platform\Threading\Headers\ThreadPool.inl" />
     <None Include="..\..\Source Code\Platform\Video\Buffers\RenderTarget\Headers\RTDrawDescriptor.inl" />
     <None Include="..\..\Source Code\Platform\Video\Buffers\VertexBuffer\Headers\BufferParams.inl" />

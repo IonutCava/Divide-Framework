@@ -36,7 +36,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TemplateAllocator.h"
 #include <string>
 
-namespace Divide {
+namespace Divide
+{
     /// dvd_allocator uses xmalloc/xfree for memory management whereas std::allocator uses the classic new/delete pair.
     template<bool Fast, class Elem>
     using string_allocator = typename std::conditional<Fast, dvd_allocator<Elem>, std::allocator<Elem>>::type;
@@ -45,29 +46,32 @@ namespace Divide {
     struct ci_char_traits : std::char_traits<char>
         // just inherit all the other functions that we don't need to override
     {
-        static bool eq(const char c1, const char c2) noexcept
+        static bool eq( const char c1, const char c2 ) noexcept
         {
-            return toupper(c1) == toupper(c2);
+            return toupper( c1 ) == toupper( c2 );
         }
 
-        static bool ne(const char c1, const char c2) noexcept
+        static bool ne( const char c1, const char c2 ) noexcept
         {
-            return toupper(c1) != toupper(c2);
+            return toupper( c1 ) != toupper( c2 );
         }
 
-        static bool lt(const char c1, const char c2) noexcept
+        static bool lt( const char c1, const char c2 ) noexcept
         {
-            return toupper(c1) < toupper(c2);
+            return toupper( c1 ) < toupper( c2 );
         }
 
-        static int compare(const char* s1, const char* s2, const size_t n) noexcept {
-            return _memicmp(s1, s2, n);
+        static int compare( const char* s1, const char* s2, const size_t n ) noexcept
+        {
+            return _memicmp( s1, s2, n );
             // if available on your compiler,
             //  otherwise you can roll your own
         }
 
-        static const char* find(const char* s, int n, const char a) noexcept {
-            while (n-- > 0 && toupper(*s) != toupper(a)) {
+        static const char* find( const char* s, int n, const char a ) noexcept
+        {
+            while ( n-- > 0 && toupper( *s ) != toupper( a ) )
+            {
                 ++s;
             }
             return s;
@@ -124,6 +128,28 @@ namespace Divide {
     using wstringbuf = wstringbuf_imp<false>;
     using wstringbuf_fast = wstringbuf_imp<true>;
 
+    template<typename T>
+    concept is_stl_wide_string = std::is_same_v<T, wstring_ignore_case> ||
+                                 std::is_same_v<T, wstring_ignore_case_fast> ||
+                                 std::is_same_v<T, wstring> ||
+                                 std::is_same_v<T, wstring_fast>;
+
+    template<typename T>
+    concept is_stl_non_wide_string = std::is_same_v<T, string> ||
+                                     std::is_same_v<T, string_fast> ||
+                                     std::is_same_v<T, string_ignore_case> ||
+                                     std::is_same_v<T, string_ignore_case_fast>;
+
+    template<typename T>
+    concept is_stl_string = is_stl_wide_string<T> ||
+                            is_stl_non_wide_string<T>;
+
+    template<typename T>
+    concept is_eastl_string = std::is_same_v<T, eastl::string>;
+
+    template<typename T>
+    concept is_non_wide_string = is_stl_non_wide_string<T> ||
+                                 is_eastl_string<T>;
 }; //namespace Divide
 #endif //_STL_STRING_H_
 

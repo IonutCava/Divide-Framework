@@ -148,10 +148,8 @@ namespace Divide {
         /// Deletes the object pointed to by "OLD" and redirects that pointer to the
         /// object pointed by "NEW"
         /// "NEW" must be a derived (or same) class of OLD
-        template <typename Base, typename Derived>
+        template <typename Base, typename Derived> requires std::is_base_of_v<Base, Derived>
         void SAFE_UPDATE(Base*& OLD, Derived* const NEW) {
-            static_assert(std::is_base_of<Base, Derived>::value,
-                "SAFE_UPDATE error: New must be a descendant of Old");
             SAFE_DELETE(OLD);
             OLD = NEW;
         }

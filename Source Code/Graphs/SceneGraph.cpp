@@ -656,7 +656,7 @@ namespace Divide
                  backupReturnCode != FileError::FILE_NOT_FOUND &&
                  backupReturnCode != FileError::FILE_EMPTY )
             {
-                if_constexpr( !Config::Build::IS_SHIPPING_BUILD )
+                if constexpr( !Config::Build::IS_SHIPPING_BUILD )
                 {
                     DIVIDE_UNEXPECTED_CALL();
                 }

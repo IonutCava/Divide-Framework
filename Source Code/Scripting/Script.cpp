@@ -62,7 +62,7 @@ bool Script::OnStartup([[maybe_unused]] PlatformContext& context) {
     s_scripts.reserve(100);
     s_scriptsReady = true;
 
-    if_constexpr (!Config::Build::IS_SHIPPING_BUILD) {
+    if constexpr (!Config::Build::IS_SHIPPING_BUILD) {
         FileWatcher& scriptFileWatcher = FileWatcherManager::allocateWatcher();
         s_scriptFileWatcher = scriptFileWatcher.getGUID();
 
@@ -78,7 +78,7 @@ bool Script::OnStartup([[maybe_unused]] PlatformContext& context) {
 bool Script::OnShutdown([[maybe_unused]] PlatformContext& context) {
     s_scriptsReady = false;
 
-    if_constexpr (!Config::Build::IS_SHIPPING_BUILD) {
+    if constexpr (!Config::Build::IS_SHIPPING_BUILD) {
         FileWatcherManager::deallocateWatcher(s_scriptFileWatcher);
         s_scriptFileWatcher = -1;
     }

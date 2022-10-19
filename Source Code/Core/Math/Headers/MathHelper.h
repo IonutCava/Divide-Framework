@@ -40,9 +40,14 @@
 #ifndef _CORE_MATH_MATH_HELPER_H_
 #define _CORE_MATH_MATH_HELPER_H_
 
+#include <numbers>
+
 namespace Divide {
 
 #define TO_MEGABYTES(X) (X * 1024u * 1024u)
+
+template<typename T>
+concept ValidMathType = std::is_arithmetic_v<T> && !std::is_same_v<T, bool>;
 
 template <typename T>
 class mat2;
@@ -68,12 +73,12 @@ using UColour4 = vec4<U8>;
 using FColour4 = vec4<F32>;
 
 #if !defined(M_PI)
-    constexpr D64 M_PI = 3.14159265358979323846;
-    constexpr D64 M_PI_2 = 3.14159265358979323846 / 2; 
+    constexpr D64 M_PI = std::numbers::pi;
+    constexpr D64 M_PI_2 = M_PI / 2;
 #endif
 
     constexpr D64 M_PI_4 = M_PI / 4;
-    constexpr D64 M_2PI = 6.28318530717958647692;
+    constexpr D64 M_2PI = M_PI * 2;
     constexpr D64 M_PIDIV180 = 0.01745329251994329576;
     constexpr D64 M_180DIVPI = 57.29577951308232087679;
     constexpr D64 M_PIDIV360 = 0.00872664625997164788;
@@ -106,17 +111,17 @@ using DefaultDistribution = typename std::conditional<std::is_integral<T>::value
 
 template <typename T, 
           typename Engine = std::mt19937_64,
-          typename Distribution = DefaultDistribution<T>>
+          typename Distribution = DefaultDistribution<T>> requires std::is_arithmetic_v<T>
 [[nodiscard]] T Random(T min, T max);
 
 template <typename T,
           typename Engine = std::mt19937_64,
-          typename Distribution = DefaultDistribution<T>>
+          typename Distribution = DefaultDistribution<T>> requires std::is_arithmetic_v<T>
 [[nodiscard]] T Random(T max);
 
 template <typename T,
           typename Engine = std::mt19937_64,
-          typename Distribution = DefaultDistribution<T>>
+          typename Distribution = DefaultDistribution<T>> requires std::is_arithmetic_v<T>
 [[nodiscard]] T Random();
 
 template<typename Engine = std::mt19937_64>
@@ -125,25 +130,20 @@ void SeedRandom();
 template<typename Engine = std::mt19937_64>
 void SeedRandom(U32 seed);
 
-template<typename Mask, typename Type>
-[[nodiscard]] constexpr typename std::enable_if<std::is_enum<Type>::value, bool>::type
-TestBit(Mask bitMask, Type bit) noexcept;
+template<typename Mask, typename Type> requires std::is_enum_v<Type>
+[[nodiscard]] constexpr bool TestBit(Mask bitMask, Type bit) noexcept;
 
-template<typename Mask, typename Type>
-constexpr typename std::enable_if<std::is_enum<Type>::value, void>::type
-SetBit(Mask& bitMask, Type bit) noexcept;
+template<typename Mask, typename Type> requires std::is_enum_v<Type>
+constexpr void SetBit(Mask& bitMask, Type bit) noexcept;
 
-template<typename Mask, typename Type>
-constexpr typename std::enable_if<std::is_enum<Type>::value, void>::type
-ClearBit(Mask& bitMask, Type bit) noexcept;
+template<typename Mask, typename Type> requires std::is_enum_v<Type>
+constexpr void ClearBit(Mask& bitMask, Type bit) noexcept;
 
-template<typename Mask, typename Type>
-constexpr typename std::enable_if<std::is_enum<Type>::value, void>::type
-ToggleBit(Mask& bitMask, Type bit) noexcept;
+template<typename Mask, typename Type> requires std::is_enum_v<Type>
+constexpr void ToggleBit(Mask& bitMask, Type bit) noexcept;
 
-template<typename Mask, typename Type>
-constexpr typename std::enable_if<std::is_enum<Type>::value, void>::type
-ToggleBit(Mask& bitMask, Type bit, bool state) noexcept;
+template<typename Mask, typename Type> requires std::is_enum_v<Type>
+constexpr void ToggleBit(Mask& bitMask, Type bit, bool state) noexcept;
 
 template<typename Mask>
 [[nodiscard]] constexpr bool TestBit(Mask bitMask, Mask bit) noexcept;
@@ -156,17 +156,12 @@ constexpr void ToggleBit(Mask& bitMask, Mask bit) noexcept;
 template<typename Mask>
 constexpr void ToggleBit(Mask& bitMask, Mask bit, bool state) noexcept;
 
-template<typename Mask, typename Type>
-[[nodiscard]] constexpr typename std::enable_if<std::is_enum<Type>::value, bool>::type
-TestBit(std::atomic<Mask> bitMask, Type bit) noexcept;
-
-template<typename Mask, typename Type>
-constexpr typename std::enable_if<std::is_enum<Type>::value, void>::type
-SetBit(std::atomic<Mask>& bitMask, Type bit) noexcept;
-
-template<typename Mask, typename Type>
-constexpr typename std::enable_if<std::is_enum<Type>::value, void>::type
-ClearBit(std::atomic<Mask>& bitMask, Type bit) noexcept;
+template<typename Mask, typename Type>  requires std::is_enum_v<Type>
+[[nodiscard]] constexpr bool TestBit(std::atomic<Mask> bitMask, Type bit) noexcept;
+template<typename Mask, typename Type>  requires std::is_enum_v<Type>
+constexpr void SetBit(std::atomic<Mask>& bitMask, Type bit) noexcept;
+template<typename Mask, typename Type>  requires std::is_enum_v<Type>
+constexpr void ClearBit(std::atomic<Mask>& bitMask, Type bit) noexcept;
 
 template<typename Mask>
 [[nodiscard]] constexpr bool TestBit(const std::atomic<Mask>& bitMask, Mask bit) noexcept;
@@ -270,8 +265,6 @@ template <typename T>
 
 template <typename T, typename U>
 [[nodiscard]] T Sqrt(U input) noexcept;
-
-constexpr bool ACCURATE_FLOAT_TO_CHAR_CONVERSION = true;
 
 ///Helper methods to go from an snorm float (-1...1) to packed unorm char (value => (value + 1) * 0.5 => U8)
 [[nodiscard]] constexpr U8 PACKED_FLOAT_TO_CHAR_UNORM(F32_SNORM value) noexcept;

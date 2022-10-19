@@ -35,10 +35,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <cassert>
 
-#if !defined(if_constexpr)
-#define if_constexpr if constexpr
-#endif
-
 namespace Divide {
 
 // "Exact" number of bits
@@ -234,27 +230,27 @@ struct I24
     FORCE_INLINE bool operator<  (const I24& val) const noexcept { return static_cast<I32>(*this) <  static_cast<I32>(val); }
 
 
-    template<typename T, typename = typename std::enable_if<std::is_integral<T>::value>::type>
+    template<typename T> requires std::is_integral_v<T>
     FORCE_INLINE bool operator==  (const T& val) const noexcept {
         return static_cast<I32>(*this) == val;
     }
-    template<typename T, typename = typename std::enable_if<std::is_integral<T>::value>::type>
+    template<typename T> requires std::is_integral_v<T>
     FORCE_INLINE bool operator!=  (const T& val) const noexcept {
         return static_cast<I32>(*this) != val;
     }
-    template<typename T, typename = typename std::enable_if<std::is_integral<T>::value>::type>
+    template<typename T> requires std::is_integral_v<T>
     FORCE_INLINE bool operator> (const T& val) const noexcept {
         return static_cast<I32>(*this) > val;
     }
-    template<typename T, typename = typename std::enable_if<std::is_integral<T>::value>::type>
+    template<typename T> requires std::is_integral_v<T>
     FORCE_INLINE bool operator<  (const T& val) const noexcept { 
         return static_cast<I32>(*this) < val;
     }
-    template<typename T, typename = typename std::enable_if<std::is_integral<T>::value>::type>
+    template<typename T> requires std::is_integral_v<T>
     FORCE_INLINE bool operator>=  (const T& val) const noexcept {
         return static_cast<I32>(*this) >= val;
     }
-    template<typename T, typename = typename std::enable_if<std::is_integral<T>::value>::type>
+    template<typename T> requires std::is_integral_v<T>
     FORCE_INLINE bool operator<=  (const T& val) const noexcept {
         return static_cast<I32>(*this) <= val;
     }
@@ -315,27 +311,27 @@ struct U24
     FORCE_INLINE bool operator>  (const U24& val) const noexcept { return static_cast<U32>(*this) > static_cast<U32>(val); }
     FORCE_INLINE bool operator<  (const U24& val) const noexcept { return static_cast<U32>(*this) < static_cast<U32>(val); }
 
-    template<typename T, typename = typename std::enable_if<std::is_integral<T>::value>::type>
+    template<typename T> requires std::is_integral_v<T>
     FORCE_INLINE bool operator==  (const T& val) const noexcept {
         return val >= 0 && static_cast<U32>(*this) == val;
     }
-    template<typename T, typename = typename std::enable_if<std::is_integral<T>::value>::type>
+    template<typename T> requires std::is_integral_v<T>
     FORCE_INLINE bool operator!=  (const T& val) const noexcept {
         return val < 0 || static_cast<U32>(*this) != val;
     }
-    template<typename T, typename = typename std::enable_if<std::is_integral<T>::value>::type>
+    template<typename T> requires std::is_integral_v<T>
     FORCE_INLINE bool operator> (const T& val) const noexcept {
         return static_cast<U32>(*this) > val;
     }
-    template<typename T, typename = typename std::enable_if<std::is_integral<T>::value>::type>
+    template<typename T> requires std::is_integral_v<T>
     FORCE_INLINE bool operator<  (const T& val) const noexcept {
         return static_cast<U32>(*this) < val;
     }
-    template<typename T, typename = typename std::enable_if<std::is_integral<T>::value>::type>
+    template<typename T> requires std::is_integral_v<T>
     FORCE_INLINE bool operator>=  (const T& val) const noexcept {
         return static_cast<U32>(*this) >= val;
     }
-    template<typename T, typename = typename std::enable_if<std::is_integral<T>::value>::type>
+    template<typename T> requires std::is_integral_v<T>
     FORCE_INLINE bool operator<=  (const T& val) const noexcept {
         return static_cast<U32>(*this) <= val;
     }
@@ -359,19 +355,19 @@ return static_cast<U32>(value);
 template<typename Type>
 using BaseType = std::underlying_type_t<Type>;
 
-template <typename Type, typename = typename std::enable_if<std::is_integral<Type>::value>::type>
+template <typename Type> requires std::is_integral_v<Type>
 constexpr auto to_base(const Type value) -> Type {
     return value;
 }
 
-template <typename Type, typename = typename std::enable_if<std::is_enum<Type>::value>::type>
+template <typename Type> requires std::is_enum_v<Type>
 constexpr auto to_base(const Type value) -> std::underlying_type_t<Type> {
     return static_cast<std::underlying_type_t<Type>>(value);
 }
 
 template <typename T>
 constexpr size_t to_size(const T value) {
-    if_constexpr(std::is_floating_point<T>::value) {
+    if constexpr(std::is_floating_point<T>::value) {
         assert(value >= 0);
     }
 
@@ -380,7 +376,7 @@ constexpr size_t to_size(const T value) {
 
 template <typename T>
 constexpr U64 to_U64(const T value) {
-    if_constexpr(std::is_floating_point<T>::value) {
+    if constexpr(std::is_floating_point<T>::value) {
         assert(value >= 0);
     }
 
@@ -389,7 +385,7 @@ constexpr U64 to_U64(const T value) {
 
 template <typename T>
 constexpr U32 to_U32(const T value) {
-    if_constexpr(std::is_floating_point<T>::value) {
+    if constexpr(std::is_floating_point<T>::value) {
         assert(value >= 0);
     }
 
@@ -398,7 +394,7 @@ constexpr U32 to_U32(const T value) {
 
 template <typename T>
 constexpr U16 to_U16(const T value) {
-    if_constexpr(std::is_floating_point<T>::value) {
+    if constexpr(std::is_floating_point<T>::value) {
         assert(value >= 0);
     }
 
@@ -407,7 +403,7 @@ constexpr U16 to_U16(const T value) {
 
 template<typename T>
 constexpr U8 to_U8(const T value) {
-    if_constexpr(std::is_floating_point<T>::value) {
+    if constexpr(std::is_floating_point<T>::value) {
         assert(value >= 0);
     }
 
@@ -450,7 +446,7 @@ constexpr D128 to_D128(const T value) {
 
 template<typename T>
 constexpr Byte to_byte(const T value) {
-    if_constexpr(std::is_floating_point<T>::value) {
+    if constexpr(std::is_floating_point<T>::value) {
         assert(value >= 0);
     }
 

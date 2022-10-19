@@ -103,9 +103,9 @@ void Paths::initPaths(const SysInfo& info) {
     g_soundsLocation = ResourcePath("sounds/");
     g_localisationPath = ResourcePath("localisation/");
     g_cacheLocation = ResourcePath("cache/");
-    if_constexpr(Config::Build::IS_DEBUG_BUILD) {
+    if constexpr(Config::Build::IS_DEBUG_BUILD) {
         g_buildTypeLocation = ResourcePath("Debug/");
-    } else if_constexpr(Config::Build::IS_PROFILE_BUILD) {
+    } else if constexpr(Config::Build::IS_PROFILE_BUILD) {
         g_buildTypeLocation = ResourcePath("Profile/");
     } else {
         g_buildTypeLocation = ResourcePath("Release/");

@@ -118,11 +118,10 @@ namespace Divide {
 *********************************/
 template <typename T>
 class mat2 {
+    static_assert(ValidMathType<T>, "Invalid base type!");
+
     // m0  m1
     // m2  m3
-    static_assert(std::is_arithmetic<T>::value &&
-        !std::is_same<T, bool>::value,
-        "non-arithmetic matrix type");
 public:
     mat2() noexcept;
     template<typename U>
@@ -267,12 +266,11 @@ public:
  *********************************/
 template <typename T>
 class mat3 {
+    static_assert(ValidMathType<T>, "Invalid base type!");
+
     // m0 m1 m2
     // m3 m4 m5
     // m7 m8 m9
-    static_assert(std::is_arithmetic<T>::value && 
-                  !std::is_same<T, bool>::value,
-                  "non-arithmetic matrix type");
    public:
     mat3() noexcept;
     template<typename U>
@@ -465,13 +463,12 @@ class mat3 {
 #pragma pack(1)
 template <typename T>
 class mat4 {
+    static_assert(ValidMathType<T>, "Invalid base type!");
+
     // m0  m1  m2  m3
     // m4  m5  m6  m7
     // m8  m9  m10 m11
     // m12 m13 m14 m15
-    static_assert(std::is_arithmetic<T>::value &&
-                  !std::is_same<T, bool>::value,
-                  "non-arithmetic matrix type");
    public:
     mat4() noexcept;
     mat4(std::initializer_list<T> matrix) noexcept;

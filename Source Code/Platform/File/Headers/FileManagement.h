@@ -171,11 +171,9 @@ using asPath = std::filesystem::path;
 [[nodiscard]] FileError fileLastWriteTime(const ResourcePath& filePathAndName, U64& timeOutSec);
 [[nodiscard]] FileError fileLastWriteTime(const char* filePath, const char* fileName, U64& timeOutSec);
 
-template<typename T,
-typename std::enable_if<std::is_same<decltype(has_assign<T>(nullptr)), std::true_type>::value, bool>::type* = nullptr>
+template<typename T> requires has_assign<T> || is_vector<T>
 [[nodiscard]] FileError readFile(const char* filePath, const char* fileName, T& contentOut, FileType fileType);
-template<typename T,
-typename std::enable_if<std::is_same<decltype(has_assign<T>(nullptr)), std::true_type>::value, bool>::type* = nullptr>
+template<typename T> requires has_assign<T> || is_vector<T>
 [[nodiscard]] FileError readFile(const ResourcePath& filePath, const ResourcePath& fileName, T& contentOut, FileType fileType);
 
 [[nodiscard]] FileError openFile(const char* filePath, const char* fileName);
