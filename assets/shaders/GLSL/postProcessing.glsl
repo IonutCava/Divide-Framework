@@ -57,6 +57,21 @@ vec4 Underwater() {
     return Saturate(texture(texScreen, coords) * vec4(0.35f));
 }
 
+// note: valve edition
+//       from http://alex.vlachos.com/graphics/Alex_Vlachos_Advanced_VR_Rendering_GDC2015.pdf
+// note: input in pixels (ie not normalized uv)
+vec3 ScreenSpaceDither( in vec2 vScreenPos )
+{
+    // Iestyn's RGB dither (7 asm instructions) from Portal 2 X360, slightly modified for VR
+    const float iTime = MSToSeconds(dvd_GlobalTimeMS); //0.f;
+
+    float fDither = dot( vec2( 171.f, 231.f ), vScreenPos + iTime );
+    vec3 vDither = vec3( fDither, fDither, fDither );
+    vDither.rgb = fract( vDither.rgb / vec3( 103.f, 71.f, 97.f ) ) - vec3( 0.5f );
+    return(vDither.rgb / 255.f) * 0.375f;
+}
+
+
 void main(void){
     if (dvd_MaterialDebugFlag == DEBUG_DEPTH) {
         _colourOut = vec4(vec3(texture(texLinearDepth, VAR._texCoord).r / _zPlanes.y + _zPlanes.x), 1.0f);
@@ -95,6 +110,8 @@ void main(void){
     if (_fadeActive != 0u) {
         colour = mix(colour, _fadeColour, _fadeStrength);
     }
+
+    colour.rgb += ScreenSpaceDither( gl_FragCoord.xy ); //*16.f;
 
     _colourOut = colour;
 }

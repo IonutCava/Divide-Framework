@@ -160,7 +160,10 @@ inline const CommandBuffer::CommandOrderContainer& CommandBuffer::operator()() c
 }
 
 inline void CommandBuffer::clear(const bool clearMemory) {
-    _commandCount.fill(0u);
+    std::memset(_commandCount.data(), 0, sizeof(U24) * _commandCount.size());
+
+    //_commandCount.fill( 0u );
+
     _commandOrder.clear();
     if (clearMemory) {
         _commands.clear(true);

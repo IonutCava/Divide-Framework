@@ -36,146 +36,167 @@
 #include <boost/beast/core/static_string.hpp>
 #include "STLString.h"
 
-namespace Divide {
+namespace Divide
+{
     template<size_t Length>
     class Str final : public boost::beast::static_string<Length>
     {
-    public:
+        public:
         using Base = boost::beast::static_string<Length>;
 
         using Base::static_string;
         using Base::append;
 
-        Str() noexcept : Base() {}
+        Str() noexcept : Base()
+        {
+        }
 
         template<typename T_str> requires is_non_wide_string<T_str>
-        Str(const T_str& str) : Base(str.c_str(), str.length())
+        Str( const T_str& str ) : Base( str.c_str(), str.length() )
         {
         }
 
         template<size_t N>
-        Str(const boost::beast::static_string<N>& other) : Base(other.c_str(), other.size())
+        Str( const boost::beast::static_string<N>& other ) : Base( other.c_str(), other.size() )
         {
             static_assert(N <= Length, "Invalid static string size!");
         }
 
         template<size_t N>
-        Str(const Str<N>& other) : Base(other.c_str(), other.size())
+        Str( const Str<N>& other ) : Base( other.c_str(), other.size() )
         {
             static_assert(N <= Length, "Fixed String construction: Constructing a smaller fixed string from a larger one!");
         }
 
-        operator std::string_view() const { return std::string_view{ Base::c_str()}; }
-
-        [[nodiscard]] std::string_view as_view(size_t pos = 0) const {
-            return std::string_view( Base::begin() + pos, Base::end());
+        operator std::string_view() const
+        {
+            return std::string_view{ Base::c_str() };
         }
 
-        Str operator+(const char* other) const {
-            Str ret(*this);
-            ret.append(other);
+        [[nodiscard]] std::string_view as_view( size_t pos = 0 ) const
+        {
+            return std::string_view( Base::begin() + pos, Base::end() );
+        }
+
+        Str operator+( const char* other ) const
+        {
+            Str ret( *this );
+            ret.append( other );
             return ret;
         }
 
         template<size_t M>
-        Str operator+(const Str<M>& other) const {
-            Str ret(*this);
-            ret.append(other.c_str());
+        Str operator+( const Str<M>& other ) const
+        {
+            Str ret( *this );
+            ret.append( other.c_str() );
             return ret;
         }
 
         template<typename T_str> requires is_non_wide_string<T_str>
-        Str operator+(const T_str& other) const {
+        Str operator+( const T_str& other ) const
+        {
             return *this + other.c_str();
         }
 
         template<typename T_str> requires is_non_wide_string<T_str>
-        Str& append(const T_str& other) {
-            *this = Str((Base::c_str() + other).c_str());
+        Str& append( const T_str& other )
+        {
+            *this = Str( (Base::c_str() + other).c_str() );
             return *this;
         }
 
         template<size_t N>
-        Str& append(const Str<N>& other) {
-            this->append(other.c_str());
+        Str& append( const Str<N>& other )
+        {
+            this->append( other.c_str() );
             return *this;
         }
 
         template<size_t N>
-        Str append(const Str<N>& other) const {
-            Str ret(*this);
-            ret.append(other.c_str());
+        Str append( const Str<N>& other ) const
+        {
+            Str ret( *this );
+            ret.append( other.c_str() );
             return ret;
         }
 
-        [[nodiscard]] size_t find(const char other, const size_t pos = 0) const {
-            const size_t ret = as_view(pos).find(other);
+        [[nodiscard]] size_t find( const char other, const size_t pos = 0 ) const
+        {
+            const size_t ret = as_view( pos ).find( other );
             return ret == Str::npos ? ret : ret + pos;
         }
 
-        [[nodiscard]] size_t find(const char* other, const size_t pos = 0) const {
-            const size_t ret = as_view(pos).find( other );
+        [[nodiscard]] size_t find( const char* other, const size_t pos = 0 ) const
+        {
+            const size_t ret = as_view( pos ).find( other );
             return ret != Str::npos ? ret + pos : Str::npos;
         }
 
-        [[nodiscard]] size_t find(const Str& other, const size_t pos = 0) const {
-            const size_t ret = as_view(pos).find(other.c_str());
-            return ret != Str::npos ? ret + pos : Str::npos;
-        }
-
-        template<size_t N>
-        [[nodiscard]] size_t find(const Str<N>& other, const size_t pos = 0) const {
-            const size_t ret = as_view(pos).find(other.c_str());
-            return ret != Str::npos ? ret + pos : Str::npos;
-        }
-
-        [[nodiscard]] size_t rfind(const char other, const size_t pos = 0) const {
-            const size_t ret = as_view(pos).rfind(other);
-            return ret != Str::npos ? ret + pos : Str::npos;
-        }
-
-        [[nodiscard]] size_t rfind(const char* other, const size_t pos = 0) const {
-            const size_t ret = as_view(pos).rfind(boost::string_ref(other));
-            return ret != Str::npos ? ret + pos : Str::npos;
-        }
-
-        [[nodiscard]] size_t rfind(const Str& other, const size_t pos = 0) const {
-            const size_t ret = as_view(pos).rfind(other.c_str());
-            return ret != Str::npos ? ret + pos : Str::npos;
+        [[nodiscard]] size_t find( const Str& other, const size_t pos = 0 ) const
+        {
+            return find( other.c_str(), pos );
         }
 
         template<size_t N>
-        [[nodiscard]] size_t rfind(const Str<N>& other, const size_t pos = 0) const {
-            const size_t ret = as_view(pos).rfind(other.c_str());
+        [[nodiscard]] size_t find( const Str<N>& other, const size_t pos = 0 ) const
+        {
+            return find( other.c_str(), pos );
+        }
+
+        [[nodiscard]] size_t rfind( const char other, const size_t pos = 0 ) const
+        {
+            const size_t ret = as_view( pos ).rfind( other );
             return ret != Str::npos ? ret + pos : Str::npos;
         }
 
-        [[nodiscard]] size_t find_first_of(const char s, const size_t pos = 0) const {
-            const size_t ret = as_view(pos).find_first_of(s);
+        [[nodiscard]] size_t rfind( const char* other, const size_t pos = 0 ) const
+        {
+            const size_t ret = as_view( pos ).rfind( other );
             return ret != Str::npos ? ret + pos : Str::npos;
         }
 
-        [[nodiscard]] size_t find_first_of(const char* s, const size_t pos = 0) const {
-            const size_t ret = as_view(pos).find_first_of(s);
+        [[nodiscard]] size_t rfind( const Str& other, const size_t pos = 0 ) const
+        {
+            return rfind( other.c_str(), pos );
+        }
+
+        template<size_t N>
+        [[nodiscard]] size_t rfind( const Str<N>& other, const size_t pos = 0 ) const
+        {
+            return rfind( other.c_str(), pos );
+        }
+
+        [[nodiscard]] size_t find_first_of( const char s, const size_t pos = 0 ) const
+        {
+            const size_t ret = as_view( pos ).find_first_of( s );
             return ret != Str::npos ? ret + pos : Str::npos;
         }
 
-        Str& replace(const size_t start, const size_t length, const char* s) {
+        [[nodiscard]] size_t find_first_of( const char* s, const size_t pos = 0 ) const
+        {
+            const size_t ret = as_view( pos ).find_first_of( s );
+            return ret != Str::npos ? ret + pos : Str::npos;
+        }
+
+        Str& replace( const size_t start, const size_t length, const char* s )
+        {
             //Barf
-            *this = string(Base::c_str()).replace(start, length, s).c_str();
+            *this = string( Base::c_str() ).replace( start, length, s ).c_str();
             return *this;
         }
     };
 
     template<size_t N>
-    Str<N> operator+(const char* lhs, const Str<N>& rhs) {
-        return Str<N>(lhs) + rhs.c_str();
+    Str<N> operator+( const char* lhs, const Str<N>& rhs )
+    {
+        return Str<N>( lhs ) + rhs.c_str();
     }
 
-    using Str8   = Str<8>;
-    using Str16  = Str<16>;
-    using Str32  = Str<32>;
-    using Str64  = Str<64>;
+    using Str8 = Str<8>;
+    using Str16 = Str<16>;
+    using Str32 = Str<32>;
+    using Str64 = Str<64>;
     using Str128 = Str<128>;
     using Str256 = Str<256>;
 

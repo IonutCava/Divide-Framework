@@ -103,14 +103,6 @@ do {                                                \
 #define _FUNCTION_NAME_AND_SIG_ __FUNCTION__
 #endif
 
- //ref: https://foonathan.net/2020/09/move-forward/
- // static_cast to rvalue reference
-#define MOV(...) static_cast<std::remove_reference_t<decltype(__VA_ARGS__)>&&>(__VA_ARGS__)
-
-// static_cast to identity
-// The extra && aren't necessary as discussed above, but make it more robust in case it's used with a non-reference.
-#define FWD(...) static_cast<decltype(__VA_ARGS__)&&>(__VA_ARGS__)
-
 #define ALIAS_TEMPLATE_FUNCTION(highLevelF, lowLevelF)                         \
 template<typename... Args>                                                     \
 constexpr auto highLevelF(Args&&... args) -> decltype(lowLevelF(FWD(args)...)) \
@@ -457,7 +449,7 @@ inline bool AlmostEqualRelativeAndAbs(D64 A, D64 B, const D64 maxDiff, const D64
     return diff <= largest * maxRelDiff;
 }
 
-constexpr void NOP() noexcept {}
+#define NOP() static_assert(true, "")
 
 //Andrei Alexandrescu's ScopeGuard macros from "Declarative Control Flow" (CppCon 2015)
 //ref: https://gist.github.com/mmha/6bee3983caf2eab04d80af8e0eaddfbe
@@ -491,7 +483,7 @@ namespace detail {
         UncaughtExceptionCounter ec_;
     public:
         explicit ScopeGuardForNewException(const FunctionType &fn) : function_(fn) {}
-        explicit ScopeGuardForNewException(FunctionType &&fn) : function_(std::move(fn)) {}
+        explicit ScopeGuardForNewException(FunctionType &&fn) : function_(MOV(fn)) {}
         ~ScopeGuardForNewException() noexcept(executeOnException) {
             if (executeOnException == ec_.newUncaughtException()) {
                 function_();

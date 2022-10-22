@@ -11,12 +11,12 @@ void goap::Planner::addToOpenList(Node&& n) {
     auto it = eastl::lower_bound(eastl::begin(open_),
                                  eastl::end(open_),
                                  n);
-    open_.emplace(it, std::move(n));
+    open_.emplace(it, MOV(n));
 }
 
 goap::Node& goap::Planner::popAndClose() {
     assert(!open_.empty());
-    closed_.push_back(std::move(open_.front()));
+    closed_.push_back( MOV(open_.front()));
     open_.erase(std::begin(open_));
 
     return closed_.back();
@@ -64,7 +64,7 @@ eastl::vector<const goap::Action*> goap::Planner::plan(const WorldState& start, 
 
     // TODO figure out a more memory-friendly way of doing this...
     known_nodes_[starting_node.id_] = starting_node;
-    open_.push_back(std::move(starting_node));
+    open_.push_back( MOV(starting_node));
 
     //int iters = 0;
     while (open_.size() > 0) {
@@ -111,7 +111,7 @@ eastl::vector<const goap::Action*> goap::Planner::plan(const WorldState& start, 
                     known_nodes_[found.id_] = found;
 
                     // Add it to the open list (maintaining sort-order therein)
-                    addToOpenList(std::move(found));
+                    addToOpenList( MOV(found));
                 } else { // already a member of the open list
                     // check if the current G is better than the recorded G
                     if ((current.g_ + action->cost()) < needle->g_) {

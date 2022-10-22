@@ -204,7 +204,7 @@ namespace Divide {
 
     void VKDeletionQueue::push(DELEGATE<void, VkDevice>&& function) {
         ScopedLock<Mutex> w_lock(_deletionLock);
-        _deletionQueue.push_back(std::move(function));
+        _deletionQueue.push_back(MOV(function));
     }
 
     void VKDeletionQueue::flush(VkDevice device) {
@@ -266,9 +266,9 @@ namespace Divide {
 
     void VK_API::RegisterCustomAPIDelete(DELEGATE<void, VkDevice>&& cbk, const bool isResourceTransient) {
         if (isResourceTransient) {
-            s_transientDeleteQueue.push(std::move(cbk));
+            s_transientDeleteQueue.push(MOV(cbk));
         } else {
-            s_deviceDeleteQueue.push(std::move(cbk));
+            s_deviceDeleteQueue.push(MOV(cbk));
         }
     }
 

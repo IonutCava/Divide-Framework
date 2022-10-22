@@ -11,7 +11,7 @@ bool PreparePlatform() {
     static Divide::ErrorCode err = Divide::ErrorCode::PLATFORM_INIT_ERROR;
     if (err != Divide::ErrorCode::NO_ERR) {
         if (!Divide::PlatformClose()) {
-            Divide::NOP();
+            NOP();
         }
         const char* data[] = { "--disableCopyright" };
         err = Divide::PlatformInit(1, const_cast<char**>(data));
