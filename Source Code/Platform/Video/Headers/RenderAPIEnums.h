@@ -115,18 +115,18 @@ static_assert(std::size(Names::refractorType) == to_base(RefractorType::COUNT) +
 enum class ImageUsage : U8
 {
     UNDEFINED = 0,
-    SHADER_READ,
+    SHADER_READ, // Image read or sampled read
     SHADER_WRITE,
-    SHADER_READ_WRITE,
+    SHADER_READ_WRITE, //General usage
     RT_COLOUR_ATTACHMENT,
     RT_DEPTH_ATTACHMENT,
     RT_DEPTH_STENCIL_ATTACHMENT,
-    SHADER_SAMPLE,
     COUNT
 };
+
 namespace Names {
     static constexpr const char* imageUsage[] = {
-        "UNDEFINED", "SHADER_READ", "SHADER_WRITE", "SHADER_READ_WRITE", "RT_COLOUR_ATTACHMENT", "RT_DEPTH_ATTACHMENT", "RT_DEPTH_STENCIL_ATTACHMENT", "SHADER_SAMPLE", "UNKNOWN"
+        "UNDEFINED", "SHADER_READ", "SHADER_WRITE", "SHADER_READ_WRITE", "RT_COLOUR_ATTACHMENT", "RT_DEPTH_ATTACHMENT", "RT_DEPTH_STENCIL_ATTACHMENT", "UNKNOWN"
     };
 };
 

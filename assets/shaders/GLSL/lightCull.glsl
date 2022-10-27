@@ -1,9 +1,6 @@
 --Compute.ResetCounter
 
-DESCRIPTOR_SET_RESOURCE_LAYOUT( PER_DRAW, 0, std430 ) COMP_ONLY_W buffer globalIndexCountSSBO
-{
-    uint globalIndexCount[];
-};
+#include "lightInput.cmn"
 
 layout( local_size_x = 1, local_size_y = 1, local_size_z = 1 ) in;
 void main()
@@ -26,11 +23,6 @@ void main()
 // largely inspired by http://www.aortiz.me/2018/12/21/CG.html
 
 #include "lightInput.cmn"
-
-DESCRIPTOR_SET_RESOURCE_LAYOUT( PER_DRAW, 0, std430 ) COMP_ONLY_RW buffer globalIndexCountSSBO
-{
-    uint globalIndexCount[];
-};
 
 #define GROUP_SIZE (CLUSTERS_X_THREADS * CLUSTERS_Y_THREADS * CLUSTERS_Z_THREADS)
 

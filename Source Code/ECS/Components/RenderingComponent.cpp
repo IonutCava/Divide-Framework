@@ -568,11 +568,11 @@ namespace Divide
                     if ( _reflectionPlanar.first != nullptr && renderStagePass._stage != RenderStage::REFLECTION)
                     {
                         //ToDo: Find a way to render reflected items that also have reflections -Ionut
-                        Set( data, _reflectionPlanar.first->sampledView(), _reflectionPlanar.second);
+                        Set( data, _reflectionPlanar.first->getView(), _reflectionPlanar.second);
                     }
                     else
                     {
-                        Set(data, DescriptorCombinedImageSampler{});
+                        Set(data, Texture::DefaultTexture()->getView(), Texture::DefaultSamplerHash());
                     }
 
                     updateBinding( pkg.descriptorSetCmd()._bindings, 10, data);
@@ -583,11 +583,11 @@ namespace Divide
                     if ( _refractionPlanar.first != nullptr && renderStagePass._stage != RenderStage::REFRACTION )
                     {
                         //ToDo: Find a way to render refracted items that also have refractions -Ionut
-                        Set( data, _refractionPlanar.first->sampledView(), _refractionPlanar.second );
+                        Set( data, _refractionPlanar.first->getView(), _refractionPlanar.second );
                     }
                     else
                     {
-                        Set( data, DescriptorCombinedImageSampler{} );
+                        Set( data, Texture::DefaultTexture()->getView(), Texture::DefaultSamplerHash() );
                     }
                     updateBinding( pkg.descriptorSetCmd()._bindings, 11, data );
                 }

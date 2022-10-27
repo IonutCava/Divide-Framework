@@ -151,24 +151,26 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
     assert(input._targetID != output._targetID);
 
     const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
-    const auto& screenTex = screenAtt->texture()->sampledView();
-    {
-        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-        cmd->_usage = DescriptorSetUsage::PER_DRAW;
-        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
-        Set( binding._data, screenTex, screenAtt->descriptor()._samplerHash );
-    }
-
-    PushConstantsStruct params{};
-    params.data[0]._vec[0].x = _bloomThreshold;
-    GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _bloomCalcPipeline });
-    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(params);
+    const auto& screenTex = screenAtt->texture()->getView();
 
     // Step 1: generate bloom - render all of the "bright spots"
     GFX::BeginRenderPassCommand beginRenderPassCmd{};
     beginRenderPassCmd._target = _bloomOutput._targetID;
     beginRenderPassCmd._name = "DO_BLOOM_PASS";
     GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
+
+    PushConstantsStruct params{};
+    params.data[0]._vec[0].x = _bloomThreshold;
+    GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ _bloomCalcPipeline } );
+    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( params );
+
+    {
+        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
+        cmd->_usage = DescriptorSetUsage::PER_DRAW;
+        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+        Set( binding._data, screenTex, screenAtt->descriptor()._samplerHash );
+    }
+
 
     GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
     GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
@@ -186,9 +188,13 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
 
     // Step 3: apply bloom
     const auto& bloomAtt = _bloomBlurBuffer[1]._rt->getAttachment(RTAttachmentType::COLOUR );
-    const auto& bloomTex = bloomAtt->texture()->sampledView();
+    const auto& bloomTex = bloomAtt->texture()->getView();
 
-    auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+    beginRenderPassCmd._target = output._targetID;
+    beginRenderPassCmd._descriptor = _screenOnlyDraw;
+    GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
+
+    auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
     cmd->_usage = DescriptorSetUsage::PER_DRAW;
     {
         DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
@@ -199,11 +205,8 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
         Set( binding._data, bloomTex, bloomAtt->descriptor()._samplerHash );
     }
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _bloomApplyPipeline });
+    GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ _bloomApplyPipeline } );
 
-    beginRenderPassCmd._target = output._targetID;
-    beginRenderPassCmd._descriptor = _screenOnlyDraw;
-    GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
     GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
     GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);

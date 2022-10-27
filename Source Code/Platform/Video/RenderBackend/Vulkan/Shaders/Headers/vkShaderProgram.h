@@ -38,12 +38,6 @@
 #include <Vulkan/vulkan_core.h>
 
 namespace Divide {
-    struct vkDescriptorSetLayoutData {
-        uint32_t set_number;
-        VkDescriptorSetLayoutCreateInfo create_info;
-        vector<VkDescriptorSetLayoutBinding> bindings;
-    };
-
     class vkShader final : public ShaderModule {
     public:
         explicit vkShader(GFXDevice& context, const Str256& name);
@@ -53,7 +47,6 @@ namespace Divide {
 
         /// Add or refresh a shader from the cache
         [[nodiscard]] static vkShader* LoadShader(GFXDevice& context,
-                                                  const Str256& name,
                                                   bool overwriteExisting,
                                                   ShaderProgram::LoadData& data);
 

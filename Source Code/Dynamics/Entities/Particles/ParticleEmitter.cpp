@@ -103,27 +103,39 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
     const PrimitiveTopology topology = _particles->particleGeometryType();
     AttributeMap vertexFormat{};
     {
-        AttributeDescriptor& desc = vertexFormat[to_base(AttribLocation::POSITION)];
-        desc._bindingIndex = g_particleGeometryBuffer;
+        AttributeDescriptor& desc = vertexFormat._attributes[to_base(AttribLocation::POSITION)];
+        desc._vertexBindingIndex = g_particleGeometryBuffer;
         desc._componentsPerElement = 3u;
         desc._dataType = GFXDataFormat::FLOAT_32;
+
+        auto& vertBinding = vertexFormat._vertexBindings.emplace_back();
+        vertBinding._bufferBindIndex = desc._vertexBindingIndex;
+        vertBinding._strideInBytes = 3 * sizeof(F32);
     }
     {
-        AttributeDescriptor& desc = vertexFormat[to_base(AttribLocation::NORMAL)];
-        desc._bindingIndex = g_particlePositionBuffer;
+        AttributeDescriptor& desc = vertexFormat._attributes[to_base(AttribLocation::NORMAL)];
+        desc._vertexBindingIndex = g_particlePositionBuffer;
         desc._componentsPerElement = 4u;
         desc._dataType = GFXDataFormat::FLOAT_32;
         desc._normalized = false;
         desc._strideInBytes = 0u;
-        desc._perVertexInputRate = false;
+        
+        auto& vertBinding = vertexFormat._vertexBindings.emplace_back();
+        vertBinding._bufferBindIndex = desc._vertexBindingIndex;
+        vertBinding._strideInBytes = 3 * sizeof( F32 );
+        vertBinding._perVertexInputRate = false;
     }
     {
-        AttributeDescriptor& desc = vertexFormat[to_base(AttribLocation::COLOR)];
-        desc._bindingIndex = g_particleColourBuffer;
+        AttributeDescriptor& desc = vertexFormat._attributes[to_base(AttribLocation::COLOR)];
+        desc._vertexBindingIndex = g_particleColourBuffer;
         desc._componentsPerElement = 4u;
         desc._dataType = GFXDataFormat::UNSIGNED_BYTE;
         desc._normalized = true;
         desc._strideInBytes = 0u;
+
+        auto& vertBinding = vertexFormat._vertexBindings.emplace_back();
+        vertBinding._bufferBindIndex = desc._vertexBindingIndex;
+        vertBinding._strideInBytes = 3 * sizeof( F32 );
     }
 
     const bool useTexture = _particleTexture != nullptr;

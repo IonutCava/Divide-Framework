@@ -569,9 +569,9 @@ namespace Divide
     }
 
     template <typename Type> requires std::is_enum_v<Type>
-    constexpr auto to_base( const Type value ) -> std::underlying_type_t<Type>
+    constexpr auto to_base( const Type value ) -> BaseType<Type>
     {
-        return static_cast<std::underlying_type_t<Type>>(value);
+        return static_cast<BaseType<Type>>(value);
     }
 
     template <typename T>

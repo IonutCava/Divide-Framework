@@ -155,7 +155,7 @@ namespace Divide
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 8,   DescriptorSetBindingType::UNIFORM_BUFFER,         ShaderStageVisibility::COMPUTE_AND_DRAW );     // LIGHT_SCENE;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 9,   DescriptorSetBindingType::SHADER_STORAGE_BUFFER,  ShaderStageVisibility::COMPUTE_AND_DRAW );     // LIGHT_NORMAL;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 10,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER,  ShaderStageVisibility::COMPUTE_AND_DRAW );     // LIGHT_INDICES;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 11,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER,  ShaderStageVisibility::FRAGMENT );             // LIGHT_GRID;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 11,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER,  ShaderStageVisibility::COMPUTE_AND_DRAW );     // LIGHT_GRID;
         
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 0,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // ENV Prefiltered
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 1,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // ENV Irradiance
@@ -167,6 +167,8 @@ namespace Divide
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 7,  DescriptorSetBindingType::UNIFORM_BUFFER,         ShaderStageVisibility::FRAGMENT );             // PROBE_DATA;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 8,  DescriptorSetBindingType::UNIFORM_BUFFER,         ShaderStageVisibility::ALL_DRAW );             // SCENE_DATA;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 9,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER,  ShaderStageVisibility::FRAGMENT );             // LIGHT_SHADOW;
+
+        _api->initDescriptorSets();
     }
 
     void GFXDevice::GFXDescriptorSet::clear()
@@ -185,7 +187,6 @@ namespace Divide
 
     void GFXDevice::GFXDescriptorSet::update( const DescriptorSetUsage usage, const DescriptorSetBinding& newBindingData )
     {
-
         for ( DescriptorSetBinding& bindingEntry : _impl )
         {
             assert( Type( bindingEntry._data ) != DescriptorSetBindingType::COUNT &&
@@ -195,9 +196,9 @@ namespace Divide
             {
                 DIVIDE_ASSERT( usage == DescriptorSetUsage::PER_DRAW || Type(bindingEntry._data) == Type(newBindingData._data) );
 
-                if ( bindingEntry._data != newBindingData._data )
+                if ( bindingEntry != newBindingData )
                 {
-                    bindingEntry._data = newBindingData._data;
+                    bindingEntry = newBindingData;
                     dirty( true );
                 }
                 return;
@@ -502,6 +503,7 @@ namespace Divide
         //MainPass
         TextureDescriptor screenDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RGBA );
         screenDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
+        screenDescriptor.addImageUsageFlag(ImageUsage::SHADER_READ);
         TextureDescriptor materialDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RG );
         materialDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
 
@@ -526,6 +528,7 @@ namespace Divide
             for ( auto& attachment : attachments )
             {
                 attachment._texDescriptor.msaaSamples( config.rendering.MSAASamples );
+                attachment._texDescriptor.removeImageUsageFlag(ImageUsage::SHADER_READ);
             }
             screenDesc._msaaSamples = config.rendering.MSAASamples;
             screenDesc._name = "Screen MS";
@@ -534,6 +537,7 @@ namespace Divide
             auto& screenAttachment = attachments.front();
             screenAttachment._texDescriptor.mipMappingState( TextureDescriptor::MipMappingState::MANUAL );
             screenAttachment._texDescriptor.msaaSamples( 0 );
+            screenAttachment._texDescriptor.addImageUsageFlag(ImageUsage::SHADER_READ);
             screenAttachment._samplerHash = samplerHashMips;
             screenDesc._attachmentCount = 1u;
             screenDesc._msaaSamples = 0u;
@@ -1047,8 +1051,15 @@ namespace Divide
                     _imWorldShader = CreateResource<ShaderProgram>( cache, immediateModeShader );
                     assert( _imWorldShader != nullptr );
                 }
-
                 {
+                    shaderDescriptor._globalDefines.emplace_back( "NO_TEXTURE" );
+                    ResourceDescriptor immediateModeShader( "ImmediateModeEmulation-World-NoTexture" );
+                    immediateModeShader.waitForReady( true );
+                    immediateModeShader.propertyDescriptor( shaderDescriptor );
+                    _imWorldShaderNoTexture = CreateResource<ShaderProgram>( cache, immediateModeShader );
+                }
+                {
+                    efficient_clear(shaderDescriptor._globalDefines);
                     shaderDescriptor._modules.back()._defines.emplace_back( "OIT_PASS" );
                     ResourceDescriptor immediateModeShader( "ImmediateModeEmulation-OIT" );
                     immediateModeShader.waitForReady( true );
@@ -1115,7 +1126,7 @@ namespace Divide
 
             PipelineDescriptor pipelineDesc;
             pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
-            pipelineDesc._shaderProgramHandle = _imWorldShader->handle();
+            pipelineDesc._shaderProgramHandle = _imWorldShaderNoTexture->handle();
             pipelineDesc._stateHash = primitiveStateBlock.getHash();
 
             _debugGizmoPipeline = pipelineDesc;
@@ -1199,6 +1210,7 @@ namespace Divide
         _blurGaussianShaderLayered = nullptr;
         _imShader = nullptr;
         _imWorldShader = nullptr;
+        _imWorldShaderNoTexture = nullptr;
         _imWorldOITShader = nullptr;
         _gfxBuffers.reset( true, true );
         MemoryManager::SAFE_DELETE( _sceneData );
@@ -1570,7 +1582,7 @@ namespace Divide
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, inputAttachment->texture()->sampledView(), inputAttachment->descriptor()._samplerHash );
+            Set( binding._data, inputAttachment->texture()->getView(), inputAttachment->descriptor()._samplerHash );
 
     
             if ( !gaussian && layerCount > 1 )
@@ -1603,7 +1615,7 @@ namespace Divide
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, bufferAttachment->texture()->sampledView(), bufferAttachment->descriptor()._samplerHash );
+            Set( binding._data, bufferAttachment->texture()->getView(), bufferAttachment->descriptor()._samplerHash );
 
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( pushData );
 
@@ -2074,11 +2086,8 @@ namespace Divide
         for ( const DescriptorSetUsage usage : prioritySorted )
         {
             GFXDescriptorSet& set = _descriptorSets[to_base( usage )];
-            if ( set.dirty() )
-            {
-                _api->bindShaderResources( usage, set.impl() );
-                set.dirty( false );
-            }
+            _api->bindShaderResources( usage, set.impl(), set.dirty() );
+             set.dirty( false );
         }
     }
 
@@ -2111,15 +2120,6 @@ namespace Divide
 
             switch ( cmdType )
             {
-                case GFX::CommandType::BLIT_RT:
-                {
-                    PROFILE_SCOPE( "BLIT_RT", Profiler::Category::Graphics );
-
-                    const GFX::BlitRenderTargetCommand* crtCmd = commandBuffer.get<GFX::BlitRenderTargetCommand>( cmd );
-                    RenderTarget* source = renderTargetPool().getRenderTarget( crtCmd->_source );
-                    RenderTarget* destination = renderTargetPool().getRenderTarget( crtCmd->_destination );
-                    destination->blitFrom( source, crtCmd->_params );
-                } break;
                 case GFX::CommandType::CLEAR_TEXTURE:
                 {
                     PROFILE_SCOPE( "CLEAR_TEXTURE", Profiler::Category::Graphics );
@@ -2282,10 +2282,9 @@ namespace Divide
             theight = theight < 1u ? 1u : theight;
 
             ImageView outImage = HiZTex->getView( { i, 1u } );
-            outImage._usage = ImageUsage::SHADER_WRITE;
+            outImage._usage = ImageUsage::SHADER_READ_WRITE;
 
-            ImageView inImage = (i == 0u ? SrcAtt->texture()->sampledView() : HiZTex->getView( { i - 1u, 1u }, { 0u, 1u }, ImageUsage::SHADER_SAMPLE ));
-            inImage._usage = ImageUsage::SHADER_SAMPLE;
+            const ImageView inImage = (i == 0u ? SrcAtt->texture()->getView() : HiZTex->getView( { i - 1u, 1u }, { 0u, 1u }, ImageUsage::SHADER_READ_WRITE ));
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( cmdBufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -2310,13 +2309,23 @@ namespace Divide
                 1u
             };
 
-            GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( cmdBufferInOut )->_barrierMask = to_base( MemoryBarrierType::TEXTURE_FETCH );
-
             wasEven = twidth % 2 == 0 && theight % 2 == 0;
             owidth = twidth;
             oheight = theight;
             twidth /= 2;
             theight /= 2;
+        }
+
+        {
+            auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( cmdBufferInOut );
+            memCmd->_barrierMask = to_base( MemoryBarrierType::TEXTURE_FETCH );
+            /*memCmd->_textureLayoutChanges.emplace_back(
+                TextureLayoutChange{
+                    ._targetView = HiZTex->getView(),
+                    ._layout = ImageUsage::SHADER_READ,
+                    ._prevLayoutOverride = ImageUsage::SHADER_READ_WRITE
+                }
+            );*/
         }
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( cmdBufferInOut );
@@ -2351,7 +2360,7 @@ namespace Divide
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::COMPUTE );
-            Set( binding._data, hizBuffer->sampledView(), samplerHash );
+            Set( binding._data, hizBuffer->getView(), samplerHash );
         }
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
@@ -2416,6 +2425,9 @@ namespace Divide
 
     void GFXDevice::drawText( const GFX::DrawTextCommand& cmd, GFX::CommandBuffer& bufferInOut, const bool pushCamera ) const
     {
+        static GFX::BeginDebugScopeCommand   s_beginDebugScopeCmd{ "Draw Text" };
+
+        GFX::EnqueueCommand( bufferInOut, s_beginDebugScopeCmd );
         if ( pushCamera )
         {
             GFX::EnqueueCommand( bufferInOut, GFX::PushCameraCommand{ Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->snapshot() } );
@@ -2427,6 +2439,8 @@ namespace Divide
         {
             GFX::EnqueueCommand( bufferInOut, GFX::PopCameraCommand{} );
         }
+
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
     }
 
     void GFXDevice::drawTextureInViewport( const ImageView& texture, const size_t samplerHash, const Rect<I32>& viewport, const bool convertToSrgb, const bool drawToDepthOnly, bool drawBlend, GFX::CommandBuffer& bufferInOut )
@@ -2705,7 +2719,7 @@ namespace Divide
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             DescriptorSetBinding& binding = AddBinding( cmd->_bindings, view->_textureBindSlot, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, view->_texture->sampledView(), view->_samplerHash );
+            Set( binding._data, view->_texture->getView(), view->_samplerHash );
 
             GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
 

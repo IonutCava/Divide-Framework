@@ -70,6 +70,10 @@ inline ShaderProgram* GFXDevice::defaultIMShaderWorld() const noexcept {
     return _imWorldShader.get();
 }
 
+inline ShaderProgram* GFXDevice::defaultIMShaderWorldNoTexture() const noexcept {
+    return _imWorldShaderNoTexture.get();
+}
+
 inline ShaderProgram* GFXDevice::defaultIMShaderOIT() const noexcept {
     return _imWorldOITShader.get();
 }

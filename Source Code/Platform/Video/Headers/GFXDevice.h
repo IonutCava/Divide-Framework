@@ -325,6 +325,7 @@ public:  // Accessors and Mutators
 
     [[nodiscard]] ShaderProgram* defaultIMShader() const noexcept;
     [[nodiscard]] ShaderProgram* defaultIMShaderWorld() const noexcept;
+    [[nodiscard]] ShaderProgram* defaultIMShaderWorldNoTexture() const noexcept;
     [[nodiscard]] ShaderProgram* defaultIMShaderOIT() const noexcept;
 
     inline Renderer& getRenderer() const;
@@ -537,6 +538,7 @@ private:
     ShaderProgram_ptr _blurGaussianShaderLayered = nullptr;
     ShaderProgram_ptr _imShader = nullptr;
     ShaderProgram_ptr _imWorldShader = nullptr;
+    ShaderProgram_ptr _imWorldShaderNoTexture = nullptr;
     ShaderProgram_ptr _imWorldOITShader = nullptr;
 
     Pipeline* _HIZPipeline = nullptr;

@@ -3,7 +3,9 @@
 #include "nodeDataInput.cmn"
 
 layout(location = ATTRIB_POSITION) in vec3 inVertexData;
+#if !defined(NO_TEXTURE)
 layout(location = ATTRIB_TEXCOORD) in vec2 inTexCoordData;
+#endif //!NO_TEXTURE
 layout(location = ATTRIB_COLOR)    in vec4 inColourData;
 layout(location = ATTRIB_GENERIC)  in vec2 inLineWidth; //x = start, y = end
 
@@ -14,7 +16,9 @@ layout(location = ATTRIB_FREE_START + 0) out vec4 _colour;
 layout(location = ATTRIB_FREE_START + 1) out vec2 _lineWidth;
 
 void main(){
+#if !defined(NO_TEXTURE)
   VAR._texCoord = inTexCoordData;
+#endif //!NO_TEXTURE
   _colour = inColourData;
   _lineWidth = inLineWidth;
   gl_Position = dvd_ViewProjectionMatrix * dvd_WorldMatrix * vec4(inVertexData, 1.f);
@@ -39,6 +43,9 @@ layout(location = ATTRIB_FREE_START + 0) in vec4 _colour;
 layout(location = ATTRIB_FREE_START + 1) in vec2 _lineWidth;
 
 void main(){
+#if defined(NO_TEXTURE)
+    const vec4 colourTemp = _colour;
+#else //NO_TEXTURE
     vec4 colourTemp;
     if (useTexture == 0u) {
         colourTemp = _colour;
@@ -46,6 +53,7 @@ void main(){
         colourTemp = texture(texDiffuse0, VAR._texCoord);
         colourTemp.rgb += _colour.rgb;
     }
+#endif //NO_TEXTURE
 #if defined(WORLD_PASS)
     writeScreenColour(colourTemp);
 #else //WORLD_PASS

@@ -70,24 +70,28 @@ void getTextureOMR(in bool usePacked, in vec3 uv, in uvec3 texOps, inout vec3 OM
 #define getTextureOMR(usePacked, uv, texOps, OMR)
 #else //NO_OMR_TEX
 void getTextureOMR(in bool usePacked, in vec3 uv, in uvec3 texOps, inout vec3 OMR) {
+#if defined(USE_METALNESS_TEXTURE)
     if (usePacked) {
         OMR = texture(texMetalness, uv).rgb;
-    } else {
-#if !defined(NO_OCCLUSION_TEX)
+    }
+    else 
+#endif //USE_METALNESS_TEXTURE
+    {
+#if !defined(NO_OCCLUSION_TEX) && defined(USE_OCCLUSION_TEXTURE)
         if (texOps.x != TEX_NONE) {
             OMR.r = texture(texOcclusion, uv).r;
         }
-#endif //NO_METALNESS_TEX
-#if !defined(NO_METALNESS_TEX)
+#endif //!NO_OCCLUSION_TEX && USE_OCCLUSION_TEXTURE
+#if !defined(NO_METALNESS_TEX) && defined(USE_METALNESS_TEXTURE)
         if (texOps.y != TEX_NONE) {
             OMR.g = texture(texMetalness, uv).r;
         }
-#endif //NO_METALNESS_TEX
-#if !defined(NO_ROUGHNESS_TEX)
+#endif //NO_METALNESS_TEX && USE_METALNESS_TEXTURE
+#if !defined(NO_ROUGHNESS_TEX) && defined(USE_ROUGHNESS_TEXTURE)
         if (texOps.z != TEX_NONE) {
             OMR.b = texture(texRoughness, uv).r;
         }
-#endif //NO_ROUGHNESS_TEX
+#endif //!NO_ROUGHNESS_TEX && USE_ROUGHNESS_TEXTURE
     }
 }
 #endif //NO_OMR_TEX
@@ -122,12 +126,14 @@ vec4 getSpecular(in NodeMaterialData matData, in vec3 uv) {
     vec4 specData = vec4(dvd_Specular(matData), dvd_SpecularStrength(matData));
 
     // Specular strength is baked into the specular colour, so even if we use a texture, we still need to multiply the strength in
+#if defined(USE_SPECULAR_TEXTURE)
     const uint texOp = dvd_TexOpSpecular(matData);
     if (texOp != TEX_NONE) {
         specData.rgb = ApplyTexOperation(vec4(specData.rgb, 1.f),
                                          texture(texSpecular, uv),
                                          texOp).rgb;
     }
+#endif //USE_SPECULAR_TEXTURE
 
     return specData;
 }
@@ -137,10 +143,13 @@ vec4 getSpecular(in NodeMaterialData matData, in vec3 uv) {
 vec3 getEmissiveColour(in NodeMaterialData matData, in vec3 uv);
 #else //USE_CUSTOM_EMISSIVE
 vec3 getEmissiveColour(in NodeMaterialData matData, in vec3 uv) {
+#if defined(USE_EMISSIVE_TEXTURE)
     const uint texOp = dvd_TexOpEmissive(matData);
-    if (texOp != TEX_NONE) {
+    if (texOp != TEX_NONE) 
+    {
         return texture(texEmissive, uv).rgb;
     }
+#endif //USE_EMISSIVE_TEXTURE
 
     return dvd_EmissiveColour(matData);
 }
@@ -243,12 +252,16 @@ vec4 getTextureColour(in NodeMaterialData data, in vec3 uv) {
 
     const uvec2 texOps = dvd_TexOperationsA(data).xy;
 
+#if defined(USE_UNIT0_TEXTURE)
     if (texOps.x != TEX_NONE) {
         colour = ApplyTexOperation(colour, texture(texDiffuse0, uv), texOps.x);
     }
+#endif //USE_UNIT0_TEXTURE
+#if defined(USE_UNIT1_TEXTURE)
     if (texOps.y != TEX_NONE) {
         colour = ApplyTexOperation(colour, texture(texDiffuse1, uv), texOps.y);
     }
+#endif //USE_UNIT1_TEXTURE
 
     return colour;
 }
@@ -257,25 +270,27 @@ vec4 getTextureColour(in NodeMaterialData data, in vec3 uv) {
 
 #if defined(USE_ALPHA_DISCARD)
 float getAlpha(in NodeMaterialData data, in vec3 uv) {
+#if defined(USE_OPACITY_TEXTURE)
     if (dvd_TexOpOpacity(data) != TEX_NONE) {
         return dvd_UseOpacityAlphaChannel(data) ? texture(texOpacityMap, uv).a : texture(texOpacityMap, uv).r;
     }
-
+#endif //USE_OPACITY_TEXTURE
+#if defined(USE_UNIT0_TEXTURE)
     if (dvd_UseAlbedoTextureAlphaChannel(data) && dvd_TexOpUnit0(data) != TEX_NONE) {
         return texture(texDiffuse0, uv).a;
     }
-
+#endif //USE_UNIT0_TEXTURE
     return dvd_BaseColour(data).a;
 }
 #endif //USE_ALPHA_DISCARD
 
 vec4 getAlbedo(in NodeMaterialData data, in vec3 uv) {
     vec4 albedo = getTextureColour(data, uv);
-
+#if defined(USE_OPACITY_TEXTURE)
     if (dvd_TexOpOpacity(data) != TEX_NONE) {
         albedo.a = dvd_UseOpacityAlphaChannel(data) ? texture(texOpacityMap, uv).a : texture(texOpacityMap, uv).r;
     }
-
+#endif //USE_OPACITY_TEXTURE
     if (!dvd_UseAlbedoTextureAlphaChannel(data)) {
         albedo.a = dvd_BaseColour(data).a;
     }

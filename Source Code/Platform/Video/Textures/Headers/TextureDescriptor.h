@@ -75,7 +75,7 @@ class TextureDescriptor final : public PropertyDescriptor {
     [[nodiscard]] bool hasUsageFlagSet(const ImageUsage usage) const noexcept;
 
 private:
-    U32 _usageMask{ 1u << to_base(ImageUsage::SHADER_SAMPLE) };
+    U32 _usageMask{ 1u << to_base(ImageUsage::SHADER_READ) };
 };
 
 [[nodiscard]] bool IsCompressed(GFXImageFormat format) noexcept;

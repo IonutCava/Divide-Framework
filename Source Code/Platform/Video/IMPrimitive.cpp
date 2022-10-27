@@ -77,12 +77,11 @@ void IMPrimitive::reset() {
     // Create general purpose render state blocks
     RenderStateBlock primitiveStateBlock{};
     _basePipelineDescriptor._primitiveTopology = PrimitiveTopology::COUNT;
-    _basePipelineDescriptor._shaderProgramHandle = _context.defaultIMShaderWorld()->handle();
     _basePipelineDescriptor._stateHash = primitiveStateBlock.getHash();
     _basePipelineDescriptor._vertexFormat = {};
 
-    AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat[0u];
-    desc._bindingIndex = 0u;
+    AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat._attributes[0u];
+    desc._vertexBindingIndex = 0u;
     desc._componentsPerElement = 3u;
     desc._dataType = GFXDataFormat::FLOAT_32;
     desc._normalized = false;
@@ -113,8 +112,7 @@ void IMPrimitive::vertex(const F32 x, const  F32 y, const F32 z) {
 void IMPrimitive::attribute1f(const U32 attribLocation, const F32 value) {
     _imInterface->Attribute1f(attribLocation, value);
 
-    AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat[attribLocation];
-    desc._bindingIndex = to_U16(attribLocation);
+    AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat._attributes[attribLocation];
     desc._normalized = false;
     desc._strideInBytes = 0u;
     desc._componentsPerElement = 1u;
@@ -123,8 +121,7 @@ void IMPrimitive::attribute1f(const U32 attribLocation, const F32 value) {
 
 void IMPrimitive::attribute2f(const U32 attribLocation, const vec2<F32> value) {
     _imInterface->Attribute2f(attribLocation, value.x, value.y);
-    AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat[attribLocation];
-    desc._bindingIndex = to_U16(attribLocation);
+    AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat._attributes[attribLocation];
     desc._normalized = false;
     desc._strideInBytes = 0u;
     desc._componentsPerElement = 2u;
@@ -133,8 +130,7 @@ void IMPrimitive::attribute2f(const U32 attribLocation, const vec2<F32> value) {
 
 void IMPrimitive::attribute3f(const U32 attribLocation, const vec3<F32> value) {
     _imInterface->Attribute3f(attribLocation, value.x, value.y, value.z);
-    Divide::AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat[attribLocation];
-    desc._bindingIndex = to_U16(attribLocation);
+    Divide::AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat._attributes[attribLocation];
     desc._normalized = false;
     desc._strideInBytes = 0u;
     desc._componentsPerElement = 3u;
@@ -143,8 +139,7 @@ void IMPrimitive::attribute3f(const U32 attribLocation, const vec3<F32> value) {
 
 void IMPrimitive::attribute4ub(const U32 attribLocation, const U8 x, const U8 y, const U8 z, const U8 w) {
     _imInterface->Attribute4ub(attribLocation, x, y, z, w);
-    AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat[attribLocation];
-    desc._bindingIndex = to_U16(attribLocation);
+    AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat._attributes[attribLocation];
     desc._normalized = false;
     desc._strideInBytes = 0u;
     desc._componentsPerElement = 4u;
@@ -153,8 +148,7 @@ void IMPrimitive::attribute4ub(const U32 attribLocation, const U8 x, const U8 y,
 
 void IMPrimitive::attribute4f(const U32 attribLocation, const F32 x, const F32 y, const F32 z, const F32 w) {
     _imInterface->Attribute4f(attribLocation, x, y, z, w);
-    AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat[attribLocation];
-    desc._bindingIndex = to_U16(attribLocation);
+    AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat._attributes[attribLocation];
     desc._normalized = false;
     desc._strideInBytes = 0u;
     desc._componentsPerElement = 4u;
@@ -163,8 +157,7 @@ void IMPrimitive::attribute4f(const U32 attribLocation, const F32 x, const F32 y
 
 void IMPrimitive::attribute1i(const U32 attribLocation, const I32 value) {
     _imInterface->Attribute1i(attribLocation, value);
-    AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat[attribLocation];
-    desc._bindingIndex = to_U16(attribLocation);
+    AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat._attributes[attribLocation];
     desc._normalized = false;
     desc._strideInBytes = 0u;
     desc._componentsPerElement = 1u;
@@ -192,24 +185,37 @@ void IMPrimitive::endBatch() noexcept {
     idxBuff.smallIndices = false;
     idxBuff.dynamic = true;
 
-    U8 bufferIdx = 0u;
+    efficient_clear(_basePipelineDescriptor._vertexFormat._vertexBindings);
+
     // Set positions
     {
-        params._bindConfig = { bufferIdx++, 0u };
+        params._bindConfig = { ._bufferIdx = 0u, ._bindIdx = 0u };
         params._bufferParams._elementCount = to_U32(batchData.m_PositionData.size());
         params._initialData = { batchData.m_PositionData.data(), batchData.m_PositionData.size() * sizeof(NS_GLIM::Glim4ByteData) };
         params._elementStride = sizeof(NS_GLIM::Glim4ByteData) * 3;
         _dataBuffer->setBuffer(params);
+
+        auto& vertBinding = _basePipelineDescriptor._vertexFormat._vertexBindings.emplace_back();
+        vertBinding._bufferBindIndex = params._bindConfig._bindIdx;
+        vertBinding._strideInBytes = 3 * sizeof( F32 );
     }
 
+    U8 bufferIdx = 1u;
     // now upload each attribute array one after another
     for (auto& [index, data] : batchData.m_Attributes) {
         assert(index != 0u);
-        params._bindConfig = { bufferIdx++, index };
+        params._bindConfig = { ._bufferIdx = bufferIdx++, ._bindIdx = to_U16(index) };
         params._bufferParams._elementCount = to_U32(data.m_ArrayData.size());
         params._initialData = { data.m_ArrayData.data(), data.m_ArrayData.size() * sizeof(NS_GLIM::Glim4ByteData) };
         params._elementStride = sizeof(NS_GLIM::Glim4ByteData) * GetSizeFactor(data.m_DataType);
         _dataBuffer->setBuffer(params);
+
+        AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat._attributes[index];
+        desc._vertexBindingIndex = params._bindConfig._bindIdx;
+
+        auto& vertBinding = _basePipelineDescriptor._vertexFormat._vertexBindings.emplace_back();
+        vertBinding._bufferBindIndex = desc._vertexBindingIndex;
+        vertBinding._strideInBytes = params._elementStride;
     }
 
     idxBuff.id = 0u;
@@ -405,6 +411,7 @@ void IMPrimitive::fromBoxes(const IM::BoxDescriptor* boxes, const size_t count) 
 
     // Create the object
     beginBatch(true, to_U32(count * 16u), 1);
+        attribute2f( to_base( AttribLocation::GENERIC ), vec2<F32>( 1.f, 1.f ) );
         for (size_t i = 0u; i < count; ++i) {
             const IM::BoxDescriptor& box = boxes[i];
             const UColour4& colour = box.colour;
@@ -455,6 +462,8 @@ void IMPrimitive::fromSpheres(const IM::SphereDescriptor* spheres, const size_t 
     }
 
     beginBatch(true, 32u * ((32u + 1) * 2), 1);
+    attribute2f( to_base( AttribLocation::GENERIC ), vec2<F32>( 1.f, 1.f ) );
+
     for (size_t c = 0u; c < count; ++c) {
         const IM::SphereDescriptor& sphere = spheres[c];
         const F32 drho = M_PI_f / sphere.stacks;
@@ -520,6 +529,7 @@ void IMPrimitive::fromCones(const IM::ConeDescriptor* cones, const size_t count)
     }
 
     beginBatch(true, to_U32(count * (32u + 1)), 1u);
+    attribute2f( to_base( AttribLocation::GENERIC ), vec2<F32>( 1.f, 1.f ) );
 
     for (size_t i = 0u; i < count; ++i) {
         const IM::ConeDescriptor& cone = cones[i];
@@ -602,17 +612,11 @@ void IMPrimitive::setPushConstants(const PushConstants& constants) {
 }
 
 void IMPrimitive::setPipelineDescriptor(const PipelineDescriptor& descriptor) {
-    AttributeMap existingAttributes = _basePipelineDescriptor._vertexFormat;
-    _basePipelineDescriptor = descriptor;
+    DIVIDE_ASSERT(descriptor._vertexFormat._vertexBindings.empty());
 
-    // allow attribute overwrite (for whatever reason)
-    for (U8 i = 0u; i < to_base(AttribLocation::COUNT); ++i) {
-        const AttributeDescriptor& srcAttrib = existingAttributes[i];
-        AttributeDescriptor& destAttrib = _basePipelineDescriptor._vertexFormat[i];
-        if (destAttrib._dataType == GFXDataFormat::COUNT || destAttrib._componentsPerElement == 0u) {
-            destAttrib = srcAttrib;
-        }
-    }
+    const AttributeMap existingAttributes = _basePipelineDescriptor._vertexFormat;
+    _basePipelineDescriptor = descriptor;
+    _basePipelineDescriptor._vertexFormat = existingAttributes;
 }
 
 void IMPrimitive::setTexture(const ImageView& texture, const size_t samplerHash) {
@@ -631,10 +635,19 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
         return;
     }
 
+    const bool useTexture = _texture.targetType() != TextureType::COUNT;
+    if (useTexture )
+    {
+        _basePipelineDescriptor._shaderProgramHandle = _context.defaultIMShaderWorld()->handle();
+    }
+    else
+    {
+        _basePipelineDescriptor._shaderProgramHandle = _context.defaultIMShaderWorldNoTexture()->handle();
+    }
     DIVIDE_ASSERT(_basePipelineDescriptor._shaderProgramHandle != SHADER_INVALID_HANDLE, "IMPrimitive error: Draw call received without a valid shader defined!");
 
     _additionalConstats.set(_ID("dvd_WorldMatrix"), GFX::PushConstantType::MAT4, worldMatrix);
-    _additionalConstats.set(_ID("useTexture"), GFX::PushConstantType::BOOL, _texture.targetType() != TextureType::COUNT);
+    _additionalConstats.set(_ID("useTexture"), GFX::PushConstantType::BOOL, useTexture);
 
     GenericDrawCommand drawCmd{};
     drawCmd._drawCount = 1u;
@@ -643,10 +656,16 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
 
     GFX::EnqueueCommand(commandBufferInOut, GFX::BeginDebugScopeCommand{ _name.c_str() });
     {
-        if (_texture.targetType() != TextureType::COUNT) {
-            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(commandBufferInOut);
-            cmd->_usage = DescriptorSetUsage::PER_DRAW;
-            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(commandBufferInOut);
+        cmd->_usage = DescriptorSetUsage::PER_DRAW;
+        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+
+        if ( _texture.targetType() == TextureType::COUNT )
+        {
+            Set( binding._data, Texture::DefaultTexture()->getView(), Texture::DefaultSamplerHash());
+        }
+        else
+        {
             Set( binding._data, _texture, _samplerHash );
         }
 

@@ -33,26 +33,83 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _RENDER_TARGET_DRAW_DESCRIPTOR_INL_
 #define _RENDER_TARGET_DRAW_DESCRIPTOR_INL_
 
-namespace Divide {
+namespace Divide
+{
 
-inline bool operator==(const RTDrawMask& lhs, const RTDrawMask& rhs) {
-    return lhs._disabledDepth   == rhs._disabledDepth &&
-           lhs._disabledColours == rhs._disabledColours;
-}
+    inline bool operator==( const RTDrawMask& lhs, const RTDrawMask& rhs )
+    {
+        return lhs._disabledDepth == rhs._disabledDepth &&
+               lhs._disabledColours == rhs._disabledColours;
+    }
 
-inline bool operator!=(const RTDrawMask& lhs, const RTDrawMask& rhs) {
-    return lhs._disabledDepth   != rhs._disabledDepth ||
-           lhs._disabledColours != rhs._disabledColours;
-}
+    inline bool operator!=( const RTDrawMask& lhs, const RTDrawMask& rhs )
+    {
+        return lhs._disabledDepth != rhs._disabledDepth ||
+               lhs._disabledColours != rhs._disabledColours;
+    }
 
-inline bool operator==(const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs) {
-    return lhs._drawMask == rhs._drawMask &&
-           lhs._setViewport == rhs._setViewport;
-}
+    inline bool operator==( const RTLayoutTarget& lhs, const RTLayoutTarget& rhs )
+    {
+        return lhs._depthUsage == rhs._depthUsage &&
+               lhs._colourUsage == rhs._colourUsage;
+    }
 
-inline bool operator!=(const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs) {
-    return lhs._drawMask != rhs._drawMask ||
-           lhs._setViewport != rhs._setViewport;
-}
+    inline bool operator!=( const RTLayoutTarget& lhs, const RTLayoutTarget& rhs )
+    {
+        return lhs._depthUsage != rhs._depthUsage ||
+               lhs._colourUsage != rhs._colourUsage;
+    }
+
+    inline bool operator==( const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs )
+    {
+        return lhs._drawMask == rhs._drawMask &&
+               lhs._layoutTargets == rhs._layoutTargets &&
+               lhs._setViewport == rhs._setViewport;
+    }
+
+    inline bool operator!=( const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs )
+    {
+        return lhs._drawMask != rhs._drawMask ||
+               lhs._layoutTargets != rhs._layoutTargets ||
+               lhs._setViewport != rhs._setViewport;
+    }
+
+    inline bool IsValid( const BlitIndex& entry ) noexcept
+    {
+        return entry._index != INVALID_LAYER_INDEX && entry._layer != INVALID_LAYER_INDEX;
+    }
+
+    inline bool IsValid( const DepthBlitEntry& entry ) noexcept
+    {
+        return entry._inputLayer != INVALID_LAYER_INDEX && entry._outputLayer != INVALID_LAYER_INDEX;
+    }
+
+    inline bool IsValid( const ColourBlitEntry& entry ) noexcept
+    {
+        return IsValid( entry._input ) && IsValid( entry._output );
+    }
+
+    inline bool IsValid( const RTBlitParams::ColourArray& colours ) noexcept
+    {
+        for ( const auto& it : colours )
+        {
+            if ( IsValid( it ) )
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    inline bool IsValid( const RTBlitParams& params ) noexcept
+    {
+        if ( IsValid( params._blitDepth ) )
+        {
+            return true;
+        }
+
+        return IsValid( params._blitColours );
+    }
 }; //namespace Divide
 #endif// _RENDER_TARGET_DRAW_DESCRIPTOR_INL_

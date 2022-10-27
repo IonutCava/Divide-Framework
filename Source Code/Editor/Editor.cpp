@@ -363,7 +363,7 @@ namespace Divide
             blend.blendOp( BlendOperation::ADD );
 
             _axisGizmoPipelineDesc._stateHash = _context.gfx().getDefaultStateBlock( true );
-            _axisGizmoPipelineDesc._shaderProgramHandle = _context.gfx().defaultIMShaderWorld()->handle();
+            _axisGizmoPipelineDesc._shaderProgramHandle = _context.gfx().defaultIMShaderWorldNoTexture()->handle();
         }
 
         _infiniteGridPrimitive = _context.gfx().newIMP( "Editor Infinite Grid" );
@@ -388,12 +388,13 @@ namespace Divide
         PipelineDescriptor pipelineDesc = {};
         pipelineDesc._stateHash = state.getHash();
         pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
-        AttributeDescriptor& descPos = pipelineDesc._vertexFormat[to_base( AttribLocation::GENERIC )];
-        AttributeDescriptor& descUV = pipelineDesc._vertexFormat[to_base( AttribLocation::TEXCOORD )];
-        AttributeDescriptor& descColour = pipelineDesc._vertexFormat[to_base( AttribLocation::COLOR )];
+        pipelineDesc._vertexFormat._vertexBindings.emplace_back()._strideInBytes = sizeof( ImDrawVert );
+        AttributeDescriptor& descPos = pipelineDesc._vertexFormat._attributes[to_base( AttribLocation::GENERIC )];
+        AttributeDescriptor& descUV = pipelineDesc._vertexFormat._attributes[to_base( AttribLocation::TEXCOORD )];
+        AttributeDescriptor& descColour = pipelineDesc._vertexFormat._attributes[to_base( AttribLocation::COLOR )];
 
 #define OFFSETOF(TYPE, ELEMENT) ((size_t) & (((TYPE*)0)->ELEMENT))
-        descPos._bindingIndex = descUV._bindingIndex = descColour._bindingIndex = 0u;
+        descPos._vertexBindingIndex = descUV._vertexBindingIndex = descColour._vertexBindingIndex = 0u;
         descPos._componentsPerElement = descUV._componentsPerElement = 2u;
         descPos._dataType = descUV._dataType = GFXDataFormat::FLOAT_32;
 
@@ -1509,8 +1510,15 @@ namespace Divide
                             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
                             cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
-                            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
-                            Set(binding._data, tex->sampledView(), _editorSamplerHash );
+                            {
+                                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+                                Set(binding._data, tex->getView(), _editorSamplerHash );
+                            }
+                            {
+                                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+                                Set(binding._data, Texture::DefaultTexture()->getView(), Texture::DefaultSamplerHash());
+                            }
+
                         }
 
                         drawCmd._cmd.indexCount = pcmd.ElemCount;
@@ -2221,20 +2229,30 @@ namespace Divide
 
                     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( buffer );
                     cmd->_usage = DescriptorSetUsage::PER_DRAW;
-                    DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
-
-                    if ( isTextureCube )
                     {
-                        const ImageView texView = data._texture->getView( TextureType::TEXTURE_2D_ARRAY,
-                                                                          { 0u, data._texture->mipCount() },
-                                                                          { 0u, data._texture->numLayers() * 6u },
-                                                                          ImageUsage::SHADER_SAMPLE);
-
-                        Set( binding._data, texView, texSampler );
+                        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+                        const ImageView texView = Texture::DefaultTexture()->getView(TextureType::TEXTURE_2D,
+                                                                                     { 0u, 1u },
+                                                                                     { 0u, 1u },
+                                                                                     ImageUsage::SHADER_READ );
+                        Set( binding._data, texView, Texture::DefaultSamplerHash() );
                     }
-                    else
                     {
-                        Set( binding._data, data._texture->sampledView(), texSampler );
+                        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+
+                        if ( isTextureCube )
+                        {
+                            const ImageView texView = data._texture->getView( TextureType::TEXTURE_2D_ARRAY,
+                                                                              { 0u, data._texture->mipCount() },
+                                                                              { 0u, data._texture->numLayers() * 6u },
+                                                                              ImageUsage::SHADER_READ );
+
+                            Set( binding._data, texView, texSampler );
+                        }
+                        else
+                        {
+                            Set( binding._data, data._texture->getView(), texSampler );
+                        }
                     }
                 }
             }

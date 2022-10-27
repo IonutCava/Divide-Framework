@@ -35,7 +35,6 @@
 
 #include "BufferLocks.h"
 #include "Core/Headers/ObjectPool.h"
-
 #include "Platform/Video/Headers/GraphicsResource.h"
 
 namespace Divide {

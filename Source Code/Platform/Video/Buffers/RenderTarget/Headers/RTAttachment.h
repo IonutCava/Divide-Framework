@@ -98,9 +98,6 @@ class RTAttachment final {
     public:
         explicit RTAttachment(RenderTarget& parent, const RTAttachmentDescriptor& descriptor) noexcept;
 
-        /// Returns true if the specified layout differs from the Texture's current layout
-        [[nodiscard]] bool setImageUsage(ImageUsage layout);
-
         bool mipWriteLevel(U16 level) noexcept;
         [[nodiscard]] U16  mipWriteLevel() const noexcept;
 

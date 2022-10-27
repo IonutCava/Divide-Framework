@@ -59,6 +59,14 @@ namespace Divide
         [[nodiscard]] size_t getHash() const noexcept override;
     };
 
+    struct ImageSubRange final : Hashable
+    {
+        vec2<U16> _mipLevels{ 0u, U16_MAX };  //Offset, Count
+        vec2<U16> _layerRange{ 0u, U16_MAX }; //Offset, Count
+
+        [[nodiscard]] size_t getHash() const noexcept override;
+    };
+
     struct ImageView final : Hashable
     {
         struct Descriptor final : Hashable
@@ -73,22 +81,17 @@ namespace Divide
 
         } _descriptor;
 
-        TextureWrapper _srcTexture;
-        vec2<U16> _mipLevels{ 0u, U16_MAX };  //Offset, Count
-        vec2<U16> _layerRange{ 0u, U16_MAX }; //Offset, Count
-
-        ImageUsage _usage{ ImageUsage::UNDEFINED };
+        TextureWrapper _srcTexture{};
+        ImageSubRange _subRange{};
+        ImageUsage _usage{ImageUsage::UNDEFINED};
 
         [[nodiscard]] size_t getHash() const noexcept override;
-
-        [[nodiscard]] bool isDefaultView() const noexcept;
 
         [[nodiscard]] TextureType targetType() const noexcept;
         void targetType( TextureType type ) noexcept;
 
         private:
         friend class Texture;
-        bool _isDefaultView{ false };
         TextureType _targetType{ TextureType::COUNT };
     };
 
@@ -127,7 +130,9 @@ namespace Divide
     bool operator==( const TextureWrapper& lhs, const TextureWrapper& rhs ) noexcept;
     bool operator!=( const TextureWrapper& lhs, const TextureWrapper& rhs ) noexcept;
     bool operator==( const ImageView& lhs, const ImageView& rhs ) noexcept;
-    bool operator!=( const ImageView& lhs, const ImageView& rhs ) noexcept;
+    bool operator!=( const ImageView& lhs, const ImageView& rhs ) noexcept;   
+    bool operator==( const ImageSubRange& lhs, const ImageSubRange& rhs ) noexcept;
+    bool operator!=( const ImageSubRange& lhs, const ImageSubRange& rhs ) noexcept;
     bool operator==( const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs ) noexcept;
     bool operator!=( const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs ) noexcept;
     bool operator==( const ShaderBufferEntry& lhs, const ShaderBufferEntry& rhs ) noexcept;

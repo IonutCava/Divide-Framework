@@ -34,8 +34,8 @@ void main() {
 #define FXAA_GREEN_AS_LUMA 0
 #include "Fxaa3_11.frag"
 
-layout(location = 0) out vec4 _colourOut;
-DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texScreen;
+DESCRIPTOR_SET_RESOURCE( PER_DRAW, 0 ) uniform FxaaTex texScreen;
+layout( location = 0 ) out vec4 _colourOut;
 
 void main(void)
 {

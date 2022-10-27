@@ -43,9 +43,6 @@ namespace Divide {
 
     class VKSwapChain final : NonCopyable, NonMovable {
     public:
-        static constexpr U8 MAX_FRAMES_IN_FLIGHT = 3u;
-
-    public:
         VKSwapChain(VK_API& context, const VKDevice& device, const DisplayWindow& window);
         ~VKSwapChain();
 

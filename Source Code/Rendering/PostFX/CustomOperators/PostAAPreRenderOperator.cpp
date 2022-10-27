@@ -172,7 +172,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
     }
 
     const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
-    const auto& screenTex = screenAtt->texture()->sampledView();
+    const auto& screenTex = screenAtt->texture()->getView();
 
     if (useSMAA()) {
         { //Step 1: Compute weights
@@ -183,9 +183,9 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
             GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
             const auto& att = _parent.edgesRT()._rt->getAttachment(RTAttachmentType::COLOUR);
-            const auto& edgesTex = att->texture()->sampledView();
-            const auto& areaTex = _areaTexture->sampledView();
-            const auto& searchTex = _searchTexture->sampledView();
+            const auto& edgesTex = att->texture()->getView();
+            const auto& areaTex = _areaTexture->getView();
+            const auto& searchTex = _searchTexture->getView();
 
             SamplerDescriptor samplerDescriptor = {};
 
@@ -225,7 +225,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
             GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
             const auto& att = _smaaWeights._rt->getAttachment(RTAttachmentType::COLOUR);
-            const auto& blendTex = att->texture()->sampledView();
+            const auto& blendTex = att->texture()->getView();
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;

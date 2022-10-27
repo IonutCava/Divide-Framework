@@ -36,33 +36,42 @@
 #include "Platform/Video/Headers/PushConstant.h"
 #include "Platform/Video/Headers/DescriptorSets.h"
 
-namespace Divide {
+namespace Divide
+{
 
     class GFXDevice;
-    FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
-    namespace GFX {
+    FWD_DECLARE_MANAGED_CLASS( ShaderBuffer );
+    namespace GFX
+    {
         struct MemoryBarrierCommand;
     };
 
-    namespace Reflection {
+    namespace Reflection
+    {
         static constexpr U8 INVALID_BINDING_INDEX = U8_MAX;
         static constexpr U8 UNIFORM_BLOCK_BINDING_OFFSET = 14u;
 
-        struct DataEntry {
+        struct DataEntry
+        {
+            string _name;
+            U16 _stageVisibility{ 0u };
             U8 _bindingSet{ 0u };
             U8 _bindingSlot{ INVALID_BINDING_INDEX };
-            string _name;
         };
 
-        struct ImageEntry : DataEntry {
+        struct ImageEntry : DataEntry
+        {
             bool _combinedImageSampler{ false };
             bool _isWriteTarget{ false };
             bool _isMultiSampled{ false };
             bool _isArray{ false };
         };
 
-        struct BufferMember {
-            GFX::PushConstantType _type{ GFX::PushConstantType::COUNT };
+        struct BufferMember
+        {
+            vector<BufferMember> _members;
+            string _name;
+            vec2<size_t> _matrixDimensions{ 0u, 0u }; //columns, rows
             size_t _offset{ 0u };
             size_t _absoluteOffset{ 0u };
             size_t _size{ 0u };
@@ -70,14 +79,14 @@ namespace Divide {
             size_t _arrayInnerSize{ 0u }; // array[innerSize][outerSize]
             size_t _arrayOuterSize{ 0u }; // array[innerSize][outerSize]
             size_t _vectorDimensions{ 0u };
-            vec2<size_t> _matrixDimensions{ 0u, 0u }; //columns, rows
-            string _name;
-
-            size_t _memberCount{0u};
-            vector<BufferMember> _members;
+            size_t _memberCount{ 0u };
+            GFX::PushConstantType _type{ GFX::PushConstantType::COUNT };
         };
 
-        struct BufferEntry : DataEntry {
+        struct BufferEntry : DataEntry
+        {
+            vector<BufferMember> _members;
+
             size_t _offset{ 0u };
             size_t _absoluteOffset{ 0u };
             size_t _size{ 0u };
@@ -85,51 +94,55 @@ namespace Divide {
             size_t _memberCount{ 0u };
             bool _uniformBuffer{ true };
             bool _dynamic{ false };
-            vector<BufferMember> _members;
         };
 
-        struct Data {
-            U8 _uniformBlockBindingSet{ to_base(DescriptorSetUsage::PER_DRAW) };
-            U8 _uniformBlockBindingIndex{ UNIFORM_BLOCK_BINDING_OFFSET };
-
-            U16 _stageVisibility{ 0u };
-
+        struct Data
+        {
             vector<ImageEntry> _images{};
             vector<BufferEntry> _buffers{};
+            std::array<bool, to_base(RTColourAttachmentSlot::COUNT)> _fragmentOutputs{};
+
+            U8 _uniformBlockBindingSet{ to_base( DescriptorSetUsage::PER_DRAW ) };
+            U8 _uniformBlockBindingIndex{ UNIFORM_BLOCK_BINDING_OFFSET };
         };
 
 
-        struct UniformDeclaration {
+        struct UniformDeclaration
+        {
+            Str256 _name;
             Str64 _type;
             U64 _typeHash = 0u;
-            Str256 _name;
         };
 
-        inline bool operator!=(const UniformDeclaration& lhs, const UniformDeclaration& rhs) noexcept {
+        inline bool operator!=( const UniformDeclaration& lhs, const UniformDeclaration& rhs ) noexcept
+        {
             return lhs._typeHash != rhs._typeHash ||
-                   lhs._name != rhs._name;
+                lhs._name != rhs._name;
         }
 
-        inline bool operator==(const UniformDeclaration& lhs, const UniformDeclaration& rhs) noexcept {
+        inline bool operator==( const UniformDeclaration& lhs, const UniformDeclaration& rhs ) noexcept
+        {
             return lhs._typeHash == rhs._typeHash &&
-                   lhs._name == rhs._name;
+                lhs._name == rhs._name;
         }
-        struct UniformCompare {
-            bool operator()(const UniformDeclaration& lhs, const UniformDeclaration& rhs) const;
+        struct UniformCompare
+        {
+            bool operator()( const UniformDeclaration& lhs, const UniformDeclaration& rhs ) const;
         };
 
         using UniformsSet = eastl::set<UniformDeclaration, UniformCompare>;
 
-        bool SaveReflectionData(const ResourcePath& path, const ResourcePath& file, const Data& reflectionDataIn, const eastl::set<U64>& atomIDsIn);
-        bool LoadReflectionData(const ResourcePath& path, const ResourcePath& file, Data& reflectionDataOut, eastl::set<U64>& atomIDsOut);
-        eastl::string GatherUniformDeclarations(const eastl::string& source, UniformsSet& foundUniforms);
+        bool SaveReflectionData( const ResourcePath& path, const ResourcePath& file, const Data& reflectionDataIn, const eastl::set<U64>& atomIDsIn );
+        bool LoadReflectionData( const ResourcePath& path, const ResourcePath& file, Data& reflectionDataOut, eastl::set<U64>& atomIDsOut );
+        eastl::string GatherUniformDeclarations( const eastl::string& source, UniformsSet& foundUniforms );
 
-        const Reflection::BufferEntry* FindUniformBlock(const Reflection::Data& data);
+        const Reflection::BufferEntry* FindUniformBlock( const Reflection::Data& data );
     }; //namespace Reflection
 
 
-    class UniformBlockUploader {
-    public:
+    class UniformBlockUploader
+    {
+        public:
         constexpr static U32 RingBufferLength = 6u;
 
         struct BlockMember
@@ -145,23 +158,25 @@ namespace Divide {
 
         static void Idle();
 
-        explicit UniformBlockUploader(GFXDevice& context, const eastl::string& parentShaderName, const Reflection::BufferEntry& uniformBlock, const U16 shaderStageVisibilityMask);
+        explicit UniformBlockUploader( GFXDevice& context, const eastl::string& parentShaderName, const Reflection::BufferEntry& uniformBlock, const U16 shaderStageVisibilityMask );
 
-        void uploadPushConstant(const GFX::PushConstant& constant, bool force = false) noexcept;
-        [[nodiscard]] bool commit(DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut);
+        void uploadPushConstant( const GFX::PushConstant& constant, bool force = false ) noexcept;
+        [[nodiscard]] bool commit( DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut );
         void onFrameEnd() noexcept;
+        void toggleStageVisibility( U16 visibilityMask, bool state);
+        void toggleStageVisibility( ShaderStageVisibility visibility, bool state);
 
         [[nodiscard]] size_t totalBufferSize() const noexcept;
 
-        PROPERTY_R_IW(Reflection::BufferEntry, uniformBlock);
+        PROPERTY_R_IW( Reflection::BufferEntry, uniformBlock );
 
-    private:
-        void resizeBlockBuffer(bool increaseSize);
-        [[nodiscard]] bool prepare(DescriptorSet& set);
+        private:
+        void resizeBlockBuffer( bool increaseSize );
+        [[nodiscard]] bool prepare( DescriptorSet& set );
 
-    private:
+        private:
         GFXDevice& _context;
-        const U16 _shaderStageVisibilityMask{ to_base(ShaderStageVisibility::COUNT) };
+        U16 _shaderStageVisibilityMask{ to_base( ShaderStageVisibility::COUNT ) };
 
         vector<Byte> _localDataCopy;
         vector<BlockMember> _blockMembers;

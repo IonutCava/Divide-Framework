@@ -68,7 +68,12 @@ void main()
     const vec3 incident = normalize(dvd_CameraPosition - VAR._vertexW.xyz);
 
     const vec2 waterUV = clamp(0.5f * Homogenize(_vertexWVP).xy + 0.5f, vec2(0.001f), vec2(0.999f));
-    const vec3 refractionColour = overlayVec(texture(texRefractPlanar, waterUV).rgb, _refractionTint);
+#if defined(SKIP_REFLECT_REFRACT)
+    const vec3 refractColour = vec3(0.f);
+#else //SKIP_REFLECT_REFRACT
+    const vec3 refractColour = texture(texRefractPlanar, waterUV).rgb;
+#endif //SKIP_REFLECT_REFRACT
+    const vec3 refractionColour = overlayVec( refractColour, _refractionTint);
 
 #if defined(MAIN_DISPLAY_PASS)
     switch (dvd_MaterialDebugFlag) {
@@ -76,7 +81,11 @@ void main()
             writeScreenColour(vec4(refractionColour, 1.f));
             return;
         case DEBUG_REFLECTIONS:
+#if defined(SKIP_REFLECT_REFRACT)
+            writeScreenColour(vec4(0.f, 0.f, 0.f ,1.f));
+#else //SKIP_REFLECT_REFRACT
             writeScreenColour(texture(texReflectPlanar, waterUV));
+#endif //SKIP_REFLECT_REFRACT
             return;
     }
 #endif //MAIN_DISPLAY_PASS
@@ -84,7 +93,11 @@ void main()
     // Get a modified viewing direction of the camera that only takes into account height.
     // ref: https://www.rastertek.com/terdx10tut16.html
     const vec3 texColour = (_underwater == 1 ? refractionColour : mix(refractionColour,
+#if defined(SKIP_REFLECT_REFRACT)
+                                                                      vec4(0.f, 0.f, 0.f, 1.f)
+#else
                                                                       texture(texReflectPlanar, waterUV).rgb,
+#endif
                                                                       Fresnel(incident, normalW)));
     
     vec4 outColour = getPixelColour(vec4(texColour, 1.f), data, normalWV);

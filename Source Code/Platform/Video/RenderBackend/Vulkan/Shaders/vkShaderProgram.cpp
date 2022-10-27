@@ -31,14 +31,13 @@ namespace Divide {
 
     /// Load a shader by name, source code and stage
     vkShader* vkShader::LoadShader(GFXDevice& context,
-                                   const Str256& name,
                                    const bool overwriteExisting,
                                    ShaderProgram::LoadData& data)
     {
         ScopedLock<SharedMutex> w_lock(ShaderModule::s_shaderNameLock);
 
         // See if we have the shader already loaded
-        ShaderModule* shader = GetShaderLocked(name);
+        ShaderModule* shader = GetShaderLocked( data._shaderName );
         if (overwriteExisting && shader != nullptr)
         {
             RemoveShaderLocked(shader, true);
@@ -48,7 +47,7 @@ namespace Divide {
         // If we do, and don't need a recompile, just return it
         if (shader == nullptr)
         {
-            shader = MemoryManager_NEW vkShader(context, name);
+            shader = MemoryManager_NEW vkShader(context, data._shaderName );
 
             // If we loaded the source code successfully,  register it
             s_shaderNameMap.insert({ shader->nameHash(), shader });
@@ -204,8 +203,8 @@ namespace Divide {
                     {
                         continue;
                     }
-                    
-                    vkShader* shader = vkShader::LoadShader(_context, loadDataPerFile._programName, reloadExisting, loadData);
+
+                    vkShader* shader = vkShader::LoadShader(_context, reloadExisting, loadData);
                     _shaderStage.push_back(shader);
                     _stagesBound = true;
                 }

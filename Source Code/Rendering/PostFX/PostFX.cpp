@@ -207,39 +207,39 @@ namespace Divide
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 8u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, velocityAtt->texture()->sampledView(), samplerHash );
+            Set( binding._data, velocityAtt->texture()->getView(), samplerHash );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 7u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, sceneDataAtt->texture()->sampledView(), samplerHash );
+            Set( binding._data, sceneDataAtt->texture()->getView(), samplerHash );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 6u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, ssrDataAtt->texture()->sampledView(), samplerHash );
+            Set( binding._data, ssrDataAtt->texture()->getView(), samplerHash );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 5u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, depthAtt->texture()->sampledView(), samplerHash );
+            Set( binding._data, depthAtt->texture()->getView(), samplerHash );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 4u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, linDepthDataAtt->texture()->sampledView(), samplerHash );
+            Set( binding._data, linDepthDataAtt->texture()->getView(), samplerHash );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 3u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, _underwaterTexture->sampledView(), samplerHash );
+            Set( binding._data, _underwaterTexture->getView(), samplerHash );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 2u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, _noise->sampledView(), samplerHash );
+            Set( binding._data, _noise->getView(), samplerHash );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, _screenBorder->sampledView(), samplerHash );
+            Set( binding._data, _screenBorder->getView(), samplerHash );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, prbAtt->texture()->sampledView(), prbAtt->descriptor()._samplerHash );
+            Set( binding._data, prbAtt->texture()->getView(), prbAtt->descriptor()._samplerHash );
         }
         GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
 

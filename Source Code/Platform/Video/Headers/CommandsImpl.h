@@ -38,6 +38,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DescriptorSets.h"
 #include "GenericDrawCommand.h"
 #include "PushConstants.h"
+#include "Platform/Video/Textures/Headers/Texture.h"
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/BufferLocks.h"
 #include "Platform/Video/Headers/DescriptorSets.h"
@@ -272,6 +273,7 @@ DEFINE_COMMAND_BEGIN(MemoryBarrierCommand, CommandType::MEMORY_BARRIER);
     U8 _syncFlag{ 0u }; // Used to track internal rendering sync objects back to a specific mem command
     BufferLocks _bufferLocks;
     FenceLocks  _fenceLocks;
+    TextureLayoutChanges _textureLayoutChanges;
 DEFINE_COMMAND_END(MemoryBarrierCommand);
 
 DEFINE_COMMAND_BEGIN(ReadBufferDataCommand, CommandType::READ_BUFFER_DATA);

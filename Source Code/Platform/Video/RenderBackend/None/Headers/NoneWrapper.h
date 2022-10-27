@@ -56,7 +56,8 @@ class NONE_API final : public RenderAPIWrapper {
       [[nodiscard]] vec2<U16> getDrawableSize(const DisplayWindow& window) const noexcept override;
       bool setViewport(const Rect<I32>& newViewport) noexcept override;
       void onThreadCreated(const std::thread::id& threadID) noexcept override;
-      [[nodiscard]] bool bindShaderResources(DescriptorSetUsage usage, const DescriptorSet& bindings) override;
+      [[nodiscard]] bool bindShaderResources(DescriptorSetUsage usage, const DescriptorSet& bindings, bool isDirty) override;
+      void initDescriptorSets() override;
 
 private:
     GFXDevice& _context;

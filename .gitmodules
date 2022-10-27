@@ -97,3 +97,6 @@
 [submodule "3rdParty/SPIRV-Reflect"]
 	path = 3rdParty/SPIRV-Reflect
 	url = https://github.com/KhronosGroup/SPIRV-Reflect.git
+[submodule "3rdParty/Vulkan-Descriptor-Allocator"]
+	path = 3rdParty/Vulkan-Descriptor-Allocator
+	url = https://github.com/vblanco20-1/Vulkan-Descriptor-Allocator.git

@@ -134,6 +134,7 @@ namespace Divide
         }
 
         {
+            GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Render Scene Elements" } );
             SharedLock<SharedMutex> r_lock( _guiStackLock );
             // scene specific
             const GUIMapPerScene::const_iterator it = _guiStack.find( _activeScene->getGUID() );
@@ -141,12 +142,15 @@ namespace Divide
             {
                 it->second->draw( context, bufferInOut );
             }
+            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
         }
 
         const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
 
         if ( guiConfig.cegui.enabled )
         {
+            GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Render CEGUI" } );
+
             GFX::EnqueueCommand<GFX::ExternalCommand>( bufferInOut )->_cbk = [this]()
             {
                 _ceguiRenderer->beginRendering();
@@ -158,9 +162,9 @@ namespace Divide
             ImageView ceguiView{};
             ceguiView.targetType( TextureType::TEXTURE_2D );
             ceguiView._srcTexture._ceguiTex = &_ceguiRenderTextureTarget->getTexture();
-            ceguiView._layerRange = { 0u, 1u };
-            ceguiView._mipLevels = { 0u, U16_MAX };
-            ceguiView._usage = ImageUsage::SHADER_SAMPLE;
+            ceguiView._subRange._layerRange = { 0u, 1u };
+            ceguiView._subRange._mipLevels = { 0u, U16_MAX };
+            ceguiView._usage = ImageUsage::SHADER_READ;
             ceguiView._descriptor._baseFormat = GFXImageFormat::RGBA;
             ceguiView._descriptor._dataType = GFXDataFormat::UNSIGNED_BYTE;
             ceguiView._descriptor._msaaSamples = 0u;
@@ -168,10 +172,10 @@ namespace Divide
             ceguiView._descriptor._srgb = false;
 
             context.drawTextureInViewport( ceguiView, 0u, viewport, false, false, true, bufferInOut );
+
+            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
         }
 
-        // Restore full state
-        GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _postCEGUIPipeline;
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
     }
 
@@ -292,13 +296,6 @@ namespace Divide
             _console->createCEGUIWindow();
             CEGUI::System::getSingleton().notifyDisplaySizeChanged( size );
         }
-
-        PipelineDescriptor pipelineDesc = {};
-        pipelineDesc._stateHash = context.gfx().getDefaultStateBlock( false );
-        pipelineDesc._shaderProgramHandle = context.gfx().defaultIMShader()->handle();
-        pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
-
-        _postCEGUIPipeline = context.gfx().newPipeline( pipelineDesc );
 
         recreateDefaultMessageBox();
 

@@ -57,14 +57,13 @@ namespace Divide
 
         void readData(vec4<U16> rect, GFXImageFormat imageFormat, GFXDataFormat dataType, std::pair<bufferPtr, size_t> outData) const noexcept override;
 
-        void blitFrom(RenderTarget* source, const RTBlitParams& params) noexcept override;
-
         PROPERTY_INTERNAL(VkRenderingInfo, renderingInfo);
 
     private:
         void begin(VkCommandBuffer cmdBuffer, const RTDrawDescriptor& descriptor, const RTClearDescriptor& clearPolicy, VkPipelineRenderingCreateInfo& pipelineRenderingCreateInfoOut);
         void end(VkCommandBuffer cmdBuffer);
-        void transitionAttachments(VkCommandBuffer cmdBuffer, const RTDrawDescriptor& drawPolicy, bool toWrite);
+        void blitFrom( VkCommandBuffer cmdBuffer, vkRenderTarget* source, const RTBlitParams& params ) noexcept;
+        void transitionAttachments( VkCommandBuffer cmdBuffer, const RTDrawDescriptor& descriptor, bool toWrite );
 
     private:
         std::array<VkRenderingAttachmentInfo, to_base(RTColourAttachmentSlot::COUNT)> _colourAttachmentInfo{};
@@ -73,7 +72,6 @@ namespace Divide
         std::array<VkFormat, to_base( RTColourAttachmentSlot::COUNT )> _colourAttachmentFormats{};
 
         std::array<VkRenderingAttachmentInfo, to_base( RTColourAttachmentSlot::COUNT )> _stagingColourAttachmentInfo{};
-        std::array<VkImageMemoryBarrier2, to_base( RTColourAttachmentSlot::COUNT ) + 1> _memBarriers{};
         RTDrawDescriptor _previousPolicy;
     };
 
@@ -89,7 +87,10 @@ namespace Divide
             {
                 rt.end(cmdBuffer);
             }
-
+            static void blitFrom( vkRenderTarget& rt, VkCommandBuffer cmdBuffer, vkRenderTarget* source, const RTBlitParams& params ) noexcept
+            {
+                rt.blitFrom(cmdBuffer, source, params );
+            }
             friend class VK_API;
         };
     };  // namespace Attorney

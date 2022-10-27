@@ -119,9 +119,9 @@ bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& 
     RTAttachment* normalsAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS);
     RTAttachment* depthAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::DEPTH);
 
-    const auto& screenTex = screenAtt->texture()->sampledView();
-    const auto& normalsTex = normalsAtt->texture()->sampledView();
-    const auto& depthTex = depthAtt->texture()->sampledView();
+    const auto& screenTex = screenAtt->texture()->getView();
+    const auto& normalsTex = normalsAtt->texture()->getView();
+    const auto& depthTex = depthAtt->texture()->getView();
     U16 screenMipCount = screenAtt->texture()->mipCount();
     if (screenMipCount > 2u) {
         screenMipCount -= 2u;

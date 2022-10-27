@@ -36,70 +36,77 @@
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkMemAllocatorInclude.h"
 
-namespace Divide {
-    struct AllocatedImage : private NonCopyable {
+namespace Divide
+{
+    struct AllocatedImage : private NonCopyable
+    {
         ~AllocatedImage();
 
-        VkImage _image{VK_NULL_HANDLE};
+        VkImage _image{ VK_NULL_HANDLE };
         VmaAllocation _allocation{ VK_NULL_HANDLE };
         VmaAllocationInfo _allocInfo{};
     };
 
-    FWD_DECLARE_MANAGED_STRUCT(AllocatedImage);
+    FWD_DECLARE_MANAGED_STRUCT( AllocatedImage );
 
-    class vkTexture final : public Texture {
-    public:
-        struct CachedImageView {
+    class vkTexture final : public Texture
+    {
+        public:
+
+        struct CachedImageView
+        {
             VkImageView _view;
-            struct Descriptor {
-                vec2<U32> _layers{ 0u, VK_REMAINING_ARRAY_LAYERS };
-                vec2<U32> _mipLevels{ 0u, VK_REMAINING_MIP_LEVELS };
-                VkFormat _format {VK_FORMAT_MAX_ENUM };
+            struct Descriptor
+            {
+                ImageSubRange _subRange{};
+                VkFormat _format{ VK_FORMAT_MAX_ENUM };
                 TextureType _type{ TextureType::COUNT };
                 ImageUsage _usage{ ImageUsage::COUNT };
-                VkImageAspectFlagBits _aspectFlags{VK_IMAGE_ASPECT_FLAG_BITS_MAX_ENUM};
-                bool operator==(const Descriptor& other) noexcept;
-            } _descriptor; 
+                VkImageAspectFlagBits _aspectFlags{ VK_IMAGE_ASPECT_FLAG_BITS_MAX_ENUM };
+            } _descriptor;
         };
 
-        vkTexture(GFXDevice& context,
-                  const size_t descriptorHash,
-                  const Str256& name,
-                  const ResourcePath& assetNames,
-                  const ResourcePath& assetLocations,
-                  const TextureDescriptor& texDescriptor,
-                  ResourceCache& parentCache);
+        vkTexture( GFXDevice& context,
+                   const size_t descriptorHash,
+                   const Str256& name,
+                   const ResourcePath& assetNames,
+                   const ResourcePath& assetLocations,
+                   const TextureDescriptor& texDescriptor,
+                   ResourceCache& parentCache );
 
         ~vkTexture();
 
         bool unload() override;
 
-        void clearData(const UColour4& clearColour, U8 level) const noexcept override;
+        void clearData( const UColour4& clearColour, U8 level ) const noexcept override;
 
-        void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, vec2<I32> depthRange) const noexcept override;
+        void clearSubData( const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, vec2<I32> depthRange ) const noexcept override;
 
-        TextureReadbackData readData(U16 mipLevel, GFXDataFormat desiredFormat) const noexcept override;
+        TextureReadbackData readData( U16 mipLevel, GFXDataFormat desiredFormat ) const noexcept override;
 
-        VkImageView getImageView(const CachedImageView::Descriptor& descriptor);
+        VkImageView getImageView( const CachedImageView::Descriptor& descriptor );
 
-        PROPERTY_R(AllocatedImage_uptr, image, nullptr);
-        PROPERTY_R_IW(VkImageType, vkType, VK_IMAGE_TYPE_MAX_ENUM);
-        PROPERTY_R_IW(VkImageView, vkView, VK_NULL_HANDLE);
-        PROPERTY_R_IW(VkFormat, vkFormat, VK_FORMAT_MAX_ENUM);
-        PROPERTY_R_IW(VkSampleCountFlagBits, sampleFlagBits, VK_SAMPLE_COUNT_1_BIT);
+        [[nodiscard]] bool transitionLayout( ImageUsage newLayout, ImageUsage prevUsage, const ImageSubRange& subRange, VkImageMemoryBarrier2& memBarrierOut );
 
-        static [[nodiscard]] VkImageAspectFlags GetAspectFlags(const TextureDescriptor& descriptor) noexcept;
-    private:
-        void loadDataInternal(const ImageTools::ImageData& imageData) override;
-        void prepareTextureData(U16 width, U16 height, U16 depth, bool emptyAllocation) override;
+        PROPERTY_R( AllocatedImage_uptr, image, nullptr );
+        PROPERTY_R_IW( VkImageType, vkType, VK_IMAGE_TYPE_MAX_ENUM );
+        PROPERTY_R_IW( VkFormat, vkFormat, VK_FORMAT_MAX_ENUM );
+        PROPERTY_R_IW( VkSampleCountFlagBits, sampleFlagBits, VK_SAMPLE_COUNT_1_BIT );
+
+        static [[nodiscard]] VkImageAspectFlags GetAspectFlags( const TextureDescriptor& descriptor ) noexcept;
+        private:
+        void loadDataInternal( const ImageTools::ImageData& imageData ) override;
+        void prepareTextureData( U16 width, U16 height, U16 depth, bool emptyAllocation ) override;
         void submitTextureData() override;
-        void generateTextureMipmap(VkCommandBuffer cmd, U8 baseLevel);
-        void clearDataInternal(const UColour4& clearColour, U8 level, bool clearRect, const vec4<I32>& rectToClear, vec2<I32> depthRange) const;
+        void generateTextureMipmap( VkCommandBuffer cmd, U8 baseLevel );
+        void clearDataInternal( const UColour4& clearColour, U8 level, bool clearRect, const vec4<I32>& rectToClear, vec2<I32> depthRange ) const;
 
-    private:
+        private:
         vector<CachedImageView> _imageViewCache;
         VkDeviceSize _stagingBufferSize{ 0u };
     };
+
+    bool operator==( const vkTexture::CachedImageView::Descriptor& lhs, const vkTexture::CachedImageView::Descriptor& rhs) noexcept;
 } //namespace Divide
 
 #endif //VK_TEXTURE_H

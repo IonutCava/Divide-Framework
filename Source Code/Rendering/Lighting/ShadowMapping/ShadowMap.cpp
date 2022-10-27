@@ -305,7 +305,7 @@ namespace Divide
             const U8 bindSlot = LightPool::GetShadowBindSlotOffset( shadowType );
             RTAttachment* shadowTexture = sm._rt->getAttachment( RTAttachmentType::COLOUR );
             DescriptorSetBinding& binding = AddBinding( cmd->_bindings, bindSlot, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, shadowTexture->texture()->sampledView(), shadowTexture->descriptor()._samplerHash );
+            Set( binding._data, shadowTexture->texture()->getView(), shadowTexture->descriptor()._samplerHash );
         }
 
         if ( pool.shadowBuffer() != nullptr )

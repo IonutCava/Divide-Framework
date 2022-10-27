@@ -50,7 +50,6 @@ namespace Divide {
         {}
   
         void readData([[maybe_unused]] const vec4<U16> rect, [[maybe_unused]] GFXImageFormat imageFormat, [[maybe_unused]] GFXDataFormat dataType, [[maybe_unused]] std::pair<bufferPtr, size_t> outData) const noexcept override {}
-        void blitFrom([[maybe_unused]] RenderTarget* source, [[maybe_unused]] const RTBlitParams& params) noexcept override {}
     };
 
     class noGenericVertexData final : public GenericVertexData {

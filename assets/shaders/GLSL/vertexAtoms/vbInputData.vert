@@ -20,9 +20,9 @@ NodeTransformData fetchInputData() {
 #if defined(ENABLE_TBN)
     dvd_Tangent = UnpackVec3(inTangentData);
 #endif //ENABLE_TBN
-#if !defined(DEPTH_PASS)
+#if !defined(DEPTH_PASS) && defined(HAS_COLOR_ATTRIBUTE)
     dvd_Colour = inColourData;
-#endif //DEPTH_PASS
+#endif //!DEPTH_PASS && HAS_COLOR_ATTRIBUTE
 
     const NodeTransformData nodeData = dvd_Transforms[TRANSFORM_IDX];
 #if defined(USE_GPU_SKINNING)

@@ -76,7 +76,7 @@ class glFramebuffer final : public RenderTarget {
                   GFXDataFormat dataType,
                   std::pair<bufferPtr, size_t> outData) const override;
 
-    void blitFrom(RenderTarget* source, const RTBlitParams& params) override;
+    void blitFrom(RenderTarget* source, const RTBlitParams& params);
 
     /// Bake in all settings and attachments to Prepare it for rendering
     bool create() override;

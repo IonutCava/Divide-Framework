@@ -36,148 +36,159 @@
 #include "SceneInputActions.h"
 #include "Platform/Input/Headers/InputAggregatorInterface.h"
 
-namespace Divide {
-    struct JoystickMapKey {
-        Input::JoystickElementType _element = Input::JoystickElementType::COUNT;
-        U32 _id = 0u;
+namespace Divide
+{
+    struct JoystickMapKey
+    {
+        U32 _id{ 0u };
+        Input::JoystickElementType _element{ Input::JoystickElementType::COUNT };
     };
 
-    inline bool operator==(const JoystickMapKey& lhs, const JoystickMapKey& rhs) noexcept {
+    inline bool operator==( const JoystickMapKey& lhs, const JoystickMapKey& rhs ) noexcept
+    {
         return lhs._element == rhs._element &&
-               lhs._id == rhs._id;
+            lhs._id == rhs._id;
     }
-    inline bool operator!=(const JoystickMapKey& lhs, const JoystickMapKey& rhs) noexcept {
+    inline bool operator!=( const JoystickMapKey& lhs, const JoystickMapKey& rhs ) noexcept
+    {
         return lhs._element == rhs._element &&
-               lhs._id == rhs._id;
+            lhs._id == rhs._id;
     }
 
-    struct JoystickMapKeyHash {
-        std::size_t operator () (const JoystickMapKey& p) const {
+    struct JoystickMapKeyHash
+    {
+        std::size_t operator () ( const JoystickMapKey& p ) const
+        {
             size_t hash = 17;
-            Util::Hash_combine(hash, p._element, p._id);
-
+            Util::Hash_combine( hash, p._element, p._id );
             return hash;
         }
     };
 
-// This is the callback equivalent of PressReleaseAction with IDs resolved
-struct PressReleaseActionCbks {
-    struct Entry {
-        std::set<Input::KeyCode> _modifiers;
-        std::array<vector<DELEGATE<void, InputParams>>, to_base(PressReleaseActions::Action::COUNT)> _actions;
+    // This is the callback equivalent of PressReleaseAction with IDs resolved
+    struct PressReleaseActionCbks
+    {
+        struct Entry
+        {
+            std::set<Input::KeyCode> _modifiers;
+            std::array<vector<DELEGATE<void, InputParams>>, to_base( PressReleaseActions::Action::COUNT )> _actions;
+        };
+
+        vector<Entry> _entries;
+
+        void from( const PressReleaseActions& actions, const InputActionList& actionList );
     };
 
-    vector<Entry> _entries;
+    class SceneInput final : public Input::InputAggregatorInterface
+    {
+        public:
+        using KeyMapCache = hashMap<Input::KeyCode, PressReleaseActionCbks>;
+        using MouseMapCache = hashMap<Input::MouseButton, PressReleaseActionCbks>;
+        using JoystickMapCacheEntry = ska::bytell_hash_map<JoystickMapKey, PressReleaseActionCbks, JoystickMapKeyHash>;
+        using JoystickMapCache = ska::bytell_hash_map<BaseType<Input::Joystick>, JoystickMapCacheEntry>;
 
-    void from(const PressReleaseActions& actions, const InputActionList& actionList);
-};
+        using KeyMap = hashMap<Input::KeyCode, PressReleaseActions>;
+        using MouseMap = hashMap<Input::MouseButton, PressReleaseActions>;
+        using JoystickMapEntry = ska::bytell_hash_map<JoystickMapKey, PressReleaseActions, JoystickMapKeyHash>;
+        using JoystickMap = ska::bytell_hash_map<BaseType<Input::Joystick>, JoystickMapEntry>;
 
-class SceneInput final : public Input::InputAggregatorInterface {
-   public:
-    using KeyMapCache = hashMap<Input::KeyCode, PressReleaseActionCbks>;
-    using MouseMapCache = hashMap<Input::MouseButton, PressReleaseActionCbks>;
-    using JoystickMapCacheEntry  = ska::bytell_hash_map<JoystickMapKey, PressReleaseActionCbks, JoystickMapKeyHash>;
-    using JoystickMapCache = ska::bytell_hash_map<std::underlying_type_t<Input::Joystick>, JoystickMapCacheEntry>;
+        struct KeyLogState
+        {
+            Input::KeyCode _key{ Input::KeyCode::KC_SLEEP };
+            Input::InputState _state{ Input::InputState::COUNT };
+        };
 
-    using KeyMap = hashMap<Input::KeyCode, PressReleaseActions>;
-    using MouseMap = hashMap<Input::MouseButton, PressReleaseActions>;
-    using JoystickMapEntry = ska::bytell_hash_map<JoystickMapKey, PressReleaseActions, JoystickMapKeyHash>;
-    using JoystickMap = ska::bytell_hash_map<std::underlying_type_t<Input::Joystick>, JoystickMapEntry>;
+        struct MouseLogState
+        {
+            vec2<I32> _position{ VECTOR2_ZERO };
+            Input::MouseButton _button{ Input::MouseButton::COUNT };
+            Input::InputState _state{ Input::InputState::COUNT };
+        };
 
-    struct KeyLogState {
-        Input::KeyCode _key = Input::KeyCode::KC_SLEEP;
-        Input::InputState _state = Input::InputState::COUNT;
-    };
+        using KeyLog = vector_fast<KeyLogState>;
+        using MouseBtnLog = vector_fast<MouseLogState>;
 
-    struct MouseLogState {
-        Input::MouseButton _btn = Input::MouseButton::COUNT;
-        Input::InputState _state = Input::InputState::COUNT;
-        vec2<I32> _position = VECTOR2_ZERO;
-    };
-    using KeyLog = vector_fast<KeyLogState>;
-    using MouseBtnLog = vector_fast<MouseLogState>;
+        explicit SceneInput( Scene& parentScene );
 
-    explicit SceneInput(Scene &parentScene);
+        //Keyboard: return true if input was consumed
+        bool onKeyDown( const Input::KeyEvent& arg ) override;
+        bool onKeyUp( const Input::KeyEvent& arg ) override;
+        /// Joystick or Gamepad: return true if input was consumed
+        bool joystickButtonPressed( const Input::JoystickEvent& arg ) override;
+        bool joystickButtonReleased( const Input::JoystickEvent& arg ) override;
+        bool joystickAxisMoved( const Input::JoystickEvent& arg ) override;
+        bool joystickPovMoved( const Input::JoystickEvent& arg ) override;
+        bool joystickBallMoved( const Input::JoystickEvent& arg ) override;
+        bool joystickAddRemove( const Input::JoystickEvent& arg ) override;
+        bool joystickRemap( const Input::JoystickEvent& arg ) override;
+        /// Mouse: return true if input was consumed
+        bool mouseMoved( const Input::MouseMoveEvent& arg ) override;
+        bool mouseButtonPressed( const Input::MouseButtonEvent& arg ) override;
+        bool mouseButtonReleased( const Input::MouseButtonEvent& arg ) override;
+        bool onUTF8( const Input::UTF8Event& arg ) override;
+        /// Returns false if the key is already assigned and couldn't be merged
+        /// Call removeKeyMapping for the specified key first
+        bool addKeyMapping( Input::KeyCode key, const PressReleaseActions::Entry& keyCbks );
+        /// Returns false if the key wasn't previously assigned
+        bool removeKeyMapping( Input::KeyCode key );
+        /// Returns true if the key has a valid mapping and sets the callback output
+        /// to the mapping's function
+        bool getKeyMapping( Input::KeyCode key, PressReleaseActionCbks& keyCbksOut );
 
-    //Keyboard: return true if input was consumed
-    bool onKeyDown(const Input::KeyEvent &arg) override;
-    bool onKeyUp(const Input::KeyEvent &arg) override;
-    /// Joystick or Gamepad: return true if input was consumed
-    bool joystickButtonPressed(const Input::JoystickEvent &arg) override;
-    bool joystickButtonReleased(const Input::JoystickEvent &arg) override;
-    bool joystickAxisMoved(const Input::JoystickEvent &arg) override;
-    bool joystickPovMoved(const Input::JoystickEvent &arg) override;
-    bool joystickBallMoved(const Input::JoystickEvent &arg) override;
-    bool joystickAddRemove(const Input::JoystickEvent &arg) override;
-    bool joystickRemap(const Input::JoystickEvent &arg) override;
-    /// Mouse: return true if input was consumed
-    bool mouseMoved(const Input::MouseMoveEvent &arg) override;
-    bool mouseButtonPressed(const Input::MouseButtonEvent &arg) override;
-    bool mouseButtonReleased(const Input::MouseButtonEvent &arg) override;
-    bool onUTF8(const Input::UTF8Event& arg) override;
-    /// Returns false if the key is already assigned and couldn't be merged
-    /// Call removeKeyMapping for the specified key first
-    bool addKeyMapping(Input::KeyCode key, const PressReleaseActions::Entry& keyCbks);
-    /// Returns false if the key wasn't previously assigned
-    bool removeKeyMapping(Input::KeyCode key);
-    /// Returns true if the key has a valid mapping and sets the callback output
-    /// to the mapping's function
-    bool getKeyMapping(Input::KeyCode key, PressReleaseActionCbks& keyCbksOut);
+        /// Returns false if the button is already assigned.
+        /// Call removeButtonMapping for the specified key first
+        bool addMouseMapping( Input::MouseButton button, const PressReleaseActions::Entry& btnCbks );
+        /// Returns false if the button wasn't previously assigned
+        bool removeMouseMapping( Input::MouseButton button );
+        /// Returns true if the button has a valid mapping and sets the callback
+        /// output to the mapping's function
+        bool getMouseMapping( Input::MouseButton button, PressReleaseActionCbks& btnCbksOut );
 
-    /// Returns false if the button is already assigned.
-    /// Call removeButtonMapping for the specified key first
-    bool addMouseMapping(Input::MouseButton button, const PressReleaseActions::Entry& btnCbks);
-    /// Returns false if the button wasn't previously assigned
-    bool removeMouseMapping(Input::MouseButton button);
-    /// Returns true if the button has a valid mapping and sets the callback
-    /// output to the mapping's function
-    bool getMouseMapping(Input::MouseButton button, PressReleaseActionCbks& btnCbksOut);
+        /// Returns false if the button is already assigned.
+        /// Call removeJoystickMapping for the specified key first
+        bool addJoystickMapping( Input::Joystick device, Input::JoystickElementType elementType, U32 id, const PressReleaseActions::Entry& btnCbks );
+        /// Returns false if the button wasn't previously assigned
+        bool removeJoystickMapping( Input::Joystick device, Input::JoystickElementType elementType, U32 id );
+        /// Returns true if the button has a valid mapping and sets the callback
+        /// output to the mapping's function
+        bool getJoystickMapping( Input::Joystick device, Input::JoystickElementType elementType, U32 id, PressReleaseActionCbks& btnCbksOut );
 
-    /// Returns false if the button is already assigned.
-    /// Call removeJoystickMapping for the specified key first
-    bool addJoystickMapping(Input::Joystick device, Input::JoystickElementType elementType, U32 id, const PressReleaseActions::Entry& btnCbks);
-    /// Returns false if the button wasn't previously assigned
-    bool removeJoystickMapping(Input::Joystick device, Input::JoystickElementType elementType, U32 id);
-    /// Returns true if the button has a valid mapping and sets the callback
-    /// output to the mapping's function
-    bool getJoystickMapping(Input::Joystick device, Input::JoystickElementType elementType, U32 id, PressReleaseActionCbks& btnCbksOut);
+        InputActionList& actionList() noexcept;
 
-    InputActionList& actionList() noexcept;
+        U8 getPlayerIndexForDevice( U8 deviceIndex ) const;
 
-    U8 getPlayerIndexForDevice(U8 deviceIndex) const;
+        void flushCache();
 
-    void flushCache();
+        void onPlayerAdd( U8 index );
+        void onPlayerRemove( U8 index );
 
-    void onPlayerAdd(U8 index);
-    void onPlayerRemove(U8 index);
+        void onSetActive();
+        void onRemoveActive();
 
-    void onSetActive();
-    void onRemoveActive();
+        protected:
+        bool handleCallbacks( const PressReleaseActionCbks& cbks,
+                              const InputParams& params,
+                              bool onPress );
 
-   protected:
-       bool handleCallbacks(const PressReleaseActionCbks& cbks,
-                            const InputParams& params,
-                            bool onPress);
+        private:
+        Scene& _parentScene;
 
-   private:
-    Scene &_parentScene;
+        KeyMap _keyMap;
+        MouseMap _mouseMap;
+        JoystickMap _joystickMap;
 
-    KeyMap _keyMap;
-    MouseMap _mouseMap;
-    JoystickMap _joystickMap;
+        KeyMapCache _keyMapCache;
+        MouseMapCache _mouseMapCache;
+        JoystickMapCache _joystickMapCache;
 
-    KeyMapCache _keyMapCache;
-    MouseMapCache _mouseMapCache;
-    JoystickMapCache _joystickMapCache;
+        InputActionList _actionList;
 
-    InputActionList _actionList;
+        hashMap<U8, KeyLog> _keyLog;
+        hashMap<U8, MouseBtnLog> _mouseBtnLog;
 
-    hashMap<U8, KeyLog> _keyLog;
-    hashMap<U8, MouseBtnLog> _mouseBtnLog;
+    };  // SceneInput
 
-};  // SceneInput
-
-FWD_DECLARE_MANAGED_CLASS(SceneInput);
+    FWD_DECLARE_MANAGED_CLASS( SceneInput );
 
 }  // namespace Divide
 #endif  //_SCENE_INPUT_H_

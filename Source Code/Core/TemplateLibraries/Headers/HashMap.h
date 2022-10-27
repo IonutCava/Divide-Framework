@@ -64,7 +64,7 @@ namespace Divide {
     template<class T>
     struct hasher<T, true> {
         size_t operator() (const T& elem) {
-            using EnumType = std::underlying_type_t<T>;
+            using EnumType = BaseType<T>;
             return hashAlg::hash<EnumType>()(static_cast<EnumType>(elem));
         }
     };

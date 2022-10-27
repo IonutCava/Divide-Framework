@@ -39,18 +39,38 @@ namespace Divide {
 
     struct AttributeDescriptor {
         size_t _strideInBytes{ 0u };
-        U16 _bindingIndex{ 0u };
+        U16 _vertexBindingIndex{ 0u };
         U8 _componentsPerElement{ 0u };
         GFXDataFormat _dataType{ GFXDataFormat::COUNT };
-        bool _perVertexInputRate{ true };
         bool _normalized{ false };
     };
-    using AttributeMap = std::array<AttributeDescriptor, to_base(AttribLocation::COUNT)>;
+
+    struct VertexBinding
+    {
+        size_t _strideInBytes{ 0u };
+        U16 _bufferBindIndex{0u};
+        bool _perVertexInputRate{ true };
+    };
+
+    struct AttributeMap
+    {
+        using Attributes = std::array<AttributeDescriptor, to_base( AttribLocation::COUNT )>;
+        using VertexBindings = vector<VertexBinding>;
+        Attributes _attributes;
+        VertexBindings _vertexBindings;
+    };
 
     bool operator==(const AttributeDescriptor& lhs, const AttributeDescriptor& rhs) noexcept;
     bool operator!=(const AttributeDescriptor& lhs, const AttributeDescriptor& rhs) noexcept;
+    
+    bool operator==(const VertexBinding& lhs, const VertexBinding& rhs) noexcept;
+    bool operator!=(const VertexBinding& lhs, const VertexBinding& rhs) noexcept;
+    
+    bool operator==(const AttributeMap& lhs, const AttributeMap& rhs) noexcept;
+    bool operator!=(const AttributeMap& lhs, const AttributeMap& rhs) noexcept;
 
     size_t GetHash(const AttributeDescriptor& descriptor);
+    size_t GetHash(const VertexBinding& vertexBinding);
     size_t GetHash(const AttributeMap& attributes);
 
 }; //namespace Divide

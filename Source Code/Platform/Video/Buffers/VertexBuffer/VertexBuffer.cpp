@@ -482,15 +482,17 @@ AttributeMap VertexBuffer::generateAttributeMap() {
     constexpr U32 boneWeightLoc = to_base(AttribLocation::BONE_WEIGHT);
     constexpr U32 boneIndiceLoc = to_base(AttribLocation::BONE_INDICE);
 
-    for (AttributeDescriptor& desc : retMap) {
+    VertexBinding& vertBinding = retMap._vertexBindings.emplace_back();
+    vertBinding._bufferBindIndex = 0u;
+    const AttributeOffsets offsets = GetAttributeOffsets(_useAttribute, vertBinding._strideInBytes );
+
+    for ( AttributeDescriptor& desc : retMap._attributes )
+    {
+        desc._vertexBindingIndex = vertBinding._bufferBindIndex;
         desc._dataType = GFXDataFormat::COUNT;
     }
-
-    size_t totalDataSize = 0u;
-    const AttributeOffsets offsets = GetAttributeOffsets(_useAttribute, totalDataSize);
     {
-        AttributeDescriptor& desc = retMap[to_base(AttribLocation::POSITION)];
-        desc._bindingIndex = 0u;
+        AttributeDescriptor& desc = retMap._attributes[to_base(AttribLocation::POSITION)];
         desc._componentsPerElement = 3;
         desc._dataType = GFXDataFormat::FLOAT_32;
         desc._normalized = false;
@@ -498,8 +500,7 @@ AttributeMap VertexBuffer::generateAttributeMap() {
     }
 
     if (_useAttribute[texCoordLoc]) {
-        AttributeDescriptor& desc = retMap[to_base(AttribLocation::TEXCOORD)];
-        desc._bindingIndex = 0u;
+        AttributeDescriptor& desc = retMap._attributes[to_base(AttribLocation::TEXCOORD)];
         desc._componentsPerElement = 2;
         desc._dataType = GFXDataFormat::FLOAT_32;
         desc._normalized = false;
@@ -507,8 +508,7 @@ AttributeMap VertexBuffer::generateAttributeMap() {
     }
 
     if (_useAttribute[normalLoc]) {
-        AttributeDescriptor& desc = retMap[to_base(AttribLocation::NORMAL)];
-        desc._bindingIndex = 0u;
+        AttributeDescriptor& desc = retMap._attributes[to_base(AttribLocation::NORMAL)];
         desc._componentsPerElement = 1;
         desc._dataType = GFXDataFormat::FLOAT_32;
         desc._normalized = false;
@@ -516,8 +516,7 @@ AttributeMap VertexBuffer::generateAttributeMap() {
     }
 
     if (_useAttribute[tangentLoc]) {
-        AttributeDescriptor& desc = retMap[to_base(AttribLocation::TANGENT)];
-        desc._bindingIndex = 0u;
+        AttributeDescriptor& desc = retMap._attributes[to_base(AttribLocation::TANGENT)];
         desc._componentsPerElement = 1;
         desc._dataType = GFXDataFormat::FLOAT_32;
         desc._normalized = false;
@@ -525,8 +524,7 @@ AttributeMap VertexBuffer::generateAttributeMap() {
     }
 
     if (_useAttribute[colourLoc]) {
-        AttributeDescriptor& desc = retMap[to_base(AttribLocation::COLOR)];
-        desc._bindingIndex = 0u;
+        AttributeDescriptor& desc = retMap._attributes[to_base(AttribLocation::COLOR)];
         desc._componentsPerElement = 4;
         desc._dataType = GFXDataFormat::UNSIGNED_BYTE;
         desc._normalized = true;
@@ -536,16 +534,14 @@ AttributeMap VertexBuffer::generateAttributeMap() {
     if (_useAttribute[boneWeightLoc]) {
         assert(_useAttribute[boneIndiceLoc]);
         {
-            AttributeDescriptor& desc = retMap[to_base(AttribLocation::BONE_WEIGHT)];
-            desc._bindingIndex = 0u;
+            AttributeDescriptor& desc = retMap._attributes[to_base(AttribLocation::BONE_WEIGHT)];
             desc._componentsPerElement = 4;
             desc._dataType = GFXDataFormat::UNSIGNED_BYTE;
             desc._normalized = true;
             desc._strideInBytes = offsets[boneWeightLoc];
         }
         {
-            AttributeDescriptor& desc = retMap[to_base(AttribLocation::BONE_INDICE)];
-            desc._bindingIndex = 0u;
+            AttributeDescriptor& desc = retMap._attributes[to_base(AttribLocation::BONE_INDICE)];
             desc._componentsPerElement = 4;
             desc._dataType = GFXDataFormat::UNSIGNED_BYTE;
             desc._normalized = false;

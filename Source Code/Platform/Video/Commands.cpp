@@ -66,11 +66,20 @@ string ToString(const BindPipelineCommand& cmd, const U16 indent) {
 
         return Util::StringFormat("Index { %d }, Binding { %d }, Components per element { %d }, Component format { %s }, Normalised { %s }, Stride in bytes { %zu }",
                                    idx,
-                                   desc._bindingIndex,
+                                   desc._vertexBindingIndex,
                                    desc._componentsPerElement,
                                    Divide::Names::GFXDataFormat[to_base(desc._dataType)],
                                    desc._normalized ? "True" : "False",
                                    desc._strideInBytes);
+    };
+
+    const auto vertexFormatToString = []( const U8 idx, const VertexBinding& binding ) -> string
+    {
+        return Util::StringFormat("Index { %d } Binding { %d }, Stride in bytes { %zu}, Per Vertex Input Rate { %s }",
+                                  idx,
+                                  binding._bufferBindIndex,
+                                  binding._strideInBytes,
+                                  binding._perVertexInputRate ? "True" : "False");
     };
 
     string ret = "\n";
@@ -121,12 +130,23 @@ string ToString(const BindPipelineCommand& cmd, const U16 indent) {
         }
         ret.append("Vertex format: \n");
         U8 idx = 0u;
-        for (const AttributeDescriptor& desc : cmd._pipeline->descriptor()._vertexFormat) {
+        for (const AttributeDescriptor& desc : cmd._pipeline->descriptor()._vertexFormat._attributes) {
             ret.append("    ");
             for (U16 j = 0; j < indent; ++j) {
                 ret.append("    ");
             }
             ret.append(Util::StringFormat("%d: %s\n", idx, attributeDescriptorToString(idx, desc)));
+            ++idx;
+        }
+        idx = 0u;
+        for ( const VertexBinding& binding : cmd._pipeline->descriptor()._vertexFormat._vertexBindings )
+        {
+            ret.append( "    " );
+            for ( U16 j = 0; j < indent; ++j )
+            {
+                ret.append( "    " );
+            }
+            ret.append( Util::StringFormat( "%d: %s\n", idx, vertexFormatToString( idx, binding ) ) );
             ++idx;
         }
     }
@@ -257,10 +277,10 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent) {
                             srcInternalTex != nullptr ? srcInternalTex->getGUID() : 0u,
                             srcInternalTex != nullptr ? srcInternalTex->resourceName().c_str() : srcExternalTex != nullptr ? srcExternalTex->getName().c_str() : "no-name",
                             As<DescriptorCombinedImageSampler>(binding._data)._samplerHash,
-                            As<DescriptorCombinedImageSampler>(binding._data)._image._layerRange.min,
-                            As<DescriptorCombinedImageSampler>(binding._data)._image._layerRange.max,
-                            As<DescriptorCombinedImageSampler>(binding._data)._image._mipLevels.min,
-                            As<DescriptorCombinedImageSampler>(binding._data)._image._mipLevels.max));
+                            As<DescriptorCombinedImageSampler>(binding._data)._image._subRange._layerRange.offset,
+                            As<DescriptorCombinedImageSampler>(binding._data)._image._subRange._layerRange.count,
+                            As<DescriptorCombinedImageSampler>(binding._data)._image._subRange._mipLevels.offset,
+                            As<DescriptorCombinedImageSampler>(binding._data)._image._subRange._mipLevels.count));
             } else {
                 Texture* srcInternalTex = As<ImageView>( binding._data)._srcTexture._internalTexture;
                 CEGUI::Texture* srcExternalTex = As<ImageView>( binding._data)._srcTexture._ceguiTex;
@@ -269,10 +289,10 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent) {
                            binding._slot,
                            srcInternalTex != nullptr ? srcInternalTex->getGUID() : 0u,
                            srcInternalTex != nullptr ? srcInternalTex->resourceName().c_str() : srcExternalTex != nullptr ? srcExternalTex->getName().c_str() : "no-name",
-                           As<ImageView>(binding._data)._layerRange.min,
-                           As<ImageView>(binding._data)._layerRange.max,
-                           As<ImageView>(binding._data)._mipLevels.min,
-                           As<ImageView>(binding._data)._mipLevels.max,
+                           As<ImageView>(binding._data)._subRange._layerRange.offset,
+                           As<ImageView>(binding._data)._subRange._layerRange.count,
+                           As<ImageView>(binding._data)._subRange._mipLevels.offset,
+                           As<ImageView>(binding._data)._subRange._mipLevels.count,
                            Divide::Names::imageUsage[to_base( As<ImageView>( binding._data)._usage)]));
             }
         }
@@ -318,10 +338,11 @@ string ToString(const DispatchComputeCommand& cmd, U16 indent) {
 }
 
 string ToString(const MemoryBarrierCommand& cmd, U16 indent) {
-    string ret = Util::StringFormat(" [ Mask: %d ] [ Buffer locks: %zu ] [ Fence locks: %zu ] [ Sync flag: %d ]", 
+    string ret = Util::StringFormat(" [ Mask: %d ] [ Buffer locks: %zu ] [ Fence locks: %zu ] [ Texture layout changes: %zu ][ Sync flag: %d ]", 
                                       cmd._barrierMask,
                                       cmd._bufferLocks.size(),
                                       cmd._fenceLocks.size(),
+                                      cmd._textureLayoutChanges.size(),
                                       cmd._syncFlag);
  
     for (auto it : cmd._bufferLocks) {
@@ -329,7 +350,7 @@ string ToString(const MemoryBarrierCommand& cmd, U16 indent) {
         for (U16 j = 0; j < indent; ++j) {
             ret.append("    ");
         }
-        ret.append(Util::StringFormat("Buffer lock: [ %d - [%zu - %zu] ]", it._targetBuffer->getGUID(), it._range._startOffset, it._range._length));
+        ret.append(Util::StringFormat("Buffer lock: [ %d - [%zu - %zu] ]", it._targetBuffer ? it._targetBuffer->getGUID() : -1, it._range._startOffset, it._range._length));
     }
     for (auto it : cmd._fenceLocks) {
         ret.append("    ");
@@ -337,6 +358,14 @@ string ToString(const MemoryBarrierCommand& cmd, U16 indent) {
             ret.append("    ");
         }
         ret.append(Util::StringFormat("Fence lock: [ %d ]", it->getGUID()));
+    }  
+    for (auto it : cmd._textureLayoutChanges) {
+        ret.append("    ");
+        for (U16 j = 0; j < indent; ++j) {
+            ret.append("    ");
+        }
+        const ImageUsage oldLayout = it._prevLayoutOverride != ImageUsage::COUNT ? it._prevLayoutOverride : it._targetView._srcTexture._internalTexture ? it._targetView._srcTexture._internalTexture->imageUsage(it._targetView._subRange.getHash()) : ImageUsage::UNDEFINED;
+        ret.append(Util::StringFormat("Texture Layout Change: [ %d [ %s -> %s ]]", it._targetView._srcTexture._internalTexture ? it._targetView._srcTexture._internalTexture->getGUID() : -1, Divide::Names::imageUsage[to_base(oldLayout)], Divide::Names::imageUsage[to_base(it._layout)]));
     }
     return ret;
 }

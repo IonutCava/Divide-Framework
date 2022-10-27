@@ -1029,20 +1029,20 @@ namespace Divide
             cmd->_usage = DescriptorSetUsage::PER_PASS;
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, normalsAttMS->texture()->sampledView(), normalsAttMS->descriptor()._samplerHash );
+                Set( binding._data, normalsAttMS->texture()->getView(), normalsAttMS->descriptor()._samplerHash );
             }
             if ( hasHiZ )
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
                 const RenderTarget* hizTarget = _context.renderTargetPool().getRenderTarget( params._targetHIZ );
                 RTAttachment* hizAtt = hizTarget->getAttachment( RTAttachmentType::COLOUR );
-                Set( binding._data, hizAtt->texture()->sampledView(), hizAtt->descriptor()._samplerHash );
+                Set( binding._data, hizAtt->texture()->getView(), hizAtt->descriptor()._samplerHash );
             }
             else if ( prePassExecuted )
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
                 RTAttachment* depthAtt = target.getAttachment( RTAttachmentType::DEPTH );
-                Set( binding._data, depthAtt->texture()->sampledView(), depthAtt->descriptor()._samplerHash );
+                Set( binding._data, depthAtt->texture()->getView(), depthAtt->descriptor()._samplerHash );
             }
 
             prepareRenderQueues( params, cameraSnapshot, false, RenderingOrder::COUNT, bufferInOut );
@@ -1076,7 +1076,7 @@ namespace Divide
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_PASS;
             DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 2u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, colourAtt->texture()->sampledView(), colourAtt->descriptor()._samplerHash );
+            Set( binding._data, colourAtt->texture()->getView(), colourAtt->descriptor()._samplerHash );
         }
 
         prepareRenderQueues( params, cameraSnapshot, true, RenderingOrder::COUNT, bufferInOut );
@@ -1105,11 +1105,11 @@ namespace Divide
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, accumAtt->texture()->sampledView(), accumAtt->descriptor()._samplerHash );
+                Set( binding._data, accumAtt->texture()->getView(), accumAtt->descriptor()._samplerHash );
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, revAtt->texture()->sampledView(), revAtt->descriptor()._samplerHash );
+                Set( binding._data, revAtt->texture()->getView(), revAtt->descriptor()._samplerHash );
             }
         }
         GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
@@ -1194,11 +1194,11 @@ namespace Divide
                 cmd->_usage = DescriptorSetUsage::PER_DRAW;
                 {
                     DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
-                    Set( binding._data, velocityAtt->texture()->sampledView(), velocityAtt->descriptor()._samplerHash );
+                    Set( binding._data, velocityAtt->texture()->getView(), velocityAtt->descriptor()._samplerHash );
                 }
                 {
                     DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
-                    Set( binding._data, normalsAtt->texture()->sampledView(), normalsAtt->descriptor()._samplerHash );
+                    Set( binding._data, normalsAtt->texture()->getView(), normalsAtt->descriptor()._samplerHash );
                 }
 
                 GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );

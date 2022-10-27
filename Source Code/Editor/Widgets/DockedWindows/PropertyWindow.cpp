@@ -948,8 +948,8 @@ namespace Divide
                 }
 
                 printFieldName();
-                const U8 entryStart = to_U8( field._range.min );
-                const U8 entryCount = to_U8( field._range.max );
+                const U8 entryStart = to_U8( field._range.offset );
+                const U8 entryCount = to_U8( field._range.count );
                 static UndoEntry<I32> typeUndo = {};
                 if ( entryCount > 0 && entryStart <= entryCount )
                 {

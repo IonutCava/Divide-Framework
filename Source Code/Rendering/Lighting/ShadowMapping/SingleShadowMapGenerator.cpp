@@ -257,7 +257,7 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, shadowAtt->texture()->sampledView(), shadowAtt->descriptor()._samplerHash );
+            Set( binding._data, shadowAtt->texture()->getView(), shadowAtt->descriptor()._samplerHash );
         }
 
         _shaderConstants.data[0]._vec[1].x = 0.f;
@@ -275,7 +275,7 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, blurAtt->texture()->sampledView(), blurAtt->descriptor()._samplerHash );
+            Set( binding._data, blurAtt->texture()->getView(), blurAtt->descriptor()._samplerHash );
         }
 
         beginRenderPassCmd._target = handle._targetID;

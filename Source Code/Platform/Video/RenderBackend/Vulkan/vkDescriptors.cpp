@@ -3,93 +3,7 @@
 #include "Headers/vkDescriptors.h"
 
 namespace Divide {
-    namespace {
-        VkDescriptorPool createPool(VkDevice device, const DescriptorAllocator::PoolSizes& poolSizes, U32 count, VkDescriptorPoolCreateFlags flags)
-        {
-            vector<VkDescriptorPoolSize> sizes;
-            sizes.reserve(poolSizes.sizes.size());
-            for (auto [type, sizeFactor] : poolSizes.sizes) {
-                sizes.push_back({ type, to_U32(sizeFactor * count)});
-            }
-
-            VkDescriptorPoolCreateInfo pool_info = vk::descriptorPoolCreateInfo(sizes, count);
-            pool_info.flags = flags;
-
-            VkDescriptorPool descriptorPool;
-            vkCreateDescriptorPool(device, &pool_info, nullptr, &descriptorPool);
-
-            return descriptorPool;
-        }
-    }
-
-    DescriptorAllocator::DescriptorAllocator(const VkDevice device) 
-        : _device(device)
-    {
-    }
-
-    DescriptorAllocator::~DescriptorAllocator()
-    {
-        //delete every pool held
-        for (VkDescriptorPool p : _freePools) {
-            vkDestroyDescriptorPool(_device, p, nullptr);
-        }
-        for (VkDescriptorPool p : _usedPools) {
-            vkDestroyDescriptorPool(_device, p, nullptr);
-        }
-    }
-
-    void DescriptorAllocator::resetPools() {
-        for (VkDescriptorPool p : _usedPools) {
-            vkResetDescriptorPool(_device, p, 0);
-        }
-
-        _freePools = _usedPools;
-        _usedPools.clear();
-        _currentPool = VK_NULL_HANDLE;
-    }
-
-    bool DescriptorAllocator::allocate(VkDescriptorSet* set, const VkDescriptorSetLayout layout) {
-        if (_currentPool == VK_NULL_HANDLE) {
-            _currentPool = grabPool();
-            _usedPools.push_back(_currentPool);
-        }
-
-        VkDescriptorSetAllocateInfo allocInfo = vk::descriptorSetAllocateInfo(_currentPool, &layout, 1);
-
-        VkResult allocResult = vkAllocateDescriptorSets(_device, &allocInfo, set);
-        if (allocResult == VK_SUCCESS) {
-            return true;
-        }
-
-        if (allocResult == VK_ERROR_FRAGMENTED_POOL || allocResult == VK_ERROR_OUT_OF_POOL_MEMORY) {
-            //allocate a new pool and retry
-            _currentPool = grabPool();
-            _usedPools.push_back(_currentPool);
-            allocInfo = vk::descriptorSetAllocateInfo(_currentPool, &layout, 1);
-
-            allocResult = vkAllocateDescriptorSets(_device, &allocInfo, set);
-
-            //if it still fails then we have big issues
-            if (allocResult == VK_SUCCESS) {
-                return true;
-            }
-
-            DIVIDE_UNEXPECTED_CALL();
-        }
-
-        return false;
-    }
-
-    VkDescriptorPool DescriptorAllocator::grabPool() {
-        if (!_freePools.empty())  {
-            VkDescriptorPool pool = _freePools.back();
-            _freePools.pop_back();
-            return pool;
-        }
-        
-        return createPool(_device, _descriptorSizes, 1000, 0);
-    }
-
+   
     DescriptorLayoutCache::DescriptorLayoutCache(const VkDevice device)
         : _device(device)
     {
@@ -98,7 +12,7 @@ namespace Divide {
     DescriptorLayoutCache::~DescriptorLayoutCache()
     {
         //delete every descriptor layout held
-        for (auto pair : _layoutCache) {
+        for (const auto& pair : _layoutCache) {
             vkDestroyDescriptorSetLayout(_device, pair.second, nullptr);
         }
     }
@@ -127,7 +41,7 @@ namespace Divide {
                         });
         }
         
-        auto it = _layoutCache.find(layoutinfo);
+        const auto it = _layoutCache.find(layoutinfo);
         if (it != _layoutCache.end()) {
             return (*it).second;
         }
@@ -181,7 +95,7 @@ namespace Divide {
         return h;
     }
 
-    DescriptorBuilder DescriptorBuilder::Begin(DescriptorLayoutCache* layoutCache, DescriptorAllocator* allocator) {
+    DescriptorBuilder DescriptorBuilder::Begin(DescriptorLayoutCache* layoutCache, vke::DescriptorAllocatorHandle* allocator) {
         DescriptorBuilder builder{};
         builder.cache = layoutCache;
         builder.alloc = allocator;
@@ -216,31 +130,35 @@ namespace Divide {
         return *this;
     }
 
-    bool DescriptorBuilder::build(VkDescriptorSet& set, VkDescriptorSetLayout& layout) {
-        //build layout first
-        VkDescriptorSetLayoutCreateInfo layoutInfo = vk::descriptorSetLayoutCreateInfo(bindings);
-        layout = cache->createDescriptorLayout(&layoutInfo);
-
-
+    bool DescriptorBuilder::buildSetFromLayout(VkDescriptorSet& set, const VkDescriptorSetLayout& layoutIn, VkDevice device ) {
         //allocate descriptor
-        if (!alloc->allocate(&set, layout)) {
+        if ( !alloc->Allocate( layoutIn, set ) )
+        {
             return false;
         }
 
         //write descriptor
-        for (VkWriteDescriptorSet& w : writes) {
+        for ( VkWriteDescriptorSet& w : writes )
+        {
             w.dstSet = set;
         }
 
-        vkUpdateDescriptorSets(alloc->device(), to_U32(writes.size()), writes.data(), 0, nullptr);
+        vkUpdateDescriptorSets( device, to_U32( writes.size() ), writes.data(), 0, nullptr );
 
         return true;
     }
 
+    bool DescriptorBuilder::buildSetAndLayout(VkDescriptorSet& set, VkDescriptorSetLayout& layoutOut, VkDevice device ) {
+        //build layout first
+        VkDescriptorSetLayoutCreateInfo layoutInfo = vk::descriptorSetLayoutCreateInfo(bindings);
+        layoutOut = cache->createDescriptorLayout(&layoutInfo);
 
-    bool DescriptorBuilder::build(VkDescriptorSet& set) {
+        return buildSetFromLayout(set, layoutOut, device);
+    }
+
+    bool DescriptorBuilder::buildSet(VkDescriptorSet& set, VkDevice device ) {
         VkDescriptorSetLayout layout;
-        return build(set, layout);
+        return buildSetAndLayout(set, layout, device);
     }
 
 

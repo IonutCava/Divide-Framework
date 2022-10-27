@@ -80,7 +80,6 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
     [[nodiscard]] U8 getSampleCount() const noexcept;
 
     virtual void readData(vec4<U16> rect, GFXImageFormat imageFormat, GFXDataFormat dataType, std::pair<bufferPtr, size_t> outData) const = 0;
-    virtual void blitFrom(RenderTarget* source, const RTBlitParams& params) = 0;
 
     /// Resize all attachments
     bool resize(U16 width, U16 height);

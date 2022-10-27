@@ -104,6 +104,10 @@ uint GetClusterIndex(in vec4 fragCoord) {
 }
 
 #else //COMPUTE_SHADER
+DESCRIPTOR_SET_RESOURCE_LAYOUT( PER_DRAW, 0, std430 ) COMP_ONLY_W buffer globalIndexCountSSBO
+{
+    uint globalIndexCount[];
+};
 
 DESCRIPTOR_SET_RESOURCE_LAYOUT( PER_DRAW, 1, std430 ) COMP_ONLY_RW buffer lightClusterAABBsBuffer
 {

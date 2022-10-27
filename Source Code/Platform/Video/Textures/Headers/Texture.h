@@ -62,6 +62,17 @@ namespace TypeUtil {
 
 FWD_DECLARE_MANAGED_CLASS(Texture);
 
+struct TextureLayoutChange
+{
+    ImageView _targetView;
+    ImageUsage _layout{ImageUsage::COUNT};
+    ImageUsage _prevLayoutOverride{ImageUsage::COUNT};
+};
+
+using TextureLayoutChanges = eastl::fixed_vector<TextureLayoutChange, 2, true>;
+
+[[nodiscard]] bool IsEmpty( const TextureLayoutChanges& changes ) noexcept;
+
 /// An API-independent representation of a texture
 class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     friend class ResourceCache;
@@ -91,6 +102,7 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     static ResourcePath GetCachePath(ResourcePath originalPath) noexcept;
     static [[nodiscard]] bool UseTextureDDSCache() noexcept;
     static [[nodiscard]] const Texture_ptr& DefaultTexture() noexcept;
+    static [[nodiscard]] const size_t DefaultSamplerHash() noexcept;
     static [[nodiscard]] U8 GetSizeFactor(const GFXDataFormat format) noexcept;
 
     /// API-dependent loading function that uploads ptr data to the GPU using the specified parameters
@@ -102,12 +114,11 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     void setSampleCount(U8 newSampleCount);
 
     /// Returns true if the specified layout differs from the Texture's current layout
-    [[nodiscard]] bool imageUsage(ImageUsage usage);
-    [[nodiscard]] ImageUsage imageUsage() const noexcept;
+    [[nodiscard]] bool imageUsage(size_t subrangeHash, ImageUsage usage, ImageUsage prevImageUsage);
+    [[nodiscard]] ImageUsage imageUsage(size_t subrangeHash) const noexcept;
 
     [[nodiscard]] U16 mipCount() const noexcept;
 
-    [[nodiscard]] ImageView sampledView() const noexcept;
     [[nodiscard]] ImageView getView() const noexcept;
     [[nodiscard]] ImageView getView(ImageUsage usage) const noexcept;
     [[nodiscard]] ImageView getView(TextureType targetType) const noexcept;
@@ -161,9 +172,12 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
   protected:
     ResourceCache& _parentCache;
     ImageView  _defaultView;
+    hashMap<size_t, ImageUsage> _imageUsage;
     TextureType _type{ TextureType::COUNT };
+
   protected:
     static bool s_useDDSCache;
+    static size_t s_defaultSamplerHash;
     static Texture_ptr s_defaulTexture;
     static ResourcePath s_missingTextureFileName;
 };

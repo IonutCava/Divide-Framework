@@ -33,113 +33,135 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _DESCRIPTOR_SETS_INL_
 #define _DESCRIPTOR_SETS_INL_
 
-namespace Divide {
+namespace Divide
+{
 
-    inline bool operator==(const TextureWrapper& lhs, const TextureWrapper& rhs) noexcept {
+    inline bool operator==( const TextureWrapper& lhs, const TextureWrapper& rhs ) noexcept
+    {
         return lhs._internalTexture == rhs._internalTexture &&
-               lhs._ceguiTex == rhs._ceguiTex;
+            lhs._ceguiTex == rhs._ceguiTex;
     }
 
-    inline bool operator!=(const TextureWrapper& lhs, const TextureWrapper& rhs) noexcept {
+    inline bool operator!=( const TextureWrapper& lhs, const TextureWrapper& rhs ) noexcept
+    {
         return lhs._internalTexture != rhs._internalTexture ||
-               lhs._ceguiTex != rhs._ceguiTex;
+            lhs._ceguiTex != rhs._ceguiTex;
     }
 
-    inline  bool ImageView::isDefaultView() const noexcept {
-        return _isDefaultView || (_mipLevels.max == 0u && _layerRange.max == 0u);
-    }
-
-    inline bool operator==(const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs) noexcept {
+    inline bool operator==( const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs ) noexcept
+    {
         return lhs._msaaSamples == rhs._msaaSamples &&
-               lhs._dataType == rhs._dataType &&
-               lhs._baseFormat == rhs._baseFormat &&
-               lhs._srgb == rhs._srgb &&
-               lhs._normalized == rhs._normalized;
+            lhs._dataType == rhs._dataType &&
+            lhs._baseFormat == rhs._baseFormat &&
+            lhs._srgb == rhs._srgb &&
+            lhs._normalized == rhs._normalized;
     }
 
-    inline bool operator!=(const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs) noexcept {
+    inline bool operator!=( const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs ) noexcept
+    {
         return lhs._msaaSamples != rhs._msaaSamples ||
-               lhs._dataType != rhs._dataType ||
-               lhs._baseFormat != rhs._baseFormat ||
-               lhs._srgb != rhs._srgb ||
-               lhs._normalized != rhs._normalized;
+            lhs._dataType != rhs._dataType ||
+            lhs._baseFormat != rhs._baseFormat ||
+            lhs._srgb != rhs._srgb ||
+            lhs._normalized != rhs._normalized;
     }
 
-    inline bool operator==(const ImageView& lhs, const ImageView&rhs) noexcept {
+    inline bool operator==( const ImageView& lhs, const ImageView& rhs ) noexcept
+    {
+        return lhs.targetType() == rhs.targetType() &&
+            lhs._usage == rhs._usage &&
+            lhs._subRange == rhs._subRange &&
+            lhs._descriptor == rhs._descriptor &&
+            lhs._srcTexture == rhs._srcTexture;
+    }
+
+    inline bool operator!=( const ImageView& lhs, const ImageView& rhs ) noexcept
+    {
+        return lhs.targetType() != rhs.targetType() ||
+            lhs._usage != rhs._usage ||
+            lhs._subRange != rhs._subRange ||
+            lhs._srcTexture != rhs._srcTexture ||
+            lhs._descriptor != rhs._descriptor;
+    }
+
+    inline bool operator==( const ImageSubRange& lhs, const ImageSubRange& rhs ) noexcept
+    {
         return lhs._mipLevels == rhs._mipLevels &&
-               lhs._layerRange == rhs._layerRange &&
-               lhs.targetType() == rhs.targetType() &&
-               lhs._descriptor == rhs._descriptor &&
-               lhs._srcTexture == rhs._srcTexture &&
-               lhs._usage == rhs._usage;
+            lhs._layerRange == rhs._layerRange;
     }
 
-    inline bool operator!=(const ImageView& lhs, const ImageView&rhs) noexcept {
+    inline bool operator!=( const ImageSubRange& lhs, const ImageSubRange& rhs ) noexcept
+    {
         return lhs._mipLevels != rhs._mipLevels ||
-               lhs._layerRange != rhs._layerRange ||
-               lhs.targetType() != rhs.targetType() ||
-               lhs._srcTexture != rhs._srcTexture ||
-               lhs._descriptor != rhs._descriptor ||
-               lhs._usage != rhs._usage;
+            lhs._layerRange != rhs._layerRange;
     }
 
-    inline bool operator==(const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs) noexcept {
+    inline bool operator==( const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs ) noexcept
+    {
         return lhs._image == rhs._image &&
-               lhs._samplerHash == rhs._samplerHash;
+            lhs._samplerHash == rhs._samplerHash;
     }
 
-    inline bool operator!=(const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs) noexcept {
+    inline bool operator!=( const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs ) noexcept
+    {
         return lhs._image != rhs._image ||
-               lhs._samplerHash != rhs._samplerHash;
+            lhs._samplerHash != rhs._samplerHash;
     }
 
-    inline bool operator==(const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs) noexcept {
+    inline bool operator==( const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs ) noexcept
+    {
         return lhs._shaderStageVisibility == rhs._shaderStageVisibility &&
-               lhs._slot == rhs._slot &&
-               lhs._data == rhs._data;
+            lhs._slot == rhs._slot &&
+            lhs._data == rhs._data;
     }
 
-    inline bool operator!=(const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs) noexcept {
+    inline bool operator!=( const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs ) noexcept
+    {
         return lhs._shaderStageVisibility != rhs._shaderStageVisibility ||
-               lhs._slot != rhs._slot ||
-               lhs._data != rhs._data;
+            lhs._slot != rhs._slot ||
+            lhs._data != rhs._data;
     }
 
-    inline bool IsSet( const DescriptorSetBindingData& data ) noexcept {
+    inline bool IsSet( const DescriptorSetBindingData& data ) noexcept
+    {
         return data.index() != 0;
     }
 
     template<typename T>
-    inline T& As( DescriptorSetBindingData& data ) noexcept {
-        if ( data.index() == 0) {
+    inline T& As( DescriptorSetBindingData& data ) noexcept
+    {
+        if ( data.index() == 0 )
+        {
             return data.emplace<T>();
         }
         return eastl::get<T>( data );
     }
 
     template<typename T>
-    inline bool Has( const DescriptorSetBindingData& data ) noexcept {
+    inline bool Has( const DescriptorSetBindingData& data ) noexcept
+    {
         return eastl::holds_alternative<T>( data );
     }
 
     template<typename T>
-    inline const T& As( const DescriptorSetBindingData& data ) noexcept {
+    inline const T& As( const DescriptorSetBindingData& data ) noexcept
+    {
         return eastl::get<T>( data );
     }
 
     inline void Set( DescriptorSetBindingData& dataInOut, const ImageView& view )
     {
-        As<ImageView>(dataInOut) = view;
-    } 
-    
+        As<ImageView>( dataInOut ) = view;
+    }
+
     inline void Set( DescriptorSetBindingData& dataInOut, const DescriptorCombinedImageSampler& combinedImageSampler )
     {
-        As<DescriptorCombinedImageSampler>(dataInOut) = combinedImageSampler;
+        As<DescriptorCombinedImageSampler>( dataInOut ) = combinedImageSampler;
     }
 
     inline void Set( DescriptorSetBindingData& dataInOut, const ImageView& imageView, size_t samplerHash )
     {
-        Set(dataInOut, DescriptorCombinedImageSampler{imageView, samplerHash});
+        Set( dataInOut, DescriptorCombinedImageSampler{ imageView, samplerHash } );
     }
 
     inline DescriptorSetBinding& AddBinding( DescriptorSet& setInOut, const U8 slot, const U16 stageVisibilityMask )
@@ -152,7 +174,7 @@ namespace Divide {
 
     inline  DescriptorSetBinding& AddBinding( DescriptorSet& setInOut, const U8 slot, const ShaderStageVisibility stageVisibility )
     {
-        return AddBinding(setInOut, slot, to_U16(stageVisibility));
+        return AddBinding( setInOut, slot, to_U16( stageVisibility ) );
     }
 } //namespace Divide
 #endif //_DESCRIPTOR_SETS_INL_

@@ -305,7 +305,8 @@ namespace
 
                     erase = memCmd->_barrierMask == 0u &&
                             IsEmpty( memCmd->_bufferLocks ) &&
-                            IsEmpty( memCmd->_fenceLocks );
+                            IsEmpty( memCmd->_fenceLocks ) &&
+                            IsEmpty( memCmd->_textureLayoutChanges);
                 } break;
                 case CommandType::DRAW_TEXT:
                 {
@@ -489,6 +490,13 @@ namespace
                 }break;
                 case CommandType::BIND_PIPELINE:
                 {
+                    if ( !pushedPass )
+                    {
+                        if (get<GFX::BindPipelineCommand>( cmd )->_pipeline->descriptor()._primitiveTopology != PrimitiveTopology::COMPUTE)
+                        {
+                            return { ErrorType::INVALID_RENDER_PASS_FOR_PIPELINE, cmdIndex };
+                        }
+                    }
                     hasPipeline = true;
                 } break;
                 case CommandType::DISPATCH_COMPUTE:
@@ -710,6 +718,26 @@ namespace
             if ( !found )
             {
                 lhs->_fenceLocks.push_back( otherLock );
+            }
+        }
+
+        for ( const TextureLayoutChange& otherChange : rhs->_textureLayoutChanges )
+        {
+            bool found = false;
+            for ( TextureLayoutChange& ourChange : lhs->_textureLayoutChanges )
+            {
+                if ( ourChange._targetView._srcTexture._internalTexture != nullptr &&
+                     otherChange._targetView._srcTexture._internalTexture != nullptr &&
+                     otherChange._targetView._srcTexture._internalTexture->getGUID() == ourChange._targetView._srcTexture._internalTexture->getGUID())
+                {
+                    found = true;
+                    ourChange._layout = otherChange._layout;
+                    break;
+                }
+            }
+            if ( !found )
+            {
+                lhs->_textureLayoutChanges.push_back(otherChange);
             }
         }
 

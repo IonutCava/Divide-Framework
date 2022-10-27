@@ -464,6 +464,10 @@ namespace Divide
             {
                 T min, max;
             };
+            struct
+            {
+                T offset, count;
+            };
             T _v[2];
         };
     };

@@ -968,10 +968,10 @@ namespace Divide
                            GLUtil::internalTextureType( srcView.targetType(), srcView._descriptor._msaaSamples ),
                            srcHandle,
                            glInternalFormat,
-                           static_cast<GLuint>(srcView._mipLevels.x),
-                           static_cast<GLuint>(srcView._mipLevels.y),
-                           srcView._layerRange.min * (isCube ? 6 : 1),
-                           srcView._layerRange.max * (isCube ? 6 : 1));
+                           static_cast<GLuint>(srcView._subRange._mipLevels.x),
+                           static_cast<GLuint>(srcView._subRange._mipLevels.y),
+                           srcView._subRange._layerRange.offset * (isCube ? 6 : 1),
+                           srcView._subRange._layerRange.count * (isCube ? 6 : 1));
         }
 
         s_textureViewCache.deallocate( handle, lifetimeInFrames );
@@ -981,7 +981,7 @@ namespace Divide
 
     void GL_API::preFlushCommandBuffer( [[maybe_unused]] const GFX::CommandBuffer& commandBuffer )
     {
-        NOP();
+        GetStateTracker()._activeRenderTargetID = SCREEN_TARGET_ID;
     }
 
     void GL_API::flushCommand( GFX::CommandBase* cmd )
@@ -1063,6 +1063,15 @@ namespace Divide
                 }
                 s_stateTracker._activeRenderTargetID = INVALID_RENDER_TARGET_ID;
             }break;
+            case GFX::CommandType::BLIT_RT:
+            {
+                PROFILE_SCOPE( "BLIT_RT", Profiler::Category::Graphics );
+
+                const GFX::BlitRenderTargetCommand* crtCmd = cmd->As<GFX::BlitRenderTargetCommand>();
+                glFramebuffer* source = static_cast<glFramebuffer*>(_context.renderTargetPool().getRenderTarget(crtCmd->_source));
+                glFramebuffer* destination = static_cast<glFramebuffer*>(_context.renderTargetPool().getRenderTarget( crtCmd->_destination ));
+                destination->blitFrom( source, crtCmd->_params );
+            } break;
             case GFX::CommandType::BEGIN_GPU_QUERY:
             {
                 const GFX::BeginGPUQuery* crtCmd = cmd->As<GFX::BeginGPUQuery>();
@@ -1230,7 +1239,7 @@ namespace Divide
             {
                 const GFX::ComputeMipMapsCommand* crtCmd = cmd->As<GFX::ComputeMipMapsCommand>();
 
-                if ( crtCmd->_layerRange.min == 0 && crtCmd->_layerRange.max >= crtCmd->_texture->descriptor().layerCount() )
+                if ( crtCmd->_layerRange.offset == 0 && crtCmd->_layerRange.count >= crtCmd->_texture->descriptor().layerCount() )
                 {
                     PROFILE_SCOPE( "GL: In-place computation - Full", Profiler::Category::Graphics );
                     glGenerateTextureMipmap( static_cast<glTexture*>(crtCmd->_texture)->textureHandle() );
@@ -1238,15 +1247,15 @@ namespace Divide
                 else
                 {
                     PROFILE_SCOPE( "GL: View-based computation", Profiler::Category::Graphics );
-                    assert( crtCmd->_mipRange.max != 0u );
+                    assert( crtCmd->_mipRange.count != 0u );
 
                     ImageView view = crtCmd->_texture->getView(ImageUsage::SHADER_READ_WRITE);
-                    view._layerRange.set( crtCmd->_layerRange );
-                    view._mipLevels.set( crtCmd->_mipRange );
+                    view._subRange._layerRange.set( crtCmd->_layerRange );
+                    view._subRange._mipLevels.set( crtCmd->_mipRange );
 
                     DIVIDE_ASSERT( view.targetType() != TextureType::COUNT );
 
-                    if ( IsArrayTexture( view.targetType() ) && view._layerRange.max == 1 )
+                    if ( IsArrayTexture( view.targetType() ) && view._subRange._layerRange.count == 1 )
                     {
                         switch ( view.targetType() )
                         {
@@ -1263,8 +1272,8 @@ namespace Divide
                         }
                     }
 
-                    if ( view._mipLevels.max > view._mipLevels.min &&
-                         view._mipLevels.max - view._mipLevels.min > 0u )
+                    if ( view._subRange._mipLevels.count > view._subRange._mipLevels.offset &&
+                         view._subRange._mipLevels.count - view._subRange._mipLevels.offset > 0u )
                     {
                         PROFILE_SCOPE( "GL: In-place computation - Image", Profiler::Category::Graphics );
                         glGenerateTextureMipmap( getGLTextureView( view, 6u ) );
@@ -1412,6 +1421,13 @@ namespace Divide
                 {
                     Attorney::glGenericVertexDataGL_API::insertFencesIfNeeded( static_cast<glGenericVertexData*>(it) );
                 }
+                for ( auto it : crtCmd->_textureLayoutChanges )
+                {
+                    if ( it._targetView._srcTexture._internalTexture->imageUsage( {}, it._layout, it._prevLayoutOverride ) )
+                    {
+                        NOP();
+                    }
+                }
             } break;
             default: break;
         }
@@ -1437,6 +1453,12 @@ namespace Divide
             PROFILE_SCOPE( "GL_FLUSH", Profiler::Category::Graphics );
             glFlush();
         }
+        GetStateTracker()._activeRenderTargetID = INVALID_RENDER_TARGET_ID;
+    }
+
+    void GL_API::initDescriptorSets()
+    {
+        NOP();
     }
 
     vec2<U16> GL_API::getDrawableSize( const DisplayWindow& window ) const noexcept
@@ -1571,9 +1593,14 @@ namespace Divide
         stateTracker.setDepthWrite( true );
     }
 
-    bool GL_API::bindShaderResources( const DescriptorSetUsage usage, const DescriptorSet& bindings )
+    bool GL_API::bindShaderResources( const DescriptorSetUsage usage, const DescriptorSet& bindings, const bool isDirty )
     {
         PROFILE_SCOPE( "BIND_SHADER_RESOURCES", Profiler::Category::Graphics );
+        if ( !isDirty )
+        {
+            // We don't need to keep track of descriptor set to layout compatibility in OpenGL
+            return true;
+        }
 
         for ( auto& srcBinding : bindings )
         {
@@ -1631,7 +1658,7 @@ namespace Divide
 
                     const ImageView& image = As<ImageView>(srcBinding._data);
                     assert( image.targetType() != TextureType::COUNT );
-                    assert( image._layerRange.max > 0u );
+                    assert( image._subRange._layerRange.count > 0u );
 
                     GLenum access = GL_NONE;
                     switch ( image._usage )
@@ -1642,7 +1669,7 @@ namespace Divide
                         default: DIVIDE_UNEXPECTED_CALL();  break;
                     }
 
-                    DIVIDE_ASSERT( image._mipLevels.max == 1u );
+                    DIVIDE_ASSERT( image._subRange._mipLevels.count == 1u );
 
                     const GLenum glInternalFormat = GLUtil::internalFormat( image._descriptor._baseFormat,
                                                                             image._descriptor._dataType,
@@ -1653,9 +1680,9 @@ namespace Divide
                     if ( handle != GLUtil::k_invalidObjectID &&
                          GL_API::s_stateTracker.bindTextureImage( srcBinding._slot,
                                                                   handle,
-                                                                  image._mipLevels.min,
-                                                                  image._layerRange.max > 1u,
-                                                                  image._layerRange.min,
+                                                                  image._subRange._mipLevels.offset,
+                                                                  image._subRange._layerRange.count > 1u,
+                                                                  image._subRange._layerRange.offset,
                                                                   access,
                                                                   glInternalFormat ) == GLStateTracker::BindResult::FAILED )
                     {
@@ -1692,13 +1719,9 @@ namespace Divide
         TexBindEntry entry{};
         entry._slot = glBinding;
 
-        DIVIDE_ASSERT( imageView._usage == ImageUsage::SHADER_SAMPLE );
-        if ( imageView._srcTexture._internalTexture != nullptr && imageView._usage != imageView._srcTexture._internalTexture->imageUsage() ) [[unlikely]]
-        {
-            DIVIDE_UNEXPECTED_CALL_MSG("Need layout transition here!");
-        }
+        DIVIDE_ASSERT( imageView._usage == ImageUsage::SHADER_READ || imageView._usage == ImageUsage::SHADER_READ_WRITE );
 
-        if ( !imageView.isDefaultView() )
+        if ( imageView._srcTexture._internalTexture != nullptr && imageView != imageView._srcTexture._internalTexture->getView())
         {
             entry._handle = getGLTextureView(imageView, 3u);
         }

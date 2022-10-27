@@ -1,5 +1,4 @@
 -- Vertex.NoClouds
-#define NO_VELOCITY
 
 #include "vbInputData.vert"
 #include "lightingDefaults.vert"
@@ -24,7 +23,6 @@ void main(void){
 
 --Vertex.Clouds
 
-#define NO_VELOCITY
 #include "sceneData.cmn"
 #include "vbInputData.vert"
 #include "lightingDefaults.vert"
@@ -237,8 +235,6 @@ void main() {
 #if !defined(PRE_PASS)
 layout(early_fragment_tests) in;
 #endif //!PRE_PASS
-
-#define NO_VELOCITY
 
 layout(location = ATTRIB_FREE_START + 0) in vec4 vSunDirection; //vSunDirection.a = sun fade
 layout(location = ATTRIB_FREE_START + 1) in vec4 vSunColour; // vSunColour.a = vSunE
@@ -679,7 +675,6 @@ void main() {
 
 -- Fragment.PrePass
 
-#define NO_VELOCITY
 #include "prePass.frag"
 
 void main() {

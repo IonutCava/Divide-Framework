@@ -51,6 +51,7 @@ namespace NS_GLIM {
 namespace Divide {
 
 enum class DescriptorSetBindingType : U8;
+constexpr U8 MAX_FRAMES_IN_FLIGHT = 3u;
 
 namespace Debug {
     extern PFN_vkCmdBeginDebugUtilsLabelEXT vkCmdBeginDebugUtilsLabelEXT;

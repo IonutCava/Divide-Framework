@@ -637,6 +637,8 @@ bool Sky::load()
         fragModule._sourceFile = "sky.glsl";
 
         ShaderProgramDescriptor shaderDescriptor = {};
+        shaderDescriptor._globalDefines.emplace_back( "NO_VELOCITY", true);
+        shaderDescriptor._globalDefines.emplace_back( "SKIP_REFLECT_REFRACT", true);
         shaderDescriptor._globalDefines.emplace_back( "dvd_nightSkyColour PushData0[0].xyz" );
         shaderDescriptor._globalDefines.emplace_back( "dvd_raySteps uint(PushData0[0].w)" );
         shaderDescriptor._globalDefines.emplace_back( "dvd_moonColour PushData0[1].xyz" );

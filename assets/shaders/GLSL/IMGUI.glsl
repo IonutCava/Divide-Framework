@@ -2,7 +2,6 @@
 
 #include "nodeDataInput.cmn"
 
-layout(location = ATTRIB_POSITION) in vec3 inVertexData;
 layout(location = ATTRIB_TEXCOORD) in vec2 inTexCoordData;
 layout(location = ATTRIB_COLOR)    in vec4 inColourData;
 layout(location = ATTRIB_GENERIC)  in vec2 inGenericData;

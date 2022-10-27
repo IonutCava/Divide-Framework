@@ -114,7 +114,7 @@ namespace Divide
         // Update vertex attributes if needed (e.g. if offsets changed)
         for ( U8 idx = 0u; idx < to_base( AttribLocation::COUNT ); ++idx )
         {
-            const AttributeDescriptor& descriptor = attributes[idx];
+            const AttributeDescriptor& descriptor = attributes._attributes[idx];
 
             if ( descriptor._dataType == GFXDataFormat::COUNT )
             {
@@ -123,7 +123,7 @@ namespace Divide
             else
             {
                 glEnableVertexArrayAttrib( vaoID, idx );
-                glVertexArrayAttribBinding( vaoID, idx, descriptor._bindingIndex );
+                glVertexArrayAttribBinding( vaoID, idx, descriptor._vertexBindingIndex);
                 const bool isIntegerType = descriptor._dataType != GFXDataFormat::FLOAT_16 &&
                     descriptor._dataType != GFXDataFormat::FLOAT_32;
 
@@ -144,14 +144,16 @@ namespace Divide
                                                 GLUtil::glDataFormat[to_U32( descriptor._dataType )],
                                                 static_cast<GLuint>(descriptor._strideInBytes) );
                 }
+            }
+        }
 
-                const bool perInstanceDivisor = !descriptor._perVertexInputRate;
-                if ( _vaoBufferData.instanceDivisorFlag( vaoID, idx ) != perInstanceDivisor )
-                {
-                    glVertexArrayBindingDivisor( vaoID, idx, perInstanceDivisor ? 1u : 0u );
-                    _vaoBufferData.instanceDivisorFlag( vaoID, idx, perInstanceDivisor );
-                }
-
+        for ( const VertexBinding& vertBinding : attributes._vertexBindings )
+        {
+            const bool perInstanceDivisor = !vertBinding._perVertexInputRate;
+            if ( _vaoBufferData.instanceDivisorFlag( vaoID, vertBinding._bufferBindIndex ) != perInstanceDivisor )
+            {
+                glVertexArrayBindingDivisor( vaoID, vertBinding._bufferBindIndex, perInstanceDivisor ? 1u : 0u );
+                _vaoBufferData.instanceDivisorFlag( vaoID, vertBinding._bufferBindIndex, perInstanceDivisor );
             }
         }
     }
@@ -179,7 +181,7 @@ namespace Divide
         // Otherwise allocate a new VAO and save it in the cache
         glCreateVertexArrays( 1, &vaoOut );
         DIVIDE_ASSERT( vaoOut != GLUtil::k_invalidObjectID, Locale::Get( _ID( "ERROR_VAO_INIT" ) ) );
-        if constexpr( Config::ENABLE_GPU_VALIDATION )
+        if constexpr ( Config::ENABLE_GPU_VALIDATION )
         {
             glObjectLabel( GL_VERTEX_ARRAY, vaoOut, -1, Util::StringFormat( "GENERIC_VAO_%d", s_VAOidx++ ).c_str() );
         }

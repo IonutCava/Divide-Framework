@@ -58,47 +58,9 @@ SOFTWARE.
 #define _VK_DESCRIPTORS_H_
 
 #include "vkResources.h"
+#include <Vulkan-Descriptor-Allocator/descriptor_allocator.h>
 
 namespace Divide {
-
-//ref: https://vkguide.dev/docs/extra-chapter/abstracting_descriptors/
-class DescriptorAllocator {
-public:
-    struct PoolSizes {
-        vector<std::pair<VkDescriptorType, float>> sizes =
-        {
-            { VK_DESCRIPTOR_TYPE_SAMPLER, 0.5f },
-            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4.f },
-            { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 4.f },
-            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1.f },
-            { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1.f },
-            { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1.f },
-            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2.f },
-            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2.f },
-            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1.f },
-            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1.f },
-            { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 0.5f }
-        };
-    };
-
-    explicit DescriptorAllocator(VkDevice device);
-    ~DescriptorAllocator();
-
-    void resetPools();
-    bool allocate(VkDescriptorSet* set, VkDescriptorSetLayout layout);
-
-    PROPERTY_R_IW(VkDevice, device, VK_NULL_HANDLE);
-private:
-    VkDescriptorPool grabPool();
-
-private:
-    VkDescriptorPool _currentPool{ VK_NULL_HANDLE };
-    PoolSizes _descriptorSizes;
-    vector<VkDescriptorPool> _usedPools;
-    vector<VkDescriptorPool> _freePools;
-};
-
-FWD_DECLARE_MANAGED_CLASS(DescriptorAllocator);
 
 class DescriptorLayoutCache {
 public:
@@ -129,20 +91,21 @@ FWD_DECLARE_MANAGED_CLASS(DescriptorLayoutCache);
 class DescriptorBuilder {
 public:
 
-    static DescriptorBuilder Begin(DescriptorLayoutCache* layoutCache, DescriptorAllocator* allocator);
+    static DescriptorBuilder Begin(DescriptorLayoutCache* layoutCache, vke::DescriptorAllocatorHandle* allocator);
 
     DescriptorBuilder& bindBuffer(U32 binding, VkDescriptorBufferInfo* bufferInfo, VkDescriptorType type, VkShaderStageFlags stageFlags);
     DescriptorBuilder& bindImage(U32 binding, VkDescriptorImageInfo* imageInfo, VkDescriptorType type, VkShaderStageFlags stageFlags);
 
-    bool build(VkDescriptorSet& set, VkDescriptorSetLayout& layout);
-    bool build(VkDescriptorSet& set);
+    bool buildSetFromLayout(VkDescriptorSet& set, const VkDescriptorSetLayout& layoutIn, VkDevice device );
+    bool buildSetAndLayout(VkDescriptorSet& set, VkDescriptorSetLayout& layoutOut, VkDevice device );
+    bool buildSet(VkDescriptorSet& set, VkDevice device );
 private:
 
     vector<VkWriteDescriptorSet> writes;
     vector<VkDescriptorSetLayoutBinding> bindings;
 
     DescriptorLayoutCache* cache{ nullptr };
-    DescriptorAllocator* alloc{ nullptr };
+    vke::DescriptorAllocatorHandle* alloc{ nullptr };
 };
 } //namespace Divide
 

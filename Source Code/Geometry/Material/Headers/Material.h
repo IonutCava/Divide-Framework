@@ -343,6 +343,9 @@ class Material final : public CachedResource {
                           size_t samplerHash,
                           TextureOperation op,
                           bool useInGeometryPasses);
+
+    [[nodiscard]] bool usesTextureInShader(TextureSlot slot, bool isPrePass, bool isShadowPass) const noexcept;
+
    private:
     GFXDevice& _context;
     ResourceCache* _parentCache = nullptr;

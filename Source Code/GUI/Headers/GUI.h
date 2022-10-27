@@ -198,9 +198,8 @@ namespace Divide
         U64 _textRenderInterval{};  ///< We should avoid rendering text as fast as possible
         ///for performance reasons
 
-/// Each scene has its own gui elements! (0 = global)
+        /// Each scene has its own gui elements! (0 = global)
         Scene* _activeScene = nullptr;
-        Pipeline* _postCEGUIPipeline = nullptr;
         U32 _debugVarCacheCount = 0;
         // GROUP, VAR
         vector<std::pair<I64, I64>> _debugDisplayEntries{};

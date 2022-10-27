@@ -60,8 +60,8 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
          static constexpr size_t INVALID_ELEMENT_STRIDE = SIZE_MAX;
 
          struct BufferBindConfig {
-             U32 _bufferIdx{ 0u };
-             U32 _bindIdx{ 0u };
+             U16 _bufferIdx{ 0u };
+             U16 _bindIdx{ 0u };
          };
 
          BufferParams _bufferParams{};

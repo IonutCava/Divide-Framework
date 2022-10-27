@@ -643,6 +643,8 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
 
         const bool isDepthPass = IsDepthPass( renderStagePass );
+        const bool isPrePass = renderStagePass._passType == RenderPassType::PRE_PASS;
+        const bool isShadowPass = renderStagePass._stage == RenderStage::SHADOW;
 
         DIVIDE_ASSERT( properties().shadingMode() != ShadingMode::COUNT, "Material computeShader error: Invalid shading mode specified!" );
         std::array<ModuleDefines, to_base( ShaderType::COUNT )> moduleDefines = {};
@@ -726,7 +728,7 @@ namespace Divide
 
         for ( U8 i = 0u; i < to_U8( AttribLocation::COUNT ); ++i )
         {
-            const AttributeDescriptor& descriptor = _shaderAttributes[i];
+            const AttributeDescriptor& descriptor = _shaderAttributes._attributes[i];
             if ( descriptor._dataType != GFXDataFormat::COUNT )
             {
                 shaderDescriptor._globalDefines.emplace_back( Util::StringFormat( "HAS_%s_ATTRIBUTE", Names::attribLocation[i] ).c_str(), true );
@@ -780,12 +782,78 @@ namespace Divide
         {
             shaderDescriptor._globalDefines.emplace_back( "NEED_TEXTURE_DATA_ALL_STAGES", true );
         }
+
+        for ( U8 i = 0u; i < to_U8( TextureSlot::COUNT ); ++i )
+        {
+            if ( usesTextureInShader( static_cast<TextureSlot>(i), isPrePass, isShadowPass ) )
+            {
+                shaderDescriptor._globalDefines.emplace_back( Util::StringFormat( "USE_%s_TEXTURE", Names::textureSlot[i] ), true );
+            }
+        }
+
         for ( ShaderModuleDescriptor& module : shaderDescriptor._modules )
         {
             module._defines.insert( eastl::end( module._defines ), eastl::begin( moduleDefines[to_base( module._moduleType )] ), eastl::end( moduleDefines[to_base( module._moduleType )] ) );
             module._defines.insert( eastl::end( module._defines ), eastl::begin( _extraShaderDefines[to_base( module._moduleType )] ), eastl::end( _extraShaderDefines[to_base( module._moduleType )] ) );
             module._defines.emplace_back( "DEFINE_PLACEHOLDER", false );
         }
+    }
+
+    bool Material::usesTextureInShader( const TextureSlot slot, const bool isPrePass, const bool isShadowPass ) const noexcept
+    {
+        if ( _textures[to_base( slot )]._ptr == nullptr )
+        {
+            return false;
+        }
+
+        if ( !isPrePass && !isShadowPass )
+        {
+            return true;
+        }
+
+        bool add = _textures[to_base( slot )]._useInGeometryPasses;
+        if ( !add )
+        {
+            if ( hasTransparency() )
+            {
+                if ( slot == TextureSlot::UNIT0 )
+                {
+                    add = properties().translucencySource() == TranslucencySource::ALBEDO_TEX;
+                }
+                else if ( slot == TextureSlot::OPACITY )
+                {
+                    add = properties().translucencySource() == TranslucencySource::OPACITY_MAP_A ||
+                        properties().translucencySource() == TranslucencySource::OPACITY_MAP_R;
+                }
+            }
+
+            if ( isPrePass )
+            {
+                // Some best-fit heuristics that will surely break at one point
+                switch ( slot )
+                {
+                    case TextureSlot::NORMALMAP:
+                    case TextureSlot::HEIGHTMAP:
+                    {
+                        add = true;
+                    } break;
+                    case TextureSlot::SPECULAR:
+                    {
+                        add = properties().shadingMode() != ShadingMode::PBR_MR && properties().shadingMode() != ShadingMode::PBR_SG;
+                    } break;
+                    case TextureSlot::METALNESS:
+                    {
+                        add = properties().usePackedOMR();
+                    } break;
+                    case TextureSlot::ROUGHNESS:
+                    {
+                        add = !properties().usePackedOMR();
+                    } break;
+                };
+            }
+        }
+
+        return add;
     }
 
     bool Material::unload()
@@ -1038,12 +1106,12 @@ namespace Divide
         const bool isPrePass = renderStagePass._passType == RenderPassType::PRE_PASS;
         const bool isShadowPass = renderStagePass._stage == RenderStage::SHADOW;
         auto& descriptor = isShadowPass
-                                   ? _descriptorSetShadow
-                                   : isPrePass
-                                          ? _descriptorSetPrePass
-                                          : renderStagePass._stage == RenderStage::DISPLAY
-                                                                    ? _descriptorSetMainPass
-                                                                    : _descriptorSetSecondaryPass;
+                                ? _descriptorSetShadow
+                                : isPrePass
+                                      ? _descriptorSetPrePass
+                                      : renderStagePass._stage == RenderStage::DISPLAY
+                                                                ? _descriptorSetMainPass
+                                                                : _descriptorSetSecondaryPass;
 
         if ( descriptor.empty() )
         {
@@ -1051,73 +1119,12 @@ namespace Divide
             // Check again
             if ( descriptor.empty() )
             {
-                const auto addTexture = [&]( const U8 usage )
+                for ( U8 i = 0u; i < to_U8( TextureSlot::COUNT ); ++i )
                 {
-                    const Texture_ptr& crtTexture = _textures[usage]._ptr;
-                    if ( crtTexture != nullptr )
+                    if ( usesTextureInShader( static_cast<TextureSlot>(i), isPrePass, isShadowPass ) )
                     {
-                        DescriptorSetBinding& binding = AddBinding( descriptor, usage, texVisibility );
-                        Set(binding._data, crtTexture->sampledView(), _textures[usage]._sampler );
-                    }
-                };
-
-                if ( !isPrePass && !isShadowPass )
-                {
-                    for ( U8 i = 0u; i < to_U8( TextureSlot::COUNT ); ++i )
-                    {
-                        addTexture( i );
-                    }
-                }
-                else
-                {
-                    for ( U8 i = 0u; i < to_U8( TextureSlot::COUNT ); ++i )
-                    {
-                        bool add = _textures[i]._useInGeometryPasses;
-                        if( !add )
-                        {
-                            if ( hasTransparency() )
-                            {
-                                if ( i == to_base( TextureSlot::UNIT0 ) )
-                                {
-                                    add = properties().translucencySource() == TranslucencySource::ALBEDO_TEX;
-                                }
-                                else if ( i == to_base( TextureSlot::OPACITY ) )
-                                {
-                                    add = properties().translucencySource() == TranslucencySource::OPACITY_MAP_A ||
-                                          properties().translucencySource() == TranslucencySource::OPACITY_MAP_R;
-                                }
-                            }
-
-                            if ( isPrePass )
-                            {
-                                // Some best-fit heuristics that will surely break at one point
-                                switch ( static_cast<TextureSlot>(i) )
-                                {
-                                    case TextureSlot::NORMALMAP:
-                                    case TextureSlot::HEIGHTMAP:
-                                    {
-                                        add = true;
-                                    } break;
-                                    case TextureSlot::SPECULAR:
-                                    {
-                                        add = properties().shadingMode() != ShadingMode::PBR_MR && properties().shadingMode() != ShadingMode::PBR_SG;
-                                    } break;
-                                    case TextureSlot::METALNESS:
-                                    {
-                                        add = properties().usePackedOMR();
-                                    } break;
-                                    case TextureSlot::ROUGHNESS:
-                                    {
-                                        add = !properties().usePackedOMR();
-                                    } break;
-                                };
-                            }
-                        }
-
-                        if ( add )
-                        {
-                            addTexture( i );
-                        }
+                        DescriptorSetBinding& binding = AddBinding( descriptor, i, texVisibility );
+                        Set( binding._data, _textures[i]._ptr->getView(), _textures[i]._sampler );
                     }
                 }
             }
@@ -1306,7 +1313,7 @@ namespace Divide
                 {
                     ScopedLock<SharedMutex> w_lock( _textureLock );
 
-                    const bool useInGeometryPasses = pt.get<bool>( textureNode + ".UseForGeometry",  _textures[to_base( usage )]._useInGeometryPasses );
+                    const bool useInGeometryPasses = pt.get<bool>( textureNode + ".UseForGeometry", _textures[to_base( usage )]._useInGeometryPasses );
                     const U32 index = pt.get<U32>( textureNode + ".Sampler.id", 0 );
                     const auto& it = previousHashValues.find( index );
 

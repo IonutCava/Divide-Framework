@@ -295,12 +295,12 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     terrainMaterial->properties().isStatic(true);
     terrainMaterial->properties().isInstanced(true);
     terrainMaterial->properties().texturesInFragmentStageOnly(false);
-    terrainMaterial->setTexture(TextureSlot::UNIT0, CreateResource<Texture>(terrain->parentResourceCache(), textureAlbedoMaps), albedoHash, TextureOperation::NONE);
-    terrainMaterial->setTexture(TextureSlot::UNIT1, CreateResource<Texture>(terrain->parentResourceCache(), textureNoiseMedium), noiseHash, TextureOperation::NONE);
-    terrainMaterial->setTexture(TextureSlot::OPACITY, CreateResource<Texture>(terrain->parentResourceCache(), textureBlendMap), blendMapHash, TextureOperation::NONE);
+    terrainMaterial->setTexture(TextureSlot::UNIT0, CreateResource<Texture>(terrain->parentResourceCache(), textureAlbedoMaps), albedoHash, TextureOperation::NONE, true);
+    terrainMaterial->setTexture(TextureSlot::UNIT1, CreateResource<Texture>(terrain->parentResourceCache(), textureNoiseMedium), noiseHash, TextureOperation::NONE, true);
+    terrainMaterial->setTexture(TextureSlot::OPACITY, CreateResource<Texture>(terrain->parentResourceCache(), textureBlendMap), blendMapHash, TextureOperation::NONE, true);
     terrainMaterial->setTexture(TextureSlot::NORMALMAP, CreateResource<Texture>(terrain->parentResourceCache(), textureNormalMaps), albedoHash, TextureOperation::NONE);
     terrainMaterial->setTexture(TextureSlot::HEIGHTMAP, CreateResource<Texture>(terrain->parentResourceCache(), heightMapTexture), heightSamplerHash, TextureOperation::NONE, true);
-    terrainMaterial->setTexture(TextureSlot::SPECULAR, CreateResource<Texture>(terrain->parentResourceCache(), textureWaterCaustics), albedoHash, TextureOperation::NONE);
+    terrainMaterial->setTexture(TextureSlot::SPECULAR, CreateResource<Texture>(terrain->parentResourceCache(), textureWaterCaustics), albedoHash, TextureOperation::NONE, true);
     terrainMaterial->setTexture(TextureSlot::METALNESS, CreateResource<Texture>(terrain->parentResourceCache(), textureExtraMaps), albedoHash, TextureOperation::NONE);
     terrainMaterial->setTexture(TextureSlot::EMISSIVE, Texture::DefaultTexture(), albedoHash, TextureOperation::NONE);
 
@@ -488,23 +488,26 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
         return terrainRenderState.getHash();
     });
     AttributeMap vertexFormat{};
+    auto& vertBindings = vertexFormat._vertexBindings.emplace_back();
+    vertBindings._bufferBindIndex = 0u;
+    vertBindings._perVertexInputRate = false;
+    vertBindings._strideInBytes = 2 * (4u * sizeof(F32));
+
     {
-        AttributeDescriptor& desc = vertexFormat[to_base(AttribLocation::POSITION)];
-        desc._bindingIndex = 0u;
+        AttributeDescriptor& desc = vertexFormat._attributes[to_base(AttribLocation::POSITION)];
+        desc._vertexBindingIndex = vertBindings._bufferBindIndex;
         desc._componentsPerElement = 4u;
         desc._dataType = GFXDataFormat::FLOAT_32;
         desc._normalized = false;
         desc._strideInBytes = 0u * sizeof(F32);
-        desc._perVertexInputRate = false;
     }
     {
-        AttributeDescriptor& desc = vertexFormat[to_base(AttribLocation::COLOR)];
-        desc._bindingIndex = 0u;
+        AttributeDescriptor& desc = vertexFormat._attributes[to_base(AttribLocation::COLOR)];
+        desc._vertexBindingIndex = vertBindings._bufferBindIndex;
         desc._componentsPerElement = 4u;
         desc._dataType = GFXDataFormat::FLOAT_32;
         desc._normalized = false;
         desc._strideInBytes = 4u * sizeof(F32);
-        desc._perVertexInputRate = false;
     }
     terrainMaterial->setPipelineLayout(PrimitiveTopology::PATCH, vertexFormat);
 

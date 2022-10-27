@@ -35,32 +35,40 @@
 
 #include "vkDevice.h"
 #include "vkSwapChain.h"
-#include "vkDescriptors.h"
 #include "vkMemAllocatorInclude.h"
-
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
+
+#include "vkDescriptors.h"
+
+namespace vke
+{
+    FWD_DECLARE_MANAGED_CLASS( DescriptorAllocatorPool );
+};
 
 namespace Divide {
 
 class Pipeline;
 enum class ShaderResult : U8;
 
-class PipelineBuilder {
-public:
-
+struct PipelineBuilder {
     std::vector<VkPipelineShaderStageCreateInfo> _shaderStages;
     VkPipelineVertexInputStateCreateInfo _vertexInputInfo;
     VkPipelineInputAssemblyStateCreateInfo _inputAssembly;
     VkViewport _viewport;
     VkRect2D _scissor;
     VkPipelineRasterizationStateCreateInfo _rasterizer;
-    VkPipelineColorBlendAttachmentState _colorBlendAttachment;
+    eastl::fixed_vector<VkPipelineColorBlendAttachmentState, to_base( RTColourAttachmentSlot::COUNT ), false> _colorBlendAttachments;
     VkPipelineMultisampleStateCreateInfo _multisampling;
     VkPipelineLayout _pipelineLayout;
     VkPipelineDepthStencilStateCreateInfo _depthStencil;
     VkPipelineTessellationStateCreateInfo _tessellation;
-    VkPipeline build_pipeline(VkDevice device, VkRenderPass pass);
+
+    VkPipeline build_pipeline( VkDevice device, VkRenderPass pass, bool graphics);
+
+private:
+    VkPipeline build_compute_pipeline(VkDevice device, VkRenderPass pass);
+    VkPipeline build_graphics_pipeline(VkDevice device, VkRenderPass pass);
 };
 
 struct VkPipelineEntry {
@@ -102,22 +110,30 @@ class vkShaderProgram;
 struct VKStateTracker {
     VKDevice* _device{ nullptr };
     VKSwapChain* _swapChain{ nullptr };
-
     VKImmediateCmdContext* _cmdContext{ nullptr };
+    vkShaderProgram* _activeShaderProgram{ nullptr };
+
+    vke::DescriptorAllocatorHandle _perDrawDescriptorAllocator;
+    vke::DescriptorAllocatorHandle _perFrameDescriptorAllocator;
+
+    VKDynamicState _dynamicState{};
     VMAAllocatorInstance _allocatorInstance{};
-    std::array < std::pair<Str256, U32>, 32 > _debugScope;
-    U8 _debugScopeDepth = 0u;
-    PrimitiveTopology _activeTopology{ PrimitiveTopology::COUNT };
+    std::array<std::pair<Str256, U32>, 32> _debugScope;
+
+    VkPipelineRenderingCreateInfo _pipelineRenderingCreateInfo{};
+
     VkPipeline _activePipeline{ VK_NULL_HANDLE };
     VkPipelineLayout _activePipelineLayout{ VK_NULL_HANDLE };
-    vkShaderProgram* _activeShaderProgram{ nullptr };
-    U8 _activeMSAASamples{ 1u };
-    RenderTargetID _activeRenderTargetID{ INVALID_RENDER_TARGET_ID };
-    bool _alphaToCoverage{ false };
-    VKDynamicState _dynamicState{};
-    VkPipelineRenderingCreateInfo _pipelineRenderingCreateInfo{};
-    U64 _lastSyncedFrameNumber{ 0u };
     VkBuffer _drawIndirectBuffer{ VK_NULL_HANDLE };
+    U64 _lastSyncedFrameNumber{ 0u };
+
+    PrimitiveTopology _activeTopology{ PrimitiveTopology::COUNT };
+    RenderTargetID _activeRenderTargetID{ INVALID_RENDER_TARGET_ID };
+    U8 _activeMSAASamples{ 1u };
+    U8 _debugScopeDepth = 0u;
+    bool _alphaToCoverage{ false };
+    bool _isGraphicsPipeline{true};
+    bool _descriptorsUpdated{false};
 
     void setDefaultState();
 };
@@ -187,10 +203,9 @@ class VK_API final : public RenderAPIWrapper {
       bool setViewport(const Rect<I32>& newViewport) noexcept override;
       bool setScissor(const Rect<I32>& newScissor) noexcept;
       void onThreadCreated(const std::thread::id& threadID) noexcept override;
+      void initDescriptorSets() override;
 
 private:
-    void initPipelines();
-
     void recreateSwapChain(const DisplayWindow& window);
     void drawText(const TextElementBatch& batch);
     bool draw(const GenericDrawCommand& cmd, VkCommandBuffer& cmdBuffer) const;
@@ -198,11 +213,9 @@ private:
     //loads a shader module from a spir-v file. Returns false if it errors
     [[nodiscard]] bool loadShaderModule(const char* filePath, VkShaderModule* outShaderModule);
 
-    ShaderResult bindPipeline(const Pipeline& pipeline, VkCommandBuffer& cmdBuffer) const;
+    ShaderResult bindPipeline(const Pipeline& pipeline, VkCommandBuffer& cmdBuffer);
     void bindDynamicState(const RenderStateBlock& currentState, VkCommandBuffer& cmdBuffer) const;
-    [[nodiscard]] bool bindShaderResources(DescriptorSetUsage usage, const DescriptorSet& bindings) override;
-
-    void renderTestTriangle(VkCommandBuffer cmdBuffer);
+    [[nodiscard]] bool bindShaderResources(DescriptorSetUsage usage, const DescriptorSet& bindings, bool isDirty) override;
 
 public:
     static VKStateTracker& GetStateTracker() noexcept;
@@ -224,9 +237,14 @@ private:
     VKImmediateCmdContext_uptr _cmdContext{ nullptr };
     vkb::Instance _vkbInstance;
 
-    DescriptorAllocator_uptr _descriptorAllocator{ nullptr };
-    DescriptorLayoutCache_uptr _descriptorLayoutCache{ nullptr };
-
+    enum class DescriptorAllocatorUsage
+    {
+        PER_DRAW = 0u,
+        PER_FRAME,
+        COUNT
+    };
+    std::array<vke::DescriptorAllocatorPool_uptr, to_base(DescriptorAllocatorUsage::COUNT)> _descriptorAllocatorPools{};
+    DescriptorLayoutCache_uptr _descriptorLayoutCache{nullptr};
     VkDebugUtilsMessengerEXT _debugMessenger{ VK_NULL_HANDLE }; // Vulkan debug output handle
 
     VkSurfaceKHR _surface{ VK_NULL_HANDLE }; // Vulkan window surface
@@ -234,13 +252,11 @@ private:
     vector<VkCommandBuffer> _commandBuffers{};
     U8 _currentFrameIndex{ 0u };
 
-    VkPipelineEntry _trianglePipeline{};
-
     VkExtent2D _windowExtents{};
     bool _skipEndFrame{ false };
 
     VkRenderPassBeginInfo _defaultRenderPass;
-
+    std::array<VkDescriptorSetLayout, to_base( DescriptorSetUsage::COUNT )> _descriptorSetLayouts;
     std::array<VkDescriptorSet, to_base(DescriptorSetUsage::COUNT)> _descriptorSets;
 
 private:

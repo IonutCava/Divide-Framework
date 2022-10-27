@@ -7,6 +7,7 @@
 
 namespace Divide {
     size_t TextureWrapper::getHash() const noexcept {
+        _hash = 1337;
         if (_ceguiTex != nullptr) {
             Util::Hash_combine(_hash, _ceguiTex->getName().c_str());
         }
@@ -15,8 +16,16 @@ namespace Divide {
         }
         return _hash;
     }
+    
+    size_t ImageSubRange::getHash() const noexcept
+    {
+        _hash = 1337;
+        Util::Hash_combine( _hash, _mipLevels.offset, _mipLevels.count, _layerRange.offset, _layerRange.count);
+        return _hash;
+    }
 
     size_t ImageView::Descriptor::getHash() const noexcept {
+        _hash = 1337;
         Util::Hash_combine(_hash, _msaaSamples, _dataType, _baseFormat, _srgb, _normalized);
         return _hash;
     }
@@ -40,13 +49,10 @@ namespace Divide {
     size_t ImageView::getHash() const noexcept {
         _hash = 1337;
         Util::Hash_combine(_hash,
-                           _usage,
+                            _usage,
                            _srcTexture.getHash(),
                             targetType(),
-                           _mipLevels.min,
-                           _mipLevels.max,
-                           _layerRange.min,
-                           _layerRange.max);
+                            _subRange.getHash());
         Util::Hash_combine(_hash, _descriptor.getHash());
 
         return _hash;
