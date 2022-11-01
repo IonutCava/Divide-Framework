@@ -598,6 +598,8 @@ namespace Divide
         }
     }
 
+    #define MIN_NODE_COUNT( N, L) (N == 0u ? L : N)
+
     size_t RenderPassExecutor::buildDrawCommands( const RenderPassParams& params, const bool doPrePass, const bool doOITPass, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
@@ -763,23 +765,23 @@ namespace Divide
         cmd->_usage = DescriptorSetUsage::PER_BATCH;
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::NONE ); //Command buffer only
-            Set( binding._data, _cmdBuffer.get(), { startOffset, cmdCount});
+            Set( binding._data, _cmdBuffer.get(), { startOffset, Config::MAX_VISIBLE_NODES});
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 2u, ShaderStageVisibility::COMPUTE );
-            Set( binding._data, _cmdBuffer.get(), { startOffset, cmdCount } );
+            Set( binding._data, _cmdBuffer.get(), { startOffset, Config::MAX_VISIBLE_NODES } );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 3u, ShaderStageVisibility::ALL );
-            Set(binding._data, _transformBuffer._gpuBuffer.get(), { 0u, _transformBuffer._highWaterMark });
+            Set(binding._data, _transformBuffer._gpuBuffer.get(), { 0u, MIN_NODE_COUNT(_transformBuffer._highWaterMark, Config::MAX_VISIBLE_NODES )});
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 4u, ShaderStageVisibility::ALL );
-            Set( binding._data, _indirectionBuffer._gpuBuffer.get(), { 0u, _indirectionBuffer._highWaterMark });
+            Set( binding._data, _indirectionBuffer._gpuBuffer.get(), { 0u, MIN_NODE_COUNT(_indirectionBuffer._highWaterMark, Config::MAX_VISIBLE_NODES )});
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 5u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, _materialBuffer._gpuBuffer.get(), { 0u, _materialBuffer._highWaterMark });
+            Set( binding._data, _materialBuffer._gpuBuffer.get(), { 0u, MIN_NODE_COUNT(_materialBuffer._highWaterMark, Config::MAX_CONCURRENT_MATERIALS )});
         }
 
         return queueTotalSize;
@@ -1017,9 +1019,6 @@ namespace Divide
                 SetEnabled( renderPassCmd._descriptor._drawMask, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, false );
             }
 
-            //prePassPolicy._alphaToCoverage = true;
-
-
             GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut, renderPassCmd );
 
             const RenderTarget* screenTargetMS = _context.renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN_MS );
@@ -1067,8 +1066,6 @@ namespace Divide
         beginRenderPassOitCmd->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO,           GFXDevice::ScreenTargets::ACCUMULATION };
         beginRenderPassOitCmd->_clearDescriptor._clearColourDescriptors[1] = { { 1.f, 0.f, 0.f, 0.f }, GFXDevice::ScreenTargets::REVEALAGE };
         SetEnabled( beginRenderPassOitCmd->_descriptor._drawMask, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, false );
-
-        //beginRenderPassOitCmd->_descriptor._alphaToCoverage = true;
         {
             const RenderTarget* nonMSTarget = _context.renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN );
             const auto& colourAtt = nonMSTarget->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO );

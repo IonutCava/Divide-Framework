@@ -13,7 +13,8 @@ size_t GetHash(const PipelineDescriptor& descriptor) {
                              descriptor._shaderProgramHandle._generation,
                              descriptor._shaderProgramHandle._id,
                              descriptor._primitiveRestartEnabled,
-                             descriptor._primitiveTopology);
+                             descriptor._primitiveTopology,
+                             descriptor._alphaToCoverage);
 
     for (U8 i = 0u; i < to_base(ShaderType::COUNT); ++i) {
         Util::Hash_combine(hash, i);

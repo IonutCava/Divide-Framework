@@ -34,15 +34,18 @@ namespace Divide::ImageTools {
 namespace nvttHelpers {
     struct ErrorHandler : public nvtt::ErrorHandler {
         void error(nvtt::Error e) override {
-            switch (e) {
-                case nvtt::Error_Unknown: Console::errorfn("NVTT : unknown error"); break;
-                case nvtt::Error_InvalidInput: Console::errorfn("NVTT : invalid input"); break;
-                case nvtt::Error_UnsupportedFeature: Console::errorfn("NVTT : unsupported feature"); break;
-                case nvtt::Error_CudaError: Console::errorfn("NVTT : cuda error"); break;
-                case nvtt::Error_FileOpen: Console::errorfn("NVTT : file open error"); break;
-                case nvtt::Error_FileWrite: Console::errorfn("NVTT : file write error"); break;
-                default: break;
-            }
+            static const char* nvttErrors[] = {
+                "UNKNOWN",
+                "INVALID_INPUT",
+                "UNSUPPORTED_FEATURE",
+                "CUDA_ERROR",
+                "FILE_OPEN",
+                "FILE_WRITE",
+                "UNSUPPORTED_OUTPUT_FORMAT",
+            };
+            static_assert(std::size(nvttErrors) == static_cast<size_t>(nvtt::Error::Error_Count));
+
+            Console::errorfn(Locale::Get(_ID("ERROR_IMAGE_TOOLS_NVT_ERROR")), nvttErrors[to_size(e)]);
         }
     };
     struct OutputHandler : public nvtt::OutputHandler {
@@ -101,7 +104,7 @@ namespace nvttHelpers {
                 pixelFormat = GFXImageFormat::BC7;
                 break;
             default:
-                Console::errorfn("NVTT: Invalid or not supported format");
+                Console::errorfn(Locale::Get(_ID("ERROR_IMAGE_TOOLS_NVT_FORMAT")));
                 return false;
             }
 

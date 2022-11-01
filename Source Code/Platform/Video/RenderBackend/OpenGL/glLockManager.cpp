@@ -5,6 +5,8 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 
+#include "Utility/Headers/Localization.h"
+
 namespace Divide
 {
 
@@ -75,7 +77,7 @@ namespace Divide
             {
                 if ( waitRet != GL_TIMEOUT_EXPIRED ) [[unlikely]]
                 {
-                    Console::errorfn( "glLockManager::wait error: Lock timeout" );
+                    Console::errorfn(Locale::Get(_ID("ERROR_GL_LOCK_WAIT_TIMEOUT")));
                 }
 
                 break;
@@ -105,7 +107,7 @@ namespace Divide
 
             if ( retryCount > g_MaxLockWaitRetries - 1 )
             {
-                Console::errorfn( "glLockManager: Wait [%d - %d] %d retries", testRange._startOffset, testRange._length, retryCount );
+                Console::errorfn(Locale::Get(_ID("ERROR_GL_LOCK_WAIT_RETRY")), testRange._startOffset, testRange._length, retryCount);
             }
             return true;
         }

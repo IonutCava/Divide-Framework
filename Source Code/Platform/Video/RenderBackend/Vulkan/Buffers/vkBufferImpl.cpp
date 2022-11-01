@@ -3,6 +3,7 @@
 #include "Headers/vkBufferImpl.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 #include "Core/Headers/StringHelper.h"
+#include "Utility/Headers/Localization.h"
 
 namespace Divide
 {

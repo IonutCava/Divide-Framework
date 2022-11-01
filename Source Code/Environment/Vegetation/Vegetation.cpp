@@ -566,7 +566,7 @@ namespace Divide
             }
             else
             {
-                Console::errorfn( "Vegetation::uploadGrassData: insufficient buffer space for grass data" );
+                Console::errorfn( Locale::Get( _ID( "ERROR_GFX_BUFFER_FULL" ) ) );
             }
             _tempGrassData.clear();
         }
@@ -579,7 +579,7 @@ namespace Divide
             }
             else
             {
-                Console::errorfn( "Vegetation::uploadGrassData: insufficient buffer space for tree data" );
+                Console::errorfn( Locale::Get( _ID( "ERROR_GFX_BUFFER_FULL" ) ) );
             }
             _tempTreeData.clear();
         }
@@ -592,7 +592,7 @@ namespace Divide
             sgn->get<RenderingComponent>()->primitiveRestartRequired( true );
             sgn->get<RenderingComponent>()->instantiateMaterial( s_vegetationMaterial );
             sgn->get<RenderingComponent>()->occlusionCull( false ); //< We handle our own culling
-            sgn->get<BoundsComponent>()->collisionsEnabled(false);//< Grass collision detection should be handled in shaders (for now)
+            sgn->get<BoundsComponent>()->collisionsEnabled( false );//< Grass collision detection should be handled in shaders (for now)
 
             WAIT_FOR_CONDITION( s_cullShaderGrass->getState() == ResourceState::RES_LOADED &&
                                 s_cullShaderTrees->getState() == ResourceState::RES_LOADED );
@@ -716,9 +716,9 @@ namespace Divide
                                     bool refreshData )
     {
         pkg.pushConstantsCmd()._constants.set( _ID( "dvd_terrainChunkOffset" ), GFX::PushConstantType::UINT, _terrainChunk.ID() );
-        
-        GFX::CommandBuffer& bufferInOut = *GetCommandBuffer(pkg);
-        bufferInOut.clear(false);
+
+        GFX::CommandBuffer& bufferInOut = *GetCommandBuffer( pkg );
+        bufferInOut.clear( false );
 
         if ( s_grassData || s_treeData )
         {
@@ -732,7 +732,7 @@ namespace Divide
             if ( s_grassData )
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 6u, ShaderStageVisibility::ALL );
-                Set( binding._data, s_grassData.get(), {0u, s_grassData->getPrimitiveCount()} );
+                Set( binding._data, s_grassData.get(), { 0u, s_grassData->getPrimitiveCount() } );
             }
         }
 
@@ -778,7 +778,7 @@ namespace Divide
                     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
                     cmd->_usage = DescriptorSetUsage::PER_DRAW;
                     DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::COMPUTE );
-                    Set(binding._data, hizTexture->getView( ImageUsage::SHADER_READ ), hizAttachment->descriptor()._samplerHash );
+                    Set( binding._data, hizTexture->getView( ImageUsage::SHADER_READ ), hizAttachment->descriptor()._samplerHash );
                 }
 
                 GFX::DispatchComputeCommand computeCmd = {};

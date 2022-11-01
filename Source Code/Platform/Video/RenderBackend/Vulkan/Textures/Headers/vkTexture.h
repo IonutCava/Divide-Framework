@@ -55,15 +55,17 @@ namespace Divide
 
         struct CachedImageView
         {
-            VkImageView _view;
-            struct Descriptor
+            struct Descriptor final : Hashable
             {
                 ImageSubRange _subRange{};
                 VkFormat _format{ VK_FORMAT_MAX_ENUM };
                 TextureType _type{ TextureType::COUNT };
                 ImageUsage _usage{ ImageUsage::COUNT };
-                VkImageAspectFlagBits _aspectFlags{ VK_IMAGE_ASPECT_FLAG_BITS_MAX_ENUM };
+
+                [[nodiscard]] size_t getHash() const noexcept override;
+
             } _descriptor;
+            VkImageView _view{VK_NULL_HANDLE};
         };
 
         vkTexture( GFXDevice& context,
@@ -74,7 +76,7 @@ namespace Divide
                    const TextureDescriptor& texDescriptor,
                    ResourceCache& parentCache );
 
-        ~vkTexture();
+        virtual ~vkTexture();
 
         bool unload() override;
 
@@ -85,8 +87,8 @@ namespace Divide
         TextureReadbackData readData( U16 mipLevel, GFXDataFormat desiredFormat ) const noexcept override;
 
         VkImageView getImageView( const CachedImageView::Descriptor& descriptor );
-
-        [[nodiscard]] bool transitionLayout( ImageUsage newLayout, ImageUsage prevUsage, const ImageSubRange& subRange, VkImageMemoryBarrier2& memBarrierOut );
+        void generateMipmaps( VkCommandBuffer cmdBuffer, U16 baseLevel, U16 baseLayer, U16 layerCount );
+        [[nodiscard]] bool transitionLayout( ImageSubRange subRange, ImageUsage newLayout, VkImageMemoryBarrier2& memBarrierOut );
 
         PROPERTY_R( AllocatedImage_uptr, image, nullptr );
         PROPERTY_R_IW( VkImageType, vkType, VK_IMAGE_TYPE_MAX_ENUM );
@@ -98,11 +100,12 @@ namespace Divide
         void loadDataInternal( const ImageTools::ImageData& imageData ) override;
         void prepareTextureData( U16 width, U16 height, U16 depth, bool emptyAllocation ) override;
         void submitTextureData() override;
-        void generateTextureMipmap( VkCommandBuffer cmd, U8 baseLevel );
         void clearDataInternal( const UColour4& clearColour, U8 level, bool clearRect, const vec4<I32>& rectToClear, vec2<I32> depthRange ) const;
+        void clearImageViewCache();
 
         private:
-        vector<CachedImageView> _imageViewCache;
+        hashMap<size_t, CachedImageView> _imageViewCache;
+
         VkDeviceSize _stagingBufferSize{ 0u };
     };
 

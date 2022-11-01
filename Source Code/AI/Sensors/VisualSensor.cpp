@@ -3,6 +3,7 @@
 #include "Headers/VisualSensor.h"
 
 #include "AI/Headers/AIEntity.h"
+#include "Utility/Headers/Localization.h"
 #include "Graphs/Headers/SceneGraphNode.h"
 #include "Dynamics/Entities/Units/Headers/NPC.h"
 #include "ECS/Components/Headers/TransformComponent.h"
@@ -33,7 +34,7 @@ void VisualSensor::followSceneGraphNode(const U32 containerID, SceneGraphNode* n
     if (container != std::end(_nodeContainerMap)) {
         const auto result = insert(container->second, node->getGUID(), node);
         if (!result.second) {
-            Console::errorfn("VisualSensor: Added the same node to follow twice!");
+            Console::errorfn(Locale::Get(_ID("AI_DUPLICATE_SENSOR_INPUT")));
         }
     } else {
         insert(_nodeContainerMap[containerID],

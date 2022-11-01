@@ -170,15 +170,13 @@ void Renderer::prepareLighting(const RenderStage stage,
             const auto& pool = context().kernel().sceneManager()->getActiveScene().lightPool();
 
             const size_t stageIndex = to_size( stage );
-            const U32 lightCount = pool->sortedLightCount(stage);
-
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 8u, ShaderStageVisibility::COMPUTE_AND_DRAW );
                 Set(binding._data, pool->sceneBuffer(), {stageIndex, 1u});
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 9u, ShaderStageVisibility::COMPUTE_AND_DRAW );
-                Set(binding._data, pool->lightBuffer(), {stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, lightCount} );
+                Set(binding._data, pool->lightBuffer(), {stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME } );
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 10u, ShaderStageVisibility::COMPUTE_AND_DRAW );

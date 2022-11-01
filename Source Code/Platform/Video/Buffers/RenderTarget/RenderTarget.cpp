@@ -35,6 +35,7 @@ RenderTarget::RenderTarget(GFXDevice& context, const RenderTargetDescriptor& des
 bool RenderTarget::create()
 {
     _attachmentsUsed.fill(false);
+    _attachmentsPreviousUsage.fill(ImageUsage::UNDEFINED);
 
     // Avoid invalid dimensions
     assert(getWidth() != 0 && getHeight() != 0 && "glFramebuffer error: Invalid frame buffer dimensions!");

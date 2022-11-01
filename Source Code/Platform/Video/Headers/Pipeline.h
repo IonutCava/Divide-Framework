@@ -47,6 +47,7 @@ struct PipelineDescriptor {
     AttributeMap _vertexFormat;
     U8 _multiSampleCount{ 0u };
     bool _primitiveRestartEnabled{ false };
+    bool _alphaToCoverage{false};
 }; //struct PipelineDescriptor
 
 size_t GetHash(const PipelineDescriptor& descriptor);

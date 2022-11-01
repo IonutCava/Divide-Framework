@@ -235,7 +235,7 @@ void Kernel::onLoop() {
             const ErrorCode err = _platformContext.app().errorCode();
 
             if (err != ErrorCode::NO_ERR) {
-                Console::errorfn("Error detected: [ %s ]", getErrorCodeName(err));
+                Console::errorfn(Locale::Get(_ID("GENERIC_ERROR")), getErrorCodeName(err));
                 keepAlive(false);
             }
         }

@@ -55,7 +55,6 @@ void glTexture::postLoad() {
 
     Texture::postLoad();
     _defaultView._usage = ImageUsage::SHADER_READ;
-    _imageUsage[ImageSubRange{}.getHash()] = _defaultView._usage;
 }
 
 void glTexture::reserveStorage() {

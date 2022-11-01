@@ -47,6 +47,14 @@ enum class FileError : U8 {
     FILE_COPY_ERROR,
     COUNT
 };
+
+namespace Names
+{
+    static const char* fileError[] = {
+            "NONE", "FILE_NOT_FOUND", "FILE_EMPTY", "FILE_READ_ERROR", "FILE_OPEN_ERROR", "FILE_WRITE_ERROR", "FILE_DELETE_ERROR", "FILE_OVERWRITE_ERROR", "FILE_COPY_ERROR", "UNKNOWN"
+    };
+}
+
 struct SysInfo;
 class PlatformContext;
 struct Paths {

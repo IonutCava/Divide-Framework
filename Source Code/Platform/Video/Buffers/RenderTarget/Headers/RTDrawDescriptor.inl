@@ -48,30 +48,14 @@ namespace Divide
                lhs._disabledColours != rhs._disabledColours;
     }
 
-    inline bool operator==( const RTLayoutTarget& lhs, const RTLayoutTarget& rhs )
-    {
-        return lhs._depthUsage == rhs._depthUsage &&
-               lhs._colourUsage == rhs._colourUsage;
-    }
-
-    inline bool operator!=( const RTLayoutTarget& lhs, const RTLayoutTarget& rhs )
-    {
-        return lhs._depthUsage != rhs._depthUsage ||
-               lhs._colourUsage != rhs._colourUsage;
-    }
-
     inline bool operator==( const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs )
     {
-        return lhs._drawMask == rhs._drawMask &&
-               lhs._layoutTargets == rhs._layoutTargets &&
-               lhs._setViewport == rhs._setViewport;
+        return lhs._drawMask == rhs._drawMask;
     }
 
     inline bool operator!=( const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs )
     {
-        return lhs._drawMask != rhs._drawMask ||
-               lhs._layoutTargets != rhs._layoutTargets ||
-               lhs._setViewport != rhs._setViewport;
+        return lhs._drawMask != rhs._drawMask;
     }
 
     inline bool IsValid( const BlitIndex& entry ) noexcept

@@ -364,7 +364,7 @@ string ToString(const MemoryBarrierCommand& cmd, U16 indent) {
         for (U16 j = 0; j < indent; ++j) {
             ret.append("    ");
         }
-        const ImageUsage oldLayout = it._prevLayoutOverride != ImageUsage::COUNT ? it._prevLayoutOverride : it._targetView._srcTexture._internalTexture ? it._targetView._srcTexture._internalTexture->imageUsage(it._targetView._subRange.getHash()) : ImageUsage::UNDEFINED;
+        const ImageUsage oldLayout = it._targetView._srcTexture._internalTexture ? it._targetView._srcTexture._internalTexture->imageUsage(it._targetView._subRange) : ImageUsage::UNDEFINED;
         ret.append(Util::StringFormat("Texture Layout Change: [ %d [ %s -> %s ]]", it._targetView._srcTexture._internalTexture ? it._targetView._srcTexture._internalTexture->getGUID() : -1, Divide::Names::imageUsage[to_base(oldLayout)], Divide::Names::imageUsage[to_base(it._layout)]));
     }
     return ret;

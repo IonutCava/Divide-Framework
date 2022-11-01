@@ -121,7 +121,9 @@ private:
 
     [[nodiscard]] bool makeTextureViewResident(DescriptorSetUsage set, U8 bindingSlot, const ImageView& imageView, size_t samplerHash) const;
 
-    bool setViewport(const Rect<I32>& viewport) override;
+    bool setViewportInternal(const Rect<I32>& viewport) override;
+    bool setScissorInternal( const Rect<I32>& scissor ) override;
+
     ShaderResult bindPipeline(const Pipeline& pipeline);
 
     void flushTextureBindQueue();

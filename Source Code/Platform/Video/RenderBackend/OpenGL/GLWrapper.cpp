@@ -1216,10 +1216,6 @@ namespace Divide
 
                 pushConstantsNeedLock = !pushConstantsMemCommand._bufferLocks.empty();
             } break;
-            case GFX::CommandType::SET_SCISSOR:
-            {
-                s_stateTracker.setScissor( cmd->As<GFX::SetScissorCommand>()->_rect );
-            }break;
             case GFX::CommandType::BEGIN_DEBUG_SCOPE:
             {
                 const auto& crtCmd = cmd->As<GFX::BeginDebugScopeCommand>();
@@ -1421,9 +1417,11 @@ namespace Divide
                 {
                     Attorney::glGenericVertexDataGL_API::insertFencesIfNeeded( static_cast<glGenericVertexData*>(it) );
                 }
+
+                ImageUsage prevLayout = ImageUsage::UNDEFINED;
                 for ( auto it : crtCmd->_textureLayoutChanges )
                 {
-                    if ( it._targetView._srcTexture._internalTexture->imageUsage( {}, it._layout, it._prevLayoutOverride ) )
+                    if ( it._targetView._srcTexture._internalTexture->imageUsage(it._layout, prevLayout ) )
                     {
                         NOP();
                     }
@@ -1756,20 +1754,28 @@ namespace Divide
         return true;
     }
 
-    bool GL_API::setViewport( const Rect<I32>& viewport )
+    bool GL_API::setViewportInternal( const Rect<I32>& viewport )
     {
         return s_stateTracker.setViewport( viewport );
+    }
+
+    bool GL_API::setScissorInternal( const Rect<I32>& scissor )
+    {
+        return s_stateTracker.setScissor( scissor );
     }
 
     ShaderResult GL_API::bindPipeline( const Pipeline& pipeline )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         if ( s_stateTracker._activePipeline && *s_stateTracker._activePipeline == pipeline )
         {
             return ShaderResult::OK;
         }
 
         s_stateTracker._activePipeline = &pipeline;
+
+        s_stateTracker.setAlphaToCoverage(pipeline.descriptor()._alphaToCoverage);
 
         const PipelineDescriptor& pipelineDescriptor = pipeline.descriptor();
         {

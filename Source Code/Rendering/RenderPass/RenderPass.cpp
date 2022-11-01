@@ -116,7 +116,6 @@ namespace Divide
                 SetEnabled( prePassPolicy._drawMask, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, true );
                 SetEnabled( prePassPolicy._drawMask, RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::VELOCITY, true );
                 SetEnabled( prePassPolicy._drawMask, RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS, true );
-                //prePassPolicy._alphaToCoverage = true;
 
                 RTDrawDescriptor mainPassPolicy = {};
                 SetEnabled( mainPassPolicy._drawMask, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, false );

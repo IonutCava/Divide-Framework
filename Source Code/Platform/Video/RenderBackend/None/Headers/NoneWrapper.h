@@ -54,7 +54,8 @@ class NONE_API final : public RenderAPIWrapper {
       void flushCommand(GFX::CommandBase* cmd) noexcept override;
       void postFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) noexcept override;
       [[nodiscard]] vec2<U16> getDrawableSize(const DisplayWindow& window) const noexcept override;
-      bool setViewport(const Rect<I32>& newViewport) noexcept override;
+      bool setViewportInternal(const Rect<I32>& newViewport) noexcept override;
+      bool setScissorInternal(const Rect<I32>& newScissor) noexcept override;
       void onThreadCreated(const std::thread::id& threadID) noexcept override;
       [[nodiscard]] bool bindShaderResources(DescriptorSetUsage usage, const DescriptorSet& bindings, bool isDirty) override;
       void initDescriptorSets() override;

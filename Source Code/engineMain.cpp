@@ -5,6 +5,7 @@
 #include "engineMain.h"
 
 #include "Platform/File/Headers/FileManagement.h"
+#include "Utility/Headers/Localization.h"
 
 #include <iostream>
 
@@ -31,7 +32,7 @@ bool Engine::init(const int argc, char** argv) {
     ErrorCode err = _app->start("main.xml", argc, argv);
     if (err != ErrorCode::NO_ERR) {
         // If any error occurred, close the application as details should already be logged
-        Console::errorfn("System failed to initialize properly. Error [ %s ] ", getErrorCodeName(err));
+        Console::errorfn(Locale::Get(_ID("GENERIC_ERROR")), getErrorCodeName(err));
     }
 
     _errorCode = to_I32(err);

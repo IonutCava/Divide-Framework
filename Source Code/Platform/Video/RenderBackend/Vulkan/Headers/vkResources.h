@@ -106,15 +106,15 @@ inline std::string VKErrorString(VkResult errorCode)
     }
 }
 #ifndef VK_CHECK
-#define VK_CHECK(x)                                                                       \
-    do                                                                                    \
-    {                                                                                     \
-        VkResult err = x;                                                                 \
-        if (err)                                                                          \
-        {                                                                                 \
-            Console::errorfn("Detected Vulkan error: %s\n", VKErrorString(err).c_str());  \
-            DIVIDE_UNEXPECTED_CALL();                                                     \
-        }                                                                                 \
+#define VK_CHECK(x)                                                                            \
+    do                                                                                         \
+    {                                                                                          \
+        VkResult err = x;                                                                      \
+        if (err)                                                                               \
+        {                                                                                      \
+            Console::errorfn(Locale::Get(_ID("ERROR_GENERIC_VK")), VKErrorString(err).c_str());\
+            DIVIDE_UNEXPECTED_CALL();                                                          \
+        }                                                                                      \
     } while (0)
 #endif //VK_CHECK
 

@@ -76,13 +76,19 @@ namespace
         }
         return VK_FALSE; // Applications must return false here
     }
-
 }
 
 namespace Divide
 {
     namespace
     {
+        const ResourcePath PipelineCacheFileName{"pipeline_cache.dvd"};
+
+        FORCE_INLINE ResourcePath PipelineCacheLocation()
+        {
+            return Paths::g_cacheLocation + Paths::Shaders::g_cacheLocation + Paths::g_buildTypeLocation + Paths::Shaders::g_cacheLocationVK;
+        }
+
         [[nodiscard]] VkShaderStageFlags GetFlagsForStageVisibility( const BaseType<ShaderStageVisibility> mask ) noexcept
         {
             VkShaderStageFlags ret = 0u;
@@ -150,17 +156,17 @@ namespace Divide
     VK_API::SamplerObjectMap VK_API::s_samplerMap{};
     VK_API::DepthFormatInformation VK_API::s_depthFormatInformation;
 
-    VkPipeline PipelineBuilder::build_pipeline( VkDevice device, VkRenderPass pass, const bool graphics )
+    VkPipeline PipelineBuilder::build_pipeline( VkDevice device, VkPipelineCache pipelineCache, const bool graphics )
     {
         if ( graphics )
         {
-            return build_graphics_pipeline( device, pass );
+            return build_graphics_pipeline( device, pipelineCache );
         }
 
-        return build_compute_pipeline( device, pass );
+        return build_compute_pipeline( device, pipelineCache );
     }
 
-    VkPipeline PipelineBuilder::build_compute_pipeline( VkDevice device, VkRenderPass pass )
+    VkPipeline PipelineBuilder::build_compute_pipeline( VkDevice device, VkPipelineCache pipelineCache )
     {
         VkComputePipelineCreateInfo pipelineInfo = vk::computePipelineCreateInfo( _pipelineLayout );
         pipelineInfo.stage = _shaderStages.front();
@@ -168,16 +174,16 @@ namespace Divide
 
         //it's easy to error out on create graphics pipeline, so we handle it a bit better than the common VK_CHECK case
         VkPipeline newPipeline;
-        if ( vkCreateComputePipelines( device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &newPipeline ) != VK_SUCCESS )
+        if ( vkCreateComputePipelines( device, pipelineCache, 1, &pipelineInfo, nullptr, &newPipeline ) != VK_SUCCESS )
         {
-            Console::errorfn( "Failed to create compute pipeline!" );
+            Console::errorfn(Locale::Get(_ID("ERROR_VK_PIPELINE_COMPUTE_FAILED")));
             return VK_NULL_HANDLE; // failed to create graphics pipeline
         }
 
         return newPipeline;
     }
 
-    VkPipeline PipelineBuilder::build_graphics_pipeline( VkDevice device, VkRenderPass pass )
+    VkPipeline PipelineBuilder::build_graphics_pipeline( VkDevice device, VkPipelineCache pipelineCache )
     {
         //make viewport state from our stored viewport and scissor.
         //at the moment we won't support multiple viewports or scissors
@@ -215,7 +221,7 @@ namespace Divide
 
         //build the actual pipeline
         //we now use all of the info structs we have been writing into into this one to create the pipeline
-        VkGraphicsPipelineCreateInfo pipelineInfo = vk::pipelineCreateInfo( _pipelineLayout, pass );
+        VkGraphicsPipelineCreateInfo pipelineInfo = vk::pipelineCreateInfo( _pipelineLayout, VK_NULL_HANDLE );
         pipelineInfo.pDynamicState = &dynamicState;
         pipelineInfo.stageCount = to_U32( _shaderStages.size() );
         pipelineInfo.pStages = _shaderStages.data();
@@ -230,15 +236,18 @@ namespace Divide
         pipelineInfo.subpass = 0;
         if ( VK_API::GetStateTracker()._pipelineRenderingCreateInfo.sType == VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO )
         {
-            pipelineInfo.renderPass = nullptr;
             pipelineInfo.pNext = &VK_API::GetStateTracker()._pipelineRenderingCreateInfo;
+        }
+        else
+        {
+            pipelineInfo.renderPass = VK_API::GetStateTracker()._swapChain->getRenderPass();
         }
 
         //it's easy to error out on create graphics pipeline, so we handle it a bit better than the common VK_CHECK case
         VkPipeline newPipeline;
-        if ( vkCreateGraphicsPipelines( device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &newPipeline ) != VK_SUCCESS )
+        if ( vkCreateGraphicsPipelines( device, pipelineCache, 1, &pipelineInfo, nullptr, &newPipeline ) != VK_SUCCESS )
         {
-            Console::errorfn( "Failed to create graphics pipeline!" );
+            Console::errorfn( Locale::Get( _ID( "ERROR_VK_PIPELINE_GRAPHICS_FAILED" ) ) );
             return VK_NULL_HANDLE; // failed to create graphics pipeline
         }
 
@@ -368,7 +377,7 @@ namespace Divide
     {
     }
 
-    VkCommandBuffer VK_API::getCurrentCommandBuffer() const
+    VkCommandBuffer VK_API::getCurrentCommandBuffer() const noexcept
     {
         return _commandBuffers[_currentFrameIndex];
     }
@@ -380,11 +389,7 @@ namespace Divide
 
     void VKStateTracker::setDefaultState()
     {
-        _dynamicState = {};
-        _activeShaderProgram = nullptr;
-        _activePipeline = VK_NULL_HANDLE;
-        _activePipelineLayout = VK_NULL_HANDLE;
-        _activeTopology = PrimitiveTopology::COUNT;
+        _pipeline = {};
         _activeMSAASamples = 0u;
         _activeRenderTargetID = INVALID_RENDER_TARGET_ID;
         _pipelineRenderingCreateInfo = {};
@@ -411,7 +416,7 @@ namespace Divide
         {
             if ( result != VK_ERROR_OUT_OF_DATE_KHR && result != VK_SUBOPTIMAL_KHR )
             {
-                Console::errorfn( "Detected Vulkan error: %s\n", VKErrorString( result ).c_str() );
+                Console::errorfn(Locale::Get(_ID("ERROR_GENERIC_VK")), VKErrorString(result).c_str());
                 DIVIDE_UNEXPECTED_CALL();
             }
             recreateSwapChain( window );
@@ -432,7 +437,8 @@ namespace Divide
         VK_CHECK( vkBeginCommandBuffer( getCurrentCommandBuffer(), &cmdBeginInfo ) );
 
         _context.setViewport( { 0, 0, windowDimensions.width, windowDimensions.height } );
-        setScissor( { 0, 0, windowDimensions.width, windowDimensions.height } );
+        _context.setScissor( { 0, 0, windowDimensions.width, windowDimensions.height } );
+
         vkLockManager::CleanExpiredSyncObjects( VK_API::GetStateTracker()._lastSyncedFrameNumber );
 
         return true;
@@ -459,7 +465,7 @@ namespace Divide
             }
             else
             {
-                Console::errorfn( "Detected Vulkan error: %s\n", VKErrorString( result ).c_str() );
+                Console::errorfn(Locale::Get(_ID("ERROR_GENERIC_VK")), VKErrorString(result).c_str());
                 DIVIDE_UNEXPECTED_CALL();
             }
         }
@@ -731,6 +737,22 @@ namespace Divide
         vmaCreateAllocator( &allocatorInfo, &_allocator );
         GetStateTracker()._allocatorInstance._allocator = &_allocator;
 
+        VkPipelineCacheCreateInfo pipelineCacheCreateInfo{};
+        pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+
+        vector<Byte> pipeline_data;
+        const FileError errCache = readFile( PipelineCacheLocation(), PipelineCacheFileName, pipeline_data, FileType::BINARY );
+        if ( errCache == FileError::NONE )
+        {
+            pipelineCacheCreateInfo.initialDataSize = pipeline_data.size();
+            pipelineCacheCreateInfo.pInitialData = pipeline_data.data();
+        }
+        else
+        {
+            Console::errorfn( Locale::Get( _ID( "ERROR_VK_PIPELINE_CACHE_LOAD" ) ), Names::fileError[to_base( errCache )] );
+        }
+        VK_CHECK(vkCreatePipelineCache( _device->getVKDevice(), &pipelineCacheCreateInfo, nullptr, &_pipelineCache ));
+
         _commandBuffers.resize( MAX_FRAMES_IN_FLIGHT );
 
         //allocate the default command buffer that we will use for rendering
@@ -767,6 +789,18 @@ namespace Divide
         _defaultRenderPass.renderArea.offset.x = 0;
         _defaultRenderPass.renderArea.offset.y = 0;
         _defaultRenderPass.clearValueCount = 1;
+
+        destroyPipelineCache();
+    }
+
+    void VK_API::destroyPipelineCache()
+    {
+        for (const auto& it : _compiledPipelines )
+        {
+            vkDestroyPipelineLayout( _device->getVKDevice(), it.second._vkPipelineLayout, nullptr );
+            vkDestroyPipeline( _device->getVKDevice(), it.second._vkPipeline, nullptr );
+        }
+        _compiledPipelines.clear();
     }
 
     void VK_API::closeRenderingAPI()
@@ -799,7 +833,22 @@ namespace Divide
                 {
                     pool.reset();
                 }
+                destroyPipelineCache();
             }
+
+            size_t size{};
+            VK_CHECK( vkGetPipelineCacheData( _device->getVKDevice(), _pipelineCache, &size, nullptr ) );
+            /* Get data of pipeline cache */
+            vector<Byte> data( size );
+            VK_CHECK( vkGetPipelineCacheData( _device->getVKDevice(), _pipelineCache, &size, data.data() ) );
+            /* Write pipeline cache data to a file in binary format */
+            const FileError err = writeFile( PipelineCacheLocation(), PipelineCacheFileName, data.data(), size, FileType::BINARY);
+            if ( err != FileError::NONE )
+            {
+                Console::errorfn(Locale::Get(_ID("ERROR_VK_PIPELINE_CACHE_SAVE")), Names::fileError[to_base(err)]);
+            }
+            vkDestroyPipelineCache( _device->getVKDevice(), _pipelineCache, nullptr );
+
             if ( _allocator != VK_NULL_HANDLE )
             {
                 vmaDestroyAllocator( _allocator );
@@ -819,47 +868,6 @@ namespace Divide
         }
         vkb::destroy_instance( _vkbInstance );
         _vkbInstance = {};
-    }
-
-    bool VK_API::loadShaderModule( const char* filePath, VkShaderModule* outShaderModule )
-    {
-        //open the file. With cursor at the end
-        std::ifstream file( filePath, std::ios::ate | std::ios::binary );
-
-        if ( !file.is_open() )
-        {
-            return false;
-        }
-
-        //find what the size of the file is by looking up the location of the cursor
-        //because the cursor is at the end, it gives the size directly in bytes
-        size_t fileSize = (size_t)file.tellg();
-
-        //spirv expects the buffer to be on uint32, so make sure to reserve an int vector big enough for the entire file
-        std::vector<uint32_t> buffer( fileSize / sizeof( uint32_t ) );
-
-        //put file cursor at beginning
-        file.seekg( 0 );
-
-        //load the entire file into the buffer
-        file.read( (char*)buffer.data(), fileSize );
-
-        //now that the file is loaded into the buffer, we can close it
-        file.close();
-
-
-        //create a new shader module, using the buffer we loaded
-        //codeSize has to be in bytes, so multiply the ints in the buffer by size of int to know the real size of the buffer
-        const VkShaderModuleCreateInfo createInfo = vk::shaderModuleCreateInfo( buffer.size() * sizeof( uint32_t ), buffer.data() );
-
-        //check that the creation goes well.
-        VkShaderModule shaderModule;
-        if ( vkCreateShaderModule( _device->getVKDevice(), &createInfo, nullptr, &shaderModule ) != VK_SUCCESS )
-        {
-            return false;
-        }
-        *outShaderModule = shaderModule;
-        return true;
     }
 
     void VK_API::drawText( const TextElementBatch& batch )
@@ -900,14 +908,14 @@ namespace Divide
         }
     }
 
-    bool VK_API::draw( const GenericDrawCommand& cmd, VkCommandBuffer& cmdBuffer ) const
+    bool VK_API::draw( const GenericDrawCommand& cmd, VkCommandBuffer cmdBuffer ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         if ( cmd._sourceBuffer._id == 0 )
         {
             U32 indexCount = 0u;
-            switch ( VK_API::GetStateTracker()._activeTopology )
+            switch ( VK_API::GetStateTracker()._pipeline._topology )
             {
                 case PrimitiveTopology::COMPUTE:
                 case PrimitiveTopology::COUNT: DIVIDE_UNEXPECTED_CALL();         break;
@@ -917,7 +925,6 @@ namespace Divide
             }
 
             vkCmdDraw( cmdBuffer, indexCount, cmd._cmd.primCount, cmd._cmd.firstIndex, 0u );
-
         }
         else
         {
@@ -975,8 +982,8 @@ namespace Divide
         U8 bufferInfoStructIndex = 0u;
         U8 imageInfoStructIndex = 0u;
 
-        DIVIDE_ASSERT( GetStateTracker()._activeShaderProgram != nullptr );
-        auto& drawDescriptor = GetStateTracker()._activeShaderProgram->perDrawDescriptorSetLayout();
+        DIVIDE_ASSERT( GetStateTracker()._pipeline._program != nullptr );
+        auto& drawDescriptor = GetStateTracker()._pipeline._program->perDrawDescriptorSetLayout();
         const bool targetDescriptorEmpty = IsEmpty( drawDescriptor );
 
         VkImageMemoryBarrier2 memBarrier{};
@@ -1008,14 +1015,12 @@ namespace Divide
                 case DescriptorSetBindingType::UNIFORM_BUFFER:
                 case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
                 {
-                    if ( !Has<ShaderBufferEntry>( srcBinding._data ) ||
-                         As<ShaderBufferEntry>( srcBinding._data )._buffer == nullptr ||
-                         As<ShaderBufferEntry>( srcBinding._data )._range._length == 0u )
-                    {
-                        continue;
-                    }
+                    DIVIDE_ASSERT(Has<ShaderBufferEntry>( srcBinding._data ));
+
                     const ShaderBufferEntry& bufferEntry = As<ShaderBufferEntry>( srcBinding._data );
-                    DIVIDE_ASSERT( bufferEntry._buffer != nullptr );
+
+                    DIVIDE_ASSERT(bufferEntry._buffer != nullptr);
+
                     const ShaderBuffer::Usage bufferUsage = bufferEntry._buffer->getUsage();
                     VkBuffer buffer = static_cast<vkShaderBuffer*>(bufferEntry._buffer)->bufferImpl()->_buffer;
 
@@ -1027,6 +1032,7 @@ namespace Divide
                     }
                     else
                     {
+                        DIVIDE_ASSERT( bufferEntry._range._length > 0u );
                         VkDescriptorBufferInfo& bufferInfo = BufferInfoStructs[bufferInfoStructIndex++];
                         bufferInfo.buffer = buffer;
                         bufferInfo.offset = bufferEntry._range._startOffset * bufferEntry._buffer->getPrimitiveSize();
@@ -1049,6 +1055,7 @@ namespace Divide
                     {
                         continue;
                     }
+
                     const DescriptorCombinedImageSampler& imageSampler = As<DescriptorCombinedImageSampler>( srcBinding._data );
                     if ( imageSampler._image._srcTexture._ceguiTex == nullptr && imageSampler._image._srcTexture._internalTexture == nullptr )
                     {
@@ -1063,35 +1070,33 @@ namespace Divide
                             DIVIDE_ASSERT( imageSampler._image._srcTexture._ceguiTex != nullptr );
                             continue;
                         }
-                        const VkSampler samplerHandle = GetSamplerHandle( imageSampler._samplerHash );
-
-                        VkDescriptorImageInfo& imageInfo = ImageInfoStructs[imageInfoStructIndex++];
 
                         vkTexture* vkTex = static_cast<vkTexture*>(imageSampler._image._srcTexture._internalTexture);
 
+                        DIVIDE_ASSERT( imageSampler._image._usage == ImageUsage::SHADER_READ || imageSampler._image._usage == ImageUsage::SHADER_READ_WRITE );
+
                         vkTexture::CachedImageView::Descriptor descriptor{};
-                        descriptor._usage = ImageUsage::SHADER_READ;
+                        descriptor._usage = imageSampler._image._usage;
                         descriptor._format = vkTex->vkFormat();
-                        descriptor._type = vkTex->descriptor().texType();
+                        descriptor._type = imageSampler._image.targetType();
+                        descriptor._subRange = imageSampler._image._subRange;
+                        
+                        ImageUsage imageUsage = ImageUsage::SHADER_READ;
+                        VkImageLayout targetLayout = VK_IMAGE_LAYOUT_MAX_ENUM;
 
-                        if ( imageSampler._image._srcTexture._internalTexture->descriptor().hasUsageFlagSet( ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT ) )
+                        if (!IsDepthTexture( vkTex->descriptor().baseFormat() ) )
                         {
-                            descriptor._aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
-                        }
-
-                        const VkImageLayout targetLayout = IsDepthTexture( vkTex->descriptor().baseFormat() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                        imageInfo = vk::descriptorImageInfo( samplerHandle, vkTex->getImageView( descriptor ), targetLayout );
-                        if ( GetStateTracker()._activeRenderTargetID == SCREEN_TARGET_ID )
-                        {
-                            if ( vkTex->transitionLayout( descriptor._usage, ImageUsage::COUNT, descriptor._subRange, memBarrier ) )
-                            {
-                                MemBarriers[memBarrierCount++] = memBarrier;
-                            }
+                            imageUsage = vkTex->imageUsage( descriptor._subRange );
+                            DIVIDE_ASSERT( imageUsage == ImageUsage::SHADER_READ || imageUsage == ImageUsage::SHADER_READ_WRITE );
+                            targetLayout = imageUsage == ImageUsage::SHADER_READ ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
                         }
                         else
                         {
-                            DIVIDE_ASSERT( vkTex->imageUsage( descriptor._subRange.getHash() ) == descriptor._usage );
+                            targetLayout = VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL;
                         }
+
+                        VkDescriptorImageInfo& imageInfo = ImageInfoStructs[imageInfoStructIndex++];
+                        imageInfo = vk::descriptorImageInfo( GetSamplerHandle( imageSampler._samplerHash ), vkTex->getImageView( descriptor ), targetLayout );
                         builder.bindImage( srcBinding._slot, &imageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stageFlags );
                     }
                 } break;
@@ -1112,31 +1117,33 @@ namespace Divide
                     vkTexture* vkTex = static_cast<vkTexture*>(image._srcTexture._internalTexture);
 
                     vkTexture::CachedImageView::Descriptor descriptor{};
-                    descriptor._usage = image._usage;
+                    descriptor._usage = ImageUsage::SHADER_READ_WRITE;
                     descriptor._format = vkTex->vkFormat();
                     descriptor._type = image.targetType();
                     descriptor._subRange = image._subRange;
 
-                    const size_t crtSubRangeHash = descriptor._subRange.getHash();
-                    const ImageUsage crtUsage = image._srcTexture._internalTexture->imageUsage( crtSubRangeHash );
+                    // Should use TextureType::TEXTURE_CUBE_ARRAY
+                    DIVIDE_ASSERT( descriptor._type != TextureType::TEXTURE_CUBE_MAP || descriptor._subRange._layerRange.count == 1u );
+
+                    const ImageUsage crtUsage = vkTex->imageUsage( descriptor._subRange );
                     DIVIDE_ASSERT( crtUsage != ImageUsage::RT_COLOUR_ATTACHMENT &&
                                    crtUsage != ImageUsage::RT_DEPTH_ATTACHMENT &&
                                    crtUsage != ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT );
 
-                    VkDescriptorImageInfo& imageInfo = ImageInfoStructs[imageInfoStructIndex++];
-                    imageInfo = vk::descriptorImageInfo( VK_NULL_HANDLE, vkTex->getImageView( descriptor ), VK_IMAGE_LAYOUT_GENERAL );
-
                     if ( GetStateTracker()._activeRenderTargetID == SCREEN_TARGET_ID )
                     {
-                        if ( vkTex->transitionLayout( image._usage, ImageUsage::COUNT, descriptor._subRange, memBarrier ) )
+                        if ( vkTex->transitionLayout( descriptor._subRange, descriptor._usage, memBarrier ) )
                         {
                             MemBarriers[memBarrierCount++] = memBarrier;
                         }
                     }
                     else
                     {
-                        DIVIDE_ASSERT( vkTex->imageUsage( crtSubRangeHash ) == image._usage );
+                        DIVIDE_ASSERT( crtUsage == descriptor._usage );
                     }
+
+                    VkDescriptorImageInfo& imageInfo = ImageInfoStructs[imageInfoStructIndex++];
+                    imageInfo = vk::descriptorImageInfo( VK_NULL_HANDLE, vkTex->getImageView( descriptor ), VK_IMAGE_LAYOUT_GENERAL );
                     builder.bindImage( srcBinding._slot, &imageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, stageFlags );
                 } break;
                 case DescriptorSetBindingType::COUNT:
@@ -1169,207 +1176,191 @@ namespace Divide
         return true;
     }
 
-    void VK_API::bindDynamicState( const RenderStateBlock& currentState, VkCommandBuffer& cmdBuffer ) const
+    void VK_API::bindDynamicState( const VKDynamicState& currentState, VkCommandBuffer cmdBuffer )
     {
-        auto& stateTrackerDS = GetStateTracker()._dynamicState;
-        if ( stateTrackerDS.stencilMask() != currentState.stencilMask() )
-        {
-            vkCmdSetStencilCompareMask( cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState.stencilMask() );
-            stateTrackerDS.stencilMask( currentState.stencilMask() );
-        }
-        if ( stateTrackerDS.stencilWriteMask() != currentState.stencilWriteMask() )
-        {
-            vkCmdSetStencilWriteMask( cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState.stencilWriteMask() );
-            stateTrackerDS.stencilWriteMask( currentState.stencilWriteMask() );
-        }
-        if ( stateTrackerDS.stencilRef() != currentState.stencilRef() )
-        {
-            vkCmdSetStencilReference( cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState.stencilRef() );
-            stateTrackerDS.stencilRef( currentState.stencilRef() );
-        }
-        if ( !COMPARE( stateTrackerDS.zUnits(), currentState.zUnits() ) || !COMPARE( stateTrackerDS.zBias(), currentState.zBias() ) )
-        {
-            vkCmdSetDepthBias( cmdBuffer, currentState.zUnits(), 0.f, currentState.zBias() );
-            stateTrackerDS.zUnits( currentState.zUnits() );
-            stateTrackerDS.zBias( currentState.zBias() );
-        }
+        vkCmdSetStencilCompareMask( cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState._stencilMask );
+        vkCmdSetStencilWriteMask( cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState._stencilWriteMask );
+        vkCmdSetStencilReference( cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState._stencilRef );
+        vkCmdSetDepthBias( cmdBuffer, currentState._zUnits, 0.f, currentState._zBias );
+        setViewportInternal(_context.activeViewport(), cmdBuffer);
+        setScissorInternal(_context.activeScissor(), cmdBuffer);
     }
 
-    ShaderResult VK_API::bindPipeline( const Pipeline& pipeline, VkCommandBuffer& cmdBuffer )
+    ShaderResult VK_API::bindPipeline( const Pipeline& pipeline, VkCommandBuffer cmdBuffer )
     {
-        const PipelineDescriptor& pipelineDescriptor = pipeline.descriptor();
-        ShaderProgram* program = ShaderProgram::FindShaderProgram( pipelineDescriptor._shaderProgramHandle );
-
-        GetStateTracker()._activePipeline = VK_NULL_HANDLE;
-        GetStateTracker()._activeTopology = pipelineDescriptor._primitiveTopology;
-
-        if ( program == nullptr )
+        CompiledPipeline& compiledPipeline = _compiledPipelines[pipeline.hash()];
+        if ( compiledPipeline._vkPipeline == VK_NULL_HANDLE )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_GLSL_INVALID_HANDLE" ) ), pipelineDescriptor._shaderProgramHandle );
-            return ShaderResult::Failed;
-        }
-
-        size_t stateBlockHash = pipelineDescriptor._stateHash == 0u ? _context.getDefaultStateBlock( false ) : pipelineDescriptor._stateHash;
-        if ( stateBlockHash == 0 )
-        {
-            stateBlockHash = RenderStateBlock::DefaultHash();
-        }
-        bool currentStateValid = false;
-        const RenderStateBlock& currentState = RenderStateBlock::Get( stateBlockHash, currentStateValid );
-        DIVIDE_ASSERT( currentStateValid, "VK_API error: Invalid state blocks detected on activation!" );
-
-        GetStateTracker()._activeShaderProgram = static_cast<vkShaderProgram*>(program);
-        const vkShaderProgram& vkProgram = *GetStateTracker()._activeShaderProgram;
-        VkPushConstantRange push_constant;
-        push_constant.offset = 0u;
-        push_constant.size = to_U32( PushConstantsStruct::Size() );
-        push_constant.stageFlags = vkProgram.stageMask();
-
-        VkPipelineLayoutCreateInfo pipeline_layout_info = vk::pipelineLayoutCreateInfo( 0u );
-        pipeline_layout_info.pPushConstantRanges = &push_constant;
-        pipeline_layout_info.pushConstantRangeCount = 1;
-
-        eastl::fixed_vector<VkDescriptorSetLayoutBinding, ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET, false> layoutBinding{};
-        const ShaderProgram::BindingsPerSetArray& drawLayout = vkProgram.perDrawDescriptorSetLayout();
-        for ( U8 slot = 0u; slot < ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET; ++slot )
-        {
-            if ( drawLayout[slot]._type == DescriptorSetBindingType::COUNT )
+            const PipelineDescriptor& pipelineDescriptor = pipeline.descriptor();
+            ShaderProgram* program = ShaderProgram::FindShaderProgram( pipelineDescriptor._shaderProgramHandle );
+            if ( program == nullptr )
             {
-                continue;
+                Console::errorfn( Locale::Get( _ID( "ERROR_GLSL_INVALID_HANDLE" ) ), pipelineDescriptor._shaderProgramHandle );
+                return ShaderResult::Failed;
             }
-            VkDescriptorSetLayoutBinding& newBinding = layoutBinding.emplace_back();
-            newBinding.descriptorCount = 1u;
-            newBinding.descriptorType = VKUtil::vkDescriptorType( drawLayout[slot]._type );
-            newBinding.stageFlags = GetFlagsForStageVisibility( drawLayout[slot]._visibility );
-            newBinding.binding = slot;
-            newBinding.pImmutableSamplers = nullptr;
-        }
 
-        VkDescriptorSetLayoutCreateInfo layoutCreateInfo = vk::descriptorSetLayoutCreateInfo( layoutBinding.data(), to_U32( layoutBinding.size() ) );
-        _descriptorSetLayouts[to_base( DescriptorSetUsage::PER_DRAW )] = _descriptorLayoutCache->createDescriptorLayout( &layoutCreateInfo );
+            compiledPipeline._program = static_cast<vkShaderProgram*>(program);
+            compiledPipeline._topology = pipelineDescriptor._primitiveTopology;
 
-        pipeline_layout_info.pSetLayouts = _descriptorSetLayouts.data();
-        pipeline_layout_info.setLayoutCount = to_U32( _descriptorSetLayouts.size() );
-
-        VkPipelineLayout tempPipelineLayout{VK_NULL_HANDLE};
-        VK_CHECK( vkCreatePipelineLayout( _device->getVKDevice(), &pipeline_layout_info, nullptr, &tempPipelineLayout ) );
-        VK_API::RegisterCustomAPIDelete( [tempPipelineLayout](VkDevice device)
-                                         {
-                                             vkDestroyPipelineLayout( device, tempPipelineLayout, nullptr);
-                                         }, false );
-
-        GetStateTracker()._activePipelineLayout = tempPipelineLayout;
-
-        //build the stage-create-info for both vertex and fragment stages. This lets the pipeline know the shader modules per stage
-
-        const auto& shaderStages = vkProgram.shaderStages();
-
-        PipelineBuilder pipelineBuilder;
-
-        GetStateTracker()._isGraphicsPipeline = false;
-        for ( const auto& stage : shaderStages )
-        {
-            pipelineBuilder._shaderStages.push_back( vk::pipelineShaderStageCreateInfo( stage->stageMask(), stage->handle() ) );
-            GetStateTracker()._isGraphicsPipeline = GetStateTracker()._isGraphicsPipeline || stage->stageMask() != VK_SHADER_STAGE_COMPUTE_BIT;
-        }
-
-        //vertex input controls how to read vertices from vertex buffers. We aren't using it yet
-        pipelineBuilder._vertexInputInfo = vk::pipelineVertexInputStateCreateInfo();
-        //connect the pipeline builder vertex input info to the one we get from Vertex
-        const VertexInputDescription vertexDescription = getVertexDescription( pipelineDescriptor._vertexFormat );
-        pipelineBuilder._vertexInputInfo.pVertexAttributeDescriptions = vertexDescription.attributes.data();
-        pipelineBuilder._vertexInputInfo.vertexAttributeDescriptionCount = to_U32( vertexDescription.attributes.size() );
-        pipelineBuilder._vertexInputInfo.pVertexBindingDescriptions = vertexDescription.bindings.data();
-        pipelineBuilder._vertexInputInfo.vertexBindingDescriptionCount = to_U32( vertexDescription.bindings.size() );
-
-        //input assembly is the configuration for drawing triangle lists, strips, or individual points.
-        //we are just going to draw triangle list
-        pipelineBuilder._inputAssembly = vk::pipelineInputAssemblyStateCreateInfo( vkPrimitiveTypeTable[to_base( pipelineDescriptor._primitiveTopology )], 0u, pipelineDescriptor._primitiveRestartEnabled ? VK_TRUE : VK_FALSE );
-        //configure the rasterizer to draw filled triangles
-        pipelineBuilder._rasterizer = vk::pipelineRasterizationStateCreateInfo(
-            vkFillModeTable[to_base( currentState.fillMode() )],
-            vkCullModeTable[to_base( currentState.cullMode() )],
-            currentState.frontFaceCCW()
-            ? VK_FRONT_FACE_CLOCKWISE
-            : VK_FRONT_FACE_COUNTER_CLOCKWISE );
-
-        VkSampleCountFlagBits msaaSampleFlags = VK_SAMPLE_COUNT_1_BIT;
-        const U8 msaaSamples = GetStateTracker()._activeMSAASamples;
-        if ( msaaSamples > 0u )
-        {
-            assert( isPowerOfTwo( msaaSamples ) );
-            msaaSampleFlags = static_cast<VkSampleCountFlagBits>(msaaSamples);
-        }
-        pipelineBuilder._multisampling = vk::pipelineMultisampleStateCreateInfo( msaaSampleFlags );
-        pipelineBuilder._multisampling.minSampleShading = 1.f;
-        pipelineBuilder._multisampling.alphaToCoverageEnable = GetStateTracker()._alphaToCoverage ? VK_TRUE : VK_FALSE;
-        if ( msaaSamples > 0u )
-        {
-            pipelineBuilder._multisampling.sampleShadingEnable = VK_TRUE;
-        }
-        VkStencilOpState stencilOpState{};
-        stencilOpState.failOp = vkStencilOpTable[to_base( currentState.stencilFailOp() )];
-        stencilOpState.passOp = vkStencilOpTable[to_base( currentState.stencilPassOp() )];
-        stencilOpState.depthFailOp = vkStencilOpTable[to_base( currentState.stencilZFailOp() )];
-        stencilOpState.compareOp = vkCompareFuncTable[to_base( currentState.stencilFunc() )];
-
-        pipelineBuilder._depthStencil = vk::pipelineDepthStencilStateCreateInfo( currentState.depthTestEnabled(), true, vkCompareFuncTable[to_base( currentState.zFunc() )] );
-        pipelineBuilder._depthStencil.stencilTestEnable = currentState.stencilEnable();
-        pipelineBuilder._depthStencil.front = stencilOpState;
-        pipelineBuilder._depthStencil.back = stencilOpState;
-        pipelineBuilder._rasterizer.depthBiasEnable = !IS_ZERO( currentState.zBias() );
-
-        //a single blend attachment with no blending and writing to RGBA
-        const P32 cWrite = currentState.colourWrite();
-        VkPipelineColorBlendAttachmentState blend = vk::pipelineColorBlendAttachmentState(
-            (cWrite.b[0] == 1 ? VK_COLOR_COMPONENT_R_BIT : 0) |
-            (cWrite.b[1] == 1 ? VK_COLOR_COMPONENT_G_BIT : 0) |
-            (cWrite.b[2] == 1 ? VK_COLOR_COMPONENT_B_BIT : 0) |
-            (cWrite.b[3] == 1 ? VK_COLOR_COMPONENT_A_BIT : 0),
-            VK_FALSE );
-
-        for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
-        {
-            const BlendingSettings& blendState = pipelineDescriptor._blendStates._settings[i];
-
-            blend.blendEnable = blendState.enabled() ? VK_TRUE : VK_FALSE;
-            if ( blendState.blendOpAlpha() != BlendOperation::COUNT )
+            size_t stateBlockHash = pipelineDescriptor._stateHash == 0u ? _context.getDefaultStateBlock( false ) : pipelineDescriptor._stateHash;
+            if ( stateBlockHash == 0 )
             {
-                blend.alphaBlendOp = vkBlendOpTable[to_base( blendState.blendOpAlpha() )];
-                blend.dstAlphaBlendFactor = vkBlendTable[to_base( blendState.blendDestAlpha() )];
-                blend.srcAlphaBlendFactor = vkBlendTable[to_base( blendState.blendSrcAlpha() )];
+                stateBlockHash = RenderStateBlock::DefaultHash();
             }
-            else
-            {
-                blend.alphaBlendOp = VK_BLEND_OP_ADD;
-                blend.srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-                blend.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-            }
-            blend.colorBlendOp = vkBlendOpTable[to_base( blendState.blendOp() )];
-            blend.srcColorBlendFactor = vkBlendTable[to_base( blendState.blendSrc() )];
-            blend.dstColorBlendFactor = vkBlendTable[to_base( blendState.blendDest() )];
-            pipelineBuilder._colorBlendAttachments.emplace_back( blend );
+            bool currentStateValid = false;
+            const RenderStateBlock& currentState = RenderStateBlock::Get( stateBlockHash, currentStateValid );
+            DIVIDE_ASSERT( currentStateValid, "VK_API error: Invalid state blocks detected on activation!" );
 
-            if ( GetStateTracker()._activeRenderTargetID == SCREEN_TARGET_ID )
+            VkPushConstantRange push_constant;
+            push_constant.offset = 0u;
+            push_constant.size = to_U32( PushConstantsStruct::Size() );
+            push_constant.stageFlags = compiledPipeline._program->stageMask();
+
+            VkPipelineLayoutCreateInfo pipeline_layout_info = vk::pipelineLayoutCreateInfo( 0u );
+            pipeline_layout_info.pPushConstantRanges = &push_constant;
+            pipeline_layout_info.pushConstantRangeCount = 1;
+
+            eastl::fixed_vector<VkDescriptorSetLayoutBinding, ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET, false> layoutBinding{};
+            const ShaderProgram::BindingsPerSetArray& drawLayout = compiledPipeline._program->perDrawDescriptorSetLayout();
+            for ( U8 slot = 0u; slot < ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET; ++slot )
             {
-                break;
+                if ( drawLayout[slot]._type == DescriptorSetBindingType::COUNT )
+                {
+                    continue;
+                }
+                VkDescriptorSetLayoutBinding& newBinding = layoutBinding.emplace_back();
+                newBinding.descriptorCount = 1u;
+                newBinding.descriptorType = VKUtil::vkDescriptorType( drawLayout[slot]._type );
+                newBinding.stageFlags = GetFlagsForStageVisibility( drawLayout[slot]._visibility );
+                newBinding.binding = slot;
+                newBinding.pImmutableSamplers = nullptr;
             }
+
+            VkDescriptorSetLayoutCreateInfo layoutCreateInfo = vk::descriptorSetLayoutCreateInfo( layoutBinding.data(), to_U32( layoutBinding.size() ) );
+            _descriptorSetLayouts[to_base( DescriptorSetUsage::PER_DRAW )] = _descriptorLayoutCache->createDescriptorLayout( &layoutCreateInfo );
+
+            pipeline_layout_info.pSetLayouts = _descriptorSetLayouts.data();
+            pipeline_layout_info.setLayoutCount = to_U32( _descriptorSetLayouts.size() );
+
+            VK_CHECK( vkCreatePipelineLayout( _device->getVKDevice(), &pipeline_layout_info, nullptr, &compiledPipeline._vkPipelineLayout ) );
+
+            //build the stage-create-info for both vertex and fragment stages. This lets the pipeline know the shader modules per stage
+            const auto& shaderStages = compiledPipeline._program->shaderStages();
+
+            PipelineBuilder pipelineBuilder;
+
+            bool isGraphicsPipeline = false;
+            for ( const auto& stage : shaderStages )
+            {
+                pipelineBuilder._shaderStages.push_back( vk::pipelineShaderStageCreateInfo( stage->stageMask(), stage->handle() ) );
+                isGraphicsPipeline = isGraphicsPipeline || stage->stageMask() != VK_SHADER_STAGE_COMPUTE_BIT;
+            }
+            compiledPipeline._bindPoint = isGraphicsPipeline ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
+
+            //vertex input controls how to read vertices from vertex buffers. We aren't using it yet
+            pipelineBuilder._vertexInputInfo = vk::pipelineVertexInputStateCreateInfo();
+            //connect the pipeline builder vertex input info to the one we get from Vertex
+            const VertexInputDescription vertexDescription = getVertexDescription( pipelineDescriptor._vertexFormat );
+            pipelineBuilder._vertexInputInfo.pVertexAttributeDescriptions = vertexDescription.attributes.data();
+            pipelineBuilder._vertexInputInfo.vertexAttributeDescriptionCount = to_U32( vertexDescription.attributes.size() );
+            pipelineBuilder._vertexInputInfo.pVertexBindingDescriptions = vertexDescription.bindings.data();
+            pipelineBuilder._vertexInputInfo.vertexBindingDescriptionCount = to_U32( vertexDescription.bindings.size() );
+
+            //input assembly is the configuration for drawing triangle lists, strips, or individual points.
+            //we are just going to draw triangle list
+            pipelineBuilder._inputAssembly = vk::pipelineInputAssemblyStateCreateInfo( vkPrimitiveTypeTable[to_base( pipelineDescriptor._primitiveTopology )], 0u, pipelineDescriptor._primitiveRestartEnabled ? VK_TRUE : VK_FALSE );
+            //configure the rasterizer to draw filled triangles
+            pipelineBuilder._rasterizer = vk::pipelineRasterizationStateCreateInfo(
+                vkFillModeTable[to_base( currentState.fillMode() )],
+                vkCullModeTable[to_base( currentState.cullMode() )],
+                currentState.frontFaceCCW()
+                      ? VK_FRONT_FACE_CLOCKWISE
+                      : VK_FRONT_FACE_COUNTER_CLOCKWISE );
+
+            VkSampleCountFlagBits msaaSampleFlags = VK_SAMPLE_COUNT_1_BIT;
+            const U8 msaaSamples = GetStateTracker()._activeMSAASamples;
+            if ( msaaSamples > 0u )
+            {
+                assert( isPowerOfTwo( msaaSamples ) );
+                msaaSampleFlags = static_cast<VkSampleCountFlagBits>(msaaSamples);
+            }
+            pipelineBuilder._multisampling = vk::pipelineMultisampleStateCreateInfo( msaaSampleFlags );
+            pipelineBuilder._multisampling.minSampleShading = 1.f;
+            pipelineBuilder._multisampling.alphaToCoverageEnable = pipelineDescriptor._alphaToCoverage ? VK_TRUE : VK_FALSE;
+            if ( msaaSamples > 0u )
+            {
+                pipelineBuilder._multisampling.sampleShadingEnable = VK_TRUE;
+            }
+            VkStencilOpState stencilOpState{};
+            stencilOpState.failOp = vkStencilOpTable[to_base( currentState.stencilFailOp() )];
+            stencilOpState.passOp = vkStencilOpTable[to_base( currentState.stencilPassOp() )];
+            stencilOpState.depthFailOp = vkStencilOpTable[to_base( currentState.stencilZFailOp() )];
+            stencilOpState.compareOp = vkCompareFuncTable[to_base( currentState.stencilFunc() )];
+
+            pipelineBuilder._depthStencil = vk::pipelineDepthStencilStateCreateInfo( currentState.depthTestEnabled(), true, vkCompareFuncTable[to_base( currentState.zFunc() )] );
+            pipelineBuilder._depthStencil.stencilTestEnable = currentState.stencilEnable();
+            pipelineBuilder._depthStencil.front = stencilOpState;
+            pipelineBuilder._depthStencil.back = stencilOpState;
+            pipelineBuilder._rasterizer.depthBiasEnable = !IS_ZERO( currentState.zBias() );
+
+            //a single blend attachment with no blending and writing to RGBA
+            const P32 cWrite = currentState.colourWrite();
+            VkPipelineColorBlendAttachmentState blend = vk::pipelineColorBlendAttachmentState(
+                (cWrite.b[0] == 1 ? VK_COLOR_COMPONENT_R_BIT : 0) |
+                (cWrite.b[1] == 1 ? VK_COLOR_COMPONENT_G_BIT : 0) |
+                (cWrite.b[2] == 1 ? VK_COLOR_COMPONENT_B_BIT : 0) |
+                (cWrite.b[3] == 1 ? VK_COLOR_COMPONENT_A_BIT : 0),
+                VK_FALSE );
+
+            for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
+            {
+                const BlendingSettings& blendState = pipelineDescriptor._blendStates._settings[i];
+
+                blend.blendEnable = blendState.enabled() ? VK_TRUE : VK_FALSE;
+                if ( blendState.blendOpAlpha() != BlendOperation::COUNT )
+                {
+                    blend.alphaBlendOp = vkBlendOpTable[to_base( blendState.blendOpAlpha() )];
+                    blend.dstAlphaBlendFactor = vkBlendTable[to_base( blendState.blendDestAlpha() )];
+                    blend.srcAlphaBlendFactor = vkBlendTable[to_base( blendState.blendSrcAlpha() )];
+                }
+                else
+                {
+                    blend.alphaBlendOp = VK_BLEND_OP_ADD;
+                    blend.srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+                    blend.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+                }
+                blend.colorBlendOp = vkBlendOpTable[to_base( blendState.blendOp() )];
+                blend.srcColorBlendFactor = vkBlendTable[to_base( blendState.blendSrc() )];
+                blend.dstColorBlendFactor = vkBlendTable[to_base( blendState.blendDest() )];
+                pipelineBuilder._colorBlendAttachments.emplace_back( blend );
+
+                if ( GetStateTracker()._activeRenderTargetID == SCREEN_TARGET_ID )
+                {
+                    break;
+                }
+            }
+
+            //use the triangle layout we created
+            pipelineBuilder._pipelineLayout = compiledPipeline._vkPipelineLayout;
+            pipelineBuilder._tessellation = vk::pipelineTessellationStateCreateInfo( currentState.tessControlPoints() );
+
+            compiledPipeline._vkPipeline = pipelineBuilder.build_pipeline( _device->getVKDevice(), _pipelineCache, isGraphicsPipeline );
+
+            Debug::SetObjectName( _device->getVKDevice(), (uint64_t)compiledPipeline._vkPipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, program->resourceName().c_str() );
+            Debug::SetObjectName( _device->getVKDevice(), (uint64_t)compiledPipeline._vkPipeline, VK_OBJECT_TYPE_PIPELINE, program->resourceName().c_str());
+
+            compiledPipeline._dynamicState =  {
+              ._stencilRef = currentState.stencilRef(),
+              ._stencilMask = currentState.stencilMask(),
+              ._stencilWriteMask = currentState.stencilWriteMask(),
+              ._zBias = currentState.zBias(),
+              ._zUnits = currentState.zUnits()
+            };
         }
 
-        //use the triangle layout we created
-        pipelineBuilder._pipelineLayout = tempPipelineLayout;
-        pipelineBuilder._tessellation = vk::pipelineTessellationStateCreateInfo( currentState.tessControlPoints() );
-
-        VkPipeline vkPipeline = pipelineBuilder.build_pipeline( _device->getVKDevice(), _swapChain->getRenderPass(), GetStateTracker()._isGraphicsPipeline );
-        VK_API::RegisterCustomAPIDelete( [vkPipeline, tempPipelineLayout]( VkDevice device )
-                                         {
-                                             vkDestroyPipeline( device, vkPipeline, nullptr );
-                                         }, false );
-
-        vkCmdBindPipeline( cmdBuffer, GetStateTracker()._isGraphicsPipeline ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE, vkPipeline );
-        GetStateTracker()._activePipeline = vkPipeline;
-
-        bindDynamicState( currentState, cmdBuffer );
+        vkCmdBindPipeline( cmdBuffer, compiledPipeline._bindPoint, compiledPipeline._vkPipeline );
+        GetStateTracker()._pipeline = compiledPipeline;
+        bindDynamicState( compiledPipeline._dynamicState, cmdBuffer );
 
         return ShaderResult::OK;
     }
@@ -1450,9 +1441,8 @@ namespace Divide
         if ( GFXDevice::IsSubmitCommand( cmdType ) && GetStateTracker()._descriptorsUpdated )
         {
             vkCmdBindDescriptorSets( cmdBuffer,
-                                     GetStateTracker()._isGraphicsPipeline ? VK_PIPELINE_BIND_POINT_GRAPHICS
-                                     : VK_PIPELINE_BIND_POINT_COMPUTE,
-                                     GetStateTracker()._activePipelineLayout,
+                                     GetStateTracker()._pipeline._bindPoint,
+                                     GetStateTracker()._pipeline._vkPipelineLayout,
                                      0,
                                      to_base( DescriptorSetUsage::COUNT ),
                                      _descriptorSets.data(),
@@ -1488,12 +1478,9 @@ namespace Divide
                     vkRenderTarget* rt = static_cast<vkRenderTarget*>(_context.renderTargetPool().getRenderTarget( crtCmd->_target ));
                     Attorney::VKAPIRenderTarget::begin( *rt, cmdBuffer, crtCmd->_descriptor, crtCmd->_clearDescriptor, GetStateTracker()._pipelineRenderingCreateInfo );
 
-                    GetStateTracker()._alphaToCoverage = crtCmd->_descriptor._alphaToCoverage;
                     GetStateTracker()._activeMSAASamples = rt->getSampleCount();
-                    if ( crtCmd->_descriptor._setViewport )
-                    {
-                        _context.setViewport( { 0, 0, rt->getWidth(), rt->getHeight() } );
-                    }
+                    _context.setViewport( { 0, 0, rt->getWidth(), rt->getHeight() } );
+                    _context.setScissor( { 0, 0, rt->getWidth(), rt->getHeight() } );
                 }
 
                 PushDebugMessage( cmdBuffer, crtCmd->_name.c_str() );
@@ -1501,7 +1488,6 @@ namespace Divide
             case GFX::CommandType::END_RENDER_PASS:
             {
                 PopDebugMessage( cmdBuffer );
-                GetStateTracker()._alphaToCoverage = false;
                 GetStateTracker()._activeMSAASamples = _context.context().config().rendering.MSAASamples;
 
                 if ( GetStateTracker()._activeRenderTargetID == SCREEN_TARGET_ID )
@@ -1553,10 +1539,10 @@ namespace Divide
             } break;
             case GFX::CommandType::SEND_PUSH_CONSTANTS:
             {
-                if ( GetStateTracker()._activePipeline != VK_NULL_HANDLE )
+                if ( GetStateTracker()._pipeline._vkPipeline != VK_NULL_HANDLE )
                 {
                     const PushConstants& pushConstants = cmd->As<GFX::SendPushConstantsCommand>()->_constants;
-                    if ( GetStateTracker()._activeShaderProgram->uploadUniformData( pushConstants, _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).impl(), pushConstantsMemCommand ) )
+                    if ( GetStateTracker()._pipeline._program->uploadUniformData( pushConstants, _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).impl(), pushConstantsMemCommand ) )
                     {
                         _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).dirty( true );
                     }
@@ -1564,8 +1550,8 @@ namespace Divide
                     {
                         const F32* constantData = pushConstants.fastData().dataPtr();
                         vkCmdPushConstants( cmdBuffer,
-                                            GetStateTracker()._activePipelineLayout,
-                                            GetStateTracker()._activeShaderProgram->stageMask(),
+                                            GetStateTracker()._pipeline._vkPipelineLayout,
+                                            GetStateTracker()._pipeline._program->stageMask(),
                                             0,
                                             to_U32( PushConstantsStruct::Size() ),
                                             &constantData );
@@ -1574,13 +1560,6 @@ namespace Divide
                     pushConstantsNeedLock = !pushConstantsMemCommand._bufferLocks.empty();
                 }
             } break;
-            case GFX::CommandType::SET_SCISSOR:
-            {
-                if ( !setScissor( cmd->As<GFX::SetScissorCommand>()->_rect ) )
-                {
-                    NOP();
-                }
-            }break;
             case GFX::CommandType::BEGIN_DEBUG_SCOPE:
             {
                 const GFX::BeginDebugScopeCommand* crtCmd = cmd->As<GFX::BeginDebugScopeCommand>();
@@ -1598,15 +1577,8 @@ namespace Divide
             case GFX::CommandType::COMPUTE_MIPMAPS:
             {
                 const GFX::ComputeMipMapsCommand* crtCmd = cmd->As<GFX::ComputeMipMapsCommand>();
-
-                if ( crtCmd->_layerRange.x == 0 && crtCmd->_layerRange.y == crtCmd->_texture->descriptor().layerCount() )
-                {
-                    PROFILE_SCOPE( "VK: In-place computation - Full", Profiler::Category::Graphics );
-                }
-                else
-                {
-                    PROFILE_SCOPE( "VK: View - based computation", Profiler::Category::Graphics );
-                }
+                PROFILE_SCOPE( "VK: View - based computation", Profiler::Category::Graphics );
+                static_cast<vkTexture*>(crtCmd->_texture)->generateMipmaps(cmdBuffer, 0u, crtCmd->_layerRange.offset, crtCmd->_layerRange.count);
             }break;
             case GFX::CommandType::DRAW_TEXT:
             {
@@ -1617,7 +1589,7 @@ namespace Divide
             {
                 const GFX::DrawCommand::CommandContainer& drawCommands = cmd->As<GFX::DrawCommand>()->_drawCommands;
 
-                if ( GetStateTracker()._activePipeline != VK_NULL_HANDLE )
+                if ( GetStateTracker()._pipeline._vkPipeline != VK_NULL_HANDLE )
                 {
                     U32 drawCount = 0u;
                     for ( const GenericDrawCommand& currentDrawCommand : drawCommands )
@@ -1634,9 +1606,11 @@ namespace Divide
             }break;
             case GFX::CommandType::DISPATCH_COMPUTE:
             {
-                assert( GetStateTracker()._activeTopology == PrimitiveTopology::COMPUTE );
-                if ( GetStateTracker()._activePipeline != VK_NULL_HANDLE )
+                DIVIDE_ASSERT( GetStateTracker()._pipeline._topology == PrimitiveTopology::COMPUTE );
+                if ( GetStateTracker()._pipeline._vkPipeline != VK_NULL_HANDLE )
                 {
+                    const GFX::DispatchComputeCommand* crtCmd = cmd->As<GFX::DispatchComputeCommand>();
+                    vkCmdDispatch(cmdBuffer, crtCmd->_computeGroupSize.x, crtCmd->_computeGroupSize.y, crtCmd->_computeGroupSize.z );
                 }
             } break;
             case GFX::CommandType::SET_CLIPING_STATE:
@@ -1660,7 +1634,7 @@ namespace Divide
                 VkImageMemoryBarrier2 memBarrier{};
                 for ( const auto& it : crtCmd->_textureLayoutChanges )
                 {
-                    if ( static_cast<vkTexture*>(it._targetView._srcTexture._internalTexture)->transitionLayout( it._layout, it._prevLayoutOverride, it._targetView._subRange, memBarrier ) )
+                    if ( static_cast<vkTexture*>(it._targetView._srcTexture._internalTexture)->transitionLayout( it._targetView._subRange, it._layout, memBarrier ) )
                     {
                         memBarriers[memBarrierCount++] = memBarrier;
                     }
@@ -1706,39 +1680,35 @@ namespace Divide
         return vec2<U16>( w, h );
     }
 
-    bool VK_API::setViewport( const Rect<I32>& newViewport ) noexcept
+    bool VK_API::setViewportInternal( const Rect<I32>& newViewport ) noexcept
     {
-        VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
+        return setViewportInternal(newViewport, getCurrentCommandBuffer());
+    }
+
+    bool VK_API::setViewportInternal( const Rect<I32>& newViewport, VkCommandBuffer cmdBuffer) noexcept
+    {
         const VkViewport targetViewport{ to_F32( newViewport.offsetX ),
                                         to_F32( newViewport.sizeY ) - to_F32( newViewport.offsetY ),
                                         to_F32( newViewport.sizeX ),
                                         -to_F32( newViewport.sizeY ),
                                         0.f,
                                         1.f };
-        if ( GetStateTracker()._dynamicState._activeViewport != targetViewport )
-        {
-            vkCmdSetViewport( cmdBuffer, 0, 1, &targetViewport );
-            GetStateTracker()._dynamicState._activeViewport = targetViewport;
-            return true;
-        }
-
-        return false;
+        vkCmdSetViewport( cmdBuffer, 0, 1, &targetViewport );
+        return true;
     }
 
-    bool VK_API::setScissor( const Rect<I32>& newScissor ) noexcept
+    bool VK_API::setScissorInternal( const Rect<I32>& newScissor ) noexcept
     {
-        VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
+        return setScissorInternal( newScissor, getCurrentCommandBuffer());
+    }
 
+    bool VK_API::setScissorInternal( const Rect<I32>& newScissor, VkCommandBuffer cmdBuffer ) noexcept
+    {
         const VkOffset2D offset{ std::max( 0, newScissor.offsetX ), std::max( 0, newScissor.offsetY ) };
         const VkExtent2D extent{ to_U32( newScissor.sizeX ),to_U32( newScissor.sizeY ) };
         const VkRect2D targetScissor{ offset, extent };
-        if ( GetStateTracker()._dynamicState._activeScissor != targetScissor )
-        {
-            vkCmdSetScissor( cmdBuffer, 0, 1, &targetScissor );
-            return true;
-        }
-
-        return false;
+        vkCmdSetScissor( cmdBuffer, 0, 1, &targetScissor );
+        return true;
     }
 
     void VK_API::initDescriptorSets()

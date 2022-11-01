@@ -72,6 +72,7 @@ namespace Divide
         _lowerLeftOrigin = true;
         _negativeOneToOneDepth = true;
         _depthWriteEnabled = true;
+        _alphatoCoverageEnabled = false;
         _blendPropertiesGlobal = {};
         _blendEnabledGlobal = GL_FALSE;
         _currentBindConfig = {};
@@ -123,7 +124,7 @@ namespace Divide
             else
             {
                 glEnableVertexArrayAttrib( vaoID, idx );
-                glVertexArrayAttribBinding( vaoID, idx, descriptor._vertexBindingIndex);
+                glVertexArrayAttribBinding( vaoID, idx, descriptor._vertexBindingIndex );
                 const bool isIntegerType = descriptor._dataType != GFXDataFormat::FLOAT_16 &&
                     descriptor._dataType != GFXDataFormat::FLOAT_32;
 
@@ -1035,6 +1036,26 @@ namespace Divide
         {
             _depthWriteEnabled = state;
             glDepthMask( state ? GL_TRUE : GL_FALSE );
+            return true;
+        }
+
+        return false;
+    }
+
+    bool GLStateTracker::setAlphaToCoverage( const bool state )
+    {
+        if ( _alphatoCoverageEnabled != state )
+        {
+            _alphatoCoverageEnabled = state;
+            if ( state )
+            {
+                glEnable( GL_SAMPLE_ALPHA_TO_COVERAGE );
+            }
+            else
+            {
+                glDisable( GL_SAMPLE_ALPHA_TO_COVERAGE );
+            }
+
             return true;
         }
 

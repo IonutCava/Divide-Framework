@@ -59,12 +59,10 @@ namespace Divide
         [[nodiscard]] size_t getHash() const noexcept override;
     };
 
-    struct ImageSubRange final : Hashable
+    struct ImageSubRange
     {
         vec2<U16> _mipLevels{ 0u, U16_MAX };  //Offset, Count
         vec2<U16> _layerRange{ 0u, U16_MAX }; //Offset, Count
-
-        [[nodiscard]] size_t getHash() const noexcept override;
     };
 
     struct ImageView final : Hashable

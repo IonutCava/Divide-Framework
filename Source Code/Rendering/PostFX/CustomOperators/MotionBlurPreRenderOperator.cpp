@@ -79,7 +79,14 @@ bool MotionBlurPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx
     const F32 velocityScale = _context.context().config().rendering.postFX.motionBlur.velocityScale;
     const F32 velocityFactor = fps / Config::TARGET_FRAME_RATE * velocityScale;
 
-    auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+    GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
+    beginRenderPassCmd->_name = "DO_MOTION_BLUR_PASS";
+    beginRenderPassCmd->_target = output._targetID;
+    beginRenderPassCmd->_descriptor = _screenOnlyDraw;
+
+    GFX::EnqueueCommand(bufferInOut, _blurApplyPipelineCmd);
+
+    auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
     cmd->_usage = DescriptorSetUsage::PER_DRAW;
     {
         DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
@@ -89,13 +96,6 @@ bool MotionBlurPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx
         DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
         Set( binding._data, velocityAtt->texture()->getView(), velocityAtt->descriptor()._samplerHash );
     }
-
-    GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
-    beginRenderPassCmd->_name = "DO_MOTION_BLUR_PASS";
-    beginRenderPassCmd->_target = output._targetID;
-    beginRenderPassCmd->_descriptor = _screenOnlyDraw;
-
-    GFX::EnqueueCommand(bufferInOut, _blurApplyPipelineCmd);
 
     PushConstantsStruct params{};
     params.data[0]._vec[0].xy.set( velocityFactor, to_F32( maxSamples() ) );

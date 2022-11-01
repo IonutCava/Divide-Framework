@@ -137,6 +137,7 @@ namespace Divide {
         bool setClearDepth(F32 value);
 
         bool setDepthWrite(bool state);
+        bool setAlphaToCoverage(bool state);
 
         [[nodiscard]] GLuint getBoundTextureHandle(U8 slot) const noexcept;
         [[nodiscard]] GLuint getBoundSamplerHandle(U8 slot) const noexcept;
@@ -191,6 +192,7 @@ namespace Divide {
         bool _lowerLeftOrigin{ true };
         bool _negativeOneToOneDepth{ true };
         bool _depthWriteEnabled{ true };
+        bool _alphatoCoverageEnabled{ false };
         BlendingSettings _blendPropertiesGlobal;
         GLboolean _blendEnabledGlobal{ GL_FALSE };
 

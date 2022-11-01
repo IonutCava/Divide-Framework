@@ -479,7 +479,7 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
         Set( binding._data, sourceTex->getView(), sourceAtt->descriptor()._samplerHash );
     }
 
-    ImageView destinationImage = destinationAtt->texture()->getView(TextureType::TEXTURE_CUBE_MAP, { 0u, 1u }, { 0u , U16_MAX }, ImageUsage::SHADER_WRITE);
+    ImageView destinationImage = destinationAtt->texture()->getView(TextureType::TEXTURE_CUBE_ARRAY, { 0u, 1u }, { 0u , U16_MAX }, ImageUsage::SHADER_WRITE);
 
     const F32 fWidth = to_F32(width);
 
@@ -503,14 +503,14 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
         GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ std::max(1u, mipWidth / 8u), std::max(1u, mipWidth / 8u), 1 });
     }
 
-    GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_barrierMask = to_base(MemoryBarrierType::TEXTURE_UPDATE);
+    GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_barrierMask = to_base( MemoryBarrierType::TEXTURE_UPDATE ) | to_base( MemoryBarrierType::TEXTURE_FETCH );
 
     GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
     computeMipMapsCommand._layerRange = { layerID, 1 };
     computeMipMapsCommand._texture = destinationAtt->texture().get();
     GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 
-    GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_barrierMask = to_base(MemoryBarrierType::TEXTURE_FETCH);
+    //GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_barrierMask = to_base( MemoryBarrierType::TEXTURE_FETCH );
 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
@@ -524,6 +524,7 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U
 
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ s_pipelineCalcIrradiance });
 
+    ImageView destinationView = destinationAtt->texture()->getView( TextureType::TEXTURE_CUBE_ARRAY, { 0u, 1u }, { 0u , U16_MAX }, ImageUsage::SHADER_WRITE );
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
     cmd->_usage = DescriptorSetUsage::PER_DRAW;
     {
@@ -532,7 +533,7 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U
     }
     {
         DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::COMPUTE );
-        Set(binding._data, destinationAtt->texture()->getView(TextureType::TEXTURE_CUBE_MAP, { 0u, 1u }, { 0u , U16_MAX }, ImageUsage::SHADER_WRITE));
+        Set(binding._data, destinationView );
     }
 
     PushConstantsStruct fastData{};
@@ -542,15 +543,21 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U
     const U32 groupsX = to_U32(std::ceil(s_IrradianceTextureSize / to_F32(8)));
     const U32 groupsY = to_U32(std::ceil(s_IrradianceTextureSize / to_F32(8)));
     GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ groupsX, groupsY, 1 });
-    
-    GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_barrierMask = to_base(MemoryBarrierType::TEXTURE_UPDATE);
+
+    auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut );
+    memCmd->_barrierMask = to_base( MemoryBarrierType::TEXTURE_UPDATE ) | to_base( MemoryBarrierType::TEXTURE_FETCH );
+    memCmd->_textureLayoutChanges.emplace_back(
+    TextureLayoutChange{
+        ._targetView = destinationView,
+        ._layout = ImageUsage::SHADER_READ
+    });
 
     GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
     computeMipMapsCommand._layerRange = { layerID, 1 };
     computeMipMapsCommand._texture = destinationAtt->texture().get();
     GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 
-    GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_barrierMask = to_base(MemoryBarrierType::TEXTURE_FETCH);
+    //GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_barrierMask = to_base(MemoryBarrierType::TEXTURE_FETCH);
 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }

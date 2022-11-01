@@ -139,7 +139,7 @@ struct ImageData final : NonCopyable {
     /// get the number of pre-loaded mip maps (same number for each layer)
     [[nodiscard]] U8 mipCount() const { return _layers.empty() ? 0u : _layers.front().mipCount(); }
     /// get the total number of image layers
-    [[nodiscard]] U32 layerCount() const noexcept { return to_U32(_layers.size()); }
+    [[nodiscard]] U16 layerCount() const noexcept { return to_U16(_layers.size()); }
     /// image depth information
     [[nodiscard]] U8 bpp() const noexcept { return _bpp; }
     /// the filename from which the image is created

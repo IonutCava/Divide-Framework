@@ -58,8 +58,6 @@ namespace Divide
             lhs._layeredRendering != rhs._layeredRendering;
     }
 
-    bool glFramebuffer::s_alphaToCoverageEnabled = false;
-
     glFramebuffer::glFramebuffer( GFXDevice& context, const RenderTargetDescriptor& descriptor )
         : RenderTarget( context, descriptor ),
         _prevViewport( -1 ),
@@ -415,7 +413,17 @@ namespace Divide
             
             if ( _attachmentsUsed[i] && IsEnabled( drawPolicy._drawMask, RTAttachmentType::COLOUR, static_cast<RTColourAttachmentSlot>(i) ) )
             {
-                if ( !_attachments[i]->texture()->imageUsage({}, toWrite ? ImageUsage::RT_COLOUR_ATTACHMENT : drawPolicy._layoutTargets._colourUsage[i], ImageUsage::COUNT ) )
+                ImageUsage targetUsage = ImageUsage::UNDEFINED, prevUsageOut = ImageUsage::UNDEFINED;
+                if ( toWrite )
+                {
+                    _attachmentsPreviousUsage[i] = _attachments[i]->texture()->imageUsage();
+                    targetUsage = ImageUsage::RT_COLOUR_ATTACHMENT;
+                }
+                else
+                {
+                    targetUsage = _attachmentsPreviousUsage[i];
+                }
+                if ( !_attachments[i]->texture()->imageUsage( targetUsage, prevUsageOut ) )
                 {
                     NOP();
                 }
@@ -424,9 +432,18 @@ namespace Divide
 
         if ( _attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX] && IsEnabled( drawPolicy._drawMask, RTAttachmentType::DEPTH ) )
         {
-            const bool hasStencil = _attachments[RT_DEPTH_ATTACHMENT_IDX]->descriptor()._type == RTAttachmentType::DEPTH_STENCIL;
+            ImageUsage targetUsage = ImageUsage::UNDEFINED, prevUsageOut = ImageUsage::UNDEFINED;
+            if ( toWrite )
+            {
+                _attachmentsPreviousUsage[RT_DEPTH_ATTACHMENT_IDX] = _attachments[RT_DEPTH_ATTACHMENT_IDX]->texture()->imageUsage();
+                targetUsage = _attachments[RT_DEPTH_ATTACHMENT_IDX]->descriptor()._type == RTAttachmentType::DEPTH_STENCIL ? ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT : ImageUsage::RT_DEPTH_ATTACHMENT;
+            }
+            else
+            {
+                targetUsage = _attachmentsPreviousUsage[RT_DEPTH_ATTACHMENT_IDX];
+            }
 
-            if ( !_attachments[RT_DEPTH_ATTACHMENT_IDX]->texture()->imageUsage({}, toWrite ? hasStencil ? ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT : ImageUsage::RT_DEPTH_ATTACHMENT : drawPolicy._layoutTargets._depthUsage, ImageUsage::COUNT ) )
+            if ( !_attachments[RT_DEPTH_ATTACHMENT_IDX]->texture()->imageUsage( targetUsage, prevUsageOut ) )
             {
                 NOP();
             }
@@ -510,24 +527,10 @@ namespace Divide
         }
 
         // Set the viewport
-        if ( drawPolicy._setViewport )
-        {
-            _prevViewport.set( _context.activeViewport() );
-            _context.setViewport( 0, 0, to_I32( getWidth() ), to_I32( getHeight() ) );
-        }
+        _prevViewport.set( _context.activeViewport() );
+        _context.setViewport( 0, 0, to_I32( getWidth() ), to_I32( getHeight() ) );
 
         clear( clearPolicy );
-
-        if ( _descriptor._msaaSamples > 0u && drawPolicy._alphaToCoverage && !s_alphaToCoverageEnabled )
-        {
-            glEnable( GL_SAMPLE_ALPHA_TO_COVERAGE );
-            s_alphaToCoverageEnabled = true;
-        }
-        else if ( s_alphaToCoverageEnabled )
-        {
-            glDisable( GL_SAMPLE_ALPHA_TO_COVERAGE );
-            s_alphaToCoverageEnabled = false;
-        }
 
         /// Set the depth range
         GL_API::GetStateTracker().setDepthRange( _descriptor._depthRange.min, _descriptor._depthRange.max );

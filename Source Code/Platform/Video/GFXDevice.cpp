@@ -2035,19 +2035,16 @@ namespace Divide
         }
     }
 
-    // Update the rendering viewport
     bool GFXDevice::setViewport( const Rect<I32>& viewport )
     {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+        _activeViewport.set( viewport );
+        return _api->setViewportInternal( viewport );
+    }
 
-        // Change the viewport on the Rendering API level
-        if ( _api->setViewport( viewport ) )
-        {
-            _activeViewport.set( viewport );
-            return true;
-        }
-
-        return false;
+    bool GFXDevice::setScissor( const Rect<I32>& scissor )
+    {
+        _activeScissor.set( scissor );
+        return _api->setScissorInternal( scissor );
     }
 
     void GFXDevice::setCameraSnapshot( const PlayerIndex index, const CameraSnapshot& snapshot ) noexcept
@@ -2106,6 +2103,7 @@ namespace Divide
         }
 
         const Rect<I32> initialViewport = activeViewport();
+        const Rect<I32> initialScissor = activeScissor();
 
         _api->preFlushCommandBuffer( commandBuffer );
 
@@ -2178,6 +2176,11 @@ namespace Divide
                     setViewport( _viewportStack.top() );
                     _viewportStack.pop();
                 } break;
+                case GFX::CommandType::SET_SCISSOR:
+                {
+                    PROFILE_SCOPE( "SET_SCISSOR", Profiler::Category::Graphics );
+                    setScissor( commandBuffer.get<GFX::SetScissorCommand>( cmd )->_rect );
+                } break;
                 case GFX::CommandType::SET_CAMERA:
                 {
                     PROFILE_SCOPE( "SET_CAMERA", Profiler::Category::Graphics );
@@ -2240,6 +2243,7 @@ namespace Divide
         _api->postFlushCommandBuffer( commandBuffer );
 
         setViewport( initialViewport );
+        setScissor( initialScissor );
 
         // Descriptor sets are only valid per command buffer they are submitted in. If we finish the command buffer submission,
         // we mark them as dirty so that the next command buffer can bind them again even if the data is the same
@@ -2284,7 +2288,7 @@ namespace Divide
             ImageView outImage = HiZTex->getView( { i, 1u } );
             outImage._usage = ImageUsage::SHADER_READ_WRITE;
 
-            const ImageView inImage = (i == 0u ? SrcAtt->texture()->getView() : HiZTex->getView( { i - 1u, 1u }, { 0u, 1u }, ImageUsage::SHADER_READ_WRITE ));
+            const ImageView inImage = (i == 0u ? SrcAtt->texture()->getView( depthBuffer == HiZTarget ? ImageUsage::SHADER_READ_WRITE : ImageUsage::SHADER_READ) : HiZTex->getView( { i - 1u, 1u }, { 0u, 1u }, ImageUsage::SHADER_READ_WRITE ));
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( cmdBufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -2322,8 +2326,7 @@ namespace Divide
             /*memCmd->_textureLayoutChanges.emplace_back(
                 TextureLayoutChange{
                     ._targetView = HiZTex->getView(),
-                    ._layout = ImageUsage::SHADER_READ,
-                    ._prevLayoutOverride = ImageUsage::SHADER_READ_WRITE
+                    ._layout = ImageUsage::SHADER_READ
                 }
             );*/
         }

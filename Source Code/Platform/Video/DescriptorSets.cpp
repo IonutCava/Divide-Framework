@@ -16,13 +16,6 @@ namespace Divide {
         }
         return _hash;
     }
-    
-    size_t ImageSubRange::getHash() const noexcept
-    {
-        _hash = 1337;
-        Util::Hash_combine( _hash, _mipLevels.offset, _mipLevels.count, _layerRange.offset, _layerRange.count);
-        return _hash;
-    }
 
     size_t ImageView::Descriptor::getHash() const noexcept {
         _hash = 1337;
@@ -49,11 +42,14 @@ namespace Divide {
     size_t ImageView::getHash() const noexcept {
         _hash = 1337;
         Util::Hash_combine(_hash,
-                            _usage,
+                           _usage,
+                           _descriptor.getHash(),
                            _srcTexture.getHash(),
-                            targetType(),
-                            _subRange.getHash());
-        Util::Hash_combine(_hash, _descriptor.getHash());
+                           targetType(),
+                           _subRange._layerRange.offset,
+                           _subRange._layerRange.count,
+                           _subRange._mipLevels.offset,
+                           _subRange._mipLevels.count);
 
         return _hash;
     }

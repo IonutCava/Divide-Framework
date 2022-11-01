@@ -158,7 +158,8 @@ protected:
 
     [[nodiscard]] virtual vec2<U16> getDrawableSize(const DisplayWindow& window) const = 0;
 
-    virtual bool setViewport(const Rect<I32>& newViewport) = 0;
+    virtual bool setViewportInternal(const Rect<I32>& newViewport) = 0;
+    virtual bool setScissorInternal(const Rect<I32>& newScissor) = 0;
 
     virtual void onThreadCreated(const std::thread::id& threadID) = 0;
 

@@ -88,6 +88,8 @@ namespace Divide {
 
             VK_CHECK(vkCreateShaderModule(VK_API::GetStateTracker()._device->getVKDevice(), &createInfo, nullptr, &_handle));
 
+            Debug::SetObjectName( VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)_handle, VK_OBJECT_TYPE_SHADER_MODULE, name().c_str());
+
             _createInfo = vk::pipelineShaderStageCreateInfo(vkShaderStageTable[to_base(data._type)], _handle);
             _stageMask = vkShaderStageTable[to_base(data._type)];
         }

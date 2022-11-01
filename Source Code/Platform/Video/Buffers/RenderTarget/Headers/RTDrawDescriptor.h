@@ -65,12 +65,6 @@ struct RTDrawMask {
     bool _disabledDepth = false;
 };
 
-struct RTLayoutTarget
-{
-    std::array<ImageUsage, to_base( RTColourAttachmentSlot::COUNT )> _colourUsage = create_array<to_base( RTColourAttachmentSlot::COUNT ), ImageUsage>( ImageUsage::SHADER_READ );
-    ImageUsage _depthUsage{ ImageUsage::SHADER_READ };
-};
-
 struct ClearColourEntry
 {
     FColour4 _colour{ VECTOR4_ZERO };
@@ -98,10 +92,7 @@ struct RTDrawLayerDescriptor {
 struct RTDrawDescriptor {
     RTDrawMask _drawMask{};
     RTDrawLayerDescriptor _writeLayers{};
-    RTLayoutTarget _layoutTargets{};
     U16 _mipWriteLevel{ U16_MAX };
-    bool _setViewport = true;
-    bool _alphaToCoverage = false;
 };
 
 [[nodiscard]] bool IsEnabled(const RTDrawMask& mask, RTAttachmentType type) noexcept;
@@ -112,8 +103,6 @@ void DisableAll(RTDrawMask& mask);
 
 bool operator==(const RTDrawMask& lhs, const RTDrawMask& rhs);
 bool operator!=(const RTDrawMask& lhs, const RTDrawMask& rhs);
-bool operator==(const RTLayoutTarget& lhs, const RTLayoutTarget& rhs);
-bool operator!=(const RTLayoutTarget& lhs, const RTLayoutTarget& rhs);
 bool operator==(const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs);
 bool operator!=(const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs);
 

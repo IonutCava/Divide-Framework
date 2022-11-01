@@ -100,29 +100,40 @@ namespace Divide
             }
         }
 
-        ImageSubRange subRange{};
         VkImageMemoryBarrier2 memBarrier{};
         for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
         {
             if ( _attachmentsUsed[i] && IsEnabled( descriptor._drawMask, RTAttachmentType::COLOUR, static_cast<RTColourAttachmentSlot>(i) ) )
             {
+                vkTexture* vkTex = static_cast<vkTexture*>(_attachments[i]->texture().get());
+
+                ImageView targetView = vkTex->getView();
                 if ( descriptor._writeLayers._colourLayers[i] != INVALID_LAYER_INDEX || needLayeredColour )
                 {
                     targetColourLayer = descriptor._writeLayers._colourLayers[i] == INVALID_LAYER_INDEX ? targetColourLayer : descriptor._writeLayers._colourLayers[i];
-                    subRange._layerRange = { targetColourLayer, 1u };
+                    targetView._subRange._layerRange = { targetColourLayer, 1u };
                 }
                 else if ( descriptor._mipWriteLevel != U16_MAX )
                 {
-                    subRange._mipLevels =  { descriptor._mipWriteLevel, 1u };
+                    targetView._subRange._mipLevels =  { descriptor._mipWriteLevel, 1u };
+                }
+                if ( IsCubeTexture( vkTex->descriptor().texType() ) )
+                {
+                    targetView._subRange._layerRange.offset /= 6u;
+                }
+
+                ImageUsage targetUsage = ImageUsage::UNDEFINED;
+                if ( toWrite )
+                {
+                    _attachmentsPreviousUsage[i] = _attachments[i]->texture()->imageUsage( targetView._subRange );
+                    targetUsage = ImageUsage::RT_COLOUR_ATTACHMENT;
                 }
                 else
                 {
-                    subRange = {};
+                    targetUsage = _attachmentsPreviousUsage[i];
                 }
 
-                const ImageUsage usage = toWrite ? ImageUsage::RT_COLOUR_ATTACHMENT : descriptor._layoutTargets._colourUsage[i];
-                vkTexture* vkTex = static_cast<vkTexture*>(_attachments[i]->texture().get());
-                if ( vkTex->transitionLayout( usage, ImageUsage::COUNT, subRange, memBarrier ) )
+                if ( vkTex->transitionLayout( targetView._subRange, targetUsage, memBarrier ) )
                 {
                     memBarriers[memBarrierCount++] = memBarrier;
                 }
@@ -134,9 +145,33 @@ namespace Divide
             const auto& att = _attachments[RT_DEPTH_ATTACHMENT_IDX];
             vkTexture* vkTex = static_cast<vkTexture*>(att->texture().get());
 
-            const bool hasStencil = att->descriptor()._type == RTAttachmentType::DEPTH_STENCIL;
-            const ImageUsage usage = toWrite ? hasStencil ? ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT : ImageUsage::RT_DEPTH_ATTACHMENT : descriptor._layoutTargets._depthUsage;
-            if ( vkTex->transitionLayout( usage, ImageUsage::COUNT, subRange, memBarrier ) )
+            ImageView targetView = vkTex->getView();
+            if ( descriptor._writeLayers._depthLayer != INVALID_LAYER_INDEX || needLayeredDepth )
+            {
+                targetDepthLayer = descriptor._writeLayers._depthLayer == INVALID_LAYER_INDEX ? targetDepthLayer : descriptor._writeLayers._depthLayer;
+                targetView._subRange._layerRange = { targetDepthLayer, 1u };
+            }
+            else if ( descriptor._mipWriteLevel != U16_MAX )
+            {
+                targetView._subRange._mipLevels = { descriptor._mipWriteLevel, 1u };
+            }
+            if ( IsCubeTexture( vkTex->descriptor().texType() ) )
+            {
+                targetView._subRange._layerRange.offset /= 6u;
+            }
+
+            ImageUsage targetUsage = ImageUsage::UNDEFINED;
+            if ( toWrite )
+            {
+                _attachmentsPreviousUsage[RT_DEPTH_ATTACHMENT_IDX] = _attachments[RT_DEPTH_ATTACHMENT_IDX]->texture()->imageUsage();
+                targetUsage = att->descriptor()._type == RTAttachmentType::DEPTH_STENCIL ? ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT : ImageUsage::RT_DEPTH_ATTACHMENT;
+            }
+            else
+            {
+                targetUsage = _attachmentsPreviousUsage[RT_DEPTH_ATTACHMENT_IDX];
+            }
+
+            if ( vkTex->transitionLayout( targetView._subRange, targetUsage, memBarrier ) )
             {
                 memBarriers[memBarrierCount++] = memBarrier;
             }
@@ -187,10 +222,10 @@ namespace Divide
         VkImageMemoryBarrier2 memBarrier{};
         for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
         {
-            VkRenderingAttachmentInfo& info = _colourAttachmentInfo[i];
-
             if ( _attachmentsUsed[i] && IsEnabled( descriptor._drawMask, RTAttachmentType::COLOUR, static_cast<RTColourAttachmentSlot>(i) ) )
             {
+                vkTexture* vkTex = static_cast<vkTexture*>(_attachments[i]->texture().get());
+                imageViewDescriptor._subRange = vkTex->getView()._subRange;
                 if ( descriptor._writeLayers._colourLayers[i] != INVALID_LAYER_INDEX || needLayeredColour )
                 {
                     targetColourLayer = descriptor._writeLayers._colourLayers[i] == INVALID_LAYER_INDEX ? targetColourLayer : descriptor._writeLayers._colourLayers[i];
@@ -200,16 +235,12 @@ namespace Divide
                 {
                     imageViewDescriptor._subRange._mipLevels = { descriptor._mipWriteLevel, 1u };
                 }
-                else
-                {
-                    imageViewDescriptor._subRange = {};
-                }
 
-                vkTexture* vkTex = static_cast<vkTexture*>(_attachments[i]->texture().get());
                 imageViewDescriptor._format = vkTex->vkFormat();
                 imageViewDescriptor._type = imageViewDescriptor._subRange._layerRange.count > 1u ? TextureType::TEXTURE_2D_ARRAY : TextureType::TEXTURE_2D;
                 imageViewDescriptor._usage = ImageUsage::RT_COLOUR_ATTACHMENT;
 
+                VkRenderingAttachmentInfo& info = _colourAttachmentInfo[i];
                 info.imageView = vkTex->getImageView( imageViewDescriptor );
                 _colourAttachmentFormats[stagingIndex] = vkTex->vkFormat();
                 if ( clearPolicy._clearColourDescriptors[i]._index != RTColourAttachmentSlot::COUNT || !_attachmentsUsed[i] )
@@ -251,7 +282,10 @@ namespace Divide
         if ( _attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX] && IsEnabled( descriptor._drawMask, RTAttachmentType::DEPTH ) )
         {
             const auto& att = _attachments[RT_DEPTH_ATTACHMENT_IDX];
+            const bool hasStencil = att->descriptor()._type == RTAttachmentType::DEPTH_STENCIL;
 
+            vkTexture* vkTex = static_cast<vkTexture*>(att->texture().get());
+            imageViewDescriptor._subRange = vkTex->getView()._subRange;
             if ( descriptor._writeLayers._depthLayer != INVALID_LAYER_INDEX || needLayeredDepth )
             {
                 targetDepthLayer = descriptor._writeLayers._depthLayer == INVALID_LAYER_INDEX ? targetDepthLayer : descriptor._writeLayers._depthLayer;
@@ -261,19 +295,12 @@ namespace Divide
             {
                 imageViewDescriptor._subRange._mipLevels = { descriptor._mipWriteLevel, 1u };
             }
-            else
-            {
-                imageViewDescriptor._subRange = {};
-            }
 
-            vkTexture* vkTex = static_cast<vkTexture*>(att->texture().get());
-            pipelineRenderingCreateInfoOut.depthAttachmentFormat = vkTex->vkFormat();
-
-            const bool hasStencil = att->descriptor()._type == RTAttachmentType::DEPTH_STENCIL;
 
             imageViewDescriptor._format = vkTex->vkFormat();
             imageViewDescriptor._type = imageViewDescriptor._subRange._layerRange.count > 1u ? TextureType::TEXTURE_2D_ARRAY : TextureType::TEXTURE_2D;
             imageViewDescriptor._usage = hasStencil ? ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT : ImageUsage::RT_DEPTH_ATTACHMENT;
+
             _depthAttachmentInfo.imageView = vkTex->getImageView( imageViewDescriptor );
 
             if ( clearPolicy._clearDepth )
@@ -289,6 +316,7 @@ namespace Divide
                 _depthAttachmentInfo.clearValue.depthStencil.depth = 1.f;
             }
 
+            pipelineRenderingCreateInfoOut.depthAttachmentFormat = vkTex->vkFormat();
             _renderingInfo.pDepthAttachment = &_depthAttachmentInfo;
         }
         else

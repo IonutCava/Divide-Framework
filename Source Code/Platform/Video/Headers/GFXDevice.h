@@ -297,6 +297,8 @@ public:  // GPU interface
     /// Returns true if the viewport was changed
            bool setViewport(const Rect<I32>& viewport);
     inline bool setViewport(I32 x, I32 y, I32 width, I32 height);
+           bool setScissor(const Rect<I32>& scissor);
+    inline bool setScissor(I32 x, I32 y, I32 width, I32 height);
            void setDepthRange(vec2<F32> depthRange);
     void setPreviousViewProjectionMatrix(const mat4<F32>& prevViewMatrix, const mat4<F32> prevProjectionMatrix);
 
@@ -425,6 +427,7 @@ public:
     PROPERTY_R_IW(U32, frameDrawCallsPrev, 0u);
     PROPERTY_R_IW(vec4<U32>, lastCullCount, VECTOR4_ZERO);
     PROPERTY_R_IW(Rect<I32>, activeViewport, UNIT_VIEWPORT);
+    PROPERTY_R_IW(Rect<I32>, activeScissor, UNIT_VIEWPORT);
     POINTER_R(SceneShaderData, sceneData, nullptr);
     
 protected:

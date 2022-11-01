@@ -49,7 +49,27 @@ namespace vke
 namespace Divide {
 
 class Pipeline;
+class vkShaderProgram;
 enum class ShaderResult : U8;
+
+struct VKDynamicState
+{
+    U32 _stencilRef{ 0u };
+    U32 _stencilMask{ 0xFFFFFFFF };
+    U32 _stencilWriteMask{ 0xFFFFFFFF };
+    F32 _zBias{ 0.0f };
+    F32 _zUnits{ 0.0f };
+};
+
+struct CompiledPipeline
+{
+    VkPipelineBindPoint _bindPoint{ VK_PIPELINE_BIND_POINT_MAX_ENUM };
+    vkShaderProgram* _program{ nullptr };
+    VKDynamicState _dynamicState{};
+    VkPipeline _vkPipeline{ VK_NULL_HANDLE };
+    VkPipelineLayout _vkPipelineLayout{ VK_NULL_HANDLE };
+    PrimitiveTopology _topology{PrimitiveTopology::COUNT};
+};
 
 struct PipelineBuilder {
     std::vector<VkPipelineShaderStageCreateInfo> _shaderStages;
@@ -64,26 +84,16 @@ struct PipelineBuilder {
     VkPipelineDepthStencilStateCreateInfo _depthStencil;
     VkPipelineTessellationStateCreateInfo _tessellation;
 
-    VkPipeline build_pipeline( VkDevice device, VkRenderPass pass, bool graphics);
+    VkPipeline build_pipeline( VkDevice device, VkPipelineCache pipelineCache, bool graphics);
 
 private:
-    VkPipeline build_compute_pipeline(VkDevice device, VkRenderPass pass);
-    VkPipeline build_graphics_pipeline(VkDevice device, VkRenderPass pass);
+    VkPipeline build_compute_pipeline(VkDevice device, VkPipelineCache pipelineCache);
+    VkPipeline build_graphics_pipeline(VkDevice device, VkPipelineCache pipelineCache );
 };
 
 struct VkPipelineEntry {
     VkPipeline _pipeline{VK_NULL_HANDLE};
     VkPipelineLayout _layout{VK_NULL_HANDLE};
-};
-
-struct VKDynamicState {
-    PROPERTY_RW(U32, stencilRef, 0u);
-    PROPERTY_RW(U32, stencilMask, 0xFFFFFFFF);
-    PROPERTY_RW(U32, stencilWriteMask, 0xFFFFFFFF);
-    PROPERTY_RW(F32, zBias, 0.0f);
-    PROPERTY_RW(F32, zUnits, 0.0f);
-    VkRect2D _activeScissor{};
-    VkViewport _activeViewport{};
 };
 
 struct VKImmediateCmdContext {
@@ -106,33 +116,26 @@ struct VMAAllocatorInstance {
     Mutex _allocatorLock;
 };
 
-class vkShaderProgram;
 struct VKStateTracker {
     VKDevice* _device{ nullptr };
     VKSwapChain* _swapChain{ nullptr };
     VKImmediateCmdContext* _cmdContext{ nullptr };
-    vkShaderProgram* _activeShaderProgram{ nullptr };
 
+    std::array<std::pair<Str256, U32>, 32> _debugScope;
+
+    VMAAllocatorInstance _allocatorInstance{};
     vke::DescriptorAllocatorHandle _perDrawDescriptorAllocator;
     vke::DescriptorAllocatorHandle _perFrameDescriptorAllocator;
-
-    VKDynamicState _dynamicState{};
-    VMAAllocatorInstance _allocatorInstance{};
-    std::array<std::pair<Str256, U32>, 32> _debugScope;
+    CompiledPipeline _pipeline{};
 
     VkPipelineRenderingCreateInfo _pipelineRenderingCreateInfo{};
 
-    VkPipeline _activePipeline{ VK_NULL_HANDLE };
-    VkPipelineLayout _activePipelineLayout{ VK_NULL_HANDLE };
     VkBuffer _drawIndirectBuffer{ VK_NULL_HANDLE };
     U64 _lastSyncedFrameNumber{ 0u };
 
-    PrimitiveTopology _activeTopology{ PrimitiveTopology::COUNT };
     RenderTargetID _activeRenderTargetID{ INVALID_RENDER_TARGET_ID };
     U8 _activeMSAASamples{ 1u };
     U8 _debugScopeDepth = 0u;
-    bool _alphaToCoverage{ false };
-    bool _isGraphicsPipeline{true};
     bool _descriptorsUpdated{false};
 
     void setDefaultState();
@@ -188,7 +191,7 @@ class VK_API final : public RenderAPIWrapper {
     [[nodiscard]] const GFXDevice& context() const noexcept { return _context; };
 
   protected:
-      [[nodiscard]] VkCommandBuffer getCurrentCommandBuffer() const;
+      [[nodiscard]] VkCommandBuffer getCurrentCommandBuffer() const noexcept;
 
       void idle(bool fast) noexcept override;
       [[nodiscard]] bool beginFrame(DisplayWindow& window, bool global = false) noexcept override;
@@ -200,21 +203,22 @@ class VK_API final : public RenderAPIWrapper {
       void flushCommand(GFX::CommandBase* cmd) noexcept override;
       void postFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) noexcept override;
       [[nodiscard]] vec2<U16> getDrawableSize(const DisplayWindow& window) const noexcept override;
-      bool setViewport(const Rect<I32>& newViewport) noexcept override;
-      bool setScissor(const Rect<I32>& newScissor) noexcept;
+      bool setViewportInternal(const Rect<I32>& newViewport) noexcept override;
+      bool setScissorInternal(const Rect<I32>& newScissor) noexcept override;
+
       void onThreadCreated(const std::thread::id& threadID) noexcept override;
       void initDescriptorSets() override;
 
 private:
     void recreateSwapChain(const DisplayWindow& window);
     void drawText(const TextElementBatch& batch);
-    bool draw(const GenericDrawCommand& cmd, VkCommandBuffer& cmdBuffer) const;
+    bool draw(const GenericDrawCommand& cmd, VkCommandBuffer cmdBuffer) const;
+    bool setViewportInternal( const Rect<I32>& newViewport, VkCommandBuffer cmdBuffer ) noexcept;
+    bool setScissorInternal( const Rect<I32>& newScissor, VkCommandBuffer cmdBuffer ) noexcept;
+    void destroyPipelineCache();
 
-    //loads a shader module from a spir-v file. Returns false if it errors
-    [[nodiscard]] bool loadShaderModule(const char* filePath, VkShaderModule* outShaderModule);
-
-    ShaderResult bindPipeline(const Pipeline& pipeline, VkCommandBuffer& cmdBuffer);
-    void bindDynamicState(const RenderStateBlock& currentState, VkCommandBuffer& cmdBuffer) const;
+    ShaderResult bindPipeline(const Pipeline& pipeline, VkCommandBuffer cmdBuffer);
+    void bindDynamicState(const VKDynamicState& currentState, VkCommandBuffer cmdBuffer);
     [[nodiscard]] bool bindShaderResources(DescriptorSetUsage usage, const DescriptorSet& bindings, bool isDirty) override;
 
 public:
@@ -231,11 +235,12 @@ private:
 private:
     GFXDevice& _context;
     VmaAllocator _allocator{VK_NULL_HANDLE};
-
+    VkPipelineCache _pipelineCache{ VK_NULL_HANDLE };
     VKDevice_uptr _device{ nullptr };
     VKSwapChain_uptr _swapChain{ nullptr };
     VKImmediateCmdContext_uptr _cmdContext{ nullptr };
     vkb::Instance _vkbInstance;
+    hashMap<size_t, CompiledPipeline> _compiledPipelines;
 
     enum class DescriptorAllocatorUsage
     {

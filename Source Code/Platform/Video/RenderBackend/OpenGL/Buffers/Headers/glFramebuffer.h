@@ -128,8 +128,6 @@ protected:
     bool _isLayeredDepth = false;
     bool _statusCheckQueued = false;
     bool _activeDepthBuffer = false;
-
-    static bool s_alphaToCoverageEnabled;
 };
 
 bool operator==(const glFramebuffer::BindingState& lhs, const glFramebuffer::BindingState& rhs) noexcept;

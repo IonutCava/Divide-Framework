@@ -22,7 +22,8 @@ namespace Divide
     {
         for ( const TextureLayoutChange& it : changes )
         {
-            const ImageUsage prevUsage = it._prevLayoutOverride == ImageUsage::COUNT ? it._targetView._srcTexture._internalTexture->imageUsage( it._targetView._subRange.getHash() ) : it._prevLayoutOverride;
+            ImageSubRange subRangeTemp = it._targetView._subRange;
+            const ImageUsage prevUsage = it._targetView._srcTexture._internalTexture->imageUsage( subRangeTemp );
             if ( it._targetView._srcTexture._internalTexture != nullptr &&
                  it._layout != ImageUsage::COUNT &&
                  prevUsage != it._layout )
@@ -148,6 +149,7 @@ namespace Divide
         _defaultView._srcTexture._internalTexture = this;
         _defaultView._subRange._mipLevels.count = 1u;
         _defaultView._usage = ImageUsage::UNDEFINED;
+        _imageUsageMap.resize(IsCubeTexture(descriptor().texType()) ? _numLayers * 6 : _numLayers);
     }
 
     Texture::~Texture()
@@ -173,7 +175,7 @@ namespace Divide
     bool Texture::unload()
     {
         _defaultView._usage = ImageUsage::UNDEFINED;
-        _imageUsage[ImageSubRange{}.getHash()] = ImageUsage::UNDEFINED;
+        //efficient_clear( _imageUsageMap );
         return CachedResource::unload();
     }
 
@@ -184,7 +186,7 @@ namespace Divide
         _defaultView._descriptor._srgb = _descriptor.srgb();
         _defaultView._descriptor._normalized = _descriptor.normalized();
         _defaultView._descriptor._msaaSamples = _descriptor.msaaSamples();
-        _defaultView._subRange._layerRange = { 0u, _numLayers };
+        _defaultView._subRange._layerRange = { 0u, _numLayers};
     }
 
     /// Load texture data using the specified file name
@@ -198,7 +200,7 @@ namespace Divide
             assert( requestedFormat == GFXDataFormat::UNSIGNED_BYTE ||  // Regular image format
                     requestedFormat == GFXDataFormat::UNSIGNED_SHORT || // 16Bit
                     requestedFormat == GFXDataFormat::FLOAT_32 ||       // HDR
-                    requestedFormat == GFXDataFormat::COUNT );           // Auto
+                    requestedFormat == GFXDataFormat::COUNT );          // Auto
 
             constexpr std::array<std::string_view, 2> searchPattern
             {
@@ -506,32 +508,95 @@ namespace Divide
         }
     }
 
-    bool Texture::imageUsage( const size_t subrangeHash, const ImageUsage usage, ImageUsage prevImageUsage )
+    bool Texture::imageUsage( ImageUsage usage, ImageUsage& prevUsageOut )
     {
-        ImageUsage& crtUsage = _imageUsage[subrangeHash];
-        if ( prevImageUsage != ImageUsage::COUNT )
-        {
-            crtUsage = prevImageUsage;
-        }
-
-        if ( crtUsage != usage )
-        {
-            crtUsage = usage;
-            return true;
-        }
-
-        return false;
+        return imageUsage(_defaultView._subRange, usage, prevUsageOut);
     }
 
-    ImageUsage Texture::imageUsage( const size_t subrangeHash ) const noexcept
+    ImageUsage Texture::imageUsage() const
     {
-        const auto ret = _imageUsage.find(subrangeHash);
-        if ( ret != end( _imageUsage ) )
+        ImageSubRange range = _defaultView._subRange;
+        return imageUsage( range );
+    }
+
+    bool Texture::imageUsage( ImageSubRange subRange, const ImageUsage usage, ImageUsage& prevUsageOut )
+    {
+        subRange._layerRange.count = std::min( _numLayers, subRange._layerRange.count );
+        subRange._mipLevels.count = std::min( mipCount(), subRange._mipLevels.count );
+        DIVIDE_ASSERT( subRange._layerRange.offset + subRange._layerRange.count <= _numLayers );
+        DIVIDE_ASSERT( subRange._mipLevels.offset + subRange._mipLevels.count <= mipCount() );
+        if ( IsCubeTexture( descriptor().texType() ) )
         {
-            return ret->second;
+            subRange._layerRange.offset *= 6u;
+            subRange._layerRange.count *= 6u;
         }
 
-        return _defaultView._usage;
+        bool ret = false;
+        prevUsageOut = ImageUsage::COUNT;
+        for ( U16 l = 0u; l < subRange._layerRange.count; ++l )
+        {
+            PerLayerMips& mips = _imageUsageMap[subRange._layerRange.offset + l];
+            for ( U16 m = 0u; m < subRange._mipLevels.count; ++m )
+            {
+                ImageUsage& crtUsage = mips[subRange._mipLevels.offset + m];
+                if ( prevUsageOut == ImageUsage::COUNT )
+                {
+                    prevUsageOut = crtUsage;
+                }
+                else
+                {
+                    NOP();
+                }
+
+                if ( crtUsage != usage )
+                {
+                    crtUsage = usage;
+                    ret = true;
+                }
+            }
+        }
+
+        if ( prevUsageOut == ImageUsage::COUNT )
+        {
+            prevUsageOut = usage;
+            return false;
+        }
+
+        return ret;
+    }
+
+    ImageUsage Texture::imageUsage( ImageSubRange subRange ) const
+    {
+        subRange._layerRange.count = std::min( _numLayers, subRange._layerRange.count );
+        subRange._mipLevels.count = std::min( mipCount(), subRange._mipLevels.count );
+        DIVIDE_ASSERT( subRange._layerRange.offset + subRange._layerRange.count <= _numLayers );
+        DIVIDE_ASSERT( subRange._mipLevels.offset + subRange._mipLevels.count <= mipCount() );
+        if ( IsCubeTexture( descriptor().texType() ) )
+        {
+            subRange._layerRange.offset *= 6u;
+            subRange._layerRange.count *= 6u;
+        }
+
+        ImageUsage ret = ImageUsage::COUNT;
+        for ( U16 l = 0u; l < subRange._layerRange.count; ++l )
+        {
+            const PerLayerMips& mips = _imageUsageMap[subRange._layerRange.offset + l];
+            for ( U16 m = 0u; m < subRange._mipLevels.count; ++m )
+            {
+                ImageUsage crtUsage = mips[subRange._mipLevels.offset + m];
+                if ( ret == ImageUsage::COUNT )
+                {
+                    ret = crtUsage;
+                }
+                else
+                {
+                    DIVIDE_ASSERT(ret == crtUsage);
+                }
+            }
+        }
+
+        DIVIDE_ASSERT ( ret != ImageUsage::COUNT );
+        return ret;
     }
 
     void Texture::validateDescriptor()
@@ -547,7 +612,7 @@ namespace Divide
         }
 
         // Cap upper mip count limit
-        if ( _width > 0 && _height > 0 )
+        if ( _width > 0u && _height > 0u )
         {
             //http://www.opengl.org/registry/specs/ARB/texture_non_power_of_two.txt
             if ( descriptor().mipMappingState() != TextureDescriptor::MipMappingState::OFF )
@@ -558,6 +623,11 @@ namespace Divide
             {
                 _defaultView._subRange._mipLevels.count = 1u;
             }
+        }
+
+        for ( PerLayerMips& layer : _imageUsageMap )
+        {
+            layer.resize(_defaultView._subRange._mipLevels.count, _defaultView._usage);
         }
     }
 
@@ -588,14 +658,14 @@ namespace Divide
     ImageView Texture::getView( const vec2<U16> mipRange ) const noexcept
     {
         ImageView ret = getView();
-        ret._subRange._mipLevels = mipRange;
+        ret._subRange._mipLevels = { mipRange.offset, std::min( mipRange.count, ret._subRange._mipLevels.count) };
         return ret;
     }
 
     ImageView Texture::getView( const vec2<U16> mipRange, const vec2<U16> layerRange ) const noexcept
     {
         ImageView ret = getView( mipRange );
-        ret._subRange._layerRange = layerRange;
+        ret._subRange._layerRange = { layerRange.offset, std::min(layerRange.count, ret._subRange._layerRange.count) };
         return ret;
     }
 
@@ -609,14 +679,14 @@ namespace Divide
     ImageView Texture::getView( const TextureType targetType, const vec2<U16> mipRange ) const noexcept
     {
         ImageView ret = getView( targetType );
-        ret._subRange._mipLevels = mipRange;
+        ret._subRange._mipLevels = { mipRange.offset, std::min( mipRange.count, ret._subRange._mipLevels.count ) };
         return ret;
     }
 
     ImageView Texture::getView( const TextureType targetType, const vec2<U16> mipRange, const vec2<U16> layerRange ) const noexcept
     {
         ImageView ret = getView( targetType, mipRange );
-        ret._subRange._layerRange = layerRange;
+        ret._subRange._layerRange = { layerRange.offset, std::min( layerRange.count, ret._subRange._layerRange.count ) };
         return ret;
     }
 

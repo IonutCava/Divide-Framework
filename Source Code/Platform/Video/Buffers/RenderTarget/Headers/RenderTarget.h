@@ -107,6 +107,7 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
     constexpr static U32 RT_DEPTH_ATTACHMENT_IDX = to_base(RTColourAttachmentSlot::COUNT);
     std::array<RTAttachment_uptr, to_base( RTColourAttachmentSlot::COUNT ) + 1> _attachments{};
     std::array<bool, to_base( RTColourAttachmentSlot::COUNT ) + 1> _attachmentsUsed;
+    std::array<ImageUsage, to_base( RTColourAttachmentSlot::COUNT ) + 1> _attachmentsPreviousUsage;
 };
 
 FWD_DECLARE_MANAGED_CLASS(RenderTarget);

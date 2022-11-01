@@ -126,7 +126,12 @@ namespace Divide
         return vec2<U16>( 1 );
     }
 
-    bool NONE_API::setViewport( [[maybe_unused]] const Rect<I32>& newViewport ) noexcept
+    bool NONE_API::setViewportInternal( [[maybe_unused]] const Rect<I32>& newViewport ) noexcept
+    {
+        return true;
+    } 
+    
+    bool NONE_API::setScissorInternal( [[maybe_unused]] const Rect<I32>& newScissor ) noexcept
     {
         return true;
     }
