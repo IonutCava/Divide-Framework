@@ -60,6 +60,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #error "Divide Framework requires C++20 support at a minimum!"
 #endif 
 
+#ifndef EASTL_CUSTOM_FLOAT_CONSTANTS_REQUIRED
+#define EASTL_CUSTOM_FLOAT_CONSTANTS_REQUIRED 1
+#endif
+
 #ifndef BOOST_EXCEPTION_DISABLE
 #define BOOST_EXCEPTION_DISABLE
 #endif
