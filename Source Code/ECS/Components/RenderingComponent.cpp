@@ -439,7 +439,7 @@ namespace Divide
                     {
                         hasCommands = true;
                         cmd._renderOptions = drawCmdOptions;
-                        if ( cmd._cmd.primCount > 1 )
+                        if ( cmd._cmd.instanceCount > 1 )
                         {
                             isInstanced( true );
                         }

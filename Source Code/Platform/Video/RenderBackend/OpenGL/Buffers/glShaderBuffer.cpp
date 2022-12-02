@@ -80,7 +80,7 @@ namespace Divide
         if ( bindIndex == ShaderProgram::k_commandBufferID )
         {
             result = GL_API::GetStateTracker().setActiveBuffer( GL_DRAW_INDIRECT_BUFFER, bufferImpl()->memoryBlock()._bufferHandle );
-            GL_API::GetStateTracker()._commandBufferOffset = bufferImpl()->memoryBlock()._offset + (readIndex * _alignedBufferSize);
+            GL_API::GetStateTracker()._drawIndirectBufferOffset = bufferImpl()->memoryBlock()._offset + (readIndex * _alignedBufferSize);
         }
         else if ( range._length > 0 ) [[likely]]
         {

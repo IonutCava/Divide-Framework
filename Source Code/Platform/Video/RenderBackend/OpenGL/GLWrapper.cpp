@@ -810,17 +810,30 @@ namespace Divide
 
         if ( cmd._sourceBuffer._id == 0 )
         {
-            U32 indexCount = 0u;
+            U32 indexCount = cmd._cmd.indexCount;
+
+            U32 vertexCount = 0u;
             switch ( GL_API::s_stateTracker._activeTopology )
             {
-                case PrimitiveTopology::COMPUTE:
-                case PrimitiveTopology::COUNT: DIVIDE_UNEXPECTED_CALL();         break;
-                case PrimitiveTopology::TRIANGLES: indexCount = cmd._drawCount * 3;  break;
-                case PrimitiveTopology::POINTS: indexCount = cmd._drawCount * 1;  break;
-                default: indexCount = cmd._cmd.indexCount; break;
+                case PrimitiveTopology::POINTS: vertexCount = 1u; break;
+                case PrimitiveTopology::LINES:
+                case PrimitiveTopology::LINE_STRIP:
+                case PrimitiveTopology::LINE_STRIP_ADJACENCY:
+                case PrimitiveTopology::LINES_ADJANCENCY: vertexCount = 2u; break;
+                case PrimitiveTopology::TRIANGLES:
+                case PrimitiveTopology::TRIANGLE_STRIP:
+                case PrimitiveTopology::TRIANGLE_FAN:
+                case PrimitiveTopology::TRIANGLES_ADJACENCY:
+                case PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY: vertexCount = 3u; break;
+                case PrimitiveTopology::PATCH: vertexCount = 4u; break;
+                default : return false;
+            }
+            if ( indexCount < vertexCount )
+            {
+                indexCount = vertexCount;
             }
 
-            glDrawArrays( GLUtil::glPrimitiveTypeTable[to_base( GL_API::s_stateTracker._activeTopology )], cmd._cmd.firstIndex, indexCount );
+            glDrawArraysInstancedBaseInstance( GLUtil::glPrimitiveTypeTable[to_base( GL_API::s_stateTracker._activeTopology )], cmd._cmd.baseVertex, cmd._drawCount * indexCount, cmd._cmd.instanceCount , cmd._cmd.baseInstance );
         }
         else [[likely]]
         {
@@ -1289,15 +1302,25 @@ namespace Divide
                 {
                     U32 drawCount = 0u;
                     const GFX::DrawCommand::CommandContainer& drawCommands = cmd->As<GFX::DrawCommand>()->_drawCommands;
+
                     for ( const GenericDrawCommand& currentDrawCommand : drawCommands )
                     {
-                        if ( draw( currentDrawCommand ) )
+                        if ( isEnabledOption( currentDrawCommand, CmdRenderOptions::RENDER_GEOMETRY ))
                         {
-                            drawCount += isEnabledOption( currentDrawCommand, CmdRenderOptions::RENDER_WIREFRAME )
-                                ? 2
-                                : isEnabledOption( currentDrawCommand, CmdRenderOptions::RENDER_GEOMETRY ) ? 1 : 0;
+                            draw( currentDrawCommand );
+                            ++drawCount;
+                        }
+
+                        if ( isEnabledOption( currentDrawCommand, CmdRenderOptions::RENDER_WIREFRAME ) )
+                        {
+                            PrimitiveTopology oldTopology = s_stateTracker._activeTopology;
+                            s_stateTracker.setPrimitiveTopology(PrimitiveTopology::LINES);
+                            draw(currentDrawCommand);
+                            s_stateTracker.setPrimitiveTopology(oldTopology);
+                            ++drawCount;
                         }
                     }
+
                     _context.registerDrawCalls( drawCount );
                 }
             }break;
@@ -1798,6 +1821,8 @@ namespace Divide
             }
         }
 
+        s_stateTracker.toggleRasterization(pipelineDescriptor._rasterizationEnabled);
+
         ShaderResult ret = ShaderResult::Failed;
         ShaderProgram* program = ShaderProgram::FindShaderProgram( pipelineDescriptor._shaderProgramHandle );
         glShaderProgram* glProgram = static_cast<glShaderProgram*>(program);
@@ -1805,8 +1830,8 @@ namespace Divide
         {
             {
                 PROFILE_SCOPE( "Set Vertex Format", Profiler::Category::Graphics );
-                s_stateTracker.setVertexFormat( pipelineDescriptor._primitiveTopology,
-                                                pipelineDescriptor._primitiveRestartEnabled,
+                s_stateTracker.setPrimitiveTopology( pipelineDescriptor._primitiveTopology );
+                s_stateTracker.setVertexFormat( pipelineDescriptor._primitiveRestartEnabled,
                                                 pipelineDescriptor._vertexFormat,
                                                 pipeline.vertexFormatHash() );
             }

@@ -89,6 +89,27 @@ namespace Divide
             return Paths::g_cacheLocation + Paths::Shaders::g_cacheLocation + Paths::g_buildTypeLocation + Paths::Shaders::g_cacheLocationVK;
         }
 
+        [[nodiscard]] FORCE_INLINE bool IsTriangles( const PrimitiveTopology topology )
+        {
+            return topology == PrimitiveTopology::TRIANGLES ||
+                   topology == PrimitiveTopology::TRIANGLE_STRIP ||
+                   topology == PrimitiveTopology::TRIANGLE_FAN ||
+                   topology == PrimitiveTopology::TRIANGLES_ADJACENCY ||
+                   topology == PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY;
+        }
+
+        [[nodiscard]] size_t GetHash( const VkPipelineRenderingCreateInfo & info ) noexcept
+        {
+            size_t hash = 17;
+
+            Util::Hash_combine( hash, info.viewMask, info.colorAttachmentCount, info.depthAttachmentFormat, info.stencilAttachmentFormat );
+            for ( uint32_t i = 0u; i < info.colorAttachmentCount; ++i )
+            {
+                Util::Hash_combine( hash, info.pColorAttachmentFormats[i] );
+            }
+            return hash;
+        }
+
         [[nodiscard]] VkShaderStageFlags GetFlagsForStageVisibility( const BaseType<ShaderStageVisibility> mask ) noexcept
         {
             VkShaderStageFlags ret = 0u;
@@ -234,9 +255,9 @@ namespace Divide
         pipelineInfo.pDepthStencilState = &_depthStencil;
         pipelineInfo.pTessellationState = &_tessellation;
         pipelineInfo.subpass = 0;
-        if ( VK_API::GetStateTracker()._pipelineRenderingCreateInfo.sType == VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO )
+        if ( VK_API::GetStateTracker()._pipelineRenderInfo._vkInfo.colorAttachmentCount > 0u )
         {
-            pipelineInfo.pNext = &VK_API::GetStateTracker()._pipelineRenderingCreateInfo;
+            pipelineInfo.pNext = &VK_API::GetStateTracker()._pipelineRenderInfo._vkInfo;
         }
         else
         {
@@ -392,11 +413,15 @@ namespace Divide
         _pipeline = {};
         _activeMSAASamples = 0u;
         _activeRenderTargetID = INVALID_RENDER_TARGET_ID;
-        _pipelineRenderingCreateInfo = {};
-        _pipelineRenderingCreateInfo.colorAttachmentCount = 1u;
+        _pipelineRenderInfo = {};
         _lastSyncedFrameNumber = GFXDevice::FrameCount();
         _drawIndirectBuffer = VK_NULL_HANDLE;
+        _drawIndirectBufferOffset = 0u;
+        _pipelineStageMask = VK_FLAGS_NONE;
+        _pushConstantsValid = false;
+        _descriptorsUpdated = false;
     }
+
 
     bool VK_API::beginFrame( DisplayWindow& window, [[maybe_unused]] bool global ) noexcept
     {
@@ -836,19 +861,21 @@ namespace Divide
                 destroyPipelineCache();
             }
 
-            size_t size{};
-            VK_CHECK( vkGetPipelineCacheData( _device->getVKDevice(), _pipelineCache, &size, nullptr ) );
-            /* Get data of pipeline cache */
-            vector<Byte> data( size );
-            VK_CHECK( vkGetPipelineCacheData( _device->getVKDevice(), _pipelineCache, &size, data.data() ) );
-            /* Write pipeline cache data to a file in binary format */
-            const FileError err = writeFile( PipelineCacheLocation(), PipelineCacheFileName, data.data(), size, FileType::BINARY);
-            if ( err != FileError::NONE )
+            if ( _pipelineCache != nullptr )
             {
-                Console::errorfn(Locale::Get(_ID("ERROR_VK_PIPELINE_CACHE_SAVE")), Names::fileError[to_base(err)]);
+                size_t size{};
+                VK_CHECK( vkGetPipelineCacheData( _device->getVKDevice(), _pipelineCache, &size, nullptr ) );
+                /* Get data of pipeline cache */
+                vector<Byte> data( size );
+                VK_CHECK( vkGetPipelineCacheData( _device->getVKDevice(), _pipelineCache, &size, data.data() ) );
+                /* Write pipeline cache data to a file in binary format */
+                const FileError err = writeFile( PipelineCacheLocation(), PipelineCacheFileName, data.data(), size, FileType::BINARY);
+                if ( err != FileError::NONE )
+                {
+                    Console::errorfn(Locale::Get(_ID("ERROR_VK_PIPELINE_CACHE_SAVE")), Names::fileError[to_base(err)]);
+                }
+                vkDestroyPipelineCache( _device->getVKDevice(), _pipelineCache, nullptr );
             }
-            vkDestroyPipelineCache( _device->getVKDevice(), _pipelineCache, nullptr );
-
             if ( _allocator != VK_NULL_HANDLE )
             {
                 vmaDestroyAllocator( _allocator );
@@ -914,17 +941,30 @@ namespace Divide
 
         if ( cmd._sourceBuffer._id == 0 )
         {
-            U32 indexCount = 0u;
+            U32 indexCount = cmd._cmd.indexCount;
+
+            U32 vertexCount = 0u;
             switch ( VK_API::GetStateTracker()._pipeline._topology )
             {
-                case PrimitiveTopology::COMPUTE:
-                case PrimitiveTopology::COUNT: DIVIDE_UNEXPECTED_CALL();         break;
-                case PrimitiveTopology::TRIANGLES: indexCount = cmd._drawCount * 3;  break;
-                case PrimitiveTopology::POINTS: indexCount = cmd._drawCount * 1;  break;
-                default: indexCount = cmd._cmd.indexCount; break;
+                case PrimitiveTopology::POINTS: vertexCount = 1u; break;
+                case PrimitiveTopology::LINES:
+                case PrimitiveTopology::LINE_STRIP:
+                case PrimitiveTopology::LINE_STRIP_ADJACENCY:
+                case PrimitiveTopology::LINES_ADJANCENCY: vertexCount = 2u; break;
+                case PrimitiveTopology::TRIANGLES:
+                case PrimitiveTopology::TRIANGLE_STRIP:
+                case PrimitiveTopology::TRIANGLE_FAN:
+                case PrimitiveTopology::TRIANGLES_ADJACENCY:
+                case PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY: vertexCount = 3u; break;
+                case PrimitiveTopology::PATCH: vertexCount = 4u; break;
+                default: return false;
+            }
+            if ( indexCount < vertexCount )
+            {
+                indexCount = vertexCount;
             }
 
-            vkCmdDraw( cmdBuffer, indexCount, cmd._cmd.primCount, cmd._cmd.firstIndex, 0u );
+            vkCmdDraw( cmdBuffer, cmd._drawCount * indexCount, cmd._cmd.instanceCount, cmd._cmd.baseVertex, cmd._cmd.baseInstance);
         }
         else
         {
@@ -1024,26 +1064,29 @@ namespace Divide
                     const ShaderBuffer::Usage bufferUsage = bufferEntry._buffer->getUsage();
                     VkBuffer buffer = static_cast<vkShaderBuffer*>(bufferEntry._buffer)->bufferImpl()->_buffer;
 
+                    VkDeviceSize offset = bufferEntry._range._startOffset * bufferEntry._buffer->getPrimitiveSize();
+                    if ( bufferEntry._bufferQueueReadIndex == -1 )
+                    {
+                        offset += bufferEntry._bufferQueueReadIndex * bufferEntry._buffer->alignedBufferSize();
+                    }
+                    else
+                    {
+                        offset += bufferEntry._buffer->getStartOffset( true );
+                    }
+
                     if ( usage == DescriptorSetUsage::PER_BATCH && srcBinding._slot == 0 )
                     {
                         // Draw indirect buffer!
                         DIVIDE_ASSERT( bufferUsage == ShaderBuffer::Usage::COMMAND_BUFFER );
                         GetStateTracker()._drawIndirectBuffer = buffer;
+                        GetStateTracker()._drawIndirectBufferOffset = offset;
                     }
                     else
                     {
                         DIVIDE_ASSERT( bufferEntry._range._length > 0u );
                         VkDescriptorBufferInfo& bufferInfo = BufferInfoStructs[bufferInfoStructIndex++];
                         bufferInfo.buffer = buffer;
-                        bufferInfo.offset = bufferEntry._range._startOffset * bufferEntry._buffer->getPrimitiveSize();
-                        if ( bufferEntry._bufferQueueReadIndex == -1 )
-                        {
-                            bufferInfo.offset += bufferEntry._bufferQueueReadIndex * bufferEntry._buffer->alignedBufferSize();
-                        }
-                        else
-                        {
-                            bufferInfo.offset += bufferEntry._buffer->getStartOffset( true );
-                        }
+                        bufferInfo.offset = offset;
                         bufferInfo.range = bufferEntry._range._length * bufferEntry._buffer->getPrimitiveSize();
 
                         builder.bindBuffer( srcBinding._slot, &bufferInfo, VKUtil::vkDescriptorType( type ), stageFlags );
@@ -1176,7 +1219,7 @@ namespace Divide
         return true;
     }
 
-    void VK_API::bindDynamicState( const VKDynamicState& currentState, VkCommandBuffer cmdBuffer )
+    void VK_API::bindDynamicState( const VKDynamicState& currentState, VkCommandBuffer cmdBuffer ) noexcept
     {
         vkCmdSetStencilCompareMask( cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState._stencilMask );
         vkCmdSetStencilWriteMask( cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState._stencilWriteMask );
@@ -1188,7 +1231,10 @@ namespace Divide
 
     ShaderResult VK_API::bindPipeline( const Pipeline& pipeline, VkCommandBuffer cmdBuffer )
     {
-        CompiledPipeline& compiledPipeline = _compiledPipelines[pipeline.hash()];
+       size_t pipelineHash = pipeline.hash();
+       Util::Hash_combine(pipelineHash, GetStateTracker()._pipelineRenderInfo._hash);
+
+        CompiledPipeline& compiledPipeline = _compiledPipelines[pipelineHash];
         if ( compiledPipeline._vkPipeline == VK_NULL_HANDLE )
         {
             const PipelineDescriptor& pipelineDescriptor = pipeline.descriptor();
@@ -1215,12 +1261,7 @@ namespace Divide
             push_constant.offset = 0u;
             push_constant.size = to_U32( PushConstantsStruct::Size() );
             push_constant.stageFlags = compiledPipeline._program->stageMask();
-
-            if ( GetStateTracker()._pipelineStageMask != push_constant.stageFlags )
-            {
-                GetStateTracker()._pipelineStageMask = push_constant.stageFlags;
-                GetStateTracker()._pushConstantsValid = false;
-            }
+            compiledPipeline._stageFlags = push_constant.stageFlags;
 
             VkPipelineLayoutCreateInfo pipeline_layout_info = vk::pipelineLayoutCreateInfo( 0u );
             pipeline_layout_info.pPushConstantRanges = &push_constant;
@@ -1282,6 +1323,7 @@ namespace Divide
                 currentState.frontFaceCCW()
                       ? VK_FRONT_FACE_CLOCKWISE
                       : VK_FRONT_FACE_COUNTER_CLOCKWISE );
+            pipelineBuilder._rasterizer.rasterizerDiscardEnable = pipelineDescriptor._rasterizationEnabled ? VK_FALSE : VK_TRUE;
 
             VkSampleCountFlagBits msaaSampleFlags = VK_SAMPLE_COUNT_1_BIT;
             const U8 msaaSamples = GetStateTracker()._activeMSAASamples;
@@ -1352,6 +1394,12 @@ namespace Divide
 
             compiledPipeline._vkPipeline = pipelineBuilder.build_pipeline( _device->getVKDevice(), _pipelineCache, isGraphicsPipeline );
 
+            if ( isGraphicsPipeline && IsTriangles(pipelineDescriptor._primitiveTopology) )
+            {
+                pipelineBuilder._rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
+                compiledPipeline._vkPipelineWireframe = pipelineBuilder.build_pipeline( _device->getVKDevice(), _pipelineCache, true );
+            }
+
             Debug::SetObjectName( _device->getVKDevice(), (uint64_t)compiledPipeline._vkPipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, program->resourceName().c_str() );
             Debug::SetObjectName( _device->getVKDevice(), (uint64_t)compiledPipeline._vkPipeline, VK_OBJECT_TYPE_PIPELINE, program->resourceName().c_str());
 
@@ -1366,6 +1414,12 @@ namespace Divide
 
         vkCmdBindPipeline( cmdBuffer, compiledPipeline._bindPoint, compiledPipeline._vkPipeline );
         GetStateTracker()._pipeline = compiledPipeline;
+        if ( GetStateTracker()._pipelineStageMask != compiledPipeline._stageFlags )
+        {
+            GetStateTracker()._pipelineStageMask = compiledPipeline._stageFlags;
+            GetStateTracker()._pushConstantsValid = false;
+        }
+
         bindDynamicState( compiledPipeline._dynamicState, cmdBuffer );
 
         return ShaderResult::OK;
@@ -1465,6 +1519,10 @@ namespace Divide
             {
                 const GFX::BeginRenderPassCommand* crtCmd = cmd->As<GFX::BeginRenderPassCommand>();
                 VK_API::GetStateTracker()._activeRenderTargetID = crtCmd->_target;
+
+                GetStateTracker()._pipelineRenderInfo._vkInfo = {};
+                GetStateTracker()._pipelineRenderInfo._vkInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+
                 if ( crtCmd->_target == SCREEN_TARGET_ID )
                 {
                     VkClearValue clearValue{};
@@ -1478,18 +1536,19 @@ namespace Divide
 
                     _defaultRenderPass.pClearValues = &clearValue;
                     vkCmdBeginRenderPass( cmdBuffer, &_defaultRenderPass, VK_SUBPASS_CONTENTS_INLINE );
-                    GetStateTracker()._pipelineRenderingCreateInfo.colorAttachmentCount = 1u;
                     GetStateTracker()._activeMSAASamples = 1u;
                 }
                 else
                 {
                     vkRenderTarget* rt = static_cast<vkRenderTarget*>(_context.renderTargetPool().getRenderTarget( crtCmd->_target ));
-                    Attorney::VKAPIRenderTarget::begin( *rt, cmdBuffer, crtCmd->_descriptor, crtCmd->_clearDescriptor, GetStateTracker()._pipelineRenderingCreateInfo );
+                    Attorney::VKAPIRenderTarget::begin( *rt, cmdBuffer, crtCmd->_descriptor, crtCmd->_clearDescriptor, GetStateTracker()._pipelineRenderInfo._vkInfo );
 
                     GetStateTracker()._activeMSAASamples = rt->getSampleCount();
                     _context.setViewport( { 0, 0, rt->getWidth(), rt->getHeight() } );
                     _context.setScissor( { 0, 0, rt->getWidth(), rt->getHeight() } );
                 }
+
+                GetStateTracker()._pipelineRenderInfo._hash = GetHash( GetStateTracker()._pipelineRenderInfo._vkInfo );
 
                 PushDebugMessage( cmdBuffer, crtCmd->_name.c_str() );
             } break;
@@ -1508,7 +1567,7 @@ namespace Divide
                     Attorney::VKAPIRenderTarget::end( *rt, cmdBuffer );
                     GetStateTracker()._activeRenderTargetID = SCREEN_TARGET_ID;
                 }
-                GetStateTracker()._pipelineRenderingCreateInfo = {};
+                GetStateTracker()._pipelineRenderInfo = {};
             }break;
             case GFX::CommandType::BLIT_RT:
             {
@@ -1615,13 +1674,24 @@ namespace Divide
                     U32 drawCount = 0u;
                     for ( const GenericDrawCommand& currentDrawCommand : drawCommands )
                     {
-                        if ( draw( currentDrawCommand, cmdBuffer ) )
+                        if ( isEnabledOption( currentDrawCommand, CmdRenderOptions::RENDER_GEOMETRY ) )
                         {
-                            drawCount += isEnabledOption( currentDrawCommand, CmdRenderOptions::RENDER_WIREFRAME )
-                                ? 2
-                                : isEnabledOption( currentDrawCommand, CmdRenderOptions::RENDER_GEOMETRY ) ? 1 : 0;
+                            draw( currentDrawCommand, cmdBuffer );
+                            ++drawCount;
+                        }
+
+                        if ( isEnabledOption( currentDrawCommand, CmdRenderOptions::RENDER_WIREFRAME ) )
+                        {
+                            PrimitiveTopology oldTopology = VK_API::GetStateTracker()._pipeline._topology;
+                            VK_API::GetStateTracker()._pipeline._topology = PrimitiveTopology::LINES;
+                            vkCmdBindPipeline( cmdBuffer, GetStateTracker()._pipeline._bindPoint, GetStateTracker()._pipeline._vkPipelineWireframe );
+                            draw( currentDrawCommand, cmdBuffer );
+                            ++drawCount;
+                            vkCmdBindPipeline( cmdBuffer, GetStateTracker()._pipeline._bindPoint, GetStateTracker()._pipeline._vkPipeline );
+                            VK_API::GetStateTracker()._pipeline._topology = oldTopology;
                         }
                     }
+
                     _context.registerDrawCalls( drawCount );
                 }
             }break;

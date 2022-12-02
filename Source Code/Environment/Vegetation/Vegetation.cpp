@@ -870,7 +870,7 @@ namespace Divide
 
         GenericDrawCommand cmd = {};
         cmd._sourceBuffer = s_buffer->handle();
-        cmd._cmd.primCount = _instanceCountGrass;
+        cmd._cmd.instanceCount = _instanceCountGrass;
         cmd._cmd.indexCount = to_U32( s_buffer->getPartitionIndexCount( partitionID ) );
         cmd._cmd.firstIndex = to_U32( s_buffer->getPartitionOffset( partitionID ) );
         cmdsOut.emplace_back( GFX::DrawCommand{ cmd } );

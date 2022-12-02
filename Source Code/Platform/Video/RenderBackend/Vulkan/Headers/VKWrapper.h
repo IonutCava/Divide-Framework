@@ -67,8 +67,10 @@ struct CompiledPipeline
     vkShaderProgram* _program{ nullptr };
     VKDynamicState _dynamicState{};
     VkPipeline _vkPipeline{ VK_NULL_HANDLE };
+    VkPipeline _vkPipelineWireframe{ VK_NULL_HANDLE };
     VkPipelineLayout _vkPipelineLayout{ VK_NULL_HANDLE };
     PrimitiveTopology _topology{PrimitiveTopology::COUNT};
+    VkShaderStageFlags _stageFlags{VK_FLAGS_NONE};
 };
 
 struct PipelineBuilder {
@@ -128,9 +130,16 @@ struct VKStateTracker {
     vke::DescriptorAllocatorHandle _perFrameDescriptorAllocator;
     CompiledPipeline _pipeline{};
 
-    VkPipelineRenderingCreateInfo _pipelineRenderingCreateInfo{};
+    struct PipelineRenderInfo
+    {
+        VkPipelineRenderingCreateInfo _vkInfo{};
+        size_t _hash{0u};
+    } _pipelineRenderInfo;
+    
 
     VkBuffer _drawIndirectBuffer{ VK_NULL_HANDLE };
+    size_t _drawIndirectBufferOffset{ 0u };
+
     U64 _lastSyncedFrameNumber{ 0u };
 
     VkShaderStageFlags _pipelineStageMask{ VK_FLAGS_NONE };
@@ -220,7 +229,7 @@ private:
     void destroyPipelineCache();
 
     ShaderResult bindPipeline(const Pipeline& pipeline, VkCommandBuffer cmdBuffer);
-    void bindDynamicState(const VKDynamicState& currentState, VkCommandBuffer cmdBuffer);
+    void bindDynamicState(const VKDynamicState& currentState, VkCommandBuffer cmdBuffer) noexcept;
     [[nodiscard]] bool bindShaderResources(DescriptorSetUsage usage, const DescriptorSet& bindings, bool isDirty) override;
 
 public:

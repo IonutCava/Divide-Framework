@@ -78,7 +78,8 @@ namespace Divide {
         /// Some may be redundant, so we check each one individually
         void activateStateBlock(const RenderStateBlock& newBlock);
 
-        void setVertexFormat(PrimitiveTopology topology, bool primitiveRestartEnabled, const AttributeMap& attributes, const size_t attributeHash);
+        void setPrimitiveTopology( PrimitiveTopology topology );
+        void setVertexFormat(bool primitiveRestartEnabled, const AttributeMap& attributes, const size_t attributeHash);
 
         /// Switch the currently active vertex array object
         [[nodiscard]] BindResult setActiveVAO(GLuint ID);
@@ -179,7 +180,7 @@ namespace Divide {
         /// VB, IB, SB, TB, UB, PUB, DIB
         std::array<GLuint, 13> _activeBufferID = create_array<13, GLuint>(GLUtil::k_invalidObjectID);
         hashMap<GLuint, GLuint> _activeVAOIB;
-        size_t _commandBufferOffset{0u};
+        size_t _drawIndirectBufferOffset{0u};
 
         GLint  _activePackUnpackAlignments[2] { 1 , 1 };
         GLint  _activePackUnpackRowLength[2]  { 0 , 0 };

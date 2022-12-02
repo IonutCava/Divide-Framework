@@ -392,242 +392,152 @@ namespace Divide
             return GLUtil::glTextureTypeTable[to_base( type )];
         }
 
-        namespace
-        {
-
-            void SubmitMultiIndirectCommand( const U32 drawCount,
-                                             const GLenum mode,
-                                             const GLenum internalFormat,
-                                             const size_t offset )
-            {
-                if ( internalFormat != GL_NONE ) [[likely]]
-                {
-                    glMultiDrawElementsIndirect( mode, internalFormat, (bufferPtr)offset, drawCount, sizeof( IndirectDrawCommand ) );
-                }
-                else
-                {
-                    glMultiDrawArraysIndirect( mode, (bufferPtr)offset, drawCount, sizeof( IndirectDrawCommand ) );
-                }
-            }
-
-            void SubmitSingleIndirectCommand( const IndirectDrawCommand& cmd,
-                                              const GLenum mode,
-                                              const GLenum internalFormat,
-                                              const size_t offset )
-            {
-                if ( internalFormat != GL_NONE ) [[likely]]
-                {
-                    glDrawElementsIndirect( mode, internalFormat, (bufferPtr)offset );
-                }
-                else
-                {
-                    // This needs a different command buffer and different IndirectDrawCommand (16byte instead of 20)
-                    if ( cmd.primCount > 1u )
-                    {
-                        if ( cmd.baseInstance > 0u )
-                        {
-                            glDrawArraysInstancedBaseInstance( mode, cmd.firstIndex, cmd.indexCount, cmd.primCount, cmd.baseInstance );
-                        }
-                        else
-                        {
-                            glDrawArraysInstanced( mode, cmd.firstIndex, cmd.indexCount, cmd.primCount );
-                        }
-                    }
-                    else
-                    {
-                        if ( cmd.baseInstance > 0u )
-                        {
-                            glDrawArraysInstancedBaseInstance( mode, cmd.firstIndex, cmd.indexCount, 1u, cmd.baseInstance );
-                        }
-                        else
-                        {
-                            glDrawArrays( mode, cmd.firstIndex, cmd.indexCount );
-                        }
-                    }
-                }
-            }
-
-            void SubmitSingleDirectCommand( const GLenum mode,
-                                            const GLenum internalFormat,
-                                            const U32 indexCount,
-                                            const U32 firstIndex,
-                                            const U32 baseVertex,
-                                            const U32 baseInstance,
-                                            const size_t offset )
-            {
-                if ( internalFormat != GL_NONE ) [[likely]]
-                {
-                    const size_t elementSize = internalFormat == GL_UNSIGNED_SHORT ? sizeof( GLushort ) : sizeof( GLuint );
-                    if ( baseInstance > 0u )
-                    {
-                        glDrawElementsInstancedBaseVertexBaseInstance( mode, indexCount, internalFormat, (bufferPtr)(offset * elementSize), 1, baseVertex, baseInstance );
-                    }
-                    else
-                    {
-                        if ( baseVertex > 0u )
-                        {
-                            glDrawElementsBaseVertex( mode, indexCount, internalFormat, (bufferPtr)(offset * elementSize), baseVertex );
-                        }
-                        else
-                        {
-                            glDrawElements( mode, indexCount, internalFormat, (bufferPtr)(offset * elementSize) );
-                        }
-                    }
-                }
-                else
-                {
-                    if ( baseInstance > 0u )
-                    {
-                        glDrawArraysInstancedBaseInstance( mode, firstIndex, indexCount, 1u, baseInstance );
-                    }
-                    else [[likely]]
-                    {
-                        glDrawArrays( mode, firstIndex, indexCount );
-                    }
-                }
-            }
-
-            void SubmitMultiDirectCommand( const U32 drawCount,
-                                           const GLenum mode,
-                                           const GLenum internalFormat,
-                                           const GLsizei* const count,
-                                           const bufferPtr indexData )
-            {
-                if ( internalFormat != GL_NONE )
-                {
-                    glMultiDrawElements( mode, count, internalFormat, static_cast<void* const*>(indexData), drawCount );
-                }
-                else
-                {
-                    glMultiDrawArrays( mode, static_cast<GLint*>(indexData), count, drawCount );
-                }
-            }
-
-            void SubmitSingleDirectCommandInstanced( const GLenum mode,
-                                                     const GLenum internalFormat,
-                                                     const U32 indexCount,
-                                                     const U32 firstIndex,
-                                                     const U32 primCount,
-                                                     const U32 baseVertex,
-                                                     const U32 baseInstance )
-            {
-                if ( internalFormat != GL_NONE ) [[likely]]
-                {
-                    const size_t elementSize = internalFormat == GL_UNSIGNED_SHORT ? sizeof( GLushort ) : sizeof( GLuint );
-                    if ( baseInstance > 0u )
-                    {
-                        glDrawElementsInstancedBaseVertexBaseInstance( mode, indexCount, internalFormat, (bufferPtr)(firstIndex * elementSize), primCount, baseVertex, baseInstance );
-                    }
-                    else
-                    {
-                        if ( baseVertex > 0u )
-                        {
-                            glDrawElementsInstancedBaseVertex( mode, indexCount, internalFormat, (bufferPtr)(firstIndex * elementSize), primCount, baseVertex );
-                        }
-                        else
-                        {
-                            glDrawElementsInstanced( mode, indexCount, internalFormat, (bufferPtr)(firstIndex * elementSize), primCount );
-                        }
-                    }
-                }
-                else
-                {
-                    if ( baseInstance > 0u )
-                    {
-                        glDrawArraysInstancedBaseInstance( mode, firstIndex, indexCount, primCount, baseInstance );
-                    }
-                    else
-                    {
-                        glDrawArraysInstanced( mode, firstIndex, indexCount, primCount );
-                    }
-                }
-            }
-
-            void SubmitIndirectCommand( const IndirectDrawCommand& cmd,
-                                        const U32 drawCount,
-                                        const GLenum mode,
-                                        const GLenum internalFormat,
-                                        const GLuint cmdBufferOffset )
-            {
-                const size_t offset = (cmdBufferOffset * sizeof( IndirectDrawCommand )) + GL_API::GetStateTracker()._commandBufferOffset;
-
-                if ( drawCount > 1u )
-                {
-                    SubmitMultiIndirectCommand( drawCount, mode, internalFormat, offset );
-                }
-                else
-                {
-                    assert( drawCount == 1u );
-                    SubmitSingleIndirectCommand( cmd, mode, internalFormat, offset );
-                }
-            }
-
-            void SubmitDirectCommand( const IndirectDrawCommand& cmd,
-                                      const U32 drawCount,
-                                      const GLenum mode,
-                                      const GLenum internalFormat,
-                                      const GLsizei* const count,
-                                      const bufferPtr indexData )
-            {
-                if ( cmd.primCount > 1u )
-                {
-                    if ( drawCount > 1u ) [[unlikely]]
-                    {
-                        DIVIDE_UNEXPECTED_CALL_MSG( "Multi-draw is incompatible with instancing as gl_DrawID will have the wrong value. Split the call into multiple draw commands with manual uniform-updates in-between!" );
-                    }
-
-                    SubmitSingleDirectCommandInstanced( mode, internalFormat, cmd.indexCount, cmd.firstIndex, cmd.primCount, cmd.baseVertex, cmd.baseInstance );
-                }
-                else [[likely]]
-                {
-                    if ( drawCount > 1u ) 
-                    {
-                        SubmitMultiDirectCommand( drawCount, mode, internalFormat, count, indexData );
-                    }
-                    else
-                    {
-                        assert( drawCount == 1u );
-                        SubmitSingleDirectCommand( mode, internalFormat, cmd.indexCount, cmd.firstIndex, cmd.baseVertex, cmd.baseInstance, cmd.firstIndex );
-                    }
-                }
-            }
-
-            void SubmitRenderCommand( const GLenum primitiveType,
-                                      const GenericDrawCommand& drawCommand,
-                                      const bool useIndirectBuffer,
-                                      const GLenum internalFormat,
-                                      const GLsizei* const count,
-                                      const bufferPtr indexData )
-            {
-                if ( useIndirectBuffer ) [[likely]]
-                {
-                    SubmitIndirectCommand( drawCommand._cmd, drawCommand._drawCount, primitiveType, internalFormat, drawCommand._commandOffset );
-                }
-                else
-                {
-                    SubmitDirectCommand( drawCommand._cmd, drawCommand._drawCount, primitiveType, internalFormat, count, indexData );
-                }
-            }
-
-        } //namespace
-
         void SubmitRenderCommand( const GenericDrawCommand& drawCommand,
                                   const bool useIndirectBuffer,
                                   const GLenum internalFormat,
                                   const GLsizei* const count,
                                   const bufferPtr indexData )
         {
-            auto& stateTracker = GL_API::GetStateTracker();
+            const GLenum primitiveType = glPrimitiveTypeTable[to_base( GL_API::GetStateTracker()._activeTopology )];
 
-            stateTracker.toggleRasterization( !isEnabledOption( drawCommand, CmdRenderOptions::RENDER_NO_RASTERIZE ) );
-
-            if ( isEnabledOption( drawCommand, CmdRenderOptions::RENDER_GEOMETRY ) ) [[likely]]
+            if ( useIndirectBuffer ) [[likely]]
             {
-                SubmitRenderCommand( glPrimitiveTypeTable[to_base( stateTracker._activeTopology )], drawCommand, useIndirectBuffer, internalFormat, count, indexData );
+                const size_t offset = (drawCommand._commandOffset * sizeof( IndirectDrawCommand )) + GL_API::GetStateTracker()._drawIndirectBufferOffset;
+
+                if ( drawCommand._drawCount > 1u )
+                {
+                    if ( internalFormat != GL_NONE ) [[likely]]
+                    {
+                        glMultiDrawElementsIndirect( primitiveType, internalFormat, (bufferPtr)offset, drawCommand._drawCount, sizeof( IndirectDrawCommand ) );
+                    }
+                    else
+                    {
+                        glMultiDrawArraysIndirect( primitiveType, (bufferPtr)offset, drawCommand._drawCount, sizeof( IndirectDrawCommand ) );
+                    }
+                }
+                else [[likely]]
+                {
+                    assert( drawCommand._drawCount == 1u );
+                    if ( internalFormat != GL_NONE ) [[likely]]
+                    {
+                        glDrawElementsIndirect( primitiveType, internalFormat, (bufferPtr)offset );
+                    }
+                    else
+                    {
+                        // This needs a different command buffer and different IndirectDrawCommand (16byte instead of 20)
+                        if ( drawCommand._cmd.instanceCount > 1u )
+                        {
+                            if ( drawCommand._cmd.baseInstance > 0u )
+                            {
+                                glDrawArraysInstancedBaseInstance( primitiveType, drawCommand._cmd.firstIndex, drawCommand._cmd.indexCount, drawCommand._cmd.instanceCount, drawCommand._cmd.baseInstance );
+                            }
+                            else
+                            {
+                                glDrawArraysInstanced( primitiveType, drawCommand._cmd.firstIndex, drawCommand._cmd.indexCount, drawCommand._cmd.instanceCount );
+                            }
+                        }
+                        else
+                        {
+                            if ( drawCommand._cmd.baseInstance > 0u )
+                            {
+                                glDrawArraysInstancedBaseInstance( primitiveType, drawCommand._cmd.firstIndex, drawCommand._cmd.indexCount, 1u, drawCommand._cmd.baseInstance );
+                            }
+                            else
+                            {
+                                glDrawArrays( primitiveType, drawCommand._cmd.firstIndex, drawCommand._cmd.indexCount );
+                            }
+                        }
+                    }
+                }
             }
-            if ( isEnabledOption( drawCommand, CmdRenderOptions::RENDER_WIREFRAME ) )
+            else
             {
-                SubmitRenderCommand( GL_LINE_LOOP, drawCommand, useIndirectBuffer, internalFormat, count, indexData );
+                if ( drawCommand._cmd.instanceCount > 1u )
+                {
+                    if ( drawCommand._drawCount > 1u ) [[unlikely]]
+                    {
+                        DIVIDE_UNEXPECTED_CALL_MSG( "Multi-draw is incompatible with instancing as gl_DrawID will have the wrong value. Split the call into multiple draw commands with manual uniform-updates in-between!" );
+                    }
+
+                        if ( internalFormat != GL_NONE ) [[likely]]
+                        {
+                            const size_t elementSize = internalFormat == GL_UNSIGNED_SHORT ? sizeof( GLushort ) : sizeof( GLuint );
+                            if ( drawCommand._cmd.baseInstance > 0u )
+                            {
+                                glDrawElementsInstancedBaseVertexBaseInstance( primitiveType, drawCommand._cmd.indexCount, internalFormat, (bufferPtr)(drawCommand._cmd.firstIndex * elementSize), drawCommand._cmd.instanceCount, drawCommand._cmd.baseVertex, drawCommand._cmd.baseInstance );
+                            }
+                            else
+                            {
+                                if ( drawCommand._cmd.baseVertex > 0u )
+                                {
+                                    glDrawElementsInstancedBaseVertex( primitiveType, drawCommand._cmd.indexCount, internalFormat, (bufferPtr)(drawCommand._cmd.firstIndex * elementSize), drawCommand._cmd.instanceCount, drawCommand._cmd.baseVertex );
+                                }
+                                else
+                                {
+                                    glDrawElementsInstanced( primitiveType, drawCommand._cmd.indexCount, internalFormat, (bufferPtr)(drawCommand._cmd.firstIndex * elementSize), drawCommand._cmd.instanceCount );
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if ( drawCommand._cmd.baseInstance > 0u )
+                            {
+                                glDrawArraysInstancedBaseInstance( primitiveType, drawCommand._cmd.firstIndex, drawCommand._cmd.indexCount, drawCommand._cmd.instanceCount, drawCommand._cmd.baseInstance );
+                            }
+                            else
+                            {
+                                glDrawArraysInstanced( primitiveType, drawCommand._cmd.firstIndex, drawCommand._cmd.indexCount, drawCommand._cmd.instanceCount );
+                            }
+                        }
+                }
+                else [[likely]]
+                {
+                    if ( drawCommand._drawCount > 1u )
+                    {
+                        if ( internalFormat != GL_NONE )
+                        {
+                            glMultiDrawElements( primitiveType, count, internalFormat, static_cast<void* const*>(indexData), drawCommand._drawCount );
+                        }
+                        else
+                        {
+                            glMultiDrawArrays( primitiveType, static_cast<GLint*>(indexData), count, drawCommand._drawCount );
+                        }
+                    }
+                    else
+                    {
+                        assert( drawCommand._drawCount == 1u );
+                        if ( internalFormat != GL_NONE ) [[likely]]
+                        {
+                            const size_t elementSize = internalFormat == GL_UNSIGNED_SHORT ? sizeof( GLushort ) : sizeof( GLuint );
+                            if ( drawCommand._cmd.baseInstance > 0u )
+                            {
+                                glDrawElementsInstancedBaseVertexBaseInstance( primitiveType, drawCommand._cmd.indexCount, internalFormat, (bufferPtr)(drawCommand._cmd.firstIndex * elementSize), 1, drawCommand._cmd.baseVertex, drawCommand._cmd.baseInstance );
+                            }
+                            else
+                            {
+                                if ( drawCommand._cmd.baseVertex > 0u )
+                                {
+                                    glDrawElementsBaseVertex( primitiveType, drawCommand._cmd.indexCount, internalFormat, (bufferPtr)(drawCommand._cmd.firstIndex * elementSize), drawCommand._cmd.baseVertex );
+                                }
+                                else
+                                {
+                                    glDrawElements( primitiveType, drawCommand._cmd.indexCount, internalFormat, (bufferPtr)(drawCommand._cmd.firstIndex * elementSize) );
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if ( drawCommand._cmd.baseInstance > 0u )
+                            {
+                                glDrawArraysInstancedBaseInstance( primitiveType, drawCommand._cmd.firstIndex, drawCommand._cmd.indexCount, 1u, drawCommand._cmd.baseInstance );
+                            }
+                            else [[likely]]
+                            {
+                                glDrawArrays( primitiveType, drawCommand._cmd.firstIndex, drawCommand._cmd.indexCount );
+                            }
+                        }
+                    }
+                }
             }
         }
 

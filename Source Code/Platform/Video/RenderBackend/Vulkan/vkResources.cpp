@@ -5,7 +5,7 @@
 
 #include "Platform/Video/GLIM/glim.h"
 #include "Platform/Video/Headers/DescriptorSets.h"
-
+#include "Platform/Video/Headers/GenericDrawCommand.h"
 
 namespace Divide
 {
@@ -62,6 +62,52 @@ namespace Divide
 
     namespace VKUtil
     {
+
+        void SubmitRenderCommand( const GenericDrawCommand& drawCommand,
+                                  const VkCommandBuffer commandBuffer,
+                                  const bool indexed,
+                                  const bool renderIndirect)
+        {
+            if ( isEnabledOption( drawCommand, CmdRenderOptions::RENDER_GEOMETRY ) ) [[likely]]
+            {
+                const size_t offset = (drawCommand._commandOffset * sizeof( IndirectDrawCommand )) + VK_API::GetStateTracker()._drawIndirectBufferOffset;
+                if ( renderIndirect ) [[likely]]
+                {
+                    const VkBuffer indirectBuffer = VK_API::GetStateTracker()._drawIndirectBuffer;
+
+                    if ( indexed ) [[likely]]
+                    {
+                        vkCmdDrawIndexedIndirect( commandBuffer, indirectBuffer, offset, drawCommand._drawCount, sizeof( IndirectDrawCommand ) );
+                    }
+                    else
+                    {
+                        vkCmdDrawIndirect( commandBuffer, indirectBuffer, offset, drawCommand._drawCount, sizeof( IndirectDrawCommand ) );
+                    }
+                }
+                else
+                {
+                    if ( indexed )
+                    {
+                        vkCmdDrawIndexed( commandBuffer, drawCommand._cmd.indexCount, drawCommand._cmd.instanceCount, drawCommand._cmd.firstIndex, drawCommand._cmd.baseVertex, drawCommand._cmd.baseInstance );
+                    }
+                    else
+                    {
+                        U32 vertexCount = 0u;
+                        switch ( VK_API::GetStateTracker()._pipeline._topology )
+                        {
+                            case PrimitiveTopology::COMPUTE:
+                            case PrimitiveTopology::COUNT: DIVIDE_UNEXPECTED_CALL();         break;
+                            case PrimitiveTopology::TRIANGLES: vertexCount = drawCommand._cmd.indexCount * 3;  break;
+                            case PrimitiveTopology::POINTS: vertexCount = drawCommand._cmd.indexCount * 1;  break;
+                            default: vertexCount = drawCommand._cmd.indexCount * 3; break;
+                        }
+
+                        vkCmdDraw( commandBuffer, vertexCount, drawCommand._cmd.instanceCount, drawCommand._cmd.baseVertex, drawCommand._cmd.baseInstance );
+                    }
+                }
+            }
+        }
+
         void fillEnumTables( VkDevice device )
         {
             if ( VK_API::s_hasDebugMarkerSupport )

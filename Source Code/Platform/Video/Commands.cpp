@@ -181,7 +181,7 @@ string ToString(const DrawCommand& cmd, const U16 indent)  {
         for (U16 j = 0; j < indent; ++j) {
             ret.append("    ");
         }
-        ret.append(Util::StringFormat("%d: Draw count: %d Base instance: %d Instance count: %d Index count: %d\n", i++, drawCmd._drawCount, drawCmd._cmd.baseInstance, drawCmd._cmd.primCount, drawCmd._cmd.indexCount));
+        ret.append(Util::StringFormat("%d: Draw count: %d Base instance: %d Instance count: %d Index count: %d\n", i++, drawCmd._drawCount, drawCmd._cmd.baseInstance, drawCmd._cmd.instanceCount, drawCmd._cmd.indexCount));
     }
 
     return ret;

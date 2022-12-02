@@ -14,15 +14,15 @@
                 <distance>0</distance>
                 <active>false</active>
             </reflectionPlane>
-            <accumPitchDegrees>-6.67916441</accumPitchDegrees>
+            <accumPitchDegrees>-14.9972277</accumPitchDegrees>
             <frustumLocked>false</frustumLocked>
-            <euler x="173.321426" y="1.37374902" z="-179.978653"/>
-            <eye x="-83.0615616" y="16.3871937" z="681.606384"/>
-            <orientation x="-0.00088427111" y="0.998223782" z="0.0582461692" w="0.0119568054"/>
-            <aspectRatio>1.76999998</aspectRatio>
+            <euler x="-14.999999" y="39.9882622" z="0"/>
+            <eye x="60" y="45" z="60"/>
+            <orientation x="-0.122639529" y="0.339052707" z="0.0446371362" w="0.931539714"/>
+            <aspectRatio>1.77777779</aspectRatio>
             <zPlanes min="0.100000001" max="1000"/>
-            <FoV>77.7975693</FoV>
-            <speedFactor turn="50" move="40" zoom="35"/>
+            <FoV>58.7155075</FoV>
+            <speedFactor turn="45" move="4" zoom="5"/>
             <fixedYawAxis x="0" y="1" z="0"/>
             <yawFixed>true</yawFixed>
             <rotationLocked>false</rotationLocked>
@@ -39,14 +39,14 @@
                 <distance>0</distance>
                 <active>false</active>
             </reflectionPlane>
-            <accumPitchDegrees>-59.2099953</accumPitchDegrees>
+            <accumPitchDegrees>-0</accumPitchDegrees>
             <frustumLocked>false</frustumLocked>
-            <euler x="0" y="88.733902" z="180"/>
-            <eye x="43.1300011" y="147.089996" z="-4.40999985"/>
-            <orientation x="-0.349280655" y="0.614720225" z="0.349280655" w="0.614720225"/>
+            <euler x="0" y="-0" z="0"/>
+            <eye x="0" y="0" z="0"/>
+            <orientation x="0" y="0" z="0" w="0.99987793"/>
             <aspectRatio>1.77777779</aspectRatio>
             <zPlanes min="0.100000001" max="1000"/>
-            <FoV>77.5521393</FoV>
+            <FoV>58.7155075</FoV>
             <speedFactor turn="125" move="4" zoom="175"/>
             <fixedYawAxis x="0" y="1" z="0"/>
             <yawFixed>true</yawFixed>
@@ -55,7 +55,7 @@
             <maxRadius>10</maxRadius>
             <minRadius>0.100000001</minRadius>
             <curRadius>8</curRadius>
-            <cameraRotation x="0" y="0" z="0"/>
+            <cameraRotation x="2.6934793" y="0.856016338" z="0"/>
             <offsetDir x="0" y="0" z="0"/>
         </Node__Preview__Camera>
     </camera>

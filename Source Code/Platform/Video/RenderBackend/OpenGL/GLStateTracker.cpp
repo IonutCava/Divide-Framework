@@ -60,7 +60,7 @@ namespace Divide
         _activeVAOID = GLUtil::k_invalidObjectID;
         _activeFBID[0] = _activeFBID[1] = _activeFBID[2] = GLUtil::k_invalidObjectID;
         _activeVAOIB.clear();
-        _commandBufferOffset = 0u;
+        _drawIndirectBufferOffset = 0u;
         _activePackUnpackAlignments[0] = _activePackUnpackAlignments[1] = 1;
         _activePackUnpackRowLength[0] = _activePackUnpackRowLength[1] = 0;
         _activePackUnpackSkipPixels[0] = _activePackUnpackSkipPixels[1] = 0;
@@ -190,11 +190,14 @@ namespace Divide
         return false;
     }
 
-    void GLStateTracker::setVertexFormat( const PrimitiveTopology topology, const bool primitiveRestartEnabled, const AttributeMap& attributes, const size_t attributeHash )
+    void GLStateTracker::setPrimitiveTopology( const PrimitiveTopology topology )
+    {
+        _activeTopology = topology;
+    }
+
+    void GLStateTracker::setVertexFormat( const bool primitiveRestartEnabled, const AttributeMap& attributes, const size_t attributeHash )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        _activeTopology = topology;
 
         GLuint vao = GLUtil::k_invalidObjectID;
         if ( !getOrCreateVAO( attributeHash, vao ) )

@@ -313,7 +313,7 @@ void Terrain::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawComman
     cmd._sourceBuffer = _terrainBuffer->handle();
     cmd._cmd.indexCount = to_U32(TessellationParams::QUAD_LIST_INDEX_COUNT);
     for (const auto& tileRing : _tileRings) {
-        cmd._cmd.primCount += tileRing->tileCount();
+        cmd._cmd.instanceCount += tileRing->tileCount();
     }
 
     cmdsOut.emplace_back(GFX::DrawCommand{ cmd });

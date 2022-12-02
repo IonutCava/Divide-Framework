@@ -651,7 +651,7 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
 
     GenericDrawCommand drawCmd{};
     drawCmd._drawCount = 1u;
-    drawCmd._cmd.primCount = 1u;
+    drawCmd._cmd.instanceCount = 1u;
     drawCmd._sourceBuffer = _dataBuffer->handle();
 
     GFX::EnqueueCommand(commandBufferInOut, GFX::BeginDebugScopeCommand{ _name.c_str() });

@@ -48,6 +48,7 @@ struct PipelineDescriptor {
     U8 _multiSampleCount{ 0u };
     bool _primitiveRestartEnabled{ false };
     bool _alphaToCoverage{false};
+    bool _rasterizationEnabled{true};
 }; //struct PipelineDescriptor
 
 size_t GetHash(const PipelineDescriptor& descriptor);

@@ -22,13 +22,18 @@ namespace Divide {
     void vkGenericVertexData::draw(const GenericDrawCommand& command, VDIUserData* userData) noexcept {
         vkUserData* vkData = static_cast<vkUserData*>(userData);
 
-        for (const auto& buffer : _bufferObjects) {
+        for (const auto& buffer : _bufferObjects) 
+        
+        {
             bindBufferInternal(buffer._bindConfig, *vkData->_cmdBuffer);
         }
         const auto& idxBuffer = _idxBuffers[command._bufferFlag];
         if (idxBuffer._handle != nullptr) {
             vkCmdBindIndexBuffer(*vkData->_cmdBuffer, idxBuffer._handle->_buffer, 0u, idxBuffer._data.smallIndices ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
         }
+
+        // Submit the draw command
+        VKUtil::SubmitRenderCommand( command, *vkData->_cmdBuffer, idxBuffer._handle != nullptr, renderIndirect() );
     }
 
     void vkGenericVertexData::bindBufferInternal(const SetBufferParams::BufferBindConfig& bindConfig, VkCommandBuffer& cmdBuffer) {

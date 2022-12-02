@@ -27,9 +27,14 @@ namespace Divide
         _alignedBufferSize = _params._elementCount * _params._elementSize;
         _alignedBufferSize = static_cast<ptrdiff_t>(realign_offset( _alignedBufferSize, AlignmentRequirement( _usage ) ));
 
-        const VkBufferUsageFlagBits usageFlags = (_usage == Usage::UNBOUND_BUFFER || _usage == Usage::COMMAND_BUFFER)
+        VkBufferUsageFlags usageFlags = (_usage == Usage::UNBOUND_BUFFER || _usage == Usage::COMMAND_BUFFER)
             ? VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
             : VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+
+        if ( _usage == Usage::COMMAND_BUFFER )
+        {
+            usageFlags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+        }
 
         const size_t dataSize = _alignedBufferSize * queueLength();
         _bufferImpl = eastl::make_unique<AllocatedBuffer>( BufferUsageType::SHADER_BUFFER );

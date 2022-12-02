@@ -192,8 +192,7 @@ namespace Divide
     {
         _previousPolicy = descriptor;
 
-        pipelineRenderingCreateInfoOut = {};
-        pipelineRenderingCreateInfoOut.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+        assert(pipelineRenderingCreateInfoOut.sType == VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO);
 
         const bool needLayeredColour = descriptor._writeLayers._depthLayer != INVALID_LAYER_INDEX;
         U16 targetColourLayer = needLayeredColour ? descriptor._writeLayers._depthLayer : 0u;

@@ -63,7 +63,7 @@ namespace Divide
             }
 
             if ( !renderIndirect() &&
-                 command._cmd.primCount == 1u &&
+                 command._cmd.instanceCount == 1u &&
                  command._drawCount > 1u )
             {
                 rebuildCountAndIndexData( command._drawCount, static_cast<GLsizei>(command._cmd.indexCount), command._cmd.firstIndex, idxBuffer._data.count );
@@ -72,7 +72,7 @@ namespace Divide
             // Submit the draw command
             GLUtil::SubmitRenderCommand( command,
                                          renderIndirect(),
-                                         idxBuffer._data.smallIndices ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT,
+                                         idxBuffer._data.count > 0u ? idxBuffer._data.smallIndices ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT : GL_NONE,
                                          _indexInfo._countData.data(),
                                          (bufferPtr)_indexInfo._indexOffsetData.data() );
         }

@@ -130,8 +130,16 @@ inline std::string VKErrorString(VkResult errorCode)
     extern std::array<VkSamplerAddressMode, to_base(TextureWrap::COUNT)> vkWrapTable;
     extern std::array<VkShaderStageFlagBits, to_base(ShaderType::COUNT)> vkShaderStageTable;
 
+    struct GenericDrawCommand;
 namespace VKUtil {
     constexpr U8 k_invalidSyncID = U8_MAX;
+
+    ///Note: If internal format is not GL_NONE, an indexed draw is issued!
+    void SubmitRenderCommand( const GenericDrawCommand& drawCommand,
+                              const VkCommandBuffer commandBuffer,
+                              bool indexed,
+                              bool renderIndirect);
+
 
     void fillEnumTables(VkDevice device);
 

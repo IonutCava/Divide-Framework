@@ -287,7 +287,7 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
         {
             ScopedLock<SharedMutex> w_lock(cmds._dataLock);
             GenericDrawCommand& cmd = cmds._data.front()._drawCommands.front();
-            cmd._cmd.primCount = to_U32(_particles->_renderingPositions.size());
+            cmd._cmd.instanceCount = to_U32(_particles->_renderingPositions.size());
             cmd._sourceBuffer = getDataBuffer(renderStagePass._stage, 0).handle();
         }
 
