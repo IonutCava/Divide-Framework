@@ -74,8 +74,8 @@ namespace Divide {
 
         static void Idle(PlatformContext& platformContext);
 
-        [[nodiscard]] const vector<vkShader*>& shaderStages() const;
-        [[nodiscard]] VkShaderStageFlags stageMask() const;
+        [[nodiscard]] const vector<vkShader*>& shaderStages() const noexcept;
+        [[nodiscard]] VkShaderStageFlags stageMask() const noexcept;
 
     protected:
         [[nodiscard]] ShaderResult validatePreBind(bool rebind = true);

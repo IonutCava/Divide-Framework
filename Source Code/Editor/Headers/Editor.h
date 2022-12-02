@@ -359,6 +359,7 @@ namespace Divide
         string          _lastOpenSceneName{ "" };
         size_t         _editorSamplerHash = 0u;
         U32            _stepQueue = 1u;
+        F32            _queuedDPIValue = -1.f;
         bool           _simulationPaused = true;
         ImGuiStyleEnum _currentTheme = ImGuiStyle_Count;
         bool           _showSampleWindow = false;

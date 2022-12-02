@@ -681,7 +681,7 @@ namespace Divide
                 {
                     previousDPIScale = viewport->DpiScale;
                     ImGui::GetStyle().ScaleAllSizes( previousDPIScale );
-                    data->_window->context().editor().createFontTexture( previousDPIScale );
+                    data->_window->context().editor()._queuedDPIValue = previousDPIScale;
                 }
             }
         };
@@ -1301,6 +1301,12 @@ namespace Divide
             {
                 ImGui::GetIO().AddMouseViewportEvent( 0 );
             }
+        }
+
+        if ( _queuedDPIValue >= 0.f )
+        {
+            createFontTexture( _queuedDPIValue );
+            _queuedDPIValue = -1.f;
         }
 
         ImGui::NewFrame();

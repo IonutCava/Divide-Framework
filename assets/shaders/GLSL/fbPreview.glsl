@@ -50,12 +50,16 @@ void main()
             _colourOut.rgb = error();
         }
     }
+
+    _colourOut.rgb = ToLinear( _colourOut.rgb );
+
     if (normalizeOutput != 0u) {
         _colourOut.rgb = normalize(_colourOut.rgb);
     }
     if (scaleAndBias != 0u) {
         _colourOut.rgb = 0.5f * _colourOut.rgb + 0.5f;
     }
+
     _colourOut.rgb *= multiplier;
 }
 

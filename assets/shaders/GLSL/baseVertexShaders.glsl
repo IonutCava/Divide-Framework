@@ -11,6 +11,10 @@ void main(void)
     VAR._texCoord = uv * 2;
     gl_Position.xy = uv * 4 - 1;
     gl_Position.zw = vec2(0, 1);
+
+#if defined(TARGET_VULKAN)
+    VAR._texCoord.y = 1.f - VAR._texCoord.y;
+#endif //TARGET_VULKAN
 }
 
 -- Vertex.Dummy

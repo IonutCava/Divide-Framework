@@ -1216,6 +1216,12 @@ namespace Divide
             push_constant.size = to_U32( PushConstantsStruct::Size() );
             push_constant.stageFlags = compiledPipeline._program->stageMask();
 
+            if ( GetStateTracker()._pipelineStageMask != push_constant.stageFlags )
+            {
+                GetStateTracker()._pipelineStageMask = push_constant.stageFlags;
+                GetStateTracker()._pushConstantsValid = false;
+            }
+
             VkPipelineLayoutCreateInfo pipeline_layout_info = vk::pipelineLayoutCreateInfo( 0u );
             pipeline_layout_info.pPushConstantRanges = &push_constant;
             pipeline_layout_info.pushConstantRangeCount = 1;
@@ -1367,6 +1373,8 @@ namespace Divide
 
     void VK_API::flushCommand( GFX::CommandBase* cmd ) noexcept
     {
+        static mat4<F32> s_defaultPushConstants[2] = { MAT4_ZERO, MAT4_ZERO };
+
         static GFX::MemoryBarrierCommand pushConstantsMemCommand{};
         static bool pushConstantsNeedLock = false;
 
@@ -1548,13 +1556,14 @@ namespace Divide
                     }
                     if ( pushConstants.fastData()._set )
                     {
-                        const F32* constantData = pushConstants.fastData().dataPtr();
                         vkCmdPushConstants( cmdBuffer,
                                             GetStateTracker()._pipeline._vkPipelineLayout,
                                             GetStateTracker()._pipeline._program->stageMask(),
                                             0,
                                             to_U32( PushConstantsStruct::Size() ),
-                                            &constantData );
+                                            pushConstants.fastData().dataPtr() );
+
+                        GetStateTracker()._pushConstantsValid = true;
                     }
 
                     pushConstantsNeedLock = !pushConstantsMemCommand._bufferLocks.empty();
@@ -1591,6 +1600,18 @@ namespace Divide
 
                 if ( GetStateTracker()._pipeline._vkPipeline != VK_NULL_HANDLE )
                 {
+                    if ( !GetStateTracker()._pushConstantsValid )
+                    {
+                        vkCmdPushConstants( cmdBuffer,
+                                            GetStateTracker()._pipeline._vkPipelineLayout,
+                                            GetStateTracker()._pipeline._program->stageMask(),
+                                            0,
+                                            to_U32( PushConstantsStruct::Size() ),
+                                            &s_defaultPushConstants[0].mat);
+                        GetStateTracker()._pushConstantsValid = true;
+                    }
+
+
                     U32 drawCount = 0u;
                     for ( const GenericDrawCommand& currentDrawCommand : drawCommands )
                     {
@@ -1606,6 +1627,17 @@ namespace Divide
             }break;
             case GFX::CommandType::DISPATCH_COMPUTE:
             {
+                if ( !GetStateTracker()._pushConstantsValid )
+                {
+                    vkCmdPushConstants( cmdBuffer,
+                                        GetStateTracker()._pipeline._vkPipelineLayout,
+                                        GetStateTracker()._pipeline._program->stageMask(),
+                                        0,
+                                        to_U32( PushConstantsStruct::Size() ),
+                                        &s_defaultPushConstants[0].mat );
+                    GetStateTracker()._pushConstantsValid = true;
+                }
+
                 DIVIDE_ASSERT( GetStateTracker()._pipeline._topology == PrimitiveTopology::COMPUTE );
                 if ( GetStateTracker()._pipeline._vkPipeline != VK_NULL_HANDLE )
                 {
@@ -1665,6 +1697,9 @@ namespace Divide
     void VK_API::preFlushCommandBuffer( [[maybe_unused]] const GFX::CommandBuffer& commandBuffer )
     {
         GetStateTracker()._activeRenderTargetID = SCREEN_TARGET_ID;
+        // We don't really know what happened before this state and at worst this is going to end up into an 
+        // extra vkCmdPushConstants call with default data, so better safe.
+        GetStateTracker()._pushConstantsValid = false;
     }
 
     void VK_API::postFlushCommandBuffer( [[maybe_unused]] const GFX::CommandBuffer& commandBuffer ) noexcept

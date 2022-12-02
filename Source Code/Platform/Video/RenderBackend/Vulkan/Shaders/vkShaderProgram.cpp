@@ -143,12 +143,12 @@ namespace Divide {
         return ShaderProgram::unload();
     }
 
-    const vector<vkShader*>& vkShaderProgram::shaderStages() const
+    const vector<vkShader*>& vkShaderProgram::shaderStages() const noexcept
     {
         return _shaderStage;
     }
     
-    VkShaderStageFlags vkShaderProgram::stageMask() const 
+    VkShaderStageFlags vkShaderProgram::stageMask() const noexcept
     {
         VkShaderStageFlags ret{};
         for (const vkShader* shader : _shaderStage) 

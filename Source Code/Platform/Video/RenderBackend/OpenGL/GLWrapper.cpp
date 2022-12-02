@@ -424,7 +424,7 @@ namespace Divide
         GFXDevice::OverrideDeviceInformation( deviceInformation );
         // Seamless cubemaps are a nice feature to have enabled (core since 3.2)
         glEnable( GL_TEXTURE_CUBE_MAP_SEAMLESS );
-        //glEnable(GL_FRAMEBUFFER_SRGB);
+        glEnable(GL_FRAMEBUFFER_SRGB);
         // Culling is enabled by default, but RenderStateBlocks can toggle it on a per-draw call basis
         glEnable( GL_CULL_FACE );
 

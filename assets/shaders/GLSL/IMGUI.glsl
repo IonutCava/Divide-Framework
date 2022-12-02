@@ -57,8 +57,8 @@ void main()
     }
 
     Out_Color *= texColor;
-    if ( convertToSRGB)
+    if ( !convertToSRGB )
     {
-        Out_Color.rgb = ToSRGBAccurate( Out_Color.rgb );
+        Out_Color.rgb = ToLinearAccurate( Out_Color.rgb );
     }
 }

@@ -133,11 +133,13 @@ struct VKStateTracker {
     VkBuffer _drawIndirectBuffer{ VK_NULL_HANDLE };
     U64 _lastSyncedFrameNumber{ 0u };
 
+    VkShaderStageFlags _pipelineStageMask{ VK_FLAGS_NONE };
+
     RenderTargetID _activeRenderTargetID{ INVALID_RENDER_TARGET_ID };
     U8 _activeMSAASamples{ 1u };
     U8 _debugScopeDepth = 0u;
     bool _descriptorsUpdated{false};
-
+    bool _pushConstantsValid{false};
     void setDefaultState();
 };
 

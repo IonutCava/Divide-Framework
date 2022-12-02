@@ -167,10 +167,6 @@ void main() {
     }
 
     //Do not apply gamma correction here as edge-detection in subsequent passes work best in linear space
-#if 0
-    _colourOut.rgb = ToSRGBAccurate(screenColour);
-#else
     _colourOut.rgb = screenColour;
-#endif
     _colourOut.a = Luminance(_colourOut.rgb);
 }
