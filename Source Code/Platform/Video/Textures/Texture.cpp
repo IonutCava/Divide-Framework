@@ -175,7 +175,8 @@ namespace Divide
     bool Texture::unload()
     {
         _defaultView._usage = ImageUsage::UNDEFINED;
-        //efficient_clear( _imageUsageMap );
+        _imageUsageMap.clear();
+
         return CachedResource::unload();
     }
 
@@ -343,6 +344,9 @@ namespace Divide
         _height = height;
         _depth = depth;
         DIVIDE_ASSERT( _width > 0 && _height > 0 && _depth > 0, "Texture error: Invalid texture dimensions!" );
+
+        _defaultView._usage = ImageUsage::UNDEFINED;
+        _imageUsageMap.resize( IsCubeTexture( descriptor().texType() ) ? _numLayers * 6 : _numLayers );
 
         validateDescriptor();
     }
@@ -627,7 +631,8 @@ namespace Divide
 
         for ( PerLayerMips& layer : _imageUsageMap )
         {
-            layer.resize(_defaultView._subRange._mipLevels.count, _defaultView._usage);
+            layer.resize(_defaultView._subRange._mipLevels.count);
+            std::fill(layer.begin(), layer.end(), _defaultView._usage);
         }
     }
 

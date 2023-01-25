@@ -41,28 +41,24 @@ namespace
         {
             switch ( s )
             {
-                case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-                    return "VERBOSE";
-                case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-                    return "ERROR";
-                case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-                    return "WARNING";
-                case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
-                    return "INFO";
-                default:
-                    return "UNKNOWN";
+                case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: return "VERBOSE";
+                case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:   return "ERROR";
+                case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: return "WARNING";
+                case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:    return "INFO";
+                default:                                              return "UNKNOWN";
             }
         };
 
         const auto to_string_message_type = []( VkDebugUtilsMessageTypeFlagsEXT s ) -> const char*
         {
+            if ( s == VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT ) return "Address Binding";
             if ( s == 7 ) return "General | Validation | Performance";
             if ( s == 6 ) return "Validation | Performance";
             if ( s == 5 ) return "General | Performance";
-            if ( s == 4 /*VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT*/ ) return "Performance";
+            if ( s == VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT ) return "Performance";
             if ( s == 3 ) return "General | Validation";
-            if ( s == 2 /*VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT*/ ) return "Validation";
-            if ( s == 1 /*VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT*/ ) return "General";
+            if ( s == VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT ) return "Validation";
+            if ( s == VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT ) return "General";
             return "Unknown";
         };
 
@@ -70,7 +66,8 @@ namespace
                                   to_string_message_severity( messageSeverity ),
                                   to_string_message_type( messageType ),
                                   pCallbackData->pMessage );
-        if ( messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT )
+
+        if ( messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT )
         {
             Divide::DIVIDE_UNEXPECTED_CALL();
         }
@@ -82,7 +79,7 @@ namespace Divide
 {
     namespace
     {
-        const ResourcePath PipelineCacheFileName{"pipeline_cache.dvd"};
+        const ResourcePath PipelineCacheFileName{ "pipeline_cache.dvd" };
 
         FORCE_INLINE ResourcePath PipelineCacheLocation()
         {
@@ -92,13 +89,13 @@ namespace Divide
         [[nodiscard]] FORCE_INLINE bool IsTriangles( const PrimitiveTopology topology )
         {
             return topology == PrimitiveTopology::TRIANGLES ||
-                   topology == PrimitiveTopology::TRIANGLE_STRIP ||
-                   topology == PrimitiveTopology::TRIANGLE_FAN ||
-                   topology == PrimitiveTopology::TRIANGLES_ADJACENCY ||
-                   topology == PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY;
+                topology == PrimitiveTopology::TRIANGLE_STRIP ||
+                topology == PrimitiveTopology::TRIANGLE_FAN ||
+                topology == PrimitiveTopology::TRIANGLES_ADJACENCY ||
+                topology == PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY;
         }
 
-        [[nodiscard]] size_t GetHash( const VkPipelineRenderingCreateInfo & info ) noexcept
+        [[nodiscard]] size_t GetHash( const VkPipelineRenderingCreateInfo& info ) noexcept
         {
             size_t hash = 17;
 
@@ -197,7 +194,7 @@ namespace Divide
         VkPipeline newPipeline;
         if ( vkCreateComputePipelines( device, pipelineCache, 1, &pipelineInfo, nullptr, &newPipeline ) != VK_SUCCESS )
         {
-            Console::errorfn(Locale::Get(_ID("ERROR_VK_PIPELINE_COMPUTE_FAILED")));
+            Console::errorfn( Locale::Get( _ID( "ERROR_VK_PIPELINE_COMPUTE_FAILED" ) ) );
             return VK_NULL_HANDLE; // failed to create graphics pipeline
         }
 
@@ -278,19 +275,48 @@ namespace Divide
     void VKDeletionQueue::push( DELEGATE<void, VkDevice>&& function )
     {
         ScopedLock<Mutex> w_lock( _deletionLock );
-        _deletionQueue.push_back( MOV( function ) );
+        _deletionQueue.emplace_back( MOV( function ), TestBit(flags(), Flags::TREAT_AS_TRANSIENT) ? MAX_FRAMES_IN_FLIGHT : 0 );
     }
 
-    void VKDeletionQueue::flush( VkDevice device )
+    void VKDeletionQueue::flush( VkDevice device, const bool force )
     {
         ScopedLock<Mutex> w_lock( _deletionLock );
-        // reverse iterate the deletion queue to delete all the buffers
-        for ( auto it = _deletionQueue.rbegin(); it != _deletionQueue.rend(); it++ )
+        bool needsClean = false;
+        for ( const auto& it : _deletionQueue )
         {
-            (*it)(device);
+            if (it.second == 0u || force)
+            {
+                (it.first)(device);
+                needsClean = true;
+            }
         }
 
-        _deletionQueue.clear();
+        if ( needsClean )
+        {
+            if ( force )
+            {
+                _deletionQueue.clear();
+            }
+            else
+            {
+                std::erase_if( _deletionQueue, []( const auto it )
+                                {
+                                    return it.second == 0u;
+                                });
+            }
+        }
+    }
+
+    void VKDeletionQueue::onFrameEnd()
+    {
+        ScopedLock<Mutex> w_lock( _deletionLock );
+        for ( auto& it : _deletionQueue )
+        {
+            if ( it.second > 0u )
+            {
+                it.second -= 1u;
+            }
+        }
     }
 
     bool VKDeletionQueue::empty() const
@@ -369,21 +395,21 @@ namespace Divide
                                                                        vkCmdCopyBuffer( cmd, request.srcBuffer, request.dstBuffer, 1, &copy );
                                                                    }
 
-                                                                   VkBufferMemoryBarrier2 memoryBarrier = vk::bufferMemoryBarrier2();
-                                                                   memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-                                                                   memoryBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
-                                                                   memoryBarrier.dstStageMask = request.dstStageMask;
-                                                                   memoryBarrier.dstAccessMask = request.dstAccessMask;
-                                                                   memoryBarrier.offset = request.dstOffset;
-                                                                   memoryBarrier.size = request.size;
-                                                                   memoryBarrier.buffer = request.dstBuffer;
+            VkBufferMemoryBarrier2 memoryBarrier = vk::bufferMemoryBarrier2();
+            memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+            memoryBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
+            memoryBarrier.dstStageMask = request.dstStageMask;
+            memoryBarrier.dstAccessMask = request.dstAccessMask;
+            memoryBarrier.offset = request.dstOffset;
+            memoryBarrier.size = request.size;
+            memoryBarrier.buffer = request.dstBuffer;
 
-                                                                   VkDependencyInfo dependencyInfo = vk::dependencyInfo();
-                                                                   dependencyInfo.bufferMemoryBarrierCount = 1;
-                                                                   dependencyInfo.pBufferMemoryBarriers = &memoryBarrier;
+            VkDependencyInfo dependencyInfo = vk::dependencyInfo();
+            dependencyInfo.bufferMemoryBarrierCount = 1;
+            dependencyInfo.pBufferMemoryBarriers = &memoryBarrier;
 
-                                                                   //ToDo: batch these up! -Ionut
-                                                                   vkCmdPipelineBarrier2( cmd, &dependencyInfo );
+            //ToDo: batch these up! -Ionut
+            vkCmdPipelineBarrier2( cmd, &dependencyInfo );
                                                                } );
         }
         else
@@ -441,7 +467,7 @@ namespace Divide
         {
             if ( result != VK_ERROR_OUT_OF_DATE_KHR && result != VK_SUBOPTIMAL_KHR )
             {
-                Console::errorfn(Locale::Get(_ID("ERROR_GENERIC_VK")), VKErrorString(result).c_str());
+                Console::errorfn( Locale::Get( _ID( "ERROR_GENERIC_VK" ) ), VKErrorString( result ).c_str() );
                 DIVIDE_UNEXPECTED_CALL();
             }
             recreateSwapChain( window );
@@ -490,12 +516,15 @@ namespace Divide
             }
             else
             {
-                Console::errorfn(Locale::Get(_ID("ERROR_GENERIC_VK")), VKErrorString(result).c_str());
+                Console::errorfn( Locale::Get( _ID( "ERROR_GENERIC_VK" ) ), VKErrorString( result ).c_str() );
                 DIVIDE_UNEXPECTED_CALL();
             }
         }
 
         _currentFrameIndex = ++_currentFrameIndex % MAX_FRAMES_IN_FLIGHT;
+
+        s_transientDeleteQueue.onFrameEnd();
+        s_deviceDeleteQueue.onFrameEnd();
     }
 
     ErrorCode VK_API::initRenderingAPI( [[maybe_unused]] I32 argc, [[maybe_unused]] char** argv, [[maybe_unused]] Configuration& config ) noexcept
@@ -630,6 +659,24 @@ namespace Divide
                           deviceProperties.deviceID,
                           deviceProperties.driverVersion,
                           deviceProperties.apiVersion );
+
+        {
+            U32 toolCount = 0u;
+            VK_CHECK( vkGetPhysicalDeviceToolProperties( _device->getPhysicalDevice(), &toolCount, NULL ) );
+
+            if ( toolCount > 0u )
+            {
+                std::vector<VkPhysicalDeviceToolPropertiesEXT> tools;
+                tools.resize( toolCount );
+                VK_CHECK( vkGetPhysicalDeviceToolProperties( _device->getPhysicalDevice(), &toolCount, tools.data() ) );
+
+                Console::printfn( Locale::Get( _ID( "VK_TOOL_INFO" ) ), toolCount );
+                for ( VkPhysicalDeviceToolPropertiesEXT& tool : tools )
+                {
+                    Console::printfn( "\t%s %s\n", tool.name, tool.version );
+                }
+            }
+        }
 
         deviceInformation._versionInfo._major = 1u;
         deviceInformation._versionInfo._minor = to_U8( VK_API_VERSION_MINOR( deviceProperties.apiVersion ) );
@@ -776,7 +823,11 @@ namespace Divide
         {
             Console::errorfn( Locale::Get( _ID( "ERROR_VK_PIPELINE_CACHE_LOAD" ) ), Names::fileError[to_base( errCache )] );
         }
-        VK_CHECK(vkCreatePipelineCache( _device->getVKDevice(), &pipelineCacheCreateInfo, nullptr, &_pipelineCache ));
+
+        if ( _context.context().config().runtime.usePipelineCache )
+        {
+            VK_CHECK( vkCreatePipelineCache( _device->getVKDevice(), &pipelineCacheCreateInfo, nullptr, &_pipelineCache ) );
+        }
 
         _commandBuffers.resize( MAX_FRAMES_IN_FLIGHT );
 
@@ -799,7 +850,7 @@ namespace Divide
 
         vkDeviceWaitIdle( _device->getVKDevice() );
 
-        s_deviceDeleteQueue.flush( _device->getVKDevice() );
+        s_deviceDeleteQueue.flush( _device->getVKDevice(), true );
 
         const ErrorCode err = _swapChain->create( TestBit( window.flags(), WindowFlags::VSYNC ),
                                                   _context.context().config().runtime.adaptiveSync,
@@ -820,10 +871,17 @@ namespace Divide
 
     void VK_API::destroyPipelineCache()
     {
-        for (const auto& it : _compiledPipelines )
+        for ( const auto& it : _compiledPipelines )
         {
+            DIVIDE_ASSERT( it.second._vkPipelineLayout != VK_NULL_HANDLE );
+            DIVIDE_ASSERT( it.second._vkPipeline != VK_NULL_HANDLE );
+
             vkDestroyPipelineLayout( _device->getVKDevice(), it.second._vkPipelineLayout, nullptr );
             vkDestroyPipeline( _device->getVKDevice(), it.second._vkPipeline, nullptr );
+            if ( it.second._vkPipelineWireframe != VK_NULL_HANDLE )
+            {
+                vkDestroyPipeline( _device->getVKDevice(), it.second._vkPipelineWireframe, nullptr );
+            }
         }
         _compiledPipelines.clear();
     }
@@ -847,8 +905,8 @@ namespace Divide
             if ( _device->getVKDevice() != VK_NULL_HANDLE )
             {
                 vkDeviceWaitIdle( _device->getVKDevice() );
-                s_transientDeleteQueue.flush( _device->getVKDevice() );
-                s_deviceDeleteQueue.flush( _device->getVKDevice() );
+                s_transientDeleteQueue.flush( _device->getVKDevice(), true );
+                s_deviceDeleteQueue.flush( _device->getVKDevice(), true );
                 GetStateTracker()._perDrawDescriptorAllocator = {};
                 GetStateTracker()._perFrameDescriptorAllocator = {};
                 _descriptorLayoutCache.reset();
@@ -869,10 +927,10 @@ namespace Divide
                 vector<Byte> data( size );
                 VK_CHECK( vkGetPipelineCacheData( _device->getVKDevice(), _pipelineCache, &size, data.data() ) );
                 /* Write pipeline cache data to a file in binary format */
-                const FileError err = writeFile( PipelineCacheLocation(), PipelineCacheFileName, data.data(), size, FileType::BINARY);
+                const FileError err = writeFile( PipelineCacheLocation(), PipelineCacheFileName, data.data(), size, FileType::BINARY );
                 if ( err != FileError::NONE )
                 {
-                    Console::errorfn(Locale::Get(_ID("ERROR_VK_PIPELINE_CACHE_SAVE")), Names::fileError[to_base(err)]);
+                    Console::errorfn( Locale::Get( _ID( "ERROR_VK_PIPELINE_CACHE_SAVE" ) ), Names::fileError[to_base( err )] );
                 }
                 vkDestroyPipelineCache( _device->getVKDevice(), _pipelineCache, nullptr );
             }
@@ -964,7 +1022,7 @@ namespace Divide
                 indexCount = vertexCount;
             }
 
-            vkCmdDraw( cmdBuffer, cmd._drawCount * indexCount, cmd._cmd.instanceCount, cmd._cmd.baseVertex, cmd._cmd.baseInstance);
+            vkCmdDraw( cmdBuffer, cmd._drawCount * indexCount, cmd._cmd.instanceCount, cmd._cmd.baseVertex, cmd._cmd.baseInstance );
         }
         else
         {
@@ -1055,11 +1113,11 @@ namespace Divide
                 case DescriptorSetBindingType::UNIFORM_BUFFER:
                 case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
                 {
-                    DIVIDE_ASSERT(Has<ShaderBufferEntry>( srcBinding._data ));
+                    DIVIDE_ASSERT( Has<ShaderBufferEntry>( srcBinding._data ) );
 
                     const ShaderBufferEntry& bufferEntry = As<ShaderBufferEntry>( srcBinding._data );
 
-                    DIVIDE_ASSERT(bufferEntry._buffer != nullptr);
+                    DIVIDE_ASSERT( bufferEntry._buffer != nullptr );
 
                     const ShaderBuffer::Usage bufferUsage = bufferEntry._buffer->getUsage();
                     VkBuffer buffer = static_cast<vkShaderBuffer*>(bufferEntry._buffer)->bufferImpl()->_buffer;
@@ -1123,11 +1181,11 @@ namespace Divide
                         descriptor._format = vkTex->vkFormat();
                         descriptor._type = imageSampler._image.targetType();
                         descriptor._subRange = imageSampler._image._subRange;
-                        
+
                         ImageUsage imageUsage = ImageUsage::SHADER_READ;
                         VkImageLayout targetLayout = VK_IMAGE_LAYOUT_MAX_ENUM;
 
-                        if (!IsDepthTexture( vkTex->descriptor().baseFormat() ) )
+                        if ( !IsDepthTexture( vkTex->descriptor().baseFormat() ) )
                         {
                             imageUsage = vkTex->imageUsage( descriptor._subRange );
                             DIVIDE_ASSERT( imageUsage == ImageUsage::SHADER_READ || imageUsage == ImageUsage::SHADER_READ_WRITE );
@@ -1198,7 +1256,7 @@ namespace Divide
 
         if ( usage == DescriptorSetUsage::PER_DRAW )
         {
-            
+
             builder.buildSetAndLayout( _descriptorSets[usageIdx], _descriptorSetLayouts[usageIdx], _device->getVKDevice() );
         }
         else
@@ -1225,14 +1283,14 @@ namespace Divide
         vkCmdSetStencilWriteMask( cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState._stencilWriteMask );
         vkCmdSetStencilReference( cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState._stencilRef );
         vkCmdSetDepthBias( cmdBuffer, currentState._zUnits, 0.f, currentState._zBias );
-        setViewportInternal(_context.activeViewport(), cmdBuffer);
-        setScissorInternal(_context.activeScissor(), cmdBuffer);
+        setViewportInternal( _context.activeViewport(), cmdBuffer );
+        setScissorInternal( _context.activeScissor(), cmdBuffer );
     }
 
     ShaderResult VK_API::bindPipeline( const Pipeline& pipeline, VkCommandBuffer cmdBuffer )
     {
-       size_t pipelineHash = pipeline.hash();
-       Util::Hash_combine(pipelineHash, GetStateTracker()._pipelineRenderInfo._hash);
+        size_t pipelineHash = pipeline.hash();
+        Util::Hash_combine( pipelineHash, GetStateTracker()._pipelineRenderInfo._hash );
 
         CompiledPipeline& compiledPipeline = _compiledPipelines[pipelineHash];
         if ( compiledPipeline._vkPipeline == VK_NULL_HANDLE )
@@ -1321,8 +1379,8 @@ namespace Divide
                 vkFillModeTable[to_base( currentState.fillMode() )],
                 vkCullModeTable[to_base( currentState.cullMode() )],
                 currentState.frontFaceCCW()
-                      ? VK_FRONT_FACE_CLOCKWISE
-                      : VK_FRONT_FACE_COUNTER_CLOCKWISE );
+                ? VK_FRONT_FACE_CLOCKWISE
+                : VK_FRONT_FACE_COUNTER_CLOCKWISE );
             pipelineBuilder._rasterizer.rasterizerDiscardEnable = pipelineDescriptor._rasterizationEnabled ? VK_FALSE : VK_TRUE;
 
             VkSampleCountFlagBits msaaSampleFlags = VK_SAMPLE_COUNT_1_BIT;
@@ -1394,16 +1452,17 @@ namespace Divide
 
             compiledPipeline._vkPipeline = pipelineBuilder.build_pipeline( _device->getVKDevice(), _pipelineCache, isGraphicsPipeline );
 
-            if ( isGraphicsPipeline && IsTriangles(pipelineDescriptor._primitiveTopology) )
+            if ( isGraphicsPipeline && IsTriangles( pipelineDescriptor._primitiveTopology ) )
             {
                 pipelineBuilder._rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
                 compiledPipeline._vkPipelineWireframe = pipelineBuilder.build_pipeline( _device->getVKDevice(), _pipelineCache, true );
+                Debug::SetObjectName( _device->getVKDevice(), (uint64_t)compiledPipeline._vkPipelineWireframe, VK_OBJECT_TYPE_PIPELINE, Util::StringFormat("%s_wireframe", program->resourceName().c_str()).c_str());
             }
 
             Debug::SetObjectName( _device->getVKDevice(), (uint64_t)compiledPipeline._vkPipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, program->resourceName().c_str() );
-            Debug::SetObjectName( _device->getVKDevice(), (uint64_t)compiledPipeline._vkPipeline, VK_OBJECT_TYPE_PIPELINE, program->resourceName().c_str());
+            Debug::SetObjectName( _device->getVKDevice(), (uint64_t)compiledPipeline._vkPipeline, VK_OBJECT_TYPE_PIPELINE, program->resourceName().c_str() );
 
-            compiledPipeline._dynamicState =  {
+            compiledPipeline._dynamicState = {
               ._stencilRef = currentState.stencilRef(),
               ._stencilMask = currentState.stencilMask(),
               ._stencilWriteMask = currentState.stencilWriteMask(),
@@ -1448,54 +1507,54 @@ namespace Divide
                 static eastl::fixed_vector<VkBufferMemoryBarrier2, 32, true> s_barriers{};
                 // ToDo: Use a semaphore here and insert a wait dependency on it into the main command buffer - Ionut
                 VK_API::GetStateTracker()._cmdContext->flushCommandBuffer( []( VkCommandBuffer cmd )
+                                                                           {
+                                                                               while ( !s_transferQueue._requests.empty() )
+                                                                               {
+                                                                                   const VKTransferQueue::TransferRequest& request = s_transferQueue._requests.front();
+                                                                                   if ( request.srcBuffer != VK_NULL_HANDLE )
+                                                                                   {
+                                                                                       VkBufferCopy copy;
+                                                                                       copy.dstOffset = request.dstOffset;
+                                                                                       copy.srcOffset = request.srcOffset;
+                                                                                       copy.size = request.size;
+                                                                                       vkCmdCopyBuffer( cmd, request.srcBuffer, request.dstBuffer, 1, &copy );
+                                                                                   }
+
+                                                                                   VkBufferMemoryBarrier2 memoryBarrier = vk::bufferMemoryBarrier2();
+                                                                                   memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                                                                                   memoryBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
+                                                                                   memoryBarrier.dstStageMask = request.dstStageMask;
+                                                                                   memoryBarrier.dstAccessMask = request.dstAccessMask;
+                                                                                   memoryBarrier.offset = request.dstOffset;
+                                                                                   memoryBarrier.size = request.size;
+                                                                                   memoryBarrier.buffer = request.dstBuffer;
+
+                                                                                   if ( request.srcBuffer == VK_NULL_HANDLE )
+                                                                                   {
+                                                                                       VkDependencyInfo dependencyInfo = vk::dependencyInfo();
+                                                                                       dependencyInfo.bufferMemoryBarrierCount = 1;
+                                                                                       dependencyInfo.pBufferMemoryBarriers = &memoryBarrier;
+
+                                                                                       vkCmdPipelineBarrier2( cmd, &dependencyInfo );
+                                                                                   }
+                                                                                   else
+                                                                                   {
+                                                                                       s_barriers.emplace_back( memoryBarrier );
+                                                                                   }
+                                                                                   s_transferQueue._requests.pop_front();
+                                                                               }
+
+                if ( !s_barriers.empty() )
                 {
-                    while ( !s_transferQueue._requests.empty() )
-                    {
-                        const VKTransferQueue::TransferRequest& request = s_transferQueue._requests.front();
-                        if ( request.srcBuffer != VK_NULL_HANDLE )
-                        {
-                            VkBufferCopy copy;
-                            copy.dstOffset = request.dstOffset;
-                            copy.srcOffset = request.srcOffset;
-                            copy.size = request.size;
-                            vkCmdCopyBuffer( cmd, request.srcBuffer, request.dstBuffer, 1, &copy );
-                        }
+                    VkDependencyInfo dependencyInfo = vk::dependencyInfo();
+                    dependencyInfo.bufferMemoryBarrierCount = to_U32( s_barriers.size() );
+                    dependencyInfo.pBufferMemoryBarriers = s_barriers.data();
 
-                        VkBufferMemoryBarrier2 memoryBarrier = vk::bufferMemoryBarrier2();
-                        memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-                        memoryBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
-                        memoryBarrier.dstStageMask = request.dstStageMask;
-                        memoryBarrier.dstAccessMask = request.dstAccessMask;
-                        memoryBarrier.offset = request.dstOffset;
-                        memoryBarrier.size = request.size;
-                        memoryBarrier.buffer = request.dstBuffer;
+                    vkCmdPipelineBarrier2( cmd, &dependencyInfo );
+                    efficient_clear( s_barriers );
+                }
 
-                        if ( request.srcBuffer == VK_NULL_HANDLE )
-                        {
-                            VkDependencyInfo dependencyInfo = vk::dependencyInfo();
-                            dependencyInfo.bufferMemoryBarrierCount = 1;
-                            dependencyInfo.pBufferMemoryBarriers = &memoryBarrier;
-
-                            vkCmdPipelineBarrier2( cmd, &dependencyInfo );
-                        }
-                        else
-                        {
-                            s_barriers.emplace_back( memoryBarrier );
-                        }
-                        s_transferQueue._requests.pop_front();
-                    }
-
-                    if ( !s_barriers.empty() )
-                    {
-                        VkDependencyInfo dependencyInfo = vk::dependencyInfo();
-                        dependencyInfo.bufferMemoryBarrierCount = to_U32( s_barriers.size() );
-                        dependencyInfo.pBufferMemoryBarriers = s_barriers.data();
-
-                        vkCmdPipelineBarrier2( cmd, &dependencyInfo );
-                        efficient_clear( s_barriers );
-                    }
-
-                } );
+                                                                           } );
             }
         }
 
@@ -1646,7 +1705,7 @@ namespace Divide
             {
                 const GFX::ComputeMipMapsCommand* crtCmd = cmd->As<GFX::ComputeMipMapsCommand>();
                 PROFILE_SCOPE( "VK: View - based computation", Profiler::Category::Graphics );
-                static_cast<vkTexture*>(crtCmd->_texture)->generateMipmaps(cmdBuffer, 0u, crtCmd->_layerRange.offset, crtCmd->_layerRange.count);
+                static_cast<vkTexture*>(crtCmd->_texture)->generateMipmaps( cmdBuffer, 0u, crtCmd->_layerRange.offset, crtCmd->_layerRange.count );
             }break;
             case GFX::CommandType::DRAW_TEXT:
             {
@@ -1666,7 +1725,7 @@ namespace Divide
                                             GetStateTracker()._pipeline._program->stageMask(),
                                             0,
                                             to_U32( PushConstantsStruct::Size() ),
-                                            &s_defaultPushConstants[0].mat);
+                                            &s_defaultPushConstants[0].mat );
                         GetStateTracker()._pushConstantsValid = true;
                     }
 
@@ -1712,7 +1771,7 @@ namespace Divide
                 if ( GetStateTracker()._pipeline._vkPipeline != VK_NULL_HANDLE )
                 {
                     const GFX::DispatchComputeCommand* crtCmd = cmd->As<GFX::DispatchComputeCommand>();
-                    vkCmdDispatch(cmdBuffer, crtCmd->_computeGroupSize.x, crtCmd->_computeGroupSize.y, crtCmd->_computeGroupSize.z );
+                    vkCmdDispatch( cmdBuffer, crtCmd->_computeGroupSize.x, crtCmd->_computeGroupSize.y, crtCmd->_computeGroupSize.z );
                 }
             } break;
             case GFX::CommandType::SET_CLIPING_STATE:
@@ -1787,10 +1846,10 @@ namespace Divide
 
     bool VK_API::setViewportInternal( const Rect<I32>& newViewport ) noexcept
     {
-        return setViewportInternal(newViewport, getCurrentCommandBuffer());
+        return setViewportInternal( newViewport, getCurrentCommandBuffer() );
     }
 
-    bool VK_API::setViewportInternal( const Rect<I32>& newViewport, VkCommandBuffer cmdBuffer) noexcept
+    bool VK_API::setViewportInternal( const Rect<I32>& newViewport, VkCommandBuffer cmdBuffer ) noexcept
     {
         const VkViewport targetViewport{ to_F32( newViewport.offsetX ),
                                         to_F32( newViewport.sizeY ) - to_F32( newViewport.offsetY ),
@@ -1804,7 +1863,7 @@ namespace Divide
 
     bool VK_API::setScissorInternal( const Rect<I32>& newScissor ) noexcept
     {
-        return setScissorInternal( newScissor, getCurrentCommandBuffer());
+        return setScissorInternal( newScissor, getCurrentCommandBuffer() );
     }
 
     bool VK_API::setScissorInternal( const Rect<I32>& newScissor, VkCommandBuffer cmdBuffer ) noexcept

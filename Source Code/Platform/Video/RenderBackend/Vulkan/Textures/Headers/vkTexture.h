@@ -107,6 +107,8 @@ namespace Divide
         hashMap<size_t, CachedImageView> _imageViewCache;
 
         VkDeviceSize _stagingBufferSize{ 0u };
+
+        U8 _testRefreshCounter { 0u };
     };
 
     bool operator==( const vkTexture::CachedImageView::Descriptor& lhs, const vkTexture::CachedImageView::Descriptor& rhs) noexcept;

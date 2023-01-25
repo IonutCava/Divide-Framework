@@ -44,6 +44,8 @@
 		<enableVSync>false</enableVSync>
 		<!-- try to enable late v-swap. Only works with VSync. May fallback to regular vsync-->
 		<adaptiveSync>false</adaptiveSync>
+		<!-- use a pipeline cache if available to avoid shader compilation stutters on subsequent runs of the program -->
+		<usePipelineCache>true</usePipelineCache>
 		<!-- splash screen dimensions -->
 		<splashScreenSize width="400" height="300"/>
 		<!-- window size. Only for windowed mode! -->

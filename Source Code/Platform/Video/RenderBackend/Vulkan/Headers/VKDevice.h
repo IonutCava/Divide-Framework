@@ -56,7 +56,6 @@ namespace Divide {
         [[nodiscard]] U32             getQueueIndex(vkb::QueueType queue) const;
         PROPERTY_R_IW(VkCommandPool, graphicsCommandPool, VK_NULL_HANDLE);
 
-
     private:
         [[nodiscard]] VKQueue getQueue(vkb::QueueType type) const noexcept;
     private:

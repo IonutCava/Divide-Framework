@@ -160,17 +160,21 @@ struct vkUserData : VDIUserData {
 
 struct VKDeletionQueue
 {
+    using QueuedItem = DELEGATE<void, VkDevice>;
+
     enum class Flags : U8 {
         TREAT_AS_TRANSIENT = toBit(1),
         COUNT = 1
     };
 
-    void push(DELEGATE<void, VkDevice>&& function);
-    void flush(VkDevice device);
+    void push( QueuedItem&& function );
+    void flush(VkDevice device, bool force = false);
+    void onFrameEnd();
+
     [[nodiscard]] bool empty() const;
 
     mutable Mutex _deletionLock;
-    std::deque<DELEGATE<void, VkDevice>> _deletionQueue;
+    std::deque<std::pair<QueuedItem, U8>> _deletionQueue;
     PROPERTY_RW(U32, flags, 0u);
 };
 

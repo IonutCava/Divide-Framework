@@ -205,9 +205,12 @@ namespace Divide
             image_blit.srcOffsets[1].y = int32_t( _height >> (m - 1) );
 
             // Destination
+            const int32_t mipWidth = int32_t( _width >> m );
+            const int32_t mipHeight = int32_t( _height >> m );
+
             image_blit.dstSubresource.mipLevel = m;
-            image_blit.dstOffsets[1].x = int32_t( _width >> m );
-            image_blit.dstOffsets[1].y = int32_t( _height >> m );
+            image_blit.dstOffsets[1].x = mipWidth > 1 ? mipWidth : 1;
+            image_blit.dstOffsets[1].y = mipHeight > 1 ? mipHeight : 1;
 
             // Prepare current mip level as image blit destination
             memBarrier.subresourceRange.baseMipLevel = m;
@@ -332,6 +335,13 @@ namespace Divide
         Texture::prepareTextureData( width, height, depth, emptyAllocation );
 
         vkFormat( VKUtil::internalFormat( _descriptor.baseFormat(), _descriptor.dataType(), _descriptor.srgb(), _descriptor.normalized() ) );
+        
+        if ( _image != nullptr )
+        {
+            ++_testRefreshCounter;
+        }
+        clearImageViewCache();
+
         _image = eastl::make_unique<AllocatedImage>();
         _vkType = vkTextureTypeTable[to_base( descriptor().texType() )];
 
@@ -405,8 +415,9 @@ namespace Divide
                                   &_image->_allocation,
                                   &_image->_allocInfo ) );
 
-        vmaSetAllocationName( *VK_API::GetStateTracker()._allocatorInstance._allocator, _image->_allocation, resourceName().c_str() );
-        Debug::SetObjectName( VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)_image->_image, VK_OBJECT_TYPE_IMAGE, resourceName().c_str() );
+        const auto imageName = Util::StringFormat( "%s_%d", resourceName().c_str(), _testRefreshCounter );
+        vmaSetAllocationName( *VK_API::GetStateTracker()._allocatorInstance._allocator, _image->_allocation, imageName.c_str() );
+        Debug::SetObjectName( VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)_image->_image, VK_OBJECT_TYPE_IMAGE, imageName.c_str() );
     }
 
     void vkTexture::loadDataInternal( const ImageTools::ImageData& imageData )
@@ -611,7 +622,7 @@ namespace Divide
 
         VK_CHECK( vkCreateImageView( VK_API::GetStateTracker()._device->getVKDevice(), &imageInfo, nullptr, &newView._view ) );
 
-        Debug::SetObjectName( VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)newView._view, VK_OBJECT_TYPE_IMAGE_VIEW, Util::StringFormat("%s_%zu", resourceName().c_str(), _imageViewCache.size()).c_str() );
+        Debug::SetObjectName( VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)newView._view, VK_OBJECT_TYPE_IMAGE_VIEW, Util::StringFormat("%s_view_%zu", resourceName().c_str(), _imageViewCache.size()).c_str() );
         hashAlg::emplace(_imageViewCache, viewHash, newView);
         return newView._view;
     }

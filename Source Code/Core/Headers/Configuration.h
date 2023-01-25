@@ -71,6 +71,7 @@ struct Configuration final : XML::IXMLSerializable {
         bool maximizeOnStart = true;
         bool enableVSync = true;
         bool adaptiveSync = false;
+        bool usePipelineCache = true;
         I16  frameRateLimit = -1;
         vec2<U16> splashScreenSize = { 400, 300 };
         vec2<U16> windowSize = { 1280, 720 };
