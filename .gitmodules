@@ -2,18 +2,6 @@
 	path = 3rdParty/ChaiScript
 	url = https://github.com/ChaiScript/ChaiScript
 	ignore = dirty
-[submodule "Source Code/Libs/EASTL"]
-	path = 3rdParty/EASTL
-	url = https://github.com/electronicarts/EASTL
-	ignore = dirty
-[submodule "Source Code/Libs/EABase"]
-	path = 3rdParty/EABase
-	url = https://github.com/electronicarts/EABase
-	ignore = dirty
-[submodule "Source Code/Libs/EAStdC"]
-	path = 3rdParty/EAStdC
-	url = https://github.com/electronicarts/EAStdC
-	ignore = dirty
 [submodule "Source Code/Libs/fmt"]
 	path = 3rdParty/fmt
 	url = https://github.com/fmtlib/fmt
