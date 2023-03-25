@@ -26,34 +26,13 @@ void RTAttachment::setTexture(const Texture_ptr& tex, const bool isExternal) noe
     changed(true);
 }
 
-bool RTAttachment::mipWriteLevel(const U16 level) noexcept {
-    if (_texture != nullptr && _texture->mipCount() > level && _mipWriteLevel != level) {
-        _mipWriteLevel = level;
-        return true;
-    }
-
-    return false;
+U16 RTAttachment::numMips() const noexcept
+{
+    return _texture != nullptr ? _texture->mipCount() : 0u;
 }
 
-U16 RTAttachment::mipWriteLevel() const noexcept {
-    return _mipWriteLevel;
-}
-
-bool RTAttachment::writeLayer(const U16 layer) {
-    const U16 layerCount = IsCubeTexture(texture()->descriptor().texType()) ? numLayers() * 6 : numLayers();
-    if (layerCount > layer && _writeLayer != layer) {
-        _writeLayer = layer;
-        return true;
-    }
-
-    return false;
-}
-
-U16 RTAttachment::writeLayer() const noexcept {
-    return _writeLayer;
-}
-
-U16 RTAttachment::numLayers() const {
+U16 RTAttachment::numLayers() const noexcept
+{
     return _texture != nullptr ? _texture->descriptor().layerCount() : 0u;
 }
 

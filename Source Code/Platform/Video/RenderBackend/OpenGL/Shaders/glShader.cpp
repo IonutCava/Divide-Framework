@@ -281,7 +281,7 @@ glShader* glShader::LoadShader(GFXDevice& context,
                                const Str256& name,
                                const bool overwriteExisting,
                                ShaderProgram::ShaderLoadData& data) {
-    ScopedLock<SharedMutex> w_lock(ShaderModule::s_shaderNameLock);
+    LockGuard<SharedMutex> w_lock(ShaderModule::s_shaderNameLock);
 
     // See if we have the shader already loaded
     ShaderModule* shader = GetShaderLocked(name);

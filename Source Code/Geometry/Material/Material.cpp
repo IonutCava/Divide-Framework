@@ -162,31 +162,6 @@ namespace Divide
             }
         }
 
-        _computeRenderStateCBK = []( Material* material, const RenderStagePass renderStagePass )
-        {
-            RenderStateBlock stateDescriptor = {};
-            stateDescriptor.setCullMode( material->properties().doubleSided() ? CullMode::NONE : CullMode::BACK );
-
-            const bool isColourPass = !IsDepthPass( renderStagePass );
-            const bool isZPrePass = IsZPrePass( renderStagePass );
-            const bool isShadowPass = IsShadowPass( renderStagePass );
-            const bool isDepthPass = !isColourPass && !isZPrePass && !isShadowPass;
-
-            stateDescriptor.setZFunc( isColourPass ? ComparisonFunction::EQUAL : ComparisonFunction::LEQUAL );
-            if ( isShadowPass )
-            {
-                stateDescriptor.setColourWrites( true, true, false, false );
-                //stateDescriptor.setZBias(1.1f, 4.f);
-                stateDescriptor.setCullMode( CullMode::BACK );
-            }
-            else if ( isDepthPass )
-            {
-                stateDescriptor.setColourWrites( false, false, false, false );
-            }
-
-            return stateDescriptor.getHash();
-        };
-
         _computeShaderCBK = []( Material* material, const RenderStagePass renderStagePass )
         {
 
@@ -276,7 +251,7 @@ namespace Divide
             }
         }
 
-        ScopedLock<SharedMutex> w_lock( _instanceLock );
+        LockGuard<SharedMutex> w_lock( _instanceLock );
         _instances.emplace_back( cloneMat.get() );
 
         return cloneMat;
@@ -412,7 +387,7 @@ namespace Divide
 
     bool Material::setTexture( const TextureSlot textureUsageSlot, const Texture_ptr& texture, const size_t samplerHash, const TextureOperation op, const bool useInGeometryPasses )
     {
-        ScopedLock<SharedMutex> w_lock( _textureLock );
+        LockGuard<SharedMutex> w_lock( _textureLock );
         return setTextureLocked( textureUsageSlot, texture, samplerHash, op, useInGeometryPasses );
     }
 
@@ -440,7 +415,7 @@ namespace Divide
         ResourceDescriptor shaderResDescriptor( shaderDescriptorRef._name );
         shaderResDescriptor.propertyDescriptor( shaderDescriptorRef );
 
-        ShaderProgram_ptr shader = CreateResource<ShaderProgram>( _context.parent().resourceCache(), shaderResDescriptor );
+        ShaderProgram_ptr shader = CreateResource<ShaderProgram>( _context.context().kernel().resourceCache(), shaderResDescriptor );
         if ( shader != nullptr )
         {
             const ShaderProgram* oldShader = shaderInfo._shaderRef.get();
@@ -566,7 +541,7 @@ namespace Divide
             }
         }
 
-        return _context.defaultIMShader()->handle();
+        return _context.imShaders()->imWorldShaderNoTexture()->handle();
     }
 
     ShaderProgramHandle Material::getProgramHandle( const RenderStagePass renderStagePass ) const
@@ -581,7 +556,7 @@ namespace Divide
         }
         DIVIDE_UNEXPECTED_CALL();
 
-        return _context.defaultIMShader()->handle();
+        return _context.imShaders()->imWorldShaderNoTexture()->handle();
     }
 
     bool Material::canDraw( const RenderStagePass renderStagePass, bool& shaderJustFinishedLoading )
@@ -878,7 +853,7 @@ namespace Divide
 
         if ( _baseMaterial != nullptr )
         {
-            ScopedLock<SharedMutex> w_lock( _instanceLock );
+            LockGuard<SharedMutex> w_lock( _instanceLock );
             erase_if( _baseMaterial->_instances,
                       [guid = getGUID()]( Material* instance ) noexcept
                       {
@@ -954,14 +929,41 @@ namespace Divide
 
     size_t Material::getOrCreateRenderStateBlock( const RenderStagePass renderStagePass )
     {
-        size_t& ret = _defaultRenderStates[to_base( renderStagePass._stage )]
-            [to_base( renderStagePass._passType )]
-        [to_base( renderStagePass._variant )];
+        size_t& ret = _defaultRenderStates[to_base( renderStagePass._stage )][to_base( renderStagePass._passType )][to_base( renderStagePass._variant )];
         // If we haven't defined a state for this variant, use the default one
         if ( ret == g_invalidStateHash )
         {
-            ret = _computeRenderStateCBK( this, renderStagePass );
-            assert( ret != g_invalidStateHash );
+            RenderStateBlock stateDescriptor = {};
+            stateDescriptor.setCullMode( properties().doubleSided() ? CullMode::NONE : CullMode::BACK );
+
+            const bool isColourPass = !IsDepthPass( renderStagePass );
+            const bool isZPrePass   = IsZPrePass( renderStagePass );
+            const bool isShadowPass = IsShadowPass( renderStagePass );
+            const bool isDepthPass  = !isColourPass && !isZPrePass && !isShadowPass;
+
+            stateDescriptor.setZFunc( isColourPass ? ComparisonFunction::EQUAL : ComparisonFunction::LEQUAL );
+            if ( isShadowPass )
+            {
+                stateDescriptor.setColourWrites( true, true, false, false );
+                //stateDescriptor.setZBias(1.1f, 4.f);
+                stateDescriptor.setCullMode( CullMode::BACK );
+            }
+            else if ( isDepthPass )
+            {
+                stateDescriptor.setColourWrites( false, false, false, false );
+            }
+
+            if ( !isShadowPass && !isZPrePass )
+            {
+                stateDescriptor.depthWriteEnabled( false );
+            }
+
+            if ( _computeRenderStateCBK )
+            {
+                _computeRenderStateCBK( this, renderStagePass, stateDescriptor );
+            }
+
+            ret = stateDescriptor.getHash();
         }
 
         return ret;
@@ -1246,7 +1248,10 @@ namespace Divide
             }
             else
             {
-                const RenderStateBlock block = RenderStateBlock::LoadFromXML( Util::StringFormat( "%s.%u", stateNode.c_str(), b ), pt );
+                RenderStateBlock block = RenderStateBlock::Get( _defaultRenderStates[s][p][v] );
+
+                RenderStateBlock::LoadFromXML( Util::StringFormat( "%s.%u", stateNode.c_str(), b ), pt, block );
+
                 const size_t loadedHash = block.getHash();
                 _defaultRenderStates[s][p][v] = loadedHash;
                 previousHashValues[b] = loadedHash;
@@ -1311,7 +1316,7 @@ namespace Divide
 
                 if ( !texName.empty() )
                 {
-                    ScopedLock<SharedMutex> w_lock( _textureLock );
+                    LockGuard<SharedMutex> w_lock( _textureLock );
 
                     const bool useInGeometryPasses = pt.get<bool>( textureNode + ".UseForGeometry", _textures[to_base( usage )]._useInGeometryPasses );
                     const U32 index = pt.get<U32>( textureNode + ".Sampler.id", 0 );
@@ -1355,7 +1360,7 @@ namespace Divide
                     texture.propertyDescriptor( texDesc );
                     texture.waitForReady( true );
 
-                    Texture_ptr tex = CreateResource<Texture>( _context.parent().resourceCache(), texture );
+                    Texture_ptr tex = CreateResource<Texture>( _context.context().kernel().resourceCache(), texture );
                     setTextureLocked( usage, tex, hash, op, useInGeometryPasses );
                 }
             }

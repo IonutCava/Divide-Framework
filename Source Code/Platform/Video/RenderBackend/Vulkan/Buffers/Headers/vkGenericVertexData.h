@@ -38,7 +38,7 @@
 
 namespace Divide {
 
-    class vkGenericVertexData final : public GenericVertexData {
+class vkGenericVertexData final : public GenericVertexData {
     public:
         vkGenericVertexData(GFXDevice& context, const U32 ringBufferLength, const char* name);
         ~vkGenericVertexData() = default;
@@ -47,37 +47,37 @@ namespace Divide {
 
         void draw(const GenericDrawCommand& command, VDIUserData* data) noexcept override;
 
-        void setBuffer(const SetBufferParams& params) noexcept override;
-
-        void setIndexBuffer(const IndexBuffer& indices) override;
-
-        void updateBuffer(U32 buffer, U32 elementCountOffset, U32 elementCountRange, bufferPtr data) noexcept override;
+        [[nodiscard]] BufferLock setIndexBuffer( const IndexBuffer& indices ) override;
+        [[nodiscard]] BufferLock setBuffer(const SetBufferParams& params) noexcept override;
+        [[nodiscard]] BufferLock updateBuffer(U32 buffer, U32 elementCountOffset, U32 elementCountRange, bufferPtr data) noexcept override;
 
     private:
         void bindBufferInternal(const SetBufferParams::BufferBindConfig& bindConfig, VkCommandBuffer& cmdBuffer);
 
     private:
-        struct GenericBufferImpl {
-            AllocatedBuffer_uptr _buffer{nullptr};
-            AllocatedBuffer_uptr _stagingBufferVtx;
-            size_t _ringSizeFactor{ 1u };
-            size_t _elementStride{ 0u };
-            BufferRange _writtenRange{};
-            SetBufferParams::BufferBindConfig _bindConfig{};
-            bool _usedAfterWrite{ false };
-            bool _useAutoSyncObjects{ true };
+        struct LockableBufferInternal
+        {
+            LockableBufferInternal() : _lockManager( eastl::make_unique<vkLockManager>() ) {}
+            vkAllocatedLockableBuffer_uptr _buffer{ nullptr };
+            AllocatedBuffer_uptr _stagingBuffer{ nullptr };
+            vkLockManager_uptr _lockManager;
+            bool _isMemoryMappable{false};
         };
 
-        struct IndexBufferEntry : public NonCopyable {
-            AllocatedBuffer_uptr _handle{ nullptr };
-            AllocatedBuffer_uptr _stagingBufferIdx;
-            IndexBuffer _data;
+        struct GenericBufferImpl final : public LockableBufferInternal
+        {
+            SetBufferParams::BufferBindConfig _bindConfig{};
+            size_t _ringSizeFactor{ 1u };
+            size_t _elementStride{ 0u };
+        };
+
+        struct IndexBufferEntry final  : public LockableBufferInternal
+        {
+            IndexBuffer _data{};
         };
 
         vector<IndexBufferEntry> _idxBuffers;
         vector<GenericBufferImpl> _bufferObjects;
-
-        vkLockManager _lockManager;
     };
 
 } //namespace Divide

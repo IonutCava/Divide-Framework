@@ -43,23 +43,30 @@ namespace Divide {
 
 namespace GFX {
 
-constexpr size_t g_commandPoolSizeFactor = 256;
+struct DrawCommand;
+struct BindShaderResourcesCommand;
 
 template<typename T>
-struct CmdAllocator {
-    static Mutex s_PoolMutex;
-    static MemoryPool<T, prevPOW2(sizeof(T) * g_commandPoolSizeFactor)> s_Pool;
+constexpr size_t MemoryPoolSize()
+{
+    constexpr size_t g_commandPoolSizeFactor = prevPOW2( sizeof( T ) ) * (1u << 17);
 
-    template <class... Args>
-    static T* allocate(Args&&... args) {
-        ScopedLock<Mutex> lock(s_PoolMutex);
-        return s_Pool.newElement(FWD(args)...);
+    if constexpr ( std::is_same<T, GFX::BindShaderResourcesCommand>::value )
+    {
+        return g_commandPoolSizeFactor * 3;
     }
+    else if constexpr ( std::is_same<T, GFX::DrawCommand>::value )
+    {
+        return g_commandPoolSizeFactor * 2;
+    }
+    
+    return g_commandPoolSizeFactor;
+}
 
-    static void deallocate(T*& ptr) {
-        ScopedLock<Mutex> lock(s_PoolMutex);
-        s_Pool.deleteElement(ptr);
-    }
+template<typename T>
+struct CmdAllocator
+{
+    static thread_local MemoryPool<T, MemoryPoolSize<T>()> s_Pool;
 };
 
 enum class CommandType : U8;
@@ -72,7 +79,7 @@ struct Deleter {
 template<typename T>
 struct DeleterImpl final : Deleter {
     void del(CommandBase*& cmd) const override {
-        CmdAllocator<T>::deallocate((T*&)cmd);
+        CmdAllocator<T>::s_Pool.deleteElement((T*&)cmd);
         cmd = nullptr;
     }
 };
@@ -116,8 +123,7 @@ protected:
 string ToString(const CommandBase& cmd, U16 indent);
 
 #define IMPLEMENT_COMMAND(Command) \
-decltype(CmdAllocator<Command>::s_PoolMutex) CmdAllocator<Command>::s_PoolMutex; \
-decltype(CmdAllocator<Command>::s_Pool) CmdAllocator<Command>::s_Pool;
+thread_local decltype(CmdAllocator<Command>::s_Pool) CmdAllocator<Command>::s_Pool;
 
 #define DEFINE_COMMAND_BEGIN(Name, Enum) struct Name final : public Command<Name, Enum> { \
 using Base = Command<Name, Enum>; \

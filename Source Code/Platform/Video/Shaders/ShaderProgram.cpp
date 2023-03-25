@@ -64,7 +64,7 @@ namespace Divide
     constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
     constexpr I8 s_maxHeaderRecursionLevel = 64;
-
+    
     Mutex ShaderProgram::s_atomLock;
     Mutex ShaderProgram::g_cacheLock;
     ShaderProgram::AtomMap ShaderProgram::s_atoms;
@@ -255,6 +255,10 @@ namespace Divide
         constexpr U8 s_reserverdBufferSlotsPerDraw = ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET - s_reserverdTextureSlotsPerDraw;
         constexpr U8 s_reservedImageSlotsPerDraw = ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET - s_reserverdBufferSlotsPerDraw - s_reserverdTextureSlotsPerDraw;
 
+        U8 s_textureSlot = s_reserverdTextureSlotsPerDraw;
+        U8 s_bufferSlot = s_textureSlot + s_reserverdBufferSlotsPerDraw;
+        U8 s_imageSlot = s_reservedImageSlotsPerDraw;
+
         [[nodiscard]] size_t DefinesHash( const ModuleDefines& defines ) noexcept
         {
             if ( defines.empty() )
@@ -349,7 +353,7 @@ namespace Divide
         }
         [[nodiscard]] bool ValidateCache( const ShaderProgram::LoadData::ShaderCacheType type, const Str256& sourceFileName, const Str256& fileName )
         {
-            ScopedLock<Mutex> rw_lock( ShaderProgram::g_cacheLock );
+            LockGuard<Mutex> rw_lock( ShaderProgram::g_cacheLock );
             return ValidateCache( type, sourceFileName, fileName );
         }
 
@@ -369,7 +373,7 @@ namespace Divide
 
         [[nodiscard]] bool DeleteCache( const ShaderProgram::LoadData::ShaderCacheType type, const Str256& fileName )
         {
-            ScopedLock<Mutex> rw_lock( ShaderProgram::g_cacheLock );
+            LockGuard<Mutex> rw_lock( ShaderProgram::g_cacheLock );
             if ( type == ShaderProgram::LoadData::ShaderCacheType::COUNT )
             {
                 bool ret = false;
@@ -818,14 +822,14 @@ namespace Divide
 
     void ShaderModule::DestroyStaticData()
     {
-        ScopedLock<SharedMutex> w_lock( s_shaderNameLock );
+        LockGuard<SharedMutex> w_lock( s_shaderNameLock );
         DIVIDE_ASSERT( s_shaderNameMap.empty() );
     }
 
     /// Remove a shader entity. The shader is deleted only if it isn't referenced by a program
     void ShaderModule::RemoveShader( ShaderModule* s, const bool force )
     {
-        ScopedLock<SharedMutex> w_lock( s_shaderNameLock );
+        LockGuard<SharedMutex> w_lock( s_shaderNameLock );
         RemoveShaderLocked( s, force );
     }
 
@@ -1088,6 +1092,10 @@ namespace Divide
 
         SpirvHelper::Init();
 
+        s_textureSlot = s_reserverdTextureSlotsPerDraw;
+        s_bufferSlot = s_textureSlot + s_reserverdBufferSlotsPerDraw;
+        s_imageSlot = s_reservedImageSlotsPerDraw;
+
         return ErrorCode::NO_ERR;
     }
 
@@ -1104,6 +1112,17 @@ namespace Divide
 
         FileWatcherManager::deallocateWatcher( s_shaderFileWatcherID );
         s_shaderFileWatcherID = -1;
+
+        s_shaderCount = 0u;
+        s_atoms.clear();
+        s_atomIncludes.clear();
+
+        k_commandBufferID = U8_MAX - ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET;
+
+        for ( auto& bindings : s_bindingsPerSet )
+        {
+            bindings.fill( {} );
+        }
 
         return glswGetCurrentContext() == nullptr || glswShutdown() == 1;
     }
@@ -1141,9 +1160,6 @@ namespace Divide
     {
         DIVIDE_ASSERT( usage != DescriptorSetUsage::PER_DRAW );
 
-        static U8 textureSlot = s_reserverdTextureSlotsPerDraw;
-        static U8 bufferSlot = textureSlot + s_reserverdBufferSlotsPerDraw;
-        static U8 imageSlot = s_reservedImageSlotsPerDraw;
         DIVIDE_ASSERT( slot < MAX_SLOTS_PER_DESCRIPTOR_SET );
 
         BindingsPerSet& bindingData = s_bindingsPerSet[to_base( usage )][slot];
@@ -1153,10 +1169,10 @@ namespace Divide
         switch ( type )
         {
             case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER:
-                bindingData._glBinding = textureSlot++;
+                bindingData._glBinding = s_textureSlot++;
                 break;
             case DescriptorSetBindingType::IMAGE:
-                bindingData._glBinding = imageSlot++;
+                bindingData._glBinding = s_imageSlot++;
                 break;
             case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
             case DescriptorSetBindingType::UNIFORM_BUFFER:
@@ -1166,7 +1182,7 @@ namespace Divide
                 }
                 else
                 {
-                    bindingData._glBinding = bufferSlot++;
+                    bindingData._glBinding = s_bufferSlot++;
                 }
                 break;
             default:
@@ -1208,7 +1224,7 @@ namespace Divide
 
         assert( shaderProgram != nullptr );
 
-        ScopedLock<SharedMutex> lock( s_programLock );
+        LockGuard<SharedMutex> lock( s_programLock );
         if ( shaderProgram->handle() != SHADER_INVALID_HANDLE )
         {
             const ShaderProgramMapEntry& existingEntry = s_shaderPrograms[shaderProgram->handle()._id];
@@ -1250,7 +1266,7 @@ namespace Divide
 
         if ( shaderHandle != SHADER_INVALID_HANDLE )
         {
-            ScopedLock<SharedMutex> lock( s_programLock );
+            LockGuard<SharedMutex> lock( s_programLock );
             ShaderProgramMapEntry& entry = s_shaderPrograms[shaderHandle._id];
             if ( entry._generation == shaderHandle._generation )
             {
@@ -1359,7 +1375,7 @@ namespace Divide
 
     const string& ShaderProgram::ShaderFileRead( const ResourcePath& filePath, const ResourcePath& atomName, const bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed )
     {
-        ScopedLock<Mutex> w_lock( s_atomLock );
+        LockGuard<Mutex> w_lock( s_atomLock );
         return ShaderFileReadLocked( filePath, atomName, recurse, foundAtomIDsInOut, wasParsed );
     }
 
@@ -1504,7 +1520,7 @@ namespace Divide
     {
         bool ret = false;
 
-        ScopedLock<Mutex> rw_lock( g_cacheLock );
+        LockGuard<Mutex> rw_lock( g_cacheLock );
         FileError err = FileError::FILE_EMPTY;
         switch ( cache )
         {
@@ -1579,7 +1595,7 @@ namespace Divide
             return false;
         }
 
-        ScopedLock<Mutex> rw_lock( g_cacheLock );
+        LockGuard<Mutex> rw_lock( g_cacheLock );
         if ( !ValidateCacheLocked( cache, dataInOut._sourceFile, dataInOut._shaderName ) )
         {
             if ( !DeleteCacheLocked( cache, dataInOut._shaderName ) )
@@ -1836,7 +1852,6 @@ namespace Divide
             }
         }
 
-        memCmdInOut._syncFlag = 202u;
         return ret;
     }
 
@@ -2085,7 +2100,7 @@ namespace Divide
         // ADD and MODIFY events should get processed as usual
         {
             // Clear the atom from the cache
-            ScopedLock<Mutex> w_lock( s_atomLock );
+            LockGuard<Mutex> w_lock( s_atomLock );
             if ( s_atoms.erase( atomNameHash ) == 1 )
             {
                 NOP();

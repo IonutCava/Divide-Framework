@@ -205,6 +205,7 @@ extern std::array<GLenum, to_base(PrimitiveTopology::COUNT)> glPrimitiveTypeTabl
 extern std::array<GLenum, to_base(GFXDataFormat::COUNT)> glDataFormat;
 extern std::array<GLenum, to_base(TextureWrap::COUNT)> glWrapTable;
 extern std::array<GLenum, to_base(ShaderType::COUNT)> glShaderStageTable;
+extern std::array<GLenum, to_base( QueryType::COUNT )> glQueryTypeTable;
 };  // namespace GLUtil
 };  // namespace Divide
 

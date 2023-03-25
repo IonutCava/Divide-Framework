@@ -65,7 +65,7 @@ void main(){
 
 #include "nodeDataInput.cmn"
 
-layout(location = ATTRIB_POSITION) in vec3 inVertexData;
+layout(location = ATTRIB_POSITION) in vec2 inVertexData;
 layout(location = ATTRIB_TEXCOORD) in vec2 inTexCoordData;
 layout(location = ATTRIB_COLOR) in vec4 inColourData;
 
@@ -74,7 +74,7 @@ layout(location = ATTRIB_FREE_START + 0) out vec4 _colour;
 void main() {
     VAR._texCoord = inTexCoordData;
     _colour = inColourData;
-    gl_Position = dvd_ViewProjectionMatrix * vec4(inVertexData, 1.0);
+    gl_Position = dvd_ViewProjectionMatrix * vec4(inVertexData, 1.0, 1.0);
 }
 
 -- Fragment.GUI

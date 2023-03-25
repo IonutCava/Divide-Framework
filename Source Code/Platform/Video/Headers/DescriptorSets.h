@@ -81,7 +81,6 @@ namespace Divide
 
         TextureWrapper _srcTexture{};
         ImageSubRange _subRange{};
-        ImageUsage _usage{ImageUsage::UNDEFINED};
 
         [[nodiscard]] size_t getHash() const noexcept override;
 
@@ -99,6 +98,12 @@ namespace Divide
         size_t _samplerHash{ 0u };
     };
 
+    struct DescriptorImageView
+    {
+        ImageView _image{};
+        ImageUsage _usage{ImageUsage::COUNT};
+    };
+
     struct ShaderBufferEntry
     {
         ShaderBuffer* _buffer{ nullptr };
@@ -106,13 +111,13 @@ namespace Divide
         I32 _bufferQueueReadIndex{ 0u };
     };
 
-    using DescriptorSetBindingData = eastl::variant<eastl::monostate, ShaderBufferEntry, DescriptorCombinedImageSampler, ImageView>;
+    using DescriptorSetBindingData = eastl::variant<eastl::monostate, ShaderBufferEntry, DescriptorCombinedImageSampler, DescriptorImageView>;
 
-    void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer, BufferRange range );
-    void Set( DescriptorSetBindingData& dataInOut, const ImageView& view );
-    void Set( DescriptorSetBindingData& dataInOut, const ImageView& imageView, size_t samplerHash );
-    void Set( DescriptorSetBindingData& dataInOut, const DescriptorCombinedImageSampler& combinedImageSampler );
-
+    void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer, BufferRange range ) noexcept;
+    void Set( DescriptorSetBindingData& dataInOut, const DescriptorImageView& view ) noexcept;
+    void Set( DescriptorSetBindingData& dataInOut, const DescriptorCombinedImageSampler& combinedImageSampler ) noexcept;
+    void Set( DescriptorSetBindingData& dataInOut, const ImageView& view, ImageUsage usage) noexcept;
+    void Set( DescriptorSetBindingData& dataInOut, const ImageView& view, size_t samplerHash ) noexcept;
 
     struct DescriptorSetBinding
     {
@@ -137,6 +142,8 @@ namespace Divide
     bool operator!=( const ShaderBufferEntry& lhs, const ShaderBufferEntry& rhs ) noexcept;
     bool operator==( const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs ) noexcept;
     bool operator!=( const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs ) noexcept;
+    bool operator==( const DescriptorImageView& lhs, const DescriptorImageView& rhs ) noexcept;
+    bool operator!=( const DescriptorImageView& lhs, const DescriptorImageView& rhs ) noexcept;
     bool operator==( const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs ) noexcept;
     bool operator!=( const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs ) noexcept;
 

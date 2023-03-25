@@ -339,7 +339,7 @@ namespace Divide
         }
 
         _blockMembers.resize( uniformBlock._memberCount );
-        _uniformBlockSizeAligned = Util::GetAlignmentCorrected( uniformBlock._size, ShaderBuffer::AlignmentRequirement( ShaderBuffer::Usage::CONSTANT_BUFFER ) );
+        _uniformBlockSizeAligned = Util::GetAlignmentCorrected( uniformBlock._size, ShaderBuffer::AlignmentRequirement( BufferUsageType::CONSTANT_BUFFER ) );
         resizeBlockBuffer( false );
         _localDataCopy.resize( _uniformBlockSizeAligned );
 
@@ -428,10 +428,10 @@ namespace Divide
         bufferDescriptor._ringBufferLength = increaseSize ? newSize : RingBufferLength;
         bufferDescriptor._name.append( "_" );
         bufferDescriptor._name.append( _parentShaderName.c_str() );
-        bufferDescriptor._usage = ShaderBuffer::Usage::CONSTANT_BUFFER;
         bufferDescriptor._bufferParams._elementCount = 1;
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-        bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
+        bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::CONSTANT_BUFFER;
+        bufferDescriptor._bufferParams._flags._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        bufferDescriptor._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
         bufferDescriptor._bufferParams._elementSize = _uniformBlockSizeAligned;
         _buffer = _context.newSB( bufferDescriptor );
         _uniformBlockDirty = true;

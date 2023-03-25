@@ -10,9 +10,8 @@
 
 namespace Divide {
 
-SFXDevice::SFXDevice(Kernel& parent)
-    : KernelComponent(parent), 
-      AudioAPIWrapper(),
+SFXDevice::SFXDevice(PlatformContext& context)
+    : AudioAPIWrapper("SFXDevice", context),
       _state(true, true, true, true),
       _API_ID(AudioAPI::COUNT),
       _api(nullptr)
@@ -25,18 +24,18 @@ SFXDevice::~SFXDevice()
     closeAudioAPI();
 }
 
-ErrorCode SFXDevice::initAudioAPI(PlatformContext& context) {
+ErrorCode SFXDevice::initAudioAPI() {
     assert(_api == nullptr && "SFXDevice error: initAudioAPI called twice!");
 
     switch (_API_ID) {
         case AudioAPI::FMOD: {
-            _api = eastl::make_unique<FMOD_API>();
+            _api = eastl::make_unique<FMOD_API>(_context );
         } break;
         case AudioAPI::OpenAL: {
-            _api = eastl::make_unique<OpenAL_API>();
+            _api = eastl::make_unique<OpenAL_API>( _context );
         } break;
         case AudioAPI::SDL: {
-            _api = eastl::make_unique<SDL_API>();
+            _api = eastl::make_unique<SDL_API>( _context );
         } break;
         default: {
             Console::errorfn(Locale::Get(_ID("ERROR_SFX_DEVICE_API")));
@@ -44,7 +43,7 @@ ErrorCode SFXDevice::initAudioAPI(PlatformContext& context) {
         };
     };
 
-    return _api->initAudioAPI(context);
+    return _api->initAudioAPI();
 }
 
 void SFXDevice::closeAudioAPI() {
@@ -61,10 +60,9 @@ void SFXDevice::idle() {
     NOP();
 }
 
-void SFXDevice::beginFrame() {
+bool SFXDevice::frameStarted( const FrameEvent& evt )
+{
     PROFILE_SCOPE_AUTO( Divide::Profiler::Category::Sound );
-
-    _api->beginFrame();
 
     if (_playNextInPlaylist) {
         _api->musicFinished();
@@ -75,12 +73,8 @@ void SFXDevice::beginFrame() {
         }
         _playNextInPlaylist = false;
     }
-}
 
-void SFXDevice::endFrame() {
-    PROFILE_SCOPE_AUTO( Divide::Profiler::Category::Sound );
-
-    _api->endFrame();
+    return true;
 }
 
 void SFXDevice::playSound(const AudioDescriptor_ptr& sound) {

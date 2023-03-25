@@ -536,8 +536,9 @@ void SSAOPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX:
         GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
         renderPassCmd->_name = "DO_SSAO_CLEAR_TARGET";
         renderPassCmd->_target = RenderTargetNames::SSAO_RESULT;
-        renderPassCmd->_clearDescriptor._clearDepth = true;
-        renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, RTColourAttachmentSlot::SLOT_0 };
+        renderPassCmd->_descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
+        renderPassCmd->_clearDescriptor[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
+        renderPassCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
 
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
     }
@@ -562,6 +563,8 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
             renderPassCmd->_name = "DO_SSAO_DOWNSAMPLE_NORMALS";
             renderPassCmd->_target = _halfDepthAndNormals._targetID;
+            renderPassCmd->_clearDescriptor[to_base(RTColourAttachmentSlot::SLOT_0)] = DEFAULT_CLEAR_ENTRY;
+            renderPassCmd->_descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _downsamplePipeline;
 
@@ -583,6 +586,8 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
             renderPassCmd->_name = "DO_SSAO_HALF_RES_CALC";
             renderPassCmd->_target = _ssaoHalfResOutput._targetID;
+            renderPassCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
+            renderPassCmd->_descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _generateHalfResPipeline;
 
@@ -608,6 +613,8 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
             renderPassCmd->_name = "DO_SSAO_UPSAMPLE_AO";
             renderPassCmd->_target = _ssaoOutput._targetID;
+            renderPassCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
+            renderPassCmd->_descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _upsamplePipeline;
 
@@ -647,6 +654,8 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
             renderPassCmd->_name = "DO_SSAO_CALC";
             renderPassCmd->_target = _ssaoOutput._targetID;
+            renderPassCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
+            renderPassCmd->_descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _generateFullResPipeline;
 
@@ -684,6 +693,8 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
                 renderPassCmd->_name = "DO_SSAO_BLUR_HORIZONTAL";
                 renderPassCmd->_target = _ssaoBlurBuffer._targetID;
+                renderPassCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
+                renderPassCmd->_descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
                 GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _blurHorizontalPipeline;
 
@@ -711,6 +722,8 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
                 renderPassCmd->_name = "DO_SSAO_BLUR_VERTICAL";
                 renderPassCmd->_target = RenderTargetNames::SSAO_RESULT;
+                renderPassCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
+                renderPassCmd->_descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
                 GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _blurVerticalPipeline;
 
@@ -741,6 +754,8 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
             renderPassCmd->_name = "DO_SSAO_PASS_THROUGH";
             renderPassCmd->_target = RenderTargetNames::SSAO_RESULT;
+            renderPassCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
+            renderPassCmd->_descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _passThroughPipeline;
 

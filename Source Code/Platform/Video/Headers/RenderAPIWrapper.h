@@ -122,9 +122,10 @@ struct DeviceInformation
     U32 _maxTextureUnits = 32u;
     U32 _maxRTColourAttachments = 4u;
     U32 _maxAnisotropy = 0u;
-    U32 _maxClipDistances = 2u;
-    U32 _maxCullDistances = 6u;
-    U32 _maxClipAndCullDistances = 8u;
+    U32 _maxClipDistances = Config::MAX_CLIP_DISTANCES;
+    U32 _maxCullDistances = Config::MAX_CULL_DISTANCES;
+    U32 _maxClipAndCullDistances = Config::MAX_CLIP_DISTANCES + Config::MAX_CULL_DISTANCES;
+    U32 _maxDrawIndirectCount = std::numeric_limits<U16>::max();
     VersionInformation _versionInfo = { 4u, 6u };
     GPUVendor _vendor = GPUVendor::COUNT;
     GPURenderer _renderer = GPURenderer::COUNT;
@@ -143,10 +144,11 @@ public:
 protected:
     friend class GFXDevice;
 
-    /// Clear buffers, set default states, etc
-    virtual [[nodiscard]] bool beginFrame(DisplayWindow& window, bool global = false) = 0;
-    /// Clear shaders, restore active texture units, etc
-    virtual void endFrame(DisplayWindow& window, bool global = false) = 0;
+    virtual [[nodiscard]] bool drawToWindow(DisplayWindow& window) = 0;
+    virtual               void flushWindow(DisplayWindow& window) = 0;
+    virtual [[nodiscard]] bool frameStarted() = 0;
+    virtual [[nodiscard]] bool frameEnded() = 0;
+
     virtual void idle(bool fast) = 0;
 
     virtual ErrorCode initRenderingAPI(I32 argc, char** argv, Configuration& config) = 0;
@@ -155,8 +157,6 @@ protected:
     virtual void preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) = 0;
     virtual void flushCommand(GFX::CommandBase* cmd) = 0;
     virtual void postFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) = 0;
-
-    [[nodiscard]] virtual vec2<U16> getDrawableSize(const DisplayWindow& window) const = 0;
 
     virtual bool setViewportInternal(const Rect<I32>& newViewport) = 0;
     virtual bool setScissorInternal(const Rect<I32>& newScissor) = 0;

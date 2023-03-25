@@ -185,7 +185,7 @@ Block DeviceAllocator::allocate(const bool poolAllocations,
                                 const char* blockName,
                                 const std::pair<bufferPtr, size_t> initialData)
 {
-    ScopedLock<Mutex> w_lock(_chunkAllocatorLock);
+    LockGuard<Mutex> w_lock(_chunkAllocatorLock);
 
     Block block;
     for (Chunk* chunk : _chunks) {
@@ -209,7 +209,7 @@ Block DeviceAllocator::allocate(const bool poolAllocations,
 }
 
 void DeviceAllocator::deallocate(const Block &block) const {
-    ScopedLock<Mutex> w_lock(_chunkAllocatorLock);
+    LockGuard<Mutex> w_lock(_chunkAllocatorLock);
 
     for (Chunk* chunk : _chunks) {
         if (chunk->containsBlock(block)) {
@@ -222,7 +222,7 @@ void DeviceAllocator::deallocate(const Block &block) const {
 }
 
 void DeviceAllocator::deallocate() {
-    ScopedLock<Mutex> w_lock(_chunkAllocatorLock);
+    LockGuard<Mutex> w_lock(_chunkAllocatorLock);
     MemoryManager::DELETE_CONTAINER(_chunks);
 }
 

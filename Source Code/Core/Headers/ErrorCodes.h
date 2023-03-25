@@ -67,8 +67,59 @@ namespace Divide {
         PLATFORM_INIT_ERROR,
         PLATFORM_CLOSE_ERROR,
         EDITOR_INIT_ERROR,
-        GUI_INIT_ERROR
+        GUI_INIT_ERROR,
+        COUNT
     };
+
+    namespace Names
+    {
+        static const char* errorCode[] = {
+            "NO ERROR",
+            "MISSING SCENE DATA",
+            "MISSING SCENE LOAD CALL",
+            "CPU NOT SUPPORTED",
+            "RENDERING API NOT SUPPORTED",
+            "RENDERING API NOT SPECIFIED",
+            "SOUND API NOT SPECIFIED",
+            "PHYSICS API NON SPECIFIED",
+            "WINDOW INIT ERROR",
+            "SDL WINDOW INIT ERROR",
+            "FONT INIT ERROR",
+            "GLBINGING INIT ERROR",
+            "GLSL INIT ERROR",
+            "OPENGL OLD HARDWARE",
+            "VULKAN OLD HARDWARE",
+            "GPU UNDER MIN SPEC",
+            "VULKAN SURFACE CREATE",
+            "VULKAN DEVICE CREATE FAILED",
+            "VULKAN NO GRAHPICS QUEUE",
+            "SDL AUDIO INIT ERROR",
+            "SDL AUDIO MIX INIT ERROR",
+            "FMOD AUDIO INIT ERROR",
+            "OPENAL INIT ERROR",
+            "OPENCL INIT ERROR",
+            "PHYSX INIT ERROR",
+            "PHYSX EXTENSION ERROR",
+            "NO LANGUAGE INI",
+            "NOT ENOUGH RAM",
+            "WRONG WORKING DIRECTORY",
+            "PLATFORM INIT ERROR",
+            "PLATFORM CLOSE ERROR",
+            "EDITOR INIT ERROR",
+            "GUI INIT ERROR",
+            "UNKNOWN"
+        };
+    }
+
+    static_assert(std::size( Names::errorCode ) == to_base( ErrorCode::COUNT ) + 1u, "ErrorCode name array out of sync!");
+
+    namespace TypeUtil
+    {
+        [[nodiscard]] inline const char* ErrorCodeToString( const ErrorCode err ) noexcept
+        {
+            return Names::errorCode[to_base( err )];
+        }
+    }
 }
 
 #endif //_CORE_ERROR_CODES_H_

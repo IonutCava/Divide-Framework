@@ -34,7 +34,7 @@ namespace Divide {
                                    const bool overwriteExisting,
                                    ShaderProgram::LoadData& data)
     {
-        ScopedLock<SharedMutex> w_lock(ShaderModule::s_shaderNameLock);
+        LockGuard<SharedMutex> w_lock(ShaderModule::s_shaderNameLock);
 
         // See if we have the shader already loaded
         ShaderModule* shader = GetShaderLocked( data._shaderName );

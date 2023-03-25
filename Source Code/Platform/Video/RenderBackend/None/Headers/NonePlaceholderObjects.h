@@ -60,12 +60,13 @@ namespace Divide {
 
         void reset() override {}
         void draw([[maybe_unused]] const GenericDrawCommand& command, [[maybe_unused]] VDIUserData* data) noexcept override {}
-        void setBuffer([[maybe_unused]] const SetBufferParams& params) noexcept override {}
-        void setIndexBuffer([[maybe_unused]] const IndexBuffer& indices) override {}
-        void updateBuffer([[maybe_unused]] U32 buffer,
-                          [[maybe_unused]] U32 elementCountOffset,
-                          [[maybe_unused]] U32 elementCountRange,
-                          [[maybe_unused]] bufferPtr data) noexcept override{}
+
+        [[nodiscard]] BufferLock setIndexBuffer([[maybe_unused]] const IndexBuffer& indices) override { return {}; }
+        [[nodiscard]] BufferLock setBuffer([[maybe_unused]] const SetBufferParams& params) noexcept override { return {}; }
+        [[nodiscard]] BufferLock updateBuffer([[maybe_unused]] U32 buffer,
+                                              [[maybe_unused]] U32 elementCountOffset,
+                                              [[maybe_unused]] U32 elementCountRange,
+                                              [[maybe_unused]] bufferPtr data) noexcept override{ return {}; }
     };
 
     class noTexture final : public Texture {
@@ -115,6 +116,8 @@ namespace Divide {
 
         void writeBytesInternal([[maybe_unused]] BufferRange range, [[maybe_unused]] bufferPtr data) noexcept override {}
         void readBytesInternal([[maybe_unused]] BufferRange range, [[maybe_unused]] std::pair<bufferPtr, size_t> outData) noexcept override {}
+
+        [[nodiscard]] LockableBuffer* getBufferImpl() override { return nullptr; }
     };
 
 };  // namespace Divide

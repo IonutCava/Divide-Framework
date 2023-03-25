@@ -106,6 +106,7 @@ namespace Divide
         std::array<GLenum, to_base( GFXDataFormat::COUNT )> glDataFormat;
         std::array<GLenum, to_base( TextureWrap::COUNT )> glWrapTable;
         std::array<GLenum, to_base( ShaderType::COUNT )> glShaderStageTable;
+        std::array<GLenum, to_base( QueryType::COUNT )> glQueryTypeTable;
 
         void fillEnumTables()
         {
@@ -225,6 +226,14 @@ namespace Divide
             glShaderStageTable[to_base( ShaderType::TESSELLATION_CTRL )] = GL_TESS_CONTROL_SHADER;
             glShaderStageTable[to_base( ShaderType::TESSELLATION_EVAL )] = GL_TESS_EVALUATION_SHADER;
             glShaderStageTable[to_base( ShaderType::COMPUTE )] = GL_COMPUTE_SHADER;
+
+            glQueryTypeTable[to_U8(log2(to_base(QueryType::VERTICES_SUBMITTED))) - 1] = GL_VERTICES_SUBMITTED;
+            glQueryTypeTable[to_U8(log2(to_base(QueryType::PRIMITIVES_GENERATED))) - 1] = GL_PRIMITIVES_GENERATED;
+            glQueryTypeTable[to_U8(log2(to_base(QueryType::TESSELLATION_PATCHES))) - 1] = GL_TESS_CONTROL_SHADER_PATCHES;
+            glQueryTypeTable[to_U8(log2(to_base(QueryType::TESSELLATION_EVAL_INVOCATIONS))) - 1] = GL_TESS_EVALUATION_SHADER_INVOCATIONS;
+            glQueryTypeTable[to_U8(log2(to_base(QueryType::GPU_TIME))) - 1] = GL_TIME_ELAPSED;
+            glQueryTypeTable[to_U8(log2(to_base(QueryType::SAMPLE_COUNT))) - 1] = GL_SAMPLES_PASSED;
+            glQueryTypeTable[to_U8(log2(to_base(QueryType::ANY_SAMPLE_RENDERED))) - 1] = GL_ANY_SAMPLES_PASSED_CONSERVATIVE;
         }
 
         GLenum internalFormat( const GFXImageFormat baseFormat, const GFXDataFormat dataType, const bool srgb, const bool normalized )  noexcept
@@ -555,7 +564,7 @@ namespace Divide
         {
             PROFILE_SCOPE( "Texture Pool: onFrameEnd", Profiler::Category::Graphics );
 
-            ScopedLock<SharedMutex> w_lock( _lock );
+            LockGuard<SharedMutex> w_lock( _lock );
             GLuint count = 0u;
             const U32 entryCount = to_U32( _tempBuffer.size() );
             for ( U32 i = 0u; i < entryCount; ++i )
@@ -602,7 +611,7 @@ namespace Divide
 
         void glTextureViewCache::destroy()
         {
-            ScopedLock<SharedMutex> w_lock( _lock );
+            LockGuard<SharedMutex> w_lock( _lock );
             const U32 entryCount = to_U32( _tempBuffer.size() );
             glDeleteTextures( static_cast<GLsizei>(entryCount), _handles.data() );
             memset( _handles.data(), 0, sizeof( GLuint ) * entryCount );
@@ -619,7 +628,7 @@ namespace Divide
         std::pair<GLuint, bool> glTextureViewCache::allocate( const size_t hash, const bool retry )
         {
             {
-                ScopedLock<SharedMutex> w_lock( _lock );
+                LockGuard<SharedMutex> w_lock( _lock );
 
                 if ( hash != 0u )
                 {
@@ -670,7 +679,7 @@ namespace Divide
         void glTextureViewCache::deallocate( const GLuint handle, const U32 frameDelay )
         {
 
-            ScopedLock<SharedMutex> w_lock( _lock );
+            LockGuard<SharedMutex> w_lock( _lock );
             const U32 count = to_U32( _handles.size() );
             for ( U32 i = 0u; i < count; ++i )
             {
@@ -809,8 +818,11 @@ namespace Divide
                 fullScope.c_str(),
                 message );
 
-            const bool isConsoleIM = Console::immediateModeEnabled();
-            Console::toggleImmediateMode( true );
+            const bool isConsoleImmediate = Console::IsFlagSet( Console::Flags::PRINT_IMMEDIATE );
+            const bool severityDecoration = Console::IsFlagSet( Console::Flags::DECORATE_SEVERITY );
+            Console::ToggleFlag( Console::Flags::PRINT_IMMEDIATE, true );
+            Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY, false );
+
             if ( severity == GL_DEBUG_SEVERITY_NOTIFICATION )
             {
                 Console::printfn( outputError.c_str() );
@@ -822,8 +834,10 @@ namespace Divide
             else
             {
                 Console::errorfn( outputError.c_str() );
+                DIVIDE_ASSERT(!GL_API::GetStateTracker().assertOnAPIError());
             }
-            Console::toggleImmediateMode( isConsoleIM );
+            Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY, severityDecoration );
+            Console::ToggleFlag( Console::Flags::PRINT_IMMEDIATE, isConsoleImmediate );
 
         }
 

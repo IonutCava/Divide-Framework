@@ -88,7 +88,7 @@ struct TextElement {
     void text(const char* text, const bool multiLine);
 
     PROPERTY_R(size_t, textLabelStyleHash, 0);
-    PROPERTY_R(TextType, text, {});
+    PROPERTY_R(TextType, text);
     PROPERTY_RW(RelativePosition2D, position);
 };
 
@@ -98,7 +98,7 @@ struct TextElementBatch {
     TextElementBatch() = default;
     explicit TextElementBatch(const TextElement& element);
 
-    PROPERTY_RW(BatchType, data, {});
+    PROPERTY_RW(BatchType, data);
 };
 
 }  // namespace Divide

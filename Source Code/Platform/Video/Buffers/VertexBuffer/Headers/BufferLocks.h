@@ -34,22 +34,29 @@
 #define _BUFFER_LOCKS_H_
 
 #include "BufferRange.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/BufferParams.h"
 
 namespace Divide {
 
-    class ShaderBuffer;
-    struct BufferLock {
-        const ShaderBuffer* _targetBuffer = nullptr;
-        BufferRange _range{};
+    class LockManager;
+
+    struct LockableBuffer : public GUIDWrapper
+    {
+        virtual BufferFlags getBufferFlags() const = 0;
+        virtual LockManager* getLockManager() = 0;
     };
 
-    class GenericVertexData;
+    struct BufferLock
+    {
+        BufferRange _range{};
+        BufferSyncUsage _type{ BufferSyncUsage::COUNT };
 
-    using BufferLocks = eastl::fixed_vector<BufferLock, 3, true, eastl::dvd_allocator>;
-    using FenceLocks = eastl::fixed_vector<GenericVertexData*, 3, true, eastl::dvd_allocator>;
+        LockableBuffer* _buffer{nullptr};
+    };
+
+    using BufferLocks = eastl::fixed_vector<BufferLock, 6, true, eastl::dvd_allocator>;
 
     bool IsEmpty(const BufferLocks& locks) noexcept;
-    bool IsEmpty(const FenceLocks& locks) noexcept;
 
 } //namespace Divide
 

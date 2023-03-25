@@ -38,72 +38,33 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-enum class RenderAPI : U8;
-
-enum class WindowMode : U8 {
+enum class WindowMode : U8
+{
     WINDOWED = 0,
     BORDERLESS_WINDOWED,
     FULLSCREEN
 };
 
-struct WindowDescriptor {
-    enum class Flags : U16 {
-        FULLSCREEN = toBit(1),
-        FULLSCREEN_DESKTOP = toBit(2),
-        DECORATED = toBit(3),
-        RESIZEABLE = toBit(4),
-        HIDDEN = toBit(5),
-        ALLOW_HIGH_DPI = toBit(6),
-        ALWAYS_ON_TOP = toBit(7),
-        VSYNC = toBit(8),
-        SHARE_CONTEXT = toBit(9)
-    };
-
-    string title = "";
-    vec2<I16> position = {};
-    vec2<U16> dimensions = {};
-    U32 targetDisplay = 0u;
-    U16 flags = to_U16(to_base(Flags::DECORATED) |
-                       to_base(Flags::RESIZEABLE) |
-                       to_base(Flags::ALLOW_HIGH_DPI));
-    RenderAPI targetAPI;
-    bool externalClose = false;
-    bool startMaximized = false;
-};
-
+enum class RenderAPI : U8;
 class PlatformContext;
-class WindowManager final : public SDLEventListener, NonCopyable {
+struct WindowDescriptor;
+struct SizeChangeParams;
+
+class WindowManager final : NonCopyable {
 public:
     struct MonitorData {
-        Rect<I16> viewport;
-        Rect<I16> drawableArea;
-        F32 dpi = 0.f;
+        Rect<I16> viewport{};
+        Rect<I16> drawableArea{};
+        F32 dpi{0.f};
     };
 
 public:
     WindowManager() noexcept;
     ~WindowManager();
 
-    // Can be called at startup directly
-    ErrorCode init(PlatformContext& context,
-                   RenderAPI renderingAPI,
-                   vec2<I16> initialPosition,
-                   vec2<U16> initialSize,
-                   WindowMode windowMode,
-                   I32 targetDisplayIndex);
-    // Needs to be called after the graphics system has fully initialized
-    void postInit();
-
-    void close();
     void hideAll() noexcept;
 
-    void update(U64 deltaTimeUS);
-
-    [[nodiscard]] bool anyWindowFocus() const noexcept;
-
-    inline DisplayWindow* createWindow(const WindowDescriptor& descriptor, ErrorCode& err);
-
-    DisplayWindow* createWindow(const WindowDescriptor& descriptor, ErrorCode& err, U32& windowIndex);
+    DisplayWindow* createWindow(const WindowDescriptor& descriptor, ErrorCode& err);
     bool destroyWindow(DisplayWindow*& window);
 
     bool setCursorPosition(I32 x, I32 y) noexcept;
@@ -132,8 +93,6 @@ public:
     inline DisplayWindow* getWindowByID(U32 ID) noexcept;
     [[nodiscard]] inline const DisplayWindow* getWindowByID(U32 ID) const noexcept;
 
-    [[nodiscard]] inline U32 getWindowCount() const noexcept;
-
     [[nodiscard]] inline const vector<MonitorData>& monitorData() const noexcept;
 
     static vec2<U16> GetFullscreenResolution() noexcept;
@@ -148,17 +107,25 @@ public:
     POINTER_R(DisplayWindow, mainWindow, nullptr);
 
 protected:
-    bool onSDLEvent(SDL_Event event) noexcept override;
+    friend class Application;
+
+    // Can be called at startup directly
+    ErrorCode init(PlatformContext& context,
+                   RenderAPI renderingAPI,
+                   vec2<I16> initialPosition,
+                   vec2<U16> initialSize,
+                   WindowMode windowMode,
+                   I32 targetDisplayIndex);
+
+    void close();
 
 protected:
     friend class DisplayWindow;
-    [[nodiscard]] static U32 CreateAPIFlags(RenderAPI api) noexcept;
     [[nodiscard]] ErrorCode configureAPISettings(RenderAPI api, U16 descriptorFlags) const;
     [[nodiscard]] ErrorCode applyAPISettings(RenderAPI api, DisplayWindow* window);
     static void DestroyAPISettings(DisplayWindow* window) noexcept;
 
 protected:
-    U32 _apiFlags{ 0 };
     I64 _mainWindowGUID{ -1 };
 
     PlatformContext* _context{ nullptr };
@@ -167,6 +134,47 @@ protected:
     DisplayWindow::UserData _globalUserData{};
     static std::array<SDL_Cursor*, to_base(CursorStyle::COUNT)> s_cursors;
 };
+
+struct WindowDescriptor
+{
+    enum class Flags : U16
+    {
+        FULLSCREEN = toBit( 1 ),
+        FULLSCREEN_DESKTOP = toBit( 2 ),
+        DECORATED = toBit( 3 ),
+        RESIZEABLE = toBit( 4 ),
+        HIDDEN = toBit( 5 ),
+        ALLOW_HIGH_DPI = toBit( 6 ),
+        ALWAYS_ON_TOP = toBit( 7 ),
+        VSYNC = toBit( 8 ),
+        SHARE_CONTEXT = toBit( 9 )
+    };
+
+    string title = "";
+    vec2<I16> position = {};
+    vec2<U16> dimensions = {};
+    U32 targetDisplay = 0u;
+    U16 flags = to_U16( to_base( Flags::DECORATED ) |
+                        to_base( Flags::RESIZEABLE ) |
+                        to_base( Flags::ALLOW_HIGH_DPI ) );
+    RenderAPI targetAPI;
+    bool externalClose{ false };
+    bool startMaximized{ false };
+};
+
+
+struct SizeChangeParams
+{
+    /// Window GUID
+    I64 winGUID{ -1 };
+    /// The new width and height
+    U16 width{ 0u };
+    U16 height{ 0u };
+    /// Is the window that fired the event fullscreen?
+    bool isFullScreen{ false };
+    bool isMainWindow{ false };
+};
+
 } //namespace Divide
 #endif //_CORE_WINDOW_MANAGER_H_
 

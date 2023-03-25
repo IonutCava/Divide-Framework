@@ -137,7 +137,6 @@ namespace Divide {
         bool setClearColour(const UColour4& colour) { return setClearColour(Util::ToFloatColour(colour)); }
         bool setClearDepth(F32 value);
 
-        bool setDepthWrite(bool state);
         bool setAlphaToCoverage(bool state);
 
         [[nodiscard]] GLuint getBoundTextureHandle(U8 slot) const noexcept;
@@ -147,6 +146,8 @@ namespace Divide {
         [[nodiscard]] GLuint getBoundBuffer(GLenum target, GLuint bindIndex, size_t& offsetOut, size_t& rangeOut) const noexcept;
 
         void getActiveViewport(GLint* vp) const noexcept;
+
+        PROPERTY_RW(bool, assertOnAPIError, false);
 
       private:
         void setAttributesInternal(GLuint vaoID, const AttributeMap& attributes);
@@ -171,6 +172,7 @@ namespace Divide {
         PrimitiveTopology _activeTopology{ PrimitiveTopology::COUNT };
         glFramebuffer* _activeRenderTarget{ nullptr };
         RenderTargetID _activeRenderTargetID{ INVALID_RENDER_TARGET_ID };
+        vec2<U16> _activeRenderTargetDimensions{1u};
         /// Current active vertex array object's handle
         GLuint _activeVAOID{ GLUtil::k_invalidObjectID };
         /// 0 - current framebuffer, 1 - current read only framebuffer, 2 - current write only framebuffer
@@ -192,7 +194,6 @@ namespace Divide {
         GLfloat _depthFarVal{ -1.f };
         bool _lowerLeftOrigin{ true };
         bool _negativeOneToOneDepth{ true };
-        bool _depthWriteEnabled{ true };
         bool _alphatoCoverageEnabled{ false };
         BlendingSettings _blendPropertiesGlobal;
         GLboolean _blendEnabledGlobal{ GL_FALSE };

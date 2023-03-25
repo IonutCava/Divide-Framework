@@ -33,8 +33,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _SCRIPTING_GAME_SCRIPT_H_
 #define _SCRIPTING_GAME_SCRIPT_H_
 
-#include <Scripting/Headers/Script.h>
-#include "Rendering/Headers/FrameListener.h"
+#include "Scripting/Headers/Script.h"
+#include "Core/Headers/FrameListener.h"
 
 namespace Divide {
 class GameScriptInstance {

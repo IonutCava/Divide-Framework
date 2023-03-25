@@ -141,10 +141,10 @@ DEFINE_COMMAND_END(PushViewportCommand);
 DEFINE_COMMAND(PopViewportCommand, CommandType::POP_VIEWPORT);
 
 DEFINE_COMMAND_BEGIN(BeginRenderPassCommand, CommandType::BEGIN_RENDER_PASS);
-    RenderTargetID _target = INVALID_RENDER_TARGET_ID;
-    RTDrawDescriptor _descriptor;
-    RTClearDescriptor _clearDescriptor;
-    Str64 _name;
+    RenderTargetID _target{ INVALID_RENDER_TARGET_ID };
+    RTDrawDescriptor _descriptor{};
+    RTClearDescriptor _clearDescriptor{};
+    Str64 _name{};
 DEFINE_COMMAND_END(BeginRenderPassCommand);
 
 DEFINE_COMMAND_BEGIN(EndRenderPassCommand, CommandType::END_RENDER_PASS);
@@ -190,6 +190,7 @@ DEFINE_COMMAND_BEGIN(ComputeMipMapsCommand, CommandType::COMPUTE_MIPMAPS);
     Texture* _texture{ nullptr };
     vec2<U16> _layerRange{ 0u, 1u };
     vec2<U16> _mipRange{ 0u, U16_MAX };
+    ImageUsage _usage{ ImageUsage::COUNT };
 DEFINE_COMMAND_END(ComputeMipMapsCommand);
 
 DEFINE_COMMAND_BEGIN(SetScissorCommand, CommandType::SET_SCISSOR);
@@ -266,13 +267,7 @@ DEFINE_COMMAND_BEGIN(DispatchComputeCommand, CommandType::DISPATCH_COMPUTE);
 DEFINE_COMMAND_END(DispatchComputeCommand);
 
 DEFINE_COMMAND_BEGIN(MemoryBarrierCommand, CommandType::MEMORY_BARRIER);
-    MemoryBarrierCommand() noexcept = default;
-    MemoryBarrierCommand(const U32 mask) noexcept : _barrierMask(mask) {}
-
-    U32 _barrierMask{ 0u };
-    U8 _syncFlag{ 0u }; // Used to track internal rendering sync objects back to a specific mem command
     BufferLocks _bufferLocks;
-    FenceLocks  _fenceLocks;
     TextureLayoutChanges _textureLayoutChanges;
 DEFINE_COMMAND_END(MemoryBarrierCommand);
 

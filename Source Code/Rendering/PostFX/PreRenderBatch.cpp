@@ -13,7 +13,6 @@
 #include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Platform/Video/Headers/CommandBuffer.h"
-#include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 
@@ -372,12 +371,12 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
 
     ShaderBufferDescriptor bufferDescriptor = {};
     bufferDescriptor._name = "LUMINANCE_HISTOGRAM_BUFFER";
-    bufferDescriptor._usage = ShaderBuffer::Usage::UNBOUND_BUFFER;
     bufferDescriptor._ringBufferLength = 0;
     bufferDescriptor._bufferParams._elementCount = 256;
     bufferDescriptor._bufferParams._elementSize = sizeof(U32);
-    bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
-    bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_R_GPU_W;
+    bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::UNBOUND_BUFFER;
+    bufferDescriptor._bufferParams._flags._updateFrequency = BufferUpdateFrequency::ONCE;
+    bufferDescriptor._bufferParams._flags._updateUsage = BufferUpdateUsage::GPU_TO_GPU;
 
     _histogramBuffer = _context.newSB(bufferDescriptor);
 
@@ -506,6 +505,8 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
         GFX::BeginRenderPassCommand beginRenderPassCmd{};
         beginRenderPassCmd._name = "LINEARISE_DEPTH_BUFFER";
         beginRenderPassCmd._target = _linearDepthRT._targetID;
+        beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { VECTOR4_ZERO, true };
+        beginRenderPassCmd._descriptor._drawMask[to_base(RTColourAttachmentSlot::SLOT_0)] = true;
 
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
@@ -578,13 +579,23 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
 
         { // Histogram Pass
             const Texture_ptr& screenColour = screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO)->texture();
+            const ImageView screenImage = screenColour->getView();
 
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "CreateLuminanceHistogram" });
+
+                        // ToDo: This can be changed to a simple sampler instead, thus avoiding this layout change
+            GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back(TextureLayoutChange
+            {
+                ._targetView = screenImage,
+                ._sourceLayout = ImageUsage::SHADER_READ,
+                ._targetLayout = ImageUsage::SHADER_READ_WRITE
+            });
+
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::COMPUTE );
-                Set(binding._data, screenColour->getView(ImageUsage::SHADER_READ));
+                Set(binding._data, screenImage, ImageUsage::SHADER_READ_WRITE);
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::COMPUTE );
@@ -602,12 +613,35 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             const U32 groupsX = to_U32(std::ceil(_toneMapParams._width / to_F32(GROUP_X_THREADS)));
             const U32 groupsY = to_U32(std::ceil(_toneMapParams._height / to_F32(GROUP_Y_THREADS)));
             GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{groupsX, groupsY, 1});
-            GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{ to_U32(MemoryBarrierType::BUFFER_UPDATE) });
+
+            auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut );
+            memCmd->_bufferLocks.emplace_back(BufferLock
+            {
+                ._range = { 0u, U32_MAX },
+                ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_READ,
+                ._buffer = _histogramBuffer->getBufferImpl()
+            });
+
+            // ToDo: This can be changed to a simple sampler instead, thus avoiding this layout change
+            memCmd->_textureLayoutChanges.emplace_back(TextureLayoutChange
+            {
+                ._targetView = screenImage,
+                ._sourceLayout = ImageUsage::SHADER_READ_WRITE,
+                ._targetLayout = ImageUsage::SHADER_READ
+            });
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
         }
 
         { // Averaging pass
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "AverageLuminanceHistogram" });
+
+            GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_textureLayoutChanges.emplace_back(TextureLayoutChange
+            {
+                ._targetView = _currentLuminance->getView(),
+                ._sourceLayout = ImageUsage::SHADER_READ,
+                ._targetLayout = ImageUsage::SHADER_WRITE,
+            });
+
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
@@ -616,7 +650,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::COMPUTE );
-                Set(binding._data, _currentLuminance->getView(ImageUsage::SHADER_WRITE));
+                Set(binding._data, _currentLuminance->getView(), ImageUsage::SHADER_WRITE );
             }
 
             GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipelineLumCalcAverage });
@@ -630,14 +664,22 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
 
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(params);
             GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ 1, 1, 1, });
-            auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut);
-            memCmd->_barrierMask = to_base(MemoryBarrierType::SHADER_IMAGE) | to_base(MemoryBarrierType::SHADER_STORAGE);
-            memCmd->_textureLayoutChanges.emplace_back(
-                TextureLayoutChange{
+            {
+                auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut);
+                memCmd->_bufferLocks.emplace_back( BufferLock
+                {
+                    ._range = { 0u, U32_MAX },
+                    ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_READ,
+                    ._buffer = _histogramBuffer->getBufferImpl()
+                });
+
+                memCmd->_textureLayoutChanges.emplace_back(TextureLayoutChange
+                {
                     ._targetView = _currentLuminance->getView(),
-                    ._layout = ImageUsage::SHADER_READ
-                }
-            );
+                    ._sourceLayout = ImageUsage::SHADER_WRITE,
+                    ._targetLayout = ImageUsage::SHADER_READ,
+                });
+            }
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
         }
 
@@ -684,13 +726,22 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     GFX::BlitRenderTargetCommand blitScreenColourCmd = {};
     blitScreenColourCmd._source = getInput(true)._targetID;
     blitScreenColourCmd._destination = RenderTargetNames::SCREEN_PREV;
-    blitScreenColourCmd._params._blitColours[0]._input._index = to_U16(GFXDevice::ScreenTargets::ALBEDO);
-    blitScreenColourCmd._params._blitColours[0]._output._index = 0u;
+    blitScreenColourCmd._params.emplace_back(RTBlitEntry
+    {
+        ._input = {
+            ._index = to_base( GFXDevice::ScreenTargets::ALBEDO )
+        },
+        ._output = {
+            ._index = to_base( RTColourAttachmentSlot::SLOT_0 )
+        }
+    });
+
     GFX::EnqueueCommand(bufferInOut, blitScreenColourCmd);
 
     RenderTarget* prevScreenRT = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_PREV);
     GFX::ComputeMipMapsCommand computeMipMapsCommand{};
     computeMipMapsCommand._texture = prevScreenRT->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO)->texture().get();
+    computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
     GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 
     { // ToneMap and generate LDR render target (Alpha channel contains pre-toneMapped luminance value)
@@ -728,6 +779,8 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
         renderPassCmd->_name = "DO_TONEMAP_PASS";
         renderPassCmd->_target = getOutput(false)._targetID;
+        renderPassCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { VECTOR4_ZERO, true };
+        renderPassCmd->_descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ adaptiveExposureControl() ? _pipelineToneMapAdaptive : _pipelineToneMap });
 
@@ -771,8 +824,8 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
         renderPassCmd->_target = _sceneEdges._targetID;
         renderPassCmd->_name = "DO_EDGE_DETECT_PASS";
-        renderPassCmd->_clearDescriptor._clearDepth = true;
-        renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO, RTColourAttachmentSlot::SLOT_0 };
+        renderPassCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { VECTOR4_ZERO, true };
+        renderPassCmd->_descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _edgeDetectionPipelines[to_base(edgeDetectionMethod())] });
 

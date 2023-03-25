@@ -471,22 +471,14 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
         return shaderDescriptor;
     });
     
-    terrainMaterial->computeRenderStateCBK([]([[maybe_unused]] Material* material, const RenderStagePass stagePass) {
+    terrainMaterial->computeRenderStateCBK([]([[maybe_unused]] Material* material, const RenderStagePass stagePass, RenderStateBlock& blockInOut ) {
         const bool isReflectionPass = stagePass._stage == RenderStage::REFLECTION;
 
-        RenderStateBlock terrainRenderState = {};
-        terrainRenderState.setTessControlPoints(4);
-        terrainRenderState.setCullMode(isReflectionPass ? CullMode::FRONT : CullMode::BACK);
-        terrainRenderState.setZFunc(IsDepthPass(stagePass) ? ComparisonFunction::LEQUAL : ComparisonFunction::EQUAL);
-
-        if (IsShadowPass(stagePass)) {
-            terrainRenderState.setColourWrites(true, true, false, false);
-        } else if (IsDepthPrePass(stagePass) && stagePass._stage != RenderStage::DISPLAY) {
-            terrainRenderState.setColourWrites(false, false, false, false);
-        }
-
-        return terrainRenderState.getHash();
+        blockInOut.setTessControlPoints(4);
+        blockInOut.setCullMode(isReflectionPass ? CullMode::FRONT : CullMode::BACK);
+        blockInOut.setZFunc(IsDepthPass(stagePass) ? ComparisonFunction::LEQUAL : ComparisonFunction::EQUAL);
     });
+
     AttributeMap vertexFormat{};
     auto& vertBindings = vertexFormat._vertexBindings.emplace_back();
     vertBindings._bufferBindIndex = 0u;

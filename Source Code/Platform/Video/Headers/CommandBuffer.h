@@ -48,6 +48,7 @@ enum class ErrorType : U8
 {
     NONE = 0,
     MISSING_BEGIN_RENDER_PASS,
+    INVALID_BEGIN_RENDER_PASS,
     MISSING_END_RENDER_PASS,
     MISSING_BEGIN_GPU_QUERY,
     MISSING_END_GPU_QUERY,
@@ -67,6 +68,7 @@ namespace Names {
     static const char* errorType[] = {
         "NONE",
         "MISSING_BEGIN_RENDER_PASS",
+        "INVALID_BEGIN_RENDER_PASS",
         "MISSING_END_RENDER_PASS",
         "MISSING_BEGIN_GPU_QUERY",
         "MISSING_END_GPU_QUERY",
@@ -82,6 +84,8 @@ namespace Names {
         "UNKNOW"
     };
 };
+
+static_assert(std::size( Names::errorType ) == to_base( ErrorType::COUNT ) + 1u, "ErrorType name array out of sync!");
 
 class CommandBuffer final : GUIDWrapper, NonCopyable, NonMovable {
     friend class CommandBufferPool;
@@ -134,7 +138,6 @@ class CommandBuffer final : GUIDWrapper, NonCopyable, NonMovable {
     inline CommandOrderContainer& operator()() noexcept;
     inline const CommandOrderContainer& operator()() const noexcept;
 
-    [[nodiscard]] size_t size() const noexcept { return _commandOrder.size(); }
     inline void clear(bool clearMemory = true);
     [[nodiscard]] inline bool empty() const noexcept;
 
@@ -143,6 +146,8 @@ class CommandBuffer final : GUIDWrapper, NonCopyable, NonMovable {
 
     template<typename T> requires std::is_base_of_v<CommandBase, T>
     [[nodiscard]] size_t count() const noexcept;
+
+    [[nodiscard]] inline size_t size() const noexcept { return _commandOrder.size(); }
 
   protected:
     template<typename T, CommandType enumVal>
@@ -158,7 +163,7 @@ class CommandBuffer final : GUIDWrapper, NonCopyable, NonMovable {
       eastl::array<U24, to_base(CommandType::COUNT)> _commandCount;
 
       Container _commands;
-      bool _batched = false;
+      bool _batched{ false };
 };
 
 [[nodiscard]] bool Merge(DrawCommand* prevCommand, DrawCommand* crtCommand);
@@ -166,19 +171,13 @@ class CommandBuffer final : GUIDWrapper, NonCopyable, NonMovable {
 [[nodiscard]] bool BatchDrawCommands(GenericDrawCommand& previousGDC, GenericDrawCommand& currentGDC) noexcept;
 
 template<typename T> requires std::is_base_of_v<CommandBase, T>
-T* EnqueueCommand(CommandBuffer& buffer) {
-    return buffer.add<T>();
-}
+FORCE_INLINE T* EnqueueCommand(CommandBuffer& buffer) { return buffer.add<T>(); }
 
-template<typename T>  requires std::is_base_of_v<CommandBase, T>
-T* EnqueueCommand(CommandBuffer& buffer, T& cmd) {
-    return buffer.add(cmd);
-}
+template<typename T> requires std::is_base_of_v<CommandBase, T>
+FORCE_INLINE T* EnqueueCommand(CommandBuffer& buffer, T& cmd) { return buffer.add(cmd); }
 
-template<typename T>
-T* EnqueueCommand(CommandBuffer& buffer, T&& cmd) {
-    return buffer.add(cmd);
-}
+template<typename T> requires std::is_base_of_v<CommandBase, T>
+FORCE_INLINE T* EnqueueCommand(CommandBuffer& buffer, T&& cmd) { return buffer.add(cmd); }
 
 }; //namespace GFX
 }; //namespace Divide

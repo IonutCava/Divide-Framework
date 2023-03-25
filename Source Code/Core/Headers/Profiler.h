@@ -45,7 +45,7 @@ namespace detail
     constexpr bool enabled = Config::Profile::ENABLE_FUNCTION_PROFILING;
 };
 
-void Init();
+void InitAllocators();
 void Shutdown();
 void OnThreadStart(std::string_view threadName);
 void OnThreadStop();

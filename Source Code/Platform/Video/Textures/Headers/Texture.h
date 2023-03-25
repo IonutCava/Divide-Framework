@@ -68,10 +68,11 @@ namespace Divide
     struct TextureLayoutChange
     {
         ImageView _targetView;
-        ImageUsage _layout{ ImageUsage::COUNT };
+        ImageUsage _sourceLayout{ ImageUsage::COUNT };
+        ImageUsage _targetLayout{ ImageUsage::COUNT };
     };
 
-    using TextureLayoutChanges = eastl::fixed_vector<TextureLayoutChange, 2, true>;
+    using TextureLayoutChanges = eastl::fixed_vector<TextureLayoutChange, 6, true>;
 
     [[nodiscard]] bool IsEmpty( const TextureLayoutChanges& changes ) noexcept;
 
@@ -117,24 +118,14 @@ namespace Divide
         /// Change the number of MSAA samples for this current texture
         void setSampleCount( U8 newSampleCount );
 
-        /// Returns true if the specified layout differs from the Texture's current layout
-        [[nodiscard]] bool imageUsage( ImageUsage usage, ImageUsage& prevUsageOut );
-        [[nodiscard]] ImageUsage imageUsage() const;
-
-        [[nodiscard]] bool imageUsage( ImageSubRange subRange, ImageUsage usage, ImageUsage& prevUsageOut );
-        [[nodiscard]] ImageUsage imageUsage( ImageSubRange subRange ) const;
-
         [[nodiscard]] U16 mipCount() const noexcept;
 
         [[nodiscard]] ImageView getView() const noexcept;
-        [[nodiscard]] ImageView getView( ImageUsage usage ) const noexcept;
         [[nodiscard]] ImageView getView( TextureType targetType ) const noexcept;
         [[nodiscard]] ImageView getView( vec2<U16> mipRange/*offset, count*/ ) const noexcept;
         [[nodiscard]] ImageView getView( vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/ ) const noexcept;
-        [[nodiscard]] ImageView getView( vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/, ImageUsage usage ) const noexcept;
         [[nodiscard]] ImageView getView( TextureType targetType, vec2<U16> mipRange/*offset, count*/ ) const noexcept;
         [[nodiscard]] ImageView getView( TextureType targetType, vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/ ) const noexcept;
-        [[nodiscard]] ImageView getView( TextureType targetType, vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/, ImageUsage usage ) const noexcept;
 
         virtual void clearData( const UColour4& clearColour, U8 level ) const = 0;
         virtual void clearSubData( const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, vec2<I32> depthRange ) const = 0;
@@ -182,10 +173,6 @@ namespace Divide
         protected:
         ResourceCache& _parentCache;
         ImageView  _defaultView;
-
-        using PerLayerMips = std::vector<ImageUsage>;
-        using PerImageUsage = std::vector<PerLayerMips>;
-        PerImageUsage _imageUsageMap;
 
         TextureType _type{ TextureType::COUNT };
 

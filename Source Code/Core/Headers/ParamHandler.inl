@@ -60,14 +60,14 @@ T ParamHandler::getParam(HashType nameID, T defaultValue) const {
 
 template <typename T>
 void ParamHandler::setParam(HashType nameID, T&& value) {
-    ScopedLock<SharedMutex> w_lock(_mutex);
+    LockGuard<SharedMutex> w_lock(_mutex);
     _params.insert_or_assign(nameID, MOV(value));
 }
 
 template <typename T>
 void ParamHandler::delParam(HashType nameID) {
     if (isParam<T>(nameID)) {
-        ScopedLock<SharedMutex> w_lock(_mutex);
+        LockGuard<SharedMutex> w_lock(_mutex);
         _params.erase(nameID);
         if (_logState) {
             Console::printfn(Locale::Get(_ID("PARAM_REMOVE")), nameID);
@@ -91,7 +91,7 @@ inline string ParamHandler::getParam(HashType nameID, string defaultValue) const
 
 template <>
 inline void ParamHandler::setParam(const HashType nameID, string&& value) {
-    ScopedLock<SharedMutex> w_lock(_mutex);
+    LockGuard<SharedMutex> w_lock(_mutex);
     const ParamStringMap::iterator it = _paramsStr.find(nameID);
     if (it == std::end(_paramsStr)) {
         const bool result = insert(_paramsStr, nameID, MOV(value)).second;
@@ -114,7 +114,7 @@ inline void ParamHandler::delParam<string>(HashType nameID) {
         if (_logState) {
             Console::printfn(Locale::Get(_ID("PARAM_REMOVE")), nameID);
         }
-        ScopedLock<SharedMutex> w_lock(_mutex);
+        LockGuard<SharedMutex> w_lock(_mutex);
         _paramsStr.erase(nameID);
     } else {
         Console::errorfn(Locale::Get(_ID("ERROR_PARAM_REMOVE")), nameID);
@@ -135,7 +135,7 @@ inline bool ParamHandler::getParam(HashType nameID, const bool defaultValue) con
 
 template <>
 inline void ParamHandler::setParam(const HashType nameID, bool&& value) {
-    ScopedLock<SharedMutex> w_lock(_mutex);
+    LockGuard<SharedMutex> w_lock(_mutex);
     _paramBool.insert_or_assign(nameID, MOV(value));
 }
 
@@ -148,7 +148,7 @@ inline bool ParamHandler::isParam<bool>(const HashType nameID) const {
 template <>
 inline void ParamHandler::delParam<bool>(HashType nameID) {
     if (isParam<bool>(nameID)) {
-        ScopedLock<SharedMutex> w_lock(_mutex);
+        LockGuard<SharedMutex> w_lock(_mutex);
         _paramBool.erase(nameID);
         if (_logState) {
             Console::printfn(Locale::Get(_ID("PARAM_REMOVE")), nameID);
@@ -172,7 +172,7 @@ inline F32 ParamHandler::getParam(HashType nameID, const F32 defaultValue) const
 
 template <>
 inline void ParamHandler::setParam(const HashType nameID, F32&& value) {
-    ScopedLock<SharedMutex> w_lock(_mutex);
+    LockGuard<SharedMutex> w_lock(_mutex);
     _paramsFloat.insert_or_assign(nameID, MOV(value));
 }
 
@@ -185,7 +185,7 @@ inline bool ParamHandler::isParam<F32>(const HashType nameID) const {
 template <>
 inline void ParamHandler::delParam<F32>(HashType nameID) {
     if (isParam<F32>(nameID)) {
-        ScopedLock<SharedMutex> w_lock(_mutex);
+        LockGuard<SharedMutex> w_lock(_mutex);
         _paramsFloat.erase(nameID);
         if (_logState) {
             Console::printfn(Locale::Get(_ID("PARAM_REMOVE")), nameID);

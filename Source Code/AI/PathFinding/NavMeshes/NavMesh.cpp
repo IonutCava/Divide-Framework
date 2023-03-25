@@ -90,7 +90,7 @@ namespace Divide::AI::Navigation
 
     void NavigationMesh::freeIntermediates( const bool freeAll )
     {
-        ScopedLock<Mutex> w_lock( _navigationMeshLock );
+        LockGuard<Mutex> w_lock( _navigationMeshLock );
 
         rcFreeHeightField( _heightField );
         rcFreeCompactHeightfield( _compactHeightField );
@@ -281,7 +281,7 @@ namespace Divide::AI::Navigation
                           Time::MicrosecondsToSeconds<F32>( importTimer.get() ) );
 
         {
-            ScopedLock<Mutex> w_lock( _navigationMeshLock );
+            LockGuard<Mutex> w_lock( _navigationMeshLock );
             // Copy new NavigationMesh into old.
             dtNavMesh* old = _navMesh;
             // I am trusting that this is atomic.
@@ -637,7 +637,7 @@ namespace Divide::AI::Navigation
         return true;
     }
 
-    void NavigationMesh::draw( const bool force, GFX::CommandBuffer& bufferInOut )
+    void NavigationMesh::draw( const bool force, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
         _debugDrawInterface->paused( !_debugDraw && !force );
 
@@ -652,7 +652,7 @@ namespace Divide::AI::Navigation
         _debugDrawInterface->beginBatch();
 
         {
-            ScopedLock<Mutex> w_lock( _navigationMeshLock );
+            LockGuard<Mutex> w_lock( _navigationMeshLock );
 
             switch ( mode )
             {
@@ -700,7 +700,7 @@ namespace Divide::AI::Navigation
 
         _debugDrawInterface->endBatch();
 
-        _debugDrawInterface->toCommandBuffer( bufferInOut );
+        _debugDrawInterface->toCommandBuffer( bufferInOut, memCmdInOut );
     }
 
 

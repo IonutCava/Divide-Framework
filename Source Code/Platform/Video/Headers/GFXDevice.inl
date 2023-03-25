@@ -36,7 +36,7 @@ namespace Divide {
 
 template <typename Data, size_t N>
 void DebugPrimitiveHandler<Data, N>::reset() {
-    ScopedLock<Mutex> w_lock(_dataLock);
+    LockGuard<Mutex> w_lock(_dataLock);
 
     for (IMPrimitive*& primitive : _debugPrimitives) {
         if (primitive != nullptr) {
@@ -52,30 +52,6 @@ void DebugPrimitiveHandler<Data, N>::reset() {
 inline Renderer& GFXDevice::getRenderer() const {
     assert(_renderer != nullptr);
     return *_renderer;
-}
-
-inline const GPUState& GFXDevice::gpuState() const noexcept {
-    return _state;
-}
-
-inline GPUState& GFXDevice::gpuState() noexcept {
-    return _state;
-}
-
-inline ShaderProgram* GFXDevice::defaultIMShader() const noexcept {
-    return _imShader.get();
-}
-
-inline ShaderProgram* GFXDevice::defaultIMShaderWorld() const noexcept {
-    return _imWorldShader.get();
-}
-
-inline ShaderProgram* GFXDevice::defaultIMShaderWorldNoTexture() const noexcept {
-    return _imWorldShaderNoTexture.get();
-}
-
-inline ShaderProgram* GFXDevice::defaultIMShaderOIT() const noexcept {
-    return _imWorldOITShader.get();
 }
 
 inline size_t GFXDevice::get2DStateBlock() const noexcept {
@@ -120,10 +96,6 @@ inline bool GFXDevice::IsSubmitCommand(const GFX::CommandType type) noexcept {
     }
 
     return false;
-}
-
-inline vec2<U16> GFXDevice::getDrawableSize(const DisplayWindow& window) const {
-    return _api->getDrawableSize(window);
 }
 
 vec2<U16> GFXDevice::renderingResolution() const noexcept {

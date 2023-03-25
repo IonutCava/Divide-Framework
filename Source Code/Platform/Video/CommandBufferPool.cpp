@@ -7,32 +7,38 @@ namespace GFX {
 
 static CommandBufferPool g_sCommandBufferPool;
 
-void InitPools() noexcept {
+void InitPools() noexcept
+{
     g_sCommandBufferPool.reset();
 }
 
-void DestroyPools() noexcept {
+void DestroyPools() noexcept
+{
     g_sCommandBufferPool.reset();
 }
 
-void CommandBufferPool::reset()  noexcept {
+void CommandBufferPool::reset() noexcept
+{
     _pool = {};
 }
 
-CommandBuffer* CommandBufferPool::allocateBuffer() {
-    ScopedLock<Mutex> lock(_mutex);
+CommandBuffer* CommandBufferPool::allocateBuffer()
+{
+    LockGuard<Mutex> lock(_mutex);
     return _pool.newElement();
 }
 
-void CommandBufferPool::deallocateBuffer(CommandBuffer*& buffer) {
-    if (buffer != nullptr) {
-        ScopedLock<Mutex> lock(_mutex);
+void CommandBufferPool::deallocateBuffer(CommandBuffer*& buffer)
+{
+    if (buffer != nullptr)
+    {
+        LockGuard<Mutex> lock(_mutex);
         _pool.deleteElement(buffer);
         buffer = nullptr;
     }
 }
 
-ScopedCommandBuffer::ScopedCommandBuffer() noexcept
+ScopedCommandBuffer::ScopedCommandBuffer()
     : _buffer(AllocateCommandBuffer())
 {
 }
@@ -49,13 +55,15 @@ ScopedCommandBuffer AllocateScopedCommandBuffer() {
     return ScopedCommandBuffer();
 }
 
-CommandBuffer* AllocateCommandBuffer() {
+CommandBuffer* AllocateCommandBuffer()
+{
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     return g_sCommandBufferPool.allocateBuffer();
 }
 
-void DeallocateCommandBuffer(CommandBuffer*& buffer) {
+void DeallocateCommandBuffer(CommandBuffer*& buffer)
+{
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     g_sCommandBufferPool.deallocateBuffer(buffer);

@@ -23,10 +23,9 @@ namespace Divide
         for ( const TextureLayoutChange& it : changes )
         {
             ImageSubRange subRangeTemp = it._targetView._subRange;
-            const ImageUsage prevUsage = it._targetView._srcTexture._internalTexture->imageUsage( subRangeTemp );
             if ( it._targetView._srcTexture._internalTexture != nullptr &&
-                 it._layout != ImageUsage::COUNT &&
-                 prevUsage != it._layout )
+                 it._targetLayout != ImageUsage::COUNT &&
+                 it._sourceLayout != it._targetLayout )
             {
                 return false;
             }
@@ -52,7 +51,7 @@ namespace Divide
         ResourceDescriptor textureResourceDescriptor( "defaultEmptyTexture" );
         textureResourceDescriptor.propertyDescriptor( textureDescriptor );
         textureResourceDescriptor.waitForReady( true );
-        s_defaulTexture = CreateResource<Texture>( gfx.parent().resourceCache(), textureResourceDescriptor );
+        s_defaulTexture = CreateResource<Texture>( gfx.context().kernel().resourceCache(), textureResourceDescriptor);
 
         Byte* defaultTexData = MemoryManager_NEW Byte[1u * 1u * 4];
         defaultTexData[0] = defaultTexData[1] = defaultTexData[2] = to_byte( 0u ); //RGB: black
@@ -148,8 +147,6 @@ namespace Divide
     {
         _defaultView._srcTexture._internalTexture = this;
         _defaultView._subRange._mipLevels.count = 1u;
-        _defaultView._usage = ImageUsage::UNDEFINED;
-        _imageUsageMap.resize(IsCubeTexture(descriptor().texType()) ? _numLayers * 6 : _numLayers);
     }
 
     Texture::~Texture()
@@ -174,9 +171,6 @@ namespace Divide
 
     bool Texture::unload()
     {
-        _defaultView._usage = ImageUsage::UNDEFINED;
-        _imageUsageMap.clear();
-
         return CachedResource::unload();
     }
 
@@ -345,9 +339,6 @@ namespace Divide
         _depth = depth;
         DIVIDE_ASSERT( _width > 0 && _height > 0 && _depth > 0, "Texture error: Invalid texture dimensions!" );
 
-        _defaultView._usage = ImageUsage::UNDEFINED;
-        _imageUsageMap.resize( IsCubeTexture( descriptor().texType() ) ? _numLayers * 6 : _numLayers );
-
         validateDescriptor();
     }
 
@@ -504,103 +495,12 @@ namespace Divide
 
     void Texture::setSampleCount( U8 newSampleCount )
     {
-        CLAMP( newSampleCount, to_U8( 0u ), _context.gpuState().maxMSAASampleCount() );
+        CLAMP( newSampleCount, to_U8( 0u ), DisplayManager::MaxMSAASamples() );
         if ( _descriptor.msaaSamples() != newSampleCount )
         {
             _descriptor.msaaSamples( newSampleCount );
             loadData( nullptr, 0u, { width(), height(), depth() } );
         }
-    }
-
-    bool Texture::imageUsage( ImageUsage usage, ImageUsage& prevUsageOut )
-    {
-        return imageUsage(_defaultView._subRange, usage, prevUsageOut);
-    }
-
-    ImageUsage Texture::imageUsage() const
-    {
-        ImageSubRange range = _defaultView._subRange;
-        return imageUsage( range );
-    }
-
-    bool Texture::imageUsage( ImageSubRange subRange, const ImageUsage usage, ImageUsage& prevUsageOut )
-    {
-        subRange._layerRange.count = std::min( _numLayers, subRange._layerRange.count );
-        subRange._mipLevels.count = std::min( mipCount(), subRange._mipLevels.count );
-        DIVIDE_ASSERT( subRange._layerRange.offset + subRange._layerRange.count <= _numLayers );
-        DIVIDE_ASSERT( subRange._mipLevels.offset + subRange._mipLevels.count <= mipCount() );
-        if ( IsCubeTexture( descriptor().texType() ) )
-        {
-            subRange._layerRange.offset *= 6u;
-            subRange._layerRange.count *= 6u;
-        }
-
-        bool ret = false;
-        prevUsageOut = ImageUsage::COUNT;
-        for ( U16 l = 0u; l < subRange._layerRange.count; ++l )
-        {
-            PerLayerMips& mips = _imageUsageMap[subRange._layerRange.offset + l];
-            for ( U16 m = 0u; m < subRange._mipLevels.count; ++m )
-            {
-                ImageUsage& crtUsage = mips[subRange._mipLevels.offset + m];
-                if ( prevUsageOut == ImageUsage::COUNT )
-                {
-                    prevUsageOut = crtUsage;
-                }
-                else
-                {
-                    NOP();
-                }
-
-                if ( crtUsage != usage )
-                {
-                    crtUsage = usage;
-                    ret = true;
-                }
-            }
-        }
-
-        if ( prevUsageOut == ImageUsage::COUNT )
-        {
-            prevUsageOut = usage;
-            return false;
-        }
-
-        return ret;
-    }
-
-    ImageUsage Texture::imageUsage( ImageSubRange subRange ) const
-    {
-        subRange._layerRange.count = std::min( _numLayers, subRange._layerRange.count );
-        subRange._mipLevels.count = std::min( mipCount(), subRange._mipLevels.count );
-        DIVIDE_ASSERT( subRange._layerRange.offset + subRange._layerRange.count <= _numLayers );
-        DIVIDE_ASSERT( subRange._mipLevels.offset + subRange._mipLevels.count <= mipCount() );
-        if ( IsCubeTexture( descriptor().texType() ) )
-        {
-            subRange._layerRange.offset *= 6u;
-            subRange._layerRange.count *= 6u;
-        }
-
-        ImageUsage ret = ImageUsage::COUNT;
-        for ( U16 l = 0u; l < subRange._layerRange.count; ++l )
-        {
-            const PerLayerMips& mips = _imageUsageMap[subRange._layerRange.offset + l];
-            for ( U16 m = 0u; m < subRange._mipLevels.count; ++m )
-            {
-                ImageUsage crtUsage = mips[subRange._mipLevels.offset + m];
-                if ( ret == ImageUsage::COUNT )
-                {
-                    ret = crtUsage;
-                }
-                else
-                {
-                    DIVIDE_ASSERT(ret == crtUsage);
-                }
-            }
-        }
-
-        DIVIDE_ASSERT ( ret != ImageUsage::COUNT );
-        return ret;
     }
 
     void Texture::validateDescriptor()
@@ -628,12 +528,6 @@ namespace Divide
                 _defaultView._subRange._mipLevels.count = 1u;
             }
         }
-
-        for ( PerLayerMips& layer : _imageUsageMap )
-        {
-            layer.resize(_defaultView._subRange._mipLevels.count);
-            std::fill(layer.begin(), layer.end(), _defaultView._usage);
-        }
     }
 
     U16 Texture::mipCount() const noexcept
@@ -644,13 +538,6 @@ namespace Divide
     ImageView Texture::getView() const noexcept
     {
         return _defaultView;
-    }
-
-    ImageView Texture::getView( const ImageUsage usage ) const noexcept
-    {
-        ImageView ret = getView();
-        ret._usage = usage;
-        return ret;
     }
 
     ImageView Texture::getView( const TextureType targetType ) const noexcept
@@ -674,13 +561,6 @@ namespace Divide
         return ret;
     }
 
-    ImageView Texture::getView( const vec2<U16> mipRange, const vec2<U16> layerRange, const ImageUsage usage ) const noexcept
-    {
-        ImageView ret = getView( mipRange, layerRange );
-        ret._usage = usage;
-        return ret;
-    }
-
     ImageView Texture::getView( const TextureType targetType, const vec2<U16> mipRange ) const noexcept
     {
         ImageView ret = getView( targetType );
@@ -694,12 +574,4 @@ namespace Divide
         ret._subRange._layerRange = { layerRange.offset, std::min( layerRange.count, ret._subRange._layerRange.count ) };
         return ret;
     }
-
-    ImageView Texture::getView( const TextureType targetType, const vec2<U16> mipRange, const vec2<U16> layerRange, const ImageUsage usage ) const noexcept
-    {
-        ImageView ret = getView( targetType, mipRange, layerRange );
-        ret._usage = usage;
-        return ret;
-    }
-
 };

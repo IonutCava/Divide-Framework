@@ -37,23 +37,13 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-class StreamBuffer;
-class Engine final : NonCopyable, NonMovable {
-public:
-    Engine() = default;
-    ~Engine() = default;
-
-    // see the ErrorCode enum in Application.h for the returned value
-    [[nodiscard]] bool init(int argc, char **argv);
-    [[nodiscard]] I32 errorCode() const;
-
-    void run(const int argc, char** argv);
+struct Engine final : NonCopyable, NonMovable
+{
+    [[nodiscard]] ErrorCode init(int argc, char **argv);
+    [[nodiscard]] ErrorCode run(const int argc, char** argv);
 
 private:
-    I32 _errorCode = 0;
     Application_uptr _app{};
-    bool _restartEngineOnClose = false;
-    StreamBuffer* _outputStreams[2] = { nullptr, nullptr };
 };
 
 }

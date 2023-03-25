@@ -150,8 +150,12 @@ namespace Divide
             endPos.x = startPos.x + imageSz.x;
             endPos.y = startPos.y + imageSz.y;
 
+            const F32 baseV = defaultData._gfxDevice->renderAPI() != RenderAPI::OpenGL ? 1.f : 0.f;
+            const ImVec2 uv_min(0.f, 1.f - baseV);
+            const ImVec2 uv_max(1.f, 0.f + baseV);
+
             window->DrawList->AddCallback( ToggleAlphaBlend, &noAlphaBlendData );
-            window->DrawList->AddImage( (void*)tex, startPos, endPos, ImVec2( 0.0f, 1.0f ), ImVec2( 1.0f, 0.0f ) );
+            window->DrawList->AddImage( (void*)tex, startPos, endPos, uv_min, uv_max);
             window->DrawList->AddCallback( ToggleAlphaBlend, &defaultData );
 
             updateBounds( { startPos.x, startPos.y, imageSz.x, imageSz.y } );

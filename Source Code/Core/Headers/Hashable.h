@@ -35,13 +35,9 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-class Hashable {
-  public:
-    Hashable() = default;
-    virtual ~Hashable() = default;
-
-    [[nodiscard]] virtual size_t getHash() const;
-    Hashable& operator=(Hashable const& old) noexcept;
+struct Hashable
+{
+    [[nodiscard]] virtual size_t getHash() const { return _hash; }
 
   protected:
     mutable size_t _hash{ 9999991 };

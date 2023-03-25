@@ -42,11 +42,10 @@ namespace Divide {
 
 class SDL_API final : public AudioAPIWrapper {
 public:
-    ErrorCode initAudioAPI(PlatformContext& context) override;
-    void closeAudioAPI() override;
+    explicit SDL_API( PlatformContext& context );
 
-    void beginFrame() noexcept override;
-    void endFrame() noexcept override;
+    ErrorCode initAudioAPI() override;
+    void closeAudioAPI() override;
 
     void playSound(const AudioDescriptor_ptr& sound) override;
     void playMusic(const AudioDescriptor_ptr& music) override;

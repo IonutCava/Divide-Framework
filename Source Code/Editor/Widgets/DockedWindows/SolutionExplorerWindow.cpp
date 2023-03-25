@@ -388,7 +388,27 @@ namespace Divide {
                 crtDrawCallCount[i] = rpm->drawCallCount(static_cast<RenderStage>(i));
             }
 
-            const PerformanceMetrics perfMetrics = context().gfx().getPerformanceMetrics();
+            static PerformanceMetrics perfMetrics{};
+
+            {
+                const PerformanceMetrics& perfMetricsSource = context().gfx().getPerformanceMetrics();
+                perfMetrics._gpuTimeInMS             =       (perfMetrics._gpuTimeInMS * 0.99f + perfMetricsSource._gpuTimeInMS * 0.01f);
+                perfMetrics._verticesSubmitted       = to_U64(perfMetrics._verticesSubmitted * 0.99f + perfMetricsSource._verticesSubmitted * 0.01f);
+                perfMetrics._primitivesGenerated     = to_U64(perfMetrics._primitivesGenerated * 0.99f + perfMetricsSource._primitivesGenerated * 0.01f);
+                perfMetrics._tessellationPatches     = to_U64(perfMetrics._tessellationPatches * 0.99f + perfMetricsSource._tessellationPatches * 0.01f);
+                perfMetrics._tessellationInvocations = to_U64(perfMetrics._tessellationInvocations * 0.99f + perfMetricsSource._tessellationInvocations * 0.01f);
+
+                // This data should be stable
+                perfMetrics._generatedRenderTargetCount = perfMetricsSource._generatedRenderTargetCount;
+                perfMetrics._queuedGPUFrames = perfMetricsSource._queuedGPUFrames;
+                perfMetrics._syncObjectsInFlight[0] = perfMetricsSource._syncObjectsInFlight[0];
+                perfMetrics._syncObjectsInFlight[1] = perfMetricsSource._syncObjectsInFlight[1];
+                perfMetrics._syncObjectsInFlight[2] = perfMetricsSource._syncObjectsInFlight[2];
+                perfMetrics._scratchBufferQueueUsage[0] = perfMetricsSource._scratchBufferQueueUsage[0];
+                perfMetrics._scratchBufferQueueUsage[1] = perfMetricsSource._scratchBufferQueueUsage[1];
+                perfMetrics._uniformBufferVRAMUsage = perfMetricsSource._uniformBufferVRAMUsage;
+                perfMetrics._bufferVRAMUsage = perfMetricsSource._bufferVRAMUsage;
+            }
             const vec4<U32>& cullCount = context().gfx().lastCullCount();
             static U32 cachedSyncCount[3]{};
             static U32 cachedCamWrites[2]{};

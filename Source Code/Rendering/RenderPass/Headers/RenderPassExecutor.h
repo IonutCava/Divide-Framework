@@ -170,7 +170,8 @@ private:
                              const CameraSnapshot& cameraSnapshot,
                              bool transparencyPass,
                              RenderingOrder renderOrder,
-                             GFX::CommandBuffer& bufferInOut);
+                             GFX::CommandBuffer& bufferInOut,
+                             GFX::MemoryBarrierCommand& memCmdInOut);
 
     void processVisibleNodeTransform(RenderingComponent* rComp,
                                      D64 interpolationFactor);

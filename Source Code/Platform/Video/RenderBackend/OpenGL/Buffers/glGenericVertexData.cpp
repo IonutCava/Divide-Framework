@@ -24,7 +24,7 @@ namespace Divide
 
         _bufferObjects.clear();
 
-        UniqueLock<SharedMutex> w_lock( _idxBufferLock );
+        LockGuard<SharedMutex> w_lock( _idxBufferLock );
         for ( auto& idx : _idxBuffers )
         {
             if ( idx._handle != GLUtil::k_invalidObjectID )
@@ -76,16 +76,15 @@ namespace Divide
                                          _indexInfo._countData.data(),
                                          (bufferPtr)_indexInfo._indexOffsetData.data() );
         }
-        lockBuffersInternal( false );
     }
 
-    void glGenericVertexData::setIndexBuffer( const IndexBuffer& indices )
+    BufferLock glGenericVertexData::setIndexBuffer( const IndexBuffer& indices )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         IndexBufferEntry* oldIdxBufferEntry = nullptr;
 
-        UniqueLock<SharedMutex> w_lock( _idxBufferLock );
+        LockGuard<SharedMutex> w_lock( _idxBufferLock );
         bool found = false;
         for ( auto& idxBuffer : _idxBuffers )
         {
@@ -163,13 +162,16 @@ namespace Divide
                 glFlush();
             }
         }
+
+        return {};
     }
 
     /// Specify the structure and data of the given buffer
-    void glGenericVertexData::setBuffer( const SetBufferParams& params )
+    BufferLock glGenericVertexData::setBuffer( const SetBufferParams& params )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
+        DIVIDE_ASSERT( params._bufferParams._flags._usageType != BufferUsageType::COUNT );
         // Make sure we specify buffers in order.
         GenericBufferImpl* impl = nullptr;
         for ( auto& buffer : _bufferObjects )
@@ -195,39 +197,40 @@ namespace Divide
         implParams._useChunkAllocation = true;
 
         const size_t elementStride = params._elementStride == SetBufferParams::INVALID_ELEMENT_STRIDE
-            ? params._bufferParams._elementSize
-            : params._elementStride;
+                                                            ? params._bufferParams._elementSize
+                                                            : params._elementStride;
         impl->_ringSizeFactor = ringSizeFactor;
-        impl->_useAutoSyncObjects = params._useAutoSyncObjects;
         impl->_bindConfig = params._bindConfig;
         impl->_elementStride = elementStride;
 
-        bool skipUpdate = false;
-        if ( impl->_buffer == nullptr || impl->_buffer->params() != implParams )
+        if ( impl->_buffer != nullptr && impl->_buffer->params() == implParams )
         {
-            impl->_buffer = eastl::make_unique<glBufferImpl>( _context, implParams, params._initialData, _name.empty() ? nullptr : _name.c_str() );
-            for ( U32 i = 1u; i < ringSizeFactor; ++i )
-            {
-                impl->_buffer->writeOrClearBytes(
-                    i * bufferSizeInBytes,
-                    params._initialData.second > 0 ? params._initialData.second : bufferSizeInBytes,
-                    params._initialData.first,
-                    true );
-            }
-            skipUpdate = true;
+            return updateBuffer( params._bindConfig._bufferIdx, 0, params._bufferParams._elementCount, params._initialData.first );
         }
 
-        if ( !skipUpdate )
+        impl->_buffer = eastl::make_unique<glBufferImpl>( _context, implParams, params._initialData, _name.empty() ? nullptr : _name.c_str() );
+
+        for ( U32 i = 1u; i < ringSizeFactor; ++i )
         {
-            updateBuffer( params._bindConfig._bufferIdx, 0, params._bufferParams._elementCount, params._initialData.first );
+            impl->_buffer->writeOrClearBytes(i * bufferSizeInBytes,
+                                             params._initialData.second > 0 ? params._initialData.second : bufferSizeInBytes,
+                                             params._initialData.first,
+                                             true );
         }
+
+        return BufferLock
+        {
+            ._range = {0u, implParams._dataSize},
+            ._type = BufferSyncUsage::CPU_WRITE_TO_GPU_READ,
+            ._buffer = impl->_buffer.get()
+        };
     }
 
     /// Update the elementCount worth of data contained in the buffer starting from elementCountOffset size offset
-    void glGenericVertexData::updateBuffer( const U32 buffer,
-                                            const U32 elementCountOffset,
-                                            const U32 elementCountRange,
-                                            const bufferPtr data )
+    BufferLock glGenericVertexData::updateBuffer( const U32 buffer,
+                                                  const U32 elementCountOffset,
+                                                  const U32 elementCountRange,
+                                                  const bufferPtr data )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -258,7 +261,13 @@ namespace Divide
         }
 
         impl->_buffer->writeOrClearBytes( offsetInBytes, dataCurrentSizeInBytes, data );
-        Merge( impl->_writtenRange, { offsetInBytes, dataCurrentSizeInBytes } );
+
+        return BufferLock
+        {
+            ._range = { offsetInBytes, dataCurrentSizeInBytes },
+            ._type = BufferSyncUsage::CPU_WRITE_TO_GPU_READ,
+            ._buffer = impl->_buffer.get()
+        };
     }
 
     void glGenericVertexData::bindBufferInternal( const SetBufferParams::BufferBindConfig& bindConfig )
@@ -294,45 +303,7 @@ namespace Divide
                                                         offsetInBytes,
                                                         impl->_elementStride );
 
-        if ( ret == GLStateTracker::BindResult::FAILED ) [[unlikely]]
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
-
-        impl->_usedAfterWrite = impl->_writtenRange._length > 0u;
-    }
-
-    void glGenericVertexData::lockBuffersInternal( const bool force )
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        SyncObjectHandle sync{};
-        for ( const auto& buffer : _bufferObjects )
-        {
-            if ( (buffer._useAutoSyncObjects || force) && buffer._usedAfterWrite )
-            {
-                sync = buffer._buffer->_lockManager.createSyncObject( glLockManager::DEFAULT_SYNC_FLAG_GVD );
-                break;
-            }
-        }
-
-        if ( sync._id != GLUtil::k_invalidSyncID )
-        {
-            for ( auto& buffer : _bufferObjects )
-            {
-                if ( (buffer._useAutoSyncObjects || force) && buffer._usedAfterWrite )
-                {
-                    DIVIDE_ASSERT( buffer._writtenRange._length > 0u );
-
-                    if ( !buffer._buffer->_lockManager.lockRange( buffer._writtenRange._startOffset, buffer._writtenRange._length, sync ) )
-                    {
-                        DIVIDE_UNEXPECTED_CALL();
-                    }
-                    buffer._writtenRange = {};
-                    buffer._usedAfterWrite = false;
-                }
-            }
-        }
+        DIVIDE_ASSERT(ret != GLStateTracker::BindResult::FAILED );
     }
 
     void glGenericVertexData::rebuildCountAndIndexData( const U32 drawCount, const GLsizei indexCount, const U32 firstIndex, const size_t indexBufferSize )

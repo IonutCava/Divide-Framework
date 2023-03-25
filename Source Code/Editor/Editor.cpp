@@ -194,16 +194,6 @@ namespace Divide
         NOP();
     }
 
-    void Editor::beginFrame()
-    {
-        NOP();
-    }
-
-    void Editor::endFrame()
-    {
-        NOP();
-    }
-
     void Editor::createFontTexture( const F32 DPIScaleFactor )
     {
         constexpr F32 fontSize = 13.f;
@@ -334,6 +324,7 @@ namespace Divide
         {
             RenderStateBlock gridStateBlock = {};
             gridStateBlock.setCullMode( CullMode::NONE );
+            gridStateBlock.depthWriteEnabled(false);
 
             _infiniteGridPipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
             _infiniteGridPipelineDesc._stateHash = gridStateBlock.getHash();
@@ -363,7 +354,7 @@ namespace Divide
             blend.blendOp( BlendOperation::ADD );
 
             _axisGizmoPipelineDesc._stateHash = _context.gfx().getDefaultStateBlock( true );
-            _axisGizmoPipelineDesc._shaderProgramHandle = _context.gfx().defaultIMShaderWorldNoTexture()->handle();
+            _axisGizmoPipelineDesc._shaderProgramHandle = _context.gfx().imShaders()->imWorldShaderNoTexture()->handle();
         }
 
         _infiniteGridPrimitive = _context.gfx().newIMP( "Editor Infinite Grid" );
@@ -384,6 +375,7 @@ namespace Divide
         state.setCullMode( CullMode::NONE );
         state.depthTestEnabled( false );
         state.setScissorTest( true );
+        state.depthWriteEnabled( false );
 
         PipelineDescriptor pipelineDesc = {};
         pipelineDesc._stateHash = state.getHash();
@@ -393,7 +385,6 @@ namespace Divide
         AttributeDescriptor& descUV = pipelineDesc._vertexFormat._attributes[to_base( AttribLocation::TEXCOORD )];
         AttributeDescriptor& descColour = pipelineDesc._vertexFormat._attributes[to_base( AttribLocation::COLOR )];
 
-#define OFFSETOF(TYPE, ELEMENT) ((size_t) & (((TYPE*)0)->ELEMENT))
         descPos._vertexBindingIndex = descUV._vertexBindingIndex = descColour._vertexBindingIndex = 0u;
         descPos._componentsPerElement = descUV._componentsPerElement = 2u;
         descPos._dataType = descUV._dataType = GFXDataFormat::FLOAT_32;
@@ -402,10 +393,9 @@ namespace Divide
         descColour._dataType = GFXDataFormat::UNSIGNED_BYTE;
         descColour._normalized = true;
 
-        descPos._strideInBytes = to_U32( OFFSETOF( ImDrawVert, pos ) );
-        descUV._strideInBytes = to_U32( OFFSETOF( ImDrawVert, uv ) );
-        descColour._strideInBytes = to_U32( OFFSETOF( ImDrawVert, col ) );
-#undef OFFSETOF
+        descPos._strideInBytes = to_U32( offsetof( ImDrawVert, pos ) );
+        descUV._strideInBytes = to_U32( offsetof( ImDrawVert, uv ) );
+        descColour._strideInBytes = to_U32( offsetof( ImDrawVert, col ) );
 
         pipelineDesc._shaderProgramHandle = _imguiProgram->handle();
 
@@ -631,8 +621,7 @@ namespace Divide
         {
             if ( PlatformContext* context = (PlatformContext*)platformContext )
             {
-                context->gfx().beginFrame( *(DisplayWindow*)viewport->PlatformHandle,
-                                           false );
+                context->gfx().drawToWindow( *(DisplayWindow*)viewport->PlatformHandle );
             }
         };
 
@@ -645,19 +634,22 @@ namespace Divide
 
                 Editor* editor = &context->editor();
 
-                ImGui::SetCurrentContext(
-                    editor->_imguiContexts[to_base( ImGuiContextType::Editor )] );
-                GFX::ScopedCommandBuffer sBuffer = GFX::AllocateScopedCommandBuffer();
-                GFX::CommandBuffer& buffer = sBuffer();
-                const ImDrawData* pDrawData = viewport->DrawData;
+                ImGui::SetCurrentContext(editor->_imguiContexts[to_base( ImGuiContextType::Editor )] );
+                ImDrawData* pDrawData = viewport->DrawData;
                 const I32 fb_width = to_I32( pDrawData->DisplaySize.x * ImGui::GetIO().DisplayFramebufferScale.x );
                 const I32 fb_height = to_I32( pDrawData->DisplaySize.y * ImGui::GetIO().DisplayFramebufferScale.y );
-                editor->renderDrawList(
-                    viewport->DrawData,
-                    Rect<I32>( 0, 0, fb_width, fb_height ),
-                    ((DisplayWindow*)viewport->PlatformHandle)->getGUID(),
-                    true,
-                    buffer );
+                const Rect<I32> targetViewport{0, 0, fb_width, fb_height};
+
+                GFX::ScopedCommandBuffer sBuffer = GFX::AllocateScopedCommandBuffer();
+                GFX::CommandBuffer& buffer = sBuffer();
+                GFX::MemoryBarrierCommand memCmd;
+                editor->renderDrawList(pDrawData,
+                                       2 + ((DisplayWindow*)viewport->PlatformHandle)->getGUID(),
+                                       targetViewport,
+                                       true,
+                                       buffer,
+                                       memCmd);
+                GFX::EnqueueCommand(buffer, memCmd);
                 context->gfx().flushCommandBuffer( buffer );
             }
         };
@@ -668,7 +660,7 @@ namespace Divide
             if ( g_windowManager != nullptr )
             {
                 PlatformContext* context = (PlatformContext*)platformContext;
-                context->gfx().endFrame( *(DisplayWindow*)viewport->PlatformHandle, false );
+                context->gfx().flushWindow( *(DisplayWindow*)viewport->PlatformHandle );
             }
         };
 
@@ -811,6 +803,7 @@ namespace Divide
         _fontTexture.reset();
         _imguiProgram.reset();
         _gizmo.reset();
+        _IMGUIBuffers.clear();
 
         for ( ImGuiContext* context : _imguiContexts )
         {
@@ -1137,18 +1130,23 @@ namespace Divide
         ImGui::DockSpace( dockspace_id, ImVec2( 0.0f, 0.0f ), ImGuiDockNodeFlags_PassthruCentralNode );
         style.WindowMinSize.x = originalSize;
 
-        if ( Focused( _windowFocusState ) || _showOptionsWindow )
-        {
-            PushReadOnly();
-        }
+        const bool readOnly = Focused( _windowFocusState ) || _showOptionsWindow;
 
+        if ( readOnly ) { PushReadOnly( false ); }
         _menuBar->draw();
+
+        if ( readOnly ) { PushReadOnly(true); }
         for ( DockedWindow* const window : _dockedWindows )
         {
             window->draw();
         }
-        _statusBar->draw();
+        if ( readOnly ) { PopReadOnly( ); }
 
+        _statusBar->draw( );
+        if ( readOnly ) { PopReadOnly( ); }
+
+
+        if ( readOnly ) { PushReadOnly( true ); }
         if ( _showMemoryEditor && !_showOptionsWindow )
         {
             if ( _memoryEditorData.first != nullptr && _memoryEditorData.second > 0 )
@@ -1168,14 +1166,10 @@ namespace Divide
             ImGui::ShowDemoWindow( &_showSampleWindow );
         }
 
-        if ( Focused( _windowFocusState ) || _showOptionsWindow )
-        {
-            PopReadOnly();
-        }
-
         _optionsWindow->draw( _showOptionsWindow );
-
         renderModelSpawnModal();
+
+        if ( readOnly ) { PopReadOnly(); }
 
         ImGui::End();
 
@@ -1215,7 +1209,8 @@ namespace Divide
     void Editor::postRender( const RenderStage stage,
                              const CameraSnapshot& cameraSnapshot,
                              const RenderTargetID target,
-                             GFX::CommandBuffer& bufferInOut )
+                             GFX::CommandBuffer& bufferInOut,
+                             GFX::MemoryBarrierCommand& memCmdInOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
@@ -1230,7 +1225,7 @@ namespace Divide
 
         if ( running() && infiniteGridEnabled && _infiniteGridPrimitive && _isScenePaused )
         {
-            _infiniteGridPrimitive->getCommandBuffer( bufferInOut );
+            _infiniteGridPrimitive->getCommandBuffer( bufferInOut, memCmdInOut );
         }
 
         // Debug axis form the axis arrow gizmo in the corner of the screen
@@ -1238,9 +1233,10 @@ namespace Divide
         if ( sceneGizmoEnabled() && _axisGizmo )
         {
             // Apply the inverse view matrix so that it cancels out in the shader
-            // Submit the draw command, rendering it in a tiny viewport in the lower
-            // right corner
-            const U16 windowWidth = _context.gfx().renderTargetPool().getRenderTarget( target )->getWidth();
+            // Submit the draw command, rendering it in a tiny viewport in the lower right corner
+            const auto& rt = _context.gfx().renderTargetPool().getRenderTarget( target );
+            const U16 windowWidth = rt->getWidth();
+            //const U16 windowHeight = rt->getHeight();
 
             // We need to transform the gizmo so that it always remains axis aligned
             // Create a world matrix using a look at function with the eye position
@@ -1252,17 +1248,24 @@ namespace Divide
                                                     viewMatrix.getUpVec() )
                                          * cameraSnapshot._invViewMatrix );
 
-            GFX::EnqueueCommand( bufferInOut, GFX::SetViewportCommand{ Rect<I32>( windowWidth - 250, 6, 256, 256 ) } );
-            _axisGizmo->getCommandBuffer( worldMatrix, bufferInOut );
+            constexpr I32 viewportDim = 256;
+            constexpr I32 viewportPadding = 6;
+
+            const Rect<I32> targetViewport = {
+                windowWidth - (viewportDim - viewportPadding),
+                viewportPadding,
+                viewportDim,
+                viewportDim };
+        
+            GFX::EnqueueCommand( bufferInOut, GFX::SetViewportCommand{ targetViewport } );
+            _axisGizmo->getCommandBuffer( worldMatrix, bufferInOut, memCmdInOut );
         }
     }
 
-    void Editor::drawScreenOverlay( const Camera* camera,
-                                    const Rect<I32>& targetViewport,
-                                    GFX::CommandBuffer& bufferInOut ) const
+    void Editor::drawScreenOverlay( const Camera* camera, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
-        Attorney::GizmoEditor::render( _gizmo.get(), camera, targetViewport, bufferInOut );
+        Attorney::GizmoEditor::render( _gizmo.get(), camera, targetViewport, bufferInOut, memCmdInOut );
     }
 
     bool Editor::framePostRender( [[maybe_unused]] const FrameEvent& evt )
@@ -1315,16 +1318,23 @@ namespace Divide
         {
             ImGui::Render();
 
-            GFX::ScopedCommandBuffer sBuffer = GFX::AllocateScopedCommandBuffer();
-            GFX::CommandBuffer& buffer = sBuffer();
             ImDrawData* pDrawData = ImGui::GetDrawData();
             const I32 fb_width = to_I32( pDrawData->DisplaySize.x * ImGui::GetIO().DisplayFramebufferScale.x );
             const I32 fb_height = to_I32( pDrawData->DisplaySize.y * ImGui::GetIO().DisplayFramebufferScale.y );
+            const Rect<I32> targetViewport{0, 0, fb_width, fb_height};
+
+            pDrawData->ScaleClipRects( ImGui::GetIO().DisplayFramebufferScale );
+
+            GFX::ScopedCommandBuffer sBuffer = GFX::AllocateScopedCommandBuffer();
+            GFX::CommandBuffer& buffer = sBuffer();
+            GFX::MemoryBarrierCommand memCmd{};
             renderDrawList( pDrawData,
-                            Rect<I32>( 0, 0, fb_width, fb_height ),
-                            _mainWindow->getGUID(),
+                            0,
+                            targetViewport,
                             true,
-                            buffer );
+                            buffer,
+                            memCmd);
+            GFX::EnqueueCommand(buffer, memCmd);
             _context.gfx().flushCommandBuffer( buffer, false );
 
             if ( io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable ) [[likely]]
@@ -1361,12 +1371,65 @@ namespace Divide
         return viewWindow->sceneRect( globalCoords );
     }
 
+    GenericVertexData* Editor::getOrCreateIMGUIBuffer( const I64 bufferGUID, const I32 maxCommandCount, const U32 maxVertices, GFX::MemoryBarrierCommand& memCmdInOut )
+    {
+        const U32 newSize = to_U32( maxCommandCount * RenderPass::DataBufferRingSize );
+
+        GenericVertexData* ret = nullptr;
+
+        const auto it = _IMGUIBuffers.find( bufferGUID );
+        if ( it != eastl::cend( _IMGUIBuffers ) )
+        {
+            // If we need more space, skip this and just create a new, larger, buffer.
+            if ( it->second->queueLength() >= newSize )
+            {
+                return it->second.get();
+            }
+            else
+            {
+                ret = it->second.get();
+                ret->reset();
+                ret->resize( newSize );
+            }
+        }
+
+        if ( ret == nullptr )
+        {
+            GenericVertexData_ptr newBuffer = _context.gfx().newGVD( newSize, "IMGUI" );
+            _IMGUIBuffers[bufferGUID] = newBuffer;
+            ret = newBuffer.get();
+        }
+
+        GenericVertexData::IndexBuffer idxBuff{};
+        idxBuff.smallIndices = sizeof( ImDrawIdx ) == sizeof( U16 );
+        idxBuff.count = maxVertices * 3;
+        idxBuff.dynamic = true;
+
+        ret->renderIndirect( false );
+
+        GenericVertexData::SetBufferParams params = {};
+        params._bindConfig = { 0u, 0u };
+        params._useRingBuffer = true;
+        params._initialData = { nullptr, 0 };
+
+        params._bufferParams._elementCount = maxVertices;
+        params._bufferParams._elementSize = sizeof( ImDrawVert );
+        params._bufferParams._flags._updateFrequency = BufferUpdateFrequency::OFTEN;
+        params._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
+
+        memCmdInOut._bufferLocks.push_back(ret->setBuffer( params )); //Pos, UV and Colour
+        memCmdInOut._bufferLocks.push_back(ret->setIndexBuffer( idxBuff ));
+
+        return ret;
+    }
+
     // Needs to be rendered immediately. *IM*GUI. IMGUI::NewFrame invalidates this data
     void Editor::renderDrawList( ImDrawData* pDrawData,
+                                 I64 bufferGUID,
                                  const Rect<I32>& targetViewport,
-                                 I64 windowGUID,
                                  const bool editorPass,
-                                 GFX::CommandBuffer& bufferInOut ) const
+                                 GFX::CommandBuffer& bufferInOut,
+                                 GFX::MemoryBarrierCommand& memCmdInOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
@@ -1377,27 +1440,20 @@ namespace Divide
         static ImDrawVert vertices[MaxVertices];
         static ImDrawIdx indices[MaxIndices];
 
-        if ( windowGUID == -1 ) [[unlikely]]
-        {
-            windowGUID = _mainWindow->getGUID();
-        }
+        DIVIDE_ASSERT( bufferGUID != -1 );
 
-        const ImGuiIO& io = ImGui::GetIO();
+        const I32 fb_width  = targetViewport.sizeX;
+        const I32 fb_height = targetViewport.sizeY;
 
-        if ( targetViewport.z <= 0 || targetViewport.w <= 0 ) [[unlikely]]
-        {
-            return;
-        }
-
-        pDrawData->ScaleClipRects( io.DisplayFramebufferScale );
-
-        if ( pDrawData->CmdListsCount == 0 ) [[unlikely]]
+        // Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
+        if ( pDrawData->CmdListsCount == 0  || fb_width <= 0 || fb_height <= 0 )
         {
             return;
         }
 
         s_maxCommandCount = std::max( s_maxCommandCount, pDrawData->CmdListsCount );
-        GenericVertexData* buffer = _context.gfx().getOrCreateIMGUIBuffer( windowGUID, s_maxCommandCount, MaxVertices );
+
+        GenericVertexData* buffer = getOrCreateIMGUIBuffer( bufferGUID, s_maxCommandCount, MaxVertices, memCmdInOut);
         assert( buffer != nullptr );
 
         GenericDrawCommand drawCmd{};
@@ -1428,14 +1484,14 @@ namespace Divide
             numIndices += clNumIndices;
         }
 
-        buffer->updateBuffer( 0u, 0u, numVertices, vertices );
+        memCmdInOut._bufferLocks.emplace_back(buffer->updateBuffer( 0u, 0u, numVertices, vertices ));
 
         GenericVertexData::IndexBuffer idxBuffer{};
         idxBuffer.smallIndices = sizeof( ImDrawIdx ) == sizeof( U16 );
         idxBuffer.dynamic = true;
         idxBuffer.count = numIndices;
         idxBuffer.data = indices;
-        buffer->setIndexBuffer( idxBuffer );
+        memCmdInOut._bufferLocks.emplace_back(buffer->setIndexBuffer( idxBuffer ));
 
         if ( editorPass )
         {
@@ -1444,7 +1500,8 @@ namespace Divide
             GFX::BeginRenderPassCommand beginRenderPassCmd{};
             beginRenderPassCmd._target = SCREEN_TARGET_ID;
             beginRenderPassCmd._name = "Render IMGUI [ External ]";
-            beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { { windowBGColour.x, windowBGColour.y, windowBGColour.z, 1.f }, RTColourAttachmentSlot::SLOT_0 };
+            beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = {{windowBGColour.x, windowBGColour.y, windowBGColour.z, 1.f}, true};
+            beginRenderPassCmd._descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
             GFX::EnqueueCommand( bufferInOut, beginRenderPassCmd );
         }
         else
@@ -1463,22 +1520,30 @@ namespace Divide
 
         const PushConstantsStruct pushConstants = TexCallbackToPushConstants( defaultData, false );
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( pushConstants );
-        GFX::EnqueueCommand<GFX::SetViewportCommand>( bufferInOut, { targetViewport } );
+        GFX::EnqueueCommand<GFX::SetViewportCommand>( bufferInOut, targetViewport);
 
-        const F32 L = pDrawData->DisplayPos.x;
-        const F32 R = pDrawData->DisplayPos.x + pDrawData->DisplaySize.x;
-        const F32 T = pDrawData->DisplayPos.y;
-        const F32 B = pDrawData->DisplayPos.y + pDrawData->DisplaySize.y;
-        const F32 ortho_projection[4][4] =
-        {
-            { 2.f / (R - L), 0.f, 0.f, 0.f },
-            { 0.f, 2.f / (T - B), 0.f, 0.f },
-            { 0.f, 0.f, -1.f, 0.f },
-            { (R + L) / (L - R), (T + B) / (B - T), 0.f, 1.f },
+        const F32 scale[] = {
+            2.f / pDrawData->DisplaySize.x,
+            2.f / pDrawData->DisplaySize.y
         };
 
-        F32* projection = GFX::EnqueueCommand<GFX::SetCameraCommand>( bufferInOut, { _render2DSnapshot } )->_cameraSnapshot._projectionMatrix.mat;
-        memcpy( projection, ortho_projection, sizeof( F32 ) * 16 );
+        const F32 translate[] = {
+            -1.f - pDrawData->DisplayPos.x * scale[0],
+             1.f + pDrawData->DisplayPos.y * scale[1]
+        };
+        
+        mat4<F32>& projection = GFX::EnqueueCommand<GFX::SetCameraCommand>( bufferInOut, { _render2DSnapshot } )->_cameraSnapshot._projectionMatrix;
+        projection.m[0][0] = scale[0];
+        projection.m[1][1] = -scale[1];
+        projection.m[2][2] = -1.f;
+        projection.m[3][0] = translate[0];
+        projection.m[3][1] = translate[1];
+
+        const ImVec2 clip_off = pDrawData->DisplayPos;         // (0,0) unless using multi-viewports
+        const ImVec2 clip_scale = pDrawData->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
+        Rect<I32> clipRect{};
+
+        const bool flipClipY = _context.gfx().renderAPI() == RenderAPI::OpenGL;
 
         U32 baseVertex = 0u;
         U32 indexOffset = 0u;
@@ -1493,45 +1558,55 @@ namespace Divide
                 }
                 else
                 {
-                    Rect<I32> clipRect
+
+                    ImVec2 clip_min( (pcmd.ClipRect.x - clip_off.x)* clip_scale.x, (pcmd.ClipRect.y - clip_off.y)* clip_scale.y );
+                    ImVec2 clip_max( (pcmd.ClipRect.z - clip_off.x)* clip_scale.x, (pcmd.ClipRect.w - clip_off.y)* clip_scale.y );
+
+                    // Clamp to viewport as vkCmdSetScissor() won't accept values that are off bounds
+                    if (clip_min.x < 0.f) { clip_min.x = 0.f; }
+                    if (clip_min.y < 0.f) { clip_min.y = 0.f; }
+                    if (clip_max.x > fb_width) { clip_max.x = to_F32(fb_width); }
+                    if (clip_max.y > fb_height) { clip_max.y = to_F32(fb_height); }
+                    if (clip_max.x <= clip_min.x || clip_max.y <= clip_min.y)
                     {
-                        pcmd.ClipRect.x - pDrawData->DisplayPos.x,
-                        pcmd.ClipRect.y - pDrawData->DisplayPos.y,
-                        pcmd.ClipRect.z - pDrawData->DisplayPos.x,
-                        pcmd.ClipRect.w - pDrawData->DisplayPos.y
-                    };
+                        continue;
+                    }
 
-                    if ( clipRect.x < targetViewport.z && clipRect.y < targetViewport.w && clipRect.z >= 0 && clipRect.w >= 0 ) [[likely]]
+                    clipRect.sizeX = to_I32( clip_max.x - clip_min.x);
+                    clipRect.sizeY = to_I32( clip_max.y - clip_min.y);
+
+                    clipRect.offsetX = to_I32( clip_min.x );
+                    if ( flipClipY )
                     {
-                        const I32 tempW = clipRect.w;
-                        clipRect.z -= clipRect.x;
-                        clipRect.w -= clipRect.y;
-                        clipRect.y = targetViewport.w - tempW;
+                        clipRect.offsetY = to_I32(fb_height - clip_max.y);
+                    }
+                    else
+                    {
+                        clipRect.offsetY = to_I32( clip_min.y );
+                    }
+                    GFX::EnqueueCommand<GFX::SetScissorCommand>( bufferInOut )->_rect.set( clipRect );
 
-                        GFX::EnqueueCommand<GFX::SetScissorCommand>( bufferInOut )->_rect.set( clipRect );
+                    Texture* tex = (Texture*)(pcmd.GetTexID());
+                    if ( tex != nullptr )
+                    {
+                        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
+                        cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
-                        Texture* tex = (Texture*)(pcmd.GetTexID());
-                        if ( tex != nullptr )
                         {
-                            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
-                            cmd->_usage = DescriptorSetUsage::PER_DRAW;
-
-                            {
-                                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
-                                Set(binding._data, tex->getView(), _editorSamplerHash );
-                            }
-                            {
-                                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
-                                Set(binding._data, Texture::DefaultTexture()->getView(), Texture::DefaultSamplerHash());
-                            }
-
+                            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+                            Set(binding._data, tex->getView(), _editorSamplerHash );
+                        }
+                        {
+                            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+                            Set(binding._data, Texture::DefaultTexture()->getView(), Texture::DefaultSamplerHash());
                         }
 
-                        drawCmd._cmd.indexCount = pcmd.ElemCount;
-                        drawCmd._cmd.firstIndex = indexOffset + pcmd.IdxOffset;
-                        drawCmd._cmd.baseVertex = baseVertex + pcmd.VtxOffset;
-                        GFX::EnqueueCommand( bufferInOut, GFX::DrawCommand{ drawCmd } );
                     }
+
+                    drawCmd._cmd.indexCount = pcmd.ElemCount;
+                    drawCmd._cmd.firstIndex = indexOffset + pcmd.IdxOffset;
+                    drawCmd._cmd.baseVertex = baseVertex + pcmd.VtxOffset;
+                    GFX::EnqueueCommand( bufferInOut, GFX::DrawCommand{ drawCmd } );
                 }
             }
 
@@ -1539,7 +1614,6 @@ namespace Divide
             baseVertex += cmd_list->VtxBuffer.size();
         }
 
-        GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_fenceLocks.push_back( buffer );
         if ( editorPass )
         {
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>( bufferInOut );
@@ -2039,7 +2113,7 @@ namespace Divide
         return isInit() && running() && !Hovered( _windowFocusState );
     }
 
-    bool Editor::onUTF8( const Input::UTF8Event& arg )
+    bool Editor::onTextEvent( const Input::TextEvent& arg )
     {
         if ( !hasFocus() )
         {
@@ -2050,7 +2124,7 @@ namespace Divide
         for ( ImGuiContext* ctx : _imguiContexts )
         {
             ImGui::SetCurrentContext( ctx );
-            ctx->IO.AddInputCharactersUTF8( arg._text );
+            ctx->IO.AddInputCharactersUTF8( arg._text.c_str() );
             wantsCapture = ctx->IO.WantCaptureKeyboard || wantsCapture;
         }
         ImGui::SetCurrentContext( _imguiContexts[to_base( ImGuiContextType::Editor )] );
@@ -2239,8 +2313,7 @@ namespace Divide
                         DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
                         const ImageView texView = Texture::DefaultTexture()->getView(TextureType::TEXTURE_2D,
                                                                                      { 0u, 1u },
-                                                                                     { 0u, 1u },
-                                                                                     ImageUsage::SHADER_READ );
+                                                                                     { 0u, 1u });
                         Set( binding._data, texView, Texture::DefaultSamplerHash() );
                     }
                     {
@@ -2250,8 +2323,7 @@ namespace Divide
                         {
                             const ImageView texView = data._texture->getView( TextureType::TEXTURE_2D_ARRAY,
                                                                               { 0u, data._texture->mipCount() },
-                                                                              { 0u, data._texture->numLayers() * 6u },
-                                                                              ImageUsage::SHADER_READ );
+                                                                              { 0u, data._texture->numLayers() * 6u });
 
                             Set( binding._data, texView, texSampler );
                         }
@@ -2864,7 +2936,7 @@ namespace Divide
     {
         namespace detail
         {
-            bool g_readOnlyFaded = false;
+            std::stack<bool> g_readOnlyFaded;
         };
     }; // namespace Util
 
@@ -2873,17 +2945,18 @@ namespace Divide
         ImGui::PushItemFlag( ImGuiItemFlags_Disabled, true );
         if ( fade )
         {
-            ImGui::PushStyleVar( ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f );
+            ImGui::PushStyleVar( ImGuiStyleVar_Alpha, std::max(0.5f, ImGui::GetStyle().Alpha - 0.35f) );
         }
-        Util::detail::g_readOnlyFaded = fade;
+        Util::detail::g_readOnlyFaded.push(fade);
     }
 
     void PopReadOnly()
     {
         ImGui::PopItemFlag();
-        if ( Util::detail::g_readOnlyFaded )
+        if ( Util::detail::g_readOnlyFaded.top() )
         {
             ImGui::PopStyleVar();
         }
+        Util::detail::g_readOnlyFaded.pop();
     }
 } // namespace Divide

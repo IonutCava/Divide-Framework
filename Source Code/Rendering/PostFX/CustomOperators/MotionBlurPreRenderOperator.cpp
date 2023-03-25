@@ -75,7 +75,7 @@ bool MotionBlurPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx
     const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
     const auto& velocityAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::VELOCITY);
 
-    const F32 fps = _context.parent().platformContext().app().timer().getFps();
+    const F32 fps = _context.context().app().timer().getFps();
     const F32 velocityScale = _context.context().config().rendering.postFX.motionBlur.velocityScale;
     const F32 velocityFactor = fps / Config::TARGET_FRAME_RATE * velocityScale;
 
@@ -83,6 +83,7 @@ bool MotionBlurPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx
     beginRenderPassCmd->_name = "DO_MOTION_BLUR_PASS";
     beginRenderPassCmd->_target = output._targetID;
     beginRenderPassCmd->_descriptor = _screenOnlyDraw;
+    beginRenderPassCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
 
     GFX::EnqueueCommand(bufferInOut, _blurApplyPipelineCmd);
 

@@ -14,7 +14,7 @@ namespace Divide
 
         void printLine( const char* line )
         {
-            ScopedLock<Mutex> lock( printLock );
+            LockGuard<Mutex> lock( printLock );
             std::cout << line << std::endl;
         };
 
@@ -32,7 +32,8 @@ namespace Divide
 
     TEST( TaskPoolContructionTest )
     {
-        Console::toggleErrorStream( false );
+        Console::ToggleFlag( Console::Flags::ENABLE_ERROR_STREAM, false );
+
         TaskPool test;
 
         // Not enough workers
@@ -50,7 +51,7 @@ namespace Divide
 
     TEST( ParallelForTest )
     {
-        Console::toggleErrorStream( false );
+        Console::ToggleFlag( Console::Flags::ENABLE_ERROR_STREAM, false );
 
         TaskPool test;
         const bool init = test.init( HardwareThreadCount(), TaskPool::TaskPoolType::TYPE_BLOCKING );

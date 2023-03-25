@@ -33,10 +33,9 @@
 #ifndef _FRAME_LISTENER_MANAGER_H_
 #define _FRAME_LISTENER_MANAGER_H_
 
-/// Add this include here so that any FrameListener derived class only needs to
-/// include the manager
+/// Add this include here so that any FrameListener derived class only needs to include the manager
 
-#include "Rendering/Headers/FrameListener.h"
+#include "Core/Headers/FrameListener.h"
 
 namespace Divide {
 

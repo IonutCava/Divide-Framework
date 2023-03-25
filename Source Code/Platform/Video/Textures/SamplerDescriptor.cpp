@@ -94,7 +94,7 @@ namespace Divide {
                                      _customBorderColour.b,
                                      _customBorderColour.a);
         if (tempHash != _hash) {
-            ScopedLock<SharedMutex> w_lock(s_samplerDescriptorMapMutex);
+            LockGuard<SharedMutex> w_lock(s_samplerDescriptorMapMutex);
             insert(s_samplerDescriptorMap, tempHash, *this);
             _hash = tempHash;
         }
@@ -102,7 +102,7 @@ namespace Divide {
     }
 
     void SamplerDescriptor::Clear() {
-        ScopedLock<SharedMutex> w_lock(s_samplerDescriptorMapMutex);
+        LockGuard<SharedMutex> w_lock(s_samplerDescriptorMapMutex);
         s_samplerDescriptorMap.clear();
     }
 

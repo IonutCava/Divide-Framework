@@ -38,7 +38,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Core/Headers/PlatformContextComponent.h"
 #include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
-#include "Rendering/Headers/FrameListener.h"
+#include "Core/Headers/FrameListener.h"
 #include "Rendering/Camera/Headers/CameraSnapshot.h"
 #include "Editor/Widgets/Headers/Gizmo.h"
 
@@ -90,7 +90,7 @@ namespace Divide
     class PlatformContext;
     class ApplicationOutput;
     class NodePreviewWindow;
-    class ContentExplorerWindow;
+        class ContentExplorerWindow;
     class SolutionExplorerWindow;
     class SceneEnvironmentProbePool;
 
@@ -100,6 +100,7 @@ namespace Divide
     FWD_DECLARE_MANAGED_CLASS( MenuBar );
     FWD_DECLARE_MANAGED_CLASS( StatusBar );
     FWD_DECLARE_MANAGED_CLASS( ShaderProgram );
+    FWD_DECLARE_MANAGED_CLASS( GenericVertexData );
     FWD_DECLARE_MANAGED_CLASS( EditorOptionsWindow );
 
     struct Selections;
@@ -128,9 +129,9 @@ namespace Divide
     PushConstantsStruct TexCallbackToPushConstants(const TextureCallbackData& data, bool isArrayTexture);
 
     class Editor final : public PlatformContextComponent,
-        public FrameListener,
-        public Input::InputAggregatorInterface,
-        NonMovable
+                         public FrameListener,
+                         public Input::InputAggregatorInterface,
+                         NonMovable
     {
 
         friend class Attorney::EditorGizmo;
@@ -185,11 +186,9 @@ namespace Divide
         [[nodiscard]] bool init( const vec2<U16> renderResolution );
         void close();
         void idle() noexcept;
-        void beginFrame();
-        void endFrame();
         void update( U64 deltaTimeUS );
         /// Render any editor specific element that needs to be part of the scene (e.g. Control Gizmo)
-        void drawScreenOverlay( const Camera* camera, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut ) const;
+        void drawScreenOverlay( const Camera* camera, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut ) const;
 
         void toggle( bool state );
         void onWindowSizeChange( const SizeChangeParams& params );
@@ -226,7 +225,7 @@ namespace Divide
         [[nodiscard]] inline const RenderTargetHandle& getEditorTarget() const noexcept;
         [[nodiscard]] inline const RenderTargetHandle& getNodePreviewTarget() const noexcept;
 
-        protected: //frame listener
+    protected: //frame listener
         [[nodiscard]] bool framePostRender( const FrameEvent& evt ) override;
         [[nodiscard]] bool frameEnded( const FrameEvent& evt ) noexcept override;
 
@@ -249,12 +248,12 @@ namespace Divide
         [[nodiscard]] bool joystickBallMoved( const Input::JoystickEvent& arg ) noexcept override;
         [[nodiscard]] bool joystickAddRemove( const Input::JoystickEvent& arg ) noexcept override;
         [[nodiscard]] bool joystickRemap( const Input::JoystickEvent& arg ) noexcept override;
-        [[nodiscard]] bool onUTF8( const Input::UTF8Event& arg ) override;
+        [[nodiscard]] bool onTextEvent( const Input::TextEvent& arg ) override;
 
         [[nodiscard]] bool saveToXML() const;
         [[nodiscard]] bool loadFromXML();
 
-        protected:
+    protected:
         [[nodiscard]] inline bool isInit() const noexcept;
         [[nodiscard]] bool render( );
 
@@ -272,7 +271,7 @@ namespace Divide
 
         [[nodiscard]] bool isDefaultScene() const noexcept;
 
-        void postRender( RenderStage stage, const CameraSnapshot& cameraSnapshot, RenderTargetID target, GFX::CommandBuffer& bufferInOut );
+        void postRender( RenderStage stage, const CameraSnapshot& cameraSnapshot, RenderTargetID target, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
         void renderModelSpawnModal();
 
         PROPERTY_R_IW( I64, previewNodeGUID, -1 );
@@ -292,7 +291,7 @@ namespace Divide
         PROPERTY_INTERNAL( bool, sceneGizmoEnabled, false );
 
         protected:
-        void renderDrawList( ImDrawData* pDrawData, const Rect<I32>& targetViewport, I64 windowGUID, bool editorPass, GFX::CommandBuffer& bufferInOut ) const;
+        void renderDrawList( ImDrawData* pDrawData, I64 bufferGUID, const Rect<I32>& targetViewport, bool editorPass, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
 
         /// Saves all new changes to the current scene and uses the provided callbacks to return progress messages. msgCallback gets called per save-step/process, finishCallback gets called once at the end
         /// sceneNameOverride should be left empty to save the scene in its own folder. Any string passed will create a new scene with the name specified and save everything to that folder instead, leaving the original scene untouched
@@ -326,6 +325,8 @@ namespace Divide
         [[nodiscard]] bool removeComponent( const Selections& selections, ComponentType newComponentType ) const;
         [[nodiscard]] SceneNode_ptr createNode( SceneNodeType type, const ResourceDescriptor& descriptor );
 
+        GenericVertexData* getOrCreateIMGUIBuffer( I64 bufferGUID, I32 maxCommandCount, U32 maxVertices, GFX::MemoryBarrierCommand& memCmdInOut );
+
         protected:
         SceneGraphNode* _previewNode{ nullptr };
 
@@ -349,6 +350,8 @@ namespace Divide
         PipelineDescriptor _axisGizmoPipelineDesc;
         IMPrimitive* _axisGizmo = nullptr;
         Pipeline* _editorPipeline = nullptr;
+
+        hashMap<I64, GenericVertexData_ptr> _IMGUIBuffers;
 
         std::pair<bufferPtr, size_t> _memoryEditorData = { nullptr, 0 };
         std::array<ImGuiContext*, to_base( ImGuiContextType::COUNT )> _imguiContexts = {};
@@ -383,14 +386,9 @@ namespace Divide
     {
         class EditorGizmo
         {
-            static void renderDrawList( const Editor& editor, ImDrawData* pDrawData, const Rect<I32>& targetViewport, const I64 windowGUID, GFX::CommandBuffer& bufferInOut )
+            static void renderDrawList( Editor& editor, ImDrawData* pDrawData, const I64 windowGUID, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
             {
-                editor.renderDrawList( pDrawData, targetViewport, windowGUID, false, bufferInOut );
-            }
-
-            [[nodiscard]] static ImGuiViewport* findViewportByPlatformHandle( Editor& editor, ImGuiContext* context, DisplayWindow* window )
-            {
-                return editor.FindViewportByPlatformHandle( context, window );
+                editor.renderDrawList( pDrawData, windowGUID, targetViewport, false, bufferInOut, memCmdInOut );
             }
 
             friend class Divide::Gizmo;
@@ -721,9 +719,9 @@ namespace Divide
 
         class EditorRenderPassExecutor
         {
-            static void postRender( Editor& editor, const RenderStage stage, const CameraSnapshot& cameraSnapshot, const RenderTargetID target, GFX::CommandBuffer& bufferInOut )
+            static void postRender( Editor& editor, const RenderStage stage, const CameraSnapshot& cameraSnapshot, const RenderTargetID target, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
             {
-                editor.postRender( stage, cameraSnapshot, target, bufferInOut );
+                editor.postRender( stage, cameraSnapshot, target, bufferInOut, memCmdInOut );
             }
 
             friend class RenderPassExecutor;

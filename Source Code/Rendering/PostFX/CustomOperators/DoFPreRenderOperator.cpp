@@ -150,6 +150,7 @@ bool DoFPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const
     beginRenderPassCmd._target = output._targetID;
     beginRenderPassCmd._descriptor = _screenOnlyDraw;
     beginRenderPassCmd._name = "DO_DOF_PASS";
+    beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
     GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipeline });

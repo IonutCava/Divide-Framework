@@ -92,10 +92,10 @@ namespace Divide
         }
 
         ShaderBufferDescriptor bufferDescriptor = {};
-        bufferDescriptor._usage = ShaderBuffer::Usage::UNBOUND_BUFFER;
         bufferDescriptor._ringBufferLength = DataBufferRingSize;
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-        bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
+        bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::UNBOUND_BUFFER;
+        bufferDescriptor._bufferParams._flags._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        bufferDescriptor._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
 
         {
             bufferDescriptor._name = "LIGHT_DATA_BUFFER";
@@ -114,7 +114,7 @@ namespace Divide
         }
         {
             bufferDescriptor._name = "LIGHT_SCENE_BUFFER";
-            bufferDescriptor._usage = ShaderBuffer::Usage::CONSTANT_BUFFER;
+            bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::CONSTANT_BUFFER;
             bufferDescriptor._bufferParams._elementCount = to_base( RenderStage::COUNT ) - 1; ///< no shadows
             bufferDescriptor._bufferParams._elementSize = sizeof( SceneData );
             // Holds general info about the currently active scene: light count, ambient colour, etc.
@@ -183,7 +183,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        ScopedLock<SharedMutex> w_lock( _movedSceneVolumesLock );
+        LockGuard<SharedMutex> w_lock( _movedSceneVolumesLock );
         efficient_clear(_movedSceneVolumes);
         return true;
     }
@@ -193,7 +193,7 @@ namespace Divide
         const LightType type = light.getLightType();
         const U32 lightTypeIdx = to_base( type );
 
-        ScopedLock<SharedMutex> r_lock( _lightLock );
+        LockGuard<SharedMutex> r_lock( _lightLock );
         if ( findLightLocked( light.getGUID(), type ) != end( _lights[lightTypeIdx] ) )
         {
 
@@ -211,7 +211,7 @@ namespace Divide
     // try to remove any leftover lights
     bool LightPool::removeLight( const Light& light )
     {
-        ScopedLock<SharedMutex> lock( _lightLock );
+        LockGuard<SharedMutex> lock( _lightLock );
         const LightList::const_iterator it = findLightLocked( light.getGUID(), light.getLightType() );
 
         if ( it == end( _lights[to_U32( light.getLightType() )] ) )
@@ -230,7 +230,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        ScopedLock<SharedMutex> w_lock( _movedSceneVolumesLock );
+        LockGuard<SharedMutex> w_lock( _movedSceneVolumesLock );
         _movedSceneVolumes.push_back( { volume , staticSource } );
     }
 
@@ -258,6 +258,7 @@ namespace Divide
         {
             const LightType lType = light->getLightType();
             computeMipMapsCommand._texture = ShadowMap::getShadowMap( lType )._rt->getAttachment( RTAttachmentType::COLOUR )->texture().get();
+            computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
 
             // Skip non-shadow casting lights (and free up resources if any are used by it)
             if ( !light->enabled() || !light->castsShadows() )
@@ -343,8 +344,7 @@ namespace Divide
         }
 
         memCmdInOut._bufferLocks.push_back( _shadowBuffer->writeData( _shadowBufferData.data() ) );
-        memCmdInOut._syncFlag = 1u;
-        memCmdInOut._barrierMask |= to_base(MemoryBarrierType::SHADER_STORAGE) | to_base(MemoryBarrierType::BUFFER_UPDATE);
+
         _shadowBufferDirty = true;
 
         ShadowMap::bindShadowMaps( *this, bufferInOut);
@@ -495,8 +495,6 @@ namespace Divide
             PROFILE_SCOPE( "LightPool::UploadSceneDataToGPU", Profiler::Category::Graphics );
             memCmdInOut._bufferLocks.push_back( _sceneBuffer->writeData( { stageIndex, 1 }, &crtData ) );
         }
-        memCmdInOut._barrierMask |= to_base( MemoryBarrierType::SHADER_STORAGE ) | to_base (MemoryBarrierType::BUFFER_UPDATE);
-        memCmdInOut._syncFlag = 2u;
     }
 
     [[nodiscard]] bool LightPool::isShadowCacheInvalidated( const vec3<F32>& cameraPosition, Light* const light )

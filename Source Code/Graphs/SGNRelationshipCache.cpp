@@ -26,7 +26,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
-        ScopedLock<SharedMutex> w_lock( _updateMutex );
+        LockGuard<SharedMutex> w_lock( _updateMutex );
         updateChildren( 0u, _childrenRecursiveCache );
         updateParents( 0u, _parentRecursiveCache );
         updateSiblings( 0u, _siblingCache );

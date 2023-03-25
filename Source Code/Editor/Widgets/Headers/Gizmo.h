@@ -102,7 +102,7 @@ namespace Divide {
 
     protected:
         void update(U64 deltaTimeUS);
-        void render(const Camera* camera, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut);
+        void render(const Camera* camera, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
         void renderSingleSelection(const Camera* camera);
         void renderMultipleSelections(const Camera* camera);
         void updateSelections(const vector<SceneGraphNode*>& nodes);
@@ -135,8 +135,8 @@ namespace Divide {
 
     namespace Attorney {
         class GizmoEditor {
-            static void render(Gizmo* gizmo, const Camera* camera, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut) {
-                gizmo->render(camera, targetViewport, bufferInOut);
+            static void render(Gizmo* gizmo, const Camera* camera, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
+                gizmo->render(camera, targetViewport, bufferInOut, memCmdInOut);
             }
 
             static void updateSelection(Gizmo* gizmo, const vector<SceneGraphNode*>& nodes) {

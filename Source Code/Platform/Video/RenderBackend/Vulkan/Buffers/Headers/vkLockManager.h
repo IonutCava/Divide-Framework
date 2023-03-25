@@ -44,14 +44,21 @@ namespace Divide {
         VkFence _fence{ VK_NULL_HANDLE };
     };
 
-    class vkLockManager : public LockManager {
+    class vkLockManager final : public LockManager {
     public:
         ~vkLockManager();
 
+        static bool InitLockPoolEntry( BufferLockPoolEntry& entry );
+
+        inline [[nodiscard]] static SyncObjectHandle CreateSyncObject( const U8 flag = DEFAULT_SYNC_FLAG_INTERNAL )
+        {
+            return LockManager::CreateSyncObject(RenderAPI::Vulkan, flag);
+        }
     protected:
         bool waitForLockedRangeLocked(const SyncObject_uptr& sync, const BufferRange& testRange, const BufferLockInstance& lock) override;
-        bool initLockPoolEntry(BufferLockPoolEntry& entry) override;
     };
+
+    FWD_DECLARE_MANAGED_CLASS(vkLockManager);
 
 }; //namespace Divide
 

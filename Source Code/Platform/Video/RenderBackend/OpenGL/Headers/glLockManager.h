@@ -48,9 +48,16 @@ class glLockManager final : public LockManager {
   public:
       ~glLockManager();
 
+      static bool InitLockPoolEntry( BufferLockPoolEntry& entry );
+
+      inline [[nodiscard]] static SyncObjectHandle CreateSyncObject( const U8 flag = DEFAULT_SYNC_FLAG_INTERNAL )
+      {
+          return LockManager::CreateSyncObject( RenderAPI::OpenGL, flag );
+      }
+
   protected:
       bool waitForLockedRangeLocked(const SyncObject_uptr& sync, const BufferRange& testRange, const BufferLockInstance& lock) override;
-      bool initLockPoolEntry(BufferLockPoolEntry& entry) override;
+
 };
 
 };  // namespace Divide

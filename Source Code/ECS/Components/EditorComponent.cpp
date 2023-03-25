@@ -259,7 +259,7 @@ namespace Divide {
         T GetClamped(const EditorComponentField& field, const boost::property_tree::ptree& pt, const char* name) {
             T val = pt.get(name, field.get<T>());
             if (field._range.max - field._range.min > 1.f) {
-                CLAMP(val, field._range.min, field._range.max);
+                CLAMP(val, static_cast<T>(field._range.min), static_cast<T>(field._range.max));
             }
 
             return val;
@@ -295,12 +295,14 @@ namespace Divide {
             }
 
             if (field._range.max - field._range.min > 1.f) {
-                CLAMP(data.x, field._range.min, field._range.max);
-                CLAMP(data.y, field._range.min, field._range.max);
+                using U = decltype(data.x);
+
+                CLAMP(data.x, static_cast<U>(field._range.min), static_cast<U>(field._range.max));
+                CLAMP(data.y, static_cast<U>(field._range.min), static_cast<U>(field._range.max));
                 if constexpr(num_comp > 2) {
-                    CLAMP(data.z, field._range.min, field._range.max);
+                    CLAMP(data.z, static_cast<U>(field._range.min), static_cast<U>(field._range.max));
                     if constexpr(num_comp > 3) {
-                        CLAMP(data.w, field._range.min, field._range.max);
+                        CLAMP(data.w, static_cast<U>(field._range.min), static_cast<U>(field._range.max));
                     }
                 }
             }
@@ -365,8 +367,9 @@ namespace Divide {
             }
 
             if (field._range.max - field._range.min > 1.f) {
+                using U = std::remove_reference<decltype(T::mat[0])>::type;
                 for (U8 i = 0u; i < num_rows * num_rows; ++i) {
-                    CLAMP(data.mat[i], field._range.min, field._range.max);
+                    CLAMP(data.mat[i], static_cast<U>(field._range.min), static_cast<U>(field._range.max));
                 }
             }
 

@@ -133,13 +133,13 @@ namespace Divide
     {
         Console::printfn( Locale::Get( _ID( "CAMERA_MANAGER_DELETE" ) ) );
         _utilityCameras.fill( nullptr );
-        ScopedLock<SharedMutex> w_lock( s_cameraPoolLock );
+        LockGuard<SharedMutex> w_lock( s_cameraPoolLock );
         s_cameraPool.clear();
     }
 
     Camera* Camera::CreateCamera( const Str256& cameraName, const Camera::Mode mode )
     {
-        ScopedLock<SharedMutex> w_lock( s_cameraPoolLock );
+        LockGuard<SharedMutex> w_lock( s_cameraPoolLock );
         s_cameraPool.emplace_back( cameraName, mode );
         return &s_cameraPool.back();
     }
@@ -149,7 +149,7 @@ namespace Divide
         if ( camera != nullptr )
         {
             const U64 targetHash = _ID( camera->resourceName().c_str() );
-            ScopedLock<SharedMutex> w_lock( s_cameraPoolLock );
+            LockGuard<SharedMutex> w_lock( s_cameraPoolLock );
             erase_if( s_cameraPool, [targetHash]( Camera& cam )
                       {
                           return _ID( cam.resourceName().c_str() ) == targetHash;

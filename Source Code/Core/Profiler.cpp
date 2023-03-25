@@ -4,11 +4,11 @@
 
 namespace Divide::Profiler
 {
-    void Init()
+    void InitAllocators()
     {
         if constexpr( detail::enabled )
         {
-            OPTICK_SET_MEMORY_ALLOCATOR( []( size_t size ) -> void*
+            OPTICK_SET_MEMORY_ALLOCATOR([](size_t size) -> void*
                                          {
                                              return xmalloc(size);
                                          },

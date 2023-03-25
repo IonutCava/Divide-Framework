@@ -87,10 +87,7 @@ namespace Divide {
     }
 
     inline void DisplayWindow::changeType(const WindowType newType) {
-        if (newType != _type) {
-            _queuedType = newType;
-            handleChangeWindowType(_queuedType);
-        }
+        handleChangeWindowType(newType);
     }
 
     inline void DisplayWindow::changeToPreviousType() {

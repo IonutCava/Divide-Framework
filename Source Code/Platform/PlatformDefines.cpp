@@ -66,7 +66,7 @@ namespace Divide
                     }
 
                     DIVIDE_ASSERT_MSG_BOX( msgOut );
-                    Console::flush();
+                    Console::Flush();
 
                     if constexpr ( Config::Assert::CONTINUE_ON_ASSERT )
                     {
@@ -120,13 +120,12 @@ namespace Divide
             err = Locale::Init();
             if ( err == ErrorCode::NO_ERR )
             {
-                Console::start();
+                Console::Start();
                 // Print a copyright notice in the log file
                 if ( !Util::FindCommandLineArgument( argc, argv, "disableCopyright" ) )
                 {
-                    Console::printCopyrightNotice();
+                    Console::PrintCopyrightNotice();
                 }
-                Console::toggleTextDecoration( true );
             }
         }
 
@@ -153,7 +152,7 @@ namespace Divide
         Runtime::resetMainThreadID();
         if ( PlatformCloseImpl() )
         {
-            Console::stop();
+            Console::Stop();
             Locale::Clear();
             return true;
         }
@@ -187,7 +186,7 @@ namespace Divide
     {
         static Mutex s_DirectoryLock;
 
-        ScopedLock<Mutex> w_lock( s_DirectoryLock );
+        LockGuard<Mutex> w_lock( s_DirectoryLock );
         assert( path != nullptr && strlen( path ) > 0 );
         //Always end in a '/'
         assert( path[strlen( path ) - 1] == '/' );

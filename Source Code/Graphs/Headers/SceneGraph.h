@@ -36,7 +36,7 @@
 #include "SceneNode.h"
 #include "IntersectionRecord.h"
 #include "Scenes/Headers/SceneComponent.h"
-#include "Rendering/Headers/FrameListener.h"
+#include "Core/Headers/FrameListener.h"
 
 namespace ECS {
     class ECSEngine;
@@ -196,12 +196,12 @@ class SceneGraphSGN {
     }
 
     static void onNodeEvent(Divide::SceneGraph* sceneGraph, SceneGraphNode* node) {
-        ScopedLock<Mutex> w_lock(sceneGraph->_nodeEventLock);
+        LockGuard<Mutex> w_lock(sceneGraph->_nodeEventLock);
         insert_unique(sceneGraph->_nodeEventQueue, node);
     } 
     
     static void onNodeParentChange(Divide::SceneGraph* sceneGraph, SceneGraphNode* node) {
-        ScopedLock<Mutex> w_lock(sceneGraph->_nodeParentChangeLock);
+        LockGuard<Mutex> w_lock(sceneGraph->_nodeParentChangeLock);
         insert_unique(sceneGraph->_nodeParentChangeQueue, node);
     }
 

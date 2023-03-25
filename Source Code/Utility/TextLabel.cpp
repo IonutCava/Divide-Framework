@@ -48,7 +48,7 @@ size_t TextLabelStyle::getHash() const {
                               _italic);
 
     if (previousHash != _hash) {
-        ScopedLock<SharedMutex> w_lock(s_textLableStyleMutex);
+        LockGuard<SharedMutex> w_lock(s_textLableStyleMutex);
         insert(s_textLabelStyle, _hash, *this);
     }
 

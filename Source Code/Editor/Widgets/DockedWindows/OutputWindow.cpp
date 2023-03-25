@@ -22,7 +22,7 @@ namespace Divide
         memset( _inputBuf, 0, sizeof _inputBuf );
 
         std::atomic_init( &g_writeIndex, 0 );
-        _consoleCallbackIndex = Console::bindConsoleOutput( [this]( const Console::OutputEntry& entry )
+        _consoleCallbackIndex = Console::BindConsoleOutput( [this]( const Console::OutputEntry& entry )
                                                             {
                                                                 PrintText( entry );
                                                                 _scrollToButtomReset = true;
@@ -31,7 +31,7 @@ namespace Divide
 
     OutputWindow::~OutputWindow()
     {
-        if ( !Console::unbindConsoleOutput( _consoleCallbackIndex ) )
+        if ( !Console::UnbindConsoleOutput( _consoleCallbackIndex ) )
         {
             DIVIDE_UNEXPECTED_CALL();
         }

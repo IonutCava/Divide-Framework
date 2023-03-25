@@ -34,15 +34,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-inline DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, ErrorCode& err) {
-    U32 idx = 0;
-    return createWindow(descriptor, err, idx);
-}
-
-inline U32 WindowManager::getWindowCount() const noexcept {
-    return to_U32(_windows.size());
-}
-
 inline DisplayWindow& WindowManager::getWindow(const I64 guid) {
     for (DisplayWindow* win : _windows) {
         if (win->getGUID() == guid) {

@@ -44,6 +44,7 @@ struct RenderPackage {
     PROPERTY_RW(GFX::BindPipelineCommand, pipelineCmd);
     PROPERTY_RW(GFX::BindShaderResourcesCommand, descriptorSetCmd);
     PROPERTY_RW(GFX::SendPushConstantsCommand,  pushConstantsCmd);
+
     PROPERTY_RW(U32, drawCmdOffset, INVALID_CMD_OFFSET);
     PROPERTY_RW(U8,  stagePassBaseIndex, INVALID_STAGE_INDEX);
 

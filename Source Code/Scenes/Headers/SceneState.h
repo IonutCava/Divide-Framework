@@ -161,12 +161,7 @@ struct SceneStatePerPlayer {
     const F32 _headHeight = DEFAULT_PLAYER_HEIGHT;
 };
 
-struct WaterBodyDataContainer {
-    vector<WaterBodyData> _data;
-
-    inline void reset() { _data.resize(0); }
-    inline void registerData(const WaterBodyData& data) { _data.push_back(data); }
-};
+using WaterBodyDataContainer = eastl::fixed_vector<WaterBodyData, 5, true, eastl::dvd_allocator>;
 
 class SceneState : public SceneComponent {
    public:

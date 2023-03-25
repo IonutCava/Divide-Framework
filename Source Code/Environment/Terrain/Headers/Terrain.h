@@ -148,6 +148,7 @@ class Terrain final : public Object3D {
      void prepareRender(SceneGraphNode* sgn,
                         RenderingComponent& rComp,
                         RenderPackage& pkg,
+                        GFX::MemoryBarrierCommand& postDrawMemCmd,
                         RenderStagePass renderStagePass,
                         const CameraSnapshot& cameraSnapshot,
                         bool refreshData) override;

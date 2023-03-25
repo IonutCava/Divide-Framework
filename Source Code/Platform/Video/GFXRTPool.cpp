@@ -15,7 +15,7 @@ GFXRTPool::GFXRTPool(GFXDevice& parent)
 }
 
 RenderTargetHandle GFXRTPool::allocateRT(const RenderTargetDescriptor& descriptor) {
-    ScopedLock<SharedMutex> w_lock(_renderTargetLock);
+    LockGuard<SharedMutex> w_lock(_renderTargetLock);
 
     RenderTargetID uid = 0u;
     for (auto& target : _renderTargets) {
@@ -37,7 +37,7 @@ bool GFXRTPool::deallocateRT(RenderTargetHandle& handle) {
 
     const RenderTargetID id = handle._targetID;
     if (id != INVALID_RENDER_TARGET_ID) {
-        ScopedLock<SharedMutex> w_lock(_renderTargetLock);
+        LockGuard<SharedMutex> w_lock(_renderTargetLock);
         handle._rt = nullptr;
         handle._targetID = INVALID_RENDER_TARGET_ID;
         _renderTargets[id].reset();
@@ -48,7 +48,7 @@ bool GFXRTPool::deallocateRT(RenderTargetHandle& handle) {
 }
 
 RenderTarget* GFXRTPool::getRenderTarget(const RenderTargetID target) const {
-    assert(target != INVALID_RENDER_TARGET_ID && _renderTargets.size() > target);
+    DIVIDE_ASSERT(target != INVALID_RENDER_TARGET_ID && _renderTargets.size() > to_base(target));
     SharedLock<SharedMutex> w_lock(_renderTargetLock);
     return _renderTargets[target].get();
 }

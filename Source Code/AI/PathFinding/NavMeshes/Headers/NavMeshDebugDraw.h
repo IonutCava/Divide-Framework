@@ -44,6 +44,8 @@ class RenderStateBlock;
 
 namespace GFX {
     class CommandBuffer;
+
+    struct MemoryBarrierCommand;
 };
 
 namespace AI {
@@ -98,7 +100,7 @@ class NavMeshDebugDraw final : public duDebugDraw {
         vertex(x, y, z, colour);
     }
 
-    [[nodiscard]] void toCommandBuffer(GFX::CommandBuffer& bufferInOut) const;
+    [[nodiscard]] void toCommandBuffer(GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut ) const;
 
    private:
     GFXDevice& _context;

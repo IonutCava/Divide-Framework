@@ -45,15 +45,17 @@ class NONE_API final : public RenderAPIWrapper {
 
   protected:
       void idle(bool fast) noexcept override;
-      [[nodiscard]] bool beginFrame(DisplayWindow& window, bool global = false) noexcept override;
-      void endFrame(DisplayWindow& window, bool global = false) noexcept override;
+
+      [[nodiscard]] bool drawToWindow( DisplayWindow& window ) override;
+                    void flushWindow( DisplayWindow& window ) override;
+      [[nodiscard]] bool frameStarted() override;
+      [[nodiscard]] bool frameEnded() override;
 
       ErrorCode initRenderingAPI(I32 argc, char** argv, Configuration& config) noexcept override;
       void closeRenderingAPI() noexcept override;
       void preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) override;
       void flushCommand(GFX::CommandBase* cmd) noexcept override;
       void postFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) noexcept override;
-      [[nodiscard]] vec2<U16> getDrawableSize(const DisplayWindow& window) const noexcept override;
       bool setViewportInternal(const Rect<I32>& newViewport) noexcept override;
       bool setScissorInternal(const Rect<I32>& newScissor) noexcept override;
       void onThreadCreated(const std::thread::id& threadID) noexcept override;

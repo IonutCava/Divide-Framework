@@ -545,9 +545,6 @@
     <ClCompile Include="..\..\Source Code\ECS\Components\ScriptComponent.cpp">
       <Filter>ECS\Components</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Source Code\Rendering\FrameListener.cpp">
-      <Filter>Rendering</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\Source Code\ECS\Systems\ECSSystem.cpp">
       <Filter>ECS\Systems</Filter>
     </ClCompile>
@@ -586,6 +583,12 @@
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Geometry\Material\MaterialProperties.cpp">
       <Filter>Geometry\Material</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\Core\LoopTimingData.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\Physics\PhysicsAPIWrapper.cpp">
+      <Filter>Physics</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -696,9 +699,6 @@
     </ClInclude>
     <ClInclude Include="../../Source Code/GUI\Headers\GUIMessageBox.h">
       <Filter>GUI\Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="../../Source Code/Rendering\Headers\FrameListener.h">
-      <Filter>Rendering\Headers</Filter>
     </ClInclude>
     <ClInclude Include="../../Source Code/Physics\PhysX\Headers\PhysX.h">
       <Filter>Physics\PhysX\Headers</Filter>
@@ -1039,6 +1039,9 @@
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Graphs\Headers\SceneNodeFwd.h">
       <Filter>Graphs\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Core\Headers\LoopTimingData.h">
+      <Filter>Core\Headers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -45,7 +45,7 @@ namespace Divide
 
     bool ShaderComputeQueue::stepQueue()
     {
-        ScopedLock<SharedMutex> lock( _queueLock );
+        LockGuard<SharedMutex> lock( _queueLock );
         return stepQueueLocked();
     }
 
@@ -75,13 +75,13 @@ namespace Divide
 
     void ShaderComputeQueue::addToQueueFront( const ShaderQueueElement& element )
     {
-        ScopedLock<SharedMutex> w_lock( _queueLock );
+        LockGuard<SharedMutex> w_lock( _queueLock );
         _shaderComputeQueue.push_front( element );
     }
 
     void ShaderComputeQueue::addToQueueBack( const ShaderQueueElement& element )
     {
-        ScopedLock<SharedMutex> w_lock( _queueLock );
+        LockGuard<SharedMutex> w_lock( _queueLock );
         _shaderComputeQueue.push_back( element );
     }
 

@@ -35,7 +35,6 @@ RenderTarget::RenderTarget(GFXDevice& context, const RenderTargetDescriptor& des
 bool RenderTarget::create()
 {
     _attachmentsUsed.fill(false);
-    _attachmentsPreviousUsage.fill(ImageUsage::UNDEFINED);
 
     // Avoid invalid dimensions
     assert(getWidth() != 0 && getHeight() != 0 && "glFramebuffer error: Invalid frame buffer dimensions!");
@@ -94,7 +93,7 @@ bool RenderTarget::create()
         textureAttachment.waitForReady(true);
         textureAttachment.propertyDescriptor(attDesc._texDescriptor);
 
-        ResourceCache* parentCache = context().parent().resourceCache();
+        ResourceCache* parentCache = context().context().kernel().resourceCache();
         Texture_ptr tex = CreateResource<Texture>(parentCache, textureAttachment);
         assert(tex);
 
@@ -217,7 +216,7 @@ U8 RenderTarget::getSampleCount() const noexcept
 
 bool RenderTarget::updateSampleCount(U8 newSampleCount)
 {
-    CLAMP(newSampleCount, to_U8(0u), _context.gpuState().maxMSAASampleCount());
+    CLAMP( newSampleCount, to_U8(0u), DisplayManager::MaxMSAASamples() );
 
     if (_descriptor._msaaSamples != newSampleCount)
     {

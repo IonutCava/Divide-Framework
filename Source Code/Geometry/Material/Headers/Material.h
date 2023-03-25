@@ -130,7 +130,7 @@ class Material final : public CachedResource {
 
     using SpecularGlossiness = vec2<F32>;
     using ComputeShaderCBK = DELEGATE_STD<ShaderProgramDescriptor, Material*, RenderStagePass>;
-    using ComputeRenderStateCBK = DELEGATE_STD<size_t, Material*, RenderStagePass>;
+    using ComputeRenderStateCBK = DELEGATE_STD<void, Material*, RenderStagePass, RenderStateBlock&>;
     using RecomputeShadersCBK = DELEGATE_STD<void>;
 
     template<typename T> using StatesPerVariant = eastl::array<T, to_base(RenderStagePass::VariantType::COUNT)>;

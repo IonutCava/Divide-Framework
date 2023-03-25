@@ -6,6 +6,7 @@
 #include "Core/Headers/PlatformContext.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/File/Headers/FileManagement.h"
+#include "Platform/Video/Headers/fontstash.h"
 
 namespace Divide
 {
@@ -18,7 +19,7 @@ namespace Divide
     {
     }
 
-    [[nodiscard]] bool NONE_API::beginFrame( DisplayWindow& window, [[maybe_unused]] bool global ) noexcept
+    bool NONE_API::drawToWindow( DisplayWindow& window )
     {
         SDL_RenderClear( _renderer );
         const vec2<U16> drawableSize = window.getDrawableSize();
@@ -26,7 +27,7 @@ namespace Divide
         return true;
     }
 
-    void NONE_API::endFrame( DisplayWindow& window, [[maybe_unused]] bool global ) noexcept
+    void NONE_API::flushWindow( DisplayWindow& window )
     {
         static constexpr U32 ChangeTimerInSeconds = 3;
 
@@ -63,6 +64,16 @@ namespace Divide
         SDL_RenderPresent( _renderer );
     }
 
+    bool NONE_API::frameStarted()
+    {
+        return true;
+    }
+
+    bool NONE_API::frameEnded()
+    {
+        return true;
+    }
+
     ErrorCode NONE_API::initRenderingAPI( [[maybe_unused]] I32 argc, [[maybe_unused]] char** argv, [[maybe_unused]] Configuration& config ) noexcept
     {
         DIVIDE_ASSERT( _renderer == nullptr );
@@ -94,12 +105,17 @@ namespace Divide
 
         SDL_RenderCopy( _renderer, _texture, NULL, NULL );
 
+        _context.fonsContext( dummyfonsCreate( 512, 512, FONS_ZERO_BOTTOMLEFT ) );
+
         return ErrorCode::NO_ERR;
     }
 
     void NONE_API::closeRenderingAPI() noexcept
     {
         DIVIDE_ASSERT( _renderer != nullptr );
+
+        dummyfonsDelete( _context.fonsContext() );
+        _context.fonsContext( nullptr );
 
         SDL_DestroyTexture( _texture );
         SDL_FreeSurface( _background );
@@ -119,11 +135,6 @@ namespace Divide
 
     void NONE_API::postFlushCommandBuffer( [[maybe_unused]] const GFX::CommandBuffer& commandBuffer ) noexcept
     {
-    }
-
-    vec2<U16> NONE_API::getDrawableSize( [[maybe_unused]] const DisplayWindow& window ) const noexcept
-    {
-        return vec2<U16>( 1 );
     }
 
     bool NONE_API::setViewportInternal( [[maybe_unused]] const Rect<I32>& newViewport ) noexcept

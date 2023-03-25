@@ -65,7 +65,7 @@ enum class TaskPoolType : U8 {
     COUNT
 };
 
-class PlatformContext {
+class PlatformContext final {
     friend class Attorney::PlatformContextKernel;
 
  public:
@@ -90,13 +90,7 @@ class PlatformContext {
     explicit PlatformContext(Application& app, Kernel& kernel);
     ~PlatformContext();
 
-    void beginFrame(U32 componentMask = to_base(SystemComponentType::ALL));
-    void idle(bool fast, U32 componentMask = to_base(SystemComponentType::ALL));
-    void endFrame(U32 componentMask = to_base(SystemComponentType::ALL));
-
-    void beginFrame(const SystemComponentType component) { beginFrame(to_base(component)); }
-    void idle(const SystemComponentType component) { idle(false, to_base(component)); }
-    void endFrame(const SystemComponentType component) { endFrame(to_base(component)); }
+    void idle(bool fast);
 
     void terminate();
 
@@ -148,6 +142,8 @@ class PlatformContext {
     [[nodiscard]] DisplayWindow& mainWindow() noexcept;
     [[nodiscard]] const DisplayWindow& mainWindow() const noexcept;
 
+    PROPERTY_R_IW(U32, componentMask, 0u);
+
   protected:
     void onThreadCreated(TaskPoolType poolType, const std::thread::id& threadID) const;
 
@@ -160,38 +156,47 @@ class PlatformContext {
     /// Task pools
     std::array<TaskPool*, to_base(TaskPoolType::COUNT)> _taskPool;
     /// Param handler
-    ParamHandler* _paramHandler = nullptr;
+    ParamHandler* _paramHandler{ nullptr };
     /// User configured settings
-    Configuration* _config = nullptr;
+    Configuration* _config{ nullptr };
     /// XML startup data
-    XMLEntryData* _entryData = nullptr;
+    XMLEntryData* _entryData{ nullptr };
     /// Debugging interface: read only / editable variables
-    DebugInterface* _debug = nullptr;
+    DebugInterface* _debug{ nullptr };
     /// Input handler
-    Input::InputHandler* _inputHandler = nullptr;
+    Input::InputHandler* _inputHandler{ nullptr };
     /// Access to the GPU
-    GFXDevice* _gfx = nullptr;
+    GFXDevice* _gfx{ nullptr };
     /// The graphical user interface
-    GUI* _gui = nullptr;
+    GUI* _gui{ nullptr };
     /// Access to the audio device
-    SFXDevice* _sfx = nullptr;
+    SFXDevice* _sfx{ nullptr };
     /// Access to the physics system
-    PXDevice* _pfx = nullptr;
+    PXDevice* _pfx{ nullptr };
     /// Networking client
-    LocalClient* _client = nullptr;
+    LocalClient* _client{ nullptr };
     /// Networking server
-    Server* _server = nullptr;
+    Server* _server{ nullptr };
     /// Game editor
-    Editor* _editor = nullptr;
+    Editor* _editor{ nullptr };
 };
 
-namespace Attorney {
-    class PlatformContextKernel {
-        static void onThreadCreated(const PlatformContext& context, const TaskPoolType poolType, const std::thread::id& threadID) {
+namespace Attorney
+{
+    class PlatformContextKernel
+    {
+        static void onThreadCreated(const PlatformContext& context, const TaskPoolType poolType, const std::thread::id& threadID)
+        {
             context.onThreadCreated(poolType, threadID);
         }
 
+        static void setComponentMask( PlatformContext& context, const U32 componentMask )
+        {
+            context.componentMask(componentMask);
+        }
+
         friend class Divide::Kernel;
+        friend void Divide::PlatformContextIdleCall();
     };
 };  // namespace Attorney
 

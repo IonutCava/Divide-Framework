@@ -38,6 +38,7 @@
 #include "Pipeline.h"
 #include "PushConstants.h"
 #include "Platform/Video/GLIM/glim.h"
+#include "Platform/Video/Headers/CommandsImpl.h"
 
 namespace NS_GLIM {
     FWD_DECLARE_MANAGED_CLASS(GLIM_BATCH);
@@ -117,8 +118,8 @@ class IMPrimitive final {
     template<size_t N>
     inline void fromCones(const std::array<IM::ConeDescriptor, N>& cones) { fromCones(cones.data(), cones.size()); }
 
-    void getCommandBuffer(GFX::CommandBuffer& commandBufferInOut);
-    void getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuffer& commandBufferInOut);
+    void getCommandBuffer(GFX::CommandBuffer& commandBufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
+    void getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuffer& commandBufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
 
     PROPERTY_R(Str64, name);
     PROPERTY_RW(bool, forceWireframe, false);
@@ -144,6 +145,8 @@ class IMPrimitive final {
     std::array<Pipeline*, to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT)> _pipelines;
     std::array<U8, to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT)> _indexBufferId;
     GenericVertexData_ptr _dataBuffer = nullptr;
+
+    GFX::MemoryBarrierCommand _memCmd{};
 };
 
 };  // namespace Divide

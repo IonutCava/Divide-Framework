@@ -102,7 +102,7 @@ namespace Divide
         }
     }
 
-    void Gizmo::render( const Camera* camera, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut )
+    void Gizmo::render( const Camera* camera, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
         const auto GetSnapValues = []( const TransformSettings& settings ) -> const F32*
         {
@@ -161,7 +161,7 @@ namespace Divide
 
 
         ImGui::Render();
-        Attorney::EditorGizmo::renderDrawList( _parent, ImGui::GetDrawData(), targetViewport, -1, bufferInOut );
+        Attorney::EditorGizmo::renderDrawList( _parent, ImGui::GetDrawData(), 1, targetViewport, bufferInOut, memCmdInOut);
     }
 
     void Gizmo::applyTransforms( const SelectedNode& node, const vec3<F32>& position, const vec3<Angle::DEGREES<F32>>& euler, const vec3<F32>& scale )

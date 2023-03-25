@@ -40,6 +40,8 @@ namespace Divide {
 struct Configuration final : XML::IXMLSerializable {
     struct Debug {
         bool enableRenderAPIDebugging = false;
+        bool enableRenderAPIBestPractices = false;
+        bool assertOnRenderAPIError = false;
         bool useGeometryCache = true;
         bool useVegetationCache = true;
         bool useShaderCache = true;
@@ -56,7 +58,6 @@ struct Configuration final : XML::IXMLSerializable {
             bool particles = true;
             bool decals = true;
         } renderFilter = {};
-        string memFile = "none";
     } debug = {};
     
     string language = "enGB";

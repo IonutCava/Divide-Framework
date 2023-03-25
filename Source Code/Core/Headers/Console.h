@@ -38,29 +38,8 @@ namespace Divide {
 constexpr int CONSOLE_OUTPUT_BUFFER_SIZE = 4096 * 16 * 2;
 constexpr int MAX_CONSOLE_ENTRIES = 128;
 
-class Console : NonCopyable {
-   public:
-     enum class EntryType : U8 {
-         INFO = 0,
-         WARNING,
-         ERR,
-         COMMAND
-    };
-
-    struct OutputEntry {
-        string _text{};
-        EntryType _type = EntryType::INFO;
-    };
-
-    using ConsolePrintCallback = std::function<void(const OutputEntry&)>;
-
-   public:
-    static void flush();
-    static void start() noexcept;
-    static void stop();
-
-    static void printCopyrightNotice();
-
+struct Console : NonCopyable
+{
     template <typename... T>
     NO_INLINE static void printfn(const char* format, T&&... args);
     template <typename... T>
@@ -112,62 +91,64 @@ class Console : NonCopyable {
     template <typename... T>
     NO_INLINE static void d_errorf(std::ofstream& outStream, const char* format, T&&... args);
 
-    [[nodiscard]]
-    static bool timeStampsEnabled() noexcept { return _timestamps; }
-    static void toggleTimeStamps(const bool state) noexcept { _timestamps = state; }
 
-    [[nodiscard]]
-    static bool threadIDEnabled() noexcept { return _threadID; }
-    static void togglethreadID(const bool state) noexcept { _threadID = state; }
+    enum class EntryType : U8
+    {
+        INFO = 0,
+        WARNING,
+        ERR,
+        COMMAND
+    };
 
-    static void toggleTextDecoration(const bool state) noexcept { toggleTimeStamps(state); togglethreadID(state); }
+    enum class Flags : U8
+    {
+        DECORATE_TIMESTAMP = toBit( 1 ),
+        DECORATE_THREAD_ID = toBit( 2 ),
+        DECORATE_SEVERITY = toBit( 3 ),
+        ENABLE_OUTPUT = toBit( 4 ),
+        ENABLE_ERROR_STREAM = toBit( 5 ),
+        PRINT_IMMEDIATE = toBit(6),
+        COUNT = 6
+    };
 
-    [[nodiscard]]
-    static bool enabled() noexcept { return _enabled; }
-    static void toggle(const bool state) noexcept { _enabled = state; }
+    struct OutputEntry
+    {
+        string _text{};
+        EntryType _type{ EntryType::INFO };
+    };
 
-    [[nodiscard]]
-    static bool immediateModeEnabled() noexcept { return _immediateMode; }
-    static void toggleImmediateMode(const bool state) noexcept { _immediateMode = state; }
+    using ConsolePrintCallback = std::function<void( const OutputEntry& )>;
+    struct ConsolePrintCallbackEntry 
+    {
+        ConsolePrintCallback _cbk;
+        size_t _id{ SIZE_MAX };
+    };
 
-    [[nodiscard]]
-    static bool errorStreamEnabled() noexcept { return _errorStreamEnabled; }
-    static void toggleErrorStream(const bool state) noexcept { _errorStreamEnabled = state; }
+    static void Flush();
+    static void Start() noexcept;
+    static void Stop();
 
-    [[nodiscard]]
-    static size_t bindConsoleOutput(const ConsolePrintCallback& guiConsoleCallback) {
-        _guiConsoleCallbacks.push_back(guiConsoleCallback);
-        return _guiConsoleCallbacks.size() - 1;
-    }
+                  static void  ToggleFlag( const Flags flag, const bool state ) { ToggleBit(s_flags, flag, state); }
+    [[nodiscard]] static bool  IsFlagSet( const Flags flag ) { return TestBit(s_flags, flag); }
 
-    [[nodiscard]]
-    static bool unbindConsoleOutput(size_t& index) {
-        if (index < _guiConsoleCallbacks.size()) {
-            _guiConsoleCallbacks.erase(std::begin(_guiConsoleCallbacks) + index);
-            index = SIZE_MAX;
-            return true;
-        }
-        return false;
-    }
+    [[nodiscard]] static size_t BindConsoleOutput(const ConsolePrintCallback& guiConsoleCallback);
+    [[nodiscard]] static bool   UnbindConsoleOutput(size_t& index);
 
-   protected:
-    [[nodiscard]]
-    static const char* formatText(const char* format, ...) noexcept;
-    static void output(const char* text, bool newline, EntryType type);
-    static void output(std::ostream& outStream, const char* text, bool newline, EntryType type);
-    static void decorate(std::ostream& outStream, const char* text, bool newline, EntryType type);
-    static void printToFile(const OutputEntry& entry);
+    static void PrintCopyrightNotice();
 
-   private:
-    static vector<ConsolePrintCallback> _guiConsoleCallbacks;
-    static bool _timestamps;
-    static bool _threadID;
-    static bool _enabled;
-    static bool _immediateMode;
-    static bool _errorStreamEnabled;
+    protected:
+        static void Output(const char* text, bool newline, EntryType type);
+        static void Output(std::ostream& outStream, const char* text, bool newline, EntryType type);
+        static void DecorateAndPrint(std::ostream& outStream, const char* text, bool newline, EntryType type);
+        static void PrintToFile(const OutputEntry& entry);
 
-    static std::atomic_bool _running;
+        [[nodiscard]] static const char* FormatText( const char* format, ... ) noexcept;
 
+    private:
+        static SharedMutex                       s_callbackLock;
+        static vector<ConsolePrintCallbackEntry> s_guiConsoleCallbacks;
+        static U32                               s_flags;
+        static std::                             atomic_bool s_running;
 };
 
 }  // namespace Divide

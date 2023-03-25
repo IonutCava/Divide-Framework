@@ -111,7 +111,7 @@ namespace Divide
             _GUI->modifyText( "underwater",
                              Util::StringFormat( "Underwater [ %s ] | WaterLevel [%f] ]",
                                                  state()->playerState( 0 ).cameraUnderwater() ? "true" : "false",
-                                                 state()->waterBodies()._data[0]._positionW.y ), false );
+                                                 state()->waterBodies()[0]._positionW.y ), false );
             _GUI->modifyText( "RenderBinCount",
                              Util::StringFormat( "Number of items in Render Bin: %d.",
                                                  _context.kernel().renderPassManager()->getLastTotalBinSize( RenderStage::DISPLAY ) ), false );

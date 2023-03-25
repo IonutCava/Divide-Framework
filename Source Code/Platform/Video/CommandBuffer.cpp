@@ -79,6 +79,18 @@ namespace
         return initialSize != commandOrder.size();
     }
 
+    inline void RemoveEmptyLocks( GFX::MemoryBarrierCommand* memCmd )
+    {
+        dvd_erase_if( memCmd->_bufferLocks, []( const BufferLock& lock )
+        {
+            return lock._buffer == nullptr || lock._range._length == 0u;
+        });
+        dvd_erase_if( memCmd->_textureLayoutChanges, []( const TextureLayoutChange& lock )
+        {
+            return lock._sourceLayout == lock._targetLayout ||
+                  (lock._targetView._srcTexture._internalTexture == nullptr && lock._targetView._srcTexture._ceguiTex == nullptr);
+        });
+    }
 }; //namespace
 
     void CommandBuffer::add( const CommandBuffer& other )
@@ -206,7 +218,6 @@ namespace
             if ( error != GFX::ErrorType::NONE )
             {
                 Console::errorfn( Locale::Get( _ID( "ERROR_GFX_INVALID_COMMAND_BUFFER" ) ), lastCmdIndex, toString().c_str() );
-                Console::flush();
                 DIVIDE_UNEXPECTED_CALL_MSG( Util::StringFormat( "GFX::CommandBuffer::batch error [ %s ]: Invalid command buffer. Check error log!", GFX::Names::errorType[to_base( error )] ).c_str() );
             }
         }
@@ -294,10 +305,9 @@ namespace
                 case CommandType::MEMORY_BARRIER:
                 {
                     auto memCmd = get<MemoryBarrierCommand>( cmd );
+                    RemoveEmptyLocks( memCmd );
 
-                    erase = memCmd->_barrierMask == 0u &&
-                            IsEmpty( memCmd->_bufferLocks ) &&
-                            IsEmpty( memCmd->_fenceLocks ) &&
+                    erase = IsEmpty( memCmd->_bufferLocks ) &&
                             IsEmpty( memCmd->_textureLayoutChanges);
                 } break;
                 case CommandType::DRAW_TEXT:
@@ -427,6 +437,12 @@ namespace
                         return { ErrorType::MISSING_END_RENDER_PASS, cmdIndex };
                     }
                     pushedPass = true;
+
+                    auto beginRenderPassCmd = get<GFX::BeginRenderPassCommand>( cmd );
+                    if (!std::any_of( beginRenderPassCmd->_descriptor._writeLayers.cbegin(), beginRenderPassCmd->_descriptor._writeLayers.cend(), []( const U16 it ){return it != INVALID_INDEX;}))
+                    {
+                        return { ErrorType::INVALID_BEGIN_RENDER_PASS, cmdIndex };
+                    }
                 } break;
                 case CommandType::END_RENDER_PASS:
                 {
@@ -675,19 +691,29 @@ namespace
 
     bool Merge( GFX::MemoryBarrierCommand* lhs, GFX::MemoryBarrierCommand* rhs )
     {
-        BitMaskSet( lhs->_barrierMask, rhs->_barrierMask );
-        lhs->_syncFlag = std::max( lhs->_syncFlag, rhs->_syncFlag );
-
         for ( const BufferLock& otherLock : rhs->_bufferLocks )
         {
             bool found = false;
             for ( BufferLock& ourLock : lhs->_bufferLocks )
             {
-                if ( ourLock._targetBuffer->getGUID() == otherLock._targetBuffer->getGUID() )
+                if ( ourLock._buffer && 
+                     otherLock._buffer &&
+                     ourLock._buffer->getGUID() == otherLock._buffer->getGUID() )
                 {
-                    Merge( ourLock._range, otherLock._range );
                     found = true;
-                    break;
+                }
+
+                if ( found)
+                {
+                    if ( ourLock._type == otherLock._type )
+                    {
+                        Merge( ourLock._range, otherLock._range );
+                        break;
+                    }
+                    else
+                    {
+                        found = false;
+                    }
                 }
             }
             if ( !found )
@@ -696,34 +722,15 @@ namespace
             }
         }
 
-        for ( GenericVertexData* otherLock : rhs->_fenceLocks )
-        {
-            bool found = false;
-            for ( GenericVertexData* ourLock : lhs->_fenceLocks )
-            {
-                if ( ourLock->getGUID() == otherLock->getGUID() )
-                {
-                    found = true;
-                    break;
-                }
-            }
-            if ( !found )
-            {
-                lhs->_fenceLocks.push_back( otherLock );
-            }
-        }
-
         for ( const TextureLayoutChange& otherChange : rhs->_textureLayoutChanges )
         {
             bool found = false;
             for ( TextureLayoutChange& ourChange : lhs->_textureLayoutChanges )
             {
-                if ( ourChange._targetView._srcTexture._internalTexture != nullptr &&
-                     otherChange._targetView._srcTexture._internalTexture != nullptr &&
-                     otherChange._targetView._srcTexture._internalTexture->getGUID() == ourChange._targetView._srcTexture._internalTexture->getGUID())
+                if ( ourChange._targetView == otherChange._targetView)
                 {
                     found = true;
-                    ourChange._layout = otherChange._layout;
+                    ourChange._targetLayout = otherChange._targetLayout;
                     break;
                 }
             }

@@ -61,6 +61,8 @@ class SceneGraphNode;
 class PhysX final : public PhysicsAPIWrapper {
 
 public:
+    explicit PhysX( PlatformContext& context );
+
     [[nodiscard]] ErrorCode initPhysicsAPI(U8 targetFrameRate, F32 simSpeed) override;
     [[nodiscard]] bool closePhysicsAPI() override;
     void update(U64 deltaTimeUS) override;

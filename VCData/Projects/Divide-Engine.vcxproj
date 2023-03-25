@@ -687,6 +687,7 @@
     <ClCompile Include="../../Source Code/Scripting\Script.cpp" />
     <ClCompile Include="../../Source Code/Scripting\ScriptBindings.cpp" />
     <ClCompile Include="../../Source Code\Rendering\Lighting\Light.cpp" />
+    <ClCompile Include="..\..\Source Code\Core\LoopTimingData.cpp" />
     <ClCompile Include="..\..\Source Code\ECS\Components\AnimationComponent.cpp" />
     <ClCompile Include="..\..\Source Code\ECS\Components\BoundsComponent.cpp" />
     <ClCompile Include="..\..\Source Code\ECS\Components\DirectionalLightComponent.cpp" />
@@ -739,7 +740,7 @@
     <ClCompile Include="..\..\3rdParty\EntityComponentSystem\src\util\FamilyTypeID.cpp" />
     <ClCompile Include="..\..\3rdParty\EntityComponentSystem\src\util\Timer.cpp" />
     <ClCompile Include="..\..\Source Code\Geometry\Material\MaterialProperties.cpp" />
-    <ClCompile Include="..\..\Source Code\Rendering\FrameListener.cpp" />
+    <ClCompile Include="..\..\Source Code\Physics\PhysicsAPIWrapper.cpp" />
     <ClCompile Include="..\..\Source Code\Rendering\PostFX\CustomOperators\MotionBlurPreRenderOperator.cpp" />
     <ClCompile Include="..\..\Source Code\Rendering\PostFX\CustomOperators\SSRPreRenderOperator.cpp" />
     <ClCompile Include="..\..\Source Code\Rendering\RenderPass\NodeBufferedData.cpp" />
@@ -800,7 +801,6 @@
     <ClInclude Include="../../Source Code/Rendering\Camera\Headers\Camera.h" />
     <ClInclude Include="../../Source Code/Rendering\Camera\Headers\Frustum.h" />
     <ClInclude Include="../../Source Code/Rendering\Headers\ClipRegion.h" />
-    <ClInclude Include="../../Source Code/Rendering\Headers\FrameListener.h" />
     <ClInclude Include="../../Source Code/Rendering\Headers\Renderer.h" />
     <ClInclude Include="../../Source Code/Rendering\Lighting\Headers\LightPool.h" />
     <ClInclude Include="../../Source Code/Rendering\Lighting\ShadowMapping\Headers\CubeShadowMapGenerator.h" />
@@ -829,6 +829,7 @@
     <ClInclude Include="../../Source Code/Core\Headers\PlatformContextComponent.h" />
     <ClInclude Include="../../Source Code/Rendering\Camera\Headers\CameraSnapshot.h" />
     <ClInclude Include="../../Source Code\Rendering\Lighting\Headers\Light.h" />
+    <ClInclude Include="..\..\Source Code\Core\Headers\LoopTimingData.h" />
     <ClInclude Include="..\..\Source Code\ECS\Components\Headers\AnimationComponent.h" />
     <ClInclude Include="..\..\Source Code\ECS\Components\Headers\BoundsComponent.h" />
     <ClInclude Include="..\..\Source Code\ECS\Components\Headers\DirectionalLightComponent.h" />

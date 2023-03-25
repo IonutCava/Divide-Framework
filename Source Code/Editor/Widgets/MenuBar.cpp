@@ -90,7 +90,7 @@ namespace Divide
         g_scenePath = Paths::g_rootPath + Paths::g_xmlDataLocation + Paths::g_scenesLocation;
     }
 
-    void MenuBar::draw()
+    void MenuBar::draw( )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
@@ -225,6 +225,10 @@ namespace Divide
                 if ( ImGui::BeginPopupModal( "Confirm Quit", nullptr, ImGuiWindowFlags_AlwaysAutoResize ) )
                 {
                     ImGui::Text( "Are you sure you want to quit?" );
+                    ImGui::NewLine();
+                    static bool clearCache = false;
+                    ImGui::Checkbox( "Clear All Cache Items", &clearCache );
+                    ImGui::NewLine();
                     ImGui::Separator();
 
                     if ( ImGui::Button( "Cancel", ImVec2( 120, 0 ) ) )
@@ -238,7 +242,7 @@ namespace Divide
                     {
                         ImGui::CloseCurrentPopup();
                         _quitPopup = false;
-                        context().app().RequestShutdown();
+                        context().app().RequestShutdown( clearCache );
                     }
                     ImGui::EndPopup();
                 }
@@ -249,6 +253,10 @@ namespace Divide
                 if ( ImGui::BeginPopupModal( "Confirm Restart", nullptr, ImGuiWindowFlags_AlwaysAutoResize ) )
                 {
                     ImGui::Text( "Are you sure you want to restart the application?" );
+                    ImGui::NewLine();
+                    static bool clearCache = false;
+                    ImGui::Checkbox("Clear All Cache Items", &clearCache);
+                    ImGui::NewLine();
                     ImGui::Separator();
 
                     if ( ImGui::Button( "Cancel", ImVec2( 120, 0 ) ) )
@@ -262,7 +270,7 @@ namespace Divide
                     {
                         ImGui::CloseCurrentPopup();
                         _restartPopup = false;
-                        context().app().RequestRestart();
+                        context().app().RequestRestart(clearCache);
                     }
                     ImGui::EndPopup();
                 }
@@ -527,11 +535,10 @@ namespace Divide
             {
                 GFXDevice& gfx = _context.gfx();
                 const Configuration& config = _context.config();
-                const U8 maxMSAASamples = gfx.gpuState().maxMSAASampleCount();
 
                 if ( ImGui::BeginMenu( "MSAA" ) )
                 {
-                    for ( U8 i = 0; 1 << i <= maxMSAASamples; ++i )
+                    for ( U8 i = 0; 1 << i <= DisplayManager::MaxMSAASamples(); ++i )
                     {
                         const U8 sampleCount = i == 0u ? 0u : 1 << i;
                         if ( sampleCount % 2 == 0 )
@@ -556,7 +563,7 @@ namespace Divide
                             ? config.rendering.shadowMapping.csm.MSAASamples
                             : config.rendering.shadowMapping.spot.MSAASamples;
 
-                        for ( U8 i = 0; 1 << i <= maxMSAASamples; ++i )
+                        for ( U8 i = 0; 1 << i <= DisplayManager::MaxMSAASamples(); ++i )
                         {
                             const U8 sampleCount = i == 0u ? 0u : 1 << i;
                             if ( sampleCount % 2 == 0 )

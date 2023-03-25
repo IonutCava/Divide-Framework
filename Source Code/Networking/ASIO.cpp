@@ -49,11 +49,11 @@ namespace Divide
             _localClient = new Client( this, _ioService, _debugOutput );
             _work.reset( new boost::asio::io_context::work( _ioService ) );
             _localClient->start( res.resolve( address, Util::to_string( port ) ) );
-            _thread = MemoryManager_NEW std::thread( [&]
+            _thread = eastl::make_unique<std::thread>( [&]
                                                      {
                                                          _ioService.run();
                                                      } );
-            SetThreadName( _thread, "ASIO_THREAD" );
+            SetThreadName( _thread.get(), "ASIO_THREAD");
 
             _ioService.poll();
             _connected = true;

@@ -77,7 +77,7 @@ class NOINITVTABLE PreRenderOperator {
     GFXDevice& _context;
 
     PreRenderBatch& _parent;
-    RTDrawDescriptor _screenOnlyDraw;
+    RTDrawDescriptor _screenOnlyDraw{};
     FilterType  _operatorType = FilterType::FILTER_COUNT;
     bool _enabled = true;
 };

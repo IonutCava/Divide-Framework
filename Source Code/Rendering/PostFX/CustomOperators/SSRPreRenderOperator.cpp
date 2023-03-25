@@ -103,8 +103,9 @@ void SSRPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX::
         GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
         renderPassCmd->_name = "DO_SSR_CLEAR_TARGET";
         renderPassCmd->_target = RenderTargetNames::SSR_RESULT;
-        renderPassCmd->_clearDescriptor._clearDepth = true;
-        renderPassCmd->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO, RTColourAttachmentSlot::SLOT_0 };
+        renderPassCmd->_descriptor = _screenOnlyDraw;
+        renderPassCmd->_clearDescriptor[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
+        renderPassCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { VECTOR4_ZERO, true };
 
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
     }
@@ -156,6 +157,7 @@ bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& 
     GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
     renderPassCmd->_target = RenderTargetNames::SSR_RESULT;
     renderPassCmd->_descriptor = _screenOnlyDraw;
+    renderPassCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { VECTOR4_ZERO, true };
     renderPassCmd->_name = "DO_SSR_PASS";
 
     GFX::EnqueueCommand(bufferInOut, _pipelineCmd);

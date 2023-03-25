@@ -32,176 +32,237 @@
 #ifndef _CORE_CONSOLE_INL_
 #define _CORE_CONSOLE_INL_
 
-struct sink { 
+struct sink 
+{ 
     template<typename ...Args> 
     explicit sink(Args const& ...) noexcept {}
 };
 
 namespace Divide {
 template <typename... Args>
-NO_INLINE void Console::d_printfn(const char* format, Args&&... args) {
-    if constexpr(Config::Build::IS_DEBUG_BUILD) {
+NO_INLINE void Console::d_printfn(const char* format, Args&&... args)
+{
+    if constexpr(Config::Build::IS_DEBUG_BUILD)
+    {
         printfn(format, FWD(args)...);
-    } else {
+    }
+    else
+    {
         sink{ format, args ... };
     }
 }
 
 template <typename... Args>
-NO_INLINE void Console::d_printf(const char* format, Args&&... args) {
-    if constexpr(Config::Build::IS_DEBUG_BUILD) {
+NO_INLINE void Console::d_printf(const char* format, Args&&... args)
+{
+    if constexpr(Config::Build::IS_DEBUG_BUILD)
+    {
         printf(format, FWD(args)...);
-    } else {
+    }
+    else
+    {
         sink{ format, args ... };
     }
 }
 
 template <typename... Args>
-NO_INLINE void Console::d_warnfn(const char* format, Args&&... args) {
-    if constexpr(Config::Build::IS_DEBUG_BUILD) {
+NO_INLINE void Console::d_warnfn(const char* format, Args&&... args)
+{
+    if constexpr(Config::Build::IS_DEBUG_BUILD)
+    {
         warnfn(format, FWD(args)...);
-    } else {
+    }
+    else
+    {
         sink{ format, args ... };
     }
 }
 
 template <typename... Args>
-NO_INLINE void Console::d_warnf(const char* format, Args&&... args) {
-    if constexpr(Config::Build::IS_DEBUG_BUILD) {
+NO_INLINE void Console::d_warnf(const char* format, Args&&... args)
+{
+    if constexpr(Config::Build::IS_DEBUG_BUILD)
+    {
         warnf(format, FWD(args)...);
-    } else {
+    }
+    else
+    {
         sink{ format, args ... };
     }
 }
 
 template <typename... Args>
-NO_INLINE void Console::d_errorfn(const char* format, Args&&... args) {
-    if constexpr (Config::Build::IS_DEBUG_BUILD) {
+NO_INLINE void Console::d_errorfn(const char* format, Args&&... args)
+{
+    if constexpr (Config::Build::IS_DEBUG_BUILD)
+    {
         errorfn(format, FWD(args)...);
-    } else {
+    }
+    else
+    {
         sink{ format, args ... };
     }
 }
 
 template <typename... Args>
-NO_INLINE void Console::d_errorf(const char* format, Args&&... args) {
-    if constexpr (Config::Build::IS_DEBUG_BUILD) {
+NO_INLINE void Console::d_errorf(const char* format, Args&&... args)
+{
+    if constexpr (Config::Build::IS_DEBUG_BUILD)
+    {
         errorf(format, FWD(args)...);
-    } else {
+    }
+    else
+    {
         sink{ format, args ... };
     }
 }
 
 template <typename... Args>
-NO_INLINE void Console::printfn(const char* format, Args&&... args) {
-    output(formatText(format, FWD(args)...), true, EntryType::INFO);
+NO_INLINE void Console::printfn(const char* format, Args&&... args)
+{
+    Output( FormatText(format, FWD(args)...), true, EntryType::INFO);
 }
 
 template <typename... Args>
-NO_INLINE void Console::printf(const char* format, Args&&... args) {
-    output(formatText(format, FWD(args)...), false, EntryType::INFO);
+NO_INLINE void Console::printf(const char* format, Args&&... args)
+{
+    Output( FormatText(format, FWD(args)...), false, EntryType::INFO);
 }
 
 template <typename... Args>
-NO_INLINE void Console::warnfn(const char* format, Args&&... args) {
-    output(formatText(format, FWD(args)...), true, EntryType::WARNING);
+NO_INLINE void Console::warnfn(const char* format, Args&&... args)
+{
+    Output( FormatText(format, FWD(args)...), true, EntryType::WARNING);
 }
 
 template <typename... Args>
-NO_INLINE void Console::warnf(const char* format, Args&&... args) {
-    output(formatText(format, FWD(args)...), false, EntryType::WARNING);
+NO_INLINE void Console::warnf(const char* format, Args&&... args)
+{
+    Output( FormatText(format, FWD(args)...), false, EntryType::WARNING);
 }
 
 template <typename... Args>
-NO_INLINE void Console::errorfn(const char* format, Args&&... args) {
-    output(formatText(format, FWD(args)...), true, EntryType::ERR);
+NO_INLINE void Console::errorfn(const char* format, Args&&... args)
+{
+    Output( FormatText(format, FWD(args)...), true, EntryType::ERR);
 }
 
 template <typename... Args>
-NO_INLINE void Console::errorf(const char* format, Args&&... args) {
-    output(formatText(format, FWD(args)...), false, EntryType::ERR);
+NO_INLINE void Console::errorf(const char* format, Args&&... args)
+{
+    Output( FormatText(format, FWD(args)...), false, EntryType::ERR);
 }
 
 template <typename... Args>
-NO_INLINE void Console::printfn(std::ofstream& outStream, const char* format, Args&&... args) {
-    output(outStream, formatText(format, FWD(args)...), true, EntryType::INFO);
+NO_INLINE void Console::printfn(std::ofstream& outStream, const char* format, Args&&... args)
+{
+    Output(outStream, FormatText(format, FWD(args)...), true, EntryType::INFO);
 }
 
 template <typename... Args>
-NO_INLINE void Console::printf(std::ofstream& outStream, const char* format, Args&&... args) {
-    output(outStream, formatText(format, FWD(args)...), false, EntryType::INFO);
+NO_INLINE void Console::printf(std::ofstream& outStream, const char* format, Args&&... args)
+{
+    Output(outStream, FormatText(format, FWD(args)...), false, EntryType::INFO);
 }
 
 template <typename... Args>
-NO_INLINE void Console::warnfn(std::ofstream& outStream, const char* format, Args&&... args) {
-    output(outStream, formatText(format, FWD(args)...), true, EntryType::WARNING);
+NO_INLINE void Console::warnfn(std::ofstream& outStream, const char* format, Args&&... args)
+{
+    Output(outStream, FormatText(format, FWD(args)...), true, EntryType::WARNING);
 }
 
 template <typename... Args>
-NO_INLINE void Console::warnf(std::ofstream& outStream, const char* format, Args&&... args) {
-    output(outStream, formatText(format, FWD(args)...), false, EntryType::WARNING);
+NO_INLINE void Console::warnf(std::ofstream& outStream, const char* format, Args&&... args)
+{
+    Output(outStream, FormatText(format, FWD(args)...), false, EntryType::WARNING);
 }
 
 template <typename... Args>
-NO_INLINE void Console::errorfn(std::ofstream& outStream, const char* format, Args&&... args) {
-    output(outStream, formatText(format, FWD(args)...), true, EntryType::ERR);
+NO_INLINE void Console::errorfn(std::ofstream& outStream, const char* format, Args&&... args)
+{
+    Output(outStream, FormatText(format, FWD(args)...), true, EntryType::ERR);
 }
 
 template <typename... Args>
-NO_INLINE void Console::errorf(std::ofstream& outStream, const char* format, Args&&... args) {
-    output(outStream, formatText(format, FWD(args)...), false, EntryType::ERR);
+NO_INLINE void Console::errorf(std::ofstream& outStream, const char* format, Args&&... args)
+{
+    Output(outStream, FormatText(format, FWD(args)...), false, EntryType::ERR);
 }
 
 template <typename... Args>
-NO_INLINE void Console::d_printfn(std::ofstream& outStream, const char* format, Args&&... args) {
-    if constexpr (Config::Build::IS_DEBUG_BUILD) {
+NO_INLINE void Console::d_printfn(std::ofstream& outStream, const char* format, Args&&... args)
+{
+    if constexpr (Config::Build::IS_DEBUG_BUILD)
+    {
         printfn(outStream, format, FWD(args)...);
-    } else {
+    }
+    else
+    {
         sink{ outStream, format, args ... };
     }
 }
 
 template <typename... Args>
-NO_INLINE void Console::d_printf(std::ofstream& outStream, const char* format, Args&&... args) {
-    if constexpr (Config::Build::IS_DEBUG_BUILD) {
+NO_INLINE void Console::d_printf(std::ofstream& outStream, const char* format, Args&&... args)
+{
+    if constexpr (Config::Build::IS_DEBUG_BUILD)
+    {
         printf(outStream, format, FWD(args)...);
-    } else {
+    }
+    else
+    {
         sink{ outStream, format, args ... };
     }
 }
 
 template <typename... Args>
-NO_INLINE void Console::d_warnfn(std::ofstream& outStream, const char* format, Args&&... args) {
-    if constexpr (Config::Build::IS_DEBUG_BUILD) {
+NO_INLINE void Console::d_warnfn(std::ofstream& outStream, const char* format, Args&&... args)
+{
+    if constexpr (Config::Build::IS_DEBUG_BUILD)
+    {
         warnfn(outStream, format, FWD(args)...);
-    } else {
+    }
+    else
+    {
         sink{ outStream, format, args ... };
     }
 }
 
 template <typename... Args>
-NO_INLINE void Console::d_warnf(std::ofstream& outStream, const char* format, Args&&... args) {
-    if constexpr (Config::Build::IS_DEBUG_BUILD) {
+NO_INLINE void Console::d_warnf(std::ofstream& outStream, const char* format, Args&&... args)
+{
+    if constexpr (Config::Build::IS_DEBUG_BUILD)
+    {
         warnf(outStream, format, FWD(args)...);
-    } else {
+    }
+    else
+    {
         sink{ outStream, format, args ... };
     }
 }
 
 template <typename... Args>
-NO_INLINE void Console::d_errorfn(std::ofstream& outStream, const char* format, Args&&... args) {
-    if constexpr (Config::Build::IS_DEBUG_BUILD) {
+NO_INLINE void Console::d_errorfn(std::ofstream& outStream, const char* format, Args&&... args)
+{
+    if constexpr (Config::Build::IS_DEBUG_BUILD)
+    {
         errorfn(outStream, format, FWD(args)...);
-    } else {
+    }
+    else
+    {
         sink{ outStream, format, args ... };
     }
 }
 
 template <typename... Args>
-NO_INLINE void Console::d_errorf(std::ofstream& outStream, const char* format, Args&&... args) {
-    if constexpr (Config::Build::IS_DEBUG_BUILD) {
+NO_INLINE void Console::d_errorf(std::ofstream& outStream, const char* format, Args&&... args)
+{
+    if constexpr (Config::Build::IS_DEBUG_BUILD)
+    {
         errorf(outStream, format, FWD(args)...);
-    } else {
+    }
+    else
+    {
         sink{ outStream, format, args ... };
     }
 }

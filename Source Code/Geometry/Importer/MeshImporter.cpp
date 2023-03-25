@@ -135,6 +135,7 @@ namespace Import {
         dataOut << _name;
         dataOut << _index;
         dataOut << _boneCount;
+        dataOut << _lodCount;
         dataOut << _partitionIDs;
         dataOut << _minPos;
         dataOut << _maxPos;
@@ -149,6 +150,7 @@ namespace Import {
         dataIn >> _name;
         dataIn >> _index;
         dataIn >> _boneCount;
+        dataIn >> _lodCount;
         dataIn >> _partitionIDs;
         dataIn >> _minPos;
         dataIn >> _maxPos;
@@ -285,26 +287,32 @@ namespace Import {
 
         std::atomic_uint taskCounter(0u);
 
-        for (const Import::SubMeshData& subMeshData : dataIn._subMeshData) {
+        for (const Import::SubMeshData& subMeshData : dataIn._subMeshData)
+        {
             // Submesh is created as a resource when added to the scenegraph
             SubMesh_ptr tempSubMesh = CreateResource<SubMesh>(cache, ResourceDescriptor(subMeshData.name()));
             tempSubMesh->id(subMeshData.index());
             tempSubMesh->setObjectFlag(subMeshData.boneCount() > 0u ? Object3D::ObjectFlag::OBJECT_FLAG_SKINNED : Object3D::ObjectFlag::OBJECT_FLAG_NONE);
 
             // it may already be loaded
-            if (!tempSubMesh->parentMesh()) {
+            if (!tempSubMesh->parentMesh())
+            {
                 Attorney::MeshImporter::addSubMesh(*mesh, tempSubMesh);
 
-                for (U8 i = 0u, j = 0u; i < Import::MAX_LOD_LEVELS; ++i) {
-                    if (!subMeshData._triangles[i].empty()) {
+                for (U8 lod = 0u, j = 0u; lod < subMeshData.lodCount(); ++lod)
+                {
+                    if (!subMeshData._triangles[lod].empty())
+                    {
                         tempSubMesh->setGeometryPartitionID(j, subMeshData._partitionIDs[j]);
                         tempSubMesh->addTriangles(subMeshData._partitionIDs[j], subMeshData._triangles[j]);
                         ++j;
                     }
                 }
+
                 Attorney::SubMeshMeshImporter::setBoundingBox(*tempSubMesh, subMeshData.minPos(), subMeshData.maxPos(), subMeshData.worldOffset());
 
-                if (!tempSubMesh->getMaterialTpl()) {
+                if (!tempSubMesh->getMaterialTpl())
+                {
                     tempSubMesh->setMaterialTpl(loadSubMeshMaterial(cache, subMeshData._material, loadedFromCache, subMeshData.boneCount() > 0, taskCounter));
                 }
             }

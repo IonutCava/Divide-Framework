@@ -25,6 +25,8 @@
 #include "Geometry/Material/Headers/Material.h"
 #include "Geometry/Material/Headers/ShaderComputeQueue.h"
 
+#include "Platform/File/Headers/FileManagement.h"
+
 #include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Video/Headers/IMPrimitive.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
@@ -49,6 +51,62 @@
 #include "Platform/Video/RenderBackend/Vulkan/Textures/Headers/vkTexture.h"
 
 #include "Headers/CommandBufferPool.h"
+
+#define FONTSTASH_IMPLEMENTATION
+#include "Headers/fontstash.h"
+
+namespace
+{
+    static int dummyfons__renderCreate( void* userPtr, int width, int height )
+    {
+        return 1;
+    }
+    static int dummyfons__renderResize( void* userPtr, int width, int height )
+    {
+        // Reuse create to resize too.
+        return dummyfons__renderCreate( userPtr, width, height );
+    }
+    static void dummyfons__renderUpdate( void* userPtr, int* rect, const unsigned char* data )
+    {
+    }
+    static void dummyfons__renderDraw( void* userPtr, const FONSvert* verts, int nverts )
+    {
+    }
+    static void dummyfons__renderDelete( void* userPtr )
+    {
+    }
+};
+
+FONS_DEF FONScontext* dummyfonsCreate( int width, int height, int flags )
+{
+    FONSparams params;
+
+    FONScontext* dummy = (FONScontext*)malloc( sizeof( FONScontext ) );
+    if ( dummy == nullptr ) goto error;
+    memset( dummy, 0, sizeof( FONScontext ) );
+
+    memset( &params, 0, sizeof params );
+    params.width = width;
+    params.height = height;
+    params.flags = (unsigned char)flags;
+    params.renderCreate = dummyfons__renderCreate;
+    params.renderResize = dummyfons__renderResize;
+    params.renderUpdate = dummyfons__renderUpdate;
+    params.renderDraw = dummyfons__renderDraw;
+    params.renderDelete = dummyfons__renderDelete;
+    params.userPtr = dummy;
+
+    return fonsCreateInternal( &params );
+
+error:
+    if ( dummy != nullptr ) free( dummy );
+    return nullptr;
+}
+
+FONS_DEF void dummyfonsDelete( FONScontext* ctx )
+{
+    fonsDeleteInternal( ctx );
+}
 
 namespace Divide
 {
@@ -133,6 +191,74 @@ namespace Divide
 
     DeviceInformation GFXDevice::s_deviceInformation{};
     GFXDevice::IMPrimitivePool GFXDevice::s_IMPrimitivePool{};
+
+
+    ImShaders::ImShaders(GFXDevice& context)
+    {
+        auto cache = context.context().kernel().resourceCache();
+
+        ShaderModuleDescriptor vertModule = {};
+        vertModule._moduleType = ShaderType::VERTEX;
+        vertModule._sourceFile = "ImmediateModeEmulation.glsl";
+
+        ShaderModuleDescriptor fragModule = {};
+        fragModule._moduleType = ShaderType::FRAGMENT;
+        fragModule._sourceFile = "ImmediateModeEmulation.glsl";
+
+        ShaderProgramDescriptor shaderDescriptor = {};
+        shaderDescriptor._modules.push_back( vertModule );
+        shaderDescriptor._modules.push_back( fragModule );
+        {
+            ResourceDescriptor immediateModeShader( "ImmediateModeEmulation" );
+            immediateModeShader.waitForReady( true );
+            immediateModeShader.propertyDescriptor( shaderDescriptor );
+            _imShader = CreateResource<ShaderProgram>( cache, immediateModeShader );
+            assert( _imShader != nullptr );
+        }
+        {
+            shaderDescriptor._globalDefines.emplace_back( "NO_TEXTURE" );
+            ResourceDescriptor immediateModeShader( "ImmediateModeEmulation-NoTexture" );
+            immediateModeShader.waitForReady( true );
+            immediateModeShader.propertyDescriptor( shaderDescriptor );
+            _imShaderNoTexture = CreateResource<ShaderProgram>( cache, immediateModeShader );
+            assert( _imShaderNoTexture != nullptr );
+        }
+        {
+            efficient_clear( shaderDescriptor._globalDefines );
+            shaderDescriptor._modules.back()._defines.emplace_back( "WORLD_PASS" );
+            ResourceDescriptor immediateModeShader( "ImmediateModeEmulation-World" );
+            immediateModeShader.waitForReady( true );
+            immediateModeShader.propertyDescriptor( shaderDescriptor );
+            _imWorldShader = CreateResource<ShaderProgram>( cache, immediateModeShader );
+            assert( _imWorldShader != nullptr );
+        }
+        {
+            shaderDescriptor._globalDefines.emplace_back( "NO_TEXTURE" );
+            ResourceDescriptor immediateModeShader( "ImmediateModeEmulation-World-NoTexture" );
+            immediateModeShader.waitForReady( true );
+            immediateModeShader.propertyDescriptor( shaderDescriptor );
+            _imWorldShaderNoTexture = CreateResource<ShaderProgram>( cache, immediateModeShader );
+        }
+
+
+        {
+            efficient_clear( shaderDescriptor._globalDefines );
+            shaderDescriptor._modules.back()._defines.emplace_back( "OIT_PASS" );
+            ResourceDescriptor immediateModeShader( "ImmediateModeEmulation-OIT" );
+            immediateModeShader.waitForReady( true );
+            immediateModeShader.propertyDescriptor( shaderDescriptor );
+            _imWorldOITShader = CreateResource<ShaderProgram>( cache, immediateModeShader );
+            assert( _imWorldOITShader != nullptr );
+        }
+        {
+            shaderDescriptor._modules.back()._defines.emplace_back( "NO_TEXTURE" );
+            ResourceDescriptor immediateModeShader( "ImmediateModeEmulation-OIT-NoTexture" );
+            immediateModeShader.waitForReady( true );
+            immediateModeShader.propertyDescriptor( shaderDescriptor );
+            _imWorldOITShaderNoTexture = CreateResource<ShaderProgram>( cache, immediateModeShader );
+            assert( _imWorldOITShaderNoTexture != nullptr );
+        }
+    }
 #pragma region Construction, destruction, initialization
 
     void GFXDevice::initDescriptorSets()
@@ -209,9 +335,9 @@ namespace Divide
         dirty( true );
     }
 
-    GFXDevice::GFXDevice( Kernel& parent )
-        : KernelComponent( parent ),
-        PlatformContextComponent( parent.platformContext() )
+    GFXDevice::GFXDevice( PlatformContext& context )
+        : FrameListener( "GFXDevice", context.kernel().frameListenerMgr(), 1u),
+          PlatformContextComponent( context )
     {
         _queuedShadowSampleChange.fill( s_invalidQueueSampleCount );
     }
@@ -256,8 +382,8 @@ namespace Divide
     ErrorCode GFXDevice::initRenderingAPI( const I32 argc, char** argv, const RenderAPI API )
     {
         ErrorCode hardwareState = createAPIInstance( API );
-        Configuration& config = _parent.platformContext().config();
-
+        Configuration& config = context().config();
+        
         if ( hardwareState == ErrorCode::NO_ERR )
         {
             // Initialize the rendering API
@@ -266,6 +392,12 @@ namespace Divide
 
         if ( hardwareState != ErrorCode::NO_ERR )
         {
+            if ( fonsContext() == nullptr )
+            {
+                Console::errorfn( Locale::Get( _ID( "ERROR_FONT_INIT" ) ) );
+                return ErrorCode::FONT_INIT_ERROR;
+            }
+
             // Validate initialization
             return hardwareState;
         }
@@ -292,32 +424,32 @@ namespace Divide
                        Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS *
                        Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < s_deviceInformation._maxWorgroupInvocations );
 
-        const size_t displayCount = gpuState().getDisplayCount();
         string refreshRates;
-        GPUState::GPUVideoMode prevMode;
+
+        DisplayManager::OutputDisplayProperties prevMode;
         const auto printMode = [&prevMode, &refreshRates]()
         {
             Console::printfn( Locale::Get( _ID( "CURRENT_DISPLAY_MODE" ) ),
                               prevMode._resolution.width,
                               prevMode._resolution.height,
-                              prevMode._bitDepth,
+                              prevMode._bitsPerPixel,
                               prevMode._formatName.c_str(),
                               refreshRates.c_str() );
         };
 
-        for ( size_t idx = 0; idx < displayCount; ++idx )
+        for ( size_t idx = 0; idx < DisplayManager::ActiveDisplayCount(); ++idx )
         {
-            const vector<GPUState::GPUVideoMode>& registeredModes = gpuState().getDisplayModes( idx );
+            const auto& registeredModes = DisplayManager::GetDisplayModes( idx );
             if ( !registeredModes.empty() )
             {
                 Console::printfn( Locale::Get( _ID( "AVAILABLE_VIDEO_MODES" ) ), idx, registeredModes.size() );
 
                 prevMode = registeredModes.front();
 
-                for ( const GPUState::GPUVideoMode& it : registeredModes )
+                for ( const auto& it : registeredModes )
                 {
                     if ( prevMode._resolution != it._resolution ||
-                         prevMode._bitDepth != it._bitDepth ||
+                         prevMode._bitsPerPixel != it._bitsPerPixel ||
                          prevMode._formatName != it._formatName )
                     {
                         printMode();
@@ -327,11 +459,11 @@ namespace Divide
 
                     if ( refreshRates.empty() )
                     {
-                        refreshRates = Util::to_string( to_U32( it._refreshRate ) );
+                        refreshRates = Util::to_string( to_U32( it._maxRefreshRate ) );
                     }
                     else
                     {
-                        refreshRates.append( Util::StringFormat( ", %d", it._refreshRate ) );
+                        refreshRates.append( Util::StringFormat( ", %d", it._maxRefreshRate ) );
                     }
                 }
             }
@@ -366,7 +498,7 @@ namespace Divide
 
         initDescriptorSets();
 
-        return ShaderProgram::OnStartup( parent().resourceCache() );
+        return ShaderProgram::OnStartup( context().kernel().resourceCache() );
     }
 
     GFX::MemoryBarrierCommand GFXDevice::updateSceneDescriptorSet( GFX::CommandBuffer& bufferInOut ) const
@@ -400,10 +532,10 @@ namespace Divide
         if ( resizeCamBuffer )
         {
             ShaderBufferDescriptor bufferDescriptor = {};
-            bufferDescriptor._usage = ShaderBuffer::Usage::CONSTANT_BUFFER;
             bufferDescriptor._bufferParams._elementCount = 1;
-            bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
-            bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
+            bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::CONSTANT_BUFFER;
+            bufferDescriptor._bufferParams._flags._updateFrequency = BufferUpdateFrequency::OFTEN;
+            bufferDescriptor._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
             bufferDescriptor._ringBufferLength = to_U32( targetSizeCam );
             bufferDescriptor._bufferParams._elementSize = sizeof( GFXShaderData::CamData );
             bufferDescriptor._initialData = { (Byte*)&_gpuBlock._camData, bufferDescriptor._bufferParams._elementSize };
@@ -421,12 +553,12 @@ namespace Divide
             // Atomic counter for occlusion culling
             ShaderBufferDescriptor bufferDescriptor = {};
             bufferDescriptor._bufferParams._elementCount = 1;
-            bufferDescriptor._usage = ShaderBuffer::Usage::UNBOUND_BUFFER;
             bufferDescriptor._ringBufferLength = to_U32( targetSizeCullCounter );
             bufferDescriptor._bufferParams._hostVisible = true;
             bufferDescriptor._bufferParams._elementSize = 4 * sizeof( U32 );
-            bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-            bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_W_CPU_R;
+            bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::UNBOUND_BUFFER;
+            bufferDescriptor._bufferParams._flags._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+            bufferDescriptor._bufferParams._flags._updateUsage = BufferUpdateUsage::GPU_TO_CPU;
             bufferDescriptor._separateReadWrite = true;
             bufferDescriptor._initialData = { (bufferPtr)&VECTOR4_ZERO._v[0], 4 * sizeof( U32 ) };
             for ( U8 i = 0u; i < GFXBuffers::PerFrameBufferCount; ++i )
@@ -441,8 +573,8 @@ namespace Divide
     ErrorCode GFXDevice::postInitRenderingAPI( const vec2<U16> renderResolution )
     {
         std::atomic_uint loadTasks = 0;
-        ResourceCache* cache = parent().resourceCache();
-        const Configuration& config = _parent.platformContext().config();
+        ResourceCache* cache = context().kernel().resourceCache();
+        const Configuration& config = context().config();
 
         IMPrimitive::InitStaticData();
         ShaderProgram::InitStaticData();
@@ -457,7 +589,7 @@ namespace Divide
         // Create general purpose render state blocks
         RenderStateBlock defaultStateNoDepth;
         defaultStateNoDepth.depthTestEnabled( false );
-        _defaultStateNoDepthHash = defaultStateNoDepth.getHash();
+        _defaultStateNoDepthTestHash = defaultStateNoDepth.getHash();
 
         RenderStateBlock state2DRendering;
         state2DRendering.setCullMode( CullMode::NONE );
@@ -471,8 +603,8 @@ namespace Divide
 
         // The general purpose render state blocks are both mandatory and must different from each other at a state hash level
         assert( _stateDepthOnlyRenderingHash != _state2DRenderingHash && "GFXDevice error: Invalid default state hash detected!" );
-        assert( _state2DRenderingHash != _defaultStateNoDepthHash && "GFXDevice error: Invalid default state hash detected!" );
-        assert( _defaultStateNoDepthHash != RenderStateBlock::DefaultHash() && "GFXDevice error: Invalid default state hash detected!" );
+        assert( _state2DRenderingHash != _defaultStateNoDepthTestHash && "GFXDevice error: Invalid default state hash detected!" );
+        assert( _defaultStateNoDepthTestHash != RenderStateBlock::DefaultHash() && "GFXDevice error: Invalid default state hash detected!" );
 
         // We need to create all of our attachments for the default render targets
         // Start with the screen render target: Try a half float, multisampled
@@ -815,6 +947,39 @@ namespace Divide
                                                      descriptor._shaderProgramHandle = _textRenderShader->handle();
                                                      descriptor._stateHash = get2DStateBlock();
                                                      descriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+                                                     descriptor._vertexFormat._vertexBindings.emplace_back()._strideInBytes = 2 * sizeof ( F32 ) + 2 * sizeof( F32 ) + 4 * sizeof( U8 );
+                                                     AttributeDescriptor& descPos = descriptor._vertexFormat._attributes[to_base( AttribLocation::POSITION )]; //vec2
+                                                     AttributeDescriptor& descUV = descriptor._vertexFormat._attributes[to_base( AttribLocation::TEXCOORD )];  //vec2
+                                                     AttributeDescriptor& descColour = descriptor._vertexFormat._attributes[to_base( AttribLocation::COLOR )]; //vec4
+
+                                                     descPos._vertexBindingIndex = 0u;
+                                                     descPos._componentsPerElement = 2u;
+                                                     descPos._dataType = GFXDataFormat::FLOAT_32;
+
+                                                     descUV._vertexBindingIndex = 0u;
+                                                     descUV._componentsPerElement = 2u;
+                                                     descUV._dataType = GFXDataFormat::FLOAT_32;
+
+                                                     descColour._vertexBindingIndex = 0u;
+                                                     descColour._componentsPerElement = 4u;
+                                                     descColour._dataType = GFXDataFormat::UNSIGNED_BYTE;
+                                                     descColour._normalized = true;
+
+                                                     descPos._strideInBytes = 0u;
+                                                     descUV._strideInBytes  = 2 * sizeof(F32);
+                                                     descColour._strideInBytes = 2 * sizeof(F32) + 2 * sizeof(F32);
+
+                                                     BlendingSettings& blend = descriptor._blendStates._settings[0u];
+                                                     descriptor._blendStates._blendColour = DefaultColours::BLACK_U8;
+
+                                                     blend.enabled( true );
+                                                     blend.blendSrc( BlendProperty::SRC_ALPHA );
+                                                     blend.blendDest( BlendProperty::INV_SRC_ALPHA );
+                                                     blend.blendOp( BlendOperation::ADD );
+                                                     blend.blendSrcAlpha( BlendProperty::ONE );
+                                                     blend.blendDestAlpha( BlendProperty::ZERO );
+                                                     blend.blendOpAlpha( BlendOperation::COUNT );
+                                                     
                                                      _textRenderPipeline = newPipeline( descriptor );
                                                  } );
         }
@@ -841,6 +1006,7 @@ namespace Divide
                                                         PipelineDescriptor pipelineDesc{};
                                                         pipelineDesc._shaderProgramHandle = _HIZConstructProgram->handle();
                                                         pipelineDesc._primitiveTopology = PrimitiveTopology::COMPUTE;
+                                                        pipelineDesc._stateHash = getDefaultStateBlock(true);
 
                                                         _HIZPipeline = newPipeline( pipelineDesc );
                                                     } );
@@ -1022,52 +1188,8 @@ namespace Divide
                                                                   } );
                 }
             }
-            {
-                ShaderModuleDescriptor vertModule = {};
-                vertModule._moduleType = ShaderType::VERTEX;
-                vertModule._sourceFile = "ImmediateModeEmulation.glsl";
-
-                ShaderModuleDescriptor fragModule = {};
-                fragModule._moduleType = ShaderType::FRAGMENT;
-                fragModule._sourceFile = "ImmediateModeEmulation.glsl";
-
-                ShaderProgramDescriptor shaderDescriptor = {};
-                shaderDescriptor._modules.push_back( vertModule );
-                shaderDescriptor._modules.push_back( fragModule );
-
-                // Create an immediate mode rendering shader that simulates the fixed function pipeline
-                {
-                    ResourceDescriptor immediateModeShader( "ImmediateModeEmulation" );
-                    immediateModeShader.waitForReady( true );
-                    immediateModeShader.propertyDescriptor( shaderDescriptor );
-                    _imShader = CreateResource<ShaderProgram>( cache, immediateModeShader );
-                    assert( _imShader != nullptr );
-                }
-                {
-                    shaderDescriptor._modules.back()._defines.emplace_back( "WORLD_PASS" );
-                    ResourceDescriptor immediateModeShader( "ImmediateModeEmulation-World" );
-                    immediateModeShader.waitForReady( true );
-                    immediateModeShader.propertyDescriptor( shaderDescriptor );
-                    _imWorldShader = CreateResource<ShaderProgram>( cache, immediateModeShader );
-                    assert( _imWorldShader != nullptr );
-                }
-                {
-                    shaderDescriptor._globalDefines.emplace_back( "NO_TEXTURE" );
-                    ResourceDescriptor immediateModeShader( "ImmediateModeEmulation-World-NoTexture" );
-                    immediateModeShader.waitForReady( true );
-                    immediateModeShader.propertyDescriptor( shaderDescriptor );
-                    _imWorldShaderNoTexture = CreateResource<ShaderProgram>( cache, immediateModeShader );
-                }
-                {
-                    efficient_clear(shaderDescriptor._globalDefines);
-                    shaderDescriptor._modules.back()._defines.emplace_back( "OIT_PASS" );
-                    ResourceDescriptor immediateModeShader( "ImmediateModeEmulation-OIT" );
-                    immediateModeShader.waitForReady( true );
-                    immediateModeShader.propertyDescriptor( shaderDescriptor );
-                    _imWorldOITShader = CreateResource<ShaderProgram>( cache, immediateModeShader );
-                    assert( _imWorldOITShader != nullptr );
-                }
-            }
+            // Create an immediate mode rendering shader that simulates the fixed function pipeline
+            _imShaders = eastl::make_unique<ImShaders>(*this);
         }
         {
             ShaderModuleDescriptor vertModule = {};
@@ -1126,7 +1248,7 @@ namespace Divide
 
             PipelineDescriptor pipelineDesc;
             pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
-            pipelineDesc._shaderProgramHandle = _imWorldShaderNoTexture->handle();
+            pipelineDesc._shaderProgramHandle = _imShaders->imWorldShaderNoTexture()->handle();
             pipelineDesc._stateHash = primitiveStateBlock.getHash();
 
             _debugGizmoPipeline = pipelineDesc;
@@ -1183,7 +1305,6 @@ namespace Divide
         _debugCones.reset();
         _debugSpheres.reset();
         _debugViews.clear();
-        _IMGUIBuffers.clear();
 
         // Delete the renderer implementation
         Console::printfn( Locale::Get( _ID( "CLOSING_RENDERER" ) ) );
@@ -1194,7 +1315,7 @@ namespace Divide
 
         GFX::DestroyPools();
         MemoryManager::SAFE_DELETE( _rtPool );
-
+        _fonts.clear();
         _previewDepthMapShader = nullptr;
         _previewRenderTargetColour = nullptr;
         _previewRenderTargetDepth = nullptr;
@@ -1208,10 +1329,7 @@ namespace Divide
         _blurBoxShaderLayered = nullptr;
         _blurGaussianShaderSingle = nullptr;
         _blurGaussianShaderLayered = nullptr;
-        _imShader = nullptr;
-        _imWorldShader = nullptr;
-        _imWorldShaderNoTexture = nullptr;
-        _imWorldOITShader = nullptr;
+        _imShaders.reset();
         _gfxBuffers.reset( true, true );
         MemoryManager::SAFE_DELETE( _sceneData );
         // Close the shader manager
@@ -1229,7 +1347,7 @@ namespace Divide
         _api->closeRenderingAPI();
         _api.reset();
 
-        ScopedLock<Mutex> lock( _graphicsResourceMutex );
+        LockGuard<Mutex> lock( _graphicsResourceMutex );
         if ( !_graphicResources.empty() )
         {
             string list = " [ ";
@@ -1281,56 +1399,77 @@ namespace Divide
         getRenderer().postFX().update( deltaTimeUSFixed, deltaTimeUSApp );
     }
 
-    void GFXDevice::beginFrame( DisplayWindow& window, const bool global )
+    void GFXDevice::drawToWindow( DisplayWindow& window )
     {
         PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);
 
-        if ( global )
-        {
-            ++s_frameCount;
-
-            if ( _queuedScreenSampleChange != s_invalidQueueSampleCount )
-            {
-                setScreenMSAASampleCountInternal( _queuedScreenSampleChange );
-                _queuedScreenSampleChange = s_invalidQueueSampleCount;
-            }
-            for ( U8 i = 0u; i < to_base( ShadowType::COUNT ); ++i )
-            {
-                if ( _queuedShadowSampleChange[i] != s_invalidQueueSampleCount )
-                {
-                    setShadowMSAASampleCountInternal( static_cast<ShadowType>(i), _queuedShadowSampleChange[i] );
-                    _queuedShadowSampleChange[i] = s_invalidQueueSampleCount;
-                }
-            }
-        }
-        if ( global && _resolutionChangeQueued.second )
+        if ( _resolutionChangeQueued.second )
         {
             SizeChangeParams params{};
             params.isFullScreen = window.fullscreen();
             params.width = _resolutionChangeQueued.first.width;
             params.height = _resolutionChangeQueued.first.height;
             params.winGUID = context().mainWindow().getGUID();
-            params.isMainWindow = global;
+            params.isMainWindow = window.getGUID() == context().mainWindow().getGUID();
 
             if ( context().app().onResolutionChange( params ) )
             {
                 NOP();
             }
+
             _resolutionChangeQueued.second = false;
         }
 
-        if ( !_api->beginFrame( window, global ) )
+        if ( !_api->drawToWindow( window ) )
         {
             NOP();
         }
     }
+
+    void GFXDevice::flushWindow( DisplayWindow& window )
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        DIVIDE_ASSERT( _cameraSnapshots.empty(), "Not all camera snapshots have been cleared properly! Check command buffers for missmatched push/pop!" );
+        DIVIDE_ASSERT( _viewportStack.empty(), "Not all viewports have been cleared properly! Check command buffers for missmatched push/pop!" );
+        // Activate the default render states
+        _api->flushWindow( window );
+    }
+
+    bool GFXDevice::frameStarted( const FrameEvent& evt )
+    {
+        ++s_frameCount;
+
+        if ( _queuedScreenSampleChange != s_invalidQueueSampleCount )
+        {
+            setScreenMSAASampleCountInternal( _queuedScreenSampleChange );
+            _queuedScreenSampleChange = s_invalidQueueSampleCount;
+        }
+        for ( U8 i = 0u; i < to_base( ShadowType::COUNT ); ++i )
+        {
+            if ( _queuedShadowSampleChange[i] != s_invalidQueueSampleCount )
+            {
+                setShadowMSAASampleCountInternal( static_cast<ShadowType>(i), _queuedShadowSampleChange[i] );
+                _queuedShadowSampleChange[i] = s_invalidQueueSampleCount;
+            }
+        }
+
+        if ( _api->frameStarted() )
+        {
+            drawToWindow(context().mainWindow());
+            return true;
+        }
+
+        return false;
+    }
+
 
     namespace
     {
         template<typename Data, size_t N>
         inline void DecrementPrimitiveLifetime( DebugPrimitiveHandler<Data, N>& container )
         {
-            ScopedLock<Mutex> w_lock( container._dataLock );
+            LockGuard<Mutex> w_lock( container._dataLock );
             for ( auto& entry : container._debugData )
             {
                 if ( entry._frameLifeTime > 0u )
@@ -1341,27 +1480,20 @@ namespace Divide
         }
     };
 
-    void GFXDevice::endFrame( DisplayWindow& window, const bool global )
+    bool GFXDevice::frameEnded( const FrameEvent& evt ) noexcept
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        if ( global )
-        {
-            frameDrawCallsPrev( frameDrawCalls() );
-            frameDrawCalls( 0u );
+        frameDrawCallsPrev( frameDrawCalls() );
+        frameDrawCalls( 0u );
 
-            DecrementPrimitiveLifetime( _debugLines );
-            DecrementPrimitiveLifetime( _debugBoxes );
-            DecrementPrimitiveLifetime( _debugOBBs );
-            DecrementPrimitiveLifetime( _debugFrustums );
-            DecrementPrimitiveLifetime( _debugCones );
-            DecrementPrimitiveLifetime( _debugSpheres );
-        }
+        DecrementPrimitiveLifetime( _debugLines );
+        DecrementPrimitiveLifetime( _debugBoxes );
+        DecrementPrimitiveLifetime( _debugOBBs );
+        DecrementPrimitiveLifetime( _debugFrustums );
+        DecrementPrimitiveLifetime( _debugCones );
+        DecrementPrimitiveLifetime( _debugSpheres );
 
-        DIVIDE_ASSERT( _cameraSnapshots.empty(), "Not all camera snapshots have been cleared properly! Check command buffers for missmatched push/pop!" );
-        DIVIDE_ASSERT( _viewportStack.empty(), "Not all viewports have been cleared properly! Check command buffers for missmatched push/pop!" );
-        // Activate the default render states
-        _api->endFrame( window, global );
         _performanceMetrics._scratchBufferQueueUsage[0] = to_U32( _gfxBuffers.crtBuffers()._camWritesThisFrame );
         _performanceMetrics._scratchBufferQueueUsage[1] = to_U32( _gfxBuffers.crtBuffers()._renderWritesThisFrame );
 
@@ -1373,10 +1505,13 @@ namespace Divide
             resizeGPUBlocks( _gfxBuffers._needsResizeCam ? currentSizeCam + TargetBufferSizeCam : currentSizeCam, currentSizeCullCounter );
             _gfxBuffers._needsResizeCam = false;
         }
+
         _gfxBuffers.onEndFrame();
         ShaderProgram::OnEndFrame( *this );
-    }
 
+        _api->flushWindow(context().mainWindow());
+        return _api->frameEnded();
+    }
 #pragma endregion
 
 #pragma region Utility functions
@@ -1441,19 +1576,15 @@ namespace Divide
         params._passName = "CubeMap";
         const D64 aspect = to_D64( targetResolution.width ) / targetResolution.height;
 
-        RenderPassManager* passMgr = parent().renderPassManager();
+        RenderPassManager* passMgr = context().kernel().renderPassManager();
 
         for ( U8 i = 0u; i < 6u; ++i )
         {
             // Draw to the current cubemap face
-            if ( hasColour )
-            {
-                params._layerParams._colourLayers[0] = i + (arrayOffset * 6);
-            }
-            if ( hasDepth )
-            {
-                params._layerParams._depthLayer = i + (arrayOffset * 6);
-            }
+            params._targetDescriptorMainPass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )] = i + (arrayOffset * 6);
+            params._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX] = i + (arrayOffset * 6);
+            params._targetDescriptorPrePass._writeLayers[to_base(RTColourAttachmentSlot::SLOT_0)] = i + (arrayOffset * 6);
+            params._targetDescriptorPrePass._writeLayers[RT_DEPTH_ATTACHMENT_IDX] = i + (arrayOffset * 6);
 
             Camera* camera = cameras[i];
             if ( camera == nullptr )
@@ -1515,7 +1646,7 @@ namespace Divide
 
         params._passName = "DualParaboloid";
         const D64 aspect = to_D64( targetResolution.width ) / targetResolution.height;
-        RenderPassManager* passMgr = parent().renderPassManager();
+        RenderPassManager* passMgr = context().kernel().renderPassManager();
 
         for ( U8 i = 0u; i < 2u; ++i )
         {
@@ -1525,14 +1656,11 @@ namespace Divide
                 camera = Camera::GetUtilityCamera( Camera::UtilityCamera::DUAL_PARABOLOID );
             }
 
-            if ( hasColour )
-            {
-                params._layerParams._colourLayers[0] = arrayOffset + i;
-            }
-            if ( hasDepth )
-            {
-                params._layerParams._depthLayer = arrayOffset + i;
-            }
+            params._targetDescriptorMainPass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )] = arrayOffset + i;
+            params._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX] = arrayOffset + i;
+            params._targetDescriptorPrePass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )] = arrayOffset + i;
+            params._targetDescriptorPrePass._writeLayers[RT_DEPTH_ATTACHMENT_IDX] = arrayOffset + i;
+            
             // Point our camera to the correct face
             camera->lookAt( pos, pos + (i == 0 ? WORLD_Z_NEG_AXIS : WORLD_Z_AXIS) * zPlanes.y );
             // Set a 180 degree vertical FoV perspective projection
@@ -1575,6 +1703,9 @@ namespace Divide
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
             renderPassCmd->_target = blurBuffer._targetID;
             renderPassCmd->_name = "BLUR_RENDER_TARGET_HORIZONTAL";
+            renderPassCmd->_clearDescriptor[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
+            renderPassCmd->_clearDescriptor[to_base(RTColourAttachmentSlot::SLOT_0)] = DEFAULT_CLEAR_ENTRY;
+            renderPassCmd->_descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
             GFX::EnqueueCommand( bufferInOut, gaussian ? (layerCount > 1 ? _blurGaussianPipelineLayeredCmd : _blurGaussianPipelineSingleCmd)
                                  : (layerCount > 1 ? _blurBoxPipelineLayeredCmd : _blurBoxPipelineSingleCmd) );
@@ -1611,6 +1742,9 @@ namespace Divide
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
             renderPassCmd->_target = blurTarget._targetID;
             renderPassCmd->_name = "BLUR_RENDER_TARGET_VERTICAL";
+            renderPassCmd->_clearDescriptor[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
+            renderPassCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
+            renderPassCmd->_descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -1645,16 +1779,16 @@ namespace Divide
         stepResolution( false );
     }
 
-    void GFXDevice::stepResolution( const bool increment )
+    void GFXDevice::stepResolution( const bool increment ) 
     {
         const auto compare = []( const vec2<U16> a, const vec2<U16> b ) noexcept -> bool
         {
             return a.x > b.x || a.y > b.y;
         };
 
-        const WindowManager& winManager = _parent.platformContext().app().windowManager();
+        const WindowManager& winManager = context().app().windowManager();
 
-        const vector<GPUState::GPUVideoMode>& displayModes = _state.getDisplayModes( winManager.mainWindow()->currentDisplayIndex() );
+        const auto& displayModes = DisplayManager::GetDisplayModes( winManager.mainWindow()->currentDisplayIndex() );
 
         bool found = false;
         vec2<U16> foundRes;
@@ -1673,7 +1807,7 @@ namespace Divide
         }
         else
         {
-            for ( const GPUState::GPUVideoMode& mode : displayModes )
+            for ( const auto& mode : displayModes )
             {
                 const vec2<U16> res = mode._resolution;
                 if ( compare( _renderingResolution, res ) )
@@ -1694,7 +1828,7 @@ namespace Divide
 
     void GFXDevice::toggleFullScreen() const
     {
-        const WindowManager& winManager = _parent.platformContext().app().windowManager();
+        const WindowManager& winManager = context().app().windowManager();
 
         switch ( winManager.mainWindow()->type() )
         {
@@ -1723,7 +1857,7 @@ namespace Divide
 
     void GFXDevice::setScreenMSAASampleCountInternal( U8 sampleCount )
     {
-        CLAMP( sampleCount, to_U8( 0u ), gpuState().maxMSAASampleCount() );
+        CLAMP( sampleCount, to_U8( 0u ), DisplayManager::MaxMSAASamples() );
         if ( _context.config().rendering.MSAASamples != sampleCount )
         {
             _context.config().rendering.MSAASamples = sampleCount;
@@ -1735,7 +1869,7 @@ namespace Divide
 
     void GFXDevice::setShadowMSAASampleCountInternal( const ShadowType type, U8 sampleCount )
     {
-        CLAMP( sampleCount, to_U8( 0u ), gpuState().maxMSAASampleCount() );
+        CLAMP( sampleCount, to_U8( 0u ), DisplayManager::MaxMSAASamples() );
         ShadowMap::setMSAASampleCount( type, sampleCount );
     }
 
@@ -1765,7 +1899,7 @@ namespace Divide
             return;
         }
 
-        Configuration& config = _parent.platformContext().config();
+        Configuration& config = context().config();
 
         const F32 aspectRatio = to_F32( w ) / h;
         const F32 vFoV = Angle::to_VerticalFoV( config.runtime.horizontalFOV, to_D64( aspectRatio ) );
@@ -2151,7 +2285,6 @@ namespace Divide
                     {
                         GFX::MemoryBarrierCommand memCmd{};
                         memCmd._bufferLocks.push_back( crtCmd._buffer->clearData( { crtCmd._offsetElementCount, crtCmd._elementCount } ) );
-                        memCmd._syncFlag = 101u;
                         _api->flushCommand( &memCmd );
                     }
                 } break;
@@ -2212,6 +2345,10 @@ namespace Divide
 
                     setClipPlanes( commandBuffer.get<GFX::SetClipPlanesCommand>( cmd )->_clippingPlanes );
                 } break;
+                case GFX::CommandType::DRAW_TEXT:
+                {
+                    drawText( commandBuffer.get<GFX::DrawTextCommand>( cmd )->_batch );
+                }break;
                 case GFX::CommandType::EXTERNAL:
                 {
                     PROFILE_SCOPE( "EXTERNAL", Profiler::Category::Graphics );
@@ -2234,8 +2371,9 @@ namespace Divide
         {
             GFX::MemoryBarrierCommand writeMemCmd{};
             BufferLock& lock = writeMemCmd._bufferLocks.emplace_back();
-            lock._targetBuffer = frameBuffers._camDataBuffer.get();
+            lock._buffer = frameBuffers._camDataBuffer->getBufferImpl();
             lock._range = frameBuffers._camBufferWriteRange;
+            lock._type = BufferSyncUsage::CPU_WRITE_TO_GPU_READ;
             _api->flushCommand( &writeMemCmd );
             frameBuffers._camBufferWriteRange = {};
         }
@@ -2286,15 +2424,23 @@ namespace Divide
             theight = theight < 1u ? 1u : theight;
 
             ImageView outImage = HiZTex->getView( { i, 1u } );
-            outImage._usage = ImageUsage::SHADER_READ_WRITE;
 
-            const ImageView inImage = (i == 0u ? SrcAtt->texture()->getView( depthBuffer == HiZTarget ? ImageUsage::SHADER_READ_WRITE : ImageUsage::SHADER_READ) : HiZTex->getView( { i - 1u, 1u }, { 0u, 1u }, ImageUsage::SHADER_READ_WRITE ));
+            const ImageView inImage = i == 0u ? SrcAtt->texture()->getView( ) 
+                                              : HiZTex->getView( { i - 1u, 1u }, { 0u, 1u });
 
+            
+            GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( cmdBufferInOut )->_textureLayoutChanges.emplace_back(TextureLayoutChange
+            {
+                ._targetView = outImage,
+                ._sourceLayout = ImageUsage::SHADER_READ,
+                ._targetLayout = ImageUsage::SHADER_WRITE
+            });
+            
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( cmdBufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::COMPUTE );
-                Set(binding._data, outImage);
+                Set(binding._data, outImage, ImageUsage::SHADER_WRITE);
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::COMPUTE );
@@ -2318,17 +2464,13 @@ namespace Divide
             oheight = theight;
             twidth /= 2;
             theight /= 2;
-        }
 
-        {
-            auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( cmdBufferInOut );
-            memCmd->_barrierMask = to_base( MemoryBarrierType::TEXTURE_FETCH );
-            /*memCmd->_textureLayoutChanges.emplace_back(
-                TextureLayoutChange{
-                    ._targetView = HiZTex->getView(),
-                    ._layout = ImageUsage::SHADER_READ
-                }
-            );*/
+            GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( cmdBufferInOut )->_textureLayoutChanges.emplace_back(TextureLayoutChange
+            {
+                ._targetView = outImage,
+                ._sourceLayout = ImageUsage::SHADER_WRITE,
+                ._targetLayout = ImageUsage::SHADER_READ
+            });
         }
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( cmdBufferInOut );
@@ -2391,12 +2533,13 @@ namespace Divide
         GFX::EnqueueCommand( bufferInOut, GFX::DispatchComputeCommand{ threadCount, 1, 1 } );
 
         // Occlusion culling barrier
-        GFX::EnqueueCommand( bufferInOut, GFX::MemoryBarrierCommand
-                             {
-                                 to_base( MemoryBarrierType::COMMAND_BUFFER ) | //For rendering
-                                 to_base( MemoryBarrierType::SHADER_STORAGE ) | //For updating later on
-                                 (countCulledNodes ? to_base( MemoryBarrierType::BUFFER_UPDATE ) : 0u) //For cull counter
-                             } );
+        auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut );
+        memCmd->_bufferLocks.emplace_back(BufferLock
+        {
+            ._range = {0u, U32_MAX },
+            ._type = BufferSyncUsage::GPU_WRITE_TO_CPU_READ,
+            ._buffer = cullBuffer->getBufferImpl()
+        });
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
 
@@ -2421,6 +2564,44 @@ namespace Divide
 #pragma endregion
 
 #pragma region Drawing functions
+    /// Try to find the requested font in the font cache. Load on cache miss.
+    I32 GFXDevice::getFont( const Str64& fontName )
+    {
+        if ( _fontCache.first.compare( fontName ) != 0 )
+        {
+            _fontCache.first = fontName;
+            const U64 fontNameHash = _ID( fontName.c_str() );
+            // Search for the requested font by name
+            const auto& it = _fonts.find( fontNameHash );
+            // If we failed to find it, it wasn't loaded yet
+            if ( it == std::cend( _fonts ) )
+            {
+                // Fonts are stored in the general asset directory -> in the GUI
+                // subfolder -> in the fonts subfolder
+                ResourcePath fontPath( Paths::g_assetsLocation + Paths::g_GUILocation + Paths::g_fontsPath );
+                fontPath += fontName.c_str();
+                // We use FontStash to load the font file
+                _fontCache.second = fonsAddFont( _fonsContext, fontName.c_str(), fontPath.c_str() );
+                // If the font is invalid, inform the user, but map it anyway, to avoid
+                // loading an invalid font file on every request
+                if ( _fontCache.second == FONS_INVALID )
+                {
+                    Console::errorfn( Locale::Get( _ID( "ERROR_FONT_FILE" ) ), fontName.c_str() );
+                }
+                // Save the font in the font cache
+                hashAlg::insert( _fonts, fontNameHash, _fontCache.second );
+
+            }
+            else
+            {
+                _fontCache.second = it->second;
+            }
+        }
+
+        // Return the font
+        return _fontCache.second;
+    }
+
     void GFXDevice::drawText( const TextElementBatch& batch, GFX::CommandBuffer& bufferInOut, const bool pushCamera ) const
     {
         drawText( GFX::DrawTextCommand{ batch }, bufferInOut, pushCamera );
@@ -2444,6 +2625,61 @@ namespace Divide
         }
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
+    }
+
+    void GFXDevice::drawText( const TextElementBatch& batch )
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        const I32 width = renderingResolution().width;
+        const I32 height = renderingResolution().height;
+
+        size_t drawCount = 0;
+        size_t previousStyle = 0;
+
+        fonsClearState( fonsContext() );
+        for ( const TextElement& entry : batch.data() )
+        {
+            if ( previousStyle != entry.textLabelStyleHash() )
+            {
+                const TextLabelStyle& textLabelStyle = TextLabelStyle::get( entry.textLabelStyleHash() );
+                const UColour4& colour = textLabelStyle.colour();
+                // Retrieve the font from the font cache
+                const I32 font = getFont( TextLabelStyle::fontName( textLabelStyle.font() ) );
+                // The font may be invalid, so skip this text label
+                if ( font != FONS_INVALID )
+                {
+                    fonsSetFont( fonsContext(), font );
+                }
+                fonsSetBlur( fonsContext(), textLabelStyle.blurAmount() );
+                fonsSetBlur( fonsContext(), textLabelStyle.spacing() );
+                fonsSetAlign( fonsContext(), textLabelStyle.alignFlag() );
+                fonsSetSize( fonsContext(), to_F32( textLabelStyle.fontSize() ) );
+                fonsSetColour( fonsContext(), colour.r, colour.g, colour.b, colour.a );
+                previousStyle = entry.textLabelStyleHash();
+            }
+
+            const F32 textX = entry.position().d_x.d_scale * width + entry.position().d_x.d_offset;
+            const F32 textY = height - (entry.position().d_y.d_scale * height + entry.position().d_y.d_offset);
+
+            F32 lh = 0;
+            fonsVertMetrics( fonsContext(), nullptr, nullptr, &lh );
+
+            const TextElement::TextType& text = entry.text();
+            const size_t lineCount = text.size();
+            for ( size_t i = 0; i < lineCount; ++i )
+            {
+                fonsDrawText( fonsContext(),
+                              textX,
+                              textY - lh * i,
+                              text[i].c_str(),
+                              nullptr );
+            }
+            drawCount += lineCount;
+
+            // Register each label rendered as a draw call
+            registerDrawCalls( to_U32( drawCount ) );
+        }
     }
 
     void GFXDevice::drawTextureInViewport( const ImageView& texture, const size_t samplerHash, const Rect<I32>& viewport, const bool convertToSrgb, const bool drawToDepthOnly, bool drawBlend, GFX::CommandBuffer& bufferInOut )
@@ -2519,7 +2755,7 @@ namespace Divide
             // The LinearDepth variant converts the depth values to linear values between the 2 scene z-planes
             ResourceDescriptor fbPreview( "fbPreviewLinearDepth" );
             fbPreview.propertyDescriptor( shaderDescriptor );
-            _previewDepthMapShader = CreateResource<ShaderProgram>( parent().resourceCache(), fbPreview );
+            _previewDepthMapShader = CreateResource<ShaderProgram>( context().kernel().resourceCache(), fbPreview );
             assert( _previewDepthMapShader != nullptr );
 
             DebugView_ptr HiZ = std::make_shared<DebugView>();
@@ -2761,7 +2997,7 @@ namespace Divide
 
     DebugView* GFXDevice::addDebugView( const std::shared_ptr<DebugView>& view )
     {
-        ScopedLock<Mutex> lock( _debugViewLock );
+        LockGuard<Mutex> lock( _debugViewLock );
 
         _debugViews.push_back( view );
 
@@ -2800,7 +3036,7 @@ namespace Divide
 
     void GFXDevice::toggleDebugView( const I16 index, const bool state )
     {
-        ScopedLock<Mutex> lock( _debugViewLock );
+        LockGuard<Mutex> lock( _debugViewLock );
         for ( auto& view : _debugViews )
         {
             if ( view->_sortIndex == index )
@@ -2813,7 +3049,7 @@ namespace Divide
 
     void GFXDevice::toggleDebugGroup( I16 group, const bool state )
     {
-        ScopedLock<Mutex> lock( _debugViewLock );
+        LockGuard<Mutex> lock( _debugViewLock );
         for ( auto& view : _debugViews )
         {
             if ( view->_groupID == group )
@@ -2825,7 +3061,7 @@ namespace Divide
 
     bool GFXDevice::getDebugGroupState( I16 group ) const
     {
-        ScopedLock<Mutex> lock( _debugViewLock );
+        LockGuard<Mutex> lock( _debugViewLock );
         for ( const auto& view : _debugViews )
         {
             if ( view->_groupID == group )
@@ -2844,7 +3080,7 @@ namespace Divide
     {
         namesOut.resize( 0 );
 
-        ScopedLock<Mutex> lock( _debugViewLock );
+        LockGuard<Mutex> lock( _debugViewLock );
         for ( auto& view : _debugViews )
         {
             namesOut.emplace_back( view->_name, view->_groupID, view->_sortIndex, view->_enabled );
@@ -2870,9 +3106,9 @@ namespace Divide
         _debugLines.add( ID, descriptor );
     }
 
-    void GFXDevice::debugDrawLines( GFX::CommandBuffer& bufferInOut )
+    void GFXDevice::debugDrawLines( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        ScopedLock<Mutex> r_lock( _debugLines._dataLock );
+        LockGuard<Mutex> r_lock( _debugLines._dataLock );
 
         const size_t lineCount = _debugLines.size();
         for ( size_t f = 0u; f < lineCount; ++f )
@@ -2892,7 +3128,7 @@ namespace Divide
 
             linePrimitive->forceWireframe( data._descriptor.wireframe ); //? Uhm, not gonna do much -Ionut
             linePrimitive->fromLines( data._descriptor );
-            linePrimitive->getCommandBuffer( data._descriptor.worldMatrix, bufferInOut );
+            linePrimitive->getCommandBuffer( data._descriptor.worldMatrix, bufferInOut, memCmdInOut );
         }
     }
 
@@ -2901,9 +3137,9 @@ namespace Divide
         _debugBoxes.add( ID, descriptor );
     }
 
-    void GFXDevice::debugDrawBoxes( GFX::CommandBuffer& bufferInOut )
+    void GFXDevice::debugDrawBoxes( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        ScopedLock<Mutex> r_lock( _debugBoxes._dataLock );
+        LockGuard<Mutex> r_lock( _debugBoxes._dataLock );
         const size_t boxesCount = _debugBoxes.size();
         for ( U32 f = 0u; f < boxesCount; ++f )
         {
@@ -2922,7 +3158,7 @@ namespace Divide
 
             boxPrimitive->forceWireframe( data._descriptor.wireframe );
             boxPrimitive->fromBox( data._descriptor );
-            boxPrimitive->getCommandBuffer( data._descriptor.worldMatrix, bufferInOut );
+            boxPrimitive->getCommandBuffer( data._descriptor.worldMatrix, bufferInOut, memCmdInOut );
         }
     }
 
@@ -2931,9 +3167,9 @@ namespace Divide
         _debugOBBs.add( ID, descriptor );
     }
 
-    void GFXDevice::debugDrawOBBs( GFX::CommandBuffer& bufferInOut )
+    void GFXDevice::debugDrawOBBs( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        ScopedLock<Mutex> r_lock( _debugOBBs._dataLock );
+        LockGuard<Mutex> r_lock( _debugOBBs._dataLock );
         const size_t boxesCount = _debugOBBs.size();
         for ( U32 f = 0u; f < boxesCount; ++f )
         {
@@ -2952,7 +3188,7 @@ namespace Divide
 
             boxPrimitive->forceWireframe( data._descriptor.wireframe );
             boxPrimitive->fromOBB( data._descriptor );
-            boxPrimitive->getCommandBuffer( data._descriptor.worldMatrix, bufferInOut );
+            boxPrimitive->getCommandBuffer( data._descriptor.worldMatrix, bufferInOut, memCmdInOut );
         }
     }
     void GFXDevice::debugDrawSphere( const I64 ID, const IM::SphereDescriptor descriptor ) noexcept
@@ -2960,9 +3196,9 @@ namespace Divide
         _debugSpheres.add( ID, descriptor );
     }
 
-    void GFXDevice::debugDrawSpheres( GFX::CommandBuffer& bufferInOut )
+    void GFXDevice::debugDrawSpheres( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        ScopedLock<Mutex> r_lock( _debugSpheres._dataLock );
+        LockGuard<Mutex> r_lock( _debugSpheres._dataLock );
         const size_t spheresCount = _debugSpheres.size();
         for ( size_t f = 0u; f < spheresCount; ++f )
         {
@@ -2981,7 +3217,7 @@ namespace Divide
 
             spherePrimitive->forceWireframe( data._descriptor.wireframe );
             spherePrimitive->fromSphere( data._descriptor );
-            spherePrimitive->getCommandBuffer( data._descriptor.worldMatrix, bufferInOut );
+            spherePrimitive->getCommandBuffer( data._descriptor.worldMatrix, bufferInOut, memCmdInOut );
         }
     }
 
@@ -2990,9 +3226,9 @@ namespace Divide
         _debugCones.add( ID, descriptor );
     }
 
-    void GFXDevice::debugDrawCones( GFX::CommandBuffer& bufferInOut )
+    void GFXDevice::debugDrawCones( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        ScopedLock<Mutex> r_lock( _debugCones._dataLock );
+        LockGuard<Mutex> r_lock( _debugCones._dataLock );
 
         const size_t conesCount = _debugCones.size();
         for ( size_t f = 0u; f < conesCount; ++f )
@@ -3012,7 +3248,7 @@ namespace Divide
 
             conePrimitive->forceWireframe( data._descriptor.wireframe );
             conePrimitive->fromCone( data._descriptor );
-            conePrimitive->getCommandBuffer( data._descriptor.worldMatrix, bufferInOut );
+            conePrimitive->getCommandBuffer( data._descriptor.worldMatrix, bufferInOut, memCmdInOut );
         }
     }
 
@@ -3021,9 +3257,9 @@ namespace Divide
         _debugFrustums.add( ID, descriptor );
     }
 
-    void GFXDevice::debugDrawFrustums( GFX::CommandBuffer& bufferInOut )
+    void GFXDevice::debugDrawFrustums( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        ScopedLock<Mutex> r_lock( _debugFrustums._dataLock );
+        LockGuard<Mutex> r_lock( _debugFrustums._dataLock );
 
         const size_t frustumCount = _debugFrustums.size();
         for ( size_t f = 0u; f < frustumCount; ++f )
@@ -3043,76 +3279,23 @@ namespace Divide
 
             frustumPrimitive->forceWireframe( data._descriptor.wireframe );
             frustumPrimitive->fromFrustum( data._descriptor );
-            frustumPrimitive->getCommandBuffer( data._descriptor.worldMatrix, bufferInOut );
+            frustumPrimitive->getCommandBuffer( data._descriptor.worldMatrix, bufferInOut, memCmdInOut );
         }
     }
 
     /// Render all of our immediate mode primitives. This isn't very optimised and most are recreated per frame!
-    void GFXDevice::debugDraw( const SceneRenderState& sceneRenderState, GFX::CommandBuffer& bufferInOut )
+    void GFXDevice::debugDraw( const SceneRenderState& sceneRenderState, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        debugDrawFrustums( bufferInOut );
-        debugDrawLines( bufferInOut );
-        debugDrawBoxes( bufferInOut );
-        debugDrawOBBs( bufferInOut );
-        debugDrawSpheres( bufferInOut );
-        debugDrawCones( bufferInOut );
+        debugDrawFrustums( bufferInOut, memCmdInOut );
+        debugDrawLines( bufferInOut, memCmdInOut );
+        debugDrawBoxes( bufferInOut, memCmdInOut );
+        debugDrawOBBs( bufferInOut, memCmdInOut );
+        debugDrawSpheres( bufferInOut, memCmdInOut );
+        debugDrawCones( bufferInOut, memCmdInOut );
     }
 #pragma endregion
 
 #pragma region GPU Object instantiation
-    GenericVertexData* GFXDevice::getOrCreateIMGUIBuffer( const I64 windowGUID, const I32 maxCommandCount, const U32 maxVertices )
-    {
-        const U32 newSize = to_U32( maxCommandCount * RenderPass::DataBufferRingSize );
-
-        GenericVertexData* ret = nullptr;
-
-        const auto it = _IMGUIBuffers.find( windowGUID );
-        if ( it != eastl::cend( _IMGUIBuffers ) )
-        {
-            // If we need more space, skip this and just create a new, larger, buffer.
-            if ( it->second->queueLength() >= newSize )
-            {
-                return it->second.get();
-            }
-            else
-            {
-                ret = it->second.get();
-                ret->reset();
-                ret->resize( newSize );
-            }
-        }
-
-        if ( ret == nullptr )
-        {
-            GenericVertexData_ptr newBuffer = newGVD( newSize, "IMGUI" );
-            _IMGUIBuffers[windowGUID] = newBuffer;
-            ret = newBuffer.get();
-        }
-
-        GenericVertexData::IndexBuffer idxBuff{};
-        idxBuff.smallIndices = sizeof( ImDrawIdx ) == sizeof( U16 );
-        idxBuff.count = maxVertices * 3;
-        idxBuff.dynamic = true;
-
-        ret->renderIndirect( false );
-
-        GenericVertexData::SetBufferParams params = {};
-        params._bindConfig = { 0u, 0u };
-        params._useRingBuffer = true;
-        params._useAutoSyncObjects = false; // we manually call sync after all draw commands are submitted
-        params._initialData = { nullptr, 0 };
-
-        params._bufferParams._elementCount = maxVertices;
-        params._bufferParams._elementSize = sizeof( ImDrawVert );
-        params._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
-        params._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
-
-        ret->setBuffer( params ); //Pos, UV and Colour
-        ret->setIndexBuffer( idxBuff );
-
-        return ret;
-    }
-
     RenderTarget_uptr GFXDevice::newRTInternal( const RenderTargetDescriptor& descriptor )
     {
         switch ( renderAPI() )
@@ -3152,7 +3335,7 @@ namespace Divide
 
     IMPrimitive* GFXDevice::newIMP( const Str64& name )
     {
-        ScopedLock<Mutex> w_lock( _imprimitiveMutex );
+        LockGuard<Mutex> w_lock( _imprimitiveMutex );
         return s_IMPrimitivePool.newElement( *this, name );
     }
 
@@ -3160,7 +3343,7 @@ namespace Divide
     {
         if ( primitive != nullptr )
         {
-            ScopedLock<Mutex> w_lock( _imprimitiveMutex );
+            LockGuard<Mutex> w_lock( _imprimitiveMutex );
             s_IMPrimitivePool.deleteElement( primitive );
             primitive = nullptr;
             return true;
@@ -3234,7 +3417,7 @@ namespace Divide
 
         const size_t hash = GetHash( descriptor );
 
-        ScopedLock<Mutex> lock( _pipelineCacheLock );
+        LockGuard<Mutex> lock( _pipelineCacheLock );
         const hashMap<size_t, Pipeline, NoHash<size_t>>::iterator it = _pipelineCache.find( hash );
         if ( it == std::cend( _pipelineCache ) )
         {
@@ -3339,10 +3522,9 @@ namespace Divide
         }
     }
 
-    /// returns the standard state block
-    size_t GFXDevice::getDefaultStateBlock( const bool noDepth ) const noexcept
+    size_t GFXDevice::getDefaultStateBlock( const bool noDepthTest ) const noexcept
     {
-        return noDepth ? _defaultStateNoDepthHash : RenderStateBlock::DefaultHash();
+        return noDepthTest ? _defaultStateNoDepthTestHash : RenderStateBlock::DefaultHash();
     }
 
 };

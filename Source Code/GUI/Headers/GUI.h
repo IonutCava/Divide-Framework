@@ -58,7 +58,6 @@ namespace Divide
     class ResourceCache;
     class SceneGraphNode;
     class PlatformContext;
-    class RenderStateBlock;
     class SceneGUIElements;
 
     FWD_DECLARE_MANAGED_CLASS( ShaderProgram );
@@ -155,7 +154,7 @@ namespace Divide
         /// Mouse button released: return true if input was consumed
         [[nodiscard]] bool mouseButtonReleased( const Input::MouseButtonEvent& arg ) override;
 
-        [[nodiscard]] bool onUTF8( const Input::UTF8Event& arg ) noexcept override;
+        [[nodiscard]] bool onTextEvent( const Input::TextEvent& arg ) noexcept override;
 
         [[nodiscard]] Scene* activeScene() noexcept
         {

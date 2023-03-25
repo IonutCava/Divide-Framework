@@ -10,10 +10,10 @@ namespace Divide
         : _context( context )
     {
         ShaderBufferDescriptor bufferDescriptor = {};
-        bufferDescriptor._usage = ShaderBuffer::Usage::CONSTANT_BUFFER;
         bufferDescriptor._ringBufferLength = 3;
-        bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::CONSTANT_BUFFER;
+        bufferDescriptor._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
+        bufferDescriptor._bufferParams._flags._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
         {
             bufferDescriptor._bufferParams._elementCount = 1u;
             bufferDescriptor._bufferParams._elementSize = sizeof( SceneShaderBufferData );

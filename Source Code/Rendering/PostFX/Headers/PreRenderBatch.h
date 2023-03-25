@@ -141,7 +141,7 @@ class PreRenderBatch {
     [[nodiscard]] RenderTargetHandle getLinearDepthRT() const noexcept;
 
     PROPERTY_R(bool, adaptiveExposureControl, true);
-    PROPERTY_R(ToneMapParams, toneMapParams, {});
+    PROPERTY_R(ToneMapParams, toneMapParams);
     PROPERTY_RW(F32, edgeDetectionThreshold, 0.1f);
     PROPERTY_RW(EdgeDetectionMethod, edgeDetectionMethod, EdgeDetectionMethod::Luma);
 

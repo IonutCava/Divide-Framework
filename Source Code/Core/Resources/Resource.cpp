@@ -68,7 +68,7 @@ bool CachedResource::unload() {
 
 void CachedResource::addStateCallback(const ResourceState targetState, const DELEGATE<void, CachedResource*>& cbk) {
     {
-        ScopedLock<Mutex> w_lock(_callbackLock);
+        LockGuard<Mutex> w_lock(_callbackLock);
         _loadingCallbacks[to_U32(targetState)].push_back(cbk);
     }
     if (Resource::getState() == ResourceState::RES_LOADED) {
@@ -89,7 +89,7 @@ void CachedResource::flushStateCallbacks() {
         if (tempState != ResourceState::RES_UNKNOWN && tempState != ResourceState::RES_UNLOADING) {
             ptr = this;
         }
-        ScopedLock<Mutex> r_lock(_callbackLock);
+        LockGuard<Mutex> r_lock(_callbackLock);
         CallbackList& cbks = _loadingCallbacks[to_U32(tempState)];
         for (auto& cbk : cbks) {
             cbk(ptr);

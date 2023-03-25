@@ -64,30 +64,29 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
              U16 _bindIdx{ 0u };
          };
 
-         BufferParams _bufferParams{};
+         BufferParams _bufferParams{._flags = {._usageType = BufferUsageType::VERTEX_BUFFER }};
          BufferBindConfig _bindConfig{};
          size_t _elementStride{ INVALID_ELEMENT_STRIDE };
          std::pair<bufferPtr, size_t> _initialData{nullptr, 0};
          bool _useRingBuffer{ false };
-         bool _useAutoSyncObjects{ true };
      };
 
    public:
     GenericVertexData(GFXDevice& context, U32 ringBufferLength, const char* name = nullptr);
     virtual ~GenericVertexData() = default;
 
-    virtual void setIndexBuffer(const IndexBuffer& indices) = 0;
+    virtual BufferLock setIndexBuffer(const IndexBuffer& indices) = 0;
 
     virtual void reset() = 0; //< Also clears GPU memory
 
     /// When reading and writing to the same buffer, we use a round-robin approach and
     /// offset the reading and writing to multiple copies of the data
-    virtual void setBuffer(const SetBufferParams& params) = 0;
+    [[nodiscard]] virtual BufferLock setBuffer(const SetBufferParams& params) = 0;
 
-    virtual void updateBuffer(U32 buffer,
-                              U32 elementCountOffset,
-                              U32 elementCountRange,
-                              bufferPtr data) = 0;
+    [[nodiscard]] virtual BufferLock updateBuffer(U32 buffer,
+                                                  U32 elementCountOffset,
+                                                  U32 elementCountRange,
+                                                  bufferPtr data) = 0;
 
     PROPERTY_RW(bool, renderIndirect, true);
     PROPERTY_R(size_t, indexBufferSize, 0u );

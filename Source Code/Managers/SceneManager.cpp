@@ -581,12 +581,22 @@ namespace Divide
 
     bool SceneManager::frameStarted( const FrameEvent& evt )
     {
-        return Attorney::SceneManager::frameStarted( getActiveScene() );
+        if ( _init )
+        {
+            return Attorney::SceneManager::frameStarted( getActiveScene() );
+        }
+
+        return true;
     }
 
     bool SceneManager::frameEnded( const FrameEvent& evt )
     {
-        return Attorney::SceneManager::frameEnded( getActiveScene() );
+        if ( _init )
+        {
+            return Attorney::SceneManager::frameEnded( getActiveScene() );
+        }
+
+        return true;
     }
 
     void SceneManager::updateSceneState( const U64 deltaGameTimeUS, const U64 deltaAppTimeUS )
@@ -635,7 +645,7 @@ namespace Divide
 
         U8 index = 0u;
 
-        const auto& waterBodies = activeSceneState->waterBodies()._data;
+        const auto& waterBodies = activeSceneState->waterBodies();
         for ( const auto& body : waterBodies )
         {
             sceneData->waterDetails( index++, body );
@@ -656,24 +666,24 @@ namespace Divide
         }
     }
 
-    void SceneManager::drawCustomUI( const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut )
+    void SceneManager::drawCustomUI( const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
         //Set a 2D camera for rendering
         GFX::EnqueueCommand( bufferInOut, GFX::SetCameraCommand{ Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->snapshot() } );
         GFX::EnqueueCommand( bufferInOut, GFX::SetViewportCommand{ targetViewport } );
 
-        Attorney::SceneManager::drawCustomUI( getActiveScene(), targetViewport, bufferInOut );
+        Attorney::SceneManager::drawCustomUI( getActiveScene(), targetViewport, bufferInOut, memCmdInOut );
     }
 
-    void SceneManager::debugDraw( GFX::CommandBuffer& bufferInOut )
+    void SceneManager::debugDraw( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         Scene& activeScene = getActiveScene();
 
-        Attorney::SceneManager::debugDraw( activeScene, bufferInOut );
+        Attorney::SceneManager::debugDraw( activeScene, bufferInOut, memCmdInOut );
         // Draw bounding boxes, skeletons, axis gizmo, etc.
-        _platformContext->gfx().debugDraw( activeScene.state()->renderState(), bufferInOut );
+        _platformContext->gfx().debugDraw( activeScene.state()->renderState(), bufferInOut, memCmdInOut );
     }
 
     Camera* SceneManager::playerCamera( const PlayerIndex idx, const bool skipOverride ) const noexcept
@@ -1100,9 +1110,14 @@ namespace Divide
         return getActiveScene().input()->joystickRemap( arg );
     }
 
-    bool SceneManager::onUTF8( [[maybe_unused]] const Input::UTF8Event& arg )
+    bool SceneManager::onTextEvent( const Input::TextEvent& arg )
     {
-        return false;
+        if ( !_processInput )
+        {
+            return false;
+        }
+
+        return getActiveScene().input()->onTextEvent( arg );
     }
 
     bool LoadSave::loadScene( Scene& activeScene )

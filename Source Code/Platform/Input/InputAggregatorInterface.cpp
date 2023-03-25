@@ -123,7 +123,7 @@ KeyEvent::KeyEvent(DisplayWindow* sourceWindow, const U8 deviceIndex) noexcept
 {
 }
 
-UTF8Event::UTF8Event(DisplayWindow* sourceWindow, const U8 deviceIndex, const char* text) noexcept
+TextEvent::TextEvent(DisplayWindow* sourceWindow, const U8 deviceIndex, const char* text) noexcept
     : InputEvent(sourceWindow, deviceIndex),
       _text(text)
 {

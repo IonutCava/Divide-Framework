@@ -33,10 +33,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef VK_BUFFER_IMPL_H_
 #define VK_BUFFER_IMPL_H_
 
-#include "Platform/Video/Headers/RenderAPIEnums.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkMemAllocatorInclude.h"
-#include "Platform/Video/Buffers/VertexBuffer/Headers/BufferParams.h"
-
+#include "Platform/Video/Buffers/VertexBuffer/Headers/BufferLocks.h"
 #include "Platform/Video/Headers/AttributeDescriptor.h"
 
 namespace Divide {
@@ -50,8 +48,16 @@ namespace Divide {
 
     VertexInputDescription getVertexDescription(const AttributeMap& vertexFormat);
 
+    struct vkLockableBuffer : public LockableBuffer
+    {
+        virtual VkBuffer getVKBufferHandle() const = 0;
+    };
+
     struct AllocatedBuffer : private NonCopyable {
-        explicit AllocatedBuffer(const BufferUsageType type) : _usageType(type) {}
+        explicit AllocatedBuffer( const BufferParams& params ) noexcept
+            : _params(params)
+        {
+        }
 
         ~AllocatedBuffer();
 
@@ -59,10 +65,39 @@ namespace Divide {
         VmaAllocation _allocation{ VK_NULL_HANDLE };
         VmaAllocationInfo _allocInfo{};
         BufferParams _params{};
-
-        const BufferUsageType _usageType{ BufferUsageType::COUNT };
     };
-    FWD_DECLARE_MANAGED_STRUCT(AllocatedBuffer);
+
+    FWD_DECLARE_MANAGED_STRUCT( AllocatedBuffer );
+
+    struct vkAllocatedLockableBuffer final: AllocatedBuffer, vkLockableBuffer
+    {
+        explicit vkAllocatedLockableBuffer( const BufferParams& params, LockManager* lockManager )
+            : AllocatedBuffer(params)
+            , vkLockableBuffer()
+            , _lockManager(lockManager)
+        {
+        }
+
+        [[nodiscard]] inline VkBuffer getVKBufferHandle() const override final
+        {
+            return _buffer;
+        }
+
+        [[nodiscard]] BufferFlags getBufferFlags() const override final
+        {
+            return _params._flags;
+        }
+
+        [[nodiscard]] inline LockManager* getLockManager() override final
+        {
+            return _lockManager;
+        }
+
+     private:
+        LockManager* _lockManager{nullptr};
+    };
+
+    FWD_DECLARE_MANAGED_STRUCT( vkAllocatedLockableBuffer );
 
     namespace VKUtil {
         AllocatedBuffer_uptr createStagingBuffer(size_t size, std::string_view bufferName);

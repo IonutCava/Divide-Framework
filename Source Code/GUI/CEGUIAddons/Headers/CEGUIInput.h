@@ -69,7 +69,7 @@ class CEGUIInput final : public Input::InputAggregatorInterface,
     /// Mouse button released: return true if input was consumed
     bool mouseButtonReleased(const Input::MouseButtonEvent& arg) override;
 
-    bool onUTF8(const Input::UTF8Event& arg) override;
+    bool onTextEvent(const Input::TextEvent& arg) override;
 
    protected:
     GUI& _parent;

@@ -78,13 +78,13 @@ bool AnimEvaluator::initBuffers(GFXDevice& context) {
     }
 
     ShaderBufferDescriptor bufferDescriptor{};
-    bufferDescriptor._usage = ShaderBuffer::Usage::CONSTANT_BUFFER;
     bufferDescriptor._ringBufferLength = 1;
     bufferDescriptor._name = Util::StringFormat("BONE_%d_BONES", _transforms.front().count());
     bufferDescriptor._bufferParams._elementCount = numberOfFrames;
     bufferDescriptor._bufferParams._elementSize = sizeof(FrameData);
-    bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
-    bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
+    bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::CONSTANT_BUFFER;
+    bufferDescriptor._bufferParams._flags._updateFrequency = BufferUpdateFrequency::ONCE;
+    bufferDescriptor._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
     bufferDescriptor._initialData = { animationData.data(), animationData.size() * sizeof(FrameData) };
 
     _boneBuffer = context.newSB(bufferDescriptor);

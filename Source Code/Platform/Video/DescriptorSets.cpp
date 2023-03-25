@@ -42,7 +42,6 @@ namespace Divide {
     size_t ImageView::getHash() const noexcept {
         _hash = 1337;
         Util::Hash_combine(_hash,
-                           _usage,
                            _descriptor.getHash(),
                            _srcTexture.getHash(),
                            targetType(),
@@ -66,15 +65,17 @@ namespace Divide {
                !Compare(lhs._buffer, rhs._buffer);
     }
 
-    DescriptorSetBindingType Type( const DescriptorSetBindingData& data ) noexcept {
-        switch ( data.index()) {
-            case 1: {
-                const ShaderBufferEntry& entry = As<ShaderBufferEntry>( data );
-                const ShaderBuffer::Usage usage = entry._buffer->getUsage();
-                switch (usage) {
-                    case ShaderBuffer::Usage::COMMAND_BUFFER:
-                    case ShaderBuffer::Usage::UNBOUND_BUFFER: return DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-                    case ShaderBuffer::Usage::CONSTANT_BUFFER: return DescriptorSetBindingType::UNIFORM_BUFFER;
+    DescriptorSetBindingType Type( const DescriptorSetBindingData& data ) noexcept
+    {
+        switch ( data.index())
+        {
+            case 1:
+            {
+                switch ( As<ShaderBufferEntry>( data )._buffer->getUsage() )
+                {
+                    case BufferUsageType::COMMAND_BUFFER:
+                    case BufferUsageType::UNBOUND_BUFFER: return DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+                    case BufferUsageType::CONSTANT_BUFFER: return DescriptorSetBindingType::UNIFORM_BUFFER;
                     default: DIVIDE_UNEXPECTED_CALL();
                 }
             } break;
@@ -82,10 +83,11 @@ namespace Divide {
             case 3: return DescriptorSetBindingType::IMAGE;
             default: DIVIDE_UNEXPECTED_CALL(); break;
         }
+
         return DescriptorSetBindingType::COUNT;
     }
 
-    void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer, BufferRange range )
+    void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer, BufferRange range ) noexcept
     {
         assert( buffer != nullptr );
         As<ShaderBufferEntry>( dataInOut ) = { buffer, range, buffer->queueReadIndex() };

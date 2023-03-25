@@ -36,81 +36,57 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RTAttachment.h"
 #include "Platform/Video/Headers/BlendingProperties.h"
 
-namespace Divide {
-    constexpr U16 INVALID_LAYER_INDEX = U16_MAX;
-
-struct BlitIndex {
-    U16 _index{ INVALID_LAYER_INDEX };
-    U16 _layer{ 0u };
-};
-
-struct ColourBlitEntry {
-    BlitIndex _input;
-    BlitIndex _output;
-};
-
-struct DepthBlitEntry {
-    U16 _inputLayer{ INVALID_LAYER_INDEX };
-    U16 _outputLayer{ INVALID_LAYER_INDEX };
-};
-
-struct RTBlitParams {
-    using ColourArray = std::array<ColourBlitEntry, to_base( RTColourAttachmentSlot::COUNT )>;
-    DepthBlitEntry _blitDepth{};
-    ColourArray _blitColours{};
-};
-
-struct RTDrawMask {
-    std::array<bool, to_base( RTColourAttachmentSlot::COUNT )> _disabledColours = create_array<to_base( RTColourAttachmentSlot::COUNT), bool>(false);
-    bool _disabledDepth = false;
-};
-
-struct ClearColourEntry
+namespace Divide
 {
-    FColour4 _colour{ VECTOR4_ZERO };
-    RTColourAttachmentSlot _index{ RTColourAttachmentSlot::COUNT };
+
+constexpr U16 INVALID_INDEX = U16_MAX;
+constexpr U16 MAX_BLIT_ENTRIES = 8u;
+
+struct BlitEntry
+{
+    U16 _layerOffset{0u};
+    U16 _mipOffset{0u};
+    U16 _index{ INVALID_INDEX };
 };
 
-struct RTDrawLayerParams {
-    RTAttachmentType _type{ RTAttachmentType::COUNT };
-    RTColourAttachmentSlot _index{ RTColourAttachmentSlot::COUNT };
-    U16 _layer{ 0 };
-    U16 _mipLevel{ U16_MAX };
+struct RTDrawLayerParams
+{
+    U16 _layer{ 0u };
+    U16 _mipLevel{ 0u };
+    U16 _index{INVALID_INDEX};
 };
 
-struct RTClearDescriptor {
-    std::array<ClearColourEntry, to_base( RTColourAttachmentSlot::COUNT )> _clearColourDescriptors;
-    bool _clearDepth = false;
-    F32 _clearDepthValue = 1.f;
+struct RTClearEntry
+{
+    FColour4 _colour{0.f}; //For depth, only R channel is used
+    bool _enabled{false};
 };
 
-struct RTDrawLayerDescriptor {
-    std::array<U16, to_base( RTColourAttachmentSlot::COUNT )> _colourLayers = create_array<to_base( RTColourAttachmentSlot::COUNT )>(INVALID_LAYER_INDEX);
-    U16 _depthLayer = INVALID_LAYER_INDEX;
+struct RTBlitEntry
+{
+    BlitEntry _input{};
+    BlitEntry _output{};
+    U16 _layerCount{1u};
+    U16 _mipCount{1u};
 };
 
-struct RTDrawDescriptor {
-    RTDrawMask _drawMask{};
-    RTDrawLayerDescriptor _writeLayers{};
-    U16 _mipWriteLevel{ U16_MAX };
+using RTDrawMask = std::array<bool, to_base(RTColourAttachmentSlot::COUNT)>;
+using RTBlitParams = eastl::fixed_vector<RTBlitEntry, MAX_BLIT_ENTRIES, false>;
+using RTClearDescriptor = std::array<RTClearEntry, RT_MAX_ATTACHMENT_COUNT>;
+using RTDrawLayerDescriptor = std::array<U16, RT_MAX_ATTACHMENT_COUNT>;
+
+struct RTDrawDescriptor
+{
+    RTDrawMask _drawMask = create_array<to_base( RTColourAttachmentSlot::COUNT )>( false );
+    RTDrawLayerDescriptor _writeLayers = create_array<RT_MAX_ATTACHMENT_COUNT>(to_U16(0u));
+    U16 _mipWriteLevel{ 0u };
 };
 
-[[nodiscard]] bool IsEnabled(const RTDrawMask& mask, RTAttachmentType type) noexcept;
-[[nodiscard]] bool IsEnabled(const RTDrawMask& mask, RTAttachmentType type, RTColourAttachmentSlot slot) noexcept;
-void SetEnabled(RTDrawMask& mask, RTAttachmentType type, RTColourAttachmentSlot slot, bool state) noexcept;
-void EnableAll(RTDrawMask& mask);
-void DisableAll(RTDrawMask& mask);
+extern BlitEntry INVALID_BLIT_ENTRY;
+extern RTClearEntry DEFAULT_CLEAR_ENTRY;
 
-bool operator==(const RTDrawMask& lhs, const RTDrawMask& rhs);
-bool operator!=(const RTDrawMask& lhs, const RTDrawMask& rhs);
-bool operator==(const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs);
-bool operator!=(const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs);
-
-[[nodiscard]] bool IsValid( const BlitIndex& entry ) noexcept;
-[[nodiscard]] bool IsValid( const DepthBlitEntry& entry ) noexcept;
-[[nodiscard]] bool IsValid( const ColourBlitEntry& entry ) noexcept;
-[[nodiscard]] bool IsValid( const RTBlitParams::ColourArray& colours ) noexcept;
-[[nodiscard]] bool IsValid( const RTBlitParams& params ) noexcept;
+bool IsValid( const RTBlitParams& params) noexcept;
+bool operator==(const BlitEntry& lhs, const BlitEntry& rhs) noexcept;
 
 }; //namespace Divide
 

@@ -40,8 +40,7 @@
 namespace Divide {
 
 class PhysicsAsset;
-class PXDevice final : public KernelComponent,
-                       public PhysicsAPIWrapper {
+class PXDevice final : public PhysicsAPIWrapper {
 public:
     enum class PhysicsAPI : U8 {
         PhysX = 0,
@@ -50,7 +49,7 @@ public:
         COUNT
     };
 
-    explicit PXDevice(Kernel& parent) noexcept;
+    explicit PXDevice( PlatformContext& context ) noexcept;
     ~PXDevice();
 
     void setAPI(const PhysicsAPI API) noexcept { _API_ID = API; }
@@ -63,8 +62,6 @@ public:
     void update(U64 deltaTimeUS) override;
     void process(U64 deltaTimeUS) override;
     void idle() override;
-    void beginFrame();
-    void endFrame();
     bool convertActor(PhysicsAsset* actor, PhysicsGroup newGroup) override;
 
     bool initPhysicsScene(Scene& scene) override;

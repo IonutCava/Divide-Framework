@@ -64,8 +64,10 @@ struct RenderPackage;
 struct RenderStagePass;
 struct CameraSnapshot;
 
-namespace GFX {
+namespace GFX
+{
     struct DrawCommand;
+    struct MemoryBarrierCommand;
 };
 
 FWD_DECLARE_MANAGED_CLASS(SceneGraphNode);
@@ -95,6 +97,7 @@ class SceneNode : public CachedResource {
     virtual void prepareRender(SceneGraphNode* sgn,
                                RenderingComponent& rComp,
                                RenderPackage& pkg,
+                               GFX::MemoryBarrierCommand& postDrawMemCmd,
                                RenderStagePass renderStagePass,
                                const CameraSnapshot& cameraSnapshot,
                                bool refreshData);

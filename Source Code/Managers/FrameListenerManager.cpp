@@ -16,7 +16,8 @@ void FrameListenerManager::registerFrameListener(FrameListener* listener, const 
     assert(listener != nullptr);
 
     listener->setCallOrder(callOrder);
-    if (listener->getListenerName().empty()) {
+    if (listener->name().empty())
+    {
         listener->name(Util::StringFormat("generic_f_listener_%d", listener->getGUID()).c_str());
     }
     insert_sorted(_listeners, listener, eastl::less<>());
@@ -37,7 +38,7 @@ void FrameListenerManager::removeFrameListener(FrameListener* const listener) {
                             return fl->getGUID() == targetGUID;
                        }))
     {
-        Console::errorfn(Locale::Get(_ID("ERROR_FRAME_LISTENER_REMOVE")), listener->getListenerName().c_str());
+        Console::errorfn(Locale::Get(_ID("ERROR_FRAME_LISTENER_REMOVE")), listener->name().c_str());
     }
 }
 

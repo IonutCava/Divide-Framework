@@ -10,42 +10,60 @@ RenderStateBlock::RenderStateMap RenderStateBlock::s_stateBlockMap;
 SharedMutex RenderStateBlock::s_stateBlockMapMutex;
 size_t RenderStateBlock::s_defaultHashValue = 0;
 
-namespace TypeUtil {
-    const char* ComparisonFunctionToString(const ComparisonFunction func) noexcept {
+namespace TypeUtil
+{
+    const char* ComparisonFunctionToString(const ComparisonFunction func) noexcept
+    {
         return Names::compFunctionNames[to_base(func)];
     }
 
-    const char* StencilOperationToString(const StencilOperation op) noexcept {
+    const char* StencilOperationToString(const StencilOperation op) noexcept
+    {
         return Names::stencilOpNames[to_base(op)];
     }
-    const char* FillModeToString(const FillMode mode) noexcept {
+
+    const char* FillModeToString(const FillMode mode) noexcept
+    {
         return Names::fillMode[to_base(mode)];
     }
-    const char* CullModeToString(const CullMode mode) noexcept {
+
+    const char* CullModeToString(const CullMode mode) noexcept
+    {
         return Names::cullModes[to_base(mode)];
     }
 
-    ComparisonFunction StringToComparisonFunction(const char* name) noexcept {
-        for (U8 i = 0; i < to_U8(ComparisonFunction::COUNT); ++i) {
-            if (strcmp(name, Names::compFunctionNames[i]) == 0) {
+    ComparisonFunction StringToComparisonFunction(const char* name) noexcept
+    {
+        for (U8 i = 0; i < to_U8(ComparisonFunction::COUNT); ++i)
+        {
+            if (strcmp(name, Names::compFunctionNames[i]) == 0)
+            {
                 return static_cast<ComparisonFunction>(i);
             }
         }
 
         return ComparisonFunction::COUNT;
     }
-    StencilOperation StringToStencilOperation(const char* name) noexcept {
-        for (U8 i = 0; i < to_U8(StencilOperation::COUNT); ++i) {
-            if (strcmp(name, Names::stencilOpNames[i]) == 0) {
+
+    StencilOperation StringToStencilOperation(const char* name) noexcept
+    {
+        for (U8 i = 0; i < to_U8(StencilOperation::COUNT); ++i)
+        {
+            if (strcmp(name, Names::stencilOpNames[i]) == 0)
+            {
                 return static_cast<StencilOperation>(i);
             }
         }
 
         return StencilOperation::COUNT;
     }
-    FillMode StringToFillMode(const char* name) noexcept {
-        for (U8 i = 0; i < to_U8(FillMode::COUNT); ++i) {
-            if (strcmp(name, Names::fillMode[i]) == 0) {
+
+    FillMode StringToFillMode(const char* name) noexcept
+    {
+        for (U8 i = 0; i < to_U8(FillMode::COUNT); ++i)
+        {
+            if (strcmp(name, Names::fillMode[i]) == 0)
+            {
                 return static_cast<FillMode>(i);
             }
         }
@@ -53,9 +71,12 @@ namespace TypeUtil {
         return FillMode::COUNT;
     }
 
-    CullMode StringToCullMode(const char* name) noexcept {
-        for (U8 i = 0; i < to_U8(CullMode::COUNT); ++i) {
-            if (strcmp(name, Names::cullModes[i]) == 0) {
+    CullMode StringToCullMode(const char* name) noexcept
+    {
+        for (U8 i = 0; i < to_U8(CullMode::COUNT); ++i)
+        {
+            if (strcmp(name, Names::cullModes[i]) == 0)
+            {
                 return static_cast<CullMode>(i);
             }
         }
@@ -67,13 +88,15 @@ namespace TypeUtil {
 RenderStateBlock::RenderStateBlock() noexcept
     : GUIDWrapper()
 {
-    if (DefaultHash() == 0u) {
+    if (DefaultHash() == 0u)
+    {
         _dirty = true;
         s_defaultHashValue = RenderStateBlock::getHash();
     }
 }
 
-void RenderStateBlock::from(const RenderStateBlock& other) {
+void RenderStateBlock::from(const RenderStateBlock& other)
+{
     _colourWrite = other._colourWrite;
     _zBias = other._zBias;
     _zUnits = other._zUnits;
@@ -91,6 +114,7 @@ void RenderStateBlock::from(const RenderStateBlock& other) {
     _frontFaceCCW = other._frontFaceCCW;
     _scissorTestEnabled = other._scissorTestEnabled;
     _depthTestEnabled = other._depthTestEnabled;
+    _depthWriteEnabled = other._depthWriteEnabled;
     _stencilEnable = other._stencilEnable;
 
     {
@@ -99,7 +123,8 @@ void RenderStateBlock::from(const RenderStateBlock& other) {
     }
 }
 
-void RenderStateBlock::reset() {
+void RenderStateBlock::reset()
+{
     _colourWrite = P32_FLAGS_TRUE;
     _zBias = 0.0f;
     _zUnits = 0.0f;
@@ -120,13 +145,16 @@ void RenderStateBlock::reset() {
     _frontFaceCCW = true;
     _scissorTestEnabled = false;
     _depthTestEnabled = true;
+    _depthWriteEnabled = true;
     _stencilEnable = false;
 
     _dirty = true;
 }
 
-void RenderStateBlock::flipCullMode()  noexcept {
-    switch (cullMode()) {
+void RenderStateBlock::flipCullMode()  noexcept
+{
+    switch (cullMode())
+    {
         case CullMode::NONE:  _cullMode = CullMode::ALL;   break;
         case CullMode::ALL:   _cullMode = CullMode::NONE;  break;
         case CullMode::BACK:  _cullMode = CullMode::FRONT; break;
@@ -136,27 +164,43 @@ void RenderStateBlock::flipCullMode()  noexcept {
     _dirty = true;
 }
 
-void RenderStateBlock::setCullMode(const CullMode mode)  noexcept {
-    if (cullMode() != mode) {
+void RenderStateBlock::setCullMode(const CullMode mode)  noexcept
+{
+    if (cullMode() != mode)
+    {
         _cullMode = mode;
         _dirty = true;
     }
 }
 
-void RenderStateBlock::flipFrontFace()  noexcept {
+void RenderStateBlock::flipFrontFace()  noexcept
+{
     _frontFaceCCW = !frontFaceCCW();
     _dirty = true;
 }
 
-void RenderStateBlock::setFrontFaceCCW(const bool state) noexcept {
-    if (_frontFaceCCW != state) {
+void RenderStateBlock::setFrontFaceCCW(const bool state) noexcept
+{
+    if (_frontFaceCCW != state)
+    {
         _frontFaceCCW = state;
         _dirty = true;
     }
 }
-void RenderStateBlock::depthTestEnabled(const bool enable)  noexcept {
-    if (_depthTestEnabled != enable) {
+void RenderStateBlock::depthTestEnabled(const bool enable)  noexcept
+{
+    if (_depthTestEnabled != enable)
+    {
         _depthTestEnabled = enable;
+        _dirty = true;
+    }
+}
+
+void RenderStateBlock::depthWriteEnabled( const bool enable ) noexcept
+{
+    if ( _depthWriteEnabled != enable )
+    {
+        _depthWriteEnabled = enable;
         _dirty = true;
     }
 }
@@ -164,57 +208,71 @@ void RenderStateBlock::depthTestEnabled(const bool enable)  noexcept {
 void RenderStateBlock::setColourWrites(const bool red,
                                        const bool green,
                                        const bool blue,
-                                       const bool alpha)  noexcept {
+                                       const bool alpha)  noexcept
+                                       {
     P32 rgba = {};
     rgba.b[0] = red ? 1 : 0;
     rgba.b[1] = green ? 1 : 0;
     rgba.b[2] = blue ? 1 : 0;
     rgba.b[3] = alpha ? 1 : 0;
 
-    if (_colourWrite != rgba) {
+    if (_colourWrite != rgba)
+    {
         _colourWrite = rgba;
         _dirty = true;
     }
 }
 
-void RenderStateBlock::setScissorTest(const bool enable)  noexcept {
-    if (_scissorTestEnabled != enable) {
+void RenderStateBlock::setScissorTest(const bool enable)  noexcept
+{
+    if (_scissorTestEnabled != enable)
+    {
         _scissorTestEnabled = enable;
         _dirty = true;
     }
 }
 
-void RenderStateBlock::setZBias(const F32 zBias, const F32 zUnits)  noexcept {
-    if (!COMPARE(_zBias, zBias) || !COMPARE(_zUnits, zUnits)) {
+void RenderStateBlock::setZBias(const F32 zBias, const F32 zUnits)  noexcept
+{
+    if (!COMPARE(_zBias, zBias) || !COMPARE(_zUnits, zUnits))
+    {
         _zBias = zBias;
         _zUnits = zUnits;
         _dirty = true;
     }
 }
 
-void RenderStateBlock::setZFunc(const ComparisonFunction zFunc)  noexcept {
-    if (_zFunc != zFunc) {
+void RenderStateBlock::setZFunc(const ComparisonFunction zFunc)  noexcept
+{
+    if (_zFunc != zFunc)
+    {
         _zFunc = zFunc;
         _dirty = true;
     }
 }
 
-void RenderStateBlock::setFillMode(const FillMode mode)  noexcept {
-    if (_fillMode != mode) {
+void RenderStateBlock::setFillMode(const FillMode mode)  noexcept
+{
+    if (_fillMode != mode)
+    {
         _fillMode = mode;
         _dirty = true;
     }
 }
 
-void RenderStateBlock::setTessControlPoints(const U32 count) noexcept {
-    if (_tessControlPoints != count) {
+void RenderStateBlock::setTessControlPoints(const U32 count) noexcept
+{
+    if (_tessControlPoints != count)
+    {
         _tessControlPoints = count;
         _dirty = true;
     }
 }
 
-void RenderStateBlock::setStencilReadWriteMask(const U32 read, const U32 write)  noexcept {
-    if (_stencilMask != read || _stencilWriteMask != write) {
+void RenderStateBlock::setStencilReadWriteMask(const U32 read, const U32 write)  noexcept
+{
+    if (_stencilMask != read || _stencilWriteMask != write)
+    {
         _stencilMask = read;
         _stencilWriteMask = write;
         _dirty = true;
@@ -226,7 +284,8 @@ void RenderStateBlock::setStencil(const bool enable,
                                   const StencilOperation stencilFailOp,
                                   const StencilOperation stencilPassOp,
                                   const StencilOperation stencilZFailOp,
-                                  const ComparisonFunction stencilFunc)  noexcept {
+                                  const ComparisonFunction stencilFunc)  noexcept
+{
     if (_stencilEnable != enable ||
         _stencilRef != stencilRef ||
         _stencilFailOp != stencilFailOp ||
@@ -244,17 +303,20 @@ void RenderStateBlock::setStencil(const bool enable,
     }
 }
 
-void RenderStateBlock::Clear() {
-    ScopedLock<SharedMutex> w_lock(s_stateBlockMapMutex);
+void RenderStateBlock::Clear()
+{
+    LockGuard<SharedMutex> w_lock(s_stateBlockMapMutex);
     s_stateBlockMap.clear();
 }
 
-size_t RenderStateBlock::DefaultHash() noexcept {
+size_t RenderStateBlock::DefaultHash() noexcept
+{
     return s_defaultHashValue;
 }
 
 /// Return the render state block defined by the specified hash value.
-const RenderStateBlock& RenderStateBlock::Get(const size_t renderStateBlockHash) {
+const RenderStateBlock& RenderStateBlock::Get(const size_t renderStateBlockHash) 
+{
     bool blockFound = false;
     const RenderStateBlock& block = Get(renderStateBlockHash, blockFound);
     // Assert if it doesn't exist. Avoids programming errors.
@@ -263,13 +325,15 @@ const RenderStateBlock& RenderStateBlock::Get(const size_t renderStateBlockHash)
     return block;
 }
 
-const RenderStateBlock& RenderStateBlock::Get(const size_t renderStateBlockHash, bool& blockFound) {
+const RenderStateBlock& RenderStateBlock::Get(const size_t renderStateBlockHash, bool& blockFound)
+{
     blockFound = false;
 
     SharedLock<SharedMutex> r_lock(s_stateBlockMapMutex);
     // Find the render state block associated with the received hash value
     const RenderStateMap::const_iterator it = s_stateBlockMap.find(renderStateBlockHash);
-    if(it != std::cend(s_stateBlockMap) ) {
+    if(it != std::cend(s_stateBlockMap) )
+    {
         blockFound = true;
         return it->second;
     }
@@ -277,7 +341,8 @@ const RenderStateBlock& RenderStateBlock::Get(const size_t renderStateBlockHash,
     return s_stateBlockMap.find(DefaultHash())->second;
 }
 
-size_t RenderStateBlock::getHashInternal() const {
+size_t RenderStateBlock::getHashInternal() const
+{
     // Avoid small float rounding errors offsetting the general hash value
     const U32 zBias = to_U32(std::floor(_zBias * 1000.0f + 0.5f));
     const U32 zUnits = to_U32(std::floor(_zUnits * 1000.0f + 0.5f));
@@ -286,6 +351,7 @@ size_t RenderStateBlock::getHashInternal() const {
     Util::Hash_combine(hash, _colourWrite.i,
                              to_U32(_cullMode),
                              _depthTestEnabled,
+                             _depthWriteEnabled,
                              to_U32(_zFunc),
                              zBias,
                              zUnits,
@@ -305,23 +371,27 @@ size_t RenderStateBlock::getHashInternal() const {
     return hash;
 }
 
-size_t RenderStateBlock::getHash() const {
-    if (!_dirty) {
+size_t RenderStateBlock::getHash() const
+{
+    if (!_dirty)
+    {
         return Hashable::getHash();
     }
 
     const size_t previousCache = Hashable::getHash();
     _hash = getHashInternal();
 
-    if (previousCache != _hash) {
-        ScopedLock<SharedMutex> w_lock(s_stateBlockMapMutex);
+    if (previousCache != _hash)
+    {
+        LockGuard<SharedMutex> w_lock(s_stateBlockMapMutex);
         insert(s_stateBlockMap, _hash, *this);
     }
     _dirty = false;
     return _hash;
 }
 
-void RenderStateBlock::SaveToXML(const RenderStateBlock& block, const string& entryName, boost::property_tree::ptree& pt) {
+void RenderStateBlock::SaveToXML(const RenderStateBlock& block, const string& entryName, boost::property_tree::ptree& pt)
+{
 
     pt.put(entryName + ".colourWrite.<xmlattr>.r", block._colourWrite.b[0] == 1);
     pt.put(entryName + ".colourWrite.<xmlattr>.g", block._colourWrite.b[1] == 1);
@@ -339,7 +409,7 @@ void RenderStateBlock::SaveToXML(const RenderStateBlock& block, const string& en
     pt.put(entryName + ".frontFaceCCW", block._frontFaceCCW);
     pt.put(entryName + ".scissorTestEnabled", block._scissorTestEnabled);
     pt.put(entryName + ".depthTestEnabled", block._depthTestEnabled);
-
+    pt.put(entryName + ".depthWriteEnabled", block._depthWriteEnabled);
 
     pt.put(entryName + ".stencilEnable", block._stencilEnable);
     pt.put(entryName + ".stencilFailOp", TypeUtil::StencilOperationToString(block._stencilFailOp));
@@ -351,35 +421,35 @@ void RenderStateBlock::SaveToXML(const RenderStateBlock& block, const string& en
     pt.put(entryName + ".stencilWriteMask", block._stencilWriteMask);
 }
 
-RenderStateBlock RenderStateBlock::LoadFromXML(const string& entryName, const boost::property_tree::ptree& pt) {
-    RenderStateBlock block;
-    block.setColourWrites(pt.get(entryName + ".colourWrite.<xmlattr>.r", true),
-                          pt.get(entryName + ".colourWrite.<xmlattr>.g", true),
-                          pt.get(entryName + ".colourWrite.<xmlattr>.b", true),
-                          pt.get(entryName + ".colourWrite.<xmlattr>.a", true));
+void RenderStateBlock::LoadFromXML(const string& entryName, const boost::property_tree::ptree& pt, RenderStateBlock& blockInOut)
+{
+    blockInOut.setColourWrites(pt.get(entryName + ".colourWrite.<xmlattr>.r", blockInOut.colourWrite().b[0]),
+                               pt.get(entryName + ".colourWrite.<xmlattr>.g", blockInOut.colourWrite().b[1]),
+                               pt.get(entryName + ".colourWrite.<xmlattr>.b", blockInOut.colourWrite().b[2]),
+                               pt.get(entryName + ".colourWrite.<xmlattr>.a", blockInOut.colourWrite().b[3]));
 
-    block.setZBias(pt.get(entryName + ".zBias", 0.0f),
-                   pt.get(entryName + ".zUnits", 0.0f));
+    blockInOut.setZBias(pt.get(entryName + ".zBias", blockInOut.zBias()),
+                        pt.get(entryName + ".zUnits", blockInOut.zUnits()));
 
-    block.setZFunc(TypeUtil::StringToComparisonFunction(pt.get(entryName + ".zFunc", "LEQUAL").c_str()));
-    block.setTessControlPoints(pt.get(entryName + ".tessControlPoints", 3u));
-    block.setCullMode(TypeUtil::StringToCullMode(pt.get(entryName + ".cullMode", "CW/BACK").c_str()));
-    block.setFillMode(TypeUtil::StringToFillMode(pt.get(entryName + ".fillMode", "SOLID").c_str()));
+    blockInOut.setZFunc(TypeUtil::StringToComparisonFunction(pt.get(entryName + ".zFunc", TypeUtil::ComparisonFunctionToString( blockInOut.zFunc())).c_str()));
+    blockInOut.setTessControlPoints(pt.get(entryName + ".tessControlPoints", blockInOut.tessControlPoints()));
+    blockInOut.setCullMode(TypeUtil::StringToCullMode(pt.get(entryName + ".cullMode", TypeUtil::CullModeToString(blockInOut.cullMode())).c_str()));
+    blockInOut.setFillMode(TypeUtil::StringToFillMode(pt.get(entryName + ".fillMode", TypeUtil::FillModeToString(blockInOut.fillMode())).c_str()));
 
-    block.setFrontFaceCCW(pt.get(entryName + ".frontFaceCCW", true));
-    block.setScissorTest(pt.get(entryName + ".scissorTestEnabled", false));
-    block.depthTestEnabled(pt.get(entryName + ".depthTestEnabled", true));
+    blockInOut.setFrontFaceCCW(pt.get(entryName + ".frontFaceCCW", blockInOut.frontFaceCCW()));
+    blockInOut.setScissorTest(pt.get(entryName + ".scissorTestEnabled", blockInOut.scissorTestEnabled()));
+    blockInOut.depthTestEnabled(pt.get(entryName + ".depthTestEnabled", blockInOut.depthTestEnabled()));
+    blockInOut.depthWriteEnabled(pt.get(entryName + ".depthWriteEnabled", blockInOut.depthWriteEnabled()));
 
-    block.setStencil(pt.get(entryName + ".stencilEnable", false),
-                     pt.get(entryName + ".stencilRef", 0u),
-                     TypeUtil::StringToStencilOperation(pt.get(entryName + ".stencilFailOp", "KEEP").c_str()),
-                     TypeUtil::StringToStencilOperation(pt.get(entryName + ".stencilPassOp", "KEEP").c_str()),
-                     TypeUtil::StringToStencilOperation(pt.get(entryName + ".stencilZFailOp", "KEEP").c_str()),
-                     TypeUtil::StringToComparisonFunction(pt.get(entryName + ".stencilFunc", "NEVER").c_str()));
+    blockInOut.setStencil(pt.get(entryName + ".stencilEnable", blockInOut.stencilEnable()),
+                          pt.get(entryName + ".stencilRef", blockInOut.stencilRef()),
+                          TypeUtil::StringToStencilOperation(pt.get(entryName + ".stencilFailOp", TypeUtil::StencilOperationToString(blockInOut.stencilFailOp())).c_str()),
+                          TypeUtil::StringToStencilOperation(pt.get(entryName + ".stencilPassOp", TypeUtil::StencilOperationToString(blockInOut.stencilPassOp())).c_str()),
+                          TypeUtil::StringToStencilOperation(pt.get(entryName + ".stencilZFailOp",TypeUtil::StencilOperationToString(blockInOut.stencilZFailOp())).c_str()),
+                          TypeUtil::StringToComparisonFunction(pt.get(entryName + ".stencilFunc", TypeUtil::ComparisonFunctionToString(blockInOut.stencilFunc())).c_str()));
     
-    block.setStencilReadWriteMask(pt.get(entryName + ".stencilMask", 0xFFFFFFFF),
-                                  pt.get(entryName + ".stencilWriteMask", 0xFFFFFFFF));
-    return block;
+    blockInOut.setStencilReadWriteMask(pt.get(entryName + ".stencilMask", blockInOut.stencilMask()),
+                                       pt.get(entryName + ".stencilWriteMask", blockInOut.stencilWriteMask()));
 }
 
 };

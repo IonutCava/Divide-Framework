@@ -12,32 +12,37 @@ namespace Divide
 {
     namespace
     {
-        inline BaseType<VkImageUsageFlagBits> GetFlagForUsage( const ImageUsage usage , const TextureDescriptor& descriptor) noexcept
+        VkFlags GetFlagForUsage( const ImageUsage usage , const TextureDescriptor& descriptor) noexcept
         {
+            DIVIDE_ASSERT(usage != ImageUsage::COUNT);
+
             const bool multisampled = descriptor.msaaSamples() > 0u;
             const bool compressed = IsCompressed( descriptor.baseFormat() );
             const bool isDepthTexture = IsDepthTexture( descriptor.baseFormat() );
-            const bool supportsStorageBit = !multisampled && !compressed && !isDepthTexture;
+            bool supportsStorageBit = !multisampled && !compressed && !isDepthTexture;
+
+            
+            VkFlags ret = (usage != ImageUsage::SHADER_WRITE ? VK_IMAGE_USAGE_SAMPLED_BIT : VK_FLAGS_NONE);
 
             switch ( usage )
             {
-                case ImageUsage::SHADER_READ:return (supportsStorageBit ? VK_IMAGE_USAGE_STORAGE_BIT : 0u) | VK_IMAGE_USAGE_SAMPLED_BIT;
-                case ImageUsage::SHADER_READ_WRITE: DIVIDE_ASSERT( supportsStorageBit ); return VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-                case ImageUsage::SHADER_WRITE: DIVIDE_ASSERT( supportsStorageBit ); return VK_IMAGE_USAGE_STORAGE_BIT;
-                case ImageUsage::RT_COLOUR_ATTACHMENT: return VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+                case ImageUsage::SHADER_READ_WRITE:
+                case ImageUsage::SHADER_WRITE: DIVIDE_ASSERT( supportsStorageBit );  break;
+
+                case ImageUsage::RT_COLOUR_ATTACHMENT: 
                 case ImageUsage::RT_DEPTH_ATTACHMENT:
-                case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT: return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+                case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT:
+                {
+                    supportsStorageBit = false;
+                    ret |=  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+                    ret |= ( usage == ImageUsage::RT_COLOUR_ATTACHMENT ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+                    
+                } break;
             }
 
-            DIVIDE_UNEXPECTED_CALL();
-            return VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM;
+            return (supportsStorageBit ? (ret | VK_IMAGE_USAGE_STORAGE_BIT) : ret);
         }
-
-        FORCE_INLINE [[nodiscard]] U8 GetBytesPerPixel( const GFXDataFormat format, const GFXImageFormat baseFormat ) noexcept
-        {
-            return Texture::GetSizeFactor( format ) * NumChannels( baseFormat );
-        }
-    };
+    }
 
     AllocatedImage::~AllocatedImage()
     {
@@ -45,7 +50,7 @@ namespace Divide
         {
             VK_API::RegisterCustomAPIDelete( [img = _image, alloc = _allocation]( [[maybe_unused]] VkDevice device )
                                              {
-                                                 UniqueLock<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
+                                                 LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
                                                  vmaDestroyImage( *VK_API::GetStateTracker()._allocatorInstance._allocator, img, alloc );
                                              }, true );
         }
@@ -61,7 +66,8 @@ namespace Divide
                             _subRange._mipLevels.count,
                             _format,
                             _type,
-                            _usage);
+                            _usage,
+                            _resolveTarget);
         return _hash;
     }
 
@@ -113,9 +119,9 @@ namespace Divide
         return Texture::unload();
     }
 
-    void vkTexture::generateMipmaps( VkCommandBuffer cmdBuffer, const U16 baseLevel, const U16 baseLayer, const U16 layerCount )
+    void vkTexture::generateMipmaps( VkCommandBuffer cmdBuffer, const U16 baseLevel, const U16 baseLayer, const U16 layerCount, ImageUsage crtUsage )
     {
-        ImageUsage crtUsage = ImageUsage::UNDEFINED, prevUsageOut = ImageUsage::UNDEFINED;
+        VK_API::PushDebugMessage(cmdBuffer, "vkTexture::generateMipmaps");
 
         VkImageMemoryBarrier2 memBarrier = vk::imageMemoryBarrier2();
         memBarrier.image = image()->_image;
@@ -129,8 +135,6 @@ namespace Divide
             ImageSubRange baseSubRange = {};
             baseSubRange._mipLevels = { baseLevel, 1u };
             baseSubRange._layerRange = { baseLayer, layerCount };
-            crtUsage = imageUsage(baseSubRange);
-
             if ( IsCubeTexture( descriptor().texType() ) && _vkType == VK_IMAGE_TYPE_2D )
             {
                 baseSubRange._layerRange.offset *= 6u;
@@ -152,14 +156,13 @@ namespace Divide
         {
             case ImageUsage::UNDEFINED:
             {
-                DIVIDE_ASSERT(_defaultView._usage == ImageUsage::UNDEFINED);
             } break;
             case ImageUsage::SHADER_READ:
             {
                 barrier = true;
                 const VkImageLayout targetLayout = IsDepthTexture( _descriptor.baseFormat() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                 memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
+                memBarrier.srcStageMask = VK_API::ALL_SHADER_STAGES;
                 memBarrier.oldLayout = targetLayout;
             } break;
             case ImageUsage::SHADER_WRITE:
@@ -173,7 +176,7 @@ namespace Divide
             {
                 barrier = true;
                 memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
-                memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
+                memBarrier.srcStageMask = VK_API::ALL_SHADER_STAGES;
                 memBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
             } break;
             default: DIVIDE_UNEXPECTED_CALL_MSG("To compute mipmaps image must be in either LAYOUT_GENERAL or LAYOUT_READ_ONLY_OPTIMAL!"); break;
@@ -253,14 +256,13 @@ namespace Divide
         {
             case ImageUsage::UNDEFINED:
             {
-                DIVIDE_ASSERT( _defaultView._usage == ImageUsage::UNDEFINED );
             } break;
             case ImageUsage::SHADER_READ:
             {
                 const VkImageLayout targetLayout = IsDepthTexture( _descriptor.baseFormat() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
                 memBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
+                memBarrier.dstStageMask = VK_API::ALL_SHADER_STAGES;
                 memBarrier.newLayout = targetLayout;
             } break;
             case ImageUsage::SHADER_WRITE:
@@ -272,7 +274,7 @@ namespace Divide
             case ImageUsage::SHADER_READ_WRITE:
             {
                 memBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
-                memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
+                memBarrier.dstStageMask = VK_API::ALL_SHADER_STAGES;
                 memBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
             } break;
             default: DIVIDE_UNEXPECTED_CALL_MSG( "To compute mipmaps image must be in either LAYOUT_GENERAL or LAYOUT_READ_ONLY_OPTIMAL!" ); break;
@@ -280,54 +282,48 @@ namespace Divide
 
         vkCmdPipelineBarrier2( cmdBuffer, &dependencyInfo );
 
-        ImageSubRange baseSubRange = {};
-        baseSubRange._mipLevels = { baseLevel, mipCount() - baseLevel};
-        baseSubRange._layerRange = { baseLayer, layerCount };
-        if ( !imageUsage( baseSubRange, crtUsage, prevUsageOut ) )
-        {
-            NOP();
-        }
+        VK_API::PopDebugMessage(cmdBuffer);
     }
 
     void vkTexture::submitTextureData()
     {
-        if ( _defaultView._usage == ImageUsage::UNDEFINED )
+        VK_API::GetStateTracker()._cmdContext->flushCommandBuffer( [&]( VkCommandBuffer cmd )
         {
-            VK_API::GetStateTracker()._cmdContext->flushCommandBuffer( [&]( VkCommandBuffer cmd )
+            const VkImageLayout targetLayout = IsDepthTexture( _descriptor.baseFormat() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+            VkImageSubresourceRange range;
+            range.aspectMask = GetAspectFlags( _descriptor );
+            range.baseArrayLayer = 0u;
+            range.layerCount = VK_REMAINING_ARRAY_LAYERS;
+            range.baseMipLevel = 0u;
+            range.levelCount = VK_REMAINING_MIP_LEVELS;
+
+            VkImageMemoryBarrier2 imageBarriers[2] = {};
+
+            imageBarriers[0] = vk::imageMemoryBarrier2();
+            imageBarriers[0].image = _image->_image;
+            imageBarriers[0].subresourceRange = range;
+
+            imageBarriers[0].srcAccessMask = VK_ACCESS_2_NONE;
+            imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+            imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+            imageBarriers[0].dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+            imageBarriers[0].dstStageMask = VK_API::ALL_SHADER_STAGES;
+            imageBarriers[0].newLayout = targetLayout;
+
+            VkDependencyInfo dependencyInfo = vk::dependencyInfo();
+            dependencyInfo.imageMemoryBarrierCount = 1;
+            if ( _resolvedImage != nullptr )
             {
-                ImageUsage prevUsageOut = ImageUsage::UNDEFINED;
+                imageBarriers[1] = imageBarriers[0];
+                imageBarriers[1].image = _resolvedImage->_image;
+                dependencyInfo.imageMemoryBarrierCount = 2;
+            }
 
-                const VkImageLayout targetLayout = IsDepthTexture( _descriptor.baseFormat() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-                VkImageSubresourceRange range;
-                range.aspectMask = GetAspectFlags( _descriptor );
-                range.baseArrayLayer = 0u;
-                range.layerCount = VK_REMAINING_ARRAY_LAYERS;
-                range.baseMipLevel = 0u;
-                range.levelCount = VK_REMAINING_MIP_LEVELS;
-
-                VkImageMemoryBarrier2 imageBarrier = vk::imageMemoryBarrier2();
-                imageBarrier.image = _image->_image;
-                imageBarrier.srcAccessMask = VK_ACCESS_2_NONE;
-                imageBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-                imageBarrier.newLayout = targetLayout;
-                imageBarrier.subresourceRange = range;
-                imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-                imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
-
-                VkDependencyInfo dependencyInfo = vk::dependencyInfo();
-                dependencyInfo.imageMemoryBarrierCount = 1;
-                dependencyInfo.pImageMemoryBarriers = &imageBarrier;
-                vkCmdPipelineBarrier2(cmd, &dependencyInfo);
-
-                _defaultView._usage = ImageUsage::SHADER_READ;
-                if ( !imageUsage( ImageUsage::SHADER_READ, prevUsageOut ) )
-                {
-                    NOP();
-                }
-            });
-        }
+            dependencyInfo.pImageMemoryBarriers = imageBarriers;
+            vkCmdPipelineBarrier2(cmd, &dependencyInfo);
+        }, "vkTexture::submitTextureData()");
     }
 
     void vkTexture::prepareTextureData( const U16 width, const U16 height, const U16 depth, const bool emptyAllocation )
@@ -401,13 +397,15 @@ namespace Divide
         if ( emptyAllocation )
         {
             imageInfo.flags |= VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
+            //ToDo: Figure out why the validation layers complain if we skip this flag -Ionut:
+            imageInfo.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
         }
         VmaAllocationCreateInfo vmaallocinfo = {};
         vmaallocinfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
         vmaallocinfo.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
         vmaallocinfo.priority = 1.f;
 
-        UniqueLock<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
+        LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
         VK_CHECK( vmaCreateImage( *VK_API::GetStateTracker()._allocatorInstance._allocator,
                                   &imageInfo,
                                   &vmaallocinfo,
@@ -415,9 +413,29 @@ namespace Divide
                                   &_image->_allocation,
                                   &_image->_allocInfo ) );
 
-        const auto imageName = Util::StringFormat( "%s_%d", resourceName().c_str(), _testRefreshCounter );
+        auto imageName = Util::StringFormat( "%s_%d", resourceName().c_str(), _testRefreshCounter );
         vmaSetAllocationName( *VK_API::GetStateTracker()._allocatorInstance._allocator, _image->_allocation, imageName.c_str() );
         Debug::SetObjectName( VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)_image->_image, VK_OBJECT_TYPE_IMAGE, imageName.c_str() );
+
+
+        if ( sampleFlagBits() != VK_SAMPLE_COUNT_1_BIT )
+        {
+            _resolvedImage = eastl::make_unique<AllocatedImage>();
+
+            imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+
+
+            VK_CHECK( vmaCreateImage( *VK_API::GetStateTracker()._allocatorInstance._allocator,
+                                      &imageInfo,
+                                      &vmaallocinfo,
+                                      &_resolvedImage->_image,
+                                      &_resolvedImage->_allocation,
+                                      &_resolvedImage->_allocInfo ) );
+
+            imageName = Util::StringFormat( "%s_%d_resolved", resourceName().c_str(), _testRefreshCounter );
+            vmaSetAllocationName( *VK_API::GetStateTracker()._allocatorInstance._allocator, _resolvedImage->_allocation, imageName.c_str() );
+            Debug::SetObjectName( VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)_resolvedImage->_image, VK_OBJECT_TYPE_IMAGE, imageName.c_str() );
+        }
     }
 
     void vkTexture::loadDataInternal( const ImageTools::ImageData& imageData )
@@ -523,9 +541,8 @@ namespace Divide
                     }
                     else
                     {
-
                         memBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                        memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
+                        memBarrier.dstStageMask = VK_API::ALL_SHADER_STAGES;
                         memBarrier.newLayout = targetLayout;
                     }
 
@@ -538,18 +555,9 @@ namespace Divide
 
             if ( needsMipmaps )
             {
-                generateMipmaps( cmd, 0u, 0u, to_U16(_numLayers));
+                generateMipmaps( cmd, 0u, 0u, to_U16(_numLayers), ImageUsage::UNDEFINED );
             }
-            else
-            {
-                ImageUsage prevUsageOut = ImageUsage::UNDEFINED;
-                _defaultView._usage = ImageUsage::SHADER_READ;
-                if ( !imageUsage( ImageUsage::SHADER_READ, prevUsageOut ) )
-                {
-                    NOP();
-                }
-            }
-        } );
+        }, "vkTexture::loadDataInternal" );
     }
 
     void vkTexture::clearData( [[maybe_unused]] const UColour4& clearColour, [[maybe_unused]] U8 level ) const noexcept
@@ -578,7 +586,7 @@ namespace Divide
     {
         const size_t viewHash = viewDescriptor.getHash();
 
-        auto it = _imageViewCache.find( viewHash );
+        const auto it = _imageViewCache.find( viewHash );
         if ( it != end( _imageViewCache ) )
         {
             return it->second._view;
@@ -609,151 +617,24 @@ namespace Divide
         }
 
         VkImageViewCreateInfo imageInfo = vk::imageViewCreateInfo();
-        imageInfo.image = _image->_image;
+        imageInfo.image = viewDescriptor._resolveTarget ? _resolvedImage->_image : _image->_image;
         imageInfo.format = newView._descriptor._format;
         imageInfo.viewType = vkTextureViewTypeTable[to_base( newView._descriptor._type )];
         imageInfo.subresourceRange = range;
 
         VkImageViewUsageCreateInfo viewCreateInfo = vk::imageViewUsageCreateInfo();
-        
-        viewCreateInfo.usage = GetFlagForUsage( newView._descriptor._usage, _descriptor);
-        viewCreateInfo.pNext = nullptr;
-        imageInfo.pNext = &viewCreateInfo;
+        if ( !viewDescriptor._resolveTarget )
+        {
+            viewCreateInfo.usage = GetFlagForUsage( newView._descriptor._usage, _descriptor);
+            viewCreateInfo.pNext = nullptr;
+            imageInfo.pNext = &viewCreateInfo;
+        }
 
         VK_CHECK( vkCreateImageView( VK_API::GetStateTracker()._device->getVKDevice(), &imageInfo, nullptr, &newView._view ) );
 
         Debug::SetObjectName( VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)newView._view, VK_OBJECT_TYPE_IMAGE_VIEW, Util::StringFormat("%s_view_%zu", resourceName().c_str(), _imageViewCache.size()).c_str() );
         hashAlg::emplace(_imageViewCache, viewHash, newView);
         return newView._view;
-    }
-
-    bool vkTexture::transitionLayout( ImageSubRange subRange, const ImageUsage newLayout, VkImageMemoryBarrier2& memBarrierOut )
-    {
-        constexpr VkPipelineStageFlags2 PIPELINE_FRAGMENT_TEST_BITS = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
-
-        ImageUsage prevLayout = ImageUsage::UNDEFINED;
-        if ( !imageUsage( subRange, newLayout, prevLayout ) )
-        {
-            return false;
-        }
-
-
-        if ( descriptor().texType() == TextureType::TEXTURE_CUBE_ARRAY )
-        {
-            subRange._layerRange.offset *= 6u;
-            if ( subRange._layerRange.count != U16_MAX )
-            {
-                subRange._layerRange.count *= 6u;
-            }
-        }
-
-        VkImageMemoryBarrier2& memBarrier = memBarrierOut;
-        memBarrier = vk::imageMemoryBarrier2();
-
-        memBarrier.subresourceRange.aspectMask = vkTexture::GetAspectFlags( descriptor() );
-        memBarrier.subresourceRange.baseMipLevel = subRange._mipLevels.offset;
-        memBarrier.subresourceRange.levelCount = subRange._mipLevels.count == U16_MAX ? VK_REMAINING_MIP_LEVELS : subRange._mipLevels.count;
-        memBarrier.subresourceRange.baseArrayLayer = subRange._layerRange.offset;
-        memBarrier.subresourceRange.layerCount = subRange._layerRange.count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : subRange._layerRange.count;
-        memBarrier.image = image()->_image;
-
-        switch ( newLayout )
-        {
-            case ImageUsage::UNDEFINED:
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            } break;
-            case ImageUsage::SHADER_READ:
-            {
-                const VkImageLayout targetLayout = IsDepthTexture( _descriptor.baseFormat() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-                memBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
-                memBarrier.newLayout = targetLayout;
-            } break;
-            case ImageUsage::SHADER_WRITE:
-            {
-                memBarrier.dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
-                memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-                memBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-            } break;
-            case ImageUsage::SHADER_READ_WRITE:
-            {
-                memBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
-                memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT  | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
-                memBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-            } break;
-            case ImageUsage::RT_COLOUR_ATTACHMENT:
-            {
-                memBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-                memBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            } break;
-            case ImageUsage::RT_DEPTH_ATTACHMENT:
-            {
-                memBarrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-                memBarrier.dstStageMask = PIPELINE_FRAGMENT_TEST_BITS;
-                memBarrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-            } break;
-            case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT:
-            {
-                memBarrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-                memBarrier.dstStageMask = PIPELINE_FRAGMENT_TEST_BITS;
-                memBarrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-            } break;
-            default : DIVIDE_UNEXPECTED_CALL();
-        };
-
-        switch ( prevLayout )
-        {
-            case ImageUsage::UNDEFINED:
-            {
-                memBarrier.srcAccessMask = VK_ACCESS_2_NONE;
-                memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
-                memBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            } break;
-            case ImageUsage::SHADER_READ:
-            {
-                const VkImageLayout targetLayout = IsDepthTexture( _descriptor.baseFormat() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-                memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
-                memBarrier.oldLayout = targetLayout;
-            } break;
-            case ImageUsage::SHADER_WRITE:
-            {
-                memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
-                memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-                memBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-            } break;
-            case ImageUsage::SHADER_READ_WRITE:
-            {
-                memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
-                memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
-                memBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-            } break;
-            case ImageUsage::RT_COLOUR_ATTACHMENT:
-            {
-                memBarrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-                memBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            } break;
-            case ImageUsage::RT_DEPTH_ATTACHMENT:
-            {
-                memBarrier.srcAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-                memBarrier.srcStageMask = PIPELINE_FRAGMENT_TEST_BITS;
-                memBarrier.oldLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-            } break;
-            case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT:
-            {
-                memBarrier.srcAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-                memBarrier.srcStageMask = PIPELINE_FRAGMENT_TEST_BITS;
-                memBarrier.oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-            } break;
-            default: DIVIDE_UNEXPECTED_CALL();
-        }
-
-        return true;
     }
 
 }; //namespace Divide

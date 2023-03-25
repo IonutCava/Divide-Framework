@@ -3,6 +3,8 @@
 <config>
 	<debug>
 		<enableRenderAPIDebugging>true</enableRenderAPIDebugging>
+		<enableRenderAPIBestPractices>true</enableRenderAPIBestPractices>
+		<assertOnRenderAPIError>false</assertOnRenderAPIError>
 		<useGeometryCache>true</useGeometryCache>
 		<useVegetationCache>true</useVegetationCache>
 		<useShaderCache>true</useShaderCache>
@@ -19,13 +21,11 @@
 			<decals>true</decals>
 		</renderFilter>
 		<useTextureDDSCache>true</useTextureDDSCache>
-		<!-- memFile: file name that the application should use to write  memory allocation info. Leave empty for none! -->
-		<memFile>mem.log</memFile>
 	</debug>
 	<language>enGB</language>
 	<!-- RUNTIME: Values use by the application after loading is complete -->
 	<runtime>
-		<title>DIVIDE Framework - (C) Ionut Cava 2022</title>
+		<title>DIVIDE Framework - (C) Ionut Cava 2023</title>
 		<!-- 0 = primary display, 1 = secondary display, etc. Value is clamped between [1, LAST_DISPLAY] -->
 		<targetDisplay>1</targetDisplay>
 		<!-- 0 = NULL, 1 - OpenGL4, 2 - Vulkan-->
@@ -99,12 +99,12 @@
 			</postAA>
 			<toneMap>
 				<adaptive>true</adaptive>
-				<manualExposureFactor>1</manualExposureFactor>
+				<manualExposureFactor>3.273</manualExposureFactor>
 				<minLogLuminance>-4</minLogLuminance>
 				<maxLogLuminance>3</maxLogLuminance>
 				<tau>1.10000002</tau>
 				<!-- REINHARD, REINHARD_MODIFIED, GT, ACES, UNREAL_ACES, AMD_ACES, GT_DIFF_PARAMETERS, UNCHARTED_2, NONE -->
-				<mappingFunction>ACES</mappingFunction>
+				<mappingFunction>UNREAL_ACES</mappingFunction>
 			</toneMap>
 			<dof>
 				<enabled>false</enabled>

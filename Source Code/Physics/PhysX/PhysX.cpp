@@ -77,6 +77,11 @@ namespace Divide
     hashMap<U64, physx::PxTriangleMesh*> PhysX::s_gMeshCache;
     SharedMutex PhysX::s_meshCacheLock;
 
+    PhysX::PhysX( PlatformContext& context )
+        : PhysicsAPIWrapper("PhysX", context)
+    {
+    }
+
     ErrorCode PhysX::initPhysicsAPI( const U8 targetFrameRate, const F32 simSpeed )
     {
 
@@ -84,9 +89,9 @@ namespace Divide
         bool init = false;
         SCOPE_EXIT{
             if ( !init && !closePhysicsAPI() )
-     {
-Console::errorfn( Locale::Get( _ID( "ERROR_START_PHYSX_API" ) ) );
-}
+            {
+                Console::errorfn( Locale::Get( _ID( "ERROR_START_PHYSX_API" ) ) );
+            }
         };
 
         Console::printfn( Locale::Get( _ID( "START_PHYSX_API" ) ) );
@@ -411,7 +416,7 @@ Console::errorfn( Locale::Get( _ID( "ERROR_START_PHYSX_API" ) ) );
 
             if ( nodeGeometry == nullptr )
             {
-                ScopedLock<SharedMutex> w_lock( s_meshCacheLock );
+                LockGuard<SharedMutex> w_lock( s_meshCacheLock );
                 // Check again to avoid race conditions
                 const auto it = s_gMeshCache.find( nameHash );
                 if ( it != s_gMeshCache.end() )

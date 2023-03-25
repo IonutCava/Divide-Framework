@@ -178,14 +178,14 @@ constexpr I32 SIGN(const T val) {
 }
 
 /// Clamps value n between min and max
-template <typename T, typename U = T>
-constexpr void CLAMP(T& n, U min, U max) noexcept;
+template <typename T>
+constexpr void CLAMP(T& n, T min, T max) noexcept;
 
 template <typename T>
 constexpr void CLAMP_01(T& n) noexcept;
 
-template <typename T, typename U>
-[[nodiscard]] constexpr T CLAMPED(const T& n, U min, U max) noexcept;
+template <typename T>
+[[nodiscard]] constexpr T CLAMPED(const T& n, T min, T max) noexcept;
 
 template <typename T>
 [[nodiscard]] constexpr T CLAMPED_01(const T& n) noexcept;

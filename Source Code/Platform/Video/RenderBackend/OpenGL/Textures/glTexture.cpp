@@ -54,7 +54,6 @@ void glTexture::postLoad() {
     }
 
     Texture::postLoad();
-    _defaultView._usage = ImageUsage::SHADER_READ;
 }
 
 void glTexture::reserveStorage() {

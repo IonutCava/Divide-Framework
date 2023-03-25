@@ -14,7 +14,6 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Headers/RenderPackage.h"
-#include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Geometry/Shapes/Headers/Mesh.h"
 #include "Geometry/Shapes/Headers/SubMesh.h"
@@ -74,7 +73,7 @@ namespace Divide
     Vegetation::Vegetation( GFXDevice& context,
                             TerrainChunk& parentChunk,
                             const VegetationDetails& details )
-        : SceneNode( context.parent().resourceCache(),
+        : SceneNode( context.context().kernel().resourceCache(),
                      parentChunk.parent().descriptorHash() + parentChunk.ID(),
                      details.name,
                      ResourcePath{ details.name + "_" + Util::to_string( parentChunk.ID() ) },
@@ -199,7 +198,7 @@ namespace Divide
     void Vegetation::destroyStaticData()
     {
         {
-            ScopedLock<SharedMutex> w_lock( g_treeMeshLock );
+            LockGuard<SharedMutex> w_lock( g_treeMeshLock );
             s_treeMeshes.clear();
         }
         s_treeMaterial.reset();
@@ -392,7 +391,7 @@ namespace Divide
         treeShaderData._colourShaderVertVariant = "";
 
         ResourceDescriptor matDesc( "Tree_material" );
-        s_treeMaterial = CreateResource<Material>( gfxDevice.parent().resourceCache(), matDesc );
+        s_treeMaterial = CreateResource<Material>( gfxDevice.context().kernel().resourceCache(), matDesc );
         s_treeMaterial->baseShaderData( treeShaderData );
         s_treeMaterial->properties().shadingMode( ShadingMode::BLINN_PHONG );
         s_treeMaterial->properties().isInstanced( true );
@@ -525,10 +524,10 @@ namespace Divide
             }
 
             ShaderBufferDescriptor bufferDescriptor = {};
-            bufferDescriptor._usage = ShaderBuffer::Usage::UNBOUND_BUFFER;
             bufferDescriptor._bufferParams._elementSize = sizeof( VegetationData );
-            bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
-            bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_R_GPU_W;
+            bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::UNBOUND_BUFFER;
+            bufferDescriptor._bufferParams._flags._updateFrequency = BufferUpdateFrequency::ONCE;
+            bufferDescriptor._bufferParams._flags._updateUsage = BufferUpdateUsage::GPU_TO_GPU;
 
             if ( s_maxTreeInstances > 0 )
             {
@@ -612,7 +611,7 @@ namespace Divide
 
         if ( _instanceCountTrees > 0 && !_treeMeshNames.empty() )
         {
-            ScopedLock<SharedMutex> w_lock( g_treeMeshLock );
+            LockGuard<SharedMutex> w_lock( g_treeMeshLock );
             if ( s_treeMeshes.empty() )
             {
                 for ( const ResourcePath& meshName : _treeMeshNames )
@@ -629,7 +628,7 @@ namespace Divide
                         model.flag( true );
                         model.waitForReady( true );
                         model.assetName( meshName );
-                        Mesh_ptr meshPtr = CreateResource<Mesh>( _context.parent().resourceCache(), model );
+                        Mesh_ptr meshPtr = CreateResource<Mesh>( _context.context().kernel().resourceCache(), model );
                         meshPtr->setMaterialTpl( s_treeMaterial );
                         // CSM last split should probably avoid rendering trees since it would cover most of the scene :/
                         meshPtr->renderState().addToDrawExclusionMask(
@@ -711,6 +710,7 @@ namespace Divide
     void Vegetation::prepareRender( SceneGraphNode* sgn,
                                     RenderingComponent& rComp,
                                     RenderPackage& pkg,
+                                    GFX::MemoryBarrierCommand& postDrawMemCmd,
                                     RenderStagePass renderStagePass,
                                     const CameraSnapshot& cameraSnapshot,
                                     bool refreshData )
@@ -778,10 +778,12 @@ namespace Divide
                     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
                     cmd->_usage = DescriptorSetUsage::PER_DRAW;
                     DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::COMPUTE );
-                    Set( binding._data, hizTexture->getView( ImageUsage::SHADER_READ ), hizAttachment->descriptor()._samplerHash );
+                    Set( binding._data, hizTexture->getView(), hizAttachment->descriptor()._samplerHash );
                 }
 
                 GFX::DispatchComputeCommand computeCmd = {};
+
+                auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut ); // GPU to GPU command needed BEFORE draw (so ignore postDrawMemCmd)
                 if ( _instanceCountGrass > 0 )
                 {
                     computeCmd._computeGroupSize.set( (_instanceCountGrass + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1 );
@@ -790,6 +792,12 @@ namespace Divide
                     GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _cullPipelineGrass;
                     GFX::EnqueueCommand( bufferInOut, cullConstantsCmd );
                     GFX::EnqueueCommand( bufferInOut, computeCmd );
+                    memCmd->_bufferLocks.emplace_back( BufferLock
+                    {
+                        ._range = { 0u, U32_MAX },
+                        ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_READ,
+                        ._buffer = s_grassData->getBufferImpl()
+                    });
                 }
                 if ( _instanceCountTrees > 0 )
                 {
@@ -798,15 +806,20 @@ namespace Divide
                     GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _cullPipelineTrees;
                     GFX::EnqueueCommand( bufferInOut, cullConstantsCmd );
                     GFX::EnqueueCommand( bufferInOut, computeCmd );
-                }
 
-                GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_barrierMask = to_base( MemoryBarrierType::SHADER_STORAGE );
+                    memCmd->_bufferLocks.emplace_back( BufferLock
+                    {
+                        ._range = { 0u, U32_MAX },
+                        ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_READ,
+                        ._buffer = s_treeData->getBufferImpl()
+                    });
+                }
 
                 GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
             }
         }
 
-        SceneNode::prepareRender( sgn, rComp, pkg, renderStagePass, cameraSnapshot, refreshData );
+        SceneNode::prepareRender( sgn, rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData );
     }
 
     void Vegetation::sceneUpdate( const U64 deltaTimeUS,

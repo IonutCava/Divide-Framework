@@ -35,18 +35,28 @@
 
 namespace Divide {
 
+    inline bool operator==(const BufferFlags& lhs, const BufferFlags& rhs) noexcept {
+        return lhs._updateFrequency == rhs._updateFrequency &&
+               lhs._updateUsage == rhs._updateUsage &&
+               lhs._usageType == rhs._usageType;
+    }
+
+    inline bool operator!=(const BufferFlags& lhs, const BufferFlags& rhs) noexcept {
+        return lhs._updateFrequency != rhs._updateFrequency ||
+               lhs._updateUsage != rhs._updateUsage ||
+               lhs._usageType != rhs._usageType;
+    } 
+    
     inline bool operator==(const BufferParams& lhs, const BufferParams& rhs) noexcept {
         return lhs._elementCount == rhs._elementCount &&
                lhs._elementSize == rhs._elementSize &&
-               lhs._updateFrequency == rhs._updateFrequency &&
-               lhs._updateUsage == rhs._updateUsage;
+               lhs._flags == rhs._flags;
     }
 
     inline bool operator!=(const BufferParams& lhs, const BufferParams& rhs) noexcept {
         return lhs._elementCount != rhs._elementCount ||
                lhs._elementSize != rhs._elementSize ||
-               lhs._updateFrequency != rhs._updateFrequency ||
-               lhs._updateUsage != rhs._updateUsage;
+               lhs._flags != rhs._flags;
     }
 
 } //namespace Divide

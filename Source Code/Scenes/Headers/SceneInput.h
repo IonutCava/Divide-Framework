@@ -125,7 +125,7 @@ namespace Divide
         bool mouseMoved( const Input::MouseMoveEvent& arg ) override;
         bool mouseButtonPressed( const Input::MouseButtonEvent& arg ) override;
         bool mouseButtonReleased( const Input::MouseButtonEvent& arg ) override;
-        bool onUTF8( const Input::UTF8Event& arg ) override;
+        bool onTextEvent( const Input::TextEvent& arg ) override;
         /// Returns false if the key is already assigned and couldn't be merged
         /// Call removeKeyMapping for the specified key first
         bool addKeyMapping( Input::KeyCode key, const PressReleaseActions::Entry& keyCbks );

@@ -42,7 +42,7 @@ namespace Divide {
 struct RenderStagePass;
 struct GenericDrawCommand;
 
-struct VDIUserData {};
+struct VDIUserData{};
 
 class NOINITVTABLE VertexDataInterface : public GUIDWrapper, public GraphicsResource {
    public:

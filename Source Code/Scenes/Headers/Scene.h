@@ -76,8 +76,10 @@ namespace AI {
     FWD_DECLARE_MANAGED_CLASS(AIManager);
 }
 
-namespace GFX {
+namespace GFX
+{
     class CommandBuffer;
+    struct MemoryBarrierCommand;
 }
 
 namespace Attorney {
@@ -244,9 +246,9 @@ class Scene : public Resource, public PlatformContextComponent {
         void          loadAsset(const Task* parentTask, const XML::SceneNode& sceneNode, SceneGraphNode* parent);
 
         /// Draw debug entities
-        virtual void debugDraw(GFX::CommandBuffer& bufferInOut);
+        virtual void debugDraw(GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
         /// Draw custom ui elements
-        virtual void drawCustomUI(const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut);
+        virtual void drawCustomUI( const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
         /// Return true if input was consumed
         [[nodiscard]] virtual bool mouseMoved(const Input::MouseMoveEvent& arg);
 
@@ -342,12 +344,12 @@ class SceneManager {
         scene.currentPlayerPass(deltaTimeUS, idx);
     }
 
-    static void debugDraw(Scene& scene, GFX::CommandBuffer& bufferInOut) {
-        scene.debugDraw(bufferInOut);
+    static void debugDraw(Scene& scene, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut ) {
+        scene.debugDraw(bufferInOut, memCmdInOut);
     }
 
-    static void drawCustomUI(Scene& scene, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut) {
-        scene.drawCustomUI(targetViewport, bufferInOut);
+    static void drawCustomUI(Scene& scene, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut ) {
+        scene.drawCustomUI(targetViewport, bufferInOut, memCmdInOut);
     }
 
     static bool frameStarted(Scene& scene) { 

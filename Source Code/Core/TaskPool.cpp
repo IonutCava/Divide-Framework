@@ -246,7 +246,7 @@ namespace Divide
         checked_atom_sub( task._unfinishedJobs );
         checked_atom_sub( _runningTaskCount );
 
-        ScopedLock<Mutex> lock( _taskFinishedMutex );
+        LockGuard<Mutex> lock( _taskFinishedMutex );
         _taskFinishedCV.notify_one();
     }
 

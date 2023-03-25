@@ -207,5 +207,6 @@ constexpr auto ENGINE_VERSION_PATCH = 0u;
 
 constexpr auto OUTPUT_LOG_FILE = "console.log";
 constexpr auto ERROR_LOG_FILE = "errors.log";
+constexpr auto MEM_LOG_FILE = "mem.log";
 
 #endif  //_DIVIDE_CONFIG_H_

@@ -43,7 +43,11 @@ void CubeShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera,
     RenderPassParams params = {};
     params._target = ShadowMap::getShadowMap(_type)._targetID;
     params._sourceNode = light.getSGN();
+    params._refreshLightData = false;
     params._stagePass = { RenderStage::SHADOW, RenderPassType::MAIN_PASS, lightIndex, static_cast<RenderStagePass::VariantType>(light.getLightType()) };
+    params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
+    params._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
+    params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
 
     _context.generateCubeMap(params,
                              light.getShadowArrayOffset(),

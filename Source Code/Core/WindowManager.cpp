@@ -51,14 +51,13 @@ namespace {
 
 std::array<SDL_Cursor*, to_base(CursorStyle::COUNT)> WindowManager::s_cursors = create_array<to_base(CursorStyle::COUNT), SDL_Cursor*>(nullptr);
 
-WindowManager::WindowManager()  noexcept
+WindowManager::WindowManager() noexcept
 {
-    SDL_Init(SDL_INIT_VIDEO);
 }
 
 WindowManager::~WindowManager()
 {
-    close();
+    DIVIDE_ASSERT( _windows.empty(), "WindowManager::~WindowManager(): close() was not called before destruction!" );
 }
 
 vec2<U16> WindowManager::GetFullscreenResolution() noexcept {
@@ -82,7 +81,7 @@ ErrorCode WindowManager::init(PlatformContext& context,
     if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0) {
         return ErrorCode::WINDOW_INIT_ERROR;
     }
-    
+
     _context = &context;
 
     efficient_clear( _monitors );
@@ -111,9 +110,6 @@ ErrorCode WindowManager::init(PlatformContext& context,
     SDL_GetCurrentDisplayMode(displayIndex, &displayMode);
     systemInfo._systemResolutionWidth = displayMode.w;
     systemInfo._systemResolutionHeight = displayMode.h;
-
-    _apiFlags = CreateAPIFlags(renderingAPI);
-
 
     WindowDescriptor descriptor = {};
     descriptor.position = initialPosition;
@@ -145,42 +141,44 @@ ErrorCode WindowManager::init(PlatformContext& context,
     if (err == ErrorCode::NO_ERR) {
         _mainWindowGUID = window->getGUID();
 
-        window->addEventListener(WindowEvent::MINIMIZED, [ctx = _context]([[maybe_unused]] const DisplayWindow::WindowEventArgs& args) noexcept {
-            ctx->app().mainLoopPaused(true);
+        Application& app = _context->app();
+
+        window->addEventListener(WindowEvent::MINIMIZED, [&app]([[maybe_unused]] const DisplayWindow::WindowEventArgs& args) noexcept {
+            app.mainLoopPaused(true);
             return true;
         });
-        window->addEventListener(WindowEvent::MAXIMIZED, [ctx = _context]([[maybe_unused]] const DisplayWindow::WindowEventArgs& args) noexcept {
-            ctx->app().mainLoopPaused(false);
+        window->addEventListener(WindowEvent::MAXIMIZED, [&app]([[maybe_unused]] const DisplayWindow::WindowEventArgs& args) noexcept {
+            app.mainLoopPaused(false);
             return true;
         });
-        window->addEventListener(WindowEvent::RESTORED, [ctx = _context]([[maybe_unused]] const DisplayWindow::WindowEventArgs& args) noexcept {
-            ctx->app().mainLoopPaused(false);
+        window->addEventListener(WindowEvent::RESTORED, [&app]([[maybe_unused]] const DisplayWindow::WindowEventArgs& args) noexcept {
+            app.mainLoopPaused(false);
             return true;
         });
 
-        GPUState& gState = _context->gfx().gpuState();
         // Query available display modes (resolution, bit depth per channel and refresh rates)
-        I32 numberOfDisplayModes[GPUState::maxDisplayCount()] = {};
-        const I32 numDisplays = std::min(SDL_GetNumVideoDisplays(), to_I32(GPUState::maxDisplayCount()));
+        I32 numberOfDisplayModes[DisplayManager::g_maxDisplayOutputs] = {};
 
-        for (I32 display = 0; display < numDisplays; ++display) {
+        const U8 numDisplays = to_U8(std::min(SDL_GetNumVideoDisplays(), to_I32( DisplayManager::g_maxDisplayOutputs )));
+        Attorney::DisplayManagerWindowManager::SetActiveDisplayCount(numDisplays);
+
+        for (I32 display = 0; display < numDisplays; ++display)
+        {
             numberOfDisplayModes[display] = SDL_GetNumDisplayModes(display);
         }
 
-        GPUState::GPUVideoMode tempDisplayMode = {};
-        for (I32 display = 0; display < numDisplays; ++display) {
-            gState.setDisplayModeCount(to_U8(display), numberOfDisplayModes[display]);
-
+        DisplayManager::OutputDisplayProperties tempDisplayMode = {};
+        for (U8 display = 0u; display < numDisplays; ++display) {
             // Register the display modes with the GFXDevice object
             for (I32 mode = 0; mode < numberOfDisplayModes[display]; ++mode) {
                 SDL_GetDisplayMode(display, mode, &displayMode);
                 // Register the display modes with the GFXDevice object
                 tempDisplayMode._resolution.set(displayMode.w, displayMode.h);
-                tempDisplayMode._bitDepth = SDL_BITSPERPIXEL(displayMode.format);
-                tempDisplayMode._refreshRate = to_U8(displayMode.refresh_rate);
+                tempDisplayMode._bitsPerPixel = SDL_BITSPERPIXEL(displayMode.format);
+                tempDisplayMode._maxRefreshRate = to_U8(displayMode.refresh_rate);
                 tempDisplayMode._formatName = SDL_GetPixelFormatName(displayMode.format);
                 Util::ReplaceStringInPlace(tempDisplayMode._formatName, "SDL_PIXELFORMAT_", "");
-                gState.registerDisplayMode(to_U8(display), tempDisplayMode);
+                Attorney::DisplayManagerWindowManager::RegisterDisplayMode(to_U8(display), tempDisplayMode);
             }
         }
     }
@@ -190,9 +188,6 @@ ErrorCode WindowManager::init(PlatformContext& context,
     }
 
     return err;
-}
-
-void WindowManager::postInit() {
 }
 
 void WindowManager::close() {
@@ -208,10 +203,17 @@ void WindowManager::close() {
     SDL_QuitSubSystem(SDL_INIT_VIDEO);
 }
 
-DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, ErrorCode& err, U32& windowIndex ) {
-    windowIndex = U32_MAX;
+DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, ErrorCode& err )
+{
+
+    if ( descriptor.targetAPI == RenderAPI::COUNT )
+    {
+        err = ErrorCode::GFX_NON_SPECIFIED;
+        return nullptr;
+    }
+
     DisplayWindow* window = MemoryManager_NEW DisplayWindow(*this, *_context);
-    assert(window != nullptr);
+    DIVIDE_ASSERT(window != nullptr);
 
     if (err != ErrorCode::NO_ERR) {
         MemoryManager::SAFE_DELETE(window);
@@ -222,7 +224,8 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
         _mainWindow = window;
     }
 
-    U32 windowFlags = _apiFlags;
+    U32 windowFlags = descriptor.targetAPI == RenderAPI::Vulkan ? SDL_WINDOW_VULKAN : descriptor.targetAPI == RenderAPI::OpenGL ? SDL_WINDOW_OPENGL : 0u;
+
     if (TestBit(descriptor.flags, to_base(WindowDescriptor::Flags::RESIZEABLE))) {
         windowFlags |= SDL_WINDOW_RESIZABLE;
     }
@@ -270,7 +273,6 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
         return nullptr;
     }
  
-    windowIndex = to_U32(_windows.size());
     _windows.emplace_back(window);
     window->addEventListener(WindowEvent::SIZE_CHANGED, [&](const DisplayWindow::WindowEventArgs& args) {
         SizeChangeParams params{};
@@ -288,7 +290,7 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
             Console::d_printfn(Locale::Get(_ID("WINDOW_CLOSE_EVENT")), args._windowGUID);
 
             if (_mainWindowGUID == args._windowGUID) {
-                _context->app().RequestShutdown();
+                _context->app().RequestShutdown(false);
             } else {
                 for (DisplayWindow*& win : _windows) {
                     if (win->getGUID() == args._windowGUID) {
@@ -322,32 +324,6 @@ bool WindowManager::destroyWindow(DisplayWindow*& window) {
     return false;
 }
 
-void WindowManager::update(const U64 deltaTimeUS)
-{
-    PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
-
-    for (DisplayWindow* win : _windows)
-    {
-        win->update(deltaTimeUS);
-    }
-}
-
-bool WindowManager::onSDLEvent(SDL_Event event) noexcept
-{
-    // Nothing yet? Wow ...
-    return false;
-}
-
-bool WindowManager::anyWindowFocus() const noexcept
-{
-    return getFocusedWindow() != nullptr;
-}
-
-U32 WindowManager::CreateAPIFlags(const RenderAPI api) noexcept
-{
-    return api == RenderAPI::Vulkan ? SDL_WINDOW_VULKAN : SDL_WINDOW_OPENGL;
-}
-
 void WindowManager::DestroyAPISettings(DisplayWindow* window) noexcept
 {
     if (!window || !TestBit(SDL_GetWindowFlags(window->getRawWindow()), to_U32(SDL_WINDOW_OPENGL)))
@@ -364,11 +340,11 @@ void WindowManager::DestroyAPISettings(DisplayWindow* window) noexcept
 
 ErrorCode WindowManager::configureAPISettings(const RenderAPI api, const U16 descriptorFlags) const
 {
-    if (api == RenderAPI::Vulkan)
+    if (api == RenderAPI::Vulkan || api == RenderAPI::None)
     {
         NOP();
     }
-    else if (api == RenderAPI::OpenGL || api == RenderAPI::None)
+    else if (api == RenderAPI::OpenGL)
     {
         Uint32 OpenGLFlags = SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG | SDL_GL_CONTEXT_RESET_ISOLATION_FLAG;
 
@@ -377,12 +353,17 @@ ErrorCode WindowManager::configureAPISettings(const RenderAPI api, const U16 des
         {
             // OpenGL error handling is available in any build configuration if the proper defines are in place.
             OpenGLFlags |= SDL_GL_CONTEXT_ROBUST_ACCESS_FLAG;
-            if (_context->config().debug.enableRenderAPIDebugging)
+            if (_context->config().debug.enableRenderAPIDebugging || _context->config().debug.enableRenderAPIBestPractices)
             {
                 useDebugContext = true;
                 OpenGLFlags |= SDL_GL_CONTEXT_DEBUG_FLAG;
             }
         }
+        if (!useDebugContext)
+        {
+            ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_NO_ERROR, 1));
+        }
+
         ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, OpenGLFlags));
         ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_RELEASE_BEHAVIOR, SDL_GL_CONTEXT_RELEASE_BEHAVIOR_NONE));
 
@@ -395,10 +376,6 @@ ErrorCode WindowManager::configureAPISettings(const RenderAPI api, const U16 des
         ValidateAssert(SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8));
         ValidateAssert(SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24));
 
-        if (!useDebugContext)
-        {
-            ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_NO_ERROR, 1));
-        }
 
         Validate(SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE));
         ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4));
@@ -505,7 +482,12 @@ bool WindowManager::SetGlobalCursorPosition(I32 x, I32 y) noexcept {
 }
 
 void WindowManager::SetCursorStyle(const CursorStyle style) {
-    SDL_SetCursor(s_cursors[to_base(style)]);
+    static CursorStyle s_CurrentStyle = CursorStyle::NONE;
+    if (style != s_CurrentStyle )
+    {
+        s_CurrentStyle = style;
+        SDL_SetCursor( s_cursors[to_base( style )] );
+    }
 }
 
 void WindowManager::ToggleRelativeMouseMode(const bool state) noexcept {

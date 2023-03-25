@@ -8,30 +8,36 @@
 
 namespace Divide {
 
-bool Console::_timestamps = false;
-bool Console::_threadID = false;
-bool Console::_enabled = true;
-bool Console::_immediateMode = true;
-bool Console::_errorStreamEnabled = true;
+SharedMutex Console::s_callbackLock;
+vector<Console::ConsolePrintCallbackEntry> Console::s_guiConsoleCallbacks;
 
-std::atomic_bool Console::_running = false;
-vector<Console::ConsolePrintCallback> Console::_guiConsoleCallbacks;
+constexpr U32 DEFAULT_FLAGS = to_base( Console::Flags::DECORATE_TIMESTAMP ) |
+                              to_base( Console::Flags::DECORATE_THREAD_ID ) |
+                              to_base( Console::Flags::DECORATE_SEVERITY ) |
+                              to_base( Console::Flags::ENABLE_OUTPUT ) |
+                              to_base( Console::Flags::ENABLE_ERROR_STREAM );
+
+U32 Console::s_flags = DEFAULT_FLAGS;
+std::atomic_bool Console::s_running = false;
 
 //Use moodycamel's implementation of a concurrent queue due to its "Knock-your-socks-off blazing fast performance."
 //https://github.com/cameron314/concurrentqueue
-namespace {
+namespace
+{
     thread_local char textBuffer[CONSOLE_OUTPUT_BUFFER_SIZE + 1];
 
     std::array<Console::OutputEntry, 16> g_outputCache;
 
-    moodycamel::BlockingConcurrentQueue<Console::OutputEntry>& OutBuffer() {
+    moodycamel::BlockingConcurrentQueue<Console::OutputEntry>& OutBuffer()
+    {
         static moodycamel::BlockingConcurrentQueue<Console::OutputEntry> s_OutputBuffer;
         return s_OutputBuffer;
     }
 }
 
 //! Do not remove the following license without express permission granted by DIVIDE-Studio
-void Console::printCopyrightNotice() {
+void Console::PrintCopyrightNotice()
+{
     std::cout << "------------------------------------------------------------------------------\n"
               << "Copyright (c) 2018 DIVIDE-Studio\n"
               << "Copyright (c) 2009 Ionut Cava\n\n"
@@ -52,17 +58,19 @@ void Console::printCopyrightNotice() {
               << "-------------------------------------------------------------------------------\n\n";
 }
 
-const char* Console::formatText(const char* format, ...) noexcept {
+const char* Console::FormatText( const char* format, ... ) noexcept
+{
     va_list args;
-    va_start(args, format);
-    assert(_vscprintf(format, args) + 1 < CONSOLE_OUTPUT_BUFFER_SIZE);
-    vsprintf(textBuffer, format, args);
-    va_end(args);
+    va_start( args, format );
+    assert( _vscprintf( format, args ) + 1 < CONSOLE_OUTPUT_BUFFER_SIZE );
+    vsprintf( textBuffer, format, args );
+    va_end( args );
     return textBuffer;
 }
 
-void Console::decorate(std::ostream& outStream, const char* text, const bool newline, const EntryType type) {
-    if (_timestamps) {
+void Console::DecorateAndPrint(std::ostream& outStream, const char* text, const bool newline, const EntryType type) {
+    if (TestBit(s_flags, Flags::DECORATE_TIMESTAMP)) [[likely]]
+    {
         outStream << "[ " << std::internal
                           << std::setw(9)
                           << std::setprecision(3)
@@ -71,89 +79,146 @@ void Console::decorate(std::ostream& outStream, const char* text, const bool new
                           << Time::App::ElapsedSeconds()
                   << " ] ";
     }
-    if (_threadID) {
+
+    if ( TestBit( s_flags, Flags::DECORATE_THREAD_ID ) ) [[likely]]
+    {
         outStream << "[ " << std::this_thread::get_id() << " ] ";
     }
 
-    if (type == EntryType::WARNING || type == EntryType::ERR) {
+    if ( TestBit( s_flags, Flags::DECORATE_SEVERITY ) && (type == EntryType::WARNING || type == EntryType::ERR) )
+    {
         outStream << (type == EntryType::ERR ? " Error: " : " Warning: ");
     }
 
     outStream << text;
 
-    if (newline) {
+    if (newline)
+    {
         outStream << "\n";
     }
 }
 
-void Console::output(std::ostream& outStream, const char* text, const bool newline, const EntryType type) {
-    if (_enabled) {
-        decorate(outStream, text, newline, type);
+void Console::Output(std::ostream& outStream, const char* text, const bool newline, const EntryType type)
+{
+    if ( TestBit( s_flags, Flags::ENABLE_OUTPUT ) ) [[likely]]
+    {
+        DecorateAndPrint(outStream, text, newline, type);
     }
 }
 
-void Console::output(const char* text, const bool newline, const EntryType type) {
-    if (_enabled) {
+void Console::Output(const char* text, const bool newline, const EntryType type)
+{
+    if ( TestBit( s_flags, Flags::ENABLE_OUTPUT ) )
+    {
         stringstream_fast outStream;
-        decorate(outStream, text, newline, type);
+        DecorateAndPrint(outStream, text, newline, type);
 
-        OutputEntry entry;
-        entry._text = outStream.str();
-        entry._type = type;
-        if (_immediateMode) {
-            printToFile(entry);
-        } else {
-            if (!OutBuffer().enqueue(entry)) {
-                // ToDo: Something happened. Handle it, maybe? -Ionut
-                printToFile(entry);
+        const OutputEntry entry
+        {
+            ._text = outStream.str().c_str(),
+            ._type = type
+        };
+
+        if ( TestBit( s_flags, Flags::PRINT_IMMEDIATE ) )
+        {
+            PrintToFile(entry);
+        }
+        else if (!OutBuffer().enqueue(entry))
+        {
+            PrintToFile(entry);
+            DIVIDE_UNEXPECTED_CALL();
+        }
+    }
+}
+
+void Console::PrintToFile(const OutputEntry& entry)
+{
+    if ( s_running ) [[likely]]
+    {
+        auto& outStream = (entry._type == EntryType::ERR && TestBit( s_flags, Flags::ENABLE_ERROR_STREAM ) ? std::cerr : std::cout);
+        outStream << entry._text.c_str();
+
+        SharedLock<SharedMutex> lock( s_callbackLock );
+        for (const auto& it : s_guiConsoleCallbacks)
+        {
+            if (!s_running)
+            {
+                break;
             }
+
+            it._cbk(entry);
         }
     }
 }
 
-void Console::printToFile(const OutputEntry& entry) {
-    (entry._type == EntryType::ERR && _errorStreamEnabled ? std::cerr : std::cout) << entry._text.c_str();
+void Console::Flush()
+{
+    if ( TestBit( s_flags, Flags::ENABLE_OUTPUT ) && s_running) [[likely]]
+    {
 
-    for (const ConsolePrintCallback& cbk : _guiConsoleCallbacks) {
-        if (!_running) {
-            break;
-        }
-        cbk(entry);
+        size_t count{};
+        do
+        {
+            count = OutBuffer().try_dequeue_bulk(std::begin(g_outputCache), g_outputCache.size());
+
+            for (size_t i = 0u; i < count; ++i)
+            {
+                PrintToFile(g_outputCache[i]);
+            }
+        } while (count > 0u);
     }
 }
 
-void Console::flush() {
-    if (!_enabled) {
-        return;
-    }
-
-    size_t count;
-    do {
-        count = OutBuffer().try_dequeue_bulk(std::begin(g_outputCache), g_outputCache.size());
-
-        for (size_t i = 0; i < count; ++i) {
-            printToFile(g_outputCache[i]);
-        }
-    } while (count > 0);
+void Console::Start() noexcept
+{
+    s_flags = DEFAULT_FLAGS;
+    s_running.store(true);
 }
 
-void Console::start() noexcept {
-    if (!_running) {
-        _running = true;
-    }
-}
-
-void Console::stop() {
-    if (_running) {
-        flush();
-        _immediateMode = true;
-        _enabled = false;
-        _running = false;
-        std::cout << "------------------------------------------" << std::endl
-                  << std::endl << std::endl << std::endl;
-
+void Console::Stop() 
+{
+    bool expected = true;
+    if ( s_running.compare_exchange_strong(expected, false) )
+    {
+        Flush();
+        s_flags = DEFAULT_FLAGS;
+        std::cout << "------------------------------------------\n\n\n\n";
         std::cerr << std::flush;
         std::cout << std::flush;
     }
 }
+
+size_t Console::BindConsoleOutput( const ConsolePrintCallback& guiConsoleCallback )
+{
+    static size_t callbackId{ 0u };
+
+    LockGuard<SharedMutex> lock( s_callbackLock );
+    auto& entry = s_guiConsoleCallbacks.emplace_back();
+    entry._cbk = guiConsoleCallback;
+    entry._id = callbackId++;
+
+    return entry._id;
 }
+
+bool Console::UnbindConsoleOutput( size_t& index )
+{
+    LockGuard<SharedMutex> lock( s_callbackLock );
+
+    const size_t initialSize = s_guiConsoleCallbacks.size();
+    erase_if( s_guiConsoleCallbacks, [index]( const ConsolePrintCallbackEntry& entry )
+    {
+        return entry._id == index;
+    } );
+
+    const bool erased = initialSize > s_guiConsoleCallbacks.size();
+    if ( erased )
+    {
+        index = SIZE_MAX;
+        return true;
+    }
+
+    return false;
+}
+
+} //namespace Divide
+

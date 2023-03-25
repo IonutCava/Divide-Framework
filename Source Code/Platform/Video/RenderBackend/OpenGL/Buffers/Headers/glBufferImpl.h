@@ -37,6 +37,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Platform/Video/RenderBackend/OpenGL/Headers/glLockManager.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLStateTracker.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/BufferParams.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/BufferLocks.h"
 
 namespace Divide {
 
@@ -61,13 +62,17 @@ inline bool operator!=(const BufferImplParams& lhs, const BufferImplParams& rhs)
            lhs._useChunkAllocation != rhs._useChunkAllocation;
 }
 
-class glBufferImpl final : public GUIDWrapper {
+class glBufferImpl final : public LockableBuffer {
 public:
     explicit glBufferImpl(GFXDevice& context, const BufferImplParams& params, const std::pair<bufferPtr, size_t>& initialData, const char* name);
     virtual ~glBufferImpl();
 
     void writeOrClearBytes(size_t offsetInBytes, size_t rangeInBytes, bufferPtr data, bool firstWrite = false);
     void readBytes(size_t offsetInBytes, size_t rangeInBytes, std::pair<bufferPtr, size_t> outData);
+
+    [[nodiscard]] BufferFlags getBufferFlags() const override final { return params()._bufferParams._flags; }
+
+    [[nodiscard]] LockManager* getLockManager() override final { return &_lockManager; }
 
 public:
     glLockManager _lockManager;

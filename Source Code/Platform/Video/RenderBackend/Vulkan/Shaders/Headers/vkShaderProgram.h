@@ -77,6 +77,8 @@ namespace Divide {
         [[nodiscard]] const vector<vkShader*>& shaderStages() const noexcept;
         [[nodiscard]] VkShaderStageFlags stageMask() const noexcept;
 
+        PROPERTY_RW( VkDescriptorSetLayout, descriptorSetLayout, VK_NULL_HANDLE);
+
     protected:
         [[nodiscard]] ShaderResult validatePreBind(bool rebind = true);
         /// Make sure this program is ready for deletion

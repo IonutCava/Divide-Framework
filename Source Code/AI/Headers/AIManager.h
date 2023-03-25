@@ -44,6 +44,8 @@ class TaskPool;
 
 namespace GFX {
     class CommandBuffer;
+
+    struct MemoryBarrierCommand;
 } //namespace GFX
 
 namespace AI {
@@ -98,7 +100,7 @@ class AIManager final : public SceneComponent
     void destroyNavMesh(AIEntity::PresetAgentRadius radius);
 
     void setSceneCallback(const DELEGATE<void>& callback) {
-        ScopedLock<Mutex> w_lock(_updateMutex);
+        LockGuard<Mutex> w_lock(_updateMutex);
         _sceneCallback = callback;
     }
     void pauseUpdate(const bool state) noexcept { _pauseUpdate = state; }
@@ -106,7 +108,9 @@ class AIManager final : public SceneComponent
     bool updating() const noexcept { return _updating; }
     /// Handle any debug information rendering (nav meshes, AI paths, etc).
     /// Called by Scene::postRender after depth map preview call
-    void debugDraw(GFX::CommandBuffer& bufferInOut, bool forceAll = true);
+    void debugDraw(GFX::CommandBuffer& bufferInOut,
+                   GFX::MemoryBarrierCommand& memCmdInOut,
+                   bool forceAll = true);
     bool isDebugDraw() const noexcept { return _navMeshDebugDraw; }
     /// Toggle debug draw for all NavMeshes
     void toggleNavMeshDebugDraw(bool state);

@@ -45,15 +45,19 @@ namespace Divide {
 
         [[nodiscard]] inline AllocatedBuffer* bufferImpl() const { return _bufferImpl.get(); }
 
+        vkLockManager _lockManager;
+
+        [[nodiscard]] LockableBuffer* getBufferImpl() override final;
+
     protected:
         void writeBytesInternal(BufferRange range, [[maybe_unused]] bufferPtr data) noexcept override;
         void readBytesInternal(BufferRange range, [[maybe_unused]] std::pair<bufferPtr, size_t> outData) noexcept override;
 
     private:
-        AllocatedBuffer_uptr _bufferImpl{ nullptr };
-        AllocatedBuffer_uptr _stagingBuffer{ nullptr };
-        Mutex _stagingBufferLock;
-        vkLockManager _lockManager;
+        vkAllocatedLockableBuffer_uptr  _bufferImpl{ nullptr };
+        AllocatedBuffer_uptr            _stagingBuffer{ nullptr };
+        bool                            _isMemoryMappable{false};
+        Mutex                           _stagingBufferLock;
     };
 } //namespace Divide
 

@@ -549,8 +549,7 @@ namespace Divide
         this->z = v1.x * v2.y - v1.y * v2.x;
     }
 
-    /// set this vector to be equal to the cross between itself and the specified
-    /// vector
+    /// set this vector to be equal to the cross between itself and the specified vector
     template <typename T>
     FORCE_INLINE void vec3<T>::cross( const vec3& v2 ) noexcept
     {

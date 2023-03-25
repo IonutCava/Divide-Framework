@@ -45,6 +45,8 @@ namespace Divide
     }
 
     class GFXDevice;
+    class vkTexture;
+
     class vkRenderTarget final : public RenderTarget
     {
         friend class Attorney::VKAPIRenderTarget;
@@ -57,7 +59,7 @@ namespace Divide
 
         void readData(vec4<U16> rect, GFXImageFormat imageFormat, GFXDataFormat dataType, std::pair<bufferPtr, size_t> outData) const noexcept override;
 
-        PROPERTY_INTERNAL(VkRenderingInfo, renderingInfo);
+        PROPERTY_R_IW(VkRenderingInfo, renderingInfo);
 
     private:
         void begin(VkCommandBuffer cmdBuffer, const RTDrawDescriptor& descriptor, const RTClearDescriptor& clearPolicy, VkPipelineRenderingCreateInfo& pipelineRenderingCreateInfoOut);

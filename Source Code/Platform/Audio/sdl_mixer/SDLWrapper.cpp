@@ -20,7 +20,12 @@ void musicFinishedHook() noexcept {
     }
 }
 
-ErrorCode SDL_API::initAudioAPI(PlatformContext& context) {
+SDL_API::SDL_API( PlatformContext& context )
+    : AudioAPIWrapper("SDL", context)
+{
+}
+
+ErrorCode SDL_API::initAudioAPI() {
 
     constexpr I32 flags = MIX_INIT_OGG | MIX_INIT_MP3 | MIX_INIT_FLAC/* | MIX_INIT_MOD*/;
 
@@ -36,7 +41,7 @@ ErrorCode SDL_API::initAudioAPI(PlatformContext& context) {
             }
         }
 
-        g_sfxDevice = &context.sfx();
+        g_sfxDevice = &_context.sfx();
         Mix_HookMusicFinished(musicFinishedHook);
         return ErrorCode::NO_ERR;
     }
@@ -55,14 +60,6 @@ void SDL_API::closeAudioAPI() {
     Mix_CloseAudio();
     Mix_Quit();
     g_sfxDevice = nullptr;
-}
-
-void SDL_API::beginFrame() noexcept {
-    
-}
-
-void SDL_API::endFrame() noexcept {
-    
 }
 
 void SDL_API::stopMusic() noexcept { 

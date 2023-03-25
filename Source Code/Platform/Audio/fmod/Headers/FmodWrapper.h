@@ -46,18 +46,15 @@ namespace Divide {
 
 class FMOD_API final : public AudioAPIWrapper {
 public:
-    ErrorCode initAudioAPI([[maybe_unused]] PlatformContext& context) noexcept override {
-        return ErrorCode::FMOD_AUDIO_INIT_ERROR;
-    }
+    explicit FMOD_API( PlatformContext& context ) : AudioAPIWrapper( "FMOD", context) { }
+
+    ErrorCode initAudioAPI() noexcept override { return ErrorCode::FMOD_AUDIO_INIT_ERROR; }
 
     void closeAudioAPI() noexcept override {}
 
     void playSound(const AudioDescriptor_ptr& sound) noexcept override {}
 
     void playMusic(const AudioDescriptor_ptr& music) noexcept override {}
-
-    void beginFrame() noexcept override {}
-    void endFrame() noexcept override {}
 
     void pauseMusic() noexcept override {}
     void stopMusic() noexcept override {}

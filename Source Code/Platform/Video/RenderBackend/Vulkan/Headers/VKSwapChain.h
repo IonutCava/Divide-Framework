@@ -50,32 +50,29 @@ namespace Divide {
         void destroy();
 
         [[nodiscard]] VkResult beginFrame();
-        [[nodiscard]] VkResult endFrame(vkb::QueueType queue, VkCommandBuffer& cmdBuffer);
+        [[nodiscard]] VkResult endFrame(vkb::QueueType queue);
 
-        [[nodiscard]] vkb::Swapchain getSwapChain() const noexcept;
-        [[nodiscard]] VkRenderPass   getRenderPass() const noexcept;
-        [[nodiscard]] VkFramebuffer  getCurrentFrameBuffer() const noexcept;
+        [[nodiscard]] vkb::Swapchain& getSwapChain() noexcept;
+        [[nodiscard]] VkImage         getCurrentImage() const noexcept;
+        [[nodiscard]] VkImageView     getCurrentImageView() const noexcept;
+        [[nodiscard]] VkCommandBuffer getCurrentCommandBuffer() const noexcept;
+        [[nodiscard]] VkFence         getCurrentFence() const noexcept;
 
-        [[nodiscard]] VkFence getCurrentFence() const noexcept;
-
-    private:
-        [[nodiscard]] ErrorCode createSwapChainInternal(bool vSync, bool adaptiveSync, VkExtent2D windowExtents, VkSurfaceKHR targetSurface);
-        [[nodiscard]] ErrorCode createFramebuffersInternal(VkExtent2D windowExtents, VkSurfaceKHR targetSurface);
-
+        PROPERTY_R_IW(VkExtent2D, surfaceExtent);
+        
     private:
         VK_API& _context;
         const VKDevice& _device;
         const DisplayWindow& _window;
 
         vkb::Swapchain _swapChain{};
-        VkRenderPass _renderPass{ nullptr };
 
         vector<VkSemaphore> _imageAvailableSemaphores;
         vector<VkSemaphore> _renderFinishedSemaphores;
         vector<VkFence> _inFlightFences;
         vector<VkFence> _imagesInFlight;
+        vector<VkCommandBuffer> _commandBuffers{};
 
-        vector<VkFramebuffer> _framebuffers;
         std::vector<VkImage> _swapchainImages;
         std::vector<VkImageView> _swapchainImageViews;
 

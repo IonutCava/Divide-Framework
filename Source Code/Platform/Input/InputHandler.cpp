@@ -56,8 +56,8 @@ bool InputHandler::onSDLEvent(SDL_Event event) {
      switch (event.type) {
         case SDL_TEXTEDITING:
         case SDL_TEXTINPUT: {
-            const UTF8Event arg(eventWindow, 0, event.text.text);
-            _eventListener.onUTF8(arg);
+            const TextEvent arg{eventWindow, 0, event.text.text};
+            _eventListener.onTextEvent(arg);
             return true;
         };
 

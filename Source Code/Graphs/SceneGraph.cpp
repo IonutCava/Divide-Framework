@@ -85,7 +85,7 @@ namespace Divide
 
     void SceneGraph::addToDeleteQueue( SceneGraphNode* node, const size_t childIdx )
     {
-        ScopedLock<SharedMutex> w_lock( _pendingDeletionLock );
+        LockGuard<SharedMutex> w_lock( _pendingDeletionLock );
         vector<size_t>& list = _pendingDeletion[node];
         if ( eastl::find( cbegin( list ), cend( list ), childIdx ) == cend( list ) )
         {
@@ -142,7 +142,7 @@ namespace Divide
         }
 
         {
-            ScopedLock<SharedMutex> w_lock( _nodesByTypeLock );
+            LockGuard<SharedMutex> w_lock( _nodesByTypeLock );
             erase_if( _nodesByType[to_base( oldNode->getNode().type() )],
                       [guid]( SceneGraphNode* node )-> bool
                       {
@@ -150,7 +150,7 @@ namespace Divide
                       } );
         }
         {
-            ScopedLock<Mutex> w_lock( _nodeEventLock );
+            LockGuard<Mutex> w_lock( _nodeEventLock );
             erase_if( _nodeEventQueue,
                       [guid]( SceneGraphNode* node )-> bool
                       {
@@ -158,7 +158,7 @@ namespace Divide
                       } );
         }
         {
-            ScopedLock<Mutex> w_lock( _nodeParentChangeLock );
+            LockGuard<Mutex> w_lock( _nodeParentChangeLock );
             erase_if( _nodeParentChangeQueue,
                       [guid]( SceneGraphNode* node )-> bool
                       {
@@ -174,7 +174,7 @@ namespace Divide
     void SceneGraph::onNodeAdd( SceneGraphNode* newNode )
     {
         {
-            ScopedLock<SharedMutex> w_lock( _nodesByTypeLock );
+            LockGuard<SharedMutex> w_lock( _nodesByTypeLock );
             _nodesByType[to_base( newNode->getNode().type() )].push_back( newNode );
         }
         _nodeListChanged = true;
@@ -239,7 +239,7 @@ namespace Divide
         }
         {
             PROFILE_SCOPE( "Process parent change queue", Profiler::Category::Scene );
-            ScopedLock<Mutex> w_lock( _nodeParentChangeLock );
+            LockGuard<Mutex> w_lock( _nodeParentChangeLock );
             for ( SceneGraphNode* node : _nodeParentChangeQueue )
             {
                 Attorney::SceneGraphNodeSceneGraph::changeParent( node );
@@ -247,7 +247,7 @@ namespace Divide
             efficient_clear( _nodeParentChangeQueue );
         }
         {
-            ScopedLock<SharedMutex> lock( _pendingDeletionLock );
+            LockGuard<SharedMutex> lock( _pendingDeletionLock );
             if ( !_pendingDeletion.empty() )
             {
                 for ( auto entry : _pendingDeletion )
@@ -313,7 +313,7 @@ namespace Divide
             const U32 nodeCount = to_U32( _nodeEventQueue.size() );
 
             // Only do a parallel for if we have at least 2 partitions to run in parallel, otherwise we just waste a lot of time on setup and destruction
-            ScopedLock<Mutex> w_lock( _nodeEventLock );
+            LockGuard<Mutex> w_lock( _nodeEventLock );
             if ( nodeCount > g_nodesPerPartition * 2 )
             {
                 ParallelForDescriptor descriptor = {};
@@ -341,7 +341,7 @@ namespace Divide
 
         {
             PROFILE_SCOPE( "Process intersections", Profiler::Category::Scene );
-            UniqueLock<Mutex> w_lock( _intersectionsLock );
+            LockGuard<Mutex> w_lock( _intersectionsLock );
             for ( const IntersectionRecord& ir : _intersectionsCache )
             {
                 HandleIntersection( ir );
@@ -435,7 +435,7 @@ namespace Divide
 
     SceneGraphNode* SceneGraph::createSceneGraphNode( SceneGraph* sceneGraph, const SceneGraphNodeDescriptor& descriptor )
     {
-        ScopedLock<Mutex> u_lock( _nodeCreateMutex );
+        LockGuard<Mutex> u_lock( _nodeCreateMutex );
 
         const ECS::EntityId nodeID = GetEntityManager()->CreateEntity<SceneGraphNode>( sceneGraph, descriptor );
         return static_cast<SceneGraphNode*>(GetEntityManager()->GetEntity( nodeID ));

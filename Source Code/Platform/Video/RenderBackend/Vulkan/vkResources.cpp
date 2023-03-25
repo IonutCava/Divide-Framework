@@ -21,6 +21,7 @@ namespace Divide
     std::array<VkPrimitiveTopology, to_base( PrimitiveTopology::COUNT )> vkPrimitiveTypeTable;
     std::array<VkSamplerAddressMode, to_base( TextureWrap::COUNT )> vkWrapTable;
     std::array<VkShaderStageFlagBits, to_base( ShaderType::COUNT )> vkShaderStageTable;
+    std::array<VulkanQueryType, to_base( QueryType::COUNT )> vkQueryTypeTable;
 
     namespace Debug
     {
@@ -110,15 +111,6 @@ namespace Divide
 
         void fillEnumTables( VkDevice device )
         {
-            if ( VK_API::s_hasDebugMarkerSupport )
-            {
-                Debug::vkCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetDeviceProcAddr( device, "vkCmdBeginDebugUtilsLabelEXT" );
-                Debug::vkCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetDeviceProcAddr( device, "vkCmdEndDebugUtilsLabelEXT" );
-                Debug::vkCmdInsertDebugUtilsLabelEXT = (PFN_vkCmdInsertDebugUtilsLabelEXT)vkGetDeviceProcAddr( device, "vkCmdInsertDebugUtilsLabelEXT" );
-                Debug::vkSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr( device, "vkSetDebugUtilsObjectNameEXT" );
-                Debug::vkSetDebugUtilsObjectTagEXT = (PFN_vkSetDebugUtilsObjectTagEXT)vkGetDeviceProcAddr( device, "vkSetDebugUtilsObjectTagEXT" );
-            }
-
             vkBlendTable[to_base( BlendProperty::ZERO )] = VK_BLEND_FACTOR_ZERO;
             vkBlendTable[to_base( BlendProperty::ONE )] = VK_BLEND_FACTOR_ONE;
             vkBlendTable[to_base( BlendProperty::SRC_COLOR )] = VK_BLEND_FACTOR_SRC_COLOR;
@@ -205,6 +197,15 @@ namespace Divide
             vkShaderStageTable[to_base( ShaderType::TESSELLATION_CTRL )] = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
             vkShaderStageTable[to_base( ShaderType::TESSELLATION_EVAL )] = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
             vkShaderStageTable[to_base( ShaderType::COMPUTE )] = VK_SHADER_STAGE_COMPUTE_BIT;
+
+            vkQueryTypeTable[to_U8(log2( to_base( QueryType::VERTICES_SUBMITTED ) ) ) - 1]._statistics = VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT;
+            vkQueryTypeTable[to_U8(log2( to_base( QueryType::PRIMITIVES_GENERATED ) ) ) - 1]._queryType = VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT;
+            vkQueryTypeTable[to_U8(log2( to_base( QueryType::TESSELLATION_PATCHES ) ) ) - 1]._statistics = VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT;
+            vkQueryTypeTable[to_U8(log2( to_base( QueryType::TESSELLATION_EVAL_INVOCATIONS ) ) ) - 1]._statistics = VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT;
+            vkQueryTypeTable[to_U8(log2( to_base( QueryType::GPU_TIME ) ) ) - 1]._queryType = VK_QUERY_TYPE_TIMESTAMP;
+            vkQueryTypeTable[to_U8(log2( to_base( QueryType::SAMPLE_COUNT ) ) ) - 1]._queryType = VK_QUERY_TYPE_OCCLUSION;
+            vkQueryTypeTable[to_U8(log2( to_base( QueryType::SAMPLE_COUNT ) ) ) - 1]._accurate = true;
+            vkQueryTypeTable[to_U8(log2( to_base( QueryType::ANY_SAMPLE_RENDERED ) ) ) - 1]._queryType = VK_QUERY_TYPE_OCCLUSION;
         }
 
         VkFormat internalFormat( const GFXImageFormat baseFormat, const GFXDataFormat dataType, const bool srgb, const bool normalized ) noexcept

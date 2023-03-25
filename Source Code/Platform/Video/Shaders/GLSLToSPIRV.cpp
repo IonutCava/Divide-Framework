@@ -180,15 +180,35 @@ bool SpirvHelper::GLSLtoSPV( const Divide::ShaderType shader_type, const char* p
     shader.setEnvInput( glslang::EShSourceGlsl, stage, glslang::EShClientOpenGL, 100 );
     shader.setEnvClient( glslang::EShClientOpenGL, glslang::EShTargetOpenGL_450 );
     shader.setEnvTarget( glslang::EShTargetSpv, glslang::EShTargetSpv_1_4 );
+
+    const auto PrintError = [&shader, &pshader]()
+    {
+        using namespace Divide;
+
+        Console::errorfn( shader.getInfoLog() );
+        Console::errorfn( shader.getInfoDebugLog() );
+        const bool decorations[] = {
+            Console::IsFlagSet( Console::Flags::DECORATE_TIMESTAMP ),
+            Console::IsFlagSet( Console::Flags::DECORATE_THREAD_ID ),
+            Console::IsFlagSet( Console::Flags::DECORATE_SEVERITY )
+        };
+
+        Console::ToggleFlag( Console::Flags::DECORATE_TIMESTAMP, false );
+        Console::ToggleFlag( Console::Flags::DECORATE_THREAD_ID, false );
+        Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY, false );
+
+        Console::errorfn( "-------------------------------------------------------\n\n" );
+        Console::errorfn( pshader );
+        Console::errorfn( "\n\n-------------------------------------------------------" );
+
+        Console::ToggleFlag( Console::Flags::DECORATE_TIMESTAMP, decorations[0] );
+        Console::ToggleFlag( Console::Flags::DECORATE_THREAD_ID, decorations[1] );
+        Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY, decorations[2] );
+    };
+
     if ( !shader.parse( &Resources, 100, false, messages ) )
     {
-        Divide::Console::errorfn( shader.getInfoLog() );
-        Divide::Console::errorfn( shader.getInfoDebugLog() );
-        Divide::Console::toggleTextDecoration( false );
-        Divide::Console::errorfn( "-------------------------------------------------------\n\n" );
-        Divide::Console::errorfn( pshader );
-        Divide::Console::errorfn( "\n\n-------------------------------------------------------" );
-        Divide::Console::toggleTextDecoration( true );
+        PrintError();
         return false;  // something didn't work
     }
     else
@@ -211,14 +231,8 @@ bool SpirvHelper::GLSLtoSPV( const Divide::ShaderType shader_type, const char* p
 
     if ( !program.link( messages ) )
     {
-        Divide::Console::errorfn( shader.getInfoLog() );
-        Divide::Console::errorfn( shader.getInfoDebugLog() );
-        Divide::Console::toggleTextDecoration( false );
-        Divide::Console::errorfn( "-------------------------------------------------------\n\n" );
-        Divide::Console::errorfn( pshader );
-        Divide::Console::errorfn( "\n\n-------------------------------------------------------" );
-        Divide::Console::toggleTextDecoration( true );
-        Divide::Console::flush();
+
+        PrintError();
         return false;
     }
     else

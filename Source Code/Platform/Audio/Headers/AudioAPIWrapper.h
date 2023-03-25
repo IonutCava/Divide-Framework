@@ -34,6 +34,8 @@
 #define _AUDIO_API_H
 
 #include "AudioDescriptor.h"
+#include "Core/Headers/FrameListener.h"
+#include "Core/Headers/PlatformContextComponent.h"
 
 namespace Divide {
 
@@ -49,21 +51,24 @@ class AudioState {
 constexpr U32 MAX_SOUND_BUFFERS = 64;
 
 /// Audio Programming Interface
-class NOINITVTABLE AudioAPIWrapper {
+class NOINITVTABLE AudioAPIWrapper : public PlatformContextComponent, public FrameListener
+{
    public:
      using MusicPlaylist = std::pair<U32, vector<AudioDescriptor_ptr>>;
      using MusicPlaylists = hashMap<U32, MusicPlaylist>;
 
    public:
+     explicit AudioAPIWrapper( const Str64& name, PlatformContext& context );
      virtual ~AudioAPIWrapper() = default;
 
    protected:
-    friend class SFXDevice;
-    virtual ErrorCode initAudioAPI(PlatformContext& context) = 0;
-    virtual void closeAudioAPI() = 0;
+    [[nodiscard]] virtual bool frameStarted( const FrameEvent& evt ) override { return true; }
+    [[nodiscard]] virtual bool frameEnded( const FrameEvent& evt ) noexcept override { return true; }
 
-    virtual void beginFrame() = 0;
-    virtual void endFrame() = 0;
+   protected:
+    friend class SFXDevice;
+    virtual ErrorCode initAudioAPI() = 0;
+    virtual void closeAudioAPI() = 0;
 
     virtual void playSound(const AudioDescriptor_ptr& sound) = 0;
 

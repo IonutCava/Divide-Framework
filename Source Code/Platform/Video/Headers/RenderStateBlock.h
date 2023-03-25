@@ -60,7 +60,7 @@ class RenderStateBlock final : public GUIDWrapper, public Hashable {
        static const RenderStateBlock& Get(size_t renderStateBlockHash, bool& blockFound);
        static void SaveToXML(const RenderStateBlock& block, const string& entryName, boost::property_tree::ptree& pt);
 
-       static RenderStateBlock LoadFromXML(const string& entryName, const boost::property_tree::ptree& pt);
+       static void LoadFromXML(const string& entryName, const boost::property_tree::ptree& pt, RenderStateBlock& blockInOut);
 
        static size_t DefaultHash() noexcept;
 
@@ -98,6 +98,7 @@ class RenderStateBlock final : public GUIDWrapper, public Hashable {
         void setCullMode(CullMode mode) noexcept;
         void setFrontFaceCCW(bool state) noexcept;
         void depthTestEnabled(bool enable) noexcept;
+        void depthWriteEnabled(bool enable) noexcept;
         void setScissorTest(bool enable) noexcept;
 
         void setStencil(bool enable,
@@ -137,6 +138,7 @@ class RenderStateBlock final : public GUIDWrapper, public Hashable {
         PROPERTY_R(bool, frontFaceCCW, true);
         PROPERTY_R(bool, scissorTestEnabled, false);
         PROPERTY_R(bool, depthTestEnabled, true);
+        PROPERTY_R(bool, depthWriteEnabled, true);
         PROPERTY_R(bool, stencilEnable, false);
 
         mutable bool _dirty = true;

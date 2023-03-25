@@ -70,7 +70,7 @@ T* CommandBuffer::add() {
     if (mem != nullptr) {
         *mem = {};
     } else {
-        mem = CmdAllocator<T>::allocate();
+        mem = CmdAllocator<T>::s_Pool.newElement();
         _commands.insert<T>(to_base(mem->Type()), mem);
     }
 
@@ -85,7 +85,7 @@ T* CommandBuffer::add(const T& command) {
     if (mem != nullptr) {
         *mem = command;
     } else {
-        mem = CmdAllocator<T>::allocate(command);
+        mem = CmdAllocator<T>::s_Pool.newElement(command);
         _commands.insert<T>(to_base(mem->Type()), mem);
     }
 
@@ -100,7 +100,7 @@ T* CommandBuffer::add(const T&& command) {
     if (mem != nullptr) {
         *mem = MOV(command);
     } else {
-        mem = CmdAllocator<T>::allocate(MOV(command));
+        mem = CmdAllocator<T>::s_Pool.newElement(MOV(command));
         _commands.insert<T>(to_base(mem->Type()), mem);
     }
 

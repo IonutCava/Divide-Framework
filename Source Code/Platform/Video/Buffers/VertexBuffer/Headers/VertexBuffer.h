@@ -160,7 +160,8 @@ class VertexBuffer final : public VertexDataInterface {
 
    protected:
 
-    void refresh();
+    /// Returns true if data was updated
+    bool refresh(BufferLock& dataLockOut, BufferLock& indexLockOut);
 
     bool getMinimalData(const vector<Vertex>& dataIn, Byte* dataOut, size_t dataOutBufferLength);
     /// Calculates the appropriate attribute offsets and returns the total size of a vertex for this buffer

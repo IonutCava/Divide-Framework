@@ -72,7 +72,7 @@ namespace Divide
         static F32 AButtonWidth = 10.0f;
 
         ImGuiWindow* window = ImGui::GetCurrentWindow();
-        ImGui::SameLine(window->ContentSize.x * 0.49f);
+        ImGui::SameLine(window->Size.x * 0.49f);
         if (play)
         {
             PushReadOnly();
@@ -90,7 +90,7 @@ namespace Divide
         }
 
         F32 pos = (2*SButtonWidth) + ItemSpacing + 25;
-        ImGui::SameLine(window->ContentSize.x - pos);
+        ImGui::SameLine( window->Size.x - pos);
         if (button(!enableGizmo || !IsScaleOperation(settings), ICON_FK_EXPAND, "Scale", true))
         {
             switch (settings.previousAxisSelected[2])
@@ -107,7 +107,7 @@ namespace Divide
         SButtonWidth = ImGui::GetItemRectSize().x;
 
         pos += RButtonWidth + ItemSpacing + 1;
-        ImGui::SameLine(window->ContentSize.x - pos);
+        ImGui::SameLine( window->Size.x - pos);
         if (button(!enableGizmo || !IsRotationOperation(settings), ICON_FK_REPEAT, "Rotate", true))
         {
             switch (settings.previousAxisSelected[1])
@@ -124,7 +124,7 @@ namespace Divide
         RButtonWidth = ImGui::GetItemRectSize().x;
 
         pos += TButtonWidth + ItemSpacing + 1;
-        ImGui::SameLine(window->ContentSize.x - pos);
+        ImGui::SameLine( window->Size.x - pos);
         if (button(!enableGizmo || !IsTranslationOperation(settings), ICON_FK_ARROWS, "Translate", true))
         {
             switch (settings.previousAxisSelected[0])
@@ -141,7 +141,7 @@ namespace Divide
         TButtonWidth = ImGui::GetItemRectSize().x;
 
         pos += NButtonWidth + ItemSpacing + 1;
-        ImGui::SameLine(window->ContentSize.x - pos);
+        ImGui::SameLine( window->Size.x - pos);
         if (button(enableGizmo, ICON_FK_MOUSE_POINTER, "Select", true))
         {
             Attorney::EditorSceneViewWindow::editorEnableGizmo(_parent, false);
@@ -541,7 +541,8 @@ namespace Divide
         {
             PopReadOnly();
         }
-        ImGui::SameLine(window->ContentSize.x - 100.f);
+
+        ImGui::SameLine( window->Size.x * 0.95f);
 
         bool enableGrid = _parent.infiniteGridEnabledScene();
         if (ImGui::Checkbox(ICON_FK_PLUS_SQUARE_O" Infinite Grid", &enableGrid))

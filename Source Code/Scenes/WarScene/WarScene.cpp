@@ -33,7 +33,6 @@
 #include "ECS/Components/Headers/UnitComponent.h"
 
 #include "Environment/Terrain/Headers/Terrain.h"
-#include "Platform/Video/Headers/RenderStateBlock.h"
 
 namespace Divide {
 
@@ -167,24 +166,24 @@ void WarScene::toggleTerrainMode() {
     _terrainMode = !_terrainMode;
 }
 
-void WarScene::debugDraw(GFX::CommandBuffer& bufferInOut) {
+void WarScene::debugDraw(GFX::CommandBuffer& bufferInOut,
+                         GFX::MemoryBarrierCommand& memCmdInOut )
+{
     if (state()->renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_CUSTOM_PRIMITIVES)) {
         if (!_targetLines) {
             _targetLines = _context.gfx().newIMP("WarScene Target Lines");
             PipelineDescriptor pipelineDescriptor = {};
-            pipelineDescriptor._shaderProgramHandle = _context.gfx().defaultIMShader()->handle();
+            pipelineDescriptor._shaderProgramHandle = _context.gfx().imShaders()->imWorldShaderNoTexture()->handle();
 
-            RenderStateBlock primitiveStateBlockNoZRead = {};
-            primitiveStateBlockNoZRead.depthTestEnabled(false);
-            pipelineDescriptor._stateHash = primitiveStateBlockNoZRead.getHash();
+            pipelineDescriptor._stateHash = _context.gfx().getDefaultStateBlock(true);
             _targetLines->setPipelineDescriptor(pipelineDescriptor);
         } else {
-            _targetLines->getCommandBuffer(bufferInOut);
+            _targetLines->getCommandBuffer(bufferInOut, memCmdInOut);
         }
     } else if (_targetLines) {
         _context.gfx().destroyIMP(_targetLines);
     }
-    Scene::debugDraw(bufferInOut);
+    Scene::debugDraw(bufferInOut, memCmdInOut);
 }
 
 void WarScene::processTasks(const U64 gameDeltaTimeUS, const U64 appDeltaTimeUS ) {

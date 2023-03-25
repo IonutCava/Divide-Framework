@@ -4,9 +4,6 @@
 #include "Headers/QuadtreeNode.h"
 #include "Environment/Terrain/Headers/Terrain.h"
 #include "Platform/Video/Headers/GFXDevice.h"
-#include "Platform/Video/Headers/IMPrimitive.h"
-#include "Platform/Video/Headers/RenderPackage.h"
-#include "Platform/Video/Headers/RenderStateBlock.h"
 
 namespace Divide {
 

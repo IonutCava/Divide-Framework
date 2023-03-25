@@ -15,42 +15,41 @@ namespace Divide
 {
 
     glBufferImpl::glBufferImpl( GFXDevice& context, const BufferImplParams& params, const std::pair<bufferPtr, size_t>& initialData, const char* name )
-        : GUIDWrapper(),
-        _params( params ),
-        _context( context )
+        : _params( params )
+        , _context( context )
     {
-        assert( _params._bufferParams._updateFrequency != BufferUpdateFrequency::COUNT );
+        assert( params._bufferParams._flags._updateFrequency != BufferUpdateFrequency::COUNT );
 
         // Create all buffers with zero mem and then write the actual data that we have (If we want to initialise all memory)
-        if ( _params._bufferParams._updateUsage == BufferUpdateUsage::GPU_R_GPU_W || _params._bufferParams._updateFrequency == BufferUpdateFrequency::ONCE )
+        if ( params._bufferParams._flags._updateUsage == BufferUpdateUsage::GPU_TO_GPU || params._bufferParams._flags._updateFrequency == BufferUpdateFrequency::ONCE )
         {
             GLenum usage = GL_NONE;
-            switch ( _params._bufferParams._updateFrequency )
+            switch ( params._bufferParams._flags._updateFrequency )
             {
                 case BufferUpdateFrequency::ONCE:
-                    switch ( _params._bufferParams._updateUsage )
+                    switch ( params._bufferParams._flags._updateUsage )
                     {
-                        case BufferUpdateUsage::CPU_W_GPU_R: usage = GL_STATIC_DRAW; break;
-                        case BufferUpdateUsage::CPU_R_GPU_W: usage = GL_STATIC_READ; break;
-                        case BufferUpdateUsage::GPU_R_GPU_W: usage = GL_STATIC_COPY; break;
+                        case BufferUpdateUsage::CPU_TO_GPU: usage = GL_STATIC_DRAW; break;
+                        case BufferUpdateUsage::GPU_TO_CPU: usage = GL_STATIC_READ; break;
+                        case BufferUpdateUsage::GPU_TO_GPU: usage = GL_STATIC_COPY; break;
                         default: break;
                     }
                     break;
                 case BufferUpdateFrequency::OCASSIONAL:
-                    switch ( _params._bufferParams._updateUsage )
+                    switch ( params._bufferParams._flags._updateUsage )
                     {
-                        case BufferUpdateUsage::CPU_W_GPU_R: usage = GL_DYNAMIC_DRAW; break;
-                        case BufferUpdateUsage::CPU_R_GPU_W: usage = GL_DYNAMIC_READ; break;
-                        case BufferUpdateUsage::GPU_R_GPU_W: usage = GL_DYNAMIC_COPY; break;
+                        case BufferUpdateUsage::CPU_TO_GPU: usage = GL_DYNAMIC_DRAW; break;
+                        case BufferUpdateUsage::GPU_TO_CPU: usage = GL_DYNAMIC_READ; break;
+                        case BufferUpdateUsage::GPU_TO_GPU: usage = GL_DYNAMIC_COPY; break;
                         default: break;
                     }
                     break;
                 case BufferUpdateFrequency::OFTEN:
-                    switch ( _params._bufferParams._updateUsage )
+                    switch ( params._bufferParams._flags._updateUsage )
                     {
-                        case BufferUpdateUsage::CPU_W_GPU_R: usage = GL_STREAM_DRAW; break;
-                        case BufferUpdateUsage::CPU_R_GPU_W: usage = GL_STREAM_READ; break;
-                        case BufferUpdateUsage::GPU_R_GPU_W: usage = GL_STREAM_COPY; break;
+                        case BufferUpdateUsage::CPU_TO_GPU: usage = GL_STREAM_DRAW; break;
+                        case BufferUpdateUsage::GPU_TO_CPU: usage = GL_STREAM_READ; break;
+                        case BufferUpdateUsage::GPU_TO_GPU: usage = GL_STREAM_COPY; break;
                         default: break;
                     }
                     break;
@@ -94,7 +93,7 @@ namespace Divide
 
         if ( !Runtime::isMainThread() )
         {
-            _lockManager.lockRange( 0u, _params._dataSize, _lockManager.createSyncObject( LockManager::DEFAULT_SYNC_FLAG_SSBO ) );
+            _lockManager.lockRange( 0u, _params._dataSize, glLockManager::CreateSyncObject( LockManager::DEFAULT_SYNC_FLAG_SSBO ) );
         }
 
         context.getPerformanceMetrics()._bufferVRAMUsage += params._dataSize;
@@ -140,7 +139,7 @@ namespace Divide
             Console::errorfn( Locale::Get( _ID( "ERROR_BUFFER_LOCK_MANAGER_WAIT" ) ) );
         }
 
-        UniqueLock<Mutex> w_lock( _mapLock );
+        LockGuard<Mutex> w_lock( _mapLock );
         if ( _memoryBlock._ptr != nullptr ) [[likely]]
         {
             if ( data == nullptr )
@@ -178,7 +177,7 @@ namespace Divide
             DIVIDE_UNEXPECTED_CALL();
         }
 
-        UniqueLock<Mutex> w_lock( _mapLock );
+        LockGuard<Mutex> w_lock( _mapLock );
         if ( _memoryBlock._ptr != nullptr ) [[likely]]
         {
             memcpy( outData.first,

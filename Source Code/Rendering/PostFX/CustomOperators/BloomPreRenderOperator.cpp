@@ -157,6 +157,8 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
     GFX::BeginRenderPassCommand beginRenderPassCmd{};
     beginRenderPassCmd._target = _bloomOutput._targetID;
     beginRenderPassCmd._name = "DO_BLOOM_PASS";
+    beginRenderPassCmd._descriptor = _screenOnlyDraw;
+    beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
     GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
     PushConstantsStruct params{};

@@ -36,64 +36,26 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide
 {
 
-    inline bool operator==( const RTDrawMask& lhs, const RTDrawMask& rhs )
+    inline bool IsValid( const RTBlitParams& params ) noexcept
     {
-        return lhs._disabledDepth == rhs._disabledDepth &&
-               lhs._disabledColours == rhs._disabledColours;
-    }
-
-    inline bool operator!=( const RTDrawMask& lhs, const RTDrawMask& rhs )
-    {
-        return lhs._disabledDepth != rhs._disabledDepth ||
-               lhs._disabledColours != rhs._disabledColours;
-    }
-
-    inline bool operator==( const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs )
-    {
-        return lhs._drawMask == rhs._drawMask;
-    }
-
-    inline bool operator!=( const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs )
-    {
-        return lhs._drawMask != rhs._drawMask;
-    }
-
-    inline bool IsValid( const BlitIndex& entry ) noexcept
-    {
-        return entry._index != INVALID_LAYER_INDEX && entry._layer != INVALID_LAYER_INDEX;
-    }
-
-    inline bool IsValid( const DepthBlitEntry& entry ) noexcept
-    {
-        return entry._inputLayer != INVALID_LAYER_INDEX && entry._outputLayer != INVALID_LAYER_INDEX;
-    }
-
-    inline bool IsValid( const ColourBlitEntry& entry ) noexcept
-    {
-        return IsValid( entry._input ) && IsValid( entry._output );
-    }
-
-    inline bool IsValid( const RTBlitParams::ColourArray& colours ) noexcept
-    {
-        for ( const auto& it : colours )
+        for ( const auto& it : params )
         {
-            if ( IsValid( it ) )
+            if ( it._input != INVALID_BLIT_ENTRY && 
+                 it._output != INVALID_BLIT_ENTRY)
             {
-                return true;
+                return it._layerCount > 0u && it._mipCount > 0u;
             }
         }
 
         return false;
     }
 
-    inline bool IsValid( const RTBlitParams& params ) noexcept
+    inline bool operator==( const BlitEntry& lhs, const BlitEntry& rhs ) noexcept
     {
-        if ( IsValid( params._blitDepth ) )
-        {
-            return true;
-        }
-
-        return IsValid( params._blitColours );
+        return lhs._index == rhs._index &&
+               lhs._layerOffset == rhs._layerOffset &&
+               lhs._mipOffset == rhs._mipOffset;
     }
+
 }; //namespace Divide
 #endif// _RENDER_TARGET_DRAW_DESCRIPTOR_INL_

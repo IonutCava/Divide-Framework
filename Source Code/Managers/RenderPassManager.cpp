@@ -28,6 +28,14 @@
 
 namespace Divide {
 
+void SetDefaultDrawDescriptor( RenderPassParams& params )
+{
+    params._clearDescriptorPrePass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
+
+    params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
+    params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::WHITE, true };
+}
+
 RenderPassManager::RenderPassManager(Kernel& parent, GFXDevice& context)
     : KernelComponent(parent),
       _context(context),
@@ -156,10 +164,12 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
     }
 }
 
-void RenderPassManager::render(const RenderParams& params) {
+void RenderPassManager::render(const RenderParams& params)
+{
     PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-    if (params._parentTimer != nullptr && !params._parentTimer->hasChildTimer(*_renderPassTimer)) {
+    if (params._parentTimer != nullptr && !params._parentTimer->hasChildTimer(*_renderPassTimer))
+    {
         params._parentTimer->addChildTimer(*_renderPassTimer);
         params._parentTimer->addChildTimer(*_postFxRenderTimer);
         params._parentTimer->addChildTimer(*_flushCommandBufferTimer);
@@ -180,23 +190,24 @@ void RenderPassManager::render(const RenderParams& params) {
 
     {
        Time::ScopedTimer timeCommandsBuild(*_buildCommandBufferTimer);
-       GFX::MemoryBarrierCommand sceneBufferLocks{};
+       GFX::MemoryBarrierCommand memCmd{};
        {
            PROFILE_SCOPE("RenderPassManager::update sky light", Profiler::Category::Scene );
             _skyLightRenderBuffer->clear(false);
-            sceneBufferLocks = gfx.updateSceneDescriptorSet(*_skyLightRenderBuffer);
-            SceneEnvironmentProbePool::UpdateSkyLight(gfx, *_skyLightRenderBuffer, sceneBufferLocks);
+            memCmd = gfx.updateSceneDescriptorSet(*_skyLightRenderBuffer);
+            SceneEnvironmentProbePool::UpdateSkyLight(gfx, *_skyLightRenderBuffer, memCmd );
        }
+
        GFX::CommandBuffer& buf = *_postRenderBuffer;
        buf.clear(false);
 
        const bool editorRunning = Config::Build::ENABLE_EDITOR && context.editor().running();
 
-       GFX::EnqueueCommand(buf, sceneBufferLocks);
 
        GFX::BeginRenderPassCommand beginRenderPassCmd{};
        beginRenderPassCmd._name = "Flush Display";
-       beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { DefaultColours::DIVIDE_BLUE, RTColourAttachmentSlot::SLOT_0 };
+       beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::DIVIDE_BLUE, true };
+       beginRenderPassCmd._descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
        beginRenderPassCmd._target = editorRunning ? context.editor().getEditorTarget()._targetID : SCREEN_TARGET_ID;
        GFX::EnqueueCommand(buf, beginRenderPassCmd);
 
@@ -205,12 +216,13 @@ void RenderPassManager::render(const RenderParams& params) {
        const Rect<I32>& targetViewport = params._targetViewport;
      
        gfx.drawTextureInViewport(texData, screenAtt->descriptor()._samplerHash, targetViewport, false, false, false, buf);
+
        {
            Time::ScopedTimer timeGUIBuffer(*_processGUITimer);
-           Attorney::SceneManagerRenderPass::drawCustomUI(sceneManager, targetViewport, buf);
+           Attorney::SceneManagerRenderPass::drawCustomUI(sceneManager, targetViewport, buf, memCmd);
            if constexpr(Config::Build::ENABLE_EDITOR)
            {
-               context.editor().drawScreenOverlay(cam, targetViewport, buf);
+               context.editor().drawScreenOverlay(cam, targetViewport, buf, memCmd);
            }
            context.gui().draw(gfx, targetViewport, buf);
            sceneManager->getEnvProbes()->prepareDebugData();
@@ -218,7 +230,10 @@ void RenderPassManager::render(const RenderParams& params) {
        }
        
        GFX::EnqueueCommand(buf, GFX::EndRenderPassCommand{});
+
+       GFX::EnqueueCommand( buf, memCmd );
     }
+
     TaskPool& pool = context.taskPool(TaskPoolType::HIGH_PRIORITY);
     {
         Time::ScopedTimer timeAll(*_renderPassTimer);
@@ -254,7 +269,7 @@ void RenderPassManager::render(const RenderParams& params) {
                 bool finished = true;
                 for (U8 i = 0u; i < to_base(RenderStage::COUNT); ++i) {
                     if (s_completedPasses[i] || !Finished(*_renderPassData[i]._workTask)) {
-                        _parent.platformContext().idle(PlatformContext::SystemComponentType::COUNT);
+                        _parent.platformContext().idle(true);
                         continue;
                     }
 

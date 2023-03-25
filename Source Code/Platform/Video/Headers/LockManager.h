@@ -38,6 +38,9 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //ref: https://github.com/nvMcJohn/apitest
 
 namespace Divide {
+
+    enum class RenderAPI : U8;
+
     constexpr U8 g_MaxLockWaitRetries = 5u;
 
     struct SyncObject {
@@ -92,12 +95,13 @@ namespace Divide {
         /// Returns false if we encountered an error
         bool lockRange(size_t lockBeginBytes, size_t lockLength, SyncObjectHandle syncObj);
 
-        [[nodiscard]] SyncObjectHandle createSyncObject(U8 flag = DEFAULT_SYNC_FLAG_INTERNAL);
+        static [[nodiscard]] SyncObjectHandle CreateSyncObject(RenderAPI api, U8 flag = DEFAULT_SYNC_FLAG_INTERNAL);
 
     protected:
-        [[nodiscard]] SyncObjectHandle createSyncObjectLocked(U8 flag, bool isRetry = false);
+        static [[nodiscard]] bool InitLockPoolEntry( RenderAPI api, BufferLockPoolEntry& entry );
+        static [[nodiscard]] SyncObjectHandle CreateSyncObjectLocked( RenderAPI api, U8 flag, bool isRetry = false);
+
         virtual bool waitForLockedRangeLocked(const SyncObject_uptr& sync, const BufferRange& testRange, const BufferLockInstance& lock) = 0;
-        virtual bool initLockPoolEntry(BufferLockPoolEntry& entry) = 0;
 
     protected:
         mutable Mutex _bufferLockslock; // :D

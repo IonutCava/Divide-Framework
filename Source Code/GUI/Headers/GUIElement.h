@@ -60,7 +60,6 @@ enum class GUIType : U8 {
 };
 
 class GFXDevice;
-class RenderStateBlock;
 struct SizeChangeParams;
 
 template<GUIType TypeEnum>

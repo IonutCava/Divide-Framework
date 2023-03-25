@@ -200,6 +200,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     bool prepareDrawPackage(const CameraSnapshot& cameraSnapshot,
                             const SceneRenderState& sceneRenderState,
                             const RenderStagePass& renderStagePass,
+                            GFX::MemoryBarrierCommand& postDrawMemCmd,
                             bool refreshData);
 
     // This returns false if the node is not reflective, otherwise it generates a new reflection cube map
@@ -311,9 +312,10 @@ class RenderingCompRenderPass {
                                                     const CameraSnapshot& cameraSnapshot,
                                                     const SceneRenderState& sceneRenderState,
                                                     RenderStagePass renderStagePass,
+                                                    GFX::MemoryBarrierCommand& postDrawMemCmd,
                                                     const bool refreshData)
     {
-        return renderable.prepareDrawPackage(cameraSnapshot, sceneRenderState, renderStagePass, refreshData);
+        return renderable.prepareDrawPackage(cameraSnapshot, sceneRenderState, renderStagePass, postDrawMemCmd, refreshData);
     }
 
     [[nodiscard]] static bool hasDrawCommands(RenderingComponent& renderable) noexcept {

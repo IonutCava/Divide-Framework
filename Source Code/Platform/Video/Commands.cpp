@@ -41,7 +41,7 @@ IMPLEMENT_COMMAND(ClearBufferDataCommand);
 IMPLEMENT_COMMAND(SetClippingStateCommand);
 IMPLEMENT_COMMAND(ExternalCommand);
 
-string ToString(const BindPipelineCommand& cmd, const U16 indent) {
+string ToString(const BindPipelineCommand& cmd, U16 indent) {
     assert(cmd._pipeline != nullptr);
 
     const auto blendStateToString = [](const BlendingSettings& state) -> string {
@@ -83,7 +83,6 @@ string ToString(const BindPipelineCommand& cmd, const U16 indent) {
     };
 
     string ret = "\n";
-    ret.append("    ");
     for (U16 j = 0; j < indent; ++j) {
         ret.append("    ");
     }
@@ -107,6 +106,7 @@ string ToString(const BindPipelineCommand& cmd, const U16 indent) {
     }
     {
         ret.append("Blending states: \n");
+        indent += 1u;
         const RTBlendStates& blendStates = cmd._pipeline->descriptor()._blendStates;
         ret.append("    ");
         for (U16 j = 0; j < indent; ++j) {
@@ -122,6 +122,7 @@ string ToString(const BindPipelineCommand& cmd, const U16 indent) {
             }
             ret.append(Util::StringFormat("%d: %s\n", idx++, blendStateToString(state)));
         }
+        indent -= 1u;
     }
     if (shader) {
         ret.append("    ");
@@ -129,6 +130,8 @@ string ToString(const BindPipelineCommand& cmd, const U16 indent) {
             ret.append("    ");
         }
         ret.append("Vertex format: \n");
+
+        indent += 1u;
         U8 idx = 0u;
         for (const AttributeDescriptor& desc : cmd._pipeline->descriptor()._vertexFormat._attributes) {
             ret.append("    ");
@@ -149,11 +152,12 @@ string ToString(const BindPipelineCommand& cmd, const U16 indent) {
             ret.append( Util::StringFormat( "%d: %s\n", idx, vertexFormatToString( idx, binding ) ) );
             ++idx;
         }
+        indent -= 1u;
     }
     return ret;
 }
 
-string ToString(const SendPushConstantsCommand& cmd, const U16 indent) {
+string ToString(const SendPushConstantsCommand& cmd, U16 indent) {
     string ret = "\n";
 
     for (const auto& it : cmd._constants.data()) {
@@ -168,7 +172,34 @@ string ToString(const SendPushConstantsCommand& cmd, const U16 indent) {
     for (U16 j = 0; j < indent; ++j) {
         ret.append("    ");
     }
-    ret.append(cmd._constants.fastData()._set ? "Has push constants specified" : "No push constant data specified");
+    ret.append(cmd._constants.fastData()._set ? "Has push constants specified: \n" : "No push constant data specified");
+
+    if ( cmd._constants.fastData()._set )
+    {
+        for (U8 d = 0u; d < 2u; ++d ) {
+            ret.append( "    " );
+            for ( U16 j = 0; j < indent; ++j )
+            {
+                ret.append( "    " );
+            }
+
+            const mat4<F32>& datad = cmd._constants.fastData().data[d];
+            ret.append(Util::StringFormat("Data %d:\n", d));
+
+            indent += 1u;
+            for ( U8 r = 0u; r < 4; ++r )
+            {
+                ret.append( "    " );
+                for ( U16 j = 0; j < indent; ++j )
+                {
+                    ret.append( "    " );
+                }
+
+                ret.append(Util::StringFormat(" %.2f %.2f %.2f %.2f\n", datad.m[r][0], datad.m[r][1], datad.m[r][2] , datad.m[r][3]));
+            }
+            indent -= 1u;
+        }
+    }
 
     return ret;
 }
@@ -195,10 +226,53 @@ string ToString(const PushViewportCommand& cmd, U16 indent) {
     return Util::StringFormat(" [%d, %d, %d, %d]", cmd._viewport.x, cmd._viewport.y, cmd._viewport.z, cmd._viewport.w);
 }
 
-string ToString(const BeginRenderPassCommand& cmd, U16 indent) {
-    return " [ " + string(cmd._name.c_str()) + " ]";
+string ToString(const BeginRenderPassCommand& cmd, U16 indent)
+{
+    string ret = "\n";
+    for ( U16 j = 0; j < indent; ++j )
+    {
+        ret.append( "    " );
+    }
+    ret.append(Util::StringFormat(" Name: [ %s ] Target: [ %d ] Mip Level: [ %d ]: \n", cmd._name.c_str(), to_base(cmd._target), cmd._descriptor._mipWriteLevel));
+
+    U8 k = 0u;
+    for ( const bool draw : cmd._descriptor._drawMask )
+    {
+        ret.append( "    " );
+        for ( U16 j = 0; j < indent; ++j )
+        {
+            ret.append( "    " );
+        }
+        ret.append( Util::StringFormat( "Draw Mask[ %d ]: %s\n", k++, draw ? "TRUE" : "FALSE") );
+    }
+
+    k = 0u;
+    for ( const U16 layer : cmd._descriptor._writeLayers )
+    {
+        ret.append( "    " );
+        for ( U16 j = 0; j < indent; ++j )
+        {
+            ret.append( "    " );
+        }
+        ret.append( Util::StringFormat( "Write Layer[ %d ]: %d\n", k++, layer ) );
+    }
+
+    k = 0u;
+    for ( const auto& clear : cmd._clearDescriptor )
+    {
+        ret.append( "    " );
+        for ( U16 j = 0; j < indent; ++j )
+        {
+            ret.append( "    " );
+        }
+        ret.append( Util::StringFormat("Clear Colour {%.2f, %.2f, %.2f, %.2f} (Enabled: %s)\n",  clear._colour.r, clear._colour.g, clear._colour.b, clear._colour.a, clear._enabled ? "TRUE" : "FALSE") );
+    }
+
+    return ret;
 }
-string ToString(const SetScissorCommand& cmd, U16 indent) {
+
+string ToString(const SetScissorCommand& cmd, U16 indent)
+{
     return Util::StringFormat(" [%d, %d, %d, %d]", cmd._rect.x, cmd._rect.y, cmd._rect.z, cmd._rect.w);
 }
 
@@ -236,7 +310,7 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent) {
         if ( Has<ShaderBufferEntry>( binding._data)) {
             ++bufferCount;
         } else if ( Has<DescriptorCombinedImageSampler>( binding._data) ||
-                    Has<ImageView>( binding._data)) {
+                    Has<DescriptorImageView>( binding._data)) {
             ++imageCount;
         }
     }
@@ -244,7 +318,7 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent) {
 
     for (const auto& binding : cmd._bindings) {
         if ( Has<ShaderBufferEntry>( binding._data )) {
-            ret.append("    ");
+            ret.append( "    " );
             for (U16 j = 0; j < indent; ++j) {
                 ret.append("    ");
             }
@@ -282,18 +356,18 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent) {
                             As<DescriptorCombinedImageSampler>(binding._data)._image._subRange._mipLevels.offset,
                             As<DescriptorCombinedImageSampler>(binding._data)._image._subRange._mipLevels.count));
             } else {
-                Texture* srcInternalTex = As<ImageView>( binding._data)._srcTexture._internalTexture;
-                CEGUI::Texture* srcExternalTex = As<ImageView>( binding._data)._srcTexture._ceguiTex;
+                Texture* srcInternalTex = As<DescriptorImageView>( binding._data)._image._srcTexture._internalTexture;
+                CEGUI::Texture* srcExternalTex = As<DescriptorImageView>( binding._data)._image._srcTexture._ceguiTex;
 
                 ret.append(Util::StringFormat("Image binds: Slot [%d] - Src GUID [ %d ] - Src Name [ %s ] - Layers [%d - %d] - Levels [%d - %d] - Flag [ %s ]",
                            binding._slot,
                            srcInternalTex != nullptr ? srcInternalTex->getGUID() : 0u,
                            srcInternalTex != nullptr ? srcInternalTex->resourceName().c_str() : srcExternalTex != nullptr ? srcExternalTex->getName().c_str() : "no-name",
-                           As<ImageView>(binding._data)._subRange._layerRange.offset,
-                           As<ImageView>(binding._data)._subRange._layerRange.count,
-                           As<ImageView>(binding._data)._subRange._mipLevels.offset,
-                           As<ImageView>(binding._data)._subRange._mipLevels.count,
-                           Divide::Names::imageUsage[to_base( As<ImageView>( binding._data)._usage)]));
+                           As<DescriptorImageView>(binding._data)._image._subRange._layerRange.offset,
+                           As<DescriptorImageView>(binding._data)._image._subRange._layerRange.count,
+                           As<DescriptorImageView>(binding._data)._image._subRange._mipLevels.offset,
+                           As<DescriptorImageView>(binding._data)._image._subRange._mipLevels.count,
+                           Divide::Names::imageUsage[to_base( As<DescriptorImageView>( binding._data )._usage )] ));
             }
         }
     }
@@ -338,34 +412,27 @@ string ToString(const DispatchComputeCommand& cmd, U16 indent) {
 }
 
 string ToString(const MemoryBarrierCommand& cmd, U16 indent) {
-    string ret = Util::StringFormat(" [ Mask: %d ] [ Buffer locks: %zu ] [ Fence locks: %zu ] [ Texture layout changes: %zu ][ Sync flag: %d ]", 
-                                      cmd._barrierMask,
+    string ret = Util::StringFormat(" [ Buffer locks: %zu ] [ Texture layout changes: %zu ]\n",
                                       cmd._bufferLocks.size(),
-                                      cmd._fenceLocks.size(),
-                                      cmd._textureLayoutChanges.size(),
-                                      cmd._syncFlag);
+                                      cmd._textureLayoutChanges.size());
  
     for (auto it : cmd._bufferLocks) {
         ret.append("    ");
         for (U16 j = 0; j < indent; ++j) {
             ret.append("    ");
         }
-        ret.append(Util::StringFormat("Buffer lock: [ %d - [%zu - %zu] ]", it._targetBuffer ? it._targetBuffer->getGUID() : -1, it._range._startOffset, it._range._length));
+
+        const I64 guid = it._buffer != nullptr ? it._buffer->getGUID() : -1;
+
+        ret.append(Util::StringFormat("Buffer lock: [ %d - [%zu - %zu] ] - Type [ %s ]\n", guid, it._range._startOffset, it._range._length, Divide::Names::bufferUpdateUsage[to_base(it._type)]));
     }
-    for (auto it : cmd._fenceLocks) {
-        ret.append("    ");
-        for (U16 j = 0; j < indent; ++j) {
-            ret.append("    ");
-        }
-        ret.append(Util::StringFormat("Fence lock: [ %d ]", it->getGUID()));
-    }  
+
     for (auto it : cmd._textureLayoutChanges) {
         ret.append("    ");
         for (U16 j = 0; j < indent; ++j) {
             ret.append("    ");
         }
-        const ImageUsage oldLayout = it._targetView._srcTexture._internalTexture ? it._targetView._srcTexture._internalTexture->imageUsage(it._targetView._subRange) : ImageUsage::UNDEFINED;
-        ret.append(Util::StringFormat("Texture Layout Change: [ %d [ %s -> %s ]]", it._targetView._srcTexture._internalTexture ? it._targetView._srcTexture._internalTexture->getGUID() : -1, Divide::Names::imageUsage[to_base(oldLayout)], Divide::Names::imageUsage[to_base(it._layout)]));
+        ret.append(Util::StringFormat("Texture Layout Change: [ %d [ %s -> %s ]]\n", it._targetView._srcTexture._internalTexture ? it._targetView._srcTexture._internalTexture->getGUID() : -1, Divide::Names::imageUsage[to_base( it._sourceLayout )], Divide::Names::imageUsage[to_base(it._targetLayout)]));
     }
     return ret;
 }
@@ -376,9 +443,9 @@ string ToString(const SetClippingStateCommand& cmd, U16 indent) {
 
 string ToString(const CommandBase& cmd, U16 indent) {
     string ret(indent, ' ');
-    indent *= 2;
     ret.append(Names::commandType[to_base(cmd.Type())]);
 
+    indent += 3u;
     switch (cmd.Type()) {
         case CommandType::BIND_PIPELINE: {
             ret.append(ToString(static_cast<const BindPipelineCommand&>(cmd), indent));

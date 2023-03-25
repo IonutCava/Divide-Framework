@@ -118,6 +118,7 @@ enum class ImageUsage : U8
     SHADER_READ, // Image read or sampled read
     SHADER_WRITE,
     SHADER_READ_WRITE, //General usage
+    CPU_READ,
     RT_COLOUR_ATTACHMENT,
     RT_DEPTH_ATTACHMENT,
     RT_DEPTH_STENCIL_ATTACHMENT,
@@ -126,7 +127,7 @@ enum class ImageUsage : U8
 
 namespace Names {
     static constexpr const char* imageUsage[] = {
-        "UNDEFINED", "SHADER_READ", "SHADER_WRITE", "SHADER_READ_WRITE", "RT_COLOUR_ATTACHMENT", "RT_DEPTH_ATTACHMENT", "RT_DEPTH_STENCIL_ATTACHMENT", "UNKNOWN"
+        "UNDEFINED", "SHADER_READ", "SHADER_WRITE", "SHADER_READ_WRITE", "CPU_READ", "RT_COLOUR_ATTACHMENT", "RT_DEPTH_ATTACHMENT", "RT_DEPTH_STENCIL_ATTACHMENT", "UNKNOWN"
     };
 };
 
@@ -677,27 +678,6 @@ namespace Names {
 
 static_assert(std::size(Names::GFXDataFormat) == to_base(GFXDataFormat::COUNT) + 1);
 
-enum class MemoryBarrierType : U32 {
-    BUFFER_UPDATE = toBit(1),
-    SHADER_STORAGE = toBit(2),
-    COMMAND_BUFFER = toBit(3),
-    ATOMIC_COUNTER = toBit(4),
-    QUERY = toBit(5),
-    RENDER_TARGET = toBit(6),
-    TEXTURE_UPDATE = toBit(7),
-    TEXTURE_FETCH = toBit(8),
-    SHADER_IMAGE = toBit(9),
-    TRANSFORM_FEEDBACK = toBit(10),
-    VERTEX_ATTRIB_ARRAY = toBit(11),
-    INDEX_ARRAY = toBit(12),
-    UNIFORM_DATA = toBit(13),
-    PIXEL_BUFFER = toBit(14),
-    PERSISTENT_BUFFER = toBit(15),
-    ALL_MEM_BARRIERS = PERSISTENT_BUFFER + 256,
-    TEXTURE_BARRIER = toBit(16), //This is not included in ALL!
-    COUNT = 15
-};
-
 enum class GPUVendor : U8 {
     NVIDIA = 0,
     AMD,
@@ -751,30 +731,53 @@ static_assert(std::size(Names::GPURenderer) == to_base(GPURenderer::COUNT) + 1);
 enum class BufferUsageType : U8 {
     VERTEX_BUFFER = 0,
     INDEX_BUFFER,
-    SHADER_BUFFER,
     STAGING_BUFFER,
+    CONSTANT_BUFFER,
+    UNBOUND_BUFFER,
+    COMMAND_BUFFER,
     COUNT
 };
 
 namespace Names {
     static constexpr const char* bufferUsageType[] = {
-        "VERTEX_BUFFER", "INDEX_BUFFER", "SHADER_BUFFER", "STAGING_BUFFER", "NONE"
+        "VERTEX_BUFFER", "INDEX_BUFFER", "STAGING_BUFFER", "CONSTANT_BUFFER", "UNBOUND_BUFFER", "COMMAND_BUFFER", "NONE"
     };
 };
 
 static_assert(std::size(Names::bufferUsageType) == to_base(BufferUsageType::COUNT) + 1);
 
+enum class BufferSyncUsage : U8
+{
+    CPU_WRITE_TO_GPU_READ = 0,
+    GPU_WRITE_TO_CPU_READ,
+    GPU_WRITE_TO_GPU_READ,
+    GPU_WRITE_TO_GPU_WRITE,
+    GPU_READ_TO_GPU_WRITE,
+    CPU_WRITE_TO_CPU_READ,
+    CPU_READ_TO_CPU_WRITE,
+    CPU_WRITE_TO_CPU_WRITE,
+    COUNT
+};
+
+namespace Names
+{
+    static constexpr const char* bufferSyncUsage[] = {
+        "CPU_WRITE_TO_GPU_READ", "GPU_WRITE_TO_CPU_READ", "GPU_WRITE_TO_GPU_READ", "GPU_WRITE_TO_GPU_WRITE", "GPU_READ_TO_GPU_WRITE", "CPU_WRITE_TO_CPU_READ", "CPU_READ_TO_CPU_WRITE", "CPU_WRITE_TO_CPU_WRITE", "NONE"
+    };
+};
+
+static_assert(std::size( Names::bufferSyncUsage ) == to_base( BufferSyncUsage::COUNT ) + 1);
+
 enum class BufferUpdateUsage : U8 {
-    CPU_W_GPU_R = 0, //DRAW
-    CPU_R_GPU_W = 1, //READ
-    GPU_R_GPU_W = 2, //COPY
-    GPU_W_CPU_R = GPU_R_GPU_W, //COPY? Again?
+    CPU_TO_GPU = 0, //DRAW
+    GPU_TO_CPU = 1, //READ
+    GPU_TO_GPU = 2, //COPY
     COUNT
 };
 
 namespace Names {
     static constexpr const char* bufferUpdateUsage[] = {
-        "CPU_W_GPU_R", "CPU_R_GPU_W", "GPU_R_GPU_W / GPU_W_CPU_R", "NONE"
+        "CPU_TO_GPU", "GPU_TO_CPU", "GPU_TO_GPU", "NONE"
     };
 };
 

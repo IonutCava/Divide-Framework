@@ -39,11 +39,10 @@ namespace Divide {
 
 class OpenAL_API final : public AudioAPIWrapper {
 public:
-    ErrorCode initAudioAPI(PlatformContext& context) noexcept override;
-    void closeAudioAPI() noexcept override;
+    explicit OpenAL_API(PlatformContext& context);
 
-    void beginFrame() noexcept override;
-    void endFrame() noexcept override;
+    ErrorCode initAudioAPI() noexcept override;
+    void closeAudioAPI() noexcept override;
 
     void playSound(const AudioDescriptor_ptr& sound) noexcept override;
     void playMusic(const AudioDescriptor_ptr& music) noexcept override;

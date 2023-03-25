@@ -17,9 +17,8 @@ namespace Divide
         constexpr F32 g_maxSimSpeed = 1000.f;
     };
 
-    PXDevice::PXDevice( Kernel& parent ) noexcept
-        : KernelComponent( parent ),
-        PhysicsAPIWrapper()
+    PXDevice::PXDevice( PlatformContext& context ) noexcept
+        : PhysicsAPIWrapper("PXDevice", context )
     {
     }
 
@@ -36,7 +35,7 @@ namespace Divide
         {
             case PhysicsAPI::PhysX:
             {
-                _api = eastl::make_unique<PhysX>();
+                _api = eastl::make_unique<PhysX>( _context );
             } break;
             case PhysicsAPI::ODE:
             case PhysicsAPI::Bullet:
@@ -89,16 +88,6 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Physics );
 
         _api->idle();
-    }
-
-    void PXDevice::beginFrame()
-    {
-        NOP();
-    }
-
-    void PXDevice::endFrame()
-    {
-        NOP();
     }
 
     bool PXDevice::initPhysicsScene( Scene& scene )

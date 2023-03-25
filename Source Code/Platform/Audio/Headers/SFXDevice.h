@@ -38,8 +38,7 @@
 
 namespace Divide {
 
-class SFXDevice final : public KernelComponent,
-                        public AudioAPIWrapper {
+class SFXDevice final : public AudioAPIWrapper {
 public:
     enum class AudioAPI : U8 {
         FMOD,
@@ -48,10 +47,11 @@ public:
         COUNT
     };
 
-    SFXDevice(Kernel& parent);
+    explicit SFXDevice( PlatformContext& context );
+
     ~SFXDevice();
 
-    [[nodiscard]] ErrorCode initAudioAPI(PlatformContext& context) override;
+    [[nodiscard]] ErrorCode initAudioAPI() override;
     void closeAudioAPI() override;
 
     void setAPI(const AudioAPI API) noexcept { _API_ID = API; }
@@ -61,8 +61,6 @@ public:
     [[nodiscard]] AudioState& getActiveAudioState() noexcept { return _state; }
 
     void idle();
-    void beginFrame() override;
-    void endFrame() override;
     void playSound(const AudioDescriptor_ptr& sound) override;
     void playMusic(const AudioDescriptor_ptr& music) override;
 
@@ -77,15 +75,17 @@ public:
     [[nodiscard]] bool playMusic(const MusicPlaylist& playlist);
 
     void dumpPlaylists();
+
 protected:
     friend void musicFinishedHook() noexcept;
     void musicFinished() noexcept override;
+
+    [[nodiscard]] bool frameStarted( const FrameEvent& evt ) override;
 
 protected:
     AudioState _state;
 
     MusicPlaylists _musicPlaylists;
-
     MusicPlaylist _currentPlaylist;
 
 private:

@@ -111,7 +111,7 @@ bool glShaderProgram::unload()
     if (_handle != GLUtil::k_invalidObjectID)
     {
         {
-            ScopedLock<SharedMutex> w_lock(g_deletionSetLock);
+            LockGuard<SharedMutex> w_lock(g_deletionSetLock);
             g_deletionSet.insert(_handle);
         }
 
@@ -183,7 +183,7 @@ ShaderResult glShaderProgram::validatePreBind(const bool rebind)
                 glObjectLabel(GL_PROGRAM_PIPELINE, _handle, -1, resourceName().c_str());
             }
             // We can reuse previous handles
-            ScopedLock<SharedMutex> w_lock(g_deletionSetLock);
+            LockGuard<SharedMutex> w_lock(g_deletionSetLock);
             g_deletionSet.erase(_handle);
         }
 

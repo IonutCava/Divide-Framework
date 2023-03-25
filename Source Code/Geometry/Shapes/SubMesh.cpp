@@ -53,7 +53,7 @@ void SubMesh::buildBoundingBoxesForAnim([[maybe_unused]] const Task& parentTask,
     const size_t partitionOffset = parentVB->getPartitionOffset(_geometryPartitionIDs[0]);
     const size_t partitionCount = parentVB->getPartitionIndexCount(_geometryPartitionIDs[0]);
 
-    ScopedLock<SharedMutex> w_lock(_bbLock);
+    LockGuard<SharedMutex> w_lock(_bbLock);
     BoundingBox& currentBB = _boundingBoxes.at(animationIndex);
     currentBB.reset();
     for (const BoneTransform& transforms : currentAnimation) {
@@ -80,7 +80,7 @@ void SubMesh::updateBB(const I32 animIndex) {
 
 void SubMesh::computeBBForAnimation(SceneGraphNode* const sgn, const I32 animIndex) {
     // Attempt to get the map of BBs for the current animation
-    ScopedLock<SharedMutex> w_lock(_bbStateLock);
+    LockGuard<SharedMutex> w_lock(_bbStateLock);
     const BoundingBoxState state = _boundingBoxesState[animIndex];
 
     if (state != BoundingBoxState::COUNT) {
@@ -101,7 +101,7 @@ void SubMesh::computeBBForAnimation(SceneGraphNode* const sgn, const I32 animInd
         _context.context().taskPool(TaskPoolType::HIGH_PRIORITY),
         TaskPriority::DONT_CARE,
         [this, animIndex, animComp]() {
-            ScopedLock<SharedMutex> w_lock2(_bbStateLock);
+            LockGuard<SharedMutex> w_lock2(_bbStateLock);
             _boundingBoxesState[animIndex] = BoundingBoxState::Computed;
             // We could've changed the animation while waiting for this task to end
             if (animComp->animationIndex() == animIndex) {

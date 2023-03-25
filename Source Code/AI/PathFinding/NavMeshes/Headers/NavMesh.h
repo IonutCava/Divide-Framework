@@ -138,7 +138,7 @@ class NavigationMesh : public GUIDWrapper, public PlatformContextComponent /*,pu
     /// Unload the navmesh reverting the instance to an empty container
     bool unload();
     /// Render the debug mesh if debug drawing is enabled
-    void draw(bool force, GFX::CommandBuffer& bufferInOut);
+    void draw(bool force, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
     void debugDraw(const bool state) noexcept { _debugDraw = state; }
     bool debugDraw() const noexcept { return _debugDraw; }
 

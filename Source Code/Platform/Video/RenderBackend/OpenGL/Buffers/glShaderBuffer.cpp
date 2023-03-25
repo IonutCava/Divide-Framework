@@ -18,10 +18,10 @@ namespace Divide
     glShaderBuffer::glShaderBuffer( GFXDevice& context, const ShaderBufferDescriptor& descriptor )
         : ShaderBuffer( context, descriptor )
     {
-        const size_t targetElementSize = Util::GetAlignmentCorrected( _params._elementSize, AlignmentRequirement( _usage ) );
+        const size_t targetElementSize = Util::GetAlignmentCorrected( _params._elementSize, _alignmentRequirement );
         if ( targetElementSize > _params._elementSize )
         {
-            DIVIDE_ASSERT( (_params._elementSize * _params._elementCount) % AlignmentRequirement( _usage ) == 0u,
+            DIVIDE_ASSERT( (_params._elementSize * _params._elementCount) % _alignmentRequirement == 0u,
                            "ERROR: glShaderBuffer - element size and count combo is less than the minimum alignment requirement for current hardware! Pad the element size and or count a bit" );
         }
         else
@@ -30,16 +30,16 @@ namespace Divide
                            "ERROR: glShaderBuffer - element size is less than the minimum alignment requirement for current hardware! Pad the element size a bit" );
         }
         _alignedBufferSize = _params._elementCount * _params._elementSize;
-        _alignedBufferSize = static_cast<ptrdiff_t>(realign_offset( _alignedBufferSize, AlignmentRequirement( _usage ) ));
+        _alignedBufferSize = static_cast<ptrdiff_t>(realign_offset( _alignedBufferSize, _alignmentRequirement ));
 
         BufferImplParams implParams;
         implParams._bufferParams = _params;
-        implParams._target = (_usage == Usage::UNBOUND_BUFFER || _usage == Usage::COMMAND_BUFFER)
+        implParams._target = (getUsage() == BufferUsageType::UNBOUND_BUFFER || getUsage() == BufferUsageType::COMMAND_BUFFER)
             ? GL_SHADER_STORAGE_BUFFER
             : GL_UNIFORM_BUFFER;
 
         implParams._dataSize = _alignedBufferSize * queueLength();
-        implParams._useChunkAllocation = _usage != Usage::COMMAND_BUFFER;
+        implParams._useChunkAllocation = getUsage() != BufferUsageType::COMMAND_BUFFER;
 
         _bufferImpl = eastl::make_unique<glBufferImpl>( context, implParams, descriptor._initialData, _name.empty() ? nullptr : _name.c_str() );
 
@@ -71,7 +71,7 @@ namespace Divide
         GLStateTracker::BindResult result = GLStateTracker::BindResult::FAILED;
 
         DIVIDE_ASSERT( to_size( range._length ) <= _maxSize && "glShaderBuffer::bindByteRange: attempted to bind a larger shader block than is allowed on the current platform" );
-        DIVIDE_ASSERT( range._startOffset == Util::GetAlignmentCorrected( range._startOffset, AlignmentRequirement( _usage ) ) );
+        DIVIDE_ASSERT( range._startOffset == Util::GetAlignmentCorrected( range._startOffset, _alignmentRequirement ) );
         if ( readIndex == -1 )
         {
             readIndex = getStartIndex( true );
@@ -86,7 +86,7 @@ namespace Divide
         {
             const size_t offset = bufferImpl()->memoryBlock()._offset + range._startOffset + (readIndex * _alignedBufferSize);
             // If we bind the entire buffer, offset == 0u and range == 0u is a hack to bind the entire thing instead of a subrange
-            const size_t bindRange = Util::GetAlignmentCorrected( (offset == 0u && to_size( range._length ) == bufferImpl()->memoryBlock()._size) ? 0u : range._length, AlignmentRequirement( _usage ) );
+            const size_t bindRange = Util::GetAlignmentCorrected( (offset == 0u && to_size( range._length ) == bufferImpl()->memoryBlock()._size) ? 0u : range._length, _alignmentRequirement );
             result = GL_API::GetStateTracker().setActiveBufferIndexRange( bufferImpl()->params()._target,
                                                                           bufferImpl()->memoryBlock()._bufferHandle,
                                                                           bindIndex,
@@ -100,6 +100,11 @@ namespace Divide
             }
 
         return result == GLStateTracker::BindResult::JUST_BOUND;
+    }
+
+    LockableBuffer* glShaderBuffer::getBufferImpl()
+    {
+        return _bufferImpl.get();
     }
 
 }  // namespace Divide

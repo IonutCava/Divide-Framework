@@ -63,6 +63,9 @@ struct RTAttachmentDescriptor {
     RTColourAttachmentSlot _slot{ RTColourAttachmentSlot::COUNT };
 };
 
+constexpr static U32 RT_DEPTH_ATTACHMENT_IDX = to_base( RTColourAttachmentSlot::COUNT );
+constexpr static U8 RT_MAX_ATTACHMENT_COUNT = to_base( RTColourAttachmentSlot::COUNT ) + 1;
+
 // External attachments get added last and OVERRIDE any normal attachments found at the same type+index location
 struct ExternalRTAttachmentDescriptor final : public RTAttachmentDescriptor {
     explicit ExternalRTAttachmentDescriptor(RTAttachment* attachment,
@@ -98,16 +101,11 @@ class RTAttachment final {
     public:
         explicit RTAttachment(RenderTarget& parent, const RTAttachmentDescriptor& descriptor) noexcept;
 
-        bool mipWriteLevel(U16 level) noexcept;
-        [[nodiscard]] U16  mipWriteLevel() const noexcept;
-
-        bool writeLayer(U16 layer);
-        [[nodiscard]] U16 writeLayer() const noexcept;
-
         [[nodiscard]] const Texture_ptr& texture() const;
         void setTexture(const Texture_ptr& tex, const bool isExternal) noexcept;
 
-        [[nodiscard]] U16 numLayers() const;
+        [[nodiscard]] U16 numMips() const noexcept;
+        [[nodiscard]] U16 numLayers() const noexcept;
 
         [[nodiscard]] const RTAttachmentDescriptor& descriptor() const noexcept;
 
@@ -122,8 +120,6 @@ class RTAttachment final {
         RenderTarget& _parent;
         RTAttachmentDescriptor _descriptor;
         Texture_ptr _texture = nullptr;
-        U16  _mipWriteLevel = 0u;
-        U16  _writeLayer = 0u;
 };
 
 FWD_DECLARE_MANAGED_CLASS(RTAttachment);

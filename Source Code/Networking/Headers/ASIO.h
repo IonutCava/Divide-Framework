@@ -84,7 +84,7 @@ namespace Divide
         protected:
         boost::asio::io_context _ioService;
         eastl::unique_ptr<boost::asio::io_context::work> _work;
-        std::thread* _thread{nullptr};
+        eastl::unique_ptr<std::thread> _thread;
         Client* _localClient{nullptr};
         bool _connected{false};
         bool _debugOutput{true};

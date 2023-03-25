@@ -34,9 +34,11 @@
 #include "Scripting/Headers/Script.h"
 #include "Utility/Headers/XMLParser.h"
 
-namespace Divide {
+namespace Divide
+{
 
-namespace {
+namespace
+{
     constexpr U8 g_minimumGeneralPurposeThreadCount = 8u;
     constexpr U8 g_backupThreadPoolSize = 2u;
 
@@ -111,14 +113,16 @@ void Kernel::startSplashScreen() {
 
     // Load and render the splash screen
     _splashTask = CreateTask(
-        [this, &splash](const Task& /*task*/) {
+        [this, &splash, &window](const Task& /*task*/) {
         U64 previousTimeUS = 0;
         while (_splashScreenUpdating) {
             const U64 deltaTimeUS = Time::App::ElapsedMicroseconds() - previousTimeUS;
             previousTimeUS += deltaTimeUS;
-            _platformContext.beginFrame(PlatformContext::SystemComponentType::GFXDevice);
+
+            _platformContext.gfx().drawToWindow(window);
             splash.render(_platformContext.gfx());
-            _platformContext.endFrame(PlatformContext::SystemComponentType::GFXDevice);
+            _platformContext.gfx().flushWindow(window);
+
             std::this_thread::sleep_for(std::chrono::milliseconds(15));
 
             break;
@@ -156,7 +160,7 @@ void Kernel::idle(const bool fast) {
     Script::idle();
 
     if (!fast && --g_printTimer == 0) {
-        Console::flush();
+        Console::Flush();
         g_printTimer = g_printTimerBase;
     }
 
@@ -200,8 +204,7 @@ void Kernel::onLoop() {
             evt._time._game._currentTimeUS = Time::Game::ElapsedMicroseconds();
             evt._time._game._deltaTimeUS = _timingData.realTimeDeltaUS();
 
-            // Restore GPU to default state: clear buffers and set default render state
-            _platformContext.beginFrame();
+            Attorney::PlatformContextKernel::setComponentMask( _platformContext, to_base( PlatformContext::SystemComponentType::ALL ) );
             {
                 Time::ScopedTimer timer3(_frameTimer);
 
@@ -220,22 +223,19 @@ void Kernel::onLoop() {
                     keepAlive(false);
                 }
             }
-            _platformContext.endFrame();
-
-            // Launch the FRAME_ENDED event (buffers have been swapped)
 
             if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_EVENT_ENDED, evt)) {
                 keepAlive(false);
             }
 
-            if (_platformContext.app().ShutdownRequested()) {
+            if (_platformContext.app().RestartRequested() || _platformContext.app().ShutdownRequested() ) {
                 keepAlive(false);
             }
 
             const ErrorCode err = _platformContext.app().errorCode();
 
             if (err != ErrorCode::NO_ERR) {
-                Console::errorfn(Locale::Get(_ID("GENERIC_ERROR")), getErrorCodeName(err));
+                Console::errorfn(Locale::Get(_ID("GENERIC_ERROR")), TypeUtil::ErrorCodeToString(err));
                 keepAlive(false);
             }
         }
@@ -273,8 +273,17 @@ void Kernel::onLoop() {
                 _platformContext.app().timer().getFrameRateAndTime(fps, frameTime);
                 const Str256& activeSceneName = _sceneManager->getActiveScene().resourceName();
                 constexpr const char* buildType = Config::Build::IS_DEBUG_BUILD ? "DEBUG" : Config::Build::IS_PROFILE_BUILD ? "PROFILE" : "RELEASE";
-                constexpr const char* titleString = "[%s] - %s - %s - %5.2f FPS - %3.2f ms - FrameIndex: %d - Update Calls : %d - Alpha : %1.2f";
-                window.title(titleString, buildType, originalTitle.c_str(), activeSceneName.c_str(), fps, frameTime, GFXDevice::FrameCount(), _timingData.updateLoops(), _timingData.alpha());
+                constexpr const char* titleString = "[%s - %s] - %s - %s - %5.2f FPS - %3.2f ms - FrameIndex: %d - Update Calls : %d - Alpha : %1.2f";
+                window.title(titleString,
+                             buildType,
+                             Names::renderAPI[to_base(_platformContext.gfx().renderAPI())],
+                             originalTitle.c_str(),
+                             activeSceneName.c_str(),
+                             fps,
+                             frameTime,
+                             GFXDevice::FrameCount(),
+                             _timingData.updateLoops(),
+                             _timingData.alpha());
             }
         }
 
@@ -400,8 +409,6 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
     // Update windows and get input events
     SDLEventManager::pollEvents();
 
-    WindowManager& winManager = _platformContext.app().windowManager();
-    winManager.update(_timingData.appTimeDeltaUS());
     {
         Time::ScopedTimer timer3(_physicsUpdateTimer);
         // Update physics
@@ -622,6 +629,8 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
         return ErrorCode::NOT_ENOUGH_RAM;
     }
 
+    g_printTimer = g_printTimerBase;
+
     // Don't log parameter requests
     _platformContext.paramHandler().setDebugOutput(false);
     // Load info from XML files
@@ -632,6 +641,10 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
 
     if (Util::FindCommandLineArgument(_argc, _argv, "disableRenderAPIDebugging")) {
         config.debug.enableRenderAPIDebugging = false;
+        config.debug.enableRenderAPIBestPractices = false;
+    }
+    if (Util::FindCommandLineArgument(_argc, _argv, "disableAssertOnRenderAPIError")) {
+        config.debug.assertOnRenderAPIError = false;
     }
     if (config.runtime.targetRenderingAPI >= to_U8(RenderAPI::COUNT)) {
         config.runtime.targetRenderingAPI = to_U8(RenderAPI::OpenGL);
@@ -639,13 +652,9 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
 
     DIVIDE_ASSERT(g_backupThreadPoolSize >= 2u, "Backup thread pool needs at least 2 threads to handle background tasks without issues!");
 
-    {
-        const I32 threadCount = config.runtime.maxWorkerThreads > 0 ? config.runtime.maxWorkerThreads : HardwareThreadCount();
-        totalThreadCount(std::max(threadCount, to_I32(g_minimumGeneralPurposeThreadCount)));
-    }
-    // Create mem log file
-    const Str256& mem = config.debug.memFile.c_str();
-    _platformContext.app().setMemoryLogFile(mem.compare("none") == 0 ? "mem.log" : mem);
+    const I32 threadCount = config.runtime.maxWorkerThreads > 0 ? config.runtime.maxWorkerThreads : HardwareThreadCount();
+    totalThreadCount(std::max(threadCount, to_I32(g_minimumGeneralPurposeThreadCount)));
+
     _platformContext.pfx().setAPI(PXDevice::PhysicsAPI::PhysX);
     _platformContext.sfx().setAPI(SFXDevice::AudioAPI::SDL);
 
@@ -676,14 +685,7 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
         config.gui.cegui.enabled = false;
     }
 
-    WindowManager& winManager = _platformContext.app().windowManager();
-    ErrorCode initError = winManager.init(_platformContext,
-                                          renderingAPI,
-                                          vec2<I16>(-1),
-                                          config.runtime.windowSize,
-                                          static_cast<WindowMode>(config.runtime.windowedMode),
-                                          config.runtime.targetDisplay);
-
+    ErrorCode initError = Attorney::ApplicationKernel::SetRenderingAPI(_platformContext.app(), renderingAPI);
     if (initError != ErrorCode::NO_ERR) {
         return initError;
     }
@@ -732,7 +734,7 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
     if (initError != ErrorCode::NO_ERR) {
         return initError;
     }
-    winManager.postInit();
+
     SceneEnvironmentProbePool::OnStartup(_platformContext.gfx());
     _inputConsumers.fill(nullptr);
 
@@ -752,6 +754,7 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
 
     Console::printfn(Locale::Get(_ID("SCENE_ADD_DEFAULT_CAMERA")));
 
+    WindowManager& winManager = _platformContext.app().windowManager();
     winManager.mainWindow()->addEventListener(WindowEvent::LOST_FOCUS, [mgr = _sceneManager](const DisplayWindow::WindowEventArgs& ) {
         mgr->onChangeFocus(false);
         return true;
@@ -771,7 +774,7 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
     startSplashScreen();
 
     Console::printfn(Locale::Get(_ID("START_SOUND_INTERFACE")));
-    initError = _platformContext.sfx().initAudioAPI(_platformContext);
+    initError = _platformContext.sfx().initAudioAPI();
     if (initError != ErrorCode::NO_ERR) {
         return initError;
     }
@@ -1061,9 +1064,9 @@ bool Kernel::joystickRemap(const Input::JoystickEvent &arg) {
     return false;
 }
 
-bool Kernel::onUTF8(const Input::UTF8Event& arg) {
+bool Kernel::onTextEvent(const Input::TextEvent& arg) {
     for (auto inputConsumer : _inputConsumers) {
-        if (inputConsumer && inputConsumer->onUTF8(arg)) {
+        if (inputConsumer && inputConsumer->onTextEvent(arg)) {
             return true;
         }
     }

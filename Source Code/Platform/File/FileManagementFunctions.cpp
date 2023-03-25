@@ -399,11 +399,11 @@ bool hasExtension(const char* filePath, const char* extensionNoDot) {
     return Util::CompareIgnoreCase(targetExt.substr(1).c_str(), extensionNoDot);
 }
 
-bool deleteAllFiles(const ResourcePath& filePath, const char* extensionNoDot) {
-    return deleteAllFiles(filePath.c_str(), extensionNoDot);
+bool deleteAllFiles(const ResourcePath& filePath, const char* extension, const char* extensionToSkip) {
+    return deleteAllFiles(filePath.c_str(), extension, extensionToSkip );
 }
 
-bool deleteAllFiles(const char* filePath, const char* extensionNoDot) {
+bool deleteAllFiles(const char* filePath, const char* extension, const char* extensionToSkip ) {
     bool ret = false;
 
     if (pathExists(filePath)) {
@@ -411,14 +411,20 @@ bool deleteAllFiles(const char* filePath, const char* extensionNoDot) {
         for (const auto& p : std::filesystem::directory_iterator(pathIn)) {
             try {
                 if (is_regular_file(p.status())) {
-                    if (!extensionNoDot || Util::CompareIgnoreCase(p.path().extension().string().substr(1).c_str(), extensionNoDot)) {
+                    const auto extensionString = p.path().extension().string().substr( 1 );
+                    if (extensionToSkip && Util::CompareIgnoreCase( extensionString.c_str(), extensionToSkip) )
+                    {
+                        continue;
+                    }
+
+                    if (!extension || Util::CompareIgnoreCase( extensionString.c_str(), extension )) {
                         if (std::filesystem::remove(p.path())) {
                             ret = true;
                         }
                     }
                 } else {
                     //ToDo: check if this recurse in subfolders actually works
-                    if (!deleteAllFiles(p.path().string().c_str(), extensionNoDot)) {
+                    if (!deleteAllFiles(p.path().string().c_str(), extension , extensionToSkip)) {
                         NOP();
                     }
                 }
@@ -438,7 +444,9 @@ bool getAllFilesInDirectory(const char* filePath, FileList& listInOut, const cha
         for (const auto& p : std::filesystem::directory_iterator(pathIn)) {
             try {
                 if (is_regular_file(p.status())) {
-                    if (!extensionNoDot || Util::CompareIgnoreCase(p.path().extension().string().substr(1).c_str(), extensionNoDot)) {
+                    const auto extensionString = p.path().extension().string().substr( 1 );
+
+                    if (!extensionNoDot || Util::CompareIgnoreCase(extensionString.c_str(), extensionNoDot)) {
                         const U64 timeOutSec = std::chrono::duration_cast<std::chrono::seconds>(p.last_write_time().time_since_epoch()).count();
 
                         listInOut.emplace_back(FileEntry{

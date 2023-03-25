@@ -4,6 +4,7 @@
 
 #include "Headers/Kernel.h"
 #include "Headers/ParamHandler.h"
+#include "Headers/Configuration.h"
 
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Platform/File/Headers/FileManagement.h"
@@ -16,11 +17,14 @@ bool MemoryManager::MemoryTracker::Ready = false;
 bool MemoryManager::MemoryTracker::LogAllAllocations = false;
 MemoryManager::MemoryTracker MemoryManager::AllocTracer;
 
+U8 DisplayManager::s_activeDisplayCount{1u};
+U8 DisplayManager::s_maxMSAASAmples{0u};
+std::array<DisplayManager::OutputDisplayPropertiesContainer, DisplayManager::g_maxDisplayOutputs> DisplayManager::s_supportedDisplayModes;
+
 Application::Application() noexcept
-: _requestShutdown( false ),
-  _requestRestart( false ),
-  _mainLoopPaused( false ),
-  _mainLoopActive( false )
+    : _mainLoopPaused{false}
+    , _mainLoopActive{false}
+    , _freezeRendering{false}
 {
     if constexpr (Config::Build::IS_DEBUG_BUILD)
     {
@@ -31,144 +35,234 @@ Application::Application() noexcept
 
 Application::~Application()
 {
-    assert(!_isInitialized);
+    DIVIDE_ASSERT( _kernel == nullptr );
 }
 
-ErrorCode Application::start(const string& entryPoint, const I32 argc, char** argv) {
-    assert(!entryPoint.empty());
+ErrorCode Application::start(const string& entryPoint, const I32 argc, char** argv)
+{
+    assert( !entryPoint.empty() );
+    assert( _kernel == nullptr );
 
-    Profiler::Init();
-
-    _isInitialized = true;
-    _timer.reset();
-     
-    Console::toggleImmediateMode(true);
+    Console::ToggleFlag(Console::Flags::PRINT_IMMEDIATE, true);
     Console::printfn(Locale::Get(_ID("START_APPLICATION")));
     Console::printfn(Locale::Get(_ID("START_APPLICATION_CMD_ARGUMENTS")));
-    for (I32 i = 1; i < argc; ++i) {
+    for (I32 i = 1; i < argc; ++i)
+    {
         Console::printfn("%s", argv[i]);
     }
+
     // Create a new kernel
-    assert(_kernel == nullptr);
     _kernel = MemoryManager_NEW Kernel(argc, argv, *this);
+
+    _timer.reset();
 
     // and load it via an XML file config
     const ErrorCode err = Attorney::KernelApplication::initialize(_kernel, entryPoint);
 
     // failed to start, so cleanup
-    if (err != ErrorCode::NO_ERR) {
-        throwError(err);
-        stop();
-    } else {
+    if (err != ErrorCode::NO_ERR)
+    {
+        stop(StepResult::ERROR);
+    }
+    else
+    {
         Attorney::KernelApplication::warmup(_kernel);
         Console::printfn(Locale::Get(_ID("START_MAIN_LOOP")));
-        Console::toggleImmediateMode(false);
+        Console::ToggleFlag( Console::Flags::PRINT_IMMEDIATE, false);
         mainLoopActive(true);
     }
 
     return err;
 }
 
-void Application::stop() {
-    if (_isInitialized) {
-        if (_kernel != nullptr) {
-            Attorney::KernelApplication::shutdown(_kernel);
+ErrorCode Application::setRenderingAPI( const RenderAPI api )
+{
+    PlatformContext& context = _kernel->platformContext();
+    const Configuration& config = context.config();
+
+    return _windowManager.init( context,
+                                api,
+                                {-1, -1},
+                                config.runtime.windowSize,
+                                static_cast<WindowMode>(config.runtime.windowedMode),
+                                config.runtime.targetDisplay );
+}
+
+void Application::stop( const StepResult stepResult )
+{
+    Console::printfn( Locale::Get( _ID( "STOP_APPLICATION" ) ) );
+
+    if ( _kernel == nullptr )
+    {
+        return;
+    }
+
+    Attorney::KernelApplication::shutdown(_kernel);
+
+    _windowManager.close();
+    MemoryManager::DELETE(_kernel);
+    Attorney::DisplayManagerApplication::Reset();
+
+    if ( stepResult == StepResult::RESTART_CLEAR_CACHE || stepResult == StepResult::STOP_CLEAR_CACHE )
+    {
+        if ( !deleteAllFiles( Paths::g_cacheLocation, nullptr, "keep") )
+        {
+            NOP();
         }
-        for (const DELEGATE<void>& cbk : _shutdownCallback) {
-            cbk();
+    }
+
+    if constexpr(Config::Build::IS_DEBUG_BUILD)
+    {
+        MemoryManager::MemoryTracker::Ready = false;
+
+        bool leakDetected = false;
+        size_t sizeLeaked = 0u;
+        const string allocLog = MemoryManager::AllocTracer.Dump(leakDetected, sizeLeaked);
+        if (leakDetected)
+        {
+            Console::errorfn(Locale::Get(_ID("ERROR_MEMORY_NEW_DELETE_MISMATCH")), to_I32(std::ceil(sizeLeaked / 1024.0f)));
         }
 
-        _windowManager.close();
-        MemoryManager::DELETE(_kernel);
-        Console::printfn(Locale::Get(_ID("STOP_APPLICATION")));
-        _isInitialized = false;
-
-        if constexpr(Config::Build::IS_DEBUG_BUILD) {
-            MemoryManager::MemoryTracker::Ready = false;
-            bool leakDetected = false;
-            size_t sizeLeaked = 0;
-            const string allocLog = MemoryManager::AllocTracer.Dump(leakDetected, sizeLeaked);
-            if (leakDetected) {
-                Console::errorfn(Locale::Get(_ID("ERROR_MEMORY_NEW_DELETE_MISMATCH")), to_I32(std::ceil(sizeLeaked / 1024.0f)));
-            }
-            std::ofstream memLog;
-            memLog.open((Paths::g_logPath + _memLogBuffer).str());
-            memLog << allocLog;
-            memLog.close();
-        }
-
-        Profiler::Shutdown();
+        std::ofstream memLog;
+        memLog.open((Paths::g_logPath + MEM_LOG_FILE).str());
+        memLog << allocLog;
+        memLog.close();
     }
 }
 
-void Application::idle() {
-    NOP();
-}
+Application::StepResult Application::step()
+{
+    StepResult result = StepResult::OK;
 
-bool Application::step(bool& restartEngineOnClose) {
-    if (onLoop()) {
-        if (RestartRequested()) {
-            restartEngineOnClose = true;
-            RequestShutdown();
-        } else {
-            restartEngineOnClose = false;
-        }
-
+    if ( mainLoopActive() )
+    {
         PROFILE_FRAME( "Main Thread" );
         Attorney::KernelApplication::onLoop(_kernel);
-        return true;
     }
-
-    windowManager().hideAll();
-    CancelRestart();
-
-    return false;
-}
-
-bool Application::onLoop() {
-    ScopedLock<Mutex> r_lock(_taskLock);
-    if (!_mainThreadCallbacks.empty()) {
-        while(!_mainThreadCallbacks.empty()) {
-            _mainThreadCallbacks.back()();
-            _mainThreadCallbacks.pop_back();
+    else
+    {
+        if ( RestartRequested() )
+        {
+            result = _clearCacheOnExit ? StepResult::RESTART_CLEAR_CACHE : StepResult::RESTART;
         }
+        else if ( ShutdownRequested() )
+        {
+            result = _clearCacheOnExit ? StepResult::STOP_CLEAR_CACHE : StepResult::STOP;
+        }
+        else
+        {
+            result = StepResult::ERROR;
+        }
+
+        _clearCacheOnExit = false;
+
+        CancelRestart();
+        CancelShutdown();
+        windowManager().hideAll();
     }
 
-
-    return mainLoopActive();
+    return result;
 }
 
-
-bool Application::onSDLEvent(const SDL_Event event) noexcept {
-    if (event.type == SDL_QUIT) {
-        RequestShutdown();
-        return true;
+bool Application::onSDLEvent(const SDL_Event event) noexcept
+{
+    switch ( event.type )
+    {
+        case SDL_QUIT:
+        {
+            RequestShutdown( false );
+        } break;
+        case SDL_APP_TERMINATING:
+        {
+            Console::errorfn( Locale::Get( _ID( "ERROR_APPLICATION_SYSTEM_CLOSE_REQUEST" ) ) );
+            RequestShutdown( false );
+        } break;
+        case SDL_RENDER_TARGETS_RESET :
+        {
+            Console::warnfn( Locale::Get( _ID( "ERROR_APPLICATION_RENDER_TARGET_RESET" ) ) );
+            //RequestShutdown( false );
+        } break;
+        case SDL_RENDER_DEVICE_RESET :
+        {
+            Console::errorfn( Locale::Get( _ID("ERROR_APPLICATION_RENDER_DEVICE_RESET") ) );
+            RequestShutdown( false );
+        } break;
+        case SDL_APP_LOWMEMORY :
+        {
+            Console::errorfn( Locale::Get( _ID( "ERROR_APPLICATION_LOW_MEMORY" ) ) );
+            RequestShutdown( false );
+        } break;
+        case SDL_DROPFILE:
+        case SDL_DROPTEXT:
+        case SDL_DROPBEGIN:
+        case SDL_DROPCOMPLETE:
+        {
+            Console::warnfn( Locale::Get( _ID("WARN_APPLICATION_DRAG_DROP") ) );
+        } break;
+        case SDL_FINGERDOWN :
+        case SDL_FINGERUP :
+        case SDL_FINGERMOTION :
+        case SDL_DOLLARGESTURE :
+        case SDL_DOLLARRECORD :
+        case SDL_MULTIGESTURE :
+        {
+            Console::warnfn( Locale::Get( _ID( "WARN_APPLICATION_TOUCH_EVENT" ) ) );
+        } break;
+        default: break;
     }
 
-    return false;
+    return ShutdownRequested();
 }
 
-bool Application::onWindowSizeChange(const SizeChangeParams& params) const {
+bool Application::onWindowSizeChange(const SizeChangeParams& params) const
+{
     Attorney::KernelApplication::onWindowSizeChange(_kernel, params);
     return true;
 }
 
-bool Application::onResolutionChange(const SizeChangeParams& params) const {
+bool Application::onResolutionChange(const SizeChangeParams& params) const
+{
     Attorney::KernelApplication::onResolutionChange(_kernel, params);
     return true;
 }
-void Application::mainThreadTask(const DELEGATE<void>& task, const bool wait) {
-    std::atomic_bool done = false;
-    if (wait) {
-        ScopedLock<Mutex> w_lock(_taskLock);
-        _mainThreadCallbacks.push_back([&done, &task] { task(); done = true; });
-    } else {
-        ScopedLock<Mutex> w_lock(_taskLock);
-        _mainThreadCallbacks.push_back(task);
-    }
 
-    if (wait) {
-        WAIT_FOR_CONDITION(done);
+void DisplayManager::SetActiveDisplayCount( const U8 displayCount )
+{
+    s_activeDisplayCount = std::min( displayCount, g_maxDisplayOutputs );
+}
+
+void DisplayManager::RegisterDisplayMode( const U8 displayIndex, const OutputDisplayProperties& mode )
+{
+    DIVIDE_ASSERT( displayIndex < g_maxDisplayOutputs );
+    s_supportedDisplayModes[displayIndex].push_back( mode );
+}
+
+const DisplayManager::OutputDisplayPropertiesContainer& DisplayManager::GetDisplayModes( const size_t displayIndex ) noexcept
+{
+    DIVIDE_ASSERT( displayIndex < g_maxDisplayOutputs );
+    return s_supportedDisplayModes[displayIndex];
+}
+
+U8 DisplayManager::ActiveDisplayCount() noexcept
+{
+    return s_activeDisplayCount;
+}
+
+U8 DisplayManager::MaxMSAASamples() noexcept
+{
+    return s_maxMSAASAmples;
+}
+
+void DisplayManager::MaxMSAASamples( const U8 maxSampleCount ) noexcept
+{
+    s_maxMSAASAmples = std::min( maxSampleCount, to_U8( 64u ) );
+}
+
+void DisplayManager::Reset() noexcept
+{
+    for ( auto& entries : s_supportedDisplayModes )
+    {
+        entries.clear();
     }
 }
 

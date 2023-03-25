@@ -317,7 +317,7 @@ namespace Divide
                 worldMatrixField._data = &viewMatrix;
                 if ( processBasicField( worldMatrixField ) )
                 {
-// Value changed
+                    // Value changed
                 }
             }
             {
@@ -330,7 +330,7 @@ namespace Divide
                 projMatrixField._data = &projMatrix;
                 if ( processBasicField( projMatrixField ) )
                 {
-// Value changed
+                    // Value changed
                 }
             }
             {
@@ -676,8 +676,8 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Divide::Profiler::Category::GUI );
 
-        constexpr F32 buttonWidth = 90.0f;
-        constexpr F32 smallButtonWidth = 70.0f;
+        constexpr F32 buttonWidth = 105.0f;
+        constexpr F32 smallButtonWidth = 90.0f;
 
         skipAutoTooltip( false );
 
@@ -1847,6 +1847,21 @@ namespace Divide
                                            } );
 
                 block.depthTestEnabled( depthTestEnabled );
+                changed = true;
+            } 
+            
+            bool depthWriteEnabled = block.depthWriteEnabled();
+            if ( ImGui::Checkbox( "Depth write", &depthWriteEnabled ) )
+            {
+                const RenderStagePass tempPass = currentStagePass;
+                RegisterUndo<bool, false>( _parent, GFX::PushConstantType::BOOL, !depthWriteEnabled, depthWriteEnabled, "Depth write", [material, stateHash, tempPass]( const bool& oldVal )
+                                           {
+                                               RenderStateBlock stateBlock = RenderStateBlock::Get( stateHash );
+                                               stateBlock.depthWriteEnabled( oldVal );
+                                               material->setRenderStateBlock( stateBlock.getHash(), tempPass._stage, tempPass._passType, tempPass._variant );
+                                           } );
+
+                block.depthWriteEnabled( depthWriteEnabled );
                 changed = true;
             }
 

@@ -224,16 +224,18 @@ void Terrain::postBuild() {
             idxBuff.dynamic = false;
 
             _terrainBuffer = _context.newGVD(1, _descriptor->_name.c_str());
-            _terrainBuffer->setIndexBuffer(idxBuff);
-
+            {
+                const BufferLock lock = _terrainBuffer->setIndexBuffer(idxBuff);
+                DIVIDE_UNUSED(lock);
+            }
             vector<TileRing::InstanceData> vbData;
             vbData.reserve(TessellationParams::QUAD_LIST_INDEX_COUNT * ringCount);
 
             GenericVertexData::SetBufferParams params = {};
             params._bindConfig = { 0u, 0u };
             params._bufferParams._elementSize = sizeof(TileRing::InstanceData);
-            params._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
-            params._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
+            params._bufferParams._flags._updateFrequency = BufferUpdateFrequency::ONCE;
+            params._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
 
             for (size_t i = 0u; i < ringCount; ++i) {
                 vector<TileRing::InstanceData> ringData = _tileRings[i]->createInstanceDataVB(to_I32(i));
@@ -241,7 +243,10 @@ void Terrain::postBuild() {
                 params._bufferParams._elementCount += to_U32(ringData.size());
             }
             params._initialData = { (Byte*)vbData.data(), vbData.size() * sizeof(TileRing::InstanceData) };
-            _terrainBuffer->setBuffer(params);
+            {
+                const BufferLock lock = _terrainBuffer->setBuffer(params);
+                DIVIDE_UNUSED(lock);
+            }
         }
     }
 }
@@ -254,6 +259,7 @@ void Terrain::toggleBoundingBoxes() {
 void Terrain::prepareRender(SceneGraphNode* sgn,
                             RenderingComponent& rComp,
                             RenderPackage& pkg,
+                            GFX::MemoryBarrierCommand& postDrawMemCmd,
                             const RenderStagePass renderStagePass,
                             const CameraSnapshot& cameraSnapshot,
                             const bool refreshData)
@@ -304,7 +310,7 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
     constants.set(_ID("dvd_tessTriangleWidth"),  GFX::PushConstantType::FLOAT, triangleWidth);
     
 
-    Object3D::prepareRender(sgn, rComp, pkg, renderStagePass, cameraSnapshot, refreshData);
+    Object3D::prepareRender(sgn, rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData);
 }
 
 void Terrain::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut)

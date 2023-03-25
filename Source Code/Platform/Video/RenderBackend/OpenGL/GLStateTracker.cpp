@@ -57,6 +57,7 @@ namespace Divide
         _activeTopology = PrimitiveTopology::COUNT;
         _activeRenderTarget = nullptr;
         _activeRenderTargetID = INVALID_RENDER_TARGET_ID;
+        _activeRenderTargetDimensions = {1u, 1u};
         _activeVAOID = GLUtil::k_invalidObjectID;
         _activeFBID[0] = _activeFBID[1] = _activeFBID[2] = GLUtil::k_invalidObjectID;
         _activeVAOIB.clear();
@@ -71,7 +72,6 @@ namespace Divide
         _depthFarVal = -1.f;
         _lowerLeftOrigin = true;
         _negativeOneToOneDepth = true;
-        _depthWriteEnabled = true;
         _alphatoCoverageEnabled = false;
         _blendPropertiesGlobal = {};
         _blendEnabledGlobal = GL_FALSE;
@@ -1033,18 +1033,6 @@ namespace Divide
         return false;
     }
 
-    bool GLStateTracker::setDepthWrite( const bool state )
-    {
-        if ( _depthWriteEnabled != state )
-        {
-            _depthWriteEnabled = state;
-            glDepthMask( state ? GL_TRUE : GL_FALSE );
-            return true;
-        }
-
-        return false;
-    }
-
     bool GLStateTracker::setAlphaToCoverage( const bool state )
     {
         if ( _alphatoCoverageEnabled != state )
@@ -1123,6 +1111,10 @@ namespace Divide
             newBlock.scissorTestEnabled() ? glEnable( GL_SCISSOR_TEST ) : glDisable( GL_SCISSOR_TEST );
         }
 
+        if ( _activeState.depthWriteEnabled() != newBlock.depthWriteEnabled() )
+        {
+            glDepthMask( newBlock.depthWriteEnabled() ? GL_TRUE : GL_FALSE);
+        }
         // Check culling mode (back (CW) / front (CCW) by default)
         if ( _activeState.cullMode() != newBlock.cullMode() )
         {

@@ -118,6 +118,12 @@ inline std::string VKErrorString(VkResult errorCode)
     } while (0)
 #endif //VK_CHECK
 
+    struct VulkanQueryType
+    {
+        VkQueryType _queryType { VK_QUERY_TYPE_MAX_ENUM };
+        VkQueryPipelineStatisticFlagBits _statistics { VK_QUERY_PIPELINE_STATISTIC_FLAG_BITS_MAX_ENUM };
+        bool _accurate{false};
+    };
     extern std::array<VkBlendFactor, to_base(BlendProperty::COUNT)> vkBlendTable;
     extern std::array<VkBlendOp, to_base(BlendOperation::COUNT)> vkBlendOpTable;
     extern std::array<VkCompareOp, to_base(ComparisonFunction::COUNT)> vkCompareFuncTable;
@@ -129,6 +135,7 @@ inline std::string VKErrorString(VkResult errorCode)
     extern std::array<VkPrimitiveTopology, to_base(PrimitiveTopology::COUNT)> vkPrimitiveTypeTable;
     extern std::array<VkSamplerAddressMode, to_base(TextureWrap::COUNT)> vkWrapTable;
     extern std::array<VkShaderStageFlagBits, to_base(ShaderType::COUNT)> vkShaderStageTable;
+    extern std::array<VulkanQueryType, to_base( QueryType::COUNT )> vkQueryTypeTable;
 
     struct GenericDrawCommand;
 namespace VKUtil {

@@ -45,17 +45,15 @@ namespace Divide
     bool operator==( const glFramebuffer::BindingState& lhs, const glFramebuffer::BindingState& rhs ) noexcept
     {
         return lhs._attState == rhs._attState &&
-            lhs._writeLevel == rhs._writeLevel &&
-            lhs._writeLayer == rhs._writeLayer &&
-            lhs._layeredRendering == rhs._layeredRendering;
+               lhs._layerOffset == rhs._layerOffset &&
+               lhs._levelOffset == rhs._levelOffset;
     }
 
     bool operator!=( const glFramebuffer::BindingState& lhs, const glFramebuffer::BindingState& rhs ) noexcept
     {
         return lhs._attState != rhs._attState ||
-            lhs._writeLevel != rhs._writeLevel ||
-            lhs._writeLayer != rhs._writeLayer ||
-            lhs._layeredRendering != rhs._layeredRendering;
+               lhs._layerOffset != rhs._layerOffset ||
+               lhs._levelOffset != rhs._levelOffset;
     }
 
     glFramebuffer::glFramebuffer( GFXDevice& context, const RenderTargetDescriptor& descriptor )
@@ -79,7 +77,7 @@ namespace Divide
         }
 
         // Everything disabled so that the initial "begin" will override this
-        DisableAll( _previousPolicy._drawMask );
+        _previousPolicy._drawMask.fill(false);
         _attachmentState.resize( GFXDevice::GetDeviceInformation()._maxRTColourAttachments + 1u + 1u ); //colours + depth-stencil
     }
 
@@ -120,27 +118,24 @@ namespace Divide
         return false;
     }
 
-    void glFramebuffer::toggleAttachment( const RTAttachment_uptr& attachment, const AttachmentState state, bool layeredRendering )
+    bool glFramebuffer::toggleAttachment( const RTAttachment_uptr& attachment, const AttachmentState state, const U16 levelOffset, const U16 layerOffset )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         const Texture_ptr& tex = attachment->texture();
         if ( tex == nullptr )
         {
-            return;
+            return false;
         }
 
-        if ( layeredRendering && tex->numLayers() == 1 && !IsCubeTexture( tex->descriptor().texType() ) )
-        {
-            layeredRendering = false;
-        }
+        DIVIDE_ASSERT( layerOffset < ((IsCubeTexture( tex->descriptor().texType() ) ? 6u : 1u) * tex->numLayers()) && levelOffset < tex->mipCount());
 
         const GLenum binding = static_cast<GLenum>(attachment->binding());
-        const BindingState bState{
-            state,
-            attachment->mipWriteLevel(),
-            attachment->writeLayer(),
-            layeredRendering
+        const BindingState bState
+        {
+            ._attState = state,
+            ._levelOffset = levelOffset,
+            ._layerOffset = layerOffset
         };
 
         // Compare with old state
@@ -148,23 +143,28 @@ namespace Divide
         {
             if ( state == AttachmentState::STATE_DISABLED )
             {
-                glNamedFramebufferTexture( _framebufferHandle, binding, 0u, 0 );
+                glNamedFramebufferTexture( _framebufferHandle, binding, 0u, 0u );
             }
             else
             {
                 const GLuint handle = static_cast<glTexture*>(tex.get())->textureHandle();
-                if ( layeredRendering )
+                if ( bState._layerOffset == 0u )
                 {
-                    glNamedFramebufferTextureLayer( _framebufferHandle, binding, handle, bState._writeLevel, bState._writeLayer );
+                    glNamedFramebufferTexture( _framebufferHandle, binding, handle, bState._levelOffset);
                 }
                 else
                 {
-                    glNamedFramebufferTexture( _framebufferHandle, binding, handle, bState._writeLevel );
+                    glNamedFramebufferTextureLayer( _framebufferHandle, binding, handle, bState._levelOffset, bState._layerOffset );
                 }
             }
+
             queueCheckStatus();
             setAttachmentState( binding, bState );
+
+            return true;
         }
+
+        return false;
     }
 
     bool glFramebuffer::create()
@@ -182,9 +182,6 @@ namespace Divide
         /// Setup draw buffers
         prepareBuffers( {} );
 
-        /// Check that everything is valid
-        checkStatus();
-
         return checkStatus();
     }
 
@@ -192,153 +189,128 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        if ( source == nullptr || !IsValid( params ) )
+        if ( source == nullptr || !IsValid(params) )
         {
             return;
         }
-
-        const auto prepareAttachments = []( glFramebuffer* fbo, const RTAttachment_uptr& att, const U16 layer )
-        {
-            const bool layerChanged = att->writeLayer( layer );
-            if ( layerChanged || att->numLayers() > 0 )
-            {
-                const glFramebuffer::BindingState& state = fbo->getAttachmentState( static_cast<GLenum>(att->binding()) );
-                fbo->toggleAttachment( att, state._attState, att->numLayers() > 0u || layer > 0u );
-            }
-        };
 
         glFramebuffer* input = static_cast<glFramebuffer*>(source);
         glFramebuffer* output = this;
         const vec2<U16> inputDim = input->_descriptor._resolution;
         const vec2<U16> outputDim = output->_descriptor._resolution;
 
-        bool blittedDepth = false;
-        bool readBufferDirty = false;
-        const bool depthMismatch = input->_attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX] != output->_attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX];
-
-        // Multiple attachments, multiple layers, multiple everything ... what a mess ... -Ionut
-        if ( IsValid( params._blitColours ) )
+        // When reading/writing from/to an FBO, we need to make sure it is complete and doesn't throw a GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS.
+        // An easy way to achieve this is to disable attachments we don't need to write to
+        const auto preparetAttachments = []( glFramebuffer* fbo, const U16 attIndex, const U16 layer, const U16 mip )
         {
-            PROFILE_SCOPE( "Blit Colours", Profiler::Category::Graphics );
-
-            GLuint prevReadAtt = 0;
-            GLuint prevWriteAtt = 0;
-
-            const auto currentOutputBuffers = output->_colourBuffers._glSlot;
-            for ( ColourBlitEntry entry : params._blitColours )
+            bool ret = false;
+            for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ) + 1u; ++i )
             {
-                if ( entry._input._index == INVALID_LAYER_INDEX ||
-                     entry._output._index == INVALID_LAYER_INDEX ||
-                     !input->_attachmentsUsed[entry._input._index] ||
-                     !output->_attachmentsUsed[entry._output._index] )
+                if ( !fbo->_attachmentsUsed[i] )
                 {
                     continue;
                 }
 
-                const RTAttachment_uptr& inAtt = input->_attachments[entry._input._index];
-                const GLuint crtReadAtt = inAtt->binding();
-                const GLenum readBuffer = static_cast<GLenum>(crtReadAtt);
-                if ( prevReadAtt != readBuffer )
+                if (fbo->toggleAttachment( fbo->_attachments[i], i == attIndex ? AttachmentState::STATE_ENABLED : AttachmentState::STATE_DISABLED, mip, layer ) )
                 {
-                    if ( readBuffer != input->_activeReadBuffer )
-                    {
-                        input->_activeReadBuffer = readBuffer;
-                        glNamedFramebufferReadBuffer( input->_framebufferHandle, readBuffer );
-                        readBufferDirty = true;
-                    }
+                    ret = true;
+                }
+            }
 
-                    prevReadAtt = crtReadAtt;
+            if ( ret )
+            {
+                return fbo->checkStatus();
+            }
+
+            return false;
+        };
+
+        bool readBufferDirty = false;
+
+        for ( const RTBlitEntry entry : params )
+        {
+            if ( entry._input._index == INVALID_INDEX ||
+                 entry._output._index == INVALID_INDEX ||
+                 !input->_attachmentsUsed[entry._input._index] ||
+                 !output->_attachmentsUsed[entry._output._index] )
+            {
+                continue;
+            }
+
+            const RTAttachment_uptr& inAtt = input->_attachments[entry._input._index];
+            const RTAttachment_uptr& outAtt = output->_attachments[entry._output._index];
+            const GLenum readBuffer = static_cast<GLenum>(inAtt->binding());
+            const GLenum writeBuffer = static_cast<GLenum>(outAtt->binding());
+
+            const bool isColourBlit = entry._input._index != RT_DEPTH_ATTACHMENT_IDX;
+            if ( isColourBlit )
+            {
+                DIVIDE_ASSERT( entry._output._index != RT_DEPTH_ATTACHMENT_IDX );
+                if ( readBuffer != input->_activeReadBuffer )
+                {
+                    input->_activeReadBuffer = readBuffer;
+                    glNamedFramebufferReadBuffer( input->_framebufferHandle, readBuffer );
+                    readBufferDirty = true;
                 }
 
-                const RTAttachment_uptr& outAtt = output->_attachments[entry._output._index];
-                const GLuint crtWriteAtt = outAtt->binding();
-                if ( prevWriteAtt != crtWriteAtt )
+                if (output->_colourBuffers._glSlot[0] != writeBuffer)
                 {
-                    const GLenum colourAttOut = static_cast<GLenum>(crtWriteAtt);
-                    bool set = output->_colourBuffers._glSlot[0] != colourAttOut;
-                    output->_colourBuffers._glSlot[0] = colourAttOut;
-                    for ( size_t i = 1; i < output->_colourBuffers._glSlot.size(); ++i )
-                    {
-                        if ( output->_colourBuffers._glSlot[i] != GL_NONE )
-                        {
-                            output->_colourBuffers._glSlot[i] = GL_NONE;
-                            set = true;
-                        }
-                    }
-
-                    if ( set )
-                    {
-                        output->_colourBuffers._dirty = true;
-                        glNamedFramebufferDrawBuffers( output->_framebufferHandle,
-                                                       (GLsizei)output->_colourBuffers._glSlot.size(),
-                                                       output->_colourBuffers._glSlot.data() );
-                    }
-
-                    prevWriteAtt = crtWriteAtt;
+                    output->_colourBuffers._glSlot[0] = writeBuffer;
+                    output->_colourBuffers._dirty = true;
+                    glNamedFramebufferDrawBuffers( output->_framebufferHandle,
+                                                   (GLsizei)output->_colourBuffers._glSlot.size(),
+                                                   output->_colourBuffers._glSlot.data() );
                 }
+            }
 
-                const U8 loopCount = IsCubeTexture( inAtt->texture()->descriptor().texType() ) ? 6u : 1u;
+            bool blitted = false, inputDirty = false, outputDirty = false;;
+            U16 layerCount = entry._layerCount;
+            if ( IsCubeTexture( inAtt->texture()->descriptor().texType() ) )
+            {
+                layerCount *= 6u;
+            }
 
-                for ( U8 i = 0u; i < loopCount; ++i )
+            for ( U8 layer = 0u; layer < layerCount; ++layer )
+            {
+                for ( U8 mip = 0u; mip < entry._mipCount; ++mip )
                 {
-                    if ( i > 0u )
+                    if ( preparetAttachments( input, entry._input._index, entry._input._layerOffset + layer, entry._input._mipOffset + mip ) )
                     {
-                        ++entry._input._layer;
-                        ++entry._output._layer;
+                        inputDirty = true;
                     }
 
-                    prepareAttachments( input, inAtt, entry._input._layer );
-                    prepareAttachments( output, outAtt, entry._output._layer );
-
-                    // If we change layers, then the depth buffer should match that ... I guess ... this sucks!
-                    if ( loopCount == 1u && !depthMismatch && input->_attachments[RT_DEPTH_ATTACHMENT_IDX] )
+                    if ( preparetAttachments( output, entry._output._index, entry._output._layerOffset + layer, entry._output._mipOffset + mip ) )
                     {
-                        prepareAttachments( input, input->_attachments[RT_DEPTH_ATTACHMENT_IDX], entry._input._layer );
-                        prepareAttachments( output, output->_attachments[RT_DEPTH_ATTACHMENT_IDX], entry._output._layer );
-                        if ( params._blitDepth._inputLayer == entry._input._layer && params._blitDepth._outputLayer == entry._output._layer )
-                        {
-                            blittedDepth = true;
-                        }
+                        outputDirty = true;
                     }
+                    
 
-                    checkStatus();
                     glBlitNamedFramebuffer( input->_framebufferHandle,
                                             output->_framebufferHandle,
                                             0, 0,
                                             inputDim.width, inputDim.height,
                                             0, 0,
                                             outputDim.width, outputDim.height,
-                                            blittedDepth ? GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT
-                                            : GL_COLOR_BUFFER_BIT,
+                                            isColourBlit ? GL_COLOR_BUFFER_BIT : GL_DEPTH_BUFFER_BIT,
                                             GL_NEAREST );
+
                     _context.registerDrawCall();
+                    blitted = true;
                 }
+            }
+
+            if ( inputDirty )
+            {
+                input->setDefaultAttachmentBinding( inAtt );
+            }
+            if ( outputDirty )
+            {
+                output->setDefaultAttachmentBinding( outAtt );
+            }
+            if ( blitted )
+            {
                 QueueMipMapsRecomputation( outAtt );
             }
-        }
-
-        if ( !blittedDepth &&
-             !depthMismatch &&
-             input->_attachments[RT_DEPTH_ATTACHMENT_IDX] &&
-             IsValid( params._blitDepth ) )
-        {
-            PROFILE_SCOPE( "Blit Depth", Profiler::Category::Graphics );
-
-            prepareAttachments( input, input->_attachments[RT_DEPTH_ATTACHMENT_IDX], params._blitDepth._inputLayer );
-            prepareAttachments( output, output->_attachments[RT_DEPTH_ATTACHMENT_IDX], params._blitDepth._outputLayer );
-
-            checkStatus();
-
-            glBlitNamedFramebuffer( input->_framebufferHandle,
-                                    output->_framebufferHandle,
-                                    0, 0,
-                                    inputDim.width, inputDim.height,
-                                    0, 0,
-                                    outputDim.width, outputDim.height,
-                                    GL_DEPTH_BUFFER_BIT,
-                                    GL_NEAREST );
-            _context.registerDrawCall();
-            QueueMipMapsRecomputation( output->_attachments[RT_DEPTH_ATTACHMENT_IDX] );
         }
 
         if ( readBufferDirty )
@@ -364,7 +336,7 @@ namespace Divide
                 {
                     const RTColourAttachmentSlot slot = static_cast<RTColourAttachmentSlot>(j);
                     temp = GL_NONE;
-                    if ( IsEnabled( drawPolicy._drawMask, RTAttachmentType::COLOUR, slot ) && usesAttachment( RTAttachmentType::COLOUR, slot ) )
+                    if ( drawPolicy._drawMask[j] && usesAttachment(RTAttachmentType::COLOUR, slot) )
                     {
                         temp = static_cast<GLenum>(getAttachment( RTAttachmentType::COLOUR, slot )->binding());
                     }
@@ -385,82 +357,31 @@ namespace Divide
             _colourBuffers._dirty = false;
             queueCheckStatus();
         }
-
-        GL_API::GetStateTracker().setDepthWrite( IsEnabled( drawPolicy._drawMask, RTAttachmentType::DEPTH ) );
     }
 
-    void glFramebuffer::setDefaultAttachmentBinding( const RTAttachment_uptr& attachment )
+    bool glFramebuffer::setDefaultAttachmentBinding( const RTAttachment_uptr& attachment )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        if ( attachment != nullptr )
+        if ( attachment == nullptr ) [[unlikely]]
         {
-            /// We also draw to mip and layer 0 unless specified otherwise in the drawPolicy
-            attachment->writeLayer( 0 );
-            attachment->mipWriteLevel( 0 );
-
-            /// All active attachments are enabled by default
-            toggleAttachment( attachment, AttachmentState::STATE_ENABLED, false );
-        }
-    }
-
-    void glFramebuffer::transitionAttachments( const RTDrawDescriptor& drawPolicy, const bool toWrite )
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
-        {
-            
-            if ( _attachmentsUsed[i] && IsEnabled( drawPolicy._drawMask, RTAttachmentType::COLOUR, static_cast<RTColourAttachmentSlot>(i) ) )
-            {
-                ImageUsage targetUsage = ImageUsage::UNDEFINED, prevUsageOut = ImageUsage::UNDEFINED;
-                if ( toWrite )
-                {
-                    _attachmentsPreviousUsage[i] = _attachments[i]->texture()->imageUsage();
-                    targetUsage = ImageUsage::RT_COLOUR_ATTACHMENT;
-                }
-                else
-                {
-                    targetUsage = _attachmentsPreviousUsage[i];
-                }
-                if ( !_attachments[i]->texture()->imageUsage( targetUsage, prevUsageOut ) )
-                {
-                    NOP();
-                }
-            }
+            return false;
         }
 
-        if ( _attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX] && IsEnabled( drawPolicy._drawMask, RTAttachmentType::DEPTH ) )
-        {
-            ImageUsage targetUsage = ImageUsage::UNDEFINED, prevUsageOut = ImageUsage::UNDEFINED;
-            if ( toWrite )
-            {
-                _attachmentsPreviousUsage[RT_DEPTH_ATTACHMENT_IDX] = _attachments[RT_DEPTH_ATTACHMENT_IDX]->texture()->imageUsage();
-                targetUsage = _attachments[RT_DEPTH_ATTACHMENT_IDX]->descriptor()._type == RTAttachmentType::DEPTH_STENCIL ? ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT : ImageUsage::RT_DEPTH_ATTACHMENT;
-            }
-            else
-            {
-                targetUsage = _attachmentsPreviousUsage[RT_DEPTH_ATTACHMENT_IDX];
-            }
-
-            if ( !_attachments[RT_DEPTH_ATTACHMENT_IDX]->texture()->imageUsage( targetUsage, prevUsageOut ) )
-            {
-                NOP();
-            }
-        }
+        // All active attachments are enabled by default
+        // We also draw to mip and layer 0 unless specified otherwise in the drawPolicy
+        return toggleAttachment( attachment, AttachmentState::STATE_ENABLED, 0u, 0u );
     }
 
     void glFramebuffer::begin( const RTDrawDescriptor& drawPolicy, const RTClearDescriptor& clearPolicy )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        transitionAttachments( drawPolicy, true );
-
-        const bool needLayeredColour = drawPolicy._writeLayers._depthLayer != INVALID_LAYER_INDEX;
-        U16 targetColourLayer = needLayeredColour ? drawPolicy._writeLayers._depthLayer : 0u;
-
-        bool needLayeredDepth = false;
+        const U16 srcDepthLayer = drawPolicy._writeLayers[RT_DEPTH_ATTACHMENT_IDX];
         U16 targetDepthLayer = 0u;
+
+        bool needLayeredDepth = (srcDepthLayer != INVALID_INDEX && srcDepthLayer > 0u);
+
         for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
         {
             if ( !_attachmentsUsed[i] )
@@ -468,22 +389,28 @@ namespace Divide
                 continue;
             }
 
-            if ( drawPolicy._writeLayers._colourLayers[i] != INVALID_LAYER_INDEX )
+            if ( drawPolicy._writeLayers[i] != INVALID_INDEX && drawPolicy._writeLayers[i] > 0u )
             {
+                targetDepthLayer = drawPolicy._writeLayers[i];
                 needLayeredDepth = true;
-                targetDepthLayer = drawPolicy._writeLayers._colourLayers[i];
                 break;
             }
         }
 
+        DIVIDE_ASSERT(drawPolicy._mipWriteLevel != INVALID_INDEX);
+
         if ( _attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX] )
         {
-            if ( drawPolicy._writeLayers._depthLayer != INVALID_LAYER_INDEX || needLayeredDepth )
+            if ( needLayeredDepth )
             {
-                targetDepthLayer = drawPolicy._writeLayers._depthLayer == INVALID_LAYER_INDEX ? targetDepthLayer : drawPolicy._writeLayers._depthLayer;
-                drawToLayer( { RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, targetDepthLayer, drawPolicy._mipWriteLevel } );
+                drawToLayer(
+                {
+                    ._layer = srcDepthLayer == INVALID_INDEX ? targetDepthLayer : srcDepthLayer,
+                    ._mipLevel = drawPolicy._mipWriteLevel,
+                    ._index = RT_DEPTH_ATTACHMENT_IDX
+                });
             }
-            else if ( drawPolicy._mipWriteLevel != U16_MAX )
+            else if ( drawPolicy._mipWriteLevel > 0u )
             {
                 setMipLevelInternal( _attachments[RT_DEPTH_ATTACHMENT_IDX], drawPolicy._mipWriteLevel );
             }
@@ -500,12 +427,16 @@ namespace Divide
                 continue;
             }
 
-            if ( drawPolicy._writeLayers._colourLayers[i] != INVALID_LAYER_INDEX || needLayeredColour )
+            if ( needLayeredDepth || (drawPolicy._writeLayers[i] != INVALID_INDEX && drawPolicy._writeLayers[i] > 0) )
             {
-                targetColourLayer = drawPolicy._writeLayers._colourLayers[i] == INVALID_LAYER_INDEX ? targetColourLayer : drawPolicy._writeLayers._colourLayers[i];
-                drawToLayer( { RTAttachmentType::COLOUR, static_cast<RTColourAttachmentSlot>(i), targetColourLayer, drawPolicy._mipWriteLevel } );
+                drawToLayer(
+                {
+                    ._layer = drawPolicy._writeLayers[i] == INVALID_INDEX ? targetDepthLayer : drawPolicy._writeLayers[i],
+                    ._mipLevel = drawPolicy._mipWriteLevel,
+                    ._index = i
+                });
             }
-            else if ( drawPolicy._mipWriteLevel != U16_MAX )
+            else if ( drawPolicy._mipWriteLevel > 0u )
             {
                 setMipLevelInternal( _attachments[i], drawPolicy._mipWriteLevel );
             }
@@ -544,8 +475,6 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        transitionAttachments( _previousPolicy, false );
-
         for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ) + 1u; ++i )
         {
             QueueMipMapsRecomputation( _attachments[i] );
@@ -574,19 +503,19 @@ namespace Divide
             PROFILE_SCOPE( "Clear Colour Attachments", Profiler::Category::Graphics );
             for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
             {
-                if ( !_attachmentsUsed[i] || descriptor._clearColourDescriptors[i]._index == RTColourAttachmentSlot::COUNT )
+                if ( !_attachmentsUsed[i] || !descriptor[i]._enabled )
                 {
                     continue;
                 }
 
-                RTAttachment* att = getAttachment( RTAttachmentType::COLOUR, descriptor._clearColourDescriptors[i]._index );
+                RTAttachment* att = getAttachment( RTAttachmentType::COLOUR, static_cast<RTColourAttachmentSlot>(i) );
                 DIVIDE_ASSERT( att != nullptr, "glFramebuffer::error: Invalid clear target specified!" );
 
                 const U32 binding = att->binding();
                 if ( static_cast<GLenum>(binding) != GL_NONE )
                 {
                     const GLint buffer = static_cast<GLint>(binding - static_cast<GLint>(GL_COLOR_ATTACHMENT0));
-                    const FColour4& colour = descriptor._clearColourDescriptors[i]._colour;
+                    const FColour4& colour = descriptor[i]._colour;
                     if ( att->texture()->descriptor().normalized() )
                     {
                         glClearNamedFramebufferfv( _framebufferHandle, GL_COLOR, buffer, colour._v );
@@ -629,10 +558,10 @@ namespace Divide
             }
         }
 
-        if ( _attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX] && descriptor._clearDepth )
+        if ( _attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX] && descriptor[RT_DEPTH_ATTACHMENT_IDX]._enabled )
         {
             PROFILE_SCOPE( "Clear Depth", Profiler::Category::Graphics );
-            glClearNamedFramebufferfv( _framebufferHandle, GL_DEPTH, 0, &descriptor._clearDepthValue );
+            glClearNamedFramebufferfv( _framebufferHandle, GL_DEPTH, 0, &descriptor[RT_DEPTH_ATTACHMENT_IDX]._colour.r);
             _context.registerDrawCall();
         }
     }
@@ -641,12 +570,12 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        if ( params._type == RTAttachmentType::COUNT )
+        if ( params._index == INVALID_INDEX )
         {
             return;
         }
 
-        const RTAttachment_uptr& att = params._type == RTAttachmentType::COLOUR ? _attachments[to_base( params._index )] : _attachments[RT_DEPTH_ATTACHMENT_IDX];
+        const RTAttachment_uptr& att = _attachments[params._index];
 
         const GLenum textureType = GLUtil::internalTextureType( att->texture()->descriptor().texType(), att->texture()->descriptor().msaaSamples() );
         // only for array textures (it's better to simply ignore the command if the format isn't supported (debugging reasons)
@@ -658,24 +587,18 @@ namespace Divide
             return;
         }
 
-        const U16 targetMip = params._mipLevel == U16_MAX ? 0u : params._mipLevel;
-
-        if ( params._type == RTAttachmentType::COLOUR && _attachmentsUsed[to_base( params._index )] )
+        if (_attachmentsUsed[params._index])
         {
-            const BindingState& state = getAttachmentState( static_cast<GLenum>(att->binding()) );
-
-            if ( att->writeLayer( params._layer ) || att->mipWriteLevel( targetMip ) )
+            if ( params._index != RT_DEPTH_ATTACHMENT_IDX )
             {
-                toggleAttachment( att, state._attState, true );
+                const BindingState& state = getAttachmentState( static_cast<GLenum>(att->binding()) );
+                toggleAttachment( att, state._attState, params._mipLevel, params._layer);
+
             }
-        }
-
-        if ( (params._type == RTAttachmentType::DEPTH || params._type == RTAttachmentType::DEPTH_STENCIL) && _attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX] && _isLayeredDepth )
-        {
-            const BindingState& state = getAttachmentState( static_cast<GLenum>(_attachments[RT_DEPTH_ATTACHMENT_IDX]->binding()) );
-            if ( _attachments[RT_DEPTH_ATTACHMENT_IDX]->writeLayer( params._layer ) || _attachments[RT_DEPTH_ATTACHMENT_IDX]->mipWriteLevel( targetMip ) )
+            else if ( _isLayeredDepth )
             {
-                toggleAttachment( _attachments[RT_DEPTH_ATTACHMENT_IDX], state._attState, true );
+                const BindingState& state = getAttachmentState( static_cast<GLenum>(_attachments[RT_DEPTH_ATTACHMENT_IDX]->binding()) );
+                toggleAttachment( _attachments[RT_DEPTH_ATTACHMENT_IDX], state._attState, params._mipLevel, params._layer );
             }
         }
     }
@@ -684,19 +607,13 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        if ( attachment == nullptr )
-        {
-            return false;
-        }
-
-        if ( attachment->mipWriteLevel( writeLevel ) )
+        if ( attachment != nullptr )
         {
             const BindingState& state = getAttachmentState( static_cast<GLenum>(attachment->binding()) );
-            toggleAttachment( attachment, state._attState, state._layeredRendering );
-            return true;
+            return toggleAttachment( attachment, state._attState, writeLevel, state._layerOffset );
         }
 
-        return attachment->mipWriteLevel() == writeLevel;
+        return false;
     }
 
     void glFramebuffer::setMipLevel( const U16 writeLevel )
@@ -721,9 +638,11 @@ namespace Divide
         {
             for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ) + 1; ++i )
             {
-                if ( _attachments[i]->mipWriteLevel() != writeLevel )
+                const BindingState& state = getAttachmentState( static_cast<GLenum>(_attachments[i]->binding()) );
+
+                if ( state._levelOffset != writeLevel )
                 {
-                    toggleAttachment( _attachments[i], AttachmentState::STATE_DISABLED, false );
+                    toggleAttachment( _attachments[i], AttachmentState::STATE_DISABLED, state._levelOffset, state._layerOffset );
                 }
             }
         }

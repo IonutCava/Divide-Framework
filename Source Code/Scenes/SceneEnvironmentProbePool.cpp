@@ -175,7 +175,7 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         ResourceDescriptor shadowPreviewShader("fbPreview.Cube");
         shadowPreviewShader.propertyDescriptor(shaderDescriptor);
         shadowPreviewShader.waitForReady(true);
-        s_previewShader = CreateResource<ShaderProgram>(context.parent().resourceCache(), shadowPreviewShader);
+        s_previewShader = CreateResource<ShaderProgram>(context.context().kernel().resourceCache(), shadowPreviewShader);
     }
     {
         ShaderModuleDescriptor computeModule = {};
@@ -194,14 +194,14 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
             ResourceDescriptor irradianceShader("IrradianceCalc");
             irradianceShader.propertyDescriptor(shaderDescriptor);
             irradianceShader.waitForReady(true);
-            s_irradianceComputeShader = CreateResource<ShaderProgram>(context.parent().resourceCache(), irradianceShader);
+            s_irradianceComputeShader = CreateResource<ShaderProgram>(context.context().kernel().resourceCache(), irradianceShader);
         }
         {
             shaderDescriptor._modules.back()._variant = "LUT";
             ResourceDescriptor lutShader("LUTCalc");
             lutShader.propertyDescriptor(shaderDescriptor);
             lutShader.waitForReady(true);
-            s_lutComputeShader = CreateResource<ShaderProgram>(context.parent().resourceCache(), lutShader);
+            s_lutComputeShader = CreateResource<ShaderProgram>(context.context().kernel().resourceCache(), lutShader);
         }
         {
             shaderDescriptor._modules.back()._variant = "PreFilter";
@@ -210,7 +210,7 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
             ResourceDescriptor prefilterShader("PrefilterEnv");
             prefilterShader.propertyDescriptor(shaderDescriptor);
             prefilterShader.waitForReady(true);
-            s_prefilterComputeShader = CreateResource<ShaderProgram>(context.parent().resourceCache(), prefilterShader);
+            s_prefilterComputeShader = CreateResource<ShaderProgram>(context.context().kernel().resourceCache(), prefilterShader);
         }
     }
     {
@@ -298,7 +298,10 @@ void SceneEnvironmentProbePool::Prepare(GFX::CommandBuffer& bufferInOut) {
         GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
         renderPassCmd->_name = "DO_REFLECTION_PROBE_CLEAR";
         renderPassCmd->_target = s_reflection._targetID;
-        renderPassCmd->_clearDescriptor._clearDepth = true;
+        renderPassCmd->_clearDescriptor[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
+        renderPassCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
+        renderPassCmd->_descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
+
 
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         ProbesDirty(false);
@@ -322,25 +325,37 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
-        const ImageView targetView = brdfLutTexture->getView( TextureType::TEXTURE_2D, { 0u, 1u }, { 0u, 1u }, ImageUsage::SHADER_WRITE );
+        const ImageView targetView = brdfLutTexture->getView( TextureType::TEXTURE_2D, { 0u, 1u }, { 0u, 1u });
+        
+        GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back(TextureLayoutChange
+        {
+            ._targetView = targetView,
+            ._sourceLayout = ImageUsage::SHADER_READ,
+            ._targetLayout = ImageUsage::SHADER_WRITE
+        });
+
         DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::COMPUTE );
-        Set(binding._data, targetView);
+        Set(binding._data, targetView, ImageUsage::SHADER_WRITE);
 
         const U32 groupsX = to_U32(std::ceil(s_LUTTextureSize / to_F32(8)));
         const U32 groupsY = to_U32(std::ceil(s_LUTTextureSize / to_F32(8)));
         GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ groupsX, groupsY, 1 });
 
-        auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut);
-        memCmd->_barrierMask = to_base(MemoryBarrierType::TEXTURE_FETCH);
-        memCmd->_textureLayoutChanges.emplace_back(TextureLayoutChange
+        GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back(TextureLayoutChange
         {
             ._targetView = targetView,
-            ._layout = ImageUsage::SHADER_READ
+            ._sourceLayout = ImageUsage::SHADER_WRITE,
+            ._targetLayout = ImageUsage::SHADER_READ
         });
 
-        GFX::EnqueueCommand<GFX::ComputeMipMapsCommand>(bufferInOut)->_texture = brdfLutTexture;
+        GFX::ComputeMipMapsCommand computeMipMapsCommand{};
+        computeMipMapsCommand._texture = brdfLutTexture;
+        computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
+        GFX::EnqueueCommand( bufferInOut, computeMipMapsCommand );
+
         s_lutTextureDirty = false;
     }
+
     if (SkyLightNeedsRefresh() && s_queuedLayer != SkyProbeLayerIndex())
     {
         GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand("SkyLight Pass"));
@@ -350,6 +365,8 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         std::copy_n(std::begin(probeCameras), std::min(cameras.size(), probeCameras.size()), std::begin(cameras));
 
         RenderPassParams params = {};
+        SetDefaultDrawDescriptor(params);
+
         params._target = SceneEnvironmentProbePool::ReflectionTarget()._targetID;
         params._stagePass = { RenderStage::REFLECTION, RenderPassType::COUNT, Config::MAX_REFLECTIVE_NODES_IN_VIEW + SkyProbeLayerIndex(), static_cast<RenderStagePass::VariantType>(ReflectorType::CUBE) };
 
@@ -372,7 +389,7 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         SkyLightNeedsRefresh(false);
     }
     {
-        ScopedLock<Mutex> w_lock(s_queueLock);
+        LockGuard<Mutex> w_lock(s_queueLock);
         if (s_queuedStage == ComputationStages::COUNT && !s_computationQueue.empty())
         {
             s_queuedLayer = s_computationQueue.front();
@@ -416,7 +433,7 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
 
 void SceneEnvironmentProbePool::ProcessEnvironmentMap(GFXDevice& context, const U16 layerID, const bool highPriority, GFX::CommandBuffer& bufferInOut)
 {
-    ScopedLock<Mutex> w_lock(s_queueLock);
+    LockGuard<Mutex> w_lock(s_queueLock);
     if (s_computationSet.insert(layerID).second)
     {
         s_computationQueue.push(layerID);
@@ -438,6 +455,7 @@ void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal(GFXDevice& context
             GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
             computeMipMapsCommand._layerRange = { layerID, 1 };
             computeMipMapsCommand._texture = sourceAtt->texture().get();
+            computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
             GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
@@ -466,8 +484,6 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("PreFilter environment map #%d", layerID).c_str()));
 
-    GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_barrierMask = to_base(MemoryBarrierType::SHADER_IMAGE);
-
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ s_pipelineCalcPrefiltered });
 
     // width is the width/length of a single face of our cube map
@@ -479,7 +495,7 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
         Set( binding._data, sourceTex->getView(), sourceAtt->descriptor()._samplerHash );
     }
 
-    ImageView destinationImage = destinationAtt->texture()->getView(TextureType::TEXTURE_CUBE_ARRAY, { 0u, 1u }, { 0u , U16_MAX }, ImageUsage::SHADER_WRITE);
+    ImageView destinationImage = destinationAtt->texture()->getView(TextureType::TEXTURE_CUBE_ARRAY, { 0u, 1u }, { 0u , U16_MAX });
 
     const F32 fWidth = to_F32(width);
 
@@ -495,22 +511,34 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(fastData);
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
+
+        GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back(TextureLayoutChange
+        {
+            ._targetView = destinationImage,
+            ._sourceLayout = ImageUsage::SHADER_READ,
+            ._targetLayout = ImageUsage::SHADER_WRITE
+        });
+
         DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::COMPUTE );
-        Set(binding._data, destinationImage);
+        Set(binding._data, destinationImage, ImageUsage::SHADER_WRITE);
 
         // Dispatch enough groups to cover the entire _mipped_ face
         const U16 mipWidth = width / to_U16(std::pow(2.f, mipLevel));
         GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ std::max(1u, mipWidth / 8u), std::max(1u, mipWidth / 8u), 1 });
-    }
 
-    GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_barrierMask = to_base( MemoryBarrierType::TEXTURE_UPDATE ) | to_base( MemoryBarrierType::TEXTURE_FETCH );
+        GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back(TextureLayoutChange
+        {
+            ._targetView = destinationImage,
+            ._sourceLayout = ImageUsage::SHADER_WRITE,
+            ._targetLayout = ImageUsage::SHADER_READ
+        });
+    }
 
     GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
     computeMipMapsCommand._layerRange = { layerID, 1 };
     computeMipMapsCommand._texture = destinationAtt->texture().get();
+    computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
     GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
-
-    //GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_barrierMask = to_base( MemoryBarrierType::TEXTURE_FETCH );
 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
@@ -520,11 +548,18 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U
     RTAttachment* destinationAtt = SceneEnvironmentProbePool::IrradianceTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Compute Irradiance #%d", layerID).c_str()));
-    GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_barrierMask = to_base(MemoryBarrierType::SHADER_IMAGE);
 
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ s_pipelineCalcIrradiance });
 
-    ImageView destinationView = destinationAtt->texture()->getView( TextureType::TEXTURE_CUBE_ARRAY, { 0u, 1u }, { 0u , U16_MAX }, ImageUsage::SHADER_WRITE );
+    ImageView destinationView = destinationAtt->texture()->getView( TextureType::TEXTURE_CUBE_ARRAY, { 0u, 1u }, { 0u , U16_MAX });
+
+    GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back( TextureLayoutChange
+    {
+        ._targetView = destinationView,
+        ._sourceLayout = ImageUsage::SHADER_READ,
+        ._targetLayout = ImageUsage::SHADER_WRITE
+    });
+
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
     cmd->_usage = DescriptorSetUsage::PER_DRAW;
     {
@@ -533,7 +568,7 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U
     }
     {
         DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::COMPUTE );
-        Set(binding._data, destinationView );
+        Set(binding._data, destinationView, ImageUsage::SHADER_WRITE );
     }
 
     PushConstantsStruct fastData{};
@@ -544,20 +579,18 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U
     const U32 groupsY = to_U32(std::ceil(s_IrradianceTextureSize / to_F32(8)));
     GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ groupsX, groupsY, 1 });
 
-    auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut );
-    memCmd->_barrierMask = to_base( MemoryBarrierType::TEXTURE_UPDATE ) | to_base( MemoryBarrierType::TEXTURE_FETCH );
-    memCmd->_textureLayoutChanges.emplace_back(
-    TextureLayoutChange{
+    GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back( TextureLayoutChange
+    {
         ._targetView = destinationView,
-        ._layout = ImageUsage::SHADER_READ
+        ._sourceLayout = ImageUsage::SHADER_WRITE,
+        ._targetLayout = ImageUsage::SHADER_READ
     });
 
     GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
     computeMipMapsCommand._layerRange = { layerID, 1 };
     computeMipMapsCommand._texture = destinationAtt->texture().get();
+    computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
     GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
-
-    //GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_barrierMask = to_base(MemoryBarrierType::TEXTURE_FETCH);
 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
@@ -581,7 +614,7 @@ void SceneEnvironmentProbePool::registerProbe(EnvironmentProbeComponent* probe)
 {
     DebuggingSkyLight(false);
 
-    ScopedLock<SharedMutex> w_lock(_probeLock);
+    LockGuard<SharedMutex> w_lock(_probeLock);
 
     assert(_envProbes.size() < U16_MAX - 2u);
     _envProbes.emplace_back(probe);
@@ -591,7 +624,7 @@ void SceneEnvironmentProbePool::registerProbe(EnvironmentProbeComponent* probe)
 void SceneEnvironmentProbePool::unregisterProbe(const EnvironmentProbeComponent* probe)
 {
     if (probe != nullptr) {
-        ScopedLock<SharedMutex> w_lock(_probeLock);
+        LockGuard<SharedMutex> w_lock(_probeLock);
         auto it = _envProbes.erase(eastl::remove_if(begin(_envProbes), end(_envProbes),
                                                     [probeGUID = probe->getGUID()](const auto& p) noexcept { return p->getGUID() == probeGUID; }),
                                    end(_envProbes));

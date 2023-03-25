@@ -13,7 +13,6 @@
 #include "Managers/Headers/RenderPassManager.h"
 #include "Managers/Headers/SceneManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
-#include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Headers/CommandBuffer.h"
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Scenes/Headers/SceneShaderData.h"
@@ -189,6 +188,8 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut, GFX::Me
     std::copy_n(std::begin(probeCameras), std::min(cameras.size(), probeCameras.size()), std::begin(cameras));
 
     RenderPassParams params = {};
+    SetDefaultDrawDescriptor( params );
+
     params._target = SceneEnvironmentProbePool::ReflectionTarget()._targetID;
     params._sourceNode = findNodeToIgnore();
 
@@ -196,6 +197,7 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut, GFX::Me
     params._stagePass = { RenderStage::REFLECTION, RenderPassType::COUNT, Config::MAX_REFLECTIVE_NODES_IN_VIEW + rtLayerIndex(), static_cast<RenderStagePass::VariantType>(ReflectorType::CUBE) };
 
     ClearBit(params._drawMask, to_U8(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES)));
+    params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )]._colour = DefaultColours::BLUE;
 
     _context.gfx().generateCubeMap(params,
                                    rtLayerIndex(),

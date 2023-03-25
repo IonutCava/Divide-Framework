@@ -94,7 +94,7 @@ public:
 
     PROPERTY_RW(vec3<F32>, position, VECTOR3_ZERO);
     PROPERTY_RW(vec3<F32>, halfExtents, VECTOR3_UNIT);
-    PROPERTY_RW(OBBAxis, axis, {});
+    PROPERTY_RW(OBBAxis, axis);
 };
 
 }  // namespace Divide

@@ -68,7 +68,6 @@
     <ClInclude Include="../../Source Code/Platform\Video\Headers\GFXDevice.h" />
     <ClInclude Include="../../Source Code/Platform\Video\Headers\GFXRTPool.h" />
     <ClInclude Include="../../Source Code/Platform\Video\Headers\GFXShaderData.h" />
-    <ClInclude Include="../../Source Code/Platform\Video\Headers\GFXState.h" />
     <ClInclude Include="../../Source Code/Platform\Video\Headers\GraphicsResource.h" />
     <ClInclude Include="../../Source Code/Platform\Video\Headers\IMPrimitive.h" />
     <ClInclude Include="../../Source Code/Platform\Video\Headers\Pipeline.h" />
@@ -97,6 +96,7 @@
     <ClInclude Include="../../Source Code\Platform\Video\Headers\PushConstant.h" />
     <ClInclude Include="../../Source Code\Platform\Video\RenderBackend\None\Headers\NonePlaceholderObjects.h" />
     <ClInclude Include="../../Source Code\Platform\Video\RenderBackend\None\Headers\NoneWrapper.h" />
+    <ClInclude Include="..\..\Source Code\Platform\Video\Headers\fontstash.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\Headers\LockManager.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkLockManager.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\VKWrapper.h" />
@@ -134,7 +134,6 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\Texture.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\TextureTarget.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\ViewportTarget.h" />
-    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Headers\fontstash.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Headers\glfontstash.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkBufferImpl.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkRenderTarget.h" />
@@ -185,7 +184,6 @@
     <ClCompile Include="../../Source Code/Platform\Video\GFXDevice.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\GFXRTPool.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\GFXShaderData.cpp" />
-    <ClCompile Include="../../Source Code/Platform\Video\GFXState.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\GraphicsResource.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\IMPrimitive.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\glBufferImpl.cpp" />
@@ -214,6 +212,7 @@
     <ClCompile Include="../../Source Code\Platform\SDLEventListener.cpp" />
     <ClCompile Include="../../Source Code\Platform\SDLEventManager.cpp" />
     <ClCompile Include="../../Source Code\Platform\Video\Commands.cpp" />
+    <ClCompile Include="..\..\Source Code\Platform\Audio\AudioAPIWrapper.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\LockManager.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\glStateTracker.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\ConditionalWait.cpp" />

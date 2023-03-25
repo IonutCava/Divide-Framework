@@ -295,7 +295,7 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
 
                 const ResourcePath cacheFilePath = cachePath + cacheName;
                 if (!fileExists(cacheFilePath)) {
-                    ScopedLock<Mutex> lock(s_imageLoadingMutex);
+                    LockGuard<Mutex> lock(s_imageLoadingMutex);
 
                     nvtt::Context context;
                     context.enableCudaAcceleration(true);
@@ -521,7 +521,7 @@ bool ImageData::loadDDS_NVTT([[maybe_unused]] const bool srgb, const U16 refWidt
 bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const ResourcePath& name) {
     const ResourcePath fullPath = path + name;
 
-    ScopedLock<Mutex> lock(s_imageLoadingMutex);
+    LockGuard<Mutex> lock(s_imageLoadingMutex);
 
     ILuint imageID = 0u;
     ilGenImages(1, &imageID);

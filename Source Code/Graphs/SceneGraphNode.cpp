@@ -102,7 +102,7 @@ SceneGraphNode::~SceneGraphNode()
     Attorney::SceneGraphSGN::onNodeDestroy(_sceneGraph, this);
     // Bottom up
     {
-        ScopedLock<SharedMutex> w_lock(_children._lock);
+        LockGuard<SharedMutex> w_lock(_children._lock);
         const U32 childCount = _children._count;
         for (U32 i = 0u; i < childCount; ++i)
         {
@@ -293,7 +293,7 @@ void SceneGraphNode::setParentInternal()
     
     {// Add ourselves in the new parent's children map
         {
-            ScopedLock<SharedMutex> w_lock(_parent->_children._lock);
+            LockGuard<SharedMutex> w_lock(_parent->_children._lock);
             _parent->_children._data.push_back(this);
             _parent->_children._count.fetch_add(1);
         }
@@ -573,7 +573,7 @@ void SceneGraphNode::processDeleteQueue(vector<size_t>& childList)
     // See if we have any children to delete
     if (!childList.empty())
     {
-        ScopedLock<SharedMutex> w_lock(_children._lock);
+        LockGuard<SharedMutex> w_lock(_children._lock);
         for (const size_t childIdx : childList)
         {
             _sceneGraph->destroySceneGraphNode(_children._data[childIdx]);
@@ -662,6 +662,7 @@ void SceneGraphNode::processEvents()
 
 void SceneGraphNode::prepareRender( RenderingComponent& rComp,
                                     RenderPackage& pkg,
+                                    GFX::MemoryBarrierCommand& postDrawMemCmd,
                                     const RenderStagePass& renderStagePass,
                                     const CameraSnapshot& cameraSnapshot,
                                     const bool refreshData)
@@ -707,7 +708,7 @@ void SceneGraphNode::prepareRender( RenderingComponent& rComp,
         Set(prevBoneEntry->_data, data._boneBuffer, data._prevBoneBufferRange);
     }
 
-    _node->prepareRender(this, rComp, pkg, renderStagePass, cameraSnapshot, refreshData);
+    _node->prepareRender(this, rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData);
 }
 
 void SceneGraphNode::onNetworkSend(U32 frameCount) const
@@ -1255,7 +1256,7 @@ void SceneGraphNode::updateCollisions( const SceneGraphNode& parentNode, Interse
 
     if ( Collision( *boundsA, *boundsB) )
     {
-        UniqueLock<Mutex> w_lock(intersectionsLock);
+        LockGuard<Mutex> w_lock(intersectionsLock);
         IntersectionRecord& ir = intersections.emplace_back();
         ir._intersectedObject1 = boundsA;
         ir._intersectedObject2 = boundsB;

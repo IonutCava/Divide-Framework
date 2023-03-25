@@ -21,9 +21,9 @@ namespace Divide
         waitForLockedRange( 0u, SIZE_MAX );
     }
 
-    bool vkLockManager::initLockPoolEntry( BufferLockPoolEntry& entry )
+    bool vkLockManager::InitLockPoolEntry( BufferLockPoolEntry& entry )
     {
-        const VkFence crtFence = VK_API::GetStateTracker()._swapChain->getCurrentFence();
+        const VkFence crtFence = VK_API::GetStateTracker()._activeWindow->_swapChain->getCurrentFence();
 
         if ( entry._ptr == nullptr )
         {

@@ -51,7 +51,6 @@ namespace Divide {
 
         [[nodiscard]] VkCommandPool   createCommandPool(uint32_t queueFamilyIndex, VkCommandPoolCreateFlags createFlags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
                       void            submitToQueue(vkb::QueueType queue, const VkSubmitInfo& submitInfo, VkFence& fence) const;
-                      void            submitToQueueAndWait(vkb::QueueType queue, const VkSubmitInfo& submitInfo, VkFence& fence) const;
         [[nodiscard]] VkResult        queuePresent(vkb::QueueType queue, const VkPresentInfoKHR& presentInfo) const;
         [[nodiscard]] U32             getQueueIndex(vkb::QueueType queue) const;
         PROPERTY_R_IW(VkCommandPool, graphicsCommandPool, VK_NULL_HANDLE);

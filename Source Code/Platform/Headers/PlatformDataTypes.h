@@ -1128,20 +1128,20 @@ public:
 
 #define POINTER_R_2_ARGS(Type, Name) \
 protected: \
-    Type* _##Name; \
+    Type* _##Name{nullptr}; \
     POINTER_GET(Type, Name) \
 public:
 
 #define POINTER_R_IW_2_ARGS(Type, Name) \
 protected: \
-    Type* _##Name; \
+    Type* _##Name{nullptr}; \
     POINTER_GET(Type, Name) \
     POINTER_SET_INTERNAL(Type, Name) \
 public:
 
 #define POINTER_RW_2_ARGS(Type, Name) \
 protected: \
-    Type* _##Name; \
+    Type* _##Name{nullptr}; \
     POINTER_GET_SET(Type, Name) \
 public:
 
@@ -1154,23 +1154,11 @@ public:
 
 #define POINTER_RW_2_ARGS_INTERNAL(Type, Name) \
 protected: \
-    Type* _##Name; \
+    Type* _##Name{nullptr}; \
     POINTER_GET_SET_INTERNAL(Type, Name) \
 public:
 
 //-------------------- REFERENCE_RW
-#define REFERENCE_R_3_ARGS(Type, Name, Val) \
-protected: \
-    Type& _##Name = Val; \
-    PROPERTY_GET(Type, Name) \
-public:
-
-#define REFERENCE_RW_3_ARGS(Type, Name, Val) \
-protected: \
-    Type& _##Name = Val; \
-    PROPERTY_GET_SET(Type, Name) \
-public:
-
 #define REFERENCE_R_2_ARGS(Type, Name) \
 protected: \
     Type& _##Name; \
@@ -1184,12 +1172,6 @@ protected: \
 public:
 
 //-------------------- REFERENCE_RW_INTERNAL
-#define REFERENCE_RW_3_ARGS_INTERNAL(Type, Name, Val) \
-protected: \
-    Type& _##Name = Val; \
-    PROPERTY_GET_SET_INTERNAL(Type, Name) \
-public:
-
 #define REFERENCE_RW_2_ARGS_INTERNAL(Type, Name) \
 protected: \
     Type& _##Name; \
@@ -1213,8 +1195,8 @@ public:
 #define ___DETAIL_POINTER_RW(...) EXP(GET_4TH_ARG(__VA_ARGS__, POINTER_RW_3_ARGS, POINTER_RW_2_ARGS, POINTER_RW_1_ARGS, ))
 #define ___DETAIL_POINTER_R_IW(...) EXP(GET_4TH_ARG(__VA_ARGS__, POINTER_R_IW_3_ARGS, POINTER_R_IW_2_ARGS, POINTER_R_IW_1_ARGS, ))
 
-#define ___DETAIL_REFERENCE_R(...) EXP(GET_4TH_ARG(__VA_ARGS__, REFERENCE_R_3_ARGS, REFERENCE_R_2_ARGS, REFERENCE_R_1_ARGS, ))
-#define ___DETAIL_REFERENCE_RW(...) EXP(GET_4TH_ARG(__VA_ARGS__, REFERENCE_RW_3_ARGS, REFERENCE_RW_2_ARGS, REFERENCE_RW_1_ARGS, ))
+#define ___DETAIL_REFERENCE_R(...) EXP(GET_3RD_ARG(__VA_ARGS__, REFERENCE_R_2_ARGS, REFERENCE_R_1_ARGS, ))
+#define ___DETAIL_REFERENCE_RW(...) EXP(GET_3RD_ARG(__VA_ARGS__, REFERENCE_RW_2_ARGS, REFERENCE_RW_1_ARGS, ))
 
 /// Convenience method to add a class member with public read access but protected write access
 #define PROPERTY_R(...) EXP(___DETAIL_PROPERTY_R(__VA_ARGS__)(__VA_ARGS__))

@@ -57,10 +57,9 @@ class glFramebuffer final : public RenderTarget {
     };
 
     struct BindingState {
-        AttachmentState _attState = AttachmentState::COUNT;
-        U16 _writeLevel = 0;
-        U16 _writeLayer = 0;
-        bool _layeredRendering = false;
+        AttachmentState _attState{ AttachmentState::COUNT };
+        U16 _levelOffset{0u};
+        U16 _layerOffset{0u};
     };
 
    public:
@@ -82,7 +81,7 @@ class glFramebuffer final : public RenderTarget {
     bool create() override;
 
     BindingState getAttachmentState(GLenum binding) const;
-    void toggleAttachment(const RTAttachment_uptr& attachment, AttachmentState state, bool layeredRendering);
+    bool toggleAttachment(const RTAttachment_uptr& attachment, AttachmentState state, U16 levelOffset = 0u, U16 layerOffset = 0u);
 
 protected:
     void queueCheckStatus() noexcept;
@@ -95,7 +94,6 @@ protected:
     void setAttachmentState(GLenum binding, BindingState state);
 
     void clear(const RTClearDescriptor& descriptor);
-    void transitionAttachments( const RTDrawDescriptor& drawPolicy, bool toWrite);
     void begin(const RTDrawDescriptor& drawPolicy, const RTClearDescriptor& clearPolicy);
     void end();
 
@@ -105,8 +103,8 @@ protected:
    protected:
     bool setMipLevelInternal(const RTAttachment_uptr& attachment, U16 writeLevel);
 
-    /// Reset layer and mip back to 0 and bind the entire target texture
-    void setDefaultAttachmentBinding(const RTAttachment_uptr& attachment);
+    /// Reset layer and mip back to 0 and bind the entire target texture. Returns true if state was modified.
+    bool setDefaultAttachmentBinding(const RTAttachment_uptr& attachment);
 
     static void QueueMipMapsRecomputation(const RTAttachment_uptr& attachment);
 

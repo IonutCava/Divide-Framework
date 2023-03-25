@@ -271,7 +271,7 @@ namespace Divide
 
     void ShadowMap::resetShadowMaps( GFX::CommandBuffer& bufferInOut )
     {
-        ScopedLock<Mutex> w_lock( s_shadowMapUsageLock );
+        LockGuard<Mutex> w_lock( s_shadowMapUsageLock );
         for ( U32 i = 0u; i < to_base( ShadowType::COUNT ); ++i )
         {
             s_shadowPassIndex[i] = 0u;
@@ -317,7 +317,7 @@ namespace Divide
 
     bool ShadowMap::freeShadowMapOffset( const Light& light )
     {
-        ScopedLock<Mutex> w_lock( s_shadowMapUsageLock );
+        LockGuard<Mutex> w_lock( s_shadowMapUsageLock );
         return freeShadowMapOffsetLocked( light );
     }
 
@@ -354,7 +354,7 @@ namespace Divide
 
         const ShadowType shadowType = getShadowTypeForLightType( light.getLightType() );
 
-        ScopedLock<Mutex> w_lock( s_shadowMapUsageLock );
+        LockGuard<Mutex> w_lock( s_shadowMapUsageLock );
         LayerLifetimeMask& lifetimeMask = s_shadowMapLifetime[to_U32( shadowType )];
         if ( crtArrayOffset != U16_MAX ) [[likely]]
         {
@@ -548,7 +548,7 @@ namespace Divide
                     ResourceDescriptor shadowPreviewShader( "fbPreview.Layered.LinearDepth" );
                     shadowPreviewShader.propertyDescriptor( shaderDescriptor );
                     shadowPreviewShader.waitForReady( true );
-                    ShaderProgram_ptr previewShader = CreateResource<ShaderProgram>( context.parent().resourceCache(), shadowPreviewShader );
+                    ShaderProgram_ptr previewShader = CreateResource<ShaderProgram>( context.context().kernel().resourceCache(), shadowPreviewShader );
                     const U8 splitCount = static_cast<DirectionalLightComponent&>(*light).csmSplitCount();
 
                     constexpr I16 Base = 2;
@@ -581,7 +581,7 @@ namespace Divide
                     DebugView_ptr shadow = std::make_shared<DebugView>( to_I16( I16_MAX - 1 ) );
                     shadow->_texture = getShadowMap( LightType::SPOT )._rt->getAttachment( RTAttachmentType::COLOUR )->texture();
                     shadow->_samplerHash = getShadowMap( LightType::SPOT )._rt->getAttachment( RTAttachmentType::COLOUR )->descriptor()._samplerHash;
-                    shadow->_shader = CreateResource<ShaderProgram>( context.parent().resourceCache(), shadowPreviewShader );
+                    shadow->_shader = CreateResource<ShaderProgram>( context.context().kernel().resourceCache(), shadowPreviewShader );
                     shadow->_shaderData.set( _ID( "layer" ), GFX::PushConstantType::INT, light->getShadowArrayOffset() );
                     shadow->_name = Util::StringFormat( "SM_%d", light->getShadowArrayOffset() );
                     shadow->_enabled = true;
@@ -601,7 +601,7 @@ namespace Divide
                     ResourceDescriptor shadowPreviewShader( "fbPreview.Cube.Shadow" );
                     shadowPreviewShader.propertyDescriptor( shaderDescriptor );
                     shadowPreviewShader.waitForReady( true );
-                    ShaderProgram_ptr previewShader = CreateResource<ShaderProgram>( context.parent().resourceCache(), shadowPreviewShader );
+                    ShaderProgram_ptr previewShader = CreateResource<ShaderProgram>( context.context().kernel().resourceCache(), shadowPreviewShader );
 
                     const vec2<F32> zPlanes = shadowCameras( ShadowType::CUBEMAP )[0]->snapshot()._zPlanes;
 

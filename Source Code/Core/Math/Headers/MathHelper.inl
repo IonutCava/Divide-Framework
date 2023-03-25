@@ -42,8 +42,8 @@ namespace Divide
             template<typename Engine>
             Engine& getEngine()
             {
-                static thread_local std::random_device rnddev{};
-                static thread_local Engine rndeng = Engine( rnddev() );
+                thread_local std::random_device rnddev{};
+                thread_local Engine rndeng = Engine( rnddev() );
                 return rndeng;
             }
         }  // namespace detail
@@ -110,22 +110,20 @@ namespace Divide
     }
 
     /// Clamps value n between min and max
-    template <typename T, typename U>
-        requires std::is_arithmetic<T>::value && std::is_arithmetic<U>::value
-    constexpr void CLAMP( T& n, const U min, const U max ) noexcept
+    template <typename T> requires std::is_arithmetic<T>::value
+    constexpr void CLAMP( T& n, const T min, const T max ) noexcept
     {
-        n = std::min( std::max( n, static_cast<T>(min) ), static_cast<T>(max) );
+        n = std::min( std::max( n, min), max);
     }
 
     template <typename T>
     constexpr void CLAMP_01( T& n ) noexcept
     {
-        return CLAMP( n, 0, 1 );
+        return CLAMP( n, static_cast<T>(0), static_cast<T>(1) );
     }
 
-    template <typename T, typename U>
-        requires std::is_arithmetic<T>::value&& std::is_arithmetic<U>::value
-    constexpr T CLAMPED( const T& n, const U min, const U max ) noexcept
+    template <typename T> requires std::is_arithmetic<T>::value
+    constexpr T CLAMPED( const T& n, const T min, const T max ) noexcept
     {
         T ret = n;
         CLAMP( ret, min, max );
@@ -135,11 +133,10 @@ namespace Divide
     template <typename T>
     constexpr T CLAMPED_01( const T& n ) noexcept
     {
-        return CLAMPED( n, T( 0 ), T( 1 ) );
+        return CLAMPED( n, static_cast<T>( 0 ), static_cast<T>( 1 ) );
     }
 
-    template <typename T>
-        requires std::is_arithmetic<T>::value
+    template <typename T> requires std::is_arithmetic<T>::value
     constexpr T MAP( T input, const T in_min, const T in_max, const T out_min, const T out_max, D64& slopeOut ) noexcept
     {
         const D64 diff = in_max > in_min ? to_D64( in_max - in_min ) : EPSILON_D64;

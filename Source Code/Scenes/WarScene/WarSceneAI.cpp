@@ -63,7 +63,7 @@ void WarScene::checkGameCompletion() {
                 _runCount = 2;
                 restartGame = true;
             } else if (_runCount == 2) {
-                _context.app().RequestShutdown();
+                _context.app().RequestShutdown(false);
             }
         }
     }
@@ -84,7 +84,7 @@ void WarScene::checkGameCompletion() {
                 _runCount = 2;
             }
             else if (_runCount == 2) {
-                _context.app().RequestShutdown();
+                _context.app().RequestShutdown(false);
             }
         }
         restartGame = true;

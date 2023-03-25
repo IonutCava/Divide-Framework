@@ -5,7 +5,7 @@
 #include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GFXRTPool.h"
-#include "Platform/File/Headers/FileManagement.h"
+
 
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/Configuration.h"
@@ -35,8 +35,6 @@
 
 #ifndef GLFONTSTASH_IMPLEMENTATION
 #define GLFONTSTASH_IMPLEMENTATION
-#define FONTSTASH_IMPLEMENTATION
-#include "Headers/fontstash.h"
 #include "Headers/glfontstash.h"
 #endif
 
@@ -121,10 +119,6 @@ namespace Divide
             vector<SDLContextEntry> _contexts;
         } g_ContextPool;
 
-
-        // Weird stuff happens if this is enabled (i.e. certain draw calls hang forever)
-        constexpr bool g_runAllQueriesInSameFrame = false;
-
         [[nodiscard]] inline GLuint GetTextureHandleFromWrapper( const TextureWrapper& wrapper )
         {
             return wrapper._internalTexture != nullptr
@@ -149,7 +143,7 @@ namespace Divide
         GLUtil::fillEnumTables();
 
         const DisplayWindow& window = *_context.context().app().windowManager().mainWindow();
-        g_ContextPool.init( _context.parent().totalThreadCount(), window );
+        g_ContextPool.init( _context.context().kernel().totalThreadCount(), window );
 
         SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()->_glContext );
         GLUtil::s_glMainRenderWindow = &window;
@@ -280,7 +274,7 @@ namespace Divide
         }
 
         // OpenGL has a nifty error callback system, available in every build configuration if required
-        if ( Config::ENABLE_GPU_VALIDATION && config.debug.enableRenderAPIDebugging )
+        if ( Config::ENABLE_GPU_VALIDATION && (config.debug.enableRenderAPIDebugging || config.debug.enableRenderAPIBestPractices) )
         {
             // GL_DEBUG_OUTPUT_SYNCHRONOUS is essential for debugging gl commands in the IDE
             glEnable( GL_DEBUG_OUTPUT );
@@ -289,12 +283,18 @@ namespace Divide
             glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_MARKER, GL_DONT_CARE, 0, NULL, GL_FALSE );
             glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_PUSH_GROUP, GL_DONT_CARE, 0, NULL, GL_FALSE );
             glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_POP_GROUP, GL_DONT_CARE, 0, NULL, GL_FALSE );
+            if ( !config.debug.enableRenderAPIBestPractices )
+            {
+                glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR, GL_DONT_CARE, 0, NULL, GL_FALSE );
+                glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_PORTABILITY, GL_DONT_CARE, 0, NULL, GL_FALSE );
+                glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 0, NULL, GL_FALSE );
+            }
             glDebugMessageCallback( (GLDEBUGPROC)GLUtil::DebugCallback, nullptr );
         }
 
         // If we got here, let's figure out what capabilities we have available
         // Maximum addressable texture image units in the fragment shader
-        deviceInformation._maxTextureUnits = CLAMPED( GLUtil::getGLValue( GL_MAX_TEXTURE_IMAGE_UNITS ), 16u, 255u );
+        deviceInformation._maxTextureUnits = CLAMPED( GLUtil::getGLValue( GL_MAX_TEXTURE_IMAGE_UNITS ), 16, 255 );
         DIVIDE_ASSERT( deviceInformation._maxTextureUnits >= GLStateTracker::MAX_BOUND_TEXTURE_UNITS );
 
         GLUtil::getGLValue( GL_MAX_VERTEX_ATTRIB_BINDINGS, deviceInformation._maxVertAttributeBindings );
@@ -337,7 +337,7 @@ namespace Divide
 
         config.rendering.shadowMapping.csm.MSAASamples = std::min( config.rendering.shadowMapping.csm.MSAASamples, maxGLSamples );
         config.rendering.shadowMapping.spot.MSAASamples = std::min( config.rendering.shadowMapping.spot.MSAASamples, maxGLSamples );
-        _context.gpuState().maxMSAASampleCount( maxGLSamples );
+        Attorney::DisplayManagerRenderingAPI::MaxMSAASamples( maxGLSamples );
 
         // Print all of the OpenGL functionality info to the console and log
         // How many uniforms can we send to fragment shaders
@@ -443,12 +443,7 @@ namespace Divide
 
         // FontStash library initialization
         // 512x512 atlas with bottom-left origin
-        _fonsContext = glfonsCreate( 512, 512, FONS_ZERO_BOTTOMLEFT );
-        if ( _fonsContext == nullptr )
-        {
-            Console::errorfn( Locale::Get( _ID( "ERROR_FONT_INIT" ) ) );
-            return ErrorCode::FONT_INIT_ERROR;
-        }
+        _context.fonsContext(glfonsCreate(512, 512, FONS_ZERO_BOTTOMLEFT));
 
         // Initialize our query pool
         s_hardwareQueryPool->init(
@@ -515,10 +510,9 @@ namespace Divide
             s_samplerMap.clear();
         }
         // Destroy the text rendering system
-        glfonsDelete( _fonsContext );
-        _fonsContext = nullptr;
+        glfonsDelete( _context.fonsContext() );
+        _context.fonsContext(nullptr);
 
-        _fonts.clear();
         s_textureViewCache.destroy();
         if ( s_hardwareQueryPool != nullptr )
         {
@@ -543,24 +537,90 @@ namespace Divide
         s_stateTracker.setDefaultState();
     }
 
+    void GL_API::endPerformanceQueries()
+    {
+        if ( _runQueries )
+        {
+            PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+            // End the timing query started in beginFrame() in debug builds
+            for ( U8 i = 0; i < to_base( GlobalQueryTypes::COUNT ); ++i )
+            {
+                _performanceQueries[i]->end();
+            }
+        }
+    }
+
     /// Prepare the GPU for rendering a frame
-    bool GL_API::beginFrame( DisplayWindow& window, const bool global )
+    bool GL_API::drawToWindow( DisplayWindow& window )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-        // Start a duration query in debug builds
-        if ( global && _runQueries )
+
+        SDL_GLContext glContext = window.userData()->_glContext;
+        const I64 windowGUID = window.getGUID();
+
+        if ( glContext != nullptr && (_currentContext._windowGUID != windowGUID || _currentContext._context != glContext) )
         {
-            if constexpr( g_runAllQueriesInSameFrame )
-            {
-                for ( U8 i = 0u; i < to_base( GlobalQueryTypes::COUNT ); ++i )
-                {
-                    _performanceQueries[i]->begin();
-                }
-            }
-        else
-        {
-            _performanceQueries[_queryIdxForCurrentFrame]->begin();
+            SDL_GL_MakeCurrent( window.getRawWindow(), glContext );
+            _currentContext._windowGUID = windowGUID;
+            _currentContext._context = glContext;
         }
+
+        // Clears are registered as draw calls by most software, so we do the same to stay in sync with third party software
+        _context.registerDrawCall();
+
+        const vec2<U16> drawableSize = window.getDrawableSize();
+        _context.setViewport( 0, 0, drawableSize.width, drawableSize.height );
+
+        return true;
+    }
+
+    void GL_API::flushWindow( DisplayWindow& window )
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        const bool mainWindow = window.getGUID() == _context.context().mainWindow().getGUID();
+        if ( mainWindow )
+        {
+            endPerformanceQueries();
+            _swapBufferTimer.start();
+        }
+
+        // Swap buffers    
+        SDL_GLContext glContext = window.userData()->_glContext;
+        const I64 windowGUID = window.getGUID();
+
+        if ( glContext != nullptr && (_currentContext._windowGUID != windowGUID || _currentContext._context != glContext) )
+        {
+            PROFILE_SCOPE( "GL_API: Swap Context", Profiler::Category::Graphics );
+            SDL_GL_MakeCurrent( window.getRawWindow(), glContext );
+            _currentContext._windowGUID = windowGUID;
+            _currentContext._context = glContext;
+        }
+        {
+            PROFILE_SCOPE( "GL_API: Swap Buffers", Profiler::Category::Graphics );
+            SDL_GL_SwapWindow( window.getRawWindow() );
+        }
+        
+        if ( mainWindow ) 
+        {
+            _swapBufferTimer.stop();
+            //PROFILE_SCOPE("Post-swap delay", Profiler::Category::Graphics);
+            //SDL_Delay(1);
+        }
+    }
+
+    bool GL_API::frameStarted()
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        // Start a duration query in debug builds
+        if ( _runQueries )
+        {
+            for ( U8 i = 0u; i < to_base( GlobalQueryTypes::COUNT ); ++i )
+            {
+                _performanceQueries[i]->begin();
+            }
         }
 
         while ( !s_stateTracker._endFrameFences.empty() )
@@ -582,81 +642,12 @@ namespace Divide
 
         glLockManager::CleanExpiredSyncObjects( s_stateTracker._lastSyncedFrameNumber );
 
-        SDL_GLContext glContext = window.userData()->_glContext;
-        const I64 windowGUID = window.getGUID();
-
-        if ( glContext != nullptr && (_currentContext._windowGUID != windowGUID || _currentContext._context != glContext) )
-        {
-            SDL_GL_MakeCurrent( window.getRawWindow(), glContext );
-            _currentContext._windowGUID = windowGUID;
-            _currentContext._context = glContext;
-        }
-
-        // Clears are registered as draw calls by most software, so we do the same
-        // to stay in sync with third party software
-        _context.registerDrawCall();
-
-        const vec2<U16> drawableSize = window.getDrawableSize();
-        _context.setViewport( 0, 0, drawableSize.width, drawableSize.height );
-
         return true;
     }
 
-    void GL_API::endFrameLocal( const DisplayWindow& window )
+    bool GL_API::frameEnded()
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        // Swap buffers    
-        SDL_GLContext glContext = window.userData()->_glContext;
-        const I64 windowGUID = window.getGUID();
-
-        if ( glContext != nullptr && (_currentContext._windowGUID != windowGUID || _currentContext._context != glContext) )
-        {
-            PROFILE_SCOPE( "GL_API: Swap Context", Profiler::Category::Graphics );
-            SDL_GL_MakeCurrent( window.getRawWindow(), glContext );
-            _currentContext._windowGUID = windowGUID;
-            _currentContext._context = glContext;
-        }
-        {
-            PROFILE_SCOPE( "GL_API: Swap Buffers", Profiler::Category::Graphics );
-            SDL_GL_SwapWindow( window.getRawWindow() );
-        }
-    }
-
-    void GL_API::endFrameGlobal( const DisplayWindow& window )
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        if ( _runQueries )
-        {
-            PROFILE_SCOPE( "End GPU Queries", Profiler::Category::Graphics );
-            // End the timing query started in beginFrame() in debug builds
-
-            if constexpr( g_runAllQueriesInSameFrame )
-            {
-                for ( U8 i = 0; i < to_base( GlobalQueryTypes::COUNT ); ++i )
-                {
-                    _performanceQueries[i]->end();
-                }
-            }
-        else
-        {
-            _performanceQueries[_queryIdxForCurrentFrame]->end();
-        }
-        }
-
-        if ( glGetGraphicsResetStatus() != GL_NO_ERROR )
-        {
-            DIVIDE_UNEXPECTED_CALL_MSG( "OpenGL Reset Status raised!" );
-        }
-
-        _swapBufferTimer.start();
-        endFrameLocal( window );
-        {
-            //PROFILE_SCOPE("Post-swap delay", Profiler::Category::Graphics);
-            //SDL_Delay(1);
-        }
-        _swapBufferTimer.stop();
 
         GLUtil::GLMemory::OnFrameEnd( GFXDevice::FrameCount() );
 
@@ -672,31 +663,19 @@ namespace Divide
         if ( _runQueries )
         {
             PROFILE_SCOPE( "GL_API: Time Query", Profiler::Category::Graphics );
+
             static std::array<I64, to_base( GlobalQueryTypes::COUNT )> results{};
-            if constexpr( g_runAllQueriesInSameFrame )
+            for ( U8 i = 0u; i < to_base( GlobalQueryTypes::COUNT ); ++i )
             {
-                for ( U8 i = 0u; i < to_base( GlobalQueryTypes::COUNT ); ++i )
-                {
-                    results[i] = _performanceQueries[i]->getResultNoWait();
-                    _performanceQueries[i]->incQueue();
-                }
-            }
-            else
-            {
-                results[_queryIdxForCurrentFrame] = _performanceQueries[_queryIdxForCurrentFrame]->getResultNoWait();
-                _performanceQueries[_queryIdxForCurrentFrame]->incQueue();
+                results[i] = _performanceQueries[i]->getResultNoWait();
+                _performanceQueries[i]->incQueue();
             }
 
-            _queryIdxForCurrentFrame = (_queryIdxForCurrentFrame + 1) % to_base( GlobalQueryTypes::COUNT );
-
-            if ( g_runAllQueriesInSameFrame || _queryIdxForCurrentFrame == 0 )
-            {
-                _context.getPerformanceMetrics()._gpuTimeInMS = Time::NanosecondsToMilliseconds<F32>( results[to_base( GlobalQueryTypes::GPU_TIME )] );
-                _context.getPerformanceMetrics()._verticesSubmitted = to_U64( results[to_base( GlobalQueryTypes::VERTICES_SUBMITTED )] );
-                _context.getPerformanceMetrics()._primitivesGenerated = to_U64( results[to_base( GlobalQueryTypes::PRIMITIVES_GENERATED )] );
-                _context.getPerformanceMetrics()._tessellationPatches = to_U64( results[to_base( GlobalQueryTypes::TESSELLATION_PATCHES )] );
-                _context.getPerformanceMetrics()._tessellationInvocations = to_U64( results[to_base( GlobalQueryTypes::TESSELLATION_EVAL_INVOCATIONS )] );
-            }
+            _context.getPerformanceMetrics()._gpuTimeInMS = Time::NanosecondsToMilliseconds<F32>( results[to_base( GlobalQueryTypes::GPU_TIME )] );
+            _context.getPerformanceMetrics()._verticesSubmitted = to_U64( results[to_base( GlobalQueryTypes::VERTICES_SUBMITTED )] );
+            _context.getPerformanceMetrics()._primitivesGenerated = to_U64( results[to_base( GlobalQueryTypes::PRIMITIVES_GENERATED )] );
+            _context.getPerformanceMetrics()._tessellationPatches = to_U64( results[to_base( GlobalQueryTypes::TESSELLATION_PATCHES )] );
+            _context.getPerformanceMetrics()._tessellationInvocations = to_U64( results[to_base( GlobalQueryTypes::TESSELLATION_EVAL_INVOCATIONS )] );
         }
 
         const size_t fenceSize = std::size( s_fenceSyncCounter );
@@ -711,22 +690,14 @@ namespace Divide
 
         s_stateTracker._endFrameFences.push( std::make_pair( CreateFenceSync(), GFXDevice::FrameCount() ) );
         _context.getPerformanceMetrics()._queuedGPUFrames = s_stateTracker._endFrameFences.size();
-    }
 
-    /// Finish rendering the current frame
-    void GL_API::endFrame( DisplayWindow& window, const bool global )
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+        if ( glGetGraphicsResetStatus() != GL_NO_ERROR )
+        {
+            DIVIDE_UNEXPECTED_CALL_MSG( "OpenGL Reset Status raised!" );
+        }
 
-        if ( global )
-        {
-            endFrameGlobal( window );
-        }
-        else
-        {
-            endFrameLocal( window );
-        }
-        clearStates( window, s_stateTracker, global );
+        clearStates(s_stateTracker);
+        return true;
     }
 
     void GL_API::idle( [[maybe_unused]] const bool fast )
@@ -734,79 +705,10 @@ namespace Divide
         glShaderProgram::Idle( _context.context() );
     }
 
-    /// Text rendering is handled exclusively by Mikko Mononen's FontStash library (https://github.com/memononen/fontstash)
-    /// with his OpenGL frontend adapted for core context profiles
-    void GL_API::drawText( const TextElementBatch& batch )
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        BlendingSettings textBlend{};
-        textBlend.blendSrc( BlendProperty::SRC_ALPHA );
-        textBlend.blendDest( BlendProperty::INV_SRC_ALPHA );
-        textBlend.blendOp( BlendOperation::ADD );
-        textBlend.blendSrcAlpha( BlendProperty::ONE );
-        textBlend.blendDestAlpha( BlendProperty::ZERO );
-        textBlend.blendOpAlpha( BlendOperation::COUNT );
-        textBlend.enabled( true );
-
-        s_stateTracker.setBlending( 0, textBlend );
-        s_stateTracker.setBlendColour( DefaultColours::BLACK_U8 );
-
-        const I32 width = _context.renderingResolution().width;
-        const I32 height = _context.renderingResolution().height;
-
-        size_t drawCount = 0;
-        size_t previousStyle = 0;
-
-        fonsClearState( _fonsContext );
-        for ( const TextElement& entry : batch.data() )
-        {
-            if ( previousStyle != entry.textLabelStyleHash() )
-            {
-                const TextLabelStyle& textLabelStyle = TextLabelStyle::get( entry.textLabelStyleHash() );
-                const UColour4& colour = textLabelStyle.colour();
-                // Retrieve the font from the font cache
-                const I32 font = getFont( TextLabelStyle::fontName( textLabelStyle.font() ) );
-                // The font may be invalid, so skip this text label
-                if ( font != FONS_INVALID )
-                {
-                    fonsSetFont( _fonsContext, font );
-                }
-                fonsSetBlur( _fonsContext, textLabelStyle.blurAmount() );
-                fonsSetBlur( _fonsContext, textLabelStyle.spacing() );
-                fonsSetAlign( _fonsContext, textLabelStyle.alignFlag() );
-                fonsSetSize( _fonsContext, to_F32( textLabelStyle.fontSize() ) );
-                fonsSetColour( _fonsContext, colour.r, colour.g, colour.b, colour.a );
-                previousStyle = entry.textLabelStyleHash();
-            }
-
-            const F32 textX = entry.position().d_x.d_scale * width + entry.position().d_x.d_offset;
-            const F32 textY = height - (entry.position().d_y.d_scale * height + entry.position().d_y.d_offset);
-
-            F32 lh = 0;
-            fonsVertMetrics( _fonsContext, nullptr, nullptr, &lh );
-
-            const TextElement::TextType& text = entry.text();
-            const size_t lineCount = text.size();
-            for ( size_t i = 0; i < lineCount; ++i )
-            {
-                fonsDrawText( _fonsContext,
-                              textX,
-                              textY - lh * i,
-                              text[i].c_str(),
-                              nullptr );
-            }
-            drawCount += lineCount;
-
-
-            // Register each label rendered as a draw call
-            _context.registerDrawCalls( to_U32( drawCount ) );
-        }
-    }
-
     bool GL_API::draw( const GenericDrawCommand& cmd ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+        DIVIDE_ASSERT(cmd._drawCount < _context.GetDeviceInformation()._maxDrawIndirectCount);
 
         if ( cmd._sourceBuffer._id == 0 )
         {
@@ -992,22 +894,35 @@ namespace Divide
         return handle;
     }
 
+    void GL_API::flushPushConstantsLocks()
+    {
+        if ( _pushConstantsNeedLock )
+        {
+            _pushConstantsNeedLock = false;
+            flushCommand( &_pushConstantsMemCommand );
+            _pushConstantsMemCommand._bufferLocks.clear();
+        }
+    }
+
     void GL_API::preFlushCommandBuffer( [[maybe_unused]] const GFX::CommandBuffer& commandBuffer )
     {
         GetStateTracker()._activeRenderTargetID = SCREEN_TARGET_ID;
+        GetStateTracker()._activeRenderTargetDimensions = _context.context().mainWindow().getDrawableSize();
     }
 
     void GL_API::flushCommand( GFX::CommandBase* cmd )
     {
-        static GFX::MemoryBarrierCommand pushConstantsMemCommand{};
-        static bool pushConstantsNeedLock = false;
-
         PROFILE_SCOPE( GFX::Names::commandType[to_base( cmd->Type() )], Profiler::Category::Graphics );
         PROFILE_TAG( "Type", to_base( cmd->Type() ) );
 
         if ( GFXDevice::IsSubmitCommand( cmd->Type() ) )
         {
             flushTextureBindQueue();
+        }
+
+        if ( s_stateTracker._activeRenderTargetID == INVALID_RENDER_TARGET_ID )
+        {
+            flushPushConstantsLocks();
         }
 
         switch ( cmd->Type() )
@@ -1028,16 +943,18 @@ namespace Divide
                     }
 
                     s_stateTracker._activeRenderTarget = nullptr;
-                    if ( crtCmd->_clearDescriptor._clearColourDescriptors[0]._index != RTColourAttachmentSlot::COUNT )
+                    s_stateTracker._activeRenderTargetDimensions = _context.context().mainWindow().getDrawableSize();
+
+                    if ( crtCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0)]._enabled)
                     {
                         PROFILE_SCOPE( "Clear Screen Target", Profiler::Category::Graphics );
 
                         ClearBufferMask mask = ClearBufferMask::GL_COLOR_BUFFER_BIT;
 
-                        s_stateTracker.setClearColour( crtCmd->_clearDescriptor._clearColourDescriptors[0]._colour );
-                        if ( crtCmd->_clearDescriptor._clearDepth )
+                        s_stateTracker.setClearColour( crtCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )]._colour );
+                        if ( crtCmd->_clearDescriptor[RT_DEPTH_ATTACHMENT_IDX]._enabled )
                         {
-                            s_stateTracker.setClearDepth( crtCmd->_clearDescriptor._clearDepthValue );
+                            s_stateTracker.setClearDepth( crtCmd->_clearDescriptor[RT_DEPTH_ATTACHMENT_IDX]._colour.r );
                             mask |= ClearBufferMask::GL_DEPTH_BUFFER_BIT;
                         }
                         glClear( mask );
@@ -1058,6 +975,7 @@ namespace Divide
 
                     Attorney::GLAPIRenderTarget::begin( *rt, crtCmd->_descriptor, crtCmd->_clearDescriptor );
                     s_stateTracker._activeRenderTarget = rt;
+                    s_stateTracker._activeRenderTargetDimensions = { rt->getWidth(), rt->getHeight() };
                     PushDebugMessage( Util::StringFormat( "%s - %s", crtCmd->_name.c_str(), rt->debugMessage().c_str() ).c_str(), crtCmd->_target );
                 }
             }break;
@@ -1075,6 +993,7 @@ namespace Divide
                     s_stateTracker._activeRenderTarget = nullptr;
                 }
                 s_stateTracker._activeRenderTargetID = INVALID_RENDER_TARGET_ID;
+                s_stateTracker._activeRenderTargetDimensions = _context.context().mainWindow().getDrawableSize();
             }break;
             case GFX::CommandType::BLIT_RT:
             {
@@ -1088,85 +1007,50 @@ namespace Divide
             case GFX::CommandType::BEGIN_GPU_QUERY:
             {
                 const GFX::BeginGPUQuery* crtCmd = cmd->As<GFX::BeginGPUQuery>();
-                if ( crtCmd->_queryMask == 0u )
+                if ( crtCmd->_queryMask != 0u ) [[likely]]
                 {
-                    return;
-                }
-
-                U8 i = 0u;
-                auto& queryContext = _queryContext.emplace();
-                if ( TestBit( crtCmd->_queryMask, QueryType::VERTICES_SUBMITTED ) )
-                {
-                    queryContext[0]._query = &GL_API::GetHardwareQueryPool()->allocate( GL_VERTICES_SUBMITTED );
-                    queryContext[0]._type = QueryType::VERTICES_SUBMITTED;
-                    queryContext[0]._index = i++;
-                }
-                if ( TestBit( crtCmd->_queryMask, QueryType::PRIMITIVES_GENERATED ) )
-                {
-                    queryContext[1]._query = &GL_API::GetHardwareQueryPool()->allocate( GL_PRIMITIVES_GENERATED );
-                    queryContext[1]._type = QueryType::VERTICES_SUBMITTED;
-                    queryContext[1]._index = i++;
-                }
-                if ( TestBit( crtCmd->_queryMask, QueryType::TESSELLATION_PATCHES ) )
-                {
-                    queryContext[2]._query = &GL_API::GetHardwareQueryPool()->allocate( GL_TESS_CONTROL_SHADER_PATCHES );
-                    queryContext[2]._type = QueryType::VERTICES_SUBMITTED;
-                    queryContext[2]._index = i++;
-                }
-                if ( TestBit( crtCmd->_queryMask, QueryType::TESSELLATION_EVAL_INVOCATIONS ) )
-                {
-                    queryContext[3]._query = &GL_API::GetHardwareQueryPool()->allocate( GL_TESS_EVALUATION_SHADER_INVOCATIONS );
-                    queryContext[3]._type = QueryType::VERTICES_SUBMITTED;
-                    queryContext[3]._index = i++;
-                }
-                if ( TestBit( crtCmd->_queryMask, QueryType::GPU_TIME ) )
-                {
-                    queryContext[4]._query = &GL_API::GetHardwareQueryPool()->allocate( GL_TIME_ELAPSED );
-                    queryContext[4]._type = QueryType::VERTICES_SUBMITTED;
-                    queryContext[4]._index = i++;
-                }
-                if ( TestBit( crtCmd->_queryMask, QueryType::SAMPLE_COUNT ) )
-                {
-                    queryContext[5]._query = &GL_API::GetHardwareQueryPool()->allocate( GL_SAMPLES_PASSED );
-                    queryContext[5]._type = QueryType::VERTICES_SUBMITTED;
-                    queryContext[5]._index = i++;
-                }
-                if ( TestBit( crtCmd->_queryMask, QueryType::ANY_SAMPLE_RENDERED ) )
-                {
-                    queryContext[6]._query = &GL_API::GetHardwareQueryPool()->allocate( GL_ANY_SAMPLES_PASSED_CONSERVATIVE );
-                    queryContext[6]._type = QueryType::VERTICES_SUBMITTED;
-                    queryContext[6]._index = i++;
-                }
-
-                for ( auto& queryEntry : queryContext )
-                {
-                    if ( queryEntry._query != nullptr )
+                    auto& queryContext = _queryContext.emplace();
+                    for ( U8 i = 0u, j = 0u; i < to_base( QueryType::COUNT ); ++i )
                     {
-                        queryEntry._query->begin();
+                        const QueryType type = static_cast<QueryType>(toBit(i + 1));
+                        if ( TestBit( crtCmd->_queryMask, type ) )
+                        {
+                            queryContext[i]._query = &GL_API::GetHardwareQueryPool()->allocate( GLUtil::glQueryTypeTable[i] );
+                            queryContext[i]._type = type;
+                            queryContext[i]._index = j++;
+                        }
+                    }
+
+                    for ( auto& queryEntry : queryContext )
+                    {
+                        if ( queryEntry._query != nullptr )
+                        {
+                            queryEntry._query->begin();
+                        }
                     }
                 }
             }break;
             case GFX::CommandType::END_GPU_QUERY:
             {
-                const GFX::EndGPUQuery* crtCmd = cmd->As<GFX::EndGPUQuery>();
-                if ( _queryContext.empty() )
+                if ( !_queryContext.empty() ) [[likely]]
                 {
-                    return;
-                }
-                DIVIDE_ASSERT( crtCmd->_resultContainer != nullptr );
+                    const GFX::EndGPUQuery* crtCmd = cmd->As<GFX::EndGPUQuery>();
 
-                for ( auto& queryEntry : _queryContext.top() )
-                {
-                    if ( queryEntry._query != nullptr )
+                    DIVIDE_ASSERT( crtCmd->_resultContainer != nullptr );
+
+                    for ( glHardwareQueryEntry& queryEntry : _queryContext.top() )
                     {
-                        queryEntry._query->end();
+                        if ( queryEntry._query != nullptr )
+                        {
+                            queryEntry._query->end();
 
-                        const I64 qResult = crtCmd->_waitForResults ? queryEntry._query->getResult() : queryEntry._query->getResultNoWait();
-                        (*crtCmd->_resultContainer)[queryEntry._index] = { queryEntry._type,  qResult };
+                            const I64 qResult = crtCmd->_waitForResults ? queryEntry._query->getResult() : queryEntry._query->getResultNoWait();
+                            (*crtCmd->_resultContainer)[queryEntry._index] = { queryEntry._type,  qResult };
+                        }
                     }
-                }
 
-                _queryContext.pop();
+                    _queryContext.pop();
+                }
             }break;
             case GFX::CommandType::COPY_TEXTURE:
             {
@@ -1179,13 +1063,6 @@ namespace Divide
             }break;
             case GFX::CommandType::BIND_PIPELINE:
             {
-                if ( pushConstantsNeedLock )
-                {
-                    flushCommand( &pushConstantsMemCommand );
-                    pushConstantsMemCommand._bufferLocks.clear();
-                    pushConstantsNeedLock = false;
-                }
-
                 const Pipeline* pipeline = cmd->As<GFX::BindPipelineCommand>()->_pipeline;
                 assert( pipeline != nullptr );
                 if ( bindPipeline( *pipeline ) == ShaderResult::Failed )
@@ -1202,7 +1079,6 @@ namespace Divide
                     {
                         // Shader failed to compile probably. Dump all shader caches for inspection.
                         glShaderProgram::Idle( _context.context() );
-                        Console::flush();
                     }
                 };
 
@@ -1221,13 +1097,13 @@ namespace Divide
                 }
 
                 const PushConstants& pushConstants = cmd->As<GFX::SendPushConstantsCommand>()->_constants;
-                if ( s_stateTracker._activeShaderProgram->uploadUniformData( pushConstants, _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).impl(), pushConstantsMemCommand ) )
+                if ( s_stateTracker._activeShaderProgram->uploadUniformData( pushConstants, _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).impl(), _pushConstantsMemCommand ) )
                 {
                     _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).dirty( true );
+                    _pushConstantsNeedLock = _pushConstantsNeedLock || _pushConstantsMemCommand._bufferLocks.empty();
                 }
                 Attorney::GLAPIShaderProgram::uploadPushConstants( *s_stateTracker._activeShaderProgram, pushConstants.fastData() );
 
-                pushConstantsNeedLock = !pushConstantsMemCommand._bufferLocks.empty();
             } break;
             case GFX::CommandType::BEGIN_DEBUG_SCOPE:
             {
@@ -1247,6 +1123,7 @@ namespace Divide
             case GFX::CommandType::COMPUTE_MIPMAPS:
             {
                 const GFX::ComputeMipMapsCommand* crtCmd = cmd->As<GFX::ComputeMipMapsCommand>();
+                DIVIDE_ASSERT( crtCmd->_usage != ImageUsage::COUNT );
 
                 if ( crtCmd->_layerRange.offset == 0 && crtCmd->_layerRange.count >= crtCmd->_texture->descriptor().layerCount() )
                 {
@@ -1258,7 +1135,7 @@ namespace Divide
                     PROFILE_SCOPE( "GL: View-based computation", Profiler::Category::Graphics );
                     assert( crtCmd->_mipRange.count != 0u );
 
-                    ImageView view = crtCmd->_texture->getView(ImageUsage::SHADER_READ_WRITE);
+                    ImageView view = crtCmd->_texture->getView();
                     view._subRange._layerRange.set( crtCmd->_layerRange );
                     view._subRange._mipLevels.set( crtCmd->_mipRange );
 
@@ -1287,13 +1164,6 @@ namespace Divide
                         PROFILE_SCOPE( "GL: In-place computation - Image", Profiler::Category::Graphics );
                         glGenerateTextureMipmap( getGLTextureView( view, 6u ) );
                     }
-                }
-            }break;
-            case GFX::CommandType::DRAW_TEXT:
-            {
-                if ( s_stateTracker._activePipeline != nullptr )
-                {
-                    drawText( cmd->As<GFX::DrawTextCommand>()->_batch );
                 }
             }break;
             case GFX::CommandType::DRAW_COMMANDS:
@@ -1342,131 +1212,150 @@ namespace Divide
             case GFX::CommandType::MEMORY_BARRIER:
             {
                 const GFX::MemoryBarrierCommand* crtCmd = cmd->As<GFX::MemoryBarrierCommand>();
-                const U32 barrierMask = crtCmd->_barrierMask;
-                if ( barrierMask != 0 )
+
+                MemoryBarrierMask mask = GL_NONE_BIT;
+
+                SyncObjectHandle handle{};
+                for ( const BufferLock& lock : crtCmd->_bufferLocks )
                 {
-                    if ( TestBit( barrierMask, to_base( MemoryBarrierType::TEXTURE_BARRIER ) ) )
+                    if ( lock._buffer == nullptr || lock._range._length == 0u)
                     {
-                        glTextureBarrier();
+                        continue;
                     }
-                    if ( barrierMask == to_base( MemoryBarrierType::ALL_MEM_BARRIERS ) )
+
+                    switch ( lock._type )
                     {
-                        glMemoryBarrier( MemoryBarrierMask::GL_ALL_BARRIER_BITS );
-                    }
-                    else
-                    {
-                        MemoryBarrierMask glMask = MemoryBarrierMask::GL_NONE_BIT;
-                        for ( U8 i = 0; i < to_U8( MemoryBarrierType::COUNT ) + 1; ++i )
+                        case BufferSyncUsage::CPU_WRITE_TO_GPU_READ:
                         {
-                            if ( TestBit( barrierMask, 1u << i ) )
+                            if ( handle._id == SyncObjectHandle::INVALID_SYNC_ID )
                             {
-                                switch ( static_cast<MemoryBarrierType>(1 << i) )
-                                {
-                                    case MemoryBarrierType::BUFFER_UPDATE:
-                                        glMask |= MemoryBarrierMask::GL_BUFFER_UPDATE_BARRIER_BIT;
-                                        break;
-                                    case MemoryBarrierType::SHADER_STORAGE:
-                                        glMask |= MemoryBarrierMask::GL_SHADER_STORAGE_BARRIER_BIT;
-                                        break;
-                                    case MemoryBarrierType::COMMAND_BUFFER:
-                                        glMask |= MemoryBarrierMask::GL_COMMAND_BARRIER_BIT;
-                                        break;
-                                    case MemoryBarrierType::ATOMIC_COUNTER:
-                                        glMask |= MemoryBarrierMask::GL_ATOMIC_COUNTER_BARRIER_BIT;
-                                        break;
-                                    case MemoryBarrierType::QUERY:
-                                        glMask |= MemoryBarrierMask::GL_QUERY_BUFFER_BARRIER_BIT;
-                                        break;
-                                    case MemoryBarrierType::RENDER_TARGET:
-                                        glMask |= MemoryBarrierMask::GL_FRAMEBUFFER_BARRIER_BIT;
-                                        break;
-                                    case MemoryBarrierType::TEXTURE_UPDATE:
-                                        glMask |= MemoryBarrierMask::GL_TEXTURE_UPDATE_BARRIER_BIT;
-                                        break;
-                                    case MemoryBarrierType::TEXTURE_FETCH:
-                                        glMask |= MemoryBarrierMask::GL_TEXTURE_FETCH_BARRIER_BIT;
-                                        break;
-                                    case MemoryBarrierType::SHADER_IMAGE:
-                                        glMask |= MemoryBarrierMask::GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
-                                        break;
-                                    case MemoryBarrierType::TRANSFORM_FEEDBACK:
-                                        glMask |= MemoryBarrierMask::GL_TRANSFORM_FEEDBACK_BARRIER_BIT;
-                                        break;
-                                    case MemoryBarrierType::VERTEX_ATTRIB_ARRAY:
-                                        glMask |= MemoryBarrierMask::GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT;
-                                        break;
-                                    case MemoryBarrierType::INDEX_ARRAY:
-                                        glMask |= MemoryBarrierMask::GL_ELEMENT_ARRAY_BARRIER_BIT;
-                                        break;
-                                    case MemoryBarrierType::UNIFORM_DATA:
-                                        glMask |= MemoryBarrierMask::GL_UNIFORM_BARRIER_BIT;
-                                        break;
-                                    case MemoryBarrierType::PIXEL_BUFFER:
-                                        glMask |= MemoryBarrierMask::GL_PIXEL_BUFFER_BARRIER_BIT;
-                                        break;
-                                    case MemoryBarrierType::PERSISTENT_BUFFER:
-                                        glMask |= MemoryBarrierMask::GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT;
-                                        break;
-                                    default:
-                                        NOP();
-                                        break;
-                                }
+                                handle = glLockManager::CreateSyncObject();
                             }
-                        }
-                        glMemoryBarrier( glMask );
-                    }
-                }
 
-                if ( !crtCmd->_bufferLocks.empty() )
-                {
-
-                    SyncObjectHandle handle{};
-                    for ( const BufferLock& lock : crtCmd->_bufferLocks )
-                    {
-                        const glShaderBuffer* shaderBuffer = static_cast<const glShaderBuffer*>(lock._targetBuffer);
-                        glLockManager& lockManager = shaderBuffer->bufferImpl()->_lockManager;
-                        if ( handle._id == SyncObjectHandle::INVALID_SYNC_ID )
+                            LockManager* lockManager = lock._buffer->getLockManager();
+                            if ( !lockManager->lockRange( lock._range._startOffset, lock._range._length, handle ) )
+                            {
+                                DIVIDE_UNEXPECTED_CALL();
+                            }
+                        } break;
+                        case BufferSyncUsage::GPU_WRITE_TO_CPU_READ:
                         {
-                            handle = lockManager.createSyncObject();
-                        }
-                        if ( !lockManager.lockRange( lock._range._startOffset, lock._range._length, handle ) )
+                            if ( lock._buffer->getBufferFlags()._updateUsage == BufferUpdateUsage::GPU_TO_GPU ||
+                                    lock._buffer->getBufferFlags()._updateFrequency == BufferUpdateFrequency::ONCE )
+                            {
+                                mask |= GL_BUFFER_UPDATE_BARRIER_BIT;
+                            }
+                            else
+                            {
+                                mask |= GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT;
+                            }
+                        } break;
+                        case BufferSyncUsage::GPU_WRITE_TO_GPU_READ:
+                        case BufferSyncUsage::GPU_READ_TO_GPU_WRITE:
                         {
-                            DIVIDE_UNEXPECTED_CALL();
-                        }
+                            switch (lock._buffer->getBufferFlags()._usageType )
+                            {
+                                case BufferUsageType::CONSTANT_BUFFER:
+                                {
+                                    mask |= GL_UNIFORM_BARRIER_BIT;
+                                } break;
+                                case BufferUsageType::UNBOUND_BUFFER:
+                                {
+                                    mask |= GL_SHADER_STORAGE_BARRIER_BIT;
+                                } break;
+                                case BufferUsageType::COMMAND_BUFFER:
+                                {
+                                    mask |= GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT;
+                                } break;
+                                case BufferUsageType::VERTEX_BUFFER:
+                                {
+                                    mask |= GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT;
+                                } break;
+                                case BufferUsageType::INDEX_BUFFER:
+                                {
+                                    mask |= GL_ELEMENT_ARRAY_BARRIER_BIT;
+                                } break;
+                                case BufferUsageType::STAGING_BUFFER:
+                                {
+                                    mask |= GL_BUFFER_UPDATE_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT;
+                                } break;
+                                default: DIVIDE_UNEXPECTED_CALL(); break;
+                            }
+                        } break;
+                        case BufferSyncUsage::GPU_WRITE_TO_GPU_WRITE:
+                        {
+                            mask |= GL_SHADER_STORAGE_BARRIER_BIT;
+                        } break;
+                        case BufferSyncUsage::CPU_WRITE_TO_CPU_READ:
+                        case BufferSyncUsage::CPU_READ_TO_CPU_WRITE:
+                        case BufferSyncUsage::CPU_WRITE_TO_CPU_WRITE:
+                        {
+                            NOP();
+                        }break;
+                        default: DIVIDE_UNEXPECTED_CALL(); break;
                     }
                 }
 
-                for ( auto it : crtCmd->_fenceLocks )
+                bool textureBarrierRequired = false;
+                for ( const auto& it : crtCmd->_textureLayoutChanges )
                 {
-                    Attorney::glGenericVertexDataGL_API::insertFencesIfNeeded( static_cast<glGenericVertexData*>(it) );
-                }
-
-                ImageUsage prevLayout = ImageUsage::UNDEFINED;
-                for ( auto it : crtCmd->_textureLayoutChanges )
-                {
-                    if ( it._targetView._srcTexture._internalTexture->imageUsage(it._layout, prevLayout ) )
+                    if ( it._sourceLayout == it._targetLayout )
                     {
-                        NOP();
+                        continue;
                     }
+
+                    switch ( it._targetLayout )
+                    {
+                        case ImageUsage::SHADER_WRITE:
+                        {
+                            mask |= GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
+                        } break;
+                        case ImageUsage::SHADER_READ:
+                        case ImageUsage::SHADER_READ_WRITE:
+                        {
+                            if ( it._sourceLayout != ImageUsage::SHADER_WRITE &&
+                                    it._sourceLayout != ImageUsage::SHADER_READ_WRITE )
+                            {
+                                textureBarrierRequired = true;
+                            }
+                            else
+                            {
+                                mask |= GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
+                            }
+                        } break;
+                        case ImageUsage::CPU_READ:
+                        {
+                            mask |= GL_TEXTURE_UPDATE_BARRIER_BIT;
+                        } break;
+                        case ImageUsage::RT_COLOUR_ATTACHMENT:
+                        case ImageUsage::RT_DEPTH_ATTACHMENT:
+                        case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT:
+                        {
+                            mask |= GL_FRAMEBUFFER_BARRIER_BIT;
+                        } break;
+
+                        default: DIVIDE_UNEXPECTED_CALL(); break;
+                    }
+                }
+
+                if ( mask != MemoryBarrierMask::GL_NONE_BIT )
+                {
+                    glMemoryBarrier( mask );
+                }
+                if ( textureBarrierRequired )
+                {
+                    glTextureBarrier();
                 }
             } break;
             default: break;
-        }
-
-        if ( GFXDevice::IsSubmitCommand( cmd->Type() ) )
-        {
-            if ( pushConstantsNeedLock )
-            {
-                flushCommand( &pushConstantsMemCommand );
-                pushConstantsMemCommand._bufferLocks.clear();
-                pushConstantsNeedLock = false;
-            }
         }
     }
 
     void GL_API::postFlushCommandBuffer( [[maybe_unused]] const GFX::CommandBuffer& commandBuffer )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        flushPushConstantsLocks();
 
         bool expected = true;
         if ( s_glFlushQueued.compare_exchange_strong( expected, false ) )
@@ -1475,6 +1364,7 @@ namespace Divide
             glFlush();
         }
         GetStateTracker()._activeRenderTargetID = INVALID_RENDER_TARGET_ID;
+        GetStateTracker()._activeRenderTargetDimensions = _context.context().mainWindow().getDrawableSize();
     }
 
     void GL_API::initDescriptorSets()
@@ -1482,17 +1372,10 @@ namespace Divide
         NOP();
     }
 
-    vec2<U16> GL_API::getDrawableSize( const DisplayWindow& window ) const noexcept
-    {
-        int w = 1, h = 1;
-        SDL_GL_GetDrawableSize( window.getRawWindow(), &w, &h );
-        return vec2<U16>( w, h );
-    }
-
     void GL_API::onThreadCreated( [[maybe_unused]] const std::thread::id& threadID )
     {
         // Double check so that we don't run into a race condition!
-        ScopedLock<Mutex> lock( GLUtil::s_glSecondaryContextMutex );
+        LockGuard<Mutex> lock( GLUtil::s_glSecondaryContextMutex );
         assert( SDL_GL_GetCurrentContext() == NULL );
 
         // This also makes the context current
@@ -1521,56 +1404,14 @@ namespace Divide
         glMaxShaderCompilerThreadsARB( 0xFFFFFFFF );
     }
 
-    /// Try to find the requested font in the font cache. Load on cache miss.
-    I32 GL_API::getFont( const Str64& fontName )
-    {
-        if ( _fontCache.first.compare( fontName ) != 0 )
-        {
-            _fontCache.first = fontName;
-            const U64 fontNameHash = _ID( fontName.c_str() );
-            // Search for the requested font by name
-            const auto& it = _fonts.find( fontNameHash );
-            // If we failed to find it, it wasn't loaded yet
-            if ( it == std::cend( _fonts ) )
-            {
-                // Fonts are stored in the general asset directory -> in the GUI
-                // subfolder -> in the fonts subfolder
-                ResourcePath fontPath( Paths::g_assetsLocation + Paths::g_GUILocation + Paths::g_fontsPath );
-                fontPath += fontName.c_str();
-                // We use FontStash to load the font file
-                _fontCache.second = fonsAddFont( _fonsContext, fontName.c_str(), fontPath.c_str() );
-                // If the font is invalid, inform the user, but map it anyway, to avoid
-                // loading an invalid font file on every request
-                if ( _fontCache.second == FONS_INVALID )
-                {
-                    Console::errorfn( Locale::Get( _ID( "ERROR_FONT_FILE" ) ), fontName.c_str() );
-                }
-                // Save the font in the font cache
-                hashAlg::insert( _fonts, fontNameHash, _fontCache.second );
-
-            }
-            else
-            {
-                _fontCache.second = it->second;
-            }
-
-        }
-
-        // Return the font
-        return _fontCache.second;
-    }
-
     /// Reset as much of the GL default state as possible within the limitations given
-    void GL_API::clearStates( const DisplayWindow& window, GLStateTracker& stateTracker, const bool global ) const
+    void GL_API::clearStates(GLStateTracker& stateTracker) const
     {
-        if ( global )
+        if ( !stateTracker.unbindTextures() )
         {
-            if ( !stateTracker.unbindTextures() )
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
-            stateTracker.setPixelPackUnpackAlignment();
+            DIVIDE_UNEXPECTED_CALL();
         }
+        stateTracker.setPixelPackUnpackAlignment();
 
         if ( stateTracker.setActiveVAO( 0 ) == GLStateTracker::BindResult::FAILED )
         {
@@ -1592,12 +1433,13 @@ namespace Divide
         }
         stateTracker.setBlendColour( { 0u, 0u, 0u, 0u } );
 
-        const vec2<U16> drawableSize = _context.getDrawableSize( window );
+        const vec2<U16> drawableSize = _context.context().mainWindow().getDrawableSize();
         stateTracker.setScissor( { 0, 0, drawableSize.width, drawableSize.height } );
 
         stateTracker._activePipeline = nullptr;
         stateTracker._activeRenderTarget = nullptr;
         stateTracker._activeRenderTargetID = INVALID_RENDER_TARGET_ID;
+        stateTracker._activeRenderTargetDimensions = drawableSize;
         if ( stateTracker.setActiveProgram( 0u ) == GLStateTracker::BindResult::FAILED )
         {
             DIVIDE_UNEXPECTED_CALL();
@@ -1610,8 +1452,6 @@ namespace Divide
         {
             DIVIDE_UNEXPECTED_CALL();
         }
-
-        stateTracker.setDepthWrite( true );
     }
 
     bool GL_API::bindShaderResources( const DescriptorSetUsage usage, const DescriptorSet& bindings, const bool isDirty )
@@ -1625,9 +1465,7 @@ namespace Divide
 
         for ( auto& srcBinding : bindings )
         {
-            const DescriptorSetBindingType type = Type(srcBinding._data);
-
-            switch ( type )
+            switch ( Type( srcBinding._data ) )
             {
                 case DescriptorSetBindingType::UNIFORM_BUFFER:
                 case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
@@ -1672,17 +1510,17 @@ namespace Divide
                 } break;
                 case DescriptorSetBindingType::IMAGE:
                 {
-                    if ( !Has<ImageView>(srcBinding._data) ) [[unlikely]]
+                    if ( !Has<DescriptorImageView>(srcBinding._data) ) [[unlikely]]
                     {
                         continue;
                     }
 
-                    const ImageView& image = As<ImageView>(srcBinding._data);
-                    assert( image.targetType() != TextureType::COUNT );
-                    assert( image._subRange._layerRange.count > 0u );
+                    const DescriptorImageView& imageView = As<DescriptorImageView>(srcBinding._data);
+                    DIVIDE_ASSERT( imageView._image.targetType() != TextureType::COUNT );
+                    DIVIDE_ASSERT( imageView._image._subRange._layerRange.count > 0u );
 
                     GLenum access = GL_NONE;
-                    switch ( image._usage )
+                    switch ( imageView._usage )
                     {
                         case ImageUsage::SHADER_READ: access = GL_READ_ONLY; break;
                         case ImageUsage::SHADER_WRITE: access = GL_WRITE_ONLY; break;
@@ -1690,20 +1528,20 @@ namespace Divide
                         default: DIVIDE_UNEXPECTED_CALL();  break;
                     }
 
-                    DIVIDE_ASSERT( image._subRange._mipLevels.count == 1u );
+                    DIVIDE_ASSERT( imageView._image._subRange._mipLevels.count == 1u );
 
-                    const GLenum glInternalFormat = GLUtil::internalFormat( image._descriptor._baseFormat,
-                                                                            image._descriptor._dataType,
-                                                                            image._descriptor._srgb,
-                                                                            image._descriptor._normalized );
+                    const GLenum glInternalFormat = GLUtil::internalFormat( imageView._image._descriptor._baseFormat,
+                                                                            imageView._image._descriptor._dataType,
+                                                                            imageView._image._descriptor._srgb,
+                                                                            imageView._image._descriptor._normalized );
 
-                    const GLuint handle = GetTextureHandleFromWrapper( image._srcTexture );
+                    const GLuint handle = GetTextureHandleFromWrapper( imageView._image._srcTexture );
                     if ( handle != GLUtil::k_invalidObjectID &&
                          GL_API::s_stateTracker.bindTextureImage( srcBinding._slot,
                                                                   handle,
-                                                                  image._subRange._mipLevels.offset,
-                                                                  image._subRange._layerRange.count > 1u,
-                                                                  image._subRange._layerRange.offset,
+                                                                  imageView._image._subRange._mipLevels.offset,
+                                                                  imageView._image._subRange._layerRange.count > 1u,
+                                                                  imageView._image._subRange._layerRange.offset,
                                                                   access,
                                                                   glInternalFormat ) == GLStateTracker::BindResult::FAILED )
                     {
@@ -1726,7 +1564,6 @@ namespace Divide
 
         if ( imageView._srcTexture._ceguiTex == nullptr && imageView._srcTexture._internalTexture == nullptr )
         {
-            DIVIDE_ASSERT(imageView._usage == ImageUsage::UNDEFINED);
             //unbind request;
             TexBindEntry entry{};
             entry._slot = glBinding;
@@ -1739,8 +1576,6 @@ namespace Divide
 
         TexBindEntry entry{};
         entry._slot = glBinding;
-
-        DIVIDE_ASSERT( imageView._usage == ImageUsage::SHADER_READ || imageView._usage == ImageUsage::SHADER_READ_WRITE );
 
         if ( imageView._srcTexture._internalTexture != nullptr && imageView != imageView._srcTexture._internalTexture->getView())
         {
@@ -2104,7 +1939,7 @@ namespace Divide
                 }
             }
             {
-                ScopedLock<SharedMutex> w_lock( s_samplerMapLock );
+                LockGuard<SharedMutex> w_lock( s_samplerMapLock );
                 // Check again
                 const SamplerObjectMap::const_iterator it = s_samplerMap.find( samplerHash );
                 if ( it == std::cend( s_samplerMap ) )

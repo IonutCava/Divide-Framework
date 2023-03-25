@@ -21,6 +21,7 @@
 #ifndef GL3COREFONTSTASH_H
 #define GL3COREFONTSTASH_H
 
+#include "Platform/Video/Headers/fontstash.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/glLockManager.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glMemoryManager.h"
@@ -197,7 +198,7 @@ static void glfons__renderDraw(void* userPtr, const FONSvert* verts, int nverts)
         prevWriteOffsetBytes = writeOffsetBytes;
         writeOffsetBytes = (writeOffsetBytes + dataSize) % GLFONS_VB_BUFFER_SIZE;
         if (prevWriteOffsetBytes > writeOffsetBytes) {
-            g_lockManager->lockRange(prevWriteOffsetBytes, writeOffsetBytes == 0 ? GLFONS_VB_BUFFER_SIZE : writeOffsetBytes, g_lockManager->createSyncObject());
+            g_lockManager->lockRange(prevWriteOffsetBytes, writeOffsetBytes == 0 ? GLFONS_VB_BUFFER_SIZE : writeOffsetBytes, Divide::glLockManager::CreateSyncObject());
         }
     }
 }

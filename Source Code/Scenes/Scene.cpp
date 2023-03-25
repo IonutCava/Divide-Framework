@@ -105,7 +105,7 @@ namespace Divide
 
         PipelineDescriptor pipeDesc;
         pipeDesc._stateHash = primitiveDescriptor.getHash();
-        pipeDesc._shaderProgramHandle = _context.gfx().defaultIMShader()->handle();
+        pipeDesc._shaderProgramHandle = _context.gfx().imShaders()->imShaderNoTexture()->handle();
         _linesPrimitive->setPipelineDescriptor( pipeDesc );
     }
 
@@ -134,7 +134,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
-        ScopedLock<Mutex> lk( s_perFrameArenaMutex );
+        LockGuard<Mutex> lk( s_perFrameArenaMutex );
         s_perFrameArena.clear();
 
         return true;
@@ -158,7 +158,7 @@ namespace Divide
                 }
             }
 
-            ScopedLock<SharedMutex> r_lock( _tasksMutex );
+            LockGuard<SharedMutex> r_lock( _tasksMutex );
             dvd_erase_if( _tasks, []( Task* handle ) -> bool
             {
                 return handle != nullptr && Finished( *handle );
@@ -664,23 +664,19 @@ namespace Divide
         DIVIDE_ASSERT( emitter != nullptr,
                       "Scene::addParticleEmitter error: Could not instantiate emitter!" );
 
-        if ( Runtime::isMainThread() )
+
+        auto initData = [emitter, data]( )
         {
             if ( !emitter->initData( data ) )
             {
                 DIVIDE_UNEXPECTED_CALL();
             }
-        }
-        else
-        {
-            _context.app().mainThreadTask( [&emitter, &data]
-            {
-                if ( !emitter->initData( data ) )
-                {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
-            } );
-        }
+        };
+
+        TaskPool& pool = _context.taskPool( TaskPoolType::HIGH_PRIORITY );
+        Task* initTask = CreateTask( TASK_NOP );
+        Start( *initTask, pool, TaskPriority::DONT_CARE, initData);
+        Wait( *initTask, pool);
 
         SceneGraphNodeDescriptor particleNodeDescriptor;
         particleNodeDescriptor._node = emitter;
@@ -1023,7 +1019,7 @@ namespace Divide
 
         const auto shutdown = [this]( [[maybe_unused]] const InputParams param ) noexcept
         {
-            _context.app().RequestShutdown();
+            _context.app().RequestShutdown(false);
         };
 
         const auto povNavigation = [this]( const InputParams param )
@@ -1620,7 +1616,7 @@ namespace Divide
         sceneRuntimeUS( sceneRuntimeUS() + deltaTimeUS );
 
         updateSceneStateInternal( deltaTimeUS );
-        _state->waterBodies().reset();
+        _state->waterBodies().resize(0);
         _sceneGraph->sceneUpdate( deltaTimeUS, *_state );
         _aiManager->update( deltaTimeUS );
     }
@@ -1652,7 +1648,7 @@ namespace Divide
     void Scene::registerTask( Task& taskItem, const bool start, const TaskPriority priority )
     {
         {
-            ScopedLock<SharedMutex> w_lock( _tasksMutex );
+            LockGuard<SharedMutex> w_lock( _tasksMutex );
             _tasks.push_back( &taskItem );
         }
         if ( start )
@@ -1665,7 +1661,7 @@ namespace Divide
     {
         Console::printfn( Locale::Get( _ID( "STOP_SCENE_TASKS" ) ) );
         // Performance shouldn't be an issue here
-        ScopedLock<SharedMutex> w_lock( _tasksMutex );
+        LockGuard<SharedMutex> w_lock( _tasksMutex );
         for ( const Task* task : _tasks )
         {
             Wait( *task, _context.taskPool( TaskPoolType::HIGH_PRIORITY ) );
@@ -1676,7 +1672,7 @@ namespace Divide
 
     void Scene::removeTask( const Task& task )
     {
-        ScopedLock<SharedMutex> w_lock( _tasksMutex );
+        LockGuard<SharedMutex> w_lock( _tasksMutex );
         for ( vector<Task*>::iterator it = begin( _tasks ); it != end( _tasks ); ++it )
         {
             if ( (*it)->_id == task._id )
@@ -1811,19 +1807,19 @@ namespace Divide
         }
     }
 
-    void Scene::drawCustomUI( const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut )
+    void Scene::drawCustomUI( const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
         if ( _linesPrimitive->hasBatch() )
         {
             GFX::EnqueueCommand( bufferInOut, GFX::SetViewportCommand{ targetViewport } );
-            _linesPrimitive->getCommandBuffer( bufferInOut );
+            _linesPrimitive->getCommandBuffer( bufferInOut, memCmdInOut );
         }
     }
 
-    void Scene::debugDraw( GFX::CommandBuffer& bufferInOut )
+    void Scene::debugDraw( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
         // Show NavMeshes
-        _aiManager->debugDraw( bufferInOut, false );
+        _aiManager->debugDraw( bufferInOut, memCmdInOut, false );
         _lightPool->drawLightImpostors( bufferInOut );
     }
 
@@ -1837,7 +1833,7 @@ namespace Divide
     {
         const vec3<F32>& eyePos = camera.snapshot()._eye;
         {
-            const auto& waterBodies = state()->waterBodies()._data;
+            const auto& waterBodies = state()->waterBodies();
             for ( const WaterBodyData& water : waterBodies )
             {
                 const vec3<F32>& extents = water._extents;

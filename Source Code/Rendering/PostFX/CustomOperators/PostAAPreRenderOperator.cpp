@@ -179,7 +179,8 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
             GFX::BeginRenderPassCommand beginRenderPassCmd{};
             beginRenderPassCmd._target = _smaaWeights._targetID;
             beginRenderPassCmd._name = "DO_SMAA_WEIGHT_PASS";
-            beginRenderPassCmd._clearDescriptor._clearColourDescriptors[0] = { DefaultColours::WHITE, RTColourAttachmentSlot::SLOT_0 };
+            beginRenderPassCmd._descriptor = _screenOnlyDraw;
+            beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::WHITE, true };
             GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
             const auto& att = _parent.edgesRT()._rt->getAttachment(RTAttachmentType::COLOUR);
@@ -221,6 +222,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
             GFX::BeginRenderPassCommand beginRenderPassCmd{};
             beginRenderPassCmd._target = output._targetID;
             beginRenderPassCmd._descriptor = _screenOnlyDraw;
+            beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::WHITE, true };
             beginRenderPassCmd._name = "DO_SMAA_BLEND_PASS";
             GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
@@ -249,6 +251,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
         GFX::BeginRenderPassCommand beginRenderPassCmd;
         beginRenderPassCmd._target = output._targetID;
         beginRenderPassCmd._descriptor = _screenOnlyDraw;
+        beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::WHITE, true };
         beginRenderPassCmd._name = "DO_POSTAA_PASS";
         GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 

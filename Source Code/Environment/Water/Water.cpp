@@ -316,19 +316,22 @@ namespace Divide
 
     void WaterPlane::sceneUpdate( const U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sceneState )
     {
-        WaterBodyData data;
-        data._positionW = sgn->get<TransformComponent>()->getWorldPosition();
-        data._extents.xyz = { to_F32( _dimensions.width ),
-                              to_F32( _dimensions.depth ),
-                              to_F32( _dimensions.height ) };
+        sceneState.waterBodies().emplace_back(WaterBodyData
+        {
+            ._positionW = sgn->get<TransformComponent>()->getWorldPosition(),
+            ._extents = { to_F32( _dimensions.width ),
+                          to_F32( _dimensions.depth ),
+                          to_F32( _dimensions.height ),
+                          0.f}
+        });
 
-        sceneState.waterBodies().registerData( data );
         SceneNode::sceneUpdate( deltaTimeUS, sgn, sceneState );
     }
 
     void WaterPlane::prepareRender( SceneGraphNode* sgn,
                                     RenderingComponent& rComp,
                                     RenderPackage& pkg,
+                                    GFX::MemoryBarrierCommand& postDrawMemCmd,
                                     const RenderStagePass renderStagePass,
                                     const CameraSnapshot& cameraSnapshot,
                                     const bool refreshData )
@@ -340,7 +343,7 @@ namespace Divide
         fastData.data[0]._vec[3].xy = fogStartEnd();
         pkg.pushConstantsCmd()._constants.set( fastData );
 
-        SceneNode::prepareRender( sgn, rComp, pkg, renderStagePass, cameraSnapshot, refreshData );
+        SceneNode::prepareRender( sgn, rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData );
     }
 
     bool WaterPlane::PointUnderwater( const SceneGraphNode* sgn, const vec3<F32>& point ) noexcept
@@ -370,6 +373,8 @@ namespace Divide
         refractionPlane._distance += g_reflectionPlaneCorrectionHeight;
 
         RenderPassParams params = {};
+        SetDefaultDrawDescriptor( params );
+
         params._sourceNode = renderParams._sgn;
         // We don't need to HiZ cull refractions
         // We don't need to draw refracted transparents using woit 
@@ -378,8 +383,8 @@ namespace Divide
         params._target = renderParams._renderTarget;
         params._clippingPlanes.set( 0, refractionPlane );
         params._passName = "Refraction";
-        params._clearDescriptorPrePass._clearDepth = true;
-        params._clearDescriptorMainPass._clearColourDescriptors[0] = { DefaultColours::BLUE, RTColourAttachmentSlot::SLOT_0 };
+        params._clearDescriptorMainPass[to_base(RTColourAttachmentSlot::SLOT_0)]._colour = DefaultColours::BLUE;
+
         if ( !underwater )
         {
             ClearBit( params._drawMask, to_U8( 1u << to_base( RenderPassParams::Flags::DRAW_DYNAMIC_NODES ) ) );
@@ -392,6 +397,7 @@ namespace Divide
 
         GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
         computeMipMapsCommand._texture = rt->getAttachment( RTAttachmentType::COLOUR )->texture().get();
+        computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
         GFX::EnqueueCommand( bufferInOut, computeMipMapsCommand );
     }
 
@@ -419,6 +425,8 @@ namespace Divide
         }
 
         RenderPassParams params = {};
+        SetDefaultDrawDescriptor( params );
+
         params._sourceNode = renderParams._sgn;
         params._targetHIZ = RenderTargetNames::HI_Z_REFLECT;
         params._targetOIT = RenderTargetNames::OIT_REFLECT;
@@ -427,8 +435,8 @@ namespace Divide
         params._target = renderParams._renderTarget;
         params._clippingPlanes.set( 0, reflectionPlane );
         params._passName = "Reflection";
-        params._clearDescriptorPrePass._clearDepth = true;
-        params._clearDescriptorMainPass._clearColourDescriptors[0] = { DefaultColours::BLUE, RTColourAttachmentSlot::SLOT_0 };
+        params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )]._colour = DefaultColours::BLUE;
+
         ClearBit( params._drawMask, to_U8( 1u << to_base( RenderPassParams::Flags::DRAW_DYNAMIC_NODES ) ) );
 
         passManager->doCustomPass( _reflectionCam, params, bufferInOut, memCmdInOut );
@@ -463,6 +471,7 @@ namespace Divide
 
         GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
         computeMipMapsCommand._texture = rt->getAttachment( RTAttachmentType::COLOUR )->texture().get();
+        computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
         GFX::EnqueueCommand( bufferInOut, computeMipMapsCommand );
     }
 

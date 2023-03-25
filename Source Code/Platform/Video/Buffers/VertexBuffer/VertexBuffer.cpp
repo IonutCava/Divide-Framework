@@ -5,6 +5,7 @@
 #include "Core/Headers/ByteBuffer.h"
 #include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/LockManager.h"
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
 #include "Utility/Headers/Localization.h"
 
@@ -415,10 +416,10 @@ bool VertexBuffer::getMinimalData(const vector<Vertex>& dataIn, Byte* dataOut, c
     return false;
 }
 
-void VertexBuffer::refresh() {
+bool VertexBuffer::refresh( BufferLock& dataLockOut, BufferLock& indexLockOut ) {
     if (!_refreshQueued) {
         // Everything is fine, carry on.
-        return;
+        return false;
     }
     _refreshQueued = false;
 
@@ -434,14 +435,14 @@ void VertexBuffer::refresh() {
             GenericVertexData::SetBufferParams setBufferParams{};
             setBufferParams._bufferParams._elementSize = _effectiveEntrySize;
             setBufferParams._bufferParams._elementCount = to_U32(_data.size());
-            setBufferParams._bufferParams._updateFrequency = _staticBuffer ? BufferUpdateFrequency::ONCE : BufferUpdateFrequency::OFTEN;
-            setBufferParams._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
+            setBufferParams._bufferParams._flags._updateFrequency = _staticBuffer ? BufferUpdateFrequency::ONCE : BufferUpdateFrequency::OFTEN;
+            setBufferParams._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
             setBufferParams._initialData = { smallData.data(), smallData.size() };
             setBufferParams._elementStride = setBufferParams._bufferParams._elementSize;
-            _internalGVD->setBuffer(setBufferParams);
+            dataLockOut = _internalGVD->setBuffer(setBufferParams);
         } else {
             assert(!_staticBuffer);
-            _internalGVD->updateBuffer(0u, 0u, to_U32(_data.size()), smallData.data());
+            dataLockOut = _internalGVD->updateBuffer(0u, 0u, to_U32(_data.size()), smallData.data());
         }
         if (_staticBuffer && !_keepData) {
             _data.clear();
@@ -458,16 +459,34 @@ void VertexBuffer::refresh() {
         idxBuffer.indicesNeedCast = idxBuffer.smallIndices;
         idxBuffer.data = _indices.data();
         idxBuffer.dynamic = !_staticBuffer;
-        _internalGVD->setIndexBuffer(idxBuffer);
+        indexLockOut = _internalGVD->setIndexBuffer(idxBuffer);
         _indicesChanged = false;
     }
+
+    return true;
 }
 
 void VertexBuffer::draw(const GenericDrawCommand& command, VDIUserData* data) {
     // Check if we have a refresh request queued up
-    refresh();
+    BufferLock dataLock, indexLock{};
+    const bool refreshed = refresh(dataLock, indexLock);
+
     _internalGVD->primitiveRestartRequired(primitiveRestartRequired());
     _internalGVD->draw(command, data);
+
+    if ( refreshed )
+    {
+        auto sync = LockManager::CreateSyncObject( _context.renderAPI() );
+
+        if ( dataLock._range._length > 0u )
+        {
+            dataLock._buffer->getLockManager()->lockRange( dataLock._range._startOffset, dataLock._range._length, sync);
+        }
+        if ( indexLock._range._length > 0u )
+        {
+            indexLock._buffer->getLockManager()->lockRange( indexLock._range._startOffset, indexLock._range._length, sync);
+        }
+    }
 }
 
 /// Activate and set all of the required vertex attributes.

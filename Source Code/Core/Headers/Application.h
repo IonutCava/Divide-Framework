@@ -40,111 +40,177 @@ namespace Divide {
 
 struct Task;
 struct Configuration;
+struct SizeChangeParams;
+struct DisplayManager;
 
 class Kernel;
-
-const char* getErrorCodeName(ErrorCode code) noexcept;
   
-namespace Attorney {
-    class ApplicationTask;
+namespace Attorney
+{
+    class ApplicationKernel;
+
+    class DisplayManagerApplication;
+    class DisplayManagerRenderingAPI;
+    class DisplayManagerWindowManager;
 };
 
-struct SizeChangeParams {
-    /// Window GUID
-    I64 winGUID{ -1 };
-    /// The new width and height
-    U16 width{ 0u };
-    U16 height{ 0u };
-    /// Is the window that fired the event fullscreen?
-    bool isFullScreen{ false };
-    bool isMainWindow{ false };
-};
+/// Class that provides an interface between our framework and the OS (start/stop, display support, main loop, start/stop/restart, etc)
+class Application final : public SDLEventListener
+{
+    friend class Attorney::ApplicationKernel;
 
-/// Lightweight singleton class that manages our application's kernel and window
-/// information
-class Application : public SDLEventListener {
-    friend class Attorney::ApplicationTask;
-  public:
+public:
+      enum class StepResult : U32
+      {
+          OK = 0,
+          RESTART,
+          RESTART_CLEAR_CACHE,
+          STOP,
+          STOP_CLEAR_CACHE,
+          ERROR,
+          COUNT
+      };
+
+public:
      Application() noexcept;
      ~Application();
 
-    /// Startup and shutdown
-    ErrorCode start(const string& entryPoint, I32 argc, char** argv);
-    void      stop();
+    [[nodiscard]] ErrorCode  start(const string& entryPoint, I32 argc, char** argv);
+                  void       stop( const StepResult stepResult );
+    [[nodiscard]] StepResult step();
 
-    void idle();
-    bool step(bool& restartEngineOnClose);
-    bool onLoop();
-
-    inline void RequestShutdown() noexcept;
+    inline void RequestShutdown( bool clearCache ) noexcept;
     inline void CancelShutdown() noexcept;
-    inline bool ShutdownRequested() const noexcept;
 
-    inline void RequestRestart() noexcept;
+    inline void RequestRestart( bool clearCache ) noexcept;
     inline void CancelRestart() noexcept;
-    inline bool RestartRequested() const noexcept;
 
-    inline Kernel& kernel() const noexcept;
-    inline WindowManager& windowManager() noexcept;
-    inline const WindowManager& windowManager() const noexcept;
+    [[nodiscard]] inline bool ShutdownRequested() const noexcept;
+    [[nodiscard]] inline bool RestartRequested() const noexcept;
 
-    void mainThreadTask(const DELEGATE<void>& task, bool wait = true);
+    [[nodiscard]] inline WindowManager& windowManager() noexcept;
+    [[nodiscard]] inline const WindowManager& windowManager() const noexcept;
 
-    inline void setMemoryLogFile(const Str256& fileName);
+    [[nodiscard]] bool onWindowSizeChange(const SizeChangeParams& params) const;
+    [[nodiscard]] bool onResolutionChange(const SizeChangeParams& params) const;
 
-    inline bool mainLoopActive() const noexcept;
-    inline void mainLoopActive(bool state) noexcept;
+    [[nodiscard]] inline ErrorCode errorCode() const noexcept;
 
-    inline bool mainLoopPaused() const noexcept;
-    inline void mainLoopPaused(bool state) noexcept; 
-    
-    inline bool freezeRendering() const noexcept;
-    inline void freezeRendering(bool state) noexcept;
-
-    bool onWindowSizeChange(const SizeChangeParams& params) const;
-    bool onResolutionChange(const SizeChangeParams& params) const;
-
-    inline void throwError(ErrorCode err) noexcept;
-    inline ErrorCode errorCode() const noexcept;
-
-    /// Add a list of callback functions that should be called when the application
-    /// instance is destroyed
-    /// (release hardware, file handlers, etc)
-    inline void registerShutdownCallback(const DELEGATE<void>& cbk);
-
+    PROPERTY_RW( U8, maxMSAASampleCount, 0u );
     PROPERTY_R(Time::ApplicationTimer, timer);
-    Time::ApplicationTimer& timer() noexcept { return _timer; }
+    PROPERTY_R(std::atomic_bool, mainLoopPaused);
+    PROPERTY_R( std::atomic_bool, mainLoopActive );
+    PROPERTY_R(std::atomic_bool, freezeRendering);
 
-  private:
-    bool onSDLEvent(SDL_Event event) noexcept override;
+    [[nodiscard]] Time::ApplicationTimer& timer() noexcept;
+    void mainLoopPaused(const bool state) noexcept;
+    void mainLoopActive(const bool state) noexcept;
+    void freezeRendering(const bool state) noexcept;
 
-  private:
+private:
+    [[nodiscard]] ErrorCode setRenderingAPI( const RenderAPI api );
+    [[nodiscard]] bool onSDLEvent( SDL_Event event ) noexcept override;
+
+
+private:
     WindowManager _windowManager;
-     
-    ErrorCode _errorCode = ErrorCode::NO_ERR;
-    /// this is true when we are inside the main app loop
-    std::atomic_bool _mainLoopActive;
-    std::atomic_bool _mainLoopPaused;
-    std::atomic_bool _freezeRendering;
-    std::atomic_bool _requestShutdown;
-    std::atomic_bool _requestRestart;
-    std::atomic_bool _stepLoop;
-    bool             _isInitialized = false;
-    Kernel* _kernel = nullptr;
-    /// buffer to register all of the memory allocations recorded via
-    /// "MemoryManager_NEW"
-    Str256 _memLogBuffer;
-    /// A list of callback functions that get called when the application instance
-    /// is destroyed
-    vector<DELEGATE<void> > _shutdownCallback;
 
-    /// A list of callbacks to execute on the main thread
-    mutable Mutex _taskLock;
-    vector<DELEGATE<void> > _mainThreadCallbacks;
+    Kernel* _kernel{ nullptr };
+    std::atomic_bool _requestShutdown{ false };
+    std::atomic_bool _requestRestart{ false };
+    std::atomic_bool _stepLoop{ false };
+
+    ErrorCode _errorCode{ ErrorCode::NO_ERR };
+    bool _clearCacheOnExit{ false };
 };
 
 FWD_DECLARE_MANAGED_CLASS(Application);
 
+struct DisplayManager
+{
+    struct OutputDisplayProperties
+    {
+        string _formatName{};
+        vec2<U16> _resolution{ 1u };
+        U8 _bitsPerPixel{ 8u };
+        U8 _maxRefreshRate{ 24u }; //< As returned by SDL_GetPixelFormatName
+    };
+
+    friend class Attorney::DisplayManagerWindowManager;
+    friend class Attorney::DisplayManagerRenderingAPI;
+    friend class Attorney::DisplayManagerApplication;
+
+    static constexpr U8 g_maxDisplayOutputs = 4u;
+
+    using OutputDisplayPropertiesContainer = vector<OutputDisplayProperties>;
+
+    [[nodiscard]] static const OutputDisplayPropertiesContainer& GetDisplayModes( const size_t displayIndex ) noexcept;
+    [[nodiscard]] static U8 ActiveDisplayCount() noexcept;
+    [[nodiscard]] static U8 MaxMSAASamples() noexcept;
+
+private:
+    [[nodiscard]] static void MaxMSAASamples( const U8 maxSampleCount ) noexcept;
+    static void SetActiveDisplayCount( const U8 displayCount );
+    static void RegisterDisplayMode( const U8 displayIndex, const OutputDisplayProperties& mode );
+
+    static void Reset() noexcept;
+
+private:
+    static U8 s_activeDisplayCount;
+    static U8 s_maxMSAASAmples;
+    static std::array<OutputDisplayPropertiesContainer, g_maxDisplayOutputs> s_supportedDisplayModes;
+};
+
+bool operator==( const DisplayManager::OutputDisplayProperties& lhs, const DisplayManager::OutputDisplayProperties& rhs ) noexcept;
+
+namespace Attorney
+{
+    class ApplicationKernel
+    {
+        [[nodiscard]] static ErrorCode SetRenderingAPI( Application& app, const RenderAPI api )
+        {
+            return app.setRenderingAPI(api);
+        }
+
+        friend class Kernel;
+    };
+
+    class DisplayManagerWindowManager
+    {
+        static void SetActiveDisplayCount( const U8 displayCount )
+        {
+            DisplayManager::SetActiveDisplayCount(displayCount);
+        }
+
+        static void RegisterDisplayMode( const U8 displayIndex, const DisplayManager::OutputDisplayProperties& mode )
+        {
+            DisplayManager::RegisterDisplayMode(displayIndex, mode);
+        }
+
+        friend class WindowManager;
+    };
+
+    class DisplayManagerRenderingAPI
+    {
+        static void MaxMSAASamples( const U8 maxSampleCount ) noexcept
+        {
+            DisplayManager::MaxMSAASamples(maxSampleCount);
+        }
+
+        friend class GL_API;
+        friend class VK_API;
+    };
+
+    class DisplayManagerApplication
+    {
+        static void Reset() noexcept
+        {
+            DisplayManager::Reset();
+        }
+
+        friend class Application;
+    };
+};
 };  // namespace Divide
 
 #endif  //_CORE_APPLICATION_H_

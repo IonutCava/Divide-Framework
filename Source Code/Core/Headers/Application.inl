@@ -34,124 +34,80 @@
 
 namespace Divide {
 
-inline const char* getErrorCodeName(const ErrorCode code) noexcept {
-    switch (code) {
-        case ErrorCode::NO_ERR:                   return "No error.";
-        case ErrorCode::PLATFORM_CLOSE_ERROR:     return "Could not deinitialize target platform!";
-        case ErrorCode::PLATFORM_INIT_ERROR:      return "Could not initialize target platform!";
-        case ErrorCode::MISSING_SCENE_DATA:       return "Invalid Scene Data. SceneManager failed to load the specified scene!";
-        case ErrorCode::MISSING_SCENE_LOAD_CALL:  return "The specified scene failed to load all of its data properly!";
-        case ErrorCode::CPU_NOT_SUPPORTED:        return "The current CPU has an insufficient core count and as such, it's not supported!";
-        case ErrorCode::GFX_NOT_SUPPORTED:        return "The specified rendering API is not fully implemented and as such, it's not supported!";
-        case ErrorCode::GFX_NON_SPECIFIED:        return "No rendering API specified before trying to initialize the GFX Device!";
-        case ErrorCode::SFX_NON_SPECIFIED:        return "No audio API specified before trying to initialize the SFX Device!";
-        case ErrorCode::PFX_NON_SPECIFIED:        return "No physx API specified before trying to initialize the PFX Device!";
-        case ErrorCode::WINDOW_INIT_ERROR:        return "Windowing system failed to initialize!";
-        case ErrorCode::SDL_WINDOW_INIT_ERROR:    return "SDL failed to create a valid window!";
-        case ErrorCode::FONT_INIT_ERROR:          return "Font system failed to create a valid context!";
-        case ErrorCode::GLBINGING_INIT_ERROR:     return "GLBinding failed to initialize!";
-        case ErrorCode::GLSL_INIT_ERROR:          return "GLSL pre-init failed!";
-        case ErrorCode::GL_OLD_HARDWARE:          return "Current hardware does not support the minimum Opengl features required or the maximum supported version is too old!"; 
-        case ErrorCode::VK_OLD_HARDWARE:          return "Current hardware does not support the minimum Vulkan features required or the maximum supported version is too old!";
-        case ErrorCode::GFX_OLD_HARDWARE:         return "Current hardware does not support the minimum rendering features required or the maximum supported version is too old!";
-        case ErrorCode::VK_SURFACE_CREATE:        return "Failed to create a suitable Vulkan rendering surface for the current window!";
-        case ErrorCode::VK_DEVICE_CREATE_FAILED:  return "Failed to initialise a suitable Vulkan device!";
-        case ErrorCode::VK_NO_GRAHPICS_QUEUE:     return "Failed to find a suitable graphics queue on the initialised device!";
-        case ErrorCode::SDL_AUDIO_INIT_ERROR:     return "SDL Audio library failed to initialize!";
-        case ErrorCode::SDL_AUDIO_MIX_INIT_ERROR: return "SDL Audio Mixer failed to initialize!";
-        case ErrorCode::FMOD_AUDIO_INIT_ERROR:    return "FMod Audio library failed to initialize!";
-        case ErrorCode::OAL_INIT_ERROR:           return "OpenAL failed to initialize!";
-        case ErrorCode::OCL_INIT_ERROR:           return "OpenCL could not find any compatible devices!";
-        case ErrorCode::PHYSX_INIT_ERROR:         return "The PhysX library failed to initialize!";
-        case ErrorCode::PHYSX_EXTENSION_ERROR:    return "The PhysX library failed to load the required extensions!";
-        case ErrorCode::NO_LANGUAGE_INI:          return "Invalid language file!";
-        case ErrorCode::NOT_ENOUGH_RAM:           return "Insufficient physical RAM available to run the application!";
-        case ErrorCode::WRONG_WORKING_DIRECTORY:  return "Wrong working directory specified! All paths are relative based on the executable's location!";
-        case ErrorCode::EDITOR_INIT_ERROR:        return "Editor failed to load!";
-        case ErrorCode::GUI_INIT_ERROR:           return "GUI failed to initialise!";
-    }
-
-    DIVIDE_UNEXPECTED_CALL();
-    return "Unknown Error!";
+inline bool operator==( const DisplayManager::OutputDisplayProperties& lhs, const DisplayManager::OutputDisplayProperties& rhs ) noexcept
+{
+    return lhs._resolution == rhs._resolution &&
+           lhs._bitsPerPixel == rhs._bitsPerPixel &&
+           lhs._maxRefreshRate == rhs._maxRefreshRate &&
+           lhs._formatName == rhs._formatName;
 }
 
-inline void Application::RequestShutdown() noexcept {
+inline void Application::RequestShutdown(bool clearCache) noexcept
+{
     _requestShutdown = true;
+    _clearCacheOnExit = clearCache;
 }
 
-inline void Application::CancelShutdown() noexcept {
+inline void Application::CancelShutdown() noexcept
+{
     _requestShutdown = false;
 }
 
-inline bool Application::ShutdownRequested() const noexcept {
+inline bool Application::ShutdownRequested() const noexcept
+{
     return _requestShutdown;
 }
 
-inline void Application::RequestRestart() noexcept {
+inline void Application::RequestRestart( bool clearCache ) noexcept
+{
     _requestRestart = true;
+    _clearCacheOnExit = clearCache;
 }
 
-inline void Application::CancelRestart() noexcept {
+inline void Application::CancelRestart() noexcept
+{
     _requestRestart = false;
 }
 
-inline bool Application::RestartRequested() const noexcept {
+inline bool Application::RestartRequested() const noexcept
+{
     return _requestRestart;
 }
 
-inline Kernel& Application::kernel() const noexcept {
-    assert(_kernel != nullptr);
-    return *_kernel;
-}
-
-inline WindowManager& Application::windowManager() noexcept {
+inline WindowManager& Application::windowManager() noexcept
+{
     return _windowManager;
 }
 
-inline const WindowManager& Application::windowManager() const noexcept {
+inline const WindowManager& Application::windowManager() const noexcept
+{
     return _windowManager;
 }
 
-inline void Application::setMemoryLogFile(const Str256& fileName) {
-    _memLogBuffer = fileName;
-}
-
-inline bool Application::mainLoopActive() const noexcept {
-    return _mainLoopActive;
-}
-
-inline void Application::mainLoopActive(const bool state) noexcept {
-    _mainLoopActive = state;
-}
-
-inline bool Application::mainLoopPaused() const noexcept {
-    return _mainLoopPaused;
-}
-
-inline void Application::mainLoopPaused(const bool state) noexcept {
-    _mainLoopPaused = state;
-}
-
-inline bool Application::freezeRendering() const noexcept {
-    return _freezeRendering;
-}
-
-inline void Application::freezeRendering(const bool state) noexcept {
-    _freezeRendering = state;
-}
-
-inline void Application::throwError(const ErrorCode err) noexcept {
-    _errorCode = err;
-}
-
-inline ErrorCode Application::errorCode() const noexcept {
+inline ErrorCode Application::errorCode() const noexcept
+{
     return _errorCode;
 }
 
-inline void Application::registerShutdownCallback(const DELEGATE<void>& cbk) {
-    _shutdownCallback.push_back(cbk);
+inline Time::ApplicationTimer& Application::timer() noexcept
+{
+    return _timer;
 }
 
+inline void Application::mainLoopPaused( const bool state ) noexcept
+{
+    _mainLoopPaused = state;
+}
+
+inline void Application::mainLoopActive( const bool state ) noexcept
+{
+    _mainLoopActive = state;
+}
+
+inline void Application::freezeRendering( const bool state ) noexcept
+{
+    _freezeRendering = state;
+}
 };  // namespace Divide
 
 #endif  //_CORE_APPLICATION_INL_

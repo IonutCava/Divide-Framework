@@ -24,7 +24,7 @@ namespace Divide
     }
 
 
-    bool glLockManager::initLockPoolEntry( BufferLockPoolEntry& entry )
+    bool glLockManager::InitLockPoolEntry( BufferLockPoolEntry& entry )
     {
         if ( entry._ptr == nullptr )
         {

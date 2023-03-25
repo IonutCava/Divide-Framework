@@ -7,7 +7,12 @@
 
 namespace Divide {
 
-ErrorCode OpenAL_API::initAudioAPI([[maybe_unused]] PlatformContext& context) noexcept {
+OpenAL_API::OpenAL_API( PlatformContext& context )
+    : AudioAPIWrapper( "OpenAL", context )
+{
+}
+
+ErrorCode OpenAL_API::initAudioAPI() noexcept {
     // Initialization
     ALCdevice* device = alcOpenDevice(nullptr);  // select the "preferred device"
     if (device) {
@@ -27,10 +32,6 @@ ErrorCode OpenAL_API::initAudioAPI([[maybe_unused]] PlatformContext& context) no
     alGetError();
     return ErrorCode::OAL_INIT_ERROR;
 }
-
-void OpenAL_API::beginFrame() noexcept {}
-
-void OpenAL_API::endFrame() noexcept {}
 
 void OpenAL_API::closeAudioAPI() noexcept {}
 

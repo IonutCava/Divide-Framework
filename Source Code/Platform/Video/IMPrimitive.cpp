@@ -175,10 +175,11 @@ void IMPrimitive::endBatch() noexcept {
     _drawFlags[to_base(NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME)] = !batchData.m_IndexBuffer_Wireframe.empty();
     _drawFlags[to_base(NS_GLIM::GLIM_BUFFER_TYPE::LINES)] = !batchData.m_IndexBuffer_Lines.empty();
     _drawFlags[to_base(NS_GLIM::GLIM_BUFFER_TYPE::POINTS)] = !batchData.m_IndexBuffer_Points.empty();
+    _memCmd._bufferLocks.resize(0);
 
     GenericVertexData::SetBufferParams params{};
-    params._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-    params._bufferParams._updateUsage = BufferUpdateUsage::CPU_R_GPU_W;
+    params._bufferParams._flags._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+    params._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
     params._bufferParams._elementSize = sizeof(NS_GLIM::Glim4ByteData);
 
     GenericVertexData::IndexBuffer idxBuff{};
@@ -193,7 +194,9 @@ void IMPrimitive::endBatch() noexcept {
         params._bufferParams._elementCount = to_U32(batchData.m_PositionData.size());
         params._initialData = { batchData.m_PositionData.data(), batchData.m_PositionData.size() * sizeof(NS_GLIM::Glim4ByteData) };
         params._elementStride = sizeof(NS_GLIM::Glim4ByteData) * 3;
-        _dataBuffer->setBuffer(params);
+        params._bufferParams._flags._usageType = BufferUsageType::VERTEX_BUFFER;
+
+        _memCmd._bufferLocks.emplace_back(_dataBuffer->setBuffer(params));
 
         auto& vertBinding = _basePipelineDescriptor._vertexFormat._vertexBindings.emplace_back();
         vertBinding._bufferBindIndex = params._bindConfig._bindIdx;
@@ -208,7 +211,7 @@ void IMPrimitive::endBatch() noexcept {
         params._bufferParams._elementCount = to_U32(data.m_ArrayData.size());
         params._initialData = { data.m_ArrayData.data(), data.m_ArrayData.size() * sizeof(NS_GLIM::Glim4ByteData) };
         params._elementStride = sizeof(NS_GLIM::Glim4ByteData) * GetSizeFactor(data.m_DataType);
-        _dataBuffer->setBuffer(params);
+        _memCmd._bufferLocks.emplace_back(_dataBuffer->setBuffer(params));
 
         AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat._attributes[index];
         desc._vertexBindingIndex = params._bindConfig._bindIdx;
@@ -247,7 +250,7 @@ void IMPrimitive::endBatch() noexcept {
             } break;
         }
 
-        _dataBuffer->setIndexBuffer(idxBuff);
+        _memCmd._bufferLocks.emplace_back(_dataBuffer->setIndexBuffer(idxBuff));
         _indexCount[i] = idxBuff.count;
         _indexBufferId[i] = idxBuff.id;
         ++idxBuff.id;
@@ -624,12 +627,12 @@ void IMPrimitive::setTexture(const ImageView& texture, const size_t samplerHash)
     _samplerHash = samplerHash;
 }
 
-void IMPrimitive::getCommandBuffer(GFX::CommandBuffer& commandBufferInOut) 
+void IMPrimitive::getCommandBuffer( GFX::CommandBuffer& commandBufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
 {
-    getCommandBuffer(MAT4_IDENTITY, commandBufferInOut);
+    getCommandBuffer(MAT4_IDENTITY, commandBufferInOut, memCmdInOut);
 }
 
-void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuffer& commandBufferInOut)
+void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuffer& commandBufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
 {
     if (!_imInterface->PrepareRender()) {
         return;
@@ -638,11 +641,11 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
     const bool useTexture = _texture.targetType() != TextureType::COUNT;
     if (useTexture )
     {
-        _basePipelineDescriptor._shaderProgramHandle = _context.defaultIMShaderWorld()->handle();
+        _basePipelineDescriptor._shaderProgramHandle = _context.imShaders()->imWorldShader()->handle();
     }
     else
     {
-        _basePipelineDescriptor._shaderProgramHandle = _context.defaultIMShaderWorldNoTexture()->handle();
+        _basePipelineDescriptor._shaderProgramHandle = _context.imShaders()->imWorldShaderNoTexture()->handle();
     }
     DIVIDE_ASSERT(_basePipelineDescriptor._shaderProgramHandle != SHADER_INVALID_HANDLE, "IMPrimitive error: Draw call received without a valid shader defined!");
 
@@ -686,7 +689,14 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
             }
         }
     }
+
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(commandBufferInOut);
+
+    if ( !_memCmd._bufferLocks.empty() )
+    {
+        memCmdInOut._bufferLocks.insert( memCmdInOut._bufferLocks.cend(), _memCmd._bufferLocks.cbegin(), _memCmd._bufferLocks.cend() );
+        _memCmd._bufferLocks.resize(0);
+    }
 }
 
 };

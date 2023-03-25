@@ -63,7 +63,6 @@ class RenderTarget;
 class TerrainChunk;
 class SceneGraphNode;
 class PlatformContext;
-class RenderStateBlock;
 class GenericVertexData;
 enum class RenderStage : U8;
 
@@ -116,6 +115,7 @@ class Vegetation final : public SceneNode {
     void prepareRender(SceneGraphNode* sgn,
                        RenderingComponent& rComp,
                        RenderPackage& pkg,
+                       GFX::MemoryBarrierCommand& postDrawMemCmd,
                        RenderStagePass renderStagePass,
                        const CameraSnapshot& cameraSnapshot,
                        bool refreshData) override;

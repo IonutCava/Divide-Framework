@@ -61,7 +61,7 @@ namespace Divide
                 VkFormat _format{ VK_FORMAT_MAX_ENUM };
                 TextureType _type{ TextureType::COUNT };
                 ImageUsage _usage{ ImageUsage::COUNT };
-
+                bool _resolveTarget{false};
                 [[nodiscard]] size_t getHash() const noexcept override;
 
             } _descriptor;
@@ -87,15 +87,16 @@ namespace Divide
         TextureReadbackData readData( U16 mipLevel, GFXDataFormat desiredFormat ) const noexcept override;
 
         VkImageView getImageView( const CachedImageView::Descriptor& descriptor );
-        void generateMipmaps( VkCommandBuffer cmdBuffer, U16 baseLevel, U16 baseLayer, U16 layerCount );
-        [[nodiscard]] bool transitionLayout( ImageSubRange subRange, ImageUsage newLayout, VkImageMemoryBarrier2& memBarrierOut );
+        void generateMipmaps( VkCommandBuffer cmdBuffer, U16 baseLevel, U16 baseLayer, U16 layerCount, ImageUsage crtUsage);
 
         PROPERTY_R( AllocatedImage_uptr, image, nullptr );
+        PROPERTY_R( AllocatedImage_uptr, resolvedImage, nullptr );
         PROPERTY_R_IW( VkImageType, vkType, VK_IMAGE_TYPE_MAX_ENUM );
         PROPERTY_R_IW( VkFormat, vkFormat, VK_FORMAT_MAX_ENUM );
         PROPERTY_R_IW( VkSampleCountFlagBits, sampleFlagBits, VK_SAMPLE_COUNT_1_BIT );
 
         static [[nodiscard]] VkImageAspectFlags GetAspectFlags( const TextureDescriptor& descriptor ) noexcept;
+
         private:
         void loadDataInternal( const ImageTools::ImageData& imageData ) override;
         void prepareTextureData( U16 width, U16 height, U16 depth, bool emptyAllocation ) override;

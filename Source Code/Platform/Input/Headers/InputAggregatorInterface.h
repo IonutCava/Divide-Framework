@@ -116,10 +116,10 @@ struct JoystickEvent final : InputEvent {
     JoystickElement _element;
 };
 
-struct UTF8Event final : InputEvent {
-    explicit UTF8Event(DisplayWindow* sourceWindow, U8 deviceIndex, const char* text) noexcept;
+struct TextEvent final : InputEvent {
+    explicit TextEvent(DisplayWindow* sourceWindow, U8 deviceIndex, const char* text) noexcept;
 
-    const char* _text = nullptr;
+    Str256 _text{};
 };
 
 struct KeyEvent final : InputEvent {
@@ -131,8 +131,8 @@ struct KeyEvent final : InputEvent {
     bool _isRepeat{ false };
     U16 _modMask{0u};
     //Native data:
-    SDL_Scancode scancode;      /**< SDL physical key code - see ::SDL_Scancode for details */
-    SDL_Keycode sym;            /**< SDL virtual key code - see ::SDL_Keycode for details */
+    SDL_Scancode scancode{};    /**< SDL physical key code - see ::SDL_Scancode for details */
+    SDL_Keycode sym{};          /**< SDL virtual key code - see ::SDL_Keycode for details */
 };
 
 class InputAggregatorInterface {
@@ -155,7 +155,7 @@ class InputAggregatorInterface {
     virtual bool joystickAddRemove(const JoystickEvent &arg) = 0;
     virtual bool joystickRemap(const JoystickEvent &arg) = 0;
 
-    virtual bool onUTF8(const UTF8Event& arg) = 0;
+    virtual bool onTextEvent(const TextEvent& arg) = 0;
 };
 
 };  // namespace Input

@@ -11,8 +11,8 @@ PreRenderOperator::PreRenderOperator(GFXDevice& context, PreRenderBatch& parent,
       _parent(parent),
       _operatorType(operatorType)
 {
-    DisableAll(_screenOnlyDraw._drawMask);
-    SetEnabled(_screenOnlyDraw._drawMask, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0, true);
+    _screenOnlyDraw._drawMask.fill(false);
+    _screenOnlyDraw._drawMask[to_base(RTColourAttachmentSlot::SLOT_0)] = true;
 }
 
 bool PreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[maybe_unused]] const CameraSnapshot& cameraSnapshot, [[maybe_unused]] const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, [[maybe_unused]] GFX::CommandBuffer& bufferInOut)

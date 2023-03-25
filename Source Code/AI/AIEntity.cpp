@@ -117,7 +117,7 @@ Sensor* AIEntity::getSensor(const SensorType type) {
 }
 
 bool AIEntity::addSensor(const SensorType type) {
-    ScopedLock<SharedMutex> w_lock(_updateMutex);
+    LockGuard<SharedMutex> w_lock(_updateMutex);
     Sensor* sensor = nullptr;
     switch (type) {
         case SensorType::AUDIO_SENSOR: {
@@ -143,7 +143,7 @@ bool AIEntity::addSensor(const SensorType type) {
 }
 
 bool AIEntity::setAIProcessor(AIProcessor* processor) {
-    ScopedLock<SharedMutex> w_lock(_updateMutex);
+    LockGuard<SharedMutex> w_lock(_updateMutex);
     MemoryManager::SAFE_UPDATE(_processor, processor);
     if (_processor) {
         _processor->addEntityRef(this);

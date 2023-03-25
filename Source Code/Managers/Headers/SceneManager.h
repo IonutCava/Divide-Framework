@@ -35,10 +35,10 @@
 
 #include "Scenes/Headers/Scene.h"
 
+#include "Core/Headers/FrameListener.h"
 #include "Core/Headers/KernelComponent.h"
 #include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
 
-#include "Rendering/Headers/FrameListener.h"
 #include "Rendering/RenderPass/Headers/RenderPassCuller.h"
 
 namespace Divide
@@ -226,7 +226,7 @@ namespace Divide
         /// Mouse button released: return true if input was consumed
         [[nodiscard]] bool mouseButtonReleased( const Input::MouseButtonEvent& arg ) override;
 
-        [[nodiscard]] bool onUTF8( const Input::UTF8Event& arg ) override;
+        [[nodiscard]] bool onTextEvent( const Input::TextEvent& arg ) override;
 
         [[nodiscard]] bool switchScene( const Str256& name, bool unloadPrevious, bool deferToIdle = true, bool threaded = true );
 
@@ -265,8 +265,8 @@ namespace Divide
         [[nodiscard]] bool frameStarted( const FrameEvent& evt ) override;
         [[nodiscard]] bool frameEnded( const FrameEvent& evt ) override;
 
-        void drawCustomUI( const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut );
-        void debugDraw( GFX::CommandBuffer& bufferInOut );
+        void drawCustomUI( const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
+        void debugDraw( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
         void prepareLightData( RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut );
 
         [[nodiscard]] Camera* playerCamera( bool skipOverride = false ) const noexcept;
@@ -478,14 +478,14 @@ namespace Divide
                 mgr->prepareLightData( stage, cameraSnapshot, memCmdInOut );
             }
 
-            static void debugDraw( Divide::SceneManager* mgr, GFX::CommandBuffer& bufferInOut )
+            static void debugDraw( Divide::SceneManager* mgr, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
             {
-                mgr->debugDraw( bufferInOut );
+                mgr->debugDraw( bufferInOut, memCmdInOut );
             }
 
-            static void drawCustomUI( Divide::SceneManager* mgr, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut )
+            static void drawCustomUI( Divide::SceneManager* mgr, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
             {
-                mgr->drawCustomUI( targetViewport, bufferInOut );
+                mgr->drawCustomUI( targetViewport, bufferInOut, memCmdInOut );
             }
 
             static const Camera* playerCamera( const Divide::SceneManager* mgr ) noexcept

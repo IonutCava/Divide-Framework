@@ -14,6 +14,8 @@ namespace Divide {
         , _device(device)
         , _window(window)
     {
+        const auto& windowDimensions = _window.getDrawableSize();
+        surfaceExtent({ windowDimensions.width, windowDimensions.height } );
     }
 
     VKSwapChain::~VKSwapChain()
@@ -21,232 +23,151 @@ namespace Divide {
         destroy();
     }
     
-    void VKSwapChain::destroy() {
-        const VkDevice device = _device.getVKDevice();
-
+    void VKSwapChain::destroy() 
+    {
         vkb::destroy_swapchain(_swapChain);
+
         _swapChain.swapchain = VK_NULL_HANDLE;
-        //destroy swapchain resources
+
         _swapChain.destroy_image_views(_swapchainImageViews);
         _swapchainImages.clear();
         _swapchainImageViews.clear();
 
-        vkDestroyRenderPass(device, _renderPass, nullptr);
-        for (size_t i = 0u; i < _framebuffers.size(); i++) {
-            vkDestroyFramebuffer(device, _framebuffers[i], nullptr);
-        }
-
-        _framebuffers.clear();
-        if (!_inFlightFences.empty()) {
-            for (U8 i = 0u; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        if (!_inFlightFences.empty())
+        {
+            const VkDevice device = _device.getVKDevice();
+            for (U8 i = 0u; i < MAX_FRAMES_IN_FLIGHT; i++)
+            {
                 vkDestroySemaphore(device, _renderFinishedSemaphores[i], nullptr);
                 vkDestroySemaphore(device, _imageAvailableSemaphores[i], nullptr);
-                vkDestroyFence(device, _inFlightFences[i], nullptr);
+                vkDestroyFence(device,     _inFlightFences[i],           nullptr);
             }
         }
         _imagesInFlight.clear();
     }
 
-    ErrorCode VKSwapChain::create(const bool vSync, const bool adaptiveSync, VkSurfaceKHR targetSurface) {
-        const auto& windowDimensions = _window.getDrawableSize();
-        const VkExtent2D windowExtents{ windowDimensions.width, windowDimensions.height };
+    ErrorCode VKSwapChain::create(const bool vSync, const bool adaptiveSync, VkSurfaceKHR targetSurface)
+    {
+        vkb::SwapchainBuilder swapchainBuilder{ _device.getPhysicalDevice(), _device.getDevice(), targetSurface, _device.getQueueIndex( vkb::QueueType::graphics ), _device.getQueueIndex( vkb::QueueType::present ) };
 
-        const ErrorCode err = createSwapChainInternal(vSync, adaptiveSync, windowExtents, targetSurface);
-        if (err != ErrorCode::NO_ERR) {
-            return err;
-        }
-
-        return createFramebuffersInternal(windowExtents, targetSurface);
-    }
-
-    ErrorCode VKSwapChain::createSwapChainInternal(const bool vSync, const bool adaptiveSync, VkExtent2D windowExtents, VkSurfaceKHR targetSurface) {
-        vkb::SwapchainBuilder swapchainBuilder{ _device.getDevice(), targetSurface };
-        if (_swapChain.swapchain != VK_NULL_HANDLE) {
-            swapchainBuilder.set_old_swapchain(_swapChain);
+        if ( _swapChain.swapchain != VK_NULL_HANDLE )
+        {
+            swapchainBuilder.set_old_swapchain( _swapChain );
         }
 
         // adaptiveSync not supported yet
-        const VkPresentModeKHR presentMode = vSync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR;
-
-        auto vkbSwapchain = swapchainBuilder.use_default_format_selection()
-                                            //use vsync present mode
-                                            .set_desired_present_mode(presentMode)
-                                            .set_desired_extent(windowExtents.width, windowExtents.height)
+        auto vkbSwapchain = swapchainBuilder.set_desired_format( { VK_FORMAT_A2R10G10B10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
+                                            .set_desired_format( { VK_FORMAT_A2B10G10R10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
+                                            .set_desired_format( { VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
+                                            .add_fallback_format( { VK_FORMAT_R8G8B8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
+                                            .set_desired_present_mode( vSync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR )
+                                            .add_fallback_present_mode( VK_PRESENT_MODE_FIFO_KHR )
+                                            .set_desired_extent( surfaceExtent().width, surfaceExtent().height )
                                             .build();
 
 
-        if (!vkbSwapchain) {
-            Console::errorfn(Locale::Get(_ID("ERROR_VK_INIT")), vkbSwapchain.error().message().c_str());
+        if ( !vkbSwapchain )
+        {
+            Console::errorfn( Locale::Get( _ID( "ERROR_VK_INIT" ) ), vkbSwapchain.error().message().c_str() );
             return ErrorCode::VK_OLD_HARDWARE;
         }
 
         destroy();
-        
+
         _swapChain = vkbSwapchain.value();
         _swapchainImages = _swapChain.get_images().value();
         _swapchainImageViews = _swapChain.get_image_views().value();
 
-        return ErrorCode::NO_ERR;
-    }
-
-    ErrorCode VKSwapChain::createFramebuffersInternal(VkExtent2D windowExtents, VkSurfaceKHR targetSurface) {
-        const VkDevice device = _device.getVKDevice();
-
-        if (_swapChain.image_format == VK_FORMAT_UNDEFINED) {
+        if ( _swapChain.image_format == VK_FORMAT_UNDEFINED )
+        {
             return ErrorCode::VK_SURFACE_CREATE;
         }
 
-        // the renderpass will use this color attachment.
-        VkAttachmentDescription color_attachment = {};
-        //the attachment will have the format needed by the swapchain
-        color_attachment.format = _swapChain.image_format;
-        //1 sample, we won't be doing MSAA
-        color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-        // we Clear when this attachment is loaded
-        color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        // we keep the attachment stored when the renderpass ends
-        color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        //we don't care about stencil
-        color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        _imageAvailableSemaphores.resize( MAX_FRAMES_IN_FLIGHT );
+        _renderFinishedSemaphores.resize( MAX_FRAMES_IN_FLIGHT );
+        _inFlightFences.resize( MAX_FRAMES_IN_FLIGHT );
+        _commandBuffers.resize( MAX_FRAMES_IN_FLIGHT );
+        _imagesInFlight.resize( _swapchainImages.size(), VK_NULL_HANDLE );
 
-        //we don't know or care about the starting layout of the attachment
-        color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-        //after the renderpass ends, the image has to be on a layout ready for display
-        color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        const VkSemaphoreCreateInfo semaphoreCreateInfo = vk::semaphoreCreateInfo();
+        const VkFenceCreateInfo fenceCreateInfo = vk::fenceCreateInfo( VK_FENCE_CREATE_SIGNALED_BIT );
 
-        VkAttachmentReference color_attachment_ref = {};
-        //attachment number will index into the pAttachments array in the parent renderpass itself
-        color_attachment_ref.attachment = 0;
-        color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-        //we are going to create 1 subpass, which is the minimum you can do
-        VkSubpassDescription subpass = {};
-        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        subpass.colorAttachmentCount = 1;
-        subpass.pColorAttachments = &color_attachment_ref;
-        
-        VkRenderPassCreateInfo render_pass_info = vk::renderPassCreateInfo();
-
-        VkSubpassDependency subpass_dependecy{};
-        subpass_dependecy.srcSubpass = 0u;
-        subpass_dependecy.dstSubpass = 0u;
-        subpass_dependecy.srcAccessMask = VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
-        subpass_dependecy.dstAccessMask = VK_ACCESS_INDEX_READ_BIT;
-        subpass_dependecy.srcStageMask = VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
-        subpass_dependecy.dstStageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-
-        //connect the color attachment to the info
-        render_pass_info.attachmentCount = 1;
-        render_pass_info.pAttachments = &color_attachment;
-        //connect the subpass to the info
-        render_pass_info.subpassCount = 1;
-        render_pass_info.pSubpasses = &subpass;
-        render_pass_info.dependencyCount = 1;
-        render_pass_info.pDependencies = &subpass_dependecy;
-        VK_CHECK(vkCreateRenderPass(device, &render_pass_info, nullptr, &_renderPass));
-
-        //create the framebuffers for the swapchain images. This will connect the render-pass to the images for rendering
-        VkFramebufferCreateInfo fb_info = vk::framebufferCreateInfo();
-
-        fb_info.renderPass = _renderPass;
-        fb_info.attachmentCount = 1;
-        fb_info.width = windowExtents.width;
-        fb_info.height = windowExtents.height;
-        fb_info.layers = 1;
-
-        //grab how many images we have in the swapchain
-        const size_t swapchain_imagecount = _swapchainImages.size();
-        _framebuffers.resize(swapchain_imagecount);
-
-        //create framebuffers for each of the swapchain image views
-        for (size_t i = 0u; i < swapchain_imagecount; i++) {
-
-            fb_info.pAttachments = &_swapchainImageViews[i];
-            VK_CHECK(vkCreateFramebuffer(device, &fb_info, nullptr, &_framebuffers[i]));
+        const VkDevice device = _device.getVKDevice();
+        for ( U8 i = 0u; i < MAX_FRAMES_IN_FLIGHT; i++ )
+        {
+            VK_CHECK( vkCreateSemaphore( device, &semaphoreCreateInfo, nullptr, &_imageAvailableSemaphores[i] ) );
+            VK_CHECK( vkCreateSemaphore( device, &semaphoreCreateInfo, nullptr, &_renderFinishedSemaphores[i] ) );
+            VK_CHECK( vkCreateFence( device, &fenceCreateInfo, nullptr, &_inFlightFences[i] ) );
         }
 
-        _imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-        _renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-        _inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-        _imagesInFlight.resize(swapchain_imagecount, VK_NULL_HANDLE);
+        //allocate the default command buffer that we will use for rendering
+        const VkCommandBufferAllocateInfo cmdAllocInfo = vk::commandBufferAllocateInfo( _device.graphicsCommandPool(), VK_COMMAND_BUFFER_LEVEL_PRIMARY, MAX_FRAMES_IN_FLIGHT );
+        VK_CHECK( vkAllocateCommandBuffers( device, &cmdAllocInfo, _commandBuffers.data() ) );
 
-        //create synchronization structures
-        //for the semaphores we don't need any flags
-        VkSemaphoreCreateInfo semaphoreCreateInfo = vk::semaphoreCreateInfo();
-
-        //we want to create the fence with the Create Signaled flag, so we can wait on it before using it on a GPU command (for the first frame)
-        VkFenceCreateInfo fenceCreateInfo = vk::fenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
-
-        for (U8 i = 0u; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &_imageAvailableSemaphores[i]));
-            VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &_renderFinishedSemaphores[i]));
-            VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &_inFlightFences[i]));
-        }
+        const auto& windowDimensions = _window.getDrawableSize();
+        surfaceExtent( VkExtent2D{ windowDimensions.width, windowDimensions.height } );
 
         return ErrorCode::NO_ERR;
     }
 
-    VkResult VKSwapChain::beginFrame() {
+    VkResult VKSwapChain::beginFrame()
+    {
         //wait until the GPU has finished rendering the last frame.
-        VK_CHECK(vkWaitForFences(_device.getVKDevice(),
-                                 1,
-                                 &_inFlightFences[_currentFrameIdx],
-                                 VK_TRUE,
-                                 U64_MAX));
+        VK_CHECK(vkWaitForFences(_device.getVKDevice(), 1, &_inFlightFences[_currentFrameIdx], VK_TRUE, U64_MAX));
 
         //request image from the swapchain, one second timeout
-        return vkAcquireNextImageKHR(_device.getVKDevice(),
-                                     _swapChain.swapchain,
-                                     U64_MAX,
-                                     _imageAvailableSemaphores[_currentFrameIdx],
-                                     nullptr,
-                                     &_swapchainImageIndex);
+        VkResult ret = vkAcquireNextImageKHR(_device.getVKDevice(), _swapChain.swapchain, U64_MAX, _imageAvailableSemaphores[_currentFrameIdx], nullptr, &_swapchainImageIndex);
+
+        if ( ret == VK_SUCCESS )
+        {
+            //begin the command buffer recording. We will use this command buffer exactly once, so we want to let Vulkan know that
+            VkCommandBufferBeginInfo cmdBeginInfo = vk::commandBufferBeginInfo( VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT );
+            VK_CHECK( vkBeginCommandBuffer( _commandBuffers[_currentFrameIdx], &cmdBeginInfo ) );
+        }
+
+        return ret;
     }
 
-    VkResult VKSwapChain::endFrame(vkb::QueueType queue, VkCommandBuffer& cmdBuffer) {
-        //prepare the submission to the queue.
-        //we want to wait on the _presentSemaphore, as that semaphore is signaled when the swapchain is ready
-        //we will signal the _renderSemaphore, to signal that rendering has finished
+    VkResult VKSwapChain::endFrame( vkb::QueueType queue ) 
+    {
+        // prepare the submission to the queue.
+        // we want to wait on the _presentSemaphore, as that semaphore is signaled when the swapchain is ready
+        // we will signal the _renderSemaphore, to signal that rendering has finished
 
-        if (_imagesInFlight[_swapchainImageIndex] != VK_NULL_HANDLE) {
-            vkWaitForFences(_device.getVKDevice(),
-                            1,
-                            &_imagesInFlight[_swapchainImageIndex],
-                            VK_TRUE,
-                            U64_MAX);
+        VK_CHECK( vkEndCommandBuffer( _commandBuffers[_currentFrameIdx] ) );
+
+        if (_imagesInFlight[_swapchainImageIndex] != VK_NULL_HANDLE)
+        {
+            vkWaitForFences(_device.getVKDevice(), 1, &_imagesInFlight[_swapchainImageIndex], VK_TRUE, U64_MAX);
         }
+
         _imagesInFlight[_swapchainImageIndex] = _inFlightFences[_currentFrameIdx];
 
+        constexpr VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+
         VkSubmitInfo submit = vk::submitInfo();
-
-        VkSemaphore waitSemaphores[] = { _imageAvailableSemaphores[_currentFrameIdx] };
-        const VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-
-        submit.waitSemaphoreCount = 1;
-        submit.pWaitSemaphores = waitSemaphores;
         submit.pWaitDstStageMask = waitStages;
-
-        VkSemaphore signalSemaphores[] = { _renderFinishedSemaphores[_currentFrameIdx] };
+        submit.waitSemaphoreCount = 1;
+        submit.pWaitSemaphores = &_imageAvailableSemaphores[_currentFrameIdx];
         submit.signalSemaphoreCount = 1;
-        submit.pSignalSemaphores = signalSemaphores;
-
+        submit.pSignalSemaphores = &_renderFinishedSemaphores[_currentFrameIdx];
         submit.commandBufferCount = 1;
-        submit.pCommandBuffers = &cmdBuffer;
+        submit.pCommandBuffers = &_commandBuffers[_currentFrameIdx];
 
         VK_CHECK(vkResetFences(_device.getVKDevice(), 1, &_inFlightFences[_currentFrameIdx]));
-        // submit command buffer to the queue and execute it.
-        // _renderFence will now block until the graphic commands finish execution
+
+        // submit command buffer to the queue and execute it. _renderFence will now block until the graphic commands finish execution
         _device.submitToQueue(queue, submit, _inFlightFences[_currentFrameIdx]);
+
         // this will put the image we just rendered into the visible window.
-        // we want to wait on the _renderSemaphore for that,
-        // as it's necessary that drawing commands have finished before the image is displayed to the user
+        // we want to wait on the _renderSemaphore for that, as it's necessary that drawing commands have finished before the image is displayed to the user
+
         VkPresentInfoKHR presentInfo = {};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.pSwapchains = &_swapChain.swapchain;
         presentInfo.swapchainCount = 1;
-        presentInfo.pWaitSemaphores = signalSemaphores;
+        presentInfo.pWaitSemaphores = &_renderFinishedSemaphores[_currentFrameIdx];
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pImageIndices = &_swapchainImageIndex;
 
@@ -254,19 +175,28 @@ namespace Divide {
         return _device.queuePresent(queue, presentInfo);
     }
 
-    vkb::Swapchain VKSwapChain::getSwapChain() const noexcept {
+    vkb::Swapchain& VKSwapChain::getSwapChain() noexcept
+    {
         return _swapChain;
     }
-    
-    VkRenderPass VKSwapChain::getRenderPass() const noexcept {
-        return _renderPass;
+
+    VkImage VKSwapChain::getCurrentImage() const noexcept
+    {
+        return _swapchainImages[_swapchainImageIndex];
     }
 
-    VkFramebuffer VKSwapChain::getCurrentFrameBuffer() const noexcept {
-        return _framebuffers[_swapchainImageIndex];
+    VkImageView VKSwapChain::getCurrentImageView() const noexcept
+    {
+        return _swapchainImageViews[_swapchainImageIndex];
     }
 
-    VkFence VKSwapChain::getCurrentFence() const noexcept {
+    VkCommandBuffer VKSwapChain::getCurrentCommandBuffer() const noexcept
+    {
+        return _commandBuffers[_currentFrameIdx];
+    }
+
+    VkFence VKSwapChain::getCurrentFence() const noexcept
+    {
         return _inFlightFences[_currentFrameIdx];
     }
 }; //namespace Divide

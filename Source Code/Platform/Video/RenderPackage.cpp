@@ -13,6 +13,7 @@ void Clear(RenderPackage& pkg) noexcept {
     pkg.pipelineCmd(GFX::BindPipelineCommand{});
     pkg.descriptorSetCmd(GFX::BindShaderResourcesCommand{});
     pkg.pushConstantsCmd(GFX::SendPushConstantsCommand{});
+
     if ( pkg._additionalCommands != nullptr )
     {
         pkg._additionalCommands->clear( false );

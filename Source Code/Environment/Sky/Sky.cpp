@@ -687,23 +687,11 @@ bool Sky::load()
         return shaderDescriptor;
     } );
 
-    skyMat->computeRenderStateCBK( []( [[maybe_unused]] Material* material, const RenderStagePass stagePass )
+    skyMat->computeRenderStateCBK( []( [[maybe_unused]] Material* material, const RenderStagePass stagePass, RenderStateBlock& blockInOut)
     {
         const bool planarReflection = stagePass._stage == RenderStage::REFLECTION && stagePass._variant == static_cast<RenderStagePass::VariantType>(ReflectorType::PLANAR);
-
-        RenderStateBlock skyboxRenderState{};
-        skyboxRenderState.setCullMode( planarReflection ? CullMode::BACK : CullMode::FRONT );
-        skyboxRenderState.setZFunc( IsDepthPass( stagePass ) ? ComparisonFunction::LEQUAL : ComparisonFunction::EQUAL );
-        if ( IsShadowPass( stagePass ) )
-        {
-            skyboxRenderState.setColourWrites( true, true, false, false );
-        }
-        else if ( IsDepthPrePass( stagePass ) && stagePass._stage != RenderStage::DISPLAY )
-        {
-            skyboxRenderState.setColourWrites( false, false, false, false );
-        }
-
-        return skyboxRenderState.getHash();
+        blockInOut.setCullMode( planarReflection ? CullMode::BACK : CullMode::FRONT );
+        blockInOut.setZFunc( IsDepthPass( stagePass ) ? ComparisonFunction::LEQUAL : ComparisonFunction::EQUAL );
     } );
 
     _weatherTex->waitForReady();
@@ -883,13 +871,14 @@ void Sky::setSkyShaderData( const U32 rayCount, PushConstants& constantsInOut )
 void Sky::prepareRender( SceneGraphNode* sgn,
                          RenderingComponent& rComp,
                          RenderPackage& pkg,
+                         GFX::MemoryBarrierCommand& postDrawMemCmd,
                          const RenderStagePass renderStagePass,
                          const CameraSnapshot& cameraSnapshot,
                          const bool refreshData )
 {
 
     setSkyShaderData( renderStagePass._stage == RenderStage::DISPLAY || renderStagePass._stage == RenderStage::NODE_PREVIEW ? 16 : 8, pkg.pushConstantsCmd()._constants );
-    SceneNode::prepareRender( sgn, rComp, pkg, renderStagePass, cameraSnapshot, refreshData );
+    SceneNode::prepareRender( sgn, rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData );
 }
 
 void Sky::buildDrawCommands( SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut )

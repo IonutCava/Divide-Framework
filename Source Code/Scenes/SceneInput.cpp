@@ -317,8 +317,13 @@ namespace Divide
         return false;
     }
 
-    bool SceneInput::onUTF8( [[maybe_unused]] const Input::UTF8Event& arg )
+    bool SceneInput::onTextEvent( [[maybe_unused]] const Input::TextEvent& arg )
     {
+        if ( g_recordInput )
+        {
+           NOP();
+        }
+
         return false;
     }
 

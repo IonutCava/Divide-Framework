@@ -91,7 +91,7 @@ namespace Divide
     void GUI::onUnloadScene( Scene* const scene )
     {
         assert( scene != nullptr );
-        ScopedLock<SharedMutex> w_lock( _guiStackLock );
+        LockGuard<SharedMutex> w_lock( _guiStackLock );
         const GUIMapPerScene::const_iterator it = _guiStack.find( scene->getGUID() );
         if ( it != std::cend( _guiStack ) )
         {
@@ -164,7 +164,6 @@ namespace Divide
             ceguiView._srcTexture._ceguiTex = &_ceguiRenderTextureTarget->getTexture();
             ceguiView._subRange._layerRange = { 0u, 1u };
             ceguiView._subRange._mipLevels = { 0u, U16_MAX };
-            ceguiView._usage = ImageUsage::SHADER_READ;
             ceguiView._descriptor._baseFormat = GFXImageFormat::RGBA;
             ceguiView._descriptor._dataType = GFXDataFormat::UNSIGNED_BYTE;
             ceguiView._descriptor._msaaSamples = 0u;
@@ -333,7 +332,7 @@ namespace Divide
             g_assertMsgBox = nullptr;
 
             {
-                ScopedLock<SharedMutex> w_lock( _guiStackLock );
+                LockGuard<SharedMutex> w_lock( _guiStackLock );
                 assert( _guiStack.empty() );
                 for ( U8 i = 0; i < to_base( GUIType::COUNT ); ++i )
                 {
@@ -480,7 +479,7 @@ namespace Divide
         return _ceguiInput.joystickRemap( arg );
     }
 
-    bool GUI::onUTF8( [[maybe_unused]] const Input::UTF8Event& arg ) noexcept
+    bool GUI::onTextEvent( [[maybe_unused]] const Input::TextEvent& arg ) noexcept
     {
         return false;
     }

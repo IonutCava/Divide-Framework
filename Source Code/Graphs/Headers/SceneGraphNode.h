@@ -45,6 +45,11 @@
 namespace Divide
 {
 
+    namespace GFX
+    {
+        struct MemoryBarrierCommand;
+    };
+
     class SceneGraph;
     class SceneState;
     class PropertyWindow;
@@ -279,6 +284,7 @@ namespace Divide
         /// Called after preRender and after we rebuild our command buffers. Useful for modifying the command buffer that's going to be used for this RenderStagePass
         void prepareRender( RenderingComponent& rComp,
                             RenderPackage& pkg,
+                            GFX::MemoryBarrierCommand& postDrawMemCmd,
                             const RenderStagePass& renderStagePass,
                             const CameraSnapshot& cameraSnapshot,
                             bool refreshData );
@@ -420,9 +426,9 @@ namespace Divide
 
         class SceneGraphNodeComponent
         {
-            static void prepareRender( SceneGraphNode* node, RenderingComponent& rComp, RenderPackage& pkg, const CameraSnapshot& cameraSnapshot, const RenderStagePass& renderStagePass, const bool refreshData )
+            static void prepareRender( SceneGraphNode* node, RenderingComponent& rComp, RenderPackage& pkg, GFX::MemoryBarrierCommand& postDrawMemCmd, const CameraSnapshot& cameraSnapshot, const RenderStagePass& renderStagePass, const bool refreshData )
             {
-                node->prepareRender( rComp, pkg, renderStagePass, cameraSnapshot, refreshData );
+                node->prepareRender( rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData );
             }
 
             friend class Divide::BoundsComponent;

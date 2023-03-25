@@ -75,7 +75,7 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
         blurDepthMapShader.waitForReady(true);
         blurDepthMapShader.propertyDescriptor(shaderDescriptor);
 
-        _blurDepthMapShader = CreateResource<ShaderProgram>(context.parent().resourceCache(), blurDepthMapShader);
+        _blurDepthMapShader = CreateResource<ShaderProgram>(context.context().kernel().resourceCache(), blurDepthMapShader);
         _blurDepthMapShader->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*)
         {
             PipelineDescriptor pipelineDescriptor = {};
@@ -205,13 +205,15 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
     params._target = _drawBufferDepth._targetID;
     params._passName = "SingleShadowMap";
     params._maxLoD = -1;
-    params._clearDescriptorMainPass._clearDepth = true;
-    params._clearDescriptorMainPass._clearColourDescriptors[0] = { DefaultColours::WHITE, RTColourAttachmentSlot::SLOT_0 };
+    params._refreshLightData = false;
+    params._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
+    params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
+    params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Single Shadow Pass Light: [ %d ]", lightIndex).c_str(), lightIndex));
     GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = false;
 
-    _context.parent().renderPassManager()->doCustomPass(shadowCameras[0], params, bufferInOut, memCmdInOut);
+    _context.context().kernel().renderPassManager()->doCustomPass(shadowCameras[0], params, bufferInOut, memCmdInOut);
 
     postRender(spotLight, bufferInOut);
 
@@ -223,10 +225,9 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-    const RenderTargetHandle& handle = ShadowMap::getShadowMap(_type);
-
+    const RenderTargetHandle& handle = ShadowMap::getShadowMap( _type );
     const RenderTarget* shadowMapRT = handle._rt;
-    const auto& shadowAtt = shadowMapRT->getAttachment(RTAttachmentType::COLOUR);
+    const auto& shadowAtt = shadowMapRT->getAttachment( RTAttachmentType::COLOUR );
 
     const U16 layerOffset = light.getShadowArrayOffset();
     constexpr I32 layerCount = 1;
@@ -234,10 +235,16 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
     GFX::BlitRenderTargetCommand blitRenderTargetCommand = {};
     blitRenderTargetCommand._source = _drawBufferDepth._targetID;
     blitRenderTargetCommand._destination = handle._targetID;
-    blitRenderTargetCommand._params._blitColours[0]._input._index = 0u;
-    blitRenderTargetCommand._params._blitColours[0]._input._layer = 0u;
-    blitRenderTargetCommand._params._blitColours[0]._output._index = 0u;
-    blitRenderTargetCommand._params._blitColours[0]._output._index = layerOffset;
+    blitRenderTargetCommand._params.emplace_back( RTBlitEntry{
+        ._input = {
+            ._layerOffset = 0u,
+            ._index = 0u
+        },
+        ._output = {
+            ._layerOffset = layerOffset,
+            ._index = 0u
+        }
+                                                  } );
     GFX::EnqueueCommand(bufferInOut, blitRenderTargetCommand);
 
 
@@ -245,10 +252,12 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
     if (g_shadowSettings.spot.enableBlurring)
     {
         GFX::BeginRenderPassCommand beginRenderPassCmd{};
+        beginRenderPassCmd._descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
+        beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::WHITE, true };
 
         // Blur horizontally
         beginRenderPassCmd._target = _blurBuffer._targetID;
-        beginRenderPassCmd._name = "DO_CSM_BLUR_PASS_HORIZONTAL";
+        beginRenderPassCmd._name = "DO_SM_BLUR_PASS_HORIZONTAL";
 
         GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
@@ -262,7 +271,7 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
 
         _shaderConstants.data[0]._vec[1].x = 0.f;
         _shaderConstants.data[0]._vec[1].y = to_F32( layerCount );
-        _shaderConstants.data[0]._vec[1].z = to_F32(layerOffset);
+        _shaderConstants.data[0]._vec[1].z = to_F32( layerOffset );
         _shaderConstants.data[0]._vec[1].w = 0.f;
 
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set( _shaderConstants );
@@ -280,7 +289,7 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
 
         beginRenderPassCmd._target = handle._targetID;
         beginRenderPassCmd._descriptor = {};
-        beginRenderPassCmd._name = "DO_CSM_BLUR_PASS_VERTICAL";
+        beginRenderPassCmd._name = "DO_SM_BLUR_PASS_VERTICAL";
         GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
         _shaderConstants.data[0]._vec[1].x = 1.f;

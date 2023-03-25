@@ -67,7 +67,7 @@ namespace Divide
             blurDepthMapShader.waitForReady( true );
             blurDepthMapShader.propertyDescriptor( shaderDescriptor );
 
-            _blurDepthMapShader = CreateResource<ShaderProgram>( context.parent().resourceCache(), blurDepthMapShader );
+            _blurDepthMapShader = CreateResource<ShaderProgram>( context.context().kernel().resourceCache(), blurDepthMapShader );
             _blurDepthMapShader->addStateCallback( ResourceState::RES_LOADED, [this]( CachedResource* )
                                                    {
                                                        PipelineDescriptor pipelineDescriptor = {};
@@ -380,13 +380,16 @@ namespace Divide
         params._stagePass = { RenderStage::SHADOW, RenderPassType::COUNT, lightIndex, static_cast<RenderStagePass::VariantType>(light.getLightType()) };
         params._target = _drawBufferDepth._targetID;
         params._maxLoD = -1;
-        params._layerParams._colourLayers[0] = 0u;
-        params._clearDescriptorMainPass._clearDepth = true;
-        params._clearDescriptorMainPass._clearColourDescriptors[0] = { DefaultColours::WHITE, RTColourAttachmentSlot::SLOT_0 };
+        params._refreshLightData = false;
+
+        params._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX]._enabled = true;
+        params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::WHITE, true };
+
+        params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
         GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand( Util::StringFormat( "Cascaded Shadow Pass Light: [ %d ]", lightIndex ).c_str(), lightIndex ) );
 
-        RenderPassManager* rpm = _context.parent().renderPassManager();
+        RenderPassManager* rpm = _context.context().kernel().renderPassManager();
 
         constexpr F32 minExtentsFactors[]
         {
@@ -399,8 +402,8 @@ namespace Divide
         GFX::EnqueueCommand<GFX::SetClippingStateCommand>( bufferInOut )->_negativeOneToOneDepth = true; //Ortho camera
         for ( I8 i = numSplits - 1; i >= 0 && i < numSplits; i-- )
         {
-            params._layerParams._colourLayers[0] = i;
-            params._layerParams._depthLayer = i;
+            params._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX] = i;
+            params._targetDescriptorMainPass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )] = i;
 
             params._passName = Util::StringFormat( "CSM_PASS_%d", i ).c_str();
             params._stagePass._pass = static_cast<RenderStagePass::PassIndex>(i);
@@ -434,28 +437,32 @@ namespace Divide
         blitRenderTargetCommand->_destination = rtHandle._targetID;
         for ( U8 i = 0u; i < light.csmSplitCount(); ++i )
         {
-            auto& params = blitRenderTargetCommand->_params._blitColours[i];
-            params._input._index = 0u;
-            params._input._layer = i;
-            params._output._index = 0u;
-            params._output._layer = to_U16( layerOffset + i );
+            blitRenderTargetCommand->_params.emplace_back(RTBlitEntry
+            {
+                ._input = {
+                    ._layerOffset = i,
+                    ._index = 0u
+                },
+                ._output = {
+                    ._layerOffset = to_U16( layerOffset + i ),
+                    ._index = 0u
+                }
+            });
         }
 
         // Now we can either blur our target or just skip to mipmap computation
         if ( g_shadowSettings.csm.enableBlurring )
         {
-            GFX::BeginRenderPassCommand beginRenderPassHorizontalCmd{};
-            GFX::BeginRenderPassCommand beginRenderPassVerticalCmd{};
-
-            beginRenderPassHorizontalCmd._target = _blurBuffer._targetID;
-            beginRenderPassHorizontalCmd._name = "DO_CSM_BLUR_PASS_HORIZONTAL";
-            beginRenderPassVerticalCmd._target = rtHandle._targetID;
-            beginRenderPassVerticalCmd._name = "DO_CSM_BLUR_PASS_VERTICAL";
+            GFX::BeginRenderPassCommand beginRenderPassCmd{};
+            beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::WHITE, true };
+            beginRenderPassCmd._descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
             // Blur horizontally
             const auto& shadowAtt = rtHandle._rt->getAttachment( RTAttachmentType::COLOUR );
 
-            GFX::EnqueueCommand( bufferInOut, beginRenderPassHorizontalCmd );
+            beginRenderPassCmd._target = _blurBuffer._targetID;
+            beginRenderPassCmd._name = "DO_CSM_BLUR_PASS_HORIZONTAL";
+            GFX::EnqueueCommand( bufferInOut, beginRenderPassCmd );
 
             GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _blurPipeline;
             {
@@ -485,7 +492,9 @@ namespace Divide
                 Set( binding._data, blurAtt->texture()->getView(), blurAtt->descriptor()._samplerHash );
             }
 
-            GFX::EnqueueCommand( bufferInOut, beginRenderPassVerticalCmd );
+            beginRenderPassCmd._target = rtHandle._targetID;
+            beginRenderPassCmd._name = "DO_CSM_BLUR_PASS_VERTICAL";
+            GFX::EnqueueCommand( bufferInOut, beginRenderPassCmd );
 
             _shaderConstants.data[0]._vec[1].x = 1.f;
             _shaderConstants.data[0]._vec[1].y = to_F32( layerCount );

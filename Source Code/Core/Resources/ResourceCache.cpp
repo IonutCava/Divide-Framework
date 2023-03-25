@@ -35,7 +35,7 @@ bool ResourceLoadLock::IsLoading(const size_t hash) {
 
 bool ResourceLoadLock::SetLoading(const size_t hash) {
     if (!IsLoading(hash)) {
-        ScopedLock<SharedMutex> w_lock(g_hashLock);
+        LockGuard<SharedMutex> w_lock(g_hashLock);
         //Check again
         if (g_loadingHashes.find(hash) == std::cend(g_loadingHashes)) {
             g_loadingHashes.insert(hash);
@@ -46,7 +46,7 @@ bool ResourceLoadLock::SetLoading(const size_t hash) {
 }
 
 bool ResourceLoadLock::SetLoadingFinished(const size_t hash) {
-    ScopedLock<SharedMutex> w_lock(g_hashLock);
+    LockGuard<SharedMutex> w_lock(g_hashLock);
     const size_t prevSize = g_loadingHashes.size();
     g_loadingHashes.erase(hash);
     return prevSize > g_loadingHashes.size();
@@ -91,7 +91,7 @@ void ResourceCache::printContents() const {
 void ResourceCache::clear() {
     Console::printfn(Locale::Get(_ID("STOP_RESOURCE_CACHE")));
 
-    ScopedLock<SharedMutex> w_lock(_creationMutex);
+    LockGuard<SharedMutex> w_lock(_creationMutex);
     for (ResourceMap::iterator it = std::begin(_resDB); it != std::end(_resDB); ++it) {
         assert(!it->second.expired());
 
@@ -111,7 +111,7 @@ void ResourceCache::add(const CachedResource_wptr& resource, const bool overwrit
 
     Console::printfn(Locale::Get(_ID("RESOURCE_CACHE_ADD")), res->resourceName().c_str(), res->getResourceTypeName(), res->getGUID(), hash);
 
-    ScopedLock<SharedMutex> w_lock(_creationMutex);
+    LockGuard<SharedMutex> w_lock(_creationMutex);
     const auto ret = _resDB.emplace(hash, res);
     if (!ret.second && overwriteEntry) {
          _resDB[hash] = res;
@@ -158,7 +158,7 @@ void ResourceCache::remove(CachedResource* resource) {
     if (resDBEmpty) {
         Console::errorfn(Locale::Get(_ID("RESOURCE_CACHE_REMOVE_NO_DB")), name.c_str());
     } else {
-        ScopedLock<SharedMutex> w_lock(_creationMutex);
+        LockGuard<SharedMutex> w_lock(_creationMutex);
         _resDB.erase(_resDB.find(resourceHash));
     }
     resource->setState(ResourceState::RES_UNKNOWN);

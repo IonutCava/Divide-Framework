@@ -54,8 +54,8 @@ namespace Divide
 
         context.paramHandler().setParam<bool>( _ID( "postProcessing.enableVignette" ), false );
 
-        DisableAll( _postFXTarget._drawMask );
-        SetEnabled( _postFXTarget._drawMask, RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO, true );
+        _postFXTarget._drawMask.fill(false);
+        _postFXTarget._drawMask[to_base( GFXDevice::ScreenTargets::ALBEDO )] = true;
 
         Console::printfn( Locale::Get( _ID( "START_POST_FX" ) ) );
 
@@ -175,6 +175,7 @@ namespace Divide
         beginRenderPassCmd._target = RenderTargetNames::SCREEN;
         beginRenderPassCmd._descriptor = _postFXTarget;
         beginRenderPassCmd._name = "DO_POSTFX_PASS";
+        beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { VECTOR4_ZERO, true };
         GFX::EnqueueCommand( bufferInOut, beginRenderPassCmd );
         GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ _drawPipeline } );
 

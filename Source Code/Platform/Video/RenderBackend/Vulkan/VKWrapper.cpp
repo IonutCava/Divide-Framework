@@ -5,6 +5,7 @@
 #include "Core/Headers/Application.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Headers/Kernel.h"
 
 #include "Utility/Headers/Localization.h"
 
@@ -29,6 +30,8 @@
 #define VMA_IMPLEMENTATION
 #include "Headers/vkMemAllocatorInclude.h"
 
+#include "Platform/Video/Headers/fontstash.h"
+
 namespace
 {
     inline VKAPI_ATTR VkBool32 VKAPI_CALL divide_debug_callback( VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -36,6 +39,8 @@ namespace
                                                                  const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
                                                                  void* )
     {
+
+        using namespace Divide;
 
         const auto to_string_message_severity = []( VkDebugUtilsMessageSeverityFlagBitsEXT s ) -> const char*
         {
@@ -49,28 +54,69 @@ namespace
             }
         };
 
-        const auto to_string_message_type = []( VkDebugUtilsMessageTypeFlagsEXT s ) -> const char*
+        const auto to_string_message_type = []( VkDebugUtilsMessageTypeFlagsEXT s )
         {
-            if ( s == VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT ) return "Address Binding";
-            if ( s == 7 ) return "General | Validation | Performance";
-            if ( s == 6 ) return "Validation | Performance";
-            if ( s == 5 ) return "General | Performance";
-            if ( s == VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT ) return "Performance";
-            if ( s == 3 ) return "General | Validation";
-            if ( s == VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT ) return "Validation";
-            if ( s == VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT ) return "General";
-            return "Unknown";
+            Str64 ret{};
+            if ( s & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT )
+            {
+                ret.append("[General]");
+            }
+            if ( s & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT )
+            {
+                ret.append( "[Validation]" );
+            }
+            if ( s & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT )
+            {
+                ret.append( "[Performance]" );
+            }
+            if ( s & VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT )
+            {
+                ret.append( "[Address Binding]" );
+            }
+            if ( ret.empty() )
+            {
+                ret.append("[Unknown]");
+            }
+
+            return ret;
         };
 
-        Divide::Console::errorfn( "[%s: %s]\n%s\n",
-                                  to_string_message_severity( messageSeverity ),
-                                  to_string_message_type( messageType ),
-                                  pCallbackData->pMessage );
-
-        if ( messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT )
+        if ( pCallbackData->messageIdNumber == -2111305990 || //UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension-debugging
+             pCallbackData->messageIdNumber == -101606015  || //UNASSIGNED-BestPractices-vkCreateDevice-specialuse-extension-d3demulation
+             pCallbackData->messageIdNumber == -1882996427)   //UNASSIGNED-BestPractices-vkCreateDevice-specialuse-extension-glemulation
         {
-            Divide::DIVIDE_UNEXPECTED_CALL();
+            return VK_FALSE;
         }
+
+        const string outputError = Util::StringFormat("[ %s ] %s : %s\n",
+                                                      to_string_message_severity( messageSeverity ),
+                                                      to_string_message_type( messageType ).c_str(),
+                                                      pCallbackData->pMessage );
+
+        const bool isConsoleImmediate = Console::IsFlagSet( Console::Flags::PRINT_IMMEDIATE );
+        const bool severityDecoration = Console::IsFlagSet( Console::Flags::DECORATE_SEVERITY );
+
+        Console::ToggleFlag( Console::Flags::PRINT_IMMEDIATE, true );
+        Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY, false );
+
+        if ( messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT ||
+             messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT )
+        {
+            Console::printfn( outputError.c_str() );
+        }
+        else if ( messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT )
+        {
+            Console::warnfn( outputError.c_str() );
+        }
+        else
+        {
+            Console::errorfn( outputError.c_str() );
+            DIVIDE_ASSERT( !VK_API::GetStateTracker()._assertOnAPIError );
+        }
+
+        Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY, severityDecoration );
+        Console::ToggleFlag( Console::Flags::PRINT_IMMEDIATE, isConsoleImmediate );
+
         return VK_FALSE; // Applications must return false here
     }
 }
@@ -89,10 +135,10 @@ namespace Divide
         [[nodiscard]] FORCE_INLINE bool IsTriangles( const PrimitiveTopology topology )
         {
             return topology == PrimitiveTopology::TRIANGLES ||
-                topology == PrimitiveTopology::TRIANGLE_STRIP ||
-                topology == PrimitiveTopology::TRIANGLE_FAN ||
-                topology == PrimitiveTopology::TRIANGLES_ADJACENCY ||
-                topology == PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY;
+                   topology == PrimitiveTopology::TRIANGLE_STRIP ||
+                   topology == PrimitiveTopology::TRIANGLE_FAN ||
+                   topology == PrimitiveTopology::TRIANGLES_ADJACENCY ||
+                   topology == PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY;
         }
 
         [[nodiscard]] size_t GetHash( const VkPipelineRenderingCreateInfo& info ) noexcept
@@ -166,6 +212,8 @@ namespace Divide
     constexpr U32 VK_VENDOR_ID_INTEL = 0x8086;
 
     bool VK_API::s_hasDebugMarkerSupport = false;
+    bool VK_API::s_hasValidationFeaturesSupport = false;
+
     VKDeletionQueue VK_API::s_transientDeleteQueue;
     VKDeletionQueue VK_API::s_deviceDeleteQueue;
     VKTransferQueue VK_API::s_transferQueue;
@@ -201,7 +249,7 @@ namespace Divide
         return newPipeline;
     }
 
-    VkPipeline PipelineBuilder::build_graphics_pipeline( VkDevice device, VkPipelineCache pipelineCache )
+    VkPipeline PipelineBuilder::build_graphics_pipeline( VkDevice device, VkPipelineCache pipelineCache)
     {
         //make viewport state from our stored viewport and scissor.
         //at the moment we won't support multiple viewports or scissors
@@ -252,14 +300,7 @@ namespace Divide
         pipelineInfo.pDepthStencilState = &_depthStencil;
         pipelineInfo.pTessellationState = &_tessellation;
         pipelineInfo.subpass = 0;
-        if ( VK_API::GetStateTracker()._pipelineRenderInfo._vkInfo.colorAttachmentCount > 0u )
-        {
-            pipelineInfo.pNext = &VK_API::GetStateTracker()._pipelineRenderInfo._vkInfo;
-        }
-        else
-        {
-            pipelineInfo.renderPass = VK_API::GetStateTracker()._swapChain->getRenderPass();
-        }
+        pipelineInfo.pNext = &VK_API::GetStateTracker()._pipelineRenderInfo;
 
         //it's easy to error out on create graphics pipeline, so we handle it a bit better than the common VK_CHECK case
         VkPipeline newPipeline;
@@ -274,13 +315,13 @@ namespace Divide
 
     void VKDeletionQueue::push( DELEGATE<void, VkDevice>&& function )
     {
-        ScopedLock<Mutex> w_lock( _deletionLock );
+        LockGuard<Mutex> w_lock( _deletionLock );
         _deletionQueue.emplace_back( MOV( function ), TestBit(flags(), Flags::TREAT_AS_TRANSIENT) ? MAX_FRAMES_IN_FLIGHT : 0 );
     }
 
     void VKDeletionQueue::flush( VkDevice device, const bool force )
     {
-        ScopedLock<Mutex> w_lock( _deletionLock );
+        LockGuard<Mutex> w_lock( _deletionLock );
         bool needsClean = false;
         for ( const auto& it : _deletionQueue )
         {
@@ -309,7 +350,7 @@ namespace Divide
 
     void VKDeletionQueue::onFrameEnd()
     {
-        ScopedLock<Mutex> w_lock( _deletionLock );
+        LockGuard<Mutex> w_lock( _deletionLock );
         for ( auto& it : _deletionQueue )
         {
             if ( it.second > 0u )
@@ -321,7 +362,7 @@ namespace Divide
 
     bool VKDeletionQueue::empty() const
     {
-        ScopedLock<Mutex> w_lock( _deletionLock );
+        LockGuard<Mutex> w_lock( _deletionLock );
         return _deletionQueue.empty();
     }
 
@@ -329,43 +370,64 @@ namespace Divide
         : _context( context )
     {
         const VkFenceCreateInfo fenceCreateInfo = vk::fenceCreateInfo();
-        vkCreateFence( _context.getVKDevice(), &fenceCreateInfo, nullptr, &_submitFence );
-        _commandPool = _context.createCommandPool( _context.getQueueIndex( vkb::QueueType::graphics ), 0 );
+        for (U8 i = 0u; i < BUFFER_COUNT; ++i )
+        {
+            vkCreateFence( _context.getVKDevice(), &fenceCreateInfo, nullptr, &_bufferFences[i]);
+        }
 
-        const VkCommandBufferAllocateInfo cmdBufAllocateInfo = vk::commandBufferAllocateInfo( _commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1 );
-        VK_CHECK( vkAllocateCommandBuffers( _context.getVKDevice(), &cmdBufAllocateInfo, &_commandBuffer ) );
+        _commandPool = _context.createCommandPool( _context.getQueueIndex( vkb::QueueType::graphics ), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT );
+
+        const VkCommandBufferAllocateInfo cmdBufAllocateInfo = vk::commandBufferAllocateInfo( _commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, BUFFER_COUNT );
+
+        VK_CHECK( vkAllocateCommandBuffers( _context.getVKDevice(), &cmdBufAllocateInfo, _commandBuffers.data() ) );
     }
 
     VKImmediateCmdContext::~VKImmediateCmdContext()
     {
         vkDestroyCommandPool( _context.getVKDevice(), _commandPool, nullptr );
-        vkDestroyFence( _context.getVKDevice(), _submitFence, nullptr );
+        for ( U8 i = 0u; i < BUFFER_COUNT; ++i )
+        {
+            vkDestroyFence( _context.getVKDevice(), _bufferFences[i], nullptr);
+            _bufferFences[i] = VK_NULL_HANDLE;
+        }
     }
 
-    void VKImmediateCmdContext::flushCommandBuffer( std::function<void( VkCommandBuffer cmd )>&& function )
+    void VKImmediateCmdContext::flushCommandBuffer( std::function<void( VkCommandBuffer cmd )>&& function, const char* scopeName )
     {
-        UniqueLock<Mutex> w_lock( _submitLock );
+        static U64 WRAP_COUNTER = 0u;
 
-        // Begin the command buffer recording.
-        // We will use this command buffer exactly once before resetting, so we tell Vulkan that
+        LockGuard<Mutex> w_lock( _submitLock );
+
         const VkCommandBufferBeginInfo cmdBeginInfo = vk::commandBufferBeginInfo( VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT );
 
-        VkCommandBuffer cmd = _commandBuffer;
+        VkCommandBuffer cmd = _commandBuffers[_bufferIndex];
+        VkFence fence = _bufferFences[_bufferIndex];
+
+        if ( WRAP_COUNTER > 0u ) {
+            vkWaitForFences( _context.getVKDevice(), 1, &fence, true, 9999999999 );
+            vkResetFences( _context.getVKDevice(), 1, &fence );
+        }
+
         VK_CHECK( vkBeginCommandBuffer( cmd, &cmdBeginInfo ) );
+
+        VK_API::PushDebugMessage( cmd, scopeName );
 
         // Execute the function
         function( cmd );
 
+        VK_API::PopDebugMessage( cmd ) ;
         VK_CHECK( vkEndCommandBuffer( cmd ) );
 
         VkSubmitInfo submitInfo = vk::submitInfo();
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &cmd;
 
-        _context.submitToQueueAndWait( vkb::QueueType::graphics, submitInfo, _submitFence );
-
-        // Reset the command buffers inside the command pool
-        vkResetCommandPool( _context.getVKDevice(), _commandPool, 0 );
+        _context.submitToQueue( vkb::QueueType::graphics, submitInfo, fence );
+        _bufferIndex = ++_bufferIndex % BUFFER_COUNT;
+        if ( _bufferIndex == 0u )
+        {
+            ++WRAP_COUNTER;
+        }
     }
 
     void VK_API::RegisterCustomAPIDelete( DELEGATE<void, VkDevice>&& cbk, const bool isResourceTransient )
@@ -384,38 +446,16 @@ namespace Divide
     {
         if ( request._immediate )
         {
-            GetStateTracker()._cmdContext->flushCommandBuffer( [&request]( VkCommandBuffer cmd )
-                                                               {
-                                                                   if ( request.srcBuffer != VK_NULL_HANDLE )
-                                                                   {
-                                                                       VkBufferCopy copy;
-                                                                       copy.dstOffset = request.dstOffset;
-                                                                       copy.srcOffset = request.srcOffset;
-                                                                       copy.size = request.size;
-                                                                       vkCmdCopyBuffer( cmd, request.srcBuffer, request.dstBuffer, 1, &copy );
-                                                                   }
-
-            VkBufferMemoryBarrier2 memoryBarrier = vk::bufferMemoryBarrier2();
-            memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-            memoryBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
-            memoryBarrier.dstStageMask = request.dstStageMask;
-            memoryBarrier.dstAccessMask = request.dstAccessMask;
-            memoryBarrier.offset = request.dstOffset;
-            memoryBarrier.size = request.size;
-            memoryBarrier.buffer = request.dstBuffer;
-
-            VkDependencyInfo dependencyInfo = vk::dependencyInfo();
-            dependencyInfo.bufferMemoryBarrierCount = 1;
-            dependencyInfo.pBufferMemoryBarriers = &memoryBarrier;
-
-            //ToDo: batch these up! -Ionut
-            vkCmdPipelineBarrier2( cmd, &dependencyInfo );
-                                                               } );
+            s_stateTracker._cmdContext->flushCommandBuffer( [&request]( VkCommandBuffer cmd )
+            {
+                SubmitTransferRequest(request, cmd);
+            }, "Immediate Buffer Upload");
         }
         else
         {
-            UniqueLock<Mutex> w_lock( s_transferQueue._lock );
+            LockGuard<Mutex> w_lock( s_transferQueue._lock );
             s_transferQueue._requests.push_back( request );
+            s_transferQueue._dirty.store(true);
         }
     }
 
@@ -426,7 +466,7 @@ namespace Divide
 
     VkCommandBuffer VK_API::getCurrentCommandBuffer() const noexcept
     {
-        return _commandBuffers[_currentFrameIndex];
+        return s_stateTracker._activeWindow->_swapChain->getCurrentCommandBuffer();
     }
 
     void VK_API::idle( [[maybe_unused]] const bool fast ) noexcept
@@ -437,32 +477,41 @@ namespace Divide
     void VKStateTracker::setDefaultState()
     {
         _pipeline = {};
+        _activeWindow = nullptr;
         _activeMSAASamples = 0u;
         _activeRenderTargetID = INVALID_RENDER_TARGET_ID;
-        _pipelineRenderInfo = {};
+        _activeRenderTargetDimensions = {1u, 1u};
         _lastSyncedFrameNumber = GFXDevice::FrameCount();
         _drawIndirectBuffer = VK_NULL_HANDLE;
         _drawIndirectBufferOffset = 0u;
         _pipelineStageMask = VK_FLAGS_NONE;
         _pushConstantsValid = false;
         _descriptorsUpdated = false;
+        _pipelineRenderInfo = {};
+        _pipelineRenderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
     }
 
-
-    bool VK_API::beginFrame( DisplayWindow& window, [[maybe_unused]] bool global ) noexcept
+    bool VK_API::drawToWindow( DisplayWindow& window )
     {
-        // Set dynamic state to default
-        GetStateTracker().setDefaultState();
-
-        const auto& windowDimensions = window.getDrawableSize();
-        const VkExtent2D windowExtents{ windowDimensions.width, windowDimensions.height };
-
-        if ( _windowExtents.width != windowExtents.width || _windowExtents.height != windowExtents.height )
+        VKPerWindowState& windowState = _perWindowState[window.getGUID()];
+        if ( windowState._window == nullptr )
         {
-            recreateSwapChain( window );
+            windowState._window = &window;
+            initStatePerWindow(windowState);
         }
 
-        const VkResult result = _swapChain->beginFrame();
+        GetStateTracker()._activeWindow = &windowState;
+
+        const vec2<U16> windowDimensions = window.getDrawableSize();
+        VkExtent2D surfaceExtent = windowState._swapChain->surfaceExtent();
+
+        if ( windowDimensions.width != surfaceExtent.width || windowDimensions.height != surfaceExtent.height )
+        {
+            recreateSwapChain( windowState );
+            surfaceExtent = windowState._swapChain->surfaceExtent();
+        }
+
+        const VkResult result = windowState._swapChain->beginFrame();
         if ( result != VK_SUCCESS )
         {
             if ( result != VK_ERROR_OUT_OF_DATE_KHR && result != VK_SUBOPTIMAL_KHR )
@@ -470,49 +519,43 @@ namespace Divide
                 Console::errorfn( Locale::Get( _ID( "ERROR_GENERIC_VK" ) ), VKErrorString( result ).c_str() );
                 DIVIDE_UNEXPECTED_CALL();
             }
-            recreateSwapChain( window );
-            _skipEndFrame = true;
+
+            recreateSwapChain( windowState );
+            windowState._skipEndFrame = true;
             return false;
         }
-
-        _descriptorAllocatorPools[to_base( DescriptorAllocatorUsage::PER_DRAW )]->Flip();
-        GetStateTracker()._perDrawDescriptorAllocator = _descriptorAllocatorPools[to_base( DescriptorAllocatorUsage::PER_DRAW )]->GetAllocator();
-
-        _defaultRenderPass.renderPass = _swapChain->getRenderPass();
-        _defaultRenderPass.framebuffer = _swapChain->getCurrentFrameBuffer();
-        _defaultRenderPass.renderArea.extent = windowExtents;
-        _descriptorSets.fill( VK_NULL_HANDLE );
-
-        //begin the command buffer recording. We will use this command buffer exactly once, so we want to let Vulkan know that
-        VkCommandBufferBeginInfo cmdBeginInfo = vk::commandBufferBeginInfo( VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT );
-        VK_CHECK( vkBeginCommandBuffer( getCurrentCommandBuffer(), &cmdBeginInfo ) );
 
         _context.setViewport( { 0, 0, windowDimensions.width, windowDimensions.height } );
         _context.setScissor( { 0, 0, windowDimensions.width, windowDimensions.height } );
 
-        vkLockManager::CleanExpiredSyncObjects( VK_API::GetStateTracker()._lastSyncedFrameNumber );
-
         return true;
     }
 
-    void VK_API::endFrame( DisplayWindow& window, [[maybe_unused]] bool global ) noexcept
+    void VK_API::flushWindow( DisplayWindow& window )
     {
-        if ( _skipEndFrame )
+        VKPerWindowState& windowState = _perWindowState[window.getGUID()];
+        assert( windowState._window != nullptr );
+
+        SCOPE_EXIT{
+            GetStateTracker()._activeWindow = nullptr;
+        };
+
+        if ( windowState._skipEndFrame )
         {
-            _skipEndFrame = false;
+            windowState._skipEndFrame = false;
             return;
         }
 
-        VkCommandBuffer cmd = getCurrentCommandBuffer();
-        //finalize the command buffer (we can no longer add commands, but it can now be executed)
-        VK_CHECK( vkEndCommandBuffer( cmd ) );
-        const VkResult result = _swapChain->endFrame( vkb::QueueType::graphics, cmd );
+        VkCommandBuffer cmd = windowState._swapChain->getCurrentCommandBuffer();
+        FlushBufferTransferRequests( cmd );
+
+        const VkResult result = windowState._swapChain->endFrame( vkb::QueueType::graphics );
 
         if ( result != VK_SUCCESS )
         {
             if ( result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR )
             {
-                recreateSwapChain( window );
+                recreateSwapChain( windowState );
             }
             else
             {
@@ -521,19 +564,95 @@ namespace Divide
             }
         }
 
+    }
+
+    bool VK_API::frameStarted()
+    {
+        // Set dynamic state to default
+        GetStateTracker().setDefaultState();
+        vkLockManager::CleanExpiredSyncObjects( VK_API::GetStateTracker()._lastSyncedFrameNumber );
+
+        _descriptorSets.fill( VK_NULL_HANDLE );
+
+        for ( auto& pool : s_stateTracker._descriptorAllocators )
+        {
+            if ( pool._frameCount > 1u )
+            {
+                pool._allocatorPool->Flip();
+            }
+            pool._handle = pool._allocatorPool->GetAllocator();
+        }
+
+        return true;
+    }
+
+    bool VK_API::frameEnded()
+    {
         _currentFrameIndex = ++_currentFrameIndex % MAX_FRAMES_IN_FLIGHT;
 
         s_transientDeleteQueue.onFrameEnd();
         s_deviceDeleteQueue.onFrameEnd();
+
+        //vkResetCommandPool(_device->getVKDevice(), _device->graphicsCommandPool(), VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
+        return true;
     }
 
-    ErrorCode VK_API::initRenderingAPI( [[maybe_unused]] I32 argc, [[maybe_unused]] char** argv, [[maybe_unused]] Configuration& config ) noexcept
+    void VK_API::recreateSwapChain( VKPerWindowState& windowState )
+    {
+        if ( windowState._window->minimized() )
+        {
+            idle( false );
+            SDLEventManager::pollEvents();
+        }
+        if ( windowState._window->minimized() )
+        {
+            return;
+        }
+
+        if (windowState._window->getGUID() == _context.context().mainWindow().getGUID() )
+        {
+            s_deviceDeleteQueue.flush( _device->getVKDevice(), true );
+            vkDeviceWaitIdle( _device->getVKDevice() );
+        }
+        const ErrorCode err = windowState._swapChain->create( TestBit( windowState._window->flags(), WindowFlags::VSYNC ),
+                                                              _context.context().config().runtime.adaptiveSync,
+                                                              windowState._surface );
+
+        DIVIDE_ASSERT( err == ErrorCode::NO_ERR );
+    }
+
+    void VK_API::initStatePerWindow( VKPerWindowState& windowState)
+    {
+        DIVIDE_ASSERT(windowState._window != nullptr);
+        if (windowState._surface == nullptr )
+        {
+            SDL_Vulkan_CreateSurface( windowState._window->getRawWindow(), _vkbInstance.instance, &windowState._surface );
+            DIVIDE_ASSERT(windowState._surface != nullptr);
+        }
+
+        windowState._swapChain = eastl::make_unique<VKSwapChain>( *this, *_device, *windowState._window );
+        recreateSwapChain( windowState );
+    }
+
+    void VK_API::destroyStatePerWindow( VKPerWindowState& windowState )
+    {
+        windowState._swapChain.reset();
+
+        if ( _vkbInstance.instance != nullptr )
+        {
+            vkDestroySurfaceKHR( _vkbInstance.instance, windowState._surface, nullptr );
+        }
+
+        windowState = {};
+    }
+
+    ErrorCode VK_API::initRenderingAPI( [[maybe_unused]] I32 argc, [[maybe_unused]] char** argv, Configuration& config ) noexcept
     {
         _descriptorSets.fill( VK_NULL_HANDLE );
 
         s_transientDeleteQueue.flags( s_transientDeleteQueue.flags() | to_base( VKDeletionQueue::Flags::TREAT_AS_TRANSIENT ) );
 
-        const DisplayWindow& window = *_context.context().app().windowManager().mainWindow();
+        DisplayWindow* window = _context.context().app().windowManager().mainWindow();
 
         auto systemInfoRet = vkb::SystemInfo::get_system_info();
         if ( !systemInfoRet )
@@ -544,27 +663,38 @@ namespace Divide
 
         //make the Vulkan instance, with basic debug features
         vkb::InstanceBuilder builder{};
-        builder.set_app_name( window.title() )
+        builder.set_app_name( window->title() )
             .set_engine_name( Config::ENGINE_NAME )
             .set_engine_version( Config::ENGINE_VERSION_MAJOR, Config::ENGINE_VERSION_MINOR, Config::ENGINE_VERSION_PATCH )
-            .request_validation_layers( Config::ENABLE_GPU_VALIDATION )
             .require_api_version( 1, Config::DESIRED_VULKAN_MINOR_VERSION, 0 )
+            .request_validation_layers( Config::ENABLE_GPU_VALIDATION )
             .set_debug_callback( divide_debug_callback )
             .set_debug_callback_user_data_pointer( this );
 
         vkb::SystemInfo& systemInfo = systemInfoRet.value();
-        if ( Config::ENABLE_GPU_VALIDATION && systemInfo.is_extension_available( VK_EXT_DEBUG_UTILS_EXTENSION_NAME ) )
-        {
-            builder.enable_extension( VK_EXT_DEBUG_UTILS_EXTENSION_NAME );
-            s_hasDebugMarkerSupport = true;
-        }
-        else
-        {
-            s_hasDebugMarkerSupport = false;
-        }
 
-        if constexpr ( Config::ENABLE_GPU_VALIDATION )
+        s_hasValidationFeaturesSupport = false;
+        s_hasDebugMarkerSupport = false;
+        if ( Config::ENABLE_GPU_VALIDATION && (config.debug.enableRenderAPIDebugging || config.debug.enableRenderAPIBestPractices) )
         {
+            if (systemInfo.is_extension_available( VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME ) )
+            {
+                builder.enable_extension( VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME );
+                s_hasValidationFeaturesSupport = true;
+            }
+
+            if ( systemInfo.is_extension_available( VK_EXT_DEBUG_UTILS_EXTENSION_NAME ) )
+            {
+                builder.enable_extension( VK_EXT_DEBUG_UTILS_EXTENSION_NAME );
+                builder.add_validation_feature_enable( VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT );
+                if (config.debug.enableRenderAPIBestPractices )
+                {
+                    builder.add_validation_feature_enable( VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT );
+                }
+
+                s_hasDebugMarkerSupport = true;
+            }
+
             if ( systemInfo.validation_layers_available )
             {
                 builder.enable_validation_layers();
@@ -580,21 +710,32 @@ namespace Divide
 
         _vkbInstance = instanceRet.value();
 
-        //store the debug messenger
-        _debugMessenger = _vkbInstance.debug_messenger;
+        auto& perWindowContext = _perWindowState[window->getGUID()];
+        perWindowContext._window = window;
 
         // get the surface of the window we opened with SDL
-        SDL_Vulkan_CreateSurface( window.getRawWindow(), _vkbInstance.instance, &_surface );
-        if ( _surface == nullptr )
+        SDL_Vulkan_CreateSurface( perWindowContext._window->getRawWindow(), _vkbInstance.instance, &perWindowContext._surface );
+
+        if ( perWindowContext._surface == nullptr )
         {
             return ErrorCode::VK_SURFACE_CREATE;
         }
 
-        _device = eastl::make_unique<VKDevice>( *this, _vkbInstance, _surface );
+        _device = eastl::make_unique<VKDevice>( *this, _vkbInstance, perWindowContext._surface );
         if ( _device->getVKDevice() == nullptr )
         {
             return ErrorCode::VK_DEVICE_CREATE_FAILED;
         }
+
+        if ( s_hasDebugMarkerSupport )
+        {
+            Debug::vkCmdBeginDebugUtilsLabelEXT  = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetDeviceProcAddr(  _device->getVKDevice(), "vkCmdBeginDebugUtilsLabelEXT"  );
+            Debug::vkCmdEndDebugUtilsLabelEXT    = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetDeviceProcAddr(    _device->getVKDevice(), "vkCmdEndDebugUtilsLabelEXT"    );
+            Debug::vkCmdInsertDebugUtilsLabelEXT = (PFN_vkCmdInsertDebugUtilsLabelEXT)vkGetDeviceProcAddr( _device->getVKDevice(), "vkCmdInsertDebugUtilsLabelEXT" );
+            Debug::vkSetDebugUtilsObjectNameEXT  = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(  _device->getVKDevice(), "vkSetDebugUtilsObjectNameEXT"  );
+            Debug::vkSetDebugUtilsObjectTagEXT   = (PFN_vkSetDebugUtilsObjectTagEXT)vkGetDeviceProcAddr(   _device->getVKDevice(), "vkSetDebugUtilsObjectTagEXT"   );
+        }
+
         VKUtil::fillEnumTables( _device->getVKDevice() );
 
         VkFormatProperties2 properties{};
@@ -671,6 +812,7 @@ namespace Divide
                 VK_CHECK( vkGetPhysicalDeviceToolProperties( _device->getPhysicalDevice(), &toolCount, tools.data() ) );
 
                 Console::printfn( Locale::Get( _ID( "VK_TOOL_INFO" ) ), toolCount );
+    
                 for ( VkPhysicalDeviceToolPropertiesEXT& tool : tools )
                 {
                     Console::printfn( "\t%s %s\n", tool.name, tool.version );
@@ -685,6 +827,8 @@ namespace Divide
         deviceInformation._maxVertAttributeBindings = deviceProperties.limits.maxVertexInputBindings;
         deviceInformation._maxVertAttributes = deviceProperties.limits.maxVertexInputAttributes;
         deviceInformation._maxRTColourAttachments = deviceProperties.limits.maxColorAttachments;
+        deviceInformation._maxDrawIndirectCount = deviceProperties.limits.maxDrawIndirectCount;
+
         deviceInformation._shaderCompilerThreads = 0xFFFFFFFF;
         CLAMP( config.rendering.maxAnisotropicFilteringLevel,
                to_U8( 0 ),
@@ -723,7 +867,8 @@ namespace Divide
         config.rendering.MSAASamples = std::min( config.rendering.MSAASamples, maxMSAASamples );
         config.rendering.shadowMapping.csm.MSAASamples = std::min( config.rendering.shadowMapping.csm.MSAASamples, maxMSAASamples );
         config.rendering.shadowMapping.spot.MSAASamples = std::min( config.rendering.shadowMapping.spot.MSAASamples, maxMSAASamples );
-        _context.gpuState().maxMSAASampleCount( maxMSAASamples );
+        Attorney::DisplayManagerRenderingAPI::MaxMSAASamples( maxMSAASamples );
+
         // How many workgroups can we have per compute dispatch
         for ( U8 i = 0u; i < 3; ++i )
         {
@@ -770,33 +915,8 @@ namespace Divide
         {
             return ErrorCode::VK_NO_GRAHPICS_QUEUE;
         }
-
-        _swapChain = eastl::make_unique<VKSwapChain>( *this, *_device, window );
-        _cmdContext = eastl::make_unique<VKImmediateCmdContext>( *_device );
-
         VK_API::s_stateTracker._device = _device.get();
-        VK_API::s_stateTracker._swapChain = _swapChain.get();
-        VK_API::s_stateTracker._cmdContext = _cmdContext.get();
 
-        _descriptorAllocatorPools[to_base( DescriptorAllocatorUsage::PER_DRAW )].reset( vke::DescriptorAllocatorPool::Create( _device->getVKDevice(), MAX_FRAMES_IN_FLIGHT ) );
-        _descriptorAllocatorPools[to_base( DescriptorAllocatorUsage::PER_FRAME )].reset( vke::DescriptorAllocatorPool::Create( _device->getVKDevice(), 1u ) );
-        for ( auto& pool : _descriptorAllocatorPools )
-        {
-            pool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4.f );
-            pool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 4.f );
-            pool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1.f );
-            pool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1.f );
-            pool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1.f );
-            pool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2.f );
-            pool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2.f );
-            pool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1.f );
-            pool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1.f );
-            pool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 0.5f );
-        }
-        _descriptorLayoutCache = eastl::make_unique<DescriptorLayoutCache>( _device->getVKDevice() );
-        GetStateTracker()._perFrameDescriptorAllocator = _descriptorAllocatorPools[to_base( DescriptorAllocatorUsage::PER_FRAME )]->GetAllocator();
-
-        recreateSwapChain( window );
 
         DIVIDE_ASSERT( Config::MINIMUM_VULKAN_MINOR_VERSION > 2 );
 
@@ -805,6 +925,7 @@ namespace Divide
         allocatorInfo.device = _device->getDevice();
         allocatorInfo.instance = _vkbInstance.instance;
         allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_3;
+        allocatorInfo.preferredLargeHeapBlockSize = 0;
 
         vmaCreateAllocator( &allocatorInfo, &_allocator );
         GetStateTracker()._allocatorInstance._allocator = &_allocator;
@@ -828,46 +949,17 @@ namespace Divide
         {
             VK_CHECK( vkCreatePipelineCache( _device->getVKDevice(), &pipelineCacheCreateInfo, nullptr, &_pipelineCache ) );
         }
+        s_stateTracker._cmdContext = eastl::make_unique<VKImmediateCmdContext>( *_device );
 
-        _commandBuffers.resize( MAX_FRAMES_IN_FLIGHT );
-
-        //allocate the default command buffer that we will use for rendering
-        const VkCommandBufferAllocateInfo cmdAllocInfo = vk::commandBufferAllocateInfo( _device->graphicsCommandPool(), VK_COMMAND_BUFFER_LEVEL_PRIMARY, MAX_FRAMES_IN_FLIGHT );
-        VK_CHECK( vkAllocateCommandBuffers( _device->getVKDevice(), &cmdAllocInfo, _commandBuffers.data() ) );
+        initStatePerWindow( perWindowContext );
+        _context.fonsContext(dummyfonsCreate( 512, 512, FONS_ZERO_BOTTOMLEFT ));
 
         s_stateTracker.setDefaultState();
+        s_stateTracker._activeWindow = &perWindowContext;
 
         return ErrorCode::NO_ERR;
     }
 
-    void VK_API::recreateSwapChain( const DisplayWindow& window )
-    {
-        while ( window.minimized() )
-        {
-            idle( false );
-            SDLEventManager::pollEvents();
-        }
-
-        vkDeviceWaitIdle( _device->getVKDevice() );
-
-        s_deviceDeleteQueue.flush( _device->getVKDevice(), true );
-
-        const ErrorCode err = _swapChain->create( TestBit( window.flags(), WindowFlags::VSYNC ),
-                                                  _context.context().config().runtime.adaptiveSync,
-                                                  _surface );
-
-        DIVIDE_ASSERT( err == ErrorCode::NO_ERR );
-
-        const auto& windowDimensions = window.getDrawableSize();
-        _windowExtents = VkExtent2D{ windowDimensions.width, windowDimensions.height };
-
-        _defaultRenderPass = vk::renderPassBeginInfo();
-        _defaultRenderPass.renderArea.offset.x = 0;
-        _defaultRenderPass.renderArea.offset.y = 0;
-        _defaultRenderPass.clearValueCount = 1;
-
-        destroyPipelineCache();
-    }
 
     void VK_API::destroyPipelineCache()
     {
@@ -883,6 +975,7 @@ namespace Divide
                 vkDestroyPipeline( _device->getVKDevice(), it.second._vkPipelineWireframe, nullptr );
             }
         }
+
         _compiledPipelines.clear();
     }
 
@@ -899,6 +992,9 @@ namespace Divide
             s_samplerMap.clear();
         }
 
+        dummyfonsDelete( _context.fonsContext() );
+        _context.fonsContext( nullptr );
+
         vkLockManager::Clear();
         if ( _device != nullptr )
         {
@@ -907,15 +1003,15 @@ namespace Divide
                 vkDeviceWaitIdle( _device->getVKDevice() );
                 s_transientDeleteQueue.flush( _device->getVKDevice(), true );
                 s_deviceDeleteQueue.flush( _device->getVKDevice(), true );
-                GetStateTracker()._perDrawDescriptorAllocator = {};
-                GetStateTracker()._perFrameDescriptorAllocator = {};
+                for ( auto& pool : s_stateTracker._descriptorAllocators )
+                {
+                    pool._handle = {};
+                    pool._allocatorPool.reset();
+                }
                 _descriptorLayoutCache.reset();
                 _descriptorSetLayouts.fill( VK_NULL_HANDLE );
                 _descriptorSets.fill( VK_NULL_HANDLE );
-                for ( auto& pool : _descriptorAllocatorPools )
-                {
-                    pool.reset();
-                }
+
                 destroyPipelineCache();
             }
 
@@ -939,59 +1035,22 @@ namespace Divide
                 vmaDestroyAllocator( _allocator );
                 _allocator = VK_NULL_HANDLE;
             }
-            _commandBuffers.clear();
-            _cmdContext.reset();
-            _swapChain.reset();
+
+            for ( auto& state : _perWindowState )
+            {
+                destroyStatePerWindow(state.second);
+            }
+            _perWindowState.clear();
+            s_stateTracker._cmdContext.reset();
             _device.reset();
         }
-
+        
         s_stateTracker.setDefaultState();
 
-        if ( _vkbInstance.instance != nullptr )
-        {
-            vkDestroySurfaceKHR( _vkbInstance.instance, _surface, nullptr );
-        }
         vkb::destroy_instance( _vkbInstance );
         _vkbInstance = {};
     }
 
-    void VK_API::drawText( const TextElementBatch& batch )
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        BlendingSettings textBlend{};
-        textBlend.blendSrc( BlendProperty::SRC_ALPHA );
-        textBlend.blendDest( BlendProperty::INV_SRC_ALPHA );
-        textBlend.blendOp( BlendOperation::ADD );
-        textBlend.blendSrcAlpha( BlendProperty::ONE );
-        textBlend.blendDestAlpha( BlendProperty::ZERO );
-        textBlend.blendOpAlpha( BlendOperation::COUNT );
-        textBlend.enabled( true );
-
-        [[maybe_unused]] const I32 width = _context.renderingResolution().width;
-        [[maybe_unused]] const I32 height = _context.renderingResolution().height;
-
-        size_t drawCount = 0;
-        size_t previousStyle = 0;
-
-        for ( const TextElement& entry : batch.data() )
-        {
-            if ( previousStyle != entry.textLabelStyleHash() )
-            {
-                previousStyle = entry.textLabelStyleHash();
-            }
-
-            const TextElement::TextType& text = entry.text();
-            const size_t lineCount = text.size();
-            for ( size_t i = 0; i < lineCount; ++i )
-            {
-            }
-            drawCount += lineCount;
-
-            // Register each label rendered as a draw call
-            _context.registerDrawCalls( to_U32( drawCount ) );
-        }
-    }
 
     bool VK_API::draw( const GenericDrawCommand& cmd, VkCommandBuffer cmdBuffer ) const
     {
@@ -1065,26 +1124,25 @@ namespace Divide
     bool VK_API::bindShaderResources( const DescriptorSetUsage usage, const DescriptorSet& bindings, const bool isDirty )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        if ( !isDirty )
+        {
+            //return true;
+        }
+
         const BaseType<DescriptorSetUsage> usageIdx = to_base( usage );
 
-        vke::DescriptorAllocatorHandle& handle = (usage == DescriptorSetUsage::PER_DRAW)
-            ? GetStateTracker()._perDrawDescriptorAllocator
-            : GetStateTracker()._perFrameDescriptorAllocator;
-
-        DescriptorBuilder builder = DescriptorBuilder::Begin( _descriptorLayoutCache.get(), &handle );
+        DescriptorAllocator& pool = s_stateTracker._descriptorAllocators[to_base( usage )];
+        DescriptorBuilder builder = DescriptorBuilder::Begin( _descriptorLayoutCache.get(), &pool._handle);
 
         static std::array<VkDescriptorBufferInfo, ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET> BufferInfoStructs;
         static std::array<VkDescriptorImageInfo, ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET>  ImageInfoStructs;
-        static std::array<VkImageMemoryBarrier2, ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET> MemBarriers{};
-        U8 memBarrierCount = 0u;
         U8 bufferInfoStructIndex = 0u;
         U8 imageInfoStructIndex = 0u;
 
         DIVIDE_ASSERT( GetStateTracker()._pipeline._program != nullptr );
         auto& drawDescriptor = GetStateTracker()._pipeline._program->perDrawDescriptorSetLayout();
         const bool targetDescriptorEmpty = IsEmpty( drawDescriptor );
-
-        VkImageMemoryBarrier2 memBarrier{};
 
         for ( auto& srcBinding : bindings )
         {
@@ -1119,7 +1177,7 @@ namespace Divide
 
                     DIVIDE_ASSERT( bufferEntry._buffer != nullptr );
 
-                    const ShaderBuffer::Usage bufferUsage = bufferEntry._buffer->getUsage();
+                    const auto bufferUsage = bufferEntry._buffer->getUsage();
                     VkBuffer buffer = static_cast<vkShaderBuffer*>(bufferEntry._buffer)->bufferImpl()->_buffer;
 
                     VkDeviceSize offset = bufferEntry._range._startOffset * bufferEntry._buffer->getPrimitiveSize();
@@ -1135,7 +1193,7 @@ namespace Divide
                     if ( usage == DescriptorSetUsage::PER_BATCH && srcBinding._slot == 0 )
                     {
                         // Draw indirect buffer!
-                        DIVIDE_ASSERT( bufferUsage == ShaderBuffer::Usage::COMMAND_BUFFER );
+                        DIVIDE_ASSERT( bufferUsage == BufferUsageType::COMMAND_BUFFER );
                         GetStateTracker()._drawIndirectBuffer = buffer;
                         GetStateTracker()._drawIndirectBufferOffset = offset;
                     }
@@ -1160,8 +1218,7 @@ namespace Divide
                     const DescriptorCombinedImageSampler& imageSampler = As<DescriptorCombinedImageSampler>( srcBinding._data );
                     if ( imageSampler._image._srcTexture._ceguiTex == nullptr && imageSampler._image._srcTexture._internalTexture == nullptr )
                     {
-                        DIVIDE_ASSERT( imageSampler._image._usage == ImageUsage::UNDEFINED );
-                        //unbind request;
+                        NOP(); //unbind request;
                     }
                     else
                     {
@@ -1174,22 +1231,16 @@ namespace Divide
 
                         vkTexture* vkTex = static_cast<vkTexture*>(imageSampler._image._srcTexture._internalTexture);
 
-                        DIVIDE_ASSERT( imageSampler._image._usage == ImageUsage::SHADER_READ || imageSampler._image._usage == ImageUsage::SHADER_READ_WRITE );
-
                         vkTexture::CachedImageView::Descriptor descriptor{};
-                        descriptor._usage = imageSampler._image._usage;
+                        descriptor._usage = ImageUsage::SHADER_READ;
                         descriptor._format = vkTex->vkFormat();
                         descriptor._type = imageSampler._image.targetType();
                         descriptor._subRange = imageSampler._image._subRange;
 
-                        ImageUsage imageUsage = ImageUsage::SHADER_READ;
                         VkImageLayout targetLayout = VK_IMAGE_LAYOUT_MAX_ENUM;
-
                         if ( !IsDepthTexture( vkTex->descriptor().baseFormat() ) )
                         {
-                            imageUsage = vkTex->imageUsage( descriptor._subRange );
-                            DIVIDE_ASSERT( imageUsage == ImageUsage::SHADER_READ || imageUsage == ImageUsage::SHADER_READ_WRITE );
-                            targetLayout = imageUsage == ImageUsage::SHADER_READ ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+                            targetLayout =  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                         }
                         else
                         {
@@ -1203,48 +1254,34 @@ namespace Divide
                 } break;
                 case DescriptorSetBindingType::IMAGE:
                 {
-                    if ( !Has<ImageView>( srcBinding._data ) )
+                    if ( !Has<DescriptorImageView>( srcBinding._data ) )
                     {
                         continue;
                     }
-                    const ImageView& image = As<ImageView>( srcBinding._data );
-                    if ( image._srcTexture._internalTexture == nullptr && image._srcTexture._ceguiTex != nullptr )
+                    const DescriptorImageView& imageView = As<DescriptorImageView>( srcBinding._data );
+                    if ( imageView._image._srcTexture._internalTexture == nullptr && imageView._image._srcTexture._ceguiTex != nullptr )
                     {
                         continue;
                     }
 
-                    DIVIDE_ASSERT( image._srcTexture._internalTexture != nullptr && image._subRange._mipLevels.count == 1u );
+                    DIVIDE_ASSERT( imageView._image._srcTexture._internalTexture != nullptr && imageView._image._subRange._mipLevels.count == 1u );
 
-                    vkTexture* vkTex = static_cast<vkTexture*>(image._srcTexture._internalTexture);
+                    vkTexture* vkTex = static_cast<vkTexture*>(imageView._image._srcTexture._internalTexture);
+
+                    DIVIDE_ASSERT(imageView._usage == ImageUsage::SHADER_READ || imageView._usage == ImageUsage::SHADER_WRITE || imageView._usage == ImageUsage::SHADER_READ_WRITE);
 
                     vkTexture::CachedImageView::Descriptor descriptor{};
-                    descriptor._usage = ImageUsage::SHADER_READ_WRITE;
+                    descriptor._usage = imageView._usage;
                     descriptor._format = vkTex->vkFormat();
-                    descriptor._type = image.targetType();
-                    descriptor._subRange = image._subRange;
+                    descriptor._type = imageView._image.targetType();
+                    descriptor._subRange = imageView._image._subRange;
 
                     // Should use TextureType::TEXTURE_CUBE_ARRAY
                     DIVIDE_ASSERT( descriptor._type != TextureType::TEXTURE_CUBE_MAP || descriptor._subRange._layerRange.count == 1u );
 
-                    const ImageUsage crtUsage = vkTex->imageUsage( descriptor._subRange );
-                    DIVIDE_ASSERT( crtUsage != ImageUsage::RT_COLOUR_ATTACHMENT &&
-                                   crtUsage != ImageUsage::RT_DEPTH_ATTACHMENT &&
-                                   crtUsage != ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT );
-
-                    if ( GetStateTracker()._activeRenderTargetID == SCREEN_TARGET_ID )
-                    {
-                        if ( vkTex->transitionLayout( descriptor._subRange, descriptor._usage, memBarrier ) )
-                        {
-                            MemBarriers[memBarrierCount++] = memBarrier;
-                        }
-                    }
-                    else
-                    {
-                        DIVIDE_ASSERT( crtUsage == descriptor._usage );
-                    }
-
+                    const VkImageLayout targetLayout = descriptor._usage == ImageUsage::SHADER_READ ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
                     VkDescriptorImageInfo& imageInfo = ImageInfoStructs[imageInfoStructIndex++];
-                    imageInfo = vk::descriptorImageInfo( VK_NULL_HANDLE, vkTex->getImageView( descriptor ), VK_IMAGE_LAYOUT_GENERAL );
+                    imageInfo = vk::descriptorImageInfo( VK_NULL_HANDLE, vkTex->getImageView( descriptor ), targetLayout );
                     builder.bindImage( srcBinding._slot, &imageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, stageFlags );
                 } break;
                 case DescriptorSetBindingType::COUNT:
@@ -1254,24 +1291,7 @@ namespace Divide
             };
         }
 
-        if ( usage == DescriptorSetUsage::PER_DRAW )
-        {
-
-            builder.buildSetAndLayout( _descriptorSets[usageIdx], _descriptorSetLayouts[usageIdx], _device->getVKDevice() );
-        }
-        else
-        {
-            builder.buildSetFromLayout( _descriptorSets[usageIdx], _descriptorSetLayouts[usageIdx], _device->getVKDevice() );
-        }
-
-        if ( memBarrierCount > 0u )
-        {
-            VkDependencyInfo dependencyInfo = vk::dependencyInfo();
-            dependencyInfo.imageMemoryBarrierCount = memBarrierCount;
-            dependencyInfo.pImageMemoryBarriers = MemBarriers.data();
-
-            vkCmdPipelineBarrier2( getCurrentCommandBuffer(), &dependencyInfo );
-        }
+        builder.buildSetFromLayout( _descriptorSets[usageIdx], _descriptorSetLayouts[usageIdx], _device->getVKDevice() );
         GetStateTracker()._descriptorsUpdated = true;
 
         return true;
@@ -1279,7 +1299,7 @@ namespace Divide
 
     void VK_API::bindDynamicState( const VKDynamicState& currentState, VkCommandBuffer cmdBuffer ) noexcept
     {
-        vkCmdSetStencilCompareMask( cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState._stencilMask );
+        vkCmdSetStencilCompareMask(cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState._stencilMask);
         vkCmdSetStencilWriteMask( cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState._stencilWriteMask );
         vkCmdSetStencilReference( cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState._stencilRef );
         vkCmdSetDepthBias( cmdBuffer, currentState._zUnits, 0.f, currentState._zBias );
@@ -1290,7 +1310,7 @@ namespace Divide
     ShaderResult VK_API::bindPipeline( const Pipeline& pipeline, VkCommandBuffer cmdBuffer )
     {
         size_t pipelineHash = pipeline.hash();
-        Util::Hash_combine( pipelineHash, GetStateTracker()._pipelineRenderInfo._hash );
+        Util::Hash_combine( pipelineHash, GetStateTracker()._activeRenderTargetID);
 
         CompiledPipeline& compiledPipeline = _compiledPipelines[pipelineHash];
         if ( compiledPipeline._vkPipeline == VK_NULL_HANDLE )
@@ -1325,24 +1345,9 @@ namespace Divide
             pipeline_layout_info.pPushConstantRanges = &push_constant;
             pipeline_layout_info.pushConstantRangeCount = 1;
 
-            eastl::fixed_vector<VkDescriptorSetLayoutBinding, ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET, false> layoutBinding{};
             const ShaderProgram::BindingsPerSetArray& drawLayout = compiledPipeline._program->perDrawDescriptorSetLayout();
-            for ( U8 slot = 0u; slot < ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET; ++slot )
-            {
-                if ( drawLayout[slot]._type == DescriptorSetBindingType::COUNT )
-                {
-                    continue;
-                }
-                VkDescriptorSetLayoutBinding& newBinding = layoutBinding.emplace_back();
-                newBinding.descriptorCount = 1u;
-                newBinding.descriptorType = VKUtil::vkDescriptorType( drawLayout[slot]._type );
-                newBinding.stageFlags = GetFlagsForStageVisibility( drawLayout[slot]._visibility );
-                newBinding.binding = slot;
-                newBinding.pImmutableSamplers = nullptr;
-            }
-
-            VkDescriptorSetLayoutCreateInfo layoutCreateInfo = vk::descriptorSetLayoutCreateInfo( layoutBinding.data(), to_U32( layoutBinding.size() ) );
-            _descriptorSetLayouts[to_base( DescriptorSetUsage::PER_DRAW )] = _descriptorLayoutCache->createDescriptorLayout( &layoutCreateInfo );
+            _descriptorSetLayouts[to_base(DescriptorSetUsage::PER_DRAW)] = createLayoutFromBindings(DescriptorSetUsage::PER_DRAW, drawLayout);
+            compiledPipeline._program->descriptorSetLayout( _descriptorSetLayouts[to_base( DescriptorSetUsage::PER_DRAW )]);
 
             pipeline_layout_info.pSetLayouts = _descriptorSetLayouts.data();
             pipeline_layout_info.setLayoutCount = to_U32( _descriptorSetLayouts.size() );
@@ -1379,8 +1384,8 @@ namespace Divide
                 vkFillModeTable[to_base( currentState.fillMode() )],
                 vkCullModeTable[to_base( currentState.cullMode() )],
                 currentState.frontFaceCCW()
-                ? VK_FRONT_FACE_CLOCKWISE
-                : VK_FRONT_FACE_COUNTER_CLOCKWISE );
+                ? VK_FRONT_FACE_COUNTER_CLOCKWISE
+                : VK_FRONT_FACE_CLOCKWISE );
             pipelineBuilder._rasterizer.rasterizerDiscardEnable = pipelineDescriptor._rasterizationEnabled ? VK_FALSE : VK_TRUE;
 
             VkSampleCountFlagBits msaaSampleFlags = VK_SAMPLE_COUNT_1_BIT;
@@ -1405,6 +1410,7 @@ namespace Divide
 
             pipelineBuilder._depthStencil = vk::pipelineDepthStencilStateCreateInfo( currentState.depthTestEnabled(), true, vkCompareFuncTable[to_base( currentState.zFunc() )] );
             pipelineBuilder._depthStencil.stencilTestEnable = currentState.stencilEnable();
+            pipelineBuilder._depthStencil.depthWriteEnable = currentState.depthWriteEnabled();
             pipelineBuilder._depthStencil.front = stencilOpState;
             pipelineBuilder._depthStencil.back = stencilOpState;
             pipelineBuilder._rasterizer.depthBiasEnable = !IS_ZERO( currentState.zBias() );
@@ -1456,6 +1462,7 @@ namespace Divide
             {
                 pipelineBuilder._rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
                 compiledPipeline._vkPipelineWireframe = pipelineBuilder.build_pipeline( _device->getVKDevice(), _pipelineCache, true );
+
                 Debug::SetObjectName( _device->getVKDevice(), (uint64_t)compiledPipeline._vkPipelineWireframe, VK_OBJECT_TYPE_PIPELINE, Util::StringFormat("%s_wireframe", program->resourceName().c_str()).c_str());
             }
 
@@ -1472,6 +1479,8 @@ namespace Divide
         }
 
         vkCmdBindPipeline( cmdBuffer, compiledPipeline._bindPoint, compiledPipeline._vkPipeline );
+        _descriptorSetLayouts[to_base( DescriptorSetUsage::PER_DRAW )] = compiledPipeline._program->descriptorSetLayout();
+
         GetStateTracker()._pipeline = compiledPipeline;
         if ( GetStateTracker()._pipelineStageMask != compiledPipeline._stageFlags )
         {
@@ -1479,146 +1488,385 @@ namespace Divide
             GetStateTracker()._pushConstantsValid = false;
         }
 
-        bindDynamicState( compiledPipeline._dynamicState, cmdBuffer );
+        //bindDynamicState( compiledPipeline._dynamicState, cmdBuffer );
 
         return ShaderResult::OK;
+    }
+
+    void VK_API::flushPushConstantsLocks()
+    {
+        if ( _pushConstantsNeedLock )
+        {
+            _pushConstantsNeedLock = false;
+            flushCommand( &_pushConstantsMemCommand );
+            _pushConstantsMemCommand._bufferLocks.clear();
+        }
+    }
+
+    namespace
+    {
+        struct PerBufferCopies
+        {
+            VkBuffer _srcBuffer{ VK_NULL_HANDLE };
+            VkBuffer _dstBuffer{ VK_NULL_HANDLE };
+            vector<VkBufferCopy2> _copiesPerBuffer;
+        };
+
+        static vector<PerBufferCopies> s_copyRequests;
+
+        using BarrierContainer = eastl::fixed_vector<VkBufferMemoryBarrier2, 32, true>;
+        static BarrierContainer s_barriers{};
+
+        using BatchedTransferQueue = eastl::fixed_vector<VKTransferQueue::TransferRequest, 64, false>;
+        static BatchedTransferQueue s_transferQueueBatched;
+
+        void PrepareTransferRequest( const VKTransferQueue::TransferRequest& request, bool toWrite, VkBufferMemoryBarrier2& memBarrierOut )
+        {
+            memBarrierOut = vk::bufferMemoryBarrier2();
+
+            if ( toWrite )
+            {
+                memBarrierOut.srcStageMask = request.dstStageMask;
+                memBarrierOut.srcAccessMask = request.dstAccessMask;
+
+                memBarrierOut.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                memBarrierOut.dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
+            }
+            else
+            {
+                memBarrierOut.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                memBarrierOut.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
+
+                memBarrierOut.dstStageMask = request.dstStageMask;
+                memBarrierOut.dstAccessMask = request.dstAccessMask;
+            }
+
+            memBarrierOut.offset = request.dstOffset;
+            memBarrierOut.size = request.size;
+            memBarrierOut.buffer = request.dstBuffer;
+        }
+
+        void FlushBarriers( VkCommandBuffer cmd, bool toWrite )
+        {
+            for ( const auto& request : s_transferQueueBatched )
+            {
+                PrepareTransferRequest( request, toWrite, s_barriers.emplace_back() );
+            }
+
+            if ( !s_barriers.empty() )
+            {
+                VkDependencyInfo dependencyInfo = vk::dependencyInfo();
+                dependencyInfo.bufferMemoryBarrierCount = to_U32( s_barriers.size() );
+                dependencyInfo.pBufferMemoryBarriers = s_barriers.data();
+
+                vkCmdPipelineBarrier2( cmd, &dependencyInfo );
+                efficient_clear( s_barriers );
+            }
+        }
+
+        void FlushCopyRequests( VkCommandBuffer cmd )
+        {
+            for ( const PerBufferCopies& request : s_copyRequests )
+            {
+                VkCopyBufferInfo2 copyInfo = { .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2 };
+                copyInfo.dstBuffer = request._dstBuffer;
+                copyInfo.srcBuffer = request._srcBuffer;
+                copyInfo.regionCount = to_U32( request._copiesPerBuffer.size() );
+                copyInfo.pRegions = request._copiesPerBuffer.data();
+
+                vkCmdCopyBuffer2( cmd, &copyInfo );
+            }
+        }
+
+        void PrepareBufferCopyBarriers()
+        {
+            s_copyRequests.clear();
+            s_copyRequests.reserve( s_transferQueueBatched.size() );
+
+            VkBufferCopy2 copy{ .sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
+
+            for ( const auto& request : s_transferQueueBatched )
+            {
+                copy.dstOffset = request.dstOffset;
+                copy.srcOffset = request.srcOffset;
+                copy.size = request.size;
+
+                bool found = false;
+                for ( PerBufferCopies& entry : s_copyRequests )
+                {
+                    if ( entry._srcBuffer == request.srcBuffer && entry._dstBuffer == request.dstBuffer )
+                    {
+                        entry._copiesPerBuffer.emplace_back( copy );
+                        found = true;
+                        break;
+                    }
+                }
+
+                if ( !found )
+                {
+                    PerBufferCopies& cRequest = s_copyRequests.emplace_back();
+                    cRequest._srcBuffer = request.srcBuffer;
+                    cRequest._dstBuffer = request.dstBuffer;
+                    cRequest._copiesPerBuffer.emplace_back( copy );
+                }
+            }
+        }
+
+        void BatchTransferQueue( VKTransferQueue& transferQueue )
+        {
+            s_transferQueueBatched.clear();
+
+            while ( !transferQueue._requests.empty() )
+            {
+                const VKTransferQueue::TransferRequest& request = transferQueue._requests.front();
+                if ( request.srcBuffer != VK_NULL_HANDLE )
+                {
+                    s_transferQueueBatched.push_back( request );
+                }
+                else
+                {
+                    PrepareTransferRequest( request, false, s_barriers.emplace_back() );
+                }
+
+                transferQueue._requests.pop_front();
+            }
+        }
+
+        void FlushTransferQueue( VkCommandBuffer cmdBuffer, VKTransferQueue& transferQueue )
+        {
+            BatchTransferQueue( transferQueue );
+            FlushBarriers( cmdBuffer, true );
+            PrepareBufferCopyBarriers();
+            FlushCopyRequests( cmdBuffer );
+            FlushBarriers( cmdBuffer, false );
+
+            s_transferQueueBatched.clear();
+            transferQueue._dirty.store(false);
+        }
+    };
+
+    void VK_API::SubmitTransferRequest( const VKTransferQueue::TransferRequest& request, VkCommandBuffer cmd )
+    {
+        VkBufferMemoryBarrier2 barriers[2] = {};
+        VkDependencyInfo dependencyInfo = vk::dependencyInfo();
+        dependencyInfo.bufferMemoryBarrierCount = 1u;
+        if ( request.srcBuffer != VK_NULL_HANDLE )
+        {
+            PrepareTransferRequest( request, true, barriers[0] );
+
+            VkBufferCopy2 copy{ .sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
+            copy.dstOffset = request.dstOffset;
+            copy.srcOffset = request.srcOffset;
+            copy.size = request.size;
+
+            VkCopyBufferInfo2 copyInfo = { .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2 };
+            copyInfo.dstBuffer = request.dstBuffer;
+            copyInfo.srcBuffer = request.srcBuffer;
+            copyInfo.regionCount = 1u;
+            copyInfo.pRegions = &copy;
+
+            vkCmdCopyBuffer2( cmd, &copyInfo );
+            dependencyInfo.bufferMemoryBarrierCount = 2u;
+        }
+
+        PrepareTransferRequest( request, false, barriers[1] );
+        dependencyInfo.pBufferMemoryBarriers = barriers;
+        vkCmdPipelineBarrier2( cmd, &dependencyInfo );
+    }
+
+    void VK_API::FlushBufferTransferRequests()
+    {
+        if ( s_transferQueue._dirty.load() )
+        {
+            VK_API::GetStateTracker()._cmdContext->flushCommandBuffer( []( VkCommandBuffer cmd )
+            {
+                VK_API::FlushBufferTransferRequests( cmd );
+            }, "Deferred Buffer Uploads" );
+        }
+    }
+
+    void VK_API::FlushBufferTransferRequests( VkCommandBuffer cmdBuffer  )
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        if ( s_transferQueue._dirty.load() )
+        {
+            LockGuard<Mutex> w_lock( s_transferQueue._lock );
+            DIVIDE_ASSERT(!s_transferQueue._requests.empty() );
+        
+            if ( s_transferQueue._requests.size() == 1 )
+            {
+                SubmitTransferRequest( s_transferQueue._requests.front(), cmdBuffer );
+                s_transferQueue._requests.pop_front();
+                s_transferQueue._dirty.store(false);
+            }
+            else
+            {
+                FlushTransferQueue( cmdBuffer, s_transferQueue );
+            }
+        }
     }
 
     void VK_API::flushCommand( GFX::CommandBase* cmd ) noexcept
     {
         static mat4<F32> s_defaultPushConstants[2] = { MAT4_ZERO, MAT4_ZERO };
 
-        static GFX::MemoryBarrierCommand pushConstantsMemCommand{};
-        static bool pushConstantsNeedLock = false;
-
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
         const GFX::CommandType cmdType = cmd->Type();
+        PROFILE_SCOPE( GFX::Names::commandType[to_base( cmdType )], Profiler::Category::Graphics );
         PROFILE_TAG( "Type", to_base( cmdType ) );
 
-        PROFILE_SCOPE( GFX::Names::commandType[to_base( cmdType )], Profiler::Category::Graphics );
-        if ( !s_transferQueue._requests.empty() && GFXDevice::IsSubmitCommand( cmdType ) )
+        VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
+
+        if ( GFXDevice::IsSubmitCommand( cmdType ) )
         {
-            UniqueLock<Mutex> w_lock( s_transferQueue._lock );
-            // Check again
-            if ( !s_transferQueue._requests.empty() )
+            FlushBufferTransferRequests();
+
+            if ( GetStateTracker()._descriptorsUpdated )
             {
-                static eastl::fixed_vector<VkBufferMemoryBarrier2, 32, true> s_barriers{};
-                // ToDo: Use a semaphore here and insert a wait dependency on it into the main command buffer - Ionut
-                VK_API::GetStateTracker()._cmdContext->flushCommandBuffer( []( VkCommandBuffer cmd )
-                                                                           {
-                                                                               while ( !s_transferQueue._requests.empty() )
-                                                                               {
-                                                                                   const VKTransferQueue::TransferRequest& request = s_transferQueue._requests.front();
-                                                                                   if ( request.srcBuffer != VK_NULL_HANDLE )
-                                                                                   {
-                                                                                       VkBufferCopy copy;
-                                                                                       copy.dstOffset = request.dstOffset;
-                                                                                       copy.srcOffset = request.srcOffset;
-                                                                                       copy.size = request.size;
-                                                                                       vkCmdCopyBuffer( cmd, request.srcBuffer, request.dstBuffer, 1, &copy );
-                                                                                   }
-
-                                                                                   VkBufferMemoryBarrier2 memoryBarrier = vk::bufferMemoryBarrier2();
-                                                                                   memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-                                                                                   memoryBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
-                                                                                   memoryBarrier.dstStageMask = request.dstStageMask;
-                                                                                   memoryBarrier.dstAccessMask = request.dstAccessMask;
-                                                                                   memoryBarrier.offset = request.dstOffset;
-                                                                                   memoryBarrier.size = request.size;
-                                                                                   memoryBarrier.buffer = request.dstBuffer;
-
-                                                                                   if ( request.srcBuffer == VK_NULL_HANDLE )
-                                                                                   {
-                                                                                       VkDependencyInfo dependencyInfo = vk::dependencyInfo();
-                                                                                       dependencyInfo.bufferMemoryBarrierCount = 1;
-                                                                                       dependencyInfo.pBufferMemoryBarriers = &memoryBarrier;
-
-                                                                                       vkCmdPipelineBarrier2( cmd, &dependencyInfo );
-                                                                                   }
-                                                                                   else
-                                                                                   {
-                                                                                       s_barriers.emplace_back( memoryBarrier );
-                                                                                   }
-                                                                                   s_transferQueue._requests.pop_front();
-                                                                               }
-
-                if ( !s_barriers.empty() )
-                {
-                    VkDependencyInfo dependencyInfo = vk::dependencyInfo();
-                    dependencyInfo.bufferMemoryBarrierCount = to_U32( s_barriers.size() );
-                    dependencyInfo.pBufferMemoryBarriers = s_barriers.data();
-
-                    vkCmdPipelineBarrier2( cmd, &dependencyInfo );
-                    efficient_clear( s_barriers );
-                }
-
-                                                                           } );
+                vkCmdBindDescriptorSets( cmdBuffer,
+                                         GetStateTracker()._pipeline._bindPoint,
+                                         GetStateTracker()._pipeline._vkPipelineLayout,
+                                         0,
+                                         to_base( DescriptorSetUsage::COUNT ),
+                                         _descriptorSets.data(),
+                                         0,
+                                         nullptr );
+                GetStateTracker()._descriptorsUpdated = false;
             }
         }
 
-
-        if ( GFXDevice::IsSubmitCommand( cmdType ) && GetStateTracker()._descriptorsUpdated )
+        if ( GetStateTracker()._activeRenderTargetID == SCREEN_TARGET_ID )
         {
-            vkCmdBindDescriptorSets( cmdBuffer,
-                                     GetStateTracker()._pipeline._bindPoint,
-                                     GetStateTracker()._pipeline._vkPipelineLayout,
-                                     0,
-                                     to_base( DescriptorSetUsage::COUNT ),
-                                     _descriptorSets.data(),
-                                     0,
-                                     nullptr );
-            GetStateTracker()._descriptorsUpdated = false;
+            flushPushConstantsLocks();
         }
 
         switch ( cmdType )
         {
             case GFX::CommandType::BEGIN_RENDER_PASS:
             {
+                static VkRenderingInfo renderingInfo{};
+                static VkRenderingAttachmentInfo attachmentInfo{};
+                static VkFormat swapChainImageFormat = VK_FORMAT_B8G8R8A8_SRGB;
+
                 const GFX::BeginRenderPassCommand* crtCmd = cmd->As<GFX::BeginRenderPassCommand>();
                 VK_API::GetStateTracker()._activeRenderTargetID = crtCmd->_target;
 
-                GetStateTracker()._pipelineRenderInfo._vkInfo = {};
-                GetStateTracker()._pipelineRenderInfo._vkInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+                // We can do this outside of a renderpass
+                FlushBufferTransferRequests(cmdBuffer);
 
                 if ( crtCmd->_target == SCREEN_TARGET_ID )
                 {
-                    VkClearValue clearValue{};
-                    clearValue.color =
-                    {
-                        DefaultColours::DIVIDE_BLUE.r,
-                        DefaultColours::DIVIDE_BLUE.g,
-                        DefaultColours::DIVIDE_BLUE.b,
-                        DefaultColours::DIVIDE_BLUE.a
+                    VKSwapChain* swapChain = GetStateTracker()._activeWindow->_swapChain.get();
+
+                    attachmentInfo = {
+                        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+                        .imageView = swapChain->getCurrentImageView(),
+                        .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+                        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+                        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+                        .clearValue = {
+                            .color = {
+                                DefaultColours::DIVIDE_BLUE.r,
+                                DefaultColours::DIVIDE_BLUE.g,
+                                DefaultColours::DIVIDE_BLUE.b,
+                                DefaultColours::DIVIDE_BLUE.a
+                            }
+                        }
                     };
 
-                    _defaultRenderPass.pClearValues = &clearValue;
-                    vkCmdBeginRenderPass( cmdBuffer, &_defaultRenderPass, VK_SUBPASS_CONTENTS_INLINE );
+                    swapChainImageFormat = swapChain->getSwapChain().image_format;
+                    GetStateTracker()._pipelineRenderInfo.colorAttachmentCount = 1u;
+                    GetStateTracker()._pipelineRenderInfo.pColorAttachmentFormats = &swapChainImageFormat;
+
+                    renderingInfo = {
+                        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+                        .renderArea = {
+                            .offset = {0, 0},
+                            .extent = swapChain->surfaceExtent()
+                        },
+                        .layerCount = 1u,
+                        .colorAttachmentCount = 1u,
+                        .pColorAttachments = &attachmentInfo,
+                    };
+
+                    VkImageMemoryBarrier2 imageBarrier = vk::imageMemoryBarrier2();
+                    imageBarrier.image = swapChain->getCurrentImage();
+                    imageBarrier.subresourceRange = {
+                        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                        .baseMipLevel = 0,
+                        .levelCount = 1,
+                        .baseArrayLayer = 0,
+                        .layerCount = 1,
+                    };
+
+                    imageBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                    imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                    imageBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+                    imageBarrier.srcAccessMask = VK_ACCESS_2_NONE;
+                    imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+                    imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+                    VkDependencyInfo dependencyInfo = vk::dependencyInfo();
+                    dependencyInfo.imageMemoryBarrierCount = 1u;
+                    dependencyInfo.pImageMemoryBarriers = &imageBarrier;
+                    
+                    vkCmdPipelineBarrier2(cmdBuffer, &dependencyInfo);
+
                     GetStateTracker()._activeMSAASamples = 1u;
                 }
                 else
                 {
                     vkRenderTarget* rt = static_cast<vkRenderTarget*>(_context.renderTargetPool().getRenderTarget( crtCmd->_target ));
-                    Attorney::VKAPIRenderTarget::begin( *rt, cmdBuffer, crtCmd->_descriptor, crtCmd->_clearDescriptor, GetStateTracker()._pipelineRenderInfo._vkInfo );
+                    Attorney::VKAPIRenderTarget::begin( *rt, cmdBuffer, crtCmd->_descriptor, crtCmd->_clearDescriptor, GetStateTracker()._pipelineRenderInfo );
+                    renderingInfo = rt->renderingInfo();
 
                     GetStateTracker()._activeMSAASamples = rt->getSampleCount();
-                    _context.setViewport( { 0, 0, rt->getWidth(), rt->getHeight() } );
-                    _context.setScissor( { 0, 0, rt->getWidth(), rt->getHeight() } );
                 }
 
-                GetStateTracker()._pipelineRenderInfo._hash = GetHash( GetStateTracker()._pipelineRenderInfo._vkInfo );
+                const Rect<I32> renderArea = { 
+                     renderingInfo.renderArea.offset.x,
+                     renderingInfo.renderArea.offset.y,
+                     to_I32(renderingInfo.renderArea.extent.width),
+                     to_I32(renderingInfo.renderArea.extent.height)
+                };
+
+                GetStateTracker()._activeRenderTargetDimensions = { renderArea.sizeX, renderArea.sizeY};
+
+                _context.setViewport( renderArea );
+                _context.setScissor( renderArea );
+                vkCmdBeginRendering( cmdBuffer, &renderingInfo);
 
                 PushDebugMessage( cmdBuffer, crtCmd->_name.c_str() );
             } break;
             case GFX::CommandType::END_RENDER_PASS:
             {
-                PopDebugMessage( cmdBuffer );
-                GetStateTracker()._activeMSAASamples = _context.context().config().rendering.MSAASamples;
-
+                vkCmdEndRendering( cmdBuffer );
                 if ( GetStateTracker()._activeRenderTargetID == SCREEN_TARGET_ID )
                 {
-                    vkCmdEndRenderPass( cmdBuffer );
+                    VkImageMemoryBarrier2 imageBarrier = vk::imageMemoryBarrier2();
+                    imageBarrier.image = GetStateTracker()._activeWindow->_swapChain->getCurrentImage(),
+                    imageBarrier.subresourceRange = {
+                        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                        .baseMipLevel = 0,
+                        .levelCount = 1,
+                        .baseArrayLayer = 0,
+                        .layerCount = 1,
+                    };
+
+                    imageBarrier.dstAccessMask = VK_ACCESS_2_NONE;
+                    imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+                    imageBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+                    imageBarrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                    imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                    imageBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+                    VkDependencyInfo dependencyInfo = vk::dependencyInfo();
+                    dependencyInfo.imageMemoryBarrierCount = 1u;
+                    dependencyInfo.pImageMemoryBarriers = &imageBarrier;
+                    
+                    vkCmdPipelineBarrier2(cmdBuffer, &dependencyInfo);
                 }
                 else
                 {
@@ -1626,7 +1874,13 @@ namespace Divide
                     Attorney::VKAPIRenderTarget::end( *rt, cmdBuffer );
                     GetStateTracker()._activeRenderTargetID = SCREEN_TARGET_ID;
                 }
-                GetStateTracker()._pipelineRenderInfo = {};
+
+                PopDebugMessage( cmdBuffer );
+                GetStateTracker()._activeMSAASamples = _context.context().config().rendering.MSAASamples;
+                GetStateTracker()._activeRenderTargetDimensions = s_stateTracker._activeWindow->_window->getDrawableSize();
+
+                // We can do this outside of a renderpass
+                FlushBufferTransferRequests( cmdBuffer );
             }break;
             case GFX::CommandType::BLIT_RT:
             {
@@ -1649,13 +1903,6 @@ namespace Divide
             }break;
             case GFX::CommandType::BIND_PIPELINE:
             {
-                if ( pushConstantsNeedLock )
-                {
-                    flushCommand( &pushConstantsMemCommand );
-                    pushConstantsMemCommand._bufferLocks.clear();
-                    pushConstantsNeedLock = false;
-                }
-
                 const Pipeline* pipeline = cmd->As<GFX::BindPipelineCommand>()->_pipeline;
                 assert( pipeline != nullptr );
                 if ( bindPipeline( *pipeline, cmdBuffer ) == ShaderResult::Failed )
@@ -1668,10 +1915,12 @@ namespace Divide
                 if ( GetStateTracker()._pipeline._vkPipeline != VK_NULL_HANDLE )
                 {
                     const PushConstants& pushConstants = cmd->As<GFX::SendPushConstantsCommand>()->_constants;
-                    if ( GetStateTracker()._pipeline._program->uploadUniformData( pushConstants, _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).impl(), pushConstantsMemCommand ) )
+                    if ( GetStateTracker()._pipeline._program->uploadUniformData( pushConstants, _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).impl(), _pushConstantsMemCommand ) )
                     {
                         _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).dirty( true );
+                        _pushConstantsNeedLock = _pushConstantsNeedLock || _pushConstantsMemCommand._bufferLocks.empty();
                     }
+
                     if ( pushConstants.fastData()._set )
                     {
                         vkCmdPushConstants( cmdBuffer,
@@ -1683,8 +1932,6 @@ namespace Divide
 
                         GetStateTracker()._pushConstantsValid = true;
                     }
-
-                    pushConstantsNeedLock = !pushConstantsMemCommand._bufferLocks.empty();
                 }
             } break;
             case GFX::CommandType::BEGIN_DEBUG_SCOPE:
@@ -1704,13 +1951,10 @@ namespace Divide
             case GFX::CommandType::COMPUTE_MIPMAPS:
             {
                 const GFX::ComputeMipMapsCommand* crtCmd = cmd->As<GFX::ComputeMipMapsCommand>();
+                DIVIDE_ASSERT(crtCmd->_usage != ImageUsage::COUNT);
+
                 PROFILE_SCOPE( "VK: View - based computation", Profiler::Category::Graphics );
-                static_cast<vkTexture*>(crtCmd->_texture)->generateMipmaps( cmdBuffer, 0u, crtCmd->_layerRange.offset, crtCmd->_layerRange.count );
-            }break;
-            case GFX::CommandType::DRAW_TEXT:
-            {
-                const GFX::DrawTextCommand* crtCmd = cmd->As<GFX::DrawTextCommand>();
-                drawText( crtCmd->_batch );
+                static_cast<vkTexture*>(crtCmd->_texture)->generateMipmaps( cmdBuffer, 0u, crtCmd->_layerRange.offset, crtCmd->_layerRange.count, crtCmd->_usage );
             }break;
             case GFX::CommandType::DRAW_COMMANDS:
             {
@@ -1733,6 +1977,8 @@ namespace Divide
                     U32 drawCount = 0u;
                     for ( const GenericDrawCommand& currentDrawCommand : drawCommands )
                     {
+                        DIVIDE_ASSERT( currentDrawCommand._drawCount < _context.GetDeviceInformation()._maxDrawIndirectCount );
+
                         if ( isEnabledOption( currentDrawCommand, CmdRenderOptions::RENDER_GEOMETRY ) )
                         {
                             draw( currentDrawCommand, cmdBuffer );
@@ -1779,69 +2025,291 @@ namespace Divide
             } break;
             case GFX::CommandType::MEMORY_BARRIER:
             {
+                constexpr U8 MAX_BUFFER_BARRIERS_PER_CMD{64};
+
+                std::array<VkImageMemoryBarrier2, to_base( RTColourAttachmentSlot::COUNT ) + 1> imageBarriers{};
+                U8 imageBarrierCount = 0u;
+
+                std::array<VkBufferMemoryBarrier2, MAX_BUFFER_BARRIERS_PER_CMD> bufferBarriers{};
+                U8 bufferBarrierCount = 0u;
+
                 const GFX::MemoryBarrierCommand* crtCmd = cmd->As<GFX::MemoryBarrierCommand>();
 
-                if ( !crtCmd->_bufferLocks.empty() )
+                SyncObjectHandle handle{};
+                for ( const BufferLock& lock : crtCmd->_bufferLocks )
                 {
-                    NOP();
-                }
-                for ( [[maybe_unused]] auto it : crtCmd->_fenceLocks )
-                {
-                    NOP();
-                }
-
-                static std::array<VkImageMemoryBarrier2, to_base( RTColourAttachmentSlot::COUNT ) + 1> memBarriers{};
-                U8 memBarrierCount = 0u;
-                VkImageMemoryBarrier2 memBarrier{};
-                for ( const auto& it : crtCmd->_textureLayoutChanges )
-                {
-                    if ( static_cast<vkTexture*>(it._targetView._srcTexture._internalTexture)->transitionLayout( it._targetView._subRange, it._layout, memBarrier ) )
+                    if ( lock._buffer == nullptr || lock._range._length == 0u )
                     {
-                        memBarriers[memBarrierCount++] = memBarrier;
+                        continue;
+                    }
+
+                    VkBufferMemoryBarrier2& memoryBarrier = bufferBarriers[bufferBarrierCount++];
+                    memoryBarrier = vk::bufferMemoryBarrier2();
+                    memoryBarrier.offset = lock._range._startOffset;
+                    memoryBarrier.size = lock._range._length == U32_MAX ? VK_WHOLE_SIZE : lock._range._length;
+                    memoryBarrier.buffer = static_cast<const vkLockableBuffer*>(lock._buffer)->getVKBufferHandle();
+
+                    const bool isCommandBuffer = lock._buffer->getBufferFlags()._usageType == BufferUsageType::COMMAND_BUFFER;
+
+                    switch (lock._type )
+                    {
+                        case BufferSyncUsage::CPU_WRITE_TO_GPU_READ:
+                        {
+                            if ( handle._id == SyncObjectHandle::INVALID_SYNC_ID )
+                            {
+                                handle = vkLockManager::CreateSyncObject();
+                            }
+
+                            memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                            memoryBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
+                            memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT | ALL_SHADER_STAGES;
+                            memoryBarrier.dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT;
+                            if ( isCommandBuffer )
+                            {
+                                memoryBarrier.dstStageMask |= VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
+                                memoryBarrier.dstAccessMask |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
+                            }
+
+                            LockManager* lockManager = lock._buffer->getLockManager();
+                            if ( !lockManager->lockRange( lock._range._startOffset, lock._range._length, handle ) )
+                            {
+                                DIVIDE_UNEXPECTED_CALL();
+                            }
+                        } break;
+                        case BufferSyncUsage::GPU_WRITE_TO_CPU_READ:
+                        {
+                            memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                            memoryBarrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
+                            memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT;
+                            memoryBarrier.dstAccessMask = VK_ACCESS_2_HOST_READ_BIT;
+                        } break;
+                        case BufferSyncUsage::GPU_WRITE_TO_GPU_READ:
+                        {
+                            memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                            memoryBarrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
+                            memoryBarrier.dstStageMask = ALL_SHADER_STAGES;
+                            memoryBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+                            if ( isCommandBuffer )
+                            {
+                                memoryBarrier.dstStageMask |= VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
+                                memoryBarrier.dstAccessMask |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
+                            }
+                        } break;
+                        case BufferSyncUsage::GPU_READ_TO_GPU_WRITE:
+                        {
+                            memoryBarrier.srcStageMask = ALL_SHADER_STAGES;
+                            memoryBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+                            if ( isCommandBuffer )
+                            {
+                                memoryBarrier.srcStageMask |= VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
+                                memoryBarrier.srcAccessMask |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
+                            }
+                            memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                            memoryBarrier.dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
+                        } break;
+                        case BufferSyncUsage::GPU_WRITE_TO_GPU_WRITE:
+                        {
+                            memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                            memoryBarrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
+                            memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                            memoryBarrier.dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT;
+                            if ( isCommandBuffer )
+                            {
+                                memoryBarrier.dstStageMask |= VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
+                                memoryBarrier.dstAccessMask |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
+                            }
+                        } break;
+                        case BufferSyncUsage::CPU_WRITE_TO_CPU_READ:
+                        {
+                            memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                            memoryBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
+                            memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+                            memoryBarrier.dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT;
+                        }break;
+                        case BufferSyncUsage::CPU_READ_TO_CPU_WRITE:
+                        {
+                            memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT; 
+                            memoryBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_READ_BIT; 
+                            memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                            memoryBarrier.dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
+                        }break;
+                        case BufferSyncUsage::CPU_WRITE_TO_CPU_WRITE:
+                        {
+                            memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+                            memoryBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
+                            memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                            memoryBarrier.dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
+                        }break;
+                        default : DIVIDE_UNEXPECTED_CALL(); break;
+                    }
+
+                    if ( bufferBarrierCount == MAX_BUFFER_BARRIERS_PER_CMD )
+                    {
+                        // Too many buffer barriers. Flushing ...
+                        VkDependencyInfo dependencyInfo = vk::dependencyInfo();
+                        dependencyInfo.bufferMemoryBarrierCount = bufferBarrierCount;
+                        dependencyInfo.pBufferMemoryBarriers = bufferBarriers.data();
+
+                        vkCmdPipelineBarrier2( cmdBuffer, &dependencyInfo );
+                        bufferBarrierCount = 0u;
                     }
                 }
-                if ( memBarrierCount > 0u )
+
+                constexpr VkPipelineStageFlags2 PIPELINE_FRAGMENT_TEST_BITS = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+
+                for ( const auto& it : crtCmd->_textureLayoutChanges )
+                {
+                    if ( it._sourceLayout == it._targetLayout )
+                    {
+                        continue;
+                    }
+
+                    vkTexture* vkTex = static_cast<vkTexture*>(it._targetView._srcTexture._internalTexture);
+
+                    auto subRange = it._targetView._subRange;
+                    if ( IsCubeTexture( vkTex->descriptor().texType() ) &&
+                         subRange._layerRange.count != U16_MAX )
+                    {
+                        subRange._layerRange.count *= 6u;
+                    }
+
+                    const VkImageLayout targetLayout = IsDepthTexture( vkTex->descriptor().baseFormat() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+                    auto& memBarrier = imageBarriers[imageBarrierCount++];
+                    memBarrier = vk::imageMemoryBarrier2();
+                    memBarrier.image = vkTex->image()->_image;
+                    memBarrier.subresourceRange.aspectMask = vkTexture::GetAspectFlags(vkTex->descriptor());
+                    memBarrier.subresourceRange.baseMipLevel = subRange._mipLevels.offset;
+                    memBarrier.subresourceRange.levelCount = subRange._mipLevels.count == U16_MAX ? VK_REMAINING_MIP_LEVELS : subRange._mipLevels.count;
+                    memBarrier.subresourceRange.baseArrayLayer = subRange._layerRange.offset;
+                    memBarrier.subresourceRange.layerCount = subRange._layerRange.count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : subRange._layerRange.count;
+
+
+                    switch ( it._targetLayout )
+                    {
+                        case ImageUsage::UNDEFINED:
+                        {
+                            DIVIDE_UNEXPECTED_CALL();
+                        } break;
+                        case ImageUsage::SHADER_READ:
+                        {
+                            memBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+                            memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+                            memBarrier.newLayout = targetLayout;
+                        } break;
+                        case ImageUsage::SHADER_WRITE:
+                        {
+                            memBarrier.dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
+                            memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                            memBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+                        } break;
+                        case ImageUsage::SHADER_READ_WRITE:
+                        {
+                            memBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
+                            memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                            memBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+                        } break;
+                        case ImageUsage::RT_COLOUR_ATTACHMENT:
+                        {
+                            memBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                            memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                            memBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                        } break;
+                        case ImageUsage::RT_DEPTH_ATTACHMENT:
+                        {
+                            memBarrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                            memBarrier.dstStageMask = PIPELINE_FRAGMENT_TEST_BITS;
+                            memBarrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+                        } break;
+                        case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT:
+                        {
+                            memBarrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                            memBarrier.dstStageMask = PIPELINE_FRAGMENT_TEST_BITS;
+                            memBarrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                        } break;
+                        default: DIVIDE_UNEXPECTED_CALL();
+                    };
+
+                    switch ( it._sourceLayout )
+                    {
+                        case ImageUsage::UNDEFINED:
+                        {
+                            memBarrier.srcAccessMask = VK_ACCESS_2_NONE;
+                            memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
+                            memBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                        } break;
+                        case ImageUsage::SHADER_READ:
+                        {
+                            memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+                            memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+                            memBarrier.oldLayout = targetLayout;
+                        } break;
+                        case ImageUsage::SHADER_WRITE:
+                        {
+                            memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
+                            memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                            memBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+                        } break;
+                        case ImageUsage::SHADER_READ_WRITE:
+                        {
+                            memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
+                            memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+                            memBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+                        } break;
+                        case ImageUsage::RT_COLOUR_ATTACHMENT:
+                        {
+                            memBarrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                            memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                            memBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                        } break;
+                        case ImageUsage::RT_DEPTH_ATTACHMENT:
+                        {
+                            memBarrier.srcAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                            memBarrier.srcStageMask = PIPELINE_FRAGMENT_TEST_BITS;
+                            memBarrier.oldLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+                        } break;
+                        case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT:
+                        {
+                            memBarrier.srcAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                            memBarrier.srcStageMask = PIPELINE_FRAGMENT_TEST_BITS;
+                            memBarrier.oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                        } break;
+                        default: DIVIDE_UNEXPECTED_CALL();
+                    }
+                }
+
+                if ( imageBarrierCount > 0u || bufferBarrierCount > 0u)
                 {
                     VkDependencyInfo dependencyInfo = vk::dependencyInfo();
-                    dependencyInfo.imageMemoryBarrierCount = memBarrierCount;
-                    dependencyInfo.pImageMemoryBarriers = memBarriers.data();
+                    dependencyInfo.imageMemoryBarrierCount = imageBarrierCount;
+                    dependencyInfo.pImageMemoryBarriers = imageBarriers.data();
+                    dependencyInfo.bufferMemoryBarrierCount = bufferBarrierCount;
+                    dependencyInfo.pBufferMemoryBarriers = bufferBarriers.data();
 
                     vkCmdPipelineBarrier2( cmdBuffer, &dependencyInfo );
                 }
             } break;
             default: break;
         }
-
-        if ( GFXDevice::IsSubmitCommand( cmd->Type() ) )
-        {
-            if ( pushConstantsNeedLock )
-            {
-                flushCommand( &pushConstantsMemCommand );
-                pushConstantsMemCommand._bufferLocks.clear();
-                pushConstantsNeedLock = false;
-            }
-        }
     }
 
     void VK_API::preFlushCommandBuffer( [[maybe_unused]] const GFX::CommandBuffer& commandBuffer )
     {
         GetStateTracker()._activeRenderTargetID = SCREEN_TARGET_ID;
+        GetStateTracker()._activeRenderTargetDimensions = s_stateTracker._activeWindow->_window->getDrawableSize();
         // We don't really know what happened before this state and at worst this is going to end up into an 
         // extra vkCmdPushConstants call with default data, so better safe.
         GetStateTracker()._pushConstantsValid = false;
+        FlushBufferTransferRequests( getCurrentCommandBuffer() );
     }
 
     void VK_API::postFlushCommandBuffer( [[maybe_unused]] const GFX::CommandBuffer& commandBuffer ) noexcept
     {
+    
+        flushPushConstantsLocks();
         s_transientDeleteQueue.flush( _device->getDevice() );
         GetStateTracker()._activeRenderTargetID = INVALID_RENDER_TARGET_ID;
-    }
-
-    vec2<U16> VK_API::getDrawableSize( const DisplayWindow& window ) const noexcept
-    {
-        int w = 1, h = 1;
-        SDL_Vulkan_GetDrawableSize( window.getRawWindow(), &w, &h );
-        return vec2<U16>( w, h );
+        GetStateTracker()._activeRenderTargetDimensions = s_stateTracker._activeWindow->_window->getDrawableSize();
     }
 
     bool VK_API::setViewportInternal( const Rect<I32>& newViewport ) noexcept
@@ -1851,12 +2319,22 @@ namespace Divide
 
     bool VK_API::setViewportInternal( const Rect<I32>& newViewport, VkCommandBuffer cmdBuffer ) noexcept
     {
-        const VkViewport targetViewport{ to_F32( newViewport.offsetX ),
-                                        to_F32( newViewport.sizeY ) - to_F32( newViewport.offsetY ),
-                                        to_F32( newViewport.sizeX ),
-                                        -to_F32( newViewport.sizeY ),
-                                        0.f,
-                                        1.f };
+        VkViewport targetViewport{};
+        targetViewport.width = to_F32( newViewport.sizeX );
+        targetViewport.height = -to_F32( newViewport.sizeY );
+        targetViewport.x = to_F32(newViewport.offsetX);
+        if ( newViewport.offsetY == 0 )
+        {
+            targetViewport.y = to_F32(newViewport.sizeY);
+        }
+        else
+        {
+            targetViewport.y = to_F32(/*newViewport.sizeY - */newViewport.offsetY);
+            targetViewport.y = GetStateTracker()._activeRenderTargetDimensions.height + targetViewport.y;
+        }
+        targetViewport.minDepth = 0.f;
+        targetViewport.maxDepth = 1.f;
+
         vkCmdSetViewport( cmdBuffer, 0, 1, &targetViewport );
         return true;
     }
@@ -1875,37 +2353,64 @@ namespace Divide
         return true;
     }
 
-    void VK_API::initDescriptorSets()
+    VkDescriptorSetLayout VK_API::createLayoutFromBindings(const DescriptorSetUsage usage, const ShaderProgram::BindingsPerSetArray& bindings )
     {
-        const ShaderProgram::BindingSetData& bindingData = ShaderProgram::GetBindingSetData();
-        eastl::fixed_vector<VkDescriptorSetLayoutBinding, ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET, false> layoutBinding{};
+        static eastl::fixed_vector<VkDescriptorSetLayoutBinding, ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET, false> layoutBinding{};
+        layoutBinding.clear();
 
-        for ( U8 i = 0u; i < to_base( DescriptorSetUsage::COUNT ); ++i )
+        for ( U8 slot = 0u; slot < ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET; ++slot )
         {
-            if ( i == to_base( DescriptorSetUsage::PER_DRAW ) )
+            if ( bindings[slot]._type == DescriptorSetBindingType::COUNT || (slot == 0 && usage == DescriptorSetUsage::PER_BATCH ))
             {
                 continue;
             }
 
-            auto& bindings = bindingData[i];
-            for ( U8 slot = 0u; slot < ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET; ++slot )
-            {
-                if ( bindings[slot]._type == DescriptorSetBindingType::COUNT || (slot == 0 && i == to_base( DescriptorSetUsage::PER_BATCH )) )
-                {
-                    continue;
-                }
-
-                VkDescriptorSetLayoutBinding& newBinding = layoutBinding.emplace_back();
-                newBinding.descriptorCount = 1u;
-                newBinding.descriptorType = VKUtil::vkDescriptorType( bindings[slot]._type );
-                newBinding.stageFlags = GetFlagsForStageVisibility( bindings[slot]._visibility );
-                newBinding.binding = slot;
-                newBinding.pImmutableSamplers = nullptr;
-            }
-            VkDescriptorSetLayoutCreateInfo layoutCreateInfo = vk::descriptorSetLayoutCreateInfo( layoutBinding.data(), to_U32( layoutBinding.size() ) );
-            _descriptorSetLayouts[i] = _descriptorLayoutCache->createDescriptorLayout( &layoutCreateInfo );
-            efficient_clear( layoutBinding );
+            VkDescriptorSetLayoutBinding& newBinding = layoutBinding.emplace_back();
+            newBinding.descriptorCount = 1u;
+            newBinding.descriptorType = VKUtil::vkDescriptorType( bindings[slot]._type );
+            newBinding.stageFlags = GetFlagsForStageVisibility( bindings[slot]._visibility );
+            newBinding.binding = slot;
+            newBinding.pImmutableSamplers = nullptr;
         }
+
+        VkDescriptorSetLayoutCreateInfo layoutCreateInfo = vk::descriptorSetLayoutCreateInfo( layoutBinding.data(), to_U32( layoutBinding.size() ) );
+        return _descriptorLayoutCache->createDescriptorLayout( &layoutCreateInfo );
+    }
+    
+    void VK_API::initDescriptorSets()
+    {
+        const ShaderProgram::BindingSetData& bindingData = ShaderProgram::GetBindingSetData();
+
+        _descriptorLayoutCache = eastl::make_unique<DescriptorLayoutCache>( _device->getVKDevice() );
+
+        for ( U8 i = 0u; i < to_base( DescriptorSetUsage::COUNT ); ++i )
+        {
+            if ( i != to_base( DescriptorSetUsage::PER_DRAW ) )
+            {
+                _descriptorSetLayouts[i] = createLayoutFromBindings( static_cast<DescriptorSetUsage>(i), bindingData[i] );
+            }
+        }
+
+        for ( U8 i = 0u; i < to_base( DescriptorSetUsage::COUNT ); ++i )
+        {
+            auto& pool = s_stateTracker._descriptorAllocators[i];
+            pool._frameCount = MAX_FRAMES_IN_FLIGHT + 1u;
+            pool._allocatorPool.reset( vke::DescriptorAllocatorPool::Create( _device->getVKDevice(), pool._frameCount) );
+       
+            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4.f );
+            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 4.f );
+            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1.f );
+            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1.f );
+            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1.f );
+            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2.f );
+            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 4.f );
+            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2.f );
+            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 4.f );
+            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 0.5f );
+
+            pool._handle = pool._allocatorPool->GetAllocator();
+        }
+
     }
 
     void VK_API::onThreadCreated( [[maybe_unused]] const std::thread::id& threadID ) noexcept
@@ -1955,6 +2460,7 @@ namespace Divide
             Debug::vkCmdEndDebugUtilsLabelEXT( cmdBuffer );
         }
 
+        DIVIDE_ASSERT( s_stateTracker._debugScopeDepth > 0u );
         GetStateTracker()._debugScope[GetStateTracker()._debugScopeDepth--] = { "", U32_MAX };
     }
 
@@ -1975,7 +2481,7 @@ namespace Divide
                 }
             }
             {
-                ScopedLock<SharedMutex> w_lock( s_samplerMapLock );
+                LockGuard<SharedMutex> w_lock( s_samplerMapLock );
                 // Check again
                 const SamplerObjectMap::const_iterator it = s_samplerMap.find( samplerHash );
                 if ( it == std::cend( s_samplerMap ) )

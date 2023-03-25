@@ -37,7 +37,6 @@
 
 #include "ClipPlanes.h"
 #include "GFXShaderData.h"
-#include "GFXState.h"
 #include "Pipeline.h"
 #include "CommandsImpl.h"
 #include "PushConstants.h"
@@ -46,7 +45,7 @@
 #include "IMPrimitiveDescriptors.h"
 
 #include "Core/Math/Headers/Line.h"
-#include "Core/Headers/KernelComponent.h"
+#include "Core/Headers/FrameListener.h"
 #include "Core/Headers/PlatformContextComponent.h"
 #include "Geometry/Material/Headers/MaterialEnums.h"
 
@@ -56,7 +55,11 @@
 #include "Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h"
 #include "Rendering/RenderPass/Headers/RenderPass.h"
 
-namespace Divide {
+struct FONScontext;
+
+namespace Divide
+{
+
 struct RenderPassParams;
 struct ShaderProgramDescriptor;
 
@@ -168,7 +171,7 @@ struct DebugPrimitiveHandler
     void reset();
 
     void add(const I64 ID, const Descriptor& data) noexcept {
-        ScopedLock<Mutex> w_lock(_dataLock);
+        LockGuard<Mutex> w_lock(_dataLock);
         addLocked(ID, data);
     }
 
@@ -204,6 +207,20 @@ struct DebugPrimitiveHandler
     eastl::fixed_vector<DataEntry, N, true> _debugData;
 };
 
+struct ImShaders
+{
+    explicit ImShaders( GFXDevice& context );
+
+    PROPERTY_R_IW( ShaderProgram_ptr, imShader, nullptr );
+    PROPERTY_R_IW( ShaderProgram_ptr, imShaderNoTexture, nullptr );
+    PROPERTY_R_IW( ShaderProgram_ptr, imWorldShader, nullptr );
+    PROPERTY_R_IW( ShaderProgram_ptr, imWorldShaderNoTexture, nullptr );
+    PROPERTY_R_IW( ShaderProgram_ptr, imWorldOITShader, nullptr );
+    PROPERTY_R_IW( ShaderProgram_ptr, imWorldOITShaderNoTexture, nullptr );
+};
+
+FWD_DECLARE_MANAGED_STRUCT( ImShaders );
+
 struct RenderTargetNames {
     static RenderTargetID SCREEN;
     static RenderTargetID SCREEN_MS;
@@ -223,7 +240,7 @@ struct RenderTargetNames {
 };
 
 /// Rough around the edges Adapter pattern abstracting the actual rendering API and access to the GPU
-class GFXDevice final : public KernelComponent, public PlatformContextComponent {
+class GFXDevice final : public PlatformContextComponent, public FrameListener {
     friend class Attorney::GFXDeviceAPI;
     friend class Attorney::GFXDeviceGUI;
     friend class Attorney::GFXDeviceKernel;
@@ -253,7 +270,7 @@ public:
     using GFXDescriptorSets = std::array<GFXDescriptorSet, to_base(DescriptorSetUsage::COUNT)>;
 
 public:  // GPU interface
-    explicit GFXDevice(Kernel& parent);
+    explicit GFXDevice( PlatformContext& context );
     ~GFXDevice();
 
     ErrorCode initRenderingAPI(I32 argc, char** argv, RenderAPI API);
@@ -261,10 +278,10 @@ public:  // GPU interface
     void closeRenderingAPI();
 
     void idle(bool fast);
-    void beginFrame(DisplayWindow& window, bool global);
-    void endFrame(DisplayWindow& window, bool global);
+    void drawToWindow(DisplayWindow& window);
+    void flushWindow(DisplayWindow& window);
 
-    void debugDraw(const SceneRenderState& sceneRenderState, GFX::CommandBuffer& bufferInOut);
+    void debugDraw( const SceneRenderState& sceneRenderState, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
     void debugDrawLines(const I64 ID, IM::LineDescriptor descriptor) noexcept;
     void debugDrawBox(const I64 ID, IM::BoxDescriptor descriptor) noexcept;
     void debugDrawOBB(const I64 ID, IM::OBBDescriptor descriptor) noexcept;
@@ -325,16 +342,9 @@ public:  // GPU interface
 
 public:  // Accessors and Mutators
 
-    [[nodiscard]] ShaderProgram* defaultIMShader() const noexcept;
-    [[nodiscard]] ShaderProgram* defaultIMShaderWorld() const noexcept;
-    [[nodiscard]] ShaderProgram* defaultIMShaderWorldNoTexture() const noexcept;
-    [[nodiscard]] ShaderProgram* defaultIMShaderOIT() const noexcept;
-
     inline Renderer& getRenderer() const;
-    inline const GPUState& gpuState() const noexcept;
-    inline GPUState& gpuState() noexcept;
     /// returns the standard state block
-    size_t getDefaultStateBlock(bool noDepth) const noexcept;
+    size_t getDefaultStateBlock( bool noDepthTest ) const noexcept;
     inline size_t get2DStateBlock() const noexcept;
     inline GFXRTPool& renderTargetPool() noexcept;
     inline const GFXRTPool& renderTargetPool() const noexcept;
@@ -352,8 +362,6 @@ public:  // Accessors and Mutators
     [[nodiscard]] PerformanceMetrics& getPerformanceMetrics() noexcept;
     [[nodiscard]] const PerformanceMetrics& getPerformanceMetrics() const noexcept;
 
-    inline vec2<U16> getDrawableSize(const DisplayWindow& window) const;
-
     void onThreadCreated(const std::thread::id& threadID) const;
 
     static void FrameInterpolationFactor(const D64 interpolation) noexcept { s_interpolationFactor = interpolation; }
@@ -366,8 +374,6 @@ public:  // Accessors and Mutators
     static bool IsSubmitCommand(GFX::CommandType type) noexcept;
 
 public:
-    GenericVertexData* getOrCreateIMGUIBuffer(I64 windowGUID, I32 maxCommandCount, U32 maxVertices);
-
     /// Create and return a new immediate mode emulation primitive.
     IMPrimitive*       newIMP(const Str64& name);
     bool               destroyIMP(IMPrimitive*& primitive);
@@ -400,6 +406,8 @@ public:
     // Shortcuts
     void drawText(const GFX::DrawTextCommand& cmd, GFX::CommandBuffer& bufferInOut, bool pushCamera = true) const;
     void drawText(const TextElementBatch& batch, GFX::CommandBuffer& bufferInOut, bool pushCamera = true) const;
+    /// Try to find the requested font in the font cache. Load on cache miss.
+    I32 getFont( const Str64& fontName );
 
     // Render the texture using a custom viewport
     void drawTextureInViewport(const ImageView& texture, size_t samplerHash, const Rect<I32>& viewport, bool convertToSrgb, bool drawToDepthOnly, bool drawBlend, GFX::CommandBuffer& bufferInOut);
@@ -429,7 +437,15 @@ public:
     PROPERTY_R_IW(Rect<I32>, activeViewport, UNIT_VIEWPORT);
     PROPERTY_R_IW(Rect<I32>, activeScissor, UNIT_VIEWPORT);
     POINTER_R(SceneShaderData, sceneData, nullptr);
-    
+    /// FontStash's context
+    POINTER_RW(FONScontext, fonsContext, nullptr);
+
+    PROPERTY_R(ImShaders_uptr, imShaders);
+
+protected:
+   [[nodiscard]] bool frameStarted( const FrameEvent& evt ) override;
+   [[nodiscard]] bool frameEnded( const FrameEvent& evt ) noexcept override;
+
 protected:
 
     void update(U64 deltaTimeUSFixed, U64 deltaTimeUSApp);
@@ -454,13 +470,15 @@ protected:
     void stepResolution(bool increment);
 
     [[nodiscard]] PipelineDescriptor& getDebugPipeline(const IM::BaseDescriptor& descriptor) noexcept;
-    void debugDrawLines(GFX::CommandBuffer& bufferInOut);
-    void debugDrawBoxes(GFX::CommandBuffer& bufferInOut);
-    void debugDrawOBBs(GFX::CommandBuffer& bufferInOut);
-    void debugDrawCones(GFX::CommandBuffer& bufferInOut);
-    void debugDrawSpheres(GFX::CommandBuffer& bufferInOut);
-    void debugDrawFrustums(GFX::CommandBuffer& bufferInOut);
+    void debugDrawLines( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
+    void debugDrawBoxes( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
+    void debugDrawOBBs( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
+    void debugDrawCones( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
+    void debugDrawSpheres( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
+    void debugDrawFrustums( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
 
+    /// Text rendering is handled exclusively by Mikko Mononen's FontStash library (https://github.com/memononen/fontstash)
+    void drawText( const TextElementBatch& batch );
 
 protected:
     friend class RenderPassManager;
@@ -494,6 +512,10 @@ private:
     RenderTarget_uptr newRTInternal(const RenderTargetDescriptor& descriptor);
     ErrorCode createAPIInstance(RenderAPI api);
 
+    /// A cache of all fonts used
+    hashMap<U64, I32> _fonts;
+    hashAlg::pair<Str64, I32> _fontCache = { "", -1 };
+
 private:
     RenderAPIWrapper_uptr _api = nullptr;
     Renderer_uptr _renderer = nullptr;
@@ -509,7 +531,6 @@ private:
 
     CameraSnapshot  _activeCameraSnapshot;
 
-    GPUState _state;
     GFXRTPool* _rtPool = nullptr;
 
     std::pair<vec2<U16>, bool> _resolutionChangeQueued;
@@ -518,7 +539,7 @@ private:
     U8 _queuedScreenSampleChange = s_invalidQueueSampleCount;
     std::array<U8, to_base(ShadowType::COUNT)> _queuedShadowSampleChange;
     /// The default render state but with depth testing disabled
-    size_t _defaultStateNoDepthHash = 0u;
+    size_t _defaultStateNoDepthTestHash = 0u;
     /// Special render state for 2D rendering
     size_t _state2DRenderingHash = 0u;
     size_t _stateDepthOnlyRenderingHash = 0u;
@@ -539,10 +560,7 @@ private:
     ShaderProgram_ptr _blurBoxShaderLayered = nullptr;
     ShaderProgram_ptr _blurGaussianShaderSingle = nullptr;
     ShaderProgram_ptr _blurGaussianShaderLayered = nullptr;
-    ShaderProgram_ptr _imShader = nullptr;
-    ShaderProgram_ptr _imWorldShader = nullptr;
-    ShaderProgram_ptr _imWorldShaderNoTexture = nullptr;
-    ShaderProgram_ptr _imWorldOITShader = nullptr;
+
 
     Pipeline* _HIZPipeline = nullptr;
     Pipeline* _HIZCullPipeline = nullptr;
@@ -613,8 +631,6 @@ private:
 
     std::array<CameraSnapshot, Config::MAX_LOCAL_PLAYER_COUNT> _cameraSnapshotHistory;
 
-    hashMap<I64, GenericVertexData_ptr> _IMGUIBuffers;
-
     std::stack<Rect<I32>> _viewportStack;
     Mutex _imprimitiveMutex;
 
@@ -662,12 +678,12 @@ namespace Attorney {
 
     class GFXDeviceGraphicsResource {
        static void onResourceCreate(GFXDevice& device, GraphicsResource::Type type, I64 GUID, U64 nameHash) {
-           ScopedLock<Mutex> w_lock(device._graphicsResourceMutex);
+           LockGuard<Mutex> w_lock(device._graphicsResourceMutex);
            device._graphicResources.emplace_back(type, GUID, nameHash);
        }
 
        static void onResourceDestroy(GFXDevice& device, [[maybe_unused]] GraphicsResource::Type type, I64 GUID, [[maybe_unused]] U64 nameHash) {
-           ScopedLock<Mutex> w_lock(device._graphicsResourceMutex);
+           LockGuard<Mutex> w_lock(device._graphicsResourceMutex);
            const bool success = dvd_erase_if(device._graphicResources,
                                              [type, GUID, nameHash](const auto& crtEntry) noexcept -> bool {
                                                 if (std::get<1>(crtEntry) == GUID) {

@@ -3,6 +3,8 @@
 #include "Headers/LockManager.h"
 
 #include "Headers/GFXDevice.h"
+#include "RenderBackend/OpenGL/Headers/glLockManager.h"
+#include "RenderBackend/Vulkan/Buffers/Headers/vkLockManager.h"
 
 namespace Divide
 {
@@ -29,10 +31,10 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        ScopedLock<Mutex> r_lock( s_bufferLockLock );
+        LockGuard<Mutex> r_lock( s_bufferLockLock );
         for ( const BufferLockPoolEntry& syncObject : s_bufferLockPool )
         {
-            ScopedLock<Mutex> w_lock( syncObject._ptr->_fenceLock );
+            LockGuard<Mutex> w_lock( syncObject._ptr->_fenceLock );
             if ( syncObject._ptr->_frameNumber < frameNumber )
             {
                 syncObject._ptr->reset();
@@ -42,11 +44,23 @@ namespace Divide
 
     void LockManager::Clear()
     {
-        ScopedLock<Mutex> r_lock( s_bufferLockLock );
+        LockGuard<Mutex> r_lock( s_bufferLockLock );
         s_bufferLockPool.clear();
     }
 
-    SyncObjectHandle LockManager::createSyncObjectLocked( const U8 flag, const bool isRetry )
+    bool LockManager::InitLockPoolEntry( const RenderAPI api, BufferLockPoolEntry& entry )
+    {
+        switch ( api )
+        {
+            case RenderAPI::OpenGL: return glLockManager::InitLockPoolEntry(entry);
+            case RenderAPI::Vulkan: return vkLockManager::InitLockPoolEntry(entry);
+            case RenderAPI::None: return true;
+        }
+
+        return false;
+    }
+
+    SyncObjectHandle LockManager::CreateSyncObjectLocked( RenderAPI api, const U8 flag, const bool isRetry )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -54,7 +68,7 @@ namespace Divide
         {
             // We failed once, so create a new object
             BufferLockPoolEntry newEntry{};
-            if ( initLockPoolEntry( newEntry ) )
+            if ( InitLockPoolEntry(api, newEntry ) )
             {
                 newEntry._ptr->_frameNumber = GFXDevice::FrameCount();
                 newEntry._flag = flag;
@@ -68,8 +82,8 @@ namespace Divide
         {
             BufferLockPoolEntry& syncObject = s_bufferLockPool[i];
 
-            ScopedLock<Mutex> w_lock_sync( syncObject._ptr->_fenceLock );
-            if ( initLockPoolEntry( syncObject ) )
+            LockGuard<Mutex> w_lock_sync( syncObject._ptr->_fenceLock );
+            if ( InitLockPoolEntry(api, syncObject ) )
             {
                 syncObject._ptr->_frameNumber = GFXDevice::FrameCount();
                 syncObject._flag = flag;
@@ -77,7 +91,7 @@ namespace Divide
             }
         }
 
-        return createSyncObjectLocked( flag, true );
+        return CreateSyncObjectLocked(api, flag, true );
     }
 
     bool LockManager::waitForLockedRange( const size_t lockBeginBytes, const size_t lockLength )
@@ -88,18 +102,19 @@ namespace Divide
 
         bool error = false;
 
-        ScopedLock<Mutex> w_lock_global( _bufferLockslock );
+        LockGuard<Mutex> w_lock_global( _bufferLockslock );
         efficient_clear( _swapLocks );
 
         for ( const BufferLockInstance& lock : _bufferLocks )
         {
             DIVIDE_ASSERT( lock._syncObjHandle._id != SyncObjectHandle::INVALID_SYNC_ID );
 
-            ScopedLock<Mutex> r_lock( s_bufferLockLock );
+            LockGuard<Mutex> r_lock( s_bufferLockLock );
             const BufferLockPoolEntry& syncLockInstance = s_bufferLockPool[lock._syncObjHandle._id];
             if ( syncLockInstance._generation != lock._syncObjHandle._generation )
             {
-                DIVIDE_ASSERT( syncLockInstance._generation > lock._syncObjHandle._generation );
+                error = !(syncLockInstance._generation > lock._syncObjHandle._generation);
+                DIVIDE_ASSERT( !error );
                 continue;
             }
 
@@ -109,7 +124,7 @@ namespace Divide
             }
             else
             {
-                ScopedLock<Mutex> w_lock( syncLockInstance._ptr->_fenceLock );
+                LockGuard<Mutex> w_lock( syncLockInstance._ptr->_fenceLock );
                 if ( !waitForLockedRangeLocked( syncLockInstance._ptr, testRange, lock ) )
                 {
                     _swapLocks.push_back( lock );
@@ -130,7 +145,7 @@ namespace Divide
 
         const BufferRange testRange{ lockBeginBytes, lockLength };
 
-        ScopedLock<Mutex> w_lock( _bufferLockslock );
+        LockGuard<Mutex> w_lock( _bufferLockslock );
         // See if we can reuse an old lock. Ignore the old fence since the new one will guard the same mem region. (Right?)
         for ( BufferLockInstance& lock : _bufferLocks )
         {
@@ -147,10 +162,11 @@ namespace Divide
 
         return true;
     }
-    SyncObjectHandle LockManager::createSyncObject( const U8 flag )
+
+    SyncObjectHandle LockManager::CreateSyncObject( const RenderAPI api, const U8 flag )
     {
-        ScopedLock<Mutex> w_lock( s_bufferLockLock );
-        return createSyncObjectLocked( flag );
+        LockGuard<Mutex> w_lock( s_bufferLockLock );
+        return CreateSyncObjectLocked( api, flag );
     }
 
 

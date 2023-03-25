@@ -133,7 +133,6 @@ public:
     ErrorCode init(U32 windowFlags,
                    WindowType initialType,
                    const WindowDescriptor& descriptor);
-    void update(U64 deltaTimeUS) noexcept;
 
     ErrorCode destroyWindow();
 
@@ -145,16 +144,16 @@ public:
     [[nodiscard]] inline bool hasFocus() const noexcept;
 
     [[nodiscard]] inline bool minimized() const noexcept;
-           void minimized(bool state) noexcept;
+                         void minimized(bool state) noexcept;
 
     [[nodiscard]] inline bool maximized() const noexcept;
-           void maximized(bool state) noexcept;
+                         void maximized(bool state) noexcept;
 
     [[nodiscard]] inline bool hidden() const noexcept;
-           void hidden(bool state) noexcept;
+                         void hidden(bool state) noexcept;
 
     [[nodiscard]] inline bool decorated() const noexcept;
-           void decorated(bool state) noexcept;
+                         void decorated(bool state) noexcept;
 
     [[nodiscard]] inline bool fullscreen() const noexcept;
 
@@ -162,7 +161,7 @@ public:
     inline void changeType(WindowType newType);
     inline void changeToPreviousType();
 
-           void opacity(U8 opacity) noexcept;
+                         void opacity(U8 opacity) noexcept;
     [[nodiscard]] inline U8   opacity() const noexcept;
     [[nodiscard]] inline U8   prevOpacity() const noexcept;
 
@@ -219,8 +218,7 @@ private:
     /// Changing from one window type to another
     /// should also change display dimensions and position
     void handleChangeWindowType(WindowType newWindowType);
-
-    [[nodiscard]] vec2<U16> getDrawableSizeInternal() const;
+    [[nodiscard]] void updateDrawableSize() noexcept;
 
 private:
     using EventListeners = vector<DELEGATE<bool, WindowEventArgs>>;
@@ -241,7 +239,6 @@ private:
     /// The current rendering window type
     WindowType _type = WindowType::COUNT;
     WindowType _previousType = WindowType::COUNT;
-    WindowType _queuedType = WindowType::COUNT;
     U8 _opacity = 255u;
     U8 _prevOpacity = 255u;
     

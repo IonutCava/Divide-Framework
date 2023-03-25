@@ -8,6 +8,8 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Utility/Headers/Localization.h"
 
+#include <sdl/include/SDL_vulkan.h>
+
 namespace Divide {
 
 DisplayWindow::DisplayWindow(WindowManager& parent, PlatformContext& context)
@@ -76,6 +78,8 @@ ErrorCode DisplayWindow::init(const U32 windowFlags,
     }
 
     _windowID = SDL_GetWindowID(_sdlWindow);
+    _drawableSize = descriptor.dimensions;
+
     return ErrorCode::NO_ERR;
 }
 
@@ -84,13 +88,6 @@ WindowHandle DisplayWindow::handle() const noexcept {
     WindowHandle handle = {};
     GetWindowHandle(_sdlWindow, handle);
     return handle;
-}
-
-void DisplayWindow::update([[maybe_unused]] const U64 deltaTimeUS) noexcept {
-    if (_queuedType != WindowType::COUNT) {
-        //handleChangeWindowType(_queuedType);
-        _queuedType = WindowType::COUNT;
-    }
 }
 
 void DisplayWindow::notifyListeners(const WindowEvent event, const WindowEventArgs& args) {
@@ -125,6 +122,8 @@ bool DisplayWindow::onSDLEvent(const SDL_Event event) {
 
     WindowEventArgs args = {};
     args._windowGUID = getGUID();
+
+    updateDrawableSize();
 
     if (fullscreen()) {
         args.x = to_I32(WindowManager::GetFullscreenResolution().width);
@@ -172,11 +171,13 @@ bool DisplayWindow::onSDLEvent(const SDL_Event event) {
             args._flag = fullscreen();
             notifyListeners(WindowEvent::RESIZED, args);
             _internalResizeEvent = false;
+
             return true;
         };
         case SDL_WINDOWEVENT_SIZE_CHANGED: {
             args._flag = fullscreen();
             notifyListeners(WindowEvent::SIZE_CHANGED, args);
+
             return true;
         };
         case SDL_WINDOWEVENT_MOVED: {
@@ -234,18 +235,48 @@ Rect<I32> DisplayWindow::getBorderSizes() const noexcept {
     return {};
 }
 
-vec2<U16> DisplayWindow::getDrawableSize() const noexcept {
-    return getDrawableSizeInternal();
+vec2<U16> DisplayWindow::getDrawableSize() const noexcept
+{
+    return _drawableSize;
 }
 
-vec2<U16> DisplayWindow::getDrawableSizeInternal() const {
-    if (_type == WindowType::FULLSCREEN || _type == WindowType::FULLSCREEN_WINDOWED) {
-        return WindowManager::GetFullscreenResolution();
+void DisplayWindow::updateDrawableSize() noexcept
+{
+    if ( _type == WindowType::FULLSCREEN || _type == WindowType::FULLSCREEN_WINDOWED )
+    {
+        _drawableSize = WindowManager::GetFullscreenResolution();
     }
-
-    return context().gfx().getDrawableSize(*this);
+    else
+    {
+        switch ( _context.gfx().renderAPI() )
+        {
+            default: DIVIDE_UNEXPECTED_CALL(); break;
+            case RenderAPI::None:
+            {
+                _drawableSize = { 1u, 1u };
+            } break;
+            case RenderAPI::Vulkan:
+            {
+                int w = 1, h = 1;
+                SDL_Vulkan_GetDrawableSize( _sdlWindow, &w, &h );
+                if ( w > 0 && h > 0 )
+                {
+                    _drawableSize.set( w, h );
+                }
+            } break;
+            case RenderAPI::OpenGL:
+            {
+                int w = 1, h = 1;
+                SDL_GL_GetDrawableSize( _sdlWindow, &w, &h );
+                if ( w > 0 && h > 0 )
+                {
+                    _drawableSize.set( w, h );
+                }
+            } break;
+        }
+    }
+    
 }
-
 void DisplayWindow::opacity(const U8 opacity) noexcept {
     if (SDL_SetWindowOpacity(_sdlWindow, to_F32(opacity) / 255) != -1) {
         _prevOpacity = _opacity;

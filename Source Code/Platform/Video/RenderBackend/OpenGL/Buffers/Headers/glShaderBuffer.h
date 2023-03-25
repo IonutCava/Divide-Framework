@@ -49,6 +49,8 @@ class glShaderBuffer final : public ShaderBuffer {
         [[nodiscard]] bool bindByteRange(U8 bindIndex, BufferRange range, I32 readIndex = -1);
         [[nodiscard]] inline const glBufferImpl_uptr& bufferImpl() const noexcept { return _bufferImpl; }
 
+        [[nodiscard]] LockableBuffer* getBufferImpl() override final;
+
     protected:
         void readBytesInternal(BufferRange range, std::pair<bufferPtr, size_t> outData) override;
         void writeBytesInternal(BufferRange range, bufferPtr data) override;

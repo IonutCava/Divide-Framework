@@ -22,7 +22,6 @@
 #include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Headers/IMPrimitive.h"
 #include "Platform/Video/Headers/CommandBuffer.h"
-#include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 #include "Scenes/Headers/SceneState.h"
@@ -412,6 +411,7 @@ namespace Divide
     bool RenderingComponent::prepareDrawPackage( const CameraSnapshot& cameraSnapshot,
                                                  const SceneRenderState& sceneRenderState,
                                                  const RenderStagePass& renderStagePass,
+                                                 GFX::MemoryBarrierCommand& postDrawMemCmd,
                                                  const bool refreshData )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
@@ -431,7 +431,7 @@ namespace Divide
 
             if ( !hasCommands )
             {
-                ScopedLock<SharedMutex> w_lock( _drawCommands._dataLock );
+                LockGuard<SharedMutex> w_lock( _drawCommands._dataLock );
                 _parentSGN->getNode().buildDrawCommands( _parentSGN, _drawCommands._data );
                 for ( GFX::DrawCommand& drawCmd : _drawCommands._data )
                 {
@@ -448,7 +448,7 @@ namespace Divide
             }
             else
             {
-                ScopedLock<SharedMutex> w_lock( _drawCommands._dataLock );
+                LockGuard<SharedMutex> w_lock( _drawCommands._dataLock );
                 for ( GFX::DrawCommand& drawCmd : _drawCommands._data )
                 {
                     for ( GenericDrawCommand& cmd : drawCmd._drawCommands )
@@ -509,7 +509,7 @@ namespace Divide
                 else
                 {
                     pipelineDescriptor._stateHash = _context.getDefaultStateBlock( false );
-                    pipelineDescriptor._shaderProgramHandle = _context.defaultIMShaderWorld()->handle();
+                    pipelineDescriptor._shaderProgramHandle = _context.imShaders()->imWorldShader()->handle();
                     pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
                 }
                 if ( renderStagePass._passType == RenderPassType::TRANSPARENCY_PASS )
@@ -592,7 +592,7 @@ namespace Divide
                     updateBinding( pkg.descriptorSetCmd()._bindings, 11, data );
                 }
             }
-            Attorney::SceneGraphNodeComponent::prepareRender( _parentSGN, *this, pkg, cameraSnapshot, renderStagePass, refreshData );
+            Attorney::SceneGraphNodeComponent::prepareRender( _parentSGN, *this, pkg, postDrawMemCmd, cameraSnapshot, renderStagePass, refreshData );
         }
 
         return hasCommands;
@@ -681,7 +681,7 @@ namespace Divide
             }
         }
 
-        ScopedLock<SharedMutex> w_lock( _renderPackagesLock );
+        LockGuard<SharedMutex> w_lock( _renderPackagesLock );
         // check again
         for ( PackageEntry& entry : pacakgesPerIndex )
         {
@@ -715,7 +715,7 @@ namespace Divide
 
             if ( inBudget )
             {
-                RenderPassManager* passManager = _context.parent().renderPassManager();
+                RenderPassManager* passManager = _context.context().kernel().renderPassManager();
                 RenderCbkParams params{ _context, _parentSGN, renderState, reflectRTID, reflectionIndex, to_U8( _reflectorType ), camera };
                 _reflectionCallback( passManager, params, bufferInOut, memCmdInOut );
                 ret = true;
@@ -757,7 +757,7 @@ namespace Divide
 
             if ( inBudget )
             {
-                RenderPassManager* passManager = _context.parent().renderPassManager();
+                RenderPassManager* passManager = _context.context().kernel().renderPassManager();
                 RenderCbkParams params{ _context, _parentSGN, renderState, refractRTID, refractionIndex, 0u, camera };
                 _refractionCallback( passManager, params, bufferInOut, memCmdInOut );
                 ret = true;
@@ -832,7 +832,7 @@ namespace Divide
             UColour4 colour = UColour4( 64, 255, 128, 255 );
             if constexpr( Config::Build::ENABLE_EDITOR )
             {
-                if ( _context.parent().platformContext().editor().inEditMode() )
+                if ( _context.context().editor().inEditMode() )
                 {
                     colour = UColour4( 255, 255, 255, 255 );
                 }

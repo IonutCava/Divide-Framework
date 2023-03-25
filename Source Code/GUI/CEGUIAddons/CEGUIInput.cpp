@@ -343,14 +343,14 @@ bool CEGUIInput::joystickRemap(const Input::JoystickEvent &arg)
     return consumed;
 }
 
-bool CEGUIInput::onUTF8(const Input::UTF8Event& arg)
+bool CEGUIInput::onTextEvent(const Input::TextEvent& arg)
 {
     if (!_enabled)
     {
         return false;
     }
 
-    const char* utf8str = arg._text;
+    const char* utf8str = arg._text.c_str();
 
     static SDL_iconv_t cd = SDL_iconv_t(-1);
 

@@ -11,10 +11,10 @@ namespace Divide
     {
         if ( _buffer != VK_NULL_HANDLE )
         {
-            assert( _usageType != BufferUsageType::COUNT );
+            DIVIDE_ASSERT( _params._flags._usageType != BufferUsageType::COUNT );
             VK_API::RegisterCustomAPIDelete( [buf = _buffer, alloc = _allocation]( [[maybe_unused]] VkDevice device )
                                              {
-                                                 UniqueLock<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
+                                                 LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
                                                  vmaDestroyBuffer( *VK_API::GetStateTracker()._allocatorInstance._allocator, buf, alloc );
                                              }, true );
         }
@@ -58,18 +58,24 @@ namespace Divide
 
         AllocatedBuffer_uptr createStagingBuffer( const size_t size, std::string_view bufferName )
         {
-            AllocatedBuffer_uptr ret = eastl::make_unique<AllocatedBuffer>( BufferUsageType::STAGING_BUFFER );
+            BufferParams params{};
+            params._flags._usageType = BufferUsageType::STAGING_BUFFER;
+            params._flags._updateFrequency = BufferUpdateFrequency::OFTEN;
+            params._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
+            params._elementCount = 1u;
+            params._elementSize = size;
+
+            AllocatedBuffer_uptr ret = eastl::make_unique<AllocatedBuffer>( params );
 
             VmaAllocationCreateInfo vmaallocInfo = {};
             // Let the VMA library know that this data should be writable by CPU only
             vmaallocInfo.usage = VMA_MEMORY_USAGE_AUTO;
             vmaallocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
-            vmaallocInfo.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
             // Allocate staging buffer
             const VkBufferCreateInfo bufferInfo = vk::bufferCreateInfo( VK_BUFFER_USAGE_TRANSFER_SRC_BIT, size );
             // Allocate the buffer
-            UniqueLock<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
+            LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
             VK_CHECK( vmaCreateBuffer( *VK_API::GetStateTracker()._allocatorInstance._allocator,
                                        &bufferInfo,
                                        &vmaallocInfo,

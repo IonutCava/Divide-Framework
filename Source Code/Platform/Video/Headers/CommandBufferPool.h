@@ -60,10 +60,10 @@ class ScopedCommandBuffer : NonCopyable, NonMovable {
 
   protected:
     friend ScopedCommandBuffer AllocateScopedCommandBuffer();
-    ScopedCommandBuffer() noexcept;
+    ScopedCommandBuffer();
 
   private:
-    CommandBuffer* _buffer;
+    CommandBuffer* _buffer{ nullptr };
 };
 
 void InitPools() noexcept;

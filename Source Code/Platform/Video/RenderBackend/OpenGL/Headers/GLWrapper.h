@@ -36,6 +36,7 @@
 #include "GLStateTracker.h"
 #include "glHardwareQuery.h"
 
+#include "Platform/Video/Headers/CommandsImpl.h"
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glMemoryManager.h"
 
@@ -87,16 +88,14 @@ private:
     /// Clear everything that was setup in initRenderingAPI()
     void closeRenderingAPI() override;
 
-    /// Prepare the GPU for rendering a frame
-    [[nodiscard]] bool beginFrame(DisplayWindow& window, bool global = false) override;
-    /// Finish rendering the current frame
-    void endFrame(DisplayWindow& window, bool global = false) override;
-    void idle(bool fast) override;
+    [[nodiscard]] bool drawToWindow( DisplayWindow& window ) override;
+                  void flushWindow( DisplayWindow& window ) override;
+    [[nodiscard]] bool frameStarted() override;
+    [[nodiscard]] bool frameEnded() override;
 
-    /// Text rendering is handled exclusively by Mikko Mononen's FontStash library
-    /// (https://github.com/memononen/fontstash)
-    /// with his OpenGL frontend adapted for core context profiles
-    void drawText(const TextElementBatch& batch);
+    void endPerformanceQueries();
+
+    void idle(bool fast) override;
 
     bool draw(const GenericDrawCommand& cmd) const;
 
@@ -106,16 +105,10 @@ private:
 
     void postFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) override;
 
-    /// Return the size in pixels that we can render to. This differs from the window size on Retina displays
-    vec2<U16> getDrawableSize(const DisplayWindow& window) const noexcept override;
-
     void onThreadCreated(const std::thread::id& threadID) override;
 
-    /// Try to find the requested font in the font cache. Load on cache miss.
-    I32 getFont(const Str64& fontName);
-
     /// Reset as much of the GL default state as possible within the limitations given
-    void clearStates(const DisplayWindow& window, GLStateTracker& stateTracker, bool global) const;
+    void clearStates(GLStateTracker& stateTracker) const;
 
     [[nodiscard]] bool bindShaderResources(DescriptorSetUsage usage, const DescriptorSet& bindings, bool isDirty ) override;
 
@@ -132,9 +125,7 @@ private:
 
     void initDescriptorSets() override;
 
-private:
-    void endFrameLocal(const DisplayWindow& window);
-    void endFrameGlobal(const DisplayWindow& window);
+    void flushPushConstantsLocks();
 
 public:
     static [[nodiscard]] GLStateTracker& GetStateTracker() noexcept;
@@ -199,10 +190,6 @@ private:
     GFXDevice& _context;
     Time::ProfileTimer& _swapBufferTimer;
 
-    /// A cache of all fonts used
-    hashMap<U64, I32> _fonts;
-    hashAlg::pair<Str64, I32> _fontCache = {"", -1};
-
     /// Hardware query objects used for performance measurements
     std::array<glHardwareQueryRing_uptr, to_base(GlobalQueryTypes::COUNT)> _performanceQueries;
     // OpenGL rendering is not thread-safe anyway, so this works
@@ -210,14 +197,12 @@ private:
 
     WindowGLContext _currentContext{};
 
-    /// FontStash's context
-    FONScontext* _fonsContext = nullptr;
+    CEGUI::OpenGL3Renderer* _GUIGLrenderer{nullptr};
 
-    CEGUI::OpenGL3Renderer* _GUIGLrenderer = nullptr;
+    bool _runQueries{false};
 
-    //Because GFX::queryPerfStats can change mid-frame, we need to cache that value and apply in beginFrame() properly
-    U8 _queryIdxForCurrentFrame = 0u;
-    bool _runQueries = false;
+    bool _pushConstantsNeedLock{false};
+    GFX::MemoryBarrierCommand _pushConstantsMemCommand{};
 
 private:
 

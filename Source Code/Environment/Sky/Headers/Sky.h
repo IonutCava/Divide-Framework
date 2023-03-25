@@ -40,7 +40,6 @@
 namespace Divide {
 
 class GFXDevice;
-class RenderStateBlock;
 struct PushConstants;
 
 FWD_DECLARE_MANAGED_CLASS(Texture);
@@ -106,6 +105,7 @@ class Sky final : public SceneNode {
     void prepareRender( SceneGraphNode* sgn,
                         RenderingComponent& rComp,
                         RenderPackage& pkg,
+                        GFX::MemoryBarrierCommand& postDrawMemCmd,
                         RenderStagePass renderStagePass,
                         const CameraSnapshot& cameraSnapshot,
                         bool refreshData) override;

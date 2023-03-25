@@ -52,7 +52,12 @@ enum FONSalign {
     FONS_ALIGN_BASELINE    = 1<<6, // Default
 };
 
-struct FONSvert;
+struct FONSvert
+{
+    float pos[2];
+    float tcoords[2];
+    unsigned char colours[4];
+};
 
 enum FONSerrorCode {
 	// Font atlas is full.
@@ -168,9 +173,39 @@ FONS_DEF int fonsValidateTexture(FONScontext* s, int* dirty);
 // Draws the stash texture for debugging
 FONS_DEF void fonsDrawDebug(FONScontext* s, float x, float y);
 
+
+FONS_DEF FONScontext* dummyfonsCreate( int width, int height, int flags );
+FONS_DEF void dummyfonsDelete( FONScontext* ctx );
+
 #ifdef __cplusplus
 }
 #endif
+
+#ifndef FONS_SCRATCH_BUF_SIZE
+#	define FONS_SCRATCH_BUF_SIZE 64000
+#endif
+#ifndef FONS_HASH_LUT_SIZE
+#    define FONS_HASH_LUT_SIZE 256
+#endif
+#ifndef FONS_INIT_FONTS
+#    define FONS_INIT_FONTS 4
+#endif
+#ifndef FONS_INIT_GLYPHS
+#    define FONS_INIT_GLYPHS 256
+#endif
+#ifndef FONS_INIT_ATLAS_NODES
+#    define FONS_INIT_ATLAS_NODES 256
+#endif
+#ifndef FONS_VERTEX_COUNT
+#    define FONS_VERTEX_COUNT 1024
+#endif
+#ifndef FONS_MAX_STATES
+#    define FONS_MAX_STATES 20
+#endif
+#ifndef FONS_MAX_FALLBACKS
+#	define FONS_MAX_FALLBACKS 20
+#endif
+
 
 #endif // FONS_H
 
@@ -379,31 +414,6 @@ static int fons__tt_getGlyphKernAdvance(FONSttFontImpl *font, int glyph1, int gl
 
 #endif
 
-#ifndef FONS_SCRATCH_BUF_SIZE
-#	define FONS_SCRATCH_BUF_SIZE 64000
-#endif
-#ifndef FONS_HASH_LUT_SIZE
-#    define FONS_HASH_LUT_SIZE 256
-#endif
-#ifndef FONS_INIT_FONTS
-#    define FONS_INIT_FONTS 4
-#endif
-#ifndef FONS_INIT_GLYPHS
-#    define FONS_INIT_GLYPHS 256
-#endif
-#ifndef FONS_INIT_ATLAS_NODES
-#    define FONS_INIT_ATLAS_NODES 256
-#endif
-#ifndef FONS_VERTEX_COUNT
-#    define FONS_VERTEX_COUNT 1024
-#endif
-#ifndef FONS_MAX_STATES
-#    define FONS_MAX_STATES 20
-#endif
-#ifndef FONS_MAX_FALLBACKS
-#	define FONS_MAX_FALLBACKS 20
-#endif
-
 static unsigned int fons__hashint(unsigned int a)
 {
     a += ~(a<<15);
@@ -480,12 +490,6 @@ struct FONSatlas
     int cnodes;
 };
 typedef struct FONSatlas FONSatlas;
-
-struct FONSvert {
-    float pos[2];
-    float tcoords[2];
-    unsigned char colours[4];
-};
 
 struct FONScontext
 {

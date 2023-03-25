@@ -49,6 +49,9 @@ using SharedLock = std::shared_lock<mutex>;
 template<typename mutex>
 using UniqueLock = std::unique_lock<mutex>;
 
+template<typename mutex>
+using LockGuard = std::lock_guard<mutex>;
+
 template<typename... mutexes>
 using ScopedLock = std::scoped_lock<mutexes...>;
 

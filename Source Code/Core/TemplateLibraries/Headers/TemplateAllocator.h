@@ -69,7 +69,7 @@ namespace eastl {
             return xmalloc(n);
         }
 
-        void deallocate([[maybe_unused]] void* p, size_t n) noexcept {
+        void deallocate(void* p, [[maybe_unused]] size_t n) noexcept {
             xfree(p);
         }
 

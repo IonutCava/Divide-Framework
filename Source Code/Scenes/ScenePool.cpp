@@ -51,7 +51,7 @@ ScenePool::~ScenePool()
     }
 
     {
-        ScopedLock<SharedMutex> w_lock(_sceneLock);
+        LockGuard<SharedMutex> w_lock(_sceneLock);
         _createdScenes.clear();
     }
 }
@@ -87,7 +87,7 @@ Scene* ScenePool::getOrCreateScene(PlatformContext& context, ResourceCache* cach
     foundInCache = false;
     std::shared_ptr<Scene> ret = nullptr;
 
-    ScopedLock<SharedMutex> lock(_sceneLock);
+    LockGuard<SharedMutex> lock(_sceneLock);
     for (const std::shared_ptr<Scene>& scene : _createdScenes) {
         if (scene->resourceName().compare(name) == 0) {
             ret = scene;
@@ -131,7 +131,7 @@ bool ScenePool::deleteScene(const I64 targetGUID) {
         }
 
         {
-            ScopedLock<SharedMutex> w_lock(_sceneLock);
+            LockGuard<SharedMutex> w_lock(_sceneLock);
             erase_if(_createdScenes, [&targetGUID](const auto& s) noexcept { return s->getGUID() == targetGUID; });
         }
         return true;

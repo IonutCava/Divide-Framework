@@ -22,6 +22,7 @@
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 #include "Platform/Video/Headers/GenericDrawCommand.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
+#include "Platform/Video/Headers/RenderStateBlock.h"
 
 #include "Rendering/Headers/Renderer.h"
 #include "Rendering/RenderPass/Headers/RenderQueue.h"
@@ -157,7 +158,7 @@ namespace Divide
         template<typename DataContainer>
         void UpdateBufferRange( ExecutorBuffer<DataContainer>& executorBuffer, const U32 idx )
         {
-            ScopedLock<Mutex> w_lock( executorBuffer._lock );
+            LockGuard<Mutex> w_lock( executorBuffer._lock );
             UpdateBufferRangeLocked( executorBuffer, idx );
         }
 
@@ -196,7 +197,7 @@ namespace Divide
 
             BufferUpdateRange writeRange, prevWriteRange;
             {
-                ScopedLock<Mutex> r_lock( executorBuffer._lock );
+                LockGuard<Mutex> r_lock( executorBuffer._lock );
 
                 if ( !MergeBufferUpdateRanges( executorBuffer._bufferUpdateRangeHistory.back(), executorBuffer._bufferUpdateRange ) )
                 {
@@ -234,7 +235,7 @@ namespace Divide
                 }
             }
 
-            ScopedLock<SharedMutex> w_lock( executorBuffer._proccessedLock );
+            LockGuard<SharedMutex> w_lock( executorBuffer._proccessedLock );
             // Check again
             if ( !contains( executorBuffer._nodeProcessedThisFrame, indirectionIDX ) )
             {
@@ -248,7 +249,7 @@ namespace Divide
         {
             PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-            ScopedLock<Mutex> w_lock( executorBuffer._lock );
+            LockGuard<Mutex> w_lock( executorBuffer._lock );
             const BufferUpdateRange rangeWrittenThisFrame = executorBuffer._bufferUpdateRangeHistory.back();
 
             // At the end of the frame, bump our history queue by one position and prepare the tail for a new write
@@ -302,12 +303,12 @@ namespace Divide
         _renderQueue = eastl::make_unique<RenderQueue>( parent.parent(), stage );
 
         ShaderBufferDescriptor bufferDescriptor = {};
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-        bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
-        bufferDescriptor._ringBufferLength = RenderPass::DataBufferRingSize;
+        bufferDescriptor._bufferParams._flags._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        bufferDescriptor._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
+        bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::COMMAND_BUFFER;
         bufferDescriptor._bufferParams._elementCount = Config::MAX_VISIBLE_NODES * TotalPassCountForStage( stage );
-        bufferDescriptor._usage = ShaderBuffer::Usage::COMMAND_BUFFER;
         bufferDescriptor._bufferParams._elementSize = sizeof( IndirectDrawCommand );
+        bufferDescriptor._ringBufferLength = RenderPass::DataBufferRingSize;
         bufferDescriptor._name = Util::StringFormat( "CMD_DATA_%s", TypeUtil::RenderStageToString( stage ) );
         _cmdBuffer = _context.newSB( bufferDescriptor );
     }
@@ -338,8 +339,13 @@ namespace Divide
         {
             s_globalDataInit = true;
 
+            RenderStateBlock state2DRendering{};
+            state2DRendering.setCullMode( CullMode::NONE );
+            state2DRendering.depthTestEnabled( false );
+            state2DRendering.depthWriteEnabled( false );
+
             PipelineDescriptor pipelineDescriptor;
-            pipelineDescriptor._stateHash = _context.get2DStateBlock();
+            pipelineDescriptor._stateHash = state2DRendering.getHash();
             pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
             pipelineDescriptor._shaderProgramHandle = ResolveGBufferShaderMS->handle();
@@ -371,10 +377,10 @@ namespace Divide
         _materialBuffer._data._lookupInfo.fill( { INVALID_MAT_HASH, g_invalidMaterialIndex } );
 
         ShaderBufferDescriptor bufferDescriptor = {};
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-        bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
+        bufferDescriptor._bufferParams._flags._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        bufferDescriptor._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
+        bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::UNBOUND_BUFFER;
         bufferDescriptor._ringBufferLength = RenderPass::DataBufferRingSize;
-        bufferDescriptor._usage = ShaderBuffer::Usage::UNBOUND_BUFFER;
         {// Node Transform buffer
             bufferDescriptor._bufferParams._elementCount = to_U32( _transformBuffer._data._gpuData.size() );
             bufferDescriptor._bufferParams._elementSize = sizeof( NodeTransformData );
@@ -470,7 +476,7 @@ namespace Divide
             PROFILE_SCOPE( "Buffer idx update", Profiler::Category::Scene );
             U32 transformIdx = U32_MAX;
             {
-                ScopedLock<Mutex> w_lock( _transformBuffer._lock );
+                LockGuard<Mutex> w_lock( _transformBuffer._lock );
                 for ( U32 idx = 0u; idx < Config::MAX_VISIBLE_NODES; ++idx )
                 {
                     if ( _transformBuffer._data._freeList[idx] )
@@ -521,7 +527,7 @@ namespace Divide
             return g_invalidMaterialIndex;
         };
 
-        ScopedLock<Mutex> w_lock( _materialBuffer._lock );
+        LockGuard<Mutex> w_lock( _materialBuffer._lock );
         BufferMaterialData::LookupInfoContainer& infoContainer = _materialBuffer._data._lookupInfo;
         {// Try and match an existing material
             PROFILE_SCOPE( "processVisibleNode - try match material", Profiler::Category::Scene );
@@ -818,20 +824,26 @@ namespace Divide
         RenderStagePass stagePass = params._stagePass;
         const SceneRenderState& sceneRenderState = _parent.parent().sceneManager()->getActiveScene().state()->renderState();
         {
+            Mutex memCmdLock;
+
             _renderQueue->clear();
             ParallelForDescriptor descriptor = {};
             descriptor._iterCount = to_U32( _visibleNodesCache.size() );
             descriptor._cbk = [&]( const Task* /*parentTask*/, const U32 start, const U32 end )
             {
+                GFX::MemoryBarrierCommand postDrawMemCmd{};
                 for ( U32 i = start; i < end; ++i )
                 {
                     const VisibleNode& node = _visibleNodesCache.node( i );
                     RenderingComponent* rComp = node._node->get<RenderingComponent>();
-                    if ( Attorney::RenderingCompRenderPass::prepareDrawPackage( *rComp, cameraSnapshot, sceneRenderState, stagePass, true ) )
+                    if ( Attorney::RenderingCompRenderPass::prepareDrawPackage( *rComp, cameraSnapshot, sceneRenderState, stagePass, postDrawMemCmd, true ) )
                     {
                         _renderQueue->addNodeToQueue( node._node, stagePass, node._distanceToCameraSq );
                     }
                 }
+
+                LockGuard<Mutex> w_lock(memCmdLock);
+                memCmdInOut._bufferLocks.insert(memCmdInOut._bufferLocks.cend(), postDrawMemCmd._bufferLocks.cbegin(), postDrawMemCmd._bufferLocks.cend());
             };
 
             if ( descriptor._iterCount < g_nodesPerPrepareDrawPartition )
@@ -863,7 +875,8 @@ namespace Divide
                                                   const CameraSnapshot& cameraSnapshot,
                                                   bool transparencyPass,
                                                   const RenderingOrder renderOrder,
-                                                  GFX::CommandBuffer& bufferInOut )
+                                                  GFX::CommandBuffer& bufferInOut,
+                                                  GFX::MemoryBarrierCommand& memCmdInOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -872,6 +885,9 @@ namespace Divide
         const SceneRenderState& sceneRenderState = _parent.parent().sceneManager()->getActiveScene().state()->renderState();
 
         _renderQueue->clear( targetBin );
+
+        Mutex memCmdLock;
+        GFX::MemoryBarrierCommand postDrawMemCmd{};
 
         const U32 nodeCount = to_U32( _visibleNodesCache.size() );
         ParallelForDescriptor descriptor = {};
@@ -883,12 +899,15 @@ namespace Divide
                 SceneGraphNode* sgn = node._node;
                 if ( sgn->getNode().renderState().drawState( stagePass ) )
                 {
-                    if ( Attorney::RenderingCompRenderPass::prepareDrawPackage( *sgn->get<RenderingComponent>(), cameraSnapshot, sceneRenderState, stagePass, false ) )
+                    if ( Attorney::RenderingCompRenderPass::prepareDrawPackage( *sgn->get<RenderingComponent>(), cameraSnapshot, sceneRenderState, stagePass, postDrawMemCmd, false ) )
                     {
                         _renderQueue->addNodeToQueue( sgn, stagePass, node._distanceToCameraSq, targetBin );
                     }
                 }
             }
+
+            LockGuard<Mutex> w_lock( memCmdLock );
+            memCmdInOut._bufferLocks.insert( memCmdInOut._bufferLocks.cend(), postDrawMemCmd._bufferLocks.cbegin(), postDrawMemCmd._bufferLocks.cend() );
         };
 
         if ( nodeCount > g_nodesPerPrepareDrawPartition * 2 )
@@ -961,11 +980,12 @@ namespace Divide
         renderPassCmd._target = params._target;
         renderPassCmd._descriptor = params._targetDescriptorPrePass;
         renderPassCmd._clearDescriptor = params._clearDescriptorPrePass;
-        renderPassCmd._descriptor._writeLayers = params._layerParams;
 
         GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut, renderPassCmd );
-        prepareRenderQueues( params, cameraSnapshot, false, RenderingOrder::COUNT, bufferInOut );
+        GFX::MemoryBarrierCommand memCmd{};
+        prepareRenderQueues( params, cameraSnapshot, false, RenderingOrder::COUNT, bufferInOut, memCmd );
         GFX::EnqueueCommand( bufferInOut, GFX::EndRenderPassCommand{} );
+        GFX::EnqueueCommand( bufferInOut, memCmd);
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
     }
 
@@ -984,6 +1004,13 @@ namespace Divide
 
         GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "HiZ Construct & Cull" } );
 
+        GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back( BufferLock
+        {
+            ._range = {0u, U32_MAX },
+            ._type = BufferSyncUsage::GPU_READ_TO_GPU_WRITE,
+            ._buffer = _cmdBuffer->getBufferImpl()
+        });
+
         // Update HiZ Target
         const auto [hizTexture, hizSampler] = _context.constructHIZ( sourceDepthBuffer, targetHiZBuffer, bufferInOut );
         // Run occlusion culling CS
@@ -993,6 +1020,13 @@ namespace Divide
                                 cameraSnapshot,
                                 _stage == RenderStage::DISPLAY,
                                 bufferInOut );
+
+        GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back( BufferLock
+        {
+            ._range = {0u, U32_MAX },
+            ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_READ,
+            ._buffer = _cmdBuffer->getBufferImpl()
+        });
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
     }
@@ -1012,12 +1046,7 @@ namespace Divide
             renderPassCmd._name = "DO_MAIN_PASS";
             renderPassCmd._target = params._target;
             renderPassCmd._descriptor = params._targetDescriptorMainPass;
-            renderPassCmd._descriptor._writeLayers = params._layerParams;
             renderPassCmd._clearDescriptor = params._clearDescriptorMainPass;
-            if ( prePassExecuted )
-            {
-                SetEnabled( renderPassCmd._descriptor._drawMask, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, false );
-            }
 
             GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut, renderPassCmd );
 
@@ -1044,8 +1073,10 @@ namespace Divide
                 Set( binding._data, depthAtt->texture()->getView(), depthAtt->descriptor()._samplerHash );
             }
 
-            prepareRenderQueues( params, cameraSnapshot, false, RenderingOrder::COUNT, bufferInOut );
+            GFX::MemoryBarrierCommand memCmd{};
+            prepareRenderQueues( params, cameraSnapshot, false, RenderingOrder::COUNT, bufferInOut, memCmd );
             GFX::EnqueueCommand( bufferInOut, GFX::EndRenderPassCommand{} );
+            GFX::EnqueueCommand( bufferInOut, memCmd );
         }
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
@@ -1063,9 +1094,12 @@ namespace Divide
         GFX::BeginRenderPassCommand* beginRenderPassOitCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
         beginRenderPassOitCmd->_name = "DO_OIT_PASS_1";
         beginRenderPassOitCmd->_target = params._targetOIT;
-        beginRenderPassOitCmd->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO,           GFXDevice::ScreenTargets::ACCUMULATION };
-        beginRenderPassOitCmd->_clearDescriptor._clearColourDescriptors[1] = { { 1.f, 0.f, 0.f, 0.f }, GFXDevice::ScreenTargets::REVEALAGE };
-        SetEnabled( beginRenderPassOitCmd->_descriptor._drawMask, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, false );
+        beginRenderPassOitCmd->_clearDescriptor[to_base( GFXDevice::ScreenTargets::ACCUMULATION )] = { VECTOR4_ZERO,           true };
+        beginRenderPassOitCmd->_clearDescriptor[to_base( GFXDevice::ScreenTargets::REVEALAGE )]    = { { 1.f, 0.f, 0.f, 0.f }, true };
+
+        beginRenderPassOitCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::VELOCITY )] = true;
+        beginRenderPassOitCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::NORMALS )]  = true;
+
         {
             const RenderTarget* nonMSTarget = _context.renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN );
             const auto& colourAtt = nonMSTarget->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO );
@@ -1076,8 +1110,10 @@ namespace Divide
             Set( binding._data, colourAtt->texture()->getView(), colourAtt->descriptor()._samplerHash );
         }
 
-        prepareRenderQueues( params, cameraSnapshot, true, RenderingOrder::COUNT, bufferInOut );
+        GFX::MemoryBarrierCommand memCmd{};
+        prepareRenderQueues( params, cameraSnapshot, true, RenderingOrder::COUNT, bufferInOut, memCmd );
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>( bufferInOut );
+        GFX::EnqueueCommand( bufferInOut, memCmd );
 
         const bool useMSAA = params._target == RenderTargetNames::SCREEN_MS;
 
@@ -1089,8 +1125,7 @@ namespace Divide
         GFX::BeginRenderPassCommand beginRenderPassCompCmd{};
         beginRenderPassCompCmd._name = "DO_OIT_PASS_2";
         beginRenderPassCompCmd._target = params._target;
-        beginRenderPassCompCmd._descriptor = params._targetDescriptorComposition;
-        beginRenderPassCompCmd._descriptor._writeLayers = params._layerParams;
+        beginRenderPassCompCmd._descriptor = params._targetDescriptorMainPass;
 
         // Step2: Composition pass
         // Don't clear depth & colours and do not write to the depth buffer
@@ -1126,12 +1161,13 @@ namespace Divide
         GFX::BeginRenderPassCommand beginRenderPassTransparentCmd{};
         beginRenderPassTransparentCmd._name = "DO_TRANSPARENCY_PASS";
         beginRenderPassTransparentCmd._target = params._target;
-        beginRenderPassTransparentCmd._descriptor._writeLayers = params._layerParams;
-        SetEnabled( beginRenderPassTransparentCmd._descriptor._drawMask, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, false );
+        beginRenderPassTransparentCmd._descriptor = params._targetDescriptorMainPass;
 
+        GFX::MemoryBarrierCommand memCmd{};
         GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut, beginRenderPassTransparentCmd );
-        prepareRenderQueues( params, cameraSnapshot, true, RenderingOrder::BACK_TO_FRONT, bufferInOut );
+        prepareRenderQueues( params, cameraSnapshot, true, RenderingOrder::BACK_TO_FRONT, bufferInOut, memCmd );
         GFX::EnqueueCommand( bufferInOut, GFX::EndRenderPassCommand{} );
+        GFX::EnqueueCommand( bufferInOut, memCmd );
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
     }
 
@@ -1161,24 +1197,37 @@ namespace Divide
                 blitCmd->_destination = RenderTargetNames::SCREEN;
                 if ( resolveDepth )
                 {
-                    blitCmd->_params._blitDepth._inputLayer = 0u;
-                    blitCmd->_params._blitDepth._outputLayer = 0u;
+                    blitCmd->_params.emplace_back( RTBlitEntry{
+                        ._input = {
+                            ._index = RT_DEPTH_ATTACHMENT_IDX
+                        },
+                        ._output = {
+                            ._index = RT_DEPTH_ATTACHMENT_IDX
+                        }
+                    });
                 }
                 if ( resolveColourBuffer )
                 {
-                    auto& blitParams = blitCmd->_params._blitColours[0];
-                    blitParams._input._index = to_U8( GFXDevice::ScreenTargets::ALBEDO );
-                    blitParams._output._index = to_U8( GFXDevice::ScreenTargets::ALBEDO );
+                    blitCmd->_params.emplace_back(RTBlitEntry{
+                        ._input = {
+                            ._index = to_U8( GFXDevice::ScreenTargets::ALBEDO )
+                        },
+                        ._output = {
+                            ._index = to_U8( GFXDevice::ScreenTargets::ALBEDO )
+                        }
+                    });
                 }
             }
             if ( resolveGBuffer )
             {
                 GFX::BeginRenderPassCommand* beginRenderPassCommand = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
                 beginRenderPassCommand->_target = RenderTargetNames::SCREEN;
-                beginRenderPassCommand->_clearDescriptor._clearColourDescriptors[0] = { VECTOR4_ZERO,  GFXDevice::ScreenTargets::VELOCITY };
-                beginRenderPassCommand->_clearDescriptor._clearColourDescriptors[1] = { VECTOR4_ZERO,  GFXDevice::ScreenTargets::NORMALS };
-                SetEnabled( beginRenderPassCommand->_descriptor._drawMask, RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO, false );
-                SetEnabled( beginRenderPassCommand->_descriptor._drawMask, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, false );
+                beginRenderPassCommand->_clearDescriptor[to_base( GFXDevice::ScreenTargets::VELOCITY)] = { VECTOR4_ZERO, true };
+                beginRenderPassCommand->_clearDescriptor[to_base( GFXDevice::ScreenTargets::NORMALS)] = { VECTOR4_ZERO,  true };
+
+                beginRenderPassCommand->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::ALBEDO )] = false;
+                beginRenderPassCommand->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::VELOCITY )] = true;
+                beginRenderPassCommand->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::NORMALS )] = true;
                 beginRenderPassCommand->_name = "RESOLVE_MAIN_GBUFFER";
 
                 GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ s_ResolveGBufferPipeline } );
@@ -1335,10 +1384,8 @@ namespace Divide
         GFX::SetCameraCommand* camCmd = GFX::EnqueueCommand<GFX::SetCameraCommand>( bufferInOut );
         camCmd->_cameraSnapshot = camSnapshot;
 
-        if ( params._layerParams._colourLayers[0] == 0u ||
-             params._layerParams._colourLayers[0] == INVALID_LAYER_INDEX )
+        if ( params._refreshLightData )
         {
-            // Either the first layer or not specified
             Attorney::SceneManagerRenderPass::prepareLightData( _parent.parent().sceneManager(), _stage, camSnapshot, memCmdInOut );
         }
 
@@ -1426,20 +1473,22 @@ namespace Divide
             GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
             beginRenderPassCmd->_name = "DO_POST_RENDER_PASS";
             beginRenderPassCmd->_target = params._target;
-            SetEnabled( beginRenderPassCmd->_descriptor._drawMask, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, false );
 
             if ( _stage == RenderStage::DISPLAY )
             {
-                SetEnabled( beginRenderPassCmd->_descriptor._drawMask, RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::VELOCITY, false );
-                SetEnabled( beginRenderPassCmd->_descriptor._drawMask, RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS, false );
+                beginRenderPassCmd->_descriptor._drawMask[to_base(GFXDevice::ScreenTargets::ALBEDO)] = true;
+
                 GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Debug Draw Pass";
-                Attorney::SceneManagerRenderPass::debugDraw( _parent.parent().sceneManager(), bufferInOut );
+                Attorney::SceneManagerRenderPass::debugDraw( _parent.parent().sceneManager(), bufferInOut, memCmdInOut );
                 GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
             }
-
+            else
+            {
+                beginRenderPassCmd->_descriptor._drawMask[to_base(RTColourAttachmentSlot::SLOT_0)] = true;
+            }
             if constexpr( Config::Build::ENABLE_EDITOR )
             {
-                Attorney::EditorRenderPassExecutor::postRender( _context.context().editor(), _stage, camSnapshot, params._target, bufferInOut );
+                Attorney::EditorRenderPassExecutor::postRender( _context.context().editor(), _stage, camSnapshot, params._target, bufferInOut, memCmdInOut );
             }
 
             GFX::EnqueueCommand( bufferInOut, GFX::EndRenderPassCommand{} );
@@ -1473,7 +1522,7 @@ namespace Divide
         }
         {
             PROFILE_SCOPE( "Clear Freelists", Profiler::Category::Scene );
-            ScopedLock<Mutex> w_lock( _transformBuffer._lock );
+            LockGuard<Mutex> w_lock( _transformBuffer._lock );
             _transformBuffer._data._freeList.fill( true );
         }
 
@@ -1490,7 +1539,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
 
-        ScopedLock<Mutex> w_lock( s_indirectionGlobalLock );
+        LockGuard<Mutex> w_lock( s_indirectionGlobalLock );
         assert( Attorney::RenderingCompRenderPassExecutor::getIndirectionBufferEntry( rComp ) == U32_MAX );
         U32 entry = U32_MAX;
         for ( U32 i = 0u; i < MAX_INDIRECTION_ENTRIES; ++i )
@@ -1516,7 +1565,7 @@ namespace Divide
             DIVIDE_UNEXPECTED_CALL();
             return;
         }
-        ScopedLock<Mutex> w_lock( s_indirectionGlobalLock );
+        LockGuard<Mutex> w_lock( s_indirectionGlobalLock );
         assert( !s_indirectionFreeList[entry] );
         s_indirectionFreeList[entry] = true;
     }

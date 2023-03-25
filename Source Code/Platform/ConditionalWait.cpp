@@ -16,7 +16,11 @@ void InitConditionalWait(PlatformContext& context) noexcept {
 
 void PlatformContextIdleCall() {
     if (Runtime::isMainThread() && g_ctx != nullptr) {
-        g_ctx->idle(true, 0u);
+        const U32 componentMask = g_ctx->componentMask();
+        Attorney::PlatformContextKernel::setComponentMask( *g_ctx, 0u);
+        // Mostly wait on threaded callbacks
+        g_ctx->idle(true);
+        Attorney::PlatformContextKernel::setComponentMask( *g_ctx, componentMask );
     }
 }
 } //namespace Divide

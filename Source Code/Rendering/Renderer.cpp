@@ -77,10 +77,10 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
     }
   
     ShaderBufferDescriptor bufferDescriptor = {};
-    bufferDescriptor._usage = ShaderBuffer::Usage::UNBOUND_BUFFER;
     bufferDescriptor._ringBufferLength = 1;
-    bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
-    bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_R_GPU_W;
+    bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::UNBOUND_BUFFER;
+    bufferDescriptor._bufferParams._flags._updateFrequency = BufferUpdateFrequency::ONCE;
+    bufferDescriptor._bufferParams._flags._updateUsage = BufferUpdateUsage::GPU_TO_GPU;
 
     { //Light Index Buffer
         const U32 totalLights = numClusters * to_U32(config.rendering.numLightsPerCluster);
@@ -199,8 +199,27 @@ void Renderer::prepareLighting(const RenderStage stage,
                 Set(binding._data, data._lightClusterAABBsBuffer.get(), { 0u, data._lightClusterAABBsBuffer->getPrimitiveCount() } );
             }
         }
-        GFX::EnqueueCommand( bufferInOut, _lightResetCounterPipelineCmd );
-        GFX::EnqueueCommand( bufferInOut, GFX::DispatchComputeCommand{ 1u, 1u, 1u } );
+
+        {
+            GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Reset Global Index Count" } );
+
+            GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back( BufferLock
+            {
+                ._range = { 0u, U32_MAX },
+                ._type = BufferSyncUsage::GPU_READ_TO_GPU_WRITE,
+                ._buffer = data._globalIndexCountBuffer->getBufferImpl()
+            });
+            GFX::EnqueueCommand( bufferInOut, _lightResetCounterPipelineCmd );
+            GFX::EnqueueCommand( bufferInOut, GFX::DispatchComputeCommand{ 1u, 1u, 1u } );
+            GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back( BufferLock
+            {
+                ._range = { 0u, U32_MAX },
+                ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_WRITE,
+                ._buffer = data._globalIndexCountBuffer->getBufferImpl()
+            });
+
+            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
+        }
 
         bool needRebuild = data._invalidated;
         if (!needRebuild )
@@ -222,7 +241,14 @@ void Renderer::prepareLighting(const RenderStage stage,
             data._invalidated = false;
 
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Rebuild Light Grid" });
-            
+
+            GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back( BufferLock
+            {
+                ._range = { 0u, U32_MAX },
+                ._type = BufferSyncUsage::GPU_READ_TO_GPU_WRITE,
+                ._buffer = data._lightClusterAABBsBuffer->getBufferImpl()
+            });
+
             PushConstantsStruct pushConstants{};
             pushConstants.data[0] = data._gridData._invProjectionMatrix;
             pushConstants.data[1]._vec[0] = data._gridData._viewport;
@@ -236,11 +262,24 @@ void Renderer::prepareLighting(const RenderStage stage,
                 Config::Lighting::ClusteredForward::CLUSTERS_Y,
                 Config::Lighting::ClusteredForward::CLUSTERS_Z
             });
-            
-            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
+
+            GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back( BufferLock
+            {
+                ._range = { 0u, U32_MAX },
+                ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_READ,
+                ._buffer = data._lightClusterAABBsBuffer->getBufferImpl()
+            });
+
+            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
         }
 
-        GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{ to_base(MemoryBarrierType::SHADER_STORAGE) });
+
+        GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back( BufferLock
+        {
+            ._range = { 0u, U32_MAX },
+            ._type = BufferSyncUsage::GPU_READ_TO_GPU_WRITE,
+            ._buffer = data._lightGridBuffer->getBufferImpl()
+        });
 
         GFX::EnqueueCommand(bufferInOut, _lightCullPipelineCmd);
         GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{
@@ -248,7 +287,28 @@ void Renderer::prepareLighting(const RenderStage stage,
             Config::Lighting::ClusteredForward::CLUSTERS_Y / Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS,
             Config::Lighting::ClusteredForward::CLUSTERS_Z / Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS
         });
-        GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{ to_base(MemoryBarrierType::SHADER_STORAGE) });
+
+        {
+            auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut );
+            memCmd->_bufferLocks.emplace_back( BufferLock
+            {
+                ._range = { 0u, U32_MAX },
+                ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_READ,
+                ._buffer = data._lightGridBuffer->getBufferImpl()
+            }); 
+            memCmd->_bufferLocks.emplace_back( BufferLock
+            {
+                ._range = { 0u, U32_MAX },
+                ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_READ,
+                ._buffer = data._lightIndexBuffer->getBufferImpl()
+            });
+            memCmd->_bufferLocks.emplace_back( BufferLock
+            {
+                ._range = { 0u, U32_MAX },
+                ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_READ,
+                ._buffer = data._globalIndexCountBuffer->getBufferImpl()
+            }); 
+        }
     }
 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);

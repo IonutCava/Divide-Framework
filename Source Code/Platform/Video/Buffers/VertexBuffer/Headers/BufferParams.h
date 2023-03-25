@@ -36,15 +36,23 @@
 #include "Platform/Video/Headers/RenderAPIEnums.h"
 
 namespace Divide {
-    struct BufferParams
+    struct BufferFlags
     {
-        U32 _elementCount{ 0u };
-        size_t _elementSize{ 0u };     ///< Buffer primitive size in bytes
         BufferUpdateFrequency _updateFrequency{ BufferUpdateFrequency::COUNT };
         BufferUpdateUsage _updateUsage{ BufferUpdateUsage::COUNT };
+        BufferUsageType _usageType{ BufferUsageType::COUNT };
+    };
+
+    struct BufferParams
+    {
+        BufferFlags _flags{};
+        U32 _elementCount{ 0u };
+        size_t _elementSize{ 0u };     ///< Buffer primitive size in bytes
         bool _hostVisible{ false };
     };
 
+    bool operator==(const BufferFlags& lhs, const BufferFlags& rhs) noexcept;
+    bool operator!=(const BufferFlags& lhs, const BufferFlags& rhs) noexcept;
     bool operator==(const BufferParams& lhs, const BufferParams& rhs) noexcept;
     bool operator!=(const BufferParams& lhs, const BufferParams& rhs) noexcept;
 } //namespace Divide
