@@ -53,6 +53,8 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
          bool smallIndices{ false };
          bool indicesNeedCast{ false };
          bool dynamic{ false };
+
+         vector_fast<U16> _smallIndicesTemp;
      };
 
 
@@ -89,18 +91,10 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
                                                   bufferPtr data) = 0;
 
     PROPERTY_RW(bool, renderIndirect, true);
-    PROPERTY_R(size_t, indexBufferSize, 0u );
 
    protected:
     string _name;
 };
-
-inline bool AreCompatible(const GenericVertexData::IndexBuffer& lhs, const GenericVertexData::IndexBuffer& rhs) noexcept {
-    return lhs.count >= rhs.count &&
-           lhs.indicesNeedCast == rhs.indicesNeedCast &&
-           lhs.smallIndices == rhs.smallIndices &&
-           lhs.dynamic == rhs.dynamic;
-}
 
 };  // namespace Divide
 

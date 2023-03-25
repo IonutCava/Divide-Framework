@@ -444,19 +444,9 @@ namespace Divide
 
     void VK_API::RegisterTransferRequest( const VKTransferQueue::TransferRequest& request )
     {
-        if ( request._immediate )
-        {
-            s_stateTracker._cmdContext->flushCommandBuffer( [&request]( VkCommandBuffer cmd )
-            {
-                SubmitTransferRequest(request, cmd);
-            }, "Immediate Buffer Upload");
-        }
-        else
-        {
-            LockGuard<Mutex> w_lock( s_transferQueue._lock );
-            s_transferQueue._requests.push_back( request );
-            s_transferQueue._dirty.store(true);
-        }
+        LockGuard<Mutex> w_lock( s_transferQueue._lock );
+        s_transferQueue._requests.push_back( request );
+        s_transferQueue._dirty.store(true);
     }
 
     VK_API::VK_API( GFXDevice& context ) noexcept
@@ -1178,7 +1168,7 @@ namespace Divide
                     DIVIDE_ASSERT( bufferEntry._buffer != nullptr );
 
                     const auto bufferUsage = bufferEntry._buffer->getUsage();
-                    VkBuffer buffer = static_cast<vkShaderBuffer*>(bufferEntry._buffer)->bufferImpl()->_buffer;
+                    VkBuffer buffer = static_cast<vkLockableBuffer*>(bufferEntry._buffer->getBufferImpl())->getVKBufferHandle();
 
                     VkDeviceSize offset = bufferEntry._range._startOffset * bufferEntry._buffer->getPrimitiveSize();
                     if ( bufferEntry._bufferQueueReadIndex == -1 )

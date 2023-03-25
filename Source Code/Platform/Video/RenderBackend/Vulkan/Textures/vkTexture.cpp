@@ -459,7 +459,7 @@ namespace Divide
         }
         DIVIDE_ASSERT( _depth >= maxDepth );
 
-        const AllocatedBuffer_uptr stagingBuffer = VKUtil::createStagingBuffer( totalSize, resourceName() );
+        const VMABuffer_uptr stagingBuffer = VKUtil::createStagingBuffer( totalSize, resourceName() );
         Byte* target = (Byte*)stagingBuffer->_allocInfo.pMappedData;
 
         size_t offset = 0u;

@@ -222,8 +222,6 @@ struct VKTransferQueue
 
         VkAccessFlags2 dstAccessMask{ VK_ACCESS_2_NONE };
         VkPipelineStageFlags2 dstStageMask{ VK_PIPELINE_STAGE_2_NONE };
-
-        bool _immediate{ false };
     };
 
     mutable Mutex _lock;

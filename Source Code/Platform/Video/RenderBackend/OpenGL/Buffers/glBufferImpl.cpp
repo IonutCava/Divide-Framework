@@ -180,9 +180,8 @@ namespace Divide
         LockGuard<Mutex> w_lock( _mapLock );
         if ( _memoryBlock._ptr != nullptr ) [[likely]]
         {
-            memcpy( outData.first,
-                    _memoryBlock._ptr + offsetInBytes,
-                    std::min( std::min( rangeInBytes, outData.second ), _memoryBlock._size ) );
+            DIVIDE_ASSERT(rangeInBytes + offsetInBytes <= _memoryBlock._size );
+            memcpy( outData.first, _memoryBlock._ptr + offsetInBytes, rangeInBytes);
         }
         else
         {
@@ -202,7 +201,7 @@ namespace Divide
 
             const Byte* bufferData = (Byte*)glMapNamedBufferRange( _copyBufferTarget, 0u, rangeInBytes, MapBufferAccessMask::GL_MAP_READ_BIT );
             assert( bufferData != nullptr );
-            memcpy( outData.first, bufferData, std::min( rangeInBytes, outData.second ) );
+            memcpy( outData.first, bufferData, rangeInBytes );
             glUnmapNamedBuffer( _copyBufferTarget );
         }
     }

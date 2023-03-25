@@ -43,10 +43,6 @@ namespace Divide {
     public:
         vkShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor);
 
-        [[nodiscard]] inline AllocatedBuffer* bufferImpl() const { return _bufferImpl.get(); }
-
-        vkLockManager _lockManager;
-
         [[nodiscard]] LockableBuffer* getBufferImpl() override final;
 
     protected:
@@ -55,9 +51,8 @@ namespace Divide {
 
     private:
         vkAllocatedLockableBuffer_uptr  _bufferImpl{ nullptr };
-        AllocatedBuffer_uptr            _stagingBuffer{ nullptr };
-        bool                            _isMemoryMappable{false};
-        Mutex                           _stagingBufferLock;
+        Mutex                           _implLock;
+        vkLockManager                   _lockManager;
     };
 } //namespace Divide
 

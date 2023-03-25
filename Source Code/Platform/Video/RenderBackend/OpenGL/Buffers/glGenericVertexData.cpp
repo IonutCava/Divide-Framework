@@ -82,7 +82,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        IndexBufferEntry* oldIdxBufferEntry = nullptr;
+        IndexBufferEntry* impl = nullptr;
 
         LockGuard<SharedMutex> w_lock( _idxBufferLock );
         bool found = false;
@@ -90,7 +90,7 @@ namespace Divide
         {
             if ( idxBuffer._data.id == indices.id )
             {
-                oldIdxBufferEntry = &idxBuffer;
+                impl = &idxBuffer;
                 found = true;
                 break;
             }
@@ -98,70 +98,74 @@ namespace Divide
 
         if ( !found )
         {
-            oldIdxBufferEntry = &_idxBuffers.emplace_back();
-            oldIdxBufferEntry->_data = indices;
+            impl = &_idxBuffers.emplace_back();
         }
-        else if ( oldIdxBufferEntry->_handle != GLUtil::k_invalidObjectID &&
-                  (!AreCompatible( oldIdxBufferEntry->_data, indices ) || indices.count == 0u) )
+        else if ( impl->_handle != GLUtil::k_invalidObjectID )
         {
-            GLUtil::freeBuffer( oldIdxBufferEntry->_handle );
+            if ( indices.count == 0u || // We don't need indices anymore
+                 impl->_data.dynamic != indices.dynamic || // Buffer usage mode changed
+                 impl->_data.count < indices.count) // Buffer not big enough
+            {
+                GLUtil::freeBuffer( impl->_handle );
+                impl->_bufferSize = 0u;
+            }
         }
 
-        IndexBuffer& oldIdxBuffer = oldIdxBufferEntry->_data;
-
-        oldIdxBuffer.count = std::max( oldIdxBuffer.count, indices.count );
-
-        if ( indices.count > 0u )
+        if ( indices.count == 0u )
         {
-            const size_t elementSize = indices.smallIndices ? sizeof( GLushort ) : sizeof( GLuint );
-
-            vector_fast<U16> smallIndicesTemp;
-            bufferPtr data = indices.data;
-
-            if ( indices.indicesNeedCast )
-            {
-                smallIndicesTemp.resize( indices.count );
-                const U32* const dataIn = reinterpret_cast<U32*>(data);
-                for ( size_t i = 0u; i < indices.count; ++i )
-                {
-                    smallIndicesTemp[i] = to_U16( dataIn[i] );
-                }
-                data = smallIndicesTemp.data();
-            }
-
-            if ( oldIdxBufferEntry->_handle == GLUtil::k_invalidObjectID )
-            {
-                const size_t newDataSize = indices.count * elementSize;
-                _indexBufferSize = std::max( newDataSize, _indexBufferSize );
-
-                GLUtil::createBuffer( _indexBufferSize,
-                                      oldIdxBufferEntry->_handle,
-                                      _name.empty() ? nullptr : Util::StringFormat( "%s_index_%d", _name.c_str(), _idxBuffers.size() - 1u ).c_str() );
-            }
-
-            const size_t range = indices.count * elementSize;
-            DIVIDE_ASSERT( range <= _indexBufferSize );
-
-            if ( range == _indexBufferSize )
-            {
-                glNamedBufferData( oldIdxBufferEntry->_handle, range, data, indices.dynamic ? GL_STREAM_DRAW : GL_STATIC_DRAW );
-            }
-            else
-            {
-                glInvalidateBufferSubData( oldIdxBufferEntry->_handle, 0u, range );
-                glNamedBufferSubData( oldIdxBufferEntry->_handle, 0u, range, data );
-            }
-            if ( !Runtime::isMainThread() )
-            {
-                if ( oldIdxBufferEntry->_idxBufferSync != nullptr )
-                {
-                    GL_API::DestroyFenceSync( oldIdxBufferEntry->_idxBufferSync );
-                }
-
-                oldIdxBufferEntry->_idxBufferSync = GL_API::CreateFenceSync();
-                glFlush();
-            }
+            // That's it. We have a buffer entry but no GL buffer associated with it, so it won't be used
+            return {};
         }
+
+        const size_t elementSize = indices.smallIndices ? sizeof( GLushort ) : sizeof( GLuint );
+        if ( impl->_handle == GLUtil::k_invalidObjectID )
+        {
+            impl->_data = indices;
+            // At this point, we need an actual index buffer
+            impl->_bufferSize = indices.count * elementSize;
+            GLUtil::createBuffer( impl->_bufferSize,
+                                  impl->_handle,
+                                  _name.empty() ? nullptr : Util::StringFormat( "%s_index_%d", _name.c_str(), indices.id ).c_str() );
+        }
+
+        const size_t range = indices.count * elementSize;
+        DIVIDE_ASSERT( range <= impl->_bufferSize );
+
+        bufferPtr data = indices.data;
+        if ( indices.indicesNeedCast )
+        {
+            impl->_data._smallIndicesTemp.resize( indices.count );
+            const U32* const dataIn = reinterpret_cast<U32*>(data);
+            for ( size_t i = 0u; i < indices.count; ++i )
+            {
+                impl->_data._smallIndicesTemp[i] = to_U16( dataIn[i] );
+            }
+            data = impl->_data._smallIndicesTemp.data();
+        }
+
+        if ( range == impl->_bufferSize )
+        {
+            glNamedBufferData( impl->_handle, range, data, indices.dynamic ? GL_STREAM_DRAW : GL_STATIC_DRAW );
+        }
+        else
+        {
+            glInvalidateBufferSubData( impl->_handle, 0u, range );
+            glNamedBufferSubData( impl->_handle, 0u, range, data );
+        }
+
+
+        if ( !Runtime::isMainThread() )
+        {
+            if ( impl->_idxBufferSync != nullptr )
+            {
+                GL_API::DestroyFenceSync( impl->_idxBufferSync );
+            }
+
+            impl->_idxBufferSync = GL_API::CreateFenceSync();
+            glFlush();
+        }
+
+        impl->_data._smallIndicesTemp.clear();
 
         return {};
     }

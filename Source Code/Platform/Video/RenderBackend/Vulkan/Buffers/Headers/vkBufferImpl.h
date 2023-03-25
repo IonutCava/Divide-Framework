@@ -43,7 +43,7 @@ namespace Divide {
         vector<VkVertexInputBindingDescription> bindings;
         vector<VkVertexInputAttributeDescription> attributes;
 
-        VkPipelineVertexInputStateCreateFlags flags = 0u;
+        VkPipelineVertexInputStateCreateFlags flags{0u};
     };
 
     VertexInputDescription getVertexDescription(const AttributeMap& vertexFormat);
@@ -53,13 +53,10 @@ namespace Divide {
         virtual VkBuffer getVKBufferHandle() const = 0;
     };
 
-    struct AllocatedBuffer : private NonCopyable {
-        explicit AllocatedBuffer( const BufferParams& params ) noexcept
-            : _params(params)
-        {
-        }
-
-        ~AllocatedBuffer();
+    struct VMABuffer : private NonCopyable
+    {
+        explicit VMABuffer( const BufferParams& params ) noexcept : _params(params) {}
+        ~VMABuffer();
 
         VkBuffer _buffer{VK_NULL_HANDLE};
         VmaAllocation _allocation{ VK_NULL_HANDLE };
@@ -67,31 +64,49 @@ namespace Divide {
         BufferParams _params{};
     };
 
-    FWD_DECLARE_MANAGED_STRUCT( AllocatedBuffer );
+    FWD_DECLARE_MANAGED_STRUCT( VMABuffer );
 
-    struct vkAllocatedLockableBuffer final: AllocatedBuffer, vkLockableBuffer
+    struct RWAllocatedBuffer : VMABuffer
     {
-        explicit vkAllocatedLockableBuffer( const BufferParams& params, LockManager* lockManager )
-            : AllocatedBuffer(params)
-            , vkLockableBuffer()
+        explicit RWAllocatedBuffer( const BufferParams& params, 
+                                    size_t alignedBufferSize,
+                                    size_t ringQueueLength,
+                                    std::pair<bufferPtr, size_t> initialData,
+                                    const char* bufferName) noexcept;
+
+        void writeBytes( BufferRange range,
+                         VkAccessFlags2 dstAccessMask,
+                         VkPipelineStageFlags2 dstStageMask,
+                         bufferPtr data );
+
+        void readBytes( BufferRange range,
+                        std::pair<bufferPtr,
+                        size_t> outData );
+
+        VMABuffer_uptr _stagingBuffer{ nullptr };
+        bool _isMemoryMappable{ false };
+
+        const size_t _alignedBufferSize{0u};
+    };
+
+    FWD_DECLARE_MANAGED_STRUCT( RWAllocatedBuffer );
+
+    struct vkAllocatedLockableBuffer final: RWAllocatedBuffer, vkLockableBuffer
+    {
+        explicit vkAllocatedLockableBuffer( const BufferParams& params, 
+                                            LockManager* lockManager,
+                                            const size_t alignedBufferSize,
+                                            const size_t ringQueueLength,
+                                            std::pair<bufferPtr, size_t> initialData,
+                                            const char* bufferName )
+            : RWAllocatedBuffer(params, alignedBufferSize, ringQueueLength, initialData, bufferName)
             , _lockManager(lockManager)
         {
         }
 
-        [[nodiscard]] inline VkBuffer getVKBufferHandle() const override final
-        {
-            return _buffer;
-        }
-
-        [[nodiscard]] BufferFlags getBufferFlags() const override final
-        {
-            return _params._flags;
-        }
-
-        [[nodiscard]] inline LockManager* getLockManager() override final
-        {
-            return _lockManager;
-        }
+        [[nodiscard]] inline VkBuffer     getVKBufferHandle() const override final { return _buffer; }
+        [[nodiscard]] inline BufferFlags  getBufferFlags()    const override final { return _params._flags; }
+        [[nodiscard]] inline LockManager* getLockManager()          override final { return _lockManager; }
 
      private:
         LockManager* _lockManager{nullptr};
@@ -100,7 +115,7 @@ namespace Divide {
     FWD_DECLARE_MANAGED_STRUCT( vkAllocatedLockableBuffer );
 
     namespace VKUtil {
-        AllocatedBuffer_uptr createStagingBuffer(size_t size, std::string_view bufferName);
+        VMABuffer_uptr createStagingBuffer(size_t size, std::string_view bufferName);
     } //namespace VKUtil
 } //namespace Divide
 

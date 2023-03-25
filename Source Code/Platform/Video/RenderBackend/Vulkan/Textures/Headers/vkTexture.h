@@ -51,8 +51,7 @@ namespace Divide
 
     class vkTexture final : public Texture
     {
-        public:
-
+    public:
         struct CachedImageView
         {
             struct Descriptor final : Hashable
@@ -97,14 +96,14 @@ namespace Divide
 
         static [[nodiscard]] VkImageAspectFlags GetAspectFlags( const TextureDescriptor& descriptor ) noexcept;
 
-        private:
+    private:
         void loadDataInternal( const ImageTools::ImageData& imageData ) override;
         void prepareTextureData( U16 width, U16 height, U16 depth, bool emptyAllocation ) override;
         void submitTextureData() override;
         void clearDataInternal( const UColour4& clearColour, U8 level, bool clearRect, const vec4<I32>& rectToClear, vec2<I32> depthRange ) const;
         void clearImageViewCache();
 
-        private:
+    private:
         hashMap<size_t, CachedImageView> _imageViewCache;
 
         VkDeviceSize _stagingBufferSize{ 0u };

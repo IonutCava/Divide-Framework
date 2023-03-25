@@ -73,8 +73,10 @@ class glGenericVertexData final : public GenericVertexData {
 
     struct IndexBufferEntry : public NonCopyable {
         IndexBuffer _data;
-        GLsync _idxBufferSync{ nullptr };
+
+        size_t _bufferSize{0u};
         GLuint _handle{ GLUtil::k_invalidObjectID };
+        GLsync _idxBufferSync{ nullptr };
     };
 
     struct glVertexDataIndexContainer {

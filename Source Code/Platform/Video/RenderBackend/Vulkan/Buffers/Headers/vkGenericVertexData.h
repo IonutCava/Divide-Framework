@@ -59,9 +59,7 @@ class vkGenericVertexData final : public GenericVertexData {
         {
             LockableBufferInternal() : _lockManager( eastl::make_unique<vkLockManager>() ) {}
             vkAllocatedLockableBuffer_uptr _buffer{ nullptr };
-            AllocatedBuffer_uptr _stagingBuffer{ nullptr };
             vkLockManager_uptr _lockManager;
-            bool _isMemoryMappable{false};
         };
 
         struct GenericBufferImpl final : public LockableBufferInternal
@@ -74,10 +72,12 @@ class vkGenericVertexData final : public GenericVertexData {
         struct IndexBufferEntry final  : public LockableBufferInternal
         {
             IndexBuffer _data{};
+            size_t _bufferSize{ 0u };
         };
 
         vector<IndexBufferEntry> _idxBuffers;
         vector<GenericBufferImpl> _bufferObjects;
+        SharedMutex _idxBufferLock;
     };
 
 } //namespace Divide
