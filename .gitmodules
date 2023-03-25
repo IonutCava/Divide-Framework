@@ -88,3 +88,6 @@
 [submodule "3rdParty/Vulkan-Descriptor-Allocator"]
 	path = 3rdParty/Vulkan-Descriptor-Allocator
 	url = https://github.com/vblanco20-1/Vulkan-Descriptor-Allocator.git
+[submodule "3rdParty/EASTL"]
+	path = 3rdParty/EASTL
+	url = https://github.com/electronicarts/EASTL
