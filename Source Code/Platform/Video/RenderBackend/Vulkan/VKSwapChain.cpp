@@ -36,7 +36,7 @@ namespace Divide {
         if (!_inFlightFences.empty())
         {
             const VkDevice device = _device.getVKDevice();
-            for (U8 i = 0u; i < MAX_FRAMES_IN_FLIGHT; i++)
+            for (U8 i = 0u; i < Config::MAX_FRAMES_IN_FLIGHT; i++)
             {
                 vkDestroySemaphore(device, _renderFinishedSemaphores[i], nullptr);
                 vkDestroySemaphore(device, _imageAvailableSemaphores[i], nullptr);
@@ -87,10 +87,10 @@ namespace Divide {
             return ErrorCode::VK_SURFACE_CREATE;
         }
 
-        _imageAvailableSemaphores.resize( MAX_FRAMES_IN_FLIGHT );
-        _renderFinishedSemaphores.resize( MAX_FRAMES_IN_FLIGHT );
-        _inFlightFences.resize( MAX_FRAMES_IN_FLIGHT );
-        _commandBuffers.resize( MAX_FRAMES_IN_FLIGHT );
+        _imageAvailableSemaphores.resize( Config::MAX_FRAMES_IN_FLIGHT );
+        _renderFinishedSemaphores.resize( Config::MAX_FRAMES_IN_FLIGHT );
+        _inFlightFences.resize( Config::MAX_FRAMES_IN_FLIGHT );
+        _commandBuffers.resize( Config::MAX_FRAMES_IN_FLIGHT );
         _imagesInFlight.resize( _swapchainImages.size(), VK_NULL_HANDLE );
 
 
@@ -98,7 +98,7 @@ namespace Divide {
         const VkFenceCreateInfo fenceCreateInfo = vk::fenceCreateInfo( VK_FENCE_CREATE_SIGNALED_BIT );
 
         const VkDevice device = _device.getVKDevice();
-        for ( U8 i = 0u; i < MAX_FRAMES_IN_FLIGHT; i++ )
+        for ( U8 i = 0u; i < Config::MAX_FRAMES_IN_FLIGHT; i++ )
         {
             VK_CHECK( vkCreateSemaphore( device, &semaphoreCreateInfo, nullptr, &_imageAvailableSemaphores[i] ) );
             VK_CHECK( vkCreateSemaphore( device, &semaphoreCreateInfo, nullptr, &_renderFinishedSemaphores[i] ) );
@@ -106,7 +106,7 @@ namespace Divide {
         }
 
         //allocate the default command buffer that we will use for rendering
-        const VkCommandBufferAllocateInfo cmdAllocInfo = vk::commandBufferAllocateInfo( _device.getQueue( QueueType::GRAPHICS)._pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, MAX_FRAMES_IN_FLIGHT );
+        const VkCommandBufferAllocateInfo cmdAllocInfo = vk::commandBufferAllocateInfo( _device.getQueue( QueueType::GRAPHICS)._pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, Config::MAX_FRAMES_IN_FLIGHT );
         VK_CHECK( vkAllocateCommandBuffers( device, &cmdAllocInfo, _commandBuffers.data() ) );
 
         const auto& windowDimensions = _window.getDrawableSize();
@@ -175,7 +175,7 @@ namespace Divide {
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pImageIndices = &_swapchainImageIndex;
 
-        _currentFrameIdx = (_currentFrameIdx + 1) % MAX_FRAMES_IN_FLIGHT;
+        _currentFrameIdx = (_currentFrameIdx + 1) % Config::MAX_FRAMES_IN_FLIGHT;
         return _device.queuePresent(queue, presentInfo);
     }
 

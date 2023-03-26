@@ -27,7 +27,7 @@ namespace Divide
     {
     }
 
-    void LockManager::CleanExpiredSyncObjects( const U64 frameNumber )
+    void LockManager::CleanExpiredSyncObjects( const RenderAPI api, const U64 frameNumber )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -35,7 +35,25 @@ namespace Divide
         for ( const BufferLockPoolEntry& syncObject : s_bufferLockPool )
         {
             LockGuard<Mutex> w_lock( syncObject._ptr->_fenceLock );
-            if ( syncObject._ptr->_frameNumber < frameNumber )
+            bool reset = false;
+            switch (api)
+            {
+                case RenderAPI::Vulkan:
+                {
+                    reset = frameNumber - syncObject._ptr->_frameNumber >= Config::MAX_FRAMES_IN_FLIGHT;
+                } break;
+                case RenderAPI::OpenGL:
+                {
+                    reset = syncObject._ptr->_frameNumber < frameNumber;
+                } break;
+                case RenderAPI::None:
+                {
+                    reset = true;
+                }
+                default : DIVIDE_UNEXPECTED_CALL(); break;
+            }
+
+            if (reset)
             {
                 syncObject._ptr->reset();
             }
@@ -60,7 +78,7 @@ namespace Divide
         return false;
     }
 
-    SyncObjectHandle LockManager::CreateSyncObjectLocked( RenderAPI api, const U8 flag, const bool isRetry )
+    SyncObjectHandle LockManager::CreateSyncObjectLocked( const RenderAPI api, const U8 flag, const bool isRetry )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 

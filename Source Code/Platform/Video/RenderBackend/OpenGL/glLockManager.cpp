@@ -94,7 +94,7 @@ namespace Divide
         glSyncObject* glSync = static_cast<glSyncObject*>(sync.get());
 
         if ( glSync->_syncObject == nullptr ||
-             glSync->_frameNumber < GL_API::GetStateTracker()._lastSyncedFrameNumber )
+             glSync->_frameNumber + Config::MAX_FRAMES_IN_FLIGHT < GL_API::GetStateTracker()._lastSyncedFrameNumber )
         {
             // Lock expired from underneath us
             return true;

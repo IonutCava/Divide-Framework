@@ -316,7 +316,7 @@ namespace Divide
     void VKDeletionQueue::push( DELEGATE<void, VkDevice>&& function )
     {
         LockGuard<Mutex> w_lock( _deletionLock );
-        _deletionQueue.emplace_back( MOV( function ), TestBit(flags(), Flags::TREAT_AS_TRANSIENT) ? MAX_FRAMES_IN_FLIGHT : 0 );
+        _deletionQueue.emplace_back( MOV( function ), TestBit(flags(), Flags::TREAT_AS_TRANSIENT) ? Config::MAX_FRAMES_IN_FLIGHT : 0 );
     }
 
     void VKDeletionQueue::flush( VkDevice device, const bool force )
@@ -435,12 +435,14 @@ namespace Divide
     void VKStateTracker::init( VKDevice* device, VKPerWindowState* mainWindow )
     {
         DIVIDE_ASSERT(device != nullptr && mainWindow != nullptr);
+        setDefaultState();
 
         _activeWindow = mainWindow;
         for ( U8 t = 0u; t < to_base(QueueType::COUNT); ++t )
         {
             _cmdContexts[t] = eastl::make_unique<VKImmediateCmdContext>( *device, static_cast<QueueType>(t) );
         }
+
     }
 
     void VKStateTracker::reset()
@@ -456,7 +458,6 @@ namespace Divide
         _activeMSAASamples = 0u;
         _activeRenderTargetID = INVALID_RENDER_TARGET_ID;
         _activeRenderTargetDimensions = { 1u, 1u };
-        _lastSyncedFrameNumber = GFXDevice::FrameCount();
         _drawIndirectBuffer = VK_NULL_HANDLE;
         _drawIndirectBufferOffset = 0u;
         _pipelineStageMask = VK_FLAGS_NONE;
@@ -577,15 +578,10 @@ namespace Divide
                 DIVIDE_UNEXPECTED_CALL();
             }
         }
-
     }
 
     bool VK_API::frameStarted()
     {
-        // Set dynamic state to default
-        GetStateTracker().setDefaultState();
-        vkLockManager::CleanExpiredSyncObjects( VK_API::GetStateTracker()._lastSyncedFrameNumber );
-
         _descriptorSets.fill( VK_NULL_HANDLE );
 
         for ( auto& pool : s_stateTracker._descriptorAllocators )
@@ -597,17 +593,20 @@ namespace Divide
             pool._handle = pool._allocatorPool->GetAllocator();
         }
 
+        LockManager::CleanExpiredSyncObjects( RenderAPI::Vulkan, GFXDevice::FrameCount() );
+
         return true;
     }
 
     bool VK_API::frameEnded()
     {
-        _currentFrameIndex = ++_currentFrameIndex % MAX_FRAMES_IN_FLIGHT;
-
         s_transientDeleteQueue.onFrameEnd();
         s_deviceDeleteQueue.onFrameEnd();
 
         //vkResetCommandPool(_device->getVKDevice(), _device->graphicsCommandPool(), VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
+
+        // Set dynamic state to default
+        GetStateTracker().setDefaultState();
         return true;
     }
 
@@ -972,8 +971,8 @@ namespace Divide
 
         initStatePerWindow( perWindowContext );
         _context.fonsContext(dummyfonsCreate( 512, 512, FONS_ZERO_BOTTOMLEFT ));
-
         s_stateTracker.init(_device.get(), &perWindowContext);
+        s_stateTracker._assertOnAPIError = config.debug.assertOnRenderAPIError;
 
         return ErrorCode::NO_ERR;
     }
@@ -2412,7 +2411,7 @@ namespace Divide
         for ( U8 i = 0u; i < to_base( DescriptorSetUsage::COUNT ); ++i )
         {
             auto& pool = s_stateTracker._descriptorAllocators[i];
-            pool._frameCount = MAX_FRAMES_IN_FLIGHT + 1u;
+            pool._frameCount = Config::MAX_FRAMES_IN_FLIGHT + 1u;
             pool._allocatorPool.reset( vke::DescriptorAllocatorPool::Create( _device->getVKDevice(), pool._frameCount) );
        
             pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4.f );

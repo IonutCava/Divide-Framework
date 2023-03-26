@@ -485,6 +485,8 @@ namespace Divide
         _performanceQueries[to_base( GlobalQueryTypes::TESSELLATION_EVAL_INVOCATIONS )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_TESS_EVALUATION_SHADER_INVOCATIONS, 6 );
         _performanceQueries[to_base( GlobalQueryTypes::GPU_TIME )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_TIME_ELAPSED, 6 );
 
+        s_stateTracker.assertOnAPIError(config.debug.assertOnRenderAPIError);
+
         // That's it. Everything should be ready for draw calls
         Console::printfn( Locale::Get( _ID( "START_OGL_API_OK" ) ) );
         return ErrorCode::NO_ERR;
@@ -640,7 +642,7 @@ namespace Divide
             }
         }
 
-        glLockManager::CleanExpiredSyncObjects( s_stateTracker._lastSyncedFrameNumber );
+        LockManager::CleanExpiredSyncObjects( RenderAPI::OpenGL, s_stateTracker._lastSyncedFrameNumber );
 
         return true;
     }

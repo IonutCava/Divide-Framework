@@ -65,8 +65,6 @@ enum class DescriptorSetBindingType : U8;
 FWD_DECLARE_MANAGED_CLASS( VKSwapChain );
 
 
-constexpr U8 MAX_FRAMES_IN_FLIGHT = 3u;
-
 namespace Debug {
     extern PFN_vkCmdBeginDebugUtilsLabelEXT vkCmdBeginDebugUtilsLabelEXT;
     extern PFN_vkCmdEndDebugUtilsLabelEXT vkCmdEndDebugUtilsLabelEXT;
@@ -215,8 +213,6 @@ struct VKStateTracker
 
     VkBuffer _drawIndirectBuffer{ VK_NULL_HANDLE };
     size_t _drawIndirectBufferOffset{ 0u };
-
-    U64 _lastSyncedFrameNumber{ 0u };
 
     VkShaderStageFlags _pipelineStageMask{ VK_FLAGS_NONE };
 

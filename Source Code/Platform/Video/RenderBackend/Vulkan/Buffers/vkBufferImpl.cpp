@@ -86,7 +86,7 @@ namespace Divide
             case BufferUsageType::VERTEX_BUFFER:
             {
                 usageFlags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-                dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+                dstAccessMask = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
                 dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
             } break;
             case BufferUsageType::INDEX_BUFFER:

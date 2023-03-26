@@ -86,8 +86,7 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         vkSyncObject* vkSync = static_cast<vkSyncObject*>(sync.get());
-        if ( vkSync->_fence == VK_NULL_HANDLE ||
-             vkSync->_frameNumber < VK_API::GetStateTracker()._lastSyncedFrameNumber )
+        if ( vkSync->_fence == VK_NULL_HANDLE )
         {
             // Lock expired from underneath us
             return true;

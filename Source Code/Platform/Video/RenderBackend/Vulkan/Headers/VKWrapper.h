@@ -141,8 +141,8 @@ private:
     std::array<VkDescriptorSet, to_base( DescriptorSetUsage::COUNT )> _descriptorSets;
     std::array<VkDescriptorSetLayout, to_base( DescriptorSetUsage::COUNT )> _descriptorSetLayouts;
 
-    U8 _currentFrameIndex{ 0u };
     bool _pushConstantsNeedLock{ false };
+
 private:
     using SamplerObjectMap = hashMap<size_t, VkSampler, NoHash<size_t>>;
 

@@ -95,6 +95,9 @@ constexpr U8 DESIRED_VULKAN_MINOR_VERSION = 3u;
 /// Application desired framerate for physics and input simulations
 constexpr unsigned int TARGET_FRAME_RATE = 60;
 
+/// Maximum number of active frames until we start waiting on a fence/sync
+constexpr U8 MAX_FRAMES_IN_FLIGHT = 3u;
+
 /// Application update rate divisor (how many many times should we update our state per second)
 /// e.g. For TARGET_FRAME_RATE = 60, TICK_DIVISOR = 2 => update at 30Hz, render at 60Hz.
 constexpr unsigned int TICK_DIVISOR = 2;

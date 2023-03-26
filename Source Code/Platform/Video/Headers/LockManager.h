@@ -84,7 +84,7 @@ namespace Divide {
         };
         using BufferLockPool = eastl::fixed_vector<BufferLockPoolEntry, 1024, true>;
 
-        static void CleanExpiredSyncObjects(U64 frameNumber);
+        static void CleanExpiredSyncObjects( RenderAPI api, U64 frameNumber );
         static void Clear();
 
     public:
