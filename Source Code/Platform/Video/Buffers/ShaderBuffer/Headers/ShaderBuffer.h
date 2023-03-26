@@ -87,8 +87,8 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
     PROPERTY_R(U64, lastWrittenFrame, 0u);
     PROPERTY_R(U64, lastReadFrame, 0u);
    protected:
-     virtual void readBytesInternal(BufferRange range, std::pair<bufferPtr, size_t> outData) = 0;
-     virtual void writeBytesInternal(BufferRange range, bufferPtr data) = 0;
+     virtual void       readBytesInternal(BufferRange range, std::pair<bufferPtr, size_t> outData) = 0;
+     virtual BufferLock writeBytesInternal(BufferRange range, bufferPtr data) = 0;
 
    protected:
     BufferParams _params;

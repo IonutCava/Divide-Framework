@@ -20,6 +20,8 @@ namespace Divide
     {
         assert( params._bufferParams._flags._updateFrequency != BufferUpdateFrequency::COUNT );
 
+        _lockManager = eastl::make_unique<glLockManager>();
+
         // Create all buffers with zero mem and then write the actual data that we have (If we want to initialise all memory)
         if ( params._bufferParams._flags._updateUsage == BufferUpdateUsage::GPU_TO_GPU || params._bufferParams._flags._updateFrequency == BufferUpdateFrequency::ONCE )
         {
@@ -91,9 +93,15 @@ namespace Divide
             assert( _memoryBlock._ptr != nullptr && _memoryBlock._size >= _params._dataSize && "PersistentBuffer::Create error: Can't mapped persistent buffer!" );
         }
 
+        _isLockable = _memoryBlock._ptr != nullptr;
+
         if ( !Runtime::isMainThread() )
         {
-            _lockManager.lockRange( 0u, _params._dataSize, glLockManager::CreateSyncObject( LockManager::DEFAULT_SYNC_FLAG_SSBO ) );
+            auto sync = glLockManager::CreateSyncObject( LockManager::DEFAULT_SYNC_FLAG_SSBO );
+            if ( !lockRange( { 0u, _params._dataSize }, sync ) )
+            {
+                DIVIDE_UNEXPECTED_CALL();
+            }
         }
 
         context.getPerformanceMetrics()._bufferVRAMUsage += params._dataSize;
@@ -101,7 +109,7 @@ namespace Divide
 
     glBufferImpl::~glBufferImpl()
     {
-        if ( !_lockManager.waitForLockedRange( 0u, _memoryBlock._size ) ) [[unlikely]]
+        if (!waitForLockedRange({0u, _memoryBlock._size}))
         {
             DIVIDE_UNEXPECTED_CALL();
         }
@@ -124,9 +132,8 @@ namespace Divide
         }
     }
 
-    void glBufferImpl::writeOrClearBytes( const size_t offsetInBytes, const size_t rangeInBytes, const bufferPtr data, const bool firstWrite )
+    BufferLock glBufferImpl::writeOrClearBytes( const size_t offsetInBytes, const size_t rangeInBytes, const bufferPtr data, const bool firstWrite )
     {
-
         assert( rangeInBytes > 0u && offsetInBytes + rangeInBytes <= _memoryBlock._size );
 
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
@@ -134,10 +141,16 @@ namespace Divide
         PROFILE_TAG( "Offset", to_U32( offsetInBytes ) );
         PROFILE_TAG( "Range", to_U32( rangeInBytes ) );
 
-        if ( !_lockManager.waitForLockedRange( offsetInBytes, rangeInBytes ) ) [[unlikely]]
+        if ( !waitForLockedRange({offsetInBytes, rangeInBytes} ) ) [[unlikely]]
         {
             Console::errorfn( Locale::Get( _ID( "ERROR_BUFFER_LOCK_MANAGER_WAIT" ) ) );
         }
+
+        BufferLock ret = 
+        {
+            ._type = BufferSyncUsage::CPU_WRITE_TO_GPU_READ,
+            ._buffer = this
+        };
 
         LockGuard<Mutex> w_lock( _mapLock );
         if ( _memoryBlock._ptr != nullptr ) [[likely]]
@@ -150,6 +163,8 @@ namespace Divide
             {
                 memcpy( &_memoryBlock._ptr[offsetInBytes], data, rangeInBytes );
             }
+
+            ret._range = {offsetInBytes, rangeInBytes};
         }
         else
         {
@@ -166,13 +181,15 @@ namespace Divide
             }
             glUnmapNamedBuffer( _memoryBlock._bufferHandle );
         }
+
+        return ret;
     }
 
     void glBufferImpl::readBytes( const size_t offsetInBytes, const size_t rangeInBytes, std::pair<bufferPtr, size_t> outData )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        if ( !_lockManager.waitForLockedRange( offsetInBytes, rangeInBytes ) ) [[unlikely]]
+        if ( !waitForLockedRange( {offsetInBytes, rangeInBytes} ) ) [[unlikely]]
         {
             DIVIDE_UNEXPECTED_CALL();
         }

@@ -287,7 +287,7 @@ namespace Divide
 
     void vkTexture::submitTextureData()
     {
-        VK_API::GetStateTracker()._cmdContext->flushCommandBuffer( [&]( VkCommandBuffer cmd )
+        VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [&]( VkCommandBuffer cmd, const QueueType queue, const bool isDedicatedQueue )
         {
             const VkImageLayout targetLayout = IsDepthTexture( _descriptor.baseFormat() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
@@ -474,7 +474,7 @@ namespace Divide
             }
         }
 
-        VK_API::GetStateTracker()._cmdContext->flushCommandBuffer( [&]( VkCommandBuffer cmd )
+        VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [&]( VkCommandBuffer cmd, const QueueType queue, const bool isDedicatedQueue )
         {
             const bool needsMipmaps = _descriptor.mipMappingState() == TextureDescriptor::MipMappingState::AUTO && numMips < mipCount();
             const VkImageLayout targetLayout = IsDepthTexture( _descriptor.baseFormat() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

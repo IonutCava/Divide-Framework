@@ -54,9 +54,9 @@ namespace Divide
         }
     }
 
-    void glShaderBuffer::writeBytesInternal( const BufferRange range, bufferPtr data )
+    BufferLock glShaderBuffer::writeBytesInternal( const BufferRange range, bufferPtr data )
     {
-        bufferImpl()->writeOrClearBytes( range._startOffset, range._length, data );
+        return bufferImpl()->writeOrClearBytes( range._startOffset, range._length, data );
     }
 
     void glShaderBuffer::readBytesInternal( BufferRange range, std::pair<bufferPtr, size_t> outData )

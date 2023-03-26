@@ -48,71 +48,44 @@ namespace Divide {
 
     VertexInputDescription getVertexDescription(const AttributeMap& vertexFormat);
 
-    struct vkLockableBuffer : public LockableBuffer
+    struct VMABuffer
     {
-        virtual VkBuffer getVKBufferHandle() const = 0;
-    };
-
-    struct VMABuffer : private NonCopyable
-    {
-        explicit VMABuffer( const BufferParams& params ) noexcept : _params(params) {}
+        explicit VMABuffer( BufferParams params );
         ~VMABuffer();
 
-        VkBuffer _buffer{VK_NULL_HANDLE};
+        const BufferParams _params{};
+        VkBuffer _buffer{ VK_NULL_HANDLE };
         VmaAllocation _allocation{ VK_NULL_HANDLE };
         VmaAllocationInfo _allocInfo{};
-        BufferParams _params{};
     };
 
     FWD_DECLARE_MANAGED_STRUCT( VMABuffer );
 
-    struct RWAllocatedBuffer : VMABuffer
+    struct vkBufferImpl final : public VMABuffer, public LockableBuffer, private NonCopyable
     {
-        explicit RWAllocatedBuffer( const BufferParams& params, 
-                                    size_t alignedBufferSize,
-                                    size_t ringQueueLength,
-                                    std::pair<bufferPtr, size_t> initialData,
-                                    const char* bufferName) noexcept;
-
-        void writeBytes( BufferRange range,
-                         VkAccessFlags2 dstAccessMask,
-                         VkPipelineStageFlags2 dstStageMask,
-                         bufferPtr data );
+        explicit vkBufferImpl( const BufferParams& params,
+                            size_t alignedBufferSize,
+                            size_t ringQueueLength,
+                            std::pair<bufferPtr, size_t> initialData,
+                            const char* bufferName) noexcept;
+        BufferLock writeBytes( BufferRange range,
+                               VkAccessFlags2 dstAccessMask,
+                               VkPipelineStageFlags2 dstStageMask,
+                               bufferPtr data );
 
         void readBytes( BufferRange range,
                         std::pair<bufferPtr,
                         size_t> outData );
 
-        VMABuffer_uptr _stagingBuffer{ nullptr };
-        bool _isMemoryMappable{ false };
-
         const size_t _alignedBufferSize{0u};
+        VMABuffer_uptr _stagingBuffer{};
+
+    private:
+        bool _isMemoryMappable{ false };
     };
 
-    FWD_DECLARE_MANAGED_STRUCT( RWAllocatedBuffer );
+    FWD_DECLARE_MANAGED_STRUCT( vkBufferImpl );
 
-    struct vkAllocatedLockableBuffer final: RWAllocatedBuffer, vkLockableBuffer
-    {
-        explicit vkAllocatedLockableBuffer( const BufferParams& params, 
-                                            LockManager* lockManager,
-                                            const size_t alignedBufferSize,
-                                            const size_t ringQueueLength,
-                                            std::pair<bufferPtr, size_t> initialData,
-                                            const char* bufferName )
-            : RWAllocatedBuffer(params, alignedBufferSize, ringQueueLength, initialData, bufferName)
-            , _lockManager(lockManager)
-        {
-        }
-
-        [[nodiscard]] inline VkBuffer     getVKBufferHandle() const override final { return _buffer; }
-        [[nodiscard]] inline BufferFlags  getBufferFlags()    const override final { return _params._flags; }
-        [[nodiscard]] inline LockManager* getLockManager()          override final { return _lockManager; }
-
-     private:
-        LockManager* _lockManager{nullptr};
-    };
-
-    FWD_DECLARE_MANAGED_STRUCT( vkAllocatedLockableBuffer );
 
     namespace VKUtil {
         VMABuffer_uptr createStagingBuffer(size_t size, std::string_view bufferName);

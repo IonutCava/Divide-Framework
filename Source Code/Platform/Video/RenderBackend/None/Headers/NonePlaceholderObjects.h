@@ -114,7 +114,7 @@ namespace Divide {
             : ShaderBuffer(context, descriptor)
         {}
 
-        void writeBytesInternal([[maybe_unused]] BufferRange range, [[maybe_unused]] bufferPtr data) noexcept override {}
+        BufferLock writeBytesInternal([[maybe_unused]] BufferRange range, [[maybe_unused]] bufferPtr data) noexcept override { return {}; }
         void readBytesInternal([[maybe_unused]] BufferRange range, [[maybe_unused]] std::pair<bufferPtr, size_t> outData) noexcept override {}
 
         [[nodiscard]] LockableBuffer* getBufferImpl() override { return nullptr; }

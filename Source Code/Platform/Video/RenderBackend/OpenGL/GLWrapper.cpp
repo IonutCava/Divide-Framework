@@ -1223,6 +1223,9 @@ namespace Divide
                         continue;
                     }
 
+                    glBufferImpl* buffer = static_cast<glBufferImpl*>(lock._buffer);
+                    const BufferFlags flags = buffer->params()._bufferParams._flags;
+
                     switch ( lock._type )
                     {
                         case BufferSyncUsage::CPU_WRITE_TO_GPU_READ:
@@ -1232,16 +1235,15 @@ namespace Divide
                                 handle = glLockManager::CreateSyncObject();
                             }
 
-                            LockManager* lockManager = lock._buffer->getLockManager();
-                            if ( !lockManager->lockRange( lock._range._startOffset, lock._range._length, handle ) )
+                            if ( !buffer->lockRange( lock._range, handle ) )
                             {
                                 DIVIDE_UNEXPECTED_CALL();
                             }
                         } break;
                         case BufferSyncUsage::GPU_WRITE_TO_CPU_READ:
                         {
-                            if ( lock._buffer->getBufferFlags()._updateUsage == BufferUpdateUsage::GPU_TO_GPU ||
-                                    lock._buffer->getBufferFlags()._updateFrequency == BufferUpdateFrequency::ONCE )
+                            if ( flags._updateUsage == BufferUpdateUsage::GPU_TO_GPU ||
+                                 flags._updateFrequency == BufferUpdateFrequency::ONCE )
                             {
                                 mask |= GL_BUFFER_UPDATE_BARRIER_BIT;
                             }
@@ -1253,7 +1255,7 @@ namespace Divide
                         case BufferSyncUsage::GPU_WRITE_TO_GPU_READ:
                         case BufferSyncUsage::GPU_READ_TO_GPU_WRITE:
                         {
-                            switch (lock._buffer->getBufferFlags()._usageType )
+                            switch ( flags._usageType )
                             {
                                 case BufferUsageType::CONSTANT_BUFFER:
                                 {

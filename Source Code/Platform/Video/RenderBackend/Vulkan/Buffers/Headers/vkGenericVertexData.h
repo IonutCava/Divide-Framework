@@ -55,22 +55,17 @@ class vkGenericVertexData final : public GenericVertexData {
         void bindBufferInternal(const SetBufferParams::BufferBindConfig& bindConfig, VkCommandBuffer& cmdBuffer);
 
     private:
-        struct LockableBufferInternal
+        struct GenericBufferImpl
         {
-            LockableBufferInternal() : _lockManager( eastl::make_unique<vkLockManager>() ) {}
-            vkAllocatedLockableBuffer_uptr _buffer{ nullptr };
-            vkLockManager_uptr _lockManager;
-        };
-
-        struct GenericBufferImpl final : public LockableBufferInternal
-        {
+            vkBufferImpl_uptr _buffer{ nullptr };
             SetBufferParams::BufferBindConfig _bindConfig{};
             size_t _ringSizeFactor{ 1u };
             size_t _elementStride{ 0u };
         };
 
-        struct IndexBufferEntry final  : public LockableBufferInternal
+        struct IndexBufferEntry
         {
+            vkBufferImpl_uptr _buffer{ nullptr };
             IndexBuffer _data{};
             size_t _bufferSize{ 0u };
         };

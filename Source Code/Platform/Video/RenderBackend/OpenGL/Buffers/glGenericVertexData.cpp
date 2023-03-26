@@ -214,20 +214,17 @@ namespace Divide
 
         impl->_buffer = eastl::make_unique<glBufferImpl>( _context, implParams, params._initialData, _name.empty() ? nullptr : _name.c_str() );
 
+        BufferLock ret = {};
         for ( U32 i = 1u; i < ringSizeFactor; ++i )
         {
-            impl->_buffer->writeOrClearBytes(i * bufferSizeInBytes,
-                                             params._initialData.second > 0 ? params._initialData.second : bufferSizeInBytes,
-                                             params._initialData.first,
-                                             true );
+            ret = impl->_buffer->writeOrClearBytes(i * bufferSizeInBytes,
+                                                   params._initialData.second > 0 ? params._initialData.second : bufferSizeInBytes,
+                                                   params._initialData.first,
+                                                   true );
         }
 
-        return BufferLock
-        {
-            ._range = {0u, implParams._dataSize},
-            ._type = BufferSyncUsage::CPU_WRITE_TO_GPU_READ,
-            ._buffer = impl->_buffer.get()
-        };
+        ret._range = {0u, implParams._dataSize};
+        return ret;
     }
 
     /// Update the elementCount worth of data contained in the buffer starting from elementCountOffset size offset

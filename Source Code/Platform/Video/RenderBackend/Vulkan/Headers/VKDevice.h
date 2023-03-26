@@ -36,9 +36,11 @@
 #include "vkResources.h"
 
 namespace Divide {
-    class VK_API;
 
-    class VKDevice final : NonCopyable, NonMovable {
+class VK_API;
+
+class VKDevice final : NonCopyable, NonMovable
+{
     public:
         VKDevice(VK_API& context, vkb::Instance& instance, VkSurfaceKHR targetSurface);
         ~VKDevice();
@@ -49,25 +51,28 @@ namespace Divide {
         [[nodiscard]] const vkb::Device& getDevice() const noexcept;
         [[nodiscard]] const vkb::PhysicalDevice& getPhysicalDevice() const noexcept;
 
-        [[nodiscard]] VkCommandPool   createCommandPool(uint32_t queueFamilyIndex, VkCommandPoolCreateFlags createFlags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-                      void            submitToQueue(vkb::QueueType queue, const VkSubmitInfo& submitInfo, VkFence& fence) const;
-        [[nodiscard]] VkResult        queuePresent(vkb::QueueType queue, const VkPresentInfoKHR& presentInfo) const;
-        [[nodiscard]] U32             getQueueIndex(vkb::QueueType queue) const;
-        PROPERTY_R_IW(VkCommandPool, graphicsCommandPool, VK_NULL_HANDLE);
+        [[nodiscard]] VkCommandPool   createCommandPool(uint32_t queueFamilyIndex, VkCommandPoolCreateFlags createFlags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT) const;
+                      void            submitToQueue(QueueType queue, const VkSubmitInfo& submitInfo, VkFence& fence) const;
+        [[nodiscard]] VkResult        queuePresent(QueueType queue, const VkPresentInfoKHR& presentInfo) const;
+
+        [[nodiscard]] U32     getPresentQueueIndex() const noexcept;
+        [[nodiscard]] VKQueue getQueue( QueueType type ) const noexcept;
 
     private:
-        [[nodiscard]] VKQueue getQueue(vkb::QueueType type) const noexcept;
+        [[nodiscard]] VKQueue getQueueInternal( QueueType type, bool dedicated) const noexcept;
+
     private:
 
         VK_API& _context;
         vkb::Device _device{}; // Vulkan device for commands
         vkb::PhysicalDevice _physicalDevice{}; // GPU chosen as the default device
+        U32 _presentQueueIndex{ INVALID_VK_QUEUE_INDEX };
 
-        std::array<VKQueue, 4> _queues;
-        mutable std::array<Mutex, 4> _queueLocks;
-    };
+        std::array<VKQueue, to_base( QueueType::COUNT ) > _queues;
+        mutable std::array<Mutex, to_base( QueueType::COUNT )> _queueLocks;
+};
 
-    FWD_DECLARE_MANAGED_CLASS(VKDevice);
+FWD_DECLARE_MANAGED_CLASS(VKDevice);
 
 }; //namespace Divide
 #endif //_VK_DEVICE_H_

@@ -366,8 +366,10 @@ namespace Divide
         return _deletionQueue.empty();
     }
 
-    VKImmediateCmdContext::VKImmediateCmdContext( VKDevice& context )
+    VKImmediateCmdContext::VKImmediateCmdContext( VKDevice& context, const QueueType type )
         : _context( context )
+        , _type(type)
+        , _queueIndex(context.getQueue(type)._index)
     {
         const VkFenceCreateInfo fenceCreateInfo = vk::fenceCreateInfo();
         for (U8 i = 0u; i < BUFFER_COUNT; ++i )
@@ -375,7 +377,7 @@ namespace Divide
             vkCreateFence( _context.getVKDevice(), &fenceCreateInfo, nullptr, &_bufferFences[i]);
         }
 
-        _commandPool = _context.createCommandPool( _context.getQueueIndex( vkb::QueueType::graphics ), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT );
+        _commandPool = _context.createCommandPool( _context.getQueue( type )._index, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT );
 
         const VkCommandBufferAllocateInfo cmdBufAllocateInfo = vk::commandBufferAllocateInfo( _commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, BUFFER_COUNT );
 
@@ -392,7 +394,7 @@ namespace Divide
         }
     }
 
-    void VKImmediateCmdContext::flushCommandBuffer( std::function<void( VkCommandBuffer cmd )>&& function, const char* scopeName )
+    void VKImmediateCmdContext::flushCommandBuffer( FlushCallback&& function, const char* scopeName )
     {
         static U64 WRAP_COUNTER = 0u;
 
@@ -413,7 +415,7 @@ namespace Divide
         VK_API::PushDebugMessage( cmd, scopeName );
 
         // Execute the function
-        function( cmd );
+        function( cmd, _type, _queueIndex );
 
         VK_API::PopDebugMessage( cmd ) ;
         VK_CHECK( vkEndCommandBuffer( cmd ) );
@@ -422,12 +424,51 @@ namespace Divide
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &cmd;
 
-        _context.submitToQueue( vkb::QueueType::graphics, submitInfo, fence );
+        _context.submitToQueue( _type, submitInfo, fence );
         _bufferIndex = ++_bufferIndex % BUFFER_COUNT;
         if ( _bufferIndex == 0u )
         {
             ++WRAP_COUNTER;
         }
+    }
+
+    void VKStateTracker::init( VKDevice* device, VKPerWindowState* mainWindow )
+    {
+        DIVIDE_ASSERT(device != nullptr && mainWindow != nullptr);
+
+        _activeWindow = mainWindow;
+        for ( U8 t = 0u; t < to_base(QueueType::COUNT); ++t )
+        {
+            _cmdContexts[t] = eastl::make_unique<VKImmediateCmdContext>( *device, static_cast<QueueType>(t) );
+        }
+    }
+
+    void VKStateTracker::reset()
+    {
+        _cmdContexts = {};
+        setDefaultState();
+    }
+
+    void VKStateTracker::setDefaultState()
+    {
+        _pipeline = {};
+        _activeWindow = nullptr;
+        _activeMSAASamples = 0u;
+        _activeRenderTargetID = INVALID_RENDER_TARGET_ID;
+        _activeRenderTargetDimensions = { 1u, 1u };
+        _lastSyncedFrameNumber = GFXDevice::FrameCount();
+        _drawIndirectBuffer = VK_NULL_HANDLE;
+        _drawIndirectBufferOffset = 0u;
+        _pipelineStageMask = VK_FLAGS_NONE;
+        _pushConstantsValid = false;
+        _descriptorsUpdated = false;
+        _pipelineRenderInfo = {};
+        _pipelineRenderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+    }
+
+    VKImmediateCmdContext* VKStateTracker::IMCmdContext( const QueueType type ) const
+    {
+        return _cmdContexts[to_base( type )].get();
     }
 
     void VK_API::RegisterCustomAPIDelete( DELEGATE<void, VkDevice>&& cbk, const bool isResourceTransient )
@@ -462,23 +503,6 @@ namespace Divide
     void VK_API::idle( [[maybe_unused]] const bool fast ) noexcept
     {
         vkShaderProgram::Idle( _context.context() );
-    }
-
-    void VKStateTracker::setDefaultState()
-    {
-        _pipeline = {};
-        _activeWindow = nullptr;
-        _activeMSAASamples = 0u;
-        _activeRenderTargetID = INVALID_RENDER_TARGET_ID;
-        _activeRenderTargetDimensions = {1u, 1u};
-        _lastSyncedFrameNumber = GFXDevice::FrameCount();
-        _drawIndirectBuffer = VK_NULL_HANDLE;
-        _drawIndirectBufferOffset = 0u;
-        _pipelineStageMask = VK_FLAGS_NONE;
-        _pushConstantsValid = false;
-        _descriptorsUpdated = false;
-        _pipelineRenderInfo = {};
-        _pipelineRenderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
     }
 
     bool VK_API::drawToWindow( DisplayWindow& window )
@@ -539,7 +563,7 @@ namespace Divide
         VkCommandBuffer cmd = windowState._swapChain->getCurrentCommandBuffer();
         FlushBufferTransferRequests( cmd );
 
-        const VkResult result = windowState._swapChain->endFrame( vkb::QueueType::graphics );
+        const VkResult result = windowState._swapChain->endFrame( QueueType::GRAPHICS );
 
         if ( result != VK_SUCCESS )
         {
@@ -712,9 +736,19 @@ namespace Divide
         }
 
         _device = eastl::make_unique<VKDevice>( *this, _vkbInstance, perWindowContext._surface );
-        if ( _device->getVKDevice() == nullptr )
+
+        if ( _device->getVKDevice() == nullptr)
         {
             return ErrorCode::VK_DEVICE_CREATE_FAILED;
+        }
+
+        if ( _device->getQueue( QueueType::GRAPHICS )._index == INVALID_VK_QUEUE_INDEX )
+        {
+            return ErrorCode::VK_NO_GRAHPICS_QUEUE;
+        }
+        if ( _device->getPresentQueueIndex() == INVALID_VK_QUEUE_INDEX )
+        {
+            return ErrorCode::VK_NO_PRESENT_QUEUE;
         }
 
         if ( s_hasDebugMarkerSupport )
@@ -901,10 +935,6 @@ namespace Divide
 
         GFXDevice::OverrideDeviceInformation( deviceInformation );
 
-        if ( _device->getQueueIndex( vkb::QueueType::graphics ) == INVALID_VK_QUEUE_INDEX )
-        {
-            return ErrorCode::VK_NO_GRAHPICS_QUEUE;
-        }
         VK_API::s_stateTracker._device = _device.get();
 
 
@@ -939,13 +969,11 @@ namespace Divide
         {
             VK_CHECK( vkCreatePipelineCache( _device->getVKDevice(), &pipelineCacheCreateInfo, nullptr, &_pipelineCache ) );
         }
-        s_stateTracker._cmdContext = eastl::make_unique<VKImmediateCmdContext>( *_device );
 
         initStatePerWindow( perWindowContext );
         _context.fonsContext(dummyfonsCreate( 512, 512, FONS_ZERO_BOTTOMLEFT ));
 
-        s_stateTracker.setDefaultState();
-        s_stateTracker._activeWindow = &perWindowContext;
+        s_stateTracker.init(_device.get(), &perWindowContext);
 
         return ErrorCode::NO_ERR;
     }
@@ -1031,11 +1059,9 @@ namespace Divide
                 destroyStatePerWindow(state.second);
             }
             _perWindowState.clear();
-            s_stateTracker._cmdContext.reset();
+            s_stateTracker.reset();
             _device.reset();
         }
-        
-        s_stateTracker.setDefaultState();
 
         vkb::destroy_instance( _vkbInstance );
         _vkbInstance = {};
@@ -1168,7 +1194,8 @@ namespace Divide
                     DIVIDE_ASSERT( bufferEntry._buffer != nullptr );
 
                     const auto bufferUsage = bufferEntry._buffer->getUsage();
-                    VkBuffer buffer = static_cast<vkLockableBuffer*>(bufferEntry._buffer->getBufferImpl())->getVKBufferHandle();
+
+                    VkBuffer buffer = static_cast<vkBufferImpl*>(bufferEntry._buffer->getBufferImpl())->_buffer;
 
                     VkDeviceSize offset = bufferEntry._range._startOffset * bufferEntry._buffer->getPrimitiveSize();
                     if ( bufferEntry._bufferQueueReadIndex == -1 )
@@ -1668,7 +1695,7 @@ namespace Divide
     {
         if ( s_transferQueue._dirty.load() )
         {
-            VK_API::GetStateTracker()._cmdContext->flushCommandBuffer( []( VkCommandBuffer cmd )
+            VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer([](VkCommandBuffer cmd, const QueueType queue, const bool isDedicatedQueue )
             {
                 VK_API::FlushBufferTransferRequests( cmd );
             }, "Deferred Buffer Uploads" );
@@ -2033,13 +2060,15 @@ namespace Divide
                         continue;
                     }
 
+                    vkBufferImpl* vkBuffer = static_cast<vkBufferImpl*>(lock._buffer);
+
                     VkBufferMemoryBarrier2& memoryBarrier = bufferBarriers[bufferBarrierCount++];
                     memoryBarrier = vk::bufferMemoryBarrier2();
                     memoryBarrier.offset = lock._range._startOffset;
                     memoryBarrier.size = lock._range._length == U32_MAX ? VK_WHOLE_SIZE : lock._range._length;
-                    memoryBarrier.buffer = static_cast<const vkLockableBuffer*>(lock._buffer)->getVKBufferHandle();
+                    memoryBarrier.buffer = vkBuffer->_buffer;
 
-                    const bool isCommandBuffer = lock._buffer->getBufferFlags()._usageType == BufferUsageType::COMMAND_BUFFER;
+                    const bool isCommandBuffer = vkBuffer->_params._flags._usageType == BufferUsageType::COMMAND_BUFFER;
 
                     switch (lock._type )
                     {
@@ -2060,8 +2089,7 @@ namespace Divide
                                 memoryBarrier.dstAccessMask |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
                             }
 
-                            LockManager* lockManager = lock._buffer->getLockManager();
-                            if ( !lockManager->lockRange( lock._range._startOffset, lock._range._length, handle ) )
+                            if ( !lock._buffer->lockRange( lock._range, handle ) )
                             {
                                 DIVIDE_UNEXPECTED_CALL();
                             }

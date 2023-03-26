@@ -28,18 +28,16 @@ namespace Divide
 
         const string bufferName = _name.empty() ? Util::StringFormat( "DVD_GENERAL_SHADER_BUFFER_%zu", getGUID() ) : (_name + "_SHADER_BUFFER");
 
-        _bufferImpl = eastl::make_unique<vkAllocatedLockableBuffer>( _params,
-                                                                     &_lockManager,
-                                                                     _alignedBufferSize,
-                                                                     queueLength(),
-                                                                     descriptor._initialData,
-                                                                     bufferName.c_str());
+        _bufferImpl = eastl::make_unique<vkBufferImpl>( _params,
+                                                        _alignedBufferSize,
+                                                        queueLength(),
+                                                        descriptor._initialData,
+                                                        bufferName.c_str() );
     }
 
-    void vkShaderBuffer::writeBytesInternal( const BufferRange range, bufferPtr data ) noexcept
+    BufferLock vkShaderBuffer::writeBytesInternal( const BufferRange range, bufferPtr data ) noexcept
     {
-        if ( _bufferImpl->_isMemoryMappable &&
-            !_lockManager.waitForLockedRange( range._startOffset, range._length ) )
+        if ( !_bufferImpl->waitForLockedRange( range ) )
         {
             DIVIDE_UNEXPECTED_CALL();
         }
@@ -49,13 +47,12 @@ namespace Divide
         const VkPipelineStageFlags2 dstStageMask = VK_API::ALL_SHADER_STAGES | VK_PIPELINE_STAGE_TRANSFER_BIT | (isCommandBuffer ? VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT : VK_PIPELINE_STAGE_NONE);
 
         LockGuard<Mutex> w_lock( _implLock );
-        _bufferImpl->writeBytes(range, dstAccessMask, dstStageMask, data);
+        return _bufferImpl->writeBytes(range, dstAccessMask, dstStageMask, data);
     }
 
     void vkShaderBuffer::readBytesInternal( BufferRange range, std::pair<bufferPtr, size_t> outData ) noexcept
     {
-        if ( _bufferImpl->_isMemoryMappable &&
-             !_lockManager.waitForLockedRange( range._startOffset, range._length ) )
+        if ( !_bufferImpl->waitForLockedRange( range ) )
         {
             DIVIDE_UNEXPECTED_CALL();
         }

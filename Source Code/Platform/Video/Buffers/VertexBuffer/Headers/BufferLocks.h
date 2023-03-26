@@ -38,12 +38,18 @@
 
 namespace Divide {
 
-    class LockManager;
+    struct SyncObjectHandle;
+    FWD_DECLARE_MANAGED_CLASS(LockManager);
 
     struct LockableBuffer : public GUIDWrapper
     {
-        virtual BufferFlags getBufferFlags() const = 0;
-        virtual LockManager* getLockManager() = 0;
+        LockManager_uptr _lockManager{};
+
+        [[nodiscard]] bool lockRange(BufferRange range, SyncObjectHandle& sync) const;
+        [[nodiscard]] bool waitForLockedRange( BufferRange range ) const;
+
+    protected:
+        bool _isLockable{false};
     };
 
     struct BufferLock

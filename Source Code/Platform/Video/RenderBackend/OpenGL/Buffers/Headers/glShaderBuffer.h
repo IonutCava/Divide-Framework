@@ -53,7 +53,7 @@ class glShaderBuffer final : public ShaderBuffer {
 
     protected:
         void readBytesInternal(BufferRange range, std::pair<bufferPtr, size_t> outData) override;
-        void writeBytesInternal(BufferRange range, bufferPtr data) override;
+        BufferLock writeBytesInternal(BufferRange range, bufferPtr data) override;
 
     private:
         glBufferImpl_uptr _bufferImpl{ nullptr };

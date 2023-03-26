@@ -80,15 +80,9 @@ BufferLock ShaderBuffer::writeBytes(BufferRange range, bufferPtr data) {
                   range._startOffset == Util::GetAlignmentCorrected(range._startOffset, _alignmentRequirement));
 
     range._startOffset += getStartOffset(false);
-    writeBytesInternal(range, data);
     _lastWriteFrameNumber = GFXDevice::FrameCount();
 
-    return BufferLock
-    {
-        ._range = range,
-        ._type = BufferSyncUsage::CPU_WRITE_TO_GPU_READ,
-        ._buffer = getBufferImpl()
-    };
+    return writeBytesInternal(range, data);
 }
 
 BufferUpdateUsage ShaderBuffer::getUpdateUsage() const noexcept

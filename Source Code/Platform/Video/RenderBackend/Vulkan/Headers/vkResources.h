@@ -36,6 +36,14 @@
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
 
 #include "vkInitializers.h"
+#include <Vulkan-Descriptor-Allocator/descriptor_allocator.h>
+
+namespace vke
+{
+    FWD_DECLARE_MANAGED_CLASS( DescriptorAllocatorPool );
+};
+
+VK_DEFINE_HANDLE( VmaAllocator )
 
 namespace NS_GLIM {
     enum class GLIM_ENUM : int;
@@ -50,7 +58,13 @@ namespace NS_GLIM {
 
 namespace Divide {
 
+class VKDevice;
+class vkShaderProgram;
 enum class DescriptorSetBindingType : U8;
+
+FWD_DECLARE_MANAGED_CLASS( VKSwapChain );
+
+
 constexpr U8 MAX_FRAMES_IN_FLIGHT = 3u;
 
 namespace Debug {
@@ -66,9 +80,202 @@ namespace Debug {
 
 constexpr U32 INVALID_VK_QUEUE_INDEX = U32_MAX;
 
+enum class QueueType : U8
+{
+    GRAPHICS,
+    COMPUTE,
+    TRANSFER,
+    COUNT
+};
+
 struct VKQueue {
     VkQueue _queue{};
-    U32 _queueIndex{ INVALID_VK_QUEUE_INDEX };
+    VkCommandPool _pool{ VK_NULL_HANDLE };
+    U32 _index{ INVALID_VK_QUEUE_INDEX };
+    QueueType _type{QueueType::COUNT};
+};
+
+struct VKDynamicState
+{
+    U32 _stencilRef{ 0u };
+    U32 _stencilMask{ 0xFFFFFFFF };
+    U32 _stencilWriteMask{ 0xFFFFFFFF };
+    F32 _zBias{ 0.0f };
+    F32 _zUnits{ 0.0f };
+};
+
+struct CompiledPipeline
+{
+    VkPipelineBindPoint _bindPoint{ VK_PIPELINE_BIND_POINT_MAX_ENUM };
+    vkShaderProgram* _program{ nullptr };
+    VKDynamicState _dynamicState{};
+    VkPipeline _vkPipeline{ VK_NULL_HANDLE };
+    VkPipeline _vkPipelineWireframe{ VK_NULL_HANDLE };
+    VkPipelineLayout _vkPipelineLayout{ VK_NULL_HANDLE };
+    PrimitiveTopology _topology{ PrimitiveTopology::COUNT };
+    VkShaderStageFlags _stageFlags{ VK_FLAGS_NONE };
+    VkDescriptorSetLayout* _descriptorSetlayout{ nullptr };
+};
+
+struct PipelineBuilder
+{
+    std::vector<VkPipelineShaderStageCreateInfo> _shaderStages;
+    VkPipelineVertexInputStateCreateInfo _vertexInputInfo;
+    VkPipelineInputAssemblyStateCreateInfo _inputAssembly;
+    VkViewport _viewport;
+    VkRect2D _scissor;
+    VkPipelineRasterizationStateCreateInfo _rasterizer;
+    eastl::fixed_vector<VkPipelineColorBlendAttachmentState, to_base( RTColourAttachmentSlot::COUNT ), false> _colorBlendAttachments;
+    VkPipelineMultisampleStateCreateInfo _multisampling;
+    VkPipelineLayout _pipelineLayout;
+    VkPipelineDepthStencilStateCreateInfo _depthStencil;
+    VkPipelineTessellationStateCreateInfo _tessellation;
+
+    VkPipeline build_pipeline( VkDevice device, VkPipelineCache pipelineCache, bool graphics );
+
+    private:
+    VkPipeline build_compute_pipeline( VkDevice device, VkPipelineCache pipelineCache );
+    VkPipeline build_graphics_pipeline( VkDevice device, VkPipelineCache pipelineCache );
+};
+
+struct VkPipelineEntry
+{
+    VkPipeline _pipeline{ VK_NULL_HANDLE };
+    VkPipelineLayout _layout{ VK_NULL_HANDLE };
+};
+
+struct VKImmediateCmdContext
+{
+    static constexpr U8 BUFFER_COUNT = 4u;
+
+    using FlushCallback = std::function<void( VkCommandBuffer cmd, QueueType queue, U32 queueIndex )>;
+    explicit VKImmediateCmdContext( VKDevice& context, QueueType type );
+    ~VKImmediateCmdContext();
+
+    void flushCommandBuffer( FlushCallback&& function, const char* scopeName );
+
+    private:
+
+    VKDevice& _context;
+    const QueueType _type;
+    const U32 _queueIndex;
+
+    VkCommandPool _commandPool;
+    Mutex _submitLock;
+
+    std::array<VkFence, BUFFER_COUNT> _bufferFences;
+    std::array<VkCommandBuffer, BUFFER_COUNT> _commandBuffers;
+
+    U8 _bufferIndex{ 0u };
+};
+
+FWD_DECLARE_MANAGED_STRUCT( VKImmediateCmdContext );
+
+struct VMAAllocatorInstance
+{
+    VmaAllocator* _allocator{ nullptr };
+    Mutex _allocatorLock;
+};
+
+struct DescriptorAllocator
+{
+    U8 _frameCount{ 1u };
+    vke::DescriptorAllocatorHandle _handle{};
+    vke::DescriptorAllocatorPool_uptr _allocatorPool{ nullptr };
+};
+
+struct VKPerWindowState
+{
+    DisplayWindow* _window{ nullptr };
+    VKSwapChain_uptr _swapChain{ nullptr };
+    VkSurfaceKHR _surface{ VK_NULL_HANDLE }; // Vulkan window surface
+
+    VkExtent2D _windowExtents{};
+    bool _skipEndFrame{ false };
+};
+
+struct VKStateTracker
+{
+    void init( VKDevice* device, VKPerWindowState* mainWindow );
+    void reset();
+    void setDefaultState();
+
+    VKImmediateCmdContext* IMCmdContext( QueueType type ) const;
+
+    VKDevice* _device{ nullptr };
+    VKPerWindowState* _activeWindow{ nullptr };
+
+    std::array<std::pair<Str256, U32>, 32> _debugScope;
+
+    VMAAllocatorInstance _allocatorInstance{};
+    std::array<DescriptorAllocator, to_base( DescriptorSetUsage::COUNT )> _descriptorAllocators;
+    CompiledPipeline _pipeline{};
+
+    VkPipelineRenderingCreateInfo _pipelineRenderInfo{};
+
+    VkBuffer _drawIndirectBuffer{ VK_NULL_HANDLE };
+    size_t _drawIndirectBufferOffset{ 0u };
+
+    U64 _lastSyncedFrameNumber{ 0u };
+
+    VkShaderStageFlags _pipelineStageMask{ VK_FLAGS_NONE };
+
+    RenderTargetID _activeRenderTargetID{ INVALID_RENDER_TARGET_ID };
+    vec2<U16> _activeRenderTargetDimensions{ 1u };
+
+    U8 _activeMSAASamples{ 1u };
+    U8 _debugScopeDepth{ 0u };
+
+    bool _descriptorsUpdated{ false };
+    bool _pushConstantsValid{ false };
+    bool _assertOnAPIError{ false };
+
+
+    private:
+    std::array<VKImmediateCmdContext_uptr, to_base( QueueType::COUNT )> _cmdContexts{ nullptr };
+};
+
+FWD_DECLARE_MANAGED_STRUCT( VKStateTracker );
+
+
+struct VKDeletionQueue
+{
+    using QueuedItem = DELEGATE<void, VkDevice>;
+
+    enum class Flags : U8
+    {
+        TREAT_AS_TRANSIENT = toBit( 1 ),
+        COUNT = 1
+    };
+
+    void push( QueuedItem&& function );
+    void flush( VkDevice device, bool force = false );
+    void onFrameEnd();
+
+    [[nodiscard]] bool empty() const;
+
+    mutable Mutex _deletionLock;
+    std::deque<std::pair<QueuedItem, U8>> _deletionQueue;
+    PROPERTY_RW( U32, flags, 0u );
+};
+
+struct VKTransferQueue
+{
+    struct TransferRequest
+    {
+        VkDeviceSize srcOffset{ 0u };
+        VkDeviceSize dstOffset{ 0u };
+        VkDeviceSize size{ 0u };
+        VkBuffer     srcBuffer{ VK_NULL_HANDLE };
+        VkBuffer     dstBuffer{ VK_NULL_HANDLE };
+
+        VkAccessFlags2 dstAccessMask{ VK_ACCESS_2_NONE };
+        VkPipelineStageFlags2 dstStageMask{ VK_PIPELINE_STAGE_2_NONE };
+    };
+
+    mutable Mutex _lock;
+    std::deque<TransferRequest> _requests;
+    std::atomic_bool _dirty;
 };
 
 //ref:  SaschaWillems / Vulkan / VulkanTools

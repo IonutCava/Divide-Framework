@@ -58,7 +58,6 @@ SOFTWARE.
 #define _VK_DESCRIPTORS_H_
 
 #include "vkResources.h"
-#include <Vulkan-Descriptor-Allocator/descriptor_allocator.h>
 
 namespace Divide {
 

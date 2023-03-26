@@ -67,16 +67,11 @@ public:
     explicit glBufferImpl(GFXDevice& context, const BufferImplParams& params, const std::pair<bufferPtr, size_t>& initialData, const char* name);
     virtual ~glBufferImpl();
 
-    void writeOrClearBytes(size_t offsetInBytes, size_t rangeInBytes, bufferPtr data, bool firstWrite = false);
+    BufferLock writeOrClearBytes(size_t offsetInBytes, size_t rangeInBytes, bufferPtr data, bool firstWrite = false);
     void readBytes(size_t offsetInBytes, size_t rangeInBytes, std::pair<bufferPtr, size_t> outData);
 
-    [[nodiscard]] BufferFlags getBufferFlags() const override final { return params()._bufferParams._flags; }
-
-    [[nodiscard]] LockManager* getLockManager() override final { return &_lockManager; }
 
 public:
-    glLockManager _lockManager;
-
     PROPERTY_R(BufferImplParams, params);
     PROPERTY_R(GLUtil::GLMemory::Block, memoryBlock);
 

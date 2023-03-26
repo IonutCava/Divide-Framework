@@ -48,7 +48,11 @@ namespace Divide {
 
     ErrorCode VKSwapChain::create(const bool vSync, const bool adaptiveSync, VkSurfaceKHR targetSurface)
     {
-        vkb::SwapchainBuilder swapchainBuilder{ _device.getPhysicalDevice(), _device.getDevice(), targetSurface, _device.getQueueIndex( vkb::QueueType::graphics ), _device.getQueueIndex( vkb::QueueType::present ) };
+        vkb::SwapchainBuilder swapchainBuilder{ _device.getPhysicalDevice(),
+                                                _device.getDevice(),
+                                                targetSurface,
+                                                _device.getQueue(QueueType::GRAPHICS )._index,
+                                                _device.getPresentQueueIndex()};
 
         if ( _swapChain.swapchain != VK_NULL_HANDLE )
         {
@@ -102,7 +106,7 @@ namespace Divide {
         }
 
         //allocate the default command buffer that we will use for rendering
-        const VkCommandBufferAllocateInfo cmdAllocInfo = vk::commandBufferAllocateInfo( _device.graphicsCommandPool(), VK_COMMAND_BUFFER_LEVEL_PRIMARY, MAX_FRAMES_IN_FLIGHT );
+        const VkCommandBufferAllocateInfo cmdAllocInfo = vk::commandBufferAllocateInfo( _device.getQueue( QueueType::GRAPHICS)._pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, MAX_FRAMES_IN_FLIGHT );
         VK_CHECK( vkAllocateCommandBuffers( device, &cmdAllocInfo, _commandBuffers.data() ) );
 
         const auto& windowDimensions = _window.getDrawableSize();
@@ -129,7 +133,7 @@ namespace Divide {
         return ret;
     }
 
-    VkResult VKSwapChain::endFrame( vkb::QueueType queue ) 
+    VkResult VKSwapChain::endFrame( QueueType queue ) 
     {
         // prepare the submission to the queue.
         // we want to wait on the _presentSemaphore, as that semaphore is signaled when the swapchain is ready

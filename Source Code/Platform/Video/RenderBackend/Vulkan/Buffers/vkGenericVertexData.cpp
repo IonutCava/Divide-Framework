@@ -102,12 +102,11 @@ namespace Divide {
         }
 
         const string bufferName = _name.empty() ? Util::StringFormat("DVD_GENERAL_VTX_BUFFER_%d", handle()._id) : (_name + "_VTX_BUFFER");
-        impl->_buffer = eastl::make_unique<vkAllocatedLockableBuffer>(params._bufferParams,
-                                                                      impl->_lockManager.get(),
-                                                                      bufferSizeInBytes,
-                                                                      ringSizeFactor,
-                                                                      params._initialData,
-                                                                      bufferName.c_str());
+        impl->_buffer = eastl::make_unique<vkBufferImpl>(params._bufferParams,
+                                                         bufferSizeInBytes,
+                                                         ringSizeFactor,
+                                                         params._initialData,
+                                                         bufferName.c_str());
         return BufferLock
         {
             ._range = {0u, dataSize},
@@ -145,7 +144,7 @@ namespace Divide {
                  impl->_data.dynamic != indices.dynamic || // Buffer usage mode changed
                  impl->_data.count < indices.count ) // Buffer not big enough
             {
-                if ( !impl->_lockManager->waitForLockedRange( 0, U32_MAX ) )
+                if ( !impl->_buffer->waitForLockedRange( {0, U32_MAX} ) )
                 {
                     DIVIDE_UNEXPECTED_CALL();
                 }
@@ -158,6 +157,10 @@ namespace Divide {
             // That's it. We have a buffer entry but no VK buffer associated with it, so it won't be used
             return {};
         }
+
+        SCOPE_EXIT {
+            impl->_data._smallIndicesTemp.clear();
+        };
 
         bufferPtr data = indices.data;
         if ( indices.indicesNeedCast )
@@ -174,48 +177,36 @@ namespace Divide {
         const size_t elementSize = indices.smallIndices ? sizeof( U16 ) : sizeof( U32 );
         const size_t range = indices.count * elementSize;
 
-        if ( impl->_buffer == nullptr )
-        {
-            impl->_bufferSize = range;
-            impl->_data = indices;
-
-            BufferParams params{};
-            params._flags._updateFrequency = indices.dynamic ? BufferUpdateFrequency::OFTEN : BufferUpdateFrequency::OCASSIONAL;
-            params._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
-            params._flags._usageType = BufferUsageType::INDEX_BUFFER;
-            params._elementSize = elementSize;
-            params._elementCount = to_U32(indices.count);
-
-            const std::pair<bufferPtr, size_t> initialData = { data, range };
-
-            const string bufferName = _name.empty() ? Util::StringFormat( "DVD_GENERAL_IDX_BUFFER_%d", handle()._id ) : (_name + "_IDX_BUFFER");
-            impl->_buffer = eastl::make_unique<vkAllocatedLockableBuffer>( params, 
-                                                                           impl->_lockManager.get(),
-                                                                           impl->_bufferSize,
-                                                                           1u,
-                                                                           initialData,
-                                                                           bufferName.c_str());
-        }
-        else
+        if ( impl->_buffer != nullptr )
         {
             DIVIDE_ASSERT( range <= impl->_bufferSize );
-            impl->_buffer->writeBytes( { 0u, range }, VK_ACCESS_INDEX_READ_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, data );
+            return impl->_buffer->writeBytes( { 0u, range }, VK_ACCESS_INDEX_READ_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, data );
         }
+        
+        impl->_bufferSize = range;
+        impl->_data = indices;
 
-        impl->_data._smallIndicesTemp.clear();
+        BufferParams params{};
+        params._flags._updateFrequency = indices.dynamic ? BufferUpdateFrequency::OFTEN : BufferUpdateFrequency::OCASSIONAL;
+        params._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
+        params._flags._usageType = BufferUsageType::INDEX_BUFFER;
+        params._elementSize = elementSize;
+        params._elementCount = to_U32(indices.count);
 
-        BufferLock ret{};
-        if (indices.count > 0u )
+        const std::pair<bufferPtr, size_t> initialData = { data, range };
+
+        const string bufferName = _name.empty() ? Util::StringFormat( "DVD_GENERAL_IDX_BUFFER_%d", handle()._id ) : (_name + "_IDX_BUFFER");
+        impl->_buffer = eastl::make_unique<vkBufferImpl>( params,
+                                                            impl->_bufferSize,
+                                                            1u,
+                                                            initialData,
+                                                            bufferName.c_str() );
+        return BufferLock
         {
-            ret = 
-            {
-                ._range = {0u, indices.count},
-                ._type = BufferSyncUsage::CPU_WRITE_TO_GPU_READ,
-                ._buffer = impl->_buffer.get()
-            };
-        }
-
-        return ret;
+            ._range = {0u, indices.count},
+            ._type = BufferSyncUsage::CPU_WRITE_TO_GPU_READ,
+            ._buffer = impl->_buffer.get()
+        };
     }
 
     BufferLock vkGenericVertexData::updateBuffer(U32 buffer,
@@ -248,26 +239,12 @@ namespace Divide {
             offsetInBytes += bufferParams._elementCount * bufferParams._elementSize * queueIndex();
         }
 
-        if (impl->_buffer->_isMemoryMappable &&
-           !impl->_lockManager->waitForLockedRange(offsetInBytes, dataCurrentSizeInBytes))
+        if (!impl->_buffer->waitForLockedRange({offsetInBytes, dataCurrentSizeInBytes}))
         {
             DIVIDE_UNEXPECTED_CALL();
         }
 
         const BufferRange range = { offsetInBytes , dataCurrentSizeInBytes};
-        impl->_buffer->writeBytes(range, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, data);
-
-        BufferLock ret{};
-        if ( impl->_buffer->_isMemoryMappable )
-        {
-            ret = 
-            {
-                ._range = {0u, dataCurrentSizeInBytes},
-                ._type = BufferSyncUsage::CPU_WRITE_TO_GPU_READ,
-                ._buffer = impl->_buffer.get()
-            };
-        }
-
-        return ret;
+        return impl->_buffer->writeBytes(range, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, data);
     }
 }; //namespace Divide

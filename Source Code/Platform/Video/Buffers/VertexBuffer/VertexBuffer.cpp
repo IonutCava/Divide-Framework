@@ -474,17 +474,23 @@ void VertexBuffer::draw(const GenericDrawCommand& command, VDIUserData* data) {
     _internalGVD->primitiveRestartRequired(primitiveRestartRequired());
     _internalGVD->draw(command, data);
 
-    if ( refreshed )
+    if ( refreshed && dataLock._range._length > 0u  && indexLock._range._length > 0u )
     {
         auto sync = LockManager::CreateSyncObject( _context.renderAPI() );
 
         if ( dataLock._range._length > 0u )
         {
-            dataLock._buffer->getLockManager()->lockRange( dataLock._range._startOffset, dataLock._range._length, sync);
+            if ( !dataLock._buffer->lockRange( dataLock._range, sync ) )
+            {
+                DIVIDE_UNEXPECTED_CALL();
+            }
         }
         if ( indexLock._range._length > 0u )
         {
-            indexLock._buffer->getLockManager()->lockRange( indexLock._range._startOffset, indexLock._range._length, sync);
+            if ( !indexLock._buffer->lockRange( indexLock._range, sync ) )
+            {
+                DIVIDE_UNEXPECTED_CALL();
+            }
         }
     }
 }

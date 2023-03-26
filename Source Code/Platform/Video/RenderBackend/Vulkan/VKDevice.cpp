@@ -60,6 +60,7 @@ namespace Divide
             .set_required_features_12( vk12features )
             .set_required_features_13( vk13features )
             .select();
+
         if ( !physicalDeviceSelection )
         {
             Console::errorfn( Locale::Get( _ID( "ERROR_VK_INIT" ) ), physicalDeviceSelection.error().message().c_str() );
@@ -79,46 +80,89 @@ namespace Divide
             // Get the VkDevice handle used in the rest of a Vulkan application
             _device = vkbDevice.value();
 
+            const auto presentIndex = _device.get_queue_index(vkb::QueueType::present);
+            if (presentIndex )
+            {
+                _presentQueueIndex = presentIndex.value();
 
-            _queues[to_base( vkb::QueueType::graphics )] = getQueue( vkb::QueueType::graphics );
-            _queues[to_base( vkb::QueueType::compute )] = getQueue( vkb::QueueType::compute );
-            _queues[to_base( vkb::QueueType::transfer )] = getQueue( vkb::QueueType::transfer );
-            _queues[to_base( vkb::QueueType::present )] = getQueue( vkb::QueueType::present );
-
-            _graphicsCommandPool = createCommandPool( _queues[to_base( vkb::QueueType::graphics )]._queueIndex, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+                for ( U8 t = 0u; t < to_base( QueueType::COUNT ); ++t )
+                {
+                    _queues[t] = getQueueInternal( static_cast<QueueType>(t), true);
+                }
+            }
+            else
+            {
+                Console::errorfn( Locale::Get( _ID( "ERROR_VK_INIT" ) ), presentIndex.error().message().c_str() );
+            }
         }
     }
 
     VKDevice::~VKDevice()
     {
-        if ( _graphicsCommandPool != VK_NULL_HANDLE )
+        for ( VKQueue& queue : _queues )
         {
-            vkDestroyCommandPool( getVKDevice(), _graphicsCommandPool, nullptr );
+            if ( queue._pool != VK_NULL_HANDLE )
+            {
+                vkDestroyCommandPool( getVKDevice(), queue._pool, nullptr );
+            }
         }
+        
         if ( _device.device != VK_NULL_HANDLE )
         {
             vkb::destroy_device( _device );
         }
     }
 
-    VKQueue VKDevice::getQueue( vkb::QueueType type ) const noexcept
+    U32 VKDevice::getPresentQueueIndex() const noexcept
     {
+        return _presentQueueIndex;
+    }
+
+    VKQueue VKDevice::getQueue( QueueType type ) const noexcept
+    {
+        return _queues[to_base(type)];
+    }
+
+    VKQueue VKDevice::getQueueInternal( const QueueType type, bool dedicated ) const noexcept
+    {
+        constexpr const char* QueueName[] = { "Graphics", "Compute", "Transfer" };
+        constexpr vkb::QueueType VKBQueueType[] = {vkb::QueueType::graphics, vkb::QueueType::compute, vkb::QueueType::transfer};
+
         VKQueue ret{};
 
-        if ( getDevice() != nullptr )
+        if ( getDevice() == nullptr )
         {
-            // use vkbootstrap to get a Graphics queue
-            const auto queue = _device.get_queue( type );
-            if ( queue )
+            Console::errorfn( Locale::Get( _ID( "ERROR_VK_INIT" ), "VKDevice::getQueueInternal error: no valid device found!"));
+            return ret;
+        }
+
+        if ( type != QueueType::COMPUTE && type != QueueType::TRANSFER )
+        {
+            dedicated = false;
+        }
+
+        const vkb::QueueType vkbType = VKBQueueType[to_base(type)];
+
+        // Dumb way of doing this, but VkBootstrap's Result& operator=(Result&& result) is missing a return statement and causes a compilation error
+        const auto index = dedicated ? _device.get_dedicated_queue_index( vkbType ) : _device.get_queue_index( vkbType );
+        if ( !index )
+        {
+            if ( dedicated )
             {
-                ret._queue = queue.value();
-                ret._queueIndex = _device.get_queue_index( type ).value();
+                Console::warnfn( Locale::Get( _ID( "WARN_VK_DEDICATED_QUEUE" ) ), QueueName[to_base(type)], index.error().message().c_str() );
             }
             else
             {
-                Console::errorfn( Locale::Get( _ID( "ERROR_VK_INIT" ) ), queue.error().message().c_str() );
+                Console::errorfn( Locale::Get( _ID( "ERROR_VK_DEDICATED_QUEUE" ) ), QueueName[to_base( type )], index.error().message().c_str() );
             }
+
+            return dedicated ? getQueueInternal(type, false) : ret;
         }
+
+        ret._index = index.value();
+        ret._type = type;
+        ret._pool = createCommandPool( ret._index, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT );
+        vkGetDeviceQueue( _device.device, ret._index, 0u, &ret._queue );
 
         return ret;
     }
@@ -143,7 +187,7 @@ namespace Divide
         return _physicalDevice;
     }
 
-    VkCommandPool VKDevice::createCommandPool( const uint32_t queueFamilyIndex, const VkCommandPoolCreateFlags createFlags )
+    VkCommandPool VKDevice::createCommandPool( const uint32_t queueFamilyIndex, const VkCommandPoolCreateFlags createFlags ) const
     {
         VkCommandPoolCreateInfo cmdPoolInfo = vk::commandPoolCreateInfo();
         cmdPoolInfo.queueFamilyIndex = queueFamilyIndex;
@@ -153,7 +197,7 @@ namespace Divide
         return cmdPool;
     }
 
-    void VKDevice::submitToQueue( const vkb::QueueType queue, const VkSubmitInfo& submitInfo, VkFence& fence ) const
+    void VKDevice::submitToQueue( const QueueType queue, const VkSubmitInfo& submitInfo, VkFence& fence ) const
     {
         // Submit command buffer to the queue and execute it.
         // "fence" will now block until the graphic commands finish execution
@@ -161,14 +205,10 @@ namespace Divide
         VK_CHECK( vkQueueSubmit( _queues[to_base( queue )]._queue, 1, &submitInfo, fence ) );
     }
 
-    VkResult VKDevice::queuePresent( const vkb::QueueType queue, const VkPresentInfoKHR& presentInfo ) const
+    VkResult VKDevice::queuePresent( const QueueType queue, const VkPresentInfoKHR& presentInfo ) const
     {
         LockGuard<Mutex> w_lock( _queueLocks[to_base( queue )] );
         return vkQueuePresentKHR( _queues[to_base( queue )]._queue, &presentInfo );
     }
 
-    U32 VKDevice::getQueueIndex( const vkb::QueueType queue ) const
-    {
-        return _queues[to_base( queue )]._queueIndex;
-    }
 }; //namespace Divide

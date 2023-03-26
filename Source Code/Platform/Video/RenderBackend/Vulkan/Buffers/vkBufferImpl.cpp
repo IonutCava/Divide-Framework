@@ -1,25 +1,13 @@
 #include "stdafx.h"
 
 #include "Headers/vkBufferImpl.h"
-#include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 #include "Core/Headers/StringHelper.h"
 #include "Utility/Headers/Localization.h"
+#include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
+#include "Platform/Video/RenderBackend/Vulkan/Buffers/Headers/vkLockManager.h"
 
 namespace Divide
 {
-    VMABuffer::~VMABuffer()
-    {
-        if ( _buffer != VK_NULL_HANDLE )
-        {
-            DIVIDE_ASSERT( _params._flags._usageType != BufferUsageType::COUNT );
-            VK_API::RegisterCustomAPIDelete( [buf = _buffer, alloc = _allocation]( [[maybe_unused]] VkDevice device )
-                                             {
-                                                 LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
-                                                 vmaDestroyBuffer( *VK_API::GetStateTracker()._allocatorInstance._allocator, buf, alloc );
-                                             }, true );
-        }
-    }
-
     VertexInputDescription getVertexDescription( const AttributeMap& vertexFormat )
     {
         VertexInputDescription description;
@@ -54,14 +42,32 @@ namespace Divide
         return description;
     }
 
-    RWAllocatedBuffer::RWAllocatedBuffer( const BufferParams& params,
-                                          const size_t alignedBufferSize,
-                                          const size_t ringQueueLength,
-                                          std::pair<bufferPtr, size_t> initialData,
-                                          const char* bufferName ) noexcept
-        : VMABuffer( params )
+    VMABuffer::VMABuffer( const BufferParams params )
+        : _params(params)
+    {
+    }
+
+    VMABuffer::~VMABuffer()
+    {
+        if ( _buffer != VK_NULL_HANDLE )
+        {
+            VK_API::RegisterCustomAPIDelete( [buf = _buffer, alloc = _allocation]( [[maybe_unused]] VkDevice device )
+                                             {
+                                                 LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
+                                                 vmaDestroyBuffer( *VK_API::GetStateTracker()._allocatorInstance._allocator, buf, alloc );
+                                             }, true );
+        }
+    }
+
+    vkBufferImpl::vkBufferImpl( const BufferParams& params,
+                                const size_t alignedBufferSize,
+                                const size_t ringQueueLength,
+                                std::pair<bufferPtr, size_t> initialData,
+                                const char* bufferName ) noexcept
+        : VMABuffer(params)
         , _alignedBufferSize( alignedBufferSize )
     {
+        _lockManager = eastl::make_unique<vkLockManager>();
 
         VkAccessFlags2 dstAccessMask = VK_ACCESS_2_NONE;
         VkPipelineStageFlags2 dstStageMask = VK_PIPELINE_STAGE_2_NONE;
@@ -148,6 +154,8 @@ namespace Divide
             _isMemoryMappable = memPropFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
         }
 
+        _isLockable = _isMemoryMappable;
+
         Byte* mappedRange = nullptr;
         if (!_isMemoryMappable)
         {
@@ -186,7 +194,7 @@ namespace Divide
             request.dstBuffer = _buffer;
             request.dstAccessMask = dstAccessMask;
             request.dstStageMask = dstStageMask;
-            VK_API::GetStateTracker()._cmdContext->flushCommandBuffer( [&request]( VkCommandBuffer cmd )
+            VK_API::GetStateTracker().IMCmdContext(QueueType::GRAPHICS)->flushCommandBuffer([&request](VkCommandBuffer cmd, const QueueType queue, const bool isDedicatedQueue)
             {
                 VK_API::SubmitTransferRequest( request, cmd );
             }, scopeName.c_str() );
@@ -203,10 +211,11 @@ namespace Divide
         }
     }
 
-    void RWAllocatedBuffer::writeBytes( const BufferRange range,
-                                        VkAccessFlags2 dstAccessMask,
-                                        VkPipelineStageFlags2 dstStageMask,
-                                        bufferPtr data)
+
+    BufferLock vkBufferImpl::writeBytes( const BufferRange range,
+                                         VkAccessFlags2 dstAccessMask,
+                                         VkPipelineStageFlags2 dstStageMask,
+                                         bufferPtr data)
     {
 
         Byte* mappedRange = nullptr;
@@ -231,6 +240,11 @@ namespace Divide
             memcpy( &mappedRange[mappedOffset], data, range._length );
         }
 
+        BufferLock ret = {
+            ._type = BufferSyncUsage::CPU_WRITE_TO_GPU_READ,
+            ._buffer = this
+        };
+
         if ( !_isMemoryMappable )
         {
             // Queue a command to copy from the staging buffer to the vertex buffer
@@ -244,9 +258,15 @@ namespace Divide
             request.dstStageMask = dstStageMask;
             VK_API::RegisterTransferRequest( request );
         }
+        else
+        {
+            ret._range = range;
+        }
+
+        return ret;
     }
 
-    void RWAllocatedBuffer::readBytes( const BufferRange range, std::pair<bufferPtr, size_t> outData )
+    void vkBufferImpl::readBytes( const BufferRange range, std::pair<bufferPtr, size_t> outData )
     {
         if (_isMemoryMappable )
         {

@@ -50,7 +50,7 @@ namespace Divide {
         void destroy();
 
         [[nodiscard]] VkResult beginFrame();
-        [[nodiscard]] VkResult endFrame(vkb::QueueType queue);
+        [[nodiscard]] VkResult endFrame(QueueType queue);
 
         [[nodiscard]] vkb::Swapchain& getSwapChain() noexcept;
         [[nodiscard]] VkImage         getCurrentImage() const noexcept;
