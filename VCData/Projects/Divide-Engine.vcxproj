@@ -221,7 +221,7 @@
       <PreprocessorDefinitions>_DEBUG</PreprocessorDefinitions>
       <MinimalRebuild>false</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <OpenMPSupport>true</OpenMPSupport>
       <WarningLevel>Level4</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -234,7 +234,7 @@
       </UndefinePreprocessorDefinitions>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <CompileAs>CompileAsCpp</CompileAs>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/STB\;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/ReCast\;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/Chaiscript/include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\pxshared\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\physx\include/;$(SolutionDir)/../3rdParty/physx4\pxshared\include/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/STB\;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/ReCast\;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/Chaiscript/include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\pxshared\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\physx\include/</AdditionalIncludeDirectories>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <StringPooling>true</StringPooling>
@@ -287,7 +287,7 @@
       <PreprocessorDefinitions>_DEBUG;_START_IN_EDITOR</PreprocessorDefinitions>
       <MinimalRebuild>false</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <OpenMPSupport>true</OpenMPSupport>
       <WarningLevel>Level4</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -300,7 +300,7 @@
       </UndefinePreprocessorDefinitions>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <CompileAs>CompileAsCpp</CompileAs>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/STB\;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/ReCast\;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/Chaiscript/include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\pxshared\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\physx\include/;$(SolutionDir)/../3rdParty/physx4\pxshared\include/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/STB\;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/ReCast\;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/Chaiscript/include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\pxshared\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\physx\include/</AdditionalIncludeDirectories>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <StringPooling>true</StringPooling>
@@ -356,7 +356,7 @@
       <PreprocessorDefinitions>_RELEASE;NDEBUG</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <MinimalRebuild>false</MinimalRebuild>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <OpenMPSupport>true</OpenMPSupport>
       <WarningLevel>Level4</WarningLevel>
@@ -368,7 +368,7 @@
       <DisableSpecificWarnings>4913;4512;4201;4100;4503</DisableSpecificWarnings>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <OmitFramePointers>true</OmitFramePointers>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/STB\;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/ReCast\;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/Chaiscript/include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\pxshared\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\physx\include/;$(SolutionDir)/../3rdParty/physx4\pxshared\include/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/STB\;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/ReCast\;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/Chaiscript/include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\pxshared\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\physx\include/</AdditionalIncludeDirectories>
       <FloatingPointModel>Fast</FloatingPointModel>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <DisableLanguageExtensions>false</DisableLanguageExtensions>
@@ -423,7 +423,7 @@
       <PreprocessorDefinitions>_RELEASE;NDEBUG;_START_IN_EDITOR</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <MinimalRebuild>false</MinimalRebuild>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <OpenMPSupport>true</OpenMPSupport>
       <WarningLevel>Level4</WarningLevel>
@@ -435,7 +435,7 @@
       <DisableSpecificWarnings>4913;4512;4201;4100;4503</DisableSpecificWarnings>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <OmitFramePointers>true</OmitFramePointers>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/STB\;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/ReCast\;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/Chaiscript/include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\pxshared\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\physx\include/;$(SolutionDir)/../3rdParty/physx4\pxshared\include/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/STB\;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/ReCast\;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/Chaiscript/include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\pxshared\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\physx\include/</AdditionalIncludeDirectories>
       <FloatingPointModel>Fast</FloatingPointModel>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <DisableLanguageExtensions>false</DisableLanguageExtensions>
@@ -490,7 +490,7 @@
       <PreprocessorDefinitions>_PROFILE;NDEBUG</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <MinimalRebuild>false</MinimalRebuild>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <OpenMPSupport>true</OpenMPSupport>
       <WarningLevel>Level4</WarningLevel>
@@ -502,7 +502,7 @@
       <DisableSpecificWarnings>4913;4512;4201;4100;4503</DisableSpecificWarnings>
       <OmitFramePointers>
       </OmitFramePointers>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/STB\;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/ReCast\;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/Chaiscript/include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\pxshared\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\physx\include/;$(SolutionDir)/../3rdParty/physx4\pxshared\include/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/STB\;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/ReCast\;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/Chaiscript/include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\pxshared\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\physx\include/</AdditionalIncludeDirectories>
       <FloatingPointModel>Fast</FloatingPointModel>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <DisableLanguageExtensions>false</DisableLanguageExtensions>
@@ -555,7 +555,7 @@
       <PreprocessorDefinitions>_PROFILE;NDEBUG;_START_IN_EDITOR</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <MinimalRebuild>false</MinimalRebuild>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <OpenMPSupport>true</OpenMPSupport>
       <WarningLevel>Level4</WarningLevel>
@@ -567,7 +567,7 @@
       <DisableSpecificWarnings>4913;4512;4201;4100;4503</DisableSpecificWarnings>
       <OmitFramePointers>
       </OmitFramePointers>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/STB\;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/ReCast\;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/Chaiscript/include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\pxshared\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\physx\include/;$(SolutionDir)/../3rdParty/physx4\pxshared\include/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/STB\;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/ReCast\;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/Chaiscript/include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\pxshared\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\physx\include/</AdditionalIncludeDirectories>
       <FloatingPointModel>Fast</FloatingPointModel>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <DisableLanguageExtensions>false</DisableLanguageExtensions>

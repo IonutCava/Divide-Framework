@@ -325,9 +325,6 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Buffers\Headers\glFramebuffer.h">
       <Filter>Video\RenderBackend\OpenGL\Buffers\Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Headers\glfontstash.h">
-      <Filter>Video\RenderBackend\OpenGL\Headers</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkGenericVertexData.h">
       <Filter>Video\RenderBackend\Vulkan\Buffers\Headers</Filter>
     </ClInclude>

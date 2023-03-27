@@ -217,7 +217,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/</AdditionalIncludeDirectories>
       <MinimalRebuild>false</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <WarningLevel>Level4</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <PreprocessorDefinitions>_DEBUG</PreprocessorDefinitions>
@@ -274,7 +274,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/</AdditionalIncludeDirectories>
       <MinimalRebuild>false</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <WarningLevel>Level4</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <PreprocessorDefinitions>_DEBUG;_START_IN_EDITOR</PreprocessorDefinitions>
@@ -334,7 +334,7 @@
       <StringPooling>true</StringPooling>
       <MinimalRebuild>false</MinimalRebuild>
       <ExceptionHandling>Sync</ExceptionHandling>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <WarningLevel>Level4</WarningLevel>
@@ -386,7 +386,7 @@
       <StringPooling>true</StringPooling>
       <MinimalRebuild>false</MinimalRebuild>
       <ExceptionHandling>Sync</ExceptionHandling>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <WarningLevel>Level4</WarningLevel>
@@ -438,7 +438,7 @@
       <StringPooling>true</StringPooling>
       <MinimalRebuild>false</MinimalRebuild>
       <ExceptionHandling>Sync</ExceptionHandling>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <WarningLevel>Level4</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -491,7 +491,7 @@
       <StringPooling>true</StringPooling>
       <MinimalRebuild>false</MinimalRebuild>
       <ExceptionHandling>Sync</ExceptionHandling>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <WarningLevel>Level4</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>

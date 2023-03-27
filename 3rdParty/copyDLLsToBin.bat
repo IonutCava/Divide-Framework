@@ -14,12 +14,12 @@ robocopy cegui/bin/ ../Build/ CEGUICommonDialogs-0.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUICoreWindowRendererSet.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUIDevILImageCodec.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUIExpatParser.dll /NP /NJH /NJS
-robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/release/ ../Build/ PhysX_64.dll  /NP /NJH /NJS
-robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/release/ ../Build/ PhysXCommon_64.dll /NP /NJH /NJS
-robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/release/ ../Build/ PhysXCooking_64.dll /NP /NJH /NJS
-robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/release/ ../Build/ PhysXFoundation_64.dll /NP /NJH /NJS
-robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/release/ ../Build/ PhysXDevice64.dll /NP /NJH /NJS
-robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/release/ ../Build/ PhysXGpu_64.dll /NP /NJH /NJS
+robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc143.mt/release/ ../Build/ PhysX_64.dll  /NP /NJH /NJS
+robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc143.mt/release/ ../Build/ PhysXCommon_64.dll /NP /NJH /NJS
+robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc143.mt/release/ ../Build/ PhysXCooking_64.dll /NP /NJH /NJS
+robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc143.mt/release/ ../Build/ PhysXFoundation_64.dll /NP /NJH /NJS
+robocopy physx4//bin/win.x86_64.vc142.mt/release/ ../Build/ PhysXDevice64.dll /NP /NJH /NJS
+robocopy physx4//bin/win.x86_64.vc143.mt/release/ ../Build/ PhysXGpu_64.dll /NP /NJH /NJS
 goto run_Common
 
 :run_Profile
@@ -33,12 +33,12 @@ robocopy cegui/bin/ ../Build/ CEGUICommonDialogs-0.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUICoreWindowRendererSet.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUIDevILImageCodec.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUIExpatParser.dll /NP /NJH /NJS
-robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/profile/ ../Build/ PhysX_64.dll  /NP /NJH /NJS
-robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/profile/ ../Build/ PhysXCommon_64.dll /NP /NJH /NJS
-robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/profile/ ../Build/ PhysXCooking_64.dll /NP /NJH /NJS
-robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/profile/ ../Build/ PhysXFoundation_64.dll /NP /NJH /NJS
-robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/profile/ ../Build/ PhysXDevice64.dll /NP /NJH /NJS
-robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/profile/ ../Build/ PhysXGpu_64.dll /NP /NJH /NJS
+robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc143.mt/profile/ ../Build/ PhysX_64.dll  /NP /NJH /NJS
+robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc143.mt/profile/ ../Build/ PhysXCommon_64.dll /NP /NJH /NJS
+robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc143.mt/profile/ ../Build/ PhysXCooking_64.dll /NP /NJH /NJS
+robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc143.mt/profile/ ../Build/ PhysXFoundation_64.dll /NP /NJH /NJS
+robocopy physx4/bin/win.x86_64.vc142.mt/profile/ ../Build/ PhysXDevice64.dll /NP /NJH /NJS
+robocopy physx4/bin/win.x86_64.vc143.mt/profile/ ../Build/ PhysXGpu_64.dll /NP /NJH /NJS
 goto run_Common
 
 :run_Debug
@@ -52,12 +52,12 @@ robocopy cegui/bin/ ../Build/ CEGUICommonDialogs-0_d.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUICoreWindowRendererSet_d.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUIDevILImageCodec_d.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUIExpatParser_d.dll /NP /NJH /NJS
-robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/debug/ ../Build/ PhysX_64.dll  /NP /NJH /NJS
-robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/debug/ ../Build/ PhysXCommon_64.dll /NP /NJH /NJS
-robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/debug/ ../Build/ PhysXCooking_64.dll /NP /NJH /NJS
-robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/debug/ ../Build/ PhysXFoundation_64.dll /NP /NJH /NJS
-robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/debug/ ../Build/ PhysXDevice64.dll /NP /NJH /NJS
-robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/debug/ ../Build/ PhysXGpu_64.dll /NP /NJH /NJS
+robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc143.mt/debug/ ../Build/ PhysX_64.dll  /NP /NJH /NJS
+robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc143.mt/debug/ ../Build/ PhysXCommon_64.dll /NP /NJH /NJS
+robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc143.mt/debug/ ../Build/ PhysXCooking_64.dll /NP /NJH /NJS
+robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc143.mt/debug/ ../Build/ PhysXFoundation_64.dll /NP /NJH /NJS
+robocopy physx4/bin/win.x86_64.vc142.mt/debug/ ../Build/ PhysXDevice64.dll /NP /NJH /NJS
+robocopy physx4/bin/win.x86_64.vc143.mt/debug/ ../Build/ PhysXGpu_64.dll /NP /NJH /NJS
 goto run_Common
 
 :run_Common

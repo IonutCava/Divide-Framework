@@ -79,9 +79,6 @@
 [submodule "3rdParty/vk-bootstrap"]
 	path = 3rdParty/vk-bootstrap
 	url = https://github.com/charles-lunarg/vk-bootstrap.git
-[submodule "3rdParty/VulkanMemoryAllocator"]
-	path = 3rdParty/VulkanMemoryAllocator
-	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
 [submodule "3rdParty/SPIRV-Reflect"]
 	path = 3rdParty/SPIRV-Reflect
 	url = https://github.com/KhronosGroup/SPIRV-Reflect.git

@@ -234,7 +234,7 @@
       <SmallerTypeCheck>false</SmallerTypeCheck>
       <FloatingPointExceptions>false</FloatingPointExceptions>
       <OpenMPSupport>true</OpenMPSupport>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <StringPooling>true</StringPooling>
@@ -264,7 +264,7 @@
     <Link>
       <GenerateDebugInformation>DebugFastLink</GenerateDebugInformation>
       <AdditionalDependencies>Divide-PCH.lib;Divide-Game_d.lib;Divide-Platform_d.lib;Divide-Engine_d.lib;Divide-Networking_d.lib;Divide-Core_d.lib;Divide-Editor_d.lib;Divide-ThirdPartyLibs_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)/../3rdParty/glslang/OGLCompilersDLL/Debug/;$(SolutionDir)/../3rdParty/glslang/SPIRV/Debug/;$(SolutionDir)/../3rdParty/glslang/glslang/Debug/;$(SolutionDir)/../3rdParty/Vulkan/Lib;$(SolutionDir)/../3rdParty/nvtt/lib64;$(SolutionDir)/../3rdParty/assimp/lib/Debug/;$(SolutionDir)../3rdParty/sdl\lib\Debug\;$(SharedPchDir)../../../../$(Platform)/$(Configuration);$(SolutionDir)../3rdParty/physx\PxShared\Lib\vc15win64\;$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Debug\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/AntTweakBar\lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/OIS\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/physx4\install\vc15win64\physx\bin\win.x86_64.vc142.mt\debug;%(AdditionalLibraryDirectories);</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(VULKAN_SDK)/Lib;$(SolutionDir)/../3rdParty/glslang/OGLCompilersDLL/Debug/;$(SolutionDir)/../3rdParty/glslang/SPIRV/Debug/;$(SolutionDir)/../3rdParty/glslang/glslang/Debug/;$(SolutionDir)/../3rdParty/nvtt/lib64;$(SolutionDir)/../3rdParty/assimp/lib/Debug/;$(SolutionDir)../3rdParty/sdl\lib\Debug\;$(SharedPchDir)../../../../$(Platform)/$(Configuration);$(SolutionDir)../3rdParty/physx\PxShared\Lib\vc15win64\;$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Debug\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/AntTweakBar\lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/OIS\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/physx4\install\vc15win64\physx\bin\win.x86_64.vc143.mt\debug;%(AdditionalLibraryDirectories);</AdditionalLibraryDirectories>
       <ShowProgress>NotSet</ShowProgress>
       <IgnoreSpecificDefaultLibraries>LIBCMT.lib</IgnoreSpecificDefaultLibraries>
       <Profile>false</Profile>
@@ -301,7 +301,7 @@ $(TargetPath) nopause</Command>
       <SmallerTypeCheck>false</SmallerTypeCheck>
       <FloatingPointExceptions>false</FloatingPointExceptions>
       <OpenMPSupport>true</OpenMPSupport>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <StringPooling>true</StringPooling>
@@ -331,7 +331,7 @@ $(TargetPath) nopause</Command>
     <Link>
       <GenerateDebugInformation>DebugFastLink</GenerateDebugInformation>
       <AdditionalDependencies>Divide-PCH.lib;Divide-Game_d.lib;Divide-Platform_d.lib;Divide-Engine_d.lib;Divide-Networking_d.lib;Divide-Core_d.lib;Divide-Editor_d.lib;Divide-ThirdPartyLibs_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)/../3rdParty/glslang/OGLCompilersDLL/Debug/;$(SolutionDir)/../3rdParty/glslang/SPIRV/Debug/;$(SolutionDir)/../3rdParty/glslang/glslang/Debug/;$(SolutionDir)/../3rdParty/Vulkan/Lib;$(SolutionDir)/../3rdParty/nvtt/lib64;$(SolutionDir)/../3rdParty/assimp/lib/Debug/;$(SolutionDir)../3rdParty/sdl\lib\Debug\;$(SharedPchDir)../../../../$(Platform)/$(Configuration);$(SolutionDir)../3rdParty/physx\PxShared\Lib\vc15win64\;$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Debug\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/AntTweakBar\lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/OIS\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/physx4\install\vc15win64\physx\bin\win.x86_64.vc142.mt\debug;%(AdditionalLibraryDirectories);</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(VULKAN_SDK)/Lib;$(SolutionDir)/../3rdParty/glslang/OGLCompilersDLL/Debug/;$(SolutionDir)/../3rdParty/glslang/SPIRV/Debug/;$(SolutionDir)/../3rdParty/glslang/glslang/Debug/;$(SolutionDir)/../3rdParty/nvtt/lib64;$(SolutionDir)/../3rdParty/assimp/lib/Debug/;$(SolutionDir)../3rdParty/sdl\lib\Debug\;$(SharedPchDir)../../../../$(Platform)/$(Configuration);$(SolutionDir)../3rdParty/physx\PxShared\Lib\vc15win64\;$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Debug\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/AntTweakBar\lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/OIS\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/physx4\install\vc15win64\physx\bin\win.x86_64.vc143.mt\debug;%(AdditionalLibraryDirectories);</AdditionalLibraryDirectories>
       <ShowProgress>NotSet</ShowProgress>
       <IgnoreSpecificDefaultLibraries>LIBCMT.lib</IgnoreSpecificDefaultLibraries>
       <Profile>false</Profile>
@@ -369,7 +369,7 @@ $(TargetPath) nopause</Command>
       <OpenMPSupport>true</OpenMPSupport>
       <DisableSpecificWarnings>4913;4512;4201;4100;4503</DisableSpecificWarnings>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <FloatingPointModel>Fast</FloatingPointModel>
       <StringPooling>true</StringPooling>
@@ -397,7 +397,7 @@ $(TargetPath) nopause</Command>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Divide-PCH.lib;Divide-Game.lib;Divide-Platform.lib;Divide-Engine.lib;Divide-Networking.lib;Divide-Core.lib;Divide-Editor.lib;Divide-ThirdPartyLibs.lib;Divide-PCH.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)/../3rdParty/glslang/OGLCompilersDLL/Release/;$(SolutionDir)/../3rdParty/glslang/SPIRV/Release/;$(SolutionDir)/../3rdParty/glslang/glslang/Release/;$(SolutionDir)/../3rdParty/Vulkan/Lib;$(SolutionDir)/../3rdParty/nvtt/lib64;$(SolutionDir)/../3rdParty/assimp/lib/Release/;$(SolutionDir)../3rdParty/sdl/lib/Release/;$(SharedPchDir)../../../../$(Platform)/$(Configuration);$(SolutionDir)../3rdParty/physx\PxShared\Lib\vc15win64\;$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Release\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/physx4\install\vc15win64\physx\bin\win.x86_64.vc142.mt\release;%(AdditionalLibraryDirectories);</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(VULKAN_SDK)/Lib;$(SolutionDir)/../3rdParty/glslang/OGLCompilersDLL/Release/;$(SolutionDir)/../3rdParty/glslang/SPIRV/Release/;$(SolutionDir)/../3rdParty/glslang/glslang/Release/;$(SolutionDir)/../3rdParty/nvtt/lib64;$(SolutionDir)/../3rdParty/assimp/lib/Release/;$(SolutionDir)../3rdParty/sdl/lib/Release/;$(SharedPchDir)../../../../$(Platform)/$(Configuration);$(SolutionDir)../3rdParty/physx\PxShared\Lib\vc15win64\;$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Release\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/physx4\install\vc15win64\physx\bin\win.x86_64.vc143.mt\release;%(AdditionalLibraryDirectories);</AdditionalLibraryDirectories>
       <SubSystem>Console</SubSystem>
       <AdditionalOptions>/OPT:NOLBR  /ignore:4099 %(AdditionalOptions)</AdditionalOptions>
       <LargeAddressAware>true</LargeAddressAware>
@@ -429,7 +429,7 @@ $(TargetPath) nopause</Command>
       <OpenMPSupport>true</OpenMPSupport>
       <DisableSpecificWarnings>4913;4512;4201;4100;4503</DisableSpecificWarnings>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <FloatingPointModel>Fast</FloatingPointModel>
       <StringPooling>true</StringPooling>
@@ -457,7 +457,7 @@ $(TargetPath) nopause</Command>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Divide-PCH.lib;Divide-Game.lib;Divide-Platform.lib;Divide-Engine.lib;Divide-Networking.lib;Divide-Core.lib;Divide-Editor.lib;Divide-ThirdPartyLibs.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)/../3rdParty/glslang/OGLCompilersDLL/Release/;$(SolutionDir)/../3rdParty/glslang/SPIRV/Release/;$(SolutionDir)/../3rdParty/glslang/glslang/Release/;$(SolutionDir)/../3rdParty/Vulkan/Lib;$(SolutionDir)/../3rdParty/nvtt/lib64;$(SolutionDir)/../3rdParty/assimp/lib/Release/;$(SolutionDir)../3rdParty/sdl/lib/Release/;$(SharedPchDir)../../../../$(Platform)/$(Configuration);$(SolutionDir)../3rdParty/physx\PxShared\Lib\vc15win64\;$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Release\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/physx4\install\vc15win64\physx\bin\win.x86_64.vc142.mt\release;%(AdditionalLibraryDirectories);</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(VULKAN_SDK)/Lib;$(SolutionDir)/../3rdParty/glslang/OGLCompilersDLL/Release/;$(SolutionDir)/../3rdParty/glslang/SPIRV/Release/;$(SolutionDir)/../3rdParty/glslang/glslang/Release/;$(SolutionDir)/../3rdParty/nvtt/lib64;$(SolutionDir)/../3rdParty/assimp/lib/Release/;$(SolutionDir)../3rdParty/sdl/lib/Release/;$(SharedPchDir)../../../../$(Platform)/$(Configuration);$(SolutionDir)../3rdParty/physx\PxShared\Lib\vc15win64\;$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Release\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/physx4\install\vc15win64\physx\bin\win.x86_64.vc143.mt\release;%(AdditionalLibraryDirectories);</AdditionalLibraryDirectories>
       <SubSystem>Console</SubSystem>
       <AdditionalOptions>/OPT:NOLBR  /ignore:4099 %(AdditionalOptions)</AdditionalOptions>
       <LargeAddressAware>true</LargeAddressAware>
@@ -490,7 +490,7 @@ $(TargetPath) nopause</Command>
       <OpenMPSupport>true</OpenMPSupport>
       <DisableSpecificWarnings>4913;4512;4201;4100;4503</DisableSpecificWarnings>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <EnablePREfast>false</EnablePREfast>
       <FloatingPointModel>Fast</FloatingPointModel>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
@@ -519,7 +519,7 @@ $(TargetPath) nopause</Command>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Divide-PCH.lib;Divide-Game_p.lib;Divide-Platform_p.lib;Divide-Engine_p.lib;Divide-Networking_p.lib;Divide-Core_p.lib;Divide-Editor_p.lib;Divide-ThirdPartyLibs_p.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)/../3rdParty/glslang/OGLCompilersDLL/Release/;$(SolutionDir)/../3rdParty/glslang/SPIRV/Release/;$(SolutionDir)/../3rdParty/glslang/glslang/Release/;$(SolutionDir)/../3rdParty/Vulkan/Lib;$(SolutionDir)/../3rdParty/nvtt/lib64;$(SolutionDir)/../3rdParty/assimp/lib/Release/;$(SolutionDir)../3rdParty/sdl/lib/Release/;$(SharedPchDir)../../../../$(Platform)/$(Configuration);$(SolutionDir)../3rdParty/physx\PxShared\Lib\vc15win64\;$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Release\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/AntTweakBar\lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/OIS\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/physx4\install\vc15win64\physx\bin\win.x86_64.vc142.mt\profile;%(AdditionalLibraryDirectories);</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(VULKAN_SDK)/Lib;$(SolutionDir)/../3rdParty/glslang/OGLCompilersDLL/Release/;$(SolutionDir)/../3rdParty/glslang/SPIRV/Release/;$(SolutionDir)/../3rdParty/glslang/glslang/Release/;$(SolutionDir)/../3rdParty/nvtt/lib64;$(SolutionDir)/../3rdParty/assimp/lib/Release/;$(SolutionDir)../3rdParty/sdl/lib/Release/;$(SharedPchDir)../../../../$(Platform)/$(Configuration);$(SolutionDir)../3rdParty/physx\PxShared\Lib\vc15win64\;$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Release\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/AntTweakBar\lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/OIS\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/physx4\install\vc15win64\physx\bin\win.x86_64.vc143.mt\profile;%(AdditionalLibraryDirectories);</AdditionalLibraryDirectories>
       <Profile>true</Profile>
       <SubSystem>Console</SubSystem>
       <AdditionalOptions>/OPT:NOLBR  /ignore:4099 %(AdditionalOptions)</AdditionalOptions>
@@ -551,7 +551,7 @@ $(TargetPath) nopause</Command>
       <OpenMPSupport>true</OpenMPSupport>
       <DisableSpecificWarnings>4913;4512;4201;4100;4503</DisableSpecificWarnings>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <EnablePREfast>false</EnablePREfast>
       <FloatingPointModel>Fast</FloatingPointModel>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
@@ -580,7 +580,7 @@ $(TargetPath) nopause</Command>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Divide-PCH.lib;Divide-Game_p.lib;Divide-Platform_p.lib;Divide-Engine_p.lib;Divide-Networking_p.lib;Divide-Core_p.lib;Divide-Editor_p.lib;Divide-ThirdPartyLibs_p.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)/../3rdParty/glslang/OGLCompilersDLL/Release/;$(SolutionDir)/../3rdParty/glslang/SPIRV/Release/;$(SolutionDir)/../3rdParty/glslang/glslang/Release/;$(SolutionDir)/../3rdParty/Vulkan/Lib;$(SolutionDir)/../3rdParty/nvtt/lib64;$(SolutionDir)/../3rdParty/assimp/lib/Release/;$(SolutionDir)../3rdParty/sdl/lib/Release/;$(SharedPchDir)../../../../$(Platform)/$(Configuration);$(SolutionDir)../3rdParty/physx\PxShared\Lib\vc15win64\;$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Release\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/AntTweakBar\lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/OIS\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/physx4\install\vc15win64\physx\bin\win.x86_64.vc142.mt\profile;%(AdditionalLibraryDirectories);</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(VULKAN_SDK)/Lib;$(SolutionDir)/../3rdParty/glslang/OGLCompilersDLL/Release/;$(SolutionDir)/../3rdParty/glslang/SPIRV/Release/;$(SolutionDir)/../3rdParty/glslang/glslang/Release/;$(SolutionDir)/../3rdParty/nvtt/lib64;$(SolutionDir)/../3rdParty/assimp/lib/Release/;$(SolutionDir)../3rdParty/sdl/lib/Release/;$(SharedPchDir)../../../../$(Platform)/$(Configuration);$(SolutionDir)../3rdParty/physx\PxShared\Lib\vc15win64\;$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Release\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/AntTweakBar\lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/OIS\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/physx4\install\vc15win64\physx\bin\win.x86_64.vc143.mt\profile;%(AdditionalLibraryDirectories);</AdditionalLibraryDirectories>
       <Profile>true</Profile>
       <SubSystem>Console</SubSystem>
       <AdditionalOptions>/OPT:NOLBR  /ignore:4099 %(AdditionalOptions)</AdditionalOptions>

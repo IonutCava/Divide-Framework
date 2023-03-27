@@ -134,7 +134,6 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\Texture.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\TextureTarget.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\ViewportTarget.h" />
-    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Headers\glfontstash.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkBufferImpl.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkRenderTarget.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkGenericVertexData.h" />
@@ -534,7 +533,7 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher\;$(SolutionDir)/../3rdParty/physx4\pxshared\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\physx\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/OpenAL\include/;$(SolutionDir)/../3rdParty/VulkanMemoryAllocator/include;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../Source Code/Platform/Video/RenderBackend/OpenGL/CEGUIOpenGLRenderer/include/;$(SolutionDir)/../Source Code/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)/include;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher\;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\physx\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/OpenAL\include/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../Source Code/Platform/Video/RenderBackend/OpenGL/CEGUIOpenGLRenderer/include/;$(SolutionDir)/../Source Code/</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_DEBUG</PreprocessorDefinitions>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
@@ -545,7 +544,7 @@
       <SmallerTypeCheck>false</SmallerTypeCheck>
       <FloatingPointExceptions>false</FloatingPointExceptions>
       <OpenMPSupport>true</OpenMPSupport>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <StringPooling>true</StringPooling>
@@ -592,7 +591,7 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher\;$(SolutionDir)/../3rdParty/physx4\pxshared\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\physx\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/OpenAL\include/;$(SolutionDir)/../3rdParty/VulkanMemoryAllocator/include;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../Source Code/Platform/Video/RenderBackend/OpenGL/CEGUIOpenGLRenderer/include/;$(SolutionDir)/../Source Code/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)/include;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher\;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\physx\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/OpenAL\include/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../Source Code/Platform/Video/RenderBackend/OpenGL/CEGUIOpenGLRenderer/include/;$(SolutionDir)/../Source Code/</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_DEBUG;_START_IN_EDITOR</PreprocessorDefinitions>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
@@ -603,7 +602,7 @@
       <SmallerTypeCheck>false</SmallerTypeCheck>
       <FloatingPointExceptions>false</FloatingPointExceptions>
       <OpenMPSupport>true</OpenMPSupport>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <StringPooling>true</StringPooling>
@@ -652,7 +651,7 @@
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher\;$(SolutionDir)/../3rdParty/physx4\pxshared\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\physx\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/OpenAL\include/;$(SolutionDir)/../3rdParty/VulkanMemoryAllocator/include;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../Source Code/Platform/Video/RenderBackend/OpenGL/CEGUIOpenGLRenderer/include/;$(SolutionDir)/../Source Code/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)/include;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher\;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\physx\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/OpenAL\include/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../Source Code/Platform/Video/RenderBackend/OpenGL/CEGUIOpenGLRenderer/include/;$(SolutionDir)/../Source Code/</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_RELEASE;NDEBUG</PreprocessorDefinitions>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
@@ -662,7 +661,7 @@
       <OpenMPSupport>true</OpenMPSupport>
       <DisableSpecificWarnings>4913;4512;4201;4100;4503</DisableSpecificWarnings>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <FloatingPointModel>Fast</FloatingPointModel>
       <StringPooling>true</StringPooling>
@@ -706,7 +705,7 @@
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher\;$(SolutionDir)/../3rdParty/physx4\pxshared\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\physx\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/OpenAL\include/;$(SolutionDir)/../3rdParty/VulkanMemoryAllocator/include;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../Source Code/Platform/Video/RenderBackend/OpenGL/CEGUIOpenGLRenderer/include/;$(SolutionDir)/../Source Code/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)/include;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher\;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\physx\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/OpenAL\include/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../Source Code/Platform/Video/RenderBackend/OpenGL/CEGUIOpenGLRenderer/include/;$(SolutionDir)/../Source Code/</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_RELEASE;NDEBUG;_START_IN_EDITOR</PreprocessorDefinitions>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
@@ -716,7 +715,7 @@
       <OpenMPSupport>true</OpenMPSupport>
       <DisableSpecificWarnings>4913;4512;4201;4100;4503</DisableSpecificWarnings>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <FloatingPointModel>Fast</FloatingPointModel>
       <StringPooling>true</StringPooling>
@@ -760,7 +759,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher\;$(SolutionDir)/../3rdParty/physx4\pxshared\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\physx\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/OpenAL\include/;$(SolutionDir)/../3rdParty/VulkanMemoryAllocator/include;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../Source Code/Platform/Video/RenderBackend/OpenGL/CEGUIOpenGLRenderer/include/;$(SolutionDir)/../Source Code/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)/include;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher\;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\physx\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/OpenAL\include/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../Source Code/Platform/Video/RenderBackend/OpenGL/CEGUIOpenGLRenderer/include/;$(SolutionDir)/../Source Code/</AdditionalIncludeDirectories>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
       <PreprocessorDefinitions>_PROFILE;NDEBUG</PreprocessorDefinitions>
@@ -771,7 +770,7 @@
       <OpenMPSupport>true</OpenMPSupport>
       <DisableSpecificWarnings>4913;4512;4201;4100;4503</DisableSpecificWarnings>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <EnablePREfast>false</EnablePREfast>
       <FloatingPointModel>Fast</FloatingPointModel>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
@@ -813,7 +812,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher\;$(SolutionDir)/../3rdParty/physx4\pxshared\include/;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\physx\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/OpenAL\include/;$(SolutionDir)/../3rdParty/VulkanMemoryAllocator/include;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../Source Code/Platform/Video/RenderBackend/OpenGL/CEGUIOpenGLRenderer/include/;$(SolutionDir)/../Source Code/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)/include;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher\;$(SolutionDir)/../3rdParty/physx4\install\vc15win64\physx\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/OpenAL\include/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../Source Code/Platform/Video/RenderBackend/OpenGL/CEGUIOpenGLRenderer/include/;$(SolutionDir)/../Source Code/</AdditionalIncludeDirectories>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
       <PreprocessorDefinitions>_PROFILE;NDEBUG;_START_IN_EDITOR</PreprocessorDefinitions>
@@ -824,7 +823,7 @@
       <OpenMPSupport>true</OpenMPSupport>
       <DisableSpecificWarnings>4913;4512;4201;4100;4503</DisableSpecificWarnings>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <EnablePREfast>false</EnablePREfast>
       <FloatingPointModel>Fast</FloatingPointModel>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>

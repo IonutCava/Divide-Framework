@@ -234,7 +234,7 @@
       <SmallerTypeCheck>false</SmallerTypeCheck>
       <FloatingPointExceptions>false</FloatingPointExceptions>
       <OpenMPSupport>true</OpenMPSupport>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <StringPooling>true</StringPooling>
@@ -292,7 +292,7 @@
       <SmallerTypeCheck>false</SmallerTypeCheck>
       <FloatingPointExceptions>false</FloatingPointExceptions>
       <OpenMPSupport>true</OpenMPSupport>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <StringPooling>true</StringPooling>
@@ -351,7 +351,7 @@
       <OpenMPSupport>true</OpenMPSupport>
       <DisableSpecificWarnings>4913;4512;4201;4100;4503</DisableSpecificWarnings>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <FloatingPointModel>Fast</FloatingPointModel>
       <StringPooling>true</StringPooling>
@@ -405,7 +405,7 @@
       <OpenMPSupport>true</OpenMPSupport>
       <DisableSpecificWarnings>4913;4512;4201;4100;4503</DisableSpecificWarnings>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <FloatingPointModel>Fast</FloatingPointModel>
       <StringPooling>true</StringPooling>
@@ -460,7 +460,7 @@
       <OpenMPSupport>true</OpenMPSupport>
       <DisableSpecificWarnings>4913;4512;4201;4100;4503</DisableSpecificWarnings>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <EnablePREfast>false</EnablePREfast>
       <FloatingPointModel>Fast</FloatingPointModel>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
@@ -513,7 +513,7 @@
       <OpenMPSupport>true</OpenMPSupport>
       <DisableSpecificWarnings>4913;4512;4201;4100;4503</DisableSpecificWarnings>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <EnablePREfast>false</EnablePREfast>
       <FloatingPointModel>Fast</FloatingPointModel>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>

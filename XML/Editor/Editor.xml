@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <editor>
     <showMemEditor>false</showMemEditor>
-    <showSampleWindow>true</showSampleWindow>
+    <showSampleWindow>false</showSampleWindow>
     <themeIndex>6</themeIndex>
     <textEditor/>
     <lastOpenSceneName>DefaultScene</lastOpenSceneName>
