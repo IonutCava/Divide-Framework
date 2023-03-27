@@ -651,15 +651,18 @@ namespace Divide
     void glFramebuffer::readData( const vec4<U16> rect,
                                   const GFXImageFormat imageFormat,
                                   const GFXDataFormat dataType,
+                                  const PixelAlignment& pixelPackAlignment,
                                   const std::pair<bufferPtr, size_t> outData ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        GL_API::GetStateTracker().setPixelPackUnpackAlignment();
+
         if ( GL_API::GetStateTracker().setActiveFB( Usage::RT_READ_ONLY, _framebufferHandle ) == GLStateTracker::BindResult::FAILED )
         {
             DIVIDE_UNEXPECTED_CALL();
         }
+
+        GL_API::GetStateTracker().setPixelPackAlignment(pixelPackAlignment);
 
         glReadnPixels(
             rect.x, rect.y, rect.z, rect.w,
@@ -667,6 +670,8 @@ namespace Divide
             GLUtil::glDataFormat[to_U32( dataType )],
             (GLsizei)outData.second,
             outData.first );
+
+        GL_API::GetStateTracker().setPixelPackAlignment({});
     }
 
     void glFramebuffer::setAttachmentState( const GLenum binding, const BindingState state )

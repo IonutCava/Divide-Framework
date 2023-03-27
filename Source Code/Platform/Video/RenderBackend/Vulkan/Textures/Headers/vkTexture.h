@@ -48,6 +48,7 @@ namespace Divide
     };
 
     FWD_DECLARE_MANAGED_STRUCT( AllocatedImage );
+    FWD_DECLARE_MANAGED_STRUCT( VMABuffer );
 
     class vkTexture final : public Texture
     {
@@ -83,7 +84,7 @@ namespace Divide
 
         void clearSubData( const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, vec2<I32> depthRange ) const noexcept override;
 
-        TextureReadbackData readData( U16 mipLevel, GFXDataFormat desiredFormat ) const noexcept override;
+        TextureReadbackData readData( U16 mipLevel, const PixelAlignment& pixelPackAlignment, GFXDataFormat desiredFormat ) const noexcept override;
 
         VkImageView getImageView( const CachedImageView::Descriptor& descriptor );
         void generateMipmaps( VkCommandBuffer cmdBuffer, U16 baseLevel, U16 baseLayer, U16 layerCount, ImageUsage crtUsage);
@@ -97,17 +98,24 @@ namespace Divide
         static [[nodiscard]] VkImageAspectFlags GetAspectFlags( const TextureDescriptor& descriptor ) noexcept;
 
     private:
-        void loadDataInternal( const ImageTools::ImageData& imageData ) override;
+        void loadDataInternal( const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment ) override;
+        void loadDataInternal( const Byte* data, size_t size, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) override;
         void prepareTextureData( U16 width, U16 height, U16 depth, bool emptyAllocation ) override;
         void submitTextureData() override;
         void clearDataInternal( const UColour4& clearColour, U8 level, bool clearRect, const vec4<I32>& rectToClear, vec2<I32> depthRange ) const;
         void clearImageViewCache();
 
     private:
+        struct Mip
+        {
+            vec3<U16> _dimensions{};
+            size_t _size{0u};
+        };
+
         hashMap<size_t, CachedImageView> _imageViewCache;
-
+        VMABuffer_uptr _stagingBuffer;
         VkDeviceSize _stagingBufferSize{ 0u };
-
+        vector<Mip> _mipData;
         U8 _testRefreshCounter { 0u };
     };
 

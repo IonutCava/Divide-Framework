@@ -16,23 +16,20 @@ SceneGUIElements::SceneGUIElements(Scene& parentScene, GUI& context)
 {
 }
 
-
-void SceneGUIElements::draw(const GFXDevice& context, GFX::CommandBuffer& bufferInOut) {
+const TextElementBatch& SceneGUIElements::updateAndGetText() {
     const GUIMap& map = _guiElements[to_base(GUIType::GUI_TEXT)];
-    _drawTextCommand._batch.data().resize(map.size());
+    _textBatch.data().resize(map.size());
 
     U32 idx = 0;
     for (const GUIMap::value_type& guiStackIterator : map) {
         GUIText& textElement = static_cast<GUIText&>(*guiStackIterator.second.first);
         if (textElement.visible() && !textElement.text().empty()) {
-            _drawTextCommand._batch.data()[idx++] = static_cast<TextElement>(textElement);
+            _textBatch.data()[idx++] = static_cast<TextElement>(textElement);
         }
     }
 
-    if (idx > 0) {
-        _drawTextCommand._batch.data().resize(idx);
-        Attorney::GFXDeviceGUI::drawText(context, _drawTextCommand, bufferInOut);
-    }
+    _textBatch.data().resize(idx);
+    return _textBatch;
 }
 
 void SceneGUIElements::onEnable() {

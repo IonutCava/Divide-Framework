@@ -91,10 +91,6 @@ void PlatformContext::idle(const bool fast)
     {
         _pfx->idle();
     }
-    if (TestBit( componentMask(), SystemComponentType::GUI))
-    {
-        _gui->idle();
-    }
     if (TestBit( componentMask(), SystemComponentType::DebugInterface))
     {
         _debug->idle(*this);

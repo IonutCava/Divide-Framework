@@ -6,7 +6,6 @@
 #include "Core/Headers/PlatformContext.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/File/Headers/FileManagement.h"
-#include "Platform/Video/Headers/fontstash.h"
 
 namespace Divide
 {
@@ -105,17 +104,12 @@ namespace Divide
 
         SDL_RenderCopy( _renderer, _texture, NULL, NULL );
 
-        _context.fonsContext( dummyfonsCreate( 512, 512, FONS_ZERO_BOTTOMLEFT ) );
-
         return ErrorCode::NO_ERR;
     }
 
     void NONE_API::closeRenderingAPI() noexcept
     {
         DIVIDE_ASSERT( _renderer != nullptr );
-
-        dummyfonsDelete( _context.fonsContext() );
-        _context.fonsContext( nullptr );
 
         SDL_DestroyTexture( _texture );
         SDL_FreeSurface( _background );

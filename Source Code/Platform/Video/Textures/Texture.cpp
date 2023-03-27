@@ -62,7 +62,7 @@ namespace Divide
         {
             DIVIDE_UNEXPECTED_CALL();
         }
-        s_defaulTexture->loadData( imgDataDefault );
+        s_defaulTexture->createWithData( imgDataDefault, {});
         MemoryManager::DELETE_ARRAY( defaultTexData );
 
         SamplerDescriptor defaultSampler = {};
@@ -250,7 +250,7 @@ namespace Divide
                 _descriptor.baseFormat( dataStorage.format() );
                 _descriptor.dataType( dataStorage.dataType() );
                 // Uploading to the GPU dependents on the rendering API
-                loadData( dataStorage );
+                createWithData( dataStorage, {});
 
                 if ( IsCubeTexture( _descriptor.texType() ) )
                 {
@@ -342,33 +342,51 @@ namespace Divide
         validateDescriptor();
     }
 
-    void Texture::loadData( const Byte* data, size_t dataSize, const vec2<U16> dimensions )
-    {
-        loadData( data, dataSize, vec3<U16>( dimensions.width, dimensions.height, 1u ) );
-    }
-
-    void Texture::loadData( const Byte* data, const size_t dataSize, const vec3<U16>& dimensions )
+    void Texture::createWithData( const Byte* data, const size_t dataSize, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
     {
         // This should never be called for compressed textures
         assert( !IsCompressed( _descriptor.baseFormat() ) );
 
-        prepareTextureData( dimensions.width, dimensions.height, dimensions.depth, dataSize == 0u || data == nullptr );
+        const bool emptyAllocation = dataSize == 0u || data == nullptr;
+        prepareTextureData( dimensions.width, dimensions.height, dimensions.depth, emptyAllocation );
 
         // We can't manually specify data for msaa textures.
         assert( _descriptor.msaaSamples() == 0u || data == nullptr );
-        if ( data != nullptr )
+        
+        if ( !emptyAllocation )
         {
             ImageTools::ImageData imgData{};
             if ( imgData.loadFromMemory( data, dataSize, dimensions.width, dimensions.height, 1, GetSizeFactor( _descriptor.dataType() ) * NumChannels( _descriptor.baseFormat() ) ) )
             {
-                loadDataInternal( imgData );
+                loadDataInternal( imgData, vec3<U16>(0u), pixelUnpackAlignment);
             }
         }
 
         submitTextureData();
     }
 
-    void Texture::loadData( const ImageTools::ImageData& imageData )
+    void Texture::replaceData( const Byte* data, const size_t dataSize, const vec3<U16>& offset, const vec3<U16>& range, const PixelAlignment& pixelUnpackAlignment )
+    {
+        if ( data == nullptr || dataSize == 0u )
+        {
+            return;
+        }
+
+        if ( offset.x == 0u && offset.y == 0u && offset.z == 0u && (range.x > _width || range.y > _height || range.z > _depth) )
+        {
+            createWithData(data, dataSize, range, pixelUnpackAlignment);
+        }
+        else
+        {
+            DIVIDE_ASSERT( offset.width  + range.width  <= _width &&
+                           offset.height + range.height <= _height &&
+                           offset.depth  + range.depth  <= _depth);
+
+            loadDataInternal( data, dataSize, 0u, offset, range, pixelUnpackAlignment );
+        }
+    }
+
+    void Texture::createWithData( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment )
     {
         prepareTextureData( imageData.dimensions( 0u, 0u ).width, imageData.dimensions( 0u, 0u ).height, imageData.dimensions( 0u, 0u ).depth, false );
 
@@ -378,7 +396,7 @@ namespace Divide
             _descriptor.mipMappingState( TextureDescriptor::MipMappingState::MANUAL );
         }
 
-        loadDataInternal( imageData );
+        loadDataInternal( imageData, vec3<U16>(0u), pixelUnpackAlignment);
 
         submitTextureData();
     }
@@ -499,7 +517,7 @@ namespace Divide
         if ( _descriptor.msaaSamples() != newSampleCount )
         {
             _descriptor.msaaSamples( newSampleCount );
-            loadData( nullptr, 0u, { width(), height(), depth() } );
+            createWithData( nullptr, 0u, { width(), height(), depth() }, {});
         }
     }
 

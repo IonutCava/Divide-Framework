@@ -32,13 +32,23 @@ namespace Divide {
         }
 
         SharedLock<SharedMutex> w_lock( _idxBufferLock );
-        const auto& idxBuffer = _idxBuffers[command._bufferFlag];
-        if (idxBuffer._buffer != nullptr) {
-            vkCmdBindIndexBuffer(*vkData->_cmdBuffer, idxBuffer._buffer->_buffer, 0u, idxBuffer._data.smallIndices ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
+        if ( !_idxBuffers.empty() )
+        {
+            DIVIDE_ASSERT( command._bufferFlag < _idxBuffers.size() );
+
+            const auto& idxBuffer = _idxBuffers[command._bufferFlag];
+            if (idxBuffer._buffer != nullptr) {
+                vkCmdBindIndexBuffer(*vkData->_cmdBuffer, idxBuffer._buffer->_buffer, 0u, idxBuffer._data.smallIndices ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
+            }
+            // Submit the draw command
+            VKUtil::SubmitRenderCommand( command, *vkData->_cmdBuffer, idxBuffer._buffer != nullptr, renderIndirect() );
+        }
+        else
+        {
+            DIVIDE_ASSERT( command._bufferFlag == 0u );
+            VKUtil::SubmitRenderCommand( command, *vkData->_cmdBuffer, false, renderIndirect() );
         }
 
-        // Submit the draw command
-        VKUtil::SubmitRenderCommand( command, *vkData->_cmdBuffer, idxBuffer._buffer != nullptr, renderIndirect() );
     }
 
     void vkGenericVertexData::bindBufferInternal(const SetBufferParams::BufferBindConfig& bindConfig, VkCommandBuffer& cmdBuffer) {

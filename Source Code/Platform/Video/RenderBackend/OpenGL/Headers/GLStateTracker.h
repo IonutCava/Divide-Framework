@@ -122,12 +122,10 @@ namespace Divide {
         [[nodiscard]] BindResult bindActiveBuffer(GLuint location, GLuint bufferID, size_t offset, size_t stride);
         [[nodiscard]] BindResult bindActiveBuffers(GLuint location, GLsizei count, GLuint* bufferIDs, GLintptr* offset, GLsizei* strides);
 
-        /// Pixel pack and unpack alignment is usually changed by textures, PBOs, etc
-        bool setPixelPackUnpackAlignment(const GLint packAlignment = 4, const GLint unpackAlignment = 4) { return setPixelPackAlignment(packAlignment) && setPixelUnpackAlignment(unpackAlignment); }
         /// Pixel pack alignment is usually changed by textures, PBOs, etc
-        bool setPixelPackAlignment(GLint packAlignment = 4, GLint rowLength = 0, GLint skipRows = 0, GLint skipPixels = 0);
+        bool setPixelPackAlignment( const PixelAlignment& pixelPackAlignment );
         /// Pixel unpack alignment is usually changed by textures, PBOs, etc
-        bool setPixelUnpackAlignment(GLint unpackAlignment = 4, GLint rowLength = 0, GLint skipRows = 0, GLint skipPixels = 0);
+        bool setPixelUnpackAlignment(  const PixelAlignment& pixelUnpackAlignment );
         bool setScissor(const Rect<I32>& newScissorRect);
         bool setScissor(const I32 x, const I32 y, const I32 width, const I32 height) { return setScissor({ x, y, width, height }); }
         /// Change the current viewport area. Redundancy check is performed in GFXDevice class
@@ -184,10 +182,9 @@ namespace Divide {
         hashMap<GLuint, GLuint> _activeVAOIB;
         size_t _drawIndirectBufferOffset{0u};
 
-        GLint  _activePackUnpackAlignments[2] { 1 , 1 };
-        GLint  _activePackUnpackRowLength[2]  { 0 , 0 };
-        GLint  _activePackUnpackSkipPixels[2] { 0 , 0 };
-        GLint  _activePackUnpackSkipRows[2]   { 0 , 0 };
+        PixelAlignment _packAlignment{};
+        PixelAlignment _unpackAlignment{};
+
         GLuint _activeShaderProgramHandle{ 0u }; //GLUtil::_invalidObjectID;
         GLuint _activeShaderPipelineHandle{ 0u };//GLUtil::_invalidObjectID;
         GLfloat _depthNearVal{ -1.f };

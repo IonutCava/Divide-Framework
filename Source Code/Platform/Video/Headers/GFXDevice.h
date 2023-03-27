@@ -55,8 +55,6 @@
 #include "Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h"
 #include "Rendering/RenderPass/Headers/RenderPass.h"
 
-struct FONScontext;
-
 namespace Divide
 {
 
@@ -99,7 +97,6 @@ namespace Time {
 
 namespace Attorney {
     class GFXDeviceAPI;
-    class GFXDeviceGUI;
     class GFXDeviceKernel;
     class GFXDeviceGraphicsResource;
     class GFXDeviceGFXRTPool;
@@ -242,7 +239,6 @@ struct RenderTargetNames {
 /// Rough around the edges Adapter pattern abstracting the actual rendering API and access to the GPU
 class GFXDevice final : public PlatformContextComponent, public FrameListener {
     friend class Attorney::GFXDeviceAPI;
-    friend class Attorney::GFXDeviceGUI;
     friend class Attorney::GFXDeviceKernel;
     friend class Attorney::GFXDeviceGraphicsResource;
     friend class Attorney::GFXDeviceGFXRTPool;
@@ -403,12 +399,6 @@ public:
     /// Create and return a new graphics pipeline. This is only used for caching and doesn't use the object arena
     Pipeline*          newPipeline(const PipelineDescriptor& descriptor);
 
-    // Shortcuts
-    void drawText(const GFX::DrawTextCommand& cmd, GFX::CommandBuffer& bufferInOut, bool pushCamera = true) const;
-    void drawText(const TextElementBatch& batch, GFX::CommandBuffer& bufferInOut, bool pushCamera = true) const;
-    /// Try to find the requested font in the font cache. Load on cache miss.
-    I32 getFont( const Str64& fontName );
-
     // Render the texture using a custom viewport
     void drawTextureInViewport(const ImageView& texture, size_t samplerHash, const Rect<I32>& viewport, bool convertToSrgb, bool drawToDepthOnly, bool drawBlend, GFX::CommandBuffer& bufferInOut);
 
@@ -437,9 +427,6 @@ public:
     PROPERTY_R_IW(Rect<I32>, activeViewport, UNIT_VIEWPORT);
     PROPERTY_R_IW(Rect<I32>, activeScissor, UNIT_VIEWPORT);
     POINTER_R(SceneShaderData, sceneData, nullptr);
-    /// FontStash's context
-    POINTER_RW(FONScontext, fonsContext, nullptr);
-
     PROPERTY_R(ImShaders_uptr, imShaders);
 
 protected:
@@ -465,7 +452,7 @@ protected:
     void onResolutionChange(const SizeChangeParams& params);
 
     void initDebugViews();
-    void renderDebugViews(Rect<I32> targetViewport, I32 padding, GFX::CommandBuffer& bufferInOut);
+    void renderDebugViews(Rect<I32> targetViewport, I32 padding, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
     
     void stepResolution(bool increment);
 
@@ -477,12 +464,9 @@ protected:
     void debugDrawSpheres( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
     void debugDrawFrustums( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
 
-    /// Text rendering is handled exclusively by Mikko Mononen's FontStash library (https://github.com/memononen/fontstash)
-    void drawText( const TextElementBatch& batch );
-
 protected:
     friend class RenderPassManager;
-    void renderDebugUI(const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut);
+    void renderDebugUI(const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
 
 protected:
     friend class SceneManager;
@@ -511,10 +495,6 @@ private:
     void shadowingSettings(const F32 lightBleedBias, const F32 minShadowVariance) noexcept;
     RenderTarget_uptr newRTInternal(const RenderTargetDescriptor& descriptor);
     ErrorCode createAPIInstance(RenderAPI api);
-
-    /// A cache of all fonts used
-    hashMap<U64, I32> _fonts;
-    hashAlg::pair<Str64, I32> _fontCache = { "", -1 };
 
 private:
     RenderAPIWrapper_uptr _api = nullptr;
@@ -555,8 +535,7 @@ private:
     ShaderProgram_ptr _HIZCullProgram = nullptr;
     ShaderProgram_ptr _displayShader = nullptr;
     ShaderProgram_ptr _depthShader = nullptr;
-    ShaderProgram_ptr _textRenderShader = nullptr;
-    ShaderProgram_ptr _blurBoxShaderSingle = nullptr;
+        ShaderProgram_ptr _blurBoxShaderSingle = nullptr;
     ShaderProgram_ptr _blurBoxShaderLayered = nullptr;
     ShaderProgram_ptr _blurGaussianShaderSingle = nullptr;
     ShaderProgram_ptr _blurGaussianShaderLayered = nullptr;
@@ -576,8 +555,6 @@ private:
     GFX::BindPipelineCommand _blurGaussianPipelineSingleCmd;
     GFX::BindPipelineCommand _blurGaussianPipelineLayeredCmd;
 
-    PushConstants _textRenderConstants;
-    Pipeline*     _textRenderPipeline = nullptr;
     GFXDescriptorSets _descriptorSets;
     Mutex _graphicsResourceMutex;
     vector<std::tuple<GraphicsResource::Type, I64, U64>> _graphicResources;
@@ -646,19 +623,6 @@ private:
 };
 
 namespace Attorney {
-    class GFXDeviceGUI {
-        static void drawText(const GFXDevice& device, const GFX::DrawTextCommand& cmd, GFX::CommandBuffer& bufferInOut) {
-            return device.drawText(cmd, bufferInOut);
-        }
-
-        static void drawText(const GFXDevice& device, const TextElementBatch& batch, GFX::CommandBuffer& bufferInOut) {
-            return device.drawText(batch, bufferInOut);
-        }
-        friend class GUI;
-        friend class GUIText;
-        friend class SceneGUIElements;
-    };
-
     class GFXDeviceKernel {
         static void onWindowSizeChange(GFXDevice& device, const SizeChangeParams& params) {
             device.onWindowSizeChange(params);

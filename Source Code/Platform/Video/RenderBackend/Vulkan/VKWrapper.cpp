@@ -970,7 +970,7 @@ namespace Divide
         }
 
         initStatePerWindow( perWindowContext );
-        _context.fonsContext(dummyfonsCreate( 512, 512, FONS_ZERO_BOTTOMLEFT ));
+
         s_stateTracker.init(_device.get(), &perWindowContext);
         s_stateTracker._assertOnAPIError = config.debug.assertOnRenderAPIError;
 
@@ -1008,9 +1008,6 @@ namespace Divide
             }
             s_samplerMap.clear();
         }
-
-        dummyfonsDelete( _context.fonsContext() );
-        _context.fonsContext( nullptr );
 
         vkLockManager::Clear();
         if ( _device != nullptr )
@@ -1327,6 +1324,8 @@ namespace Divide
     {
         size_t pipelineHash = pipeline.hash();
         Util::Hash_combine( pipelineHash, GetStateTracker()._activeRenderTargetID);
+
+        STUBBED("INVALIDATE COMPILED PIPELINE CACHE ON SHADER RELOAD! -Ionut")
 
         CompiledPipeline& compiledPipeline = _compiledPipelines[pipelineHash];
         if ( compiledPipeline._vkPipeline == VK_NULL_HANDLE )

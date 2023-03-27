@@ -62,10 +62,8 @@ namespace Divide
         _activeFBID[0] = _activeFBID[1] = _activeFBID[2] = GLUtil::k_invalidObjectID;
         _activeVAOIB.clear();
         _drawIndirectBufferOffset = 0u;
-        _activePackUnpackAlignments[0] = _activePackUnpackAlignments[1] = 1;
-        _activePackUnpackRowLength[0] = _activePackUnpackRowLength[1] = 0;
-        _activePackUnpackSkipPixels[0] = _activePackUnpackSkipPixels[1] = 0;
-        _activePackUnpackSkipRows[0] = _activePackUnpackSkipRows[1] = 0;
+        _packAlignment = {};
+        _unpackAlignment = {};
         _activeShaderProgramHandle = 0u;
         _activeShaderPipelineHandle = 0u;
         _depthNearVal = -1.f;
@@ -237,41 +235,39 @@ namespace Divide
     }
 
     /// Pixel pack alignment is usually changed by textures, PBOs, etc
-    bool GLStateTracker::setPixelPackAlignment( const GLint packAlignment,
-                                                const GLint rowLength,
-                                                const GLint skipRows,
-                                                const GLint skipPixels )
+    bool GLStateTracker::setPixelPackAlignment( const PixelAlignment& pixelPackAlignment )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         // Keep track if we actually affect any OpenGL state
         bool changed = false;
-        if ( _activePackUnpackAlignments[0] != packAlignment )
+        if ( _packAlignment._alignment != pixelPackAlignment._alignment )
         {
-            glPixelStorei( GL_PACK_ALIGNMENT, packAlignment );
-            _activePackUnpackAlignments[0] = packAlignment;
+            glPixelStorei( GL_PACK_ALIGNMENT, (GLint)pixelPackAlignment._alignment );
             changed = true;
         }
 
-        if ( _activePackUnpackRowLength[0] != rowLength )
+        if ( _packAlignment._rowLength != pixelPackAlignment._rowLength )
         {
-            glPixelStorei( GL_PACK_ROW_LENGTH, rowLength );
-            _activePackUnpackRowLength[0] = rowLength;
+            glPixelStorei( GL_PACK_ROW_LENGTH, (GLint)pixelPackAlignment._rowLength );
             changed = true;
         }
 
-        if ( _activePackUnpackSkipRows[0] != skipRows )
+        if ( _packAlignment._skipRows != pixelPackAlignment._skipRows )
         {
-            glPixelStorei( GL_PACK_SKIP_ROWS, skipRows );
-            _activePackUnpackSkipRows[0] = skipRows;
+            glPixelStorei( GL_PACK_SKIP_ROWS, (GLint)pixelPackAlignment._skipRows );
             changed = true;
         }
 
-        if ( _activePackUnpackSkipPixels[0] != skipPixels )
+        if ( _packAlignment._skipPixels != pixelPackAlignment._skipPixels )
         {
-            glPixelStorei( GL_PACK_SKIP_PIXELS, skipPixels );
-            _activePackUnpackSkipPixels[0] = skipPixels;
+            glPixelStorei( GL_PACK_SKIP_PIXELS, (GLint)pixelPackAlignment._skipPixels );
             changed = true;
+        }
+
+        if ( changed )
+        {
+            _packAlignment = pixelPackAlignment;
         }
 
         // We managed to change at least one entry
@@ -279,43 +275,40 @@ namespace Divide
     }
 
     /// Pixel unpack alignment is usually changed by textures, PBOs, etc
-    bool GLStateTracker::setPixelUnpackAlignment( const GLint unpackAlignment,
-                                                  const GLint rowLength,
-                                                  const GLint skipRows,
-                                                  const GLint skipPixels )
+    bool GLStateTracker::setPixelUnpackAlignment( const PixelAlignment& pixelUnpackAlignment )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         // Keep track if we actually affect any OpenGL state
         bool changed = false;
-        if ( _activePackUnpackAlignments[1] != unpackAlignment )
+        if ( _unpackAlignment._alignment != pixelUnpackAlignment._alignment )
         {
-            glPixelStorei( GL_UNPACK_ALIGNMENT, unpackAlignment );
-            _activePackUnpackAlignments[1] = unpackAlignment;
+            glPixelStorei( GL_UNPACK_ALIGNMENT, (GLint)pixelUnpackAlignment._alignment );
             changed = true;
         }
 
-        if ( rowLength != -1 && _activePackUnpackRowLength[1] != rowLength )
+        if ( pixelUnpackAlignment._rowLength != -1 && _unpackAlignment._rowLength != pixelUnpackAlignment._rowLength )
         {
-            glPixelStorei( GL_UNPACK_ROW_LENGTH, rowLength );
-            _activePackUnpackRowLength[1] = rowLength;
+            glPixelStorei( GL_UNPACK_ROW_LENGTH, (GLint)pixelUnpackAlignment._rowLength );
             changed = true;
         }
 
-        if ( skipRows != -1 && _activePackUnpackSkipRows[1] != skipRows )
+        if ( pixelUnpackAlignment._skipRows != -1 && _unpackAlignment._skipRows != pixelUnpackAlignment._skipRows )
         {
-            glPixelStorei( GL_UNPACK_SKIP_ROWS, skipRows );
-            _activePackUnpackSkipRows[1] = skipRows;
+            glPixelStorei( GL_UNPACK_SKIP_ROWS, (GLint)pixelUnpackAlignment._skipRows );
             changed = true;
         }
 
-        if ( skipPixels != -1 && _activePackUnpackSkipPixels[1] != skipPixels )
+        if ( pixelUnpackAlignment._skipPixels != -1 && _unpackAlignment._skipPixels != pixelUnpackAlignment._skipPixels )
         {
-            glPixelStorei( GL_UNPACK_SKIP_PIXELS, skipPixels );
-            _activePackUnpackSkipPixels[1] = skipPixels;
+            glPixelStorei( GL_UNPACK_SKIP_PIXELS, (GLint)pixelUnpackAlignment._skipPixels );
             changed = true;
         }
 
+        if ( changed )
+        {
+            _unpackAlignment = pixelUnpackAlignment;
+        }
         // We managed to change at least one entry
         return changed;
     }

@@ -249,7 +249,7 @@ namespace Divide
         io.Fonts->AddFontFromFileTTF( textFontBoldPath.c_str(), fontSizeBold * DPIScaleFactor, &font_cfg );
 
         io.Fonts->GetTexDataAsRGBA32( &pPixels, &iWidth, &iHeight );
-        _fontTexture->loadData( (Byte*)pPixels, iWidth * iHeight * 4u, vec2<U16>( iWidth, iHeight ) );
+        _fontTexture->createWithData( (Byte*)pPixels, iWidth * iHeight * 4u, vec3<U16>( iWidth, iHeight, 1u ), {});
         // Store our identifier as reloading data may change the handle!
         io.Fonts->SetTexID( (void*)_fontTexture.get() );
     }

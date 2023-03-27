@@ -12,6 +12,11 @@ namespace Divide
 {
     namespace
     {
+        FORCE_INLINE [[nodiscard]] U8 GetBitsPerPixel( const GFXDataFormat format, const GFXImageFormat baseFormat ) noexcept
+        {
+            return Texture::GetSizeFactor( format ) * NumChannels( baseFormat ) * 8;
+        }
+
         VkFlags GetFlagForUsage( const ImageUsage usage , const TextureDescriptor& descriptor) noexcept
         {
             DIVIDE_ASSERT(usage != ImageUsage::COUNT);
@@ -38,6 +43,11 @@ namespace Divide
                     ret |= ( usage == ImageUsage::RT_COLOUR_ATTACHMENT ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
                     
                 } break;
+            }
+
+            if ( descriptor.allowRegionUpdates() )
+            {
+                ret |= VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
             }
 
             return (supportsStorageBit ? (ret | VK_IMAGE_USAGE_STORAGE_BIT) : ret);
@@ -349,7 +359,7 @@ namespace Divide
         }
 
         VkImageCreateInfo imageInfo = vk::imageCreateInfo();
-        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+        imageInfo.tiling = _descriptor.allowRegionUpdates() ? VK_IMAGE_TILING_LINEAR : VK_IMAGE_TILING_OPTIMAL;
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         imageInfo.samples = sampleFlagBits();
@@ -438,45 +448,85 @@ namespace Divide
         }
     }
 
-    void vkTexture::loadDataInternal( const ImageTools::ImageData& imageData )
+    void vkTexture::loadDataInternal( const Byte* data, const size_t size, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
     {
-        const U16 numLayers = imageData.layerCount();
-        const U8 numMips = imageData.mipCount();
+        DIVIDE_ASSERT(_descriptor.allowRegionUpdates());
 
-        DIVIDE_ASSERT( _numLayers * (vkType() == VK_IMAGE_TYPE_3D ? 1u : 6u) >= numLayers );
-
-        U16 maxDepth = 0u;
-        size_t totalSize = 0u;
-        for ( U32 l = 0u; l < numLayers; ++l )
+        if ( size == 0u )
         {
-            const ImageTools::ImageLayer& layer = imageData.imageLayers()[l];
-            for ( U8 m = 0u; m < numMips; ++m )
+            return;
+        }
+
+        VkImageSubresource  range;
+        range.aspectMask = GetAspectFlags( _descriptor );
+        range.mipLevel = to_I32(targetMip);
+        range.arrayLayer = to_I32(offset.depth);
+
+        const U16 topLeftX = offset.x;
+        const U16 topLeftY = offset.y;
+        const U16 bottomRightX = dimensions.x + offset.x;
+        const U16 bottomRightY = dimensions.y + offset.y;
+
+        DIVIDE_ASSERT( offset.z == 0u && dimensions.z == 1u, "vkTexture::loadDataInternal: 3D textures not supported for sub-image updates!");
+
+        const size_t rowOffset_dest = pixelUnpackAlignment._alignment * _width;
+        const U16 subHeight = bottomRightY - topLeftY;
+        const U16 subWidth = bottomRightX - topLeftX;
+        const size_t subRowSize = subWidth * pixelUnpackAlignment._alignment;
+
+        if ( _stagingBuffer == nullptr )
+        {
+            size_t totalSize = 0u;
+            U16 mipWidth = _width;
+            U16 mipHeight = _height;
+
+            _mipData.resize( mipCount() );
+
+            for ( U32 l = 0u; l < _numLayers; ++l )
             {
-                const ImageTools::LayerData* mip = layer.getMip( m );
-                totalSize += mip->_size;
-                maxDepth = std::max( maxDepth, mip->_dimensions.depth );
+                for ( U8 m = 0u; m < mipCount(); ++m )
+                {
+                    mipWidth = _width >> m;
+                    mipHeight = _height >> m;
+
+                    _mipData[m]._dimensions = {mipWidth, mipHeight, _depth};
+                    _mipData[m]._size = mipWidth * mipHeight * _depth * pixelUnpackAlignment._alignment;
+                    totalSize += _mipData[m]._size;
+
+                }
+            };
+
+            _stagingBuffer = VKUtil::createStagingBuffer( totalSize, resourceName() );
+        }
+
+        const size_t dstOffset = topLeftY * rowOffset_dest + topLeftX * pixelUnpackAlignment._alignment;
+
+        Byte* mappedData = (Byte*)_stagingBuffer->_allocInfo.pMappedData;
+        Byte* dstData = &mappedData[dstOffset];
+
+        if ( data != nullptr )
+        {
+            const size_t srcOffset = pixelUnpackAlignment._skipPixels + (pixelUnpackAlignment._skipRows * _width);
+            const Byte* srcData = &data[srcOffset];
+
+            for ( U16 i = 0u; i < subHeight; i++ )
+            {
+                memcpy( dstData, srcData, subRowSize );
+                dstData += rowOffset_dest;
+                srcData += pixelUnpackAlignment._rowLength;
             }
         }
-        DIVIDE_ASSERT( _depth >= maxDepth );
-
-        const VMABuffer_uptr stagingBuffer = VKUtil::createStagingBuffer( totalSize, resourceName() );
-        Byte* target = (Byte*)stagingBuffer->_allocInfo.pMappedData;
-
-        size_t offset = 0u;
-        for ( U32 l = 0u; l < numLayers; ++l )
+        else
         {
-            const ImageTools::ImageLayer& layer = imageData.imageLayers()[l];
-            for ( U8 m = 0u; m < numMips; ++m )
+            for ( U16 i = 0u; i < subHeight; i++ )
             {
-                const ImageTools::LayerData* mip = layer.getMip( m );
-                memcpy( &target[offset], mip->data(), mip->_size );
-                offset += mip->_size;
+                memset( dstData, 0u, subRowSize );
+                dstData += rowOffset_dest;
             }
         }
 
         VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [&]( VkCommandBuffer cmd, const QueueType queue, const bool isDedicatedQueue )
         {
-            const bool needsMipmaps = _descriptor.mipMappingState() == TextureDescriptor::MipMappingState::AUTO && numMips < mipCount();
             const VkImageLayout targetLayout = IsDepthTexture( _descriptor.baseFormat() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
             VkImageSubresourceRange range;
@@ -493,7 +543,123 @@ namespace Divide
 
             dependencyInfo.pImageMemoryBarriers = &memBarrier;
 
-            size_t offset = 0u;
+
+            size_t dataOffset = 0u;
+            for ( U32 l = 0u; l < _numLayers; ++l )
+            {
+                for ( U8 m = 0u; m < mipCount(); ++m )
+                {
+                    range.baseMipLevel = m;
+                    range.baseArrayLayer = l;
+
+                    memBarrier.subresourceRange = range;
+                    memBarrier.oldLayout = targetLayout;
+                    memBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+                    memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+                    memBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+                    memBarrier.srcStageMask = VK_API::ALL_SHADER_STAGES;
+                    memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT;
+                    vkCmdPipelineBarrier2( cmd, &dependencyInfo );
+                    
+                    VkBufferImageCopy copyRegion = {};
+                    copyRegion.bufferOffset = dataOffset;
+                    copyRegion.bufferRowLength = 0u;
+                    copyRegion.bufferImageHeight = 0u;
+                    copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                    copyRegion.imageSubresource.mipLevel = m;
+                    copyRegion.imageSubresource.baseArrayLayer = l;
+                    copyRegion.imageSubresource.layerCount = 1;
+                    copyRegion.imageOffset.x = 0u;
+                    copyRegion.imageOffset.y = 0u;
+                    copyRegion.imageOffset.z = 0u;
+                    copyRegion.imageExtent.width = _mipData[m]._dimensions.width;
+                    copyRegion.imageExtent.height = _mipData[m]._dimensions.height;
+                    copyRegion.imageExtent.depth = _mipData[m]._dimensions.depth;
+
+                    //copy the buffer into the image
+                    vkCmdCopyBufferToImage( cmd, _stagingBuffer->_buffer, _image->_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion );
+
+                    memBarrier.oldLayout = memBarrier.newLayout;
+                    memBarrier.srcAccessMask = memBarrier.dstAccessMask;
+                    memBarrier.srcStageMask = memBarrier.dstStageMask;
+
+                    memBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+                    memBarrier.dstStageMask = VK_API::ALL_SHADER_STAGES;
+                    memBarrier.newLayout = targetLayout;
+
+                    //barrier the image into the shader readable layout
+                    vkCmdPipelineBarrier2( cmd, &dependencyInfo );
+
+                    dataOffset += _mipData[m]._size;
+                }
+            }
+        }, "vkTexture::loadDataInternal" );
+    }
+
+    void vkTexture::loadDataInternal( const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment )
+    {
+        const U16 numLayers = imageData.layerCount();
+        const U8 numMips = imageData.mipCount();
+        _mipData.resize(numMips);
+
+        DIVIDE_ASSERT( _numLayers * (vkType() == VK_IMAGE_TYPE_3D ? 1u : 6u) >= numLayers );
+
+        U16 maxDepth = 0u;
+        size_t totalSize = 0u;
+        for ( U32 l = 0u; l < numLayers; ++l )
+        {
+            const ImageTools::ImageLayer& layer = imageData.imageLayers()[l];
+            for ( U8 m = 0u; m < numMips; ++m )
+            {
+                const ImageTools::LayerData* mip = layer.getMip( m );
+                totalSize += mip->_size;
+                _mipData[m]._size = mip->_size;
+                _mipData[m]._dimensions = mip->_dimensions;
+                maxDepth = std::max( maxDepth, mip->_dimensions.depth );
+            }
+        }
+        DIVIDE_ASSERT( _depth >= maxDepth );
+
+        if ( _stagingBuffer == nullptr )
+        {
+            _stagingBuffer = VKUtil::createStagingBuffer( totalSize, resourceName() );
+        }
+        
+        Byte* target = (Byte*)_stagingBuffer->_allocInfo.pMappedData;
+
+        size_t dataOffset = 0u;
+        for ( U32 l = 0u; l < numLayers; ++l )
+        {
+            const ImageTools::ImageLayer& layer = imageData.imageLayers()[l];
+            for ( U8 m = 0u; m < numMips; ++m )
+            {
+                const ImageTools::LayerData* mip = layer.getMip( m );
+                memcpy( &target[dataOffset], mip->data(), mip->_size );
+                dataOffset += mip->_size;
+            }
+        }
+
+        const bool needsMipMaps = _descriptor.mipMappingState() == TextureDescriptor::MipMappingState::AUTO && numMips < mipCount();
+
+        VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [&]( VkCommandBuffer cmd, const QueueType queue, const bool isDedicatedQueue )
+        {
+            const VkImageLayout targetLayout = IsDepthTexture( _descriptor.baseFormat() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+            VkImageSubresourceRange range;
+            range.aspectMask = GetAspectFlags( _descriptor );
+            range.levelCount = 1;
+            range.layerCount = 1;
+
+            VkDependencyInfo dependencyInfo = vk::dependencyInfo();
+            dependencyInfo.imageMemoryBarrierCount = 1;
+
+            VkImageMemoryBarrier2 memBarrier = vk::imageMemoryBarrier2();
+            memBarrier.subresourceRange.aspectMask = vkTexture::GetAspectFlags( descriptor() );
+            memBarrier.image = _image->_image;
+
+            dependencyInfo.pImageMemoryBarriers = &memBarrier;
+
+            size_t dataOffset = 0u;
             for ( U32 l = 0u; l < numLayers; ++l )
             {
                 const ImageTools::ImageLayer& layer = imageData.imageLayers()[l];
@@ -515,25 +681,28 @@ namespace Divide
                     const ImageTools::LayerData* mip = layer.getMip( m );
 
                     VkBufferImageCopy copyRegion = {};
-                    copyRegion.bufferOffset = offset;
-                    copyRegion.bufferRowLength = 0;
+                    copyRegion.bufferOffset = dataOffset;
+                    copyRegion.bufferRowLength = to_U32(pixelUnpackAlignment._rowLength);
                     copyRegion.bufferImageHeight = 0;
                     copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
                     copyRegion.imageSubresource.mipLevel = m;
                     copyRegion.imageSubresource.baseArrayLayer = l;
                     copyRegion.imageSubresource.layerCount = 1;
+                    copyRegion.imageOffset.x = offset.x;
+                    copyRegion.imageOffset.y = offset.y;
+                    copyRegion.imageOffset.z = offset.z;
                     copyRegion.imageExtent.width = mip->_dimensions.width;
                     copyRegion.imageExtent.height = mip->_dimensions.height;
                     copyRegion.imageExtent.depth = mip->_dimensions.depth;
 
                     //copy the buffer into the image
-                    vkCmdCopyBufferToImage( cmd, stagingBuffer->_buffer, _image->_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion );
+                    vkCmdCopyBufferToImage( cmd, _stagingBuffer->_buffer, _image->_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion );
 
                     memBarrier.oldLayout = memBarrier.newLayout;
                     memBarrier.srcAccessMask = memBarrier.dstAccessMask;
                     memBarrier.srcStageMask = memBarrier.dstStageMask;
-                        
-                    if ( needsMipmaps && m + 1u == numMips )
+
+                    if ( needsMipMaps && m + 1u == numMips )
                     {
                         memBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
                         memBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
@@ -549,14 +718,20 @@ namespace Divide
                     //barrier the image into the shader readable layout
                     vkCmdPipelineBarrier2( cmd, &dependencyInfo );
 
-                    offset += mip->_size;
+                    dataOffset += mip->_size;
                 }
             }
 
-            if ( needsMipmaps )
+            if ( needsMipMaps )
             {
                 generateMipmaps( cmd, 0u, 0u, to_U16(_numLayers), ImageUsage::UNDEFINED );
             }
+
+            if ( !_descriptor.allowRegionUpdates() )
+            {
+                _stagingBuffer.reset();
+            }
+
         }, "vkTexture::loadDataInternal" );
     }
 
@@ -568,7 +743,7 @@ namespace Divide
     {
     }
 
-    Texture::TextureReadbackData vkTexture::readData( [[maybe_unused]] U16 mipLevel, [[maybe_unused]] GFXDataFormat desiredFormat ) const noexcept
+    Texture::TextureReadbackData vkTexture::readData( [[maybe_unused]] U16 mipLevel, [[maybe_unused]] const PixelAlignment& pixelPackAlignment, [[maybe_unused]] GFXDataFormat desiredFormat ) const noexcept
     {
         TextureReadbackData data{};
         return MOV( data );

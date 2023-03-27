@@ -41,7 +41,6 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         DIVIDE_ASSERT( GL_API::GetStateTracker()._primitiveRestartEnabled == primitiveRestartRequired() );
-        DIVIDE_ASSERT( _idxBuffers.size() > command._bufferFlag );
 
         // Update buffer bindings
         for ( const auto& buffer : _bufferObjects )
@@ -51,28 +50,40 @@ namespace Divide
 
         {
             SharedLock<SharedMutex> w_lock( _idxBufferLock );
-            auto& idxBuffer = _idxBuffers[command._bufferFlag];
-            if ( idxBuffer._idxBufferSync != nullptr )
-            {
-                glWaitSync( idxBuffer._idxBufferSync, 0u, GL_TIMEOUT_IGNORED );
-                GL_API::DestroyFenceSync( idxBuffer._idxBufferSync );
-            }
-            if ( GL_API::GetStateTracker().setActiveBuffer( GL_ELEMENT_ARRAY_BUFFER, idxBuffer._handle ) == GLStateTracker::BindResult::FAILED ) [[unlikely]]
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
 
-            if ( !renderIndirect() &&
-                 command._cmd.instanceCount == 1u &&
-                 command._drawCount > 1u )
+            GLenum indexFormat = GL_NONE;
+            if ( !_idxBuffers.empty())
             {
-                rebuildCountAndIndexData( command._drawCount, static_cast<GLsizei>(command._cmd.indexCount), command._cmd.firstIndex, idxBuffer._data.count );
+                DIVIDE_ASSERT(command._bufferFlag < _idxBuffers.size());
+
+                auto& idxBuffer = _idxBuffers[command._bufferFlag];
+                if ( idxBuffer._idxBufferSync != nullptr )
+                {
+                    glWaitSync( idxBuffer._idxBufferSync, 0u, GL_TIMEOUT_IGNORED );
+                    GL_API::DestroyFenceSync( idxBuffer._idxBufferSync );
+                }
+                if ( GL_API::GetStateTracker().setActiveBuffer( GL_ELEMENT_ARRAY_BUFFER, idxBuffer._handle ) == GLStateTracker::BindResult::FAILED ) [[unlikely]]
+                {
+                    DIVIDE_UNEXPECTED_CALL();
+                }
+
+                indexFormat = idxBuffer._data.count > 0u ? (idxBuffer._data.smallIndices ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT) : GL_NONE;
+                if ( !renderIndirect() &&
+                     command._cmd.instanceCount == 1u &&
+                     command._drawCount > 1u )
+                {
+                    rebuildCountAndIndexData( command._drawCount, static_cast<GLsizei>(command._cmd.indexCount), command._cmd.firstIndex, idxBuffer._data.count );
+                }
+            }
+            else
+            {
+                DIVIDE_ASSERT(command._bufferFlag == 0u);
             }
 
             // Submit the draw command
             GLUtil::SubmitRenderCommand( command,
                                          renderIndirect(),
-                                         idxBuffer._data.count > 0u ? idxBuffer._data.smallIndices ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT : GL_NONE,
+                                         indexFormat,
                                          _indexInfo._countData.data(),
                                          (bufferPtr)_indexInfo._indexOffsetData.data() );
         }

@@ -175,7 +175,6 @@ namespace
                 case CommandType::CLEAR_BUFFER_DATA:
                 case CommandType::DISPATCH_COMPUTE:
                 case CommandType::MEMORY_BARRIER:
-                case CommandType::DRAW_TEXT:
                 case CommandType::DRAW_COMMANDS:
                 case CommandType::BIND_SHADER_RESOURCES:
                 case CommandType::BLIT_RT:
@@ -310,22 +309,6 @@ namespace
                     erase = IsEmpty( memCmd->_bufferLocks ) &&
                             IsEmpty( memCmd->_textureLayoutChanges);
                 } break;
-                case CommandType::DRAW_TEXT:
-                {
-                    PROFILE_SCOPE( "Clean Draw Text", Profiler::Category::Graphics );
-
-                    const TextElementBatch& textBatch = get<DrawTextCommand>( cmd )->_batch;
-
-                    erase = true;
-                    for ( const TextElement& element : textBatch.data() )
-                    {
-                        if ( !element.text().empty() )
-                        {
-                            erase = false;
-                            break;
-                        }
-                    }
-                }break;
                 case CommandType::SET_SCISSOR:
                 {
                     PROFILE_SCOPE( "Clean Scissor", Profiler::Category::Graphics );
@@ -523,7 +506,6 @@ namespace
                     }
 
                 } break;
-                case CommandType::DRAW_TEXT:
                 case CommandType::DRAW_COMMANDS:
                 {
                     if ( !hasPipeline )

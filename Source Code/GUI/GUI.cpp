@@ -10,6 +10,7 @@
 
 #include "Scenes/Headers/Scene.h"
 
+#include "Core/Headers/NonCopyable.h"
 #include "Core/Debugging/Headers/DebugInterface.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/Kernel.h"
@@ -22,13 +23,95 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
+#include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
+#include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
+
+#define FONTSTASH_IMPLEMENTATION
+#include "Platform/Video/Headers/fontstash.h"
 
 namespace Divide
 {
+    struct DVDFONSContext final : private NonCopyable
+    {
+        DVDFONSContext() = default;
+        ~DVDFONSContext()
+        {
+            if ( _impl != nullptr )
+            {
+                fonsDeleteInternal( _impl );
+            }
+        }
+
+        U32  _writeOffset = 0u;
+        U32  _bufferSizeFactor = 512u;
+        bool _bufferNeedsResize = false;
+
+        GFXDevice* _parent{ nullptr };
+        GenericVertexData_ptr _fontRenderingBuffer{};
+        Texture_ptr _fontRenderingTexture{};
+        I32 _width{ 1u };
+
+        GFX::CommandBuffer* _commandBuffer{ nullptr };
+        GFX::MemoryBarrierCommand* _memCmd{ nullptr };
+
+        FONScontext* _impl{ nullptr };
+    };
+
     namespace
     {
         GUIMessageBox* g_assertMsgBox = nullptr;
-    };
+
+        void RefreshBufferSize( DVDFONSContext* dvd )
+        {
+            GenericVertexData::SetBufferParams params = {};
+            params._bindConfig = { 0u, 0u };
+            params._useRingBuffer = true;
+            params._initialData = { nullptr, 0 };
+
+            params._bufferParams._elementCount = FONS_VERTEX_COUNT * dvd->_bufferSizeFactor;
+            params._bufferParams._elementSize = sizeof( FONSvert );
+            params._bufferParams._flags._updateFrequency = BufferUpdateFrequency::OFTEN;
+            params._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
+
+            const auto lock = dvd->_fontRenderingBuffer->setBuffer( params ); //Pos, UV and Colour
+            DIVIDE_UNUSED( lock );
+        }
+
+
+        I32 FONSRenderCreate( void* userPtr, int width, int height )
+        {
+            DVDFONSContext* dvd = (DVDFONSContext*)userPtr;
+
+            dvd->_fontRenderingBuffer = dvd->_parent->newGVD( Config::MAX_FRAMES_IN_FLIGHT, "GUIFontBuffer" );
+            dvd->_fontRenderingBuffer->renderIndirect( false );
+
+            RefreshBufferSize(dvd);
+
+            TextureDescriptor texDescriptor( TextureType::TEXTURE_2D,
+                                             GFXDataFormat::UNSIGNED_BYTE,
+                                             GFXImageFormat::RED );
+            texDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
+            texDescriptor.allowRegionUpdates(true);
+
+            ResourceDescriptor resDescriptor( "FONTSTASH_font_texture" );
+            resDescriptor.propertyDescriptor( texDescriptor );
+
+            dvd->_fontRenderingTexture = CreateResource<Texture>( dvd->_parent->context().kernel().resourceCache(), resDescriptor );
+            if ( dvd->_fontRenderingTexture )
+            {
+                dvd->_fontRenderingTexture->createWithData( nullptr, 0u, vec3<U16>( width, height, 1u ), {});
+            }
+
+            if ( dvd->_fontRenderingTexture && dvd->_fontRenderingBuffer )
+            {
+                return 1;
+            }
+
+            return 0;
+        }
+
+       
+    }
 
     void DIVIDE_ASSERT_MSG_BOX( const char* failMessage ) noexcept
     {
@@ -99,8 +182,106 @@ namespace Divide
         }
     }
 
+    void GUI::drawText( const TextElementBatch& batch, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, const bool pushCamera )
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-    void GUI::draw( GFXDevice& context, const Rect<I32>& viewport, GFX::CommandBuffer& bufferInOut )
+        if ( _fonsContext == nullptr )
+        {
+            return;
+        }
+
+        _fonsContext->_commandBuffer = &bufferInOut;
+        _fonsContext->_memCmd = &memCmdInOut;
+
+        static size_t samplerHash = 0u;
+        if ( samplerHash == 0u )
+        {
+            SamplerDescriptor sampler = {};
+            sampler.wrapUVW( TextureWrap::CLAMP_TO_EDGE );
+            sampler.minFilter( TextureFilter::LINEAR );
+            sampler.magFilter( TextureFilter::LINEAR );
+            sampler.mipSampling( TextureMipSampling::NONE );
+            sampler.anisotropyLevel( 0 );
+            samplerHash = sampler.getHash();
+        }
+
+        GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Draw Text" } );
+
+        if ( pushCamera )
+        {
+            GFX::EnqueueCommand( bufferInOut, GFX::PushCameraCommand{ Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->snapshot() } );
+        }
+
+        GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ _textRenderPipeline } );
+
+        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
+        cmd->_usage = DescriptorSetUsage::PER_DRAW;
+        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+        Set( binding._data, _fonsContext->_fontRenderingTexture->getView(), samplerHash );
+
+        size_t drawCount = 0;
+        size_t previousStyle = 0;
+
+
+        fonsClearState( _fonsContext->_impl );
+        for ( const TextElement& entry : batch.data() )
+        {
+            if ( previousStyle != entry.textLabelStyleHash() )
+            {
+                const TextLabelStyle& textLabelStyle = TextLabelStyle::get( entry.textLabelStyleHash() );
+                const UColour4& colour = textLabelStyle.colour();
+                // Retrieve the font from the font cache
+                const I32 font = getFont( TextLabelStyle::fontName( textLabelStyle.font() ) );
+                // The font may be invalid, so skip this text label
+                if ( font != FONS_INVALID )
+                {
+                    fonsSetFont( _fonsContext->_impl, font );
+                }
+                fonsSetBlur( _fonsContext->_impl, textLabelStyle.blurAmount() );
+                fonsSetBlur( _fonsContext->_impl, textLabelStyle.spacing() );
+                fonsSetAlign( _fonsContext->_impl, textLabelStyle.alignFlag() );
+                fonsSetSize( _fonsContext->_impl, to_F32( textLabelStyle.fontSize() ) );
+                fonsSetColour( _fonsContext->_impl, colour.r, colour.g, colour.b, colour.a );
+                previousStyle = entry.textLabelStyleHash();
+            }
+
+            F32 textX = entry.position().d_x.d_scale * targetViewport.sizeX + entry.position().d_x.d_offset;
+            F32 textY = targetViewport.sizeY - (entry.position().d_y.d_scale * targetViewport.sizeY + entry.position().d_y.d_offset);
+
+            textX += targetViewport.offsetX;
+            textY += targetViewport.offsetY;
+
+            F32 lh = 0;
+            fonsVertMetrics( _fonsContext->_impl, nullptr, nullptr, &lh );
+
+            const TextElement::TextType& text = entry.text();
+            const size_t lineCount = text.size();
+
+            
+            for ( size_t i = 0; i < lineCount; ++i )
+            {
+                fonsDrawText( _fonsContext->_impl,
+                              textX,
+                              textY - lh * i,
+                              text[i].c_str(),
+                              nullptr );
+            }
+            drawCount += lineCount;
+
+            // Register each label rendered as a draw call
+            _fonsContext->_parent->registerDrawCalls( to_U32( drawCount ) );
+        }
+
+        if ( pushCamera )
+        {
+            GFX::EnqueueCommand( bufferInOut, GFX::PopCameraCommand{} );
+        }
+
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
+    }
+
+    void GUI::draw( GFXDevice& context, const Rect<I32>& viewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
         if ( !_init || !_activeScene )
         {
@@ -128,21 +309,20 @@ namespace Divide
             }
         }
 
-        if ( !textBatch.data().empty() )
         {
-            Attorney::GFXDeviceGUI::drawText( context, textBatch, bufferInOut );
-        }
-
-        {
-            GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Render Scene Elements" } );
             SharedLock<SharedMutex> r_lock( _guiStackLock );
             // scene specific
             const GUIMapPerScene::const_iterator it = _guiStack.find( _activeScene->getGUID() );
             if ( it != std::cend( _guiStack ) )
             {
-                it->second->draw( context, bufferInOut );
+                const auto& batch = it->second->updateAndGetText();
+                textBatch.data().insert(textBatch.data().cend(), batch.data().cbegin(), batch.data().cend());
             }
-            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
+        }
+
+        if ( !textBatch.data().empty() )
+        {
+            drawText( textBatch, viewport, bufferInOut, memCmdInOut );
         }
 
         const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
@@ -178,11 +358,6 @@ namespace Divide
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
     }
 
-    void GUI::idle()
-    {
-        NOP();
-    }
-
     void GUI::update( const U64 deltaTimeUS )
     {
         if ( !_init )
@@ -205,6 +380,19 @@ namespace Divide
         {
             _console->update( deltaTimeUS );
         }
+
+        if ( _fonsContext != nullptr )
+        {
+            _fonsContext->_fontRenderingBuffer->incQueue();
+            _fonsContext->_writeOffset = 0u;
+
+            if ( _fonsContext->_bufferNeedsResize )
+            {
+                ++_fonsContext->_bufferSizeFactor;
+                RefreshBufferSize( _fonsContext.get() );
+                _fonsContext->_bufferNeedsResize = false;
+            }
+        }
     }
 
     void GUI::setRenderer( CEGUI::Renderer& renderer )
@@ -221,13 +409,14 @@ namespace Divide
         }
     }
 
-    bool GUI::init( PlatformContext& context, ResourceCache* cache )
+    ErrorCode GUI::init( PlatformContext& context, ResourceCache* cache )
     {
         if ( _init )
         {
             Console::d_errorfn( Locale::Get( _ID( "ERROR_GUI_DOUBLE_INIT" ) ) );
-            return false;
+            return ErrorCode::GUI_INIT_ERROR;
         }
+
 
         _ceguiInput.init( parent().platformContext().config() );
 
@@ -298,8 +487,156 @@ namespace Divide
 
         recreateDefaultMessageBox();
 
+        _fonsContext = eastl::make_unique<DVDFONSContext>();
+        _fonsContext->_width = 512;
+        _fonsContext->_parent = &context.gfx();
+
+        FONSparams params;
+        memset( &params, 0, sizeof params );
+        params.width = _fonsContext->_width;
+        params.height = 512;
+        params.renderCreate = FONSRenderCreate;
+        params.renderResize = []( void* userPtr, int width, int height )
+        {
+            const DVDFONSContext* dvd = (DVDFONSContext*)userPtr;
+
+            if ( dvd->_fontRenderingTexture )
+            {
+                dvd->_fontRenderingTexture->createWithData( nullptr, 0u, vec3<U16>( width, height, 1u ), {} );
+                return 1;
+            }
+
+            return FONSRenderCreate( userPtr, width, height );
+        };
+        params.renderUpdate = []( void* userPtr, int* rect, const unsigned char* data )
+        {
+            const DVDFONSContext* dvd = (DVDFONSContext*)userPtr;
+
+            if ( !dvd->_fontRenderingTexture )
+            {
+                FONSRenderCreate( userPtr, dvd->_width, dvd->_width );
+            }
+
+            const I32 w = rect[2] - rect[0];
+            const I32 h = rect[3] - rect[1];
+
+            const PixelAlignment pixelUnpackAlignment =
+            {
+                ._alignment = 1u,
+                ._rowLength = to_size( dvd->_width ),
+                ._skipPixels = to_size( rect[0] ),
+                ._skipRows = to_size( rect[1] )
+            };
+
+            dvd->_fontRenderingTexture->replaceData( (Divide::Byte*)data, sizeof( U8 ) * w * h, vec3<U16>{rect[0], rect[1], 0}, vec3<U16>{w, h, 1u}, pixelUnpackAlignment );
+        };
+        params.renderDraw = []( void* userPtr, const FONSvert* verts, int nverts )
+        {
+            DVDFONSContext* dvd = (DVDFONSContext*)userPtr;
+            if ( !dvd->_fontRenderingTexture || !dvd->_fontRenderingBuffer || !dvd->_commandBuffer )
+            {
+                return;
+            }
+
+            dvd->_writeOffset = ++dvd->_writeOffset % dvd->_bufferSizeFactor;
+            if ( dvd->_writeOffset == 0u )
+            {
+                // Wrapped around. Dangerous to write data. Wait till next frame
+                dvd->_bufferNeedsResize = true;
+                return;
+            }
+
+            const U32 elementOffset = dvd->_writeOffset * FONS_VERTEX_COUNT;
+
+            const BufferLock lock = dvd->_fontRenderingBuffer->updateBuffer( 0u, elementOffset, nverts, (Divide::bufferPtr)verts );
+            dvd->_memCmd->_bufferLocks.emplace_back( lock );
+
+            GenericDrawCommand drawCmd{};
+            drawCmd._sourceBuffer = dvd->_fontRenderingBuffer->handle();
+            drawCmd._cmd.vertexCount = nverts;
+            drawCmd._cmd.baseVertex = elementOffset;
+            GFX::EnqueueCommand( *dvd->_commandBuffer, GFX::DrawCommand{ drawCmd } );
+        };
+        params.renderDelete = [](void* userPtr)
+        {
+            DVDFONSContext* dvd = (DVDFONSContext*)userPtr;
+            dvd->_fontRenderingBuffer.reset();
+            dvd->_fontRenderingTexture.reset();
+        };
+        params.userPtr = _fonsContext.get();
+
+        _fonsContext->_impl = fonsCreateInternal( &params );
+        {
+            std::atomic_uint loadTasks = 0;
+
+            ShaderModuleDescriptor vertModule = {};
+            vertModule._moduleType = ShaderType::VERTEX;
+            vertModule._sourceFile = "ImmediateModeEmulation.glsl";
+            vertModule._variant = "GUI";
+            ShaderModuleDescriptor fragModule = {};
+            fragModule._moduleType = ShaderType::FRAGMENT;
+            fragModule._sourceFile = "ImmediateModeEmulation.glsl";
+            fragModule._variant = "GUI";
+
+
+            ShaderProgramDescriptor shaderDescriptor = {};
+            shaderDescriptor._modules.push_back( vertModule );
+            shaderDescriptor._modules.push_back( fragModule );
+
+            ResourceDescriptor immediateModeShader( "ImmediateModeEmulationGUI" );
+            immediateModeShader.waitForReady( true );
+            immediateModeShader.propertyDescriptor( shaderDescriptor );
+            _textRenderShader = CreateResource<ShaderProgram>( cache, immediateModeShader, loadTasks );
+            _textRenderShader->addStateCallback( ResourceState::RES_LOADED, [this, &context]( CachedResource* res )
+            {
+                PipelineDescriptor descriptor = {};
+                descriptor._shaderProgramHandle = _textRenderShader->handle();
+                descriptor._stateHash = context.gfx().get2DStateBlock();
+                descriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+                descriptor._vertexFormat._vertexBindings.emplace_back()._strideInBytes = 2 * sizeof( F32 ) + 2 * sizeof( F32 ) + 4 * sizeof( U8 );
+                AttributeDescriptor& descPos = descriptor._vertexFormat._attributes[to_base( AttribLocation::POSITION )]; //vec2
+                AttributeDescriptor& descUV = descriptor._vertexFormat._attributes[to_base( AttribLocation::TEXCOORD )];  //vec2
+                AttributeDescriptor& descColour = descriptor._vertexFormat._attributes[to_base( AttribLocation::COLOR )]; //vec4
+
+                descPos._vertexBindingIndex = 0u;
+                descPos._componentsPerElement = 2u;
+                descPos._dataType = GFXDataFormat::FLOAT_32;
+
+                descUV._vertexBindingIndex = 0u;
+                descUV._componentsPerElement = 2u;
+                descUV._dataType = GFXDataFormat::FLOAT_32;
+
+                descColour._vertexBindingIndex = 0u;
+                descColour._componentsPerElement = 4u;
+                descColour._dataType = GFXDataFormat::UNSIGNED_BYTE;
+                descColour._normalized = true;
+
+                descPos._strideInBytes = 0u;
+                descUV._strideInBytes = 2 * sizeof( F32 );
+                descColour._strideInBytes = 2 * sizeof( F32 ) + 2 * sizeof( F32 );
+
+                BlendingSettings& blend = descriptor._blendStates._settings[0u];
+                descriptor._blendStates._blendColour = DefaultColours::BLACK_U8;
+
+                blend.enabled( true );
+                blend.blendSrc( BlendProperty::SRC_ALPHA );
+                blend.blendDest( BlendProperty::INV_SRC_ALPHA );
+                blend.blendOp( BlendOperation::ADD );
+                blend.blendSrcAlpha( BlendProperty::ONE );
+                blend.blendDestAlpha( BlendProperty::ZERO );
+                blend.blendOpAlpha( BlendOperation::COUNT );
+
+                _textRenderPipeline = context.gfx().newPipeline( descriptor );
+            } );
+        }
         _init = true;
-        return true;
+        if ( _fonsContext == nullptr )
+        {
+            Console::errorfn( Locale::Get( _ID( "ERROR_FONT_INIT" ) ) );
+            return ErrorCode::FONT_INIT_ERROR;
+        }
+
+        return ErrorCode::NO_ERR;
     }
 
     void GUI::recreateDefaultMessageBox()
@@ -326,6 +663,9 @@ namespace Divide
     {
         if ( _init )
         {
+            _fonsContext.reset();
+            _fonts.clear();
+
             Console::printfn( Locale::Get( _ID( "STOP_GUI" ) ) );
             MemoryManager::SAFE_DELETE( _console );
             MemoryManager::SAFE_DELETE( _defaultMsgBox );
@@ -357,6 +697,8 @@ namespace Divide
                     Console::d_errorfn( Locale::Get( _ID( "ERROR_CEGUI_DESTROY" ) ) );
                 }
             }
+
+            _textRenderShader.reset();
             _init = false;
         }
     }
@@ -524,6 +866,44 @@ namespace Divide
     CEGUI::GUIContext* GUI::getCEGUIContext() noexcept
     {
         return _ceguiContext;
+    }
+
+    /// Try to find the requested font in the font cache. Load on cache miss.
+    I32 GUI::getFont( const Str64& fontName )
+    {
+        if ( _fontCache.first.compare( fontName ) != 0 )
+        {
+            _fontCache.first = fontName;
+            const U64 fontNameHash = _ID( fontName.c_str() );
+            // Search for the requested font by name
+            const auto& it = _fonts.find( fontNameHash );
+            // If we failed to find it, it wasn't loaded yet
+            if ( it == std::cend( _fonts ) )
+            {
+                // Fonts are stored in the general asset directory -> in the GUI
+                // subfolder -> in the fonts subfolder
+                ResourcePath fontPath( Paths::g_assetsLocation + Paths::g_GUILocation + Paths::g_fontsPath );
+                fontPath += fontName.c_str();
+                // We use FontStash to load the font file
+                _fontCache.second = fonsAddFont( _fonsContext->_impl, fontName.c_str(), fontPath.c_str());
+                // If the font is invalid, inform the user, but map it anyway, to avoid
+                // loading an invalid font file on every request
+                if ( _fontCache.second == FONS_INVALID )
+                {
+                    Console::errorfn( Locale::Get( _ID( "ERROR_FONT_FILE" ) ), fontName.c_str() );
+                }
+                // Save the font in the font cache
+                hashAlg::insert( _fonts, fontNameHash, _fontCache.second );
+
+            }
+            else
+            {
+                _fontCache.second = it->second;
+            }
+        }
+
+        // Return the font
+        return _fontCache.second;
     }
 
 };

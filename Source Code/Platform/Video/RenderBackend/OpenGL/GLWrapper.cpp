@@ -33,11 +33,6 @@
 
 #include "Platform/Video/GLIM/glim.h"
 
-#ifndef GLFONTSTASH_IMPLEMENTATION
-#define GLFONTSTASH_IMPLEMENTATION
-#include "Headers/glfontstash.h"
-#endif
-
 #include <glbinding-aux/Meta.h>
 #include <glbinding-aux/ContextInfo.h>
 #include <glbinding/Binding.h>
@@ -441,10 +436,6 @@ namespace Divide
 
         s_textureViewCache.init( 256 );
 
-        // FontStash library initialization
-        // 512x512 atlas with bottom-left origin
-        _context.fonsContext(glfonsCreate(512, 512, FONS_ZERO_BOTTOMLEFT));
-
         // Initialize our query pool
         s_hardwareQueryPool->init(
             {
@@ -511,9 +502,6 @@ namespace Divide
             }
             s_samplerMap.clear();
         }
-        // Destroy the text rendering system
-        glfonsDelete( _context.fonsContext() );
-        _context.fonsContext(nullptr);
 
         s_textureViewCache.destroy();
         if ( s_hardwareQueryPool != nullptr )
@@ -1415,7 +1403,6 @@ namespace Divide
         {
             DIVIDE_UNEXPECTED_CALL();
         }
-        stateTracker.setPixelPackUnpackAlignment();
 
         if ( stateTracker.setActiveVAO( 0 ) == GLStateTracker::BindResult::FAILED )
         {

@@ -46,13 +46,13 @@ class SceneGUIElements : public GUIInterface,
 public:
     SceneGUIElements(Scene& parentScene, GUI& context);
 
-    void draw(const GFXDevice& context, GFX::CommandBuffer& bufferInOut);
+    const TextElementBatch& updateAndGetText();
 
     void onEnable();
     void onDisable();
 
 private:
-    GFX::DrawTextCommand _drawTextCommand{};
+    TextElementBatch _textBatch{};
 };
 
 FWD_DECLARE_MANAGED_CLASS(SceneGUIElements);

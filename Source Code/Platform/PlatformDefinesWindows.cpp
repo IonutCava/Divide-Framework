@@ -31,6 +31,8 @@
 
 #ifdef _DEBUG
 #pragma comment(lib, "SPIRVd.lib")
+#pragma comment(lib, "SPIRV-Toolsd.lib")
+#pragma comment(lib, "SPIRV-Tools-optd.lib")
 #pragma comment(lib, "SPVRemapperd.lib")
 #pragma comment(lib, "glslangd.lib")
 #pragma comment(lib, "MachineIndependentd.lib")
@@ -56,6 +58,8 @@
 #pragma comment(lib, "CEGUIExpatParser_d.lib")
 #else  //_DEBUG
 #pragma comment(lib, "SPIRV.lib")
+#pragma comment(lib, "SPIRV-Tools.lib")
+#pragma comment(lib, "SPIRV-Tools-opt.lib")
 #pragma comment(lib, "SPVRemapper.lib")
 #pragma comment(lib, "glslang.lib")
 #pragma comment(lib, "MachineIndependent.lib")

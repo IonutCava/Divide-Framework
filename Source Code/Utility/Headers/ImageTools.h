@@ -58,8 +58,16 @@ struct ImageMip final : LayerData {
 
         _data.resize(actualSize, T{ 0u });
 
-        if (data != nullptr && len > 0u) {
-            std::memcpy(_data.data(), data, len * sizeof(T));
+        if (len > 0u)
+        {
+            if ( data != nullptr )
+            {
+                std::memcpy( _data.data(), data, len == 0u ? totalSizeTest : len * sizeof( T ) );
+            }
+            else
+            {
+                std::memset(_data.data(), 0u, len == 0u ? totalSizeTest : len * sizeof ( T ));
+            }
         }
 
         _size = actualSize;

@@ -74,7 +74,6 @@ enum class CommandType : U8 {
     BIND_SHADER_RESOURCES,
     SEND_PUSH_CONSTANTS,
     DRAW_COMMANDS,
-    DRAW_TEXT,
     DISPATCH_COMPUTE,
     MEMORY_BARRIER,
     READ_BUFFER_DATA,
@@ -93,7 +92,7 @@ namespace Names {
         "BEGIN_RENDER_PASS", "END_RENDER_PASS", "BEGIN_GPU_QUERY", "END_GPU_QUERY", "SET_VIEWPORT", "PUSH_VIEWPORT","POP_VIEWPORT",
         "SET_SCISSOR", "BLIT_RT", "COPY_TEXTURE", "CLEAR_TEXTURE", "COMPUTE_MIPMAPS",
         "SET_CAMERA", "PUSH_CAMERA", "POP_CAMERA", "SET_CLIP_PLANES", "BIND_PIPELINE", "BIND_SHADER_RESOURCES", "SEND_PUSH_CONSTANTS",
-        "DRAW_COMMANDS", "DRAW_TEXT", "DISPATCH_COMPUTE", "MEMORY_BARRIER", "READ_BUFFER_DATA", "CLEAR_BUFFER_DATA",
+        "DRAW_COMMANDS", "DISPATCH_COMPUTE", "MEMORY_BARRIER", "READ_BUFFER_DATA", "CLEAR_BUFFER_DATA",
         "BEGIN_DEBUG_SCOPE","END_DEBUG_SCOPE", "ADD_DEBUG_MESSAGE", "SWITCH_WINDOW", "SET_CLIPING_STATE", "EXTERNAL", "UNKNOWN"
     };
 };
@@ -249,14 +248,6 @@ DEFINE_COMMAND_BEGIN(AddDebugMessageCommand, CommandType::ADD_DEBUG_MESSAGE);
     Str64 _msg;
     U32 _msgId{ U32_MAX };
 DEFINE_COMMAND_END(AddDebugMessageCommand);
-
-DEFINE_COMMAND_BEGIN(DrawTextCommand, CommandType::DRAW_TEXT);
-    DrawTextCommand() noexcept = default;
-    DrawTextCommand(TextElementBatch&& batch) noexcept : _batch(MOV(batch)) {}
-    DrawTextCommand(TextElementBatch batch) noexcept : _batch(MOV(batch)) {}
-
-    TextElementBatch _batch;
-DEFINE_COMMAND_END(DrawTextCommand);
 
 DEFINE_COMMAND_BEGIN(DispatchComputeCommand, CommandType::DISPATCH_COMPUTE);
     DispatchComputeCommand() noexcept = default;

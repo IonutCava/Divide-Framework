@@ -97,7 +97,7 @@ bool RenderTarget::create()
         Texture_ptr tex = CreateResource<Texture>(parentCache, textureAttachment);
         assert(tex);
 
-        tex->loadData(nullptr, 0u, vec2<U16>(getWidth(), getHeight()));
+        tex->createWithData(nullptr, 0u, vec3<U16>(getWidth(), getHeight(), 1u), {});
         att->setTexture(tex , false);
 
         initAttachment(att, attDesc._type, attDesc._slot, false);
@@ -163,9 +163,9 @@ U8 RenderTarget::getAttachmentCount(const RTAttachmentType type) const noexcept
     return 0u;
 }
 
-void RenderTarget::readData(const GFXImageFormat imageFormat, const GFXDataFormat dataType, const std::pair<bufferPtr, size_t> outData) const
+void RenderTarget::readData(const GFXImageFormat imageFormat, const GFXDataFormat dataType, const PixelAlignment& pixelPackAlignment, const std::pair<bufferPtr, size_t> outData) const
 {
-    readData(vec4<U16>(0u, 0u, _descriptor._resolution.width, _descriptor._resolution.height), imageFormat, dataType, outData);
+    readData(vec4<U16>(0u, 0u, _descriptor._resolution.width, _descriptor._resolution.height), imageFormat, dataType, pixelPackAlignment, outData);
 }
 
 U16 RenderTarget::getWidth() const noexcept
@@ -246,7 +246,7 @@ bool RenderTarget::initAttachment(RTAttachment* att, const RTAttachmentType type
         const bool shouldResize = att->texture()->width() != getWidth() || att->texture()->height() != getHeight();
         if (shouldResize)
         {
-            att->texture()->loadData(nullptr, 0u, vec2<U16>(getWidth(), getHeight()));
+            att->texture()->createWithData(nullptr, 0u, vec3<U16>(getWidth(), getHeight(), 1u), {});
         }
         const bool updateSampleCount = att->texture()->descriptor().msaaSamples() != _descriptor._msaaSamples;
         if (updateSampleCount)

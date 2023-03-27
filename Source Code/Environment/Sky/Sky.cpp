@@ -566,13 +566,13 @@ bool Sky::load()
         perlWorlDescriptor.propertyDescriptor( textureDescriptor );
         perlWorlDescriptor.waitForReady( true );
         _perWorlNoiseTex = CreateResource<Texture>( _parentCache, perlWorlDescriptor );
-        _perWorlNoiseTex->loadData( imgDataPerl );
+        _perWorlNoiseTex->createWithData( imgDataPerl, {});
 
         ResourceDescriptor worlDescriptor( "worlNoise" );
         worlDescriptor.propertyDescriptor( textureDescriptor );
         worlDescriptor.waitForReady( true );
         _worlNoiseTex = CreateResource<Texture>( _parentCache, worlDescriptor );
-        _worlNoiseTex->loadData( imgDataWorl );
+        _worlNoiseTex->createWithData( imgDataWorl, {});
 
         textureDescriptor.texType( TextureType::TEXTURE_2D_ARRAY );
         // We should still keep mipmaps, but filtering should be set to linear

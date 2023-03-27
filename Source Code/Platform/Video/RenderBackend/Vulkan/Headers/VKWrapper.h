@@ -44,8 +44,6 @@
 
 #include "vkDescriptors.h"
 
-struct FONScontext;
-
 namespace Divide {
 
 class Pipeline;

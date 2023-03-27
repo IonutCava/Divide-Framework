@@ -36,102 +36,100 @@
 #include "GUIInterface.h"
 #include "Core/Headers/KernelComponent.h"
 #include "GUI/CEGUIAddons/Headers/CEGUIInput.h"
+#include "Platform/Video/Headers/PushConstants.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Platform/Input/Headers/InputAggregatorInterface.h"
-
 namespace CEGUI
 {
     class Renderer;
 };
 
+struct FONScontext;
+
 namespace Divide
 {
 
-    namespace GFX
-    {
-        class CommandBuffer;
-    };
+namespace GFX
+{
+    class CommandBuffer;
+    struct MemoryBarrierCommand;
+};
 
-    class Pipeline;
-    class GUIConsole;
-    class GUIElement;
-    class ResourceCache;
-    class SceneGraphNode;
-    class PlatformContext;
-    class SceneGUIElements;
+class Scene;
+class Pipeline;
+class GUIConsole;
+class GUIElement;
+class ResourceCache;
+class SceneGraphNode;
+class PlatformContext;
+class SceneGUIElements;
 
-    FWD_DECLARE_MANAGED_CLASS( ShaderProgram );
+struct ImageView;
+struct TextElementBatch;
+struct SizeChangeParams;
 
-    class Scene;
-    struct SizeChangeParams;
+FWD_DECLARE_MANAGED_CLASS( ShaderProgram );
+FWD_DECLARE_MANAGED_STRUCT( DVDFONSContext );
 
-    struct ImageView;
-
-    /// Graphical User Interface
-    class GUI final : public GUIInterface,
-        public KernelComponent,
-        public Input::InputAggregatorInterface
-    {
-        public:
+/// Graphical User Interface
+class GUI final : public GUIInterface,
+                    public KernelComponent,
+                    public Input::InputAggregatorInterface
+{
+    public:
         using GUIMapPerScene = hashMap<I64, SceneGUIElements*>;
 
-        public:
+    public:
         explicit GUI( Kernel& parent );
         ~GUI();
 
         /// Create the GUI
-        [[nodiscard]] bool init( PlatformContext& context, ResourceCache* cache );
+        [[nodiscard]] ErrorCode init( PlatformContext& context, ResourceCache* cache );
         void destroy();
 
-        void draw( GFXDevice& context, const Rect<I32>& viewport, GFX::CommandBuffer& bufferInOut );
-
+        /// Go through all of the registered scene gui elements and gather all of the render commands
+        void draw( GFXDevice& context, const Rect<I32>& viewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
+        /// Text rendering is handled exclusively by Mikko Mononen's FontStash library (https://github.com/memononen/fontstash)
+        void drawText( const TextElementBatch& batch, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, bool pushCamera = true);
+        /// Mostly used by CEGUI to keep track of screen dimensions
         void onResolutionChange( const SizeChangeParams& params );
+        /// When we change a scene, we want to toggle our current scene GUI elements off and toggle the new scene's elements on
         void onChangeScene( Scene* newScene );
+        /// When we unload a scene, we unload all of its GUI elements. ToDo: Scene should own these and scene should submit to GUI for rendering. Current logic is backwards -Ionut
         void onUnloadScene( Scene* scene );
-
-        void idle();
-        /// Main update call
+        /// Main update call. Used to tick gui elements (cursors, animations, etc)
         void update( U64 deltaTimeUS );
-
+        /// Find a return a gui element by name
         template <typename T> requires std::is_base_of_v<GUIElement, T>
-        [[nodiscard]] T* getGUIElement( const I64 sceneID, const U64 elementName )
-        {
-            return static_cast<T*>(getGUIElementImpl( sceneID, elementName, T::Type ));
-        }
-
+        [[nodiscard]] T* getGUIElement( const I64 sceneID, const U64 elementName ) { return static_cast<T*>(getGUIElementImpl( sceneID, elementName, T::Type )); }
+        /// Find a return a gui element by ID
         template <typename T> requires std::is_base_of_v<GUIElement, T>
-        [[nodiscard]] T* getGUIElement( const I64 sceneID, const I64 elementID )
-        {
-            return static_cast<T*>(getGUIElementImpl( sceneID, elementID, T::Type ));
-        }
-
-        /// Get a pointer to our console window
-        [[nodiscard]] GUIConsole& getConsole() noexcept
-        {
-            return *_console;
-        }
-        [[nodiscard]] const GUIConsole& getConsole() const noexcept
-        {
-            return *_console;
-        }
-
-        [[nodiscard]] CEGUI::Window* rootSheet() const noexcept
-        {
-            return _rootSheet;
-        }
-
+        [[nodiscard]] T* getGUIElement( const I64 sceneID, const I64 elementID ) { return static_cast<T*>(getGUIElementImpl( sceneID, elementID, T::Type )); }
+        /// Get a reference to our console window
+        [[nodiscard]] GUIConsole& getConsole() noexcept { return *_console; }
+        /// Get a const reference to our console window
+        [[nodiscard]] const GUIConsole& getConsole() const noexcept { return *_console; }
+        /// Get a pointer to the root sheet that CEGUI renders into
+        [[nodiscard]] CEGUI::Window* rootSheet() const noexcept { return _rootSheet; }
         /// Return a pointer to the default, general purpose message box
-        [[nodiscard]] GUIMessageBox* getDefaultMessageBox() const noexcept
-        {
-            return _defaultMsgBox;
-        }
-        /// Used to prevent text updating every frame
-        void setTextRenderTimer( const U64 renderIntervalUs ) noexcept
-        {
-            _textRenderInterval = renderIntervalUs;
-        }
+        [[nodiscard]] GUIMessageBox* getDefaultMessageBox() const noexcept { return _defaultMsgBox; }
         /// Mouse cursor forced to a certain position
         void setCursorPosition( I32 x, I32 y );
+        /// Provides direct access to the CEGUI context. Used by plugins  (e.g. GUIConsole, GUIInput, etc)
+        [[nodiscard]] CEGUI::GUIContext* getCEGUIContext() noexcept;
+        /// Called by the various rendering APIs to register themselves with CEGUI
+        void setRenderer( CEGUI::Renderer& renderer );
+        /// Toggle debug cursor rendering on or off.
+        void showDebugCursor( bool state );
+        /// Debug cursor state. The debug cursor is a the cursor as it's know internally to CEGUI (based on its internal position and state)
+        PROPERTY_R( bool, showDebugCursor, false );
+        /// The "skin" used by CEGUI
+        PROPERTY_R( string, defaultGUIScheme, "GWEN" );
+        /// We should avoid rendering text as fast as possible
+        PROPERTY_RW( U64, textRenderInterval, Time::MillisecondsToMicroseconds( 10 ) );
+
+
+    protected:
         /// Key pressed: return true if input was consumed
         [[nodiscard]] bool onKeyDown( const Input::KeyEvent& key ) override;
         /// Key released: return true if input was consumed
@@ -153,59 +151,56 @@ namespace Divide
         [[nodiscard]] bool mouseButtonPressed( const Input::MouseButtonEvent& arg ) override;
         /// Mouse button released: return true if input was consumed
         [[nodiscard]] bool mouseButtonReleased( const Input::MouseButtonEvent& arg ) override;
-
+        /// Called when text input was detected
         [[nodiscard]] bool onTextEvent( const Input::TextEvent& arg ) noexcept override;
 
-        [[nodiscard]] Scene* activeScene() noexcept
-        {
-            return _activeScene;
-        }
-
-        [[nodiscard]] const Scene* activeScene() const noexcept
-        {
-            return _activeScene;
-        }
-
-        [[nodiscard]] CEGUI::GUIContext* getCEGUIContext() noexcept;
-
-        void setRenderer( CEGUI::Renderer& renderer );
-
-        PROPERTY_R( bool, showDebugCursor, false );
-        PROPERTY_R( string, defaultGUIScheme, "GWEN" );
-        void showDebugCursor( bool state );
-
-        protected:
+    private:
+        //// Try to find the requested FontStash font in the font cache. Load on cache miss.
+        [[nodiscard]] I32 getFont( const Str64& fontName );
+        /// Internal lookup of a GUIElement by name
         [[nodiscard]] GUIElement* getGUIElementImpl( I64 sceneID, U64 elementName, GUIType type ) const;
+        /// Internal lookup of a GUIElement by ID
         [[nodiscard]] GUIElement* getGUIElementImpl( I64 sceneID, I64 elementID, GUIType type ) const;
-
+        /// Used to recreate and re-register the default message box if needed (usually on scene change)
         void recreateDefaultMessageBox();
 
-        protected:
+    protected:
         friend class SceneGUIElements;
-        CEGUI::Window* _rootSheet = nullptr;  ///< gui root Window
-        CEGUI::GUIContext* _ceguiContext = nullptr;
+        /// The root window into which CEGUI anchors all of its elements
+        CEGUI::Window* _rootSheet{nullptr};
+        /// The CEGUI context as returned by the library upon creation
+        CEGUI::GUIContext* _ceguiContext{nullptr};
+        /// The render target texture CEGUI renders into. we need this to blit it into our own render targets.
+        /// If we had a custom renderer that used the Divide::GFX interface, this wouldn't of been needed anymore.
         CEGUI::TextureTarget* _ceguiRenderTextureTarget = nullptr;
 
-        private:
-        bool _init = false;              ///< Set to true when the GUI has finished loading
-        /// Toggle CEGUI rendering on/off (e.g. to check raw application rendering
-        /// performance)
-        CEGUIInput _ceguiInput;  ///< Used to implement key repeat
-        CEGUI::Renderer* _ceguiRenderer = nullptr; ///<Used to render CEGUI to a texture;
-        GUIConsole* _console = nullptr;    ///< Pointer to the GUIConsole object
-        GUIMessageBox* _defaultMsgBox = nullptr;  ///< Pointer to a default message box used for general purpose messages
-        U64 _textRenderInterval{};  ///< We should avoid rendering text as fast as possible
-        ///for performance reasons
-
-        /// Each scene has its own gui elements! (0 = global)
-        Scene* _activeScene = nullptr;
-        U32 _debugVarCacheCount = 0;
-        // GROUP, VAR
-        vector<std::pair<I64, I64>> _debugDisplayEntries{};
-
+    private:
+        /// Set to true when the GUI has finished loading
+        bool _init{false};
+        /// Used to implement key repeat
+        CEGUIInput _ceguiInput;  
+        /// Used to render CEGUI to a texture; We want to port this to the Divide::GFX interface.
+        CEGUI::Renderer* _ceguiRenderer{nullptr};
+        /// Our custom in-game console (for logs and commands. A la Quake's ~-console)
+        GUIConsole* _console{nullptr};
+        /// Pointer to a default message box used for general purpose messages
+        GUIMessageBox* _defaultMsgBox{nullptr};
+        /// Each scene has its own gui elements! (0 = global). We keep a pointer to the scene but we really shouldn't. Scene should feed itself into GUI.
+        Scene* _activeScene{nullptr};
         /// All the GUI elements created per scene
         GUIMapPerScene _guiStack{};
+        /// A lock to protect access to _guiStack
         mutable SharedMutex _guiStackLock{};
+        /// We use Font Stash (https://github.com/memononen/fontstash) for rendering basic text on the screen. This is our own Divide::GFX based context object used for rendering.
+        DVDFONSContext_uptr _fonsContext;
+        /// A cache of all font IDs used by Font Stash stored by name ID
+        hashMap<U64, I32> _fonts;
+        /// A cache of the last requested font by name to avoid a lookup in the fonts map
+        hashAlg::pair<Str64, I32> _fontCache = { "", -1 };
+        /// The text rendering pipeline we used to draw Font Stash text
+        Pipeline* _textRenderPipeline{nullptr};
+        /// The text rendering shaderProgram we used to draw Font Stash text
+        ShaderProgram_ptr _textRenderShader;
     };
 
 };  // namespace Divide

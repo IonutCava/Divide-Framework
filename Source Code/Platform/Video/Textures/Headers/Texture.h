@@ -111,9 +111,10 @@ namespace Divide
         static [[nodiscard]] U8 GetSizeFactor( const GFXDataFormat format ) noexcept;
 
         /// API-dependent loading function that uploads ptr data to the GPU using the specified parameters
-        void loadData( const ImageTools::ImageData& imageData );
-        void loadData( const Byte* data, size_t dataSize, vec2<U16> dimensions );
-        void loadData( const Byte* data, size_t dataSize, const vec3<U16>& dimensions );
+        void createWithData( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment );
+        void createWithData( const Byte* data, size_t dataSize, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment );
+
+        void replaceData(const Byte* data, size_t dataSize, const vec3<U16>& offset, const vec3<U16>& range, const PixelAlignment& pixelUnpackAlignment );
 
         /// Change the number of MSAA samples for this current texture
         void setSampleCount( U8 newSampleCount );
@@ -131,7 +132,7 @@ namespace Divide
         virtual void clearSubData( const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, vec2<I32> depthRange ) const = 0;
 
         // MipLevel will automatically clamped to the texture's internal limits
-        [[nodiscard]] virtual TextureReadbackData readData( U16 mipLevel, GFXDataFormat desiredFormat = GFXDataFormat::COUNT ) const = 0;
+        [[nodiscard]] virtual TextureReadbackData readData( U16 mipLevel, const PixelAlignment& pixelPackAlignment, GFXDataFormat desiredFormat = GFXDataFormat::COUNT ) const = 0;
 
         PROPERTY_R( TextureDescriptor, descriptor );
         /// Set/Get the number of layers (used by texture arrays)
@@ -166,7 +167,8 @@ namespace Divide
             return "Texture";
         }
 
-        virtual void loadDataInternal( const ImageTools::ImageData& imageData ) = 0;
+        virtual void loadDataInternal( const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment ) = 0;
+        virtual void loadDataInternal( const Byte* data, size_t size, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) = 0;
         virtual void prepareTextureData( U16 width, U16 height, U16 depth, bool emptyAllocation );
         virtual void submitTextureData() = 0;
 

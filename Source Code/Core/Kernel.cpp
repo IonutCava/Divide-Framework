@@ -767,8 +767,10 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
     Script::OnStartup(_platformContext);
     SceneManager::OnStartup(_platformContext);
     // Initialize GUI with our current resolution
-    if (!_platformContext.gui().init(_platformContext, resourceCache())) {
-        return ErrorCode::GUI_INIT_ERROR;
+    initError = _platformContext.gui().init(_platformContext, resourceCache());
+    if ( initError != ErrorCode::NO_ERR )
+    {
+        return initError;
     }
 
     startSplashScreen();

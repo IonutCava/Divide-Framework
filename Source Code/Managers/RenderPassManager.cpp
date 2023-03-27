@@ -224,9 +224,9 @@ void RenderPassManager::render(const RenderParams& params)
            {
                context.editor().drawScreenOverlay(cam, targetViewport, buf, memCmd);
            }
-           context.gui().draw(gfx, targetViewport, buf);
+           context.gui().draw(gfx, targetViewport, buf, memCmd);
            sceneManager->getEnvProbes()->prepareDebugData();
-           gfx.renderDebugUI(targetViewport, buf);
+           gfx.renderDebugUI(targetViewport, buf, memCmd);
        }
        
        GFX::EnqueueCommand(buf, GFX::EndRenderPassCommand{});

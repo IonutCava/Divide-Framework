@@ -39,7 +39,7 @@ namespace Divide
         return false;
     }
 
-    void vkRenderTarget::readData( [[maybe_unused]] const vec4<U16> rect, [[maybe_unused]] GFXImageFormat imageFormat, [[maybe_unused]] GFXDataFormat dataType, [[maybe_unused]] std::pair<bufferPtr, size_t> outData ) const noexcept
+    void vkRenderTarget::readData( [[maybe_unused]] const vec4<U16> rect, [[maybe_unused]] GFXImageFormat imageFormat, [[maybe_unused]] GFXDataFormat dataType, [[maybe_unused]] const PixelAlignment& pixelPackAlignment, [[maybe_unused]] std::pair<bufferPtr, size_t> outData ) const noexcept
     {
 
     }

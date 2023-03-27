@@ -33,7 +33,6 @@ IMPLEMENT_COMMAND(BindShaderResourcesCommand);
 IMPLEMENT_COMMAND(BeginDebugScopeCommand);
 IMPLEMENT_COMMAND(EndDebugScopeCommand);
 IMPLEMENT_COMMAND(AddDebugMessageCommand);
-IMPLEMENT_COMMAND(DrawTextCommand);
 IMPLEMENT_COMMAND(DispatchComputeCommand);
 IMPLEMENT_COMMAND(MemoryBarrierCommand);
 IMPLEMENT_COMMAND(ReadBufferDataCommand);
@@ -389,24 +388,6 @@ string ToString(const AddDebugMessageCommand& cmd, const U16 indent) {
     return ret;
 }
 
-string ToString(const DrawTextCommand& cmd, const U16 indent) {
-    string ret = "\n";
-    size_t i = 0;
-    for (const TextElement& element : cmd._batch.data()) {
-        ret.append("    ");
-        for (U16 j = 0; j < indent; ++j) {
-            ret.append("    ");
-        }
-        string string;
-        for (const auto& it : element.text()) {
-            string.append(it.c_str());
-            string.append("\n");
-        }
-        ret.append(Util::StringFormat("%d: Text: [ %s ]", i++, string.c_str()));
-    }
-    return ret;
-}
-
 string ToString(const DispatchComputeCommand& cmd, U16 indent) {
     return Util::StringFormat(" [ Group sizes: %d %d %d]", cmd._computeGroupSize.x, cmd._computeGroupSize.y, cmd._computeGroupSize.z);
 }
@@ -493,10 +474,6 @@ string ToString(const CommandBase& cmd, U16 indent) {
         case CommandType::ADD_DEBUG_MESSAGE:
         {
             ret.append(ToString(static_cast<const AddDebugMessageCommand&>(cmd), indent));
-        }break;
-        case CommandType::DRAW_TEXT:
-        {
-            ret.append(ToString(static_cast<const DrawTextCommand&>(cmd), indent));
         }break;
         case CommandType::DISPATCH_COMPUTE:
         {

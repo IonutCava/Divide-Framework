@@ -109,7 +109,7 @@ namespace Divide
         if ( _guiTimersMS[to_base(TimerClass::APP_TIME)][0] >= FpsDisplay )
         {
             _GUI->modifyText( "underwater",
-                             Util::StringFormat( "Underwater [ %s ] | WaterLevel [%f] ]",
+                             Util::StringFormat( "Underwater [ %s ] | WaterLevel [%.2f] ]",
                                                  state()->playerState( 0 ).cameraUnderwater() ? "true" : "false",
                                                  state()->waterBodies()[0]._positionW.y ), false );
             _GUI->modifyText( "RenderBinCount",
@@ -340,7 +340,7 @@ namespace Divide
             Util::StringFormat( "Elapsed time: %5.0f", Time::Game::ElapsedSeconds() ) );
         _GUI->addText( "underwater", pixelPosition( 60, 115 ), Font::DIVIDE_DEFAULT,
                       UColour4( 64, 200, 64, 255 ),
-            Util::StringFormat( "Underwater [ %s ] | WaterLevel [%f] ]", "false", 0 ) );
+            Util::StringFormat( "Underwater [ %s ] | WaterLevel [%.2f] ]", "false", 0 ) );
         _GUI->addText( "RenderBinCount", pixelPosition( 60, 135 ), Font::BATANG,
                       UColour4( 164, 64, 64, 255 ),
             Util::StringFormat( "Number of items in Render Bin: %d", 0 ) );

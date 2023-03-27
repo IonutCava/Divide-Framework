@@ -13,6 +13,7 @@
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
+#include "GUI/Headers/GUI.h"
 #include "Scenes/Headers/SceneShaderData.h"
 
 #include "Managers/Headers/RenderPassManager.h"
@@ -51,62 +52,6 @@
 #include "Platform/Video/RenderBackend/Vulkan/Textures/Headers/vkTexture.h"
 
 #include "Headers/CommandBufferPool.h"
-
-#define FONTSTASH_IMPLEMENTATION
-#include "Headers/fontstash.h"
-
-namespace
-{
-    static int dummyfons__renderCreate( void* userPtr, int width, int height )
-    {
-        return 1;
-    }
-    static int dummyfons__renderResize( void* userPtr, int width, int height )
-    {
-        // Reuse create to resize too.
-        return dummyfons__renderCreate( userPtr, width, height );
-    }
-    static void dummyfons__renderUpdate( void* userPtr, int* rect, const unsigned char* data )
-    {
-    }
-    static void dummyfons__renderDraw( void* userPtr, const FONSvert* verts, int nverts )
-    {
-    }
-    static void dummyfons__renderDelete( void* userPtr )
-    {
-    }
-};
-
-FONS_DEF FONScontext* dummyfonsCreate( int width, int height, int flags )
-{
-    FONSparams params;
-
-    FONScontext* dummy = (FONScontext*)malloc( sizeof( FONScontext ) );
-    if ( dummy == nullptr ) goto error;
-    memset( dummy, 0, sizeof( FONScontext ) );
-
-    memset( &params, 0, sizeof params );
-    params.width = width;
-    params.height = height;
-    params.flags = (unsigned char)flags;
-    params.renderCreate = dummyfons__renderCreate;
-    params.renderResize = dummyfons__renderResize;
-    params.renderUpdate = dummyfons__renderUpdate;
-    params.renderDraw = dummyfons__renderDraw;
-    params.renderDelete = dummyfons__renderDelete;
-    params.userPtr = dummy;
-
-    return fonsCreateInternal( &params );
-
-error:
-    if ( dummy != nullptr ) free( dummy );
-    return nullptr;
-}
-
-FONS_DEF void dummyfonsDelete( FONScontext* ctx )
-{
-    fonsDeleteInternal( ctx );
-}
 
 namespace Divide
 {
@@ -392,12 +337,6 @@ namespace Divide
 
         if ( hardwareState != ErrorCode::NO_ERR )
         {
-            if ( fonsContext() == nullptr )
-            {
-                Console::errorfn( Locale::Get( _ID( "ERROR_FONT_INIT" ) ) );
-                return ErrorCode::FONT_INIT_ERROR;
-            }
-
             // Validate initialization
             return hardwareState;
         }
@@ -923,67 +862,6 @@ namespace Divide
             RenderTargetNames::REFLECTION_CUBE = _rtPool->allocateRT( refDesc )._targetID;
         }
         {
-            ShaderModuleDescriptor vertModule = {};
-            vertModule._moduleType = ShaderType::VERTEX;
-            vertModule._sourceFile = "ImmediateModeEmulation.glsl";
-            vertModule._variant = "GUI";
-
-            ShaderModuleDescriptor fragModule = {};
-            fragModule._moduleType = ShaderType::FRAGMENT;
-            fragModule._sourceFile = "ImmediateModeEmulation.glsl";
-            fragModule._variant = "GUI";
-
-            ShaderProgramDescriptor shaderDescriptor = {};
-            shaderDescriptor._modules.push_back( vertModule );
-            shaderDescriptor._modules.push_back( fragModule );
-
-            ResourceDescriptor immediateModeShader( "ImmediateModeEmulationGUI" );
-            immediateModeShader.waitForReady( true );
-            immediateModeShader.propertyDescriptor( shaderDescriptor );
-            _textRenderShader = CreateResource<ShaderProgram>( cache, immediateModeShader, loadTasks );
-            _textRenderShader->addStateCallback( ResourceState::RES_LOADED, [this]( CachedResource* res )
-                                                 {
-                                                     PipelineDescriptor descriptor = {};
-                                                     descriptor._shaderProgramHandle = _textRenderShader->handle();
-                                                     descriptor._stateHash = get2DStateBlock();
-                                                     descriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
-                                                     descriptor._vertexFormat._vertexBindings.emplace_back()._strideInBytes = 2 * sizeof ( F32 ) + 2 * sizeof( F32 ) + 4 * sizeof( U8 );
-                                                     AttributeDescriptor& descPos = descriptor._vertexFormat._attributes[to_base( AttribLocation::POSITION )]; //vec2
-                                                     AttributeDescriptor& descUV = descriptor._vertexFormat._attributes[to_base( AttribLocation::TEXCOORD )];  //vec2
-                                                     AttributeDescriptor& descColour = descriptor._vertexFormat._attributes[to_base( AttribLocation::COLOR )]; //vec4
-
-                                                     descPos._vertexBindingIndex = 0u;
-                                                     descPos._componentsPerElement = 2u;
-                                                     descPos._dataType = GFXDataFormat::FLOAT_32;
-
-                                                     descUV._vertexBindingIndex = 0u;
-                                                     descUV._componentsPerElement = 2u;
-                                                     descUV._dataType = GFXDataFormat::FLOAT_32;
-
-                                                     descColour._vertexBindingIndex = 0u;
-                                                     descColour._componentsPerElement = 4u;
-                                                     descColour._dataType = GFXDataFormat::UNSIGNED_BYTE;
-                                                     descColour._normalized = true;
-
-                                                     descPos._strideInBytes = 0u;
-                                                     descUV._strideInBytes  = 2 * sizeof(F32);
-                                                     descColour._strideInBytes = 2 * sizeof(F32) + 2 * sizeof(F32);
-
-                                                     BlendingSettings& blend = descriptor._blendStates._settings[0u];
-                                                     descriptor._blendStates._blendColour = DefaultColours::BLACK_U8;
-
-                                                     blend.enabled( true );
-                                                     blend.blendSrc( BlendProperty::SRC_ALPHA );
-                                                     blend.blendDest( BlendProperty::INV_SRC_ALPHA );
-                                                     blend.blendOp( BlendOperation::ADD );
-                                                     blend.blendSrcAlpha( BlendProperty::ONE );
-                                                     blend.blendDestAlpha( BlendProperty::ZERO );
-                                                     blend.blendOpAlpha( BlendOperation::COUNT );
-                                                     
-                                                     _textRenderPipeline = newPipeline( descriptor );
-                                                 } );
-        }
-        {
             ShaderModuleDescriptor compModule = {};
             compModule._moduleType = ShaderType::COMPUTE;
             compModule._defines.emplace_back( Util::StringFormat( "LOCAL_SIZE %d", DEPTH_REDUCE_LOCAL_SIZE ) );
@@ -1315,7 +1193,6 @@ namespace Divide
 
         GFX::DestroyPools();
         MemoryManager::SAFE_DELETE( _rtPool );
-        _fonts.clear();
         _previewDepthMapShader = nullptr;
         _previewRenderTargetColour = nullptr;
         _previewRenderTargetDepth = nullptr;
@@ -1324,7 +1201,6 @@ namespace Divide
         _HIZCullProgram = nullptr;
         _displayShader = nullptr;
         _depthShader = nullptr;
-        _textRenderShader = nullptr;
         _blurBoxShaderSingle = nullptr;
         _blurBoxShaderLayered = nullptr;
         _blurGaussianShaderSingle = nullptr;
@@ -2345,10 +2221,6 @@ namespace Divide
 
                     setClipPlanes( commandBuffer.get<GFX::SetClipPlanesCommand>( cmd )->_clippingPlanes );
                 } break;
-                case GFX::CommandType::DRAW_TEXT:
-                {
-                    drawText( commandBuffer.get<GFX::DrawTextCommand>( cmd )->_batch );
-                }break;
                 case GFX::CommandType::EXTERNAL:
                 {
                     PROFILE_SCOPE( "EXTERNAL", Profiler::Category::Graphics );
@@ -2564,124 +2436,6 @@ namespace Divide
 #pragma endregion
 
 #pragma region Drawing functions
-    /// Try to find the requested font in the font cache. Load on cache miss.
-    I32 GFXDevice::getFont( const Str64& fontName )
-    {
-        if ( _fontCache.first.compare( fontName ) != 0 )
-        {
-            _fontCache.first = fontName;
-            const U64 fontNameHash = _ID( fontName.c_str() );
-            // Search for the requested font by name
-            const auto& it = _fonts.find( fontNameHash );
-            // If we failed to find it, it wasn't loaded yet
-            if ( it == std::cend( _fonts ) )
-            {
-                // Fonts are stored in the general asset directory -> in the GUI
-                // subfolder -> in the fonts subfolder
-                ResourcePath fontPath( Paths::g_assetsLocation + Paths::g_GUILocation + Paths::g_fontsPath );
-                fontPath += fontName.c_str();
-                // We use FontStash to load the font file
-                _fontCache.second = fonsAddFont( _fonsContext, fontName.c_str(), fontPath.c_str() );
-                // If the font is invalid, inform the user, but map it anyway, to avoid
-                // loading an invalid font file on every request
-                if ( _fontCache.second == FONS_INVALID )
-                {
-                    Console::errorfn( Locale::Get( _ID( "ERROR_FONT_FILE" ) ), fontName.c_str() );
-                }
-                // Save the font in the font cache
-                hashAlg::insert( _fonts, fontNameHash, _fontCache.second );
-
-            }
-            else
-            {
-                _fontCache.second = it->second;
-            }
-        }
-
-        // Return the font
-        return _fontCache.second;
-    }
-
-    void GFXDevice::drawText( const TextElementBatch& batch, GFX::CommandBuffer& bufferInOut, const bool pushCamera ) const
-    {
-        drawText( GFX::DrawTextCommand{ batch }, bufferInOut, pushCamera );
-    }
-
-    void GFXDevice::drawText( const GFX::DrawTextCommand& cmd, GFX::CommandBuffer& bufferInOut, const bool pushCamera ) const
-    {
-        static GFX::BeginDebugScopeCommand   s_beginDebugScopeCmd{ "Draw Text" };
-
-        GFX::EnqueueCommand( bufferInOut, s_beginDebugScopeCmd );
-        if ( pushCamera )
-        {
-            GFX::EnqueueCommand( bufferInOut, GFX::PushCameraCommand{ Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->snapshot() } );
-        }
-        GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ _textRenderPipeline } );
-        GFX::EnqueueCommand( bufferInOut, GFX::SendPushConstantsCommand{ _textRenderConstants } );
-        GFX::EnqueueCommand( bufferInOut, cmd );
-        if ( pushCamera )
-        {
-            GFX::EnqueueCommand( bufferInOut, GFX::PopCameraCommand{} );
-        }
-
-        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
-    }
-
-    void GFXDevice::drawText( const TextElementBatch& batch )
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        const I32 width = renderingResolution().width;
-        const I32 height = renderingResolution().height;
-
-        size_t drawCount = 0;
-        size_t previousStyle = 0;
-
-        fonsClearState( fonsContext() );
-        for ( const TextElement& entry : batch.data() )
-        {
-            if ( previousStyle != entry.textLabelStyleHash() )
-            {
-                const TextLabelStyle& textLabelStyle = TextLabelStyle::get( entry.textLabelStyleHash() );
-                const UColour4& colour = textLabelStyle.colour();
-                // Retrieve the font from the font cache
-                const I32 font = getFont( TextLabelStyle::fontName( textLabelStyle.font() ) );
-                // The font may be invalid, so skip this text label
-                if ( font != FONS_INVALID )
-                {
-                    fonsSetFont( fonsContext(), font );
-                }
-                fonsSetBlur( fonsContext(), textLabelStyle.blurAmount() );
-                fonsSetBlur( fonsContext(), textLabelStyle.spacing() );
-                fonsSetAlign( fonsContext(), textLabelStyle.alignFlag() );
-                fonsSetSize( fonsContext(), to_F32( textLabelStyle.fontSize() ) );
-                fonsSetColour( fonsContext(), colour.r, colour.g, colour.b, colour.a );
-                previousStyle = entry.textLabelStyleHash();
-            }
-
-            const F32 textX = entry.position().d_x.d_scale * width + entry.position().d_x.d_offset;
-            const F32 textY = height - (entry.position().d_y.d_scale * height + entry.position().d_y.d_offset);
-
-            F32 lh = 0;
-            fonsVertMetrics( fonsContext(), nullptr, nullptr, &lh );
-
-            const TextElement::TextType& text = entry.text();
-            const size_t lineCount = text.size();
-            for ( size_t i = 0; i < lineCount; ++i )
-            {
-                fonsDrawText( fonsContext(),
-                              textX,
-                              textY - lh * i,
-                              text[i].c_str(),
-                              nullptr );
-            }
-            drawCount += lineCount;
-
-            // Register each label rendered as a draw call
-            registerDrawCalls( to_U32( drawCount ) );
-        }
-    }
-
     void GFXDevice::drawTextureInViewport( const ImageView& texture, const size_t samplerHash, const Rect<I32>& viewport, const bool convertToSrgb, const bool drawToDepthOnly, bool drawBlend, GFX::CommandBuffer& bufferInOut )
     {
         static GFX::BeginDebugScopeCommand   s_beginDebugScopeCmd{ "Draw Texture In Viewport" };
@@ -2712,7 +2466,7 @@ namespace Divide
 #pragma endregion
 
 #pragma region Debug utilities
-    void GFXDevice::renderDebugUI( const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut )
+    void GFXDevice::renderDebugUI( const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
         constexpr I32 padding = 5;
 
@@ -2727,7 +2481,8 @@ namespace Divide
                            targetViewport.z - padding,
                            targetViewport.w - padding ),
                 padding,
-                bufferInOut );
+                bufferInOut,
+                memCmdInOut);
 
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
         }
@@ -2878,7 +2633,7 @@ namespace Divide
         }
     }
 
-    void GFXDevice::renderDebugViews( const Rect<I32> targetViewport, const I32 padding, GFX::CommandBuffer& bufferInOut )
+    void GFXDevice::renderDebugViews( const Rect<I32> targetViewport, const I32 padding, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
         static vector_fast<std::tuple<string, I32, Rect<I32>>> labelStack;
         static size_t labelStyleHash = TextLabelStyle( Font::DROID_SERIF_BOLD, UColour4( 196 ), 96 ).getHash();
@@ -2988,8 +2743,7 @@ namespace Divide
 
             text.position().d_y.d_offset = to_F32( viewportOffsetY );
             text.text( labelText.c_str(), false );
-            const TextElementBatch batch{ text };
-            drawText( GFX::DrawTextCommand{ batch }, bufferInOut, false );
+            _context.gui().drawText( TextElementBatch{ text }, viewportIn, bufferInOut, memCmdInOut, false );
         }
         GFX::EnqueueCommand<GFX::PopCameraCommand>( bufferInOut );
         GFX::EnqueueCommand<GFX::SetViewportCommand>( bufferInOut )->_viewport.set( previousViewport );
@@ -3510,7 +3264,12 @@ namespace Divide
         const U32 bufferSize = width * height * numChannels;
         vector<U8> imageData( bufferSize, 0u );
         // Read the pixels from the main render target (RGBA16F)
-        screenRT->readData( GFXImageFormat::RGB, GFXDataFormat::UNSIGNED_BYTE, { (bufferPtr)imageData.data(), imageData.size() } );
+
+        const PixelAlignment pixelPackAlignment{
+            ._alignment = 1u
+        };
+
+        screenRT->readData( GFXImageFormat::RGB, GFXDataFormat::UNSIGNED_BYTE, pixelPackAlignment, { (bufferPtr)imageData.data(), imageData.size() } );
         // Save to file
         if ( ImageTools::SaveImage( filename,
                                     vec2<U16>( width, height ),

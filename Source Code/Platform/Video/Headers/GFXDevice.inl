@@ -89,7 +89,6 @@ inline void GFXDevice::OverrideDeviceInformation(const DeviceInformation& info) 
 inline bool GFXDevice::IsSubmitCommand(const GFX::CommandType type) noexcept {
     if (type == GFX::CommandType::EXTERNAL ||
         type == GFX::CommandType::DISPATCH_COMPUTE ||
-        type == GFX::CommandType::DRAW_TEXT ||
         type == GFX::CommandType::DRAW_COMMANDS)
     {
         return true;

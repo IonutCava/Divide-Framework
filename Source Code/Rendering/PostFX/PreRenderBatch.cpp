@@ -129,7 +129,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         _currentLuminance = CreateResource<Texture>(cache, texture);
 
         F32 val = 1.f;
-        _currentLuminance->loadData((Byte*)&val, 1u * sizeof(F32), vec2<U16>(1u));
+        _currentLuminance->createWithData((Byte*)&val, 1u * sizeof(F32), vec3<U16>(1u), {});
     }
     {
         SamplerDescriptor defaultSampler = {};
@@ -460,7 +460,11 @@ void PreRenderBatch::adaptiveExposureControl(const bool state) noexcept {
 
 F32 PreRenderBatch::adaptiveExposureValue() const {
     if (adaptiveExposureControl()) {
-        const auto[data, size] = _currentLuminance->readData(0, GFXDataFormat::FLOAT_32);
+        const PixelAlignment pixelPackAlignment{
+            ._alignment = 1u
+        };
+
+        const auto[data, size] = _currentLuminance->readData(0, pixelPackAlignment, GFXDataFormat::FLOAT_32);
         if (size > 0) {
             return *reinterpret_cast<F32*>(data.get());
         }

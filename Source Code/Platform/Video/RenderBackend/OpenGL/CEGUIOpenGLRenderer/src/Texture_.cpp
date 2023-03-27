@@ -271,15 +271,20 @@ void OpenGLTexture::loadFromMemory(const void* buffer, const Sizef& buffer_size,
 void OpenGLTexture::loadUncompressedTextureBuffer(const Rectf& dest_area,
                                                   const GLvoid* buffer) const
 {
+    const Divide::PixelAlignment pixelUnpackAlignment = {
+        ._alignment = 1u
+    };
 
-    Divide::GL_API::GetStateTracker().setPixelUnpackAlignment(1);
+    Divide::GL_API::GetStateTracker().setPixelUnpackAlignment(pixelUnpackAlignment);
+
     glTextureSubImage2D(d_ogltexture, 0,
-                    static_cast<GLint>(dest_area.left()),
-                    static_cast<GLint>(dest_area.top()),
-                    static_cast<GLsizei>(dest_area.getWidth()),
-                    static_cast<GLsizei>(dest_area.getHeight()),
-                    d_format, d_subpixelFormat, buffer);
-    Divide::GL_API::GetStateTracker().setPixelUnpackAlignment();
+                        static_cast<GLint>(dest_area.left()),
+                        static_cast<GLint>(dest_area.top()),
+                        static_cast<GLsizei>(dest_area.getWidth()),
+                        static_cast<GLsizei>(dest_area.getHeight()),
+                        d_format, d_subpixelFormat, buffer);
+
+    Divide::GL_API::GetStateTracker().setPixelUnpackAlignment({});
 }
 
 //----------------------------------------------------------------------------//
@@ -430,9 +435,12 @@ void OpenGLTexture::blitToMemory(void* targetData, size_t buffSize)
       }
       else
       {
-          Divide::GL_API::GetStateTracker().setPixelPackAlignment(1);
+          const Divide::PixelAlignment pixelPackAlignment = {
+             ._alignment = 1u
+          };
+          Divide::GL_API::GetStateTracker().setPixelPackAlignment(pixelPackAlignment);
           glGetTextureImage(d_ogltexture, 0, d_format, d_subpixelFormat, (gl::GLsizei)buffSize, targetData);
-          Divide::GL_API::GetStateTracker().setPixelPackAlignment();
+          Divide::GL_API::GetStateTracker().setPixelPackAlignment({});
       }
     
 }

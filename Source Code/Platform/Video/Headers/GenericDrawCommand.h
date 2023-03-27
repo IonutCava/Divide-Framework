@@ -39,14 +39,16 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 
 struct IndirectDrawCommand {
-    U32 indexCount    {0u};
-    U32 instanceCount {1u};
-    U32 firstIndex    {0u};
     union
     {
-      U32 baseVertex{ 0u };
-      U32 vertexOffset;
+        U32 indexCount{ 0u };
+        U32 vertexCount;
     };
+
+    U32 instanceCount {1u};
+    U32 firstIndex    {0u};
+    U32 baseVertex{ 0u };
+
     union
     {
       U32 baseInstance{ 0u };

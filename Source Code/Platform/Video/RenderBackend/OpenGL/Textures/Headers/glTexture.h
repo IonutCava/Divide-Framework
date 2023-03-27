@@ -59,14 +59,15 @@ class glTexture final : public Texture {
 
     static void copy(const glTexture* source, U8 sourceSamples, const glTexture* destination, U8 destinationSamples, const CopyTexParams& params);
 
-    TextureReadbackData readData(U16 mipLevel, GFXDataFormat desiredFormat) const override;
+    TextureReadbackData readData(U16 mipLevel, const PixelAlignment& pixelPackAlignment, GFXDataFormat desiredFormat) const override;
 
     PROPERTY_R_IW(GLuint, textureHandle, GLUtil::k_invalidObjectID);
 
    protected:
     void postLoad() override;
     void reserveStorage();
-    void loadDataInternal(const ImageTools::ImageData& imageData) override;
+    void loadDataInternal(const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment ) override;
+    void loadDataInternal( const Byte* data, size_t size, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) override;
     void prepareTextureData(U16 width, U16 height, U16 depth, bool emptyAllocation) override;
     void submitTextureData() override;
 

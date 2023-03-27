@@ -491,11 +491,11 @@ namespace Divide
                         {
                             if ( drawCommand._cmd.baseInstance > 0u )
                             {
-                                glDrawArraysInstancedBaseInstance( primitiveType, drawCommand._cmd.firstIndex, drawCommand._cmd.indexCount, drawCommand._cmd.instanceCount, drawCommand._cmd.baseInstance );
+                                glDrawArraysInstancedBaseInstance( primitiveType, drawCommand._cmd.baseVertex, drawCommand._cmd.vertexCount, drawCommand._cmd.instanceCount, drawCommand._cmd.baseInstance );
                             }
                             else
                             {
-                                glDrawArraysInstanced( primitiveType, drawCommand._cmd.firstIndex, drawCommand._cmd.indexCount, drawCommand._cmd.instanceCount );
+                                glDrawArraysInstanced( primitiveType, drawCommand._cmd.baseVertex, drawCommand._cmd.vertexCount, drawCommand._cmd.instanceCount );
                             }
                         }
                 }
@@ -538,11 +538,11 @@ namespace Divide
                         {
                             if ( drawCommand._cmd.baseInstance > 0u )
                             {
-                                glDrawArraysInstancedBaseInstance( primitiveType, drawCommand._cmd.firstIndex, drawCommand._cmd.indexCount, 1u, drawCommand._cmd.baseInstance );
+                                glDrawArraysInstancedBaseInstance( primitiveType, drawCommand._cmd.baseVertex, drawCommand._cmd.vertexCount, 1u, drawCommand._cmd.baseInstance );
                             }
                             else [[likely]]
                             {
-                                glDrawArrays( primitiveType, drawCommand._cmd.firstIndex, drawCommand._cmd.indexCount );
+                                glDrawArrays( primitiveType, drawCommand._cmd.baseVertex, drawCommand._cmd.vertexCount );
                             }
                         }
                     }

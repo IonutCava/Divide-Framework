@@ -40,6 +40,14 @@ namespace Divide {
 
 struct SamplerDescriptor;
 
+struct PixelAlignment
+{
+    size_t _alignment{ 4u };
+    size_t _rowLength{ 0u };
+    size_t _skipPixels{ 0u };
+    size_t _skipRows{ 0u };
+};
+
 /// Use to define a texture with details such as type, image formats, etc
 /// We do not define copy constructors as we must define descriptors only with POD
 class TextureDescriptor final : public PropertyDescriptor {
@@ -67,6 +75,7 @@ class TextureDescriptor final : public PropertyDescriptor {
     /// Use SRGB colour space
     PROPERTY_RW(bool, srgb, false);
     PROPERTY_RW(bool, normalized, true);
+    PROPERTY_RW(bool, allowRegionUpdates, false);
     PROPERTY_RW(ImageTools::ImportOptions, textureOptions);
     PROPERTY_RW(MipMappingState, mipMappingState, MipMappingState::AUTO);
 
