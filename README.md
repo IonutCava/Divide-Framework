@@ -6,6 +6,13 @@ Website: [divide-studio.com](http://www.divide-studio.com)
 
 ToDo List: [Trello.com](https://trello.com/b/mujYqtxR/divide-todo)
 
+Yup, YAGE. Yet Another Game Engine. A toy engine, mind you, never intended for general release or something people will ever require support with.
+Something I use to experiment on, learn new things, practice, prototype and eventually, try and ship a game or two with.
+
+This code started during my first days in uni. The very first iteration looked like this: [Youtube link](https://www.youtube.com/watch?v=VWNjdmhz-lM).
+
+Next to no programming experience and it shows in the parts of code that survived since then (all the SceneNode and Resource stuff).
+
 ## Features:
 
 * OpenGL 4.6 (AZDO) renderer
