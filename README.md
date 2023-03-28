@@ -16,17 +16,17 @@ This code started during my first days in uni. The very first iteration looked l
 
 Next to no programming experience and it shows in the parts of code that survived since then (all the SceneNode and Resource stuff). Started with a lot of OOP and "Clean Code" with C++98 and currently developed using as much DoD as possible (basic structs and enums, inheritance mostly for interfaces or restrictions {NonCopyable, NonMovable, etc}) but with C++20 for ease of use (constexpr and concepts over templates, threading and filesystem builtin, lambdas over function pointers etc).
 
-It got me through learning old school OpenGL (1.x, 2.x), core GL (3.x, 4.x) and some AZDO techniques (indirect rendering, bindless textures, persistently mapped buffers, etc).
+It got me through learning old-school OpenGL (1.x, 2.x), core GL (3.x, 4.x) and some AZDO techniques (indirect rendering, bindless textures, persistently mapped buffers, etc).
 Currently using it to learn Vulkan 1.3 (why would I learn about framebuffers,subpasses and renderpasses now? Maybe for mobile, but I don't see myself doing that now, and if I did, I'd learn that as required).
 
 The reason it's published on GitHub are:
-* so I can store the code somewhere central keep track of changes.
-* if people do like I do and search for various things (functions, enums, etc) on github, maybe my code can help.
+* so I can store the code somewhere central and keep track of changes.
+* if people do as I do and search for various things (functions, enums, etc) on github, maybe my code can help.
 * if anyone is struggling with solving a problem that I already banged my head against, feel free to get inspired by it.
 
-If you plan to use any parts of this code in a commercial product, couple of things:
-* you sure?
-* please let me know as I'm curios to see where and why and also, I'd highly appreciate it.
+If you plan to use any parts of this code in a commercial product, a couple of things:
+* Are you sure?
+* Please let me know as I'm curios to see where and why and also, I'd highly appreciate it.
 
 
 ## Features:
@@ -69,8 +69,8 @@ Grass/Sky/Fog
 
 # Third Party libs:
 ```
-If I accidentely breached any license, please open an issue and I will address it immediately.
-I did try to comply with all of them, but I may have missed something    .
+If I accidentally breached any license, please open an issue and I will address it immediately.
+I did try to comply with all of them, but I may have missed something.
 ```
 
 * EASTL: https://github.com/electronicarts/EASTL
