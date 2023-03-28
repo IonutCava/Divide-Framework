@@ -1,17 +1,33 @@
 # Divide-Framework
 
-**Work In Progress**
-
 Website: [divide-studio.com](http://www.divide-studio.com)
 
-ToDo List: [Trello.com](https://trello.com/b/mujYqtxR/divide-todo)
+ToDo List: [Trello.com/divide-todo](https://trello.com/b/mujYqtxR/divide-todo)
 
+Twitter: [Twitter.com/KIonutzR](https://twitter.com/KIonutzR)
+
+Mastodon: [peoplemaking.games/@KIonutzR](https://peoplemaking.games/@KIonutzR)
+
+## The How and the Why
 Yup, YAGE. Yet Another Game Engine. A toy engine, mind you, never intended for general release or something people will ever require support with.
 Something I use to experiment on, learn new things, practice, prototype and eventually, try and ship a game or two with.
 
 This code started during my first days in uni. The very first iteration looked like this: [Youtube link](https://www.youtube.com/watch?v=VWNjdmhz-lM).
 
-Next to no programming experience and it shows in the parts of code that survived since then (all the SceneNode and Resource stuff).
+Next to no programming experience and it shows in the parts of code that survived since then (all the SceneNode and Resource stuff). Started with a lot of OOP and "Clean Code" with C++98 and currently developed using as much DoD as possible (basic structs and enums, inheritance mostly for interfaces or restrictions {NonCopyable, NonMovable, etc}) but with C++20 for ease of use (constexpr and concepts over templates, threading and filesystem builtin, lambdas over function pointers etc).
+
+It got me through learning old school OpenGL (1.x, 2.x), core GL (3.x, 4.x) and some AZDO techniques (indirect rendering, bindless textures, persistently mapped buffers, etc).
+Currently using it to learn Vulkan 1.3 (why would I learn about framebuffers,subpasses and renderpasses now? Maybe for mobile, but I don't see myself doing that now, and if I did, I'd learn that as required).
+
+The reason it's published on GitHub are:
+* so I can store the code somewhere central keep track of changes.
+* if people do like I do and search for various things (functions, enums, etc) on github, maybe my code can help.
+* if anyone is struggling with solving a problem that I already banged my head against, feel free to get inspired by it.
+
+If you plan to use any parts of this code in a commercial product, couple of things:
+* you sure?
+* please let me know as I'm curios to see where and why and also, I'd highly appreciate it.
+
 
 ## Features:
 
