@@ -196,7 +196,7 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut, GFX::Me
     // Probes come after reflective nodes in buffer positions and array layers for management reasons (rate of update and so on)
     params._stagePass = { RenderStage::REFLECTION, RenderPassType::COUNT, Config::MAX_REFLECTIVE_NODES_IN_VIEW + rtLayerIndex(), static_cast<RenderStagePass::VariantType>(ReflectorType::CUBE) };
 
-    ClearBit(params._drawMask, to_U8(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES)));
+    params._drawMask &= ~(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES));
     params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )]._colour = DefaultColours::BLUE;
 
     _context.gfx().generateCubeMap(params,

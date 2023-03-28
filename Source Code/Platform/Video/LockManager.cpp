@@ -40,7 +40,7 @@ namespace Divide
             {
                 case RenderAPI::Vulkan:
                 {
-                    reset = frameNumber - syncObject._ptr->_frameNumber >= Config::MAX_FRAMES_IN_FLIGHT;
+                    reset = frameNumber - syncObject._ptr->_frameNumber > Config::MAX_FRAMES_IN_FLIGHT;
                 } break;
                 case RenderAPI::OpenGL:
                 {

@@ -71,10 +71,10 @@ namespace Divide
             case SceneNodeType::TYPE_TRANSFORM:
             {
                 constexpr U32 compareMask = to_U32( ComponentType::SPOT_LIGHT ) |
-                    to_U32( ComponentType::POINT_LIGHT ) |
-                    to_U32( ComponentType::DIRECTIONAL_LIGHT ) |
-                    to_U32( ComponentType::ENVIRONMENT_PROBE );
-                if ( TestBit( node->componentMask(), compareMask ) )
+                                            to_U32( ComponentType::POINT_LIGHT ) |
+                                            to_U32( ComponentType::DIRECTIONAL_LIGHT ) |
+                                            to_U32( ComponentType::ENVIRONMENT_PROBE );
+                if ( node->componentMask() & compareMask )
                 {
                     return RenderBinType::IMPOSTOR;
                 }

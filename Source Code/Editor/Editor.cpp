@@ -1395,7 +1395,7 @@ namespace Divide
 
         if ( ret == nullptr )
         {
-            GenericVertexData_ptr newBuffer = _context.gfx().newGVD( newSize, "IMGUI" );
+            GenericVertexData_ptr newBuffer = _context.gfx().newGVD( newSize, Util::StringFormat("IMGUI_%d", bufferGUID).c_str() );
             _IMGUIBuffers[bufferGUID] = newBuffer;
             ret = newBuffer.get();
         }
@@ -2748,7 +2748,7 @@ namespace Divide
         if ( selection != nullptr && newComponentType != ComponentType::COUNT )
         {
             selection->AddComponents( to_U32( newComponentType ), true );
-            return TestBit( selection->componentMask(), to_U32( newComponentType ) );
+            return selection->componentMask() & to_U32( newComponentType );
         }
 
         return false;
@@ -2778,7 +2778,7 @@ namespace Divide
         if ( selection != nullptr && newComponentType != ComponentType::COUNT )
         {
             selection->RemoveComponents( to_U32( newComponentType ) );
-            return !TestBit( selection->componentMask(), to_U32( newComponentType ) );
+            return !( selection->componentMask() & to_U32( newComponentType ) );
         }
 
         return false;

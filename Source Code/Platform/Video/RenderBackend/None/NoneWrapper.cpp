@@ -149,6 +149,10 @@ namespace Divide
     {
         return true;
     }
+    void NONE_API::onShaderRegisterChanged( [[maybe_unused]] ShaderProgram* program, [[maybe_unused]] const bool state )
+    {
+    }
+
     void NONE_API::initDescriptorSets()
     {
 

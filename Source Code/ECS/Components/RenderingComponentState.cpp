@@ -20,17 +20,14 @@ void RenderingComponent::toggleRenderOption(RenderOptions option, bool state, bo
             }
         }
 
-        if (state) {
-            SetBit(_renderMask, to_U32(option));
-        } else {
-            ClearBit(_renderMask, to_U32(option));
-        }
+        state ? _renderMask |= to_U32(option) : _renderMask &= ~to_U32(option);
+
         onRenderOptionChanged(option, state);
     }
 }
 
 bool RenderingComponent::renderOptionEnabled(const RenderOptions option) const noexcept {
-    return TestBit(_renderMask, option);
+    return _renderMask & to_base(option);
 }
 
 void RenderingComponent::toggleBoundsDraw(const bool showAABB, const bool showBS, const bool showOBB, bool recursive) {

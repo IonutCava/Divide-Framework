@@ -75,15 +75,15 @@ class Object3D : public SceneNode {
     virtual void setMaterialTpl(const Material_ptr& material);
 
     void setObjectFlag(const ObjectFlag flag) noexcept {
-        SetBit(_geometryFlagMask, flag);
+        _geometryFlagMask |= to_base(flag);
     }
 
     void clearObjectFlag(const ObjectFlag flag) noexcept {
-        ClearBit(_geometryFlagMask, flag);
+        _geometryFlagMask &= ~to_base(flag);
     }
 
     bool getObjectFlag(const ObjectFlag flag) const noexcept {
-        return TestBit(_geometryFlagMask, flag);
+        return _geometryFlagMask & to_base(flag);
     }
 
     U32 getObjectFlagMask() const noexcept {

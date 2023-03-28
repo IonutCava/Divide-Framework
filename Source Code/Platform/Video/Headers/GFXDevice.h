@@ -75,6 +75,7 @@ class Texture;
 class Object3D;
 class GFXRTPool;
 class IMPrimitive;
+class SceneManager;
 class ResourceCache;
 class SceneGraphNode;
 class SceneShaderData;
@@ -101,6 +102,7 @@ namespace Attorney {
     class GFXDeviceGraphicsResource;
     class GFXDeviceGFXRTPool;
     class GFXDeviceSceneManager;
+    class GFXDeviceShaderProgram;
     class KernelApplication;
 };
 
@@ -242,6 +244,7 @@ class GFXDevice final : public PlatformContextComponent, public FrameListener {
     friend class Attorney::GFXDeviceKernel;
     friend class Attorney::GFXDeviceGraphicsResource;
     friend class Attorney::GFXDeviceGFXRTPool;
+    friend class Attorney::GFXDeviceShaderProgram;
     friend class Attorney::GFXDeviceSceneManager;
 
 public:
@@ -464,12 +467,14 @@ protected:
     void debugDrawSpheres( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
     void debugDrawFrustums( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
 
+
+    void onShaderRegisterChanged( ShaderProgram* program, bool state );
+
 protected:
     friend class RenderPassManager;
     void renderDebugUI(const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
 
 protected:
-    friend class SceneManager;
     friend class RenderPass;
     friend class RenderPassExecutor;
 
@@ -535,7 +540,7 @@ private:
     ShaderProgram_ptr _HIZCullProgram = nullptr;
     ShaderProgram_ptr _displayShader = nullptr;
     ShaderProgram_ptr _depthShader = nullptr;
-        ShaderProgram_ptr _blurBoxShaderSingle = nullptr;
+    ShaderProgram_ptr _blurBoxShaderSingle = nullptr;
     ShaderProgram_ptr _blurBoxShaderLayered = nullptr;
     ShaderProgram_ptr _blurGaussianShaderSingle = nullptr;
     ShaderProgram_ptr _blurGaussianShaderLayered = nullptr;
@@ -676,6 +681,13 @@ namespace Attorney {
         }
 
         friend class Divide::SceneManager;
+    };  
+    
+    class GFXDeviceShaderProgram {
+        static void onShaderRegisterChanged(GFXDevice& device, ShaderProgram* program, const bool state) noexcept {
+            device.onShaderRegisterChanged(program, state);
+        }
+        friend class Divide::ShaderProgram;
     };
 };  // namespace Attorney
 };  // namespace Divide

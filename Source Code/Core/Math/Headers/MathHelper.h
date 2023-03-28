@@ -130,48 +130,6 @@ void SeedRandom();
 template<typename Engine = std::mt19937_64>
 void SeedRandom(U32 seed);
 
-template<typename Mask, typename Type> requires std::is_enum_v<Type>
-[[nodiscard]] constexpr bool TestBit(Mask bitMask, Type bit) noexcept;
-
-template<typename Mask, typename Type> requires std::is_enum_v<Type>
-constexpr void SetBit(Mask& bitMask, Type bit) noexcept;
-
-template<typename Mask, typename Type> requires std::is_enum_v<Type>
-constexpr void ClearBit(Mask& bitMask, Type bit) noexcept;
-
-template<typename Mask, typename Type> requires std::is_enum_v<Type>
-constexpr void ToggleBit(Mask& bitMask, Type bit) noexcept;
-
-template<typename Mask, typename Type> requires std::is_enum_v<Type>
-constexpr void ToggleBit(Mask& bitMask, Type bit, bool state) noexcept;
-
-template<typename Mask>
-[[nodiscard]] constexpr bool TestBit(Mask bitMask, Mask bit) noexcept;
-template<typename Mask>
-constexpr void SetBit(Mask& bitMask, Mask bit) noexcept;
-template<typename Mask>
-constexpr void ClearBit(Mask& bitMask, Mask bit) noexcept;
-template<typename Mask>
-constexpr void ToggleBit(Mask& bitMask, Mask bit) noexcept;
-template<typename Mask>
-constexpr void ToggleBit(Mask& bitMask, Mask bit, bool state) noexcept;
-
-template<typename Mask, typename Type>  requires std::is_enum_v<Type>
-[[nodiscard]] constexpr bool TestBit(std::atomic<Mask> bitMask, Type bit) noexcept;
-template<typename Mask, typename Type>  requires std::is_enum_v<Type>
-constexpr void SetBit(std::atomic<Mask>& bitMask, Type bit) noexcept;
-template<typename Mask, typename Type>  requires std::is_enum_v<Type>
-constexpr void ClearBit(std::atomic<Mask>& bitMask, Type bit) noexcept;
-
-template<typename Mask>
-[[nodiscard]] constexpr bool TestBit(const std::atomic<Mask>& bitMask, Mask bit) noexcept;
-template<typename Mask>
-constexpr void SetBit(std::atomic<Mask>& bitMask, Mask bit) noexcept;
-template<typename Mask>
-constexpr void ClearBit(std::atomic<Mask>& bitMask, Mask bit) noexcept;
-template<typename Mask>
-constexpr void ToggleBit(std::atomic<Mask>& bitMask, Mask bit) noexcept;
-
 template <typename T> 
 constexpr I32 SIGN(const T val) {
     return (val < 0) ? -1 : (val > 0) ? 1 : 0;

@@ -128,8 +128,7 @@ void SceneGraphNode::AddComponents(const U32 componentMask, const bool allowDupl
         const U32 componentBit = 1 << i;
 
         // Only add new components;
-        if (TestBit(componentMask, componentBit) &&
-            (allowDuplicates || !TestBit(_componentMask, componentBit)))
+        if ((componentMask & componentBit) && (allowDuplicates || !(_componentMask & componentBit)))
         {
             _componentMask |= componentBit;
             SGNComponent::construct(static_cast<ComponentType>(componentBit), this);
@@ -141,7 +140,7 @@ void SceneGraphNode::AddSGNComponentInternal(SGNComponent* comp)
 {
     Hacks._editorComponents.emplace_back(&comp->editorComponent());
 
-    SetBit(_componentMask, to_U32(comp->type()));
+    _componentMask |= to_U32(comp->type());
 
     if (comp->type() == ComponentType::TRANSFORM)
     {   //Ewww
@@ -174,7 +173,7 @@ void SceneGraphNode::RemoveSGNComponentInternal(SGNComponent* comp)
                                                  }),
                                   std::end(Hacks._editorComponents));
 
-    ClearBit(_componentMask, to_U32(comp->type()));
+    _componentMask &= ~to_U32(comp->type());
 
     if (comp->type() == ComponentType::TRANSFORM)
     {
@@ -195,8 +194,7 @@ void SceneGraphNode::RemoveComponents(const U32 componentMask)
     for (auto i = 1u; i < to_base(ComponentType::COUNT) + 1; ++i)
     {
         const U32 componentBit = 1 << i;
-        if (TestBit(componentMask, componentBit) &&
-            TestBit(_componentMask, componentBit))
+        if ((componentMask & componentBit) && (_componentMask & componentBit))
         {
             SGNComponent::destruct(static_cast<ComponentType>(componentBit), this);
         }
@@ -210,7 +208,7 @@ bool SceneGraphNode::HasComponents(const ComponentType componentType) const
 
 bool SceneGraphNode::HasComponents(const U32 componentMaskIn) const
 {
-    return TestBit(componentMask(), componentMaskIn);
+    return componentMask() & componentMaskIn;
 }
 
 void SceneGraphNode::setTransformDirty(const U32 transformMask)
@@ -457,7 +455,7 @@ bool SceneGraphNode::isChildOfType(const U16 typeMask) const
     SceneGraphNode* parentNode = parent();
     while (parentNode != nullptr)
     {
-        if (TestBit(typeMask, to_base(parentNode->getNode<>().type())))
+        if (typeMask & to_base(parentNode->getNode<>().type()))
         {
             return true;
         }
@@ -764,11 +762,11 @@ namespace
 
         bool ret = true;
 
-        if ( TestBit( renderFilter, RenderPassCuller::EntityFilter::PRIMITIVES ) && IsPrimitive( node.type() ))
+        if ( (renderFilter & to_base(RenderPassCuller::EntityFilter::PRIMITIVES)) && IsPrimitive( node.type() ))
         {
             ret = false;
         }
-        if ( TestBit( renderFilter, RenderPassCuller::EntityFilter::MESHES ) && IsMesh( node.type() ) )
+        if ( (renderFilter & to_base(RenderPassCuller::EntityFilter::MESHES)) && IsMesh( node.type() ) )
         {
             ret = false;
         }
@@ -780,7 +778,7 @@ namespace
                 default: break;
                 case SceneNodeType::TYPE_TERRAIN:
                 {
-                    if ( TestBit( renderFilter, RenderPassCuller::EntityFilter::TERRAIN ) )
+                    if ( renderFilter & to_base(RenderPassCuller::EntityFilter::TERRAIN ) )
                     {
                         ret = false;
                     }
@@ -788,7 +786,7 @@ namespace
                 } break;
                 case SceneNodeType::TYPE_DECAL:
                 {
-                    if ( TestBit( renderFilter, RenderPassCuller::EntityFilter::DECALS ) )
+                    if ( renderFilter & to_base(RenderPassCuller::EntityFilter::DECALS ) )
                     {
                         ret = false;
                     }
@@ -796,35 +794,35 @@ namespace
                 } break;
                 case SceneNodeType::TYPE_WATER:
                 {
-                    if ( TestBit( renderFilter, RenderPassCuller::EntityFilter::WATER ) )
+                    if ( renderFilter & to_base(RenderPassCuller::EntityFilter::WATER ) )
                     {
                         ret = false;
                     }
                 } break;
                 case SceneNodeType::TYPE_PARTICLE_EMITTER:
                 {
-                    if ( TestBit( renderFilter, RenderPassCuller::EntityFilter::PARTICLES ) )
+                    if ( renderFilter & to_base(RenderPassCuller::EntityFilter::PARTICLES ) )
                     {
                         ret = false;
                     }
                 } break;
                 case SceneNodeType::TYPE_SKY:
                 {
-                    if ( TestBit( renderFilter, RenderPassCuller::EntityFilter::SKY ) )
+                    if ( renderFilter & to_base(RenderPassCuller::EntityFilter::SKY ) )
                     {
                         ret = false;
                     }
                 } break;
                 case SceneNodeType::TYPE_INFINITEPLANE:
                 {
-                    if ( TestBit( renderFilter, RenderPassCuller::EntityFilter::PRIMITIVES ) )
+                    if ( renderFilter & to_base(RenderPassCuller::EntityFilter::PRIMITIVES ) )
                     {
                         ret = false;
                     }
                 } break;
                 case SceneNodeType::TYPE_VEGETATION:
                 {
-                    if ( TestBit( renderFilter, RenderPassCuller::EntityFilter::VEGETATION ) )
+                    if ( renderFilter & to_base(RenderPassCuller::EntityFilter::VEGETATION ) )
                     {
                         ret = false;
                     }
@@ -866,21 +864,21 @@ FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
         return FrustumCollision::FRUSTUM_OUT;
     }
 
-    if (TestBit(cullFlags, CullOptions::KEEP_SKY_NODES) && _node->type() == SceneNodeType::TYPE_SKY)
+    if ((cullFlags & to_base(CullOptions::KEEP_SKY_NODES)) && _node->type() == SceneNodeType::TYPE_SKY)
     {
         return FrustumCollision::FRUSTUM_IN;
     }
 
     if (usageContext() == NodeUsageContext::NODE_STATIC)
     {
-        if (TestBit(cullFlags, CullOptions::CULL_STATIC_NODES))
+        if (cullFlags & to_base(CullOptions::CULL_STATIC_NODES))
         {
             return FrustumCollision::FRUSTUM_OUT;
         }
     }
     else
     {
-        if (TestBit(cullFlags, CullOptions::CULL_DYNAMIC_NODES))
+        if (cullFlags & to_base(CullOptions::CULL_DYNAMIC_NODES))
         {
             return FrustumCollision::FRUSTUM_OUT;
         }
@@ -892,7 +890,7 @@ FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
         return FrustumCollision::FRUSTUM_OUT;
     }
 
-    if (TestBit(cullFlags, CullOptions::CULL_AGAINST_LOD) && !hasFlag(Flags::IS_CONTAINER))
+    if ((cullFlags & to_base(CullOptions::CULL_AGAINST_LOD)) && !hasFlag(Flags::IS_CONTAINER))
     {
         PROFILE_SCOPE("cullNode - LoD check", Profiler::Category::Scene );
 
@@ -961,9 +959,9 @@ FrustumCollision SceneGraphNode::frustumCullNode(const NodeCullParams& params,
     // We may also wish to always render this node for whatever reason (e.g. to preload shaders)
     // We may also wish to keep the sky always visible (e.g. for dynamic cubemaps)
     // We may also not have a BoundsComponent for whatever reason
-    if (!TestBit(cullFlags, CullOptions::CULL_AGAINST_FRUSTUM) ||
+    if (!(cullFlags & to_base(CullOptions::CULL_AGAINST_FRUSTUM) ||
         hasFlag(Flags::VISIBILITY_LOCKED) ||
-        (TestBit(cullFlags, CullOptions::KEEP_SKY_NODES) && _node->type() == SceneNodeType::TYPE_SKY) ||
+        ((cullFlags & to_base(CullOptions::KEEP_SKY_NODES)) && _node->type() == SceneNodeType::TYPE_SKY)) ||
         bComp == nullptr) 
     {
         return FrustumCollision::FRUSTUM_IN;
@@ -990,7 +988,7 @@ FrustumCollision SceneGraphNode::frustumCullNode(const NodeCullParams& params,
     }
 
     FrustumCollision collisionType = FrustumCollision::FRUSTUM_IN;
-    if (TestBit(cullFlags, CullOptions::CULL_AGAINST_FRUSTUM))
+    if (cullFlags & to_base(CullOptions::CULL_AGAINST_FRUSTUM))
     {
         PROFILE_SCOPE("cullNode - Bounding Sphere & Box Frustum Test", Profiler::Category::Scene );
         // Sphere is in range, so check bounds primitives against the frustum
@@ -1155,7 +1153,7 @@ void SceneGraphNode::setFlag(const Flags flag, const bool recursive)
 {
     if (!hasFlag(flag))
     {
-        SetBit(_nodeFlags, to_U32(flag));
+        _nodeFlags |= to_base(flag);
         ECS::CustomEvent evt
         {
            ECS::CustomEvent::Type::EntityFlagChanged,
@@ -1183,7 +1181,7 @@ void SceneGraphNode::clearFlag(const Flags flag, const bool recursive)
 {
     if (hasFlag(flag))
     {
-        ClearBit(_nodeFlags, to_U32(flag));
+        _nodeFlags &= ~to_U32(flag);
         ECS::CustomEvent evt
         {
             ECS::CustomEvent::Type::EntityFlagChanged,

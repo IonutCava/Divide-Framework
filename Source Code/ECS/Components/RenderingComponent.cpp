@@ -421,13 +421,23 @@ namespace Divide
         if ( refreshData )
         {
             U8 drawCmdOptions = 0u;
-            ToggleBit( drawCmdOptions,
-                       CmdRenderOptions::RENDER_GEOMETRY,
-                       (renderOptionEnabled( RenderOptions::RENDER_GEOMETRY ) && sceneRenderState.isEnabledOption( SceneRenderState::RenderOptions::RENDER_GEOMETRY )) );
+            if ( renderOptionEnabled( RenderOptions::RENDER_GEOMETRY ) && sceneRenderState.isEnabledOption( SceneRenderState::RenderOptions::RENDER_GEOMETRY ) )
+            {
+                drawCmdOptions |= to_base( CmdRenderOptions::RENDER_GEOMETRY );
+            }
+            else
+            {
+                drawCmdOptions &= ~to_base( CmdRenderOptions::RENDER_GEOMETRY );
+            }
 
-            ToggleBit( drawCmdOptions,
-                       CmdRenderOptions::RENDER_WIREFRAME,
-                       (renderOptionEnabled( RenderOptions::RENDER_WIREFRAME ) || sceneRenderState.isEnabledOption( SceneRenderState::RenderOptions::RENDER_WIREFRAME )) );
+            if ( renderOptionEnabled( RenderOptions::RENDER_WIREFRAME ) && sceneRenderState.isEnabledOption( SceneRenderState::RenderOptions::RENDER_WIREFRAME ) )
+            {
+                drawCmdOptions |= to_base( CmdRenderOptions::RENDER_WIREFRAME );
+            }
+            else
+            {
+                drawCmdOptions &= ~to_base( CmdRenderOptions::RENDER_WIREFRAME );
+            }
 
             if ( !hasCommands )
             {

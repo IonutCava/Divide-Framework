@@ -46,9 +46,23 @@ ErrorCode DisplayWindow::init(const U32 windowFlags,
                               const WindowType initialType,
                               const WindowDescriptor& descriptor)
 {
-    const bool vsync = TestBit(descriptor.flags, to_base(WindowDescriptor::Flags::VSYNC));
-    ToggleBit(_flags, WindowFlags::VSYNC, vsync);
-    ToggleBit(_flags, WindowFlags::OWNS_RENDER_CONTEXT, !TestBit(descriptor.flags, to_base(WindowDescriptor::Flags::SHARE_CONTEXT)));
+    const bool vsync = descriptor.flags & to_base(WindowDescriptor::Flags::VSYNC);
+    if (vsync) {
+        _flags |= to_base( WindowFlags::VSYNC );
+    }
+    else
+    {
+        _flags &= ~to_base( WindowFlags::VSYNC );
+    }
+
+    if( descriptor.flags & to_base( WindowDescriptor::Flags::SHARE_CONTEXT ) )
+    {
+        _flags &= ~to_base( WindowFlags::OWNS_RENDER_CONTEXT );
+    }
+    else
+    {
+        _flags |= to_base( WindowFlags::OWNS_RENDER_CONTEXT );
+    }
 
     _previousType = _type = initialType;
 
@@ -141,22 +155,22 @@ bool DisplayWindow::onSDLEvent(const SDL_Event event) {
             return true;
         };
         case SDL_WINDOWEVENT_ENTER: {
-            ToggleBit(_flags, WindowFlags::IS_HOVERED, true);
+            _flags |= to_base( WindowFlags::IS_HOVERED );
             notifyListeners(WindowEvent::MOUSE_HOVER_ENTER, args);
             return true;
         };
         case SDL_WINDOWEVENT_LEAVE: {
-            ToggleBit(_flags, WindowFlags::IS_HOVERED, false);
+            _flags &= to_base( WindowFlags::IS_HOVERED );
             notifyListeners(WindowEvent::MOUSE_HOVER_LEAVE, args);
             return true;
         };
         case SDL_WINDOWEVENT_FOCUS_GAINED: {
-            ToggleBit(_flags, WindowFlags::HAS_FOCUS, true);
+            _flags |= to_base( WindowFlags::HAS_FOCUS );
             notifyListeners(WindowEvent::GAINED_FOCUS, args);
             return true;
         };
         case SDL_WINDOWEVENT_FOCUS_LOST: {
-            ToggleBit(_flags, WindowFlags::HAS_FOCUS, false);
+            _flags &= to_base( WindowFlags::HAS_FOCUS );
             notifyListeners(WindowEvent::LOST_FOCUS, args);
             return true;
         };
@@ -190,13 +204,15 @@ bool DisplayWindow::onSDLEvent(const SDL_Event event) {
             return true;
         };
         case SDL_WINDOWEVENT_SHOWN: {
+            _flags &= to_base( WindowFlags::HIDDEN );
             notifyListeners(WindowEvent::SHOWN, args);
-            ToggleBit(_flags, WindowFlags::HIDDEN, false);
+
             return true;
         };
         case SDL_WINDOWEVENT_HIDDEN: {
+            _flags |= to_base( WindowFlags::HIDDEN);
             notifyListeners(WindowEvent::HIDDEN, args);
-            ToggleBit(_flags, WindowFlags::HIDDEN, true);
+
             return true;
         };
         case SDL_WINDOWEVENT_MINIMIZED: {
@@ -328,50 +344,62 @@ void DisplayWindow::decorated(const bool state) noexcept {
     // documentation states that this is a no-op on redundant state, so no need to bother checking
     SDL_SetWindowBordered(_sdlWindow, state ? SDL_TRUE : SDL_FALSE);
 
-    ToggleBit(_flags, WindowFlags::DECORATED, state);
+    state ? _flags |= to_base( WindowFlags::DECORATED ) : _flags &= to_base( WindowFlags::DECORATED );
 }
 
 void DisplayWindow::hidden(const bool state) noexcept {
-    if (TestBit(SDL_GetWindowFlags(_sdlWindow), to_U32(SDL_WINDOW_SHOWN)) == state) {
-        if (state) {
+    if (((SDL_GetWindowFlags(_sdlWindow) & to_U32(SDL_WINDOW_SHOWN)) != 0u) == state)
+    {
+        if (state)
+        {
             SDL_HideWindow(_sdlWindow);
-        } else {
+        }
+        else
+        {
             SDL_ShowWindow(_sdlWindow);
         }
     }
 
-    ToggleBit(_flags, WindowFlags::HIDDEN, state);
+    state ? _flags |= to_base( WindowFlags::HIDDEN ) : _flags &= to_base( WindowFlags::HIDDEN );
 }
 
 void DisplayWindow::restore() noexcept {
     SDL_RestoreWindow(_sdlWindow);
 
-    ClearBit(_flags, WindowFlags::MAXIMIZED);
-    ClearBit(_flags, WindowFlags::MINIMIZED);
+    _flags &= ~to_base(WindowFlags::MAXIMIZED);
+    _flags &= ~to_base(WindowFlags::MINIMIZED);
 }
 
 void DisplayWindow::minimized(const bool state) noexcept {
-    if (TestBit(SDL_GetWindowFlags(_sdlWindow), to_U32(SDL_WINDOW_MINIMIZED)) != state) {
-        if (state) {
+    if (((SDL_GetWindowFlags(_sdlWindow) & to_U32(SDL_WINDOW_MINIMIZED)) != 0u) != state)
+    {
+        if (state)
+        {
             SDL_MinimizeWindow(_sdlWindow);
-        } else {
+        }
+        else
+        {
             restore();
         }
     }
 
-    ToggleBit(_flags, WindowFlags::MINIMIZED, state);
+    state ? _flags |= to_base( WindowFlags::MINIMIZED ) : _flags &= to_base( WindowFlags::MINIMIZED );
 }
 
 void DisplayWindow::maximized(const bool state) noexcept {
-    if (TestBit(SDL_GetWindowFlags(_sdlWindow), to_U32(SDL_WINDOW_MAXIMIZED)) != state) {
-        if (state) {
+    if (((SDL_GetWindowFlags(_sdlWindow) & to_U32(SDL_WINDOW_MAXIMIZED)) != 0u) != state)
+    {
+        if (state)
+        {
             SDL_MaximizeWindow(_sdlWindow);
-        } else {
+        }
+        else
+        {
             restore();
         }
     }
 
-    ToggleBit(_flags, WindowFlags::MAXIMIZED, state);
+    state ? _flags |= to_base( WindowFlags::MAXIMIZED ) : _flags &= to_base( WindowFlags::MAXIMIZED );
 }
 
 bool DisplayWindow::grabState() const noexcept {

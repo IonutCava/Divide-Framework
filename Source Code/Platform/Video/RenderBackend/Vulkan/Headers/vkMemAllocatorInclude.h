@@ -30,13 +30,14 @@
  */
 
 #ifndef VMA_HEAVY_ASSERT
-#define VMA_HEAVY_ASSERT(expr) Divide::DIVIDE_ASSERT(expr)
-
-#define VMA_DEBUG_LOG(format, ...) do { \
-        Divide::Console::printfn(format, ##__VA_ARGS__); \
-    } while(false)
-
+#define VMA_HEAVY_ASSERT(expr) assert(expr)
 #endif //VMA_HEAVY_ASSERT
+
+#ifndef VMA_ASSERT
+#define VMA_ASSERT(expr) Divide::DIVIDE_ASSERT(expr)
+#endif //VMA_ASSERT
+
+#define VMA_DEBUG_LOG(format, ...) do { Divide::Console::printfn(format, ##__VA_ARGS__); } while(false)
 
 #ifdef _MSVC_LANG
 

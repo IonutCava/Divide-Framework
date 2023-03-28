@@ -35,15 +35,15 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 
     inline bool isEnabledOption(const GenericDrawCommand& cmd, const CmdRenderOptions option) noexcept {
-        return TestBit(cmd._renderOptions, to_base(option));
+        return cmd._renderOptions & to_base(option);
     }
 
     inline void enableOption(GenericDrawCommand& cmd, const CmdRenderOptions option) noexcept {
-        SetBit(cmd._renderOptions, to_base(option));
+        cmd._renderOptions |= to_base(option);
     }
 
     inline void disableOption(GenericDrawCommand& cmd, const CmdRenderOptions option) noexcept {
-        ClearBit(cmd._renderOptions, to_base(option));
+        cmd._renderOptions &= ~to_base(option);
     }
 
     inline void toggleOption(GenericDrawCommand& cmd, const CmdRenderOptions option) noexcept {
@@ -59,11 +59,11 @@ namespace Divide {
     }
 
     inline void enableOptions(GenericDrawCommand& cmd, const BaseType<CmdRenderOptions> optionsMask) noexcept {
-        SetBit(cmd._renderOptions, optionsMask);
+        cmd._renderOptions |= to_base(optionsMask);
     }
 
     inline void disableOptions(GenericDrawCommand& cmd, const BaseType<CmdRenderOptions> optionsMask) noexcept {
-        ClearBit(cmd._renderOptions, optionsMask);
+        cmd._renderOptions &= ~to_base(optionsMask);
     }
 
     inline void setOptions(GenericDrawCommand& cmd, const BaseType<CmdRenderOptions> optionsMask, const bool state) noexcept {

@@ -110,7 +110,7 @@ namespace Divide {
     }
 
     void TransformComponent::setTransformDirty(const U32 typeMask) noexcept {
-        SetBit(_transformUpdatedMask, typeMask);
+        _transformUpdatedMask |= typeMask;
         _cacheDirty = (typeMask != to_base(TransformType::NONE)) || _cacheDirty;
     }
 

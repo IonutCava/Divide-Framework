@@ -79,25 +79,25 @@ void PlatformContext::idle(const bool fast)
         pool->flushCallbackQueue();
     }
 
-    if (TestBit( componentMask(), SystemComponentType::GFXDevice))
+    if (componentMask() & to_base(SystemComponentType::GFXDevice))
     {
         _gfx->idle(fast);
     }
-    if (TestBit( componentMask(), SystemComponentType::SFXDevice))
+    if (componentMask() & to_base(SystemComponentType::SFXDevice))
     {
         _sfx->idle();
     }
-    if (TestBit( componentMask(), SystemComponentType::PXDevice))
+    if (componentMask() & to_base(SystemComponentType::PXDevice))
     {
         _pfx->idle();
     }
-    if (TestBit( componentMask(), SystemComponentType::DebugInterface))
+    if (componentMask() & to_base(SystemComponentType::DebugInterface))
     {
         _debug->idle(*this);
     }
     if constexpr(Config::Build::ENABLE_EDITOR)
     {
-        if (TestBit( componentMask(), SystemComponentType::Editor))
+        if (componentMask() & to_base(SystemComponentType::Editor))
         {
             _editor->idle();
         }

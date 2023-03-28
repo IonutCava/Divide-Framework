@@ -370,9 +370,9 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         params._target = SceneEnvironmentProbePool::ReflectionTarget()._targetID;
         params._stagePass = { RenderStage::REFLECTION, RenderPassType::COUNT, Config::MAX_REFLECTIVE_NODES_IN_VIEW + SkyProbeLayerIndex(), static_cast<RenderStagePass::VariantType>(ReflectorType::CUBE) };
 
-        ClearBit(params._drawMask, to_U8(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES)));
-        ClearBit(params._drawMask, to_U8(1u << to_base(RenderPassParams::Flags::DRAW_STATIC_NODES)));
-        SetBit(params._drawMask,   to_U8(1u << to_base(RenderPassParams::Flags::DRAW_SKY_NODES)));
+        params._drawMask &= ~(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES));
+        params._drawMask &= ~(1u << to_base(RenderPassParams::Flags::DRAW_STATIC_NODES));
+        params._drawMask |=  (1u << to_base(RenderPassParams::Flags::DRAW_SKY_NODES));
 
         context.generateCubeMap(params,
                                 SkyProbeLayerIndex(),

@@ -74,36 +74,48 @@ public:
 
     void updateResolution(U16 newWidth, U16 newHeight);
 
-    void pushFilter(const FilterType filter, const bool overrideScene = false) {
-        if (!getFilterState(filter)) {
-            if (overrideScene) {
-                SetBit(_overrideFilterStack, 1u << to_U32(filter));
-            } else {
-                SetBit(_filterStack, 1u << to_U32(filter));
+    void pushFilter(const FilterType filter, const bool overrideScene = false)
+    {
+        if (!getFilterState(filter))
+        {
+            if (overrideScene)
+            {
+                _overrideFilterStack |= 1u << to_U32(filter);
+            }
+            else
+            {
+                _filterStack |= 1u << to_U32(filter);
             }
             _filtersDirty = true;
             getFilterBatch().onFilterToggle(filter, true);
         }
     }
 
-    void popFilter(const FilterType filter, const bool overrideScene = false) {
-        if (getFilterState(filter)) {
-            if (overrideScene) {
-                ClearBit(_overrideFilterStack, 1u << to_U32(filter));
-            } else {
-                ClearBit(_filterStack, 1u << to_U32(filter));
+    void popFilter(const FilterType filter, const bool overrideScene = false)
+    {
+        if (getFilterState(filter))
+        {
+            if (overrideScene)
+            {
+                _overrideFilterStack &= ~(1u << to_U32(filter));
+            }
+            else
+            {
+                _filterStack &= ~(1u << to_U32(filter));
             }
             _filtersDirty = true;
             getFilterBatch().onFilterToggle(filter, false);
         }
     }
 
-    [[nodiscard]] bool getFilterState(const FilterType filter) const noexcept {
-        return TestBit(_filterStack, 1u << to_U32(filter)) ||
-               TestBit(_overrideFilterStack, 1u << to_U32(filter));
+    [[nodiscard]] bool getFilterState(const FilterType filter) const noexcept
+    {
+        return (_filterStack & 1u << to_U32(filter)) ||
+               (_overrideFilterStack & 1u << to_U32(filter));
     }
 
-    [[nodiscard]] PreRenderBatch& getFilterBatch() noexcept {
+    [[nodiscard]] PreRenderBatch& getFilterBatch() noexcept
+    {
         return _preRenderBatch;
     }
 

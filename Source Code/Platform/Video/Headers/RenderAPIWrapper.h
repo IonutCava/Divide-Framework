@@ -165,6 +165,8 @@ protected:
 
     virtual bool bindShaderResources(DescriptorSetUsage usage, const DescriptorSet& bindings, bool isDirty) = 0;
 
+    virtual void onShaderRegisterChanged( ShaderProgram* program, bool state ) = 0;
+
     virtual void initDescriptorSets() = 0;
 };
 

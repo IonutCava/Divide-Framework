@@ -51,11 +51,11 @@ namespace Divide {
     }
 
     inline bool DisplayWindow::isHovered() const noexcept {
-        return TestBit(_flags, WindowFlags::IS_HOVERED);
+        return _flags & to_base(WindowFlags::IS_HOVERED);
     }
 
     inline bool DisplayWindow::hasFocus() const noexcept {
-        return TestBit(_flags, WindowFlags::HAS_FOCUS);
+        return _flags & to_base(WindowFlags::HAS_FOCUS);
     }
 
     inline U8 DisplayWindow::opacity() const noexcept {
@@ -67,19 +67,19 @@ namespace Divide {
     }
 
     inline bool DisplayWindow::minimized() const noexcept {
-        return TestBit(_flags, WindowFlags::MINIMIZED);
+        return _flags & to_base(WindowFlags::MINIMIZED);
     }
 
     inline bool DisplayWindow::maximized() const noexcept {
-        return TestBit(_flags, WindowFlags::MAXIMIZED);
+        return _flags & to_base(WindowFlags::MAXIMIZED);
     }
 
     inline bool DisplayWindow::decorated() const noexcept {
-        return TestBit(_flags, WindowFlags::DECORATED);
+        return _flags & to_base(WindowFlags::DECORATED);
     }
 
         inline bool DisplayWindow::hidden() const noexcept {
-        return TestBit(_flags, WindowFlags::HIDDEN);
+        return _flags & to_base(WindowFlags::HIDDEN);
     }
 
     inline WindowType DisplayWindow::type() const noexcept {

@@ -52,7 +52,7 @@ namespace Divide
             }
         }
 
-        if ( TestBit( cullFlags, CullOptions::CULL_AGAINST_CLIPPING_PLANES ) )
+        if ( cullFlags & to_base(CullOptions::CULL_AGAINST_CLIPPING_PLANES ) )
         {
             PROFILE_SCOPE( "Clip cull", Profiler::Category::Scene );
             const I32 nodeCount = to_I32( nodesInOut.size() );
@@ -80,7 +80,7 @@ namespace Divide
             {
                 if ( state )
                 {
-                    ClearBit( cullFlags, CullOptions::CULL_AGAINST_CLIPPING_PLANES );
+                    cullFlags &= ~to_base(CullOptions::CULL_AGAINST_CLIPPING_PLANES);
                     break;
                 }
             }
@@ -153,7 +153,7 @@ namespace Divide
             {
                 // If the parent node is all in, we don't need to frustum check the children, but we still
                 // need to grab the distance to each of them
-                ClearBit( cullFlags, to_base( CullOptions::CULL_AGAINST_FRUSTUM ) );
+                cullFlags &= ~to_base(CullOptions::CULL_AGAINST_FRUSTUM);
             }
 
             SceneGraphNode::ChildContainer& children = currentNode->getChildren();

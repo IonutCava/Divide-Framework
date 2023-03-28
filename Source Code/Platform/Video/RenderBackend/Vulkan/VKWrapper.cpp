@@ -173,27 +173,27 @@ namespace Divide
                 }
                 else
                 {
-                    if ( TestBit( mask, ShaderStageVisibility::VERTEX ) )
+                    if ( mask & to_base(ShaderStageVisibility::VERTEX ) )
                     {
                         ret |= VK_SHADER_STAGE_VERTEX_BIT;
                     }
-                    if ( TestBit( mask, ShaderStageVisibility::GEOMETRY ) )
+                    if ( mask & to_base(ShaderStageVisibility::GEOMETRY ) )
                     {
                         ret |= VK_SHADER_STAGE_GEOMETRY_BIT;
                     }
-                    if ( TestBit( mask, ShaderStageVisibility::TESS_CONTROL ) )
+                    if ( mask & to_base(ShaderStageVisibility::TESS_CONTROL ) )
                     {
                         ret |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
                     }
-                    if ( TestBit( mask, ShaderStageVisibility::TESS_EVAL ) )
+                    if ( mask & to_base(ShaderStageVisibility::TESS_EVAL ) )
                     {
                         ret |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
                     }
-                    if ( TestBit( mask, ShaderStageVisibility::FRAGMENT ) )
+                    if ( mask & to_base(ShaderStageVisibility::FRAGMENT ) )
                     {
                         ret |= VK_SHADER_STAGE_FRAGMENT_BIT;
                     }
-                    if ( TestBit( mask, ShaderStageVisibility::COMPUTE ) )
+                    if ( mask & to_base(ShaderStageVisibility::COMPUTE ) )
                     {
                         ret |= VK_SHADER_STAGE_COMPUTE_BIT;
                     }
@@ -316,7 +316,7 @@ namespace Divide
     void VKDeletionQueue::push( DELEGATE<void, VkDevice>&& function )
     {
         LockGuard<Mutex> w_lock( _deletionLock );
-        _deletionQueue.emplace_back( MOV( function ), TestBit(flags(), Flags::TREAT_AS_TRANSIENT) ? Config::MAX_FRAMES_IN_FLIGHT : 0 );
+        _deletionQueue.emplace_back( MOV( function ), (flags() & to_base(Flags::TREAT_AS_TRANSIENT)) ? Config::MAX_FRAMES_IN_FLIGHT : 0 );
     }
 
     void VKDeletionQueue::flush( VkDevice device, const bool force )
@@ -627,11 +627,13 @@ namespace Divide
             s_deviceDeleteQueue.flush( _device->getVKDevice(), true );
             vkDeviceWaitIdle( _device->getVKDevice() );
         }
-        const ErrorCode err = windowState._swapChain->create( TestBit( windowState._window->flags(), WindowFlags::VSYNC ),
+        const ErrorCode err = windowState._swapChain->create( windowState._window->flags() & to_base(WindowFlags::VSYNC),
                                                               _context.context().config().runtime.adaptiveSync,
                                                               windowState._surface );
 
         DIVIDE_ASSERT( err == ErrorCode::NO_ERR );
+        // Clear ALL sync objects as they are all invalid after recreating the swapchain. vkDeviceWaitIdle should resolve potential sync issues.
+        LockManager::CleanExpiredSyncObjects( RenderAPI::Vulkan, U64_MAX);
     }
 
     void VK_API::initStatePerWindow( VKPerWindowState& windowState)
@@ -977,20 +979,29 @@ namespace Divide
         return ErrorCode::NO_ERR;
     }
 
+    void VK_API::destroyPipeline( CompiledPipeline& pipeline )
+    {
+        DIVIDE_ASSERT( pipeline._vkPipelineLayout != VK_NULL_HANDLE );
+        DIVIDE_ASSERT( pipeline._vkPipeline != VK_NULL_HANDLE );
+
+        vkDestroyPipelineLayout( _device->getVKDevice(), pipeline._vkPipelineLayout, nullptr );
+        vkDestroyPipeline( _device->getVKDevice(), pipeline._vkPipeline, nullptr );
+        if ( pipeline._vkPipelineWireframe != VK_NULL_HANDLE )
+        {
+            vkDestroyPipeline( _device->getVKDevice(), pipeline._vkPipelineWireframe, nullptr );
+        }
+
+        pipeline._vkPipelineLayout = VK_NULL_HANDLE;
+        pipeline._vkPipeline = VK_NULL_HANDLE;
+        pipeline._vkPipelineWireframe = VK_NULL_HANDLE;
+        pipeline._isValid = false;
+    }
 
     void VK_API::destroyPipelineCache()
     {
-        for ( const auto& it : _compiledPipelines )
+        for ( auto& it : _compiledPipelines )
         {
-            DIVIDE_ASSERT( it.second._vkPipelineLayout != VK_NULL_HANDLE );
-            DIVIDE_ASSERT( it.second._vkPipeline != VK_NULL_HANDLE );
-
-            vkDestroyPipelineLayout( _device->getVKDevice(), it.second._vkPipelineLayout, nullptr );
-            vkDestroyPipeline( _device->getVKDevice(), it.second._vkPipeline, nullptr );
-            if ( it.second._vkPipelineWireframe != VK_NULL_HANDLE )
-            {
-                vkDestroyPipeline( _device->getVKDevice(), it.second._vkPipelineWireframe, nullptr );
-            }
+            destroyPipeline( it.second );
         }
 
         _compiledPipelines.clear();
@@ -1325,10 +1336,8 @@ namespace Divide
         size_t pipelineHash = pipeline.hash();
         Util::Hash_combine( pipelineHash, GetStateTracker()._activeRenderTargetID);
 
-        STUBBED("INVALIDATE COMPILED PIPELINE CACHE ON SHADER RELOAD! -Ionut")
-
         CompiledPipeline& compiledPipeline = _compiledPipelines[pipelineHash];
-        if ( compiledPipeline._vkPipeline == VK_NULL_HANDLE )
+        if ( !compiledPipeline._isValid )
         {
             const PipelineDescriptor& pipelineDescriptor = pipeline.descriptor();
             ShaderProgram* program = ShaderProgram::FindShaderProgram( pipelineDescriptor._shaderProgramHandle );
@@ -1491,6 +1500,8 @@ namespace Divide
               ._zBias = currentState.zBias(),
               ._zUnits = currentState.zUnits()
             };
+
+            compiledPipeline._isValid = true;
         }
 
         vkCmdBindPipeline( cmdBuffer, compiledPipeline._bindPoint, compiledPipeline._vkPipeline );
@@ -2431,6 +2442,27 @@ namespace Divide
 
     void VK_API::onThreadCreated( [[maybe_unused]] const std::thread::id& threadID ) noexcept
     {
+    }
+
+    void VK_API::onShaderRegisterChanged( ShaderProgram* program, const bool state )
+    {
+        if ( program == nullptr )
+        {
+            return;
+        }
+
+        for ( auto& it : _compiledPipelines )
+        {
+            if ( !it.second._isValid )
+            {
+                continue;
+            }
+            if ( it.second._program->getGUID() == program->getGUID() )
+            {
+                destroyPipeline( it.second );
+            }
+        }
+
     }
 
     VKStateTracker& VK_API::GetStateTracker() noexcept

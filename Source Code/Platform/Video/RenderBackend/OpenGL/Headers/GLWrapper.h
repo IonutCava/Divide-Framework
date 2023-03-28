@@ -112,6 +112,8 @@ private:
 
     [[nodiscard]] bool bindShaderResources(DescriptorSetUsage usage, const DescriptorSet& bindings, bool isDirty ) override;
 
+    void onShaderRegisterChanged( ShaderProgram* program, bool state ) override;
+
     [[nodiscard]] bool makeTextureViewResident(DescriptorSetUsage set, U8 bindingSlot, const ImageView& imageView, size_t samplerHash) const;
 
     bool setViewportInternal(const Rect<I32>& viewport) override;

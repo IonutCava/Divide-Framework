@@ -128,8 +128,12 @@ struct Console : NonCopyable
     static void Start() noexcept;
     static void Stop();
 
-                  static void  ToggleFlag( const Flags flag, const bool state ) { ToggleBit(s_flags, flag, state); }
-    [[nodiscard]] static bool  IsFlagSet( const Flags flag ) { return TestBit(s_flags, flag); }
+    static void  ToggleFlag( const Flags flag, const bool state )
+    {
+        state ? s_flags |= to_base(flag) : s_flags &= ~to_base(flag);
+    }
+
+    [[nodiscard]] static bool  IsFlagSet( const Flags flag ) { return s_flags & to_base(flag); }
 
     [[nodiscard]] static size_t BindConsoleOutput(const ConsolePrintCallback& guiConsoleCallback);
     [[nodiscard]] static bool   UnbindConsoleOutput(size_t& index);

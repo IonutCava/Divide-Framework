@@ -28,15 +28,15 @@ namespace Divide {
     }
 
     void TextureDescriptor::addImageUsageFlag(const ImageUsage usage) noexcept {
-        SetBit(_usageMask, 1u << to_base(usage));
+        _usageMask |= (1u << to_base(usage));
     }
 
     void TextureDescriptor::removeImageUsageFlag(const ImageUsage usage) noexcept {
-        ClearBit(_usageMask, 1u << to_base(usage));
+        _usageMask &= ~(1u << to_base(usage));
     }
 
     bool TextureDescriptor::hasUsageFlagSet(const ImageUsage usage) const noexcept {
-        return TestBit(_usageMask, 1u << to_base(usage));
+        return _usageMask & (1u << to_base(usage));
     }
 
     size_t TextureDescriptor::getHash() const noexcept {

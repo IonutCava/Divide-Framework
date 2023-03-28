@@ -1314,15 +1314,15 @@ namespace Divide
             cullParams._maxLoD = params._maxLoD;
 
             U16 cullFlags = to_base( CullOptions::DEFAULT_CULL_OPTIONS );
-            if ( !TestBit( params._drawMask, to_U8( 1 << to_base( RenderPassParams::Flags::DRAW_DYNAMIC_NODES ) ) ) )
+            if ( !( params._drawMask & to_U8( 1 << to_base( RenderPassParams::Flags::DRAW_DYNAMIC_NODES ) ) ) )
             {
                 cullFlags |= to_base( CullOptions::CULL_DYNAMIC_NODES );
             }
-            if ( !TestBit( params._drawMask, to_U8( 1 << to_base( RenderPassParams::Flags::DRAW_STATIC_NODES ) ) ) )
+            if ( !(params._drawMask & to_U8( 1 << to_base( RenderPassParams::Flags::DRAW_STATIC_NODES ) ) ) )
             {
                 cullFlags |= to_base( CullOptions::CULL_STATIC_NODES );
             }
-            if ( TestBit( params._drawMask, to_U8( 1 << to_base( RenderPassParams::Flags::DRAW_SKY_NODES ) ) ) )
+            if ( params._drawMask & to_U8( 1 << to_base( RenderPassParams::Flags::DRAW_SKY_NODES ) ) )
             {
                 cullFlags |= to_base( CullOptions::KEEP_SKY_NODES );
             }

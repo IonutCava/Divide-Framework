@@ -40,8 +40,8 @@ namespace Divide
             {
                 comp->parentSGN()->getNode().rebuildDrawCommands( false );
                 comp->rebuildDrawCommands( false );
-                SetBit( comp->_materialUpdateMask, MaterialUpdateResult::NEW_SHADER );
-                SetBit( comp->_materialUpdateMask, MaterialUpdateResult::NEW_CULL );
+                comp->_materialUpdateMask |= to_base( MaterialUpdateResult::NEW_SHADER );
+                comp->_materialUpdateMask |= to_base( MaterialUpdateResult::NEW_CULL );
             }
         }
     }
@@ -63,25 +63,25 @@ namespace Divide
             DIVIDE_ASSERT( comp->_materialInstance != nullptr );
 
             bool packagesCleared = false;
-            if ( TestBit( comp->_materialUpdateMask, MaterialUpdateResult::NEW_SHADER ) ||
-                 TestBit( comp->_materialUpdateMask, MaterialUpdateResult::NEW_CULL ) )
+            if ( comp->_materialUpdateMask & to_base(MaterialUpdateResult::NEW_SHADER ) ||
+                 comp->_materialUpdateMask & to_base(MaterialUpdateResult::NEW_CULL ) )
             {
                 comp->clearDrawPackages();
                 comp->_materialInstance->clearRenderStates();
                 packagesCleared = true;
             }
 
-            if ( TestBit( comp->_materialUpdateMask, MaterialUpdateResult::NEW_CULL ) )
+            if ( comp->_materialUpdateMask & to_base(MaterialUpdateResult::NEW_CULL ) )
             {
                 comp->_materialInstance->updateCullState();
             }
-            if ( TestBit( comp->_materialUpdateMask, MaterialUpdateResult::NEW_TRANSPARENCY ) )
+            if ( comp->_materialUpdateMask & to_base(MaterialUpdateResult::NEW_TRANSPARENCY ) )
             {
                 NOP();
             }
 
-            comp->updateReflectRefractDescriptors( TestBit( comp->_materialUpdateMask, MaterialUpdateResult::NEW_REFLECTION ),
-                                                   TestBit( comp->_materialUpdateMask, MaterialUpdateResult::NEW_REFRACTION ) );
+            comp->updateReflectRefractDescriptors( comp->_materialUpdateMask & to_base(MaterialUpdateResult::NEW_REFLECTION ),
+                                                   comp->_materialUpdateMask & to_base(MaterialUpdateResult::NEW_REFRACTION ) );
         }
 
         Material::Update( microSec );

@@ -69,7 +69,7 @@ const char* Console::FormatText( const char* format, ... ) noexcept
 }
 
 void Console::DecorateAndPrint(std::ostream& outStream, const char* text, const bool newline, const EntryType type) {
-    if (TestBit(s_flags, Flags::DECORATE_TIMESTAMP)) [[likely]]
+    if (s_flags & to_base(Flags::DECORATE_TIMESTAMP)) [[likely]]
     {
         outStream << "[ " << std::internal
                           << std::setw(9)
@@ -80,12 +80,12 @@ void Console::DecorateAndPrint(std::ostream& outStream, const char* text, const 
                   << " ] ";
     }
 
-    if ( TestBit( s_flags, Flags::DECORATE_THREAD_ID ) ) [[likely]]
+    if ( s_flags & to_base( Flags::DECORATE_THREAD_ID ) ) [[likely]]
     {
         outStream << "[ " << std::this_thread::get_id() << " ] ";
     }
 
-    if ( TestBit( s_flags, Flags::DECORATE_SEVERITY ) && (type == EntryType::WARNING || type == EntryType::ERR) )
+    if ( s_flags & to_base( Flags::DECORATE_SEVERITY ) && (type == EntryType::WARNING || type == EntryType::ERR) )
     {
         outStream << (type == EntryType::ERR ? " Error: " : " Warning: ");
     }
@@ -100,7 +100,7 @@ void Console::DecorateAndPrint(std::ostream& outStream, const char* text, const 
 
 void Console::Output(std::ostream& outStream, const char* text, const bool newline, const EntryType type)
 {
-    if ( TestBit( s_flags, Flags::ENABLE_OUTPUT ) ) [[likely]]
+    if (s_flags & to_base(Flags::ENABLE_OUTPUT) ) [[likely]]
     {
         DecorateAndPrint(outStream, text, newline, type);
     }
@@ -108,7 +108,7 @@ void Console::Output(std::ostream& outStream, const char* text, const bool newli
 
 void Console::Output(const char* text, const bool newline, const EntryType type)
 {
-    if ( TestBit( s_flags, Flags::ENABLE_OUTPUT ) )
+    if ( s_flags & to_base( Flags::ENABLE_OUTPUT ) )
     {
         stringstream_fast outStream;
         DecorateAndPrint(outStream, text, newline, type);
@@ -119,7 +119,7 @@ void Console::Output(const char* text, const bool newline, const EntryType type)
             ._type = type
         };
 
-        if ( TestBit( s_flags, Flags::PRINT_IMMEDIATE ) )
+        if ( s_flags & to_base( Flags::PRINT_IMMEDIATE ) )
         {
             PrintToFile(entry);
         }
@@ -135,7 +135,7 @@ void Console::PrintToFile(const OutputEntry& entry)
 {
     if ( s_running ) [[likely]]
     {
-        auto& outStream = (entry._type == EntryType::ERR && TestBit( s_flags, Flags::ENABLE_ERROR_STREAM ) ? std::cerr : std::cout);
+        auto& outStream = (entry._type == EntryType::ERR && s_flags & to_base( Flags::ENABLE_ERROR_STREAM ) ? std::cerr : std::cout);
         outStream << entry._text.c_str();
 
         SharedLock<SharedMutex> lock( s_callbackLock );
@@ -153,7 +153,7 @@ void Console::PrintToFile(const OutputEntry& entry)
 
 void Console::Flush()
 {
-    if ( TestBit( s_flags, Flags::ENABLE_OUTPUT ) && s_running) [[likely]]
+    if ( s_flags & to_base( Flags::ENABLE_OUTPUT ) && s_running) [[likely]]
     {
 
         size_t count{};

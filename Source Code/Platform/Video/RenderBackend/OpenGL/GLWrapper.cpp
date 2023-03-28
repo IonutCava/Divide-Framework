@@ -1002,11 +1002,11 @@ namespace Divide
                     auto& queryContext = _queryContext.emplace();
                     for ( U8 i = 0u, j = 0u; i < to_base( QueryType::COUNT ); ++i )
                     {
-                        const QueryType type = static_cast<QueryType>(toBit(i + 1));
-                        if ( TestBit( crtCmd->_queryMask, type ) )
+                        const U32 typeFlag = toBit( i + 1u );
+                        if ( crtCmd->_queryMask & typeFlag )
                         {
                             queryContext[i]._query = &GL_API::GetHardwareQueryPool()->allocate( GLUtil::glQueryTypeTable[i] );
-                            queryContext[i]._type = type;
+                            queryContext[i]._type = static_cast<QueryType>(typeFlag);
                             queryContext[i]._index = j++;
                         }
                     }
@@ -1692,6 +1692,10 @@ namespace Divide
         }
 
         return ret;
+    }
+
+    void GL_API::onShaderRegisterChanged( [[maybe_unused]] ShaderProgram* program, [[maybe_unused]] const bool state )
+    {
     }
 
     GLStateTracker& GL_API::GetStateTracker() noexcept

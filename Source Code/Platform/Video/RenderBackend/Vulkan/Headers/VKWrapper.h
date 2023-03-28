@@ -102,12 +102,15 @@ private:
     bool setViewportInternal( const Rect<I32>& newViewport, VkCommandBuffer cmdBuffer ) noexcept;
     bool setScissorInternal( const Rect<I32>& newScissor, VkCommandBuffer cmdBuffer ) noexcept;
     void destroyPipelineCache();
+    void destroyPipeline( CompiledPipeline& pipeline );
     void flushPushConstantsLocks();
     VkDescriptorSetLayout createLayoutFromBindings( const DescriptorSetUsage usage, const ShaderProgram::BindingsPerSetArray& bindings );
 
     ShaderResult bindPipeline(const Pipeline& pipeline, VkCommandBuffer cmdBuffer);
     void bindDynamicState(const VKDynamicState& currentState, VkCommandBuffer cmdBuffer) noexcept;
     [[nodiscard]] bool bindShaderResources(DescriptorSetUsage usage, const DescriptorSet& bindings, bool isDirty) override;
+
+    void onShaderRegisterChanged( ShaderProgram* program, bool state ) override;
 
 public:
     static [[nodiscard]] VKStateTracker& GetStateTracker() noexcept;

@@ -70,13 +70,13 @@ namespace Divide
             const auto validateMask = [mask]() -> U16
             {
                 U16 validMask = 0;
-                for ( U16 stateIt = 1; stateIt <= to_base( RenderOptions::COUNT ); ++stateIt )
+                for ( U16 stateIt = 1u; stateIt <= to_base( RenderOptions::COUNT ); ++stateIt )
                 {
                     const U16 bitState = toBit( stateIt );
 
-                    if ( TestBit( mask, bitState ) )
+                    if ( mask & bitState )
                     {
-                        SetBit( validMask, bitState );
+                        validMask |= to_base(bitState );
                     }
                 }
                 return validMask;
@@ -87,25 +87,25 @@ namespace Divide
                            "SceneRenderState::renderMask error: Invalid state specified!" );
             _stateMask = parsedMask;
         }
- else
- {
- _stateMask = mask;
-    }
+        else
+        {
+            _stateMask = mask;
+        }
     }
 
     bool SceneRenderState::isEnabledOption( const RenderOptions option ) const noexcept
     {
-        return TestBit( _stateMask, option );
+        return _stateMask & to_base(option);
     }
 
     void SceneRenderState::enableOption( const RenderOptions option ) noexcept
     {
-        SetBit( _stateMask, option );
+        _stateMask |= to_base(option);
     }
 
     void SceneRenderState::disableOption( const RenderOptions option ) noexcept
     {
-        ClearBit( _stateMask, option );
+        _stateMask &= ~to_base(option);
     }
 
     void SceneRenderState::toggleOption( const RenderOptions option ) noexcept

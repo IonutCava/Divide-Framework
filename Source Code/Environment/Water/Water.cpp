@@ -387,7 +387,7 @@ namespace Divide
 
         if ( !underwater )
         {
-            ClearBit( params._drawMask, to_U8( 1u << to_base( RenderPassParams::Flags::DRAW_DYNAMIC_NODES ) ) );
+            params._drawMask &= ~(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES));
         }
 
         passManager->doCustomPass( renderParams._camera, params, bufferInOut, memCmdInOut );
@@ -437,7 +437,7 @@ namespace Divide
         params._passName = "Reflection";
         params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )]._colour = DefaultColours::BLUE;
 
-        ClearBit( params._drawMask, to_U8( 1u << to_base( RenderPassParams::Flags::DRAW_DYNAMIC_NODES ) ) );
+        params._drawMask &= ~(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES));
 
         passManager->doCustomPass( _reflectionCam, params, bufferInOut, memCmdInOut );
 

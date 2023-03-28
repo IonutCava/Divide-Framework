@@ -263,20 +263,20 @@ namespace Divide
 
         if ( properties()._transparencyUpdated )
         {
-            SetBit( ret, MaterialUpdateResult::NEW_TRANSPARENCY );
+            ret |= to_base( MaterialUpdateResult::NEW_TRANSPARENCY );
             updateTransparency();
             properties()._transparencyUpdated = false;
         }
         if ( properties()._cullUpdated )
         {
-            SetBit( ret, MaterialUpdateResult::NEW_CULL );
+            ret |= to_base( MaterialUpdateResult::NEW_CULL );
             properties()._cullUpdated = false;
         }
         if ( properties()._needsNewShader || s_shadersDirty )
         {
             recomputeShaders();
             properties()._needsNewShader = false;
-            SetBit( ret, MaterialUpdateResult::NEW_SHADER );
+            ret |= to_base( MaterialUpdateResult::NEW_SHADER );
         }
 
         return ret;

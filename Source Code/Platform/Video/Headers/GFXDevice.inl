@@ -129,6 +129,8 @@ inline const GFXDevice::GFXDescriptorSet& GFXDevice::descriptorSet(const Descrip
     return _descriptorSets[to_base(usage)];
 }
 
+inline void GFXDevice::onShaderRegisterChanged( ShaderProgram* program, const bool state ) { _api->onShaderRegisterChanged( program, state ); }
+
 };  // namespace Divide
 
 #endif

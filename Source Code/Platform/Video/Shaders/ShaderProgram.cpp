@@ -1224,6 +1224,8 @@ namespace Divide
 
         assert( shaderProgram != nullptr );
 
+        Attorney::GFXDeviceShaderProgram::onShaderRegisterChanged(shaderProgram->_context, shaderProgram, true);
+
         LockGuard<SharedMutex> lock( s_programLock );
         if ( shaderProgram->handle() != SHADER_INVALID_HANDLE )
         {
@@ -1263,11 +1265,13 @@ namespace Divide
     /// Unloading/Deleting a program will unregister it from the manager
     bool ShaderProgram::UnregisterShaderProgram( const ShaderProgramHandle shaderHandle )
     {
-
         if ( shaderHandle != SHADER_INVALID_HANDLE )
         {
             LockGuard<SharedMutex> lock( s_programLock );
             ShaderProgramMapEntry& entry = s_shaderPrograms[shaderHandle._id];
+
+            Attorney::GFXDeviceShaderProgram::onShaderRegisterChanged( entry._program->_context, entry._program, false );
+
             if ( entry._generation == shaderHandle._generation )
             {
                 if ( entry._program && entry._program == s_lastRequestedShaderProgram._program )

@@ -67,8 +67,6 @@ namespace Divide
         [[nodiscard]] DescriptorSetUsage StringToDescriptorSetUsage( const string& name );
     };
 
-
-
     class ShaderModule : public GUIDWrapper, public GraphicsResource
     {
         protected:

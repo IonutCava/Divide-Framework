@@ -119,20 +119,25 @@ ErrorCode WindowManager::init(PlatformContext& context,
     descriptor.externalClose = false;
     descriptor.targetAPI = renderingAPI;
 
-    if (_context->config().runtime.enableVSync) {
-        SetBit(descriptor.flags, WindowDescriptor::Flags::VSYNC);
+    if (_context->config().runtime.enableVSync)
+    {
+        descriptor.flags |= to_base(WindowDescriptor::Flags::VSYNC);
     }
 
-    SetBit(descriptor.flags, WindowDescriptor::Flags::HIDDEN);
+    descriptor.flags |= to_base(WindowDescriptor::Flags::HIDDEN);
 
-    if (windowMode == WindowMode::FULLSCREEN) {
-        SetBit(descriptor.flags, WindowDescriptor::Flags::FULLSCREEN);
-    } else if (windowMode == WindowMode::BORDERLESS_WINDOWED) {
-        SetBit(descriptor.flags, WindowDescriptor::Flags::FULLSCREEN_DESKTOP);
+    if (windowMode == WindowMode::FULLSCREEN)
+    {
+        descriptor.flags |= to_base(WindowDescriptor::Flags::FULLSCREEN);
+    }
+    else if(windowMode == WindowMode::BORDERLESS_WINDOWED)
+    {
+        descriptor.flags |= to_base(WindowDescriptor::Flags::FULLSCREEN_DESKTOP);
     }
 
-    if (windowMode != WindowMode::WINDOWED || !_context->config().runtime.windowResizable) {
-        ClearBit(descriptor.flags, WindowDescriptor::Flags::RESIZEABLE);
+    if (windowMode != WindowMode::WINDOWED || !_context->config().runtime.windowResizable)
+    {
+        descriptor.flags &= ~to_base(WindowDescriptor::Flags::RESIZEABLE);
     }
 
     ErrorCode err = ErrorCode::NO_ERR;
@@ -226,27 +231,35 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
 
     U32 windowFlags = descriptor.targetAPI == RenderAPI::Vulkan ? SDL_WINDOW_VULKAN : descriptor.targetAPI == RenderAPI::OpenGL ? SDL_WINDOW_OPENGL : 0u;
 
-    if (TestBit(descriptor.flags, to_base(WindowDescriptor::Flags::RESIZEABLE))) {
+    if (descriptor.flags & to_base(WindowDescriptor::Flags::RESIZEABLE))
+    {
         windowFlags |= SDL_WINDOW_RESIZABLE;
     }
-    if (TestBit(descriptor.flags, to_base(WindowDescriptor::Flags::ALLOW_HIGH_DPI))) {
+    if (descriptor.flags & to_base(WindowDescriptor::Flags::ALLOW_HIGH_DPI))
+    {
         windowFlags |= SDL_WINDOW_ALLOW_HIGHDPI;
     }
-    if (TestBit(descriptor.flags, to_base(WindowDescriptor::Flags::HIDDEN))) {
+    if (descriptor.flags & to_base(WindowDescriptor::Flags::HIDDEN))
+    {
         windowFlags |= SDL_WINDOW_HIDDEN;
     }
-    if (!TestBit(descriptor.flags, to_base(WindowDescriptor::Flags::DECORATED))) {
+    if (!(descriptor.flags & to_base(WindowDescriptor::Flags::DECORATED)))
+    {
         windowFlags |= SDL_WINDOW_BORDERLESS;
     }
-    if (TestBit(descriptor.flags, to_base(WindowDescriptor::Flags::ALWAYS_ON_TOP))) {
+    if (descriptor.flags & to_base(WindowDescriptor::Flags::ALWAYS_ON_TOP))
+    {
         windowFlags |= SDL_WINDOW_ALWAYS_ON_TOP;
     }
 
     WindowType winType = WindowType::WINDOW;
-    if (TestBit(descriptor.flags, to_base(WindowDescriptor::Flags::FULLSCREEN))) {
+    if (descriptor.flags & to_base(WindowDescriptor::Flags::FULLSCREEN))
+    {
         winType = WindowType::FULLSCREEN;
         windowFlags |= SDL_WINDOW_FULLSCREEN;
-    } else if (TestBit(descriptor.flags, to_base(WindowDescriptor::Flags::FULLSCREEN_DESKTOP))) {
+    }
+    else if (descriptor.flags & to_base(WindowDescriptor::Flags::FULLSCREEN_DESKTOP))
+    {
         winType = WindowType::FULLSCREEN_WINDOWED;
         windowFlags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
     }
@@ -326,12 +339,12 @@ bool WindowManager::destroyWindow(DisplayWindow*& window) {
 
 void WindowManager::DestroyAPISettings(DisplayWindow* window) noexcept
 {
-    if (!window || !TestBit(SDL_GetWindowFlags(window->getRawWindow()), to_U32(SDL_WINDOW_OPENGL)))
+    if (!window || !(SDL_GetWindowFlags(window->getRawWindow()) & to_U32(SDL_WINDOW_OPENGL)))
     {
         return;
     }
 
-    if (TestBit(window->_flags, WindowFlags::OWNS_RENDER_CONTEXT))
+    if (window->_flags & to_base(WindowFlags::OWNS_RENDER_CONTEXT))
     {
         SDL_GL_DeleteContext(static_cast<SDL_GLContext>(window->_userData));
         window->_userData = nullptr;
@@ -383,7 +396,7 @@ ErrorCode WindowManager::configureAPISettings(const RenderAPI api, const U16 des
         {
             ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5));
         }
-        if (TestBit(descriptorFlags, to_base(WindowDescriptor::Flags::SHARE_CONTEXT)))
+        if (descriptorFlags & to_base(WindowDescriptor::Flags::SHARE_CONTEXT))
         {
             Validate(SDL_GL_MakeCurrent(mainWindow()->getRawWindow(), mainWindow()->userData()->_glContext));
         }
@@ -405,12 +418,15 @@ ErrorCode WindowManager::configureAPISettings(const RenderAPI api, const U16 des
 ErrorCode WindowManager::applyAPISettings(const RenderAPI api, DisplayWindow* window)
 {
     // Create a context and make it current
-    if (TestBit(window->_flags, WindowFlags::OWNS_RENDER_CONTEXT)) {
+    if (window->_flags & to_base(WindowFlags::OWNS_RENDER_CONTEXT))
+    {
         if (api == RenderAPI::OpenGL) {
             _globalUserData._glContext = SDL_GL_CreateContext(window->getRawWindow());
         }
         window->_userData = &_globalUserData;
-    } else {
+    }
+    else
+    {
         window->_userData = mainWindow()->userData();
     }
 
@@ -424,7 +440,8 @@ ErrorCode WindowManager::applyAPISettings(const RenderAPI api, DisplayWindow* wi
     if (api == RenderAPI::OpenGL) {
         Validate(SDL_GL_MakeCurrent(window->getRawWindow(), window->userData()->_glContext));
 
-        if (TestBit(window->_flags, WindowFlags::VSYNC)) {
+        if (window->_flags & to_base(WindowFlags::VSYNC))
+        {
             // Vsync is toggled on or off via the external config file
             bool vsyncSet = false;
             // Late swap may fail

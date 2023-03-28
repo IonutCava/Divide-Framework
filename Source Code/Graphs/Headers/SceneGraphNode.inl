@@ -45,7 +45,7 @@ namespace Divide {
     }
 
     inline [[nodiscard]] bool SceneGraphNode::hasFlag(const Flags flag) const noexcept {
-        return TestBit(_nodeFlags, flag); 
+        return _nodeFlags & to_base(flag); 
     }
 
     template <>

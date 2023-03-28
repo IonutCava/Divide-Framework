@@ -516,8 +516,8 @@ namespace Divide
                                        physx::PxQuat( physx::PxIdentity ) )
                 };
 
-                STUBBED( "PhysX implementation only uses one shape per actor for now! -Ionut" )
-                    physx::PxRigidActorExt::createExclusiveShape( *newActor->_actor, geometry, *_defaultMaterial );
+                STUBBED( "PhysX implementation only uses one shape per actor for now! -Ionut" );
+                physx::PxRigidActorExt::createExclusiveShape( *newActor->_actor, geometry, *_defaultMaterial );
 
             }
         }

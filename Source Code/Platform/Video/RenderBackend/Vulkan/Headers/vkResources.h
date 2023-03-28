@@ -113,6 +113,7 @@ struct CompiledPipeline
     PrimitiveTopology _topology{ PrimitiveTopology::COUNT };
     VkShaderStageFlags _stageFlags{ VK_FLAGS_NONE };
     VkDescriptorSetLayout* _descriptorSetlayout{ nullptr };
+    bool _isValid{false};
 };
 
 struct PipelineBuilder

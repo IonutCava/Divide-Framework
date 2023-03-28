@@ -764,11 +764,11 @@ namespace Divide {
                     PushReadOnly();
                 }
 
-                bool componentEnabled = TestBit(componentMask, componentBit);
+                bool componentEnabled = componentMask & componentBit;
                 const char* compLabel = TypeUtil::ComponentTypeToString(static_cast<ComponentType>(componentBit));
                 if (ImGui::Checkbox(compLabel, &componentEnabled))
                 {
-                    SetBit(componentMask, componentBit);
+                    componentMask |= componentBit;
                 }
                 if (ImGui::IsItemHovered())
                 {
@@ -899,11 +899,11 @@ namespace Divide {
             for (U8 i = 1; i < to_U8(ParticleDataProperties::COUNT) + 1; ++i)
             {
                 const U32 componentBit = 1 << i;
-                bool componentEnabled = TestBit(componentMask, componentBit);
+                bool componentEnabled = componentMask & componentBit;
                 const char* compLabel = Names::particleDataProperties[i - 1];
                 if (ImGui::Checkbox(compLabel, &componentEnabled))
                 {
-                    SetBit(componentMask, componentBit);
+                    componentMask |= componentBit;
                     g_particleEmitterData->generateParticles(particleCount, componentMask);
                 }
             }

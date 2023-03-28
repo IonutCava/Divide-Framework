@@ -535,12 +535,12 @@ namespace Divide
 
     void UniformBlockUploader::toggleStageVisibility( const U16 visibilityMask, bool state )
     {
-        ToggleBit( _shaderStageVisibilityMask, visibilityMask, state );
+        state ? _shaderStageVisibilityMask |= visibilityMask : _shaderStageVisibilityMask &= ~visibilityMask;
     }
 
     void UniformBlockUploader::toggleStageVisibility( const ShaderStageVisibility visibility, const bool state )
     {
-        ToggleBit(_shaderStageVisibilityMask, visibility, state);
+        toggleStageVisibility(to_U16(visibility), state);
     }
 
     size_t UniformBlockUploader::totalBufferSize() const noexcept
