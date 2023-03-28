@@ -111,7 +111,7 @@ namespace
         else
         {
             Console::errorfn( outputError.c_str() );
-            DIVIDE_ASSERT( !VK_API::GetStateTracker()._assertOnAPIError );
+            DIVIDE_ASSERT( !VK_API::GetStateTracker()._assertOnAPIError, outputError.c_str() );
         }
 
         Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY, severityDecoration );
@@ -853,6 +853,7 @@ namespace Divide
         deviceInformation._maxVertAttributes = deviceProperties.limits.maxVertexInputAttributes;
         deviceInformation._maxRTColourAttachments = deviceProperties.limits.maxColorAttachments;
         deviceInformation._maxDrawIndirectCount = deviceProperties.limits.maxDrawIndirectCount;
+        deviceInformation._maxTextureSize = deviceProperties.limits.maxImageDimension2D;
 
         deviceInformation._shaderCompilerThreads = 0xFFFFFFFF;
         CLAMP( config.rendering.maxAnisotropicFilteringLevel,
@@ -979,16 +980,37 @@ namespace Divide
         return ErrorCode::NO_ERR;
     }
 
-    void VK_API::destroyPipeline( CompiledPipeline& pipeline )
+    void VK_API::destroyPipeline( CompiledPipeline& pipeline, bool defer )
     {
+        if ( !pipeline._isValid )
+        {
+            // This should be the only place where this flag is set, and, as such, we already handled the destruction of the pipeline
+            DIVIDE_ASSERT( pipeline._vkPipelineLayout == VK_NULL_HANDLE );
+            DIVIDE_ASSERT( pipeline._vkPipeline == VK_NULL_HANDLE );
+            DIVIDE_ASSERT( pipeline._vkPipelineWireframe == VK_NULL_HANDLE );
+            return;
+        }
+
         DIVIDE_ASSERT( pipeline._vkPipelineLayout != VK_NULL_HANDLE );
         DIVIDE_ASSERT( pipeline._vkPipeline != VK_NULL_HANDLE );
 
-        vkDestroyPipelineLayout( _device->getVKDevice(), pipeline._vkPipelineLayout, nullptr );
-        vkDestroyPipeline( _device->getVKDevice(), pipeline._vkPipeline, nullptr );
-        if ( pipeline._vkPipelineWireframe != VK_NULL_HANDLE )
+        const auto deletePipeline = [layout = pipeline._vkPipelineLayout, pipeline = pipeline._vkPipeline, wireframePipeline = pipeline._vkPipelineWireframe]( VkDevice device )
         {
-            vkDestroyPipeline( _device->getVKDevice(), pipeline._vkPipelineWireframe, nullptr );
+            vkDestroyPipelineLayout( device, layout, nullptr );
+            vkDestroyPipeline( device, pipeline, nullptr );
+            if ( wireframePipeline != VK_NULL_HANDLE )
+            {
+                vkDestroyPipeline( device, wireframePipeline, nullptr );
+            }
+        };
+
+        if (!defer )
+        {
+            deletePipeline(_device->getVKDevice());
+        }
+        else
+        {
+            VK_API::RegisterCustomAPIDelete(deletePipeline, true );
         }
 
         pipeline._vkPipelineLayout = VK_NULL_HANDLE;
@@ -1001,7 +1023,7 @@ namespace Divide
     {
         for ( auto& it : _compiledPipelines )
         {
-            destroyPipeline( it.second );
+            destroyPipeline( it.second, false );
         }
 
         _compiledPipelines.clear();
@@ -2459,7 +2481,7 @@ namespace Divide
             }
             if ( it.second._program->getGUID() == program->getGUID() )
             {
-                destroyPipeline( it.second );
+                destroyPipeline( it.second, true );
             }
         }
 

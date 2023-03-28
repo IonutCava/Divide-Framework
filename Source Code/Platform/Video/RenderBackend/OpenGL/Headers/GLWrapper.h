@@ -44,7 +44,7 @@ struct FONScontext;
 struct ImDrawData;
 
 namespace CEGUI {
-    class OpenGL3Renderer;
+    class DivideRenderer;
 };
 
 namespace Divide {
@@ -199,7 +199,7 @@ private:
 
     WindowGLContext _currentContext{};
 
-    CEGUI::OpenGL3Renderer* _GUIGLrenderer{nullptr};
+    CEGUI::DivideRenderer* _GUIGLrenderer{nullptr};
 
     bool _runQueries{false};
 

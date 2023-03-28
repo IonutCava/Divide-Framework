@@ -60,6 +60,14 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #error "Divide Framework requires C++20 support at a minimum!"
 #endif 
 
+#ifndef CEGUI_STATIC
+#define CEGUI_STATIC
+#endif
+
+#ifndef PCRE_STATIC
+#define PCRE_STATIC
+#endif 
+
 #ifndef EASTL_CUSTOM_FLOAT_CONSTANTS_REQUIRED
 #define EASTL_CUSTOM_FLOAT_CONSTANTS_REQUIRED 1
 #endif

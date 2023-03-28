@@ -15,11 +15,11 @@
 
 #include "GUI/Headers/GUI.h"
 
-#include "CEGUIOpenGLRenderer/include/Texture.h"
+#include "GUI/CEGUIAddons/Renderer/Headers/OpenGLTexture.h"
+#include "GUI/CEGUIAddons/Renderer/Headers/RendererBase.h"
 
 #include "Platform/Video/Headers/DescriptorSets.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
-#include "Platform/Video/RenderBackend/OpenGL/CEGUIOpenGLRenderer/include/GL3Renderer.h"
 
 #include "Platform/Video/RenderBackend/OpenGL/Shaders/Headers/glShaderProgram.h"
 
@@ -294,6 +294,8 @@ namespace Divide
 
         GLUtil::getGLValue( GL_MAX_VERTEX_ATTRIB_BINDINGS, deviceInformation._maxVertAttributeBindings );
 
+        GLUtil::getGLValue( GL_MAX_TEXTURE_SIZE, deviceInformation._maxTextureSize );
+
         deviceInformation._versionInfo._major = to_U8( GLUtil::getGLValue( GL_MAJOR_VERSION ) );
         deviceInformation._versionInfo._minor = to_U8( GLUtil::getGLValue( GL_MINOR_VERSION ) );
         Console::printfn( Locale::Get( _ID( "GL_MAX_VERSION" ) ), deviceInformation._versionInfo._major, deviceInformation._versionInfo._minor );
@@ -464,8 +466,7 @@ namespace Divide
         // Once OpenGL is ready for rendering, init CEGUI
         if ( config.gui.cegui.enabled )
         {
-            _GUIGLrenderer = &CEGUI::OpenGL3Renderer::create();
-            _GUIGLrenderer->enableExtraStateSettings( false );
+            _GUIGLrenderer = &CEGUI::DivideRenderer::create(_context);
             _context.context().gui().setRenderer( *_GUIGLrenderer );
         }
 
@@ -488,7 +489,7 @@ namespace Divide
     {
         if ( _GUIGLrenderer )
         {
-            CEGUI::OpenGL3Renderer::destroy( *_GUIGLrenderer );
+            CEGUI::DivideRenderer::destroy( *_GUIGLrenderer );
             _GUIGLrenderer = nullptr;
         }
 

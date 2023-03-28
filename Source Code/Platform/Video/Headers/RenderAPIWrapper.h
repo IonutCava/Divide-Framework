@@ -120,6 +120,7 @@ struct DeviceInformation
     U32 _maxSSBOBufferBindings = 32u;
     U32 _shaderCompilerThreads = 1u;
     U32 _maxTextureUnits = 32u;
+    U32 _maxTextureSize = 4096u;
     U32 _maxRTColourAttachments = 4u;
     U32 _maxAnisotropy = 0u;
     U32 _maxClipDistances = Config::MAX_CLIP_DISTANCES;

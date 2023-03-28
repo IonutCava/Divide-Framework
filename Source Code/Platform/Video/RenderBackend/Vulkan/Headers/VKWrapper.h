@@ -102,7 +102,7 @@ private:
     bool setViewportInternal( const Rect<I32>& newViewport, VkCommandBuffer cmdBuffer ) noexcept;
     bool setScissorInternal( const Rect<I32>& newScissor, VkCommandBuffer cmdBuffer ) noexcept;
     void destroyPipelineCache();
-    void destroyPipeline( CompiledPipeline& pipeline );
+    void destroyPipeline( CompiledPipeline& pipeline, bool defer );
     void flushPushConstantsLocks();
     VkDescriptorSetLayout createLayoutFromBindings( const DescriptorSetUsage usage, const ShaderProgram::BindingsPerSetArray& bindings );
 

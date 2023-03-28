@@ -86,9 +86,7 @@ namespace Divide
     {
 
         /*-----------Object Management----*/
-        GLuint k_invalidObjectID = GL_INVALID_INDEX;
-        GLuint s_lastQueryResult = GL_INVALID_INDEX;
-        size_t k_invalidSyncID = SIZE_MAX;
+        GLuint s_lastQueryResult = k_invalidObjectID;
 
         const DisplayWindow* s_glMainRenderWindow;
         thread_local SDL_GLContext s_glSecondaryContext = nullptr;
@@ -827,14 +825,14 @@ namespace Divide
             {
                 Console::printfn( outputError.c_str() );
             }
-            else if ( severity == GL_DEBUG_SEVERITY_LOW )
+            else if ( severity == GL_DEBUG_SEVERITY_LOW || severity == GL_DEBUG_SEVERITY_MEDIUM )
             {
                 Console::warnfn( outputError.c_str() );
             }
             else
             {
                 Console::errorfn( outputError.c_str() );
-                DIVIDE_ASSERT(!GL_API::GetStateTracker().assertOnAPIError());
+                DIVIDE_ASSERT(!GL_API::GetStateTracker().assertOnAPIError(), outputError.c_str());
             }
             Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY, severityDecoration );
             Console::ToggleFlag( Console::Flags::PRINT_IMMEDIATE, isConsoleImmediate );

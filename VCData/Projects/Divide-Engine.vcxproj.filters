@@ -191,6 +191,12 @@
     <Filter Include="ECS\Systems\Headers">
       <UniqueIdentifier>{59e4f72a-d91a-4fe8-860f-ae446cfd4f7e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="GUI\CEGUIAddons\Renderer">
+      <UniqueIdentifier>{cd9234b3-58d9-455b-bcf3-ec8e2eaa7495}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GUI\CEGUIAddons\Renderer\Headers">
+      <UniqueIdentifier>{d9bf3eff-5057-4ddc-af44-7a6b01fbf7f3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="../../Source Code/Rendering\Camera\Camera.cpp">
@@ -589,6 +595,24 @@
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Physics\PhysicsAPIWrapper.cpp">
       <Filter>Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\FBOTextureTarget.cpp">
+      <Filter>GUI\CEGUIAddons\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\DVDGeometryBuffer.cpp">
+      <Filter>GUI\CEGUIAddons\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\RendererBase.cpp">
+      <Filter>GUI\CEGUIAddons\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\DVDShader.cpp">
+      <Filter>GUI\CEGUIAddons\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\StateChangeWrapper.cpp">
+      <Filter>GUI\CEGUIAddons\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\OpenGLTexture.cpp">
+      <Filter>GUI\CEGUIAddons\Renderer</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1042,6 +1066,27 @@
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Core\Headers\LoopTimingData.h">
       <Filter>Core\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\FBOTextureTarget.h">
+      <Filter>GUI\CEGUIAddons\Renderer\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\DVDGeometryBuffer.h">
+      <Filter>GUI\CEGUIAddons\Renderer\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\RendererBase.h">
+      <Filter>GUI\CEGUIAddons\Renderer\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\DVDShader.h">
+      <Filter>GUI\CEGUIAddons\Renderer\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\ShaderManager.h">
+      <Filter>GUI\CEGUIAddons\Renderer\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\StateChangeWrapper.h">
+      <Filter>GUI\CEGUIAddons\Renderer\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\OpenGLTexture.h">
+      <Filter>GUI\CEGUIAddons\Renderer\Headers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

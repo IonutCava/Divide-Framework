@@ -171,8 +171,9 @@ void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
                    GLsizei length, const GLchar* message, const void* userParam);
 
 /// Invalid object value. Used to compare handles and determine if they were properly created
-extern GLuint k_invalidObjectID;
-extern size_t k_invalidSyncID;
+constexpr GLuint k_invalidObjectID = GL_INVALID_INDEX;
+constexpr size_t k_invalidSyncID = SIZE_MAX;
+
 extern GLuint s_lastQueryResult;
 extern const DisplayWindow* s_glMainRenderWindow;
 extern thread_local SDL_GLContext s_glSecondaryContext;

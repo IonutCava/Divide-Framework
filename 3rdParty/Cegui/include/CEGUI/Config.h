@@ -87,7 +87,7 @@ setting CMake options and regenerating, rather than editing directly.
 // Set this to the default ImageCodec to be used.
 //////////////////////////////////////////////////////////////////////////
 #ifndef CEGUI_DEFAULT_IMAGE_CODEC
-#   define CEGUI_DEFAULT_IMAGE_CODEC DevILImageCodec
+#   define CEGUI_DEFAULT_IMAGE_CODEC FreeImageImageCodec
 #endif
 
 //////////////////////////////////////////////////////////////////////////
@@ -146,10 +146,10 @@ setting CMake options and regenerating, rather than editing directly.
 // To disable the use of PCRE (and therefore the validation factilities),
 // comment the following line.  (Attempts to set validation string will throw).
 //////////////////////////////////////////////////////////////////////////
-/* #undef CEGUI_HAS_PCRE_REGEX */
+#define CEGUI_HAS_PCRE_REGEX
 
 // Uncomment this to use C++11 Regular expressions library.
-#define CEGUI_HAS_STD11_REGEX
+/* #undef CEGUI_HAS_STD11_REGEX */
 
 //////////////////////////////////////////////////////////////////////////
 // The following controls whether the default logger be (possibly) used.
@@ -187,7 +187,7 @@ setting CMake options and regenerating, rather than editing directly.
 /* #undef CEGUI_USE_FRIBIDI */
 
 // Controls whether to use GLEW as an OpenGL loading library.
-/* #undef CEGUI_USE_GLEW */
+#define CEGUI_USE_GLEW
 
 // Controls whether to use Epoxy as an OpenGL loading library.
 /* #undef CEGUI_USE_EPOXY */
@@ -207,7 +207,7 @@ setting CMake options and regenerating, rather than editing directly.
 #if defined(_WIN32) || defined(__WIN32__)
 #   define CEGUI_MODULE_DIR "G:/libs/cegui-0.8.7/build/bin/"
 #elif !defined(__ANDROID__)
-#   define CEGUI_MODULE_DIR "C:/Program Files (x86)/cegui/lib/cegui-0.8/"
+#   define CEGUI_MODULE_DIR "C:/Program Files/cegui/lib/cegui-0.8/"
 #endif
 
 // This is defined when iconv is expecting a const char** and not a char**
