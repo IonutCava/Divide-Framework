@@ -421,7 +421,7 @@ namespace
                     pushedPass = true;
 
                     auto beginRenderPassCmd = get<GFX::BeginRenderPassCommand>( cmd );
-                    if (!std::any_of( beginRenderPassCmd->_descriptor._writeLayers.cbegin(), beginRenderPassCmd->_descriptor._writeLayers.cend(), []( const U16 it ){return it != INVALID_INDEX;}))
+                    if (!std::any_of( beginRenderPassCmd->_descriptor._writeLayers.cbegin(), beginRenderPassCmd->_descriptor._writeLayers.cend(), []( const DrawLayerEntry& it ){return it._layer != INVALID_INDEX;}))
                     {
                         return { ErrorType::INVALID_BEGIN_RENDER_PASS, cmdIndex };
                     }

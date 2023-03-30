@@ -293,7 +293,7 @@ public:  // GPU interface
     /// It renders the entire scene graph (with culling) as default
     /// use the callback param to override the draw function
     void generateCubeMap(RenderPassParams& params,
-                         I16 arrayOffset,
+                         U16 arrayOffset,
                          const vec3<F32>& pos,
                          vec2<F32> zPlanes,
                          GFX::CommandBuffer& commandsInOut,
@@ -301,7 +301,7 @@ public:  // GPU interface
                          std::array<Camera*, 6>& cameras);
 
     void generateDualParaboloidMap(RenderPassParams& params,
-                                   I16 arrayOffset,
+                                   U16 arrayOffset,
                                    const vec3<F32>& pos,
                                    vec2<F32> zPlanes,
                                    GFX::CommandBuffer& bufferInOut,

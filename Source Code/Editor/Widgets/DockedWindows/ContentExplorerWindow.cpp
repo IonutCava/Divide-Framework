@@ -191,10 +191,11 @@ namespace Divide {
             }
         };
 
-        constexpr bool flipImages = true;
         constexpr U8 buttonSize = 64u;
-        const ImVec2 uv0{ 0, flipImages ? 1 : 0 };
-        const ImVec2 uv1{ 1, flipImages ? 0 : 1 };
+
+        const bool flipImages = !ImageTools::UseUpperLeftOrigin();
+        const ImVec2 uv0{ 0.f, flipImages ? 1.f : 0.f };
+        const ImVec2 uv1{ 1.f, flipImages ? 0.f : 1.f };
 
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
 
@@ -334,7 +335,7 @@ namespace Divide {
         ImageTools::ImportOptions options{};
         options._useDDSCache = false;
 
-        TextureDescriptor texturePreviewDescriptor(TextureType::TEXTURE_2D);
+        TextureDescriptor texturePreviewDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
         texturePreviewDescriptor.textureOptions(options);
 
         ResourceDescriptor textureResource(textureName.str());

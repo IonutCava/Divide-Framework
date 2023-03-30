@@ -26,16 +26,6 @@ void RTAttachment::setTexture(const Texture_ptr& tex, const bool isExternal) noe
     changed(true);
 }
 
-U16 RTAttachment::numMips() const noexcept
-{
-    return _texture != nullptr ? _texture->mipCount() : 0u;
-}
-
-U16 RTAttachment::numLayers() const noexcept
-{
-    return _texture != nullptr ? _texture->descriptor().layerCount() : 0u;
-}
-
 const RTAttachmentDescriptor& RTAttachment::descriptor() const noexcept {
     return _descriptor;
 }

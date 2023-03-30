@@ -57,8 +57,6 @@ namespace Divide
 
         [[nodiscard]] bool create() override;
 
-        void readData(vec4<U16> rect, GFXImageFormat imageFormat, GFXDataFormat dataType, const PixelAlignment& pixelPackAlignment, std::pair<bufferPtr, size_t> outData) const noexcept override;
-
         PROPERTY_R_IW(VkRenderingInfo, renderingInfo);
 
     private:

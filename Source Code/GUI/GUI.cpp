@@ -101,7 +101,7 @@ namespace Divide
             dvd->_fontRenderingTexture = CreateResource<Texture>( dvd->_parent->context().kernel().resourceCache(), resDescriptor );
             if ( dvd->_fontRenderingTexture )
             {
-                dvd->_fontRenderingTexture->createWithData( nullptr, 0u, vec3<U16>( width, height, 1u ), {});
+                dvd->_fontRenderingTexture->createWithData( nullptr, 0u, vec2<U16>( width, height), {});
             }
 
             if ( dvd->_fontRenderingTexture && dvd->_fontRenderingBuffer )
@@ -439,7 +439,7 @@ namespace Divide
 
             if ( dvd->_fontRenderingTexture )
             {
-                dvd->_fontRenderingTexture->createWithData( nullptr, 0u, vec3<U16>( width, height, 1u ), {} );
+                dvd->_fontRenderingTexture->createWithData( nullptr, 0u, vec2<U16>( width, height), {} );
                 return 1;
             }
 

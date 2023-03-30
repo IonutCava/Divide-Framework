@@ -14,11 +14,11 @@
                 <distance>0</distance>
                 <active>false</active>
             </reflectionPlane>
-            <accumPitchDegrees>-14.9972258</accumPitchDegrees>
+            <accumPitchDegrees>-16.9203224</accumPitchDegrees>
             <frustumLocked>false</frustumLocked>
-            <euler x="-14.999999" y="39.9882622" z="0"/>
-            <eye x="60" y="45" z="60"/>
-            <orientation x="-0.122639529" y="0.339052707" z="0.0446371362" w="0.931539714"/>
+            <euler x="-16.9207439" y="42.2627945" z="-0.000625274261"/>
+            <eye x="1.9923681" y="1.26176071" z="2.55351567"/>
+            <orientation x="-0.137230113" y="0.356585681" z="0.0530348346" w="0.922605932"/>
             <aspectRatio>1.77777779</aspectRatio>
             <zPlanes min="0.100000001" max="1000"/>
             <FoV>58.7155075</FoV>

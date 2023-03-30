@@ -188,7 +188,7 @@ namespace Divide
         defaultSampler.wrapUVW( TextureWrap::REPEAT );
         defaultSampler.anisotropyLevel( 4 );
 
-        TextureDescriptor texDescriptor( TextureType::TEXTURE_2D_ARRAY );
+        TextureDescriptor texDescriptor( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
         texDescriptor.textureOptions()._alphaChannelTransparency = false;
         std::atomic_uint loadTasks = 0u;
 

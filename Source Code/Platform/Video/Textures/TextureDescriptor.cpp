@@ -5,17 +5,7 @@
 namespace Divide {
 
     TextureDescriptor::TextureDescriptor() noexcept
-        : TextureDescriptor(TextureType::TEXTURE_2D)
-    {
-    }
-
-    TextureDescriptor::TextureDescriptor(const TextureType type) noexcept
-        : TextureDescriptor(type, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGB)
-    {
-    }
-
-    TextureDescriptor::TextureDescriptor(const TextureType type, const GFXDataFormat dataType) noexcept
-        : TextureDescriptor(type, dataType, GFXImageFormat::RGB)
+        : TextureDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA )
     {
     }
 

@@ -557,7 +557,7 @@ bool Sky::load()
     const size_t noiseSamplerMipMap = skyboxSampler.getHash();
 
     {
-        TextureDescriptor textureDescriptor( TextureType::TEXTURE_3D );
+        TextureDescriptor textureDescriptor( TextureType::TEXTURE_3D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
         textureDescriptor.srgb( false );
         textureDescriptor.baseFormat( GFXImageFormat::RGBA );
         textureDescriptor.textureOptions()._alphaChannelTransparency = false;
@@ -593,7 +593,7 @@ bool Sky::load()
         _curlNoiseTex = CreateResource<Texture>( _parentCache, curlDescriptor );
     }
     {
-        TextureDescriptor skyboxTexture( TextureType::TEXTURE_CUBE_ARRAY );
+        TextureDescriptor skyboxTexture( TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
         skyboxTexture.srgb( true );
         skyboxTexture.textureOptions()._alphaChannelTransparency = false;
 
@@ -601,7 +601,7 @@ bool Sky::load()
         skyboxTextures.assetName( ResourcePath{
             "skyboxDay_FRONT.jpg, skyboxDay_BACK.jpg, skyboxDay_UP.jpg, skyboxDay_DOWN.jpg, skyboxDay_LEFT.jpg, skyboxDay_RIGHT.jpg," //Day
             "Milkyway_posx.jpg, Milkyway_negx.jpg, Milkyway_posy.jpg, Milkyway_negy.jpg, Milkyway_posz.jpg, Milkyway_negz.jpg"  //Night
-                                  } );
+        } );
         skyboxTextures.assetLocation( Paths::g_assetsLocation + Paths::g_imagesLocation + "/SkyBoxes/" );
         skyboxTextures.propertyDescriptor( skyboxTexture );
         skyboxTextures.waitForReady( false );

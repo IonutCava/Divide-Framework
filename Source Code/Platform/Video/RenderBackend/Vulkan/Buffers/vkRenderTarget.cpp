@@ -39,11 +39,6 @@ namespace Divide
         return false;
     }
 
-    void vkRenderTarget::readData( [[maybe_unused]] const vec4<U16> rect, [[maybe_unused]] GFXImageFormat imageFormat, [[maybe_unused]] GFXDataFormat dataType, [[maybe_unused]] const PixelAlignment& pixelPackAlignment, [[maybe_unused]] std::pair<bufferPtr, size_t> outData ) const noexcept
-    {
-
-    }
-
     void vkRenderTarget::blitFrom( VkCommandBuffer cmdBuffer, vkRenderTarget* source, const RTBlitParams& params ) noexcept
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
@@ -162,6 +157,10 @@ namespace Divide
             transitionImage( vkTexIn, needsResolve ? vkTexIn->resolvedImage()->_image : vkTexIn->image()->_image, imageBarriers[imageBarrierCount++], TransitionType::SHADER_READ_TO_BLIT_READ);
             transitionImage( vkTexOut, vkTexOut->image()->_image, imageBarriers[imageBarrierCount++], TransitionType::SHADER_READ_TO_BLIT_WRITE );
 
+
+            const U16 srcDepth = vkTexIn->descriptor().texType() == TextureType::TEXTURE_3D ? vkTexIn->depth() : 1u;
+            const U16 dstDepth = vkTexOut->descriptor().texType() == TextureType::TEXTURE_3D ? vkTexIn->depth() : 1u;
+
             if ( imageBarrierCount > 0u )
             {
                 dependencyInfo.imageMemoryBarrierCount = imageBarrierCount;
@@ -209,15 +208,14 @@ namespace Divide
                 blitRegion.srcOffsets[1] = {
                     .x = vkTexIn->width(),
                     .y = vkTexIn->height(),
-                    .z = vkTexIn->depth()
+                    .z = srcDepth
                 };
 
                 blitRegion.dstOffsets[1] = {
                     .x = vkTexOut->width(),
                     .y = vkTexOut->height(),
-                    .z = vkTexOut->depth()
+                    .z = dstDepth
                 };
-
             }
 
             if ( blitRegionCount > 0u )
@@ -259,10 +257,10 @@ namespace Divide
         static std::array<VkImageMemoryBarrier2, (to_base( RTColourAttachmentSlot::COUNT ) + 1) * 2> memBarriers{};
         U8 memBarrierCount = 0u;
 
-        const U16 srcDepthLayer = descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX];
-        U16 targetDepthLayer = 0u;
+        const DrawLayerEntry srcDepthLayer = descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX];
+        DrawLayerEntry targetDepthLayer{};
 
-        bool needLayeredDepth = (srcDepthLayer != INVALID_INDEX && srcDepthLayer > 0u);
+        bool needLayeredDepth = (srcDepthLayer._layer != INVALID_INDEX && (srcDepthLayer._layer > 0u || srcDepthLayer._cubeFace > 0u));
 
         for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
         {
@@ -271,7 +269,7 @@ namespace Divide
                 continue;
             }
 
-            if ( descriptor._writeLayers[i] != INVALID_INDEX && descriptor._writeLayers[i] > 0u )
+            if ( descriptor._writeLayers[i]._layer != INVALID_INDEX && (descriptor._writeLayers[i]._layer > 0u || descriptor._writeLayers[i]._cubeFace > 0u) )
             {
                 targetDepthLayer = descriptor._writeLayers[i];
                 needLayeredDepth = true;
@@ -328,6 +326,7 @@ namespace Divide
             }
         };
 
+
         VkImageSubresourceRange subresourceRange{};
         for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
         {
@@ -336,10 +335,19 @@ namespace Divide
                 vkTexture* vkTex = static_cast<vkTexture*>(_attachments[i]->texture().get());
 
                 ImageView targetView = vkTex->getView();
-                if ( needLayeredDepth || (descriptor._writeLayers[i] != INVALID_INDEX && descriptor._writeLayers[i] > 0) )
+                if ( needLayeredDepth || (descriptor._writeLayers[i]._layer != INVALID_INDEX && (descriptor._writeLayers[i]._layer > 0u || descriptor._writeLayers[i]._cubeFace > 0u)) )
                 {
-                    const U16 targetColourLayer = descriptor._writeLayers[i] == INVALID_INDEX ? targetDepthLayer : descriptor._writeLayers[i];
-                    targetView._subRange._layerRange = { targetColourLayer, 1u };
+                    const DrawLayerEntry targetColourLayer = descriptor._writeLayers[i]._layer == INVALID_INDEX ? targetDepthLayer : descriptor._writeLayers[i];
+
+                    if ( IsCubeTexture( vkTex->descriptor().texType() ) )
+                    {
+                        targetView._subRange._layerRange = { targetColourLayer._cubeFace + (targetColourLayer._layer * 6u), 6u - targetColourLayer._cubeFace };
+                    }
+                    else
+                    {
+                        assert( targetColourLayer._cubeFace == 0u );
+                        targetView._subRange._layerRange = { targetColourLayer._layer, 1u };
+                    }
                 }
                 else if ( descriptor._mipWriteLevel > 0u )
                 {
@@ -375,8 +383,17 @@ namespace Divide
             ImageView targetView = vkTex->getView();
             if ( needLayeredDepth )
             {
-                targetView._subRange._layerRange = { srcDepthLayer == INVALID_INDEX ? targetDepthLayer : srcDepthLayer, 1u };
+                const DrawLayerEntry depthEntry = srcDepthLayer._layer == INVALID_INDEX ? targetDepthLayer : srcDepthLayer;
+                if ( IsCubeTexture( vkTex->descriptor().texType() ) )
+                {
+                    targetView._subRange._layerRange = { depthEntry._cubeFace + (depthEntry._layer * 6u), 6u - depthEntry._cubeFace };
+                }
+                else
+                {
+                    targetView._subRange._layerRange = { depthEntry._layer, 1u };
+                }
             }
+
             else if ( descriptor._mipWriteLevel > 0u )
             {
                 targetView._subRange._mipLevels = { descriptor._mipWriteLevel, 1u };
@@ -420,11 +437,12 @@ namespace Divide
 
         assert(pipelineRenderingCreateInfoOut.sType == VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO);
 
-        const bool needLayeredColour = descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX] != INVALID_INDEX;
-        U16 targetColourLayer = needLayeredColour ? descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX] : 0u;
+        const bool needLayeredColour = descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer != INVALID_INDEX && (descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer > 0u || descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._cubeFace > 0u);
+        DrawLayerEntry targetColourLayer{};
 
         bool needLayeredDepth = false;
-        U16 targetDepthLayer = 0u;
+        DrawLayerEntry targetDepthLayer{};
+
         for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
         {
             if ( !_attachmentsUsed[i] )
@@ -432,7 +450,7 @@ namespace Divide
                 continue;
             }
 
-            if ( descriptor._writeLayers[i] != INVALID_INDEX )
+            if ( descriptor._writeLayers[i]._layer != INVALID_INDEX && (descriptor._writeLayers[i]._layer > 0u || descriptor._writeLayers[i]._cubeFace > 0u) )
             {
                 needLayeredDepth = true;
                 targetDepthLayer = descriptor._writeLayers[i];
@@ -451,10 +469,18 @@ namespace Divide
             {
                 vkTexture* vkTex = static_cast<vkTexture*>(_attachments[i]->texture().get());
                 imageViewDescriptor._subRange = vkTex->getView()._subRange;
-                if ( descriptor._writeLayers[i] != INVALID_INDEX || needLayeredColour )
+                if ( descriptor._writeLayers[i]._layer != INVALID_INDEX || needLayeredColour )
                 {
-                    targetColourLayer = descriptor._writeLayers[i] == INVALID_INDEX ? targetColourLayer : descriptor._writeLayers[i];
-                    imageViewDescriptor._subRange._layerRange = { targetColourLayer, 1u };
+                    targetColourLayer = descriptor._writeLayers[i]._layer == INVALID_INDEX ? targetColourLayer : descriptor._writeLayers[i];
+                    if ( IsCubeTexture( vkTex->descriptor().texType() ) )
+                    {
+                        imageViewDescriptor._subRange._layerRange = { targetColourLayer._cubeFace + (targetColourLayer._layer * 6u), 6u - targetColourLayer._cubeFace };
+                    }
+                    else
+                    {
+                        assert( targetColourLayer._cubeFace == 0u );
+                        imageViewDescriptor._subRange._layerRange = { targetColourLayer._layer, 1u };
+                    }
                 }
                 else if ( descriptor._mipWriteLevel > 0u )
                 {
@@ -519,10 +545,18 @@ namespace Divide
 
             vkTexture* vkTex = static_cast<vkTexture*>(att->texture().get());
             imageViewDescriptor._subRange = vkTex->getView()._subRange;
-            if ( descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX] != INVALID_INDEX || needLayeredDepth )
+            if ( descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer != INVALID_INDEX || needLayeredDepth )
             {
-                targetDepthLayer = descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX] == INVALID_INDEX ? targetDepthLayer : descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX];
-                imageViewDescriptor._subRange._layerRange = { targetDepthLayer, 1u };
+                targetDepthLayer = descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer == INVALID_INDEX ? targetDepthLayer : descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX];
+                if ( IsCubeTexture( vkTex->descriptor().texType() ) )
+                {
+                    imageViewDescriptor._subRange._layerRange = { targetDepthLayer._cubeFace + (targetDepthLayer._layer * 6u), 6u - targetDepthLayer._cubeFace };
+                }
+                else
+                {
+                    assert( targetColourLayer._cubeFace == 0u );
+                    imageViewDescriptor._subRange._layerRange = { targetDepthLayer._layer, 1u };
+                }
             }
             else if ( descriptor._mipWriteLevel != U16_MAX )
             {

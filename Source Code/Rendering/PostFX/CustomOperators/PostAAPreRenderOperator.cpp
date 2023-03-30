@@ -112,7 +112,7 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
         });
     }
     { //SMAA Textures
-        TextureDescriptor textureDescriptor(TextureType::TEXTURE_2D);
+        TextureDescriptor textureDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
         textureDescriptor.srgb(false);
         textureDescriptor.textureOptions()._alphaChannelTransparency = false;
 

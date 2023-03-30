@@ -249,7 +249,7 @@ namespace Divide
         io.Fonts->AddFontFromFileTTF( textFontBoldPath.c_str(), fontSizeBold * DPIScaleFactor, &font_cfg );
 
         io.Fonts->GetTexDataAsRGBA32( &pPixels, &iWidth, &iHeight );
-        _fontTexture->createWithData( (Byte*)pPixels, iWidth * iHeight * 4u, vec3<U16>( iWidth, iHeight, 1u ), {});
+        _fontTexture->createWithData( (Byte*)pPixels, iWidth * iHeight * 4u, vec2<U16>( iWidth, iHeight ), {});
         // Store our identifier as reloading data may change the handle!
         io.Fonts->SetTexID( (void*)_fontTexture.get() );
     }
@@ -2326,7 +2326,7 @@ namespace Divide
                         {
                             const ImageView texView = data._texture->getView( TextureType::TEXTURE_2D_ARRAY,
                                                                               { 0u, data._texture->mipCount() },
-                                                                              { 0u, data._texture->numLayers() * 6u });
+                                                                              { 0u, data._texture->depth() * 6u });
 
                             Set( binding._data, texView, texSampler );
                         }
@@ -2427,7 +2427,7 @@ namespace Divide
             if ( IsArrayTexture( tex->descriptor().texType() ) )
             {
                 isArray = true;
-                U32 maxLayers = tex->numLayers();
+                U32 maxLayers = tex->depth();
                 if ( IsCubeTexture( tex->descriptor().texType() ) )
                 {
                     maxLayers *= 6u;

@@ -104,9 +104,6 @@ class RTAttachment final {
         [[nodiscard]] const Texture_ptr& texture() const;
         void setTexture(const Texture_ptr& tex, const bool isExternal) noexcept;
 
-        [[nodiscard]] U16 numMips() const noexcept;
-        [[nodiscard]] U16 numLayers() const noexcept;
-
         [[nodiscard]] const RTAttachmentDescriptor& descriptor() const noexcept;
 
         RenderTarget& parent() noexcept;

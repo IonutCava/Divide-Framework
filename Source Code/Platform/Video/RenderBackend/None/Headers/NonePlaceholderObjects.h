@@ -45,11 +45,7 @@
 namespace Divide {
     class noRenderTarget final : public RenderTarget {
       public:
-        noRenderTarget(GFXDevice& context, const RenderTargetDescriptor& descriptor)
-          : RenderTarget(context, descriptor)
-        {}
-  
-        void readData([[maybe_unused]] const vec4<U16> rect, [[maybe_unused]] GFXImageFormat imageFormat, [[maybe_unused]] GFXDataFormat dataType, [[maybe_unused]] const PixelAlignment& pixelPackAlignment, [[maybe_unused]] std::pair<bufferPtr, size_t> outData) const noexcept override {}
+        noRenderTarget(GFXDevice& context, const RenderTargetDescriptor& descriptor) : RenderTarget(context, descriptor){}
     };
 
     class noGenericVertexData final : public GenericVertexData {
@@ -83,13 +79,9 @@ namespace Divide {
             static std::atomic_uint s_textureHandle = 1u;
         }
 
-        void clearData([[maybe_unused]] const UColour4& clearColour, [[maybe_unused]] U8 level) const noexcept override {}
-        void clearSubData([[maybe_unused]] const UColour4& clearColour, [[maybe_unused]] U8 level, [[maybe_unused]] const vec4<I32>& rectToClear, [[maybe_unused]] const vec2<I32> depthRange) const noexcept override {}
+        void clearData([[maybe_unused]] const UColour4& clearColour, [[maybe_unused]] vec2<U16> layerRange, [[maybe_unused]] U8 mipLevel ) const noexcept override {}
 
-        TextureReadbackData readData([[maybe_unused]] U16 mipLevel, [[maybe_unused]] const PixelAlignment& pixelPackAlignment, [[maybe_unused]] GFXDataFormat desiredFormat) const noexcept override {
-            TextureReadbackData data{};
-            return MOV(data);
-        }
+        [[nodiscard]] ImageReadbackData readData([[maybe_unused]] const U8 mipLevel, [[maybe_unused]] const PixelAlignment& pixelPackAlignment) const noexcept override { return {}; }
 
         void loadDataInternal([[maybe_unused]] const ImageTools::ImageData& imageData, [[maybe_unused]] const vec3<U16>& offset, [[maybe_unused]] const PixelAlignment& pixelUnpackAlignment ) override { }
         void loadDataInternal([[maybe_unused]] const Byte* data, [[maybe_unused]] size_t size, [[maybe_unused]] U8 targetMip, [[maybe_unused]] const vec3<U16>& offset, [[maybe_unused]] const vec3<U16>& dimensions, [[maybe_unused]] const PixelAlignment& pixelUnpackAlignment ) override {}

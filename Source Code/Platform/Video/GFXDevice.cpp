@@ -1372,7 +1372,7 @@ namespace Divide
 #pragma region Utility functions
     /// Generate a cube texture and store it in the provided RenderTarget
     void GFXDevice::generateCubeMap( RenderPassParams& params,
-                                     const I16 arrayOffset,
+                                     const U16 arrayOffset,
                                      const vec3<F32>& pos,
                                      const vec2<F32> zPlanes,
                                      GFX::CommandBuffer& commandsInOut,
@@ -1436,10 +1436,10 @@ namespace Divide
         for ( U8 i = 0u; i < 6u; ++i )
         {
             // Draw to the current cubemap face
-            params._targetDescriptorMainPass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )] = i + (arrayOffset * 6);
-            params._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX] = i + (arrayOffset * 6);
-            params._targetDescriptorPrePass._writeLayers[to_base(RTColourAttachmentSlot::SLOT_0)] = i + (arrayOffset * 6);
-            params._targetDescriptorPrePass._writeLayers[RT_DEPTH_ATTACHMENT_IDX] = i + (arrayOffset * 6);
+            params._targetDescriptorMainPass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )] = { arrayOffset, i};
+            params._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX] = { arrayOffset, i };
+            params._targetDescriptorPrePass._writeLayers[to_base(RTColourAttachmentSlot::SLOT_0)] = { arrayOffset, i };
+            params._targetDescriptorPrePass._writeLayers[RT_DEPTH_ATTACHMENT_IDX] = { arrayOffset, i };
 
             Camera* camera = cameras[i];
             if ( camera == nullptr )
@@ -1458,7 +1458,7 @@ namespace Divide
     }
 
     void GFXDevice::generateDualParaboloidMap( RenderPassParams& params,
-                                               const I16 arrayOffset,
+                                               const U16 arrayOffset,
                                                const vec3<F32>& pos,
                                                const vec2<F32> zPlanes,
                                                GFX::CommandBuffer& bufferInOut,
@@ -1511,10 +1511,10 @@ namespace Divide
                 camera = Camera::GetUtilityCamera( Camera::UtilityCamera::DUAL_PARABOLOID );
             }
 
-            params._targetDescriptorMainPass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )] = arrayOffset + i;
-            params._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX] = arrayOffset + i;
-            params._targetDescriptorPrePass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )] = arrayOffset + i;
-            params._targetDescriptorPrePass._writeLayers[RT_DEPTH_ATTACHMENT_IDX] = arrayOffset + i;
+            params._targetDescriptorMainPass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )]._layer = arrayOffset + i;
+            params._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer = arrayOffset + i;
+            params._targetDescriptorPrePass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )]._layer = arrayOffset + i;
+            params._targetDescriptorPrePass._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer = arrayOffset + i;
             
             // Point our camera to the correct face
             camera->lookAt( pos, pos + (i == 0 ? WORLD_Z_NEG_AXIS : WORLD_Z_AXIS) * zPlanes.y );
@@ -2114,14 +2114,7 @@ namespace Divide
                     const GFX::ClearTextureCommand& crtCmd = *commandBuffer.get<GFX::ClearTextureCommand>( cmd );
                     if ( crtCmd._texture != nullptr )
                     {
-                        if ( crtCmd._clearRect )
-                        {
-                            crtCmd._texture->clearSubData( crtCmd._clearColour, crtCmd._level, crtCmd._reactToClear, crtCmd._depthRange );
-                        }
-                        else
-                        {
-                            crtCmd._texture->clearData( crtCmd._clearColour, crtCmd._level );
-                        }
+                        crtCmd._texture->clearData( crtCmd._clearColour, crtCmd._layerRange, crtCmd._mipLevel );
                     }
                 }break;
                 case GFX::CommandType::READ_BUFFER_DATA:
@@ -3224,34 +3217,33 @@ namespace Divide
     {
         // Get the screen's resolution
         STUBBED( "Screenshot should save the final render target after post processing, not the current screen target!" );
+        thread_local I32 SCREENSHOT_INDEX = 0;
 
         const RenderTarget* screenRT = _rtPool->getRenderTarget( RenderTargetNames::SCREEN );
         const U16 width = screenRT->getWidth();
         const U16 height = screenRT->getHeight();
-        const U8 numChannels = 3;
+        const U8 numChannels = 4;
 
-        static I32 savedImages = 0;
         // compute the new filename by adding the series number and the extension
-        const ResourcePath newFilename( Util::StringFormat( "Screenshots/%s_%d.tga", filename.c_str(), savedImages ) );
-
-        // Allocate sufficiently large buffers to hold the pixel data
-        const U32 bufferSize = width * height * numChannels;
-        vector<U8> imageData( bufferSize, 0u );
-        // Read the pixels from the main render target (RGBA16F)
 
         const PixelAlignment pixelPackAlignment{
             ._alignment = 1u
         };
 
-        screenRT->readData( GFXImageFormat::RGB, GFXDataFormat::UNSIGNED_BYTE, pixelPackAlignment, { (bufferPtr)imageData.data(), imageData.size() } );
-        // Save to file
-        if ( ImageTools::SaveImage( filename,
-                                    vec2<U16>( width, height ),
-                                    numChannels,
-                                    imageData.data(),
-                                    ImageTools::SaveImageFormat::PNG ) )
+        // Read the pixels from the main render target (RGBA16F)
+        const auto retData = screenRT->readData(RTColourAttachmentSlot::SLOT_0, 0u, pixelPackAlignment);
+        if ( retData._data != nullptr )
         {
-            ++savedImages;
+            // Save to file
+            const ResourcePath newFilename( Util::StringFormat( "Screenshots/%s_%d.tga", filename.c_str(), SCREENSHOT_INDEX ) );
+            if ( ImageTools::SaveImage( filename,
+                                        vec2<U16>( width, height ),
+                                        numChannels,
+                                        retData._data.get(),
+                                        ImageTools::SaveImageFormat::PNG ) )
+            {
+                ++SCREENSHOT_INDEX;
+            }
         }
     }
 

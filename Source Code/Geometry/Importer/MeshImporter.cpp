@@ -391,7 +391,7 @@ namespace Import {
 
         SamplerDescriptor textureSampler = {};
 
-        TextureDescriptor textureDescriptor(TextureType::TEXTURE_2D_ARRAY);
+        TextureDescriptor textureDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
 
         for (U32 i = 0; i < to_base(TextureSlot::COUNT); ++i) {
             const Import::TextureEntry& tex = importData._textures[i];

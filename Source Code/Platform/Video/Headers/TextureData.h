@@ -54,6 +54,12 @@ enum class TextureUpdateState : U8 {
     COUNT
 };
 
+struct ImageReadbackData
+{
+    eastl::unique_ptr<Byte[]> _data;
+    size_t _size{ 0u };
+};
+
 }; //namespace Divide
 
 #endif //_TEXTURE_DATA_H_

@@ -177,11 +177,10 @@ DEFINE_COMMAND_END(CopyTextureCommand);
 
 DEFINE_COMMAND_BEGIN(ClearTextureCommand, CommandType::CLEAR_TEXTURE);
     Texture* _texture{ nullptr };
+    /// r = depth, g = stencil if target is a depth(+stencil) attachment
     UColour4 _clearColour;
-    vec2<I32> _depthRange;
-    vec4<I32> _reactToClear;
-    U8 _level{ 0 };
-    bool _clearRect{ false };
+    vec2<U16> _layerRange{0u, U16_MAX};
+    U8 _mipLevel{ 0u };
 DEFINE_COMMAND_END(ClearTextureCommand);
 
 DEFINE_COMMAND_BEGIN(ComputeMipMapsCommand, CommandType::COMPUTE_MIPMAPS);

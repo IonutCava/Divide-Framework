@@ -77,7 +77,7 @@ namespace Divide
         _drawConstantsCmd._constants.set( _ID( "_fadeActive" ), GFX::PushConstantType::BOOL, false );
         _drawConstantsCmd._constants.set( _ID( "_zPlanes" ), GFX::PushConstantType::VEC2, vec2<F32>( 0.01f, 500.0f ) );
 
-        TextureDescriptor texDescriptor( TextureType::TEXTURE_2D );
+        TextureDescriptor texDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
 
         ImageTools::ImportOptions options;
         options._isNormalMap = true;

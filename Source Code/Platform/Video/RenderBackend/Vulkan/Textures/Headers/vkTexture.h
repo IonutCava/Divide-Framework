@@ -80,13 +80,7 @@ namespace Divide
 
         bool unload() override;
 
-        void clearData( const UColour4& clearColour, U8 level ) const noexcept override;
-
-        void clearSubData( const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, vec2<I32> depthRange ) const noexcept override;
-
-        TextureReadbackData readData( U16 mipLevel, const PixelAlignment& pixelPackAlignment, GFXDataFormat desiredFormat ) const noexcept override;
-
-        VkImageView getImageView( const CachedImageView::Descriptor& descriptor ) const;
+        void clearData( const UColour4& clearColour, vec2<U16> layerRange, U8 mipLevel ) const noexcept override;
         void generateMipmaps( VkCommandBuffer cmdBuffer, U16 baseLevel, U16 baseLayer, U16 layerCount, ImageUsage crtUsage);
 
         PROPERTY_R( AllocatedImage_uptr, image, nullptr );
@@ -94,6 +88,9 @@ namespace Divide
         PROPERTY_R_IW( VkImageType, vkType, VK_IMAGE_TYPE_MAX_ENUM );
         PROPERTY_R_IW( VkFormat, vkFormat, VK_FORMAT_MAX_ENUM );
         PROPERTY_R_IW( VkSampleCountFlagBits, sampleFlagBits, VK_SAMPLE_COUNT_1_BIT );
+
+        [[nodiscard]] ImageReadbackData readData(U8 mipLevel, const PixelAlignment& pixelPackAlignment) const noexcept override;
+        [[nodiscard]] VkImageView getImageView( const CachedImageView::Descriptor& descriptor ) const;
 
         static [[nodiscard]] VkImageAspectFlags GetAspectFlags( const TextureDescriptor& descriptor ) noexcept;
 

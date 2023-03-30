@@ -1023,7 +1023,7 @@ namespace Divide
             case GFX::CommandType::COPY_TEXTURE:
             {
                 const GFX::CopyTextureCommand* crtCmd = cmd->As<GFX::CopyTextureCommand>();
-                glTexture::copy( static_cast<glTexture*>(crtCmd->_source),
+                glTexture::Copy( static_cast<glTexture*>(crtCmd->_source),
                                  crtCmd->_sourceMSAASamples,
                                  static_cast<glTexture*>(crtCmd->_destination),
                                  crtCmd->_destinationMSAASamples,

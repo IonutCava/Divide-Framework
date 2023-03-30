@@ -45,14 +45,16 @@ namespace Divide
     bool operator==( const glFramebuffer::BindingState& lhs, const glFramebuffer::BindingState& rhs ) noexcept
     {
         return lhs._attState == rhs._attState &&
-               lhs._layerOffset == rhs._layerOffset &&
+               lhs._layer._layer == rhs._layer._layer &&
+               lhs._layer._cubeFace == rhs._layer._cubeFace &&
                lhs._levelOffset == rhs._levelOffset;
     }
 
     bool operator!=( const glFramebuffer::BindingState& lhs, const glFramebuffer::BindingState& rhs ) noexcept
     {
         return lhs._attState != rhs._attState ||
-               lhs._layerOffset != rhs._layerOffset ||
+               lhs._layer._layer != rhs._layer._layer ||
+               lhs._layer._cubeFace != rhs._layer._cubeFace ||
                lhs._levelOffset != rhs._levelOffset;
     }
 
@@ -118,7 +120,7 @@ namespace Divide
         return false;
     }
 
-    bool glFramebuffer::toggleAttachment( const RTAttachment_uptr& attachment, const AttachmentState state, const U16 levelOffset, const U16 layerOffset )
+    bool glFramebuffer::toggleAttachment( const RTAttachment_uptr& attachment, const AttachmentState state, const U16 levelOffset, const DrawLayerEntry layerOffset )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -128,14 +130,12 @@ namespace Divide
             return false;
         }
 
-        DIVIDE_ASSERT( layerOffset < ((IsCubeTexture( tex->descriptor().texType() ) ? 6u : 1u) * tex->numLayers()) && levelOffset < tex->mipCount());
-
         const GLenum binding = static_cast<GLenum>(attachment->binding());
         const BindingState bState
         {
-            ._attState = state,
+            ._layer = layerOffset,
             ._levelOffset = levelOffset,
-            ._layerOffset = layerOffset
+            ._attState = state
         };
 
         // Compare with old state
@@ -148,13 +148,21 @@ namespace Divide
             else
             {
                 const GLuint handle = static_cast<glTexture*>(tex.get())->textureHandle();
-                if ( bState._layerOffset == 0u )
+                if ( bState._layer._layer == 0u && bState._layer._cubeFace == 0u)
                 {
                     glNamedFramebufferTexture( _framebufferHandle, binding, handle, bState._levelOffset);
                 }
                 else
                 {
-                    glNamedFramebufferTextureLayer( _framebufferHandle, binding, handle, bState._levelOffset, bState._layerOffset );
+                    if ( IsCubeTexture( tex->descriptor().texType() ) )
+                    {
+                        glNamedFramebufferTextureLayer( _framebufferHandle, binding, handle, bState._levelOffset, bState._layer._cubeFace + (bState._layer._layer * 6u) );
+                    }
+                    else
+                    {
+                        assert(bState._layer._cubeFace == 0u);
+                        glNamedFramebufferTextureLayer( _framebufferHandle, binding, handle, bState._levelOffset, bState._layer._layer );
+                    }
                 }
             }
 
@@ -211,7 +219,7 @@ namespace Divide
                     continue;
                 }
 
-                if (fbo->toggleAttachment( fbo->_attachments[i], i == attIndex ? AttachmentState::STATE_ENABLED : AttachmentState::STATE_DISABLED, mip, layer ) )
+                if (fbo->toggleAttachment( fbo->_attachments[i], i == attIndex ? AttachmentState::STATE_ENABLED : AttachmentState::STATE_DISABLED, mip, {layer, 0u} ) )
                 {
                     ret = true;
                 }
@@ -370,17 +378,17 @@ namespace Divide
 
         // All active attachments are enabled by default
         // We also draw to mip and layer 0 unless specified otherwise in the drawPolicy
-        return toggleAttachment( attachment, AttachmentState::STATE_ENABLED, 0u, 0u );
+        return toggleAttachment( attachment, AttachmentState::STATE_ENABLED, 0u, {._layer = 0u, ._cubeFace = 0u} );
     }
 
     void glFramebuffer::begin( const RTDrawDescriptor& drawPolicy, const RTClearDescriptor& clearPolicy )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        const U16 srcDepthLayer = drawPolicy._writeLayers[RT_DEPTH_ATTACHMENT_IDX];
-        U16 targetDepthLayer = 0u;
+        const DrawLayerEntry srcDepthLayer = drawPolicy._writeLayers[RT_DEPTH_ATTACHMENT_IDX];
+        DrawLayerEntry targetDepthLayer{};
 
-        bool needLayeredDepth = (srcDepthLayer != INVALID_INDEX && srcDepthLayer > 0u);
+        bool needLayeredDepth = (srcDepthLayer._layer != INVALID_INDEX && (srcDepthLayer._layer > 0u || srcDepthLayer._cubeFace > 0u));
 
         for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
         {
@@ -389,7 +397,7 @@ namespace Divide
                 continue;
             }
 
-            if ( drawPolicy._writeLayers[i] != INVALID_INDEX && drawPolicy._writeLayers[i] > 0u )
+            if ( drawPolicy._writeLayers[i]._layer != INVALID_INDEX && (drawPolicy._writeLayers[i]._layer > 0u || drawPolicy._writeLayers[i]._cubeFace > 0u))
             {
                 targetDepthLayer = drawPolicy._writeLayers[i];
                 needLayeredDepth = true;
@@ -405,7 +413,7 @@ namespace Divide
             {
                 drawToLayer(
                 {
-                    ._layer = srcDepthLayer == INVALID_INDEX ? targetDepthLayer : srcDepthLayer,
+                    ._layer = srcDepthLayer._layer == INVALID_INDEX ? targetDepthLayer : srcDepthLayer,
                     ._mipLevel = drawPolicy._mipWriteLevel,
                     ._index = RT_DEPTH_ATTACHMENT_IDX
                 });
@@ -427,11 +435,11 @@ namespace Divide
                 continue;
             }
 
-            if ( needLayeredDepth || (drawPolicy._writeLayers[i] != INVALID_INDEX && drawPolicy._writeLayers[i] > 0) )
+            if ( needLayeredDepth || (drawPolicy._writeLayers[i]._layer != INVALID_INDEX && (drawPolicy._writeLayers[i]._layer > 0u || drawPolicy._writeLayers[i]._cubeFace > 0u)) )
             {
                 drawToLayer(
                 {
-                    ._layer = drawPolicy._writeLayers[i] == INVALID_INDEX ? targetDepthLayer : drawPolicy._writeLayers[i],
+                    ._layer = drawPolicy._writeLayers[i]._layer == INVALID_INDEX ? targetDepthLayer : drawPolicy._writeLayers[i],
                     ._mipLevel = drawPolicy._mipWriteLevel,
                     ._index = i
                 });
@@ -610,7 +618,7 @@ namespace Divide
         if ( attachment != nullptr )
         {
             const BindingState& state = getAttachmentState( static_cast<GLenum>(attachment->binding()) );
-            return toggleAttachment( attachment, state._attState, writeLevel, state._layerOffset );
+            return toggleAttachment( attachment, state._attState, writeLevel, state._layer );
         }
 
         return false;
@@ -642,36 +650,10 @@ namespace Divide
 
                 if ( state._levelOffset != writeLevel )
                 {
-                    toggleAttachment( _attachments[i], AttachmentState::STATE_DISABLED, state._levelOffset, state._layerOffset );
+                    toggleAttachment( _attachments[i], AttachmentState::STATE_DISABLED, state._levelOffset, state._layer );
                 }
             }
         }
-    }
-
-    void glFramebuffer::readData( const vec4<U16> rect,
-                                  const GFXImageFormat imageFormat,
-                                  const GFXDataFormat dataType,
-                                  const PixelAlignment& pixelPackAlignment,
-                                  const std::pair<bufferPtr, size_t> outData ) const
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-
-        if ( GL_API::GetStateTracker().setActiveFB( Usage::RT_READ_ONLY, _framebufferHandle ) == GLStateTracker::BindResult::FAILED )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
-
-        GL_API::GetStateTracker().setPixelPackAlignment(pixelPackAlignment);
-
-        glReadnPixels(
-            rect.x, rect.y, rect.z, rect.w,
-            GLUtil::glImageFormatTable[to_U32( imageFormat )],
-            GLUtil::glDataFormat[to_U32( dataType )],
-            (GLsizei)outData.second,
-            outData.first );
-
-        GL_API::GetStateTracker().setPixelPackAlignment({});
     }
 
     void glFramebuffer::setAttachmentState( const GLenum binding, const BindingState state )
@@ -761,6 +743,8 @@ namespace Divide
                 } break;
             };
         }
+
+        DIVIDE_ASSERT( !GL_API::GetStateTracker().assertOnAPIError());
 
         return false;
     }

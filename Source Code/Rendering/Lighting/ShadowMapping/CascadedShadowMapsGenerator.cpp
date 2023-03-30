@@ -398,8 +398,8 @@ namespace Divide
         GFX::EnqueueCommand<GFX::SetClippingStateCommand>( bufferInOut )->_negativeOneToOneDepth = true; //Ortho camera
         for ( I8 i = numSplits - 1; i >= 0 && i < numSplits; i-- )
         {
-            params._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX] = i;
-            params._targetDescriptorMainPass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )] = i;
+            params._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer = i;
+            params._targetDescriptorMainPass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )]._layer = i;
 
             params._passName = Util::StringFormat( "CSM_PASS_%d", i ).c_str();
             params._stagePass._pass = static_cast<RenderStagePass::PassIndex>(i);

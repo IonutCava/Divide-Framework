@@ -60,15 +60,13 @@ class TextureDescriptor final : public PropertyDescriptor {
     };
 
     TextureDescriptor() noexcept;
-    TextureDescriptor(const TextureType type) noexcept;
-    TextureDescriptor(const TextureType type, const GFXDataFormat dataType) noexcept;
     TextureDescriptor(const TextureType type, const GFXDataFormat dataType, const GFXImageFormat format) noexcept;
 
     [[nodiscard]] size_t getHash() const noexcept override;
 
-    PROPERTY_RW(U16, layerCount, 1);
-    PROPERTY_RW(U16, mipBaseLevel, 0);
-    PROPERTY_RW(U8,  msaaSamples, 0);
+    PROPERTY_RW(U16, layerCount,   0u);
+    PROPERTY_RW(U16, mipBaseLevel, 0u);
+    PROPERTY_RW(U8,  msaaSamples,  0u);
     PROPERTY_RW(GFXDataFormat,  dataType, GFXDataFormat::COUNT);
     PROPERTY_RW(GFXImageFormat, baseFormat, GFXImageFormat::COUNT);
     PROPERTY_RW(TextureType, texType, TextureType::COUNT);

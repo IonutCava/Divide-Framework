@@ -57,16 +57,26 @@ class glFramebuffer final : public RenderTarget {
     friend class Attorney::CEGUIRenderTarget;
 
   public:
-    enum class AttachmentState : U8 {
+    enum class AttachmentState : U8
+    {
         STATE_DISABLED = 0,
         STATE_ENABLED,
         COUNT
     };
 
-    struct BindingState {
-        AttachmentState _attState{ AttachmentState::COUNT };
+    struct BindingState
+    {
+        DrawLayerEntry _layer{};
         U16 _levelOffset{0u};
-        U16 _layerOffset{0u};
+        AttachmentState _attState{ AttachmentState::COUNT };
+    };
+
+
+    struct RTDrawLayerParams
+    {
+        DrawLayerEntry _layer{};
+        U16 _mipLevel{ 0u };
+        U16 _index{ INVALID_INDEX };
     };
 
    public:
@@ -77,19 +87,13 @@ class glFramebuffer final : public RenderTarget {
 
     void setMipLevel(U16 writeLevel);
 
-    void readData(vec4<U16> rect,
-                  GFXImageFormat imageFormat,
-                  GFXDataFormat dataType,
-                  const PixelAlignment& pixelPackAlignment,
-                  std::pair<bufferPtr, size_t> outData) const override;
-
     void blitFrom(RenderTarget* source, const RTBlitParams& params);
 
     /// Bake in all settings and attachments to Prepare it for rendering
     bool create() override;
 
     BindingState getAttachmentState(GLenum binding) const;
-    bool toggleAttachment(const RTAttachment_uptr& attachment, AttachmentState state, U16 levelOffset = 0u, U16 layerOffset = 0u);
+    bool toggleAttachment(const RTAttachment_uptr& attachment, AttachmentState state, U16 levelOffset, DrawLayerEntry layerOffset);
 
 protected:
     void queueCheckStatus() noexcept;

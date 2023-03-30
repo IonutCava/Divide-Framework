@@ -44,54 +44,48 @@
 namespace Divide
 {
 
-    class Kernel;
+class Kernel;
 
-    namespace Attorney
-    {
-        class TextureKernel;
-    };
+namespace Attorney
+{
+    class TextureKernel;
+};
 
-    namespace TypeUtil
-    {
-        [[nodiscard]] const char* WrapModeToString( TextureWrap wrapMode ) noexcept;
-        [[nodiscard]] TextureWrap StringToWrapMode( const string& wrapMode );
+namespace TypeUtil
+{
+    [[nodiscard]] const char* WrapModeToString( TextureWrap wrapMode ) noexcept;
+    [[nodiscard]] TextureWrap StringToWrapMode( const string& wrapMode );
 
-        [[nodiscard]] const char* TextureFilterToString( TextureFilter filter ) noexcept;
-        [[nodiscard]] TextureFilter StringToTextureFilter( const string& filter );
+    [[nodiscard]] const char* TextureFilterToString( TextureFilter filter ) noexcept;
+    [[nodiscard]] TextureFilter StringToTextureFilter( const string& filter );
 
-        [[nodiscard]] const char* TextureMipSamplingToString( TextureMipSampling sampling ) noexcept;
-        [[nodiscard]] TextureMipSampling StringToTextureMipSampling( const string& sampling );
-    };
+    [[nodiscard]] const char* TextureMipSamplingToString( TextureMipSampling sampling ) noexcept;
+    [[nodiscard]] TextureMipSampling StringToTextureMipSampling( const string& sampling );
+};
 
-    FWD_DECLARE_MANAGED_CLASS( Texture );
+FWD_DECLARE_MANAGED_CLASS( Texture );
 
-    struct TextureLayoutChange
-    {
-        ImageView _targetView;
-        ImageUsage _sourceLayout{ ImageUsage::COUNT };
-        ImageUsage _targetLayout{ ImageUsage::COUNT };
-    };
+struct TextureLayoutChange
+{
+    ImageView _targetView;
+    ImageUsage _sourceLayout{ ImageUsage::COUNT };
+    ImageUsage _targetLayout{ ImageUsage::COUNT };
+};
 
-    using TextureLayoutChanges = eastl::fixed_vector<TextureLayoutChange, 6, true>;
+using TextureLayoutChanges = eastl::fixed_vector<TextureLayoutChange, 6, true>;
 
-    [[nodiscard]] bool IsEmpty( const TextureLayoutChanges& changes ) noexcept;
+[[nodiscard]] bool IsEmpty( const TextureLayoutChanges& changes ) noexcept;
 
-    /// An API-independent representation of a texture
-    class NOINITVTABLE Texture : public CachedResource, public GraphicsResource
-    {
-        friend class ResourceCache;
-        friend class ResourceLoader;
-        template <typename T>
-        friend class ImplResourceLoader;
-        friend class Attorney::TextureKernel;
+/// An API-independent representation of a texture
+class NOINITVTABLE Texture : public CachedResource, public GraphicsResource
+{
+    friend class ResourceCache;
+    friend class ResourceLoader;
+    template <typename T>
+    friend class ImplResourceLoader;
+    friend class Attorney::TextureKernel;
 
-        public:
-        struct TextureReadbackData
-        {
-            eastl::unique_ptr<Byte[]> _data = nullptr;
-            size_t _size = 0u;
-        };
-        public:
+    public:
         explicit Texture( GFXDevice& context,
                           size_t descriptorHash,
                           const Str256& name,
@@ -112,6 +106,7 @@ namespace Divide
 
         /// API-dependent loading function that uploads ptr data to the GPU using the specified parameters
         void createWithData( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment );
+        void createWithData( const Byte* data, size_t dataSize, const vec2<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment );
         void createWithData( const Byte* data, size_t dataSize, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment );
 
         void replaceData(const Byte* data, size_t dataSize, const vec3<U16>& offset, const vec3<U16>& range, const PixelAlignment& pixelUnpackAlignment );
@@ -126,23 +121,18 @@ namespace Divide
         [[nodiscard]] ImageView getView( TextureType targetType, vec2<U16> mipRange/*offset, count*/ ) const noexcept;
         [[nodiscard]] ImageView getView( TextureType targetType, vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/ ) const noexcept;
 
-        virtual void clearData( const UColour4& clearColour, U8 level ) const = 0;
-        virtual void clearSubData( const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, vec2<I32> depthRange ) const = 0;
-
-        // MipLevel will automatically clamped to the texture's internal limits
-        [[nodiscard]] virtual TextureReadbackData readData( U16 mipLevel, const PixelAlignment& pixelPackAlignment, GFXDataFormat desiredFormat = GFXDataFormat::COUNT ) const = 0;
+        [[nodiscard]] virtual ImageReadbackData readData( U8 mipLevel, const PixelAlignment& pixelPackAlignment) const = 0;
+                      virtual void              clearData( const UColour4& clearColour, vec2<U16> layerRange, U8 mipLevel) const = 0;
 
         PROPERTY_R( TextureDescriptor, descriptor );
-        /// Set/Get the number of layers (used by texture arrays)
-        PROPERTY_RW( U16, numLayers, 1u );
         /// Get the number of mips
         PROPERTY_R( U16, mipCount, 1u );
         /// Texture width as returned by STB/DDS loader
         PROPERTY_R( U16, width, 0u );
         /// Texture height as returned by STB/DDS loader
         PROPERTY_R( U16, height, 0u );
-        /// Texture depth as returned by STB/DDS load
-        PROPERTY_R( U16, depth, 0u );
+        /// Depth for TEXTURE_3D, layer count for TEXTURE_1/2D/CUBE_ARRAY. For cube arrays, numSlices = depth * 6u
+        PROPERTY_R( U16, depth, 1u );
         /// If the texture has an alpha channel and at least one pixel is translucent, return true
         PROPERTY_R( bool, hasTranslucency, false );
         /// If the texture has an alpha channel and at least on pixel is fully transparent and no pixels are partially transparent, return true
@@ -182,21 +172,21 @@ namespace Divide
         static size_t s_defaultSamplerHash;
         static Texture_ptr s_defaulTexture;
         static ResourcePath s_missingTextureFileName;
-    };
+};
 
-    namespace Attorney
+namespace Attorney
+{
+    class TextureKernel
     {
-        class TextureKernel
+        protected:
+        static void UseTextureDDSCache( const bool state ) noexcept
         {
-            protected:
-            static void UseTextureDDSCache( const bool state ) noexcept
-            {
-                Texture::s_useDDSCache = state;
-            }
+            Texture::s_useDDSCache = state;
+        }
 
-            friend class Kernel;
-        };
-    }
+        friend class Kernel;
+    };
+}
 
 };  // namespace Divide
 #endif // _TEXTURE_H_

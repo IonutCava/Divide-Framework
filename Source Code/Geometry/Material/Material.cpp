@@ -1353,7 +1353,7 @@ namespace Divide
 
                     _textures[to_base( usage )]._useInGeometryPasses = useInGeometryPasses;
 
-                    TextureDescriptor texDesc( TextureType::TEXTURE_2D_ARRAY );
+                    TextureDescriptor texDesc( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
                     ResourceDescriptor texture( texName.str() );
                     texture.assetName( texName );
                     texture.assetLocation( texPath );

@@ -58,7 +58,7 @@ namespace Divide
         albedoSampler.wrapUVW( TextureWrap::REPEAT );
         albedoSampler.anisotropyLevel( 8 );
 
-        TextureDescriptor miscTexDescriptor( TextureType::TEXTURE_2D_ARRAY );
+        TextureDescriptor miscTexDescriptor( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
         miscTexDescriptor.srgb( true );
         miscTexDescriptor.textureOptions()._alphaChannelTransparency = false;
 

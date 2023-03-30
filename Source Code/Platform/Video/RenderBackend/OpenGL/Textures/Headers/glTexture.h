@@ -54,14 +54,13 @@ class glTexture final : public Texture {
 
     bool unload() override;
 
-    void clearData(const UColour4& clearColour, U8 level) const override;
-    void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, vec2<I32> depthRange) const override;
+    void clearData( const UColour4& clearColour, vec2<U16> layerRange, U8 mipLevel ) const override;
 
-    static void copy(const glTexture* source, U8 sourceSamples, const glTexture* destination, U8 destinationSamples, const CopyTexParams& params);
-
-    TextureReadbackData readData(U16 mipLevel, const PixelAlignment& pixelPackAlignment, GFXDataFormat desiredFormat) const override;
+    [[nodiscard]] ImageReadbackData readData(U8 mipLevel, const PixelAlignment& pixelPackAlignment) const override;
 
     PROPERTY_R_IW(GLuint, textureHandle, GLUtil::k_invalidObjectID);
+
+    static void Copy(const glTexture* source, U8 sourceSamples, const glTexture* destination, U8 destinationSamples, const CopyTexParams& params);
 
    protected:
     void postLoad() override;
@@ -70,8 +69,6 @@ class glTexture final : public Texture {
     void loadDataInternal( const Byte* data, size_t size, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) override;
     void prepareTextureData(U16 width, U16 height, U16 depth, bool emptyAllocation) override;
     void submitTextureData() override;
-
-    void clearDataInternal(const UColour4& clearColour, U8 level, bool clearRect, const vec4<I32>& rectToClear, vec2<I32> depthRange) const;
 
    private:
     GLenum _type{GL_NONE};

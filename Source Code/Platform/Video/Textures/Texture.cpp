@@ -44,7 +44,7 @@ namespace Divide
     {
         ImageTools::OnStartup( gfx.renderAPI() != RenderAPI::OpenGL );
 
-        TextureDescriptor textureDescriptor( TextureType::TEXTURE_2D_ARRAY );
+        TextureDescriptor textureDescriptor( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
         textureDescriptor.srgb( false );
         textureDescriptor.baseFormat( GFXImageFormat::RGBA );
 
@@ -142,7 +142,6 @@ namespace Divide
        : CachedResource( ResourceType::GPU_OBJECT, descriptorHash, name, assetNames, assetLocations ),
         GraphicsResource( context, Type::TEXTURE, getGUID(), _ID( name.c_str() ) ),
         _descriptor( texDescriptor ),
-        _numLayers( texDescriptor.layerCount() ),
         _parentCache( parentCache )
     {
     }
@@ -186,6 +185,7 @@ namespace Divide
             const GFXDataFormat requestedFormat = _descriptor.dataType();
             assert( requestedFormat == GFXDataFormat::UNSIGNED_BYTE ||  // Regular image format
                     requestedFormat == GFXDataFormat::UNSIGNED_SHORT || // 16Bit
+                    requestedFormat == GFXDataFormat::FLOAT_16 ||       // 16Bit
                     requestedFormat == GFXDataFormat::FLOAT_32 ||       // HDR
                     requestedFormat == GFXDataFormat::COUNT );          // Auto
 
@@ -244,36 +244,27 @@ namespace Divide
                 // Uploading to the GPU dependents on the rendering API
                 createWithData( dataStorage, {});
 
-                if ( IsCubeTexture( _descriptor.texType() ) )
+                if ( IsCompressed( _descriptor.baseFormat() ) )
                 {
-                    if ( dataStorage.layerCount() % 6 != 0 )
+                    if ( dataStorage.layerCount() != depth() )
                     {
-                        Console::errorfn(
-                            Locale::Get( _ID( "ERROR_TEXTURE_LOADER_CUBMAP_INIT_COUNT" ) ),
-                            resourceName().c_str() );
-                        return;
+                        Console::errorfn( Locale::Get( _ID( "ERROR_TEXTURE_LOADER_ARRAY_INIT_COUNT" ) ), resourceName().c_str() );
                     }
                 }
-
-                if ( _descriptor.texType() == TextureType::TEXTURE_1D_ARRAY ||
-                     _descriptor.texType() == TextureType::TEXTURE_2D_ARRAY )
+                else
                 {
-                    if ( dataStorage.layerCount() != _numLayers )
+                    if ( IsCubeTexture( _descriptor.texType()) &&
+                         (dataStorage.layerCount() % 6 != 0 || dataStorage.layerCount() / 6 != depth()))
                     {
-                        Console::errorfn(
-                            Locale::Get( _ID( "ERROR_TEXTURE_LOADER_ARRAY_INIT_COUNT" ) ),
-                            resourceName().c_str() );
-                        return;
+                        Console::errorfn(Locale::Get( _ID( "ERROR_TEXTURE_LOADER_CUBMAP_INIT_COUNT" ) ), resourceName().c_str() );
+                    }
+                    else if ( (_descriptor.texType() == TextureType::TEXTURE_1D_ARRAY ||
+                               _descriptor.texType() == TextureType::TEXTURE_2D_ARRAY ) &&
+                               dataStorage.layerCount() != depth() )
+                    {
+                        Console::errorfn(Locale::Get( _ID( "ERROR_TEXTURE_LOADER_ARRAY_INIT_COUNT" ) ), resourceName().c_str() );
                     }
                 }
-
-                /*if (_descriptor.texType() == TextureType::TEXTURE_CUBE_ARRAY) {
-                    if (dataStorage.layerCount() / 6 != _numLayers) {
-                        Console::errorfn(
-                            Locale::Get(_ID("ERROR_TEXTURE_LOADER_ARRAY_INIT_COUNT")),
-                            resourceName().c_str());
-                    }
-                }*/
             }
         }
 
@@ -311,6 +302,8 @@ namespace Divide
             }
             Console::errorfn( Locale::Get( _ID( "ERROR_TEXTURE_LOAD" ) ), name.c_str() );
             // missing_texture.jpg must be something that really stands out
+            _descriptor.dataType(GFXDataFormat::UNSIGNED_BYTE);
+            _descriptor.baseFormat(GFXImageFormat::RGBA);
             if ( !fileData.loadFromFile( _descriptor.srgb(), _width, _height, Paths::g_assetsLocation + Paths::g_texturesLocation, s_missingTextureFileName ) )
             {
                 DIVIDE_UNEXPECTED_CALL();
@@ -332,6 +325,11 @@ namespace Divide
         DIVIDE_ASSERT( _width > 0 && _height > 0 && _depth > 0, "Texture error: Invalid texture dimensions!" );
 
         validateDescriptor();
+    }
+
+    void Texture::createWithData( const Byte* data, size_t dataSize, const vec2<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
+    {
+        createWithData(data, dataSize, vec3<U16>{dimensions.width, dimensions.height, _descriptor.layerCount()}, pixelUnpackAlignment);
     }
 
     void Texture::createWithData( const Byte* data, const size_t dataSize, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
@@ -542,6 +540,8 @@ namespace Divide
 
     ImageView Texture::getView() const noexcept
     {
+        const U32 layerCount = _descriptor.texType() == TextureType::TEXTURE_3D ? 1u : _depth;
+
         ImageView view{};
         view._srcTexture = this;
         view._descriptor._msaaSamples = _descriptor.msaaSamples();
@@ -549,7 +549,7 @@ namespace Divide
         view._descriptor._baseFormat = _descriptor.baseFormat();
         view._descriptor._srgb = _descriptor.srgb();
         view._descriptor._normalized = _descriptor.normalized();
-        view._subRange._layerRange = {0u, _numLayers},
+        view._subRange._layerRange = {0u, layerCount },
         view._subRange._mipLevels.count = _mipCount;
 
         return view;

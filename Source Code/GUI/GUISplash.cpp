@@ -17,7 +17,7 @@ GUISplash::GUISplash(ResourceCache* cache,
                      vec2<U16> dimensions) 
     : _dimensions(MOV(dimensions))
 {
-    TextureDescriptor splashDescriptor(TextureType::TEXTURE_2D);
+    TextureDescriptor splashDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
     splashDescriptor.textureOptions()._alphaChannelTransparency = false;
 
     ResourceDescriptor splashImage("SplashScreen Texture");

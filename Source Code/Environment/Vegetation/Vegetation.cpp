@@ -401,7 +401,7 @@ namespace Divide
         grassSampler.wrapUVW( TextureWrap::CLAMP_TO_EDGE );
         grassSampler.anisotropyLevel( 8 );
 
-        TextureDescriptor grassTexDescriptor( TextureType::TEXTURE_2D_ARRAY );
+        TextureDescriptor grassTexDescriptor( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
         grassTexDescriptor.srgb( true );
 
         ResourceDescriptor vegetationBillboards( "Vegetation Billboards" );
@@ -446,7 +446,7 @@ namespace Divide
         s_cullShaderTrees = CreateResource<ShaderProgram>( terrain->parentResourceCache(), instanceCullShaderTrees, loadTasks );
 
         WAIT_FOR_CONDITION( loadTasks.load() == 0u );
-        DIVIDE_ASSERT( grassBillboardArray->numLayers() == vegDetails.billboardCount );
+        DIVIDE_ASSERT( grassBillboardArray->depth() == vegDetails.billboardCount);
 
         vegMaterial->computeShaderCBK( []( [[maybe_unused]] Material* material, const RenderStagePass stagePass )
                                        {

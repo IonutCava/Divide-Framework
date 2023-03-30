@@ -49,11 +49,11 @@ struct BlitEntry
     U16 _index{ INVALID_INDEX };
 };
 
-struct RTDrawLayerParams
+struct DrawLayerEntry
 {
-    U16 _layer{ 0u };
-    U16 _mipLevel{ 0u };
-    U16 _index{INVALID_INDEX};
+    U16 _layer{0u};
+    /// Ignored for non cube textures
+    U8 _cubeFace{0u}; 
 };
 
 struct RTClearEntry
@@ -70,15 +70,16 @@ struct RTBlitEntry
     U16 _mipCount{1u};
 };
 
+
 using RTDrawMask = std::array<bool, to_base(RTColourAttachmentSlot::COUNT)>;
 using RTBlitParams = eastl::fixed_vector<RTBlitEntry, MAX_BLIT_ENTRIES, false>;
 using RTClearDescriptor = std::array<RTClearEntry, RT_MAX_ATTACHMENT_COUNT>;
-using RTDrawLayerDescriptor = std::array<U16, RT_MAX_ATTACHMENT_COUNT>;
+using RTDrawLayerDescriptor = std::array<DrawLayerEntry, RT_MAX_ATTACHMENT_COUNT>;
 
 struct RTDrawDescriptor
 {
     RTDrawMask _drawMask = create_array<to_base( RTColourAttachmentSlot::COUNT )>( false );
-    RTDrawLayerDescriptor _writeLayers = create_array<RT_MAX_ATTACHMENT_COUNT>(to_U16(0u));
+    RTDrawLayerDescriptor _writeLayers;
     U16 _mipWriteLevel{ 0u };
 };
 

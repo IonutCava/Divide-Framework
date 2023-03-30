@@ -15,50 +15,66 @@ namespace Divide {
 
 template<>
 CachedResource_ptr ImplResourceLoader<Texture>::operator()() {
-    assert(_descriptor.enumValue() >= to_base(TextureType::TEXTURE_1D) &&
-           _descriptor.enumValue() < to_base(TextureType::COUNT));
+    assert(_descriptor.enumValue() < to_base(TextureType::COUNT));
 
     const std::shared_ptr<TextureDescriptor>& texDescriptor = _descriptor.propertyDescriptor<TextureDescriptor>();
-    // Samplers are not optional!
     assert(texDescriptor != nullptr);
 
-    std::string resourceLocation = _descriptor.assetLocation().str();
+    if ( !_descriptor.assetName().empty() )
+    {
+        std::string resourceLocation = _descriptor.assetLocation().str();
 
-    const size_t numCommas = std::count(std::cbegin(_descriptor.assetName().str()),
-                                        std::cend(_descriptor.assetName().str()),
-                                        ',');
-    const size_t crtNumCommas = std::count(std::cbegin(resourceLocation),
-                                           std::cend(resourceLocation),
-                                           ',');
+        const bool isCubeMap = IsCubeTexture( texDescriptor->texType() );
 
-    if (texDescriptor->layerCount() < numCommas + 1u) {
-        texDescriptor->layerCount(to_U16(numCommas + 1u));
+        const U16 numCommas = to_U16(std::count(std::cbegin(_descriptor.assetName().str()),
+                                                std::cend(_descriptor.assetName().str()),
+                                                ','));
+        if ( numCommas > 0u )
+        {
+            const U16 targetLayers = numCommas + 1u;
+
+            if ( isCubeMap )
+            {
+                // Each layer needs 6 images
+                DIVIDE_ASSERT( targetLayers >= 6u && targetLayers % 6u == 0u, "TextureLoaderImpl error: Invalid number of source textures specified for cube map!" );
+
+                if ( texDescriptor->layerCount() == 0u )
+                {
+                    texDescriptor->layerCount( targetLayers % 6 );
+                }
+
+                DIVIDE_ASSERT(texDescriptor->layerCount() == targetLayers % 6);
+
+                // We only use cube arrays to simplify some logic in the texturing code
+                if ( texDescriptor->texType() == TextureType::TEXTURE_CUBE_MAP )
+                {
+                    texDescriptor->texType( TextureType::TEXTURE_CUBE_ARRAY );
+                }
+            }
+            else
+            {
+                if ( texDescriptor->layerCount() == 0u )
+                {
+                    texDescriptor->layerCount( targetLayers );
+                }
+
+                DIVIDE_ASSERT(texDescriptor->layerCount() == targetLayers, "TextureLoaderImpl error: Invalid number of source textures specified for texture array!");
+            }
+        }
+
+        if (resourceLocation.empty())
+        {
+            _descriptor.assetLocation( Paths::g_assetsLocation + Paths::g_texturesLocation );
+        }
+        else
+        {
+            DIVIDE_ASSERT( std::count( std::cbegin( resourceLocation ), std::cend( resourceLocation ), ',' ) == 0u, "TextureLoaderImpl error: All textures for a single array must be loaded from the same location!");
+        }
     }
-
-    if (IsCubeTexture(texDescriptor->texType()) && texDescriptor->layerCount() > 1u) {
-        if (numCommas > 0u) {
-            DIVIDE_ASSERT(texDescriptor->layerCount() % 6u == 0u, "TextureLoaderImpl error: Invalid number of source textures specified for cube map!");
-            texDescriptor->layerCount() /= 6;
-        }
-
-        if (texDescriptor->texType() == TextureType::TEXTURE_CUBE_MAP) {
-            texDescriptor->texType(TextureType::TEXTURE_CUBE_ARRAY);
-        }
-    }
-
-    if (crtNumCommas < numCommas ) {
-        if (!resourceLocation.empty()) {
-            stringstream textureLocationList(resourceLocation);
-            while (std::getline(textureLocationList, resourceLocation, ',')) {}
-        }  else {
-            resourceLocation = (Paths::g_assetsLocation + Paths::g_texturesLocation).str();
-        }
-
-        for (size_t i = crtNumCommas; i < numCommas; ++i) {
-            resourceLocation.append("," + resourceLocation);
-        }
-
-        _descriptor.assetLocation(ResourcePath(resourceLocation));
+    
+    if ( texDescriptor->layerCount() == 0u )
+    {
+        texDescriptor->layerCount(1u);
     }
 
     Texture_ptr ptr = _context.gfx().newTexture(_loadingDescriptorHash,

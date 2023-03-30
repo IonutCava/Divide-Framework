@@ -35,6 +35,7 @@
 
 #include "RTDrawDescriptor.h"
 #include "RTAttachment.h"
+#include "Platform/Video/Headers/TextureData.h"
 #include "Platform/Video/Headers/GraphicsResource.h"
 
 namespace Divide {
@@ -78,14 +79,13 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
     [[nodiscard]] U8 getAttachmentCount(RTAttachmentType type) const noexcept;
     [[nodiscard]] U8 getSampleCount() const noexcept;
 
-    virtual void readData(vec4<U16> rect, GFXImageFormat imageFormat, GFXDataFormat dataType, const PixelAlignment& pixelPackAlignment, std::pair<bufferPtr, size_t> outData) const = 0;
+    [[nodiscard]] ImageReadbackData readData(RTColourAttachmentSlot slot, U8 mip, const PixelAlignment& pixelPackAlignment) const;
 
     /// Resize all attachments
     bool resize(U16 width, U16 height);
     /// Change msaa sampel count for all attachments
     bool updateSampleCount(U8 newSampleCount);
 
-    void readData(GFXImageFormat imageFormat, GFXDataFormat dataType, const PixelAlignment& pixelPackAlignment, std::pair<bufferPtr, size_t> outData) const;
 
     [[nodiscard]] U16 getWidth()  const noexcept;
     [[nodiscard]] U16 getHeight() const noexcept;

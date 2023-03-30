@@ -245,14 +245,14 @@ string ToString(const BeginRenderPassCommand& cmd, U16 indent)
     }
 
     k = 0u;
-    for ( const U16 layer : cmd._descriptor._writeLayers )
+    for ( const DrawLayerEntry& layer : cmd._descriptor._writeLayers )
     {
         ret.append( "    " );
         for ( U16 j = 0; j < indent; ++j )
         {
             ret.append( "    " );
         }
-        ret.append( Util::StringFormat( "Write Layer[ %d ]: %d\n", k++, layer ) );
+        ret.append( Util::StringFormat( "Write Layer[ %d ]: [slice: %d, face: %d]\n", k++, layer._layer, layer._cubeFace ) );
     }
 
     k = 0u;

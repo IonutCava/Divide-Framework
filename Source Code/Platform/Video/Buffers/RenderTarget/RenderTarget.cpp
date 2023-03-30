@@ -89,7 +89,6 @@ bool RenderTarget::create()
                                                                                  : ImageUsage::RT_DEPTH_ATTACHMENT);
 
         ResourceDescriptor textureAttachment(texName);
-        textureAttachment.assetName(ResourcePath(texName));
         textureAttachment.waitForReady(true);
         textureAttachment.propertyDescriptor(attDesc._texDescriptor);
 
@@ -97,7 +96,7 @@ bool RenderTarget::create()
         Texture_ptr tex = CreateResource<Texture>(parentCache, textureAttachment);
         assert(tex);
 
-        tex->createWithData(nullptr, 0u, vec3<U16>(getWidth(), getHeight(), 1u), {});
+        tex->createWithData(nullptr, 0u, vec2<U16>(getWidth(), getHeight()), {});
         att->setTexture(tex , false);
 
         initAttachment(att, attDesc._type, attDesc._slot, false);
@@ -161,9 +160,15 @@ U8 RenderTarget::getAttachmentCount(const RTAttachmentType type) const noexcept
     return 0u;
 }
 
-void RenderTarget::readData(const GFXImageFormat imageFormat, const GFXDataFormat dataType, const PixelAlignment& pixelPackAlignment, const std::pair<bufferPtr, size_t> outData) const
+ImageReadbackData RenderTarget::readData(const RTColourAttachmentSlot slot, const U8 mip, const PixelAlignment& pixelPackAlignment) const
 {
-    readData(vec4<U16>(0u, 0u, _descriptor._resolution.width, _descriptor._resolution.height), imageFormat, dataType, pixelPackAlignment, outData);
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+    if ( _attachmentsUsed[to_base( slot )] )
+    {
+        return _attachments[to_base(slot)]->texture()->readData(mip, pixelPackAlignment);
+    }
+
+    return {};
 }
 
 U16 RenderTarget::getWidth() const noexcept
@@ -244,7 +249,7 @@ bool RenderTarget::initAttachment(RTAttachment* att, const RTAttachmentType type
         const bool shouldResize = att->texture()->width() != getWidth() || att->texture()->height() != getHeight();
         if (shouldResize)
         {
-            att->texture()->createWithData(nullptr, 0u, vec3<U16>(getWidth(), getHeight(), 1u), {});
+            att->texture()->createWithData(nullptr, 0u, vec2<U16>(getWidth(), getHeight()), {});
         }
         const bool updateSampleCount = att->texture()->descriptor().msaaSamples() != _descriptor._msaaSamples;
         if (updateSampleCount)
