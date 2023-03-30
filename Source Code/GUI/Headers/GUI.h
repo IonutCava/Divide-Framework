@@ -41,7 +41,8 @@
 #include "Platform/Input/Headers/InputAggregatorInterface.h"
 namespace CEGUI
 {
-    class Renderer;
+    class CEGUIRenderer;
+    class DVDTextureTarget;
 };
 
 struct FONScontext;
@@ -87,6 +88,8 @@ class GUI final : public GUIInterface,
         [[nodiscard]] ErrorCode init( PlatformContext& context, ResourceCache* cache );
         void destroy();
 
+        /// Render all elements that need their own internal render targets (e.g. CEGUI)
+        void preDraw( GFXDevice& context, const Rect<I32>& viewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
         /// Go through all of the registered scene gui elements and gather all of the render commands
         void draw( GFXDevice& context, const Rect<I32>& viewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
         /// Text rendering is handled exclusively by Mikko Mononen's FontStash library (https://github.com/memononen/fontstash)
@@ -117,8 +120,6 @@ class GUI final : public GUIInterface,
         void setCursorPosition( I32 x, I32 y );
         /// Provides direct access to the CEGUI context. Used by plugins  (e.g. GUIConsole, GUIInput, etc)
         [[nodiscard]] CEGUI::GUIContext* getCEGUIContext() noexcept;
-        /// Called by the various rendering APIs to register themselves with CEGUI
-        void setRenderer( CEGUI::Renderer& renderer );
         /// Toggle debug cursor rendering on or off.
         void showDebugCursor( bool state );
         /// Debug cursor state. The debug cursor is a the cursor as it's know internally to CEGUI (based on its internal position and state)
@@ -170,9 +171,6 @@ class GUI final : public GUIInterface,
         CEGUI::Window* _rootSheet{nullptr};
         /// The CEGUI context as returned by the library upon creation
         CEGUI::GUIContext* _ceguiContext{nullptr};
-        /// The render target texture CEGUI renders into. we need this to blit it into our own render targets.
-        /// If we had a custom renderer that used the Divide::GFX interface, this wouldn't of been needed anymore.
-        CEGUI::TextureTarget* _ceguiRenderTextureTarget = nullptr;
 
     private:
         /// Set to true when the GUI has finished loading
@@ -180,7 +178,9 @@ class GUI final : public GUIInterface,
         /// Used to implement key repeat
         CEGUIInput _ceguiInput;  
         /// Used to render CEGUI to a texture; We want to port this to the Divide::GFX interface.
-        CEGUI::Renderer* _ceguiRenderer{nullptr};
+        CEGUI::CEGUIRenderer* _ceguiRenderer{ nullptr };
+        /// Used to render CEGUI elements into. We blit this on top of our scene target.
+        CEGUI::DVDTextureTarget* _renderTextureTarget{nullptr};
         /// Our custom in-game console (for logs and commands. A la Quake's ~-console)
         GUIConsole* _console{nullptr};
         /// Pointer to a default message box used for general purpose messages
@@ -201,6 +201,7 @@ class GUI final : public GUIInterface,
         Pipeline* _textRenderPipeline{nullptr};
         /// The text rendering shaderProgram we used to draw Font Stash text
         ShaderProgram_ptr _textRenderShader;
+        ShaderProgram_ptr _ceguiRenderShader;
     };
 
 };  // namespace Divide

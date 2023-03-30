@@ -43,15 +43,13 @@
 struct FONScontext;
 struct ImDrawData;
 
-namespace CEGUI {
-    class DivideRenderer;
-};
+namespace Divide
+{
 
-namespace Divide {
-
-namespace Time {
+namespace Time
+{
     class ProfileTimer;
-};
+}
 
 enum class ShaderResult : U8;
 
@@ -97,8 +95,6 @@ private:
 
     void idle(bool fast) override;
 
-    bool draw(const GenericDrawCommand& cmd) const;
-
     void preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) override;
 
     void flushCommand(GFX::CommandBase* cmd) override;
@@ -119,7 +115,6 @@ private:
     bool setViewportInternal(const Rect<I32>& viewport) override;
     bool setScissorInternal( const Rect<I32>& scissor ) override;
 
-    ShaderResult bindPipeline(const Pipeline& pipeline);
 
     void flushTextureBindQueue();
 
@@ -152,6 +147,10 @@ public:
 
     static [[nodiscard]] GLsync CreateFenceSync();
     static void DestroyFenceSync(GLsync& sync);
+
+protected:
+    static ShaderResult BindPipeline(GFXDevice& context, const Pipeline& pipeline);
+    static bool Draw( const GenericDrawCommand& cmd );
 
 private:
 
@@ -198,8 +197,6 @@ private:
     eastl::stack<HardwareQueryContext> _queryContext;
 
     WindowGLContext _currentContext{};
-
-    CEGUI::DivideRenderer* _GUIGLrenderer{nullptr};
 
     bool _runQueries{false};
 

@@ -1075,12 +1075,9 @@ namespace Divide
         return entry._handle;
     }
 
-    void GLStateTracker::getActiveViewport( GLint* const vp ) const noexcept
+    void GLStateTracker::getActiveViewport( Rect<I32>& viewportOut ) const noexcept
     {
-        if ( vp != nullptr )
-        {
-            *vp = *_activeViewport._v;
-        }
+        viewportOut = _activeViewport;
     }
 
     /// A state block should contain all rendering state changes needed for the next draw call.

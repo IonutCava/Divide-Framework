@@ -761,25 +761,28 @@ namespace Divide
                                             GFXImageFormat::RGBA );
         editorDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
 
+
+        RenderTargetDescriptor editorDesc = {};
+        editorDesc._attachments =
+        {
+            InternalRTAttachmentDescriptor { editorDescriptor, _editorSamplerHash, RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO }
+        };
+
+        editorDesc._name = "Editor";
+        editorDesc._resolution = renderResolution;
+        _editorRTHandle = _context.gfx().renderTargetPool().allocateRT( editorDesc );
+
+        editorDesc._name = "Node preview";
+        
         TextureDescriptor depthDescriptor( TextureType::TEXTURE_2D,
                                            GFXDataFormat::FLOAT_16,
                                            GFXImageFormat::DEPTH_COMPONENT );
 
-        InternalRTAttachmentDescriptors attachments
+        editorDesc._attachments.emplace_back(InternalRTAttachmentDescriptor
         {
-            InternalRTAttachmentDescriptor { editorDescriptor, _editorSamplerHash, RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO },
-            InternalRTAttachmentDescriptor { depthDescriptor, _editorSamplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 },
-        };
+            depthDescriptor, _editorSamplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0
+        });
 
-        RenderTargetDescriptor editorDesc = {};
-        editorDesc._name = "Editor";
-        editorDesc._resolution = renderResolution;
-        editorDesc._attachmentCount = 1u;
-        editorDesc._attachments = attachments.data();
-        _editorRTHandle = _context.gfx().renderTargetPool().allocateRT( editorDesc );
-
-        editorDesc._name = "Node preview";
-        editorDesc._attachmentCount = 2u;
         _nodePreviewRTHandle = _context.gfx().renderTargetPool().allocateRT( editorDesc );
 
         return loadFromXML();
@@ -1584,7 +1587,7 @@ namespace Divide
                     {
                         clipRect.offsetY = to_I32( clip_min.y );
                     }
-                    GFX::EnqueueCommand<GFX::SetScissorCommand>( bufferInOut )->_rect.set( clipRect );
+                    GFX::EnqueueCommand( bufferInOut, GFX::SetScissorCommand{ clipRect } );
 
                     Texture* tex = (Texture*)(pcmd.GetTexID());
                     if ( tex != nullptr )

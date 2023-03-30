@@ -51,14 +51,6 @@ namespace Divide
         COUNT
     };
 
-    struct TextureWrapper final : Hashable
-    {
-        CEGUI::Texture* _ceguiTex{ nullptr };
-        Texture* _internalTexture{ nullptr };
-
-        [[nodiscard]] size_t getHash() const noexcept override;
-    };
-
     struct ImageSubRange
     {
         vec2<U16> _mipLevels{ 0u, U16_MAX };  //Offset, Count
@@ -79,7 +71,7 @@ namespace Divide
 
         } _descriptor;
 
-        TextureWrapper _srcTexture{};
+        const Texture* _srcTexture{nullptr};
         ImageSubRange _subRange{};
 
         [[nodiscard]] size_t getHash() const noexcept override;
@@ -130,10 +122,8 @@ namespace Divide
     [[nodiscard]] DescriptorSetBinding& AddBinding(DescriptorSet& setInOut, U8 slot, U16 stageVisibilityMask); 
     [[nodiscard]] DescriptorSetBinding& AddBinding(DescriptorSet& setInOut, U8 slot, ShaderStageVisibility stageVisibility);
 
-    bool operator==( const TextureWrapper& lhs, const TextureWrapper& rhs ) noexcept;
-    bool operator!=( const TextureWrapper& lhs, const TextureWrapper& rhs ) noexcept;
     bool operator==( const ImageView& lhs, const ImageView& rhs ) noexcept;
-    bool operator!=( const ImageView& lhs, const ImageView& rhs ) noexcept;   
+    bool operator!=( const ImageView& lhs, const ImageView& rhs ) noexcept;
     bool operator==( const ImageSubRange& lhs, const ImageSubRange& rhs ) noexcept;
     bool operator!=( const ImageSubRange& lhs, const ImageSubRange& rhs ) noexcept;
     bool operator==( const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs ) noexcept;

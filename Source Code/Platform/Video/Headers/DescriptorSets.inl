@@ -35,19 +35,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide
 {
-
-    inline bool operator==( const TextureWrapper& lhs, const TextureWrapper& rhs ) noexcept
-    {
-        return lhs._internalTexture == rhs._internalTexture &&
-               lhs._ceguiTex == rhs._ceguiTex;
-    }
-
-    inline bool operator!=( const TextureWrapper& lhs, const TextureWrapper& rhs ) noexcept
-    {
-        return lhs._internalTexture != rhs._internalTexture ||
-               lhs._ceguiTex != rhs._ceguiTex;
-    }
-
     inline bool operator==( const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs ) noexcept
     {
         return lhs._msaaSamples == rhs._msaaSamples &&

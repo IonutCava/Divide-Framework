@@ -68,12 +68,6 @@ namespace Divide
                 }
 
                 indexFormat = idxBuffer._data.count > 0u ? (idxBuffer._data.smallIndices ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT) : GL_NONE;
-                if ( !renderIndirect() &&
-                     command._cmd.instanceCount == 1u &&
-                     command._drawCount > 1u )
-                {
-                    rebuildCountAndIndexData( command._drawCount, static_cast<GLsizei>(command._cmd.indexCount), command._cmd.firstIndex, idxBuffer._data.count );
-                }
             }
             else
             {
@@ -81,11 +75,7 @@ namespace Divide
             }
 
             // Submit the draw command
-            GLUtil::SubmitRenderCommand( command,
-                                         renderIndirect(),
-                                         indexFormat,
-                                         _indexInfo._countData.data(),
-                                         (bufferPtr)_indexInfo._indexOffsetData.data() );
+            GLUtil::SubmitRenderCommand( command, renderIndirect(), indexFormat );
         }
     }
 
@@ -316,47 +306,6 @@ namespace Divide
                                                         impl->_elementStride );
 
         DIVIDE_ASSERT(ret != GLStateTracker::BindResult::FAILED );
-    }
-
-    void glGenericVertexData::rebuildCountAndIndexData( const U32 drawCount, const GLsizei indexCount, const U32 firstIndex, const size_t indexBufferSize )
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        if ( _lastDrawCount == drawCount && _lastIndexCount == indexCount && _lastFirstIndex == firstIndex )
-        {
-            return;
-        }
-
-        const size_t idxCountInternal = drawCount * indexBufferSize;
-        if ( idxCountInternal >= _indexInfo._indexOffsetData.size() )
-        {
-            _indexInfo._indexOffsetData.resize( idxCountInternal, _lastFirstIndex );
-        }
-
-        if ( _lastDrawCount != drawCount )
-        {
-            if ( drawCount >= _indexInfo._countData.size() )
-            {
-                // No need to resize down. Cheap to keep in memory.
-                _indexInfo._countData.resize( drawCount, _lastIndexCount );
-            }
-            _lastDrawCount = drawCount;
-        }
-
-        if ( _lastIndexCount != indexCount )
-        {
-            eastl::fill( begin( _indexInfo._countData ), begin( _indexInfo._countData ) + drawCount, indexCount );
-            _lastIndexCount = indexCount;
-        }
-
-        if ( _lastFirstIndex != firstIndex )
-        {
-            if ( idxCountInternal > 0u )
-            {
-                eastl::fill( begin( _indexInfo._indexOffsetData ), begin( _indexInfo._indexOffsetData ) + idxCountInternal, firstIndex );
-            }
-            _lastFirstIndex = firstIndex;
-        }
     }
 
 };

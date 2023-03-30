@@ -23,7 +23,7 @@ namespace Divide
         for ( const TextureLayoutChange& it : changes )
         {
             ImageSubRange subRangeTemp = it._targetView._subRange;
-            if ( it._targetView._srcTexture._internalTexture != nullptr &&
+            if ( it._targetView._srcTexture != nullptr &&
                  it._targetLayout != ImageUsage::COUNT &&
                  it._sourceLayout != it._targetLayout )
             {
@@ -145,8 +145,6 @@ namespace Divide
         _numLayers( texDescriptor.layerCount() ),
         _parentCache( parentCache )
     {
-        _defaultView._srcTexture._internalTexture = this;
-        _defaultView._subRange._mipLevels.count = 1u;
     }
 
     Texture::~Texture()
@@ -176,12 +174,6 @@ namespace Divide
 
     void Texture::postLoad()
     {
-        _defaultView._descriptor._baseFormat = _descriptor.baseFormat();
-        _defaultView._descriptor._dataType = _descriptor.dataType();
-        _defaultView._descriptor._srgb = _descriptor.srgb();
-        _defaultView._descriptor._normalized = _descriptor.normalized();
-        _defaultView._descriptor._msaaSamples = _descriptor.msaaSamples();
-        _defaultView._subRange._layerRange = { 0u, _numLayers};
     }
 
     /// Load texture data using the specified file name
@@ -539,23 +531,28 @@ namespace Divide
             //http://www.opengl.org/registry/specs/ARB/texture_non_power_of_two.txt
             if ( descriptor().mipMappingState() != TextureDescriptor::MipMappingState::OFF )
             {
-                _defaultView._subRange._mipLevels.count = to_U16( std::floorf( std::log2f( std::fmaxf( to_F32( _width ), to_F32( _height ) ) ) ) ) + 1;
+                _mipCount = to_U16( std::floorf( std::log2f( std::fmaxf( to_F32( _width ), to_F32( _height ) ) ) ) ) + 1;
             }
             else
             {
-                _defaultView._subRange._mipLevels.count = 1u;
+                _mipCount = 1u;
             }
         }
     }
 
-    U16 Texture::mipCount() const noexcept
-    {
-        return _defaultView._subRange._mipLevels.count;
-    }
-
     ImageView Texture::getView() const noexcept
     {
-        return _defaultView;
+        ImageView view{};
+        view._srcTexture = this;
+        view._descriptor._msaaSamples = _descriptor.msaaSamples();
+        view._descriptor._dataType = _descriptor.dataType();
+        view._descriptor._baseFormat = _descriptor.baseFormat();
+        view._descriptor._srgb = _descriptor.srgb();
+        view._descriptor._normalized = _descriptor.normalized();
+        view._subRange._layerRange = {0u, _numLayers},
+        view._subRange._mipLevels.count = _mipCount;
+
+        return view;
     }
 
     ImageView Texture::getView( const TextureType targetType ) const noexcept

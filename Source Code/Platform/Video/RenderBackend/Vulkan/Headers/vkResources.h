@@ -349,10 +349,10 @@ namespace VKUtil {
     void SubmitRenderCommand( const GenericDrawCommand& drawCommand,
                               const VkCommandBuffer commandBuffer,
                               bool indexed,
-                              bool renderIndirect);
+                              bool useIndirectBuffer );
 
 
-    void fillEnumTables(VkDevice device);
+    void OnStartup(VkDevice device);
 
     [[nodiscard]] VkFormat internalFormat(GFXImageFormat baseFormat, GFXDataFormat dataType, bool srgb, bool normalized) noexcept;
     [[nodiscard]] VkFormat internalFormat(GFXDataFormat format, U8 componentCount, bool normalized) noexcept;

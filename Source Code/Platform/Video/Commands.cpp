@@ -38,7 +38,6 @@ IMPLEMENT_COMMAND(MemoryBarrierCommand);
 IMPLEMENT_COMMAND(ReadBufferDataCommand);
 IMPLEMENT_COMMAND(ClearBufferDataCommand);
 IMPLEMENT_COMMAND(SetClippingStateCommand);
-IMPLEMENT_COMMAND(ExternalCommand);
 
 string ToString(const BindPipelineCommand& cmd, U16 indent) {
     assert(cmd._pipeline != nullptr);
@@ -342,26 +341,24 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent) {
                 ret.append("    ");
             }
             if ( Has<DescriptorCombinedImageSampler>( binding._data )) {
-                Texture* srcInternalTex = As<DescriptorCombinedImageSampler>( binding._data)._image._srcTexture._internalTexture;
-                CEGUI::Texture* srcExternalTex = As<DescriptorCombinedImageSampler>( binding._data)._image._srcTexture._ceguiTex;
+                const Texture* srcTex = As<DescriptorCombinedImageSampler>( binding._data)._image._srcTexture;
 
                 ret.append(Util::StringFormat("Texture [ %d - %zu - %s - %zu ] Layers: [ %d - %d ] MipRange: [ %d - %d ]\n",
                             binding._slot,
-                            srcInternalTex != nullptr ? srcInternalTex->getGUID() : 0u,
-                            srcInternalTex != nullptr ? srcInternalTex->resourceName().c_str() : srcExternalTex != nullptr ? srcExternalTex->getName().c_str() : "no-name",
+                            srcTex != nullptr ? srcTex->getGUID() : 0u,
+                            srcTex != nullptr ? srcTex->resourceName().c_str() : "no-name",
                             As<DescriptorCombinedImageSampler>(binding._data)._samplerHash,
                             As<DescriptorCombinedImageSampler>(binding._data)._image._subRange._layerRange.offset,
                             As<DescriptorCombinedImageSampler>(binding._data)._image._subRange._layerRange.count,
                             As<DescriptorCombinedImageSampler>(binding._data)._image._subRange._mipLevels.offset,
                             As<DescriptorCombinedImageSampler>(binding._data)._image._subRange._mipLevels.count));
             } else {
-                Texture* srcInternalTex = As<DescriptorImageView>( binding._data)._image._srcTexture._internalTexture;
-                CEGUI::Texture* srcExternalTex = As<DescriptorImageView>( binding._data)._image._srcTexture._ceguiTex;
+                const Texture* srcTex = As<DescriptorImageView>( binding._data)._image._srcTexture;
 
                 ret.append(Util::StringFormat("Image binds: Slot [%d] - Src GUID [ %d ] - Src Name [ %s ] - Layers [%d - %d] - Levels [%d - %d] - Flag [ %s ]",
                            binding._slot,
-                           srcInternalTex != nullptr ? srcInternalTex->getGUID() : 0u,
-                           srcInternalTex != nullptr ? srcInternalTex->resourceName().c_str() : srcExternalTex != nullptr ? srcExternalTex->getName().c_str() : "no-name",
+                           srcTex != nullptr ? srcTex->getGUID() : 0u,
+                           srcTex != nullptr ? srcTex->resourceName().c_str() : "no-name",
                            As<DescriptorImageView>(binding._data)._image._subRange._layerRange.offset,
                            As<DescriptorImageView>(binding._data)._image._subRange._layerRange.count,
                            As<DescriptorImageView>(binding._data)._image._subRange._mipLevels.offset,
@@ -413,7 +410,7 @@ string ToString(const MemoryBarrierCommand& cmd, U16 indent) {
         for (U16 j = 0; j < indent; ++j) {
             ret.append("    ");
         }
-        ret.append(Util::StringFormat("Texture Layout Change: [ %d [ %s -> %s ]]\n", it._targetView._srcTexture._internalTexture ? it._targetView._srcTexture._internalTexture->getGUID() : -1, Divide::Names::imageUsage[to_base( it._sourceLayout )], Divide::Names::imageUsage[to_base(it._targetLayout)]));
+        ret.append(Util::StringFormat("Texture Layout Change: [ %d [ %s -> %s ]]\n", it._targetView._srcTexture ? it._targetView._srcTexture->getGUID() : -1, Divide::Names::imageUsage[to_base( it._sourceLayout )], Divide::Names::imageUsage[to_base(it._targetLayout)]));
     }
     return ret;
 }

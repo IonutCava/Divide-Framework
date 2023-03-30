@@ -12,8 +12,8 @@
 namespace Divide {
 
 namespace {
-    FORCE_INLINE [[nodiscard]] U8 GetBitsPerPixel(const GFXDataFormat format, const GFXImageFormat baseFormat) noexcept {
-        return Texture::GetSizeFactor(format) * NumChannels(baseFormat) * 8;
+    FORCE_INLINE [[nodiscard]] U8 GetBytesPerPixel(const GFXDataFormat format, const GFXImageFormat baseFormat) noexcept {
+        return Texture::GetSizeFactor(format) * NumChannels(baseFormat);
     }
 };
 
@@ -344,13 +344,6 @@ void glTexture::clearDataInternal(const UColour4& clearColour, U8 level, bool cl
 }
 
 Texture::TextureReadbackData glTexture::readData(U16 mipLevel, const PixelAlignment& pixelPackAlignment, const GFXDataFormat desiredFormat) const {
-    if (IsCompressed(_descriptor.baseFormat())) {
-        DIVIDE_ASSERT(false, "glTexture::readData: Compressed textures not supported!");
-        TextureReadbackData data{};
-        return MOV(data);
-    }
-
-
     CLAMP(mipLevel, to_U16(0u), mipCount());
 
     GLint texWidth = _width, texHeight = _height;
@@ -365,24 +358,31 @@ Texture::TextureReadbackData glTexture::readData(U16 mipLevel, const PixelAlignm
       **/
       
     const GFXDataFormat dataFormat = desiredFormat == GFXDataFormat::COUNT ? _descriptor.dataType() : desiredFormat;
-    const U8 bpp = GetBitsPerPixel(desiredFormat, _descriptor.baseFormat());
+    const U8 bpp = GetBytesPerPixel(desiredFormat, _descriptor.baseFormat());
 
-    const GLsizei size = (GLsizei{ texWidth } * texHeight * bpp) / 8u;
+    const GLsizei size = (GLsizei{ texWidth } * texHeight * bpp);
 
     TextureReadbackData grabData{};
     grabData._data.reset(new Byte[size]);
     grabData._size = size;
 
-    GL_API::GetStateTracker().setPixelPackAlignment(pixelPackAlignment);
+    if ( IsCompressed( _descriptor.baseFormat() ) )
+    {
+        glGetCompressedTextureImage( _textureHandle, 0, size, (bufferPtr)grabData._data.get());
+    }
+    else
+    {
+        GL_API::GetStateTracker().setPixelPackAlignment(pixelPackAlignment);
 
-    glGetTextureImage(_textureHandle,
-                      0,
-                      GLUtil::glImageFormatTable[to_base(_descriptor.baseFormat())],
-                      GLUtil::glDataFormat[to_base(dataFormat)],
-                      size,
-                      (bufferPtr)grabData._data.get());
+        glGetTextureImage(_textureHandle,
+                          0,
+                          GLUtil::glImageFormatTable[to_base(_descriptor.baseFormat())],
+                          GLUtil::glDataFormat[to_base(dataFormat)],
+                          size,
+                          (bufferPtr)grabData._data.get());
 
-    GL_API::GetStateTracker().setPixelPackAlignment({});
+        GL_API::GetStateTracker().setPixelPackAlignment({});
+    }
 
     return MOV(grabData);
 }

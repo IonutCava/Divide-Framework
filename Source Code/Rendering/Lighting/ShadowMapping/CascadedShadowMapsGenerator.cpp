@@ -125,17 +125,15 @@ namespace Divide
             depthDescriptor.msaaSamples( g_shadowSettings.csm.MSAASamples );
             depthDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
 
-            InternalRTAttachmentDescriptors att
+            RenderTargetDescriptor desc = {};
+            desc._attachments = 
             {
                 InternalRTAttachmentDescriptor{ colourDescriptor, samplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0},
                 InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 }
             };
 
-            RenderTargetDescriptor desc = {};
             desc._resolution = rt->getResolution();
             desc._name = "CSM_ShadowMap_Draw";
-            desc._attachmentCount = to_U8( att.size() );
-            desc._attachments = att.data();
             desc._msaaSamples = g_shadowSettings.csm.MSAASamples;
 
             _drawBufferDepth = context.renderTargetPool().allocateRT( desc );
@@ -147,16 +145,14 @@ namespace Divide
             blurMapDescriptor.layerCount( Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT );
             blurMapDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
 
-            InternalRTAttachmentDescriptors att
+            RenderTargetDescriptor desc = {};
+            desc._attachments = 
             {
                 InternalRTAttachmentDescriptor{ blurMapDescriptor, samplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 }
             };
 
-            RenderTargetDescriptor desc = {};
             desc._name = "CSM_Blur";
             desc._resolution = rt->getResolution();
-            desc._attachmentCount = to_U8( att.size() );
-            desc._attachments = att.data();
 
             _blurBuffer = _context.renderTargetPool().allocateRT( desc );
         }

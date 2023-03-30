@@ -37,17 +37,24 @@
 #include "Platform/Video/Buffers/RenderTarget/Headers/RTAttachment.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/glResources.h"
 
+namespace CEGUI
+{
+    class DVDTextureTarget;
+}
+
 namespace Divide {
 
 class GL_API;
 
 namespace Attorney {
     class GLAPIRenderTarget;
+    class CEGUIRenderTarget;
 };
 
 class glFramebuffer final : public RenderTarget {
 
     friend class Attorney::GLAPIRenderTarget;
+    friend class Attorney::CEGUIRenderTarget;
 
   public:
     enum class AttachmentState : U8 {
@@ -142,6 +149,19 @@ namespace Attorney {
         }
 
         friend class GL_API;
+    };
+};  // namespace Attorney
+
+namespace Attorney
+{
+    class CEGUIRenderTarget
+    {
+        static void clear( glFramebuffer& rt, const RTClearDescriptor& clearPolicy )
+        {
+            rt.clear(clearPolicy);
+        }
+
+        friend class CEGUI::DVDTextureTarget;
     };
 };  // namespace Attorney
 };  // namespace Divide

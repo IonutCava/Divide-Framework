@@ -761,7 +761,7 @@ namespace Divide
             Debug::vkSetDebugUtilsObjectTagEXT   = (PFN_vkSetDebugUtilsObjectTagEXT)vkGetDeviceProcAddr(   _device->getVKDevice(), "vkSetDebugUtilsObjectTagEXT"   );
         }
 
-        VKUtil::fillEnumTables( _device->getVKDevice() );
+        VKUtil::OnStartup( _device->getVKDevice() );
 
         VkFormatProperties2 properties{};
         properties.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2;
@@ -1097,36 +1097,39 @@ namespace Divide
     }
 
 
-    bool VK_API::draw( const GenericDrawCommand& cmd, VkCommandBuffer cmdBuffer ) const
+    bool VK_API::Draw( const GenericDrawCommand& cmd, VkCommandBuffer cmdBuffer )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+        DIVIDE_ASSERT( cmd._drawCount < GFXDevice::GetDeviceInformation()._maxDrawIndirectCount );
 
-        if ( cmd._sourceBuffer._id == 0 )
+        if ( cmd._sourceBuffer._id == 0u )
         {
-            U32 indexCount = cmd._cmd.indexCount;
+            DIVIDE_ASSERT( cmd._cmd.indexCount == 0u );
 
-            U32 vertexCount = 0u;
-            switch ( VK_API::GetStateTracker()._pipeline._topology )
+            if ( cmd._cmd.vertexCount == 0u )
             {
-                case PrimitiveTopology::POINTS: vertexCount = 1u; break;
-                case PrimitiveTopology::LINES:
-                case PrimitiveTopology::LINE_STRIP:
-                case PrimitiveTopology::LINE_STRIP_ADJACENCY:
-                case PrimitiveTopology::LINES_ADJANCENCY: vertexCount = 2u; break;
-                case PrimitiveTopology::TRIANGLES:
-                case PrimitiveTopology::TRIANGLE_STRIP:
-                case PrimitiveTopology::TRIANGLE_FAN:
-                case PrimitiveTopology::TRIANGLES_ADJACENCY:
-                case PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY: vertexCount = 3u; break;
-                case PrimitiveTopology::PATCH: vertexCount = 4u; break;
-                default: return false;
+                GenericDrawCommand drawCmd = cmd;
+                switch ( VK_API::GetStateTracker()._pipeline._topology )
+                {
+                    case PrimitiveTopology::POINTS: drawCmd._cmd.vertexCount = 1u; break;
+                    case PrimitiveTopology::LINES:
+                    case PrimitiveTopology::LINE_STRIP:
+                    case PrimitiveTopology::LINE_STRIP_ADJACENCY:
+                    case PrimitiveTopology::LINES_ADJANCENCY: drawCmd._cmd.vertexCount = 2u; break;
+                    case PrimitiveTopology::TRIANGLES:
+                    case PrimitiveTopology::TRIANGLE_STRIP:
+                    case PrimitiveTopology::TRIANGLE_FAN:
+                    case PrimitiveTopology::TRIANGLES_ADJACENCY:
+                    case PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY: drawCmd._cmd.vertexCount = 3u; break;
+                    case PrimitiveTopology::PATCH: drawCmd._cmd.vertexCount = 4u; break;
+                    default: return false;
+                }
+                VKUtil::SubmitRenderCommand(drawCmd, cmdBuffer, false, false);
             }
-            if ( indexCount < vertexCount )
+            else
             {
-                indexCount = vertexCount;
+                VKUtil::SubmitRenderCommand( cmd, cmdBuffer, false, false );
             }
-
-            vkCmdDraw( cmdBuffer, cmd._drawCount * indexCount, cmd._cmd.instanceCount, cmd._cmd.baseVertex, cmd._cmd.baseInstance );
         }
         else
         {
@@ -1262,20 +1265,19 @@ namespace Divide
                     }
 
                     const DescriptorCombinedImageSampler& imageSampler = As<DescriptorCombinedImageSampler>( srcBinding._data );
-                    if ( imageSampler._image._srcTexture._ceguiTex == nullptr && imageSampler._image._srcTexture._internalTexture == nullptr )
+                    if ( imageSampler._image._srcTexture == nullptr )
                     {
                         NOP(); //unbind request;
                     }
                     else
                     {
                         DIVIDE_ASSERT( imageSampler._image.targetType() != TextureType::COUNT );
-                        if ( imageSampler._image._srcTexture._internalTexture == nullptr )
+                        if ( imageSampler._image._srcTexture == nullptr )
                         {
-                            DIVIDE_ASSERT( imageSampler._image._srcTexture._ceguiTex != nullptr );
                             continue;
                         }
 
-                        vkTexture* vkTex = static_cast<vkTexture*>(imageSampler._image._srcTexture._internalTexture);
+                        const vkTexture* vkTex = static_cast<const vkTexture*>(imageSampler._image._srcTexture);
 
                         vkTexture::CachedImageView::Descriptor descriptor{};
                         descriptor._usage = ImageUsage::SHADER_READ;
@@ -1305,14 +1307,14 @@ namespace Divide
                         continue;
                     }
                     const DescriptorImageView& imageView = As<DescriptorImageView>( srcBinding._data );
-                    if ( imageView._image._srcTexture._internalTexture == nullptr && imageView._image._srcTexture._ceguiTex != nullptr )
+                    if ( imageView._image._srcTexture == nullptr )
                     {
                         continue;
                     }
 
-                    DIVIDE_ASSERT( imageView._image._srcTexture._internalTexture != nullptr && imageView._image._subRange._mipLevels.count == 1u );
+                    DIVIDE_ASSERT( imageView._image._srcTexture != nullptr && imageView._image._subRange._mipLevels.count == 1u );
 
-                    vkTexture* vkTex = static_cast<vkTexture*>(imageView._image._srcTexture._internalTexture);
+                    const vkTexture* vkTex = static_cast<const vkTexture*>(imageView._image._srcTexture);
 
                     DIVIDE_ASSERT(imageView._usage == ImageUsage::SHADER_READ || imageView._usage == ImageUsage::SHADER_WRITE || imageView._usage == ImageUsage::SHADER_READ_WRITE);
 
@@ -1926,7 +1928,6 @@ namespace Divide
                 PopDebugMessage( cmdBuffer );
                 GetStateTracker()._activeMSAASamples = _context.context().config().rendering.MSAASamples;
                 GetStateTracker()._activeRenderTargetDimensions = s_stateTracker._activeWindow->_window->getDrawableSize();
-
                 // We can do this outside of a renderpass
                 FlushBufferTransferRequests( cmdBuffer );
             }break;
@@ -2029,7 +2030,7 @@ namespace Divide
 
                         if ( isEnabledOption( currentDrawCommand, CmdRenderOptions::RENDER_GEOMETRY ) )
                         {
-                            draw( currentDrawCommand, cmdBuffer );
+                            Draw( currentDrawCommand, cmdBuffer );
                             ++drawCount;
                         }
 
@@ -2038,7 +2039,7 @@ namespace Divide
                             PrimitiveTopology oldTopology = VK_API::GetStateTracker()._pipeline._topology;
                             VK_API::GetStateTracker()._pipeline._topology = PrimitiveTopology::LINES;
                             vkCmdBindPipeline( cmdBuffer, GetStateTracker()._pipeline._bindPoint, GetStateTracker()._pipeline._vkPipelineWireframe );
-                            draw( currentDrawCommand, cmdBuffer );
+                            Draw( currentDrawCommand, cmdBuffer );
                             ++drawCount;
                             vkCmdBindPipeline( cmdBuffer, GetStateTracker()._pipeline._bindPoint, GetStateTracker()._pipeline._vkPipeline );
                             VK_API::GetStateTracker()._pipeline._topology = oldTopology;
@@ -2213,7 +2214,7 @@ namespace Divide
                         continue;
                     }
 
-                    vkTexture* vkTex = static_cast<vkTexture*>(it._targetView._srcTexture._internalTexture);
+                    const vkTexture* vkTex = static_cast<const vkTexture*>(it._targetView._srcTexture);
 
                     auto subRange = it._targetView._subRange;
                     if ( IsCubeTexture( vkTex->descriptor().texType() ) &&

@@ -71,9 +71,9 @@ bool RenderTarget::create()
         return att;
     };
 
-    for (U8 i = 0u; i < _descriptor._attachmentCount; ++i)
+    for (InternalRTAttachmentDescriptor& attDesc : _descriptor._attachments)
     {
-        InternalRTAttachmentDescriptor& attDesc = _descriptor._attachments[i];
+        
         RTAttachment* att = updateAttachment(attDesc);
 
         const Str64 texName = Util::StringFormat("RT_%s_Att_%s_%d_%d",
@@ -103,12 +103,10 @@ bool RenderTarget::create()
         initAttachment(att, attDesc._type, attDesc._slot, false);
     }
 
-    for (U8 i = 0u; i < _descriptor._externalAttachmentCount; ++i)
+    for ( const ExternalRTAttachmentDescriptor& attDesc : _descriptor._externalAttachments )
     {
-        const ExternalRTAttachmentDescriptor& attDesc = _descriptor._externalAttachments[i];
-
         RTAttachment* att = updateAttachment(attDesc);
-        att->setTexture(_descriptor._externalAttachments[i]._attachment->texture(), true);
+        att->setTexture(attDesc._attachment->texture(), true);
         initAttachment(att, attDesc._type, attDesc._slot, true);
     }
 

@@ -7,8 +7,10 @@
 #include "Headers/GUIConsole.h"
 #include "Headers/GUIMessageBox.h"
 #include "Headers/GUIText.h"
-
 #include "Scenes/Headers/Scene.h"
+
+#include "GUI/CEGUIAddons/Renderer/Headers/CEGUIRenderer.h"
+#include "GUI/CEGUIAddons/Renderer/Headers/DVDTextureTarget.h"
 
 #include "Core/Headers/NonCopyable.h"
 #include "Core/Debugging/Headers/DebugInterface.h"
@@ -109,8 +111,6 @@ namespace Divide
 
             return 0;
         }
-
-       
     }
 
     void DIVIDE_ASSERT_MSG_BOX( const char* failMessage ) noexcept
@@ -281,6 +281,30 @@ namespace Divide
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
     }
 
+    void GUI::preDraw( GFXDevice& context, const Rect<I32>& viewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
+    {
+        if ( !_init || !_activeScene )
+        {
+            return;
+        }
+
+        PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
+        GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Pre-Render GUI" } );
+
+        if ( _ceguiRenderer != nullptr )
+        {
+            GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Render CEGUI" } );
+
+            _ceguiRenderer->beginRendering( bufferInOut, memCmdInOut );
+            _renderTextureTarget->clear();
+            _ceguiContext->draw();
+            _ceguiRenderer->endRendering();
+
+            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
+        }
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
+    }
+
     void GUI::draw( GFXDevice& context, const Rect<I32>& viewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
         if ( !_init || !_activeScene )
@@ -325,23 +349,11 @@ namespace Divide
             drawText( textBatch, viewport, bufferInOut, memCmdInOut );
         }
 
-        const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
-
-        if ( guiConfig.cegui.enabled )
+        if ( _ceguiRenderer != nullptr )
         {
-            GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Render CEGUI" } );
-
-            GFX::EnqueueCommand<GFX::ExternalCommand>( bufferInOut )->_cbk = [this]()
-            {
-                _ceguiRenderer->beginRendering();
-                _ceguiRenderTextureTarget->clear();
-                _ceguiContext->draw();
-                _ceguiRenderer->endRendering();
-            };
-
             ImageView ceguiView{};
             ceguiView.targetType( TextureType::TEXTURE_2D );
-            ceguiView._srcTexture._ceguiTex = &_ceguiRenderTextureTarget->getTexture();
+            ceguiView._srcTexture = _renderTextureTarget->getAttachmentTex();
             ceguiView._subRange._layerRange = { 0u, 1u };
             ceguiView._subRange._mipLevels = { 0u, U16_MAX };
             ceguiView._descriptor._baseFormat = GFXImageFormat::RGBA;
@@ -350,9 +362,7 @@ namespace Divide
             ceguiView._descriptor._normalized = true;
             ceguiView._descriptor._srgb = false;
 
-            context.drawTextureInViewport( ceguiView, 0u, viewport, false, false, true, bufferInOut );
-
-            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
+            context.drawTextureInViewport( ceguiView, _renderTextureTarget->getSamplerHash(), viewport, false, false, true, bufferInOut);
         }
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
@@ -367,8 +377,7 @@ namespace Divide
 
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
-        const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
-        if ( guiConfig.cegui.enabled )
+        if ( _ceguiRenderer != nullptr )
         {
             _ceguiInput.update( deltaTimeUS );
             auto& ceguiSystem = CEGUI::System::getSingleton();
@@ -395,20 +404,6 @@ namespace Divide
         }
     }
 
-    void GUI::setRenderer( CEGUI::Renderer& renderer )
-    {
-        const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
-        if ( guiConfig.cegui.enabled )
-        {
-            CEGUI::System::create( renderer, nullptr, nullptr, nullptr, nullptr, "", (Paths::g_logPath + "CEGUI.log").c_str() );
-
-            if constexpr( Config::Build::IS_DEBUG_BUILD )
-            {
-                CEGUI::Logger::getSingleton().setLoggingLevel( CEGUI::Informative );
-            }
-        }
-    }
-
     ErrorCode GUI::init( PlatformContext& context, ResourceCache* cache )
     {
         if ( _init )
@@ -428,64 +423,6 @@ namespace Divide
                                       context.sfx().playSound( sound );
                                   } );
 
-        const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
-        if ( guiConfig.cegui.enabled )
-        {
-
-            const vec2<U16> renderSize = context.gfx().renderingResolution();
-            const CEGUI::Sizef size( static_cast<float>(renderSize.width), static_cast<float>(renderSize.height) );
-
-            CEGUI::DefaultResourceProvider* rp = static_cast<CEGUI::DefaultResourceProvider*>(CEGUI::System::getSingleton().getResourceProvider());
-
-            const CEGUI::String CEGUIInstallSharePath( (Paths::g_assetsLocation + Paths::g_GUILocation).c_str() );
-            rp->setResourceGroupDirectory( "schemes", CEGUIInstallSharePath + "schemes/" );
-            rp->setResourceGroupDirectory( "imagesets", CEGUIInstallSharePath + "imagesets/" );
-            rp->setResourceGroupDirectory( "fonts", CEGUIInstallSharePath + Paths::g_fontsPath.c_str() );
-            rp->setResourceGroupDirectory( "layouts", CEGUIInstallSharePath + "layouts/" );
-            rp->setResourceGroupDirectory( "looknfeels", CEGUIInstallSharePath + "looknfeel/" );
-            rp->setResourceGroupDirectory( "lua_scripts", CEGUIInstallSharePath + "lua_scripts/" );
-            rp->setResourceGroupDirectory( "schemas", CEGUIInstallSharePath + "xml_schemas/" );
-            rp->setResourceGroupDirectory( "animations", CEGUIInstallSharePath + "animations/" );
-
-            // set the default resource groups to be used
-            CEGUI::ImageManager::setImagesetDefaultResourceGroup( "imagesets" );
-            CEGUI::Font::setDefaultResourceGroup( "fonts" );
-            CEGUI::Scheme::setDefaultResourceGroup( "schemes" );
-            CEGUI::WidgetLookManager::setDefaultResourceGroup( "looknfeels" );
-            CEGUI::WindowManager::setDefaultResourceGroup( "layouts" );
-            CEGUI::ScriptModule::setDefaultResourceGroup( "lua_scripts" );
-            // setup default group for validation schemas
-            CEGUI::XMLParser* parser = CEGUI::System::getSingleton().getXMLParser();
-            if ( parser->isPropertyPresent( "SchemaDefaultResourceGroup" ) )
-            {
-                parser->setProperty( "SchemaDefaultResourceGroup", "schemas" );
-            }
-            CEGUI::FontManager::getSingleton().createFromFile( "DejaVuSans-10.font" );
-            CEGUI::FontManager::getSingleton().createFromFile( "DejaVuSans-12.font" );
-            CEGUI::FontManager::getSingleton().createFromFile( "DejaVuSans-10-NoScale.font" );
-            CEGUI::FontManager::getSingleton().createFromFile( "DejaVuSans-12-NoScale.font" );
-            CEGUI::SchemeManager::getSingleton().createFromFile( (defaultGUIScheme() + ".scheme").c_str() );
-
-            // We create a CEGUI texture target and create a GUIContext that will use it.
-
-            _ceguiRenderer = CEGUI::System::getSingleton().getRenderer();
-            _ceguiRenderTextureTarget = _ceguiRenderer->createTextureTarget();
-            _ceguiRenderTextureTarget->declareRenderSize( size );
-            _ceguiContext = &CEGUI::System::getSingleton().createGUIContext( static_cast<CEGUI::RenderTarget&>(*_ceguiRenderTextureTarget) );
-
-            _rootSheet = CEGUI::WindowManager::getSingleton().createWindow( "DefaultWindow", "root_window" );
-            _rootSheet->setMousePassThroughEnabled( true );
-            _rootSheet->setUsingAutoRenderingSurface( false );
-            _rootSheet->setPixelAligned( false );
-
-            _ceguiContext->setRootWindow( _rootSheet );
-            _ceguiContext->setDefaultTooltipType( (defaultGUIScheme() + "/Tooltip").c_str() );
-
-            _console->createCEGUIWindow();
-            CEGUI::System::getSingleton().notifyDisplaySizeChanged( size );
-        }
-
-        recreateDefaultMessageBox();
 
         _fonsContext = eastl::make_unique<DVDFONSContext>();
         _fonsContext->_width = 512;
@@ -566,9 +503,9 @@ namespace Divide
         params.userPtr = _fonsContext.get();
 
         _fonsContext->_impl = fonsCreateInternal( &params );
-        {
-            std::atomic_uint loadTasks = 0;
 
+        std::atomic_uint loadTasks = 0;
+        {
             ShaderModuleDescriptor vertModule = {};
             vertModule._moduleType = ShaderType::VERTEX;
             vertModule._sourceFile = "ImmediateModeEmulation.glsl";
@@ -629,6 +566,88 @@ namespace Divide
                 _textRenderPipeline = context.gfx().newPipeline( descriptor );
             } );
         }
+        {
+            ShaderModuleDescriptor vertModule = {};
+            vertModule._moduleType = ShaderType::VERTEX;
+            vertModule._sourceFile = "ImmediateModeEmulation.glsl";
+            vertModule._variant = "CEGUI";
+            ShaderModuleDescriptor fragModule = {};
+            fragModule._moduleType = ShaderType::FRAGMENT;
+            fragModule._sourceFile = "ImmediateModeEmulation.glsl";
+            fragModule._variant = "CEGUI";
+
+            ShaderProgramDescriptor shaderDescriptor = {};
+            shaderDescriptor._modules.push_back( vertModule );
+            shaderDescriptor._modules.push_back( fragModule );
+
+            ResourceDescriptor ceguiShader( "CEGUIShader" );
+            ceguiShader.waitForReady( true );
+            ceguiShader.propertyDescriptor( shaderDescriptor );
+            _ceguiRenderShader = CreateResource<ShaderProgram>( cache, ceguiShader, loadTasks );
+        }
+
+        const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
+        if ( guiConfig.cegui.enabled )
+        {
+            const vec2<U16> renderSize = context.gfx().renderingResolution();
+            const CEGUI::Sizef size( static_cast<float>(renderSize.width), static_cast<float>(renderSize.height) );
+            _ceguiRenderer = &CEGUI::CEGUIRenderer::create( context.gfx(), _ceguiRenderShader, size );
+
+            CEGUI::System::create( *_ceguiRenderer, nullptr, nullptr, nullptr, nullptr, "", (Paths::g_logPath + "CEGUI.log").c_str() );
+            if constexpr ( Config::Build::IS_DEBUG_BUILD )
+            {
+                CEGUI::Logger::getSingleton().setLoggingLevel( CEGUI::Informative );
+            }
+
+            CEGUI::DefaultResourceProvider* rp = static_cast<CEGUI::DefaultResourceProvider*>(CEGUI::System::getSingleton().getResourceProvider());
+
+            const CEGUI::String CEGUIInstallSharePath( (Paths::g_assetsLocation + Paths::g_GUILocation).c_str() );
+            rp->setResourceGroupDirectory( "schemes", CEGUIInstallSharePath + "schemes/" );
+            rp->setResourceGroupDirectory( "imagesets", CEGUIInstallSharePath + "imagesets/" );
+            rp->setResourceGroupDirectory( "fonts", CEGUIInstallSharePath + Paths::g_fontsPath.c_str() );
+            rp->setResourceGroupDirectory( "layouts", CEGUIInstallSharePath + "layouts/" );
+            rp->setResourceGroupDirectory( "looknfeels", CEGUIInstallSharePath + "looknfeel/" );
+            rp->setResourceGroupDirectory( "lua_scripts", CEGUIInstallSharePath + "lua_scripts/" );
+            rp->setResourceGroupDirectory( "schemas", CEGUIInstallSharePath + "xml_schemas/" );
+            rp->setResourceGroupDirectory( "animations", CEGUIInstallSharePath + "animations/" );
+
+            // set the default resource groups to be used
+            CEGUI::ImageManager::setImagesetDefaultResourceGroup( "imagesets" );
+            CEGUI::Font::setDefaultResourceGroup( "fonts" );
+            CEGUI::Scheme::setDefaultResourceGroup( "schemes" );
+            CEGUI::WidgetLookManager::setDefaultResourceGroup( "looknfeels" );
+            CEGUI::WindowManager::setDefaultResourceGroup( "layouts" );
+            CEGUI::ScriptModule::setDefaultResourceGroup( "lua_scripts" );
+            // setup default group for validation schemas
+            CEGUI::XMLParser* parser = CEGUI::System::getSingleton().getXMLParser();
+            if ( parser->isPropertyPresent( "SchemaDefaultResourceGroup" ) )
+            {
+                parser->setProperty( "SchemaDefaultResourceGroup", "schemas" );
+            }
+            CEGUI::FontManager::getSingleton().createFromFile( "DejaVuSans-10.font" );
+            CEGUI::FontManager::getSingleton().createFromFile( "DejaVuSans-12.font" );
+            CEGUI::FontManager::getSingleton().createFromFile( "DejaVuSans-10-NoScale.font" );
+            CEGUI::FontManager::getSingleton().createFromFile( "DejaVuSans-12-NoScale.font" );
+            CEGUI::SchemeManager::getSingleton().createFromFile( (defaultGUIScheme() + ".scheme").c_str() );
+
+            _renderTextureTarget = static_cast<CEGUI::DVDTextureTarget*>(_ceguiRenderer->createTextureTarget());
+            _renderTextureTarget->declareRenderSize( size );
+
+            _ceguiContext = &CEGUI::System::getSingleton().createGUIContext( *_renderTextureTarget );
+            _rootSheet = CEGUI::WindowManager::getSingleton().createWindow( "DefaultWindow", "root_window" );
+            _rootSheet->setMousePassThroughEnabled( true );
+            _rootSheet->setUsingAutoRenderingSurface( false );
+            _rootSheet->setPixelAligned( false );
+
+            _ceguiContext->setRootWindow( _rootSheet );
+            _ceguiContext->setDefaultTooltipType( (defaultGUIScheme() + "/Tooltip").c_str() );
+
+            _console->createCEGUIWindow();
+            CEGUI::System::getSingleton().notifyDisplaySizeChanged( size );
+        }
+
+        recreateDefaultMessageBox();
+
         _init = true;
         if ( _fonsContext == nullptr )
         {
@@ -647,8 +666,7 @@ namespace Divide
             MemoryManager::DELETE( _defaultMsgBox );
         }
 
-        const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
-        if ( guiConfig.cegui.enabled )
+        if ( _ceguiRenderer != nullptr )
         {
             _defaultMsgBox = MemoryManager_NEW GUIMessageBox( "AssertMsgBox",
                                                               "Assertion failure",
@@ -663,6 +681,7 @@ namespace Divide
     {
         if ( _init )
         {
+
             _fonsContext.reset();
             _fonts.clear();
 
@@ -684,8 +703,7 @@ namespace Divide
                 }
             }
 
-            const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
-            if ( guiConfig.cegui.enabled )
+            if ( _ceguiRenderer != nullptr )
             {
                 // Close CEGUI
                 try
@@ -696,9 +714,12 @@ namespace Divide
                 {
                     Console::d_errorfn( Locale::Get( _ID( "ERROR_CEGUI_DESTROY" ) ) );
                 }
+                CEGUI::CEGUIRenderer::destroy( *_ceguiRenderer );
+                _ceguiRenderer = nullptr;
             }
 
             _textRenderShader.reset();
+            _ceguiRenderShader.reset();
             _init = false;
         }
     }
@@ -720,16 +741,10 @@ namespace Divide
             return;
         }
 
-        if ( parent().platformContext().config().gui.cegui.enabled )
+        if ( _ceguiRenderer != nullptr )
         {
             const CEGUI::Sizef windowSize( params.width, params.height );
             CEGUI::System::getSingleton().notifyDisplaySizeChanged( windowSize );
-            if ( _ceguiRenderTextureTarget )
-            {
-                _ceguiRenderTextureTarget->declareRenderSize( windowSize );
-            }
-
-
             if ( _rootSheet )
             {
                 const Rect<I32>& renderViewport = { 0, 0, params.width, params.height };
@@ -743,8 +758,7 @@ namespace Divide
 
     void GUI::setCursorPosition( const I32 x, const I32 y )
     {
-        const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
-        if ( guiConfig.cegui.enabled )
+        if ( _ceguiRenderer != nullptr )
         {
             getCEGUIContext()->injectMousePosition( to_F32( x ), to_F32( y ) );
         }

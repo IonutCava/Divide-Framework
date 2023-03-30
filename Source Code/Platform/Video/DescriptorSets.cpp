@@ -6,17 +6,6 @@
 #include "Platform/Video/Textures/Headers/Texture.h"
 
 namespace Divide {
-    size_t TextureWrapper::getHash() const noexcept {
-        _hash = 1337;
-        if (_ceguiTex != nullptr) {
-            Util::Hash_combine(_hash, _ceguiTex->getName().c_str());
-        }
-        if (_internalTexture != nullptr) {
-            Util::Hash_combine(_hash, _internalTexture->getGUID());
-        }
-        return _hash;
-    }
-
     size_t ImageView::Descriptor::getHash() const noexcept {
         _hash = 1337;
         Util::Hash_combine(_hash, _msaaSamples, _dataType, _baseFormat, _srgb, _normalized);
@@ -28,8 +17,8 @@ namespace Divide {
             return _targetType;
         }
 
-        if (_srcTexture._internalTexture != nullptr) {
-            return _srcTexture._internalTexture->descriptor().texType();
+        if (_srcTexture != nullptr) {
+            return _srcTexture->descriptor().texType();
         }
 
         return _targetType;
@@ -43,7 +32,7 @@ namespace Divide {
         _hash = 1337;
         Util::Hash_combine(_hash,
                            _descriptor.getHash(),
-                           _srcTexture.getHash(),
+                           _srcTexture != nullptr ? _srcTexture->getGUID() : 0,
                            targetType(),
                            _subRange._layerRange.offset,
                            _subRange._layerRange.count,

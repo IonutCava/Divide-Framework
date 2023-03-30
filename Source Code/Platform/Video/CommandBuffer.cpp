@@ -87,8 +87,7 @@ namespace
         });
         dvd_erase_if( memCmd->_textureLayoutChanges, []( const TextureLayoutChange& lock )
         {
-            return lock._sourceLayout == lock._targetLayout ||
-                  (lock._targetView._srcTexture._internalTexture == nullptr && lock._targetView._srcTexture._ceguiTex == nullptr);
+            return lock._sourceLayout == lock._targetLayout || lock._targetView._srcTexture == nullptr;
         });
     }
 }; //namespace

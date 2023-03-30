@@ -590,8 +590,7 @@ namespace Divide
 
             RenderTargetDescriptor screenDesc = {};
             screenDesc._resolution = renderResolution;
-            screenDesc._attachmentCount = to_U8( attachments.size() );
-            screenDesc._attachments = attachments.data();
+            screenDesc._attachments = attachments;
             screenDesc._msaaSamples = 0u;
             screenDesc._name = "Screen";
             RenderTargetNames::SCREEN = _rtPool->allocateRT( screenDesc )._targetID;
@@ -610,7 +609,6 @@ namespace Divide
             screenAttachment._texDescriptor.msaaSamples( 0 );
             screenAttachment._texDescriptor.addImageUsageFlag(ImageUsage::SHADER_READ);
             screenAttachment._samplerHash = samplerHashMips;
-            screenDesc._attachmentCount = 1u;
             screenDesc._msaaSamples = 0u;
             screenDesc._name = "Screen Prev";
             RenderTargetNames::SCREEN_PREV = _rtPool->allocateRT( screenDesc )._targetID;
@@ -619,16 +617,14 @@ namespace Divide
             TextureDescriptor ssaoDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RED );
             ssaoDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
 
-            InternalRTAttachmentDescriptors attachments
+            RenderTargetDescriptor ssaoDesc = {};
+            ssaoDesc._attachments = 
             {
                 InternalRTAttachmentDescriptor{ ssaoDescriptor, samplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0}
             };
 
-            RenderTargetDescriptor ssaoDesc = {};
             ssaoDesc._name = "SSAO Result";
             ssaoDesc._resolution = renderResolution;
-            ssaoDesc._attachmentCount = to_U8( attachments.size() );
-            ssaoDesc._attachments = attachments.data();
             ssaoDesc._msaaSamples = 0u;
             RenderTargetNames::SSAO_RESULT = _rtPool->allocateRT( ssaoDesc )._targetID;
         }
@@ -636,16 +632,14 @@ namespace Divide
             TextureDescriptor ssrDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RGBA );
             ssrDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
 
-            InternalRTAttachmentDescriptors attachments
+            RenderTargetDescriptor ssrResultDesc = {};
+            ssrResultDesc._attachments = 
             {
                 InternalRTAttachmentDescriptor{ ssrDescriptor, samplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 }
             };
 
-            RenderTargetDescriptor ssrResultDesc = {};
             ssrResultDesc._name = "SSR Result";
             ssrResultDesc._resolution = renderResolution;
-            ssrResultDesc._attachmentCount = to_U8( attachments.size() );
-            ssrResultDesc._attachments = attachments.data();
             ssrResultDesc._msaaSamples = 0u;
             RenderTargetNames::SSR_RESULT = _rtPool->allocateRT( ssrResultDesc )._targetID;
 
@@ -663,17 +657,15 @@ namespace Divide
         hiZSampler.minFilter( TextureFilter::NEAREST );
         hiZSampler.mipSampling( TextureMipSampling::NEAREST );
 
-        InternalRTAttachmentDescriptors hiZAttachments
+        RenderTargetDescriptor hizRTDesc = {};
+        hizRTDesc._attachments =
         {
             InternalRTAttachmentDescriptor{ hiZDescriptor, hiZSampler.getHash(), RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 },
         };
 
         {
-            RenderTargetDescriptor hizRTDesc = {};
             hizRTDesc._name = "HiZ";
             hizRTDesc._resolution = renderResolution;
-            hizRTDesc._attachmentCount = to_U8( hiZAttachments.size() );
-            hizRTDesc._attachments = hiZAttachments.data();
             RenderTargetNames::HI_Z = _rtPool->allocateRT( hizRTDesc )._targetID;
 
             hizRTDesc._resolution.set( reflectRes, reflectRes );
@@ -696,22 +688,15 @@ namespace Divide
             environmentDescriptorPlanar.mipMappingState( TextureDescriptor::MipMappingState::MANUAL );
             depthDescriptorPlanar.mipMappingState( TextureDescriptor::MipMappingState::OFF );
 
-            RenderTargetDescriptor hizRTDesc = {};
-            hizRTDesc._resolution.set( reflectRes, reflectRes );
-            hizRTDesc._attachmentCount = to_U8( hiZAttachments.size() );
-            hizRTDesc._attachments = hiZAttachments.data();
-
             {
-                InternalRTAttachmentDescriptors attachments
+                RenderTargetDescriptor refDesc = {};
+                refDesc._attachments = 
                 {
                     InternalRTAttachmentDescriptor{ environmentDescriptorPlanar, reflectionSamplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 },
                     InternalRTAttachmentDescriptor{ depthDescriptorPlanar,       reflectionSamplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 },
                 };
 
-                RenderTargetDescriptor refDesc = {};
                 refDesc._resolution = vec2<U16>( reflectRes );
-                refDesc._attachmentCount = to_U8( attachments.size() );
-                refDesc._attachments = attachments.data();
 
                 for ( U32 i = 0; i < Config::MAX_REFLECTIVE_NODES_IN_VIEW; ++i )
                 {
@@ -726,13 +711,11 @@ namespace Divide
                 }
 
                 environmentDescriptorPlanar.mipMappingState( TextureDescriptor::MipMappingState::OFF );
-                InternalRTAttachmentDescriptors attachmentsBlur
+                refDesc._attachments = 
                 {//skip depth
                     InternalRTAttachmentDescriptor{ environmentDescriptorPlanar, reflectionSamplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 }
                 };
 
-                refDesc._attachmentCount = to_U8( attachmentsBlur.size() );
-                refDesc._attachments = attachmentsBlur.data();
                 refDesc._name = "Reflection_blur";
                 RenderTargetNames::REFLECTION_PLANAR_BLUR = _rtPool->allocateRT( refDesc )._targetID;
             }
@@ -793,10 +776,8 @@ namespace Divide
                 RenderTargetDescriptor oitDesc = {};
                 oitDesc._name = targetName[i];
                 oitDesc._resolution = renderResolution;
-                oitDesc._attachmentCount = to_U8( oitAttachments.size() );
-                oitDesc._attachments = oitAttachments.data();
-                oitDesc._externalAttachmentCount = to_U8( externalAttachments.size() );
-                oitDesc._externalAttachments = externalAttachments.data();
+                oitDesc._attachments = oitAttachments;
+                oitDesc._externalAttachments = externalAttachments;
                 oitDesc._msaaSamples = sampleCount[i];
                 const RenderTargetHandle handle = _rtPool->allocateRT( oitDesc );
                 if ( i == 0u )
@@ -817,6 +798,9 @@ namespace Divide
                     const RenderTarget* reflectTarget = _rtPool->getRenderTarget( RenderTargetNames::REFLECTION_PLANAR[i] );
                     RTAttachment* depthAttachment = reflectTarget->getAttachment( RTAttachmentType::DEPTH );
 
+                    RenderTargetDescriptor oitDesc = {};
+                    oitDesc._attachments = oitAttachments;
+
                     ExternalRTAttachmentDescriptors externalAttachments{
                          ExternalRTAttachmentDescriptor{ depthAttachment, depthAttachment->descriptor()._samplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 }
                     };
@@ -829,13 +813,9 @@ namespace Divide
                         );
                     }
 
-                    RenderTargetDescriptor oitDesc = {};
                     oitDesc._name = Util::StringFormat( "OIT_REFLECT_RES_%d", i );
                     oitDesc._resolution = vec2<U16>( reflectRes );
-                    oitDesc._attachmentCount = to_U8( oitAttachments.size() );
-                    oitDesc._attachments = oitAttachments.data();
-                    oitDesc._externalAttachmentCount = to_U8( externalAttachments.size() );
-                    oitDesc._externalAttachments = externalAttachments.data();
+                    oitDesc._externalAttachments = externalAttachments;
                     oitDesc._msaaSamples = 0;
                     RenderTargetNames::OIT_REFLECT = _rtPool->allocateRT( oitDesc )._targetID;
                 }
@@ -848,15 +828,14 @@ namespace Divide
             environmentDescriptorCube.mipMappingState( TextureDescriptor::MipMappingState::OFF );
             depthDescriptorCube.mipMappingState( TextureDescriptor::MipMappingState::OFF );
 
-            InternalRTAttachmentDescriptors attachments{
+            RenderTargetDescriptor refDesc = {};
+            refDesc._attachments = 
+            {
                 InternalRTAttachmentDescriptor{ environmentDescriptorCube, reflectionSamplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 },
                 InternalRTAttachmentDescriptor{ depthDescriptorCube,       reflectionSamplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 },
             };
 
-            RenderTargetDescriptor refDesc = {};
             refDesc._resolution = vec2<U16>( reflectRes );
-            refDesc._attachmentCount = to_U8( attachments.size() );
-            refDesc._attachments = attachments.data();
 
             refDesc._name = "Reflection_Cube_Array";
             RenderTargetNames::REFLECTION_CUBE = _rtPool->allocateRT( refDesc )._targetID;
@@ -2220,11 +2199,6 @@ namespace Divide
                     PROFILE_SCOPE( "SET_CLIP_PLANES", Profiler::Category::Graphics );
 
                     setClipPlanes( commandBuffer.get<GFX::SetClipPlanesCommand>( cmd )->_clippingPlanes );
-                } break;
-                case GFX::CommandType::EXTERNAL:
-                {
-                    PROFILE_SCOPE( "EXTERNAL", Profiler::Category::Graphics );
-                    commandBuffer.get<GFX::ExternalCommand>( cmd )->_cbk();
                 } break;
                 case GFX::CommandType::BIND_SHADER_RESOURCES:
                 {

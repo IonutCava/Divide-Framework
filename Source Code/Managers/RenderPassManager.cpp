@@ -203,6 +203,8 @@ void RenderPassManager::render(const RenderParams& params)
 
        const bool editorRunning = Config::Build::ENABLE_EDITOR && context.editor().running();
 
+       const Rect<I32>& targetViewport = params._targetViewport;
+       context.gui().preDraw( gfx, targetViewport, buf, memCmd );
 
        GFX::BeginRenderPassCommand beginRenderPassCmd{};
        beginRenderPassCmd._name = "Flush Display";
@@ -213,7 +215,6 @@ void RenderPassManager::render(const RenderParams& params)
 
        const auto& screenAtt = gfx.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
        const auto& texData = screenAtt->texture()->getView();
-       const Rect<I32>& targetViewport = params._targetViewport;
      
        gfx.drawTextureInViewport(texData, screenAtt->descriptor()._samplerHash, targetViewport, false, false, false, buf);
 
@@ -228,7 +229,7 @@ void RenderPassManager::render(const RenderParams& params)
            sceneManager->getEnvProbes()->prepareDebugData();
            gfx.renderDebugUI(targetViewport, buf, memCmd);
        }
-       
+
        GFX::EnqueueCommand(buf, GFX::EndRenderPassCommand{});
 
        GFX::EnqueueCommand( buf, memCmd );

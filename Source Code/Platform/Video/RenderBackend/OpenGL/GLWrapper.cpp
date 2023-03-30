@@ -15,9 +15,6 @@
 
 #include "GUI/Headers/GUI.h"
 
-#include "GUI/CEGUIAddons/Renderer/Headers/OpenGLTexture.h"
-#include "GUI/CEGUIAddons/Renderer/Headers/RendererBase.h"
-
 #include "Platform/Video/Headers/DescriptorSets.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 
@@ -113,15 +110,6 @@ namespace Divide
 
             vector<SDLContextEntry> _contexts;
         } g_ContextPool;
-
-        [[nodiscard]] inline GLuint GetTextureHandleFromWrapper( const TextureWrapper& wrapper )
-        {
-            return wrapper._internalTexture != nullptr
-                ? static_cast<glTexture*>(wrapper._internalTexture)->textureHandle()
-                : wrapper._ceguiTex != nullptr
-                ? static_cast<const CEGUI::OpenGLTexture*>(wrapper._ceguiTex)->getOpenGLTexture()
-                : GLUtil::k_invalidObjectID;
-        }
     }
 
     GL_API::GL_API( GFXDevice& context )
@@ -135,7 +123,7 @@ namespace Divide
     ErrorCode GL_API::initRenderingAPI( [[maybe_unused]] GLint argc, [[maybe_unused]] char** argv, Configuration& config )
     {
         // Fill our (abstract API <-> openGL) enum translation tables with proper values
-        GLUtil::fillEnumTables();
+        GLUtil::OnStartup();
 
         const DisplayWindow& window = *_context.context().app().windowManager().mainWindow();
         g_ContextPool.init( _context.context().kernel().totalThreadCount(), window );
@@ -463,14 +451,6 @@ namespace Divide
 
         s_stateTracker.setDefaultState();
 
-        // Once OpenGL is ready for rendering, init CEGUI
-        if ( config.gui.cegui.enabled )
-        {
-            _GUIGLrenderer = &CEGUI::DivideRenderer::create(_context);
-            _context.context().gui().setRenderer( *_GUIGLrenderer );
-        }
-
-
         _performanceQueries[to_base( GlobalQueryTypes::VERTICES_SUBMITTED )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_VERTICES_SUBMITTED, 6 );
         _performanceQueries[to_base( GlobalQueryTypes::PRIMITIVES_GENERATED )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_PRIMITIVES_GENERATED, 6 );
         _performanceQueries[to_base( GlobalQueryTypes::TESSELLATION_PATCHES )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_TESS_CONTROL_SHADER_PATCHES, 6 );
@@ -487,12 +467,6 @@ namespace Divide
     /// Clear everything that was setup in initRenderingAPI()
     void GL_API::closeRenderingAPI()
     {
-        if ( _GUIGLrenderer )
-        {
-            CEGUI::DivideRenderer::destroy( *_GUIGLrenderer );
-            _GUIGLrenderer = nullptr;
-        }
-
         glShaderProgram::DestroyStaticData();
 
         // Destroy sampler objects
@@ -696,37 +670,39 @@ namespace Divide
         glShaderProgram::Idle( _context.context() );
     }
 
-    bool GL_API::draw( const GenericDrawCommand& cmd ) const
+    bool GL_API::Draw( const GenericDrawCommand& cmd )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-        DIVIDE_ASSERT(cmd._drawCount < _context.GetDeviceInformation()._maxDrawIndirectCount);
+        DIVIDE_ASSERT(cmd._drawCount < GFXDevice::GetDeviceInformation()._maxDrawIndirectCount);
 
-        if ( cmd._sourceBuffer._id == 0 )
+        if ( cmd._sourceBuffer._id == 0u )
         {
-            U32 indexCount = cmd._cmd.indexCount;
+            DIVIDE_ASSERT(cmd._cmd.indexCount == 0u);
 
-            U32 vertexCount = 0u;
-            switch ( GL_API::s_stateTracker._activeTopology )
+            if (cmd._cmd.vertexCount == 0u )
             {
-                case PrimitiveTopology::POINTS: vertexCount = 1u; break;
-                case PrimitiveTopology::LINES:
-                case PrimitiveTopology::LINE_STRIP:
-                case PrimitiveTopology::LINE_STRIP_ADJACENCY:
-                case PrimitiveTopology::LINES_ADJANCENCY: vertexCount = 2u; break;
-                case PrimitiveTopology::TRIANGLES:
-                case PrimitiveTopology::TRIANGLE_STRIP:
-                case PrimitiveTopology::TRIANGLE_FAN:
-                case PrimitiveTopology::TRIANGLES_ADJACENCY:
-                case PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY: vertexCount = 3u; break;
-                case PrimitiveTopology::PATCH: vertexCount = 4u; break;
-                default : return false;
+                GenericDrawCommand drawCmd = cmd;
+                switch ( GL_API::s_stateTracker._activeTopology )
+                {
+                    case PrimitiveTopology::POINTS: drawCmd._cmd.vertexCount = 1u; break;
+                    case PrimitiveTopology::LINES:
+                    case PrimitiveTopology::LINE_STRIP:
+                    case PrimitiveTopology::LINE_STRIP_ADJACENCY:
+                    case PrimitiveTopology::LINES_ADJANCENCY: drawCmd._cmd.vertexCount = 2u; break;
+                    case PrimitiveTopology::TRIANGLES:
+                    case PrimitiveTopology::TRIANGLE_STRIP:
+                    case PrimitiveTopology::TRIANGLE_FAN:
+                    case PrimitiveTopology::TRIANGLES_ADJACENCY:
+                    case PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY: drawCmd._cmd.vertexCount = 3u; break;
+                    case PrimitiveTopology::PATCH: drawCmd._cmd.vertexCount = 4u; break;
+                    default : return false;
+                }
+                GLUtil::SubmitRenderCommand( drawCmd, false, GL_NONE);
             }
-            if ( indexCount < vertexCount )
+            else
             {
-                indexCount = vertexCount;
+                GLUtil::SubmitRenderCommand(cmd, false, GL_NONE);
             }
-
-            glDrawArraysInstancedBaseInstance( GLUtil::glPrimitiveTypeTable[to_base( GL_API::s_stateTracker._activeTopology )], cmd._cmd.baseVertex, cmd._drawCount * indexCount, cmd._cmd.instanceCount , cmd._cmd.baseInstance );
         }
         else [[likely]]
         {
@@ -856,7 +832,8 @@ namespace Divide
 
         if ( !cacheHit )
         {
-            const GLuint srcHandle = GetTextureHandleFromWrapper( srcView._srcTexture );
+            const GLuint srcHandle = static_cast<const glTexture*>(srcView._srcTexture)->textureHandle();
+            
             if ( srcHandle == GLUtil::k_invalidObjectID )
             {
                 return srcHandle;
@@ -983,7 +960,7 @@ namespace Divide
                     Attorney::GLAPIRenderTarget::end( *s_stateTracker._activeRenderTarget );
                     s_stateTracker._activeRenderTarget = nullptr;
                 }
-                s_stateTracker._activeRenderTargetID = INVALID_RENDER_TARGET_ID;
+                s_stateTracker._activeRenderTargetID = SCREEN_TARGET_ID;
                 s_stateTracker._activeRenderTargetDimensions = _context.context().mainWindow().getDrawableSize();
             }break;
             case GFX::CommandType::BLIT_RT:
@@ -1056,7 +1033,7 @@ namespace Divide
             {
                 const Pipeline* pipeline = cmd->As<GFX::BindPipelineCommand>()->_pipeline;
                 assert( pipeline != nullptr );
-                if ( bindPipeline( *pipeline ) == ShaderResult::Failed )
+                if ( BindPipeline(_context, *pipeline ) == ShaderResult::Failed )
                 {
                     Console::errorfn( Locale::Get( _ID( "ERROR_GLSL_INVALID_BIND" ) ), pipeline->descriptor()._shaderProgramHandle );
                 }
@@ -1168,7 +1145,7 @@ namespace Divide
                     {
                         if ( isEnabledOption( currentDrawCommand, CmdRenderOptions::RENDER_GEOMETRY ))
                         {
-                            draw( currentDrawCommand );
+                            Draw( currentDrawCommand );
                             ++drawCount;
                         }
 
@@ -1176,7 +1153,7 @@ namespace Divide
                         {
                             PrimitiveTopology oldTopology = s_stateTracker._activeTopology;
                             s_stateTracker.setPrimitiveTopology(PrimitiveTopology::LINES);
-                            draw(currentDrawCommand);
+                            Draw(currentDrawCommand);
                             s_stateTracker.setPrimitiveTopology(oldTopology);
                             ++drawCount;
                         }
@@ -1527,7 +1504,7 @@ namespace Divide
                                                                             imageView._image._descriptor._srgb,
                                                                             imageView._image._descriptor._normalized );
 
-                    const GLuint handle = GetTextureHandleFromWrapper( imageView._image._srcTexture );
+                    const GLuint handle = static_cast<const glTexture*>(imageView._image._srcTexture)->textureHandle();
                     if ( handle != GLUtil::k_invalidObjectID &&
                          GL_API::s_stateTracker.bindTextureImage( srcBinding._slot,
                                                                   handle,
@@ -1554,7 +1531,7 @@ namespace Divide
     {
         const U8 glBinding = ShaderProgram::GetGLBindingForDescriptorSlot( set, bindingSlot );
 
-        if ( imageView._srcTexture._ceguiTex == nullptr && imageView._srcTexture._internalTexture == nullptr )
+        if ( imageView._srcTexture == nullptr )
         {
             //unbind request;
             TexBindEntry entry{};
@@ -1569,13 +1546,13 @@ namespace Divide
         TexBindEntry entry{};
         entry._slot = glBinding;
 
-        if ( imageView._srcTexture._internalTexture != nullptr && imageView != imageView._srcTexture._internalTexture->getView())
+        if ( imageView._srcTexture != nullptr && imageView != imageView._srcTexture->getView())
         {
             entry._handle = getGLTextureView(imageView, 3u);
         }
         else
         {
-            entry._handle = GetTextureHandleFromWrapper( imageView._srcTexture );
+            entry._handle = static_cast<const glTexture*>(imageView._srcTexture)->textureHandle();
         }
 
         if ( entry._handle == GLUtil::k_invalidObjectID )
@@ -1614,7 +1591,7 @@ namespace Divide
         return s_stateTracker.setScissor( scissor );
     }
 
-    ShaderResult GL_API::bindPipeline( const Pipeline& pipeline )
+    ShaderResult GL_API::BindPipeline(GFXDevice& context, const Pipeline& pipeline )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -1631,7 +1608,7 @@ namespace Divide
         {
             PROFILE_SCOPE( "Set Raster State", Profiler::Category::Graphics );
             // Set the proper render states
-            const size_t stateBlockHash = pipelineDescriptor._stateHash == 0u ? _context.getDefaultStateBlock( false ) : pipelineDescriptor._stateHash;
+            const size_t stateBlockHash = pipelineDescriptor._stateHash == 0u ? context.getDefaultStateBlock( false ) : pipelineDescriptor._stateHash;
             // Passing 0 is a perfectly acceptable way of enabling the default render state block
             if ( s_stateTracker.setStateBlock( stateBlockHash ) == GLStateTracker::BindResult::FAILED )
             {
@@ -1684,7 +1661,7 @@ namespace Divide
             else
             {
                 s_stateTracker._activeShaderProgram = glProgram;
-                _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).dirty( true );
+                context.descriptorSet( DescriptorSetUsage::PER_DRAW ).dirty( true );
             }
         }
         else

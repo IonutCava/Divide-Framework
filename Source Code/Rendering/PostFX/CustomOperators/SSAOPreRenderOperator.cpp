@@ -109,16 +109,14 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         TextureDescriptor outputDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RED);
         outputDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
         const vec2<U16> res = parent.screenRT()._rt->getResolution();
-        InternalRTAttachmentDescriptors att
+
+        RenderTargetDescriptor desc = {};
+        desc._attachments = 
         {
             InternalRTAttachmentDescriptor{ outputDescriptor, nearestSampler.getHash(), RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0},
         };
-
-        RenderTargetDescriptor desc = {};
         desc._name = "SSAO_Out";
         desc._resolution = res;
-        desc._attachmentCount = to_U8(att.size());
-        desc._attachments = att.data();
 
         //Colour0 holds the AO texture
         _ssaoOutput = _context.renderTargetPool().allocateRT(desc);
@@ -135,16 +133,14 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         TextureDescriptor outputDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_32, GFXImageFormat::RGBA);
         outputDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        InternalRTAttachmentDescriptors att
+        RenderTargetDescriptor desc = {};
+        desc._attachments = 
         {
             InternalRTAttachmentDescriptor{ outputDescriptor, nearestSampler.getHash(), RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 },
         };
 
-        RenderTargetDescriptor desc = {};
         desc._name = "HalfRes_Normals_Depth";
         desc._resolution = parent.screenRT()._rt->getResolution() / 2;
-        desc._attachmentCount = to_U8(att.size());
-        desc._attachments = att.data();
 
         _halfDepthAndNormals = _context.renderTargetPool().allocateRT(desc);
     }

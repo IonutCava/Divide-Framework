@@ -86,7 +86,7 @@ namespace Divide
 
         TextureReadbackData readData( U16 mipLevel, const PixelAlignment& pixelPackAlignment, GFXDataFormat desiredFormat ) const noexcept override;
 
-        VkImageView getImageView( const CachedImageView::Descriptor& descriptor );
+        VkImageView getImageView( const CachedImageView::Descriptor& descriptor ) const;
         void generateMipmaps( VkCommandBuffer cmdBuffer, U16 baseLevel, U16 baseLayer, U16 layerCount, ImageUsage crtUsage);
 
         PROPERTY_R( AllocatedImage_uptr, image, nullptr );
@@ -112,7 +112,7 @@ namespace Divide
             size_t _size{0u};
         };
 
-        hashMap<size_t, CachedImageView> _imageViewCache;
+        mutable hashMap<size_t, CachedImageView> _imageViewCache;
         VMABuffer_uptr _stagingBuffer;
         VkDeviceSize _stagingBufferSize{ 0u };
         vector<Mip> _mipData;

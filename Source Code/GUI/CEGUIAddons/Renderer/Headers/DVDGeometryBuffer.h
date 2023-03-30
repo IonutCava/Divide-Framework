@@ -29,25 +29,58 @@
 #define _CEGUIDVDGeometryBuffer_h_
 
 #include "CEGUI/GeometryBuffer.h"
-#include "RendererBase.h"
 #include "CEGUI/Rect.h"
 #include "CEGUI/Quaternion.h"
 
+#include <glm/glm/mat4x4.hpp>
+
+namespace Divide
+{
+    class Texture;
+    FWD_DECLARE_MANAGED_CLASS(GenericVertexData);
+}
+
 namespace CEGUI
 {
-class DVDShader;
-class StateChangeWrapper;
-class DivideRenderer;
 
-//! GL3 based implementation of the GeometryBuffer interface.
-class DVDGeometryBuffer : public GeometryBuffer
+class DVDTexture;
+class CEGUIRenderer;
+class DVDGeometryBuffer final : public GeometryBuffer
 {
 public:
-    //! Constructor
-    DVDGeometryBuffer( DivideRenderer& owner );
-    virtual ~DVDGeometryBuffer();
+    struct DVDVertex
+    {
+        float tex[2];
+        float colour[4];
+        float position[3];
+    };
 
-    // implementation of abstract members from GeometryBuffer
+private:
+    //! type to track info for per-texture sub batches of geometry
+    struct BatchInfo
+    {
+        Divide::Texture* texture{ nullptr };
+        uint vertexCount{0u};
+        bool clip{false};
+    };
+
+    //! type of container that tracks BatchInfos.
+    using BatchList = Divide::vector_fast<BatchInfo>;
+    //! type of container used to queue the geometry
+    using VertexList = Divide::vector_fast<DVDVertex>;
+
+public:
+    DVDGeometryBuffer( CEGUIRenderer& owner );
+    virtual ~DVDGeometryBuffer() = default;
+
+    [[nodiscard]] const glm::mat4& getMatrix() const;
+
+    void updateBuffers();
+
+#pragma region GeometryBuffer Interface
+    void draw() const override;
+    void reset() override;
+
     void setTranslation( const Vector3f& t ) override;
     void setRotation( const Quaternion& r ) override;
     void setPivot( const Vector3f& p ) override;
@@ -55,99 +88,59 @@ public:
     void appendVertex( const Vertex& vertex ) override;
     void appendGeometry( const Vertex* vbuff, uint vertex_count ) override;
     void setActiveTexture( Texture* texture ) override;
-
-    Texture* getActiveTexture() const override;
-    uint getVertexCount() const override;
-    uint getBatchCount() const override;
     void setRenderEffect( RenderEffect* effect ) override;
-    RenderEffect* getRenderEffect() override;
     void setClippingActive( bool active ) override;
-    bool isClippingActive() const override;
 
-    //! return the GL modelview matrix used for this buffer.
-    const glm::mat4& getMatrix() const;
-
-    void initialiseOpenGLBuffers();
-    void deinitialiseOpenGLBuffers();
-    void updateOpenGLBuffers();
-
-    // implementation/overrides of members from GeometryBuffer
-    void draw() const override;
-    void reset() override;
+    [[nodiscard]] Texture* getActiveTexture() const override;
+    [[nodiscard]] uint getVertexCount() const override;
+    [[nodiscard]] uint getBatchCount() const override;
+    [[nodiscard]] RenderEffect* getRenderEffect() override;
+    [[nodiscard]] bool isClippingActive() const override;
+#pragma endregion
 
 protected:
     //! perform batch management operations prior to adding new geometry.
     void performBatchManagement();
-
     //! update cached matrix
     void updateMatrix() const;
+    //! recreates the Divide specific geometry buffer. Usually called if "initialDataSize" is larger than the current buffer size
+    void recreateBuffer(Divide::Byte* initialData, size_t intialDataSize);
 
 protected:
-    //! internal Vertex structure used for GL based geometry.
-    struct GLVertex
-    {
-        float tex[2];
-        float colour[4];
-        float position[3];
-    };
-
-    //! type to track info for per-texture sub batches of geometry
-    struct BatchInfo
-    {
-        uint texture;
-        uint vertexCount;
-        bool clip;
-    };
-
-    //! DivideRenderer that owns the GeometryBuffer.
-    DivideRenderer* d_owner{nullptr};
+    //! CEGUIRenderer that owns the GeometryBuffer.
+    CEGUIRenderer* _owner{nullptr};
     //! last texture that was set as active
-    OpenGLTexture* d_activeTexture{nullptr};
-    //! type of container that tracks BatchInfos.
-    typedef std::vector<BatchInfo> BatchList;
+    DVDTexture* _activeTexture{nullptr};
     //! list of texture batches added to the geometry buffer
-    BatchList d_batches;
-    //! type of container used to queue the geometry
-    typedef std::vector<GLVertex> VertexList;
+    BatchList _batches;
     //! container where added geometry is stored.
-    VertexList d_vertices;
+    VertexList _vertices;
     //! rectangular clip region
-    Rectf d_clipRect{0, 0, 0, 0};
+    Rectf _clipRect{0, 0, 0, 0};
     //! whether clipping will be active for the current batch
-    bool d_clippingActive{true};
+    bool _clippingActive{true};
     //! translation vector
-    Vector3f d_translation{0.f, 0.f, 0.f};
+    Vector3f _translation{0.f, 0.f, 0.f};
     //! rotation quaternion
-    Quaternion d_rotation{Quaternion::IDENTITY};
+    Quaternion _rotation{Quaternion::IDENTITY};
     //! pivot point for rotation
-    Vector3f d_pivot{0.f, 0.f, 0.f};
+    Vector3f _pivot{0.f, 0.f, 0.f};
     //! RenderEffect that will be used by the GeometryBuffer
-    RenderEffect* d_effect{nullptr};
-    //! model matrix cache - we use double because gluUnproject takes double
-    mutable glm::mat4               d_matrix;
-    //! true when d_matrix is valid and up to date
-    mutable bool                    d_matrixValid{false};
-    //! OpenGL vao used for the vertices
-    GLuint d_verticesVAO;
-    //! OpenGL vbo containing all vertex data
-    GLuint d_verticesVBO;
-    //! Reference to the OpenGL shader inside the Renderer, that is used to render all geometry
-    DVDShader*& d_shader;
-    //! Position variable location inside the shader, for OpenGL
-    const GLint d_shaderPosLoc;
-    //! TexCoord variable location inside the shader, for OpenGL
-    const GLint d_shaderTexCoordLoc;
-    //! Color variable location inside the shader, for OpenGL
-    const GLint d_shaderColourLoc;
-    //! Matrix uniform location inside the shader, for OpenGL
-    const GLint d_shaderStandardMatrixLoc;
-    //! Pointer to the OpenGL state changer wrapper that was created inside the Renderer
-    StateChangeWrapper* d_glStateChanger;
+    RenderEffect* _effect{nullptr};
     //! Size of the buffer that is currently in use
-    GLuint d_bufferSize{0u};
+    uint _bufferSize{0u};
+    //! Sampler hash to use if the current batch needs a texture bound
+    size_t _samplerHash{0u};
+    //! Divide specific geometry buffer
+    Divide::GenericVertexData_ptr _gvd;
+    //! model matrix cache - we use double because gluUnproject takes double
+    mutable glm::mat4 _matrix;
+    //! true when d_matrix is valid and up to date
+    mutable bool _matrixValid{false};
 };
 
 }
 
 #endif
 
+#include "DVDGeometryBuffer.inl"

@@ -47,13 +47,11 @@ struct RenderTargetHandle {
 
 struct RenderTargetDescriptor {
     Str64 _name{ "" };
-    InternalRTAttachmentDescriptor* _attachments{ nullptr };
-    ExternalRTAttachmentDescriptor* _externalAttachments{ nullptr };
+    InternalRTAttachmentDescriptors _attachments;
+    ExternalRTAttachmentDescriptors _externalAttachments;
     vec2<F32> _depthRange{ 0.f, 1.f };
     vec2<U16>  _resolution{ 1u, 1u };
     F32 _depthValue{ 1.0f };
-    U8 _externalAttachmentCount{ 0u };
-    U8 _attachmentCount{ 0u };
     U8 _msaaSamples{ 0u };
 };
 

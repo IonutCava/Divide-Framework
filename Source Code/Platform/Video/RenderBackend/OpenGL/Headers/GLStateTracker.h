@@ -143,7 +143,7 @@ namespace Divide {
         [[nodiscard]] GLuint getBoundBuffer(GLenum target, GLuint bindIndex) const noexcept;
         [[nodiscard]] GLuint getBoundBuffer(GLenum target, GLuint bindIndex, size_t& offsetOut, size_t& rangeOut) const noexcept;
 
-        void getActiveViewport(GLint* vp) const noexcept;
+        void getActiveViewport(Rect<I32>& viewportOut) const noexcept;
 
         PROPERTY_RW(bool, assertOnAPIError, false);
 

@@ -635,7 +635,7 @@ namespace Divide
                 for ( const GenericDrawCommand& gCmd : drawCmd._drawCommands )
                 {
                     cmdsInOut.push_back( gCmd._cmd );
-                    IndirectDrawCommand& iCmd = cmdsInOut.back();
+                    IndirectIndexedDrawCommand& iCmd = cmdsInOut.back();
                     iCmd.baseInstance = isInstanced() ? 0u : (iBufferEntry + 1u); //Make sure to substract 1 in the shader!
                     if ( autoIndex )
                     {

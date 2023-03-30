@@ -740,12 +740,10 @@
     <ClCompile Include="..\..\3rdParty\EntityComponentSystem\src\util\FamilyTypeID.cpp" />
     <ClCompile Include="..\..\3rdParty\EntityComponentSystem\src\util\Timer.cpp" />
     <ClCompile Include="..\..\Source Code\Geometry\Material\MaterialProperties.cpp" />
-    <ClCompile Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\FBOTextureTarget.cpp" />
+    <ClCompile Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\DVDTextureTarget.cpp" />
     <ClCompile Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\DVDGeometryBuffer.cpp" />
-    <ClCompile Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\RendererBase.cpp" />
-    <ClCompile Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\DVDShader.cpp" />
-    <ClCompile Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\StateChangeWrapper.cpp" />
-    <ClCompile Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\OpenGLTexture.cpp" />
+    <ClCompile Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\CEGUIRenderer.cpp" />
+    <ClCompile Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\DVDTexture.cpp" />
     <ClCompile Include="..\..\Source Code\Physics\PhysicsAPIWrapper.cpp" />
     <ClCompile Include="..\..\Source Code\Rendering\PostFX\CustomOperators\MotionBlurPreRenderOperator.cpp" />
     <ClCompile Include="..\..\Source Code\Rendering\PostFX\CustomOperators\SSRPreRenderOperator.cpp" />
@@ -900,13 +898,10 @@
     <ClInclude Include="..\..\3rdParty\EntityComponentSystem\include\ECS\util\Handle.h" />
     <ClInclude Include="..\..\3rdParty\EntityComponentSystem\include\ECS\util\Timer.h" />
     <ClInclude Include="..\..\Source Code\Graphs\Headers\SceneNodeFwd.h" />
-    <ClInclude Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\FBOTextureTarget.h" />
+    <ClInclude Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\DVDTextureTarget.h" />
     <ClInclude Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\DVDGeometryBuffer.h" />
-    <ClInclude Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\RendererBase.h" />
-    <ClInclude Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\DVDShader.h" />
-    <ClInclude Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\ShaderManager.h" />
-    <ClInclude Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\StateChangeWrapper.h" />
-    <ClInclude Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\OpenGLTexture.h" />
+    <ClInclude Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\CEGUIRenderer.h" />
+    <ClInclude Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\DVDTexture.h" />
     <ClInclude Include="..\..\Source Code\Rendering\PostFX\CustomOperators\Headers\MotionBlurPreRenderOperator.h" />
     <ClInclude Include="..\..\Source Code\Rendering\PostFX\CustomOperators\Headers\SSRPreRenderOperator.h" />
     <ClInclude Include="..\..\Source Code\Rendering\RenderPass\Headers\NodeBufferedData.h" />
@@ -921,6 +916,10 @@
     <None Include="..\..\Source Code\ECS\Components\Headers\SGNComponent.inl" />
     <None Include="..\..\Source Code\ECS\Systems\Headers\ECSSystem.inl" />
     <None Include="..\..\Source Code\Graphs\Headers\SceneGraphNode.inl" />
+    <None Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\CEGUIRenderer.inl" />
+    <None Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\DVDGeometryBuffer.inl" />
+    <None Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\DVDTexture.inl" />
+    <None Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\DVDTextureTarget.inl" />
     <None Include="..\..\Source Code\Rendering\Camera\Headers\Camera.inl" />
     <None Include="..\..\Source Code\Rendering\PostFX\Headers\PreRenderBatch.inl" />
   </ItemGroup>

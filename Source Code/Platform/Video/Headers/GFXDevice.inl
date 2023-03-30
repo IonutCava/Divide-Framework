@@ -87,14 +87,8 @@ inline void GFXDevice::OverrideDeviceInformation(const DeviceInformation& info) 
 }
 
 inline bool GFXDevice::IsSubmitCommand(const GFX::CommandType type) noexcept {
-    if (type == GFX::CommandType::EXTERNAL ||
-        type == GFX::CommandType::DISPATCH_COMPUTE ||
-        type == GFX::CommandType::DRAW_COMMANDS)
-    {
-        return true;
-    }
-
-    return false;
+    return type == GFX::CommandType::DISPATCH_COMPUTE ||
+           type == GFX::CommandType::DRAW_COMMANDS;
 }
 
 vec2<U16> GFXDevice::renderingResolution() const noexcept {

@@ -83,7 +83,6 @@ enum class CommandType : U8 {
     ADD_DEBUG_MESSAGE,
     SWITCH_WINDOW,
     SET_CLIPING_STATE,
-    EXTERNAL,
     COUNT
 };
 
@@ -93,7 +92,7 @@ namespace Names {
         "SET_SCISSOR", "BLIT_RT", "COPY_TEXTURE", "CLEAR_TEXTURE", "COMPUTE_MIPMAPS",
         "SET_CAMERA", "PUSH_CAMERA", "POP_CAMERA", "SET_CLIP_PLANES", "BIND_PIPELINE", "BIND_SHADER_RESOURCES", "SEND_PUSH_CONSTANTS",
         "DRAW_COMMANDS", "DISPATCH_COMPUTE", "MEMORY_BARRIER", "READ_BUFFER_DATA", "CLEAR_BUFFER_DATA",
-        "BEGIN_DEBUG_SCOPE","END_DEBUG_SCOPE", "ADD_DEBUG_MESSAGE", "SWITCH_WINDOW", "SET_CLIPING_STATE", "EXTERNAL", "UNKNOWN"
+        "BEGIN_DEBUG_SCOPE","END_DEBUG_SCOPE", "ADD_DEBUG_MESSAGE", "SWITCH_WINDOW", "SET_CLIPING_STATE", "UNKNOWN"
     };
 };
 
@@ -193,6 +192,9 @@ DEFINE_COMMAND_BEGIN(ComputeMipMapsCommand, CommandType::COMPUTE_MIPMAPS);
 DEFINE_COMMAND_END(ComputeMipMapsCommand);
 
 DEFINE_COMMAND_BEGIN(SetScissorCommand, CommandType::SET_SCISSOR);
+    SetScissorCommand() noexcept = default;
+    SetScissorCommand(const Rect<I32>& rect) noexcept : _rect( rect ) {}
+
     Rect<I32> _rect;
 DEFINE_COMMAND_END(SetScissorCommand);
 
@@ -242,8 +244,7 @@ DEFINE_COMMAND_BEGIN(AddDebugMessageCommand, CommandType::ADD_DEBUG_MESSAGE);
     AddDebugMessageCommand(const char* msg, const U32 msgId = U32_MAX ) noexcept
         : _msg(msg)
         , _msgId(msgId)
-    {
-    }
+    {}
 
     Str64 _msg;
     U32 _msgId{ U32_MAX };
@@ -279,10 +280,6 @@ DEFINE_COMMAND_BEGIN(SetClippingStateCommand, CommandType::SET_CLIPING_STATE)
     bool _lowerLeftOrigin{true};
     bool _negativeOneToOneDepth{true};
 DEFINE_COMMAND_END(SetClippingStateCommand);
-
-DEFINE_COMMAND_BEGIN(ExternalCommand, CommandType::EXTERNAL);
-    DELEGATE<void> _cbk;
-DEFINE_COMMAND_END(ExternalCommand);
 
 }; //namespace GFX
 }; //namespace Divide

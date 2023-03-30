@@ -141,26 +141,24 @@ namespace Divide
                     desc._resolution.set( to_U16( isCSM ? settings.csm.shadowMapResolution : settings.spot.shadowMapResolution ) );
 
                     {
-                        InternalRTAttachmentDescriptors att{
+                        desc._attachments = 
+                        {
                             InternalRTAttachmentDescriptor{ shadowMapDescriptor, shadowMapSampler.getHash(), RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 }
                         };
 
                         desc._name = isCSM ? "CSM_ShadowMap" : "Single_ShadowMap";
-                        desc._attachmentCount = to_U8( att.size() );
-                        desc._attachments = att.data();
                         s_shadowMaps[i] = context.renderTargetPool().allocateRT( desc );
                     }
                     {
                         TextureDescriptor shadowMapCacheDescriptor = shadowMapDescriptor;
                         shadowMapCacheDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
 
-                        InternalRTAttachmentDescriptors attCache{
+                        desc._attachments = 
+                        {
                             InternalRTAttachmentDescriptor{ shadowMapCacheDescriptor, shadowMapSamplerCache.getHash(), RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 }
                         };
 
                         desc._name = isCSM ? "CSM_ShadowMap_StaticCache" : "Single_ShadowMap_StaticCache";
-                        desc._attachmentCount = to_U8( attCache.size() );
-                        desc._attachments = attCache.data();
                         s_shadowMapCaches[i] = context.renderTargetPool().allocateRT( desc );
                     }
                     if ( isCSM )
@@ -192,33 +190,29 @@ namespace Divide
                     depthDescriptor.layerCount( colourMapDescriptor.layerCount() );
                     depthDescriptor.mipMappingState( TextureDescriptor::MipMappingState::MANUAL );
 
-                    InternalRTAttachmentDescriptors att
-                    {
-                        InternalRTAttachmentDescriptor{ colourMapDescriptor, samplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0},
-                        InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 },
-                    };
-
                     RenderTargetDescriptor desc = {};
+
                     desc._resolution.set( to_U16( settings.point.shadowMapResolution ) );
                     {
                         desc._name = "Cube_ShadowMap";
-                        desc._attachmentCount = to_U8( att.size() );
-                        desc._attachments = att.data();
+                        desc._attachments = 
+                        {
+                            InternalRTAttachmentDescriptor{ colourMapDescriptor, samplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0},
+                            InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 },
+                        };
                         s_shadowMaps[i] = context.renderTargetPool().allocateRT( desc );
                     }
                     {
                         TextureDescriptor shadowMapCacheDescriptor = colourMapDescriptor;
                         shadowMapCacheDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
 
-                        InternalRTAttachmentDescriptors attCache
+                        desc._attachments = 
                         {
                             InternalRTAttachmentDescriptor{ shadowMapCacheDescriptor, shadowMapSamplerCache.getHash(), RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 },
                             InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 },
                         };
 
                         desc._name = "Cube_ShadowMap_StaticCache";
-                        desc._attachmentCount = to_U8( attCache.size() );
-                        desc._attachments = attCache.data();
                         s_shadowMapCaches[i] = context.renderTargetPool().allocateRT( desc );
                     }
 

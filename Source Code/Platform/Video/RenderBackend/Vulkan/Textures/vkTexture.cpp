@@ -12,9 +12,9 @@ namespace Divide
 {
     namespace
     {
-        FORCE_INLINE [[nodiscard]] U8 GetBitsPerPixel( const GFXDataFormat format, const GFXImageFormat baseFormat ) noexcept
+        FORCE_INLINE [[nodiscard]] U8 GetBytesPerPixel( const GFXDataFormat format, const GFXImageFormat baseFormat ) noexcept
         {
-            return Texture::GetSizeFactor( format ) * NumChannels( baseFormat ) * 8;
+            return Texture::GetSizeFactor( format ) * NumChannels( baseFormat );
         }
 
         VkFlags GetFlagForUsage( const ImageUsage usage , const TextureDescriptor& descriptor) noexcept
@@ -457,6 +457,7 @@ namespace Divide
             return;
         }
 
+
         VkImageSubresource  range;
         range.aspectMask = GetAspectFlags( _descriptor );
         range.mipLevel = to_I32(targetMip);
@@ -469,10 +470,12 @@ namespace Divide
 
         DIVIDE_ASSERT( offset.z == 0u && dimensions.z == 1u, "vkTexture::loadDataInternal: 3D textures not supported for sub-image updates!");
 
-        const size_t rowOffset_dest = pixelUnpackAlignment._alignment * _width;
+        const U8 bpp_dest = GetBytesPerPixel( _descriptor.dataType(), _descriptor.baseFormat() );
+        const size_t rowOffset_dest = (bpp_dest * pixelUnpackAlignment._alignment) * _width;
         const U16 subHeight = bottomRightY - topLeftY;
         const U16 subWidth = bottomRightX - topLeftX;
-        const size_t subRowSize = subWidth * pixelUnpackAlignment._alignment;
+        const size_t subRowSize = subWidth * (pixelUnpackAlignment._alignment * bpp_dest);
+        const size_t pitch = pixelUnpackAlignment._rowLength == 0u ? rowOffset_dest : pixelUnpackAlignment._rowLength;
 
         if ( _stagingBuffer == nullptr )
         {
@@ -482,6 +485,7 @@ namespace Divide
 
             _mipData.resize( mipCount() );
 
+           
             for ( U32 l = 0u; l < _numLayers; ++l )
             {
                 for ( U8 m = 0u; m < mipCount(); ++m )
@@ -490,7 +494,7 @@ namespace Divide
                     mipHeight = _height >> m;
 
                     _mipData[m]._dimensions = {mipWidth, mipHeight, _depth};
-                    _mipData[m]._size = mipWidth * mipHeight * _depth * pixelUnpackAlignment._alignment;
+                    _mipData[m]._size = mipWidth * mipHeight * _depth * bpp_dest;
                     totalSize += _mipData[m]._size;
 
                 }
@@ -499,7 +503,7 @@ namespace Divide
             _stagingBuffer = VKUtil::createStagingBuffer( totalSize, resourceName() );
         }
 
-        const size_t dstOffset = topLeftY * rowOffset_dest + topLeftX * pixelUnpackAlignment._alignment;
+        const size_t dstOffset = topLeftY * rowOffset_dest + topLeftX * (pixelUnpackAlignment._alignment * bpp_dest);
 
         Byte* mappedData = (Byte*)_stagingBuffer->_allocInfo.pMappedData;
         Byte* dstData = &mappedData[dstOffset];
@@ -513,7 +517,7 @@ namespace Divide
             {
                 memcpy( dstData, srcData, subRowSize );
                 dstData += rowOffset_dest;
-                srcData += pixelUnpackAlignment._rowLength;
+                srcData += pitch;
             }
         }
         else
@@ -757,7 +761,7 @@ namespace Divide
                lhs._subRange == rhs._subRange;
     }
 
-    VkImageView vkTexture::getImageView( const CachedImageView::Descriptor& viewDescriptor )
+    VkImageView vkTexture::getImageView( const CachedImageView::Descriptor& viewDescriptor ) const
     {
         const size_t viewHash = viewDescriptor.getHash();
 

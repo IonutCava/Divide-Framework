@@ -79,16 +79,8 @@ class glGenericVertexData final : public GenericVertexData {
         GLsync _idxBufferSync{ nullptr };
     };
 
-    struct glVertexDataIndexContainer {
-        vector_fast<GLsizei> _countData;
-        vector_fast<GLuint> _indexOffsetData;
-    } _indexInfo;
-
     vector<IndexBufferEntry> _idxBuffers;
     vector<GenericBufferImpl> _bufferObjects;
-    GLuint _lastDrawCount{ 0u };
-    GLsizei _lastIndexCount{ 0 };
-    GLuint _lastFirstIndex{ 0u };
 
     SharedMutex _idxBufferLock;
 };

@@ -247,12 +247,12 @@ bool ParticleEmitter::unload() {
 }
 
 void ParticleEmitter::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {
-    GenericDrawCommand cmd = {};
+    GenericDrawCommand cmd{};
     cmd._cmd.indexCount = to_U32(_particles->particleGeometryIndices().size());
-    if (cmd._cmd.indexCount == 0) {
-        cmd._cmd.indexCount = to_U32(_particles->particleGeometryVertices().size());
+    if (cmd._cmd.indexCount > 0)
+    {
+        cmdsOut.emplace_back( GFX::DrawCommand{ cmd } );
     }
-    cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
 
     SceneNode::buildDrawCommands(sgn, cmdsOut);
 }

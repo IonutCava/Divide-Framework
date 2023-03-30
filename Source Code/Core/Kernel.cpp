@@ -680,10 +680,6 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
     Console::printfn(Locale::Get(_ID("START_RENDER_INTERFACE")));
 
     const RenderAPI renderingAPI = static_cast<RenderAPI>(config.runtime.targetRenderingAPI);
-    if (renderingAPI != RenderAPI::OpenGL /*&& renderingAPI != RenderAPI::Vulkan*/) {
-        STUBBED("Add CEGUI renderer for VULKAN backend!");
-        config.gui.cegui.enabled = false;
-    }
 
     ErrorCode initError = Attorney::ApplicationKernel::SetRenderingAPI(_platformContext.app(), renderingAPI);
     if (initError != ErrorCode::NO_ERR) {

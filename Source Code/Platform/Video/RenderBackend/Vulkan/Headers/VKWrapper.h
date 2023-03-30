@@ -98,7 +98,6 @@ private:
     void destroyStatePerWindow( VKPerWindowState& windowState );
     void recreateSwapChain( VKPerWindowState& windowState );
 
-    bool draw(const GenericDrawCommand& cmd, VkCommandBuffer cmdBuffer) const;
     bool setViewportInternal( const Rect<I32>& newViewport, VkCommandBuffer cmdBuffer ) noexcept;
     bool setScissorInternal( const Rect<I32>& newScissor, VkCommandBuffer cmdBuffer ) noexcept;
     void destroyPipelineCache();
@@ -112,6 +111,7 @@ private:
 
     void onShaderRegisterChanged( ShaderProgram* program, bool state ) override;
 
+    static bool Draw(const GenericDrawCommand& cmd, VkCommandBuffer cmdBuffer);
 public:
     static [[nodiscard]] VKStateTracker& GetStateTracker() noexcept;
     static [[nodiscard]] VkSampler GetSamplerHandle(size_t samplerHash);

@@ -88,3 +88,36 @@ layout(location = 0) out vec4 _colourOut;
 void main(){
     _colourOut = vec4(_colour.rgb, texture(texDiffuse0, VAR._texCoord).r);
 }
+
+
+--Vertex.CEGUI
+
+#include "nodeDataInput.cmn"
+
+layout( location = ATTRIB_POSITION ) in vec3 inVertexData;
+layout( location = ATTRIB_TEXCOORD ) in vec2 inTexCoordData;
+layout( location = ATTRIB_COLOR )    in vec4 inColourData;
+
+layout(location = ATTRIB_FREE_START + 0) out vec4 _colour;
+
+#define modelViewPerspMatrix PushData0
+
+void main(void)
+{
+    VAR._texCoord = inTexCoordData;
+    _colour = inColourData;
+    gl_Position = modelViewPerspMatrix * vec4( inVertexData, 1.0);
+}
+
+--Fragment.CEGUI
+
+layout(location = ATTRIB_FREE_START + 0) in vec4 _colour;
+
+DESCRIPTOR_SET_RESOURCE( PER_DRAW, 0 ) uniform sampler2D texDiffuse0;
+
+layout(location = 0) out vec4 _colourOut;
+
+void main(void)
+{
+    _colourOut = texture(texDiffuse0, VAR._texCoord) * _colour;
+}

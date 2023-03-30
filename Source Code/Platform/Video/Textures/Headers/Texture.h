@@ -119,8 +119,6 @@ namespace Divide
         /// Change the number of MSAA samples for this current texture
         void setSampleCount( U8 newSampleCount );
 
-        [[nodiscard]] U16 mipCount() const noexcept;
-
         [[nodiscard]] ImageView getView() const noexcept;
         [[nodiscard]] ImageView getView( TextureType targetType ) const noexcept;
         [[nodiscard]] ImageView getView( vec2<U16> mipRange/*offset, count*/ ) const noexcept;
@@ -137,6 +135,8 @@ namespace Divide
         PROPERTY_R( TextureDescriptor, descriptor );
         /// Set/Get the number of layers (used by texture arrays)
         PROPERTY_RW( U16, numLayers, 1u );
+        /// Get the number of mips
+        PROPERTY_R( U16, mipCount, 1u );
         /// Texture width as returned by STB/DDS loader
         PROPERTY_R( U16, width, 0u );
         /// Texture height as returned by STB/DDS loader
@@ -150,7 +150,7 @@ namespace Divide
 
         [[nodiscard]] U8 numChannels() const noexcept;
 
-        protected:
+     protected:
         /// Use STB to load a file into a Texture Object
         bool loadFile( const ResourcePath& path, const ResourcePath& name, ImageTools::ImageData& fileData );
         bool checkTransparency( const ResourcePath& path, const ResourcePath& name, ImageTools::ImageData& fileData );
@@ -174,7 +174,6 @@ namespace Divide
 
         protected:
         ResourceCache& _parentCache;
-        ImageView  _defaultView;
 
         TextureType _type{ TextureType::COUNT };
 

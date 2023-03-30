@@ -307,7 +307,7 @@ namespace Divide
         bufferDescriptor._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
         bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::COMMAND_BUFFER;
         bufferDescriptor._bufferParams._elementCount = Config::MAX_VISIBLE_NODES * TotalPassCountForStage( stage );
-        bufferDescriptor._bufferParams._elementSize = sizeof( IndirectDrawCommand );
+        bufferDescriptor._bufferParams._elementSize = sizeof( IndirectIndexedDrawCommand );
         bufferDescriptor._ringBufferLength = RenderPass::DataBufferRingSize;
         bufferDescriptor._name = Util::StringFormat( "CMD_DATA_%s", TypeUtil::RenderStageToString( stage ) );
         _cmdBuffer = _context.newSB( bufferDescriptor );

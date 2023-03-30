@@ -34,14 +34,12 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
         TextureDescriptor weightsDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RGBA);
         weightsDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        InternalRTAttachmentDescriptors att
+        desc._attachments =
         {
             InternalRTAttachmentDescriptor{ weightsDescriptor, sampler.getHash(), RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 }
         };
 
         desc._name = "SMAAWeights";
-        desc._attachmentCount = to_U8(att.size());
-        desc._attachments = att.data();
 
         _smaaWeights = _context.renderTargetPool().allocateRT(desc);
     }

@@ -85,16 +85,13 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
     TextureDescriptor screenDescriptor = screenAtt->texture()->descriptor();
     screenDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-    InternalRTAttachmentDescriptors att
+    RenderTargetDescriptor desc = {};
+    desc._attachments =
     {
         InternalRTAttachmentDescriptor{ screenDescriptor, screenAtt->descriptor()._samplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 }
     };
 
-    RenderTargetDescriptor desc = {};
     desc._resolution = res;
-    desc._attachmentCount = to_U8(att.size());
-    desc._attachments = att.data();
-
     desc._name = "Bloom_Blur_0";
     _bloomBlurBuffer[0] = _context.renderTargetPool().allocateRT(desc);
     desc._name = "Bloom_Blur_1";

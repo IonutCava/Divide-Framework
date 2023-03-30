@@ -38,25 +38,40 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-struct IndirectDrawCommand {
+struct IndirectIndexedDrawCommand
+{
     union
     {
-        U32 indexCount{ 0u };
+        U32 indexCount{0u};
         U32 vertexCount;
     };
 
     U32 instanceCount {1u};
     U32 firstIndex    {0u};
-    U32 baseVertex{ 0u };
+    U32 baseVertex    {0u};
 
     union
     {
-      U32 baseInstance{ 0u };
+      U32 baseInstance{0u};
       U32 firstInstance;
     };
 };
 
-static_assert(sizeof(IndirectDrawCommand) == 20, "Wrong indirect command size!");
+static_assert(sizeof( IndirectIndexedDrawCommand ) == 20, "Wrong indexed indirect command size!");
+
+struct IndirectNonIndexedDrawCommand
+{
+    U32  vertexCount{0u};
+    U32  instanceCount{1u};
+    U32  firstIndex{0u};
+    union
+    {
+        U32 baseInstance{ 0u };
+        U32 firstInstance;
+    };
+};
+
+static_assert(sizeof( IndirectNonIndexedDrawCommand ) == 16, "Wrong non-indexed indirect command size!");
 
 enum class CmdRenderOptions : U8 {
     RENDER_GEOMETRY           = toBit(1),
@@ -66,7 +81,7 @@ enum class CmdRenderOptions : U8 {
 
 #pragma pack(push, 1)
 struct GenericDrawCommand {
-    IndirectDrawCommand _cmd{};                                            // 32 bytes
+    IndirectIndexedDrawCommand _cmd{};                                     // 32 bytes
     PoolHandle _sourceBuffer{};                                            // 12 bytes
     U32 _commandOffset{ 0u };                                              // 8  bytes
     U16 _drawCount{ 1u };                                                  // 4  bytes

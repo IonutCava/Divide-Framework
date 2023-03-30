@@ -53,7 +53,6 @@ struct ValidationEntry
     UseProgramStageMask _stageMask{ UseProgramStageMask::GL_NONE_BIT };
 };
 
-
 namespace Attorney {
     class GLAPIShaderProgram;
 };

@@ -134,15 +134,13 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
         depthDescriptor.msaaSamples(g_shadowSettings.spot.MSAASamples);
         depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        InternalRTAttachmentDescriptors att
+        desc._attachments = 
         {
             InternalRTAttachmentDescriptor{ colourDescriptor, samplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 },
             InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 }
         };
 
         desc._name = "Single_ShadowMap_Draw";
-        desc._attachmentCount = to_U8(att.size());
-        desc._attachments = att.data();
         desc._msaaSamples = g_shadowSettings.spot.MSAASamples;
 
         _drawBufferDepth = context.renderTargetPool().allocateRT(desc);
@@ -154,16 +152,14 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
         blurMapDescriptor.layerCount(1u);
         blurMapDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        InternalRTAttachmentDescriptors att
+        RenderTargetDescriptor desc = {};
+        desc._attachments = 
         {
             InternalRTAttachmentDescriptor{ blurMapDescriptor, samplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 }
         };
 
-        RenderTargetDescriptor desc = {};
         desc._name = "Single_Blur";
         desc._resolution = rt->getResolution();
-        desc._attachmentCount = to_U8(att.size());
-        desc._attachments = att.data();
 
         _blurBuffer = _context.renderTargetPool().allocateRT(desc);
     }

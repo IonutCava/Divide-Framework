@@ -112,15 +112,14 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         depthDescriptor.layerCount(Config::MAX_REFLECTIVE_PROBES_PER_PASS + 1u);
         depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
 
-        InternalRTAttachmentDescriptors att {
+        RenderTargetDescriptor desc = {};
+        desc._attachments = 
+        {
             InternalRTAttachmentDescriptor{ environmentDescriptor, samplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0, },
             InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 },
         };
 
-        RenderTargetDescriptor desc = {};
         desc._name = "ReflectionEnvMap";
-        desc._attachmentCount = to_U8(att.size());
-        desc._attachments = att.data();
         desc._resolution.set(reflectRes, reflectRes);
         s_reflection = context.renderTargetPool().allocateRT(desc);
     }
@@ -129,14 +128,12 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         environmentDescriptor.layerCount(Config::MAX_REFLECTIVE_PROBES_PER_PASS + 1u);
         environmentDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
         environmentDescriptor.addImageUsageFlag(ImageUsage::SHADER_WRITE);
-        InternalRTAttachmentDescriptors att
+        RenderTargetDescriptor desc = {};
+        desc._attachments = 
         {
             InternalRTAttachmentDescriptor{ environmentDescriptor, samplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 },
         };
-        RenderTargetDescriptor desc = {};
         desc._name = "PrefilteredEnvMap";
-        desc._attachmentCount = to_U8(att.size());
-        desc._attachments = att.data();
         desc._resolution.set(reflectRes, reflectRes);
         s_prefiltered = context.renderTargetPool().allocateRT(desc);
         desc._name = "IrradianceEnvMap";
@@ -147,13 +144,13 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         TextureDescriptor environmentDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RG);
         environmentDescriptor.mipMappingState(TextureDescriptor::MipMappingState::AUTO);
         environmentDescriptor.addImageUsageFlag(ImageUsage::SHADER_WRITE);
-        InternalRTAttachmentDescriptors att {
+
+        RenderTargetDescriptor desc = {};
+        desc._attachments = 
+        {
             InternalRTAttachmentDescriptor{ environmentDescriptor, samplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 },
         };
-        RenderTargetDescriptor desc = {};
         desc._name = "BrdfLUT";
-        desc._attachmentCount = to_U8(att.size());
-        desc._attachments = att.data();
         desc._resolution.set(s_LUTTextureSize, s_LUTTextureSize);
         s_brdfLUT = context.renderTargetPool().allocateRT(desc);
     }

@@ -182,14 +182,10 @@ extern thread_local SDL_GLContext s_glSecondaryContext;
 extern Mutex s_glSecondaryContextMutex;
 
 ///Note: If internal format is not GL_NONE, an indexed draw is issued!
-void SubmitRenderCommand(const GenericDrawCommand& drawCommand,
-                         bool useIndirectBuffer,
-                         GLenum internalFormat,
-                         const GLsizei* const countData = nullptr,
-                         bufferPtr indexData = nullptr);
+void SubmitRenderCommand(const GenericDrawCommand& drawCommand, bool useIndirectBuffer, GLenum internalFormat);
 
 /// Populate enumeration tables with appropriate API values
-void fillEnumTables();
+void OnStartup();
 
 GLenum internalFormat(GFXImageFormat baseFormat, GFXDataFormat dataType, bool srgb, bool normalized) noexcept;
 GLenum internalTextureType(TextureType type, U8 msaaSamples);

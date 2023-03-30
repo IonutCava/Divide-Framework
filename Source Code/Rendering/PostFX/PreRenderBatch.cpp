@@ -74,30 +74,27 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
 
     RenderTargetDescriptor desc = {};
     desc._resolution = _screenRTs._hdr._screenRef._rt->getResolution();
-    desc._attachmentCount = 1u;
 
     TextureDescriptor outputDescriptor = _screenRTs._hdr._screenRef._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO)->texture()->descriptor();
     outputDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
     {
-        InternalRTAttachmentDescriptors att
+        desc._attachments =
         {
             InternalRTAttachmentDescriptor{ outputDescriptor, screenSampler.getHash(), RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0}
         };
         desc._name = "PostFX Output HDR";
-        desc._attachments = att.data();
 
         _screenRTs._hdr._screenCopy = _context.renderTargetPool().allocateRT(desc);
     }
     {
         outputDescriptor.dataType(GFXDataFormat::UNSIGNED_BYTE);
         //Colour0 holds the LDR screen texture
-        InternalRTAttachmentDescriptors att
+        desc._attachments =
         {
             InternalRTAttachmentDescriptor{ outputDescriptor, screenSampler.getHash(), RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 }
         };
 
         desc._name = "PostFX Output LDR 0";
-        desc._attachments = att.data();
 
         _screenRTs._ldr._temp[0] = _context.renderTargetPool().allocateRT(desc);
 
@@ -108,13 +105,12 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         TextureDescriptor edgeDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RG);
         edgeDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        InternalRTAttachmentDescriptors att
+        desc._attachments =
         {
             InternalRTAttachmentDescriptor{ edgeDescriptor, screenSampler.getHash(), RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 }
         };
 
         desc._name = "SceneEdges";
-        desc._attachments = att.data();
         _sceneEdges = _context.renderTargetPool().allocateRT(desc);
     }
     {
@@ -143,13 +139,12 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         TextureDescriptor linearDepthDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RED);
         linearDepthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        InternalRTAttachmentDescriptors attachments
+        desc._attachments =
         {
             InternalRTAttachmentDescriptor{ linearDepthDescriptor, samplerHash, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 }
         };
 
         desc._name = "Linear Depth";
-        desc._attachments = attachments.data();
         desc._msaaSamples = 0u;
         _linearDepthRT = _context.renderTargetPool().allocateRT(desc);
     }
