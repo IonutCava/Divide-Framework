@@ -59,7 +59,7 @@
 	</runtime>
 	<GUI>
 		<CEGUI>
-			<Enabled>false</Enabled>
+			<Enabled>true</Enabled>
 		</CEGUI>
 		<consoleLayoutFile>console.layout</consoleLayoutFile>
 	</GUI>

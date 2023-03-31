@@ -133,7 +133,7 @@ namespace Divide
                     // Default filters, LINEAR is OK for this
                     TextureDescriptor shadowMapDescriptor( TextureType::TEXTURE_2D_ARRAY, isCSM ? GFXDataFormat::FLOAT_32 : GFXDataFormat::FLOAT_16, GFXImageFormat::RG );
                     shadowMapDescriptor.layerCount( isCSM ? Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS * Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT
-                                                    : Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS );
+                                                          : Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS );
 
                     shadowMapDescriptor.mipMappingState( TextureDescriptor::MipMappingState::MANUAL );
 
@@ -186,7 +186,7 @@ namespace Divide
                     shadowMapSampler.anisotropyLevel( 0 );
                     const size_t samplerHash = shadowMapSampler.getHash();
 
-                    TextureDescriptor depthDescriptor( TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::DEPTH_COMPONENT );
+                    TextureDescriptor depthDescriptor( TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::RED, GFXImagePacking::DEPTH );
                     depthDescriptor.layerCount( colourMapDescriptor.layerCount() );
                     depthDescriptor.mipMappingState( TextureDescriptor::MipMappingState::MANUAL );
 

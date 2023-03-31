@@ -45,7 +45,6 @@ namespace Divide
         ImageTools::OnStartup( gfx.renderAPI() != RenderAPI::OpenGL );
 
         TextureDescriptor textureDescriptor( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
-        textureDescriptor.srgb( false );
         textureDescriptor.baseFormat( GFXImageFormat::RGBA );
 
         ResourceDescriptor textureResourceDescriptor( "defaultEmptyTexture" );
@@ -113,23 +112,27 @@ namespace Divide
         return cachePath;
     }
 
-    U8 Texture::GetSizeFactor( const GFXDataFormat format ) noexcept
+    U8 Texture::GetBytesPerPixel( const GFXDataFormat format, const GFXImageFormat baseFormat, const GFXImagePacking packing ) noexcept
     {
+        if ( packing == GFXImagePacking::RGB_565 || packing == GFXImagePacking::RGBA_4444 )
+        {
+            return 2u;
+        }
+
+        U8 bytesPerChannel = 1u;
         switch ( format )
         {
-            case GFXDataFormat::UNSIGNED_BYTE:
-            case GFXDataFormat::SIGNED_BYTE: return 1u;
-
             case GFXDataFormat::UNSIGNED_SHORT:
             case GFXDataFormat::SIGNED_SHORT:
-            case GFXDataFormat::FLOAT_16: return 2u;
+            case GFXDataFormat::FLOAT_16: bytesPerChannel = 2u; break;
 
             case GFXDataFormat::UNSIGNED_INT:
             case GFXDataFormat::SIGNED_INT:
-            case GFXDataFormat::FLOAT_32: return 4u;
+            case GFXDataFormat::FLOAT_32: bytesPerChannel = 4u; break;
+            default: break;
         };
 
-        return 1u;
+        return NumChannels( baseFormat ) * bytesPerChannel;
     }
 
     Texture::Texture( GFXDevice& context,
@@ -144,6 +147,9 @@ namespace Divide
         _descriptor( texDescriptor ),
         _parentCache( parentCache )
     {
+        DIVIDE_ASSERT(_descriptor.packing() != GFXImagePacking::COUNT &&
+                      _descriptor.baseFormat() != GFXImageFormat::COUNT &&
+                      _descriptor.dataType() != GFXDataFormat::COUNT);
     }
 
     Texture::~Texture()
@@ -196,7 +202,6 @@ namespace Divide
 
 
             // Each texture face/layer must be in a comma separated list
-            stringstream textureLocationList( assetLocation().str() );
             stringstream textureFileList( assetName().c_str() );
 
             ImageTools::ImageData dataStorage = {};
@@ -205,10 +210,8 @@ namespace Divide
             bool loadedFromFile = false;
             // We loop over every texture in the above list and store it in this temporary string
             string currentTextureFile;
-            string currentTextureLocation;
             ResourcePath currentTextureFullPath;
-            while ( std::getline( textureLocationList, currentTextureLocation, ',' ) &&
-                    std::getline( textureFileList, currentTextureFile, ',' ) )
+            while ( std::getline( textureFileList, currentTextureFile, ',' ) )
             {
                 Util::Trim( currentTextureFile );
 
@@ -216,7 +219,7 @@ namespace Divide
                 if ( !currentTextureFile.empty() )
                 {
                     Util::ReplaceStringInPlace( currentTextureFile, searchPattern, "/" );
-                    currentTextureFullPath = currentTextureLocation.empty() ? Paths::g_texturesLocation : ResourcePath{ currentTextureLocation };
+                    currentTextureFullPath = assetLocation().empty() ? Paths::g_texturesLocation : assetLocation();
                     const auto [file, path] = splitPathToNameAndLocation( currentTextureFile.c_str() );
                     if ( !path.empty() )
                     {
@@ -258,9 +261,7 @@ namespace Divide
                     {
                         Console::errorfn(Locale::Get( _ID( "ERROR_TEXTURE_LOADER_CUBMAP_INIT_COUNT" ) ), resourceName().c_str() );
                     }
-                    else if ( (_descriptor.texType() == TextureType::TEXTURE_1D_ARRAY ||
-                               _descriptor.texType() == TextureType::TEXTURE_2D_ARRAY ) &&
-                               dataStorage.layerCount() != depth() )
+                    else if ( IsArrayTexture(_descriptor.texType() ) && dataStorage.layerCount() != depth() )
                     {
                         Console::errorfn(Locale::Get( _ID( "ERROR_TEXTURE_LOADER_ARRAY_INIT_COUNT" ) ), resourceName().c_str() );
                     }
@@ -286,25 +287,22 @@ namespace Divide
 
     bool Texture::loadFile( const ResourcePath& path, const ResourcePath& name, ImageTools::ImageData& fileData )
     {
+        const bool srgb = _descriptor.packing() == GFXImagePacking::NORMALIZED_SRGB;
 
-        if ( !fileExists( path + name ) ||
-             !fileData.loadFromFile( _descriptor.srgb(),
-                                     _width,
-                                     _height,
-                                     path,
-                                     name,
-                                     _descriptor.textureOptions() ) )
+
+        if ( !fileExists( path + name ) || !fileData.loadFromFile( srgb, _width, _height, path, name, _descriptor.textureOptions() ) )
         {
             if ( fileData.layerCount() > 0 )
             {
                 Console::errorfn( Locale::Get( _ID( "ERROR_TEXTURE_LAYER_LOAD" ) ), name.c_str() );
                 return false;
             }
+
             Console::errorfn( Locale::Get( _ID( "ERROR_TEXTURE_LOAD" ) ), name.c_str() );
             // missing_texture.jpg must be something that really stands out
             _descriptor.dataType(GFXDataFormat::UNSIGNED_BYTE);
             _descriptor.baseFormat(GFXImageFormat::RGBA);
-            if ( !fileData.loadFromFile( _descriptor.srgb(), _width, _height, Paths::g_assetsLocation + Paths::g_texturesLocation, s_missingTextureFileName ) )
+            if ( !fileData.loadFromFile( srgb, _width, _height, Paths::g_assetsLocation + Paths::g_texturesLocation, s_missingTextureFileName ) )
             {
                 DIVIDE_UNEXPECTED_CALL();
             }
@@ -346,7 +344,7 @@ namespace Divide
         if ( !emptyAllocation )
         {
             ImageTools::ImageData imgData{};
-            if ( imgData.loadFromMemory( data, dataSize, dimensions.width, dimensions.height, 1, GetSizeFactor( _descriptor.dataType() ) * NumChannels( _descriptor.baseFormat() ) ) )
+            if ( imgData.loadFromMemory( data, dataSize, dimensions.width, dimensions.height, 1, GetBytesPerPixel( _descriptor.dataType(), _descriptor.baseFormat(), _descriptor.packing() ) ) )
             {
                 loadDataInternal( imgData, vec3<U16>(0u), pixelUnpackAlignment);
             }
@@ -378,7 +376,9 @@ namespace Divide
 
     void Texture::createWithData( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment )
     {
-        prepareTextureData( imageData.dimensions( 0u, 0u ).width, imageData.dimensions( 0u, 0u ).height, imageData.dimensions( 0u, 0u ).depth, false );
+        const U16 slices = Is3DTexture(_descriptor.texType()) ? imageData.dimensions( 0u, 0u ).depth : imageData.layerCount();
+
+        prepareTextureData( imageData.dimensions( 0u, 0u ).width, imageData.dimensions( 0u, 0u ).height, slices, false );
 
         if ( IsCompressed( _descriptor.baseFormat() ) &&
              _descriptor.mipMappingState() == TextureDescriptor::MipMappingState::AUTO )
@@ -513,18 +513,36 @@ namespace Divide
 
     void Texture::validateDescriptor()
     {
-        // Select the proper colour space internal format
-        if ( _descriptor.baseFormat() == GFXImageFormat::RED ||
-             _descriptor.baseFormat() == GFXImageFormat::RG ||
-             _descriptor.baseFormat() == GFXImageFormat::DEPTH_COMPONENT ||
-             _descriptor.baseFormat() == GFXImageFormat::DEPTH_STENCIL_COMPONENT )
+        if (_descriptor.packing() == GFXImagePacking::NORMALIZED_SRGB )
         {
-            // We only support 8 bit per pixel - 3 & 4 channel textures
-            assert( !_descriptor.srgb() );
+            bool valid = false;
+            switch ( _descriptor.baseFormat() )
+            {
+                case GFXImageFormat::RGB:
+                case GFXImageFormat::BGR:
+                case GFXImageFormat::RGBA:
+                case GFXImageFormat::BGRA:
+                case GFXImageFormat::BC1:
+                case GFXImageFormat::BC1a:
+                case GFXImageFormat::BC2:
+                case GFXImageFormat::BC3:
+                case GFXImageFormat::BC7:
+                {
+                    valid = _descriptor.dataType() == GFXDataFormat::UNSIGNED_BYTE;
+                } break;
+
+                default: break;
+            };
+
+            DIVIDE_ASSERT(valid, "SRGB textures are only supported for RGB/BGR(A) normalized formats!" );
+        }
+        else if ( IsDepthTexture(_descriptor.packing()) )
+        {
+            DIVIDE_ASSERT(_descriptor.baseFormat() == GFXImageFormat::RED, "Depth textures only supported for single channel formats");
         }
 
-        // Cap upper mip count limit
-        if ( _width > 0u && _height > 0u )
+        // We may have a 1D texture
+        DIVIDE_ASSERT( _width > 0u && _height > 0u );
         {
             //http://www.opengl.org/registry/specs/ARB/texture_non_power_of_two.txt
             if ( descriptor().mipMappingState() != TextureDescriptor::MipMappingState::OFF )
@@ -547,8 +565,7 @@ namespace Divide
         view._descriptor._msaaSamples = _descriptor.msaaSamples();
         view._descriptor._dataType = _descriptor.dataType();
         view._descriptor._baseFormat = _descriptor.baseFormat();
-        view._descriptor._srgb = _descriptor.srgb();
-        view._descriptor._normalized = _descriptor.normalized();
+        view._descriptor._packing = _descriptor.packing();
         view._subRange._layerRange = {0u, layerCount },
         view._subRange._mipLevels.count = _mipCount;
 

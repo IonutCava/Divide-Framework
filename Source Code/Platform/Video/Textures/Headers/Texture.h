@@ -102,7 +102,7 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource
         static [[nodiscard]] bool UseTextureDDSCache() noexcept;
         static [[nodiscard]] const Texture_ptr& DefaultTexture() noexcept;
         static [[nodiscard]] const size_t DefaultSamplerHash() noexcept;
-        static [[nodiscard]] U8 GetSizeFactor( const GFXDataFormat format ) noexcept;
+        static [[nodiscard]] U8 GetBytesPerPixel( GFXDataFormat format, GFXImageFormat baseFormat, GFXImagePacking packing ) noexcept;
 
         /// API-dependent loading function that uploads ptr data to the GPU using the specified parameters
         void createWithData( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment );
@@ -152,22 +152,18 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource
 
         void validateDescriptor();
 
-        [[nodiscard]] const char* getResourceTypeName() const noexcept override
-        {
-            return "Texture";
-        }
+        [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Texture"; }
 
         virtual void loadDataInternal( const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment ) = 0;
         virtual void loadDataInternal( const Byte* data, size_t size, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) = 0;
         virtual void prepareTextureData( U16 width, U16 height, U16 depth, bool emptyAllocation );
         virtual void submitTextureData() = 0;
 
-        protected:
+    protected:
         ResourceCache& _parentCache;
-
         TextureType _type{ TextureType::COUNT };
 
-        protected:
+    protected:
         static bool s_useDDSCache;
         static size_t s_defaultSamplerHash;
         static Texture_ptr s_defaulTexture;

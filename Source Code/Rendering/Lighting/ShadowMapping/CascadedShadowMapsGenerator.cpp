@@ -120,7 +120,7 @@ namespace Divide
             colourDescriptor.msaaSamples( g_shadowSettings.csm.MSAASamples );
             colourDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
 
-            TextureDescriptor depthDescriptor( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::DEPTH_COMPONENT );
+            TextureDescriptor depthDescriptor( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::RED, GFXImagePacking::DEPTH );
             depthDescriptor.layerCount( Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT );
             depthDescriptor.msaaSamples( g_shadowSettings.csm.MSAASamples );
             depthDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
@@ -141,7 +141,7 @@ namespace Divide
 
         //Blur FBO
         {
-            TextureDescriptor blurMapDescriptor( TextureType::TEXTURE_2D_ARRAY, texDescriptor.dataType(), texDescriptor.baseFormat() );
+            TextureDescriptor blurMapDescriptor( TextureType::TEXTURE_2D_ARRAY, texDescriptor.dataType(), texDescriptor.baseFormat(), texDescriptor.packing() );
             blurMapDescriptor.layerCount( Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT );
             blurMapDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
 

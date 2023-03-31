@@ -12,18 +12,13 @@ namespace Divide
 {
     namespace
     {
-        FORCE_INLINE [[nodiscard]] U8 GetBytesPerPixel( const GFXDataFormat format, const GFXImageFormat baseFormat ) noexcept
-        {
-            return Texture::GetSizeFactor( format ) * NumChannels( baseFormat );
-        }
-
         VkFlags GetFlagForUsage( const ImageUsage usage , const TextureDescriptor& descriptor) noexcept
         {
             DIVIDE_ASSERT(usage != ImageUsage::COUNT);
 
             const bool multisampled = descriptor.msaaSamples() > 0u;
             const bool compressed = IsCompressed( descriptor.baseFormat() );
-            const bool isDepthTexture = IsDepthTexture( descriptor.baseFormat() );
+            const bool isDepthTexture = IsDepthTexture( descriptor.packing() );
             bool supportsStorageBit = !multisampled && !compressed && !isDepthTexture;
 
             
@@ -170,7 +165,7 @@ namespace Divide
             case ImageUsage::SHADER_READ:
             {
                 barrier = true;
-                const VkImageLayout targetLayout = IsDepthTexture( _descriptor.baseFormat() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                const VkImageLayout targetLayout = IsDepthTexture( _descriptor.packing() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                 memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
                 memBarrier.srcStageMask = VK_API::ALL_SHADER_STAGES;
                 memBarrier.oldLayout = targetLayout;
@@ -269,7 +264,7 @@ namespace Divide
             } break;
             case ImageUsage::SHADER_READ:
             {
-                const VkImageLayout targetLayout = IsDepthTexture( _descriptor.baseFormat() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                const VkImageLayout targetLayout = IsDepthTexture( _descriptor.packing() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
                 memBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
                 memBarrier.dstStageMask = VK_API::ALL_SHADER_STAGES;
@@ -299,7 +294,7 @@ namespace Divide
     {
         VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [&]( VkCommandBuffer cmd, const QueueType queue, const bool isDedicatedQueue )
         {
-            const VkImageLayout targetLayout = IsDepthTexture( _descriptor.baseFormat() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            const VkImageLayout targetLayout = IsDepthTexture( _descriptor.packing() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
             VkImageSubresourceRange range;
             range.aspectMask = GetAspectFlags( _descriptor );
@@ -340,7 +335,7 @@ namespace Divide
     {
         Texture::prepareTextureData( width, height, depth, emptyAllocation );
 
-        vkFormat( VKUtil::internalFormat( _descriptor.baseFormat(), _descriptor.dataType(), _descriptor.srgb(), _descriptor.normalized() ) );
+        vkFormat( VKUtil::InternalFormat( _descriptor.baseFormat(), _descriptor.dataType(), _descriptor.packing() ) );
         
         if ( _image != nullptr )
         {
@@ -480,7 +475,7 @@ namespace Divide
 
         DIVIDE_ASSERT( offset.z == 0u && dimensions.z == 1u, "vkTexture::loadDataInternal: 3D textures not supported for sub-image updates!");
 
-        const U8 bpp_dest = GetBytesPerPixel( _descriptor.dataType(), _descriptor.baseFormat() );
+        const U8 bpp_dest = GetBytesPerPixel( _descriptor.dataType(), _descriptor.baseFormat(), _descriptor.packing() );
         const size_t rowOffset_dest = (bpp_dest * pixelUnpackAlignment._alignment) * _width;
         const U16 subHeight = bottomRightY - topLeftY;
         const U16 subWidth = bottomRightX - topLeftX;
@@ -544,7 +539,7 @@ namespace Divide
 
         VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [&]( VkCommandBuffer cmd, const QueueType queue, const bool isDedicatedQueue )
         {
-            const VkImageLayout targetLayout = IsDepthTexture( _descriptor.baseFormat() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            const VkImageLayout targetLayout = IsDepthTexture( _descriptor.packing() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
             VkImageSubresourceRange range;
             range.aspectMask = GetAspectFlags( _descriptor );
@@ -658,7 +653,7 @@ namespace Divide
 
         VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [&]( VkCommandBuffer cmd, const QueueType queue, const bool isDedicatedQueue )
         {
-            const VkImageLayout targetLayout = IsDepthTexture( _descriptor.baseFormat() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            const VkImageLayout targetLayout = IsDepthTexture( _descriptor.packing() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
             VkImageSubresourceRange range;
             range.aspectMask = GetAspectFlags( _descriptor );
@@ -767,7 +762,7 @@ namespace Divide
 
         VK_API::GetStateTracker().IMCmdContext(QueueType::GRAPHICS)->flushCommandBuffer([&](VkCommandBuffer cmd, const QueueType queue, const bool isDedicatedQueue)
         {
-            const bool isDepth = IsDepthTexture( _descriptor.baseFormat() );
+            const bool isDepth = IsDepthTexture( _descriptor.packing() );
 
             VkImageMemoryBarrier2 memBarrier = vk::imageMemoryBarrier2();
             memBarrier.image = _image->_image;
@@ -820,14 +815,16 @@ namespace Divide
 
         const auto desiredDataFormat = _descriptor.dataType();
         const auto desiredImageFormat = _descriptor.baseFormat();
-        const U8 bpp = GetBytesPerPixel( desiredDataFormat, desiredImageFormat );
+        const auto desiredPacking = _descriptor.packing();
+
+        const U8 bpp = GetBytesPerPixel( desiredDataFormat, desiredImageFormat, desiredPacking );
 
 
         DIVIDE_ASSERT( bpp == 4 && desiredImageFormat == GFXImageFormat::RGBA && !IsCubeTexture( _descriptor.texType() ), "glTexture:readData: unsupported image for readback. Support is very limited!" );
         const U16 mipWidth = _width >> mipLevel;
         const U16 mipHeight = _height >> mipLevel;
 
-        const VkImageLayout targetLayout = IsDepthTexture( _descriptor.baseFormat() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        const VkImageLayout targetLayout = IsDepthTexture( _descriptor.packing() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         const size_t sizeDest = mipWidth * mipHeight * bpp;
         auto stagingBuffer = VKUtil::createStagingBuffer( sizeDest, "STAGING_BUFFER_READ_TEXTURE" );
 

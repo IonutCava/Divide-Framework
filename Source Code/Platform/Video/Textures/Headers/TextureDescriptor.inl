@@ -35,35 +35,67 @@
 
 namespace Divide {
 
-inline bool operator==(const TextureDescriptor& lhs, const TextureDescriptor& rhs) noexcept {
+inline bool operator==(const TextureDescriptor& lhs, const TextureDescriptor& rhs) noexcept
+{
     return lhs.getHash() == rhs.getHash();
 }
 
-inline bool operator!=(const TextureDescriptor& lhs, const TextureDescriptor& rhs) noexcept {
+inline bool operator!=(const TextureDescriptor& lhs, const TextureDescriptor& rhs) noexcept
+{
     return lhs.getHash() != rhs.getHash();
 }
 
-[[nodiscard]] inline bool IsCubeTexture(const TextureType texType) noexcept {
+inline bool Is1DTexture( const TextureType texType ) noexcept
+{
+    return texType == TextureType::TEXTURE_1D ||
+           texType == TextureType::TEXTURE_1D_ARRAY;
+}
+
+inline bool Is2DTexture( const TextureType texType ) noexcept
+{
+    return texType == TextureType::TEXTURE_2D ||
+           texType == TextureType::TEXTURE_2D_ARRAY;
+}
+
+inline bool Is3DTexture( const TextureType texType ) noexcept
+{
+    return texType == TextureType::TEXTURE_3D;
+}
+
+
+inline bool IsCubeTexture(const TextureType texType) noexcept
+{
     return texType == TextureType::TEXTURE_CUBE_MAP ||
            texType == TextureType::TEXTURE_CUBE_ARRAY;
 }
 
-[[nodiscard]] inline bool IsArrayTexture(const TextureType texType) noexcept {
+inline bool IsArrayTexture(const TextureType texType) noexcept
+{
     return texType == TextureType::TEXTURE_1D_ARRAY ||
            texType == TextureType::TEXTURE_2D_ARRAY ||
            texType == TextureType::TEXTURE_CUBE_ARRAY;
 }
 
-[[nodiscard]] inline bool IsDepthTexture(const GFXImageFormat format) noexcept {
-    return format == GFXImageFormat::DEPTH_COMPONENT ||
-           format == GFXImageFormat::DEPTH_STENCIL_COMPONENT;
+inline bool IsDepthTexture(const GFXImagePacking packing) noexcept
+{
+    return packing == GFXImagePacking::DEPTH ||
+           packing == GFXImagePacking::DEPTH_STENCIL;
 }
 
-[[nodiscard]] inline U8 NumChannels(const GFXImageFormat format) noexcept {
+inline bool IsNormalizedTexture( GFXImagePacking packing ) noexcept
+{
+    return packing != GFXImagePacking::UNNORMALIZED;
+}
+
+inline bool SupportsZOffsetTexture( const TextureType texType ) noexcept
+{
+    return IsCubeTexture( texType ) || Is3DTexture( texType ) || IsArrayTexture( texType );
+}
+
+inline U8 NumChannels(const GFXImageFormat format) noexcept 
+{
     switch (format) {
         case GFXImageFormat::RED:
-        case GFXImageFormat::DEPTH_COMPONENT:
-        case GFXImageFormat::DEPTH_STENCIL_COMPONENT:
         case GFXImageFormat::BC4s:
         case GFXImageFormat::BC4u:
             return 1u;
@@ -74,21 +106,16 @@ inline bool operator!=(const TextureDescriptor& lhs, const TextureDescriptor& rh
         case GFXImageFormat::BGR:
         case GFXImageFormat::RGB:
         case GFXImageFormat::BC1:
-        case GFXImageFormat::DXT1_RGB_SRGB:
         case GFXImageFormat::BC6s:
         case GFXImageFormat::BC6u:
             return 3u;
         case GFXImageFormat::BGRA:
         case GFXImageFormat::RGBA:
-        case GFXImageFormat::DXT1_RGBA_SRGB:
-        case GFXImageFormat::DXT3_RGBA_SRGB:
-        case GFXImageFormat::DXT5_RGBA_SRGB:
         case GFXImageFormat::BC1a:
         case GFXImageFormat::BC2:
         case GFXImageFormat::BC3:
         case GFXImageFormat::BC3n:
         case GFXImageFormat::BC7:
-        case GFXImageFormat::BC7_SRGB:
             return 4u;
 
         default:

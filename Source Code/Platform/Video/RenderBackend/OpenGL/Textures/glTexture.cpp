@@ -11,12 +11,6 @@
 
 namespace Divide {
 
-namespace {
-    FORCE_INLINE [[nodiscard]] U8 GetBytesPerPixel(const GFXDataFormat format, const GFXImageFormat baseFormat) noexcept {
-        return Texture::GetSizeFactor(format) * NumChannels(baseFormat);
-    }
-};
-
 glTexture::glTexture(GFXDevice& context,
                      const size_t descriptorHash,
                      const Str256& name,
@@ -59,7 +53,7 @@ void glTexture::postLoad() {
 void glTexture::reserveStorage() {
     DIVIDE_ASSERT(!_hasStorage && "glTexture::reserveStorage error: double call detected!");
 
-    const GLenum glInternalFormat = GLUtil::internalFormat(_descriptor.baseFormat(), _descriptor.dataType(), _descriptor.srgb(), _descriptor.normalized());
+    const GLUtil::FormatAndDataType glInternalFormat = GLUtil::InternalFormatAndDataType(_descriptor.baseFormat(), _descriptor.dataType(), _descriptor.packing());
     const GLuint msaaSamples = static_cast<GLuint>(_descriptor.msaaSamples());
     const bool isCubeMap = IsCubeTexture(_descriptor.texType());
     DIVIDE_ASSERT(!(isCubeMap && _width != _height) && "glTexture::reserverStorage error: width and height for cube map texture do not match!");
@@ -70,7 +64,7 @@ void glTexture::reserveStorage() {
             glTextureStorage1D(
                 _loadingHandle,
                 mipCount(),
-                glInternalFormat,
+                glInternalFormat._format,
                 _width);
 
         } break;
@@ -82,14 +76,14 @@ void glTexture::reserveStorage() {
                 glTextureStorage2D(
                     _loadingHandle,
                     mipCount(),
-                    glInternalFormat,
+                    glInternalFormat._format,
                     _width,
                     descriptor().texType() == TextureType::TEXTURE_1D_ARRAY ? _depth : _height);
             } else {
                 glTextureStorage2DMultisample(
                     _loadingHandle,
                     msaaSamples,
-                    glInternalFormat,
+                    glInternalFormat._format,
                     _width,
                     descriptor().texType() == TextureType::TEXTURE_1D_ARRAY ? _depth : _height,
                     GL_TRUE);
@@ -100,7 +94,7 @@ void glTexture::reserveStorage() {
                 glTextureStorage3D(
                     _loadingHandle,
                     mipCount(),
-                    glInternalFormat,
+                    glInternalFormat._format,
                     _width,
                     _height,
                     _depth);
@@ -108,7 +102,7 @@ void glTexture::reserveStorage() {
                 glTextureStorage3DMultisample(
                     _loadingHandle,
                     msaaSamples,
-                    glInternalFormat,
+                    glInternalFormat._format,
                     _width,
                     _height,
                     _depth,
@@ -124,7 +118,7 @@ void glTexture::reserveStorage() {
                 glTextureStorage3D(
                     _loadingHandle,
                     mipCount(),
-                    glInternalFormat,
+                    glInternalFormat._format,
                     _width,
                     _height,
                     layerCount);
@@ -132,14 +126,14 @@ void glTexture::reserveStorage() {
                 glTextureStorage3DMultisample(
                     _loadingHandle,
                     msaaSamples,
-                    glInternalFormat,
+                    glInternalFormat._format,
                     _width,
                     _height,
                     layerCount,
                     GL_TRUE);
             }
         } break;
-        default: break;
+        default: DIVIDE_UNEXPECTED_CALL(); break;
     }
 
     _hasStorage = true;
@@ -203,16 +197,23 @@ void glTexture::loadDataInternal(const ImageTools::ImageData& imageData, const v
 
 void glTexture::loadDataInternal( const Byte* data, const size_t size, const U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
 {
-    GL_API::GetStateTracker().setPixelUnpackAlignment(pixelUnpackAlignment);
 
     const bool isCompressed = IsCompressed(_descriptor.baseFormat());
 
-    const GLenum glFormat = isCompressed ? GLUtil::internalFormat(_descriptor.baseFormat(), _descriptor.dataType(), _descriptor.srgb(), _descriptor.normalized())
-                                         : GLUtil::glImageFormatTable[to_U32(_descriptor.baseFormat())];
-
-    const GLenum dataFormat = GLUtil::glDataFormat[to_U32( _descriptor.dataType() )];
+    const GLenum format = GLUtil::ImageFormat(_descriptor.baseFormat(), _descriptor.packing());
+    const GLenum dataType = GLUtil::InternalDataType(_descriptor.dataType(), _descriptor.packing());
 
     DIVIDE_ASSERT( _descriptor.msaaSamples() == 0u || data == nullptr);
+
+    if ( _descriptor.packing() == GFXImagePacking::RGBA_4444 )
+    {
+        constexpr PixelAlignment customAlignment{ ._alignment = 2u };
+        GL_API::GetStateTracker().setPixelUnpackAlignment( customAlignment );
+    }
+    else
+    {
+        GL_API::GetStateTracker().setPixelUnpackAlignment( pixelUnpackAlignment );
+    }
 
     switch (descriptor().texType()) {
         case TextureType::TEXTURE_1D: {
@@ -220,11 +221,11 @@ void glTexture::loadDataInternal( const Byte* data, const size_t size, const U8 
 
             if (isCompressed)
             {
-                glCompressedTextureSubImage1D(_loadingHandle, targetMip, offset.x, dimensions.width, glFormat, static_cast<GLsizei>(size), data);
+                glCompressedTextureSubImage1D(_loadingHandle, targetMip, offset.x, dimensions.width, format, static_cast<GLsizei>(size), data);
             }
             else
             {
-                glTextureSubImage1D(_loadingHandle, targetMip, offset.x, dimensions.width, glFormat, dataFormat, data);
+                glTextureSubImage1D(_loadingHandle, targetMip, offset.x, dimensions.width, format, dataType, data);
             }
         } break;
         case TextureType::TEXTURE_1D_ARRAY:
@@ -233,11 +234,11 @@ void glTexture::loadDataInternal( const Byte* data, const size_t size, const U8 
 
             if (isCompressed)
             {
-                glCompressedTextureSubImage2D(_loadingHandle, targetMip, offset.x, offset.y, dimensions.width, dimensions.height, glFormat, static_cast<GLsizei>(size), data);
+                glCompressedTextureSubImage2D(_loadingHandle, targetMip, offset.x, offset.y, dimensions.width, dimensions.height, format, static_cast<GLsizei>(size), data);
             }
             else
             {
-                glTextureSubImage2D(_loadingHandle, targetMip, offset.x, descriptor().texType() == TextureType::TEXTURE_1D_ARRAY ? offset.z : offset.y, dimensions.width, dimensions.height, glFormat, dataFormat, data);
+                glTextureSubImage2D(_loadingHandle, targetMip, offset.x, descriptor().texType() == TextureType::TEXTURE_1D_ARRAY ? offset.z : offset.y, dimensions.width, dimensions.height, format, dataType, data);
             }
         } break;
         case TextureType::TEXTURE_3D:
@@ -248,14 +249,11 @@ void glTexture::loadDataInternal( const Byte* data, const size_t size, const U8 
 
             if (isCompressed)
             {
-                glCompressedTextureSubImage3D(_loadingHandle, targetMip, offset.x, offset.y, offset.z, dimensions.width, dimensions.height, dimensions.depth, glFormat, static_cast<GLsizei>(size), data);
+                glCompressedTextureSubImage3D(_loadingHandle, targetMip, offset.x, offset.y, offset.z, dimensions.width, dimensions.height, dimensions.depth, format, static_cast<GLsizei>(size), data);
             }
             else
             {
-                const bool isCubeMap = IsCubeTexture( _descriptor.texType() );
-                const U32 layerOffset = isCubeMap ? offset.z * 6 : offset.z;
-                const U32 depth = isCubeMap ? dimensions.depth * 6 : dimensions.depth;
-                glTextureSubImage3D(_loadingHandle, targetMip, offset.x, offset.y, layerOffset, dimensions.width, dimensions.height, depth, glFormat, dataFormat, data);
+                glTextureSubImage3D(_loadingHandle, targetMip, offset.x, offset.y, offset.z, dimensions.width, dimensions.height, dimensions.depth, format, dataType, data);
             }
         } break;
         default: break;
@@ -310,12 +308,12 @@ void glTexture::clearData( const UColour4& clearColour, vec2<U16> layerRange, U8
 
     DIVIDE_ASSERT(!IsCompressed( _descriptor.baseFormat() ), "glTexture::clearData: compressed textures are not supported!");
 
-    const GLenum glFormat = GLUtil::glImageFormatTable[to_U32(_descriptor.baseFormat())];
-    const GLenum glType = GLUtil::glDataFormat[to_U32(_descriptor.dataType())];
+    const GLenum glFormat = GLUtil::ImageFormat(_descriptor.baseFormat(), _descriptor.packing());
+    const GLenum dataType = GLUtil::InternalDataType( _descriptor.dataType(), _descriptor.packing() );
 
     if ( layerRange.offset == 0u && (layerRange.count == U16_MAX || layerRange.count == _depth))
     {
-        glClearTexImage( _textureHandle, mipLevel, glFormat, glType, GetClearData( _descriptor.dataType() ) );
+        glClearTexImage( _textureHandle, mipLevel, glFormat, dataType, GetClearData( _descriptor.dataType() ) );
     }
     else
     {
@@ -334,7 +332,7 @@ void glTexture::clearData( const UColour4& clearColour, vec2<U16> layerRange, U8
                             _descriptor.texType() == TextureType::TEXTURE_1D_ARRAY ? layerRange.count : mipHeight,
                             depth,
                             glFormat,
-                            glType,
+                            dataType,
                             GetClearData( _descriptor.dataType() ) );
  
     }
@@ -399,8 +397,10 @@ ImageReadbackData glTexture::readData(U8 mipLevel, const PixelAlignment& pixelPa
 
     const auto desiredDataFormat = _descriptor.dataType();
     const auto desiredImageFormat = _descriptor.baseFormat();
+    const auto desiredPacking = _descriptor.packing();
 
-    const U8 bpp = GetBytesPerPixel(desiredDataFormat, desiredImageFormat);
+    const U8 bpp = Texture::GetBytesPerPixel(desiredDataFormat, desiredImageFormat, desiredPacking);
+
     DIVIDE_ASSERT(bpp == 4 && desiredImageFormat == GFXImageFormat::RGBA && !IsCubeTexture(_descriptor.texType()), "glTexture:readData: unsupported image for readback. Support is very limited!");
 
     const GLsizei size = (GLsizei{ texWidth } * texHeight * _depth * bpp);
@@ -419,8 +419,8 @@ ImageReadbackData glTexture::readData(U8 mipLevel, const PixelAlignment& pixelPa
 
         glGetTextureImage(_textureHandle,
                           mipLevel,
-                          GLUtil::glImageFormatTable[to_base( desiredImageFormat )],
-                          GLUtil::glDataFormat[to_base( desiredDataFormat )],
+                          GLUtil::ImageFormat( _descriptor.baseFormat(), _descriptor.packing() ),
+                          GLUtil::InternalDataType( _descriptor.dataType(), _descriptor.packing() ),
                           size,
                           (bufferPtr)grabData._data.get());
 

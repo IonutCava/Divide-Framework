@@ -131,7 +131,7 @@ namespace Divide
                     glVertexArrayAttribFormat( vaoID,
                                                idx,
                                                descriptor._componentsPerElement,
-                                               GLUtil::glDataFormat[to_U32( descriptor._dataType )],
+                                               GLUtil::glDataFormatTable[to_U32( descriptor._dataType )],
                                                descriptor._normalized ? GL_TRUE : GL_FALSE,
                                                static_cast<GLuint>(descriptor._strideInBytes) );
                 }
@@ -140,7 +140,7 @@ namespace Divide
                     glVertexArrayAttribIFormat( vaoID,
                                                 idx,
                                                 descriptor._componentsPerElement,
-                                                GLUtil::glDataFormat[to_U32( descriptor._dataType )],
+                                                GLUtil::glDataFormatTable[to_U32( descriptor._dataType )],
                                                 static_cast<GLuint>(descriptor._strideInBytes) );
                 }
             }

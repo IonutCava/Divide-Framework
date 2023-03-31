@@ -558,7 +558,6 @@ bool Sky::load()
 
     {
         TextureDescriptor textureDescriptor( TextureType::TEXTURE_3D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
-        textureDescriptor.srgb( false );
         textureDescriptor.baseFormat( GFXImageFormat::RGBA );
         textureDescriptor.textureOptions()._alphaChannelTransparency = false;
 
@@ -593,8 +592,7 @@ bool Sky::load()
         _curlNoiseTex = CreateResource<Texture>( _parentCache, curlDescriptor );
     }
     {
-        TextureDescriptor skyboxTexture( TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
-        skyboxTexture.srgb( true );
+        TextureDescriptor skyboxTexture( TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA, GFXImagePacking::NORMALIZED_SRGB );
         skyboxTexture.textureOptions()._alphaChannelTransparency = false;
 
         ResourceDescriptor skyboxTextures( "SkyTextures" );

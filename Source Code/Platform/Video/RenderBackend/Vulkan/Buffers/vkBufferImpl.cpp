@@ -33,7 +33,7 @@ namespace Divide
             VkVertexInputAttributeDescription attribute = {};
             attribute.binding = descriptor._vertexBindingIndex;
             attribute.location = idx;
-            attribute.format = VKUtil::internalFormat( descriptor._dataType, descriptor._componentsPerElement, descriptor._normalized );
+            attribute.format = VKUtil::InternalFormat( descriptor._dataType, descriptor._componentsPerElement, descriptor._normalized );
             attribute.offset = to_U32( descriptor._strideInBytes );
 
             description.attributes.push_back( attribute );

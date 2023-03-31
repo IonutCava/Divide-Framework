@@ -58,8 +58,7 @@ namespace Divide
         albedoSampler.wrapUVW( TextureWrap::REPEAT );
         albedoSampler.anisotropyLevel( 8 );
 
-        TextureDescriptor miscTexDescriptor( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
-        miscTexDescriptor.srgb( true );
+        TextureDescriptor miscTexDescriptor( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA, GFXImagePacking::NORMALIZED_SRGB );
         miscTexDescriptor.textureOptions()._alphaChannelTransparency = false;
 
         ResourceDescriptor textureWaterCaustics( "Plane Water Caustics" );

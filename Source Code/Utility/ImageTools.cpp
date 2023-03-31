@@ -343,9 +343,6 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
                             DIVIDE_UNEXPECTED_CALL();
                         }
 
-                        if (UseUpperLeftOrigin()) {
-                            image.flipY();
-                        }
                         F32 coverage = 0.f;
                         if (options._isNormalMap) {
                             image.normalizeNormalMap();

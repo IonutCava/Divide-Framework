@@ -563,7 +563,7 @@ namespace Divide
         const size_t samplerHashMips = defaultSamplerMips.getHash();
 
         //PrePass
-        TextureDescriptor depthDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_32, GFXImageFormat::DEPTH_COMPONENT );
+        TextureDescriptor depthDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_32, GFXImageFormat::RED, GFXImagePacking::DEPTH );
         TextureDescriptor velocityDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RGBA );
         //RG - packed normal, B - roughness
         TextureDescriptor normalsDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RGBA );
@@ -682,8 +682,8 @@ namespace Divide
         const size_t reflectionSamplerHash = reflectionSampler.getHash();
 
         {
-            TextureDescriptor environmentDescriptorPlanar( TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
-            TextureDescriptor depthDescriptorPlanar( TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::DEPTH_COMPONENT );
+            TextureDescriptor environmentDescriptorPlanar( TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA);
+            TextureDescriptor depthDescriptorPlanar( TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::RED, GFXImagePacking::DEPTH );
 
             environmentDescriptorPlanar.mipMappingState( TextureDescriptor::MipMappingState::MANUAL );
             depthDescriptorPlanar.mipMappingState( TextureDescriptor::MipMappingState::OFF );
@@ -822,8 +822,8 @@ namespace Divide
             }
         }
         {
-            TextureDescriptor environmentDescriptorCube( TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
-            TextureDescriptor depthDescriptorCube( TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::DEPTH_COMPONENT );
+            TextureDescriptor environmentDescriptorCube( TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA);
+            TextureDescriptor depthDescriptorCube( TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::RED, GFXImagePacking::DEPTH );
 
             environmentDescriptorCube.mipMappingState( TextureDescriptor::MipMappingState::OFF );
             depthDescriptorCube.mipMappingState( TextureDescriptor::MipMappingState::OFF );

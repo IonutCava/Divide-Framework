@@ -839,10 +839,9 @@ namespace Divide
                 return srcHandle;
             }
 
-            const GLenum glInternalFormat = GLUtil::internalFormat( srcView._descriptor._baseFormat,
-                                                                    srcView._descriptor._dataType,
-                                                                    srcView._descriptor._srgb,
-                                                                    srcView._descriptor._normalized );
+            const GLenum glInternalFormat = GLUtil::InternalFormatAndDataType( srcView._descriptor._baseFormat,
+                                                                               srcView._descriptor._dataType,
+                                                                               srcView._descriptor._packing )._format;
 
             const bool isCube = IsCubeTexture( srcView.targetType() );
 
@@ -1499,10 +1498,9 @@ namespace Divide
 
                     DIVIDE_ASSERT( imageView._image._subRange._mipLevels.count == 1u );
 
-                    const GLenum glInternalFormat = GLUtil::internalFormat( imageView._image._descriptor._baseFormat,
-                                                                            imageView._image._descriptor._dataType,
-                                                                            imageView._image._descriptor._srgb,
-                                                                            imageView._image._descriptor._normalized );
+                    const GLenum glInternalFormat = GLUtil::InternalFormatAndDataType( imageView._image._descriptor._baseFormat,
+                                                                                       imageView._image._descriptor._dataType,
+                                                                                       imageView._image._descriptor._packing )._format;
 
                     const GLuint handle = static_cast<const glTexture*>(imageView._image._srcTexture)->textureHandle();
                     if ( handle != GLUtil::k_invalidObjectID &&

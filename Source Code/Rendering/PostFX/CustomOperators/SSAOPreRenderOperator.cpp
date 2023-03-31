@@ -98,7 +98,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
 
     const Str64 attachmentName("SSAOPreRenderOperator_NoiseTexture");
 
-    TextureDescriptor noiseDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_32, GFXImageFormat::RGBA);
+    TextureDescriptor noiseDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_32, GFXImageFormat::RGBA );
     noiseDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
     ResourceDescriptor textureAttachment(attachmentName);
@@ -106,7 +106,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     _noiseTexture = CreateResource<Texture>(cache, textureAttachment);
     _noiseTexture->createWithData((Byte*)noiseData.data(), noiseData.size() * sizeof(vec4<F32>), vec2<U16>(SSAO_NOISE_SIZE, SSAO_NOISE_SIZE), {});
     {
-        TextureDescriptor outputDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RED);
+        TextureDescriptor outputDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RED );
         outputDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
         const vec2<U16> res = parent.screenRT()._rt->getResolution();
 
@@ -130,7 +130,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         _ssaoHalfResOutput = _context.renderTargetPool().allocateRT(desc);
     }
     {
-        TextureDescriptor outputDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_32, GFXImageFormat::RGBA);
+        TextureDescriptor outputDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_32, GFXImageFormat::RGBA );
         outputDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         RenderTargetDescriptor desc = {};

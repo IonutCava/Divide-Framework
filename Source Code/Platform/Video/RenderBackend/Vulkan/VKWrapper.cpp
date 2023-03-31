@@ -1286,7 +1286,7 @@ namespace Divide
                         descriptor._subRange = imageSampler._image._subRange;
 
                         VkImageLayout targetLayout = VK_IMAGE_LAYOUT_MAX_ENUM;
-                        if ( !IsDepthTexture( vkTex->descriptor().baseFormat() ) )
+                        if ( !IsDepthTexture( vkTex->descriptor().packing() ) )
                         {
                             targetLayout =  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                         }
@@ -2223,7 +2223,7 @@ namespace Divide
                         subRange._layerRange.count *= 6u;
                     }
 
-                    const VkImageLayout targetLayout = IsDepthTexture( vkTex->descriptor().baseFormat() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                    const VkImageLayout targetLayout = IsDepthTexture( vkTex->descriptor().packing() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
                     auto& memBarrier = imageBarriers[imageBarrierCount++];
                     memBarrier = vk::imageMemoryBarrier2();

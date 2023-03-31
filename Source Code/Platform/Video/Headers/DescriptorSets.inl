@@ -38,19 +38,17 @@ namespace Divide
     inline bool operator==( const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs ) noexcept
     {
         return lhs._msaaSamples == rhs._msaaSamples &&
-            lhs._dataType == rhs._dataType &&
-            lhs._baseFormat == rhs._baseFormat &&
-            lhs._srgb == rhs._srgb &&
-            lhs._normalized == rhs._normalized;
+               lhs._dataType == rhs._dataType &&
+               lhs._baseFormat == rhs._baseFormat &&
+               lhs._packing == rhs._packing;
     }
 
     inline bool operator!=( const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs ) noexcept
     {
         return lhs._msaaSamples != rhs._msaaSamples ||
-            lhs._dataType != rhs._dataType ||
-            lhs._baseFormat != rhs._baseFormat ||
-            lhs._srgb != rhs._srgb ||
-            lhs._normalized != rhs._normalized;
+               lhs._dataType != rhs._dataType ||
+               lhs._baseFormat != rhs._baseFormat ||
+               lhs._packing != rhs._packing;
     }
 
     inline bool operator==( const ImageView& lhs, const ImageView& rhs ) noexcept

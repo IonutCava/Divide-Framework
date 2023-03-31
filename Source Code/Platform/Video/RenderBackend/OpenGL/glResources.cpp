@@ -110,7 +110,7 @@ namespace Divide
         std::array<GLenum, to_base( TextureType::COUNT )> glTextureTypeTable;
         std::array<GLenum, to_base( GFXImageFormat::COUNT )> glImageFormatTable;
         std::array<GLenum, to_base( PrimitiveTopology::COUNT )> glPrimitiveTypeTable;
-        std::array<GLenum, to_base( GFXDataFormat::COUNT )> glDataFormat;
+        std::array<GLenum, to_base( GFXDataFormat::COUNT )> glDataFormatTable;
         std::array<GLenum, to_base( TextureWrap::COUNT )> glWrapTable;
         std::array<GLenum, to_base( ShaderType::COUNT )> glShaderStageTable;
         std::array<GLenum, to_base( QueryType::COUNT )> glQueryTypeTable;
@@ -176,8 +176,6 @@ namespace Divide
             glImageFormatTable[to_base( GFXImageFormat::BGR )] = GL_BGR;
             glImageFormatTable[to_base( GFXImageFormat::BGRA )] = GL_BGRA;
             glImageFormatTable[to_base( GFXImageFormat::RGBA )] = GL_RGBA;
-            glImageFormatTable[to_base( GFXImageFormat::DEPTH_COMPONENT )] = GL_DEPTH_COMPONENT;
-            glImageFormatTable[to_base( GFXImageFormat::DEPTH_STENCIL_COMPONENT )] = GL_DEPTH_COMPONENT;
 
             glImageFormatTable[to_base( GFXImageFormat::BC3n )] = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
             glImageFormatTable[to_base( GFXImageFormat::BC4s )] = GL_COMPRESSED_SIGNED_RED_RGTC1_EXT;
@@ -186,18 +184,12 @@ namespace Divide
             glImageFormatTable[to_base( GFXImageFormat::BC5u )] = GL_COMPRESSED_RED_GREEN_RGTC2_EXT;
             glImageFormatTable[to_base( GFXImageFormat::BC6s )] = GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT;
             glImageFormatTable[to_base( GFXImageFormat::BC6u )] = GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT;
-            glImageFormatTable[to_base( GFXImageFormat::BC7 )] = GL_COMPRESSED_RGBA_BPTC_UNORM;
-            glImageFormatTable[to_base( GFXImageFormat::BC7_SRGB )] = GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM_ARB;
+            glImageFormatTable[to_base( GFXImageFormat::BC7 )]  = GL_COMPRESSED_RGBA_BPTC_UNORM;
 
             glImageFormatTable[to_base( GFXImageFormat::DXT1_RGB )] = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;   //BC1
             glImageFormatTable[to_base( GFXImageFormat::DXT1_RGBA )] = GL_COMPRESSED_RGBA_S3TC_DXT1_EXT; //BC1a
             glImageFormatTable[to_base( GFXImageFormat::DXT3_RGBA )] = GL_COMPRESSED_RGBA_S3TC_DXT3_EXT; //BC2
             glImageFormatTable[to_base( GFXImageFormat::DXT5_RGBA )] = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT; //BC3
-
-            glImageFormatTable[to_base( GFXImageFormat::DXT1_RGB_SRGB )] = GL_COMPRESSED_SRGB_S3TC_DXT1_EXT;
-            glImageFormatTable[to_base( GFXImageFormat::DXT1_RGBA_SRGB )] = GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_EXT;
-            glImageFormatTable[to_base( GFXImageFormat::DXT3_RGBA_SRGB )] = GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT;
-            glImageFormatTable[to_base( GFXImageFormat::DXT5_RGBA_SRGB )] = GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT;
 
             glPrimitiveTypeTable[to_base( PrimitiveTopology::POINTS )] = GL_POINTS;
             glPrimitiveTypeTable[to_base( PrimitiveTopology::LINES )] = GL_LINES;
@@ -212,14 +204,14 @@ namespace Divide
             glPrimitiveTypeTable[to_base( PrimitiveTopology::PATCH )] = GL_PATCHES;
             glPrimitiveTypeTable[to_base( PrimitiveTopology::COMPUTE )] = GL_NONE;
 
-            glDataFormat[to_base( GFXDataFormat::UNSIGNED_BYTE )] = GL_UNSIGNED_BYTE;
-            glDataFormat[to_base( GFXDataFormat::UNSIGNED_SHORT )] = GL_UNSIGNED_SHORT;
-            glDataFormat[to_base( GFXDataFormat::UNSIGNED_INT )] = GL_UNSIGNED_INT;
-            glDataFormat[to_base( GFXDataFormat::SIGNED_BYTE )] = GL_BYTE;
-            glDataFormat[to_base( GFXDataFormat::SIGNED_SHORT )] = GL_SHORT;
-            glDataFormat[to_base( GFXDataFormat::SIGNED_INT )] = GL_INT;
-            glDataFormat[to_base( GFXDataFormat::FLOAT_16 )] = GL_HALF_FLOAT;
-            glDataFormat[to_base( GFXDataFormat::FLOAT_32 )] = GL_FLOAT;
+            glDataFormatTable[to_base( GFXDataFormat::UNSIGNED_BYTE )] = GL_UNSIGNED_BYTE;
+            glDataFormatTable[to_base( GFXDataFormat::UNSIGNED_SHORT )] = GL_UNSIGNED_SHORT;
+            glDataFormatTable[to_base( GFXDataFormat::UNSIGNED_INT )] = GL_UNSIGNED_INT;
+            glDataFormatTable[to_base( GFXDataFormat::SIGNED_BYTE )] = GL_BYTE;
+            glDataFormatTable[to_base( GFXDataFormat::SIGNED_SHORT )] = GL_SHORT;
+            glDataFormatTable[to_base( GFXDataFormat::SIGNED_INT )] = GL_INT;
+            glDataFormatTable[to_base( GFXDataFormat::FLOAT_16 )] = GL_HALF_FLOAT;
+            glDataFormatTable[to_base( GFXDataFormat::FLOAT_32 )] = GL_FLOAT;
 
             glWrapTable[to_base( TextureWrap::MIRROR_REPEAT )] = GL_MIRRORED_REPEAT;
             glWrapTable[to_base( TextureWrap::REPEAT )] = GL_REPEAT;
@@ -247,139 +239,212 @@ namespace Divide
             s_multiDrawIndexData._baseVertexData.resize(256, 0);
         }
 
-        GLenum internalFormat( const GFXImageFormat baseFormat, const GFXDataFormat dataType, const bool srgb, const bool normalized )  noexcept
+        GLenum InternalDataType( const GFXDataFormat dataType, const GFXImagePacking packing ) noexcept
         {
+            if ( packing == GFXImagePacking::RGB_565 )
+            {
+                return GL_UNSIGNED_SHORT_5_6_5;
+            }
+            else if ( packing == GFXImagePacking::RGBA_4444 )
+            {
+                return GL_UNSIGNED_SHORT_4_4_4_4;
+            }
+
+            return glDataFormatTable[to_base(dataType)];
+        }
+
+        GLenum ImageFormat( const GFXImageFormat baseFormat, const GFXImagePacking packing ) noexcept
+        {
+            if ( IsDepthTexture( packing ) )
+            {
+                 return GL_DEPTH_COMPONENT;
+            }
+            else if ( packing == GFXImagePacking::NORMALIZED_SRGB )
+            {
+                switch (baseFormat)
+                {
+                    case GFXImageFormat::DXT1_RGB:  return GL_COMPRESSED_SRGB_S3TC_DXT1_EXT;
+                    case GFXImageFormat::DXT1_RGBA: return GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_EXT;
+                    case GFXImageFormat::DXT3_RGBA: return GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT;
+                    case GFXImageFormat::DXT5_RGBA: return GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT;
+                    case GFXImageFormat::BC7:       return GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM_ARB;
+                    break; 
+                }
+            }
+
+            return glImageFormatTable[to_base(baseFormat)];
+        }
+
+        FormatAndDataType InternalFormatAndDataType( const GFXImageFormat baseFormat, const GFXDataFormat dataType, const GFXImagePacking packing )  noexcept
+        {
+            const bool isDepth = IsDepthTexture(packing);
+            const bool isSRGB = packing == GFXImagePacking::NORMALIZED_SRGB;
+            const bool isPacked = packing == GFXImagePacking::RGB_565 || packing == GFXImagePacking::RGBA_4444;
+            const bool isNormalized = packing == GFXImagePacking::NORMALIZED || isSRGB || isDepth || isPacked;
+
+            if ( isDepth )
+            {
+                DIVIDE_ASSERT( baseFormat == GFXImageFormat::RED );
+            }
+
+            if ( isSRGB )
+            {
+                DIVIDE_ASSERT(dataType == GFXDataFormat::UNSIGNED_BYTE &&
+                              baseFormat == GFXImageFormat::RGB ||
+                              baseFormat == GFXImageFormat::BGR ||
+                              baseFormat == GFXImageFormat::RGBA ||
+                              baseFormat == GFXImageFormat::BGRA ||
+                              baseFormat == GFXImageFormat::DXT1_RGB ||
+                              baseFormat == GFXImageFormat::DXT1_RGBA ||
+                              baseFormat == GFXImageFormat::DXT3_RGBA ||
+                              baseFormat == GFXImageFormat::DXT5_RGBA ||
+                              baseFormat == GFXImageFormat::BC7,
+                              "GLUtil::InternalFormatAndDataType: OpenGL only supports RGB(A)8 and BC1/2/3/7 for SRGB!" );
+            }
+
+            if ( isNormalized && !isDepth )
+            {
+                DIVIDE_ASSERT(dataType == GFXDataFormat::SIGNED_BYTE ||
+                              dataType == GFXDataFormat::UNSIGNED_BYTE ||
+                              dataType == GFXDataFormat::SIGNED_SHORT ||
+                              dataType == GFXDataFormat::UNSIGNED_SHORT );
+            }
+
+            if ( isPacked )
+            {
+                DIVIDE_ASSERT(baseFormat == GFXImageFormat::RGB ||
+                              baseFormat == GFXImageFormat::BGR ||
+                              baseFormat == GFXImageFormat::RGBA ||
+                              baseFormat == GFXImageFormat::BGRA);
+            }
+
+            if ( baseFormat == GFXImageFormat::BGR || baseFormat == GFXImageFormat::BGRA )
+            {
+                DIVIDE_ASSERT( dataType == GFXDataFormat::UNSIGNED_BYTE ||
+                               dataType == GFXDataFormat::SIGNED_BYTE,
+                               "GLUtil::InternalFormat: Vulkan only supports 8Bpp for BGR(A) format, so for now we completely ignore other data types." );
+            }
+
+            FormatAndDataType ret{};
+            ret._dataType = InternalDataType(dataType, packing);
+
             switch ( baseFormat )
             {
                 case GFXImageFormat::RED:
                 {
-                    assert( !srgb );
-                    switch ( dataType )
+                    if ( packing == GFXImagePacking::DEPTH )
                     {
-                        case GFXDataFormat::UNSIGNED_BYTE: return normalized ? GL_R8 : GL_R8UI;
-                        case GFXDataFormat::UNSIGNED_SHORT: return normalized ? GL_R16 : GL_R16UI;
-                        case GFXDataFormat::UNSIGNED_INT:
+                        switch ( dataType )
                         {
-                            assert( !normalized && "Format not supported" ); return GL_R32UI;
-                        }
-                        case GFXDataFormat::SIGNED_BYTE: return normalized ? GL_R8_SNORM : GL_R8I;
-                        case GFXDataFormat::SIGNED_SHORT: return normalized ? GL_R16_SNORM : GL_R16I;
-                        case GFXDataFormat::SIGNED_INT:
+                            case GFXDataFormat::SIGNED_BYTE:
+                            case GFXDataFormat::UNSIGNED_BYTE:
+                            case GFXDataFormat::SIGNED_SHORT:
+                            case GFXDataFormat::UNSIGNED_SHORT:  ret._format = GL_DEPTH_COMPONENT16; break;
+                            case GFXDataFormat::SIGNED_INT:
+                            case GFXDataFormat::UNSIGNED_INT:    ret._format = GL_DEPTH_COMPONENT24; break;
+                            case GFXDataFormat::FLOAT_16:
+                            case GFXDataFormat::FLOAT_32:        ret._format = GL_DEPTH_COMPONENT32F; break;
+                            default: break;
+                        };
+                    }
+                    else if ( packing == GFXImagePacking::DEPTH_STENCIL )
+                    {
+                        switch ( dataType )
                         {
-                            assert( !normalized && "Format not supported" ); return GL_R32I;
-                        }
-                        case GFXDataFormat::FLOAT_16: return GL_R16F;
-                        case GFXDataFormat::FLOAT_32: return GL_R32F;
-                        default: DIVIDE_UNEXPECTED_CALL();
-                    };
+                            case GFXDataFormat::SIGNED_BYTE:
+                            case GFXDataFormat::UNSIGNED_BYTE:
+                            case GFXDataFormat::SIGNED_SHORT:
+                            case GFXDataFormat::UNSIGNED_SHORT:
+                            case GFXDataFormat::SIGNED_INT:
+                            case GFXDataFormat::UNSIGNED_INT:    ret._format = GL_DEPTH24_STENCIL8; break;
+                            case GFXDataFormat::FLOAT_16:
+                            case GFXDataFormat::FLOAT_32:        ret._format = GL_DEPTH32F_STENCIL8; break;
+                            default: break;
+                        };
+                    }
+                    else
+                    {
+                        switch ( dataType )
+                        {
+                            case GFXDataFormat::UNSIGNED_BYTE:   ret._format = isNormalized ? GL_R8        : GL_R8UI;  break;
+                            case GFXDataFormat::UNSIGNED_SHORT:  ret._format = isNormalized ? GL_R16       : GL_R16UI; break;
+                            case GFXDataFormat::SIGNED_BYTE:     ret._format = isNormalized ? GL_R8_SNORM  : GL_R8I;   break;
+                            case GFXDataFormat::SIGNED_SHORT:    ret._format = isNormalized ? GL_R16_SNORM : GL_R16I;  break;
+                            case GFXDataFormat::UNSIGNED_INT:    ret._format = GL_R32UI; break;
+                            case GFXDataFormat::SIGNED_INT:      ret._format = GL_R32I;  break;
+                            case GFXDataFormat::FLOAT_16:        ret._format = GL_R16F;  break;
+                            case GFXDataFormat::FLOAT_32:        ret._format = GL_R32F;  break;
+                            default: break;
+                        };
+                    }
                 }break;
                 case GFXImageFormat::RG:
                 {
-                    assert( !srgb );
                     switch ( dataType )
                     {
-                        case GFXDataFormat::UNSIGNED_BYTE: return normalized ? GL_RG8 : GL_RG8UI;
-                        case GFXDataFormat::UNSIGNED_SHORT: return normalized ? GL_RG16 : GL_RG16UI;
-                        case GFXDataFormat::UNSIGNED_INT:
-                        {
-                            assert( !normalized && "Format not supported" ); return GL_RG32UI;
-                        }
-                        case GFXDataFormat::SIGNED_BYTE: return normalized ? GL_RG8_SNORM : GL_RG8I;
-                        case GFXDataFormat::SIGNED_SHORT: return normalized ? GL_RG16_SNORM : GL_RG16I;
-                        case GFXDataFormat::SIGNED_INT:
-                        {
-                            assert( !normalized && "Format not supported" ); return GL_RG32I;
-                        }
-                        case GFXDataFormat::FLOAT_16: return GL_RG16F;
-                        case GFXDataFormat::FLOAT_32: return GL_RG32F;
-                        default: DIVIDE_UNEXPECTED_CALL();
+                        case GFXDataFormat::UNSIGNED_BYTE:   ret._format = isNormalized ? GL_RG8        : GL_RG8UI;  break;
+                        case GFXDataFormat::UNSIGNED_SHORT:  ret._format = isNormalized ? GL_RG16       : GL_RG16UI; break;
+                        case GFXDataFormat::SIGNED_BYTE:     ret._format = isNormalized ? GL_RG8_SNORM  : GL_RG8I;   break;
+                        case GFXDataFormat::SIGNED_SHORT:    ret._format = isNormalized ? GL_RG16_SNORM : GL_RG16I;  break;
+                        case GFXDataFormat::UNSIGNED_INT:    ret._format = GL_RG32UI; break;
+                        case GFXDataFormat::SIGNED_INT:      ret._format = GL_RG32I;  break;
+                        case GFXDataFormat::FLOAT_16:        ret._format = GL_RG16F;  break;
+                        case GFXDataFormat::FLOAT_32:        ret._format = GL_RG32F;  break;
+                        default: break;
                     };
                 }break;
                 case GFXImageFormat::BGR:
                 case GFXImageFormat::RGB:
                 {
-                    assert( !srgb || srgb == (dataType == GFXDataFormat::UNSIGNED_BYTE && normalized) );
-                    switch ( dataType )
+                    if ( packing == GFXImagePacking::RGB_565 )
                     {
-                        case GFXDataFormat::UNSIGNED_BYTE: return normalized ? (srgb ? GL_SRGB8 : GL_RGB8) : GL_RGB8UI;
-                        case GFXDataFormat::UNSIGNED_SHORT: return normalized ? GL_RGB16 : GL_RGB16UI;
-                        case GFXDataFormat::UNSIGNED_INT:
+                        ret._format = GL_RGB565;
+                    }
+                    else
+                    {
+                        switch ( dataType )
                         {
-                            assert( !normalized && "Format not supported" ); return GL_RGB32UI;
-                        }
-                        case GFXDataFormat::SIGNED_BYTE: return normalized ? GL_RGB8_SNORM : GL_RGB8I;
-                        case GFXDataFormat::SIGNED_SHORT: return normalized ? GL_RGB16_SNORM : GL_RGB16I;
-                        case GFXDataFormat::SIGNED_INT:
-                        {
-                            assert( !normalized && "Format not supported" ); return GL_RGB32I;
-                        }
-                        case GFXDataFormat::FLOAT_16: return GL_RGB16F;
-                        case GFXDataFormat::FLOAT_32: return GL_RGB32F;
-                        default: DIVIDE_UNEXPECTED_CALL();
-                    };
+                            case GFXDataFormat::UNSIGNED_BYTE :  ret._format = isNormalized ? (isSRGB ? GL_SRGB8 : GL_RGB8) : GL_RGB8UI;  break;
+                            case GFXDataFormat::UNSIGNED_SHORT:  ret._format = isNormalized ? GL_RGB16                      : GL_RGB16UI; break;
+                            case GFXDataFormat::SIGNED_BYTE:     ret._format = isNormalized ? GL_RGB8_SNORM                 : GL_RGB8I;   break;
+                            case GFXDataFormat::SIGNED_SHORT:    ret._format = isNormalized ? GL_RGB16_SNORM                : GL_RGB16I;  break;
+                            case GFXDataFormat::UNSIGNED_INT:    ret._format = GL_RGB32UI; break;
+                            case GFXDataFormat::SIGNED_INT:      ret._format = GL_RGB32I;  break;
+                            case GFXDataFormat::FLOAT_16:        ret._format = GL_RGB16F;  break;
+                            case GFXDataFormat::FLOAT_32:        ret._format = GL_RGB32F;  break;
+                            default: break;
+                        };
+                    }
                 }break;
                 case GFXImageFormat::BGRA:
                 case GFXImageFormat::RGBA:
                 {
-                    assert( !srgb || srgb == (dataType == GFXDataFormat::UNSIGNED_BYTE && normalized) );
-                    switch ( dataType )
+                    if ( packing == GFXImagePacking::RGBA_4444 )
                     {
-                        case GFXDataFormat::UNSIGNED_BYTE: return normalized ? (srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8) : GL_RGBA8UI;
-                        case GFXDataFormat::UNSIGNED_SHORT: return normalized ? GL_RGBA16 : GL_RGBA16UI;
-                        case GFXDataFormat::UNSIGNED_INT:
+                        ret._format = GL_RGBA4;
+                    }
+                    else
+                    {
+                        switch ( dataType )
                         {
-                            assert( !normalized && "Format not supported" ); return GL_RGBA32UI;
-                        }
-                        case GFXDataFormat::SIGNED_BYTE: return normalized ? GL_RGBA8_SNORM : GL_RGBA8I;
-                        case GFXDataFormat::SIGNED_SHORT: return normalized ? GL_RGBA16_SNORM : GL_RGBA16I;
-                        case GFXDataFormat::SIGNED_INT:
-                        {
-                            assert( !normalized && "Format not supported" ); return GL_RGBA32I;
-                        }
-                        case GFXDataFormat::FLOAT_16: return GL_RGBA16F;
-                        case GFXDataFormat::FLOAT_32: return GL_RGBA32F;
-                        default: DIVIDE_UNEXPECTED_CALL();
-                    };
+                            case GFXDataFormat::UNSIGNED_BYTE:  ret._format = isNormalized ? (isSRGB ? GL_SRGB8_ALPHA8 : GL_RGBA8) : GL_RGBA8UI;  break;
+                            case GFXDataFormat::UNSIGNED_SHORT: ret._format = isNormalized ? GL_RGBA16                             : GL_RGBA16UI; break;
+                            case GFXDataFormat::SIGNED_BYTE:    ret._format = isNormalized ? GL_RGBA8_SNORM                        : GL_RGBA8I;   break;
+                            case GFXDataFormat::SIGNED_SHORT:   ret._format = isNormalized ? GL_RGBA16_SNORM                       : GL_RGBA16I;  break;
+                            case GFXDataFormat::UNSIGNED_INT:   ret._format = GL_RGBA32UI; break;
+                            case GFXDataFormat::SIGNED_INT:     ret._format = GL_RGBA32I;  break;
+                            case GFXDataFormat::FLOAT_16:       ret._format = GL_RGBA16F;  break;
+                            case GFXDataFormat::FLOAT_32:       ret._format = GL_RGBA32F;  break;
+                            default: break;
+                        };
+                    }
                 }break;
-                case GFXImageFormat::DEPTH_COMPONENT:
-                {
-                    switch ( dataType )
-                    {
-                        case GFXDataFormat::SIGNED_BYTE:
-                        case GFXDataFormat::UNSIGNED_BYTE:
-                        case GFXDataFormat::SIGNED_SHORT:
-                        case GFXDataFormat::UNSIGNED_SHORT: return GL_DEPTH_COMPONENT16;
-                        case GFXDataFormat::SIGNED_INT:
-                        case GFXDataFormat::UNSIGNED_INT: return GL_DEPTH_COMPONENT24;
-                        case GFXDataFormat::FLOAT_16:
-                        case GFXDataFormat::FLOAT_32: return GL_DEPTH_COMPONENT32F;
-                        default: DIVIDE_UNEXPECTED_CALL();
-                    };
-                }break;
-                case GFXImageFormat::DEPTH_STENCIL_COMPONENT:
-                {
-                    switch ( dataType )
-                    {
-                        case GFXDataFormat::SIGNED_BYTE:
-                        case GFXDataFormat::UNSIGNED_BYTE:
-                        case GFXDataFormat::SIGNED_SHORT:
-                        case GFXDataFormat::UNSIGNED_SHORT:
-                        case GFXDataFormat::SIGNED_INT:
-                        case GFXDataFormat::UNSIGNED_INT: return GL_DEPTH24_STENCIL8;
-                        case GFXDataFormat::FLOAT_16:
-                        case GFXDataFormat::FLOAT_32: return GL_DEPTH32F_STENCIL8;
-                        default: DIVIDE_UNEXPECTED_CALL();
-                    };
-                }break;
+
                 // compressed formats
-                case GFXImageFormat::DXT1_RGB_SRGB:
-                case GFXImageFormat::DXT1_RGBA_SRGB:
-                case GFXImageFormat::DXT3_RGBA_SRGB:
-                case GFXImageFormat::DXT5_RGBA_SRGB:
-                case GFXImageFormat::BC1:
-                case GFXImageFormat::BC1a:
-                case GFXImageFormat::BC2:
-                case GFXImageFormat::BC3:
+                case GFXImageFormat::DXT1_RGB: 
+                case GFXImageFormat::DXT1_RGBA:
+                case GFXImageFormat::DXT3_RGBA:
+                case GFXImageFormat::DXT5_RGBA:
                 case GFXImageFormat::BC3n:
                 case GFXImageFormat::BC4s:
                 case GFXImageFormat::BC4u:
@@ -387,15 +452,13 @@ namespace Divide
                 case GFXImageFormat::BC5u:
                 case GFXImageFormat::BC6s:
                 case GFXImageFormat::BC6u:
-                case GFXImageFormat::BC7:
-                case GFXImageFormat::BC7_SRGB:
-                {
-                    return glImageFormatTable[to_base( baseFormat )];
-                };
-                default: DIVIDE_UNEXPECTED_CALL();
+                case GFXImageFormat::BC7:  ret._format = ImageFormat( baseFormat, packing ); break;
+
+                default: break;
             }
 
-            return GL_NONE;
+            DIVIDE_ASSERT(ret._format != GL_NONE && ret._dataType != GL_NONE, "GLUtil::internalFormat: Unsupported texture and format combination!");
+            return ret;
         }
 
         GLenum internalTextureType( const TextureType type, const U8 msaaSamples )

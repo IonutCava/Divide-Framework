@@ -143,9 +143,7 @@ namespace Divide
         lightImpostorShader.waitForReady( false );
         _lightImpostorShader = CreateResource<ShaderProgram>( _parentScene.resourceCache(), lightImpostorShader, loadingTasks );
 
-        TextureDescriptor iconDescriptor( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
-        iconDescriptor.layerCount( 1u );
-        iconDescriptor.srgb( true );
+        const TextureDescriptor iconDescriptor( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA, GFXImagePacking::NORMALIZED_SRGB );
 
         ResourceDescriptor iconImage( "LightIconTexture" );
         iconImage.assetLocation( Paths::g_assetsLocation + Paths::g_imagesLocation );

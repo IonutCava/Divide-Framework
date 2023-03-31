@@ -187,7 +187,16 @@ void SubmitRenderCommand(const GenericDrawCommand& drawCommand, bool useIndirect
 /// Populate enumeration tables with appropriate API values
 void OnStartup();
 
-GLenum internalFormat(GFXImageFormat baseFormat, GFXDataFormat dataType, bool srgb, bool normalized) noexcept;
+struct FormatAndDataType
+{
+    GLenum _format{GL_NONE};
+    GLenum _dataType{GL_NONE};
+};
+
+FormatAndDataType InternalFormatAndDataType(GFXImageFormat baseFormat, GFXDataFormat dataType, GFXImagePacking packing) noexcept;
+GLenum InternalDataType(GFXDataFormat dataType, GFXImagePacking packing) noexcept;
+GLenum ImageFormat(GFXImageFormat baseFormat, GFXImagePacking packing) noexcept;
+
 GLenum internalTextureType(TextureType type, U8 msaaSamples);
 
 extern std::array<GLenum, to_base(BlendProperty::COUNT)> glBlendTable;
@@ -199,7 +208,7 @@ extern std::array<GLenum, to_base(FillMode::COUNT)> glFillModeTable;
 extern std::array<GLenum, to_base(TextureType::COUNT)> glTextureTypeTable;
 extern std::array<GLenum, to_base(GFXImageFormat::COUNT)> glImageFormatTable;
 extern std::array<GLenum, to_base(PrimitiveTopology::COUNT)> glPrimitiveTypeTable;
-extern std::array<GLenum, to_base(GFXDataFormat::COUNT)> glDataFormat;
+extern std::array<GLenum, to_base(GFXDataFormat::COUNT)> glDataFormatTable;
 extern std::array<GLenum, to_base(TextureWrap::COUNT)> glWrapTable;
 extern std::array<GLenum, to_base(ShaderType::COUNT)> glShaderStageTable;
 extern std::array<GLenum, to_base( QueryType::COUNT )> glQueryTypeTable;

@@ -8,7 +8,7 @@
 namespace Divide {
     size_t ImageView::Descriptor::getHash() const noexcept {
         _hash = 1337;
-        Util::Hash_combine(_hash, _msaaSamples, _dataType, _baseFormat, _srgb, _normalized);
+        Util::Hash_combine(_hash, _msaaSamples, _dataType, _baseFormat, _packing);
         return _hash;
     }
     

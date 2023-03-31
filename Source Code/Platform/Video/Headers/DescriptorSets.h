@@ -64,8 +64,7 @@ namespace Divide
             U8 _msaaSamples{ 0u };
             GFXDataFormat _dataType{ GFXDataFormat::COUNT };
             GFXImageFormat _baseFormat{ GFXImageFormat::COUNT };
-            bool _srgb{ false };
-            bool _normalized{ true };
+            GFXImagePacking _packing{ GFXImagePacking::COUNT };
 
             [[nodiscard]] size_t getHash() const noexcept override;
 

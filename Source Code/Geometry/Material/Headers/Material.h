@@ -221,11 +221,13 @@ class Material final : public CachedResource {
         void loadFromXML(const string& entryName, const boost::property_tree::ptree& pt);
     };
 
-    struct TextureInfo {
+    struct TextureInfo 
+    {
         Texture_ptr _ptr{ nullptr };
         size_t _sampler{ 0u };
-        bool _useInGeometryPasses{false}; //< Setting this to false will fallback to auto-usage selection (e.g. opacity tex will be used for alpha testing in shadow passes)
         TextureOperation _operation{ TextureOperation::NONE };
+        bool _srgb{false};
+        bool _useInGeometryPasses{false}; //< Setting this to false will fallback to auto-usage selection (e.g. opacity tex will be used for alpha testing in shadow passes)
     };
 
    public:

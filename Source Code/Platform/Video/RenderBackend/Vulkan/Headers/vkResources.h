@@ -354,8 +354,8 @@ namespace VKUtil {
 
     void OnStartup(VkDevice device);
 
-    [[nodiscard]] VkFormat internalFormat(GFXImageFormat baseFormat, GFXDataFormat dataType, bool srgb, bool normalized) noexcept;
-    [[nodiscard]] VkFormat internalFormat(GFXDataFormat format, U8 componentCount, bool normalized) noexcept;
+    [[nodiscard]] VkFormat InternalFormat(GFXImageFormat baseFormat, GFXDataFormat dataType, GFXImagePacking packing) noexcept;
+    [[nodiscard]] VkFormat InternalFormat(GFXDataFormat format, U8 componentCount, bool normalized) noexcept;
     [[nodiscard]] VkDescriptorType vkDescriptorType(DescriptorSetBindingType type) noexcept;
 }; //namespace VKUtil
 }; //namespace Divide

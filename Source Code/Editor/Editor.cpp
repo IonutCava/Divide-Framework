@@ -204,7 +204,8 @@ namespace Divide
         {
             TextureDescriptor texDescriptor( TextureType::TEXTURE_2D,
                                              GFXDataFormat::UNSIGNED_BYTE,
-                                             GFXImageFormat::RGBA );
+                                             GFXImageFormat::RGBA,
+                                             GFXImagePacking::NORMALIZED );
             ResourceDescriptor resDescriptor( "IMGUI_font_texture" );
             resDescriptor.propertyDescriptor( texDescriptor );
             ResourceCache* parentCache = _context.kernel().resourceCache();
@@ -758,7 +759,8 @@ namespace Divide
 
         TextureDescriptor editorDescriptor( TextureType::TEXTURE_2D,
                                             GFXDataFormat::UNSIGNED_BYTE,
-                                            GFXImageFormat::RGBA );
+                                            GFXImageFormat::RGBA,
+                                            GFXImagePacking::NORMALIZED );
         editorDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
 
 
@@ -776,7 +778,8 @@ namespace Divide
         
         TextureDescriptor depthDescriptor( TextureType::TEXTURE_2D,
                                            GFXDataFormat::FLOAT_16,
-                                           GFXImageFormat::DEPTH_COMPONENT );
+                                           GFXImageFormat::RED,
+                                           GFXImagePacking::DEPTH );
 
         editorDesc._attachments.emplace_back(InternalRTAttachmentDescriptor
         {
@@ -2368,7 +2371,7 @@ namespace Divide
 
             g_modalTextureData._gfxDevice = defaultData._gfxDevice;
             g_modalTextureData._texture = tex;
-            g_modalTextureData._isDepthTexture = IsDepthTexture( tex->descriptor().baseFormat() );
+            g_modalTextureData._isDepthTexture = IsDepthTexture( tex->descriptor().packing() );
             
             const U8 numChannels = NumChannels( tex->descriptor().baseFormat() );
 

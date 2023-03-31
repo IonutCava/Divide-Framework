@@ -401,8 +401,7 @@ namespace Divide
         grassSampler.wrapUVW( TextureWrap::CLAMP_TO_EDGE );
         grassSampler.anisotropyLevel( 8 );
 
-        TextureDescriptor grassTexDescriptor( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
-        grassTexDescriptor.srgb( true );
+        const TextureDescriptor grassTexDescriptor( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA, GFXImagePacking::NORMALIZED_SRGB );
 
         ResourceDescriptor vegetationBillboards( "Vegetation Billboards" );
         vegetationBillboards.assetLocation( Paths::g_assetsLocation + terrain->descriptor()->getVariable( "vegetationTextureLocation" ) );

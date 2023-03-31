@@ -614,8 +614,6 @@ enum class GFXImageFormat : U8 {
     RGB,
     BGRA,
     RGBA,
-    DEPTH_COMPONENT,
-    DEPTH_STENCIL_COMPONENT,
     BC1,
     BC1a,
     BC2,
@@ -628,7 +626,6 @@ enum class GFXImageFormat : U8 {
     BC6s,
     BC6u,
     BC7,
-    BC7_SRGB,
     //BC3_RGBM,
     //ETC1,
     //ETC2_R,
@@ -637,10 +634,6 @@ enum class GFXImageFormat : U8 {
     //ETC2_RGBA,
     //ETC2_RGB_A1,
     //ETC2_RGBM,
-    DXT1_RGB_SRGB,
-    DXT1_RGBA_SRGB,
-    DXT3_RGBA_SRGB,
-    DXT5_RGBA_SRGB,
     COUNT,
     DXT1_RGB = BC1,
     DXT1_RGBA = BC1a,
@@ -649,9 +642,8 @@ enum class GFXImageFormat : U8 {
 };
 namespace Names {
     static constexpr const char* GFXImageFormat[] = {
-        "RED", "RG", "BGR", "RGB", "BGRA", "RGBA", "DEPTH_COMPONENT", "DEPTH_STENCIL_COMPONENT", "BC1/DXT1_RGB", "BC1a/DXT1_RGBA", "BC2/DXT3_RGBA",
-        "BC3/DXT5_RGBA", "BC3n", "BC4s", "BC4u", "BC5s", "BC5u", "BC6s", "BC6u", "BC7", "BC7_SRGB",
-        "DXT1_RGB_SRGB", "DXT1_RGBA_SRGB", "DXT3_RGBA_SRGB", "DXT5_RGBA_SRGB", "NONE",
+        "RED", "RG", "BGR", "RGB", "BGRA", "RGBA", "BC1/DXT1_RGB", "BC1a/DXT1_RGBA", "BC2/DXT3_RGBA",
+        "BC3/DXT5_RGBA", "BC3n", "BC4s", "BC4u", "BC5s", "BC5u", "BC6s", "BC6u", "BC7", "NONE",
     };
 };
 
@@ -677,6 +669,27 @@ namespace Names {
 };
 
 static_assert(std::size(Names::GFXDataFormat) == to_base(GFXDataFormat::COUNT) + 1);
+
+enum class GFXImagePacking : U8
+{
+    NORMALIZED,
+    NORMALIZED_SRGB,
+    UNNORMALIZED, //Don't blame me, found in Vulkan spec 16.1.1 -Ionut
+    RGB_565,
+    RGBA_4444,
+    DEPTH,
+    DEPTH_STENCIL,
+    COUNT
+};
+
+namespace Names
+{
+    static constexpr const char* GFXImagePacking[] = {
+        "NORMALIZED", "NORMALIZED_SRGB", "UNNORMALIZED", "RGB_565", "RGBA_4444", "DEPTH", "DEPTH_STENCIL", "ERROR"
+    };
+};
+
+static_assert(std::size( Names::GFXImagePacking ) == to_base( GFXImagePacking::COUNT ) + 1);
 
 enum class GPUVendor : U8 {
     NVIDIA = 0,

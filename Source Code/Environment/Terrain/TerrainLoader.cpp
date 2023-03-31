@@ -69,7 +69,6 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     importOptions._useDDSCache = true;
 
     TextureDescriptor noiseMediumDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
-    noiseMediumDescriptor.srgb(false);
     importOptions._alphaChannelTransparency = false;
     importOptions._isNormalMap = false;
     noiseMediumDescriptor.textureOptions(importOptions);
@@ -184,21 +183,18 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
 
     TextureDescriptor albedoDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
     albedoDescriptor.layerCount(to_U16(textures[to_base(TerrainTextureType::ALBEDO_ROUGHNESS)].size()));
-    albedoDescriptor.srgb(false);
     importOptions._alphaChannelTransparency = false; //roughness
     importOptions._isNormalMap = false;
     albedoDescriptor.textureOptions(importOptions);
 
     TextureDescriptor blendMapDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
     blendMapDescriptor.layerCount(to_U16(splatTextures.size()));
-    blendMapDescriptor.srgb(false);
     importOptions._alphaChannelTransparency = false; //splat lookup
     importOptions._isNormalMap = false;
     blendMapDescriptor.textureOptions(importOptions);
 
     TextureDescriptor normalDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
     normalDescriptor.layerCount(to_U16(textures[to_base(TerrainTextureType::NORMAL)].size()));
-    normalDescriptor.srgb(false);
     importOptions._alphaChannelTransparency = false; //not really needed
     importOptions._isNormalMap = true;
     importOptions._useDDSCache = false;
@@ -207,7 +203,6 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
 
     TextureDescriptor extraDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
     extraDescriptor.layerCount(extraMapCount);
-    extraDescriptor.srgb(false);
     importOptions._alphaChannelTransparency = false; //who knows what we pack here?
     importOptions._isNormalMap = false;
     extraDescriptor.textureOptions(importOptions);
@@ -286,7 +281,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     ImageTools::ImportOptions options{};
     options._useDDSCache = false;
 
-    TextureDescriptor heightMapDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::FLOAT_16, GFXImageFormat::RED);
+    TextureDescriptor heightMapDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::FLOAT_16, GFXImageFormat::RED );
     heightMapDescriptor.textureOptions(options);
     heightMapDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 

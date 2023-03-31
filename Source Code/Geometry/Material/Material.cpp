@@ -366,6 +366,7 @@ namespace Divide
             }
         }
 
+        texInfo._srgb = texture ? texture->descriptor().packing() == GFXImagePacking::NORMALIZED_SRGB : false;
         texInfo._useInGeometryPasses = texture ? useInGeometryPasses : false;
         texInfo._ptr = texture;
 
@@ -1279,6 +1280,7 @@ namespace Divide
                 pt.put( textureNode + ".name", texture->assetName().str() );
                 pt.put( textureNode + ".path", texture->assetLocation().str() );
                 pt.put( textureNode + ".usage", TypeUtil::TextureOperationToString( _textures[to_base( usage )]._operation ) );
+                pt.put( textureNode + ".srgb", _textures[to_base( usage )]._srgb );
 
                 const size_t samplerHash = _textures[to_base( usage )]._sampler;
 
@@ -1339,7 +1341,10 @@ namespace Divide
                     }
 
                     TextureOperation& op = _textures[to_base( usage )]._operation;
+                    bool& srgb = _textures[to_base(usage)]._srgb;
+
                     op = TypeUtil::StringToTextureOperation( pt.get<string>( textureNode + ".usage", TypeUtil::TextureOperationToString( op ) ) );
+                    srgb = pt.get<bool>( textureNode + ".srgb", srgb);
 
                     const Texture_ptr& crtTex = _textures[to_base( usage )]._ptr;
                     if ( crtTex == nullptr )
@@ -1353,7 +1358,7 @@ namespace Divide
 
                     _textures[to_base( usage )]._useInGeometryPasses = useInGeometryPasses;
 
-                    TextureDescriptor texDesc( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
+                    TextureDescriptor texDesc( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA, srgb ? GFXImagePacking::NORMALIZED_SRGB : GFXImagePacking::NORMALIZED );
                     ResourceDescriptor texture( texName.str() );
                     texture.assetName( texName );
                     texture.assetLocation( texPath );

@@ -68,10 +68,6 @@ void DefaultScene::postLoadMainThread()
     _GUI->addText( "RenderBinCount", pixelPosition( 60, 135 ), Font::BATANG,
                    UColour4( 164, 32, 32, 255 ),
                    Util::StringFormat( "Number of items in Render Bin: %d", 0 ) );
-    _GUI->addButton( "Test",
-                     "TEST CEGUI BUTTON",
-                     pixelPosition(  500, 500 ),
-                     pixelScale( 400, 100 ) );
     Scene::postLoadMainThread();
 }
 

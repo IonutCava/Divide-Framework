@@ -119,7 +119,8 @@ void DVDTextureTarget::initialiseRenderTexture()
 
     TextureDescriptor descriptor( TextureType::TEXTURE_2D,
                                   GFXDataFormat::UNSIGNED_BYTE,
-                                  GFXImageFormat::RGBA );
+                                  GFXImageFormat::RGBA,
+                                  GFXImagePacking::NORMALIZED );
     descriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
 
     RenderTargetDescriptor editorDesc = {};

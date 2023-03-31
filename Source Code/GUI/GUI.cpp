@@ -91,7 +91,8 @@ namespace Divide
 
             TextureDescriptor texDescriptor( TextureType::TEXTURE_2D,
                                              GFXDataFormat::UNSIGNED_BYTE,
-                                             GFXImageFormat::RED );
+                                             GFXImageFormat::RED,
+                                             GFXImagePacking::NORMALIZED );
             texDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
             texDescriptor.allowRegionUpdates(true);
 
@@ -351,18 +352,7 @@ namespace Divide
 
         if ( _ceguiRenderer != nullptr )
         {
-            ImageView ceguiView{};
-            ceguiView.targetType( TextureType::TEXTURE_2D );
-            ceguiView._srcTexture = _renderTextureTarget->getAttachmentTex();
-            ceguiView._subRange._layerRange = { 0u, 1u };
-            ceguiView._subRange._mipLevels = { 0u, U16_MAX };
-            ceguiView._descriptor._baseFormat = GFXImageFormat::RGBA;
-            ceguiView._descriptor._dataType = GFXDataFormat::UNSIGNED_BYTE;
-            ceguiView._descriptor._msaaSamples = 0u;
-            ceguiView._descriptor._normalized = true;
-            ceguiView._descriptor._srgb = false;
-
-            context.drawTextureInViewport( ceguiView, _renderTextureTarget->getSamplerHash(), viewport, false, false, true, bufferInOut);
+            context.drawTextureInViewport( _renderTextureTarget->getAttachmentTex()->getView(), _renderTextureTarget->getSamplerHash(), viewport, false, false, true, bufferInOut);
         }
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );

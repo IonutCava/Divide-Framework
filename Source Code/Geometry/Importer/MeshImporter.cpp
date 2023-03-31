@@ -405,7 +405,11 @@ namespace Import {
                 importOptions._isNormalMap = tex.isNormalMap();
                 importOptions._alphaChannelTransparency = tex.alphaForTransparency();
 
-                textureDescriptor.srgb(tex.srgb());
+                if ( tex.srgb() )
+                {
+                    textureDescriptor.packing(GFXImagePacking::NORMALIZED_SRGB);
+                }
+
                 textureDescriptor.textureOptions(importOptions);
                 ResourceDescriptor texture(tex.textureName().str());
                 texture.assetName(tex.textureName());

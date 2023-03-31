@@ -79,7 +79,7 @@ namespace Divide
             memBarrierOut.subresourceRange.layerCount = subRange._layerRange.count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : subRange._layerRange.count;
             memBarrierOut.image = image;
 
-            const VkImageLayout targetLayout = IsDepthTexture( tex->descriptor().baseFormat() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            const VkImageLayout targetLayout = IsDepthTexture( tex->descriptor().packing() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
             switch ( transitionType )
             {

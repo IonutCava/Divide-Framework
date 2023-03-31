@@ -134,6 +134,12 @@ void DVDTexture::setTextureSize_impl(const Sizef& sz, PixelFormat format)
         case PF_RGBA_DXT5:
             _isCompressed = true;
             break;
+        case PF_PVRTC2:
+        case PF_PVRTC4:
+        {
+            DIVIDE_UNEXPECTED_CALL_MSG( "DVDTexture::setTextureSize_impl: PVRTC textures not supported!" );
+            return;
+        } break;
     }
 
     static float maxSize = -1;
@@ -155,6 +161,8 @@ void DVDTexture::blitFromMemory(const void* sourceData, const Rectf& area)
 {
     using namespace Divide;
 
+    DIVIDE_ASSERT(_format != PF_PVRTC2 && _format != PF_PVRTC4, "DVDTexture::blitFromMemory: PVRTC textures not supported!" );
+
     size_t image_size = 0u;
     if (_isCompressed)
     {
@@ -171,9 +179,19 @@ void DVDTexture::blitFromMemory(const void* sourceData, const Rectf& area)
     }
     else
     {
+        U8 bpp = 4u;
+        if ( _format == PF_RGB )
+        {
+            bpp = 3u;
+        }
+        else if ( _format == PF_RGBA_4444 || _format == PF_RGB_565 )
+        {
+            bpp = 2u;
+        }
+
         image_size = size_t(area.getSize().d_width *
                             area.getSize().d_height) *
-                            4;
+                            bpp;
     }
 
     const PixelAlignment pixelUnpackAlignment
@@ -210,45 +228,56 @@ void DVDTexture::generateDVDTexture()
 
     GFXDataFormat dataFormat = GFXDataFormat::UNSIGNED_BYTE;
     GFXImageFormat targetFormat = GFXImageFormat::RGBA;
+    GFXImagePacking targetPacking = GFXImagePacking::NORMALIZED;
 
     switch ( _format )
     {
         case Texture::PixelFormat::PF_RGB:
+        case Texture::PixelFormat::PF_RGB_565:
         {
             targetFormat = GFXImageFormat::RGB;
+            if ( _format == Texture::PixelFormat::PF_RGB_565 )
+            {
+                targetPacking = GFXImagePacking::RGB_565;
+            }
         } break;
         case Texture::PixelFormat::PF_RGBA:
+        case Texture::PixelFormat::PF_RGBA_4444:
         {
             targetFormat = GFXImageFormat::RGBA;
+            if ( _format == Texture::PixelFormat::PF_RGBA_4444 )
+            {
+                targetPacking = GFXImagePacking::RGBA_4444;
+            }
         } break;
         case Texture::PixelFormat::PF_RGB_DXT1:
         {
-            targetFormat = GFXImageFormat::DXT1_RGB_SRGB;
+            targetFormat = GFXImageFormat::DXT1_RGB;
         }break;
         case Texture::PixelFormat::PF_RGBA_DXT1:
         {
-            targetFormat = GFXImageFormat::DXT1_RGBA_SRGB;
+            targetFormat = GFXImageFormat::DXT1_RGBA;
         }break;
         case Texture::PixelFormat::PF_RGBA_DXT3:
         {
-            targetFormat = GFXImageFormat::DXT3_RGBA_SRGB;
+            targetFormat = GFXImageFormat::DXT3_RGBA;
         }break;
         case Texture::PixelFormat::PF_RGBA_DXT5:
         {
-            targetFormat = GFXImageFormat::DXT5_RGBA_SRGB;
+            targetFormat = GFXImageFormat::DXT5_RGBA;
         }break;
-        case Texture::PixelFormat::PF_RGBA_4444:
-        case Texture::PixelFormat::PF_RGB_565:
         case Texture::PixelFormat::PF_PVRTC2:
         case Texture::PixelFormat::PF_PVRTC4:
         {
-            DIVIDE_UNEXPECTED_CALL();
+            DIVIDE_UNEXPECTED_CALL_MSG("DVDTexture::generateDVDTexture: PVRTC textures not supported!");
         } break;
-
     }
+
     TextureDescriptor texDescriptor( TextureType::TEXTURE_2D,
                                      dataFormat,
-                                     targetFormat );
+                                     targetFormat,
+                                     targetPacking );
+
     texDescriptor.allowRegionUpdates(true);
     texDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
 

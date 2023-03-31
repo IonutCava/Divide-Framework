@@ -60,22 +60,20 @@ class TextureDescriptor final : public PropertyDescriptor {
     };
 
     TextureDescriptor() noexcept;
-    TextureDescriptor(const TextureType type, const GFXDataFormat dataType, const GFXImageFormat format) noexcept;
+    TextureDescriptor(const TextureType type, const GFXDataFormat dataType, const GFXImageFormat format, const GFXImagePacking packing = GFXImagePacking::COUNT) noexcept;
 
     [[nodiscard]] size_t getHash() const noexcept override;
 
     PROPERTY_RW(U16, layerCount,   0u);
     PROPERTY_RW(U16, mipBaseLevel, 0u);
-    PROPERTY_RW(U8,  msaaSamples,  0u);
     PROPERTY_RW(GFXDataFormat,  dataType, GFXDataFormat::COUNT);
     PROPERTY_RW(GFXImageFormat, baseFormat, GFXImageFormat::COUNT);
+    PROPERTY_RW(GFXImagePacking, packing, GFXImagePacking::COUNT);
     PROPERTY_RW(TextureType, texType, TextureType::COUNT);
-    /// Use SRGB colour space
-    PROPERTY_RW(bool, srgb, false);
-    PROPERTY_RW(bool, normalized, true);
-    PROPERTY_RW(bool, allowRegionUpdates, false);
     PROPERTY_RW(ImageTools::ImportOptions, textureOptions);
     PROPERTY_RW(MipMappingState, mipMappingState, MipMappingState::AUTO);
+    PROPERTY_RW(U8,  msaaSamples,  0u);
+    PROPERTY_RW(bool, allowRegionUpdates, false);
 
     void addImageUsageFlag(const ImageUsage usage) noexcept;
     void removeImageUsageFlag(const ImageUsage usage) noexcept;
@@ -91,10 +89,15 @@ private:
 bool operator==(const TextureDescriptor& lhs, const TextureDescriptor& rhs) noexcept;
 bool operator!=(const TextureDescriptor& lhs, const TextureDescriptor& rhs) noexcept;
 
-bool IsCubeTexture(const TextureType texType) noexcept;
-bool IsArrayTexture(const TextureType texType) noexcept;
-
-U8 NumChannels(const GFXImageFormat format) noexcept;
+[[nodiscard]] bool Is1DTexture(TextureType texType) noexcept;
+[[nodiscard]] bool Is2DTexture(TextureType texType) noexcept;
+[[nodiscard]] bool Is3DTexture(TextureType texType) noexcept;
+[[nodiscard]] bool IsCubeTexture(TextureType texType) noexcept;
+[[nodiscard]] bool IsArrayTexture(TextureType texType) noexcept;
+[[nodiscard]] bool IsNormalizedTexture(GFXImagePacking packing) noexcept;
+[[nodiscard]] bool IsDepthTexture(GFXImagePacking packing) noexcept;
+[[nodiscard]] bool SupportsZOffsetTexture(TextureType texType) noexcept;
+[[nodiscard]] U8  NumChannels(GFXImageFormat format) noexcept;
 
 }  // namespace Divide
 

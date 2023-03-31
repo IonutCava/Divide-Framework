@@ -335,7 +335,7 @@ namespace Divide {
         ImageTools::ImportOptions options{};
         options._useDDSCache = false;
 
-        TextureDescriptor texturePreviewDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
+        TextureDescriptor texturePreviewDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA);
         texturePreviewDescriptor.textureOptions(options);
 
         ResourceDescriptor textureResource(textureName.str());

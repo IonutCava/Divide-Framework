@@ -31,7 +31,7 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
         sampler.mipSampling(TextureMipSampling::NONE);
         sampler.anisotropyLevel(0);
 
-        TextureDescriptor weightsDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RGBA);
+        TextureDescriptor weightsDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RGBA );
         weightsDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         desc._attachments =
@@ -112,8 +112,7 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
         });
     }
     { //SMAA Textures
-        TextureDescriptor textureDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
-        textureDescriptor.srgb(false);
+        TextureDescriptor textureDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA);
         textureDescriptor.textureOptions()._alphaChannelTransparency = false;
 
         ResourceDescriptor searchDescriptor("SMAA_Search");

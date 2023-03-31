@@ -103,13 +103,8 @@ namespace Divide
             if ( type == RTAttachmentType::DEPTH || type == RTAttachmentType::DEPTH_STENCIL )
             {
                 binding = type == RTAttachmentType::DEPTH ? to_U32( GL_DEPTH_ATTACHMENT ) : to_U32( GL_DEPTH_STENCIL_ATTACHMENT );
-
-                const TextureType texType = att->texture()->descriptor().texType();
                 // Most of these aren't even valid, but hey, doesn't hurt to check
-                _isLayeredDepth = texType == TextureType::TEXTURE_1D_ARRAY ||
-                    texType == TextureType::TEXTURE_2D_ARRAY ||
-                    texType == TextureType::TEXTURE_3D ||
-                    IsCubeTexture( texType );
+                _isLayeredDepth = SupportsZOffsetTexture( att->texture()->descriptor().texType() );
             }
 
             att->binding( binding );
@@ -524,7 +519,7 @@ namespace Divide
                 {
                     const GLint buffer = static_cast<GLint>(binding - static_cast<GLint>(GL_COLOR_ATTACHMENT0));
                     const FColour4& colour = descriptor[i]._colour;
-                    if ( att->texture()->descriptor().normalized() )
+                    if ( IsNormalizedTexture(att->texture()->descriptor().packing()) )
                     {
                         glClearNamedFramebufferfv( _framebufferHandle, GL_COLOR, buffer, colour._v );
                     }

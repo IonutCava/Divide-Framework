@@ -104,11 +104,11 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
 
     const U32 reflectRes = to_U32(context.context().config().rendering.reflectionProbeResolution);
     {
-        TextureDescriptor environmentDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA);
+        TextureDescriptor environmentDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
         environmentDescriptor.layerCount(Config::MAX_REFLECTIVE_PROBES_PER_PASS + 1u);
         environmentDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
 
-        TextureDescriptor depthDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::DEPTH_COMPONENT);
+        TextureDescriptor depthDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::RED, GFXImagePacking::DEPTH );
         depthDescriptor.layerCount(Config::MAX_REFLECTIVE_PROBES_PER_PASS + 1u);
         depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
 
@@ -124,7 +124,7 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         s_reflection = context.renderTargetPool().allocateRT(desc);
     }
     {
-        TextureDescriptor environmentDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::FLOAT_16, GFXImageFormat::RGBA);
+        TextureDescriptor environmentDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::FLOAT_16, GFXImageFormat::RGBA );
         environmentDescriptor.layerCount(Config::MAX_REFLECTIVE_PROBES_PER_PASS + 1u);
         environmentDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
         environmentDescriptor.addImageUsageFlag(ImageUsage::SHADER_WRITE);
@@ -141,7 +141,7 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         s_irradiance = context.renderTargetPool().allocateRT(desc);
     }
     {
-        TextureDescriptor environmentDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RG);
+        TextureDescriptor environmentDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RG );
         environmentDescriptor.mipMappingState(TextureDescriptor::MipMappingState::AUTO);
         environmentDescriptor.addImageUsageFlag(ImageUsage::SHADER_WRITE);
 

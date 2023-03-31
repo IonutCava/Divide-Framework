@@ -88,6 +88,8 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
     }
     {
         outputDescriptor.dataType(GFXDataFormat::UNSIGNED_BYTE);
+        outputDescriptor.packing(GFXImagePacking::NORMALIZED);
+
         //Colour0 holds the LDR screen texture
         desc._attachments =
         {
@@ -102,7 +104,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         _screenRTs._ldr._temp[1] = _context.renderTargetPool().allocateRT(desc);
     }
     {
-        TextureDescriptor edgeDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RG);
+        TextureDescriptor edgeDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RG );
         edgeDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         desc._attachments =
@@ -114,9 +116,8 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         _sceneEdges = _context.renderTargetPool().allocateRT(desc);
     }
     {
-        TextureDescriptor lumaDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RED);
+        TextureDescriptor lumaDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RED );
         lumaDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
-        lumaDescriptor.srgb(false);
         lumaDescriptor.addImageUsageFlag(ImageUsage::SHADER_READ);
 
         ResourceDescriptor texture("Luminance Texture");
@@ -136,7 +137,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         defaultSampler.anisotropyLevel(0);
         const size_t samplerHash = defaultSampler.getHash();
 
-        TextureDescriptor linearDepthDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RED);
+        TextureDescriptor linearDepthDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RED );
         linearDepthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         desc._attachments =

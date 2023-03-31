@@ -52,13 +52,13 @@ namespace Divide
         {
             if constexpr ( !Config::Build::IS_SHIPPING_BUILD )
             {
-                if ( failMessage == nullptr || strlen( failMessage ) == 0 ) [[unlikely]]
-                {
-                    return DIVIDE_ASSERT_FUNC( expression, expressionStr, file, line, "Message truncated" );
-                }
-
                 if ( !expression ) [[unlikely]]
                 {
+                    if ( failMessage == nullptr || strlen( failMessage ) == 0 ) [[unlikely]]
+                    {
+                        return DIVIDE_ASSERT_FUNC( false, expressionStr, file, line, "Message truncated" );
+                    }
+
                     const char* msgOut = FormatText( "ASSERT [%s : %d]: %s : %s", file, line, expressionStr, failMessage );
                     if constexpr ( Config::Assert::LOG_ASSERTS )
                     {
