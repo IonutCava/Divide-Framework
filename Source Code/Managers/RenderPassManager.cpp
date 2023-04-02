@@ -192,7 +192,7 @@ void RenderPassManager::render(const RenderParams& params)
        Time::ScopedTimer timeCommandsBuild(*_buildCommandBufferTimer);
        GFX::MemoryBarrierCommand memCmd{};
        {
-           PROFILE_SCOPE("RenderPassManager::update sky light", Profiler::Category::Scene );
+            PROFILE_SCOPE("RenderPassManager::update sky light", Profiler::Category::Scene );
             _skyLightRenderBuffer->clear(false);
             memCmd = gfx.updateSceneDescriptorSet(*_skyLightRenderBuffer);
             SceneEnvironmentProbePool::UpdateSkyLight(gfx, *_skyLightRenderBuffer, memCmd );
@@ -201,36 +201,51 @@ void RenderPassManager::render(const RenderParams& params)
        GFX::CommandBuffer& buf = *_postRenderBuffer;
        buf.clear(false);
 
-       const bool editorRunning = Config::Build::ENABLE_EDITOR && context.editor().running();
-
        const Rect<I32>& targetViewport = params._targetViewport;
        context.gui().preDraw( gfx, targetViewport, buf, memCmd );
-
-       GFX::BeginRenderPassCommand beginRenderPassCmd{};
-       beginRenderPassCmd._name = "Flush Display";
-       beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::DIVIDE_BLUE, true };
-       beginRenderPassCmd._descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
-       beginRenderPassCmd._target = editorRunning ? context.editor().getEditorTarget()._targetID : SCREEN_TARGET_ID;
-       GFX::EnqueueCommand(buf, beginRenderPassCmd);
-
-       const auto& screenAtt = gfx.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
-       const auto& texData = screenAtt->texture()->getView();
-     
-       gfx.drawTextureInViewport(texData, screenAtt->descriptor()._samplerHash, targetViewport, false, false, false, buf);
-
        {
-           Time::ScopedTimer timeGUIBuffer(*_processGUITimer);
-           Attorney::SceneManagerRenderPass::drawCustomUI(sceneManager, targetViewport, buf, memCmd);
-           if constexpr(Config::Build::ENABLE_EDITOR)
-           {
-               context.editor().drawScreenOverlay(cam, targetViewport, buf, memCmd);
-           }
-           context.gui().draw(gfx, targetViewport, buf, memCmd);
-           sceneManager->getEnvProbes()->prepareDebugData();
-           gfx.renderDebugUI(targetViewport, buf, memCmd);
-       }
+           GFX::BeginRenderPassCommand beginRenderPassCmd{};
+           beginRenderPassCmd._name = "Flush Display";
+           beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::BLACK, true };
+           beginRenderPassCmd._descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
+           beginRenderPassCmd._target = RenderTargetNames::BACK_BUFFER;
+           GFX::EnqueueCommand(buf, beginRenderPassCmd);
 
-       GFX::EnqueueCommand(buf, GFX::EndRenderPassCommand{});
+           const auto& screenAtt = gfx.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
+           const auto& texData = screenAtt->texture()->getView();
+     
+           gfx.drawTextureInViewport(texData, screenAtt->descriptor()._samplerHash, targetViewport, false, false, false, buf);
+
+           {
+               Time::ScopedTimer timeGUIBuffer(*_processGUITimer);
+               Attorney::SceneManagerRenderPass::drawCustomUI(sceneManager, targetViewport, buf, memCmd);
+               if constexpr(Config::Build::ENABLE_EDITOR)
+               {
+                   context.editor().drawScreenOverlay(cam, targetViewport, buf, memCmd);
+               }
+               context.gui().draw(gfx, targetViewport, buf, memCmd);
+               sceneManager->getEnvProbes()->prepareDebugData();
+               gfx.renderDebugUI(targetViewport, buf, memCmd);
+           }
+
+           GFX::EnqueueCommand(buf, GFX::EndRenderPassCommand{});
+       }
+       Attorney::SceneManagerRenderPass::postRender(sceneManager, buf, memCmd);
+
+        GFX::BeginRenderPassCommand beginRenderPassCmd{};
+        beginRenderPassCmd._target = SCREEN_TARGET_ID;
+        beginRenderPassCmd._name = "Blit Backbuffer";
+        beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::BLACK, true };
+        beginRenderPassCmd._descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
+        GFX::EnqueueCommand( buf, beginRenderPassCmd );
+
+        const auto& screenAtt = gfx.renderTargetPool().getRenderTarget( RenderTargetNames::BACK_BUFFER )->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO );
+        const auto& texData = screenAtt->texture()->getView();
+
+        gfx.drawTextureInViewport( texData, screenAtt->descriptor()._samplerHash, context.mainWindow().renderingViewport(), false, false, false, buf);
+
+        GFX::EnqueueCommand<GFX::EndRenderPassCommand>( buf );
+
 
        GFX::EnqueueCommand( buf, memCmd );
     }

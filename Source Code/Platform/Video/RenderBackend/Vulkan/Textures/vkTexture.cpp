@@ -47,6 +47,161 @@ namespace Divide
 
             return (supportsStorageBit ? (ret | VK_IMAGE_USAGE_STORAGE_BIT) : ret);
         }
+
+        void CopyInternal( VkCommandBuffer cmdBuffer, VkImage source, VkImageAspectFlags sourceAspect, VkImageLayout sourceLayout, VkImage destination, VkImageAspectFlags destinationAspect, VkImageLayout destinationLayout, const CopyTexParams& params, const U16 depth )
+        {
+            const bool isStagingSource = destinationLayout == VK_IMAGE_LAYOUT_GENERAL;
+
+            VkImageSubresourceLayers srcSubresource{};
+            srcSubresource.aspectMask = sourceAspect;
+            srcSubresource.mipLevel = params._sourceMipLevel;
+            srcSubresource.baseArrayLayer = params._layerRange.offset;
+            srcSubresource.layerCount = params._layerRange.count;
+
+            VkImageSubresourceLayers dstSubresource{};
+            dstSubresource.aspectMask = destinationAspect;
+            dstSubresource.mipLevel = params._targetMipLevel;
+            dstSubresource.baseArrayLayer = params._layerRange.offset;
+            dstSubresource.layerCount = params._layerRange.count;
+
+            enum class TransitionType : U8
+            {
+                SHADER_READ_TO_COPY_READ,
+                SHADER_READ_TO_COPY_WRITE,
+                COPY_READ_TO_SHADER_READ,
+                COPY_WRITE_TO_SHADER_READ,
+                COUNT
+            };
+
+            /*
+            * 
+
+        // Enable temp image view to written to
+        {
+            imageBarrier.image = dstImage;
+            imageBarrier.subresourceRange.baseMipLevel = mipLevel;
+            imageBarrier.subresourceRange.levelCount = 1u;
+            imageBarrier.subresourceRange.baseArrayLayer = 0u;
+            imageBarrier.subresourceRange.layerCount = 1u;
+            imageBarrier.subresourceRange.aspectMask = GetAspectFlags( descriptor() );
+            imageBarrier.srcAccessMask = VK_ACCESS_2_NONE;
+            imageBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+            imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+            imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+            imageBarrier.oldLayout = imageLayout;
+            imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        }
+            */
+            const auto transitionImage = [&cmdBuffer](const bool isStagingSource, VkImage image, VkImageSubresourceLayers subresource, VkImageLayout layout, VkImageMemoryBarrier2& memBarrierOut, TransitionType transitionType )
+            {
+                memBarrierOut = vk::imageMemoryBarrier2();
+
+                memBarrierOut.subresourceRange.aspectMask = subresource.aspectMask;
+                memBarrierOut.subresourceRange.baseMipLevel = subresource.mipLevel;
+                memBarrierOut.subresourceRange.levelCount = 1u;
+                memBarrierOut.subresourceRange.baseArrayLayer = subresource.baseArrayLayer;
+                memBarrierOut.subresourceRange.layerCount = subresource.layerCount;
+                memBarrierOut.image = image;
+
+                const VkAccessFlagBits2 readAccessIn = isStagingSource ? VK_ACCESS_2_NONE : VK_ACCESS_2_SHADER_READ_BIT;
+                const VkAccessFlagBits2 readAccessOut = isStagingSource ? VK_ACCESS_2_NONE : VK_ACCESS_2_SHADER_READ_BIT;
+
+                const VkPipelineStageFlags2 readStageIn = isStagingSource ? (VK_PIPELINE_STAGE_2_NONE) : (VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
+                const VkPipelineStageFlags2 readStageOut = isStagingSource ? (VK_PIPELINE_STAGE_2_TRANSFER_BIT) : (VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
+
+                switch ( transitionType )
+                {
+                    case TransitionType::SHADER_READ_TO_COPY_READ:
+                    {
+                        memBarrierOut.srcAccessMask = readAccessIn;
+                        memBarrierOut.srcStageMask = readStageIn;
+                        memBarrierOut.oldLayout = layout;
+                        memBarrierOut.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
+                        memBarrierOut.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_COPY_BIT;
+                        memBarrierOut.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+                    } break;
+                    case TransitionType::SHADER_READ_TO_COPY_WRITE:
+                    {
+                        memBarrierOut.srcAccessMask = readAccessIn;
+                        memBarrierOut.srcStageMask = readStageIn;
+                        memBarrierOut.oldLayout = layout;
+                        memBarrierOut.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+                        memBarrierOut.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_COPY_BIT;
+                        memBarrierOut.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+
+                    } break;
+                    case TransitionType::COPY_READ_TO_SHADER_READ:
+                    {
+                        memBarrierOut.srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
+                        memBarrierOut.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_COPY_BIT;
+                        memBarrierOut.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+                        memBarrierOut.dstAccessMask = readAccessOut;
+                        memBarrierOut.dstStageMask = readStageOut;
+                        memBarrierOut.newLayout = layout;
+                    } break;
+                    case TransitionType::COPY_WRITE_TO_SHADER_READ:
+                    {
+                        memBarrierOut.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+                        memBarrierOut.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_COPY_BIT;
+                        memBarrierOut.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+                        memBarrierOut.dstAccessMask = readAccessOut;
+                        memBarrierOut.dstStageMask = readStageOut;
+                        memBarrierOut.newLayout = layout;
+                    } break;
+
+                    default: DIVIDE_UNEXPECTED_CALL(); break;
+                };
+            };
+
+            VkDependencyInfo dependencyInfo = vk::dependencyInfo();
+            std::array<VkImageMemoryBarrier2, 2> imageBarriers{};
+            U8 imageBarrierCount = 0u;
+
+            transitionImage( false, source, srcSubresource, sourceLayout, imageBarriers[imageBarrierCount++], TransitionType::SHADER_READ_TO_COPY_READ );
+            transitionImage( isStagingSource, destination, dstSubresource, destinationLayout, imageBarriers[imageBarrierCount++], TransitionType::SHADER_READ_TO_COPY_WRITE );
+
+            if ( imageBarrierCount > 0u )
+            {
+                dependencyInfo.imageMemoryBarrierCount = imageBarrierCount;
+                dependencyInfo.pImageMemoryBarriers = imageBarriers.data();
+
+                vkCmdPipelineBarrier2( cmdBuffer, &dependencyInfo );
+                imageBarrierCount = 0u;
+            }
+
+            //ToDo: z and layer range need better handling for 3D textures and cubemaps!
+            VkImageCopy region{};
+            region.srcSubresource = srcSubresource;
+            region.srcOffset.x = params._sourceCoords.x;
+            region.srcOffset.y = params._sourceCoords.y;
+            region.srcOffset.z = 0;
+            region.dstSubresource = dstSubresource;
+            region.dstOffset.x = params._targetCoords.x;
+            region.dstOffset.y = params._targetCoords.y;
+            region.dstOffset.z = 0;
+            region.extent.width = params._dimensions.width;
+            region.extent.height = params._dimensions.height;
+            region.extent.depth = depth;
+
+            vkCmdCopyImage( cmdBuffer,
+                            source,
+                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                            destination,
+                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                            1,
+                            &region );
+
+            transitionImage( false, source, srcSubresource, sourceLayout, imageBarriers[imageBarrierCount++], TransitionType::COPY_READ_TO_SHADER_READ );
+            transitionImage( isStagingSource, destination, dstSubresource, destinationLayout, imageBarriers[imageBarrierCount++], TransitionType::COPY_WRITE_TO_SHADER_READ );
+            if ( imageBarrierCount > 0u )
+            {
+                dependencyInfo.imageMemoryBarrierCount = imageBarrierCount;
+                dependencyInfo.pImageMemoryBarriers = imageBarriers.data();
+
+                vkCmdPipelineBarrier2( cmdBuffer, &dependencyInfo );
+                imageBarrierCount = 0u;
+            }
+        }
     }
 
     AllocatedImage::~AllocatedImage()
@@ -83,7 +238,7 @@ namespace Divide
         const bool hasDepth = descriptor.hasUsageFlagSet( ImageUsage::RT_DEPTH_ATTACHMENT ) || hasDepthStencil;
 
         return hasDepth ? VK_IMAGE_ASPECT_DEPTH_BIT | (hasDepthStencil ? VK_IMAGE_ASPECT_STENCIL_BIT : 0u)
-            : VK_IMAGE_ASPECT_COLOR_BIT;
+                        : VK_IMAGE_ASPECT_COLOR_BIT;
     }
 
     vkTexture::vkTexture( GFXDevice& context,
@@ -508,7 +663,7 @@ namespace Divide
                 }
             };
 
-            _stagingBuffer = VKUtil::createStagingBuffer( totalSize, resourceName() );
+            _stagingBuffer = VKUtil::createStagingBuffer( totalSize, resourceName(), false );
         }
 
         const size_t dstOffset = topLeftY * rowOffset_dest + topLeftX * (pixelUnpackAlignment._alignment * bpp_dest);
@@ -632,7 +787,7 @@ namespace Divide
 
         if ( _stagingBuffer == nullptr )
         {
-            _stagingBuffer = VKUtil::createStagingBuffer( totalSize, resourceName() );
+            _stagingBuffer = VKUtil::createStagingBuffer( totalSize, resourceName(), false );
         }
         
         Byte* target = (Byte*)_stagingBuffer->_allocInfo.pMappedData;
@@ -745,7 +900,7 @@ namespace Divide
         }, "vkTexture::loadDataInternal" );
     }
 
-    void vkTexture::clearData( const UColour4& clearColour, vec2<U16> layerRange, U8 mipLevel ) const noexcept
+    void vkTexture::clearData( VkCommandBuffer cmdBuffer, const UColour4& clearColour, vec2<U16> layerRange, U8 mipLevel ) const noexcept
     {
         if ( mipLevel == U8_MAX )
         {
@@ -760,158 +915,185 @@ namespace Divide
         range.baseMipLevel = mipLevel;
         range.levelCount = 1u;
 
-        VK_API::GetStateTracker().IMCmdContext(QueueType::GRAPHICS)->flushCommandBuffer([&](VkCommandBuffer cmd, const QueueType queue, const bool isDedicatedQueue)
+        const bool isDepth = IsDepthTexture( _descriptor.packing() );
+
+        VkImageMemoryBarrier2 memBarrier = vk::imageMemoryBarrier2();
+        memBarrier.image = _image->_image;
+        memBarrier.subresourceRange = range;
+        memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+        memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+        memBarrier.oldLayout = isDepth ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        memBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        memBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+
+        VkDependencyInfo dependencyInfo = vk::dependencyInfo();
+        dependencyInfo.imageMemoryBarrierCount = 1u;
+        dependencyInfo.pImageMemoryBarriers = &memBarrier;
+
+        vkCmdPipelineBarrier2( cmdBuffer, &dependencyInfo );
+        if ( isDepth )
         {
-            const bool isDepth = IsDepthTexture( _descriptor.packing() );
+            const VkClearDepthStencilValue clearValue = {
+                .depth = to_F32(clearColour.r),
+                .stencil = to_U32(clearColour.g)
+            };
 
-            VkImageMemoryBarrier2 memBarrier = vk::imageMemoryBarrier2();
-            memBarrier.image = _image->_image;
-            memBarrier.subresourceRange = range;
-            memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-            memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-            memBarrier.oldLayout = isDepth ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            memBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-            memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-            memBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-
-            VkDependencyInfo dependencyInfo = vk::dependencyInfo();
-            dependencyInfo.imageMemoryBarrierCount = 1u;
-            dependencyInfo.pImageMemoryBarriers = &memBarrier;
-
-            vkCmdPipelineBarrier2( cmd, &dependencyInfo );
-            if ( isDepth )
+            vkCmdClearDepthStencilImage( cmdBuffer, _image->_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearValue, 1, &range);
+        }
+        else
+        {
+            const VkClearColorValue clearValue =
             {
-                const VkClearDepthStencilValue clearValue = {
-                    .depth = to_F32(clearColour.r),
-                    .stencil = to_U32(clearColour.g)
-                };
+                .uint32 = {clearColour.r,clearColour.g,clearColour.b,clearColour.a}
+            };
 
-                vkCmdClearDepthStencilImage( cmd, _image->_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearValue, 1, &range);
-            }
-            else
-            {
-                const VkClearColorValue clearValue =
-                {
-                    .uint32 = {clearColour.r,clearColour.g,clearColour.b,clearColour.a}
-                };
+            vkCmdClearColorImage( cmdBuffer, _image->_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearValue, 1, &range);
+        }
 
-                vkCmdClearColorImage( cmd, _image->_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearValue, 1, &range);
-            }
-
-            memBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-            memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-            memBarrier.newLayout = isDepth ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            memBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-            memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-            memBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-            vkCmdPipelineBarrier2( cmd, &dependencyInfo );
-
-        }, "vkTexture::clearData()" );
+        memBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+        memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+        memBarrier.newLayout = isDepth ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        memBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        memBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        vkCmdPipelineBarrier2( cmdBuffer, &dependencyInfo );
     }
 
-    ImageReadbackData vkTexture::readData( U8 mipLevel, const PixelAlignment& pixelPackAlignment) const noexcept
+    ImageReadbackData vkTexture::readData( U8 mipLevel, const PixelAlignment& pixelPackAlignment ) const noexcept
     {
-        ImageReadbackData data{};
+        ImageReadbackData ret{};
+        VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [&]( VkCommandBuffer cmd, const QueueType queue, const bool isDedicatedQueue )
+        {
+            ret = readData(cmd, mipLevel, pixelPackAlignment );
+        }, "vkTexture::readData()" );
+        return ret;
+    }
+
+    ImageReadbackData vkTexture::readData( VkCommandBuffer cmdBuffer, U8 mipLevel, const PixelAlignment& pixelPackAlignment) const noexcept
+    {
+        ImageReadbackData grabData{};
+        grabData._numComponents = numChannels();
 
         const auto desiredDataFormat = _descriptor.dataType();
         const auto desiredImageFormat = _descriptor.baseFormat();
         const auto desiredPacking = _descriptor.packing();
 
-        const U8 bpp = GetBytesPerPixel( desiredDataFormat, desiredImageFormat, desiredPacking );
+        grabData._sourceIsBGR = IsBGRTexture( desiredImageFormat );
+        grabData._bpp = GetBytesPerPixel( desiredDataFormat, desiredImageFormat, desiredPacking );
 
+        DIVIDE_ASSERT( (grabData._bpp == 3 || grabData._bpp == 4) && _depth == 1u && !IsCubeTexture( _descriptor.texType() ), "vkTexture:readData: unsupported image for readback. Support is very limited!" );
+        grabData._width = _width >> mipLevel;
+        grabData._height = _height >> mipLevel;
 
-        DIVIDE_ASSERT( bpp == 4 && desiredImageFormat == GFXImageFormat::RGBA && !IsCubeTexture( _descriptor.texType() ), "glTexture:readData: unsupported image for readback. Support is very limited!" );
-        const U16 mipWidth = _width >> mipLevel;
-        const U16 mipHeight = _height >> mipLevel;
+        const VkImageLayout imageLayout = IsDepthTexture( _descriptor.packing() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        const size_t sizeDest = grabData._width * grabData._height * grabData._bpp;
+        auto stagingBuffer = VKUtil::createStagingBuffer( sizeDest, "STAGING_BUFFER_READ_TEXTURE", true );
 
-        const VkImageLayout targetLayout = IsDepthTexture( _descriptor.packing() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        const size_t sizeDest = mipWidth * mipHeight * bpp;
-        auto stagingBuffer = VKUtil::createStagingBuffer( sizeDest, "STAGING_BUFFER_READ_TEXTURE" );
+        grabData._data.resize(sizeDest);
 
-        ImageReadbackData grabData{};
-        grabData._data.reset( new Byte[sizeDest] );
-        grabData._size = sizeDest;
+        // Create the linear tiled destination image to copy to and to read the memory from
+        VkImageCreateInfo imageCreateCI = vk::imageCreateInfo();
+        imageCreateCI.tiling = VK_IMAGE_TILING_LINEAR;
+        imageCreateCI.format = VK_FORMAT_R8G8B8A8_UNORM;
+        imageCreateCI.imageType = vkType();
+        imageCreateCI.extent.width = to_U32( grabData._width );
+        imageCreateCI.extent.height = to_U32( grabData._height );
+        imageCreateCI.extent.depth = 1;
+        imageCreateCI.arrayLayers = 1;
+        imageCreateCI.mipLevels = 1;
+        imageCreateCI.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageCreateCI.samples = VK_SAMPLE_COUNT_1_BIT;
+        imageCreateCI.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-        VK_API::GetStateTracker().IMCmdContext(QueueType::GRAPHICS)->flushCommandBuffer([&](VkCommandBuffer cmd, const QueueType queue, const bool isDedicatedQueue)
+        VmaAllocationCreateInfo vmaallocinfo = {};
+        vmaallocinfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+        vmaallocinfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+        vmaallocinfo.priority = 1.f;
+
+        VkImage dstImage;
+        VmaAllocation allocation{ VK_NULL_HANDLE };
         {
+            LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
+            VK_CHECK( vmaCreateImage( *VK_API::GetStateTracker()._allocatorInstance._allocator,
+                                      &imageCreateCI,
+                                      &vmaallocinfo,
+                                      &dstImage,
+                                      &allocation,
+                                      nullptr));
+        }
 
-            VkBufferMemoryBarrier2 bufferBarrier = vk::bufferMemoryBarrier2();
-            VkImageMemoryBarrier2 imageBarrier = vk::imageMemoryBarrier2();
+        VK_API::RegisterCustomAPIDelete( [dstImage, allocation]( [[maybe_unused]] VkDevice device )
+                                         {
+                                             LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
+                                             vmaDestroyImage( *VK_API::GetStateTracker()._allocatorInstance._allocator, dstImage, allocation );
+                                         }, true );
 
-            // Enable destination buffer to be written to
-            {
-                bufferBarrier.srcAccessMask = 0;
-                bufferBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-                bufferBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-                bufferBarrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-                bufferBarrier.offset = 0;
-                bufferBarrier.size = sizeDest;
-                bufferBarrier.buffer = stagingBuffer->_buffer;
-            }
+        CopyTexParams copyParams{};
+        copyParams._sourceMipLevel = mipLevel;
+        copyParams._targetMipLevel = mipLevel;
+        copyParams._dimensions.width = grabData._width;
+        copyParams._dimensions.height = grabData._height;
+        CopyInternal(cmdBuffer,
+                     image()->_image,
+                     GetAspectFlags( descriptor() ),
+                     imageLayout,
+                     dstImage,
+                     GetAspectFlags( descriptor() ),
+                     VK_IMAGE_LAYOUT_GENERAL,
+                     copyParams,
+                     1u);
 
-            // Enable framebuffer image view to be read from
-            {
+        VkBufferMemoryBarrier2 bufferBarrier = vk::bufferMemoryBarrier2();
+        // Enable destination buffer to be written to
+        {
+            bufferBarrier.srcAccessMask = 0;
+            bufferBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+            bufferBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+            bufferBarrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+            bufferBarrier.offset = 0;
+            bufferBarrier.size = sizeDest;
+            bufferBarrier.buffer = stagingBuffer->_buffer;
+        }
 
-                imageBarrier.image = image()->_image;
-                imageBarrier.subresourceRange.baseMipLevel = mipLevel;
-                imageBarrier.subresourceRange.levelCount = 1u;
-                imageBarrier.subresourceRange.baseArrayLayer = 0u;
-                imageBarrier.subresourceRange.layerCount = 1u;
-                imageBarrier.subresourceRange.aspectMask = GetAspectFlags( descriptor() );
-                imageBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                imageBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
-                imageBarrier.srcStageMask = VK_API::ALL_SHADER_STAGES;
-                imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-                imageBarrier.oldLayout = targetLayout;
-                imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-            }
+        VkDependencyInfo dependencyInfo = vk::dependencyInfo();
+        dependencyInfo.bufferMemoryBarrierCount = 1u;
+        dependencyInfo.pBufferMemoryBarriers = &bufferBarrier;
 
-            VkDependencyInfo dependencyInfo = vk::dependencyInfo();
-            dependencyInfo.imageMemoryBarrierCount = 1u;
-            dependencyInfo.pImageMemoryBarriers = &imageBarrier;
-            dependencyInfo.bufferMemoryBarrierCount = 1u;
-            dependencyInfo.pBufferMemoryBarriers = &bufferBarrier;
+        vkCmdPipelineBarrier2( cmdBuffer, &dependencyInfo );
 
-            vkCmdPipelineBarrier2( cmd, &dependencyInfo );
+        VkBufferImageCopy image_copy_region{};
+        image_copy_region.bufferOffset = 0u;
+        image_copy_region.bufferRowLength = grabData._width;
+        image_copy_region.bufferImageHeight = grabData._height;
+        image_copy_region.imageSubresource.aspectMask = GetAspectFlags( descriptor() );
+        image_copy_region.imageSubresource.mipLevel = mipLevel;
+        image_copy_region.imageSubresource.baseArrayLayer = 0u;
+        image_copy_region.imageSubresource.layerCount = 1u;
+        image_copy_region.imageOffset.x = 0;
+        image_copy_region.imageOffset.y = 0;
+        image_copy_region.imageOffset.z = 0;
+        image_copy_region.imageExtent.width = grabData._width;
+        image_copy_region.imageExtent.height = grabData._height;
+        image_copy_region.imageExtent.depth = 1u;
 
-            VkBufferImageCopy image_copy_region{};
-            image_copy_region.bufferRowLength = mipWidth;
-            image_copy_region.bufferImageHeight = mipHeight;
-            image_copy_region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            image_copy_region.imageSubresource.layerCount = 1u;
-            image_copy_region.imageSubresource.mipLevel = mipLevel;
-            image_copy_region.imageExtent.width = mipWidth;
-            image_copy_region.imageExtent.height = mipHeight;
-            image_copy_region.imageExtent.depth = 1u;
-
-            vkCmdCopyImageToBuffer( cmd, _image->_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, stagingBuffer->_buffer, 1u, &image_copy_region );
-
-
-            // Enable destination buffer to map memory
-            {
-                bufferBarrier.srcAccessMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-                bufferBarrier.dstAccessMask = VK_ACCESS_2_HOST_READ_BIT;
-                bufferBarrier.srcStageMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-                bufferBarrier.dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT;
-            }
-
-            // Revert back the framebuffer image view from transfer to present
-            {
-                imageBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
-                imageBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-                imageBarrier.dstStageMask = VK_API::ALL_SHADER_STAGES;
-                imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-                imageBarrier.newLayout = targetLayout;
-            }
-            vkCmdPipelineBarrier2( cmd, &dependencyInfo );
+        vkCmdCopyImageToBuffer( cmdBuffer, dstImage, VK_IMAGE_LAYOUT_GENERAL, stagingBuffer->_buffer, 1u, &image_copy_region );
 
 
-            memcpy(grabData._data.get(), (Byte*)stagingBuffer->_allocInfo.pMappedData, sizeDest);
+        // Enable destination buffer to map memory
+        {
+            bufferBarrier.srcAccessMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+            bufferBarrier.dstAccessMask = VK_ACCESS_2_HOST_READ_BIT;
+            bufferBarrier.srcStageMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+            bufferBarrier.dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT;
+        }
 
-        }, "vkTexture::readData()" );
-        
-        return data;
+        vkCmdPipelineBarrier2( cmdBuffer, &dependencyInfo );
+
+
+        memcpy(grabData._data.data(), (Byte*)stagingBuffer->_allocInfo.pMappedData, sizeDest);
+
+        return grabData;
     }
 
     bool operator==( const vkTexture::CachedImageView::Descriptor& lhs, const vkTexture::CachedImageView::Descriptor& rhs ) noexcept
@@ -977,4 +1159,47 @@ namespace Divide
         return newView._view;
     }
 
+    /*static*/ void vkTexture::Copy(VkCommandBuffer cmdBuffer, const vkTexture* source, const U8 sourceSamples, const vkTexture* destination, const U8 destinationSamples, CopyTexParams params)
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        // We could handle this with a custom shader pass and temp render targets, so leaving the option i
+        DIVIDE_ASSERT( sourceSamples == destinationSamples == 0u, "vkTexture::copy Multisampled textures is not supported yet!" );
+        DIVIDE_ASSERT( source != nullptr && destination != nullptr, "vkTexture::copy Invalid source and/or destination textures specified!" );
+
+        const TextureType srcType = source->descriptor().texType();
+        const TextureType dstType = destination->descriptor().texType();
+        assert( srcType != TextureType::COUNT && dstType != TextureType::COUNT );
+
+        U32 layerOffset = params._layerRange.offset;
+        U32 layerCount = params._layerRange.count == U16_MAX ? source->_depth : params._layerRange.count;
+        if ( IsCubeTexture( srcType ) )
+        {
+            layerOffset *= 6;
+            layerCount *= 6;
+        }
+        params._layerRange = { layerOffset, layerCount };
+
+        if ( srcType != TextureType::COUNT && dstType != TextureType::COUNT )
+        {
+            const VkImageLayout sourceLayout = IsDepthTexture( source->descriptor().packing() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            const VkImageLayout targetLayout = IsDepthTexture( destination->descriptor().packing() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+            U16 depth = 1u;
+            if ( source->descriptor().texType() == TextureType::TEXTURE_3D )
+            {
+                depth = source->_depth;
+            }
+
+            CopyInternal( cmdBuffer, 
+                          source->_image->_image,
+                          GetAspectFlags( source->descriptor() ),
+                          sourceLayout,
+                          destination->_image->_image,
+                          GetAspectFlags( destination->descriptor() ),
+                          targetLayout,
+                          params,
+                          depth );
+        }
+    }
 }; //namespace Divide

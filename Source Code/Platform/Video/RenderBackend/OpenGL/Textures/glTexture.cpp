@@ -343,7 +343,7 @@ void glTexture::clearData( const UColour4& clearColour, vec2<U16> layerRange, U8
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     // We could handle this with a custom shader pass and temp render targets, so leaving the option i
-    DIVIDE_ASSERT(sourceSamples == destinationSamples == 0u, "glTexcture::copy Multisampled textures is not supported yet!");
+    DIVIDE_ASSERT(sourceSamples == destinationSamples == 0u, "glTexture::copy Multisampled textures is not supported yet!");
     DIVIDE_ASSERT(source != nullptr && destination != nullptr, "glTexture::copy Invalid source and/or destination textures specified!");
 
     const TextureType srcType = source->descriptor().texType();
@@ -351,9 +351,12 @@ void glTexture::clearData( const UColour4& clearColour, vec2<U16> layerRange, U8
     assert(srcType != TextureType::COUNT && dstType != TextureType::COUNT);
 
     if (srcType != TextureType::COUNT && dstType != TextureType::COUNT) {
-        U32 numFaces = 1;
-        if (IsCubeTexture(srcType)) {
-            numFaces = 6;
+        U32 layerOffset = params._layerRange.offset;
+        U32 layerCount = params._layerRange.count == U16_MAX ? source->_depth : params._layerRange.count;
+        if (IsCubeTexture(srcType))
+        {
+            layerOffset *= 6;
+            layerCount *= 6;
         }
 
         glCopyImageSubData(
@@ -363,55 +366,46 @@ void glTexture::clearData( const UColour4& clearColour, vec2<U16> layerRange, U8
             params._sourceMipLevel,
             params._sourceCoords.x,
             params._sourceCoords.y,
-            params._sourceCoords.z,
+            layerOffset,
             //Destination
             destination->textureHandle(),
             GLUtil::internalTextureType(dstType, destinationSamples),
             params._targetMipLevel,
             params._targetCoords.x,
             params._targetCoords.y,
-            params._targetCoords.z,
+            layerOffset,
             //Source Dim
             params._dimensions.x,
             params._dimensions.y,
-            params._dimensions.z * numFaces);
+            layerCount);
     }
 }
 
 ImageReadbackData glTexture::readData(U8 mipLevel, const PixelAlignment& pixelPackAlignment) const {
-    if ( mipLevel == U8_MAX )
-    {
-        mipLevel = to_U8(mipCount() - 1u);
-    }
 
-    GLint texWidth = _width, texHeight = _height;
-    glGetTextureLevelParameteriv(_textureHandle, static_cast<GLint>(mipLevel), GL_TEXTURE_WIDTH, &texWidth);
-    glGetTextureLevelParameteriv(_textureHandle, static_cast<GLint>(mipLevel), GL_TEXTURE_HEIGHT, &texHeight);
-
-    /** Always assume 4 channels as per GL spec:
-      * If the selected texture image does not contain four components, the following mappings are applied.
-      * Single-component textures are treated as RGBA buffers with red set to the single-component value, green set to 0, blue set to 0, and alpha set to 1.
-      * Two-component textures are treated as RGBA buffers with red set to the value of component zero, alpha set to the value of component one, and green and blue set to 0.
-      * Finally, three-component textures are treated as RGBA buffers with red set to component zero, green set to component one, blue set to component two, and alpha set to 1.
-    **/
-
-    const auto desiredDataFormat = _descriptor.dataType();
-    const auto desiredImageFormat = _descriptor.baseFormat();
-    const auto desiredPacking = _descriptor.packing();
-
-    const U8 bpp = Texture::GetBytesPerPixel(desiredDataFormat, desiredImageFormat, desiredPacking);
-
-    DIVIDE_ASSERT(bpp == 4 && desiredImageFormat == GFXImageFormat::RGBA && !IsCubeTexture(_descriptor.texType()), "glTexture:readData: unsupported image for readback. Support is very limited!");
-
-    const GLsizei size = (GLsizei{ texWidth } * texHeight * _depth * bpp);
 
     ImageReadbackData grabData{};
-    grabData._data.reset(new Byte[size]);
-    grabData._size = size;
+
+    grabData._bpp = Texture::GetBytesPerPixel( _descriptor.dataType(), _descriptor.baseFormat(), _descriptor.packing() );
+    grabData._numComponents = numChannels();
+    grabData._sourceIsBGR = IsBGRTexture(_descriptor.baseFormat());
+
+    DIVIDE_ASSERT(_depth == 1u && !IsCubeTexture(_descriptor.texType()), "glTexture:readData: unsupported image for readback. Support is very limited!");
+
+    mipLevel = std::min(mipLevel, to_U8(mipCount() - 1u));
+    {
+        GLint width = _width, height = _height;
+        glGetTextureLevelParameteriv(_textureHandle, static_cast<GLint>(mipLevel), GL_TEXTURE_WIDTH,  &width );
+        glGetTextureLevelParameteriv(_textureHandle, static_cast<GLint>(mipLevel), GL_TEXTURE_HEIGHT, &height );
+        grabData._width = to_U16(width);
+        grabData._height = to_U16(height);
+    }
+
+    grabData._data.resize( to_size( grabData._width ) * grabData._height * _depth * grabData._bpp );
 
     if ( IsCompressed( _descriptor.baseFormat() ) )
     {
-        glGetCompressedTextureImage( _textureHandle, mipLevel, size, (bufferPtr)grabData._data.get());
+        glGetCompressedTextureImage( _textureHandle, mipLevel, (GLsizei)grabData._data.size(), (bufferPtr)grabData._data.data());
     }
     else
     {
@@ -421,13 +415,13 @@ ImageReadbackData glTexture::readData(U8 mipLevel, const PixelAlignment& pixelPa
                           mipLevel,
                           GLUtil::ImageFormat( _descriptor.baseFormat(), _descriptor.packing() ),
                           GLUtil::InternalDataType( _descriptor.dataType(), _descriptor.packing() ),
-                          size,
-                          (bufferPtr)grabData._data.get());
+                          (GLsizei)grabData._data.size(),
+                          grabData._data.data());
 
         GL_API::GetStateTracker().setPixelPackAlignment({});
     }
 
-    return MOV(grabData);
+    return grabData;
 }
 
 };

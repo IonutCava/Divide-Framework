@@ -159,7 +159,7 @@ namespace Divide
         Byte* mappedRange = nullptr;
         if (!_isMemoryMappable)
         {
-            _stagingBuffer = VKUtil::createStagingBuffer( alignedBufferSize * ringQueueLength, bufferName );
+            _stagingBuffer = VKUtil::createStagingBuffer( alignedBufferSize * ringQueueLength, bufferName, false );
             mappedRange = (Byte*)_stagingBuffer->_allocInfo.pMappedData;
         }
         else
@@ -207,7 +207,7 @@ namespace Divide
         else
         {
             // Try and recover some VRAM
-            _stagingBuffer = VKUtil::createStagingBuffer( alignedBufferSize, bufferName );
+            _stagingBuffer = VKUtil::createStagingBuffer( alignedBufferSize, bufferName, false );
         }
     }
 
@@ -289,7 +289,7 @@ namespace Divide
     namespace VKUtil
     {
 
-        VMABuffer_uptr createStagingBuffer( const size_t size, std::string_view bufferName )
+        VMABuffer_uptr createStagingBuffer( const size_t size, const std::string_view bufferName, const bool isCopySource )
         {
             BufferParams params{};
             params._flags._usageType = BufferUsageType::STAGING_BUFFER;
@@ -306,7 +306,7 @@ namespace Divide
             vmaallocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
             // Allocate staging buffer
-            const VkBufferCreateInfo bufferInfo = vk::bufferCreateInfo( VK_BUFFER_USAGE_TRANSFER_SRC_BIT, size );
+            const VkBufferCreateInfo bufferInfo = vk::bufferCreateInfo( isCopySource ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT, size );
             // Allocate the buffer
             LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
             VK_CHECK( vmaCreateBuffer( *VK_API::GetStateTracker()._allocatorInstance._allocator,

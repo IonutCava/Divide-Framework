@@ -989,7 +989,7 @@ namespace Divide
 
         const auto takeScreenShot = [this]( [[maybe_unused]] const InputParams param )
         {
-            _context.gfx().screenshot( ResourcePath{ "screenshot_" } );
+            state()->screenshotRequestQueued(true);
         };
 
         const auto toggleFullScreen = [this]( [[maybe_unused]] const InputParams param )

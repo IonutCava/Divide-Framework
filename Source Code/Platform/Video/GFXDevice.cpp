@@ -116,6 +116,7 @@ namespace Divide
         }
     };
 
+    RenderTargetID RenderTargetNames::BACK_BUFFER = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::SCREEN = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::SCREEN_MS = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::SCREEN_PREV = INVALID_RENDER_TARGET_ID;
@@ -612,6 +613,23 @@ namespace Divide
             screenDesc._msaaSamples = 0u;
             screenDesc._name = "Screen Prev";
             RenderTargetNames::SCREEN_PREV = _rtPool->allocateRT( screenDesc )._targetID;
+        }
+        {
+            // This could've been RGB, but Vulkan doesn't seem to support VK_FORMAT_R8G8B8_UNORM in this situation, so ... well ... whatever.
+            TextureDescriptor backBufferDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA ); 
+            backBufferDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
+            backBufferDescriptor.addImageUsageFlag( ImageUsage::SHADER_READ );
+            InternalRTAttachmentDescriptors attachments
+            {
+                InternalRTAttachmentDescriptor{ backBufferDescriptor, samplerHash, RTAttachmentType::COLOUR, ScreenTargets::ALBEDO },
+            };
+
+            RenderTargetDescriptor screenDesc = {};
+            screenDesc._resolution = renderResolution;
+            screenDesc._attachments = attachments;
+            screenDesc._msaaSamples = 0u;
+            screenDesc._name = "BackBuffer";
+            RenderTargetNames::BACK_BUFFER = _rtPool->allocateRT( screenDesc )._targetID;
         }
         {
             TextureDescriptor ssaoDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RED );
@@ -1775,6 +1793,7 @@ namespace Divide
         }
 
         // Update render targets with the new resolution
+        _rtPool->getRenderTarget( RenderTargetNames::BACK_BUFFER )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::SCREEN )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::SCREEN_PREV )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::SCREEN_MS )->resize( w, h );
@@ -2107,16 +2126,6 @@ namespace Divide
 
             switch ( cmdType )
             {
-                case GFX::CommandType::CLEAR_TEXTURE:
-                {
-                    PROFILE_SCOPE( "CLEAR_TEXTURE", Profiler::Category::Graphics );
-
-                    const GFX::ClearTextureCommand& crtCmd = *commandBuffer.get<GFX::ClearTextureCommand>( cmd );
-                    if ( crtCmd._texture != nullptr )
-                    {
-                        crtCmd._texture->clearData( crtCmd._clearColour, crtCmd._layerRange, crtCmd._mipLevel );
-                    }
-                }break;
                 case GFX::CommandType::READ_BUFFER_DATA:
                 {
                     PROFILE_SCOPE( "READ_BUFFER_DATA", Profiler::Category::Graphics );
@@ -3213,38 +3222,37 @@ namespace Divide
     }
 
     /// Extract the pixel data from the main render target's first colour attachment and save it as a TGA image
-    void GFXDevice::screenshot( const ResourcePath& filename ) const
+    void GFXDevice::screenshot( const ResourcePath& filename, GFX::CommandBuffer& bufferInOut ) const
     {
-        // Get the screen's resolution
-        STUBBED( "Screenshot should save the final render target after post processing, not the current screen target!" );
-        thread_local I32 SCREENSHOT_INDEX = 0;
-
-        const RenderTarget* screenRT = _rtPool->getRenderTarget( RenderTargetNames::SCREEN );
-        const U16 width = screenRT->getWidth();
-        const U16 height = screenRT->getHeight();
-        const U8 numChannels = 4;
-
-        // compute the new filename by adding the series number and the extension
-
-        const PixelAlignment pixelPackAlignment{
-            ._alignment = 1u
-        };
-
-        // Read the pixels from the main render target (RGBA16F)
-        const auto retData = screenRT->readData(RTColourAttachmentSlot::SLOT_0, 0u, pixelPackAlignment);
-        if ( retData._data != nullptr )
+        const RenderTarget* screenRT = _rtPool->getRenderTarget( RenderTargetNames::BACK_BUFFER );
+        auto readTextureCmd = GFX::EnqueueCommand<GFX::ReadTextureCommand>( bufferInOut );
+        readTextureCmd->_texture = screenRT->getAttachment(RTAttachmentType::COLOUR, ScreenTargets::ALBEDO )->texture().get();
+        readTextureCmd->_pixelPackAlignment._alignment = 1u;
+        readTextureCmd->_callback = [filename]( const ImageReadbackData& data )
         {
-            // Save to file
-            const ResourcePath newFilename( Util::StringFormat( "Screenshots/%s_%d.tga", filename.c_str(), SCREENSHOT_INDEX ) );
-            if ( ImageTools::SaveImage( filename,
-                                        vec2<U16>( width, height ),
-                                        numChannels,
-                                        retData._data.get(),
-                                        ImageTools::SaveImageFormat::PNG ) )
+            if ( !data._data.empty() )
             {
-                ++SCREENSHOT_INDEX;
+                DIVIDE_ASSERT(data._bpp > 0u && data._numComponents > 0u);
+                // Make sure we have a valid target directory
+                if ( !createDirectory( Paths::g_screenshotPath ) )
+                {
+                    NOP();
+                }
+
+                // Save to file
+                if ( !ImageTools::SaveImage( ResourcePath( Util::StringFormat( "%s/%s_Date_%s.png", Paths::g_screenshotPath.c_str(), filename.c_str(), CurrentDateTimeString().c_str() )),
+                                             data._width,
+                                             data._height,
+                                             data._numComponents,
+                                             data._bpp,
+                                             data._sourceIsBGR,
+                                             data._data.data(),
+                                             ImageTools::SaveImageFormat::PNG ) )
+                {
+                    DIVIDE_UNEXPECTED_CALL();
+                }
             }
-        }
+        };
     }
 
     size_t GFXDevice::getDefaultStateBlock( const bool noDepthTest ) const noexcept

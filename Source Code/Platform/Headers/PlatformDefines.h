@@ -226,6 +226,8 @@ void ToggleCursor(bool state) noexcept;
 
 [[nodiscard]] bool CursorState() noexcept;
 
+[[nodiscard]] std::string CurrentDateTimeString();
+
 /// Converts an arbitrary positive integer value to a bitwise value used for masks
 template<typename T>
 [[nodiscard]] constexpr T toBit(const T X) {

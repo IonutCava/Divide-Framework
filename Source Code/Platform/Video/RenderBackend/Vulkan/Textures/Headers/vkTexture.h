@@ -80,7 +80,7 @@ namespace Divide
 
         bool unload() override;
 
-        void clearData( const UColour4& clearColour, vec2<U16> layerRange, U8 mipLevel ) const noexcept override;
+        void clearData( VkCommandBuffer cmdBuffer, const UColour4& clearColour, vec2<U16> layerRange, U8 mipLevel ) const noexcept;
         void generateMipmaps( VkCommandBuffer cmdBuffer, U16 baseLevel, U16 baseLayer, U16 layerCount, ImageUsage crtUsage);
 
         PROPERTY_R( AllocatedImage_uptr, image, nullptr );
@@ -89,11 +89,13 @@ namespace Divide
         PROPERTY_R_IW( VkFormat, vkFormat, VK_FORMAT_MAX_ENUM );
         PROPERTY_R_IW( VkSampleCountFlagBits, sampleFlagBits, VK_SAMPLE_COUNT_1_BIT );
 
-        [[nodiscard]] ImageReadbackData readData(U8 mipLevel, const PixelAlignment& pixelPackAlignment) const noexcept override;
+        [[nodiscard]] ImageReadbackData readData(U8 mipLevel, const PixelAlignment& pixelPackAlignment) const noexcept;
+        [[nodiscard]] ImageReadbackData readData( VkCommandBuffer cmdBuffer, U8 mipLevel, const PixelAlignment& pixelPackAlignment) const noexcept;
         [[nodiscard]] VkImageView getImageView( const CachedImageView::Descriptor& descriptor ) const;
 
         static [[nodiscard]] VkImageAspectFlags GetAspectFlags( const TextureDescriptor& descriptor ) noexcept;
 
+        static void Copy( VkCommandBuffer cmdBuffer, const vkTexture* source, const U8 sourceSamples, const vkTexture* destination, const U8 destinationSamples, CopyTexParams params );
     private:
         void loadDataInternal( const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment ) override;
         void loadDataInternal( const Byte* data, size_t size, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) override;

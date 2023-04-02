@@ -87,10 +87,10 @@ namespace Divide {
             COUNT
         };
 
-        /// Save an image to file of the desired format. Only ubyte is supported as input data.
-        bool SaveImage(const ResourcePath& filename, vec2<U16> dimensions, U8 numberOfComponents, Byte* imageData, SaveImageFormat format);
+        /// Save an image to file of the desired format. Only R/RG/RGB/RGBA 8 bits per pixel data is supported as input data.
+        bool SaveImage(const ResourcePath& filename, U16 width, U16 height, U8 numberOfComponents, U8 bytesPerPixel, const bool sourceIsBGR, const Byte* imageData, SaveImageFormat format);
         /// Save an HDR image to file of the desired format.
-        bool SaveImageHDR(const ResourcePath& filename, vec2<U16> dimensions, U8 numberOfComponents, F32* imageData);
+        bool SaveImageHDR(const ResourcePath& filename, U16 width, U16 height, U8 numberOfComponents, U8 bytesPerPixel, const bool sourceIsBGR, const F32* imageData);
 
     } //namespace ImageTools
 } //namespace Divide

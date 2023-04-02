@@ -40,11 +40,12 @@ namespace Divide {
 static constexpr U8 INVALID_TEXTURE_BINDING = U8_MAX;
 
 struct CopyTexParams {
+    vec2<U16> _layerRange{0u, 1u};
+    vec2<U32> _sourceCoords;
+    vec2<U32> _targetCoords;
+    vec2<U16> _dimensions; //width, height
     U8 _sourceMipLevel{ 0u };
     U8 _targetMipLevel{ 0u };
-    vec3<U32> _sourceCoords;
-    vec3<U32> _targetCoords;
-    vec3<U16> _dimensions; //width, height, numlayers
 };
 
 enum class TextureUpdateState : U8 {
@@ -56,8 +57,12 @@ enum class TextureUpdateState : U8 {
 
 struct ImageReadbackData
 {
-    eastl::unique_ptr<Byte[]> _data;
-    size_t _size{ 0u };
+    vector_fast<Byte> _data;
+    U16 _width{0u};
+    U16 _height{0u};
+    U8  _bpp{0u};
+    U8  _numComponents{0u};
+    bool _sourceIsBGR{false};
 };
 
 }; //namespace Divide

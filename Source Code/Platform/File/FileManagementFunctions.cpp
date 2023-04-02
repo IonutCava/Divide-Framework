@@ -208,6 +208,21 @@ FileError fileLastWriteTime(const char* filePath, const char* fileName, U64& tim
     return fileLastWriteTime((string{ filePath } + "/" + fileName).c_str(), timeOutSec);
 }
 
+size_t numberOfFilesInDirectory( const ResourcePath& path )
+{
+    return numberOfFilesInDirectory(path.c_str());
+}
+
+size_t numberOfFilesInDirectory( const char* path )
+{
+    const std::filesystem::path directoryPath( string{ path });
+
+    return std::count_if( std::filesystem::directory_iterator( path ),
+                          std::filesystem::directory_iterator{},
+                          [](const std::filesystem::path& p){ return std::filesystem::is_regular_file( p ); });
+}
+
+
 bool createFile(const char* filePathAndName, const bool overwriteExisting) {
     if (overwriteExisting && fileExists(filePathAndName)) {
         const bool ret = std::ofstream(filePathAndName, std::fstream::in | std::fstream::trunc).good();

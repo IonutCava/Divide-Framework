@@ -675,6 +675,18 @@ namespace Divide
         Attorney::SceneManager::drawCustomUI( getActiveScene(), targetViewport, bufferInOut, memCmdInOut );
     }
 
+    void SceneManager::postRender( GFX::CommandBuffer& bufferInOut, [[maybe_unused]] GFX::MemoryBarrierCommand& memCmdInOut )
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+
+        Scene& activeScene = getActiveScene();
+        if ( activeScene.state()->screenshotRequestQueued() )
+        {
+            _platformContext->gfx().screenshot( ResourcePath{ Util::StringFormat("Frame_%d", GFXDevice::FrameCount())}, bufferInOut);
+            activeScene.state()->screenshotRequestQueued(false);
+        }
+    }
+
     void SceneManager::debugDraw( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );

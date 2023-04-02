@@ -9,6 +9,8 @@
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
 
+#include <bitset>
+
 namespace Divide {
 namespace GFX {
 
@@ -20,8 +22,11 @@ IMPLEMENT_COMMAND(PushViewportCommand);
 IMPLEMENT_COMMAND(PopViewportCommand);
 IMPLEMENT_COMMAND(BeginRenderPassCommand);
 IMPLEMENT_COMMAND(EndRenderPassCommand);
+IMPLEMENT_COMMAND(BeginGPUQueryCommand);
+IMPLEMENT_COMMAND(EndGPUQueryCommand);
 IMPLEMENT_COMMAND(BlitRenderTargetCommand);
 IMPLEMENT_COMMAND(CopyTextureCommand);
+IMPLEMENT_COMMAND(ReadTextureCommand);
 IMPLEMENT_COMMAND(ClearTextureCommand);
 IMPLEMENT_COMMAND(ComputeMipMapsCommand);
 IMPLEMENT_COMMAND(SetScissorCommand);
@@ -419,22 +424,88 @@ string ToString(const SetClippingStateCommand& cmd, U16 indent) {
     return Util::StringFormat(" [ Origin: %s ] [ Depth: %s ]", cmd._lowerLeftOrigin ? "LOWER_LEFT" : "UPPER_LEFT", cmd._negativeOneToOneDepth ? "-1 to 1 " : "0 to 1");
 }
 
+string ToString( const BeginGPUQueryCommand& cmd, const U16 indent )
+{
+    string ret = " Bit Mask: ";
+    ret.append( std::bitset<32>(cmd._queryMask).to_string() );
+    return ret;
+}
+
+string ToString( const EndGPUQueryCommand& cmd, const U16 indent )
+{
+    return cmd._waitForResults ? " Wait for results: TRUE" : " Wait for results: FALSE";
+}
+
+string ToString( const BlitRenderTargetCommand& cmd, const U16 indent )
+{
+    string ret = Util::StringFormat("Source ID [ %d ] Target ID [ %d ] Param count [ %d ]\n", cmd._source, cmd._destination, cmd._params.size());
+    for ( auto it : cmd._params )
+    {
+        ret.append( "    " );
+        for ( U16 j = 0; j < indent; ++j )
+        {
+            ret.append( "    " );
+        }
+
+        ret.append( Util::StringFormat( "Input: [l: %d m: %d i: %d] Output: [l: %d m: %d i: %d] Layer count: [ %d ] Mip Count: [ %d ]\n", it._input._layerOffset, it._input._mipOffset, it._input._index, it._output._layerOffset, it._output._mipOffset, it._output._index, it._layerCount, it._mipCount ) );
+    }
+
+    return ret;
+}
+
+string ToString( const CopyTextureCommand& cmd, const U16 indent )
+{
+    return "ToDo";
+}
+
+string ToString( const ReadTextureCommand& cmd, const U16 indent )
+{
+    return "ToDo";
+}
+
+string ToString( const ClearTextureCommand& cmd, const U16 indent )
+{
+    return "ToDo";
+}
+
+string ToString( const ComputeMipMapsCommand& cmd, const U16 indent )
+{
+    return "ToDo";
+}
+
+string ToString( const PushCameraCommand& cmd, const U16 indent )
+{
+    return "ToDo";
+}
+
+string ToString( const ReadBufferDataCommand& cmd, const U16 indent )
+{
+    return "ToDo";
+}
+
+string ToString( const ClearBufferDataCommand& cmd, const U16 indent )
+{
+    return "ToDo";
+}
+
 string ToString(const CommandBase& cmd, U16 indent) {
     string ret(indent, ' ');
     ret.append(Names::commandType[to_base(cmd.Type())]);
 
     indent += 3u;
     switch (cmd.Type()) {
-        case CommandType::BIND_PIPELINE: {
-            ret.append(ToString(static_cast<const BindPipelineCommand&>(cmd), indent));
-        }break;
-        case CommandType::SEND_PUSH_CONSTANTS:
+        case CommandType::BEGIN_RENDER_PASS:
         {
-            ret.append(ToString(static_cast<const SendPushConstantsCommand&>(cmd), indent));
+            ret.append(ToString(static_cast<const BeginRenderPassCommand&>(cmd), indent));
         }break;
-        case CommandType::DRAW_COMMANDS:
+        case CommandType::END_RENDER_PASS: break;
+        case CommandType::BEGIN_GPU_QUERY:
         {
-            ret.append(ToString(static_cast<const DrawCommand&>(cmd), indent));
+            ret.append(ToString(static_cast<const BeginGPUQueryCommand&>(cmd), indent));
+        }break;
+        case CommandType::END_GPU_QUERY: 
+        {
+            ret.append(ToString(static_cast<const EndGPUQueryCommand&>(cmd), indent));
         }break;
         case CommandType::SET_VIEWPORT:
         {
@@ -444,33 +515,58 @@ string ToString(const CommandBase& cmd, U16 indent) {
         {
             ret.append(ToString(static_cast<const PushViewportCommand&>(cmd), indent));
         }break;
-        case CommandType::BEGIN_RENDER_PASS:
-        {
-            ret.append(ToString(static_cast<const BeginRenderPassCommand&>(cmd), indent));
-        }break;
+        case CommandType::POP_VIEWPORT: break;
         case CommandType::SET_SCISSOR:
         {
             ret.append(ToString(static_cast<const SetScissorCommand&>(cmd), indent));
         }break;
-        case CommandType::SET_CLIP_PLANES:
+        case CommandType::BLIT_RT:
         {
-            ret.append(ToString(static_cast<const SetClipPlanesCommand&>(cmd), indent));
+            ret.append(ToString(static_cast<const BlitRenderTargetCommand&>(cmd), indent));
+        }break;
+        case CommandType::COPY_TEXTURE:
+        {
+            ret.append( ToString( static_cast<const CopyTextureCommand&>(cmd), indent ) );
+        }break;
+        case CommandType::READ_TEXTURE:
+        {
+            ret.append( ToString( static_cast<const ReadTextureCommand&>(cmd), indent ) );
+        }break;
+        case CommandType::CLEAR_TEXTURE:
+        {
+            ret.append( ToString( static_cast<const ClearTextureCommand&>(cmd), indent ) );
+        }break;
+        case CommandType::COMPUTE_MIPMAPS:
+        {
+            ret.append( ToString( static_cast<const ComputeMipMapsCommand&>(cmd), indent ) );
         }break;
         case CommandType::SET_CAMERA:
         {
             ret.append(ToString(static_cast<const SetCameraCommand&>(cmd), indent));
         }break;
+        case CommandType::PUSH_CAMERA:
+        {
+            ret.append(ToString(static_cast<const PushCameraCommand&>(cmd), indent));
+        }break;
+        case CommandType::POP_CAMERA: break;
+        case CommandType::SET_CLIP_PLANES:
+        {
+            ret.append(ToString(static_cast<const SetClipPlanesCommand&>(cmd), indent));
+        }break;
+        case CommandType::BIND_PIPELINE: {
+            ret.append(ToString(static_cast<const BindPipelineCommand&>(cmd), indent));
+        }break;
         case CommandType::BIND_SHADER_RESOURCES:
         {
             ret.append(ToString(static_cast<const BindShaderResourcesCommand&>(cmd), indent));
         }break;
-        case CommandType::BEGIN_DEBUG_SCOPE:
+        case CommandType::SEND_PUSH_CONSTANTS:
         {
-            ret.append(ToString(static_cast<const BeginDebugScopeCommand&>(cmd), indent));
-        }break; 
-        case CommandType::ADD_DEBUG_MESSAGE:
+            ret.append(ToString(static_cast<const SendPushConstantsCommand&>(cmd), indent));
+        }break;
+        case CommandType::DRAW_COMMANDS:
         {
-            ret.append(ToString(static_cast<const AddDebugMessageCommand&>(cmd), indent));
+            ret.append(ToString(static_cast<const DrawCommand&>(cmd), indent));
         }break;
         case CommandType::DISPATCH_COMPUTE:
         {
@@ -479,6 +575,23 @@ string ToString(const CommandBase& cmd, U16 indent) {
         case CommandType::MEMORY_BARRIER:
         {
             ret.append(ToString(static_cast<const MemoryBarrierCommand&>(cmd), indent));
+        }break;
+        case CommandType::READ_BUFFER_DATA:
+        {
+            ret.append(ToString(static_cast<const ReadBufferDataCommand&>(cmd), indent));
+        }break;
+        case CommandType::CLEAR_BUFFER_DATA:
+        {
+            ret.append(ToString(static_cast<const ClearBufferDataCommand&>(cmd), indent));
+        }break;
+        case CommandType::BEGIN_DEBUG_SCOPE:
+        {
+            ret.append(ToString(static_cast<const BeginDebugScopeCommand&>(cmd), indent));
+        }break; 
+        case CommandType::END_DEBUG_SCOPE: break;
+        case CommandType::ADD_DEBUG_MESSAGE:
+        {
+            ret.append(ToString(static_cast<const AddDebugMessageCommand&>(cmd), indent));
         }break;
         case CommandType::SET_CLIPING_STATE:
         {

@@ -1949,6 +1949,33 @@ namespace Divide
             }break;
             case GFX::CommandType::COPY_TEXTURE:
             {
+                PROFILE_SCOPE( "COPY_TEXTURE", Profiler::Category::Graphics );
+
+                const GFX::CopyTextureCommand* crtCmd = cmd->As<GFX::CopyTextureCommand>();
+                vkTexture::Copy( cmdBuffer,
+                                 static_cast<vkTexture*>(crtCmd->_source),
+                                 crtCmd->_sourceMSAASamples,
+                                 static_cast<vkTexture*>(crtCmd->_destination),
+                                 crtCmd->_destinationMSAASamples,
+                                 crtCmd->_params );
+            }break;
+            case GFX::CommandType::CLEAR_TEXTURE:
+            {
+                PROFILE_SCOPE( "CLEAR_TEXTURE", Profiler::Category::Graphics );
+
+                const GFX::ClearTextureCommand* crtCmd = cmd->As<GFX::ClearTextureCommand>();
+                if ( crtCmd->_texture != nullptr )
+                {
+                    static_cast<vkTexture*>(crtCmd->_texture)->clearData( cmdBuffer, crtCmd->_clearColour, crtCmd->_layerRange, crtCmd->_mipLevel );
+                }
+            }break;
+            case GFX::CommandType::READ_TEXTURE:
+            {
+                PROFILE_SCOPE( "READ_TEXTURE", Profiler::Category::Graphics );
+
+                const GFX::ReadTextureCommand* crtCmd = cmd->As<GFX::ReadTextureCommand>();
+                auto res = static_cast<vkTexture*>(crtCmd->_texture)->readData( cmdBuffer, crtCmd->_mipLevel, crtCmd->_pixelPackAlignment);
+                crtCmd->_callback( res );
             }break;
             case GFX::CommandType::BIND_PIPELINE:
             {

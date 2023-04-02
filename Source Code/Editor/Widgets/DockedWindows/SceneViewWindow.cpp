@@ -8,6 +8,7 @@
 
 #include "Core/Headers/PlatformContext.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 
 #include <imgui_internal.h>
@@ -155,7 +156,7 @@ namespace Divide
             PopReadOnly();
         }
 
-        const RenderTarget* rt = _parent.getEditorTarget()._rt;
+        const RenderTarget* rt = _parent.context().gfx().renderTargetPool().getRenderTarget(RenderTargetNames::BACK_BUFFER);
         const Texture_ptr& gameView = rt->getAttachment(RTAttachmentType::COLOUR)->texture();
 
         NodePreviewWindow::drawInternal(gameView.get());

@@ -245,6 +245,16 @@ namespace Divide
         return SDL_ShowCursor( SDL_QUERY ) == SDL_ENABLE;
     }
 
+    std::string CurrentDateTimeString()
+    {
+        const std::time_t t = std::time( nullptr );
+        std::tm* now = std::localtime( &t );
+
+        char buffer[128];
+        strftime( buffer, sizeof( buffer ), "%d_%m_%Y__%H_%M_%S", now );
+        return buffer;
+    }
+
 };  // namespace Divide
 
 void* operator new(const size_t size, [[maybe_unused]] const char* zFile, [[maybe_unused]] const size_t nLine)

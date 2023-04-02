@@ -817,19 +817,76 @@ void ImageData::getColour(const I32 x, const I32 y, U8& r, U8& g, U8& b, U8& a, 
     }
 }
 
-bool SaveImage(const ResourcePath& filename, const vec2<U16> dimensions, const U8 numberOfComponents, Byte* imageData, const SaveImageFormat format) {
-    switch (format) {
-        case SaveImageFormat::PNG: return stbi_write_png(filename.c_str(), dimensions.width, dimensions.height, numberOfComponents, imageData, dimensions.width * numberOfComponents) == TRUE;
-        case SaveImageFormat::BMP: return stbi_write_bmp(filename.c_str(), dimensions.width, dimensions.height, numberOfComponents, imageData) == TRUE;
-        case SaveImageFormat::TGA: return stbi_write_tga(filename.c_str(), dimensions.width, dimensions.height, numberOfComponents, imageData) == TRUE;
-        case SaveImageFormat::JPG: return stbi_write_jpg(filename.c_str(), dimensions.width, dimensions.height, numberOfComponents, imageData, 85) == TRUE;
+namespace 
+{
+    template<size_t src_comp_num, bool source_is_BGR>
+    void flipAndConvertToRGB8( const Byte* sourceBuffer, Byte* destBuffer, const U16 width, const U16 height, const U8 bytesPerPixel )
+    {
+        // The only reason this templated function exist is to collapse conversion to a single loop while also avoiding expensive if checks on the number of components in the middle of it.
+        // The template allows us to use the compile-time constexpr check for number of source components.
+
+        for ( I32 j = height - 1; j >= 0; --j )
+        {
+            const Byte* src = sourceBuffer + (bytesPerPixel * width * j);
+                  Byte* dst = destBuffer   + (3 * width * (height - 1 - j));
+
+            for (U16 i = 0u; i < width; ++i)
+            {
+                *dst++ = *(src + (source_is_BGR ? 2 : 0));
+
+                if constexpr ( src_comp_num > 1 )
+                {
+                    *dst++ = *(src + 1);
+
+                    if constexpr (src_comp_num > 2 )
+                    {
+                        *dst++ = *(src + (source_is_BGR ? 0 : 2));
+                    }
+                }
+
+                src += bytesPerPixel;
+            }
+        }
+    }
+}
+
+bool SaveImage(const ResourcePath& filename, const U16 width, const U16 height, const U8 numberOfComponents, const U8 bytesPerPixel, const bool sourceIsBGR, const Byte* imageData, const SaveImageFormat format) {
+    // Flip data upside-down and convert to RGB8
+    if ( width == 0u || height == 0 || numberOfComponents == 0 )
+    {
+        return false;
+    }
+
+    vector_fast<Byte> pix( width * height * 3 );
+    Byte* dest = pix.data();
+
+    switch (numberOfComponents )
+    {
+        //Granted, this is not pretty, but we have:
+        //    A) a limited number of components to handle (R/RG/RGB/RGBA)
+        //    B) way faster&cleaner to use the template than an if-check or switch and copy-pasting the loop a few times.
+
+        case 1: sourceIsBGR ? flipAndConvertToRGB8<1, true>( imageData, dest, width, height, bytesPerPixel ) : flipAndConvertToRGB8<1, false>( imageData, dest, width, height, bytesPerPixel ); break;
+        case 2: sourceIsBGR ? flipAndConvertToRGB8<2, true>( imageData, dest, width, height, bytesPerPixel ) : flipAndConvertToRGB8<2, false>( imageData, dest, width, height, bytesPerPixel ); break;
+        case 3: sourceIsBGR ? flipAndConvertToRGB8<3, true>( imageData, dest, width, height, bytesPerPixel ) : flipAndConvertToRGB8<3, false>( imageData, dest, width, height, bytesPerPixel ); break;
+        case 4: sourceIsBGR ? flipAndConvertToRGB8<4, true>( imageData, dest, width, height, bytesPerPixel ) : flipAndConvertToRGB8<4, false>( imageData, dest, width, height, bytesPerPixel ); break;
+        default: DIVIDE_UNEXPECTED_CALL(); return false;
+    }
+
+    switch (format)
+    {
+        case SaveImageFormat::PNG: return stbi_write_png(filename.c_str(), width, height, 3, pix.data(), width * 3 * sizeof(Byte)) == TRUE;
+        case SaveImageFormat::BMP: return stbi_write_bmp(filename.c_str(), width, height, 3, pix.data()) == TRUE;
+        case SaveImageFormat::TGA: return stbi_write_tga(filename.c_str(), width, height, 3, pix.data()) == TRUE;
+        case SaveImageFormat::JPG: return stbi_write_jpg(filename.c_str(), width, height, 3, pix.data(), 85) == TRUE;
     }
 
     return false;
 }
 
-bool SaveImageHDR(const ResourcePath& filename, const vec2<U16> dimensions, const U8 numberOfComponents, F32* imageData) {
-    return stbi_write_hdr(filename.c_str(), dimensions.width, dimensions.height, numberOfComponents, imageData) == TRUE;
+bool SaveImageHDR(const ResourcePath& filename, const U16 width, const U16 height, const U8 numberOfComponents, [[maybe_unused]] const U8 bytesPerPixel, [[maybe_unused]] const bool sourceIsBGR, const F32* imageData)
+{
+    return stbi_write_hdr(filename.c_str(), width, height, numberOfComponents, imageData) == TRUE;
 }
 }  // namespace Divide::ImageTools
 

@@ -122,7 +122,6 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource
         [[nodiscard]] ImageView getView( TextureType targetType, vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/ ) const noexcept;
 
         [[nodiscard]] virtual ImageReadbackData readData( U8 mipLevel, const PixelAlignment& pixelPackAlignment) const = 0;
-                      virtual void              clearData( const UColour4& clearColour, vec2<U16> layerRange, U8 mipLevel) const = 0;
 
         PROPERTY_R( TextureDescriptor, descriptor );
         /// Get the number of mips

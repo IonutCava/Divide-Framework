@@ -196,6 +196,7 @@ class SceneState : public SceneComponent {
     PROPERTY_RW(F32, windDirZ, 0.7f);
     PROPERTY_RW(F32, lightBleedBias, 0.2f);
     PROPERTY_RW(F32, minShadowVariance, 0.00001f);
+    PROPERTY_RW(bool, screenshotRequestQueued, false);
 
 protected:
     SceneRenderState _renderState;

@@ -88,7 +88,7 @@ namespace Divide {
 
 
     namespace VKUtil {
-        VMABuffer_uptr createStagingBuffer(size_t size, std::string_view bufferName);
+        VMABuffer_uptr createStagingBuffer(size_t size, std::string_view bufferName, const bool isCopySource);
     } //namespace VKUtil
 } //namespace Divide
 

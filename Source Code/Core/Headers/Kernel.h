@@ -152,7 +152,6 @@ class Kernel final : public Input::InputAggregatorInterface,
 
     std::array<InputAggregatorInterface*, to_base(InputConsumerType::COUNT)> _inputConsumers{};
 
-    vector<Rect<I32>> _editorViewports{};
     vector<Rect<I32>> _targetViewports{};
 
     std::atomic_bool _splashScreenUpdating{};

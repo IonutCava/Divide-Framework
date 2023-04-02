@@ -217,7 +217,7 @@ void DVDTexture::blitToMemory(void* targetData) {
     };
 
     auto data = _texture->readData(0u, pixelPackAlignment);
-    memcpy(targetData, data._data.get(), data._size);
+    memcpy(targetData, data._data.data(), data._data.size());
 }
 
 void DVDTexture::generateDVDTexture()

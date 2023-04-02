@@ -116,7 +116,8 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         _sceneEdges = _context.renderTargetPool().allocateRT(desc);
     }
     {
-        TextureDescriptor lumaDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RED );
+        // Could be FLOAT_16 but due to host-readback, keeping it as 32 makes it a bit easier to manage
+        TextureDescriptor lumaDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_32, GFXImageFormat::RED );
         lumaDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
         lumaDescriptor.addImageUsageFlag(ImageUsage::SHADER_READ);
 
@@ -454,20 +455,10 @@ void PreRenderBatch::adaptiveExposureControl(const bool state) noexcept {
     _context.context().config().changed(true);
 }
 
-F32 PreRenderBatch::adaptiveExposureValue() const {
-    if (adaptiveExposureControl()) {
-        const PixelAlignment pixelPackAlignment{
-            ._alignment = 1u
-        };
-
-        const auto[data, size] = _currentLuminance->readData(0u, pixelPackAlignment);
-        if (size > 0)
-        {
-            return *reinterpret_cast<F32*>(data.get());
-        }
-    }
-
-    return 1.0f;
+F32 PreRenderBatch::adaptiveExposureValue() const noexcept
+{
+    _adaptiveExposureValueNeedsUpdate = adaptiveExposureControl();
+    return _adaptiveExposureValue;
 }
 
 void PreRenderBatch::toneMapParams(const ToneMapParams params) noexcept {
@@ -683,6 +674,24 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
                     ._targetLayout = ImageUsage::SHADER_READ,
                 });
             }
+
+            if ( _adaptiveExposureValueNeedsUpdate )
+            {
+                _adaptiveExposureValueNeedsUpdate = false;
+
+                auto readTextureCmd = GFX::EnqueueCommand<GFX::ReadTextureCommand>(bufferInOut);
+                readTextureCmd->_texture = _currentLuminance.get();
+                readTextureCmd->_pixelPackAlignment._alignment = 1u;
+                readTextureCmd->_callback = [&](const ImageReadbackData& data)
+                {
+                    if ( !data._data.empty() )
+                    {
+                        _adaptiveExposureValue = *reinterpret_cast<F32*>(data._data.front());
+                    }
+                };
+
+            }
+
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
         }
 

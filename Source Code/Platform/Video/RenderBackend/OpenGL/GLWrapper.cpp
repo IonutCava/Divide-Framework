@@ -973,7 +973,7 @@ namespace Divide
             } break;
             case GFX::CommandType::BEGIN_GPU_QUERY:
             {
-                const GFX::BeginGPUQuery* crtCmd = cmd->As<GFX::BeginGPUQuery>();
+                const GFX::BeginGPUQueryCommand* crtCmd = cmd->As<GFX::BeginGPUQueryCommand>();
                 if ( crtCmd->_queryMask != 0u ) [[likely]]
                 {
                     auto& queryContext = _queryContext.emplace();
@@ -1001,7 +1001,7 @@ namespace Divide
             {
                 if ( !_queryContext.empty() ) [[likely]]
                 {
-                    const GFX::EndGPUQuery* crtCmd = cmd->As<GFX::EndGPUQuery>();
+                    const GFX::EndGPUQueryCommand* crtCmd = cmd->As<GFX::EndGPUQueryCommand>();
 
                     DIVIDE_ASSERT( crtCmd->_resultContainer != nullptr );
 
@@ -1027,6 +1027,24 @@ namespace Divide
                                  static_cast<glTexture*>(crtCmd->_destination),
                                  crtCmd->_destinationMSAASamples,
                                  crtCmd->_params );
+            }break;
+            case GFX::CommandType::CLEAR_TEXTURE:
+            {
+                PROFILE_SCOPE( "CLEAR_TEXTURE", Profiler::Category::Graphics );
+
+                const GFX::ClearTextureCommand* crtCmd = cmd->As<GFX::ClearTextureCommand>();
+                if ( crtCmd->_texture != nullptr )
+                {
+                    static_cast<glTexture*>(crtCmd->_texture)->clearData( crtCmd->_clearColour, crtCmd->_layerRange, crtCmd->_mipLevel );
+                }
+            }break;
+            case GFX::CommandType::READ_TEXTURE:
+            {
+                PROFILE_SCOPE( "READ_TEXTURE", Profiler::Category::Graphics );
+
+                const GFX::ReadTextureCommand* crtCmd = cmd->As<GFX::ReadTextureCommand>();
+                glTexture* tex = static_cast<glTexture*>(crtCmd->_texture);
+                crtCmd->_callback( tex->readData( crtCmd->_mipLevel, crtCmd->_pixelPackAlignment ) );
             }break;
             case GFX::CommandType::BIND_PIPELINE:
             {

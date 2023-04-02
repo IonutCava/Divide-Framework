@@ -770,12 +770,8 @@ namespace Divide
             InternalRTAttachmentDescriptor { editorDescriptor, _editorSamplerHash, RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO }
         };
 
-        editorDesc._name = "Editor";
         editorDesc._resolution = renderResolution;
-        _editorRTHandle = _context.gfx().renderTargetPool().allocateRT( editorDesc );
-
         editorDesc._name = "Node preview";
-        
         TextureDescriptor depthDescriptor( TextureType::TEXTURE_2D,
                                            GFXDataFormat::FLOAT_16,
                                            GFXImageFormat::RED,
@@ -824,10 +820,6 @@ namespace Divide
         }
         _imguiContexts.fill( nullptr );
 
-        if ( !_context.gfx().renderTargetPool().deallocateRT( _editorRTHandle ) )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
         if ( !_context.gfx().renderTargetPool().deallocateRT( _nodePreviewRTHandle ) )
         {
             DIVIDE_UNEXPECTED_CALL();
@@ -2137,7 +2129,7 @@ namespace Divide
 
         return wantsCapture;
     }
-
+     
     void Editor::onWindowSizeChange( const SizeChangeParams& params )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
@@ -2178,11 +2170,11 @@ namespace Divide
         const U16 h = params.height;
 
         // Avoid resolution change on minimize so we don't thrash render targets
-        if ( w < 1 || h < 1 || _editorRTHandle._rt->getResolution() == vec2<U16>( w, h ) )
+        if ( w < 1 || h < 1 || _nodePreviewRTHandle._rt->getResolution() == vec2<U16>( w, h ) )
         {
             return;
         }
-        _editorRTHandle._rt->resize( w, h );
+
         _nodePreviewRTHandle._rt->resize( w, h );
         _render2DSnapshot = Camera::GetUtilityCamera( Camera::UtilityCamera::_2D_FLIP_Y )->snapshot();
     }

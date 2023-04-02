@@ -251,7 +251,6 @@
     <None Include="../../assets\shaders\GLSL\particles.glsl" />
     <None Include="../../assets\shaders\GLSL\passThrough.glsl" />
     <None Include="../../assets\shaders\GLSL\postProcessing.glsl" />
-    <None Include="../../assets\shaders\GLSL\README" />
     <None Include="../../assets\shaders\GLSL\sky.glsl" />
     <None Include="../../assets\shaders\GLSL\SMAA.glsl" />
     <None Include="../../assets\shaders\GLSL\SSAOPass.glsl" />

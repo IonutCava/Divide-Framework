@@ -236,10 +236,10 @@ namespace Divide
 
         PROPERTY_RW( bool, wantsMouse, false );
 
-        protected:
+    protected:
         bool networkUpdate( U64 frameCount );
 
-        protected:
+    protected:
         void initPostLoadState() noexcept;
         Scene* load( const Str256& sceneName );
         bool   unloadScene( Scene* scene );
@@ -261,14 +261,14 @@ namespace Divide
 
         [[nodiscard]] bool switchSceneInternal();
 
-        protected:
+    protected:
         [[nodiscard]] bool frameStarted( const FrameEvent& evt ) override;
         [[nodiscard]] bool frameEnded( const FrameEvent& evt ) override;
 
         void drawCustomUI( const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
+        void postRender( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
         void debugDraw( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
         void prepareLightData( RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut );
-
         [[nodiscard]] Camera* playerCamera( bool skipOverride = false ) const noexcept;
         [[nodiscard]] Camera* playerCamera( PlayerIndex idx, bool skipOverride = false ) const noexcept;
         void editorPreviewNode( const I64 editorPreviewNode ) noexcept;
@@ -279,7 +279,7 @@ namespace Divide
         SceneNode_ptr createNode( SceneNodeType type, const ResourceDescriptor& descriptor );
         std::pair<Texture_ptr, size_t/*sampler*/> getSkyTexture() const;
 
-        private:
+    private:
         bool _init = false;
         bool _processInput = false;
         /// Pointer to the hardware objects
@@ -486,6 +486,11 @@ namespace Divide
             static void drawCustomUI( Divide::SceneManager* mgr, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
             {
                 mgr->drawCustomUI( targetViewport, bufferInOut, memCmdInOut );
+            }
+
+            static void postRender( Divide::SceneManager* mgr, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
+            {
+                mgr->postRender(bufferInOut, memCmdInOut);
             }
 
             static const Camera* playerCamera( const Divide::SceneManager* mgr ) noexcept

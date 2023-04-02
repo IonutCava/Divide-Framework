@@ -27,6 +27,7 @@
 #include "Platform/Audio/Headers/SFXDevice.h"
 #include "Platform/File/Headers/FileWatcherManager.h"
 #include "Platform/Headers/SDLEventManager.h"
+#include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Rendering/Camera/Headers/Camera.h"
@@ -547,9 +548,9 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
     }
 
     const U8 playerCount = _sceneManager->getActivePlayerCount();
-    const bool editorRunning = Config::Build::ENABLE_EDITOR && _platformContext.editor().running();
 
-    const Rect<I32> mainViewport = _platformContext.mainWindow().renderingViewport();
+    const auto& backBufferRT = _platformContext.gfx().renderTargetPool().getRenderTarget( RenderTargetNames::BACK_BUFFER );
+    const Rect<I32> mainViewport{0, 0, to_I32(backBufferRT->getWidth()), to_I32(backBufferRT->getHeight())};
     
     if (_prevViewport != mainViewport || _prevPlayerCount != playerCount) {
         ComputeViewports(mainViewport, _targetViewports, playerCount);
@@ -557,11 +558,6 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
         _prevPlayerCount = playerCount;
     }
 
-    if (editorRunning) {
-        const vec2<U16> editorRTSize = _platformContext.editor().getEditorTarget()._rt->getResolution();
-        const Rect<I32> targetViewport{ 0, 0, to_I32(editorRTSize.width), to_I32(editorRTSize.height) };
-        ComputeViewports(targetViewport, _editorViewports, playerCount);
-    }
 
     RenderPassManager::RenderParams renderParams{};
     renderParams._sceneRenderState = &_sceneManager->getActiveScene().state()->renderState();
@@ -576,7 +572,7 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
             return false;
         }
 
-        renderParams._targetViewport = editorRunning ? _editorViewports[i] : _targetViewports[i];
+        renderParams._targetViewport = _targetViewports[i];
 
         {
             Time::ProfileTimer& timer = getTimer(_flushToScreenTimer, _renderTimer, i, "Render Timer");

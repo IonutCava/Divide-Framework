@@ -64,6 +64,7 @@ enum class CommandType : U8 {
     SET_SCISSOR,
     BLIT_RT,
     COPY_TEXTURE,
+    READ_TEXTURE,
     CLEAR_TEXTURE,
     COMPUTE_MIPMAPS,
     SET_CAMERA,
@@ -81,7 +82,6 @@ enum class CommandType : U8 {
     BEGIN_DEBUG_SCOPE,
     END_DEBUG_SCOPE,
     ADD_DEBUG_MESSAGE,
-    SWITCH_WINDOW,
     SET_CLIPING_STATE,
     COUNT
 };
@@ -89,10 +89,10 @@ enum class CommandType : U8 {
 namespace Names {
     static const char* commandType[] = {
         "BEGIN_RENDER_PASS", "END_RENDER_PASS", "BEGIN_GPU_QUERY", "END_GPU_QUERY", "SET_VIEWPORT", "PUSH_VIEWPORT","POP_VIEWPORT",
-        "SET_SCISSOR", "BLIT_RT", "COPY_TEXTURE", "CLEAR_TEXTURE", "COMPUTE_MIPMAPS",
+        "SET_SCISSOR", "BLIT_RT", "COPY_TEXTURE", "READ_TEXTURE", "CLEAR_TEXTURE", "COMPUTE_MIPMAPS",
         "SET_CAMERA", "PUSH_CAMERA", "POP_CAMERA", "SET_CLIP_PLANES", "BIND_PIPELINE", "BIND_SHADER_RESOURCES", "SEND_PUSH_CONSTANTS",
         "DRAW_COMMANDS", "DISPATCH_COMPUTE", "MEMORY_BARRIER", "READ_BUFFER_DATA", "CLEAR_BUFFER_DATA",
-        "BEGIN_DEBUG_SCOPE","END_DEBUG_SCOPE", "ADD_DEBUG_MESSAGE", "SWITCH_WINDOW", "SET_CLIPING_STATE", "UNKNOWN"
+        "BEGIN_DEBUG_SCOPE","END_DEBUG_SCOPE", "ADD_DEBUG_MESSAGE", "SET_CLIPING_STATE", "UNKNOWN"
     };
 };
 
@@ -148,18 +148,18 @@ DEFINE_COMMAND_END(BeginRenderPassCommand);
 DEFINE_COMMAND_BEGIN(EndRenderPassCommand, CommandType::END_RENDER_PASS);
 DEFINE_COMMAND_END(EndRenderPassCommand);
 
-DEFINE_COMMAND_BEGIN(BeginGPUQuery, CommandType::BEGIN_GPU_QUERY);
-    BeginGPUQuery() noexcept = default;
-    BeginGPUQuery(const QueryType query) noexcept : _queryMask(to_base(query)) {}
-    BeginGPUQuery(const U32 mask) noexcept : _queryMask(mask) {}
+DEFINE_COMMAND_BEGIN(BeginGPUQueryCommand, CommandType::BEGIN_GPU_QUERY);
+    BeginGPUQueryCommand() noexcept = default;
+    BeginGPUQueryCommand(const QueryType query) noexcept : _queryMask(to_base(query)) {}
+    BeginGPUQueryCommand(const U32 mask) noexcept : _queryMask(mask) {}
 
     U32 _queryMask{ 0u };
-DEFINE_COMMAND_END(BeginGPUQuery);
+DEFINE_COMMAND_END(BeginGPUQueryCommand);
 
-DEFINE_COMMAND_BEGIN(EndGPUQuery, CommandType::END_GPU_QUERY);
+DEFINE_COMMAND_BEGIN(EndGPUQueryCommand, CommandType::END_GPU_QUERY);
     QueryResults* _resultContainer{nullptr};
     bool _waitForResults{false};
-DEFINE_COMMAND_END(EndGPUQuery);
+DEFINE_COMMAND_END(EndGPUQueryCommand);
 
 DEFINE_COMMAND_BEGIN(BlitRenderTargetCommand, CommandType::BLIT_RT);
     RenderTargetID _source{ INVALID_RENDER_TARGET_ID };
@@ -174,6 +174,13 @@ DEFINE_COMMAND_BEGIN(CopyTextureCommand, CommandType::COPY_TEXTURE);
     U8 _destinationMSAASamples{ 0u };
     CopyTexParams _params;
 DEFINE_COMMAND_END(CopyTextureCommand);
+
+DEFINE_COMMAND_BEGIN( ReadTextureCommand, CommandType::READ_TEXTURE );
+    Texture* _texture{ nullptr };
+    PixelAlignment _pixelPackAlignment{};
+    U8 _mipLevel{0u};
+    DELEGATE_STD<void, const ImageReadbackData&> _callback;
+DEFINE_COMMAND_END( ReadTextureCommand );
 
 DEFINE_COMMAND_BEGIN(ClearTextureCommand, CommandType::CLEAR_TEXTURE);
     Texture* _texture{ nullptr };

@@ -187,9 +187,13 @@ namespace
                 case CommandType::PUSH_VIEWPORT:
                 case CommandType::POP_VIEWPORT:
                 case CommandType::SET_CLIPING_STATE:
-                case CommandType::SWITCH_WINDOW:
                 {
                     hasWork = true;
+                } break;
+                case CommandType::READ_TEXTURE:
+                {
+                    const ReadTextureCommand* crtCmd = get<ReadTextureCommand>( cmd );
+                    hasWork = crtCmd->_texture != nullptr && crtCmd->_callback;
                 } break;
                 case CommandType::COPY_TEXTURE:
                 {

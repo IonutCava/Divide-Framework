@@ -60,6 +60,7 @@ class PlatformContext;
 struct Paths {
     static ResourcePath g_rootPath;
     static ResourcePath g_logPath;
+    static ResourcePath g_screenshotPath;
     static ResourcePath g_assetsLocation;
     static ResourcePath g_modelsLocation;
     static ResourcePath g_shadersLocation;
@@ -178,6 +179,8 @@ using asPath = std::filesystem::path;
 [[nodiscard]] FileError fileLastWriteTime(const char* filePathAndName, U64& timeOutSec);
 [[nodiscard]] FileError fileLastWriteTime(const ResourcePath& filePathAndName, U64& timeOutSec);
 [[nodiscard]] FileError fileLastWriteTime(const char* filePath, const char* fileName, U64& timeOutSec);
+[[nodiscard]] size_t numberOfFilesInDirectory(const char* path);
+[[nodiscard]] size_t numberOfFilesInDirectory(const ResourcePath& path);
 
 template<typename T> requires has_assign<T> || is_vector<T>
 [[nodiscard]] FileError readFile(const char* filePath, const char* fileName, T& contentOut, FileType fileType);

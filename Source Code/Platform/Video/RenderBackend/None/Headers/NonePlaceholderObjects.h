@@ -79,8 +79,6 @@ namespace Divide {
             static std::atomic_uint s_textureHandle = 1u;
         }
 
-        void clearData([[maybe_unused]] const UColour4& clearColour, [[maybe_unused]] vec2<U16> layerRange, [[maybe_unused]] U8 mipLevel ) const noexcept override {}
-
         [[nodiscard]] ImageReadbackData readData([[maybe_unused]] const U8 mipLevel, [[maybe_unused]] const PixelAlignment& pixelPackAlignment) const noexcept override { return {}; }
 
         void loadDataInternal([[maybe_unused]] const ImageTools::ImageData& imageData, [[maybe_unused]] const vec3<U16>& offset, [[maybe_unused]] const PixelAlignment& pixelUnpackAlignment ) override { }

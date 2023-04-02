@@ -66,7 +66,7 @@ void main() {
 --Compute.Average
 
 // We'll be writing our average to s_target
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 0, r16f) uniform ACCESS_RW image2D s_target;
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 0, r32f) uniform ACCESS_RW image2D s_target;
 
 DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 1, std430) coherent ACCESS_RW buffer histogramBuffer
 {

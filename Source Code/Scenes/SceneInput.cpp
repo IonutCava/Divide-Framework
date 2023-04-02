@@ -347,7 +347,7 @@ namespace Divide
     bool SceneInput::getKeyMapping( const Input::KeyCode key, PressReleaseActionCbks& keyCbksOut )
     {
         const KeyMapCache::const_iterator itCache = _keyMapCache.find( key );
-        if ( itCache != std::cend( _keyMapCache ) )
+        if ( itCache != std::cend(_keyMapCache) )
         {
             keyCbksOut = itCache->second;
             return true;

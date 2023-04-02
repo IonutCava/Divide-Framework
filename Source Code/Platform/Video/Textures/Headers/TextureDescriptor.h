@@ -97,7 +97,8 @@ bool operator!=(const TextureDescriptor& lhs, const TextureDescriptor& rhs) noex
 [[nodiscard]] bool IsNormalizedTexture(GFXImagePacking packing) noexcept;
 [[nodiscard]] bool IsDepthTexture(GFXImagePacking packing) noexcept;
 [[nodiscard]] bool SupportsZOffsetTexture(TextureType texType) noexcept;
-[[nodiscard]] U8  NumChannels(GFXImageFormat format) noexcept;
+[[nodiscard]] bool IsBGRTexture(GFXImageFormat format) noexcept;
+[[nodiscard]] U8   NumChannels(GFXImageFormat format) noexcept;
 
 }  // namespace Divide
 

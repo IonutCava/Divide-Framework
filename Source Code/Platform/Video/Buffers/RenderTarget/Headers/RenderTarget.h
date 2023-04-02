@@ -79,8 +79,6 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
     [[nodiscard]] U8 getAttachmentCount(RTAttachmentType type) const noexcept;
     [[nodiscard]] U8 getSampleCount() const noexcept;
 
-    [[nodiscard]] ImageReadbackData readData(RTColourAttachmentSlot slot, U8 mip, const PixelAlignment& pixelPackAlignment) const;
-
     /// Resize all attachments
     bool resize(U16 width, U16 height);
     /// Change msaa sampel count for all attachments

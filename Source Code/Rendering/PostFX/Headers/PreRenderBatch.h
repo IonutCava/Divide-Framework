@@ -136,15 +136,14 @@ class PreRenderBatch {
     void toneMapParams(ToneMapParams params) noexcept;
 
     void adaptiveExposureControl(bool state) noexcept;
-    [[nodiscard]] F32  adaptiveExposureValue() const;
 
+    [[nodiscard]] F32 adaptiveExposureValue() const noexcept;
     [[nodiscard]] RenderTargetHandle getLinearDepthRT() const noexcept;
 
     PROPERTY_R(bool, adaptiveExposureControl, true);
     PROPERTY_R(ToneMapParams, toneMapParams);
     PROPERTY_RW(F32, edgeDetectionThreshold, 0.1f);
     PROPERTY_RW(EdgeDetectionMethod, edgeDetectionMethod, EdgeDetectionMethod::Luma);
-
    private:
 
     [[nodiscard]] inline static FilterSpace GetOperatorSpace(const FilterType type) noexcept {
@@ -195,6 +194,9 @@ class PreRenderBatch {
 
     RenderTargetHandle _sceneEdges{};
     RenderTargetHandle _linearDepthRT{};
+
+    F32 _adaptiveExposureValue{1.f};
+    mutable bool _adaptiveExposureValueNeedsUpdate{false};
 };
 
 }  // namespace Divide

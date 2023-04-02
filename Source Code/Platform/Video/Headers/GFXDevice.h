@@ -221,6 +221,7 @@ struct ImShaders
 FWD_DECLARE_MANAGED_STRUCT( ImShaders );
 
 struct RenderTargetNames {
+    static RenderTargetID BACK_BUFFER;
     static RenderTargetID SCREEN;
     static RenderTargetID SCREEN_MS;
     static RenderTargetID SCREEN_PREV;
@@ -334,7 +335,7 @@ public:  // GPU interface
     void setShadowMSAASampleCount(ShadowType type, U8 sampleCount);
 
     /// Save a screenshot in TGA format
-    void screenshot(const ResourcePath& filename) const;
+    void screenshot(const ResourcePath& filename, GFX::CommandBuffer& bufferInOut ) const;
 
     ShaderComputeQueue& shaderComputeQueue() noexcept;
     const ShaderComputeQueue& shaderComputeQueue() const noexcept;

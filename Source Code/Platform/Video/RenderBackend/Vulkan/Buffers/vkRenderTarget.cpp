@@ -61,7 +61,7 @@ namespace Divide
         {
             ImageSubRange subRange = tex->getView()._subRange;
 
-            if ( tex->descriptor().texType() == TextureType::TEXTURE_CUBE_ARRAY )
+            if ( IsCubeTexture(tex->descriptor().texType()))
             {
                 subRange._layerRange.offset *= 6u;
                 if ( subRange._layerRange.count != U16_MAX )

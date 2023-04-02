@@ -127,6 +127,16 @@ inline U8 NumChannels(const GFXImageFormat format) noexcept
     return 0u;
 }
 
+inline bool IsBGRTexture( GFXImageFormat format ) noexcept
+{
+    switch ( format )
+    {
+        case GFXImageFormat::BGR:
+        case GFXImageFormat::BGRA:
+            return true;
+    }; 
+    return false;
+}
 } //namespace Divide
 
 #endif //_TEXTURE_DESCRIPTOR_INL_

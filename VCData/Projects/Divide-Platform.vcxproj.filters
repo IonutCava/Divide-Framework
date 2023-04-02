@@ -790,9 +790,6 @@
     <None Include="../../assets\shaders\GLSL\postProcessing.glsl">
       <Filter>Video\ShaderSource\GLSL</Filter>
     </None>
-    <None Include="../../assets\shaders\GLSL\README">
-      <Filter>Video\ShaderSource\GLSL</Filter>
-    </None>
     <None Include="../../assets\shaders\GLSL\sky.glsl">
       <Filter>Video\ShaderSource\GLSL</Filter>
     </None>

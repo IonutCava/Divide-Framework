@@ -160,17 +160,6 @@ U8 RenderTarget::getAttachmentCount(const RTAttachmentType type) const noexcept
     return 0u;
 }
 
-ImageReadbackData RenderTarget::readData(const RTColourAttachmentSlot slot, const U8 mip, const PixelAlignment& pixelPackAlignment) const
-{
-    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-    if ( _attachmentsUsed[to_base( slot )] )
-    {
-        return _attachments[to_base(slot)]->texture()->readData(mip, pixelPackAlignment);
-    }
-
-    return {};
-}
-
 U16 RenderTarget::getWidth() const noexcept
 {
     return getResolution().width;

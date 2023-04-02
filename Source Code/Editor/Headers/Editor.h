@@ -90,7 +90,7 @@ namespace Divide
     class PlatformContext;
     class ApplicationOutput;
     class NodePreviewWindow;
-        class ContentExplorerWindow;
+    class ContentExplorerWindow;
     class SolutionExplorerWindow;
     class SceneEnvironmentProbePool;
 
@@ -222,7 +222,6 @@ namespace Divide
 
         void showStatusMessage( const string& message, F32 durationMS, bool error ) const;
 
-        [[nodiscard]] inline const RenderTargetHandle& getEditorTarget() const noexcept;
         [[nodiscard]] inline const RenderTargetHandle& getNodePreviewTarget() const noexcept;
 
     protected: //frame listener
@@ -372,7 +371,6 @@ namespace Divide
         bool           _gridSettingsDirty = true;
         CircularBuffer<Str256> _recentSceneList;
         CameraSnapshot _render2DSnapshot{};
-        RenderTargetHandle _editorRTHandle{};
         RenderTargetHandle _nodePreviewRTHandle{};
         struct QueueModelSpawn
         {

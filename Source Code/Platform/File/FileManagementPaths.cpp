@@ -10,6 +10,7 @@ namespace Divide {
 ResourcePath Paths::g_logPath = ResourcePath("logs/");
 
 ResourcePath Paths::g_rootPath;
+ResourcePath Paths::g_screenshotPath;
 ResourcePath Paths::g_assetsLocation;
 ResourcePath Paths::g_modelsLocation;
 ResourcePath Paths::g_shadersLocation;
@@ -83,6 +84,7 @@ void Paths::initPaths(const SysInfo& info) {
     g_rootPath = ResourcePath(info._workingDirectory);
     g_logPath = ResourcePath("logs/");
     g_xmlDataLocation = ResourcePath("XML/");
+    g_screenshotPath = ResourcePath("Screenshots/");
     g_assetsLocation = ResourcePath("assets/");
     g_modelsLocation = ResourcePath("models/");
     g_shadersLocation = ResourcePath("shaders/");
