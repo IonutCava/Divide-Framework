@@ -57,7 +57,7 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
         _fxaa = CreateResource<ShaderProgram>(cache, fxaa);
         _fxaa->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*) {
             PipelineDescriptor pipelineDescriptor;
-            pipelineDescriptor._stateHash = _context.get2DStateBlock();
+            pipelineDescriptor._stateBlock = _context.get2DStateBlock();
             pipelineDescriptor._shaderProgramHandle = _fxaa->handle();
             pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
@@ -86,7 +86,7 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
         _smaaWeightComputation = CreateResource<ShaderProgram>(cache, smaaWeights);
         _smaaWeightComputation->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*) {
             PipelineDescriptor pipelineDescriptor;
-            pipelineDescriptor._stateHash = _context.get2DStateBlock();
+            pipelineDescriptor._stateBlock = _context.get2DStateBlock();
             pipelineDescriptor._shaderProgramHandle = _smaaWeightComputation->handle();
             pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
@@ -104,7 +104,7 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
         _smaaBlend = CreateResource<ShaderProgram>(cache, smaaBlend);
         _smaaBlend->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*) {
             PipelineDescriptor pipelineDescriptor;
-            pipelineDescriptor._stateHash = _context.get2DStateBlock();
+            pipelineDescriptor._stateBlock = _context.get2DStateBlock();
             pipelineDescriptor._shaderProgramHandle = _smaaBlend->handle();
             pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 

@@ -2,13 +2,7 @@
 
 #include "Headers/RenderStateBlock.h"
 
-#include "Platform/Video/Headers/GFXDevice.h"
-
 namespace Divide {
-
-RenderStateBlock::RenderStateMap RenderStateBlock::s_stateBlockMap;
-SharedMutex RenderStateBlock::s_stateBlockMapMutex;
-size_t RenderStateBlock::s_defaultHashValue = 0;
 
 namespace TypeUtil
 {
@@ -85,312 +79,89 @@ namespace TypeUtil
     }
 };
 
-RenderStateBlock::RenderStateBlock() noexcept
-    : GUIDWrapper()
-{
-    if (DefaultHash() == 0u)
-    {
-        _dirty = true;
-        s_defaultHashValue = RenderStateBlock::getHash();
-    }
-}
-
-void RenderStateBlock::from(const RenderStateBlock& other)
-{
-    _colourWrite = other._colourWrite;
-    _zBias = other._zBias;
-    _zUnits = other._zUnits;
-    _tessControlPoints = other._tessControlPoints;
-    _stencilRef = other._stencilRef;
-    _stencilMask = other._stencilMask;
-    _stencilWriteMask = other._stencilWriteMask;
-    _zFunc = other._zFunc;
-    _stencilFailOp = other._stencilFailOp;
-    _stencilZFailOp = other._stencilZFailOp;
-    _stencilPassOp = other._stencilPassOp;
-    _stencilFunc = other._stencilFunc;
-    _cullMode = other._cullMode;
-    _fillMode = other._fillMode;
-    _frontFaceCCW = other._frontFaceCCW;
-    _scissorTestEnabled = other._scissorTestEnabled;
-    _depthTestEnabled = other._depthTestEnabled;
-    _depthWriteEnabled = other._depthWriteEnabled;
-    _stencilEnable = other._stencilEnable;
-
-    {
-        _hash = other.getHash();
-        _dirty = false;
-    }
-}
-
-void RenderStateBlock::reset()
-{
-    _colourWrite = P32_FLAGS_TRUE;
-    _zBias = 0.0f;
-    _zUnits = 0.0f;
-    _tessControlPoints = 3;
-    _stencilRef = 0u;
-    _stencilMask = 0xFFFFFFFF;
-    _stencilWriteMask = 0xFFFFFFFF;
-
-    _zFunc = ComparisonFunction::LEQUAL;
-    _stencilFailOp = StencilOperation::KEEP;
-    _stencilPassOp = StencilOperation::KEEP;
-    _stencilZFailOp = StencilOperation::KEEP;
-    _stencilFunc = ComparisonFunction::NEVER;
-
-    _cullMode = CullMode::BACK;
-    _fillMode = FillMode::SOLID;
-
-    _frontFaceCCW = true;
-    _scissorTestEnabled = false;
-    _depthTestEnabled = true;
-    _depthWriteEnabled = true;
-    _stencilEnable = false;
-
-    _dirty = true;
-}
-
-void RenderStateBlock::flipCullMode()  noexcept
-{
-    switch (cullMode())
-    {
-        case CullMode::NONE:  _cullMode = CullMode::ALL;   break;
-        case CullMode::ALL:   _cullMode = CullMode::NONE;  break;
-        case CullMode::BACK:  _cullMode = CullMode::FRONT; break;
-        case CullMode::FRONT: _cullMode = CullMode::BACK;  break;
-        case CullMode::COUNT: DIVIDE_UNEXPECTED_CALL();    break;
-    }
-    _dirty = true;
-}
-
-void RenderStateBlock::setCullMode(const CullMode mode)  noexcept
-{
-    if (cullMode() != mode)
-    {
-        _cullMode = mode;
-        _dirty = true;
-    }
-}
-
-void RenderStateBlock::flipFrontFace()  noexcept
-{
-    _frontFaceCCW = !frontFaceCCW();
-    _dirty = true;
-}
-
-void RenderStateBlock::setFrontFaceCCW(const bool state) noexcept
-{
-    if (_frontFaceCCW != state)
-    {
-        _frontFaceCCW = state;
-        _dirty = true;
-    }
-}
-void RenderStateBlock::depthTestEnabled(const bool enable)  noexcept
-{
-    if (_depthTestEnabled != enable)
-    {
-        _depthTestEnabled = enable;
-        _dirty = true;
-    }
-}
-
-void RenderStateBlock::depthWriteEnabled( const bool enable ) noexcept
-{
-    if ( _depthWriteEnabled != enable )
-    {
-        _depthWriteEnabled = enable;
-        _dirty = true;
-    }
-}
-
-void RenderStateBlock::setColourWrites(const bool red,
-                                       const bool green,
-                                       const bool blue,
-                                       const bool alpha)  noexcept
-                                       {
-    P32 rgba = {};
-    rgba.b[0] = red ? 1 : 0;
-    rgba.b[1] = green ? 1 : 0;
-    rgba.b[2] = blue ? 1 : 0;
-    rgba.b[3] = alpha ? 1 : 0;
-
-    if (_colourWrite != rgba)
-    {
-        _colourWrite = rgba;
-        _dirty = true;
-    }
-}
-
-void RenderStateBlock::setScissorTest(const bool enable)  noexcept
-{
-    if (_scissorTestEnabled != enable)
-    {
-        _scissorTestEnabled = enable;
-        _dirty = true;
-    }
-}
-
-void RenderStateBlock::setZBias(const F32 zBias, const F32 zUnits)  noexcept
-{
-    if (!COMPARE(_zBias, zBias) || !COMPARE(_zUnits, zUnits))
-    {
-        _zBias = zBias;
-        _zUnits = zUnits;
-        _dirty = true;
-    }
-}
-
-void RenderStateBlock::setZFunc(const ComparisonFunction zFunc)  noexcept
-{
-    if (_zFunc != zFunc)
-    {
-        _zFunc = zFunc;
-        _dirty = true;
-    }
-}
-
-void RenderStateBlock::setFillMode(const FillMode mode)  noexcept
-{
-    if (_fillMode != mode)
-    {
-        _fillMode = mode;
-        _dirty = true;
-    }
-}
-
-void RenderStateBlock::setTessControlPoints(const U32 count) noexcept
-{
-    if (_tessControlPoints != count)
-    {
-        _tessControlPoints = count;
-        _dirty = true;
-    }
-}
-
-void RenderStateBlock::setStencilReadWriteMask(const U32 read, const U32 write)  noexcept
-{
-    if (_stencilMask != read || _stencilWriteMask != write)
-    {
-        _stencilMask = read;
-        _stencilWriteMask = write;
-        _dirty = true;
-    }
-}
-
-void RenderStateBlock::setStencil(const bool enable,
-                                  const U32 stencilRef,
-                                  const StencilOperation stencilFailOp,
-                                  const StencilOperation stencilPassOp,
-                                  const StencilOperation stencilZFailOp,
-                                  const ComparisonFunction stencilFunc)  noexcept
-{
-    if (_stencilEnable != enable ||
-        _stencilRef != stencilRef ||
-        _stencilFailOp != stencilFailOp ||
-        _stencilZFailOp != stencilZFailOp ||
-        _stencilPassOp != stencilPassOp ||
-        _stencilFunc != stencilFunc) 
-    {
-        _stencilEnable = enable;
-        _stencilRef = stencilRef;
-        _stencilFailOp = stencilFailOp;
-        _stencilZFailOp = stencilZFailOp;
-        _stencilPassOp = stencilPassOp;
-        _stencilFunc = stencilFunc;
-        _dirty = true;
-    }
-}
-
-void RenderStateBlock::Clear()
-{
-    LockGuard<SharedMutex> w_lock(s_stateBlockMapMutex);
-    s_stateBlockMap.clear();
-}
-
-size_t RenderStateBlock::DefaultHash() noexcept
-{
-    return s_defaultHashValue;
-}
-
-/// Return the render state block defined by the specified hash value.
-const RenderStateBlock& RenderStateBlock::Get(const size_t renderStateBlockHash) 
-{
-    bool blockFound = false;
-    const RenderStateBlock& block = Get(renderStateBlockHash, blockFound);
-    // Assert if it doesn't exist. Avoids programming errors.
-    DIVIDE_ASSERT(blockFound, "RenderStateBlock error: Invalid render state block hash specified for getRenderStateBlock!");
-    // Return the state block's descriptor
-    return block;
-}
-
-const RenderStateBlock& RenderStateBlock::Get(const size_t renderStateBlockHash, bool& blockFound)
-{
-    blockFound = false;
-
-    SharedLock<SharedMutex> r_lock(s_stateBlockMapMutex);
-    // Find the render state block associated with the received hash value
-    const RenderStateMap::const_iterator it = s_stateBlockMap.find(renderStateBlockHash);
-    if(it != std::cend(s_stateBlockMap) )
-    {
-        blockFound = true;
-        return it->second;
-    }
-
-    return s_stateBlockMap.find(DefaultHash())->second;
-}
-
-size_t RenderStateBlock::getHashInternal() const
+size_t GetHash( const RenderStateBlock& block )
 {
     // Avoid small float rounding errors offsetting the general hash value
-    const U32 zBias = to_U32(std::floor(_zBias * 1000.0f + 0.5f));
-    const U32 zUnits = to_U32(std::floor(_zUnits * 1000.0f + 0.5f));
+    const U32 zBias = to_U32(std::floor( block._zBias * 1000.0f + 0.5f));
+    const U32 zUnits = to_U32(std::floor( block._zUnits * 1000.0f + 0.5f));
 
     size_t hash = 59;
-    Util::Hash_combine(hash, _colourWrite.i,
-                             to_U32(_cullMode),
-                             _depthTestEnabled,
-                             _depthWriteEnabled,
-                             to_U32(_zFunc),
+    Util::Hash_combine(hash, block._colourWrite.i,
+                             to_U32( block._cullMode),
+                             block._depthTestEnabled,
+                             block._depthWriteEnabled,
+                             to_U32(block._zFunc),
                              zBias,
                              zUnits,
-                             _scissorTestEnabled,
-                             _stencilEnable,
-                             _stencilRef,
-                             _stencilMask,
-                             _stencilWriteMask,
-                             _frontFaceCCW,
-                             to_U32(_stencilFailOp),
-                             to_U32(_stencilZFailOp),
-                             to_U32(_stencilPassOp),
-                             to_U32(_stencilFunc),
-                             to_U32(_fillMode),
-                             _tessControlPoints);
+                             block._scissorTestEnabled,
+                             block._stencilEnabled,
+                             block._stencilRef,
+                             block._stencilMask,
+                             block._stencilWriteMask,
+                             block._frontFaceCCW,
+                             to_U32(block._stencilFailOp),
+                             to_U32(block._stencilZFailOp),
+                             to_U32(block._stencilPassOp),
+                             to_U32(block._stencilFunc),
+                             to_U32(block._fillMode),
+                             block._tessControlPoints,
+                             block._primitiveRestartEnabled,
+                             block._rasterizationEnabled );
 
     return hash;
 }
 
-size_t RenderStateBlock::getHash() const
+bool operator==( const RenderStateBlock& lhs, const RenderStateBlock& rhs )
 {
-    if (!_dirty)
-    {
-        return Hashable::getHash();
-    }
-
-    const size_t previousCache = Hashable::getHash();
-    _hash = getHashInternal();
-
-    if (previousCache != _hash)
-    {
-        LockGuard<SharedMutex> w_lock(s_stateBlockMapMutex);
-        insert(s_stateBlockMap, _hash, *this);
-    }
-    _dirty = false;
-    return _hash;
+    return lhs._colourWrite == rhs._colourWrite &&
+           lhs._zBias == rhs._zBias &&
+           lhs._zUnits == rhs._zUnits &&
+           lhs._tessControlPoints == rhs._tessControlPoints &&
+           lhs._stencilRef == rhs._stencilRef &&
+           lhs._stencilMask == rhs._stencilMask &&
+           lhs._stencilWriteMask == rhs._stencilWriteMask &&
+           lhs._zFunc == rhs._zFunc &&
+           lhs._stencilFailOp == rhs._stencilFailOp &&
+           lhs._stencilPassOp == rhs._stencilPassOp &&
+           lhs._stencilZFailOp == rhs._stencilZFailOp &&
+           lhs._stencilFunc == rhs._stencilFunc &&
+           lhs._cullMode == rhs._cullMode &&
+           lhs._fillMode == rhs._fillMode &&
+           lhs._frontFaceCCW == rhs._frontFaceCCW &&
+           lhs._scissorTestEnabled == rhs._scissorTestEnabled &&
+           lhs._depthTestEnabled == rhs._depthTestEnabled &&
+           lhs._depthWriteEnabled == rhs._depthWriteEnabled &&
+           lhs._stencilEnabled == rhs._stencilEnabled &&
+           lhs._primitiveRestartEnabled == rhs._primitiveRestartEnabled &&
+           lhs._rasterizationEnabled == rhs._rasterizationEnabled;
 }
 
-void RenderStateBlock::SaveToXML(const RenderStateBlock& block, const string& entryName, boost::property_tree::ptree& pt)
+bool operator!=( const RenderStateBlock& lhs, const RenderStateBlock& rhs )
+{
+    return lhs._colourWrite != rhs._colourWrite ||
+           lhs._zBias != rhs._zBias ||
+           lhs._zUnits != rhs._zUnits ||
+           lhs._tessControlPoints != rhs._tessControlPoints ||
+           lhs._stencilRef != rhs._stencilRef ||
+           lhs._stencilMask != rhs._stencilMask ||
+           lhs._stencilWriteMask != rhs._stencilWriteMask ||
+           lhs._zFunc != rhs._zFunc ||
+           lhs._stencilFailOp != rhs._stencilFailOp ||
+           lhs._stencilPassOp != rhs._stencilPassOp ||
+           lhs._stencilZFailOp != rhs._stencilZFailOp ||
+           lhs._stencilFunc != rhs._stencilFunc ||
+           lhs._cullMode != rhs._cullMode ||
+           lhs._fillMode != rhs._fillMode ||
+           lhs._frontFaceCCW != rhs._frontFaceCCW ||
+           lhs._scissorTestEnabled != rhs._scissorTestEnabled ||
+           lhs._depthTestEnabled != rhs._depthTestEnabled ||
+           lhs._depthWriteEnabled != rhs._depthWriteEnabled ||
+           lhs._stencilEnabled != rhs._stencilEnabled ||
+           lhs._primitiveRestartEnabled != rhs._primitiveRestartEnabled ||
+           lhs._rasterizationEnabled != rhs._rasterizationEnabled;
+}
+
+void SaveToXML(const RenderStateBlock& block, const string& entryName, boost::property_tree::ptree& pt)
 {
 
     pt.put(entryName + ".colourWrite.<xmlattr>.r", block._colourWrite.b[0] == 1);
@@ -411,7 +182,7 @@ void RenderStateBlock::SaveToXML(const RenderStateBlock& block, const string& en
     pt.put(entryName + ".depthTestEnabled", block._depthTestEnabled);
     pt.put(entryName + ".depthWriteEnabled", block._depthWriteEnabled);
 
-    pt.put(entryName + ".stencilEnable", block._stencilEnable);
+    pt.put(entryName + ".stencilEnable", block._stencilEnabled);
     pt.put(entryName + ".stencilFailOp", TypeUtil::StencilOperationToString(block._stencilFailOp));
     pt.put(entryName + ".stencilPassOp", TypeUtil::StencilOperationToString(block._stencilPassOp));
     pt.put(entryName + ".stencilZFailOp", TypeUtil::StencilOperationToString(block._stencilZFailOp));
@@ -421,35 +192,30 @@ void RenderStateBlock::SaveToXML(const RenderStateBlock& block, const string& en
     pt.put(entryName + ".stencilWriteMask", block._stencilWriteMask);
 }
 
-void RenderStateBlock::LoadFromXML(const string& entryName, const boost::property_tree::ptree& pt, RenderStateBlock& blockInOut)
+void LoadFromXML(const string& entryName, const boost::property_tree::ptree& pt, RenderStateBlock& blockInOut)
 {
-    blockInOut.setColourWrites(pt.get(entryName + ".colourWrite.<xmlattr>.r", blockInOut.colourWrite().b[0]),
-                               pt.get(entryName + ".colourWrite.<xmlattr>.g", blockInOut.colourWrite().b[1]),
-                               pt.get(entryName + ".colourWrite.<xmlattr>.b", blockInOut.colourWrite().b[2]),
-                               pt.get(entryName + ".colourWrite.<xmlattr>.a", blockInOut.colourWrite().b[3]));
-
-    blockInOut.setZBias(pt.get(entryName + ".zBias", blockInOut.zBias()),
-                        pt.get(entryName + ".zUnits", blockInOut.zUnits()));
-
-    blockInOut.setZFunc(TypeUtil::StringToComparisonFunction(pt.get(entryName + ".zFunc", TypeUtil::ComparisonFunctionToString( blockInOut.zFunc())).c_str()));
-    blockInOut.setTessControlPoints(pt.get(entryName + ".tessControlPoints", blockInOut.tessControlPoints()));
-    blockInOut.setCullMode(TypeUtil::StringToCullMode(pt.get(entryName + ".cullMode", TypeUtil::CullModeToString(blockInOut.cullMode())).c_str()));
-    blockInOut.setFillMode(TypeUtil::StringToFillMode(pt.get(entryName + ".fillMode", TypeUtil::FillModeToString(blockInOut.fillMode())).c_str()));
-
-    blockInOut.setFrontFaceCCW(pt.get(entryName + ".frontFaceCCW", blockInOut.frontFaceCCW()));
-    blockInOut.setScissorTest(pt.get(entryName + ".scissorTestEnabled", blockInOut.scissorTestEnabled()));
-    blockInOut.depthTestEnabled(pt.get(entryName + ".depthTestEnabled", blockInOut.depthTestEnabled()));
-    blockInOut.depthWriteEnabled(pt.get(entryName + ".depthWriteEnabled", blockInOut.depthWriteEnabled()));
-
-    blockInOut.setStencil(pt.get(entryName + ".stencilEnable", blockInOut.stencilEnable()),
-                          pt.get(entryName + ".stencilRef", blockInOut.stencilRef()),
-                          TypeUtil::StringToStencilOperation(pt.get(entryName + ".stencilFailOp", TypeUtil::StencilOperationToString(blockInOut.stencilFailOp())).c_str()),
-                          TypeUtil::StringToStencilOperation(pt.get(entryName + ".stencilPassOp", TypeUtil::StencilOperationToString(blockInOut.stencilPassOp())).c_str()),
-                          TypeUtil::StringToStencilOperation(pt.get(entryName + ".stencilZFailOp",TypeUtil::StencilOperationToString(blockInOut.stencilZFailOp())).c_str()),
-                          TypeUtil::StringToComparisonFunction(pt.get(entryName + ".stencilFunc", TypeUtil::ComparisonFunctionToString(blockInOut.stencilFunc())).c_str()));
-    
-    blockInOut.setStencilReadWriteMask(pt.get(entryName + ".stencilMask", blockInOut.stencilMask()),
-                                       pt.get(entryName + ".stencilWriteMask", blockInOut.stencilWriteMask()));
+    blockInOut._colourWrite.b[0] = pt.get(entryName + ".colourWrite.<xmlattr>.r", blockInOut._colourWrite.b[0]);
+    blockInOut._colourWrite.b[1] = pt.get(entryName + ".colourWrite.<xmlattr>.g", blockInOut._colourWrite.b[1]);
+    blockInOut._colourWrite.b[2] = pt.get(entryName + ".colourWrite.<xmlattr>.b", blockInOut._colourWrite.b[2]);
+    blockInOut._colourWrite.b[3] = pt.get(entryName + ".colourWrite.<xmlattr>.a", blockInOut._colourWrite.b[3]);
+    blockInOut._zBias = pt.get(entryName + ".zBias", blockInOut._zBias);
+    blockInOut._zUnits = pt.get(entryName + ".zUnits", blockInOut._zUnits);
+    blockInOut._zFunc = TypeUtil::StringToComparisonFunction(pt.get(entryName + ".zFunc", TypeUtil::ComparisonFunctionToString( blockInOut._zFunc)).c_str());
+    blockInOut._tessControlPoints = pt.get(entryName + ".tessControlPoints", blockInOut._tessControlPoints);
+    blockInOut._cullMode = TypeUtil::StringToCullMode(pt.get(entryName + ".cullMode", TypeUtil::CullModeToString(blockInOut._cullMode)).c_str());
+    blockInOut._fillMode = TypeUtil::StringToFillMode(pt.get(entryName + ".fillMode", TypeUtil::FillModeToString(blockInOut._fillMode)).c_str());
+    blockInOut._frontFaceCCW = pt.get(entryName + ".frontFaceCCW", blockInOut._frontFaceCCW);
+    blockInOut._scissorTestEnabled = pt.get(entryName + ".scissorTestEnabled", blockInOut._scissorTestEnabled);
+    blockInOut._depthTestEnabled = pt.get(entryName + ".depthTestEnabled", blockInOut._depthTestEnabled);
+    blockInOut._depthWriteEnabled = pt.get(entryName + ".depthWriteEnabled", blockInOut._depthWriteEnabled);
+    blockInOut._stencilEnabled = pt.get(entryName + ".stencilEnable", blockInOut._stencilEnabled);
+    blockInOut._stencilRef = pt.get(entryName + ".stencilRef", blockInOut._stencilRef),
+    blockInOut._stencilFailOp = TypeUtil::StringToStencilOperation(pt.get(entryName + ".stencilFailOp", TypeUtil::StencilOperationToString(blockInOut._stencilFailOp)).c_str()),
+    blockInOut._stencilZFailOp = TypeUtil::StringToStencilOperation(pt.get(entryName + ".stencilPassOp", TypeUtil::StencilOperationToString(blockInOut._stencilPassOp)).c_str()),
+    blockInOut._stencilPassOp = TypeUtil::StringToStencilOperation(pt.get(entryName + ".stencilZFailOp",TypeUtil::StencilOperationToString(blockInOut._stencilZFailOp)).c_str()),
+    blockInOut._stencilFunc = TypeUtil::StringToComparisonFunction(pt.get(entryName + ".stencilFunc", TypeUtil::ComparisonFunctionToString(blockInOut._stencilFunc)).c_str());
+    blockInOut._stencilMask = pt.get(entryName + ".stencilMask", blockInOut._stencilMask);
+    blockInOut._stencilWriteMask = pt.get(entryName + ".stencilWriteMask", blockInOut._stencilWriteMask);
 }
 
 };

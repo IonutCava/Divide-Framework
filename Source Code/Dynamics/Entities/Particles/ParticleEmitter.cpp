@@ -147,8 +147,8 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
     mat->setPipelineLayout(topology, vertexFormat);
 
     mat->computeRenderStateCBK([]([[maybe_unused]] Material* material, const RenderStagePass stagePass, RenderStateBlock& blockInOut) {
-        blockInOut.setCullMode(CullMode::NONE);
-        blockInOut.setZFunc(IsDepthPass(stagePass) ? ComparisonFunction::LEQUAL : ComparisonFunction::EQUAL);
+        blockInOut._cullMode = CullMode::NONE;
+        blockInOut._zFunc = (IsDepthPass(stagePass) ? ComparisonFunction::LEQUAL : ComparisonFunction::EQUAL);
     });
 
     mat->computeShaderCBK([useTexture]([[maybe_unused]] Material* material, const RenderStagePass stagePass) {

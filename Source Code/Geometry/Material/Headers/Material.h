@@ -43,6 +43,7 @@
 
 #include "Platform/Video/Headers/RenderAPIEnums.h"
 #include "Platform/Video/Headers/RenderStagePass.h"
+#include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Headers/AttributeDescriptor.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgramFwd.h"
@@ -57,10 +58,10 @@ namespace Attorney {
 }
 
 class RenderingComponent;
-struct NodeMaterialData;
-
-class RenderStateBlock;
 class ResourceDescriptor;
+
+struct NodeMaterialData;
+struct RenderStateBlock;
 
 enum class BlendProperty : U8;
 enum class ReflectorType : U8;
@@ -266,9 +267,9 @@ class Material final : public CachedResource {
     [[nodiscard]] const vector<Material*>& getInstancesLocked() const noexcept;
     [[nodiscard]] const vector<Material*>& getInstances() const;
 
-    /// Add the specified renderStateBlockHash to specific RenderStagePass parameters. Use "COUNT" and/or "g_AllVariantsID" for global options
+    /// Add the specified renderStateBlock to specific RenderStagePass parameters. Use "COUNT" and/or "g_AllVariantsID" for global options
     /// e.g. a RenderPassType::COUNT will use the block in the specified stage+variant combo but for all of the passes
-    void setRenderStateBlock(size_t renderStateBlockHash, RenderStage stage, RenderPassType pass, RenderStagePass::VariantType variant = RenderStagePass::VariantType::COUNT);
+    void setRenderStateBlock(const RenderStateBlock& renderStateBlock, RenderStage stage, RenderPassType pass, RenderStagePass::VariantType variant = RenderStagePass::VariantType::COUNT);
 
     // Returns the material's hash value (just for the uploadable data)
     void getData(const RenderingComponent& parentComp, U32 bestProbeID, NodeMaterialData& dataOut);
@@ -281,7 +282,7 @@ class Material final : public CachedResource {
     [[nodiscard]] F32 getRoughness(bool& hasTextureOverride, Texture*& textureOut) const noexcept;
     [[nodiscard]] F32 getOcclusion(bool& hasTextureOverride, Texture*& textureOut) const noexcept;
     [[nodiscard]] const TextureInfo& getTextureInfo(TextureSlot usage) const;
-    [[nodiscard]] size_t getOrCreateRenderStateBlock(RenderStagePass renderStagePass);
+    [[nodiscard]] const RenderStateBlock& getOrCreateRenderStateBlock(RenderStagePass renderStagePass);
     [[nodiscard]] Texture_wptr getTexture(TextureSlot textureUsage) const;
     [[nodiscard]] DescriptorSet& getDescriptorSet(const RenderStagePass& renderStagePass);
     [[nodiscard]] ShaderProgramHandle getProgramHandle(RenderStagePass renderStagePass) const;
@@ -352,8 +353,14 @@ class Material final : public CachedResource {
     GFXDevice& _context;
     ResourceCache* _parentCache = nullptr;
 
+    struct RenderStateBlockEntry
+    {
+        RenderStateBlock _block{};
+        bool _isSet{false};
+    };
+
     StatePassesPerStage<ShaderProgramInfo> _shaderInfo{};
-    StatePassesPerStage<size_t> _defaultRenderStates{};
+    StatePassesPerStage<RenderStateBlockEntry> _defaultRenderStates{};
 
     std::array<ModuleDefines, to_base(ShaderType::COUNT)> _extraShaderDefines{};
     mutable SharedMutex _textureLock{};

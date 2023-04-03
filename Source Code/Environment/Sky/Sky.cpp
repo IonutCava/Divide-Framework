@@ -688,8 +688,8 @@ bool Sky::load()
     skyMat->computeRenderStateCBK( []( [[maybe_unused]] Material* material, const RenderStagePass stagePass, RenderStateBlock& blockInOut)
     {
         const bool planarReflection = stagePass._stage == RenderStage::REFLECTION && stagePass._variant == static_cast<RenderStagePass::VariantType>(ReflectorType::PLANAR);
-        blockInOut.setCullMode( planarReflection ? CullMode::BACK : CullMode::FRONT );
-        blockInOut.setZFunc( IsDepthPass( stagePass ) ? ComparisonFunction::LEQUAL : ComparisonFunction::EQUAL );
+        blockInOut._cullMode = planarReflection ? CullMode::BACK : CullMode::FRONT;
+        blockInOut._zFunc = IsDepthPass( stagePass ) ? ComparisonFunction::LEQUAL : ComparisonFunction::EQUAL;
     } );
 
     _weatherTex->waitForReady();

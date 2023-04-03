@@ -323,12 +323,9 @@ namespace Divide
             _imguiProgram = CreateResource<ShaderProgram>( parentCache, shaderResDescriptor );
         }
         {
-            RenderStateBlock gridStateBlock = {};
-            gridStateBlock.setCullMode( CullMode::NONE );
-            gridStateBlock.depthWriteEnabled(false);
-
             _infiniteGridPipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
-            _infiniteGridPipelineDesc._stateHash = gridStateBlock.getHash();
+            _infiniteGridPipelineDesc._stateBlock._cullMode = CullMode::NONE;
+            _infiniteGridPipelineDesc._stateBlock._depthWriteEnabled = false;
 
             ShaderModuleDescriptor vertModule = {};
             vertModule._moduleType = ShaderType::VERTEX;
@@ -354,7 +351,7 @@ namespace Divide
             blend.blendDest( BlendProperty::INV_SRC_ALPHA );
             blend.blendOp( BlendOperation::ADD );
 
-            _axisGizmoPipelineDesc._stateHash = _context.gfx().getDefaultStateBlock( true );
+            _axisGizmoPipelineDesc._stateBlock = _context.gfx().getNoDepthTestBlock();
             _axisGizmoPipelineDesc._shaderProgramHandle = _context.gfx().imShaders()->imWorldShaderNoTexture()->handle();
         }
 
@@ -372,14 +369,11 @@ namespace Divide
         _infiniteGridPrimitive->end();
         _infiniteGridPrimitive->endBatch();
 
-        RenderStateBlock state = {};
-        state.setCullMode( CullMode::NONE );
-        state.depthTestEnabled( false );
-        state.setScissorTest( true );
-        state.depthWriteEnabled( false );
-
         PipelineDescriptor pipelineDesc = {};
-        pipelineDesc._stateHash = state.getHash();
+        pipelineDesc._stateBlock._cullMode = CullMode::NONE;
+        pipelineDesc._stateBlock._depthTestEnabled = false;
+        pipelineDesc._stateBlock._depthWriteEnabled = false;
+        pipelineDesc._stateBlock._scissorTestEnabled = true;
         pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
         pipelineDesc._vertexFormat._vertexBindings.emplace_back()._strideInBytes = sizeof( ImDrawVert );
         AttributeDescriptor& descPos = pipelineDesc._vertexFormat._attributes[to_base( AttribLocation::GENERIC )];

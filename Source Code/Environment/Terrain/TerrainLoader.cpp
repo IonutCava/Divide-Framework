@@ -468,9 +468,9 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     terrainMaterial->computeRenderStateCBK([]([[maybe_unused]] Material* material, const RenderStagePass stagePass, RenderStateBlock& blockInOut ) {
         const bool isReflectionPass = stagePass._stage == RenderStage::REFLECTION;
 
-        blockInOut.setTessControlPoints(4);
-        blockInOut.setCullMode(isReflectionPass ? CullMode::FRONT : CullMode::BACK);
-        blockInOut.setZFunc(IsDepthPass(stagePass) ? ComparisonFunction::LEQUAL : ComparisonFunction::EQUAL);
+        blockInOut._tessControlPoints = 4;
+        blockInOut._cullMode = isReflectionPass ? CullMode::FRONT : CullMode::BACK;
+        blockInOut._zFunc = IsDepthPass(stagePass) ? ComparisonFunction::LEQUAL : ComparisonFunction::EQUAL;
     });
 
     AttributeMap vertexFormat{};

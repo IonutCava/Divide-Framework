@@ -262,7 +262,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
 
     PipelineDescriptor pipelineDescriptor = {};
     pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
-    pipelineDescriptor._stateHash = _context.get2DStateBlock();
+    pipelineDescriptor._stateBlock = _context.get2DStateBlock();
     pipelineDescriptor._shaderProgramHandle = _ssaoDownSampleShader->handle();
 
     _downsamplePipeline = _context.newPipeline(pipelineDescriptor);
@@ -276,10 +276,11 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     pipelineDescriptor._shaderProgramHandle = _ssaoGenerateShader->handle();
     _generateFullResPipeline = _context.newPipeline(pipelineDescriptor);
 
-    RenderStateBlock redChannelOnly = RenderStateBlock::Get(_context.get2DStateBlock());
-    redChannelOnly.setColourWrites(true, false, false, false);
+    RenderStateBlock redChannelOnly = _context.get2DStateBlock();
+    redChannelOnly._colourWrite.b[0] = true;
+    redChannelOnly._colourWrite.b[1] = redChannelOnly._colourWrite.b[2] = redChannelOnly._colourWrite.b[3] = false;
 
-    pipelineDescriptor._stateHash = redChannelOnly.getHash();
+    pipelineDescriptor._stateBlock = redChannelOnly;
     pipelineDescriptor._shaderProgramHandle = _ssaoBlurShaderHorizontal->handle();
     _blurHorizontalPipeline = _context.newPipeline(pipelineDescriptor);
 

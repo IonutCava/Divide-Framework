@@ -40,7 +40,8 @@ namespace Divide {
 
 class GFXDevice;
 class IMPrimitive;
-class RenderStateBlock;
+
+struct RenderStateBlock;
 
 namespace GFX {
     class CommandBuffer;

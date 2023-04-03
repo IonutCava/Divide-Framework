@@ -94,7 +94,7 @@ string ToString(const BindPipelineCommand& cmd, U16 indent) {
     for (U16 j = 0; j < indent; ++j) {
         ret.append("    ");
     }
-    ret.append(Util::StringFormat("State hash : %zu\n", cmd._pipeline->hash()));
+    ret.append(Util::StringFormat("State hash : %zu\n", cmd._pipeline->stateHash()));
     ret.append("    ");
     for (U16 j = 0; j < indent; ++j) {
         ret.append("    ");

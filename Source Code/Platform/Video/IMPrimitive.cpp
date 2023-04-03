@@ -75,9 +75,7 @@ void IMPrimitive::reset() {
     _pipelines.fill(nullptr);
 
     // Create general purpose render state blocks
-    RenderStateBlock primitiveStateBlock{};
     _basePipelineDescriptor._primitiveTopology = PrimitiveTopology::COUNT;
-    _basePipelineDescriptor._stateHash = primitiveStateBlock.getHash();
     _basePipelineDescriptor._vertexFormat = {};
 
     AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat._attributes[0u];

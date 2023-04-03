@@ -44,7 +44,8 @@ namespace Divide {
     class Pipeline;
     class glFramebuffer;
     class glShaderProgram;
-    class RenderStateBlock;
+
+    struct RenderStateBlock;
 
     struct GLStateTracker {
         static constexpr U8 MAX_BOUND_TEXTURE_UNITS = 32u;
@@ -60,10 +61,6 @@ namespace Divide {
 
         void setDefaultState();
 
-        /// Enable or disable primitive restart and ensure that the correct index size is used
-        void togglePrimitiveRestart(bool state);
-        /// Enable or disable primitive rasterization
-        void toggleRasterization(bool state);
         /// Set a new depth range. Default is 0 - 1 with 0 mapping to the near plane and 1 to the far plane
         void setDepthRange(F32 nearVal, F32 farVal);
         // Just a wrapper around glClipControl
@@ -76,10 +73,10 @@ namespace Divide {
         void setBlendColour(const UColour4& blendColour);
         /// A state block should contain all rendering state changes needed for the next draw call.
         /// Some may be redundant, so we check each one individually
-        void activateStateBlock(const RenderStateBlock& newBlock);
+        bool activateStateBlock(const RenderStateBlock& newBlock);
 
         void setPrimitiveTopology( PrimitiveTopology topology );
-        void setVertexFormat(bool primitiveRestartEnabled, const AttributeMap& attributes, const size_t attributeHash);
+        void setVertexFormat(const AttributeMap& attributes, const size_t attributeHash);
 
         /// Switch the currently active vertex array object
         [[nodiscard]] BindResult setActiveVAO(GLuint ID);
@@ -114,7 +111,7 @@ namespace Divide {
         [[nodiscard]] BindResult bindTextureImage(GLubyte unit, GLuint handle, GLint level, bool layered, GLint layer, GLenum access, GLenum format);
         /// Bind multiple textures specified by an array of handles and an offset unit
         [[nodiscard]] BindResult bindTextures(GLubyte unitOffset, GLuint textureCount, const GLuint* textureHandles, const GLuint* samplerHandles);
-        [[nodiscard]] BindResult setStateBlock(size_t stateBlockHash);
+        [[nodiscard]] BindResult setStateBlock(const RenderStateBlock& stateBlock);
         /// Bind multiple samplers described by the array of hash values to the
         /// consecutive texture units starting from the specified offset
         [[nodiscard]] BindResult bindSamplers(GLubyte unitOffset, GLuint samplerCount, const GLuint* samplerHandles);
@@ -163,6 +160,7 @@ namespace Divide {
 
         std::array<std::pair<Str256, U32>, 32> _debugScope;
         U8 _debugScopeDepth{ 0u };
+        std::pair<Str256, U32> _lastDebugMessage;
 
         Pipeline const* _activePipeline{ nullptr };
         glShaderProgram* _activeShaderProgram{ nullptr };
@@ -207,9 +205,6 @@ namespace Divide {
         Rect<I32> _activeScissor{ -1, -1, -1, -1 };
         FColour4  _activeClearColour{ DefaultColours::BLACK_U8 };
         F32       _clearDepthValue{ 1.f };
-        /// Boolean value used to verify if primitive restart index is enabled or disabled
-        bool _primitiveRestartEnabled{ false };
-        bool _rasterizationEnabled{ true };
 
         using TextureBoundMapDef = std::array<GLuint, MAX_BOUND_TEXTURE_UNITS>;
         TextureBoundMapDef _textureBoundMap;

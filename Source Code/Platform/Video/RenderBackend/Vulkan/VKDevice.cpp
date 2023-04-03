@@ -9,8 +9,16 @@ namespace Divide
     VKDevice::VKDevice( VK_API& context, vkb::Instance& instance, VkSurfaceKHR targetSurface )
         : _context( context )
     {
+        VkPhysicalDeviceExtendedDynamicState3FeaturesEXT vk13EXTfeatures{};
+        vk13EXTfeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
+        vk13EXTfeatures.extendedDynamicState3ColorBlendEnable = true;
+        vk13EXTfeatures.extendedDynamicState3ColorBlendEquation = true;
+        vk13EXTfeatures.extendedDynamicState3ColorWriteMask = true;
+
         VkPhysicalDeviceVulkan13Features vk13features{};
         vk13features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+        vk13features.pNext = &vk13EXTfeatures;
+
         vk13features.synchronization2 = true;
         vk13features.dynamicRendering = true;
         vk13features.maintenance4 = true;
@@ -54,7 +62,7 @@ namespace Divide
             .set_surface( targetSurface )
             .prefer_gpu_device_type( vkb::PreferredDeviceType::discrete )
             .add_required_extension( VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME )
-            //.add_required_extension(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME)
+            .add_desired_extension(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME)
             .set_required_features( vk10features )
             .set_required_features_11( vk11features )
             .set_required_features_12( vk12features )
@@ -75,6 +83,15 @@ namespace Divide
             {
                 Console::errorfn( Locale::Get( _ID( "ERROR_VK_INIT" ) ), vkbDevice.error().message().c_str() );
                 return;
+            }
+
+            for ( const auto& extension : _physicalDevice.get_extensions() )
+            {
+                if ( extension == VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME )
+                {
+                    supportsDynamicExtension3(true);
+                    break;
+                }
             }
 
             // Get the VkDevice handle used in the rest of a Vulkan application

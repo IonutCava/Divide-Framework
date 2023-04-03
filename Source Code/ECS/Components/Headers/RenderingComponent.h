@@ -162,8 +162,6 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
     [[nodiscard]] bool canDraw(const RenderStagePass& renderStagePass);
 
-    [[nodiscard]] size_t         getPipelineHash(const RenderStagePass& renderStagePass);
-
     void drawDebugAxis();
     void drawSelectionGizmo();
     void drawSkeleton();
@@ -335,12 +333,20 @@ class RenderingCompRenderBin {
     static void postRender(RenderingComponent* renderable,
                            const SceneRenderState& sceneRenderState,
                            const RenderStagePass renderStagePass,
-                           GFX::CommandBuffer& bufferInOut) {
+                           GFX::CommandBuffer& bufferInOut)
+                           {
         renderable->postRender(sceneRenderState, renderStagePass, bufferInOut);
     }
 
-    [[nodiscard]] static RenderPackage& getDrawPackage(RenderingComponent* renderable, const RenderStagePass renderStagePass) {
+    [[nodiscard]] static RenderPackage& getDrawPackage(RenderingComponent* renderable, const RenderStagePass renderStagePass)
+    {
         return renderable->getDrawPackage(renderStagePass);
+    }
+
+    [[nodiscard]] static size_t getStateHash( RenderingComponent* renderable, const RenderStagePass renderStagePass )
+    {
+        const RenderPackage& pkg = getDrawPackage( renderable, renderStagePass );
+        return pkg.pipelineCmd()._pipeline->stateHash();
     }
 
     friend class Divide::RenderBin;

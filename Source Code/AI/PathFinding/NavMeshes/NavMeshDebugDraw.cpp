@@ -40,13 +40,12 @@ void NavMeshDebugDraw::beginBatch() {
         _primitive = _context.newIMP("NavMesh Debug Draw");
 
         // Generate a render state
-        RenderStateBlock navigationDebugStateBlock;
-        navigationDebugStateBlock.setCullMode(CullMode::NONE);
-        navigationDebugStateBlock.depthTestEnabled(_depthMask);
-        navigationDebugStateBlock.depthWriteEnabled(false);
+        RenderStateBlock navigationDebugStateBlock{};
 
-        PipelineDescriptor pipeDesc;
-        pipeDesc._stateHash = navigationDebugStateBlock.getHash();
+        PipelineDescriptor pipeDesc{};
+        pipeDesc._stateBlock._cullMode = CullMode::NONE;
+        pipeDesc._stateBlock._depthTestEnabled = _depthMask;
+        pipeDesc._stateBlock._depthWriteEnabled = false;
         pipeDesc._shaderProgramHandle = _context.imShaders()->imShaderNoTexture()->handle();
         _primitive->setPipelineDescriptor(pipeDesc);
     }

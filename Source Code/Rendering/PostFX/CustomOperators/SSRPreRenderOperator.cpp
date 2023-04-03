@@ -38,7 +38,7 @@ SSRPreRenderOperator::SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& p
     _ssrShader = CreateResource<ShaderProgram>(cache, ssr);
     _ssrShader->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*) {
         PipelineDescriptor pipelineDescriptor = {};
-        pipelineDescriptor._stateHash = _context.get2DStateBlock();
+        pipelineDescriptor._stateBlock = _context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _ssrShader->handle();
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 

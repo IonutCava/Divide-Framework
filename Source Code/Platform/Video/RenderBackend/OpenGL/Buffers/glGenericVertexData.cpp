@@ -40,8 +40,6 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        DIVIDE_ASSERT( GL_API::GetStateTracker()._primitiveRestartEnabled == primitiveRestartRequired() );
-
         // Update buffer bindings
         for ( const auto& buffer : _bufferObjects )
         {

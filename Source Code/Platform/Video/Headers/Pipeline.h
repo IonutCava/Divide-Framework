@@ -33,35 +33,40 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _PIPELINE_H_
 #define _PIPELINE_H_
 
+#include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Headers/BlendingProperties.h"
 #include "Platform/Video/Headers/AttributeDescriptor.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgramFwd.h"
 
 namespace Divide {
 
-struct PipelineDescriptor {
+struct PipelineDescriptor
+{
     RTBlendStates _blendStates;
-    size_t _stateHash{ 0u };
+    RenderStateBlock _stateBlock{};
     ShaderProgramHandle _shaderProgramHandle{ SHADER_INVALID_HANDLE };
     PrimitiveTopology _primitiveTopology{ PrimitiveTopology::COUNT };
     AttributeMap _vertexFormat;
-    U8 _multiSampleCount{ 0u };
-    bool _primitiveRestartEnabled{ false };
+    U8   _multiSampleCount{ 0u };
     bool _alphaToCoverage{false};
-    bool _rasterizationEnabled{true};
-}; //struct PipelineDescriptor
+};
 
-size_t GetHash(const PipelineDescriptor& descriptor);
+size_t GetHash( const PipelineDescriptor& descriptor );
 bool operator==(const PipelineDescriptor& lhs, const PipelineDescriptor& rhs);
 bool operator!=(const PipelineDescriptor& lhs, const PipelineDescriptor& rhs);
 
-class Pipeline {
+class Pipeline
+{
 public:
-    explicit Pipeline(const PipelineDescriptor& descriptor);
+    explicit Pipeline(const PipelineDescriptor& descriptor );
+
 
     PROPERTY_R_IW(PipelineDescriptor, descriptor);
-    PROPERTY_R_IW(size_t, hash, 0u);
+    PROPERTY_R_IW(size_t, stateHash, 0u);
+    PROPERTY_R_IW(size_t, blendStateHash, 0u);
     PROPERTY_R_IW(size_t, vertexFormatHash, 0u);
+    /// Used by Vulkan. It's the complete pipeline hash minus dynamic state settings
+    PROPERTY_R_IW(size_t, compiledPipelineHash, 0u);
 }; //class Pipeline
 
 bool operator==(const Pipeline& lhs, const Pipeline& rhs) noexcept;
@@ -70,4 +75,3 @@ bool operator!=(const Pipeline& lhs, const Pipeline& rhs) noexcept;
 }; //namespace Divide
 
 #endif //_PIPELINE_H_
-

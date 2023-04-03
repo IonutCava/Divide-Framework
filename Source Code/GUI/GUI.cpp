@@ -518,7 +518,7 @@ namespace Divide
             {
                 PipelineDescriptor descriptor = {};
                 descriptor._shaderProgramHandle = _textRenderShader->handle();
-                descriptor._stateHash = context.gfx().get2DStateBlock();
+                descriptor._stateBlock = context.gfx().get2DStateBlock();
                 descriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
                 descriptor._vertexFormat._vertexBindings.emplace_back()._strideInBytes = 2 * sizeof( F32 ) + 2 * sizeof( F32 ) + 4 * sizeof( U8 );
                 AttributeDescriptor& descPos = descriptor._vertexFormat._attributes[to_base( AttribLocation::POSITION )]; //vec2

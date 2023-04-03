@@ -58,6 +58,8 @@ class VKDevice final : NonCopyable, NonMovable
         [[nodiscard]] U32     getPresentQueueIndex() const noexcept;
         [[nodiscard]] VKQueue getQueue( QueueType type ) const noexcept;
 
+        PROPERTY_R_IW(bool, supportsDynamicExtension3, false);
+
     private:
         [[nodiscard]] VKQueue getQueueInternal( QueueType type, bool dedicated) const noexcept;
 

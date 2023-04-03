@@ -22,7 +22,6 @@ namespace Divide
     namespace
     {
         constexpr size_t g_materialXMLVersion = 1u;
-        constexpr size_t g_invalidStateHash = SIZE_MAX;
     };
 
 
@@ -158,7 +157,7 @@ namespace Divide
             for ( U8 p = 0u; p < to_U8( RenderPassType::COUNT ); ++p )
             {
                 perPassInfo[p].fill( defaultShaderInfo );
-                perPassStates[p].fill( g_invalidStateHash );
+                perPassStates[p].fill( {{}, false});
             }
         }
 
@@ -289,7 +288,7 @@ namespace Divide
             auto& perPassStates = _defaultRenderStates[s];
             for ( U8 p = 0u; p < to_U8( RenderPassType::COUNT ); ++p )
             {
-                perPassStates[p].fill( g_invalidStateHash );
+                perPassStates[p].fill({{}, false});
             }
         }
     }
@@ -301,13 +300,11 @@ namespace Divide
             auto& perPassStates = _defaultRenderStates[s];
             for ( U8 p = 0u; p < to_U8( RenderPassType::COUNT ); ++p )
             {
-                for ( size_t& hash : perPassStates[p] )
+                for ( auto& state : perPassStates[p] )
                 {
-                    if ( hash != g_invalidStateHash )
+                    if ( state._isSet )
                     {
-                        RenderStateBlock tempBlock = RenderStateBlock::Get( hash );
-                        tempBlock.setCullMode( properties().doubleSided() ? CullMode::NONE : CullMode::BACK );
-                        hash = tempBlock.getHash();
+                        state._block._cullMode = ( properties().doubleSided() ? CullMode::NONE : CullMode::BACK );
                     }
                 }
             }
@@ -848,7 +845,7 @@ namespace Divide
             for ( U8 p = 0u; p < to_U8( RenderPassType::COUNT ); ++p )
             {
                 passMapShaders[p].fill( defaultShaderInfo );
-                passMapStates[p].fill( g_invalidStateHash );
+                passMapStates[p].fill( { {}, false } );
             }
         }
 
@@ -871,7 +868,7 @@ namespace Divide
         return true;
     }
 
-    void Material::setRenderStateBlock( const size_t renderStateBlockHash, const RenderStage stage, const RenderPassType pass, const RenderStagePass::VariantType variant )
+    void Material::setRenderStateBlock( const RenderStateBlock& renderStateBlock, const RenderStage stage, const RenderPassType pass, const RenderStagePass::VariantType variant )
     {
         for ( U8 s = 0u; s < to_U8( RenderStage::COUNT ); ++s )
         {
@@ -883,11 +880,11 @@ namespace Divide
                 {
                     if ( variant == RenderStagePass::VariantType::COUNT )
                     {
-                        _defaultRenderStates[s][p].fill( renderStateBlockHash );
+                        _defaultRenderStates[s][p].fill( { renderStateBlock, true} );
                     }
                     else
                     {
-                        _defaultRenderStates[s][p][to_base( variant )] = renderStateBlockHash;
+                        _defaultRenderStates[s][p][to_base( variant )] = { renderStateBlock, true};
                     }
                 }
             }
@@ -928,43 +925,43 @@ namespace Divide
         properties()._needsNewShader = oldSource != properties().translucencySource();
     }
 
-    size_t Material::getOrCreateRenderStateBlock( const RenderStagePass renderStagePass )
+    const RenderStateBlock& Material::getOrCreateRenderStateBlock( const RenderStagePass renderStagePass )
     {
-        size_t& ret = _defaultRenderStates[to_base( renderStagePass._stage )][to_base( renderStagePass._passType )][to_base( renderStagePass._variant )];
+        auto&[ret, isSet] = _defaultRenderStates[to_base( renderStagePass._stage )][to_base( renderStagePass._passType )][to_base( renderStagePass._variant )];
         // If we haven't defined a state for this variant, use the default one
-        if ( ret == g_invalidStateHash )
+        if ( !isSet )
         {
-            RenderStateBlock stateDescriptor = {};
-            stateDescriptor.setCullMode( properties().doubleSided() ? CullMode::NONE : CullMode::BACK );
+            ret._cullMode = ( properties().doubleSided() ? CullMode::NONE : CullMode::BACK );
 
             const bool isColourPass = !IsDepthPass( renderStagePass );
             const bool isZPrePass   = IsZPrePass( renderStagePass );
             const bool isShadowPass = IsShadowPass( renderStagePass );
             const bool isDepthPass  = !isColourPass && !isZPrePass && !isShadowPass;
 
-            stateDescriptor.setZFunc( isColourPass ? ComparisonFunction::EQUAL : ComparisonFunction::LEQUAL );
+            ret._zFunc = ( isColourPass ? ComparisonFunction::EQUAL : ComparisonFunction::LEQUAL );
             if ( isShadowPass )
             {
-                stateDescriptor.setColourWrites( true, true, false, false );
-                //stateDescriptor.setZBias(1.1f, 4.f);
-                stateDescriptor.setCullMode( CullMode::BACK );
+                ret._colourWrite.b[0] = ret._colourWrite.b[1] = true;
+                ret._colourWrite.b[2] = ret._colourWrite.b[3] = false;
+                //ret.setZBias(1.1f, 4.f);
+                ret._cullMode = CullMode::BACK;
             }
             else if ( isDepthPass )
             {
-                stateDescriptor.setColourWrites( false, false, false, false );
+                ret._colourWrite.b[0] = ret._colourWrite.b[1] = ret._colourWrite.b[2] = ret._colourWrite.b[3] = false;
             }
 
             if ( !isShadowPass && !isZPrePass )
             {
-                stateDescriptor.depthWriteEnabled( false );
+                ret._depthWriteEnabled = false;
             }
 
             if ( _computeRenderStateCBK )
             {
-                _computeRenderStateCBK( this, renderStagePass, stateDescriptor );
+                _computeRenderStateCBK( this, renderStagePass, ret );
             }
 
-            ret = stateDescriptor.getHash();
+            isSet = true;
         }
 
         return ret;
@@ -1200,15 +1197,18 @@ namespace Divide
             {
                 for ( U8 v = 0u; v < to_U8( RenderStagePass::VariantType::COUNT ); ++v )
                 {
-                    const size_t stateHash = _defaultRenderStates[s][p][v];
-                    if ( stateHash == g_invalidStateHash )
+                    auto& entry = _defaultRenderStates[s][p][v];
+                    if ( !entry._isSet )
                     {
                         continue;
                     }
+
+                    auto& block = entry._block;
+                    const size_t stateHash = GetHash(block);
                     if ( previousHashValues.find( stateHash ) == std::cend( previousHashValues ) )
                     {
-                        RenderStateBlock::SaveToXML(
-                            RenderStateBlock::Get( stateHash ),
+                        SaveToXML(
+                            block,
                             Util::StringFormat( "%s.%u", stateNode.c_str(), blockIndex ),
                             pt );
                         previousHashValues[stateHash] = blockIndex++;
@@ -1228,7 +1228,7 @@ namespace Divide
 
     void Material::loadRenderStatesFromXML( const string& entryName, const boost::property_tree::ptree& pt )
     {
-        hashMap<U32, size_t> previousHashValues;
+        hashMap<U32, RenderStateBlock> previousBlocks;
 
         static boost::property_tree::ptree g_emptyPtree;
         const string stateNode = Util::StringFormat( "%s.RenderStates", entryName.c_str() );
@@ -1242,20 +1242,18 @@ namespace Divide
             const U8  p = data.get<U8>( "<xmlattr>.pass", to_U8( RenderPassType::COUNT ) );               assert( p != to_U8( RenderPassType::COUNT ) );
             const U8  v = data.get<U8>( "<xmlattr>.variant", to_U8( RenderStagePass::VariantType::COUNT ) ); assert( v != to_U8( RenderStagePass::VariantType::COUNT ) );
 
-            const auto& it = previousHashValues.find( b );
-            if ( it != cend( previousHashValues ) )
+            const auto& it = previousBlocks.find( b );
+            if ( it != cend( previousBlocks ) )
             {
-                _defaultRenderStates[s][p][v] = it->second;
+                _defaultRenderStates[s][p][v] = { it->second, true };
             }
             else
             {
-                RenderStateBlock block = RenderStateBlock::Get( _defaultRenderStates[s][p][v] );
+                RenderStateBlock block{};
+                LoadFromXML( Util::StringFormat( "%s.%u", stateNode.c_str(), b ), pt, block );
 
-                RenderStateBlock::LoadFromXML( Util::StringFormat( "%s.%u", stateNode.c_str(), b ), pt, block );
-
-                const size_t loadedHash = block.getHash();
-                _defaultRenderStates[s][p][v] = loadedHash;
-                previousHashValues[b] = loadedHash;
+                _defaultRenderStates[s][p][v] = { block, true };
+                previousBlocks[b] = block;
             }
         }
     }

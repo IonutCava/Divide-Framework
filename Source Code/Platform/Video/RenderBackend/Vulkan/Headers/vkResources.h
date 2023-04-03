@@ -37,6 +37,8 @@
 
 #include "vkInitializers.h"
 #include <Vulkan-Descriptor-Allocator/descriptor_allocator.h>
+#include "Platform/Video/Headers/RenderStateBlock.h"
+#include "Platform/Video/Headers/BlendingProperties.h"
 
 namespace vke
 {
@@ -93,20 +95,10 @@ struct VKQueue {
     QueueType _type{QueueType::COUNT};
 };
 
-struct VKDynamicState
-{
-    U32 _stencilRef{ 0u };
-    U32 _stencilMask{ 0xFFFFFFFF };
-    U32 _stencilWriteMask{ 0xFFFFFFFF };
-    F32 _zBias{ 0.0f };
-    F32 _zUnits{ 0.0f };
-};
-
 struct CompiledPipeline
 {
     VkPipelineBindPoint _bindPoint{ VK_PIPELINE_BIND_POINT_MAX_ENUM };
     vkShaderProgram* _program{ nullptr };
-    VKDynamicState _dynamicState{};
     VkPipeline _vkPipeline{ VK_NULL_HANDLE };
     VkPipeline _vkPipelineWireframe{ VK_NULL_HANDLE };
     VkPipelineLayout _vkPipelineLayout{ VK_NULL_HANDLE };
@@ -191,6 +183,14 @@ struct VKPerWindowState
 
     VkExtent2D _windowExtents{};
     bool _skipEndFrame{ false };
+
+    struct VKDynamicState
+    {
+        RenderStateBlock _block{};
+        RTBlendStates _blendStates{};
+        bool _isSet{ false };
+
+    } _activeState;
 };
 
 struct VKStateTracker
@@ -204,7 +204,6 @@ struct VKStateTracker
     VKDevice* _device{ nullptr };
     VKPerWindowState* _activeWindow{ nullptr };
 
-    std::array<std::pair<Str256, U32>, 32> _debugScope;
 
     VMAAllocatorInstance _allocatorInstance{};
     std::array<DescriptorAllocator, to_base( DescriptorSetUsage::COUNT )> _descriptorAllocators;
@@ -218,11 +217,14 @@ struct VKStateTracker
     VkShaderStageFlags _pipelineStageMask{ VK_FLAGS_NONE };
 
     RenderTargetID _activeRenderTargetID{ INVALID_RENDER_TARGET_ID };
+    size_t _renderTargetFormatHash{0u};
     vec2<U16> _activeRenderTargetDimensions{ 1u };
 
-    U8 _activeMSAASamples{ 1u };
+    std::pair<Str256, U32> _lastDebugMessage;
+    std::array<std::pair<Str256, U32>, 32> _debugScope;
     U8 _debugScopeDepth{ 0u };
 
+    U8 _activeMSAASamples{ 1u };
     bool _descriptorsUpdated{ false };
     bool _pushConstantsValid{ false };
     bool _assertOnAPIError{ false };

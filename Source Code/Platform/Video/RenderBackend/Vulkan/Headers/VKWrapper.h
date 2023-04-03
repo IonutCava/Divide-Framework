@@ -54,7 +54,6 @@ struct vkUserData : VDIUserData
     VkCommandBuffer* _cmdBuffer = nullptr;
 };
 
-class RenderStateBlock;
 class VK_API final : public RenderAPIWrapper {
   public:
   constexpr static VkPipelineStageFlagBits2 ALL_SHADER_STAGES = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
@@ -106,7 +105,7 @@ private:
     VkDescriptorSetLayout createLayoutFromBindings( const DescriptorSetUsage usage, const ShaderProgram::BindingsPerSetArray& bindings );
 
     ShaderResult bindPipeline(const Pipeline& pipeline, VkCommandBuffer cmdBuffer);
-    void bindDynamicState(const VKDynamicState& currentState, VkCommandBuffer cmdBuffer) noexcept;
+    void bindDynamicState(const RenderStateBlock& currentState, const RTBlendStates& blendStates, VkCommandBuffer cmdBuffer) noexcept;
     [[nodiscard]] bool bindShaderResources(DescriptorSetUsage usage, const DescriptorSet& bindings, bool isDirty) override;
 
     void onShaderRegisterChanged( ShaderProgram* program, bool state ) override;
@@ -143,7 +142,7 @@ private:
     std::array<VkDescriptorSetLayout, to_base( DescriptorSetUsage::COUNT )> _descriptorSetLayouts;
 
     bool _pushConstantsNeedLock{ false };
-
+    
 private:
     using SamplerObjectMap = hashMap<size_t, VkSampler, NoHash<size_t>>;
 
@@ -164,6 +163,7 @@ public:
     };
 
     static bool s_hasDebugMarkerSupport;
+    static bool s_hasDynamicBlendStateSupport;
     static bool s_hasValidationFeaturesSupport;
     static DepthFormatInformation s_depthFormatInformation;
 };

@@ -208,7 +208,7 @@ namespace
                 case CommandType::BIND_PIPELINE:
                 {
                     const BindPipelineCommand* crtCmd = get<BindPipelineCommand>( cmd );
-                    hasWork = crtCmd->_pipeline != nullptr && crtCmd->_pipeline->hash() != 0u;
+                    hasWork = crtCmd->_pipeline != nullptr && crtCmd->_pipeline->stateHash() != 0u;
                 }break;
                 default: break;
             };
@@ -275,7 +275,7 @@ namespace
 
                     const Pipeline* pipeline = get<BindPipelineCommand>( cmd )->_pipeline;
                     // If the current pipeline is identical to the previous one, remove it
-                    if ( prevPipeline == nullptr || prevPipeline->hash() != pipeline->hash() )
+                    if ( prevPipeline == nullptr || prevPipeline->stateHash() != pipeline->stateHash() )
                     {
                         prevPipeline = pipeline;
                     }

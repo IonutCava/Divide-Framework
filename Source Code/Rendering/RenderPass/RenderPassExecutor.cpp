@@ -339,15 +339,12 @@ namespace Divide
         {
             s_globalDataInit = true;
 
-            RenderStateBlock state2DRendering{};
-            state2DRendering.setCullMode( CullMode::NONE );
-            state2DRendering.depthTestEnabled( false );
-            state2DRendering.depthWriteEnabled( false );
 
             PipelineDescriptor pipelineDescriptor;
-            pipelineDescriptor._stateHash = state2DRendering.getHash();
+            pipelineDescriptor._stateBlock._cullMode = CullMode::NONE;
+            pipelineDescriptor._stateBlock._depthTestEnabled = false;
+            pipelineDescriptor._stateBlock._depthWriteEnabled = false;
             pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
-
             pipelineDescriptor._shaderProgramHandle = ResolveGBufferShaderMS->handle();
             s_ResolveGBufferPipeline = _context.newPipeline( pipelineDescriptor );
 
@@ -359,17 +356,17 @@ namespace Divide
                 state0.blendSrc( BlendProperty::INV_SRC_ALPHA );
                 state0.blendDest( BlendProperty::ONE );
             }
-        else
-        {
-            state0.blendSrc( BlendProperty::SRC_ALPHA );
-            state0.blendDest( BlendProperty::INV_SRC_ALPHA );
-        }
+            else
+            {
+                state0.blendSrc( BlendProperty::SRC_ALPHA );
+                state0.blendDest( BlendProperty::INV_SRC_ALPHA );
+            }
 
-        pipelineDescriptor._shaderProgramHandle = OITCompositionShader->handle();
-        s_OITCompositionPipeline = _context.newPipeline( pipelineDescriptor );
+            pipelineDescriptor._shaderProgramHandle = OITCompositionShader->handle();
+            s_OITCompositionPipeline = _context.newPipeline( pipelineDescriptor );
 
-        pipelineDescriptor._shaderProgramHandle = OITCompositionShaderMS->handle();
-        s_OITCompositionMSPipeline = _context.newPipeline( pipelineDescriptor );
+            pipelineDescriptor._shaderProgramHandle = OITCompositionShaderMS->handle();
+            s_OITCompositionMSPipeline = _context.newPipeline( pipelineDescriptor );
 
         }
 

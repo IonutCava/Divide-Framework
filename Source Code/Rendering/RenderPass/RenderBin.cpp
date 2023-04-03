@@ -127,7 +127,7 @@ namespace Divide
 
         // Sort by state hash depending on the current rendering stage
         // Save the render state hash value for sorting
-        item._stateHash = item._renderable->getPipelineHash( renderStagePass );
+        item._stateHash = Attorney::RenderingCompRenderBin::getStateHash( item._renderable, renderStagePass );
 
         const Material_ptr& nodeMaterial = item._renderable->getMaterialInstance();
         if ( nodeMaterial )

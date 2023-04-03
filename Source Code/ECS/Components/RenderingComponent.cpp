@@ -505,11 +505,10 @@ namespace Divide
                     }
                 }
                 PipelineDescriptor pipelineDescriptor = {};
-                pipelineDescriptor._primitiveRestartEnabled = primitiveRestartRequired();
 
                 if ( _materialInstance != nullptr )
                 {
-                    pipelineDescriptor._stateHash = _materialInstance->getOrCreateRenderStateBlock( renderStagePass );
+                    pipelineDescriptor._stateBlock = _materialInstance->getOrCreateRenderStateBlock( renderStagePass );
                     pipelineDescriptor._shaderProgramHandle = _materialInstance->getProgramHandle( renderStagePass );
                     pipelineDescriptor._primitiveTopology = _materialInstance->topology();
                     pipelineDescriptor._vertexFormat = _materialInstance->shaderAttributes();
@@ -518,7 +517,7 @@ namespace Divide
                 }
                 else
                 {
-                    pipelineDescriptor._stateHash = _context.getDefaultStateBlock( false );
+                    pipelineDescriptor._stateBlock = {};
                     pipelineDescriptor._shaderProgramHandle = _context.imShaders()->imWorldShader()->handle();
                     pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
                 }
@@ -554,6 +553,7 @@ namespace Divide
                     }
                 }
 
+                pipelineDescriptor._stateBlock._primitiveRestartEnabled = primitiveRestartRequired();
                 pkg.pipelineCmd()._pipeline = _context.newPipeline( pipelineDescriptor );
             }
 
@@ -666,11 +666,6 @@ namespace Divide
                 }
             }
         }
-    }
-    size_t RenderingComponent::getPipelineHash( const RenderStagePass& renderStagePass )
-    {
-        const Pipeline* pipeline = getDrawPackage( renderStagePass ).pipelineCmd()._pipeline;
-        return (pipeline != nullptr ? pipeline->hash() : 0u);
     }
 
     RenderPackage& RenderingComponent::getDrawPackage( const RenderStagePass& renderStagePass )

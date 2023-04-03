@@ -212,14 +212,14 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
     }
     {
         PipelineDescriptor pipelineDescriptor{};
-        pipelineDescriptor._stateHash = context.get2DStateBlock();
+        pipelineDescriptor._stateBlock = context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = s_prefilterComputeShader->handle();
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::COMPUTE;
         s_pipelineCalcPrefiltered = context.newPipeline(pipelineDescriptor);
     }
     {
         PipelineDescriptor pipelineDescriptor{};
-        pipelineDescriptor._stateHash = context.get2DStateBlock();
+        pipelineDescriptor._stateBlock = context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = s_irradianceComputeShader->handle();
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::COMPUTE;
         s_pipelineCalcIrradiance = context.newPipeline(pipelineDescriptor);
@@ -310,7 +310,7 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
 
     if (s_lutTextureDirty) {
         PipelineDescriptor pipelineDescriptor{};
-        pipelineDescriptor._stateHash = context.get2DStateBlock();
+        pipelineDescriptor._stateBlock = context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = s_lutComputeShader->handle();
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::COMPUTE;
 

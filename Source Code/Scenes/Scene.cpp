@@ -100,11 +100,8 @@ namespace Divide
 
         _linesPrimitive = _context.gfx().newIMP( "Generic Line Primitive" );
 
-        RenderStateBlock primitiveDescriptor;
-        primitiveDescriptor.depthTestEnabled( false );
-
         PipelineDescriptor pipeDesc;
-        pipeDesc._stateHash = primitiveDescriptor.getHash();
+        pipeDesc._stateBlock._depthTestEnabled = false;
         pipeDesc._shaderProgramHandle = _context.gfx().imShaders()->imShaderNoTexture()->handle();
         _linesPrimitive->setPipelineDescriptor( pipeDesc );
     }

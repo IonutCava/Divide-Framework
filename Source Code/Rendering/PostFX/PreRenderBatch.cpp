@@ -383,8 +383,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
     PipelineDescriptor pipelineDescriptor{};
     pipelineDescriptor._primitiveTopology = PrimitiveTopology::COMPUTE;
 
-    const size_t stateHash = _context.get2DStateBlock();
-    pipelineDescriptor._stateHash = stateHash;
+    pipelineDescriptor._stateBlock = _context.get2DStateBlock();
     pipelineDescriptor._shaderProgramHandle = _createHistogram->handle();
 
     _pipelineLumCalcHistogram = _context.newPipeline(pipelineDescriptor);
@@ -501,7 +500,7 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
         beginRenderPassCmd._descriptor._drawMask[to_base(RTColourAttachmentSlot::SLOT_0)] = true;
 
         PipelineDescriptor pipelineDescriptor = {};
-        pipelineDescriptor._stateHash = _context.get2DStateBlock();
+        pipelineDescriptor._stateBlock = _context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _lineariseDepthBuffer->handle();
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 

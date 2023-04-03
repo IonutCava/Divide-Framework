@@ -175,7 +175,7 @@ void WarScene::debugDraw(GFX::CommandBuffer& bufferInOut,
             PipelineDescriptor pipelineDescriptor = {};
             pipelineDescriptor._shaderProgramHandle = _context.gfx().imShaders()->imWorldShaderNoTexture()->handle();
 
-            pipelineDescriptor._stateHash = _context.gfx().getDefaultStateBlock(true);
+            pipelineDescriptor._stateBlock = _context.gfx().getNoDepthTestBlock();
             _targetLines->setPipelineDescriptor(pipelineDescriptor);
         } else {
             _targetLines->getCommandBuffer(bufferInOut, memCmdInOut);

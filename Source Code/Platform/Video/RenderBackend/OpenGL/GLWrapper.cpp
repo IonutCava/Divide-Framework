@@ -1104,6 +1104,7 @@ namespace Divide
                 const auto& crtCmd = cmd->As<GFX::AddDebugMessageCommand>();
                 PushDebugMessage( crtCmd->_msg.c_str(), crtCmd->_msgId );
                 PopDebugMessage();
+                s_stateTracker._lastDebugMessage = { crtCmd->_msg, crtCmd->_msgId };
             }break;
             case GFX::CommandType::COMPUTE_MIPMAPS:
             {
@@ -1434,7 +1435,7 @@ namespace Divide
         {
             DIVIDE_UNEXPECTED_CALL();
         }
-        if ( stateTracker.setStateBlock( RenderStateBlock::DefaultHash() ) == GLStateTracker::BindResult::FAILED )
+        if ( stateTracker.setStateBlock({}) == GLStateTracker::BindResult::FAILED )
         {
             DIVIDE_UNEXPECTED_CALL();
         }
@@ -1623,10 +1624,7 @@ namespace Divide
         const PipelineDescriptor& pipelineDescriptor = pipeline.descriptor();
         {
             PROFILE_SCOPE( "Set Raster State", Profiler::Category::Graphics );
-            // Set the proper render states
-            const size_t stateBlockHash = pipelineDescriptor._stateHash == 0u ? context.getDefaultStateBlock( false ) : pipelineDescriptor._stateHash;
-            // Passing 0 is a perfectly acceptable way of enabling the default render state block
-            if ( s_stateTracker.setStateBlock( stateBlockHash ) == GLStateTracker::BindResult::FAILED )
+            if ( s_stateTracker.setStateBlock( pipelineDescriptor._stateBlock ) == GLStateTracker::BindResult::FAILED )
             {
                 DIVIDE_UNEXPECTED_CALL();
             }
@@ -1641,8 +1639,6 @@ namespace Divide
             }
         }
 
-        s_stateTracker.toggleRasterization(pipelineDescriptor._rasterizationEnabled);
-
         ShaderResult ret = ShaderResult::Failed;
         ShaderProgram* program = ShaderProgram::FindShaderProgram( pipelineDescriptor._shaderProgramHandle );
         glShaderProgram* glProgram = static_cast<glShaderProgram*>(program);
@@ -1651,9 +1647,7 @@ namespace Divide
             {
                 PROFILE_SCOPE( "Set Vertex Format", Profiler::Category::Graphics );
                 s_stateTracker.setPrimitiveTopology( pipelineDescriptor._primitiveTopology );
-                s_stateTracker.setVertexFormat( pipelineDescriptor._primitiveRestartEnabled,
-                                                pipelineDescriptor._vertexFormat,
-                                                pipeline.vertexFormatHash() );
+                s_stateTracker.setVertexFormat( pipelineDescriptor._vertexFormat, pipeline.vertexFormatHash() );
             }
             {
                 PROFILE_SCOPE( "Set Shader Program", Profiler::Category::Graphics );

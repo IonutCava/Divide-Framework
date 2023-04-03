@@ -45,7 +45,7 @@ MotionBlurPreRenderOperator::MotionBlurPreRenderOperator(GFXDevice& context, Pre
     _blurApply->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*)
     {
         PipelineDescriptor pipelineDescriptor = {};
-        pipelineDescriptor._stateHash = _context.get2DStateBlock();
+        pipelineDescriptor._stateBlock = _context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _blurApply->handle();
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 

@@ -47,11 +47,10 @@ namespace Divide
 
     void GLStateTracker::setDefaultState()
     {
-        _activeState.reset();
-
+        _activeState = {};
         _debugScope.fill( {} );
         _debugScopeDepth = 0u;
-
+        _lastDebugMessage = {};
         _activePipeline = nullptr;
         _activeShaderProgram = nullptr;
         _activeTopology = PrimitiveTopology::COUNT;
@@ -81,8 +80,6 @@ namespace Divide
         _activeScissor = { -1, -1, -1, -1 };
         _activeClearColour = DefaultColours::BLACK_U8;
         _clearDepthValue = 1.f;
-        _primitiveRestartEnabled = false;
-        _rasterizationEnabled = true;
         _imageBoundMap.clear();
 
         _vaoBufferData = {};
@@ -193,7 +190,7 @@ namespace Divide
         _activeTopology = topology;
     }
 
-    void GLStateTracker::setVertexFormat( const bool primitiveRestartEnabled, const AttributeMap& attributes, const size_t attributeHash )
+    void GLStateTracker::setVertexFormat( const AttributeMap& attributes, const size_t attributeHash )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -208,26 +205,15 @@ namespace Divide
         {
             DIVIDE_UNEXPECTED_CALL();
         }
-
-        togglePrimitiveRestart( primitiveRestartEnabled );
     }
 
-    GLStateTracker::BindResult GLStateTracker::setStateBlock( const size_t stateBlockHash )
+    GLStateTracker::BindResult GLStateTracker::setStateBlock( const RenderStateBlock& stateBlock )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        DIVIDE_ASSERT( stateBlockHash != 0, "GL_API error: Invalid state blocks detected on activation!" );
-
-        // If the new state hash is different from the previous one
-        if ( stateBlockHash != _activeState.getHash() )
+        // Activate the new render state block in an rendering API dependent way
+        if (activateStateBlock( stateBlock ))
         {
-            bool currentStateValid = false;
-            const RenderStateBlock& currentState = RenderStateBlock::Get( stateBlockHash, currentStateValid );
-
-            DIVIDE_ASSERT( currentStateValid, "GL_API error: Invalid state blocks detected on activation!" );
-
-            // Activate the new render state block in an rendering API dependent way
-            activateStateBlock( currentState );
             return BindResult::JUST_BOUND;
         }
 
@@ -311,30 +297,6 @@ namespace Divide
         }
         // We managed to change at least one entry
         return changed;
-    }
-
-    /// Enable or disable primitive restart and ensure that the correct index size is used
-    void GLStateTracker::togglePrimitiveRestart( const bool state )
-    {
-        // Toggle primitive restart on or off
-        if ( _primitiveRestartEnabled != state )
-        {
-            _primitiveRestartEnabled = state;
-            state ? glEnable( GL_PRIMITIVE_RESTART_FIXED_INDEX )
-                : glDisable( GL_PRIMITIVE_RESTART_FIXED_INDEX );
-        }
-    }
-
-    /// Enable or disable primitive rasterization
-    void GLStateTracker::toggleRasterization( const bool state )
-    {
-        // Toggle primitive restart on or off
-        if ( _rasterizationEnabled != state )
-        {
-            _rasterizationEnabled = state;
-            state ? glDisable( GL_RASTERIZER_DISCARD )
-                : glEnable( GL_RASTERIZER_DISCARD );
-        }
     }
 
     GLStateTracker::BindResult GLStateTracker::bindSamplers( const GLubyte unitOffset,
@@ -1082,120 +1044,157 @@ namespace Divide
 
     /// A state block should contain all rendering state changes needed for the next draw call.
     /// Some may be redundant, so we check each one individually
-    void GLStateTracker::activateStateBlock( const RenderStateBlock& newBlock )
+    bool GLStateTracker::activateStateBlock( const RenderStateBlock& newBlock )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        if ( _activeState.stencilEnable() != newBlock.stencilEnable() )
+        bool ret = false;
+        if ( _activeState._stencilEnabled != newBlock._stencilEnabled )
         {
-            newBlock.stencilEnable() ? glEnable( GL_STENCIL_TEST ) : glDisable( GL_STENCIL_TEST );
+            newBlock._stencilEnabled ? glEnable( GL_STENCIL_TEST ) : glDisable( GL_STENCIL_TEST );
+            ret = true;
         }
 
-        if ( _activeState.depthTestEnabled() != newBlock.depthTestEnabled() )
+        if ( _activeState._depthTestEnabled != newBlock._depthTestEnabled )
         {
-            newBlock.depthTestEnabled() ? glEnable( GL_DEPTH_TEST ) : glDisable( GL_DEPTH_TEST );
+            newBlock._depthTestEnabled ? glEnable( GL_DEPTH_TEST ) : glDisable( GL_DEPTH_TEST );
+            ret = true;
         }
 
-        if ( _activeState.scissorTestEnabled() != newBlock.scissorTestEnabled() )
+        if ( _activeState._scissorTestEnabled != newBlock._scissorTestEnabled )
         {
-            newBlock.scissorTestEnabled() ? glEnable( GL_SCISSOR_TEST ) : glDisable( GL_SCISSOR_TEST );
+            newBlock._scissorTestEnabled ? glEnable( GL_SCISSOR_TEST ) : glDisable( GL_SCISSOR_TEST );
+            ret = true;
         }
 
-        if ( _activeState.depthWriteEnabled() != newBlock.depthWriteEnabled() )
+        if ( _activeState._depthWriteEnabled != newBlock._depthWriteEnabled )
         {
-            glDepthMask( newBlock.depthWriteEnabled() ? GL_TRUE : GL_FALSE);
+            glDepthMask( newBlock._depthWriteEnabled ? GL_TRUE : GL_FALSE);
+            ret = true;
+        }
+        if ( _activeState._rasterizationEnabled != newBlock._rasterizationEnabled )
+        {
+            newBlock._rasterizationEnabled ? glDisable( GL_RASTERIZER_DISCARD )
+                                           : glEnable( GL_RASTERIZER_DISCARD );
+            ret = true;
+        }
+
+        // Toggle primitive restart on or off
+        if ( _activeState._primitiveRestartEnabled != newBlock._primitiveRestartEnabled )
+        {
+            newBlock._primitiveRestartEnabled ? glEnable( GL_PRIMITIVE_RESTART_FIXED_INDEX )
+                                              : glDisable( GL_PRIMITIVE_RESTART_FIXED_INDEX );
+            ret = true;
         }
         // Check culling mode (back (CW) / front (CCW) by default)
-        if ( _activeState.cullMode() != newBlock.cullMode() )
+        if ( _activeState._cullMode != newBlock._cullMode )
         {
-            if ( newBlock.cullMode() != CullMode::NONE )
+            if ( newBlock._cullMode != CullMode::NONE )
             {
-                if ( _activeState.cullMode() == CullMode::NONE )
+                if ( _activeState._cullMode == CullMode::NONE )
                 {
                     glEnable( GL_CULL_FACE );
                 }
 
-                glCullFace( GLUtil::glCullModeTable[to_U32( newBlock.cullMode() )] );
+                glCullFace( GLUtil::glCullModeTable[to_U32( newBlock._cullMode )] );
             }
             else
             {
                 glDisable( GL_CULL_FACE );
             }
+            ret = true;
         }
 
-        if ( _activeState.frontFaceCCW() != newBlock.frontFaceCCW() )
+        if ( _activeState._frontFaceCCW != newBlock._frontFaceCCW )
         {
-            glFrontFace( newBlock.frontFaceCCW() ? GL_CCW : GL_CW );
+            glFrontFace( newBlock._frontFaceCCW ? GL_CCW : GL_CW );
+            ret = true;
         }
 
         // Check rasterization mode
-        if ( _activeState.fillMode() != newBlock.fillMode() )
+        if ( _activeState._fillMode != newBlock._fillMode )
         {
-            glPolygonMode( GL_FRONT_AND_BACK, GLUtil::glFillModeTable[to_U32( newBlock.fillMode() )] );
+            glPolygonMode( GL_FRONT_AND_BACK, GLUtil::glFillModeTable[to_U32( newBlock._fillMode )] );
+            ret = true;
         }
 
-        if ( _activeState.tessControlPoints() != newBlock.tessControlPoints() )
+        if ( _activeState._tessControlPoints != newBlock._tessControlPoints )
         {
-            glPatchParameteri( GL_PATCH_VERTICES, newBlock.tessControlPoints() );
+            glPatchParameteri( GL_PATCH_VERTICES, newBlock._tessControlPoints );
+            ret = true;
         }
 
         // Check the depth function
-        if ( _activeState.zFunc() != newBlock.zFunc() )
+        if ( _activeState._zFunc != newBlock._zFunc )
         {
-            glDepthFunc( GLUtil::glCompareFuncTable[to_U32( newBlock.zFunc() )] );
+            glDepthFunc( GLUtil::glCompareFuncTable[to_U32( newBlock._zFunc )] );
+            ret = true;
         }
 
         // Check if we need to change the stencil mask
-        if ( _activeState.stencilWriteMask() != newBlock.stencilWriteMask() )
+        if ( _activeState._stencilWriteMask != newBlock._stencilWriteMask )
         {
-            glStencilMask( newBlock.stencilWriteMask() );
+            glStencilMask( newBlock._stencilWriteMask );
+            ret = true;
         }
+
         // Stencil function is dependent on 3 state parameters set together
-        if ( _activeState.stencilFunc() != newBlock.stencilFunc() ||
-             _activeState.stencilRef() != newBlock.stencilRef() ||
-             _activeState.stencilMask() != newBlock.stencilMask() )
+        if ( _activeState._stencilFunc != newBlock._stencilFunc ||
+             _activeState._stencilRef != newBlock._stencilRef ||
+             _activeState._stencilMask != newBlock._stencilMask )
         {
-            glStencilFunc( GLUtil::glCompareFuncTable[to_U32( newBlock.stencilFunc() )],
-                           newBlock.stencilRef(),
-                           newBlock.stencilMask() );
+            glStencilFunc( GLUtil::glCompareFuncTable[to_U32( newBlock._stencilFunc )],
+                           newBlock._stencilRef,
+                           newBlock._stencilMask );
+            ret = true;
         }
         // Stencil operation is also dependent  on 3 state parameters set together
-        if ( _activeState.stencilFailOp() != newBlock.stencilFailOp() ||
-             _activeState.stencilZFailOp() != newBlock.stencilZFailOp() ||
-             _activeState.stencilPassOp() != newBlock.stencilPassOp() )
+        if ( _activeState._stencilFailOp != newBlock._stencilFailOp ||
+             _activeState._stencilZFailOp != newBlock._stencilZFailOp ||
+             _activeState._stencilPassOp != newBlock._stencilPassOp )
         {
-            glStencilOp( GLUtil::glStencilOpTable[to_U32( newBlock.stencilFailOp() )],
-                         GLUtil::glStencilOpTable[to_U32( newBlock.stencilZFailOp() )],
-                         GLUtil::glStencilOpTable[to_U32( newBlock.stencilPassOp() )] );
+            glStencilOp( GLUtil::glStencilOpTable[to_U32( newBlock._stencilFailOp )],
+                         GLUtil::glStencilOpTable[to_U32( newBlock._stencilZFailOp )],
+                         GLUtil::glStencilOpTable[to_U32( newBlock._stencilPassOp )] );
+            ret = true;
         }
+
         // Check and set polygon offset
-        if ( !COMPARE( _activeState.zBias(), newBlock.zBias() ) )
+        if ( !COMPARE( _activeState._zBias, newBlock._zBias ) )
         {
-            if ( IS_ZERO( newBlock.zBias() ) )
+            if ( IS_ZERO( newBlock._zBias ) )
             {
                 glDisable( GL_POLYGON_OFFSET_FILL );
             }
             else
             {
                 glEnable( GL_POLYGON_OFFSET_FILL );
-                if ( !COMPARE( _activeState.zBias(), newBlock.zBias() ) || !COMPARE( _activeState.zUnits(), newBlock.zUnits() ) )
+                if ( !COMPARE( _activeState._zBias, newBlock._zBias ) || !COMPARE( _activeState._zUnits, newBlock._zUnits ) )
                 {
-                    glPolygonOffset( newBlock.zBias(), newBlock.zUnits() );
+                    glPolygonOffset( newBlock._zBias, newBlock._zUnits );
                 }
             }
+            ret = true;
         }
 
         // Check and set colour mask
-        if ( _activeState.colourWrite().i != newBlock.colourWrite().i )
+        if ( _activeState._colourWrite.i != newBlock._colourWrite.i )
         {
-            const P32 cWrite = newBlock.colourWrite();
+            const P32 cWrite = newBlock._colourWrite;
             glColorMask( cWrite.b[0] == 1 ? GL_TRUE : GL_FALSE,   // R
                          cWrite.b[1] == 1 ? GL_TRUE : GL_FALSE,   // G
                          cWrite.b[2] == 1 ? GL_TRUE : GL_FALSE,   // B
-                         cWrite.b[3] == 1 ? GL_TRUE : GL_FALSE );  // A
+                         cWrite.b[3] == 1 ? GL_TRUE : GL_FALSE ); // A
+
+            ret = true;
         }
 
-        _activeState.from( newBlock );
+        if ( ret )
+        {
+            _activeState = newBlock;
+        }
+
+        return ret;
     }
 
 }; //namespace Divide

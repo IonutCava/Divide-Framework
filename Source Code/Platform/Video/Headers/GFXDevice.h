@@ -312,19 +312,19 @@ public:  // GPU interface
     const GFXShaderData::CamData& cameraData() const noexcept;
 
     /// Returns true if the viewport was changed
-           bool setViewport(const Rect<I32>& viewport);
-    inline bool setViewport(I32 x, I32 y, I32 width, I32 height);
-           bool setScissor(const Rect<I32>& scissor);
-    inline bool setScissor(I32 x, I32 y, I32 width, I32 height);
-           void setDepthRange(vec2<F32> depthRange);
+    bool setViewport(const Rect<I32>& viewport);
+    bool setViewport( I32 x, I32 y, I32 width, I32 height );
+    bool setScissor(const Rect<I32>& scissor);
+    bool setScissor( I32 x, I32 y, I32 width, I32 height );
+    void setDepthRange(vec2<F32> depthRange);
     void setPreviousViewProjectionMatrix(const mat4<F32>& prevViewMatrix, const mat4<F32> prevProjectionMatrix);
 
     void setCameraSnapshot(PlayerIndex index, const CameraSnapshot& snapshot) noexcept;
     CameraSnapshot& getCameraSnapshot(PlayerIndex index) noexcept;
     const CameraSnapshot& getCameraSnapshot(PlayerIndex index) const noexcept;
 
-    inline F32 renderingAspectRatio() const noexcept;
-    inline vec2<U16> renderingResolution() const noexcept;
+    F32 renderingAspectRatio() const noexcept;
+    vec2<U16> renderingResolution() const noexcept;
 
     /// Switch between fullscreen rendering
     void toggleFullScreen() const;
@@ -342,15 +342,15 @@ public:  // GPU interface
 
 public:  // Accessors and Mutators
 
-    inline Renderer& getRenderer() const;
+    Renderer& getRenderer() const;
     /// returns the standard state block
-    size_t getDefaultStateBlock( bool noDepthTest ) const noexcept;
-    inline size_t get2DStateBlock() const noexcept;
-    inline GFXRTPool& renderTargetPool() noexcept;
-    inline const GFXRTPool& renderTargetPool() const noexcept;
-    inline const ShaderProgram_ptr& getRTPreviewShader(bool depthOnly) const noexcept;
-    inline void registerDrawCall() noexcept;
-    inline void registerDrawCalls(U32 count) noexcept;
+    const RenderStateBlock& getNoDepthTestBlock() const noexcept;
+    const RenderStateBlock& get2DStateBlock() const noexcept;
+    GFXRTPool& renderTargetPool() noexcept;
+    const GFXRTPool& renderTargetPool() const noexcept;
+    const ShaderProgram_ptr& getRTPreviewShader(bool depthOnly) const noexcept;
+    void registerDrawCall() noexcept;
+    void registerDrawCalls(U32 count) noexcept;
 
     DebugView* addDebugView(const std::shared_ptr<DebugView>& view);
     bool removeDebugView(DebugView* view);
@@ -525,10 +525,10 @@ private:
     U8 _queuedScreenSampleChange = s_invalidQueueSampleCount;
     std::array<U8, to_base(ShadowType::COUNT)> _queuedShadowSampleChange;
     /// The default render state but with depth testing disabled
-    size_t _defaultStateNoDepthTestHash = 0u;
+    RenderStateBlock _defaultStateNoDepthTest{};
     /// Special render state for 2D rendering
-    size_t _state2DRenderingHash = 0u;
-    size_t _stateDepthOnlyRenderingHash = 0u;
+    RenderStateBlock _state2DRendering{};
+    RenderStateBlock _stateDepthOnlyRendering{};
     /// The interpolation factor between the current and the last frame
     FrustumClipPlanes _clippingPlanes{};
 

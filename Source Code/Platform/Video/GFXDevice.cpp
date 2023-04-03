@@ -527,24 +527,13 @@ namespace Divide
         _shaderComputeQueue = MemoryManager_NEW ShaderComputeQueue( cache );
 
         // Create general purpose render state blocks
-        RenderStateBlock defaultStateNoDepth;
-        defaultStateNoDepth.depthTestEnabled( false );
-        _defaultStateNoDepthTestHash = defaultStateNoDepth.getHash();
+        _defaultStateNoDepthTest._depthTestEnabled = false;
 
-        RenderStateBlock state2DRendering;
-        state2DRendering.setCullMode( CullMode::NONE );
-        state2DRendering.depthTestEnabled( false );
-        _state2DRenderingHash = state2DRendering.getHash();
+        _state2DRendering._cullMode = CullMode::NONE;
+        _state2DRendering._depthTestEnabled = false;
 
-        RenderStateBlock stateDepthOnlyRendering;
-        stateDepthOnlyRendering.setColourWrites( false, false, false, false );
-        stateDepthOnlyRendering.setZFunc( ComparisonFunction::ALWAYS );
-        _stateDepthOnlyRenderingHash = stateDepthOnlyRendering.getHash();
-
-        // The general purpose render state blocks are both mandatory and must different from each other at a state hash level
-        assert( _stateDepthOnlyRenderingHash != _state2DRenderingHash && "GFXDevice error: Invalid default state hash detected!" );
-        assert( _state2DRenderingHash != _defaultStateNoDepthTestHash && "GFXDevice error: Invalid default state hash detected!" );
-        assert( _defaultStateNoDepthTestHash != RenderStateBlock::DefaultHash() && "GFXDevice error: Invalid default state hash detected!" );
+        _stateDepthOnlyRendering._colourWrite.i = 0u;
+        _stateDepthOnlyRendering._zFunc = ComparisonFunction::ALWAYS;
 
         // We need to create all of our attachments for the default render targets
         // Start with the screen render target: Try a half float, multisampled
@@ -881,7 +870,7 @@ namespace Divide
                                                         PipelineDescriptor pipelineDesc{};
                                                         pipelineDesc._shaderProgramHandle = _HIZConstructProgram->handle();
                                                         pipelineDesc._primitiveTopology = PrimitiveTopology::COMPUTE;
-                                                        pipelineDesc._stateHash = getDefaultStateBlock(true);
+                                                        pipelineDesc._stateBlock = getNoDepthTestBlock();
 
                                                         _HIZPipeline = newPipeline( pipelineDesc );
                                                     } );
@@ -975,7 +964,7 @@ namespace Divide
                                                         {
                                                             const ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
                                                             PipelineDescriptor pipelineDescriptor;
-                                                            pipelineDescriptor._stateHash = get2DStateBlock();
+                                                            pipelineDescriptor._stateBlock = get2DStateBlock();
                                                             pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
                                                             pipelineDescriptor._shaderProgramHandle = blurShader->handle();
                                                             _blurBoxPipelineSingleCmd._pipeline = newPipeline( pipelineDescriptor );
@@ -995,7 +984,7 @@ namespace Divide
                                                          {
                                                              const ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
                                                              PipelineDescriptor pipelineDescriptor;
-                                                             pipelineDescriptor._stateHash = get2DStateBlock();
+                                                             pipelineDescriptor._stateBlock = get2DStateBlock();
                                                              pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
                                                              pipelineDescriptor._shaderProgramHandle = blurShader->handle();
                                                              _blurBoxPipelineLayeredCmd._pipeline = newPipeline( pipelineDescriptor );
@@ -1033,7 +1022,7 @@ namespace Divide
                                                                  {
                                                                      const ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
                                                                      PipelineDescriptor pipelineDescriptor;
-                                                                     pipelineDescriptor._stateHash = get2DStateBlock();
+                                                                     pipelineDescriptor._stateBlock = get2DStateBlock();
                                                                      pipelineDescriptor._shaderProgramHandle = blurShader->handle();
                                                                      pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
                                                                      _blurGaussianPipelineSingleCmd._pipeline = newPipeline( pipelineDescriptor );
@@ -1055,7 +1044,7 @@ namespace Divide
                                                                   {
                                                                       const ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
                                                                       PipelineDescriptor pipelineDescriptor;
-                                                                      pipelineDescriptor._stateHash = get2DStateBlock();
+                                                                      pipelineDescriptor._stateBlock = get2DStateBlock();
                                                                       pipelineDescriptor._shaderProgramHandle = blurShader->handle();
                                                                       pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
 
@@ -1087,7 +1076,7 @@ namespace Divide
                 _displayShader->addStateCallback( ResourceState::RES_LOADED, [this]( CachedResource* res )
                                                   {
                                                       PipelineDescriptor pipelineDescriptor = {};
-                                                      pipelineDescriptor._stateHash = get2DStateBlock();
+                                                      pipelineDescriptor._stateBlock = get2DStateBlock();
                                                       pipelineDescriptor._shaderProgramHandle = _displayShader->handle();
                                                       pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
                                                       _drawFSTexturePipelineCmd._pipeline = newPipeline( pipelineDescriptor );
@@ -1107,7 +1096,7 @@ namespace Divide
                 _depthShader->addStateCallback( ResourceState::RES_LOADED, [this]( CachedResource* res )
                                                 {
                                                     PipelineDescriptor pipelineDescriptor = {};
-                                                    pipelineDescriptor._stateHash = _stateDepthOnlyRenderingHash;
+                                                    pipelineDescriptor._stateBlock = _stateDepthOnlyRendering;
                                                     pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
                                                     pipelineDescriptor._shaderProgramHandle = _depthShader->handle();
 
@@ -1124,22 +1113,22 @@ namespace Divide
             PipelineDescriptor pipelineDesc;
             pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
             pipelineDesc._shaderProgramHandle = _imShaders->imWorldShaderNoTexture()->handle();
-            pipelineDesc._stateHash = primitiveStateBlock.getHash();
+            pipelineDesc._stateBlock = primitiveStateBlock;
 
             _debugGizmoPipeline = pipelineDesc;
 
-            primitiveStateBlock.depthTestEnabled( false );
-            pipelineDesc._stateHash = primitiveStateBlock.getHash();
+            primitiveStateBlock._depthTestEnabled = false;
+            pipelineDesc._stateBlock = primitiveStateBlock;
             _debugGizmoPipelineNoDepth = pipelineDesc;
 
 
-            primitiveStateBlock.setCullMode( CullMode::NONE );
-            pipelineDesc._stateHash = primitiveStateBlock.getHash();
+            primitiveStateBlock._cullMode = CullMode::NONE;
+            pipelineDesc._stateBlock = primitiveStateBlock;
             _debugGizmoPipelineNoCullNoDepth = pipelineDesc;
 
 
-            primitiveStateBlock.depthTestEnabled( true );
-            pipelineDesc._stateHash = primitiveStateBlock.getHash();
+            primitiveStateBlock._depthTestEnabled = true;
+            pipelineDesc._stateBlock = primitiveStateBlock;
             _debugGizmoPipelineNoCull = pipelineDesc;
         }
 
@@ -1185,7 +1174,6 @@ namespace Divide
         Console::printfn( Locale::Get( _ID( "CLOSING_RENDERER" ) ) );
         _renderer.reset( nullptr );
 
-        RenderStateBlock::Clear();
         SamplerDescriptor::Clear();
 
         GFX::DestroyPools();
@@ -2650,7 +2638,7 @@ namespace Divide
         const I32 initialOffsetX = viewport.x;
 
         PipelineDescriptor pipelineDesc{};
-        pipelineDesc._stateHash = _state2DRenderingHash;
+        pipelineDesc._stateBlock = _state2DRendering;
         pipelineDesc._shaderProgramHandle = SHADER_INVALID_HANDLE;
         pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
@@ -3254,10 +3242,4 @@ namespace Divide
             }
         };
     }
-
-    size_t GFXDevice::getDefaultStateBlock( const bool noDepthTest ) const noexcept
-    {
-        return noDepthTest ? _defaultStateNoDepthTestHash : RenderStateBlock::DefaultHash();
-    }
-
 };

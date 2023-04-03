@@ -58,16 +58,14 @@ CEGUIRenderer::CEGUIRenderer( Divide::GFXDevice& context, Divide::ShaderProgram_
     _displayDPI.d_x = _displayDPI.d_y = 96;
     _viewProjectionMatrix = {};
 
-    RenderStateBlock defaultState;
-    defaultState.setCullMode( CullMode::NONE );
-    defaultState.setFillMode( FillMode::SOLID );
-    defaultState.depthTestEnabled( false );
+    RenderStateBlock defaultStateScissor{};
+    defaultStateScissor._cullMode = CullMode::NONE;
+    defaultStateScissor._fillMode = FillMode::SOLID;
+    defaultStateScissor._depthTestEnabled = false;
+    defaultStateScissor._scissorTestEnabled = true;
 
-    defaultState.setScissorTest( true );
-    const size_t defaultStateHashScissor = defaultState.getHash();
-
-    defaultState.setScissorTest( false );
-    const size_t defaultStateHashNoScissor = defaultState.getHash();
+    RenderStateBlock defaultStateNoScissor = defaultStateScissor;
+    defaultStateNoScissor._scissorTestEnabled = false;
 
     PipelineDescriptor descriptor = {};
     descriptor._shaderProgramHandle = shader->handle();
@@ -101,10 +99,10 @@ CEGUIRenderer::CEGUIRenderer( Divide::GFXDevice& context, Divide::ShaderProgram_
     blend.blendDest( BlendProperty::INV_SRC_ALPHA );
     blend.blendOp( BlendOperation::ADD );
 
-    descriptor._stateHash = defaultStateHashScissor;
+    descriptor._stateBlock = defaultStateScissor;
     _pipelines[to_base( PipelineType::BLEND_PREMULTIPLIED_SCISSOR )] = context.newPipeline( descriptor );
 
-    descriptor._stateHash = defaultStateHashNoScissor;
+    descriptor._stateBlock = defaultStateNoScissor;
     _pipelines[to_base( PipelineType::BLEND_PREMULTIPLIED_NO_SCISSOR )] = context.newPipeline( descriptor );
 
     blend.blendSrc( BlendProperty::SRC_ALPHA );
@@ -114,10 +112,10 @@ CEGUIRenderer::CEGUIRenderer( Divide::GFXDevice& context, Divide::ShaderProgram_
     blend.blendDestAlpha( BlendProperty::ONE );
     blend.blendOpAlpha( BlendOperation::ADD );
 
-    descriptor._stateHash = defaultStateHashScissor;
+    descriptor._stateBlock = defaultStateScissor;
     _pipelines[to_base( PipelineType::BLEND_NORMAL_SCISSOR )] = context.newPipeline( descriptor );
 
-    descriptor._stateHash = defaultStateHashNoScissor;
+    descriptor._stateBlock = defaultStateNoScissor;
     _pipelines[to_base( PipelineType::BLEND_NORMAL_NO_SCISSOR )] = context.newPipeline( descriptor );
 
     _defaultTarget = CEGUI_NEW_AO DVDTextureTarget(*this, _displaySize);

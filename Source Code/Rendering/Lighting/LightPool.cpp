@@ -590,7 +590,6 @@ namespace Divide
         if ( totalLightCount > 0u )
         {
             PipelineDescriptor pipelineDescriptor{};
-            pipelineDescriptor._stateHash = _context.gfx().getDefaultStateBlock( false );
             pipelineDescriptor._shaderProgramHandle = _lightImpostorShader->handle();
             pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
 

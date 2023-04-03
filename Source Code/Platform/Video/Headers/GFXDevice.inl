@@ -54,8 +54,13 @@ inline Renderer& GFXDevice::getRenderer() const {
     return *_renderer;
 }
 
-inline size_t GFXDevice::get2DStateBlock() const noexcept {
-    return _state2DRenderingHash;
+inline const RenderStateBlock& GFXDevice::get2DStateBlock() const noexcept {
+    return _state2DRendering;
+}
+
+inline const RenderStateBlock& GFXDevice::getNoDepthTestBlock() const noexcept
+{
+    return _defaultStateNoDepthTest;
 }
 
 inline GFXRTPool& GFXDevice::renderTargetPool() noexcept {
@@ -91,7 +96,7 @@ inline bool GFXDevice::IsSubmitCommand(const GFX::CommandType type) noexcept {
            type == GFX::CommandType::DRAW_COMMANDS;
 }
 
-vec2<U16> GFXDevice::renderingResolution() const noexcept {
+inline vec2<U16> GFXDevice::renderingResolution() const noexcept {
     return _renderingResolution;
 }
 

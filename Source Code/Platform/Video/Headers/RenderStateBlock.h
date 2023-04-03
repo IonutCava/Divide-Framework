@@ -50,99 +50,40 @@ namespace TypeUtil {
     [[nodiscard]] CullMode StringToCullMode(const char* name) noexcept;
 };
 
-class RenderStateBlock final : public GUIDWrapper, public Hashable {
-    public:
-       static void Clear();
-       /// Retrieve a state block by hash value.
-       /// If the hash value does not exist in the state block map, return the default state block
-       static const RenderStateBlock& Get(size_t renderStateBlockHash);
-       /// Returns false if the specified hash is not found in the map
-       static const RenderStateBlock& Get(size_t renderStateBlockHash, bool& blockFound);
-       static void SaveToXML(const RenderStateBlock& block, const string& entryName, boost::property_tree::ptree& pt);
+struct RenderStateBlock
+{
+    P32 _colourWrite{P32_FLAGS_TRUE};
+    F32 _zBias{0.f};
+    F32 _zUnits{0.f};
+    U32 _tessControlPoints{4u};
+    U32 _stencilRef{0u};
+    U32 _stencilMask{0xFFFFFFFF};
+    U32 _stencilWriteMask{0xFFFFFFFF};
 
-       static void LoadFromXML(const string& entryName, const boost::property_tree::ptree& pt, RenderStateBlock& blockInOut);
+    ComparisonFunction _zFunc{ComparisonFunction::LEQUAL};
+    StencilOperation   _stencilFailOp{StencilOperation::KEEP};
+    StencilOperation   _stencilPassOp{StencilOperation::KEEP};
+    StencilOperation   _stencilZFailOp{StencilOperation::KEEP};
+    ComparisonFunction _stencilFunc{ComparisonFunction::NEVER};
 
-       static size_t DefaultHash() noexcept;
+    CullMode _cullMode{CullMode::BACK};
+    FillMode _fillMode{FillMode::SOLID};
 
-    protected:
-        using RenderStateMap = hashMap<size_t, RenderStateBlock, NoHash<size_t>>;
-        static RenderStateMap s_stateBlockMap;
-        static SharedMutex s_stateBlockMapMutex;
-        static size_t s_defaultHashValue;
-
-    public:
-        RenderStateBlock() noexcept;
-        RenderStateBlock(const RenderStateBlock& other) noexcept = default;
-
-        /// Can't assign due to the GUID restrictions
-        RenderStateBlock& operator=(const RenderStateBlock& other) noexcept = delete;
-        /// Use "from" instead of "operator=" to bypass the GUID restrictions
-        void from(const RenderStateBlock& other);
-
-        void reset();
-
-        bool operator==(const RenderStateBlock& rhs) const {
-            return getHash() == rhs.getHash();
-        }
-
-        bool operator!=(const RenderStateBlock& rhs) const {
-            return getHash() != rhs.getHash();
-        }
-
-        void setFillMode(FillMode mode) noexcept;
-        void setTessControlPoints(U32 count) noexcept;
-        void setZBias(F32 zBias, F32 zUnits) noexcept;
-        void setZFunc(ComparisonFunction zFunc = ComparisonFunction::LEQUAL) noexcept;
-        void flipCullMode() noexcept;
-        void flipFrontFace() noexcept;
-        void setCullMode(CullMode mode) noexcept;
-        void setFrontFaceCCW(bool state) noexcept;
-        void depthTestEnabled(bool enable) noexcept;
-        void depthWriteEnabled(bool enable) noexcept;
-        void setScissorTest(bool enable) noexcept;
-
-        void setStencil(bool enable,
-                        U32 stencilRef = 0u,
-                        StencilOperation stencilFailOp  = StencilOperation::KEEP,
-                        StencilOperation stencilPassOp = StencilOperation::KEEP,
-                        StencilOperation stencilZFailOp = StencilOperation::KEEP,
-                        ComparisonFunction stencilFunc = ComparisonFunction::NEVER) noexcept;
-
-        void setStencilReadWriteMask(U32 read, U32 write) noexcept;
-
-        void setColourWrites(bool red, bool green, bool blue, bool alpha) noexcept;
-
-        size_t getHash() const override;
-
-    private:
-        size_t getHashInternal() const;
-
-    public:
-        PROPERTY_R(P32, colourWrite, P32_FLAGS_TRUE);
-        PROPERTY_R(F32, zBias, 0.0f);
-        PROPERTY_R(F32, zUnits, 0.0f);
-        PROPERTY_R(U32, tessControlPoints, 3);
-        PROPERTY_R(U32, stencilRef, 0u);
-        PROPERTY_R(U32, stencilMask, 0xFFFFFFFF);
-        PROPERTY_R(U32, stencilWriteMask, 0xFFFFFFFF);
-
-        PROPERTY_R(ComparisonFunction, zFunc, ComparisonFunction::LEQUAL);
-        PROPERTY_R(StencilOperation, stencilFailOp, StencilOperation::KEEP);
-        PROPERTY_R(StencilOperation, stencilPassOp, StencilOperation::KEEP);
-        PROPERTY_R(StencilOperation, stencilZFailOp, StencilOperation::KEEP);
-        PROPERTY_R(ComparisonFunction, stencilFunc, ComparisonFunction::NEVER);
-
-        PROPERTY_R(CullMode, cullMode, CullMode::BACK);
-        PROPERTY_R(FillMode, fillMode, FillMode::SOLID);
-
-        PROPERTY_R(bool, frontFaceCCW, true);
-        PROPERTY_R(bool, scissorTestEnabled, false);
-        PROPERTY_R(bool, depthTestEnabled, true);
-        PROPERTY_R(bool, depthWriteEnabled, true);
-        PROPERTY_R(bool, stencilEnable, false);
-
-        mutable bool _dirty = true;
+    bool _frontFaceCCW{true};
+    bool _scissorTestEnabled{false};
+    bool _depthTestEnabled{true};
+    bool _depthWriteEnabled{true};
+    bool _stencilEnabled{false};
+    bool _primitiveRestartEnabled{ false };
+    bool _rasterizationEnabled{ true };
 };
+
+bool operator==( const RenderStateBlock& lhs, const RenderStateBlock& rhs );
+bool operator!=( const RenderStateBlock& lhs, const RenderStateBlock& rhs );
+
+size_t GetHash( const RenderStateBlock& block );
+void SaveToXML( const RenderStateBlock& block, const string& entryName, boost::property_tree::ptree& pt );
+void LoadFromXML( const string& entryName, const boost::property_tree::ptree& pt, RenderStateBlock& blockInOut );
 
 };  // namespace Divide
 #endif
