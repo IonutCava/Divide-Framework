@@ -289,7 +289,7 @@ namespace Divide
         PROPERTY_INTERNAL( bool, lockSolutionExplorer, false );
         PROPERTY_INTERNAL( bool, sceneGizmoEnabled, false );
 
-        protected:
+    protected:
         void renderDrawList( ImDrawData* pDrawData, I64 bufferGUID, const Rect<I32>& targetViewport, bool editorPass, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
 
         /// Saves all new changes to the current scene and uses the provided callbacks to return progress messages. msgCallback gets called per save-step/process, finishCallback gets called once at the end
@@ -324,7 +324,7 @@ namespace Divide
         [[nodiscard]] bool removeComponent( const Selections& selections, ComponentType newComponentType ) const;
         [[nodiscard]] SceneNode_ptr createNode( SceneNodeType type, const ResourceDescriptor& descriptor );
 
-        GenericVertexData* getOrCreateIMGUIBuffer( I64 bufferGUID, I32 maxCommandCount, U32 maxVertices, GFX::MemoryBarrierCommand& memCmdInOut );
+        GenericVertexData* getOrCreateIMGUIBuffer( I64 bufferGUID, U32 maxVertices, GFX::MemoryBarrierCommand& memCmdInOut );
 
         protected:
         SceneGraphNode* _previewNode{ nullptr };

@@ -9,8 +9,8 @@
 #include "Utility/Headers/Localization.h"
 
 namespace Divide {
-    vkGenericVertexData::vkGenericVertexData(GFXDevice& context, const U32 ringBufferLength, const char* name)
-        : GenericVertexData(context, ringBufferLength, name)
+    vkGenericVertexData::vkGenericVertexData(GFXDevice& context, const U32 ringBufferLength, const bool renderIndirect, const Str256& name)
+        : GenericVertexData(context, ringBufferLength, renderIndirect, name)
     {
     }
 
@@ -37,8 +37,15 @@ namespace Divide {
             DIVIDE_ASSERT( command._bufferFlag < _idxBuffers.size() );
 
             const auto& idxBuffer = _idxBuffers[command._bufferFlag];
-            if (idxBuffer._buffer != nullptr) {
-                vkCmdBindIndexBuffer(*vkData->_cmdBuffer, idxBuffer._buffer->_buffer, 0u, idxBuffer._data.smallIndices ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
+            if (idxBuffer._buffer != nullptr)
+            {
+                VkDeviceSize offsetInBytes = 0u;
+
+                if ( idxBuffer._ringSizeFactor > 1 )
+                {
+                    offsetInBytes += idxBuffer._buffer->_params._elementCount * idxBuffer._buffer->_params._elementSize * queueIndex();
+                }
+                vkCmdBindIndexBuffer(*vkData->_cmdBuffer, idxBuffer._buffer->_buffer, offsetInBytes, idxBuffer._data.smallIndices ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
             }
             // Submit the draw command
             VKUtil::SubmitRenderCommand( command, *vkData->_cmdBuffer, idxBuffer._buffer != nullptr, renderIndirect() );
@@ -111,7 +118,7 @@ namespace Divide {
             return updateBuffer( params._bindConfig._bufferIdx, 0, params._bufferParams._elementCount, params._initialData.first);
         }
 
-        const string bufferName = _name.empty() ? Util::StringFormat("DVD_GENERAL_VTX_BUFFER_%d", handle()._id) : (_name + "_VTX_BUFFER");
+        const string bufferName = _name.empty() ? Util::StringFormat("DVD_GENERAL_VTX_BUFFER_%d", handle()._id) : string(_name.c_str()) + "_VTX_BUFFER";
         impl->_buffer = eastl::make_unique<vkBufferImpl>(params._bufferParams,
                                                          bufferSizeInBytes,
                                                          ringSizeFactor,
@@ -189,12 +196,19 @@ namespace Divide {
 
         if ( impl->_buffer != nullptr )
         {
+            size_t offsetInBytes = 0u;
+            if ( impl->_ringSizeFactor > 1u )
+            {
+                offsetInBytes += impl->_data.count * elementSize * queueIndex();
+            }
+
             DIVIDE_ASSERT( range <= impl->_bufferSize );
-            return impl->_buffer->writeBytes( { 0u, range }, VK_ACCESS_INDEX_READ_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, data );
+            return impl->_buffer->writeBytes( { offsetInBytes, range }, VK_ACCESS_INDEX_READ_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, data );
         }
         
         impl->_bufferSize = range;
         impl->_data = indices;
+        impl->_ringSizeFactor = queueLength();
 
         BufferParams params{};
         params._flags._updateFrequency = indices.dynamic ? BufferUpdateFrequency::OFTEN : BufferUpdateFrequency::OCASSIONAL;
@@ -205,10 +219,10 @@ namespace Divide {
 
         const std::pair<bufferPtr, size_t> initialData = { data, range };
 
-        const string bufferName = _name.empty() ? Util::StringFormat( "DVD_GENERAL_IDX_BUFFER_%d", handle()._id ) : (_name + "_IDX_BUFFER");
+        const string bufferName = _name.empty() ? Util::StringFormat( "DVD_GENERAL_IDX_BUFFER_%d", handle()._id ) : string(_name.c_str()) + "_IDX_BUFFER";
         impl->_buffer = eastl::make_unique<vkBufferImpl>( params,
                                                             impl->_bufferSize,
-                                                            1u,
+                                                            impl->_ringSizeFactor,
                                                             initialData,
                                                             bufferName.c_str() );
         return BufferLock

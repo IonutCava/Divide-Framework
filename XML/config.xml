@@ -2,9 +2,12 @@
 <!-- DEBUG: General purpose settings needed while the application is loading -->
 <config>
 	<debug>
-		<enableRenderAPIDebugging>true</enableRenderAPIDebugging>
-		<enableRenderAPIBestPractices>true</enableRenderAPIBestPractices>
-		<assertOnRenderAPIError>true</assertOnRenderAPIError>
+		<renderer>
+			<enableRenderAPIDebugging>true</enableRenderAPIDebugging>
+			<enableRenderAPIBestPractices>true</enableRenderAPIBestPractices>
+			<assertOnRenderAPIError>true</assertOnRenderAPIError>
+			<useExtensions>true</useExtensions>
+		</renderer>
 		<useGeometryCache>true</useGeometryCache>
 		<useVegetationCache>true</useVegetationCache>
 		<useShaderCache>true</useShaderCache>

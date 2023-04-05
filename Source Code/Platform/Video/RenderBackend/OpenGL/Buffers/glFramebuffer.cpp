@@ -59,9 +59,8 @@ namespace Divide
     }
 
     glFramebuffer::glFramebuffer( GFXDevice& context, const RenderTargetDescriptor& descriptor )
-        : RenderTarget( context, descriptor ),
-        _prevViewport( -1 ),
-        _debugMessage( "Render Target: [ " + name() + " ]" )
+        : RenderTarget( context, descriptor )
+        , _debugMessage( "Render Target: [ " + name() + " ]" )
     {
         glCreateFramebuffers( 1, &_framebufferHandle );
         assert( (_framebufferHandle != 0 && _framebufferHandle != GLUtil::k_invalidObjectID) &&
@@ -461,7 +460,6 @@ namespace Divide
         }
 
         // Set the viewport
-        _prevViewport.set( _context.activeViewport() );
         _context.setViewport( 0, 0, to_I32( getWidth() ), to_I32( getHeight() ) );
 
         clear( clearPolicy );

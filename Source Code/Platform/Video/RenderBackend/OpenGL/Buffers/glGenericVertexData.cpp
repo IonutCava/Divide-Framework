@@ -13,8 +13,8 @@
 namespace Divide
 {
 
-    glGenericVertexData::glGenericVertexData( GFXDevice& context, const U32 ringBufferLength, const char* name )
-        : GenericVertexData( context, ringBufferLength, name )
+    glGenericVertexData::glGenericVertexData( GFXDevice& context, const U32 ringBufferLength, const bool renderIndirect, const Str256& name )
+        : GenericVertexData( context, ringBufferLength, renderIndirect, name )
     {
     }
 
@@ -151,7 +151,6 @@ namespace Divide
             glInvalidateBufferSubData( impl->_handle, 0u, range );
             glNamedBufferSubData( impl->_handle, 0u, range, data );
         }
-
 
         if ( !Runtime::isMainThread() )
         {

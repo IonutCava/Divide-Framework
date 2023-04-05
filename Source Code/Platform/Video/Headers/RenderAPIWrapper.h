@@ -33,8 +33,8 @@
 #ifndef _RENDER_API_H_
 #define _RENDER_API_H_
 
-#include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
-#include "Platform/Video/Headers/DescriptorSets.h"
+#include "RenderAPIEnums.h"
+#include "Platform/Video/Headers/DescriptorSetsFwd.h"
 
 namespace CEGUI {
     class Texture;
@@ -49,15 +49,24 @@ namespace GFX {
 
 enum class ErrorCode : I8;
 
-template <typename T>
-class vec4;
+template <typename T> class vec4;
 
+class ResourceCache;
 class DisplayWindow;
+class TextureDescriptor;
 
 struct Configuration;
 struct TextElementBatch;
+struct RenderTargetDescriptor;
+struct ShaderBufferDescriptor;
+struct ShaderProgramDescriptor;
 
-FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
+FWD_DECLARE_MANAGED_CLASS( Texture );
+FWD_DECLARE_MANAGED_CLASS( Renderer );
+FWD_DECLARE_MANAGED_CLASS( RenderTarget );
+FWD_DECLARE_MANAGED_CLASS( ShaderBuffer );
+FWD_DECLARE_MANAGED_CLASS( ShaderProgram );
+FWD_DECLARE_MANAGED_CLASS( GenericVertexData );
 
 struct VideoModes {
     // Video resolution
@@ -164,11 +173,17 @@ protected:
 
     virtual void onThreadCreated(const std::thread::id& threadID) = 0;
 
-    virtual bool bindShaderResources(DescriptorSetUsage usage, const DescriptorSet& bindings, bool isDirty) = 0;
+    virtual bool bindShaderResources( const DescriptorSetEntries& descriptorSetEntries ) = 0;
 
     virtual void onShaderRegisterChanged( ShaderProgram* program, bool state ) = 0;
 
     virtual void initDescriptorSets() = 0;
+    
+    virtual RenderTarget_uptr      newRT( const RenderTargetDescriptor& descriptor ) const = 0;
+    virtual GenericVertexData_ptr  newGVD( U32 ringBufferLength, bool renderIndirect, const Str256& name ) const = 0;
+    virtual Texture_ptr            newTexture( size_t descriptorHash, const Str256& resourceName, const ResourcePath& assetNames, const ResourcePath& assetLocations, const TextureDescriptor& texDescriptor, ResourceCache& parentCache ) const = 0;
+    virtual ShaderProgram_ptr      newShaderProgram( size_t descriptorHash, const Str256& resourceName, const Str256& assetName, const ResourcePath& assetLocation, const ShaderProgramDescriptor& descriptor, ResourceCache& parentCache ) const = 0;
+    virtual ShaderBuffer_uptr      newSB( const ShaderBufferDescriptor& descriptor ) const = 0;
 };
 
 FWD_DECLARE_MANAGED_CLASS(RenderAPIWrapper);

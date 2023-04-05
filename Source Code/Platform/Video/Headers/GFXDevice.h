@@ -87,10 +87,7 @@ struct ShaderBufferDescriptor;
 
 enum class ShadowType : U8;
 
-FWD_DECLARE_MANAGED_CLASS(Texture);
-FWD_DECLARE_MANAGED_CLASS(Renderer);
-FWD_DECLARE_MANAGED_CLASS(VertexBuffer);
-FWD_DECLARE_MANAGED_CLASS(GenericVertexData);
+FWD_DECLARE_MANAGED_CLASS( VertexBuffer )
 
 namespace Time {
     class ProfileTimer;
@@ -374,14 +371,17 @@ public:  // Accessors and Mutators
     static bool IsSubmitCommand(GFX::CommandType type) noexcept;
 
 public:
+    /// Create and return a new framebuffer.
+    RenderTarget_uptr newRT( const RenderTargetDescriptor& descriptor );
+
     /// Create and return a new immediate mode emulation primitive.
     IMPrimitive*       newIMP(const Str64& name);
     bool               destroyIMP(IMPrimitive*& primitive);
 
     /// Create and return a new vertex array (VAO + VB + IB).
-    VertexBuffer_ptr  newVB(const Str256& name);
+    VertexBuffer_ptr  newVB(bool renderIndirect, const Str256& name);
     /// Create and return a new generic vertex data object
-    GenericVertexData_ptr newGVD(U32 ringBufferLength, const char* name = nullptr);
+    GenericVertexData_ptr newGVD(U32 ringBufferLength, bool renderIndirect, const Str256& name);
     /// Create and return a new texture.
     Texture_ptr        newTexture(size_t descriptorHash,
                                   const Str256& resourceName,
@@ -433,7 +433,6 @@ public:
     POINTER_R(SceneShaderData, sceneData, nullptr);
     PROPERTY_R(ImShaders_uptr, imShaders);
 
-protected:
    [[nodiscard]] bool frameStarted( const FrameEvent& evt ) override;
    [[nodiscard]] bool frameEnded( const FrameEvent& evt ) noexcept override;
 
@@ -445,9 +444,6 @@ protected:
 
     void setScreenMSAASampleCountInternal(U8 sampleCount);
     void setShadowMSAASampleCountInternal(ShadowType type, U8 sampleCount);
-
-    /// Create and return a new framebuffer.
-    RenderTarget_uptr newRT(const RenderTargetDescriptor& descriptor);
 
     // returns true if the window and the viewport have different aspect ratios
     bool fitViewportInWindow(U16 w, U16 h);
@@ -499,7 +495,6 @@ private:
     void setClipPlanes(const FrustumClipPlanes& clipPlanes);
     void renderFromCamera(const CameraSnapshot& cameraSnapshot);
     void shadowingSettings(const F32 lightBleedBias, const F32 minShadowVariance) noexcept;
-    RenderTarget_uptr newRTInternal(const RenderTargetDescriptor& descriptor);
     ErrorCode createAPIInstance(RenderAPI api);
 
 private:

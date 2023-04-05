@@ -133,8 +133,6 @@ protected:
 
     eastl::fixed_vector<BindingState, 8 + 2, true, eastl::dvd_allocator> _attachmentState;
 
-    Rect<I32> _prevViewport;
-
     bool _isLayeredDepth = false;
     bool _statusCheckQueued = false;
     bool _activeDepthBuffer = false;

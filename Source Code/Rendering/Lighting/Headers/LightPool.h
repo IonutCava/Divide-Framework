@@ -40,7 +40,6 @@
 #include "Scenes/Headers/SceneComponent.h"
 #include "Core/Headers/PlatformContextComponent.h"
 #include "Managers/Headers/FrameListenerManager.h"
-#include "Platform/Video/Headers/DescriptorSets.h"
 
 namespace Divide {
 

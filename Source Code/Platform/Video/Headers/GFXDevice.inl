@@ -130,6 +130,36 @@ inline const GFXDevice::GFXDescriptorSet& GFXDevice::descriptorSet(const Descrip
 
 inline void GFXDevice::onShaderRegisterChanged( ShaderProgram* program, const bool state ) { _api->onShaderRegisterChanged( program, state ); }
 
+
+inline ShaderProgram_ptr GFXDevice::newShaderProgram( const size_t descriptorHash,
+                                                      const Str256& resourceName,
+                                                      const Str256& assetName,
+                                                      const ResourcePath& assetLocation,
+                                                      const ShaderProgramDescriptor& descriptor,
+                                                      ResourceCache& parentCache )
+{
+    return _api->newShaderProgram( descriptorHash, resourceName, assetName, assetLocation, descriptor, parentCache );
+}
+
+inline ShaderBuffer_uptr GFXDevice::newSB( const ShaderBufferDescriptor& descriptor )
+{
+    return _api->newSB( descriptor );
+}
+
+inline GenericVertexData_ptr GFXDevice::newGVD( const U32 ringBufferLength, const bool renderIndirect, const Str256& name )
+{
+    return _api->newGVD( ringBufferLength, renderIndirect, name );
+}
+
+inline Texture_ptr GFXDevice::newTexture( const size_t descriptorHash,
+                                          const Str256& resourceName,
+                                          const ResourcePath& assetNames,
+                                          const ResourcePath& assetLocations,
+                                          const TextureDescriptor& texDescriptor,
+                                          ResourceCache& parentCache )
+{
+    return _api->newTexture( descriptorHash, resourceName, assetNames, assetLocations, texDescriptor, parentCache );
+}
 };  // namespace Divide
 
 #endif

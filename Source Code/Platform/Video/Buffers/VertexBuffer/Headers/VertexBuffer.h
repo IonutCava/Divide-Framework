@@ -59,7 +59,7 @@ class VertexBuffer final : public VertexDataInterface {
         F32       _tangent{0.f};
     };
 
-    VertexBuffer(GFXDevice& context, const Str256& name);
+    VertexBuffer(GFXDevice& context, bool renderIndirect, const Str256& name);
     ~VertexBuffer() = default;
 
     bool create(bool staticDraw, bool keepData);

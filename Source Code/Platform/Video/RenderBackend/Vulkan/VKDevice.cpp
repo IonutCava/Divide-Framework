@@ -63,6 +63,8 @@ namespace Divide
             .prefer_gpu_device_type( vkb::PreferredDeviceType::discrete )
             .add_required_extension( VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME )
             .add_desired_extension(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME)
+            .add_desired_extension(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME)
+            .add_desired_extension(VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME)
             .set_required_features( vk10features )
             .set_required_features_11( vk11features )
             .set_required_features_12( vk12features )
@@ -90,7 +92,14 @@ namespace Divide
                 if ( extension == VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME )
                 {
                     supportsDynamicExtension3(true);
-                    break;
+                }
+                else if ( extension == VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME )
+                {
+                    supportsPushDescriptors(true);
+                }
+                else if ( extension == VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME )
+                {
+                    supportsDescriptorBuffers(true);
                 }
             }
 

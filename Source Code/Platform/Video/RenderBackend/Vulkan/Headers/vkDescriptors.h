@@ -68,7 +68,8 @@ public:
 
     VkDescriptorSetLayout createDescriptorLayout(VkDescriptorSetLayoutCreateInfo* info);
 
-    struct DescriptorLayoutInfo {
+    struct DescriptorLayoutInfo
+    {
         vector<VkDescriptorSetLayoutBinding> bindings;
         size_t GetHash() const;
         bool operator==(const DescriptorLayoutInfo& other) const;
@@ -97,11 +98,10 @@ public:
 
     bool buildSetFromLayout(VkDescriptorSet& set, const VkDescriptorSetLayout& layoutIn, VkDevice device );
     bool buildSetAndLayout(VkDescriptorSet& set, VkDescriptorSetLayout& layoutOut, VkDevice device );
-    bool buildSet(VkDescriptorSet& set, VkDevice device );
 private:
 
-    vector<VkWriteDescriptorSet> writes;
-    vector<VkDescriptorSetLayoutBinding> bindings;
+    eastl::fixed_vector<VkWriteDescriptorSet, MAX_BINDINGS_PER_DESCRIPTOR_SET, false> writes;
+    eastl::fixed_vector<VkDescriptorSetLayoutBinding, MAX_BINDINGS_PER_DESCRIPTOR_SET, false> bindings;
 
     DescriptorLayoutCache* cache{ nullptr };
     vke::DescriptorAllocatorHandle* alloc{ nullptr };

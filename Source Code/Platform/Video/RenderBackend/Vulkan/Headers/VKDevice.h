@@ -59,6 +59,8 @@ class VKDevice final : NonCopyable, NonMovable
         [[nodiscard]] VKQueue getQueue( QueueType type ) const noexcept;
 
         PROPERTY_R_IW(bool, supportsDynamicExtension3, false);
+        PROPERTY_R_IW(bool, supportsPushDescriptors, false);
+        PROPERTY_R_IW(bool, supportsDescriptorBuffers, false);
 
     private:
         [[nodiscard]] VKQueue getQueueInternal( QueueType type, bool dedicated) const noexcept;

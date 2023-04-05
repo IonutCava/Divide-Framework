@@ -257,7 +257,7 @@ namespace Divide
         }
 
         // OpenGL has a nifty error callback system, available in every build configuration if required
-        if ( Config::ENABLE_GPU_VALIDATION && (config.debug.enableRenderAPIDebugging || config.debug.enableRenderAPIBestPractices) )
+        if ( Config::ENABLE_GPU_VALIDATION && (config.debug.renderer.enableRenderAPIDebugging || config.debug.renderer.enableRenderAPIBestPractices) )
         {
             // GL_DEBUG_OUTPUT_SYNCHRONOUS is essential for debugging gl commands in the IDE
             glEnable( GL_DEBUG_OUTPUT );
@@ -266,7 +266,7 @@ namespace Divide
             glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_MARKER, GL_DONT_CARE, 0, NULL, GL_FALSE );
             glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_PUSH_GROUP, GL_DONT_CARE, 0, NULL, GL_FALSE );
             glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_POP_GROUP, GL_DONT_CARE, 0, NULL, GL_FALSE );
-            if ( !config.debug.enableRenderAPIBestPractices )
+            if ( !config.debug.renderer.enableRenderAPIBestPractices )
             {
                 glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR, GL_DONT_CARE, 0, NULL, GL_FALSE );
                 glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_PORTABILITY, GL_DONT_CARE, 0, NULL, GL_FALSE );
@@ -457,7 +457,7 @@ namespace Divide
         _performanceQueries[to_base( GlobalQueryTypes::TESSELLATION_EVAL_INVOCATIONS )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_TESS_EVALUATION_SHADER_INVOCATIONS, 6 );
         _performanceQueries[to_base( GlobalQueryTypes::GPU_TIME )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_TIME_ELAPSED, 6 );
 
-        s_stateTracker.assertOnAPIError(config.debug.assertOnRenderAPIError);
+        s_stateTracker.assertOnAPIError(config.debug.renderer.assertOnRenderAPIError);
 
         // That's it. Everything should be ready for draw calls
         Console::printfn( Locale::Get( _ID( "START_OGL_API_OK" ) ) );
@@ -1441,104 +1441,108 @@ namespace Divide
         }
     }
 
-    bool GL_API::bindShaderResources( const DescriptorSetUsage usage, const DescriptorSet& bindings, const bool isDirty )
+    bool GL_API::bindShaderResources( const DescriptorSetEntries& descriptorSetEntries )
     {
         PROFILE_SCOPE( "BIND_SHADER_RESOURCES", Profiler::Category::Graphics );
-        if ( !isDirty )
-        {
-            // We don't need to keep track of descriptor set to layout compatibility in OpenGL
-            return true;
-        }
 
-        for ( auto& srcBinding : bindings )
+        for ( const DescriptorSetEntry& entry : descriptorSetEntries )
         {
-            switch ( Type( srcBinding._data ) )
+            if ( !entry._isDirty )
             {
-                case DescriptorSetBindingType::UNIFORM_BUFFER:
-                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
+                // We don't need to keep track of descriptor set to layout compatibility in OpenGL
+                continue;
+            }
+
+            for ( const DescriptorSetBinding& srcBinding : *entry._set )
+            {
+                switch ( Type( srcBinding._data ) )
                 {
-                    if ( !Has<ShaderBufferEntry>( srcBinding._data) ) [[unlikely]]
+                    case DescriptorSetBindingType::UNIFORM_BUFFER:
+                    case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
                     {
-                        continue;
-                    }
-
-                    const ShaderBufferEntry& bufferEntry = As<ShaderBufferEntry>( srcBinding._data );
-                    if ( bufferEntry._buffer == nullptr || bufferEntry._range._length == 0u ) [[unlikely]]
-                    {
-                        continue;
-                    }
-
-                    glShaderBuffer* glBuffer = static_cast<glShaderBuffer*>(bufferEntry._buffer);
-
-                    if ( !glBuffer->bindByteRange(
-                        ShaderProgram::GetGLBindingForDescriptorSlot( usage, srcBinding._slot ),
+                        if ( !Has<ShaderBufferEntry>( srcBinding._data) ) [[unlikely]]
                         {
-                            bufferEntry._range._startOffset * glBuffer->getPrimitiveSize(),
-                            bufferEntry._range._length * glBuffer->getPrimitiveSize(),
-                        },
-                        bufferEntry._bufferQueueReadIndex
-                        ) )
-                    {
-                        NOP();
-                    }
-                } break;
-                case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER:
-                {
-                    if ( srcBinding._slot == INVALID_TEXTURE_BINDING ) [[unlikely]]
-                    {
-                        continue;
-                    }
+                            continue;
+                        }
 
-                    const DescriptorCombinedImageSampler& imageSampler = As<DescriptorCombinedImageSampler>(srcBinding._data);
-                    if ( !makeTextureViewResident( usage, srcBinding._slot, imageSampler._image, imageSampler._samplerHash ) )
+                        const ShaderBufferEntry& bufferEntry = As<ShaderBufferEntry>( srcBinding._data );
+                        if ( bufferEntry._buffer == nullptr || bufferEntry._range._length == 0u ) [[unlikely]]
+                        {
+                            continue;
+                        }
+
+                        glShaderBuffer* glBuffer = static_cast<glShaderBuffer*>(bufferEntry._buffer);
+
+                        if ( !glBuffer->bindByteRange(
+                            ShaderProgram::GetGLBindingForDescriptorSlot( entry._usage, srcBinding._slot ),
+                            {
+                                bufferEntry._range._startOffset * glBuffer->getPrimitiveSize(),
+                                bufferEntry._range._length * glBuffer->getPrimitiveSize(),
+                            },
+                            bufferEntry._queueReadIndex
+                            ) )
+                        {
+                            NOP();
+                        }
+                    } break;
+                    case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER:
+                    {
+                        if ( srcBinding._slot == INVALID_TEXTURE_BINDING ) [[unlikely]]
+                        {
+                            continue;
+                        }
+
+                        const DescriptorCombinedImageSampler& imageSampler = As<DescriptorCombinedImageSampler>(srcBinding._data);
+                        if ( !makeTextureViewResident( entry._usage, srcBinding._slot, imageSampler._image, imageSampler._samplerHash ) )
+                        {
+                            DIVIDE_UNEXPECTED_CALL();
+                        }
+                    } break;
+                    case DescriptorSetBindingType::IMAGE:
+                    {
+                        if ( !Has<DescriptorImageView>(srcBinding._data) ) [[unlikely]]
+                        {
+                            continue;
+                        }
+
+                        const DescriptorImageView& imageView = As<DescriptorImageView>(srcBinding._data);
+                        DIVIDE_ASSERT( imageView._image.targetType() != TextureType::COUNT );
+                        DIVIDE_ASSERT( imageView._image._subRange._layerRange.count > 0u );
+
+                        GLenum access = GL_NONE;
+                        switch ( imageView._usage )
+                        {
+                            case ImageUsage::SHADER_READ: access = GL_READ_ONLY; break;
+                            case ImageUsage::SHADER_WRITE: access = GL_WRITE_ONLY; break;
+                            case ImageUsage::SHADER_READ_WRITE: access = GL_READ_WRITE; break;
+                            default: DIVIDE_UNEXPECTED_CALL();  break;
+                        }
+
+                        DIVIDE_ASSERT( imageView._image._subRange._mipLevels.count == 1u );
+
+                        const GLenum glInternalFormat = GLUtil::InternalFormatAndDataType( imageView._image._descriptor._baseFormat,
+                                                                                           imageView._image._descriptor._dataType,
+                                                                                           imageView._image._descriptor._packing )._format;
+
+                        const GLuint handle = static_cast<const glTexture*>(imageView._image._srcTexture)->textureHandle();
+                        if ( handle != GLUtil::k_invalidObjectID &&
+                             GL_API::s_stateTracker.bindTextureImage( srcBinding._slot,
+                                                                      handle,
+                                                                      imageView._image._subRange._mipLevels.offset,
+                                                                      imageView._image._subRange._layerRange.count > 1u,
+                                                                      imageView._image._subRange._layerRange.offset,
+                                                                      access,
+                                                                      glInternalFormat ) == GLStateTracker::BindResult::FAILED )
+                        {
+                            DIVIDE_UNEXPECTED_CALL();
+                        }
+                    } break;
+                    case DescriptorSetBindingType::COUNT:
                     {
                         DIVIDE_UNEXPECTED_CALL();
-                    }
-                } break;
-                case DescriptorSetBindingType::IMAGE:
-                {
-                    if ( !Has<DescriptorImageView>(srcBinding._data) ) [[unlikely]]
-                    {
-                        continue;
-                    }
-
-                    const DescriptorImageView& imageView = As<DescriptorImageView>(srcBinding._data);
-                    DIVIDE_ASSERT( imageView._image.targetType() != TextureType::COUNT );
-                    DIVIDE_ASSERT( imageView._image._subRange._layerRange.count > 0u );
-
-                    GLenum access = GL_NONE;
-                    switch ( imageView._usage )
-                    {
-                        case ImageUsage::SHADER_READ: access = GL_READ_ONLY; break;
-                        case ImageUsage::SHADER_WRITE: access = GL_WRITE_ONLY; break;
-                        case ImageUsage::SHADER_READ_WRITE: access = GL_READ_WRITE; break;
-                        default: DIVIDE_UNEXPECTED_CALL();  break;
-                    }
-
-                    DIVIDE_ASSERT( imageView._image._subRange._mipLevels.count == 1u );
-
-                    const GLenum glInternalFormat = GLUtil::InternalFormatAndDataType( imageView._image._descriptor._baseFormat,
-                                                                                       imageView._image._descriptor._dataType,
-                                                                                       imageView._image._descriptor._packing )._format;
-
-                    const GLuint handle = static_cast<const glTexture*>(imageView._image._srcTexture)->textureHandle();
-                    if ( handle != GLUtil::k_invalidObjectID &&
-                         GL_API::s_stateTracker.bindTextureImage( srcBinding._slot,
-                                                                  handle,
-                                                                  imageView._image._subRange._mipLevels.offset,
-                                                                  imageView._image._subRange._layerRange.count > 1u,
-                                                                  imageView._image._subRange._layerRange.offset,
-                                                                  access,
-                                                                  glInternalFormat ) == GLStateTracker::BindResult::FAILED )
-                    {
-                        DIVIDE_UNEXPECTED_CALL();
-                    }
-                } break;
-                case DescriptorSetBindingType::COUNT:
-                {
-                    DIVIDE_UNEXPECTED_CALL();
-                } break;
-            };
+                    } break;
+                };
+            }
         }
 
         return true;
@@ -1963,6 +1967,31 @@ namespace Divide
         --s_fenceSyncCounter[s_LockFrameLifetime - 1u];
         glDeleteSync( sync );
         sync = nullptr;
+    }
+
+    RenderTarget_uptr GL_API::newRT( const RenderTargetDescriptor& descriptor ) const
+    {
+        return eastl::make_unique<glFramebuffer>( _context, descriptor );
+    }
+
+    GenericVertexData_ptr GL_API::newGVD( U32 ringBufferLength, bool renderIndirect, const Str256& name ) const
+    {
+        return std::make_shared<glGenericVertexData>( _context, ringBufferLength, renderIndirect, name.c_str() );
+    }
+
+    Texture_ptr GL_API::newTexture( size_t descriptorHash, const Str256& resourceName, const ResourcePath& assetNames, const ResourcePath& assetLocations, const TextureDescriptor& texDescriptor, ResourceCache& parentCache ) const
+    {
+        return std::make_shared<glTexture>( _context, descriptorHash, resourceName, assetNames, assetLocations, texDescriptor, parentCache );
+    }
+
+    ShaderProgram_ptr GL_API::newShaderProgram( size_t descriptorHash, const Str256& resourceName, const Str256& assetName, const ResourcePath& assetLocation, const ShaderProgramDescriptor& descriptor, ResourceCache& parentCache ) const
+    {
+        return std::make_shared<glShaderProgram>( _context, descriptorHash, resourceName, assetName, assetLocation, descriptor, parentCache );
+    }
+
+    ShaderBuffer_uptr GL_API::newSB( const ShaderBufferDescriptor& descriptor ) const
+    {
+        return eastl::make_unique<glShaderBuffer>( _context, descriptor );
     }
 
 };

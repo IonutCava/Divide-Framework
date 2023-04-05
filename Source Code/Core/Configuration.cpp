@@ -9,9 +9,10 @@ namespace Divide {
 bool Configuration::fromXML(const char* xmlFile) {
     Console::printfn(Locale::Get(_ID("XML_LOAD_CONFIG")), xmlFile);
     if (LoadSave.read(xmlFile, "config.")) {
-        GET_PARAM(debug.enableRenderAPIDebugging);
-        GET_PARAM(debug.enableRenderAPIBestPractices);
-        GET_PARAM(debug.assertOnRenderAPIError);
+        GET_PARAM(debug.renderer.enableRenderAPIDebugging);
+        GET_PARAM(debug.renderer.enableRenderAPIBestPractices);
+        GET_PARAM(debug.renderer.assertOnRenderAPIError);
+        GET_PARAM(debug.renderer.useExtensions);
         GET_PARAM(debug.useGeometryCache);
         GET_PARAM(debug.useVegetationCache);
         GET_PARAM(debug.useShaderCache);
@@ -167,9 +168,10 @@ bool Configuration::fromXML(const char* xmlFile) {
 
 bool Configuration::toXML(const char* xmlFile) const {
     if (LoadSave.prepareSaveFile(xmlFile)) {
-        PUT_PARAM(debug.enableRenderAPIDebugging);
-        PUT_PARAM(debug.enableRenderAPIBestPractices);
-        PUT_PARAM(debug.assertOnRenderAPIError);
+        PUT_PARAM(debug.renderer.enableRenderAPIDebugging);
+        PUT_PARAM(debug.renderer.enableRenderAPIBestPractices);
+        PUT_PARAM(debug.renderer.assertOnRenderAPIError);
+        PUT_PARAM(debug.renderer.useExtensions);
         PUT_PARAM(debug.useGeometryCache);
         PUT_PARAM(debug.useShaderCache);
         PUT_PARAM(debug.useVegetationCache);

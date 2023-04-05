@@ -122,6 +122,7 @@ public:
 
         SharedMutex _proccessedLock;
         eastl::fixed_vector<U32, MAX_INDIRECTION_ENTRIES, false> _nodeProcessedThisFrame;
+        U32 _queueLength{ Config::MAX_FRAMES_IN_FLIGHT + 1u };
     };
 
 public:

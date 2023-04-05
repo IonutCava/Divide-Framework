@@ -480,6 +480,10 @@ namespace Divide
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>( bufferInOut );
 
             // Blur vertically
+            beginRenderPassCmd._target = rtHandle._targetID;
+            beginRenderPassCmd._name = "DO_CSM_BLUR_PASS_VERTICAL";
+            GFX::EnqueueCommand( bufferInOut, beginRenderPassCmd );
+
             const auto& blurAtt = _blurBuffer._rt->getAttachment( RTAttachmentType::COLOUR );
             {
                 auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
@@ -487,10 +491,6 @@ namespace Divide
                 DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
                 Set( binding._data, blurAtt->texture()->getView(), blurAtt->descriptor()._samplerHash );
             }
-
-            beginRenderPassCmd._target = rtHandle._targetID;
-            beginRenderPassCmd._name = "DO_CSM_BLUR_PASS_VERTICAL";
-            GFX::EnqueueCommand( bufferInOut, beginRenderPassCmd );
 
             _shaderConstants.data[0]._vec[1].x = 1.f;
             _shaderConstants.data[0]._vec[1].y = to_F32( layerCount );

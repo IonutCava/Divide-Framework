@@ -59,7 +59,7 @@ namespace Divide
                         return DIVIDE_ASSERT_FUNC( false, expressionStr, file, line, "Message truncated" );
                     }
 
-                    const char* msgOut = FormatText( "ASSERT [%s : %d]: %s : %s", file, line, expressionStr, failMessage );
+                    const char* msgOut = Util::StringFormat( "ASSERT [%s : %d]: %s : %s", file, line, expressionStr, failMessage ).c_str();
                     if constexpr ( Config::Assert::LOG_ASSERTS )
                     {
                         Console::errorfn( msgOut );
@@ -82,14 +82,6 @@ namespace Divide
             return expression;
         }
     }; // namespace Assert
-
-    SysInfo::SysInfo() noexcept
-        : _availableRamInBytes( 0 ),
-        _systemResolutionWidth( 0 ),
-        _systemResolutionHeight( 0 )
-    {
-    }
-
     SysInfo& sysInfo() noexcept
     {
         return g_sysInfo;

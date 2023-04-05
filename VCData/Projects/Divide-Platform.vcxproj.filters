@@ -328,6 +328,12 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\Headers\fontstash.h">
       <Filter>Video\Headers</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\Headers\DescriptorSetsFwd.h">
+      <Filter>Video\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Vulkan-Descriptor-Allocator\descriptor_allocator.h">
+      <Filter>Video\RenderBackend\Vulkan\Vulkan-Descriptor-Allocator</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="../../Source Code/Platform\Input\AutoKeyRepeat.cpp">
@@ -573,6 +579,9 @@
     <ClCompile Include="..\..\Source Code\Platform\Audio\AudioAPIWrapper.cpp">
       <Filter>Audio</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Vulkan-Descriptor-Allocator\descriptor_allocator.cpp">
+      <Filter>Video\RenderBackend\Vulkan\Vulkan-Descriptor-Allocator</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Audio">
@@ -751,6 +760,9 @@
     </Filter>
     <Filter Include="Video\RenderBackend\Vulkan\Textures\Headers">
       <UniqueIdentifier>{b42eae90-4d10-4845-880e-dfebee4da634}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Video\RenderBackend\Vulkan\Vulkan-Descriptor-Allocator">
+      <UniqueIdentifier>{b904352d-79a8-41aa-a1b6-99404d0c14dc}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

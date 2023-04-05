@@ -104,9 +104,9 @@ void FillSmallData(const vector<VertexBuffer::Vertex>& dataIn, Byte* dataOut, co
 
 } //namespace
 
-VertexBuffer::VertexBuffer(GFXDevice& context, const Str256& name)
-    : VertexDataInterface(context, nullptr)
-    , _internalGVD(context.newGVD(1u, name.c_str()))
+VertexBuffer::VertexBuffer(GFXDevice& context, const bool renderIndirect, const Str256& name)
+    : VertexDataInterface(context, name )
+    , _internalGVD(context.newGVD(1u, renderIndirect, name))
 {
 }
 

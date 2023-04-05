@@ -145,7 +145,7 @@ namespace Divide
     {
     }
 
-    bool NONE_API::bindShaderResources( [[maybe_unused]] DescriptorSetUsage usage, [[maybe_unused]] const DescriptorSet& bindings, [[maybe_unused]] const bool isDirty )
+    bool NONE_API::bindShaderResources( [[maybe_unused]] const DescriptorSetEntries& descriptorSetEntries )
     {
         return true;
     }
@@ -157,4 +157,30 @@ namespace Divide
     {
 
     }
+
+    RenderTarget_uptr NONE_API::newRT( const RenderTargetDescriptor& descriptor ) const
+    {
+        return eastl::make_unique<noRenderTarget>( _context, descriptor );
+    }
+
+    GenericVertexData_ptr NONE_API::newGVD( U32 ringBufferLength, bool renderIndirect, const Str256& name ) const
+    {
+        return std::make_shared<noGenericVertexData>( _context, ringBufferLength, renderIndirect, name.c_str() );
+    }
+
+    Texture_ptr NONE_API::newTexture( size_t descriptorHash, const Str256& resourceName, const ResourcePath& assetNames, const ResourcePath& assetLocations, const TextureDescriptor& texDescriptor, ResourceCache& parentCache ) const
+    {
+        return std::make_shared<noTexture>( _context, descriptorHash, resourceName, assetNames, assetLocations, texDescriptor, parentCache );
+    }
+
+    ShaderProgram_ptr NONE_API::newShaderProgram( size_t descriptorHash, const Str256& resourceName, const Str256& assetName, const ResourcePath& assetLocation, const ShaderProgramDescriptor& descriptor, ResourceCache& parentCache ) const
+    {
+        return std::make_shared<noShaderProgram>( _context, descriptorHash, resourceName, assetName, assetLocation, descriptor, parentCache );
+    }
+
+    ShaderBuffer_uptr NONE_API::newSB( const ShaderBufferDescriptor& descriptor ) const
+    {
+        return eastl::make_unique<noUniformBuffer>( _context, descriptor );
+    }
+
 }; //namespace Divide

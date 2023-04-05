@@ -39,7 +39,6 @@
 #include "Core/Resources/Headers/Resource.h"
 #include "Platform/Video/Headers/GraphicsResource.h"
 #include "Platform/Video/Headers/AttributeDescriptor.h"
-#include "Platform/Video/Headers/DescriptorSets.h"
 
 namespace FW
 {
@@ -123,7 +122,6 @@ namespace Divide
     {
         public:
         static constexpr const char* UNIFORM_BLOCK_NAME = "dvd_uniforms";
-        static constexpr U8 MAX_SLOTS_PER_DESCRIPTOR_SET = 16u;
         static constexpr U8 BONE_CRT_BUFFER_BINDING_SLOT = 12u;
         static constexpr U8 BONE_PREV_BUFFER_BINDING_SLOT = 13u;
 
@@ -175,7 +173,8 @@ namespace Divide
             DescriptorSetBindingType _type{ DescriptorSetBindingType::COUNT };
             U8 _glBinding{ INVALID_TEXTURE_BINDING };
         };
-        using BindingsPerSetArray = std::array<BindingsPerSet, MAX_SLOTS_PER_DESCRIPTOR_SET>;
+        using BindingsPerSetArray = std::array<BindingsPerSet, MAX_BINDINGS_PER_DESCRIPTOR_SET>;
+        using SetUsageData = std::array<bool, to_base(DescriptorSetUsage::COUNT)>;
         using BindingSetData = std::array<BindingsPerSetArray, to_base( DescriptorSetUsage::COUNT )>;
 
         public:
@@ -255,6 +254,8 @@ namespace Divide
         PROPERTY_R_IW( ShaderProgramHandle, handle, SHADER_INVALID_HANDLE );
         PROPERTY_R_IW( BindingsPerSetArray, perDrawDescriptorSetLayout );
         PROPERTY_R_IW( RenderTargets, fragmentOutputs );
+        PROPERTY_R_IW( SetUsageData, setUsage );
+
         static Mutex g_cacheLock;
 
         protected:

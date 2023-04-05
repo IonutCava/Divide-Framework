@@ -286,7 +286,7 @@ namespace Divide
                 vec2<F32>( 1.f, 0.f )
             };
 
-            s_buffer = gfxDevice.newVB( "Vegetation" );
+            s_buffer = gfxDevice.newVB(true, "Vegetation");
             s_buffer->useLargeIndices( false );
             s_buffer->setVertexCount( vertices.size() );
 

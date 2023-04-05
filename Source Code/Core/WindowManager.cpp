@@ -49,6 +49,7 @@ namespace {
 
 } // namespace 
 
+SDL_DisplayMode WindowManager::s_mainDisplayMode;
 std::array<SDL_Cursor*, to_base(CursorStyle::COUNT)> WindowManager::s_cursors = create_array<to_base(CursorStyle::COUNT), SDL_Cursor*>(nullptr);
 
 WindowManager::WindowManager() noexcept
@@ -61,9 +62,7 @@ WindowManager::~WindowManager()
 }
 
 vec2<U16> WindowManager::GetFullscreenResolution() noexcept {
-    const SysInfo& systemInfo = sysInfo();
-    return vec2<U16>(systemInfo._systemResolutionWidth,
-                     systemInfo._systemResolutionHeight);
+    return vec2<U16>( s_mainDisplayMode.w, s_mainDisplayMode.h);
 }
 
 ErrorCode WindowManager::init(PlatformContext& context,
@@ -105,11 +104,7 @@ ErrorCode WindowManager::init(PlatformContext& context,
 
     const I32 displayIndex = std::max(std::min(targetDisplayIndex, displayCount - 1), 0);
 
-    SysInfo& systemInfo = sysInfo();
-    SDL_DisplayMode displayMode;
-    SDL_GetCurrentDisplayMode(displayIndex, &displayMode);
-    systemInfo._systemResolutionWidth = displayMode.w;
-    systemInfo._systemResolutionHeight = displayMode.h;
+    SDL_GetCurrentDisplayMode(displayIndex, &s_mainDisplayMode );
 
     WindowDescriptor descriptor = {};
     descriptor.position = initialPosition;
@@ -176,12 +171,12 @@ ErrorCode WindowManager::init(PlatformContext& context,
         for (U8 display = 0u; display < numDisplays; ++display) {
             // Register the display modes with the GFXDevice object
             for (I32 mode = 0; mode < numberOfDisplayModes[display]; ++mode) {
-                SDL_GetDisplayMode(display, mode, &displayMode);
+                SDL_GetDisplayMode(display, mode, &s_mainDisplayMode );
                 // Register the display modes with the GFXDevice object
-                tempDisplayMode._resolution.set(displayMode.w, displayMode.h);
-                tempDisplayMode._bitsPerPixel = SDL_BITSPERPIXEL(displayMode.format);
-                tempDisplayMode._maxRefreshRate = to_U8(displayMode.refresh_rate);
-                tempDisplayMode._formatName = SDL_GetPixelFormatName(displayMode.format);
+                tempDisplayMode._resolution.set( s_mainDisplayMode.w, s_mainDisplayMode.h);
+                tempDisplayMode._bitsPerPixel = SDL_BITSPERPIXEL( s_mainDisplayMode.format);
+                tempDisplayMode._maxRefreshRate = to_U8( s_mainDisplayMode.refresh_rate);
+                tempDisplayMode._formatName = SDL_GetPixelFormatName( s_mainDisplayMode.format);
                 Util::ReplaceStringInPlace(tempDisplayMode._formatName, "SDL_PIXELFORMAT_", "");
                 Attorney::DisplayManagerWindowManager::RegisterDisplayMode(to_U8(display), tempDisplayMode);
             }
@@ -366,7 +361,7 @@ ErrorCode WindowManager::configureAPISettings(const RenderAPI api, const U16 des
         {
             // OpenGL error handling is available in any build configuration if the proper defines are in place.
             OpenGLFlags |= SDL_GL_CONTEXT_ROBUST_ACCESS_FLAG;
-            if (_context->config().debug.enableRenderAPIDebugging || _context->config().debug.enableRenderAPIBestPractices)
+            if (_context->config().debug.renderer.enableRenderAPIDebugging || _context->config().debug.renderer.enableRenderAPIBestPractices)
             {
                 useDebugContext = true;
                 OpenGLFlags |= SDL_GL_CONTEXT_DEBUG_FLAG;

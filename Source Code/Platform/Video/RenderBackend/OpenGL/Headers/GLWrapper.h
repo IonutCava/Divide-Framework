@@ -106,7 +106,7 @@ private:
     /// Reset as much of the GL default state as possible within the limitations given
     void clearStates(GLStateTracker& stateTracker) const;
 
-    [[nodiscard]] bool bindShaderResources(DescriptorSetUsage usage, const DescriptorSet& bindings, bool isDirty ) override;
+    [[nodiscard]] bool bindShaderResources( const DescriptorSetEntries& descriptorSetEntries ) override;
 
     void onShaderRegisterChanged( ShaderProgram* program, bool state ) override;
 
@@ -123,6 +123,12 @@ private:
     void initDescriptorSets() override;
 
     void flushPushConstantsLocks();
+
+    [[nodiscard]] RenderTarget_uptr     newRT( const RenderTargetDescriptor& descriptor ) const override;
+    [[nodiscard]] GenericVertexData_ptr newGVD( U32 ringBufferLength, bool renderIndirect, const Str256& name ) const override;
+    [[nodiscard]] Texture_ptr           newTexture( size_t descriptorHash, const Str256& resourceName, const ResourcePath& assetNames, const ResourcePath& assetLocations, const TextureDescriptor& texDescriptor, ResourceCache& parentCache ) const override;
+    [[nodiscard]] ShaderProgram_ptr     newShaderProgram( size_t descriptorHash, const Str256& resourceName, const Str256& assetName, const ResourcePath& assetLocation, const ShaderProgramDescriptor& descriptor, ResourceCache& parentCache ) const override;
+    [[nodiscard]] ShaderBuffer_uptr     newSB( const ShaderBufferDescriptor& descriptor ) const override;
 
 public:
     static [[nodiscard]] GLStateTracker& GetStateTracker() noexcept;

@@ -96,6 +96,7 @@
     <ClInclude Include="../../Source Code\Platform\Video\Headers\PushConstant.h" />
     <ClInclude Include="../../Source Code\Platform\Video\RenderBackend\None\Headers\NonePlaceholderObjects.h" />
     <ClInclude Include="../../Source Code\Platform\Video\RenderBackend\None\Headers\NoneWrapper.h" />
+    <ClInclude Include="..\..\Source Code\Platform\Video\Headers\DescriptorSetsFwd.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\Headers\fontstash.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\Headers\LockManager.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkLockManager.h" />
@@ -132,6 +133,7 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Shaders\Headers\vkShaderProgram.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Textures\Headers\vkSamplerObject.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Textures\Headers\vkTexture.h" />
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Vulkan-Descriptor-Allocator\descriptor_allocator.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\Headers\GLSLToSPIRV.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\Headers\ShaderDataUploader.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\Headers\ShaderProgramFwd.h" />
@@ -221,6 +223,7 @@
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\vkDevice.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\vkResources.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\vkSwapChain.cpp" />
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Vulkan-Descriptor-Allocator\descriptor_allocator.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\Shaders\GLSLToSPIRV.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\Shaders\ShaderDataUploader.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\Textures\SamplerDescriptor.cpp" />

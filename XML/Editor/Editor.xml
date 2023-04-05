@@ -14,11 +14,11 @@
                 <distance>0</distance>
                 <active>false</active>
             </reflectionPlane>
-            <accumPitchDegrees>-16.9203224</accumPitchDegrees>
+            <accumPitchDegrees>-11.2347975</accumPitchDegrees>
             <frustumLocked>false</frustumLocked>
-            <euler x="-16.9207439" y="42.2627945" z="-0.000625274261"/>
+            <euler x="-11.2350101" y="40.5652351" z="-0.000324801687"/>
             <eye x="1.9923681" y="1.26176071" z="2.55351567"/>
-            <orientation x="-0.137230113" y="0.356585681" z="0.0530348346" w="0.922605932"/>
+            <orientation x="-0.091816403" y="0.344986677" z="0.0339299925" w="0.933489263"/>
             <aspectRatio>1.77777779</aspectRatio>
             <zPlanes min="0.100000001" max="1000"/>
             <FoV>58.7155075</FoV>
@@ -39,11 +39,11 @@
                 <distance>0</distance>
                 <active>false</active>
             </reflectionPlane>
-            <accumPitchDegrees>-0</accumPitchDegrees>
+            <accumPitchDegrees>0</accumPitchDegrees>
             <frustumLocked>false</frustumLocked>
-            <euler x="0" y="-0" z="0"/>
-            <eye x="0" y="0" z="0"/>
-            <orientation x="0" y="0" z="0" w="0.99987793"/>
+            <euler x="180" y="-1.00179113e-05" z="180"/>
+            <eye x="-1.51420679e-07" y="0" z="-0.866025209"/>
+            <orientation x="-0" y="0.99999994" z="-0" w="-8.74227766e-08"/>
             <aspectRatio>1.77777779</aspectRatio>
             <zPlanes min="0.100000001" max="1000"/>
             <FoV>58.7155075</FoV>
@@ -52,9 +52,9 @@
             <yawFixed>true</yawFixed>
             <rotationLocked>false</rotationLocked>
             <movementLocked>false</movementLocked>
-            <maxRadius>10</maxRadius>
-            <minRadius>0.100000001</minRadius>
-            <curRadius>8</curRadius>
+            <maxRadius>8.66025352</maxRadius>
+            <minRadius>0.649519026</minRadius>
+            <curRadius>0.866025388</curRadius>
             <cameraRotation x="0" y="0" z="0"/>
             <offsetDir x="0" y="0" z="0"/>
         </Node__Preview__Camera>

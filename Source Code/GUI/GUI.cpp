@@ -84,8 +84,7 @@ namespace Divide
         {
             DVDFONSContext* dvd = (DVDFONSContext*)userPtr;
 
-            dvd->_fontRenderingBuffer = dvd->_parent->newGVD( Config::MAX_FRAMES_IN_FLIGHT, "GUIFontBuffer" );
-            dvd->_fontRenderingBuffer->renderIndirect( false );
+            dvd->_fontRenderingBuffer = dvd->_parent->newGVD( Config::MAX_FRAMES_IN_FLIGHT, false, "GUIFontBuffer" );
 
             RefreshBufferSize(dvd);
 

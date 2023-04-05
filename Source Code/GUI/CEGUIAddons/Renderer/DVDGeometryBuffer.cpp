@@ -56,8 +56,7 @@ DVDGeometryBuffer::DVDGeometryBuffer( CEGUIRenderer& owner)
 {
     thread_local size_t BUFFER_IDX = 0u;
 
-    _gvd = owner.context().newGVD(Divide::Config::MAX_FRAMES_IN_FLIGHT, Divide::Util::StringFormat("IMGUI_%d", BUFFER_IDX++).c_str());
-    _gvd->renderIndirect(false);
+    _gvd = owner.context().newGVD(Divide::Config::MAX_FRAMES_IN_FLIGHT, false, Divide::Util::StringFormat("IMGUI_%d", BUFFER_IDX++).c_str());
 
     recreateBuffer(nullptr, 0u);
 

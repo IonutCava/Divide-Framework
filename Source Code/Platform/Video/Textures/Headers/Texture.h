@@ -34,6 +34,7 @@
 #define _TEXTURE_H_
 
 #include "Core/Resources/Headers/Resource.h"
+#include "Platform/Video/Headers/TextureData.h"
 #include "Platform/Video/Headers/DescriptorSets.h"
 
 #include "Platform/Video/Headers/GraphicsResource.h"
@@ -100,7 +101,8 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource
         static void OnShutdown() noexcept;
         static ResourcePath GetCachePath( ResourcePath originalPath ) noexcept;
         static [[nodiscard]] bool UseTextureDDSCache() noexcept;
-        static [[nodiscard]] const Texture_ptr& DefaultTexture() noexcept;
+        static [[nodiscard]] const Texture_ptr& DefaultTexture2D() noexcept;
+        static [[nodiscard]] const Texture_ptr& DefaultTexture2DArray() noexcept;
         static [[nodiscard]] const size_t DefaultSamplerHash() noexcept;
         static [[nodiscard]] U8 GetBytesPerPixel( GFXDataFormat format, GFXImageFormat baseFormat, GFXImagePacking packing ) noexcept;
 
@@ -165,7 +167,8 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource
     protected:
         static bool s_useDDSCache;
         static size_t s_defaultSamplerHash;
-        static Texture_ptr s_defaulTexture;
+        static Texture_ptr s_defaultTexture2D;
+        static Texture_ptr s_defaultTexture2DArray;
         static ResourcePath s_missingTextureFileName;
 };
 

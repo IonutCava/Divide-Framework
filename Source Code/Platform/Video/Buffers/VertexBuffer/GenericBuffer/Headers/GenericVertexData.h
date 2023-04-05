@@ -74,7 +74,7 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
      };
 
    public:
-    GenericVertexData(GFXDevice& context, U32 ringBufferLength, const char* name = nullptr);
+    GenericVertexData(GFXDevice& context, U32 ringBufferLength, const bool renderIndirect, const Str256& name);
     virtual ~GenericVertexData() = default;
 
     virtual BufferLock setIndexBuffer(const IndexBuffer& indices) = 0;
@@ -90,10 +90,10 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
                                                   U32 elementCountRange,
                                                   bufferPtr data) = 0;
 
-    PROPERTY_RW(bool, renderIndirect, true);
+    PROPERTY_R_IW(bool, renderIndirect, true);
 
    protected:
-    string _name;
+    Str256 _name;
 };
 
 };  // namespace Divide

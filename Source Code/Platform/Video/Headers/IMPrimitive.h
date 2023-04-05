@@ -34,7 +34,7 @@
 #define _IM_EMULATION_H_
 
 #include "IMPrimitiveDescriptors.h"
-#include "DescriptorSets.h"
+#include "DescriptorSetsFwd.h"
 #include "Pipeline.h"
 #include "PushConstants.h"
 #include "Platform/Video/GLIM/glim.h"

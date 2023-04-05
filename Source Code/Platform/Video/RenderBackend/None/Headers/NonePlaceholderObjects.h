@@ -50,8 +50,8 @@ namespace Divide {
 
     class noGenericVertexData final : public GenericVertexData {
      public:
-        noGenericVertexData(GFXDevice& context, const U32 ringBufferLength, const char* name)
-            : GenericVertexData(context, ringBufferLength, name)
+        noGenericVertexData(GFXDevice& context, const U32 ringBufferLength, const bool renderIndirect, const Str256& name)
+            : GenericVertexData(context, ringBufferLength, renderIndirect, name)
         {}
 
         void reset() override {}

@@ -223,7 +223,7 @@ void Terrain::postBuild() {
             idxBuff.data = indices.data();
             idxBuff.dynamic = false;
 
-            _terrainBuffer = _context.newGVD(1, _descriptor->_name.c_str());
+            _terrainBuffer = _context.newGVD(1, true, _descriptor->_name.c_str());
             {
                 const BufferLock lock = _terrainBuffer->setIndexBuffer(idxBuff);
                 DIVIDE_UNUSED(lock);

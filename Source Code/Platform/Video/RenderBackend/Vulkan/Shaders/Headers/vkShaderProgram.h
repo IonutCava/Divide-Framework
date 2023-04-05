@@ -34,6 +34,7 @@
 #define VK_SHADER_PROGRAM_H
 
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
+#include "Platform/Video/RenderBackend/Vulkan/Headers/vkResources.h"
 
 #include <Vulkan/vulkan_core.h>
 
@@ -78,6 +79,7 @@ namespace Divide {
         [[nodiscard]] VkShaderStageFlags stageMask() const noexcept;
 
         PROPERTY_RW( VkDescriptorSetLayout, descriptorSetLayout, VK_NULL_HANDLE);
+        PROPERTY_RW( DynamicBindings, dynamicBindings);
 
     protected:
         [[nodiscard]] ShaderResult validatePreBind(bool rebind = true);

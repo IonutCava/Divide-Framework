@@ -128,6 +128,14 @@ namespace Divide
     PFN_vkCmdSetColorBlendEnableEXT   vkCmdSetColorBlendEnableEXT   = VK_NULL_HANDLE;
     PFN_vkCmdSetColorBlendEquationEXT vkCmdSetColorBlendEquationEXT = VK_NULL_HANDLE;
     PFN_vkCmdSetColorWriteMaskEXT     vkCmdSetColorWriteMaskEXT     = VK_NULL_HANDLE;
+    PFN_vkCmdPushDescriptorSetKHR     vkCmdPushDescriptorSetKHR     = VK_NULL_HANDLE;
+
+    PFN_vkGetDescriptorSetLayoutSizeEXT              vkGetDescriptorSetLayoutSizeEXT              = VK_NULL_HANDLE;
+    PFN_vkGetDescriptorSetLayoutBindingOffsetEXT     vkGetDescriptorSetLayoutBindingOffsetEXT     = VK_NULL_HANDLE;
+    PFN_vkGetDescriptorEXT                           vkGetDescriptorEXT                           = VK_NULL_HANDLE;
+    PFN_vkCmdBindDescriptorBuffersEXT                vkCmdBindDescriptorBuffersEXT                = VK_NULL_HANDLE;
+    PFN_vkCmdSetDescriptorBufferOffsetsEXT           vkCmdSetDescriptorBufferOffsetsEXT           = VK_NULL_HANDLE;
+    PFN_vkCmdBindDescriptorBufferEmbeddedSamplersEXT vkCmdBindDescriptorBufferEmbeddedSamplersEXT = VK_NULL_HANDLE;
 
     namespace
     {
@@ -208,6 +216,26 @@ namespace Divide
 
             return ret;
         }
+
+        struct DynamicEntry
+        {
+            VkDescriptorBufferInfo _info{};
+            VkShaderStageFlags _stageFlags{};
+        };
+
+        using DynamicBufferEntry = std::array<DynamicEntry, MAX_BINDINGS_PER_DESCRIPTOR_SET>;
+        thread_local std::array<DynamicBufferEntry, to_base(DescriptorSetUsage::COUNT)> s_dynamicBindings;
+        thread_local eastl::fixed_vector<U32, MAX_BINDINGS_PER_DESCRIPTOR_SET * to_base(DescriptorSetUsage::COUNT), false, eastl::dvd_allocator> s_dynamicOffsets;
+        thread_local bool s_pipelineReset = true;
+
+        void ResetDescriptorDynamicOffsets()
+        {
+            for ( auto& bindings : s_dynamicBindings )
+            {
+                bindings.fill( {} );
+            }
+            s_pipelineReset = true;
+        }
     }
 
     constexpr U32 VK_VENDOR_ID_AMD = 0x1002;
@@ -218,6 +246,8 @@ namespace Divide
     constexpr U32 VK_VENDOR_ID_INTEL = 0x8086;
 
     bool VK_API::s_hasDebugMarkerSupport = false;
+    bool VK_API::s_hasPushDescriptorSupport = false;
+    bool VK_API::s_hasDescriptorBufferSupport = false;
     bool VK_API::s_hasDynamicBlendStateSupport = false;
     bool VK_API::s_hasValidationFeaturesSupport = false;
 
@@ -478,7 +508,6 @@ namespace Divide
         _drawIndirectBufferOffset = 0u;
         _pipelineStageMask = VK_FLAGS_NONE;
         _pushConstantsValid = false;
-        _descriptorsUpdated = false;
         _pipelineRenderInfo = {};
         _lastDebugMessage = {};
         _pipelineRenderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
@@ -581,6 +610,7 @@ namespace Divide
         VkCommandBuffer cmd = windowState._swapChain->getCurrentCommandBuffer();
         FlushBufferTransferRequests( cmd );
         windowState._activeState = {};
+        s_dynamicOffsets.clear();
 
         const VkResult result = windowState._swapChain->endFrame( QueueType::GRAPHICS );
 
@@ -600,17 +630,16 @@ namespace Divide
 
     bool VK_API::frameStarted()
     {
-        _descriptorSets.fill( VK_NULL_HANDLE );
-
-        for ( auto& pool : s_stateTracker._descriptorAllocators )
+        for ( U8 i = 0u; i < to_base(DescriptorSetUsage::COUNT); ++i )
         {
+            auto& pool = s_stateTracker._descriptorAllocators[i];
             if ( pool._frameCount > 1u )
             {
                 pool._allocatorPool->Flip();
+                pool._handle = pool._allocatorPool->GetAllocator();
             }
-            pool._handle = pool._allocatorPool->GetAllocator();
         }
-
+        _dummyDescriptorSet = VK_NULL_HANDLE;
         LockManager::CleanExpiredSyncObjects( RenderAPI::Vulkan, GFXDevice::FrameCount() );
 
         return true;
@@ -681,6 +710,7 @@ namespace Divide
     ErrorCode VK_API::initRenderingAPI( [[maybe_unused]] I32 argc, [[maybe_unused]] char** argv, Configuration& config ) noexcept
     {
         _descriptorSets.fill( VK_NULL_HANDLE );
+        _dummyDescriptorSet = VK_NULL_HANDLE ;
 
         s_transientDeleteQueue.flags( s_transientDeleteQueue.flags() | to_base( VKDeletionQueue::Flags::TREAT_AS_TRANSIENT ) );
 
@@ -699,7 +729,7 @@ namespace Divide
             .set_engine_name( Config::ENGINE_NAME )
             .set_engine_version( Config::ENGINE_VERSION_MAJOR, Config::ENGINE_VERSION_MINOR, Config::ENGINE_VERSION_PATCH )
             .require_api_version( 1, Config::DESIRED_VULKAN_MINOR_VERSION, 0 )
-            .request_validation_layers( Config::ENABLE_GPU_VALIDATION )
+            .request_validation_layers( Config::ENABLE_GPU_VALIDATION && config.debug.renderer.enableRenderAPIDebugging )
             .set_debug_callback( divide_debug_callback )
             .set_debug_callback_user_data_pointer( this );
 
@@ -707,11 +737,12 @@ namespace Divide
 
         s_hasValidationFeaturesSupport = false;
         s_hasDebugMarkerSupport = false;
-        if ( Config::ENABLE_GPU_VALIDATION && (config.debug.enableRenderAPIDebugging || config.debug.enableRenderAPIBestPractices) )
+        if ( Config::ENABLE_GPU_VALIDATION && (config.debug.renderer.enableRenderAPIDebugging || config.debug.renderer.enableRenderAPIBestPractices) )
         {
             if (systemInfo.is_extension_available( VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME ) )
             {
                 builder.enable_extension( VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME );
+                // Don't count config.debug.renderer.useExtensions against this as validation is basically a core part of the Vulkan dev environment
                 s_hasValidationFeaturesSupport = true;
             }
 
@@ -719,12 +750,12 @@ namespace Divide
             {
                 builder.enable_extension( VK_EXT_DEBUG_UTILS_EXTENSION_NAME );
                 builder.add_validation_feature_enable( VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT );
-                if (config.debug.enableRenderAPIBestPractices )
+                if (config.debug.renderer.enableRenderAPIBestPractices )
                 {
                     builder.add_validation_feature_enable( VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT );
                 }
 
-                s_hasDebugMarkerSupport = true;
+                s_hasDebugMarkerSupport = config.debug.renderer.useExtensions;
             }
 
             if ( systemInfo.validation_layers_available )
@@ -780,12 +811,29 @@ namespace Divide
             Debug::vkSetDebugUtilsObjectTagEXT   = (PFN_vkSetDebugUtilsObjectTagEXT)vkGetDeviceProcAddr(   _device->getVKDevice(), "vkSetDebugUtilsObjectTagEXT"   );
         }
 
-        s_hasDynamicBlendStateSupport = _device->supportsDynamicExtension3();
+        s_hasDynamicBlendStateSupport = config.debug.renderer.useExtensions && _device->supportsDynamicExtension3();
         if ( s_hasDynamicBlendStateSupport )
         {
             vkCmdSetColorBlendEnableEXT   = (PFN_vkCmdSetColorBlendEnableEXT)vkGetDeviceProcAddr(   _device->getVKDevice(), "vkCmdSetColorBlendEnableEXT"   );
             vkCmdSetColorBlendEquationEXT = (PFN_vkCmdSetColorBlendEquationEXT)vkGetDeviceProcAddr( _device->getVKDevice(), "vkCmdSetColorBlendEquationEXT" );
             vkCmdSetColorWriteMaskEXT     = (PFN_vkCmdSetColorWriteMaskEXT)vkGetDeviceProcAddr(     _device->getVKDevice(), "vkCmdSetColorWriteMaskEXT"     );
+        }
+
+        s_hasPushDescriptorSupport = config.debug.renderer.useExtensions && _device->supportsPushDescriptors();
+        if ( s_hasPushDescriptorSupport )
+        {
+            vkCmdPushDescriptorSetKHR = (PFN_vkCmdPushDescriptorSetKHR)vkGetDeviceProcAddr( _device->getVKDevice(), "vkCmdPushDescriptorSetKHR" );
+        }
+
+        s_hasDescriptorBufferSupport = config.debug.renderer.useExtensions && _device->supportsDescriptorBuffers();
+        if ( s_hasDescriptorBufferSupport )
+        {
+             vkGetDescriptorSetLayoutSizeEXT              = (PFN_vkGetDescriptorSetLayoutSizeEXT)vkGetDeviceProcAddr(              _device->getVKDevice(), "vkGetDescriptorSetLayoutSizeEXT"             );
+             vkGetDescriptorSetLayoutBindingOffsetEXT     = (PFN_vkGetDescriptorSetLayoutBindingOffsetEXT)vkGetDeviceProcAddr(     _device->getVKDevice(), "vkGetDescriptorSetLayoutBindingOffsetEXT"    ); 
+             vkGetDescriptorEXT                           = (PFN_vkGetDescriptorEXT)vkGetDeviceProcAddr(                           _device->getVKDevice(), "vkGetDescriptorEXT"                          ); 
+             vkCmdBindDescriptorBuffersEXT                = (PFN_vkCmdBindDescriptorBuffersEXT)vkGetDeviceProcAddr(                _device->getVKDevice(), "vkCmdBindDescriptorBuffersEXT"               ); 
+             vkCmdSetDescriptorBufferOffsetsEXT           = (PFN_vkCmdSetDescriptorBufferOffsetsEXT)vkGetDeviceProcAddr(           _device->getVKDevice(), "vkCmdSetDescriptorBufferOffsetsEXT"          ); 
+             vkCmdBindDescriptorBufferEmbeddedSamplersEXT = (PFN_vkCmdBindDescriptorBufferEmbeddedSamplersEXT)vkGetDeviceProcAddr( _device->getVKDevice(), "vkCmdBindDescriptorBufferEmbeddedSamplersEXT"); 
         }
 
         VKUtil::OnStartup( _device->getVKDevice() );
@@ -1002,7 +1050,7 @@ namespace Divide
         initStatePerWindow( perWindowContext );
 
         s_stateTracker.init(_device.get(), &perWindowContext);
-        s_stateTracker._assertOnAPIError = config.debug.assertOnRenderAPIError;
+        s_stateTracker._assertOnAPIError = config.debug.renderer.assertOnRenderAPIError;
 
         return ErrorCode::NO_ERR;
     }
@@ -1085,6 +1133,7 @@ namespace Divide
                 _descriptorLayoutCache.reset();
                 _descriptorSetLayouts.fill( VK_NULL_HANDLE );
                 _descriptorSets.fill( VK_NULL_HANDLE );
+                _dummyDescriptorSet = VK_NULL_HANDLE;
 
                 destroyPipelineCache();
             }
@@ -1196,178 +1245,278 @@ namespace Divide
         }
     }
 
-    bool VK_API::bindShaderResources( const DescriptorSetUsage usage, const DescriptorSet& bindings, const bool isDirty )
+    bool VK_API::bindShaderResources( const DescriptorSetEntries& descriptorSetEntries )
     {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+        PROFILE_SCOPE( "BIND_SHADER_RESOURCES", Profiler::Category::Graphics );
 
-        if ( !isDirty )
-        {
-            //return true;
-        }
-
-        const BaseType<DescriptorSetUsage> usageIdx = to_base( usage );
-
-        DescriptorAllocator& pool = s_stateTracker._descriptorAllocators[to_base( usage )];
-        DescriptorBuilder builder = DescriptorBuilder::Begin( _descriptorLayoutCache.get(), &pool._handle);
-
-        static std::array<VkDescriptorBufferInfo, ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET> BufferInfoStructs;
-        static std::array<VkDescriptorImageInfo, ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET>  ImageInfoStructs;
-        U8 bufferInfoStructIndex = 0u;
-        U8 imageInfoStructIndex = 0u;
-
-        DIVIDE_ASSERT( GetStateTracker()._pipeline._program != nullptr );
-        auto& drawDescriptor = GetStateTracker()._pipeline._program->perDrawDescriptorSetLayout();
+        auto& program = GetStateTracker()._pipeline._program;
+        DIVIDE_ASSERT( program != nullptr );
+        auto& drawDescriptor = program->perDrawDescriptorSetLayout();
         const bool targetDescriptorEmpty = IsEmpty( drawDescriptor );
+        const auto& setUsageData = program->setUsage();
 
-        for ( auto& srcBinding : bindings )
+        thread_local VkDescriptorImageInfo imageInfoArray[MAX_BINDINGS_PER_DESCRIPTOR_SET];
+        thread_local eastl::fixed_vector<VkWriteDescriptorSet, MAX_BINDINGS_PER_DESCRIPTOR_SET> descriptorWrites;
+        U8 imageInfoIndex = 0u;
+
+        bool needsBind = false;
+        for ( const DescriptorSetEntry& entry : descriptorSetEntries )
         {
-            if ( usage == DescriptorSetUsage::PER_DRAW )
-            {
-                if ( targetDescriptorEmpty )
-                {
-                    break;
-                }
+            const BaseType<DescriptorSetUsage> usageIdx = to_base( entry._usage );
 
-                if ( drawDescriptor[srcBinding._slot]._type == DescriptorSetBindingType::COUNT )
+            if ( !setUsageData[usageIdx] )
+            {
+                continue;
+            }
+
+            if ( entry._usage == DescriptorSetUsage::PER_DRAW && targetDescriptorEmpty )
+            {
+                continue;
+            }
+
+            const bool isPushDescriptor = s_hasPushDescriptorSupport && entry._usage == DescriptorSetUsage::PER_DRAW;
+
+            for ( const DescriptorSetBinding& srcBinding : *entry._set )
+            {
+                if ( entry._usage == DescriptorSetUsage::PER_DRAW &&
+                     drawDescriptor[srcBinding._slot]._type == DescriptorSetBindingType::COUNT )
                 {
                     continue;
                 }
-            }
-            else if ( !isDirty )
-            {
-                return true;
-            }
 
-            const DescriptorSetBindingType type = Type( srcBinding._data );
-            const VkShaderStageFlags stageFlags = GetFlagsForStageVisibility( srcBinding._shaderStageVisibility );
+                const VkShaderStageFlags stageFlags = GetFlagsForStageVisibility( srcBinding._shaderStageVisibility );
 
-            switch ( type )
-            {
-                case DescriptorSetBindingType::UNIFORM_BUFFER:
-                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
+                switch ( Type( srcBinding._data ) )
                 {
-                    DIVIDE_ASSERT( Has<ShaderBufferEntry>( srcBinding._data ) );
-
-                    const ShaderBufferEntry& bufferEntry = As<ShaderBufferEntry>( srcBinding._data );
-
-                    DIVIDE_ASSERT( bufferEntry._buffer != nullptr );
-
-                    const auto bufferUsage = bufferEntry._buffer->getUsage();
-
-                    VkBuffer buffer = static_cast<vkBufferImpl*>(bufferEntry._buffer->getBufferImpl())->_buffer;
-
-                    VkDeviceSize offset = bufferEntry._range._startOffset * bufferEntry._buffer->getPrimitiveSize();
-                    if ( bufferEntry._bufferQueueReadIndex == -1 )
+                    case DescriptorSetBindingType::UNIFORM_BUFFER:
+                    case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
                     {
-                        offset += bufferEntry._bufferQueueReadIndex * bufferEntry._buffer->alignedBufferSize();
-                    }
-                    else
-                    {
-                        offset += bufferEntry._buffer->getStartOffset( true );
-                    }
+                        DIVIDE_ASSERT( Has<ShaderBufferEntry>( srcBinding._data ) );
 
-                    if ( usage == DescriptorSetUsage::PER_BATCH && srcBinding._slot == 0 )
-                    {
-                        // Draw indirect buffer!
-                        DIVIDE_ASSERT( bufferUsage == BufferUsageType::COMMAND_BUFFER );
-                        GetStateTracker()._drawIndirectBuffer = buffer;
-                        GetStateTracker()._drawIndirectBufferOffset = offset;
-                    }
-                    else
-                    {
-                        DIVIDE_ASSERT( bufferEntry._range._length > 0u );
-                        VkDescriptorBufferInfo& bufferInfo = BufferInfoStructs[bufferInfoStructIndex++];
-                        bufferInfo.buffer = buffer;
-                        bufferInfo.offset = offset;
-                        bufferInfo.range = bufferEntry._range._length * bufferEntry._buffer->getPrimitiveSize();
+                        ShaderBufferEntry bufferEntry = As<ShaderBufferEntry>( srcBinding._data );
 
-                        builder.bindBuffer( srcBinding._slot, &bufferInfo, VKUtil::vkDescriptorType( type ), stageFlags );
-                    }
-                } break;
-                case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER:
-                {
-                    if ( srcBinding._slot == INVALID_TEXTURE_BINDING )
-                    {
-                        continue;
-                    }
+                        DIVIDE_ASSERT( bufferEntry._buffer != nullptr );
 
-                    const DescriptorCombinedImageSampler& imageSampler = As<DescriptorCombinedImageSampler>( srcBinding._data );
-                    if ( imageSampler._image._srcTexture == nullptr )
+                        VkBuffer buffer = static_cast<vkBufferImpl*>(bufferEntry._buffer->getBufferImpl())->_buffer;
+
+                        const size_t readOffset = bufferEntry._queueReadIndex * bufferEntry._buffer->alignedBufferSize();
+
+                        if ( entry._usage == DescriptorSetUsage::PER_BATCH && srcBinding._slot == 0 )
+                        {
+                            // Draw indirect buffer!
+                            DIVIDE_ASSERT( bufferEntry._buffer->getUsage() == BufferUsageType::COMMAND_BUFFER );
+                            GetStateTracker()._drawIndirectBuffer = buffer;
+                            GetStateTracker()._drawIndirectBufferOffset = readOffset;
+                        }
+                        else
+                        {
+                            const VkDeviceSize offset = bufferEntry._range._startOffset * bufferEntry._buffer->getPrimitiveSize() + readOffset;
+                            DIVIDE_ASSERT( bufferEntry._range._length > 0u );
+                            const size_t boundRange = bufferEntry._range._length* bufferEntry._buffer->getPrimitiveSize();
+
+                            DynamicEntry& crtBufferInfo = s_dynamicBindings[usageIdx][srcBinding._slot];
+                            if ( isPushDescriptor || crtBufferInfo._info.buffer != buffer || crtBufferInfo._info.range > boundRange || (crtBufferInfo._stageFlags & stageFlags) != stageFlags)
+                            {
+                                crtBufferInfo._info.buffer = buffer;
+                                crtBufferInfo._info.offset = isPushDescriptor ? offset : 0u;
+                                crtBufferInfo._info.range = boundRange;
+                                crtBufferInfo._stageFlags |= stageFlags;
+
+
+                                VkDescriptorSetLayoutBinding newBinding{};
+                                newBinding.descriptorCount = 1u;
+                                newBinding.descriptorType = VKUtil::vkDescriptorType( Type( srcBinding._data ), isPushDescriptor );
+                                newBinding.stageFlags = crtBufferInfo._stageFlags;
+                                newBinding.binding = srcBinding._slot;
+                                newBinding.pImmutableSamplers = nullptr;
+
+                                descriptorWrites.push_back( vk::writeDescriptorSet( newBinding.descriptorType, newBinding.binding, &crtBufferInfo._info, 1u ) );
+                            }
+                            if (!isPushDescriptor )
+                            {
+                                for ( auto& dynamicBinding : _descriptorDynamicBindings[usageIdx] )
+                                {
+                                    if ( dynamicBinding._slot == srcBinding._slot )
+                                    {
+                                        dynamicBinding._offset = to_U32(offset);
+                                        needsBind = true;
+                                        break;
+                                    }
+                                }
+                                DIVIDE_ASSERT( needsBind );
+                            }
+                        }
+                    } break;
+                    case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER:
                     {
-                        NOP(); //unbind request;
-                    }
-                    else
-                    {
-                        DIVIDE_ASSERT( imageSampler._image.targetType() != TextureType::COUNT );
-                        if ( imageSampler._image._srcTexture == nullptr )
+                        if ( srcBinding._slot == INVALID_TEXTURE_BINDING )
                         {
                             continue;
                         }
 
-                        const vkTexture* vkTex = static_cast<const vkTexture*>(imageSampler._image._srcTexture);
-
-                        vkTexture::CachedImageView::Descriptor descriptor{};
-                        descriptor._usage = ImageUsage::SHADER_READ;
-                        descriptor._format = vkTex->vkFormat();
-                        descriptor._type = imageSampler._image.targetType();
-                        descriptor._subRange = imageSampler._image._subRange;
-
-                        VkImageLayout targetLayout = VK_IMAGE_LAYOUT_MAX_ENUM;
-                        if ( !IsDepthTexture( vkTex->descriptor().packing() ) )
+                        const DescriptorCombinedImageSampler& imageSampler = As<DescriptorCombinedImageSampler>( srcBinding._data );
+                        if ( imageSampler._image._srcTexture == nullptr ) [[unlikely]]
                         {
-                            targetLayout =  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                            NOP(); //unbind request;
                         }
                         else
                         {
-                            targetLayout = VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL;
+                            DIVIDE_ASSERT( imageSampler._image.targetType() != TextureType::COUNT );
+
+                            const vkTexture* vkTex = static_cast<const vkTexture*>(imageSampler._image._srcTexture);
+
+                            vkTexture::CachedImageView::Descriptor descriptor{};
+                            descriptor._usage = ImageUsage::SHADER_READ;
+                            descriptor._format = vkTex->vkFormat();
+                            descriptor._type = imageSampler._image.targetType();
+                            descriptor._subRange = imageSampler._image._subRange;
+
+                            const VkImageLayout targetLayout = IsDepthTexture( vkTex->descriptor().packing() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                            const VkSampler samplerHandle = GetSamplerHandle( imageSampler._samplerHash );
+                            const VkImageView imageView = vkTex->getImageView( descriptor );
+
+                            VkDescriptorImageInfo& imageInfo = imageInfoArray[imageInfoIndex++];
+                            imageInfo = vk::descriptorImageInfo( samplerHandle, imageView, targetLayout );
+                            
+                            VkDescriptorSetLayoutBinding newBinding{};
+
+                            newBinding.descriptorCount = 1;
+                            newBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                            newBinding.stageFlags = stageFlags;
+                            newBinding.binding = srcBinding._slot;
+
+                            descriptorWrites.push_back( vk::writeDescriptorSet( newBinding.descriptorType, newBinding.binding, &imageInfo, 1u ) );
+                        }
+                    } break;
+                    case DescriptorSetBindingType::IMAGE:
+                    {
+                        if ( !Has<DescriptorImageView>( srcBinding._data ) )
+                        {
+                            continue;
+                        }
+                        const DescriptorImageView& imageView = As<DescriptorImageView>( srcBinding._data );
+                        if ( imageView._image._srcTexture == nullptr )
+                        {
+                            continue;
                         }
 
-                        VkDescriptorImageInfo& imageInfo = ImageInfoStructs[imageInfoStructIndex++];
-                        imageInfo = vk::descriptorImageInfo( GetSamplerHandle( imageSampler._samplerHash ), vkTex->getImageView( descriptor ), targetLayout );
-                        builder.bindImage( srcBinding._slot, &imageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stageFlags );
-                    }
-                } break;
-                case DescriptorSetBindingType::IMAGE:
-                {
-                    if ( !Has<DescriptorImageView>( srcBinding._data ) )
+                        DIVIDE_ASSERT( imageView._image._srcTexture != nullptr && imageView._image._subRange._mipLevels.count == 1u );
+
+                        const vkTexture* vkTex = static_cast<const vkTexture*>(imageView._image._srcTexture);
+
+                        DIVIDE_ASSERT(imageView._usage == ImageUsage::SHADER_READ || imageView._usage == ImageUsage::SHADER_WRITE || imageView._usage == ImageUsage::SHADER_READ_WRITE);
+
+                        vkTexture::CachedImageView::Descriptor descriptor{};
+                        descriptor._usage = imageView._usage;
+                        descriptor._format = vkTex->vkFormat();
+                        descriptor._type = imageView._image.targetType();
+                        descriptor._subRange = imageView._image._subRange;
+
+                        // Should use TextureType::TEXTURE_CUBE_ARRAY
+                        DIVIDE_ASSERT( descriptor._type != TextureType::TEXTURE_CUBE_MAP || descriptor._subRange._layerRange.count == 1u );
+
+                        const VkImageLayout targetLayout = descriptor._usage == ImageUsage::SHADER_READ ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+                        VkDescriptorImageInfo& imageInfo = imageInfoArray[imageInfoIndex++];
+                        imageInfo = vk::descriptorImageInfo( VK_NULL_HANDLE, vkTex->getImageView( descriptor ), targetLayout );
+
+
+                        VkDescriptorSetLayoutBinding newBinding{};
+
+                        newBinding.descriptorCount = 1;
+                        newBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+                        newBinding.stageFlags = stageFlags;
+                        newBinding.binding = srcBinding._slot;
+
+                        descriptorWrites.push_back( vk::writeDescriptorSet( newBinding.descriptorType, newBinding.binding, &imageInfo, 1u ) );
+                    } break;
+                    case DescriptorSetBindingType::COUNT:
                     {
-                        continue;
-                    }
-                    const DescriptorImageView& imageView = As<DescriptorImageView>( srcBinding._data );
-                    if ( imageView._image._srcTexture == nullptr )
-                    {
-                        continue;
-                    }
+                        DIVIDE_UNEXPECTED_CALL();
+                    } break;
+                };
+            }
 
-                    DIVIDE_ASSERT( imageView._image._srcTexture != nullptr && imageView._image._subRange._mipLevels.count == 1u );
-
-                    const vkTexture* vkTex = static_cast<const vkTexture*>(imageView._image._srcTexture);
-
-                    DIVIDE_ASSERT(imageView._usage == ImageUsage::SHADER_READ || imageView._usage == ImageUsage::SHADER_WRITE || imageView._usage == ImageUsage::SHADER_READ_WRITE);
-
-                    vkTexture::CachedImageView::Descriptor descriptor{};
-                    descriptor._usage = imageView._usage;
-                    descriptor._format = vkTex->vkFormat();
-                    descriptor._type = imageView._image.targetType();
-                    descriptor._subRange = imageView._image._subRange;
-
-                    // Should use TextureType::TEXTURE_CUBE_ARRAY
-                    DIVIDE_ASSERT( descriptor._type != TextureType::TEXTURE_CUBE_MAP || descriptor._subRange._layerRange.count == 1u );
-
-                    const VkImageLayout targetLayout = descriptor._usage == ImageUsage::SHADER_READ ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
-                    VkDescriptorImageInfo& imageInfo = ImageInfoStructs[imageInfoStructIndex++];
-                    imageInfo = vk::descriptorImageInfo( VK_NULL_HANDLE, vkTex->getImageView( descriptor ), targetLayout );
-                    builder.bindImage( srcBinding._slot, &imageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, stageFlags );
-                } break;
-                case DescriptorSetBindingType::COUNT:
+            if (!descriptorWrites.empty())
+            {
+                if ( !isPushDescriptor )
                 {
-                    DIVIDE_UNEXPECTED_CALL();
-                } break;
-            };
+                    DescriptorBuilder builder = DescriptorBuilder::Begin( _descriptorLayoutCache.get(), &s_stateTracker._descriptorAllocators[usageIdx]._handle );
+                    builder.buildSetFromLayout( _descriptorSets[usageIdx], _descriptorSetLayouts[usageIdx], _device->getVKDevice() );
+
+                    for ( VkWriteDescriptorSet& w : descriptorWrites )
+                    {
+                        w.dstSet = _descriptorSets[usageIdx];
+                    }
+                    vkUpdateDescriptorSets( _device->getVKDevice(), to_U32( descriptorWrites.size() ), descriptorWrites.data(), 0, nullptr );
+                    needsBind = true;
+                }
+                else
+                {
+                    const auto& pipeline = GetStateTracker()._pipeline;
+                    vkCmdPushDescriptorSetKHR( getCurrentCommandBuffer(),
+                                               pipeline._bindPoint,
+                                               pipeline._vkPipelineLayout,
+                                               0,
+                                               to_U32(descriptorWrites.size()),
+                                               descriptorWrites.data());
+                }
+                descriptorWrites.clear();
+                s_dynamicBindings[usageIdx] = {};
+            }
         }
 
-        builder.buildSetFromLayout( _descriptorSets[usageIdx], _descriptorSetLayouts[usageIdx], _device->getVKDevice() );
-        GetStateTracker()._descriptorsUpdated = true;
+        if ( needsBind )
+        {
+
+            thread_local VkDescriptorSetLayout tempLayout{ VK_NULL_HANDLE };
+
+            if ( _dummyDescriptorSet == VK_NULL_HANDLE )
+            {
+                if ( tempLayout == VK_NULL_HANDLE )
+                {
+                    VkDescriptorSetLayoutCreateInfo layoutInfo{
+                            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+                            .bindingCount = 0u
+                    };
+                    tempLayout = _descriptorLayoutCache->createDescriptorLayout( &layoutInfo );
+                }
+
+                DescriptorAllocator& pool = s_stateTracker._descriptorAllocators[to_base( DescriptorSetUsage::PER_FRAME )];
+                DescriptorBuilder::Begin( _descriptorLayoutCache.get(), &pool._handle ).buildSetFromLayout( _dummyDescriptorSet, tempLayout, _device->getVKDevice() );
+            }
+
+            VkDescriptorSet tempSets[to_base(DescriptorSetUsage::COUNT)];
+            s_dynamicOffsets.clear();
+
+            const U8 offset = s_hasPushDescriptorSupport ? 1u : 0u;
+            U8 setCount = 0u;
+            for ( U8 i = 0; i < to_base( DescriptorSetUsage::COUNT ) - offset; ++i )
+            {
+                const bool setUsed = setUsageData[i + offset];
+                tempSets[setCount++] = setUsed ? _descriptorSets[i + offset] : _dummyDescriptorSet;
+                if ( setUsed )
+                {
+                    for ( const DynamicBinding& binding : _descriptorDynamicBindings[i + offset] )
+                    {
+                        if ( binding._slot != U8_MAX )
+                        {
+                            s_dynamicOffsets.push_back( binding._offset );
+                        }
+                    }
+                }
+            }
+
+            const auto& pipeline = GetStateTracker()._pipeline;
+            vkCmdBindDescriptorSets( getCurrentCommandBuffer(),
+                                     pipeline._bindPoint,
+                                     pipeline._vkPipelineLayout,
+                                     offset,
+                                     setCount,
+                                     tempSets,
+                                     to_U32( s_dynamicOffsets.size() ),
+                                     s_dynamicOffsets.data() );
+        }
+
 
         return true;
     }
@@ -1549,6 +1698,17 @@ namespace Divide
         if ( !compiledPipeline._isValid )
         {
             thread_local RenderStateBlock defaultState{};
+            thread_local VkDescriptorSetLayout dummyLayout = VK_NULL_HANDLE;
+
+            if ( dummyLayout == VK_NULL_HANDLE )
+            {
+                VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo
+                {
+                    .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+                    .bindingCount = 0u
+                };
+                dummyLayout = _descriptorLayoutCache->createDescriptorLayout( &descriptorSetLayoutCreateInfo );
+            }
 
             const PipelineDescriptor& pipelineDescriptor = pipeline.descriptor();
             ShaderProgram* program = ShaderProgram::FindShaderProgram( pipelineDescriptor._shaderProgramHandle );
@@ -1573,11 +1733,22 @@ namespace Divide
             pipeline_layout_info.pushConstantRangeCount = 1;
 
             const ShaderProgram::BindingsPerSetArray& drawLayout = compiledPipeline._program->perDrawDescriptorSetLayout();
-            _descriptorSetLayouts[to_base(DescriptorSetUsage::PER_DRAW)] = createLayoutFromBindings(DescriptorSetUsage::PER_DRAW, drawLayout);
-            compiledPipeline._program->descriptorSetLayout( _descriptorSetLayouts[to_base( DescriptorSetUsage::PER_DRAW )]);
 
-            pipeline_layout_info.pSetLayouts = _descriptorSetLayouts.data();
-            pipeline_layout_info.setLayoutCount = to_U32( _descriptorSetLayouts.size() );
+            DynamicBindings dynamicBindings{};
+            _descriptorSetLayouts[to_base(DescriptorSetUsage::PER_DRAW)] = createLayoutFromBindings(DescriptorSetUsage::PER_DRAW, drawLayout, dynamicBindings);
+            compiledPipeline._program->dynamicBindings(dynamicBindings);
+            compiledPipeline._program->descriptorSetLayout( _descriptorSetLayouts[to_base( DescriptorSetUsage::PER_DRAW )] );
+            
+            const auto& setUsageData = compiledPipeline._program->setUsage();
+
+            VkDescriptorSetLayout tempLayouts[to_base( DescriptorSetUsage::COUNT )];
+
+            for ( U8 i = 0u; i < to_base( DescriptorSetUsage::COUNT ); ++i )
+            {
+                tempLayouts[i] = setUsageData[i] ? _descriptorSetLayouts[i] : dummyLayout;
+            }
+            pipeline_layout_info.pSetLayouts = tempLayouts;
+            pipeline_layout_info.setLayoutCount = to_base( DescriptorSetUsage::COUNT );
 
             VK_CHECK( vkCreatePipelineLayout( _device->getVKDevice(), &pipeline_layout_info, nullptr, &compiledPipeline._vkPipelineLayout ) );
 
@@ -1700,7 +1871,6 @@ namespace Divide
         }
 
         vkCmdBindPipeline( cmdBuffer, compiledPipeline._bindPoint, compiledPipeline._vkPipeline );
-        _descriptorSetLayouts[to_base( DescriptorSetUsage::PER_DRAW )] = compiledPipeline._program->descriptorSetLayout();
 
         GetStateTracker()._pipeline = compiledPipeline;
         if ( GetStateTracker()._pipelineStageMask != compiledPipeline._stageFlags )
@@ -1710,6 +1880,14 @@ namespace Divide
         }
 
         bindDynamicState( pipeline.descriptor()._stateBlock, pipeline.descriptor()._blendStates, cmdBuffer );
+        ResetDescriptorDynamicOffsets();
+
+        const U8 stageIdx = to_base( DescriptorSetUsage::PER_DRAW );
+        _descriptorSetLayouts[stageIdx] = compiledPipeline._program->descriptorSetLayout();
+        if (!s_hasPushDescriptorSupport )
+        {
+            _descriptorDynamicBindings[stageIdx] = compiledPipeline._program->dynamicBindings();
+        }
 
         return ShaderResult::OK;
     }
@@ -1943,19 +2121,6 @@ namespace Divide
         if ( GFXDevice::IsSubmitCommand( cmdType ) )
         {
             FlushBufferTransferRequests();
-
-            if ( stateTracker._descriptorsUpdated )
-            {
-                vkCmdBindDescriptorSets( cmdBuffer,
-                                         stateTracker._pipeline._bindPoint,
-                                         stateTracker._pipeline._vkPipelineLayout,
-                                         0,
-                                         to_base( DescriptorSetUsage::COUNT ),
-                                         _descriptorSets.data(),
-                                         0,
-                                         nullptr );
-                stateTracker._descriptorsUpdated = false;
-            }
         }
 
         if ( stateTracker._activeRenderTargetID == SCREEN_TARGET_ID )
@@ -2612,12 +2777,16 @@ namespace Divide
         return true;
     }
 
-    VkDescriptorSetLayout VK_API::createLayoutFromBindings(const DescriptorSetUsage usage, const ShaderProgram::BindingsPerSetArray& bindings )
+    VkDescriptorSetLayout VK_API::createLayoutFromBindings(const DescriptorSetUsage usage, const ShaderProgram::BindingsPerSetArray& bindings, DynamicBindings& dynamicBindings )
     {
-        static eastl::fixed_vector<VkDescriptorSetLayoutBinding, ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET, false> layoutBinding{};
-        layoutBinding.clear();
+        thread_local eastl::fixed_vector<VkDescriptorSetLayoutBinding, MAX_BINDINGS_PER_DESCRIPTOR_SET, false> layoutBinding{};
 
-        for ( U8 slot = 0u; slot < ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET; ++slot )
+        layoutBinding.clear();
+        dynamicBindings.clear();
+
+        const bool isPushDescriptor = s_hasPushDescriptorSupport && usage == DescriptorSetUsage::PER_DRAW;
+
+        for ( U8 slot = 0u; slot < MAX_BINDINGS_PER_DESCRIPTOR_SET; ++slot )
         {
             if ( bindings[slot]._type == DescriptorSetBindingType::COUNT || (slot == 0 && usage == DescriptorSetUsage::PER_BATCH ))
             {
@@ -2626,13 +2795,27 @@ namespace Divide
 
             VkDescriptorSetLayoutBinding& newBinding = layoutBinding.emplace_back();
             newBinding.descriptorCount = 1u;
-            newBinding.descriptorType = VKUtil::vkDescriptorType( bindings[slot]._type );
+            newBinding.descriptorType = VKUtil::vkDescriptorType( bindings[slot]._type, isPushDescriptor );
             newBinding.stageFlags = GetFlagsForStageVisibility( bindings[slot]._visibility );
             newBinding.binding = slot;
             newBinding.pImmutableSamplers = nullptr;
+
+            if ( !isPushDescriptor && (bindings[slot]._type == DescriptorSetBindingType::UNIFORM_BUFFER || bindings[slot]._type == DescriptorSetBindingType::SHADER_STORAGE_BUFFER ))
+            {
+                dynamicBindings.emplace_back(DynamicBinding{
+                    ._offset = 0u,
+                    ._slot = slot
+                });
+            }
         }
 
+        eastl::sort(begin(dynamicBindings), end(dynamicBindings), []( const DynamicBinding& bindingA, const DynamicBinding& bindingB ) { return bindingA._slot <= bindingB._slot; });
+
         VkDescriptorSetLayoutCreateInfo layoutCreateInfo = vk::descriptorSetLayoutCreateInfo( layoutBinding.data(), to_U32( layoutBinding.size() ) );
+        if ( isPushDescriptor )
+        {
+            layoutCreateInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
+        }
         return _descriptorLayoutCache->createDescriptorLayout( &layoutCreateInfo );
     }
     
@@ -2646,7 +2829,7 @@ namespace Divide
         {
             if ( i != to_base( DescriptorSetUsage::PER_DRAW ) )
             {
-                _descriptorSetLayouts[i] = createLayoutFromBindings( static_cast<DescriptorSetUsage>(i), bindingData[i] );
+                _descriptorSetLayouts[i] = createLayoutFromBindings( static_cast<DescriptorSetUsage>(i), bindingData[i], _descriptorDynamicBindings[i] );
             }
         }
 
@@ -2661,15 +2844,13 @@ namespace Divide
             pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1.f );
             pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1.f );
             pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1.f );
-            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2.f );
-            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 4.f );
+            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1.f );
+            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2.f );
             pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2.f );
             pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 4.f );
             pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 0.5f );
-
             pool._handle = pool._allocatorPool->GetAllocator();
         }
-
     }
 
     void VK_API::onThreadCreated( [[maybe_unused]] const std::thread::id& threadID ) noexcept
@@ -2777,5 +2958,30 @@ namespace Divide
         }
 
         return 0u;
+    }
+
+    RenderTarget_uptr VK_API::newRT( const RenderTargetDescriptor& descriptor ) const
+    {
+        return eastl::make_unique<vkRenderTarget>( _context, descriptor );
+    }
+
+    GenericVertexData_ptr VK_API::newGVD( U32 ringBufferLength, bool renderIndirect, const Str256& name ) const
+    {
+        return std::make_shared<vkGenericVertexData>( _context, ringBufferLength, renderIndirect, name.c_str() );
+    }
+
+    Texture_ptr VK_API::newTexture( size_t descriptorHash, const Str256& resourceName, const ResourcePath& assetNames, const ResourcePath& assetLocations, const TextureDescriptor& texDescriptor, ResourceCache& parentCache ) const
+    {
+        return std::make_shared<vkTexture>( _context, descriptorHash, resourceName, assetNames, assetLocations, texDescriptor, parentCache );
+    }
+
+    ShaderProgram_ptr VK_API::newShaderProgram( size_t descriptorHash, const Str256& resourceName, const Str256& assetName, const ResourcePath& assetLocation, const ShaderProgramDescriptor& descriptor, ResourceCache& parentCache ) const
+    {
+        return std::make_shared<vkShaderProgram>( _context, descriptorHash, resourceName, assetName, assetLocation, descriptor, parentCache );
+    }
+
+    ShaderBuffer_uptr VK_API::newSB( const ShaderBufferDescriptor& descriptor ) const
+    {
+        return eastl::make_unique<vkShaderBuffer>( _context, descriptor );
     }
 }; //namespace Divide

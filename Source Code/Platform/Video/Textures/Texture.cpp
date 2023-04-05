@@ -37,21 +37,30 @@ namespace Divide
     ResourcePath Texture::s_missingTextureFileName( "missing_texture.jpg" );
 
     size_t Texture::s_defaultSamplerHash = 0u;
-    Texture_ptr Texture::s_defaulTexture = nullptr;
+    Texture_ptr Texture::s_defaultTexture2D = nullptr;
+    Texture_ptr Texture::s_defaultTexture2DArray = nullptr;
     bool Texture::s_useDDSCache = true;
 
     void Texture::OnStartup( GFXDevice& gfx )
     {
         ImageTools::OnStartup( gfx.renderAPI() != RenderAPI::OpenGL );
 
-        TextureDescriptor textureDescriptor( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
+        TextureDescriptor textureDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
         textureDescriptor.baseFormat( GFXImageFormat::RGBA );
 
-        ResourceDescriptor textureResourceDescriptor( "defaultEmptyTexture" );
-        textureResourceDescriptor.propertyDescriptor( textureDescriptor );
-        textureResourceDescriptor.waitForReady( true );
-        s_defaulTexture = CreateResource<Texture>( gfx.context().kernel().resourceCache(), textureResourceDescriptor);
-
+        {
+            ResourceDescriptor textureResourceDescriptor( "defaultEmptyTexture2D" );
+            textureResourceDescriptor.propertyDescriptor( textureDescriptor );
+            textureResourceDescriptor.waitForReady( true );
+            s_defaultTexture2D = CreateResource<Texture>( gfx.context().kernel().resourceCache(), textureResourceDescriptor);
+        }
+        {
+            textureDescriptor.texType(TextureType::TEXTURE_2D_ARRAY);
+            ResourceDescriptor textureResourceDescriptor( "defaultEmptyTexture2DArray" );
+            textureResourceDescriptor.propertyDescriptor( textureDescriptor );
+            textureResourceDescriptor.waitForReady( true );
+            s_defaultTexture2DArray = CreateResource<Texture>( gfx.context().kernel().resourceCache(), textureResourceDescriptor );
+        }
         Byte* defaultTexData = MemoryManager_NEW Byte[1u * 1u * 4];
         defaultTexData[0] = defaultTexData[1] = defaultTexData[2] = to_byte( 0u ); //RGB: black
         defaultTexData[3] = to_byte( 1u ); //Alpha: 1
@@ -61,7 +70,8 @@ namespace Divide
         {
             DIVIDE_UNEXPECTED_CALL();
         }
-        s_defaulTexture->createWithData( imgDataDefault, {});
+        s_defaultTexture2D->createWithData( imgDataDefault, {});
+        s_defaultTexture2DArray->createWithData( imgDataDefault, {});
         MemoryManager::DELETE_ARRAY( defaultTexData );
 
         SamplerDescriptor defaultSampler = {};
@@ -75,7 +85,8 @@ namespace Divide
 
     void Texture::OnShutdown() noexcept
     {
-        s_defaulTexture.reset();
+        s_defaultTexture2D.reset();
+        s_defaultTexture2DArray.reset();
         s_defaultSamplerHash = 0u;
         ImageTools::OnShutdown();
     }
@@ -85,9 +96,14 @@ namespace Divide
         return s_useDDSCache;
     }
 
-    const Texture_ptr& Texture::DefaultTexture() noexcept
+    const Texture_ptr& Texture::DefaultTexture2D() noexcept
     {
-        return s_defaulTexture;
+        return s_defaultTexture2D;
+    }
+    
+    const Texture_ptr& Texture::DefaultTexture2DArray() noexcept
+    {
+        return s_defaultTexture2DArray;
     }
 
     const size_t Texture::DefaultSamplerHash() noexcept

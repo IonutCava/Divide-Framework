@@ -166,12 +166,9 @@ constexpr U64 prime_64_const = 0x100000001b3;
     return _ID_VIEW(str, len);
 }
 
-struct SysInfo {
-    SysInfo() noexcept;
-
-    size_t _availableRamInBytes;
-    int _systemResolutionWidth;
-    int _systemResolutionHeight;
+struct SysInfo
+{
+    size_t _availableRamInBytes{0u};
     string _workingDirectory;
 };
 
@@ -693,23 +690,6 @@ template <typename TO>
 extern void DIVIDE_ASSERT_MSG_BOX(const char* failMessage) noexcept;
 
 namespace Assert {
-    constexpr size_t ASSERT_MSG_BUFFER_SIZE = 512;
-    thread_local static char ASSERT_TEXT_BUFFER[ASSERT_MSG_BUFFER_SIZE + 1];
-
-    inline const char* FormatText(const char* format, ...) noexcept {
-        va_list args;
-        va_start(args, format);
-        SCOPE_EXIT{
-            va_end(args);
-        };
-        if (to_size(_vscprintf(format, args)) + 1 < ASSERT_MSG_BUFFER_SIZE) {
-            vsprintf(ASSERT_TEXT_BUFFER, format, args);
-            return ASSERT_TEXT_BUFFER;
-        }
-
-        return "";
-    }
-
     /// It is safe to call evaluate expressions and call functions inside the assert check as it will compile for every build type
     bool DIVIDE_ASSERT_FUNC(bool expression, const char* expressionStr, const char* file, int line, const char* failMessage) noexcept;
 }

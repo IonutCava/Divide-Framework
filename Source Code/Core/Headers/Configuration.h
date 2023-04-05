@@ -35,20 +35,27 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Utility/Headers/XMLParser.h"
 
-namespace Divide {
+namespace Divide
+{
 
 struct Configuration final : XML::IXMLSerializable {
-    struct Debug {
-        bool enableRenderAPIDebugging = false;
-        bool enableRenderAPIBestPractices = false;
-        bool assertOnRenderAPIError = false;
+    struct Debug
+    {
+        struct Renderer
+        {
+            bool enableRenderAPIDebugging = false;
+            bool enableRenderAPIBestPractices = false;
+            bool assertOnRenderAPIError = false;
+            bool useExtensions = true;
+        } renderer = {};
         bool useGeometryCache = true;
         bool useVegetationCache = true;
         bool useShaderCache = true;
         bool useTextureDDSCache = true;
         bool enableTreeInstances = true;
         bool enableGrassInstances = true;
-        struct RenderFilter {
+        struct RenderFilter
+        {
             bool primitives = true;
             bool meshes = true;
             bool terrain = true;
@@ -62,7 +69,8 @@ struct Configuration final : XML::IXMLSerializable {
     
     string language = "enGB";
     
-    struct Runtime {
+    struct Runtime
+    {
         string title = "DIVIDE Framework";
         U8 targetDisplay = 0;
         U8 targetRenderingAPI = 0;
@@ -82,14 +90,17 @@ struct Configuration final : XML::IXMLSerializable {
         U8  horizontalFOV = 90u;
     } runtime = {};
 
-    struct GUI {
-        struct CEGUI {
+    struct GUI
+    {
+        struct CEGUI
+        {
             bool enabled = true;
         } cegui = {};
         string consoleLayoutFile = "console.layout";
     } gui;
 
-    struct ShadowSettings {
+    struct ShadowSettings
+    {
         U32 shadowMapResolution = 512u;
         U8 MSAASamples = 0u;
         U8 maxAnisotropicFilteringLevel = 0u;
@@ -109,7 +120,8 @@ struct Configuration final : XML::IXMLSerializable {
         bool showBlendMap = false;
     } terrain;
 
-    struct SSAOSettings{
+    struct SSAOSettings
+    {
         F32  Radius = 0.5f;
         F32  Bias = 0.05f;
         F32  Power = 2.0f;
@@ -122,7 +134,8 @@ struct Configuration final : XML::IXMLSerializable {
         F32  FadeDistance = 0.99f;
     };
 
-    struct Rendering {
+    struct Rendering
+    {
         U8 MSAASamples = 0u;
         U8 maxAnisotropicFilteringLevel = 16;
         U16 reflectionProbeResolution = 256;
@@ -133,12 +146,15 @@ struct Configuration final : XML::IXMLSerializable {
         F32 fogScatter = 0.01f;
         vec3<F32> fogColour = { 0.2f, 0.2f, 0.2f };
         vec4<U16> lodThresholds = { 25u, 45u, 85u, 165u };
-        struct PostFX {
-            struct PostAA {
+        struct PostFX
+        {
+            struct PostAA
+            {
                 string type = "FXAA";
                 U8 qualityLevel = 2;
             } postAA;
-            struct ToneMap {
+            struct ToneMap
+            {
                 bool adaptive = true;
                 F32 manualExposureFactor = 1.f;
                 F32 minLogLuminance = -4.f;
@@ -178,11 +194,13 @@ struct Configuration final : XML::IXMLSerializable {
                 U16 maxSteps = 256u;
                 U8 binarySearchIterations = 4u;
             } ssr;
-            struct MotionBlur {
+            struct MotionBlur
+            {
                 bool enablePerObject = true;
                 F32 velocityScale = 1.f;
             } motionBlur;
-            struct Bloom {
+            struct Bloom
+            {
                 bool enabled = true;
                 F32 threshold = 0.99f;
             } bloom;
@@ -194,7 +212,8 @@ struct Configuration final : XML::IXMLSerializable {
                 SSAOSettings HalfRes;
             } ssao;
         } postFX = {};
-        struct ShadowMapping {
+        struct ShadowMapping
+        {
             bool enabled = true;
             struct CSMSettings : public ShadowSettings
             {
@@ -205,7 +224,8 @@ struct Configuration final : XML::IXMLSerializable {
             ShadowSettings point = {};
         } shadowMapping = {};
     } rendering = {};
-    struct DefaultAssetLocation {
+    struct DefaultAssetLocation
+    {
         string textures = "textures/";
         string shaders = "shaders/";
     } defaultAssetLocation;

@@ -66,9 +66,6 @@ class RenderPass final : NonCopyable {
            U32* _lastCommandCount = nullptr;
            U32* _lastNodeCount = nullptr;
        };
-  public:
-    // Size factor for command, transform and material buffers
-    static constexpr U8 DataBufferRingSize = 5u;
 
   public:
     // passStageFlags: the first stage specified will determine the data format used by the additional stages in the list

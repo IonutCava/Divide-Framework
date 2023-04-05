@@ -625,7 +625,7 @@ namespace Divide
         {
             if ( PlatformContext* context = (PlatformContext*)platformContext )
             {
-                PROFILE_SCOPE( "Editor:: Render Platform Window", Profiler::Category::GUI);
+                PROFILE_SCOPE("Editor:: Render Platform Window", Profiler::Category::GUI);
 
                 Editor* editor = &context->editor();
 
@@ -1363,41 +1363,25 @@ namespace Divide
         return viewWindow->sceneRect( globalCoords );
     }
 
-    GenericVertexData* Editor::getOrCreateIMGUIBuffer( const I64 bufferGUID, const I32 maxCommandCount, const U32 maxVertices, GFX::MemoryBarrierCommand& memCmdInOut )
+    GenericVertexData* Editor::getOrCreateIMGUIBuffer( const I64 bufferGUID, const U32 maxVertices, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        const U32 newSize = to_U32( maxCommandCount * RenderPass::DataBufferRingSize );
-
-        GenericVertexData* ret = nullptr;
-
         const auto it = _IMGUIBuffers.find( bufferGUID );
         if ( it != eastl::cend( _IMGUIBuffers ) )
         {
-            // If we need more space, skip this and just create a new, larger, buffer.
-            if ( it->second->queueLength() >= newSize )
-            {
-                return it->second.get();
-            }
-            else
-            {
-                ret = it->second.get();
-                ret->reset();
-                ret->resize( newSize );
-            }
+            GenericVertexData* buffer = it->second.get();
+            buffer->incQueue();
+            return buffer;
         }
 
-        if ( ret == nullptr )
-        {
-            GenericVertexData_ptr newBuffer = _context.gfx().newGVD( newSize, Util::StringFormat("IMGUI_%d", bufferGUID).c_str() );
-            _IMGUIBuffers[bufferGUID] = newBuffer;
-            ret = newBuffer.get();
-        }
+        auto& newBuffer = _IMGUIBuffers[bufferGUID];
+
+        newBuffer = _context.gfx().newGVD( Config::MAX_FRAMES_IN_FLIGHT + 1u, false, Util::StringFormat("IMGUI_%d", bufferGUID).c_str() );
 
         GenericVertexData::IndexBuffer idxBuff{};
         idxBuff.smallIndices = sizeof( ImDrawIdx ) == sizeof( U16 );
-        idxBuff.count = maxVertices * 3;
         idxBuff.dynamic = true;
+        idxBuff.count = maxVertices * 3;
 
-        ret->renderIndirect( false );
 
         GenericVertexData::SetBufferParams params = {};
         params._bindConfig = { 0u, 0u };
@@ -1409,10 +1393,10 @@ namespace Divide
         params._bufferParams._flags._updateFrequency = BufferUpdateFrequency::OFTEN;
         params._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
 
-        memCmdInOut._bufferLocks.push_back(ret->setBuffer( params )); //Pos, UV and Colour
-        memCmdInOut._bufferLocks.push_back(ret->setIndexBuffer( idxBuff ));
+        memCmdInOut._bufferLocks.push_back( newBuffer->setBuffer( params )); //Pos, UV and Colour
+        memCmdInOut._bufferLocks.push_back( newBuffer->setIndexBuffer( idxBuff ));
 
-        return ret;
+        return newBuffer.get();
     }
 
     // Needs to be rendered immediately. *IM*GUI. IMGUI::NewFrame invalidates this data
@@ -1424,8 +1408,6 @@ namespace Divide
                                  GFX::MemoryBarrierCommand& memCmdInOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
-
-        static I32 s_maxCommandCount = 16u;
 
         constexpr U32 MaxVertices = (1 << 16);
         constexpr U32 MaxIndices = MaxVertices * 3u;
@@ -1443,14 +1425,11 @@ namespace Divide
             return;
         }
 
-        s_maxCommandCount = std::max( s_maxCommandCount, pDrawData->CmdListsCount );
-
-        GenericVertexData* buffer = getOrCreateIMGUIBuffer( bufferGUID, s_maxCommandCount, MaxVertices, memCmdInOut);
+        GenericVertexData* buffer = getOrCreateIMGUIBuffer( bufferGUID, MaxVertices, memCmdInOut);
         assert( buffer != nullptr );
 
         GenericDrawCommand drawCmd{};
         drawCmd._sourceBuffer = buffer->handle();
-        buffer->incQueue();
 
         // ref: https://gist.github.com/floooh/10388a0afbe08fce9e617d8aefa7d302
         I32 numVertices = 0, numIndices = 0;
@@ -1465,12 +1444,8 @@ namespace Divide
                 break;
             }
 
-            memcpy( &vertices[numVertices],
-                    cl->VtxBuffer.Data,
-                    clNumVertices * sizeof( ImDrawVert ) );
-            memcpy( &indices[numIndices],
-                    cl->IdxBuffer.Data,
-                    clNumIndices * sizeof( ImDrawIdx ) );
+            memcpy( &vertices[numVertices], cl->VtxBuffer.Data, clNumVertices * sizeof( ImDrawVert ) );
+            memcpy( &indices[numIndices],   cl->IdxBuffer.Data, clNumIndices  * sizeof( ImDrawIdx )  );
 
             numVertices += clNumVertices;
             numIndices += clNumIndices;
@@ -1537,6 +1512,8 @@ namespace Divide
 
         const bool flipClipY = _context.gfx().renderAPI() == RenderAPI::OpenGL;
 
+        ImTextureID crtImguiTexID = nullptr;
+
         U32 baseVertex = 0u;
         U32 indexOffset = 0u;
         for ( I32 n = 0; n < pDrawData->CmdListsCount; ++n )
@@ -1578,21 +1555,25 @@ namespace Divide
                     }
                     GFX::EnqueueCommand( bufferInOut, GFX::SetScissorCommand{ clipRect } );
 
-                    Texture* tex = (Texture*)(pcmd.GetTexID());
-                    if ( tex != nullptr )
+
+                    ImTextureID imguiTexID = pcmd.GetTexID();
+
+                    if ( imguiTexID != crtImguiTexID )
                     {
+                        Texture* tex = (Texture*)(imguiTexID);
+
                         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
                         cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
                         {
                             DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
-                            Set(binding._data, tex->getView(), _editorSamplerHash );
+                            Set(binding._data, tex == nullptr ? Texture::DefaultTexture2D()->getView() : tex->getView(), _editorSamplerHash );
                         }
                         {
                             DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
-                            Set(binding._data, Texture::DefaultTexture()->getView(), Texture::DefaultSamplerHash());
+                            Set(binding._data, Texture::DefaultTexture2DArray()->getView(), Texture::DefaultSamplerHash());
                         }
-
+                        crtImguiTexID = imguiTexID;
                     }
 
                     drawCmd._cmd.indexCount = pcmd.ElemCount;
@@ -2303,9 +2284,9 @@ namespace Divide
                     cmd->_usage = DescriptorSetUsage::PER_DRAW;
                     {
                         DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
-                        const ImageView texView = Texture::DefaultTexture()->getView(TextureType::TEXTURE_2D,
-                                                                                     { 0u, 1u },
-                                                                                     { 0u, 1u });
+                        const ImageView texView = Texture::DefaultTexture2D()->getView(TextureType::TEXTURE_2D,
+                                                                                       { 0u, 1u },
+                                                                                       { 0u, 1u });
                         Set( binding._data, texView, Texture::DefaultSamplerHash() );
                     }
                     {

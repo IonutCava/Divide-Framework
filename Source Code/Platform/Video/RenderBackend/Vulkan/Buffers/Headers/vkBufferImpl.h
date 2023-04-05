@@ -78,6 +78,7 @@ namespace Divide {
                         size_t> outData );
 
         const size_t _alignedBufferSize{0u};
+        const size_t _totalBufferSize{0u};
         VMABuffer_uptr _stagingBuffer{};
 
     private:

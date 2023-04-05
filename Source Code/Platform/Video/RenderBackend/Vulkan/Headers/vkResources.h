@@ -36,9 +36,10 @@
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
 
 #include "vkInitializers.h"
-#include <Vulkan-Descriptor-Allocator/descriptor_allocator.h>
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Headers/BlendingProperties.h"
+#include "Core/Headers/StringHelper.h"
+#include "Platform/Video/RenderBackend/Vulkan/Vulkan-Descriptor-Allocator/descriptor_allocator.h"
 
 namespace vke
 {
@@ -135,6 +136,14 @@ struct VkPipelineEntry
     VkPipelineLayout _layout{ VK_NULL_HANDLE };
 };
 
+struct DynamicBinding
+{
+    U32 _offset{ 0u };
+    U8 _slot{ U8_MAX };
+};
+
+using DynamicBindings = eastl::fixed_vector<DynamicBinding, MAX_BINDINGS_PER_DESCRIPTOR_SET, false>;
+
 struct VKImmediateCmdContext
 {
     static constexpr U8 BUFFER_COUNT = 4u;
@@ -225,7 +234,6 @@ struct VKStateTracker
     U8 _debugScopeDepth{ 0u };
 
     U8 _activeMSAASamples{ 1u };
-    bool _descriptorsUpdated{ false };
     bool _pushConstantsValid{ false };
     bool _assertOnAPIError{ false };
 
@@ -358,7 +366,7 @@ namespace VKUtil {
 
     [[nodiscard]] VkFormat InternalFormat(GFXImageFormat baseFormat, GFXDataFormat dataType, GFXImagePacking packing) noexcept;
     [[nodiscard]] VkFormat InternalFormat(GFXDataFormat format, U8 componentCount, bool normalized) noexcept;
-    [[nodiscard]] VkDescriptorType vkDescriptorType(DescriptorSetBindingType type) noexcept;
+    [[nodiscard]] VkDescriptorType vkDescriptorType(DescriptorSetBindingType type, bool isPushDescriptor) noexcept;
 }; //namespace VKUtil
 }; //namespace Divide
 

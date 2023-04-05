@@ -151,9 +151,6 @@
     <Filter Include="ImGuiMisc\imguistyleserializer">
       <UniqueIdentifier>{34db3e3a-d7e9-475a-be30-af2d8caba5a0}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Vulkan-Descriptor-Allocator">
-      <UniqueIdentifier>{2a65c0a9-a04a-41b9-a00d-c984217529f3}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\3rdParty\ArenaAllocator\arena_allocator.h">
@@ -509,9 +506,6 @@
     </ClInclude>
     <ClInclude Include="..\..\3rdParty\ImGuiMisc\imguistyleserializer\imguistyleserializer.h">
       <Filter>ImGuiMisc\imguistyleserializer</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\3rdParty\Vulkan-Descriptor-Allocator\descriptor_allocator.h">
-      <Filter>Vulkan-Descriptor-Allocator</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -895,9 +889,6 @@
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\ImGuiMisc\imguistyleserializer\imguistyleserializer.cpp">
       <Filter>ImGuiMisc\imguistyleserializer</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\Vulkan-Descriptor-Allocator\descriptor_allocator.cpp">
-      <Filter>Vulkan-Descriptor-Allocator</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

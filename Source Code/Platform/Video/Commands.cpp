@@ -306,25 +306,35 @@ string ToString(const SetCameraCommand& cmd, U16 indent) {
     return ret;
 }
 
-string ToString(const BindShaderResourcesCommand& cmd, const U16 indent) {
+string ToString(const BindShaderResourcesCommand& cmd, const U16 indent)
+{
     U8 bufferCount = 0u;
     U8 imageCount = 0u;
-    for (const auto& binding : cmd._bindings) {
-        if ( Has<ShaderBufferEntry>( binding._data)) {
+    for (const auto& binding : cmd._bindings)
+    {
+        if ( Has<ShaderBufferEntry>( binding._data))
+        {
             ++bufferCount;
-        } else if ( Has<DescriptorCombinedImageSampler>( binding._data) ||
-                    Has<DescriptorImageView>( binding._data)) {
+        }
+        else if ( Has<DescriptorCombinedImageSampler>( binding._data) ||
+                  Has<DescriptorImageView>( binding._data))
+        {
             ++imageCount;
         }
     }
+
     string ret = Util::StringFormat(" [ Buffers: %d, Images: %d ]\n", bufferCount, imageCount);
 
-    for (const auto& binding : cmd._bindings) {
-        if ( Has<ShaderBufferEntry>( binding._data )) {
+    for (const auto& binding : cmd._bindings)
+    {
+        if ( Has<ShaderBufferEntry>( binding._data ))
+        {
             ret.append( "    " );
-            for (U16 j = 0; j < indent; ++j) {
+            for (U16 j = 0; j < indent; ++j)
+            {
                 ret.append("    ");
             }
+
             const auto& data = binding._data;
             const auto& bufferEntry = As<ShaderBufferEntry>( data);
             ret.append(Util::StringFormat("Buffer [ %d - %d ] Range [%zu - %zu] Read Index [ %d ]\n",
@@ -332,20 +342,27 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent) {
                        bufferEntry._buffer->getGUID(),
                        bufferEntry._range._startOffset,
                        bufferEntry._range._length,
-                       bufferEntry._bufferQueueReadIndex));
+                       bufferEntry._queueReadIndex));
         }
     }
-    for (const auto& binding : cmd._bindings) {
-        if (!Has<ShaderBufferEntry>(binding._data)) {
-            if (binding._slot == INVALID_TEXTURE_BINDING) {
+
+    for (const auto& binding : cmd._bindings)
+    {
+        if (!Has<ShaderBufferEntry>(binding._data))
+        {
+            if (binding._slot == INVALID_TEXTURE_BINDING)
+            {
                 continue;
             }
             
             ret.append("    ");
-            for (U16 j = 0; j < indent; ++j) {
+            for (U16 j = 0; j < indent; ++j)
+            {
                 ret.append("    ");
             }
-            if ( Has<DescriptorCombinedImageSampler>( binding._data )) {
+
+            if ( Has<DescriptorCombinedImageSampler>( binding._data ))
+            {
                 const Texture* srcTex = As<DescriptorCombinedImageSampler>( binding._data)._image._srcTexture;
 
                 ret.append(Util::StringFormat("Texture [ %d - %zu - %s - %zu ] Layers: [ %d - %d ] MipRange: [ %d - %d ]\n",
@@ -357,7 +374,9 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent) {
                             As<DescriptorCombinedImageSampler>(binding._data)._image._subRange._layerRange.count,
                             As<DescriptorCombinedImageSampler>(binding._data)._image._subRange._mipLevels.offset,
                             As<DescriptorCombinedImageSampler>(binding._data)._image._subRange._mipLevels.count));
-            } else {
+            }
+            else
+            {
                 const Texture* srcTex = As<DescriptorImageView>( binding._data)._image._srcTexture;
 
                 ret.append(Util::StringFormat("Image binds: Slot [%d] - Src GUID [ %d ] - Src Name [ %s ] - Layers [%d - %d] - Levels [%d - %d] - Flag [ %s ]",
@@ -376,11 +395,13 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent) {
     return ret;
 }
 
-string ToString(const BeginDebugScopeCommand& cmd, const U16 indent) {
+string ToString(const BeginDebugScopeCommand& cmd, const U16 indent)
+{
     return " [ " + string(cmd._scopeName.c_str()) + " ]";
 }
 
-string ToString(const AddDebugMessageCommand& cmd, const U16 indent) {
+string ToString(const AddDebugMessageCommand& cmd, const U16 indent)
+{
     string ret = "\n";
     for (U16 j = 0; j < indent; ++j) {
         ret.append("    ");
@@ -390,7 +411,8 @@ string ToString(const AddDebugMessageCommand& cmd, const U16 indent) {
     return ret;
 }
 
-string ToString(const DispatchComputeCommand& cmd, U16 indent) {
+string ToString(const DispatchComputeCommand& cmd, U16 indent)
+{
     return Util::StringFormat(" [ Group sizes: %d %d %d]", cmd._computeGroupSize.x, cmd._computeGroupSize.y, cmd._computeGroupSize.z);
 }
 

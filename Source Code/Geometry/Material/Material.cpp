@@ -629,10 +629,12 @@ namespace Divide
         if ( renderStagePass._stage == RenderStage::SHADOW )
         {
             shaderDescriptor._globalDefines.emplace_back( "SHADOW_PASS", true );
+            shaderDescriptor._globalDefines.emplace_back( "SKIP_REFLECT_REFRACT", true );
         }
         else if ( isDepthPass )
         {
             shaderDescriptor._globalDefines.emplace_back( "PRE_PASS", true );
+            shaderDescriptor._globalDefines.emplace_back( "SKIP_REFLECT_REFRACT", true );
         }
         if ( renderStagePass._stage == RenderStage::REFLECTION && to_U8( renderStagePass._variant ) != to_base( ReflectorType::CUBE ) )
         {

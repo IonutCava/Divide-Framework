@@ -149,16 +149,13 @@ namespace Divide {
     }
 
     bool DescriptorBuilder::buildSetAndLayout(VkDescriptorSet& set, VkDescriptorSetLayout& layoutOut, VkDevice device ) {
-        //build layout first
-        VkDescriptorSetLayoutCreateInfo layoutInfo = vk::descriptorSetLayoutCreateInfo(bindings);
+
+        VkDescriptorSetLayoutCreateInfo layoutInfo{ .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+        layoutInfo.pBindings = bindings.data();
+        layoutInfo.bindingCount = to_U32( bindings.size() );
         layoutOut = cache->createDescriptorLayout(&layoutInfo);
 
         return buildSetFromLayout(set, layoutOut, device);
-    }
-
-    bool DescriptorBuilder::buildSet(VkDescriptorSet& set, VkDevice device ) {
-        VkDescriptorSetLayout layout;
-        return buildSetAndLayout(set, layout, device);
     }
 
 

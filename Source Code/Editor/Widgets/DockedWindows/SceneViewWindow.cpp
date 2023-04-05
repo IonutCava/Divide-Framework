@@ -161,7 +161,6 @@ namespace Divide
 
         NodePreviewWindow::drawInternal(gameView.get());
 
-        enableGizmo = Attorney::EditorSceneViewWindow::editorEnabledGizmo(_parent);
         if (play || !enableGizmo)
         {
             PushReadOnly();

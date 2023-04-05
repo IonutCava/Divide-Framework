@@ -206,20 +206,14 @@ namespace Divide
                 writeRange = executorBuffer._bufferUpdateRange;
                 executorBuffer._bufferUpdateRange.reset();
 
-                if constexpr( RenderPass::DataBufferRingSize > 1u )
-                {
-                    // We don't need to write everything again as big chunks have been written as part of the normal frame update process
-                    // Try and find only the items unoutched this frame
-                    prevWriteRange = GetPrevRangeDiff( executorBuffer._bufferUpdateRangeHistory.back(), executorBuffer._bufferUpdateRangePrev );
-                    executorBuffer._bufferUpdateRangePrev.reset();
-                }
+                // We don't need to write everything again as big chunks have been written as part of the normal frame update process
+                // Try and find only the items unoutched this frame
+                prevWriteRange = GetPrevRangeDiff( executorBuffer._bufferUpdateRangeHistory.back(), executorBuffer._bufferUpdateRangePrev );
+                executorBuffer._bufferUpdateRangePrev.reset();
             }
 
             WriteToGPUBufferInternal( executorBuffer, writeRange, memCmdInOut );
-            if constexpr( RenderPass::DataBufferRingSize > 1u )
-            {
-                WriteToGPUBufferInternal( executorBuffer, prevWriteRange, memCmdInOut );
-            }
+            WriteToGPUBufferInternal( executorBuffer, prevWriteRange, memCmdInOut );
         }
 
         template<typename DataContainer>
@@ -253,22 +247,20 @@ namespace Divide
             const BufferUpdateRange rangeWrittenThisFrame = executorBuffer._bufferUpdateRangeHistory.back();
 
             // At the end of the frame, bump our history queue by one position and prepare the tail for a new write
-            if constexpr( RenderPass::DataBufferRingSize > 1u )
+            PROFILE_SCOPE( "History Update", Profiler::Category::Scene );
+            for ( U8 i = 0u; i < executorBuffer._queueLength - 1u; ++i )
             {
-                PROFILE_SCOPE( "History Update", Profiler::Category::Scene );
-                for ( U8 i = 0u; i < RenderPass::DataBufferRingSize - 1; ++i )
-                {
-                    executorBuffer._bufferUpdateRangeHistory[i] = executorBuffer._bufferUpdateRangeHistory[i + 1];
-                }
-                executorBuffer._bufferUpdateRangeHistory[RenderPass::DataBufferRingSize - 1].reset();
-
-                // We can gather all of our history (once we evicted the oldest entry) into our "previous frame written range" entry
-                executorBuffer._bufferUpdateRangePrev.reset();
-                for ( U32 i = 0u; i < executorBuffer._gpuBuffer->queueLength() - 1u; ++i )
-                {
-                    MergeBufferUpdateRanges( executorBuffer._bufferUpdateRangePrev, executorBuffer._bufferUpdateRangeHistory[i] );
-                }
+                executorBuffer._bufferUpdateRangeHistory[i] = executorBuffer._bufferUpdateRangeHistory[i + 1];
             }
+            executorBuffer._bufferUpdateRangeHistory[executorBuffer._queueLength - 1u].reset();
+
+            // We can gather all of our history (once we evicted the oldest entry) into our "previous frame written range" entry
+            executorBuffer._bufferUpdateRangePrev.reset();
+            for ( U32 i = 0u; i < executorBuffer._gpuBuffer->queueLength() - 1u; ++i )
+            {
+                MergeBufferUpdateRanges( executorBuffer._bufferUpdateRangePrev, executorBuffer._bufferUpdateRangeHistory[i] );
+            }
+        
             // We need to increment our buffer queue to get the new write range into focus
             executorBuffer._gpuBuffer->incQueue();
             efficient_clear( executorBuffer._nodeProcessedThisFrame );
@@ -308,7 +300,7 @@ namespace Divide
         bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::COMMAND_BUFFER;
         bufferDescriptor._bufferParams._elementCount = Config::MAX_VISIBLE_NODES * TotalPassCountForStage( stage );
         bufferDescriptor._bufferParams._elementSize = sizeof( IndirectIndexedDrawCommand );
-        bufferDescriptor._ringBufferLength = RenderPass::DataBufferRingSize;
+        bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
         bufferDescriptor._name = Util::StringFormat( "CMD_DATA_%s", TypeUtil::RenderStageToString( stage ) );
         _cmdBuffer = _context.newSB( bufferDescriptor );
     }
@@ -377,13 +369,14 @@ namespace Divide
         bufferDescriptor._bufferParams._flags._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
         bufferDescriptor._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
         bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::UNBOUND_BUFFER;
-        bufferDescriptor._ringBufferLength = RenderPass::DataBufferRingSize;
+        bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
         {// Node Transform buffer
             bufferDescriptor._bufferParams._elementCount = to_U32( _transformBuffer._data._gpuData.size() );
             bufferDescriptor._bufferParams._elementSize = sizeof( NodeTransformData );
             bufferDescriptor._name = Util::StringFormat( "NODE_TRANSFORM_DATA_%s", TypeUtil::RenderStageToString( _stage ) );
             _transformBuffer._gpuBuffer = _context.newSB( bufferDescriptor );
             _transformBuffer._bufferUpdateRangeHistory.resize( bufferDescriptor._ringBufferLength );
+            _transformBuffer._queueLength = bufferDescriptor._ringBufferLength;
         }
         {// Node Material buffer
             bufferDescriptor._bufferParams._elementCount = to_U32( _materialBuffer._data._gpuData.size() );
@@ -391,6 +384,7 @@ namespace Divide
             bufferDescriptor._name = Util::StringFormat( "NODE_MATERIAL_DATA_%s", TypeUtil::RenderStageToString( _stage ) );
             _materialBuffer._gpuBuffer = _context.newSB( bufferDescriptor );
             _materialBuffer._bufferUpdateRangeHistory.resize( bufferDescriptor._ringBufferLength );
+            _materialBuffer._queueLength = bufferDescriptor._ringBufferLength;
         }
         {// Indirection Buffer
             bufferDescriptor._bufferParams._elementCount = to_U32( _indirectionBuffer._data._gpuData.size() );
@@ -398,6 +392,7 @@ namespace Divide
             bufferDescriptor._name = Util::StringFormat( "NODE_INDIRECTION_DATA_%s", TypeUtil::RenderStageToString( _stage ) );
             _indirectionBuffer._gpuBuffer = _context.newSB( bufferDescriptor );
             _indirectionBuffer._bufferUpdateRangeHistory.resize( bufferDescriptor._ringBufferLength );
+            _indirectionBuffer._queueLength = bufferDescriptor._ringBufferLength;
         }
     }
 

@@ -61,8 +61,7 @@ IMPrimitive::IMPrimitive(GFXDevice& context, const Str64& name)
     , _name(name)
 {
     _imInterface = eastl::make_unique<NS_GLIM::GLIM_BATCH>();
-    _dataBuffer = context.newGVD(1, name.c_str());
-    _dataBuffer->renderIndirect(false);
+    _dataBuffer = context.newGVD(1, false, name.c_str());
 
     reset();
 }
@@ -663,7 +662,7 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
 
         if ( _texture.targetType() == TextureType::COUNT )
         {
-            Set( binding._data, Texture::DefaultTexture()->getView(), Texture::DefaultSamplerHash());
+            Set( binding._data, Texture::DefaultTexture2D()->getView(), Texture::DefaultSamplerHash());
         }
         else
         {

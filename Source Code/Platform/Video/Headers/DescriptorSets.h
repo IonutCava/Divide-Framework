@@ -33,24 +33,12 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _DESCRIPTOR_SETS_H_
 #define _DESCRIPTOR_SETS_H_
 
-#include "TextureData.h"
+#include "DescriptorSetsFwd.h"
 #include "Core/Headers/Hashable.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/BufferRange.h"
 
 namespace Divide
 {
-    class Texture;
-    class ShaderBuffer;
-
-    enum class DescriptorSetBindingType : U8
-    {
-        COMBINED_IMAGE_SAMPLER,
-        IMAGE,
-        UNIFORM_BUFFER,
-        SHADER_STORAGE_BUFFER,
-        COUNT
-    };
-
     struct ImageSubRange
     {
         vec2<U16> _mipLevels{ 0u, U16_MAX };  //Offset, Count
@@ -99,16 +87,10 @@ namespace Divide
     {
         ShaderBuffer* _buffer{ nullptr };
         BufferRange _range{};
-        I32 _bufferQueueReadIndex{ 0u };
+        I32 _queueReadIndex{0u};
     };
 
     using DescriptorSetBindingData = eastl::variant<eastl::monostate, ShaderBufferEntry, DescriptorCombinedImageSampler, DescriptorImageView>;
-
-    void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer, BufferRange range ) noexcept;
-    void Set( DescriptorSetBindingData& dataInOut, const DescriptorImageView& view ) noexcept;
-    void Set( DescriptorSetBindingData& dataInOut, const DescriptorCombinedImageSampler& combinedImageSampler ) noexcept;
-    void Set( DescriptorSetBindingData& dataInOut, const ImageView& view, ImageUsage usage) noexcept;
-    void Set( DescriptorSetBindingData& dataInOut, const ImageView& view, size_t samplerHash ) noexcept;
 
     struct DescriptorSetBinding
     {
@@ -116,7 +98,12 @@ namespace Divide
         U16 _shaderStageVisibility{ to_base( ShaderStageVisibility::COUNT ) };
         U8 _slot{ 0u };
     };
-    using DescriptorSet = eastl::fixed_vector<DescriptorSetBinding, 16, false>;
+
+    void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer, BufferRange range ) noexcept;
+    void Set( DescriptorSetBindingData& dataInOut, const DescriptorImageView& view ) noexcept;
+    void Set( DescriptorSetBindingData& dataInOut, const DescriptorCombinedImageSampler& combinedImageSampler ) noexcept;
+    void Set( DescriptorSetBindingData& dataInOut, const ImageView& view, ImageUsage usage) noexcept;
+    void Set( DescriptorSetBindingData& dataInOut, const ImageView& view, size_t samplerHash ) noexcept;
 
     [[nodiscard]] DescriptorSetBinding& AddBinding(DescriptorSet& setInOut, U8 slot, U16 stageVisibilityMask); 
     [[nodiscard]] DescriptorSetBinding& AddBinding(DescriptorSet& setInOut, U8 slot, ShaderStageVisibility stageVisibility);

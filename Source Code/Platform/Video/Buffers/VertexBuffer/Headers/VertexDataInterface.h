@@ -49,7 +49,7 @@ class NOINITVTABLE VertexDataInterface : public GUIDWrapper, public GraphicsReso
     using Handle = PoolHandle;
     static constexpr Handle INVALID_VDI_HANDLE{U16_MAX, 0u};
 
-    explicit VertexDataInterface(GFXDevice& context, const char* name);
+    explicit VertexDataInterface(GFXDevice& context, const Str256& name);
     virtual ~VertexDataInterface();
 
     virtual void draw(const GenericDrawCommand& command, VDIUserData* data) = 0;

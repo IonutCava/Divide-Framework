@@ -38,6 +38,7 @@ namespace Divide {
 using RenderTargetID = U32;
 constexpr RenderTargetID INVALID_RENDER_TARGET_ID = std::numeric_limits<RenderTargetID>::max();
 constexpr RenderTargetID SCREEN_TARGET_ID = std::numeric_limits<RenderTargetID>::max() - 1u;
+constexpr U8 INVALID_TEXTURE_BINDING = U8_MAX;
 
 // 4 should be more than enough even for batching multiple render targets together
 enum class RTColourAttachmentSlot : U8

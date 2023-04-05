@@ -296,7 +296,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     terrainMaterial->setTexture(TextureSlot::HEIGHTMAP, CreateResource<Texture>(terrain->parentResourceCache(), heightMapTexture), heightSamplerHash, TextureOperation::NONE, true);
     terrainMaterial->setTexture(TextureSlot::SPECULAR, CreateResource<Texture>(terrain->parentResourceCache(), textureWaterCaustics), albedoHash, TextureOperation::NONE, true);
     terrainMaterial->setTexture(TextureSlot::METALNESS, CreateResource<Texture>(terrain->parentResourceCache(), textureExtraMaps), albedoHash, TextureOperation::NONE);
-    terrainMaterial->setTexture(TextureSlot::EMISSIVE, Texture::DefaultTexture(), albedoHash, TextureOperation::NONE);
+    terrainMaterial->setTexture(TextureSlot::EMISSIVE, Texture::DefaultTexture2D(), albedoHash, TextureOperation::NONE);
 
     const Configuration::Terrain terrainConfig = context.config().terrain;
     const vec2<F32> WorldScale = terrain->tessParams().WorldScale();

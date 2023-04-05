@@ -230,24 +230,9 @@ void RenderPassManager::render(const RenderParams& params)
 
            GFX::EnqueueCommand(buf, GFX::EndRenderPassCommand{});
        }
-       Attorney::SceneManagerRenderPass::postRender(sceneManager, buf, memCmd);
 
-        GFX::BeginRenderPassCommand beginRenderPassCmd{};
-        beginRenderPassCmd._target = SCREEN_TARGET_ID;
-        beginRenderPassCmd._name = "Blit Backbuffer";
-        beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::BLACK, true };
-        beginRenderPassCmd._descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
-        GFX::EnqueueCommand( buf, beginRenderPassCmd );
-
-        const auto& screenAtt = gfx.renderTargetPool().getRenderTarget( RenderTargetNames::BACK_BUFFER )->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO );
-        const auto& texData = screenAtt->texture()->getView();
-
-        gfx.drawTextureInViewport( texData, screenAtt->descriptor()._samplerHash, context.mainWindow().renderingViewport(), false, false, false, buf);
-
-        GFX::EnqueueCommand<GFX::EndRenderPassCommand>( buf );
-
-
-       GFX::EnqueueCommand( buf, memCmd );
+        Attorney::SceneManagerRenderPass::postRender( sceneManager, buf, memCmd );
+        GFX::EnqueueCommand( buf, memCmd );
     }
 
     TaskPool& pool = context.taskPool(TaskPoolType::HIGH_PRIORITY);

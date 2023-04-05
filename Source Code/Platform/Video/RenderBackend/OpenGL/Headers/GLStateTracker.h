@@ -35,7 +35,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "glResources.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
-#include "Platform/Video/Headers/DescriptorSets.h"
 #include "Platform/Video/Headers/AttributeDescriptor.h"
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 
@@ -44,8 +43,6 @@ namespace Divide {
     class Pipeline;
     class glFramebuffer;
     class glShaderProgram;
-
-    struct RenderStateBlock;
 
     struct GLStateTracker {
         static constexpr U8 MAX_BOUND_TEXTURE_UNITS = 32u;

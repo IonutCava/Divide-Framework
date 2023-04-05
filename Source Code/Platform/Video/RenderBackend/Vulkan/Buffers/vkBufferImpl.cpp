@@ -66,6 +66,7 @@ namespace Divide
                                 const char* bufferName ) noexcept
         : VMABuffer(params)
         , _alignedBufferSize( alignedBufferSize )
+        , _totalBufferSize( _alignedBufferSize * ringQueueLength )
     {
         _lockManager = eastl::make_unique<vkLockManager>();
 
@@ -133,7 +134,7 @@ namespace Divide
             vmaallocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
         }
         // Allocate the vertex buffer (as a vb buffer and transfer destination)
-        VkBufferCreateInfo bufferInfo = vk::bufferCreateInfo( usageFlags, alignedBufferSize * ringQueueLength);
+        VkBufferCreateInfo bufferInfo = vk::bufferCreateInfo( usageFlags, _totalBufferSize );
         {
             LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
             VK_CHECK( vmaCreateBuffer( *VK_API::GetStateTracker()._allocatorInstance._allocator,
@@ -159,7 +160,7 @@ namespace Divide
         Byte* mappedRange = nullptr;
         if (!_isMemoryMappable)
         {
-            _stagingBuffer = VKUtil::createStagingBuffer( alignedBufferSize * ringQueueLength, bufferName, false );
+            _stagingBuffer = VKUtil::createStagingBuffer( _totalBufferSize, bufferName, false );
             mappedRange = (Byte*)_stagingBuffer->_allocInfo.pMappedData;
         }
         else
@@ -189,7 +190,7 @@ namespace Divide
             VKTransferQueue::TransferRequest request{};
             request.srcOffset = 0u;
             request.dstOffset = 0u;
-            request.size = alignedBufferSize * ringQueueLength;
+            request.size = _totalBufferSize;
             request.srcBuffer = _stagingBuffer->_buffer;
             request.dstBuffer = _buffer;
             request.dstAccessMask = dstAccessMask;

@@ -34,11 +34,10 @@
 #define _SHADER_DATA_UPLOADER_H_
 
 #include "Platform/Video/Headers/PushConstant.h"
-#include "Platform/Video/Headers/DescriptorSets.h"
+#include "Platform/Video/Headers/DescriptorSetsFwd.h"
 
 namespace Divide
 {
-
     class GFXDevice;
     FWD_DECLARE_MANAGED_CLASS( ShaderBuffer );
     namespace GFX
@@ -117,13 +116,13 @@ namespace Divide
         inline bool operator!=( const UniformDeclaration& lhs, const UniformDeclaration& rhs ) noexcept
         {
             return lhs._typeHash != rhs._typeHash ||
-                lhs._name != rhs._name;
+                   lhs._name != rhs._name;
         }
 
         inline bool operator==( const UniformDeclaration& lhs, const UniformDeclaration& rhs ) noexcept
         {
             return lhs._typeHash == rhs._typeHash &&
-                lhs._name == rhs._name;
+                   lhs._name == rhs._name;
         }
         struct UniformCompare
         {
@@ -140,56 +139,56 @@ namespace Divide
     }; //namespace Reflection
 
 
-    class UniformBlockUploader
+class UniformBlockUploader
+{
+public:
+    constexpr static U32 RingBufferLength = 6u;
+
+    struct BlockMember
     {
-        public:
-        constexpr static U32 RingBufferLength = 6u;
-
-        struct BlockMember
-        {
-            string _name;
-            U64    _nameHash{ 0u };
-            size_t _offset{ 0u };
-            size_t _size{ 0u };
-            size_t _elementSize{ 0u };
-            size_t _arrayOuterSize{ 0u };
-            size_t _arrayInnerSize{ 0u };
-        };
-
-        static void Idle();
-
-        explicit UniformBlockUploader( GFXDevice& context, const eastl::string& parentShaderName, const Reflection::BufferEntry& uniformBlock, const U16 shaderStageVisibilityMask );
-
-        void uploadPushConstant( const GFX::PushConstant& constant, bool force = false ) noexcept;
-        [[nodiscard]] bool commit( DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut );
-        void onFrameEnd() noexcept;
-        void toggleStageVisibility( U16 visibilityMask, bool state);
-        void toggleStageVisibility( ShaderStageVisibility visibility, bool state);
-
-        [[nodiscard]] size_t totalBufferSize() const noexcept;
-
-        PROPERTY_R_IW( Reflection::BufferEntry, uniformBlock );
-
-        private:
-        void resizeBlockBuffer( bool increaseSize );
-        [[nodiscard]] bool prepare( DescriptorSet& set );
-
-        private:
-        GFXDevice& _context;
-        U16 _shaderStageVisibilityMask{ to_base( ShaderStageVisibility::COUNT ) };
-
-        vector<Byte> _localDataCopy;
-        vector<BlockMember> _blockMembers;
-        eastl::string _parentShaderName;
-        ShaderBuffer_uptr _buffer{ nullptr };
-        size_t _uniformBlockSizeAligned{ 0u };
-        bool _uniformBlockDirty{ false };
-        bool _needsQueueIncrement{ false };
-
-        bool _needsResize{ false };
-        U32 _bufferWritesThisFrame{ 0u };
-        U32 _bufferSizeFactor{ 0u };
+        string _name;
+        U64    _nameHash{ 0u };
+        size_t _offset{ 0u };
+        size_t _size{ 0u };
+        size_t _elementSize{ 0u };
+        size_t _arrayOuterSize{ 0u };
+        size_t _arrayInnerSize{ 0u };
     };
+
+    static void Idle();
+
+    explicit UniformBlockUploader( GFXDevice& context, const eastl::string& parentShaderName, const Reflection::BufferEntry& uniformBlock, const U16 shaderStageVisibilityMask );
+
+    void uploadPushConstant( const GFX::PushConstant& constant, bool force = false ) noexcept;
+    [[nodiscard]] bool commit( DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut );
+    void onFrameEnd() noexcept;
+    void toggleStageVisibility( U16 visibilityMask, bool state);
+    void toggleStageVisibility( ShaderStageVisibility visibility, bool state);
+
+    [[nodiscard]] size_t totalBufferSize() const noexcept;
+
+    PROPERTY_R_IW( Reflection::BufferEntry, uniformBlock );
+
+private:
+    void resizeBlockBuffer( bool increaseSize );
+    [[nodiscard]] bool prepare( DescriptorSet& set );
+
+private:
+    GFXDevice& _context;
+    U16 _shaderStageVisibilityMask{ to_base( ShaderStageVisibility::COUNT ) };
+
+    vector<Byte> _localDataCopy;
+    vector<BlockMember> _blockMembers;
+    eastl::string _parentShaderName;
+    ShaderBuffer_uptr _buffer{ nullptr };
+    size_t _uniformBlockSizeAligned{ 0u };
+    bool _uniformBlockDirty{ false };
+    bool _needsQueueIncrement{ false };
+
+    bool _needsResize{ false };
+    U32 _bufferWritesThisFrame{ 0u };
+    U32 _bufferSizeFactor{ 0u };
+};
 
 }; // namespace Divide
 

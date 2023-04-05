@@ -582,7 +582,7 @@ namespace Divide
                     }
                     else
                     {
-                        Set(data, Texture::DefaultTexture()->getView(), Texture::DefaultSamplerHash());
+                        Set(data, Texture::DefaultTexture2D()->getView(), Texture::DefaultSamplerHash());
                     }
 
                     updateBinding( pkg.descriptorSetCmd()._bindings, 10, data);
@@ -597,7 +597,7 @@ namespace Divide
                     }
                     else
                     {
-                        Set( data, Texture::DefaultTexture()->getView(), Texture::DefaultSamplerHash() );
+                        Set( data, Texture::DefaultTexture2D()->getView(), Texture::DefaultSamplerHash() );
                     }
                     updateBinding( pkg.descriptorSetCmd()._bindings, 11, data );
                 }

@@ -132,6 +132,8 @@ protected:
     vector<MonitorData> _monitors;
     vector<DisplayWindow*> _windows;
     DisplayWindow::UserData _globalUserData{};
+
+    static SDL_DisplayMode s_mainDisplayMode;
     static std::array<SDL_Cursor*, to_base(CursorStyle::COUNT)> s_cursors;
 };
 

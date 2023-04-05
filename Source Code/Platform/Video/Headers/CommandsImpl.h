@@ -35,7 +35,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Commands.h"
 #include "ClipPlanes.h"
-#include "DescriptorSets.h"
+#include "DescriptorSetsFwd.h"
 #include "GenericDrawCommand.h"
 #include "PushConstants.h"
 #include "Platform/Video/Textures/Headers/Texture.h"

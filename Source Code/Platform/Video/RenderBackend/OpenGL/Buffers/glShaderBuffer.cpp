@@ -75,7 +75,7 @@ namespace Divide
         DIVIDE_ASSERT( range._startOffset == Util::GetAlignmentCorrected( range._startOffset, _alignmentRequirement ) );
         if ( readIndex == -1 )
         {
-            readIndex = getStartIndex( true );
+            readIndex = queueReadIndex();
         }
 
         if ( bindIndex == ShaderProgram::k_commandBufferID )

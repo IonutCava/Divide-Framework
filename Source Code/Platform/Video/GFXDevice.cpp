@@ -39,18 +39,6 @@
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 
-#include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glFramebuffer.h"
-#include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glShaderBuffer.h"
-#include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glGenericVertexData.h"
-#include "Platform/Video/RenderBackend/OpenGL/Shaders/Headers/glShaderProgram.h"
-#include "Platform/Video/RenderBackend/OpenGL/Textures/Headers/glTexture.h"
-
-#include "Platform/Video/RenderBackend/Vulkan/Buffers/Headers/vkRenderTarget.h"
-#include "Platform/Video/RenderBackend/Vulkan/Buffers/Headers/vkShaderBuffer.h"
-#include "Platform/Video/RenderBackend/Vulkan/Buffers/Headers/vkGenericVertexData.h"
-#include "Platform/Video/RenderBackend/Vulkan/Shaders/Headers/vkShaderProgram.h"
-#include "Platform/Video/RenderBackend/Vulkan/Textures/Headers/vkTexture.h"
-
 #include "Headers/CommandBufferPool.h"
 
 namespace Divide
@@ -213,7 +201,7 @@ namespace Divide
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 1,  DescriptorSetBindingType::UNIFORM_BUFFER,        ShaderStageVisibility::ALL );                  // CAM_BLOCK;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 2,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER, ShaderStageVisibility::COMPUTE );              // GPU_COMMANDS;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 3,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER, ShaderStageVisibility::ALL );                  // NODE_TRANSFORM_DATA;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 4,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER, ShaderStageVisibility::ALL );                  // NODE_INDIRECTION_DATA;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 4,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER, ShaderStageVisibility::COMPUTE_AND_GEOMETRY ); // NODE_INDIRECTION_DATA;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 5,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER, ShaderStageVisibility::FRAGMENT );             // NODE_MATERIAL_DATA;
 
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 0,   DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // SCENE_NORMALS;
@@ -522,7 +510,7 @@ namespace Divide
         RenderPassExecutor::OnStartup( *this );
         GFX::InitPools();
 
-        resizeGPUBlocks( TargetBufferSizeCam, RenderPass::DataBufferRingSize );
+        resizeGPUBlocks( TargetBufferSizeCam, Config::MAX_FRAMES_IN_FLIGHT + 1u );
 
         _shaderComputeQueue = MemoryManager_NEW ShaderComputeQueue( cache );
 
@@ -1345,6 +1333,29 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
+
+        const bool editorRunning = Config::Build::ENABLE_EDITOR && context().editor().running();
+        if ( !editorRunning )
+        {
+            GFX::ScopedCommandBuffer sBuffer = GFX::AllocateScopedCommandBuffer();
+            GFX::CommandBuffer& buffer = sBuffer();
+
+            GFX::BeginRenderPassCommand beginRenderPassCmd{};
+            beginRenderPassCmd._target = SCREEN_TARGET_ID;
+            beginRenderPassCmd._name = "Blit Backbuffer";
+            beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::BLACK, true };
+            beginRenderPassCmd._descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
+            GFX::EnqueueCommand( buffer, beginRenderPassCmd );
+
+            const auto& screenAtt = renderTargetPool().getRenderTarget( RenderTargetNames::BACK_BUFFER )->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO );
+            const auto& texData = screenAtt->texture()->getView();
+
+            drawTextureInViewport( texData, screenAtt->descriptor()._samplerHash, context().mainWindow().renderingViewport(), false, false, false, buffer );
+
+            GFX::EnqueueCommand<GFX::EndRenderPassCommand>( buffer );
+            flushCommandBuffer( buffer );
+        }
+
         frameDrawCallsPrev( frameDrawCalls() );
         frameDrawCalls( 0u );
 
@@ -2069,6 +2080,8 @@ namespace Divide
     {
         uploadGPUBlock();
 
+        thread_local DescriptorSetEntries setEntries{};
+
         constexpr std::array<DescriptorSetUsage, to_base( DescriptorSetUsage::COUNT )> prioritySorted = {
             DescriptorSetUsage::PER_FRAME,
             DescriptorSetUsage::PER_PASS,
@@ -2079,9 +2092,14 @@ namespace Divide
         for ( const DescriptorSetUsage usage : prioritySorted )
         {
             GFXDescriptorSet& set = _descriptorSets[to_base( usage )];
-            _api->bindShaderResources( usage, set.impl(), set.dirty() );
-             set.dirty( false );
+            auto& entry = setEntries[to_base(usage)];
+            entry._set = &set.impl();
+            entry._usage = usage;
+            entry._isDirty = set.dirty();
+            set.dirty( false );
         }
+
+        _api->bindShaderResources( setEntries );
     }
 
     void GFXDevice::flushCommandBuffer( GFX::CommandBuffer& commandBuffer, const bool batch )
@@ -3014,41 +3032,18 @@ namespace Divide
 #pragma endregion
 
 #pragma region GPU Object instantiation
-    RenderTarget_uptr GFXDevice::newRTInternal( const RenderTargetDescriptor& descriptor )
-    {
-        switch ( renderAPI() )
-        {
-            case RenderAPI::OpenGL:
-            {
-                return eastl::make_unique<glFramebuffer>( *this, descriptor );
-            } break;
-            case RenderAPI::Vulkan:
-            {
-                return eastl::make_unique<vkRenderTarget>( *this, descriptor );
-            } break;
-            case RenderAPI::None:
-            {
-                return eastl::make_unique<noRenderTarget>( *this, descriptor );
-            } break;
-        };
-
-        DIVIDE_UNEXPECTED_CALL_MSG( Locale::Get( _ID( "ERROR_GFX_DEVICE_API" ) ) );
-
-        return {};
-    }
-
     RenderTarget_uptr GFXDevice::newRT( const RenderTargetDescriptor& descriptor )
     {
-        RenderTarget_uptr temp{ newRTInternal( descriptor ) };
+        RenderTarget_uptr ret = _api->newRT(descriptor);
 
-        bool valid = false;
-        if ( temp != nullptr )
+        if ( ret != nullptr )
         {
-            valid = temp->create();
-            assert( valid );
+            const bool valid = ret->create();
+            DIVIDE_ASSERT( valid );
+            return ret;
         }
 
-        return valid ? MOV( temp ) : nullptr;
+        return nullptr;
     }
 
     IMPrimitive* GFXDevice::newIMP( const Str64& name )
@@ -3070,63 +3065,6 @@ namespace Divide
         return false;
     }
 
-    VertexBuffer_ptr GFXDevice::newVB( const Str256& name )
-    {
-        return std::make_shared<VertexBuffer>( *this, name );
-    }
-
-    GenericVertexData_ptr GFXDevice::newGVD( const U32 ringBufferLength, const char* name )
-    {
-
-        switch ( renderAPI() )
-        {
-            case RenderAPI::OpenGL:
-            {
-                return std::make_shared<glGenericVertexData>( *this, ringBufferLength, name );
-            } break;
-            case RenderAPI::Vulkan:
-            {
-                return std::make_shared<vkGenericVertexData>( *this, ringBufferLength, name );
-            } break;
-            case RenderAPI::None:
-            {
-                return std::make_shared<noGenericVertexData>( *this, ringBufferLength, name );
-            } break;
-        };
-
-        DIVIDE_UNEXPECTED_CALL_MSG( Locale::Get( _ID( "ERROR_GFX_DEVICE_API" ) ) );
-
-        return {};
-    }
-
-    Texture_ptr GFXDevice::newTexture( const size_t descriptorHash,
-                                       const Str256& resourceName,
-                                       const ResourcePath& assetNames,
-                                       const ResourcePath& assetLocations,
-                                       const TextureDescriptor& texDescriptor,
-                                       ResourceCache& parentCache )
-    {
-        switch ( renderAPI() )
-        {
-            case RenderAPI::OpenGL:
-            {
-                return std::make_shared<glTexture>( *this, descriptorHash, resourceName, assetNames, assetLocations, texDescriptor, parentCache );
-            } break;
-            case RenderAPI::Vulkan:
-            {
-                return std::make_shared<vkTexture>( *this, descriptorHash, resourceName, assetNames, assetLocations, texDescriptor, parentCache );
-            } break;
-            case RenderAPI::None:
-            {
-                return std::make_shared<noTexture>( *this, descriptorHash, resourceName, assetNames, assetLocations, texDescriptor, parentCache );
-            } break;
-        };
-
-        DIVIDE_UNEXPECTED_CALL_MSG( Locale::Get( _ID( "ERROR_GFX_DEVICE_API" ) ) );
-        return {};
-    }
-
-
     Pipeline* GFXDevice::newPipeline( const PipelineDescriptor& descriptor )
     {
         // Pipeline with no shader is no pipeline at all
@@ -3145,55 +3083,9 @@ namespace Divide
         return &it->second;
     }
 
-    ShaderProgram_ptr GFXDevice::newShaderProgram( const size_t descriptorHash,
-                                                   const Str256& resourceName,
-                                                   const Str256& assetName,
-                                                   const ResourcePath& assetLocation,
-                                                   const ShaderProgramDescriptor& descriptor,
-                                                   ResourceCache& parentCache )
+    VertexBuffer_ptr GFXDevice::newVB(const bool renderIndirect, const Str256& name )
     {
-        switch ( renderAPI() )
-        {
-            case RenderAPI::OpenGL:
-            {
-                return std::make_shared<glShaderProgram>( *this, descriptorHash, resourceName, assetName, assetLocation, descriptor, parentCache );
-            } break;
-            case RenderAPI::Vulkan:
-            {
-                return std::make_shared<vkShaderProgram>( *this, descriptorHash, resourceName, assetName, assetLocation, descriptor, parentCache );
-            } break;
-            case RenderAPI::None:
-            {
-                return std::make_shared<noShaderProgram>( *this, descriptorHash, resourceName, assetName, assetLocation, descriptor, parentCache );
-            } break;
-        };
-
-        DIVIDE_UNEXPECTED_CALL_MSG( Locale::Get( _ID( "ERROR_GFX_DEVICE_API" ) ) );
-
-        return {};
-    }
-
-    ShaderBuffer_uptr GFXDevice::newSB( const ShaderBufferDescriptor& descriptor )
-    {
-
-        switch ( renderAPI() )
-        {
-            case RenderAPI::OpenGL:
-            {
-                return eastl::make_unique<glShaderBuffer>( *this, descriptor );
-            } break;
-            case RenderAPI::Vulkan:
-            {
-                return eastl::make_unique<vkShaderBuffer>( *this, descriptor );
-            } break;
-            case RenderAPI::None:
-            {
-                return eastl::make_unique<noUniformBuffer>( *this, descriptor );
-            } break;
-        };
-
-        DIVIDE_UNEXPECTED_CALL_MSG( Locale::Get( _ID( "ERROR_GFX_DEVICE_API" ) ) );
-        return {};
+        return std::make_shared<VertexBuffer>( *this, renderIndirect, name );
     }
 #pragma endregion
 

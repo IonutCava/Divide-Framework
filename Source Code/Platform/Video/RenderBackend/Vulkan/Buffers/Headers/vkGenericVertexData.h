@@ -40,7 +40,7 @@ namespace Divide {
 
 class vkGenericVertexData final : public GenericVertexData {
     public:
-        vkGenericVertexData(GFXDevice& context, const U32 ringBufferLength, const char* name);
+        vkGenericVertexData(GFXDevice& context, const U32 ringBufferLength, bool renderIndirect, const Str256& name);
         ~vkGenericVertexData() = default;
 
         void reset() override;
@@ -67,6 +67,7 @@ class vkGenericVertexData final : public GenericVertexData {
         {
             vkBufferImpl_uptr _buffer{ nullptr };
             IndexBuffer _data{};
+            size_t _ringSizeFactor{ 1u };
             size_t _bufferSize{ 0u };
         };
 

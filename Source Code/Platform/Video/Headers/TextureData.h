@@ -37,8 +37,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-static constexpr U8 INVALID_TEXTURE_BINDING = U8_MAX;
-
 struct CopyTexParams {
     vec2<U16> _layerRange{0u, 1u};
     vec2<U32> _sourceCoords;

@@ -78,7 +78,7 @@ namespace Divide
     ShaderProgram::ShaderQueue ShaderProgram::s_recompileQueue;
     ShaderProgram::ShaderProgramMap ShaderProgram::s_shaderPrograms;
     ShaderProgram::LastRequestedShader ShaderProgram::s_lastRequestedShaderProgram = {};
-    U8 ShaderProgram::k_commandBufferID = U8_MAX - ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET;
+    U8 ShaderProgram::k_commandBufferID = U8_MAX - MAX_BINDINGS_PER_DESCRIPTOR_SET;
 
     SharedMutex ShaderProgram::s_programLock;
     std::atomic_int ShaderProgram::s_shaderCount;
@@ -252,8 +252,8 @@ namespace Divide
         bool s_targetVulkan = false;
 
         constexpr U8 s_reserverdTextureSlotsPerDraw = to_base( TextureSlot::COUNT ) + 2; /*Reflection and refraction*/
-        constexpr U8 s_reserverdBufferSlotsPerDraw = ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET - s_reserverdTextureSlotsPerDraw;
-        constexpr U8 s_reservedImageSlotsPerDraw = ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET - s_reserverdBufferSlotsPerDraw - s_reserverdTextureSlotsPerDraw;
+        constexpr U8 s_reserverdBufferSlotsPerDraw = MAX_BINDINGS_PER_DESCRIPTOR_SET - s_reserverdTextureSlotsPerDraw;
+        constexpr U8 s_reservedImageSlotsPerDraw = MAX_BINDINGS_PER_DESCRIPTOR_SET - s_reserverdBufferSlotsPerDraw - s_reserverdTextureSlotsPerDraw;
 
         U8 s_textureSlot = s_reserverdTextureSlotsPerDraw;
         U8 s_bufferSlot = s_textureSlot + s_reserverdBufferSlotsPerDraw;
@@ -404,7 +404,7 @@ namespace Divide
             {
                 const auto AppendSetBindings = [&]( const DescriptorSetUsage setUsage )
                 {
-                    for ( U8 i = 0u; i < ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET; ++i )
+                    for ( U8 i = 0u; i < MAX_BINDINGS_PER_DESCRIPTOR_SET; ++i )
                     {
                         const U8 glSlot = ShaderProgram::GetGLBindingForDescriptorSlot( setUsage, i );
                         AppendToShaderHeader( ShaderType::COUNT, Util::StringFormat( "#define %s_%d %d",
@@ -1032,7 +1032,7 @@ namespace Divide
             }
         }
 
-        for ( U8 i = 0u; i < MAX_SLOTS_PER_DESCRIPTOR_SET; ++i )
+        for ( U8 i = 0u; i < MAX_BINDINGS_PER_DESCRIPTOR_SET; ++i )
         {
             auto& data = s_bindingsPerSet[to_base( DescriptorSetUsage::PER_DRAW )][i];
             data._glBinding = i;
@@ -1117,7 +1117,7 @@ namespace Divide
         s_atoms.clear();
         s_atomIncludes.clear();
 
-        k_commandBufferID = U8_MAX - ShaderProgram::MAX_SLOTS_PER_DESCRIPTOR_SET;
+        k_commandBufferID = U8_MAX - MAX_BINDINGS_PER_DESCRIPTOR_SET;
 
         for ( auto& bindings : s_bindingsPerSet )
         {
@@ -1160,7 +1160,7 @@ namespace Divide
     {
         DIVIDE_ASSERT( usage != DescriptorSetUsage::PER_DRAW );
 
-        DIVIDE_ASSERT( slot < MAX_SLOTS_PER_DESCRIPTOR_SET );
+        DIVIDE_ASSERT( slot < MAX_BINDINGS_PER_DESCRIPTOR_SET );
 
         BindingsPerSet& bindingData = s_bindingsPerSet[to_base( usage )][slot];
         bindingData._type = type;
@@ -1673,6 +1673,7 @@ namespace Divide
         Reflection::UniformsSet previousUniforms;
 
         _uniformBlockBuffers.clear();
+        _setUsage.fill( false );
 
         for ( auto& [fileHash, loadDataPerFile] : fileData )
         {
@@ -1760,8 +1761,10 @@ namespace Divide
             {
                 fragmentOutputs(data._fragmentOutputs);
             }
+
             for ( const Reflection::ImageEntry& image : data._images )
             {
+                _setUsage[image._bindingSet] = true;
                 if ( image._bindingSet != to_base( DescriptorSetUsage::PER_DRAW ) )
                 {
                     continue;
@@ -1784,6 +1787,8 @@ namespace Divide
 
             for ( const Reflection::BufferEntry& buffer : data._buffers )
             {
+                _setUsage[buffer._bindingSet] = true;
+
                 if ( buffer._bindingSet != to_base( DescriptorSetUsage::PER_DRAW ) )
                 {
                     continue;

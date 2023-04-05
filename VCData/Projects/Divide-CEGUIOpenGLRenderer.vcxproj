@@ -626,7 +626,6 @@
     <ClInclude Include="..\..\3rdParty\TileableVolumeNoise\TileableVolumeNoise.h" />
     <ClInclude Include="..\..\3rdParty\vk-bootstrap\src\VkBootstrap.h" />
     <ClInclude Include="..\..\3rdParty\vk-bootstrap\src\VkBootstrapDispatch.h" />
-    <ClInclude Include="..\..\3rdParty\Vulkan-Descriptor-Allocator\descriptor_allocator.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\glsw\Headers\bstrlib.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\glsw\Headers\glsw.h" />
   </ItemGroup>
@@ -882,7 +881,6 @@
     <ClCompile Include="..\..\3rdParty\TileableVolumeNoise\libtarga.c" />
     <ClCompile Include="..\..\3rdParty\TileableVolumeNoise\TileableVolumeNoise.cpp" />
     <ClCompile Include="..\..\3rdParty\vk-bootstrap\src\VkBootstrap.cpp" />
-    <ClCompile Include="..\..\3rdParty\Vulkan-Descriptor-Allocator\descriptor_allocator.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\Shaders\glsw\bstrlib.c" />
     <ClCompile Include="..\..\Source Code\Platform\Video\Shaders\glsw\glsw.c" />
   </ItemGroup>

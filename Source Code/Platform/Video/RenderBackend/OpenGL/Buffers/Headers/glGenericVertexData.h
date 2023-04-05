@@ -41,7 +41,7 @@ namespace Divide {
 
 class glGenericVertexData final : public GenericVertexData {
    public:
-    glGenericVertexData(GFXDevice& context, U32 ringBufferLength, const char* name = nullptr);
+    glGenericVertexData(GFXDevice& context, U32 ringBufferLength, bool renderIndirect, const Str256& name);
     ~glGenericVertexData() = default;
 
     void reset() override;
@@ -57,11 +57,6 @@ class glGenericVertexData final : public GenericVertexData {
 
    protected:
     void bindBufferInternal(const SetBufferParams::BufferBindConfig& bindConfig);
-
-    void rebuildCountAndIndexData(U32 drawCount,
-                                  GLsizei indexCount,
-                                  U32 firstIndex,
-                                  size_t indexBufferSize);
 
    private:
     struct GenericBufferImpl {

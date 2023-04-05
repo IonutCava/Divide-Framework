@@ -635,14 +635,22 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
     loadFromXML(entryData, (systemInfo._workingDirectory + Paths::g_xmlDataLocation.c_str() + entryPoint).c_str());
     loadFromXML(config, (systemInfo._workingDirectory + Paths::g_xmlDataLocation.c_str() + "config.xml").c_str());
 
-    if (Util::FindCommandLineArgument(_argc, _argv, "disableRenderAPIDebugging")) {
-        config.debug.enableRenderAPIDebugging = false;
-        config.debug.enableRenderAPIBestPractices = false;
+    if (Util::FindCommandLineArgument(_argc, _argv, "disableRenderAPIDebugging"))
+    {
+        config.debug.renderer.enableRenderAPIDebugging = false;
+        config.debug.renderer.enableRenderAPIBestPractices = false;
     }
-    if (Util::FindCommandLineArgument(_argc, _argv, "disableAssertOnRenderAPIError")) {
-        config.debug.assertOnRenderAPIError = false;
+    if (Util::FindCommandLineArgument(_argc, _argv, "disableAssertOnRenderAPIError"))
+    {
+        config.debug.renderer.assertOnRenderAPIError = false;
     }
-    if (config.runtime.targetRenderingAPI >= to_U8(RenderAPI::COUNT)) {
+    if (Util::FindCommandLineArgument(_argc, _argv, "disableAPIExtensions"))
+    {
+        config.debug.renderer.useExtensions = false;
+    }
+
+    if (config.runtime.targetRenderingAPI >= to_U8(RenderAPI::COUNT))
+    {
         config.runtime.targetRenderingAPI = to_U8(RenderAPI::OpenGL);
     }
 
