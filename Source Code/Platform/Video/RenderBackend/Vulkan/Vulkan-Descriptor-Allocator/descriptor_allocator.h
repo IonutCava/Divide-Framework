@@ -31,6 +31,40 @@
 #include <vulkan/vulkan_core.h>
 
 namespace vke {
+    struct PoolSize
+    {
+        VkDescriptorType type;
+        float multiplier;
+    };
+
+    struct PoolSizes
+    {
+        Divide::vector_fast<PoolSize> sizes =
+        {
+            { VK_DESCRIPTOR_TYPE_SAMPLER, 1.f },
+            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4.f },
+            { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 4.f },
+            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1.f },
+            { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1.f },
+            { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1.f },
+            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1.f },
+            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1.f },
+            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2.f },
+            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 2.f },
+            { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1.f }
+        };
+    };
+
+    struct DescriptorAllocator
+    {
+        VkDescriptorPool pool{ VK_NULL_HANDLE };
+    };
+
+    struct PoolStorage
+    {
+        Divide::vector_fast<DescriptorAllocator> _usableAllocators;
+        Divide::vector_fast<DescriptorAllocator> _fullAllocators;
+    };
 
     class DescriptorAllocatorPool;
 
@@ -58,18 +92,33 @@ namespace vke {
     class DescriptorAllocatorPool
     {
     public:
-        virtual ~DescriptorAllocatorPool(){};
+        ~DescriptorAllocatorPool();
 
         static [[nodiscard]] DescriptorAllocatorPool* Create(const VkDevice& device, int32_t nFrames = 3);
 
         /// Not thread safe! Switches default allocators to the next frame. When frames loop it will reset the descriptors of that frame.
-        virtual void Flip() = 0;
+        void Flip();
 
         /// Not thread safe! Override the pool size for a specific descriptor type. This will be used new pools are allocated.
-        virtual void SetPoolSizeMultiplier(VkDescriptorType type, float multiplier) = 0;
+        void SetPoolSizeMultiplier(VkDescriptorType type, float multiplier);
 
         // Thread safe, uses lock! Get handle to use when allocating descriptors.
-        virtual [[nodiscard]] DescriptorAllocatorHandle GetAllocator() = 0;
+        [[nodiscard]] DescriptorAllocatorHandle GetAllocator();
+
+    protected:
+        friend struct DescriptorAllocatorHandle;
+        void ReturnAllocator( DescriptorAllocatorHandle& handle, bool bIsFull );
+        VkDescriptorPool createPool( int count, VkDescriptorPoolCreateFlags flags );
+
+    private:
+        VkDevice _device{ 0 };
+        PoolSizes _poolSizes;
+        int32_t _frameIndex{ 0 };
+        int32_t _maxFrames{ 3 };
+
+        Divide::Mutex _poolMutex;
+        Divide::vector_fast<eastl::unique_ptr<PoolStorage>> _descriptorPools;
+        Divide::vector_fast<DescriptorAllocator> _clearAllocators;
     };
 }
 

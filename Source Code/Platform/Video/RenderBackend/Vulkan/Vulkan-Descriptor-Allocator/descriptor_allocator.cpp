@@ -7,85 +7,21 @@
     namespace
     {
 
-    inline bool IsMemoryError(const VkResult errorResult) noexcept
-    {
-        switch (errorResult)
+        inline bool IsMemoryError(const VkResult errorResult) noexcept
         {
-            case VK_ERROR_FRAGMENTED_POOL:
-            case VK_ERROR_OUT_OF_POOL_MEMORY: return true;
+            switch (errorResult)
+            {
+                case VK_ERROR_FRAGMENTED_POOL:
+                case VK_ERROR_OUT_OF_POOL_MEMORY: return true;
+            }
+            return false;
         }
-        return false;
-    }
 
     }
-
-    struct DescriptorAllocator
-    {
-        VkDescriptorPool pool{VK_NULL_HANDLE};
-    };
-
-    struct PoolStorage
-    {
-        Divide::vector_fast<DescriptorAllocator> _usableAllocators;
-        Divide::vector_fast<DescriptorAllocator> _fullAllocators;
-    };
-
-    struct PoolSize
-    {
-        VkDescriptorType type;
-        float multiplier;
-    };
-
-    struct PoolSizes
-    {
-        Divide::vector_fast<PoolSize> sizes =
-        {
-            { VK_DESCRIPTOR_TYPE_SAMPLER, 1.f },
-            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4.f },
-            { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 4.f },
-            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1.f },
-            { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1.f },
-            { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1.f },
-            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1.f },
-            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1.f },
-            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2.f },
-            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 2.f },
-            { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1.f }
-        };
-    };
-
-    
-    class DescriptorAllocatorPoolImpl :public DescriptorAllocatorPool
-    {
-    public:
-        virtual ~DescriptorAllocatorPoolImpl();
-
-        void Flip() override final;
-        void SetPoolSizeMultiplier(VkDescriptorType type, float multiplier) override final;
-        DescriptorAllocatorHandle GetAllocator() override final;
-
-        void ReturnAllocator(DescriptorAllocatorHandle& handle, bool bIsFull);
-        VkDescriptorPool createPool(int count, VkDescriptorPoolCreateFlags flags);
-        
-        VkDevice _device{0};
-        PoolSizes _poolSizes;
-        int32_t _frameIndex{0};
-        int32_t _maxFrames{3};
-
-        Divide::Mutex _poolMutex;
-
-        //zero is for static pool, next is for frame indexing
-        Divide::vector_fast<eastl::unique_ptr<PoolStorage>> _descriptorPools;
-
-        //fully cleared allocators
-        Divide::vector_fast<DescriptorAllocator> _clearAllocators;
-    };
-
-    
 
     vke::DescriptorAllocatorPool* vke::DescriptorAllocatorPool::Create(const VkDevice& device, int nFrames)
     {
-        DescriptorAllocatorPoolImpl* impl = new DescriptorAllocatorPoolImpl();
+        DescriptorAllocatorPool* impl = new DescriptorAllocatorPool();
         impl->_device = device;
         impl->_frameIndex = 0;
         impl->_maxFrames = nFrames;
@@ -99,7 +35,7 @@
 
     DescriptorAllocatorHandle::~DescriptorAllocatorHandle()
     {
-        DescriptorAllocatorPoolImpl* implPool = static_cast<DescriptorAllocatorPoolImpl*>(ownerPool);
+        DescriptorAllocatorPool* implPool = static_cast<DescriptorAllocatorPool*>(ownerPool);
         if (implPool)
         {
             implPool->ReturnAllocator(*this, false);
@@ -136,7 +72,7 @@
 
     void DescriptorAllocatorHandle::Return()
     {
-        DescriptorAllocatorPoolImpl* implPool = static_cast<DescriptorAllocatorPoolImpl*>(ownerPool);
+        DescriptorAllocatorPool* implPool = static_cast<DescriptorAllocatorPool*>(ownerPool);
 
         if (implPool)
         {
@@ -150,7 +86,7 @@
 
     bool DescriptorAllocatorHandle::Allocate(const VkDescriptorSetLayout& layout, VkDescriptorSet& builtSet, int8_t retryCount)
     {
-        DescriptorAllocatorPoolImpl*implPool = static_cast<DescriptorAllocatorPoolImpl*>(ownerPool);
+        DescriptorAllocatorPool*implPool = static_cast<DescriptorAllocatorPool*>(ownerPool);
 
         VkDescriptorSetAllocateInfo allocInfo{ .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
         allocInfo.descriptorPool = vkPool;
@@ -190,7 +126,7 @@
         return true;
     }
 
-    VkDescriptorPool DescriptorAllocatorPoolImpl::createPool(int count, VkDescriptorPoolCreateFlags flags)
+    VkDescriptorPool DescriptorAllocatorPool::createPool(int count, VkDescriptorPoolCreateFlags flags)
     {
         thread_local Divide::vector_fast<VkDescriptorPoolSize> sizes;
 
@@ -214,7 +150,7 @@
         return descriptorPool;
     }
 
-    DescriptorAllocatorPoolImpl::~DescriptorAllocatorPoolImpl()
+    DescriptorAllocatorPool::~DescriptorAllocatorPool()
     {
         for (DescriptorAllocator allocator : _clearAllocators)
         {
@@ -234,7 +170,7 @@
         }
     }
 
-    void DescriptorAllocatorPoolImpl::Flip()
+    void DescriptorAllocatorPool::Flip()
     {
             _frameIndex = (_frameIndex+1) % _maxFrames;
         
@@ -258,7 +194,7 @@
             _descriptorPools[_frameIndex]->_usableAllocators.clear();
     }
 
-    void DescriptorAllocatorPoolImpl::SetPoolSizeMultiplier(VkDescriptorType type, float multiplier)
+    void DescriptorAllocatorPool::SetPoolSizeMultiplier(VkDescriptorType type, float multiplier)
     {
         for (auto& s : _poolSizes.sizes)
         {
@@ -273,7 +209,7 @@
         _poolSizes.sizes.emplace_back(PoolSize{type, multiplier});
     }
 
-    void DescriptorAllocatorPoolImpl::ReturnAllocator(DescriptorAllocatorHandle& handle, bool bIsFull)
+    void DescriptorAllocatorPool::ReturnAllocator(DescriptorAllocatorHandle& handle, bool bIsFull)
     {
         Divide::LockGuard<Divide::Mutex> lk(_poolMutex);
 
@@ -287,7 +223,7 @@
         }
     }
 
-    vke::DescriptorAllocatorHandle DescriptorAllocatorPoolImpl::GetAllocator()
+    vke::DescriptorAllocatorHandle DescriptorAllocatorPool::GetAllocator()
     {
         Divide::LockGuard<Divide::Mutex> lk( _poolMutex );
 
