@@ -2,6 +2,10 @@
 
 #include "Headers/GUIButton.h"
 
+#include <Cegui/FontManager.h>
+#include <Cegui/WindowManager.h>
+#include <Cegui/widgets/PushButton.h>
+
 namespace Divide {
 
 

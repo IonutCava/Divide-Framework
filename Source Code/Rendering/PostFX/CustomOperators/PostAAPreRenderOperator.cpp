@@ -191,18 +191,18 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
                 Set( binding._data, edgesTex, att->descriptor()._samplerHash );
             }
             samplerDescriptor.mipSampling(TextureMipSampling::NONE);
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
                 Set( binding._data, areaTex, samplerDescriptor.getHash() );
             }
             samplerDescriptor.minFilter(TextureFilter::NEAREST);
             samplerDescriptor.magFilter(TextureFilter::NEAREST);
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 2u, ShaderStageVisibility::FRAGMENT );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::FRAGMENT );
                 Set( binding._data, searchTex, samplerDescriptor.getHash() );
             }
             
@@ -230,11 +230,11 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
                 Set( binding._data, screenTex, screenAtt->descriptor()._samplerHash );
             }
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
                 Set( binding._data, blendTex, screenAtt->descriptor()._samplerHash );
             }
 
@@ -262,7 +262,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
         {
-            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
             Set( binding._data, screenTex, screenAtt->descriptor()._samplerHash );
         }
 

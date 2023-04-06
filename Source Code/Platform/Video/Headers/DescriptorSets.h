@@ -34,42 +34,41 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _DESCRIPTOR_SETS_H_
 
 #include "DescriptorSetsFwd.h"
-#include "Core/Headers/Hashable.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/BufferRange.h"
 
 namespace Divide
 {
-    struct ImageSubRange
+    // SubRange instead of vec2<U16> to keep things trivial
+    struct SubRange
     {
-        vec2<U16> _mipLevels{ 0u, U16_MAX };  //Offset, Count
-        vec2<U16> _layerRange{ 0u, U16_MAX }; //Offset, Count
+        U16 _offset{0u};
+        U16 _count{U16_MAX};
     };
 
-    struct ImageView final : Hashable
+    struct ImageSubRange
     {
-        struct Descriptor final : Hashable
-        {
-            U8 _msaaSamples{ 0u };
-            GFXDataFormat _dataType{ GFXDataFormat::COUNT };
-            GFXImageFormat _baseFormat{ GFXImageFormat::COUNT };
-            GFXImagePacking _packing{ GFXImagePacking::COUNT };
+        SubRange _mipLevels{};
+        SubRange _layerRange{};
+    };
 
-            [[nodiscard]] size_t getHash() const noexcept override;
+    struct ImageViewDescriptor
+    {
+        U8 _msaaSamples{ 0u };
+        GFXDataFormat _dataType{ GFXDataFormat::COUNT };
+        GFXImageFormat _baseFormat{ GFXImageFormat::COUNT };
+        GFXImagePacking _packing{ GFXImagePacking::COUNT };
+    };
 
-        } _descriptor;
-
+    struct ImageView
+    {
+        ImageViewDescriptor _descriptor{};
         const Texture* _srcTexture{nullptr};
         ImageSubRange _subRange{};
 
-        [[nodiscard]] size_t getHash() const noexcept override;
-
-        [[nodiscard]] TextureType targetType() const noexcept;
-        void targetType( TextureType type ) noexcept;
-
-        private:
-        friend class Texture;
         TextureType _targetType{ TextureType::COUNT };
     };
+
+    [[nodiscard]] TextureType TargetType(const ImageView& imageView) noexcept;
 
     struct DescriptorCombinedImageSampler
     {
@@ -90,13 +89,29 @@ namespace Divide
         I32 _queueReadIndex{0u};
     };
 
-    using DescriptorSetBindingData = eastl::variant<eastl::monostate, ShaderBufferEntry, DescriptorCombinedImageSampler, DescriptorImageView>;
+    struct DescriptorSetBindingData
+    {
+        union
+        {
+            ShaderBufferEntry _buffer;
+            DescriptorCombinedImageSampler _sampledImage;
+            DescriptorImageView _imageView;
+        };
+
+        DescriptorSetBindingType _type{ DescriptorSetBindingType::COUNT };
+    };
 
     struct DescriptorSetBinding
     {
         DescriptorSetBindingData _data{};
         U16 _shaderStageVisibility{ to_base( ShaderStageVisibility::COUNT ) };
         U8 _slot{ 0u };
+    };
+
+    struct DescriptorSet
+    {
+        std::array<DescriptorSetBinding, MAX_BINDINGS_PER_DESCRIPTOR_SET> _bindings;
+        U8 _bindingCount{ 0u };
     };
 
     void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer, BufferRange range ) noexcept;
@@ -110,10 +125,12 @@ namespace Divide
 
     bool operator==( const ImageView& lhs, const ImageView& rhs ) noexcept;
     bool operator!=( const ImageView& lhs, const ImageView& rhs ) noexcept;
+    bool operator==( const SubRange& lhs, const SubRange& rhs ) noexcept;
+    bool operator!=( const SubRange& lhs, const SubRange& rhs ) noexcept;
     bool operator==( const ImageSubRange& lhs, const ImageSubRange& rhs ) noexcept;
     bool operator!=( const ImageSubRange& lhs, const ImageSubRange& rhs ) noexcept;
-    bool operator==( const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs ) noexcept;
-    bool operator!=( const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs ) noexcept;
+    bool operator==( const ImageViewDescriptor& lhs, const ImageViewDescriptor& rhs ) noexcept;
+    bool operator!=( const ImageViewDescriptor& lhs, const ImageViewDescriptor& rhs ) noexcept;
     bool operator==( const ShaderBufferEntry& lhs, const ShaderBufferEntry& rhs ) noexcept;
     bool operator!=( const ShaderBufferEntry& lhs, const ShaderBufferEntry& rhs ) noexcept;
     bool operator==( const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs ) noexcept;
@@ -122,15 +139,19 @@ namespace Divide
     bool operator!=( const DescriptorImageView& lhs, const DescriptorImageView& rhs ) noexcept;
     bool operator==( const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs ) noexcept;
     bool operator!=( const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs ) noexcept;
+    bool operator==( const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs ) noexcept;
+    bool operator!=( const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs ) noexcept;
+    bool operator==( const DescriptorSet& lhs, const DescriptorSet& rhs ) noexcept;
+    bool operator!=( const DescriptorSet& lhs, const DescriptorSet& rhs ) noexcept;
 
     [[nodiscard]] bool IsSet( const DescriptorSetBindingData& data ) noexcept;
     template<typename T>
     [[nodiscard]] T& As( DescriptorSetBindingData& data ) noexcept;
     template<typename T>
     [[nodiscard]] const T& As( const DescriptorSetBindingData& data ) noexcept;
-    template<typename T>
-    [[nodiscard]] bool Has( const DescriptorSetBindingData& data ) noexcept;
-    [[nodiscard]] DescriptorSetBindingType Type( const DescriptorSetBindingData& data ) noexcept;
+
+    [[nodiscard]] size_t GetHash( const ImageViewDescriptor& descriptor ) noexcept;
+    [[nodiscard]] size_t GetHash( const ImageView& imageView ) noexcept;
 
 }; //namespace Divide
 

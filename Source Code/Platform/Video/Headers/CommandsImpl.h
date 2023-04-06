@@ -186,14 +186,14 @@ DEFINE_COMMAND_BEGIN(ClearTextureCommand, CommandType::CLEAR_TEXTURE);
     Texture* _texture{ nullptr };
     /// r = depth, g = stencil if target is a depth(+stencil) attachment
     UColour4 _clearColour;
-    vec2<U16> _layerRange{0u, U16_MAX};
+    SubRange _layerRange{0u, U16_MAX};
     U8 _mipLevel{ 0u };
 DEFINE_COMMAND_END(ClearTextureCommand);
 
 DEFINE_COMMAND_BEGIN(ComputeMipMapsCommand, CommandType::COMPUTE_MIPMAPS);
     Texture* _texture{ nullptr };
-    vec2<U16> _layerRange{ 0u, 1u };
-    vec2<U16> _mipRange{ 0u, U16_MAX };
+    SubRange _layerRange{ 0u, 1u };
+    SubRange _mipRange{ 0u, U16_MAX };
     ImageUsage _usage{ ImageUsage::COUNT };
 DEFINE_COMMAND_END(ComputeMipMapsCommand);
 
@@ -228,7 +228,7 @@ DEFINE_COMMAND_BEGIN(SetClipPlanesCommand, CommandType::SET_CLIP_PLANES);
 DEFINE_COMMAND_END(SetClipPlanesCommand);
 
 DEFINE_COMMAND_BEGIN(BindShaderResourcesCommand, CommandType::BIND_SHADER_RESOURCES);
-    DescriptorSet _bindings;
+    DescriptorSet _set;
     DescriptorSetUsage _usage{ DescriptorSetUsage::COUNT };
 DEFINE_COMMAND_END(BindShaderResourcesCommand);
 

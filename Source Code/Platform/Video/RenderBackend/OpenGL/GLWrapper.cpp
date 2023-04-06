@@ -828,7 +828,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        auto [handle, cacheHit] = s_textureViewCache.allocate( srcView.getHash() );
+        auto [handle, cacheHit] = s_textureViewCache.allocate( GetHash( srcView ) );
 
         if ( !cacheHit )
         {
@@ -843,17 +843,17 @@ namespace Divide
                                                                                srcView._descriptor._dataType,
                                                                                srcView._descriptor._packing )._format;
 
-            const bool isCube = IsCubeTexture( srcView.targetType() );
+            const bool isCube = IsCubeTexture( TargetType( srcView ) );
 
             PROFILE_SCOPE( "GL: cache miss  - Image", Profiler::Category::Graphics );
             glTextureView( handle,
-                           GLUtil::internalTextureType( srcView.targetType(), srcView._descriptor._msaaSamples ),
+                           GLUtil::internalTextureType( TargetType( srcView ), srcView._descriptor._msaaSamples ),
                            srcHandle,
                            glInternalFormat,
-                           static_cast<GLuint>(srcView._subRange._mipLevels.x),
-                           static_cast<GLuint>(srcView._subRange._mipLevels.y),
-                           srcView._subRange._layerRange.offset * (isCube ? 6 : 1),
-                           srcView._subRange._layerRange.count * (isCube ? 6 : 1));
+                           static_cast<GLuint>(srcView._subRange._mipLevels._offset),
+                           static_cast<GLuint>(srcView._subRange._mipLevels._count),
+                           srcView._subRange._layerRange._offset * (isCube ? 6 : 1),
+                           srcView._subRange._layerRange._count * (isCube ? 6 : 1));
         }
 
         s_textureViewCache.deallocate( handle, lifetimeInFrames );
@@ -1111,7 +1111,10 @@ namespace Divide
                 const GFX::ComputeMipMapsCommand* crtCmd = cmd->As<GFX::ComputeMipMapsCommand>();
                 DIVIDE_ASSERT( crtCmd->_usage != ImageUsage::COUNT );
 
-                if ( crtCmd->_layerRange.offset == 0 && crtCmd->_layerRange.count >= crtCmd->_texture->descriptor().layerCount() )
+                const U16 texLayers = IsCubeTexture( crtCmd->_texture->descriptor().texType() ) ? crtCmd->_texture->depth() * 6u : crtCmd->_texture->depth();
+                const U16 layerCount = crtCmd->_layerRange._count == U16_MAX ? texLayers : crtCmd->_layerRange._count;
+
+                if ( crtCmd->_layerRange._offset == 0 && layerCount >= texLayers )
                 {
                     PROFILE_SCOPE( "GL: In-place computation - Full", Profiler::Category::Graphics );
                     glGenerateTextureMipmap( static_cast<glTexture*>(crtCmd->_texture)->textureHandle() );
@@ -1119,33 +1122,34 @@ namespace Divide
                 else
                 {
                     PROFILE_SCOPE( "GL: View-based computation", Profiler::Category::Graphics );
-                    assert( crtCmd->_mipRange.count != 0u );
+                    assert( crtCmd->_mipRange._count != 0u );
 
                     ImageView view = crtCmd->_texture->getView();
-                    view._subRange._layerRange.set( crtCmd->_layerRange );
-                    view._subRange._mipLevels.set( crtCmd->_mipRange );
+                    view._subRange._layerRange = crtCmd->_layerRange;
+                    view._subRange._mipLevels =  crtCmd->_mipRange;
 
-                    DIVIDE_ASSERT( view.targetType() != TextureType::COUNT );
+                    const TextureType targetType = TargetType( view );
+                    DIVIDE_ASSERT( targetType != TextureType::COUNT );
 
-                    if ( IsArrayTexture( view.targetType() ) && view._subRange._layerRange.count == 1 )
+                    if ( IsArrayTexture( targetType ) && view._subRange._layerRange._count == 1 )
                     {
-                        switch ( view.targetType() )
+                        switch ( targetType )
                         {
                             case TextureType::TEXTURE_1D_ARRAY:
-                                view.targetType( TextureType::TEXTURE_1D );
+                                view._targetType = TextureType::TEXTURE_1D;
                                 break;
                             case TextureType::TEXTURE_2D_ARRAY:
-                                view.targetType( TextureType::TEXTURE_2D );
+                                view._targetType =TextureType::TEXTURE_2D;
                                 break;
                             case TextureType::TEXTURE_CUBE_ARRAY:
-                                view.targetType( TextureType::TEXTURE_CUBE_MAP );
+                                view._targetType = TextureType::TEXTURE_CUBE_MAP;
                                 break;
                             default: break;
                         }
                     }
 
-                    if ( view._subRange._mipLevels.count > view._subRange._mipLevels.offset &&
-                         view._subRange._mipLevels.count - view._subRange._mipLevels.offset > 0u )
+                    if ( view._subRange._mipLevels._count > view._subRange._mipLevels._offset &&
+                         view._subRange._mipLevels._count - view._subRange._mipLevels._offset > 0u )
                     {
                         PROFILE_SCOPE( "GL: In-place computation - Image", Profiler::Category::Graphics );
                         glGenerateTextureMipmap( getGLTextureView( view, 6u ) );
@@ -1453,19 +1457,16 @@ namespace Divide
                 continue;
             }
 
-            for ( const DescriptorSetBinding& srcBinding : *entry._set )
+            for ( U8 i = 0u; i < entry._set->_bindingCount; ++i )
             {
-                switch ( Type( srcBinding._data ) )
+                const DescriptorSetBinding& srcBinding = entry._set->_bindings[i];
+
+                switch ( srcBinding._data._type )
                 {
                     case DescriptorSetBindingType::UNIFORM_BUFFER:
                     case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
                     {
-                        if ( !Has<ShaderBufferEntry>( srcBinding._data) ) [[unlikely]]
-                        {
-                            continue;
-                        }
-
-                        const ShaderBufferEntry& bufferEntry = As<ShaderBufferEntry>( srcBinding._data );
+                        const ShaderBufferEntry& bufferEntry = srcBinding._data._buffer;
                         if ( bufferEntry._buffer == nullptr || bufferEntry._range._length == 0u ) [[unlikely]]
                         {
                             continue;
@@ -1492,22 +1493,16 @@ namespace Divide
                             continue;
                         }
 
-                        const DescriptorCombinedImageSampler& imageSampler = As<DescriptorCombinedImageSampler>(srcBinding._data);
-                        if ( !makeTextureViewResident( entry._usage, srcBinding._slot, imageSampler._image, imageSampler._samplerHash ) )
+                        if ( !makeTextureViewResident( entry._usage, srcBinding._slot, srcBinding._data._sampledImage._image, srcBinding._data._sampledImage._samplerHash) )
                         {
                             DIVIDE_UNEXPECTED_CALL();
                         }
                     } break;
                     case DescriptorSetBindingType::IMAGE:
                     {
-                        if ( !Has<DescriptorImageView>(srcBinding._data) ) [[unlikely]]
-                        {
-                            continue;
-                        }
-
-                        const DescriptorImageView& imageView = As<DescriptorImageView>(srcBinding._data);
-                        DIVIDE_ASSERT( imageView._image.targetType() != TextureType::COUNT );
-                        DIVIDE_ASSERT( imageView._image._subRange._layerRange.count > 0u );
+                        const DescriptorImageView& imageView = srcBinding._data._imageView;
+                        DIVIDE_ASSERT( TargetType( imageView._image ) != TextureType::COUNT );
+                        DIVIDE_ASSERT( imageView._image._subRange._layerRange._count > 0u );
 
                         GLenum access = GL_NONE;
                         switch ( imageView._usage )
@@ -1518,7 +1513,7 @@ namespace Divide
                             default: DIVIDE_UNEXPECTED_CALL();  break;
                         }
 
-                        DIVIDE_ASSERT( imageView._image._subRange._mipLevels.count == 1u );
+                        DIVIDE_ASSERT( imageView._image._subRange._mipLevels._count == 1u );
 
                         const GLenum glInternalFormat = GLUtil::InternalFormatAndDataType( imageView._image._descriptor._baseFormat,
                                                                                            imageView._image._descriptor._dataType,
@@ -1528,9 +1523,9 @@ namespace Divide
                         if ( handle != GLUtil::k_invalidObjectID &&
                              GL_API::s_stateTracker.bindTextureImage( srcBinding._slot,
                                                                       handle,
-                                                                      imageView._image._subRange._mipLevels.offset,
-                                                                      imageView._image._subRange._layerRange.count > 1u,
-                                                                      imageView._image._subRange._layerRange.offset,
+                                                                      imageView._image._subRange._mipLevels._offset,
+                                                                      imageView._image._subRange._layerRange._count > 1u,
+                                                                      imageView._image._subRange._layerRange._offset,
                                                                       access,
                                                                       glInternalFormat ) == GLStateTracker::BindResult::FAILED )
                         {

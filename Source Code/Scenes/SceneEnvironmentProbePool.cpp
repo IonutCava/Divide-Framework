@@ -331,7 +331,7 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
             ._targetLayout = ImageUsage::SHADER_WRITE
         });
 
-        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::COMPUTE );
+        DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::COMPUTE );
         Set(binding._data, targetView, ImageUsage::SHADER_WRITE);
 
         const U32 groupsX = to_U32(std::ceil(s_LUTTextureSize / to_F32(8)));
@@ -409,20 +409,20 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_FRAME;
         {
-            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::COMPUTE );
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::COMPUTE );
             Set( binding._data, prefiltered->texture()->getView(), prefiltered->descriptor()._samplerHash );
         }
         {
-            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::COMPUTE );
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::COMPUTE );
             Set( binding._data, irradiance->texture()->getView(), irradiance->descriptor()._samplerHash );
         }
         {
-            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 2u, ShaderStageVisibility::COMPUTE );
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::COMPUTE );
             Set( binding._data, brdfLut->texture()->getView(), brdfLut->descriptor()._samplerHash );
         }
         {
             RTAttachment* targetAtt = context.renderTargetPool().getRenderTarget( RenderTargetNames::REFLECTION_CUBE )->getAttachment( RTAttachmentType::COLOUR );
-            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 3u, ShaderStageVisibility::FRAGMENT );
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 3u, ShaderStageVisibility::FRAGMENT );
             Set( binding._data, targetAtt->texture()->getView(), targetAtt->descriptor()._samplerHash );
         }
     }
@@ -488,7 +488,7 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
     {
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
-        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::COMPUTE );
+        DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::COMPUTE );
         Set( binding._data, sourceTex->getView(), sourceAtt->descriptor()._samplerHash );
     }
 
@@ -516,7 +516,7 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
             ._targetLayout = ImageUsage::SHADER_WRITE
         });
 
-        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::COMPUTE );
+        DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::COMPUTE );
         Set(binding._data, destinationImage, ImageUsage::SHADER_WRITE);
 
         // Dispatch enough groups to cover the entire _mipped_ face
@@ -560,11 +560,11 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
     cmd->_usage = DescriptorSetUsage::PER_DRAW;
     {
-        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::COMPUTE );
+        DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::COMPUTE );
         Set( binding._data, sourceAtt->texture()->getView(), sourceAtt->descriptor()._samplerHash );
     }
     {
-        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::COMPUTE );
+        DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::COMPUTE );
         Set(binding._data, destinationView, ImageUsage::SHADER_WRITE );
     }
 

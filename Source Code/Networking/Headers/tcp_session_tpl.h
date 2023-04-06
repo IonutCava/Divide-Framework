@@ -39,15 +39,15 @@ namespace Divide
 
         void sendPacket( const WorldPacket& p )
         {
-            std::for_each( std::begin( subscribers_ ), std::end( subscribers_ ),
-                           [&p]( auto& subscriber )
-                           {
-                               subscriber->sendPacket( p );
-                           } );
+            eastl::for_each( subscribers_.begin(), subscribers_.end(),
+                            [&p]( auto& subscriber )
+                            {
+                                subscriber->sendPacket( p );
+                            } );
         }
 
         private:
-        std::set<subscriber_ptr> subscribers_;
+        eastl::set<subscriber_ptr> subscribers_;
     };
 
     /// This is a single session handled by the server. It is mapped to a single

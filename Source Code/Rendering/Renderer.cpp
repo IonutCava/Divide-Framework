@@ -171,19 +171,19 @@ void Renderer::prepareLighting(const RenderStage stage,
 
             const size_t stageIndex = to_size( stage );
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 8u, ShaderStageVisibility::COMPUTE_AND_DRAW );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 8u, ShaderStageVisibility::COMPUTE_AND_DRAW );
                 Set(binding._data, pool->sceneBuffer(), {stageIndex, 1u});
             }
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 9u, ShaderStageVisibility::COMPUTE_AND_DRAW );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 9u, ShaderStageVisibility::COMPUTE_AND_DRAW );
                 Set(binding._data, pool->lightBuffer(), {stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME } );
             }
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 10u, ShaderStageVisibility::COMPUTE_AND_DRAW );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 10u, ShaderStageVisibility::COMPUTE_AND_DRAW );
                 Set(binding._data, data._lightIndexBuffer.get(), { 0u, data._lightIndexBuffer->getPrimitiveCount() } );
             }
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 11u, ShaderStageVisibility::COMPUTE_AND_DRAW );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 11u, ShaderStageVisibility::COMPUTE_AND_DRAW );
                 Set(binding._data, data._lightGridBuffer.get(), { 0u, data._lightGridBuffer->getPrimitiveCount() } );
             }
         }
@@ -191,11 +191,11 @@ void Renderer::prepareLighting(const RenderStage stage,
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::COMPUTE );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::COMPUTE );
                 Set(binding._data, data._globalIndexCountBuffer.get(), { 0u, data._globalIndexCountBuffer->getPrimitiveCount() } );
             }
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::COMPUTE );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::COMPUTE );
                 Set(binding._data, data._lightClusterAABBsBuffer.get(), { 0u, data._lightClusterAABBsBuffer->getPrimitiveCount() } );
             }
         }

@@ -27,14 +27,13 @@
 #ifndef _DESCRIPTOR_ALLOCATOR_H_
 #define _DESCRIPTOR_ALLOCATOR_H_
 
-#include <stdint.h>
 #include <vulkan/vulkan_core.h>
 
 namespace vke {
     struct PoolSize
     {
         VkDescriptorType type;
-        float multiplier;
+        Divide::F32 multiplier{1.f};
     };
 
     struct PoolSizes
@@ -82,11 +81,11 @@ namespace vke {
         void Return();
 
         /// Allocate new descriptor. handle has to be valid returns true if allocation succeeded, and false if it didn't will mutate the handle if it requires a new vkDescriptorPool.
-        [[nodiscard]] bool Allocate(const VkDescriptorSetLayout& layout, VkDescriptorSet& builtSet, int8_t retryCount = 0);
+        [[nodiscard]] bool Allocate(const VkDescriptorSetLayout& layout, VkDescriptorSet& builtSet, Divide::I8 retryCount = 0);
 
         DescriptorAllocatorPool* ownerPool{nullptr};
         VkDescriptorPool vkPool{VK_NULL_HANDLE};
-        int32_t poolIdx{-1};
+        Divide::I32 poolIdx{-1};
     };
 
     class DescriptorAllocatorPool
@@ -94,7 +93,7 @@ namespace vke {
     public:
         ~DescriptorAllocatorPool();
 
-        static [[nodiscard]] DescriptorAllocatorPool* Create(const VkDevice& device, int32_t nFrames = 3);
+        static [[nodiscard]] DescriptorAllocatorPool* Create(const VkDevice& device, Divide::I32 nFrames = 3);
 
         /// Not thread safe! Switches default allocators to the next frame. When frames loop it will reset the descriptors of that frame.
         void Flip();
@@ -108,13 +107,13 @@ namespace vke {
     protected:
         friend struct DescriptorAllocatorHandle;
         void ReturnAllocator( DescriptorAllocatorHandle& handle, bool bIsFull );
-        VkDescriptorPool createPool( int count, VkDescriptorPoolCreateFlags flags );
+        VkDescriptorPool createPool( Divide::I32 count, VkDescriptorPoolCreateFlags flags );
 
     private:
         VkDevice _device{ 0 };
         PoolSizes _poolSizes;
-        int32_t _frameIndex{ 0 };
-        int32_t _maxFrames{ 3 };
+        Divide::I32 _frameIndex{ 0 };
+        Divide::I32 _maxFrames{ 3 };
 
         Divide::Mutex _poolMutex;
         Divide::vector_fast<eastl::unique_ptr<PoolStorage>> _descriptorPools;

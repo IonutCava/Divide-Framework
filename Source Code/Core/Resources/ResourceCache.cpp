@@ -8,7 +8,7 @@ namespace Divide {
 
 namespace {
     SharedMutex g_hashLock;
-    std::set<size_t> g_loadingHashes;
+    eastl::set<size_t> g_loadingHashes;
 }
 
 ResourceLoadLock::ResourceLoadLock(const size_t hash, PlatformContext& context)

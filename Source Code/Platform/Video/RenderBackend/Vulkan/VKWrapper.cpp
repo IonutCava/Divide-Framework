@@ -1276,8 +1276,10 @@ namespace Divide
 
             const bool isPushDescriptor = s_hasPushDescriptorSupport && entry._usage == DescriptorSetUsage::PER_DRAW;
 
-            for ( const DescriptorSetBinding& srcBinding : *entry._set )
+            for ( U8 i = 0u; i < entry._set->_bindingCount; ++i )
             {
+                const DescriptorSetBinding& srcBinding = entry._set->_bindings[i];
+
                 if ( entry._usage == DescriptorSetUsage::PER_DRAW &&
                      drawDescriptor[srcBinding._slot]._type == DescriptorSetBindingType::COUNT )
                 {
@@ -1286,14 +1288,12 @@ namespace Divide
 
                 const VkShaderStageFlags stageFlags = GetFlagsForStageVisibility( srcBinding._shaderStageVisibility );
 
-                switch ( Type( srcBinding._data ) )
+                switch ( srcBinding._data._type )
                 {
                     case DescriptorSetBindingType::UNIFORM_BUFFER:
                     case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
                     {
-                        DIVIDE_ASSERT( Has<ShaderBufferEntry>( srcBinding._data ) );
-
-                        ShaderBufferEntry bufferEntry = As<ShaderBufferEntry>( srcBinding._data );
+                        const ShaderBufferEntry& bufferEntry = srcBinding._data._buffer;
 
                         DIVIDE_ASSERT( bufferEntry._buffer != nullptr );
 
@@ -1325,7 +1325,7 @@ namespace Divide
 
                                 VkDescriptorSetLayoutBinding newBinding{};
                                 newBinding.descriptorCount = 1u;
-                                newBinding.descriptorType = VKUtil::vkDescriptorType( Type( srcBinding._data ), isPushDescriptor );
+                                newBinding.descriptorType = VKUtil::vkDescriptorType( srcBinding._data._type, isPushDescriptor );
                                 newBinding.stageFlags = crtBufferInfo._stageFlags;
                                 newBinding.binding = srcBinding._slot;
                                 newBinding.pImmutableSamplers = nullptr;
@@ -1354,21 +1354,21 @@ namespace Divide
                             continue;
                         }
 
-                        const DescriptorCombinedImageSampler& imageSampler = As<DescriptorCombinedImageSampler>( srcBinding._data );
+                        const DescriptorCombinedImageSampler& imageSampler = srcBinding._data._sampledImage;
                         if ( imageSampler._image._srcTexture == nullptr ) [[unlikely]]
                         {
                             NOP(); //unbind request;
                         }
                         else
                         {
-                            DIVIDE_ASSERT( imageSampler._image.targetType() != TextureType::COUNT );
+                            DIVIDE_ASSERT( TargetType( imageSampler._image ) != TextureType::COUNT );
 
                             const vkTexture* vkTex = static_cast<const vkTexture*>(imageSampler._image._srcTexture);
 
                             vkTexture::CachedImageView::Descriptor descriptor{};
                             descriptor._usage = ImageUsage::SHADER_READ;
                             descriptor._format = vkTex->vkFormat();
-                            descriptor._type = imageSampler._image.targetType();
+                            descriptor._type = TargetType( imageSampler._image );
                             descriptor._subRange = imageSampler._image._subRange;
 
                             const VkImageLayout targetLayout = IsDepthTexture( vkTex->descriptor().packing() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1390,17 +1390,13 @@ namespace Divide
                     } break;
                     case DescriptorSetBindingType::IMAGE:
                     {
-                        if ( !Has<DescriptorImageView>( srcBinding._data ) )
-                        {
-                            continue;
-                        }
-                        const DescriptorImageView& imageView = As<DescriptorImageView>( srcBinding._data );
+                        const DescriptorImageView& imageView = srcBinding._data._imageView;
                         if ( imageView._image._srcTexture == nullptr )
                         {
                             continue;
                         }
 
-                        DIVIDE_ASSERT( imageView._image._srcTexture != nullptr && imageView._image._subRange._mipLevels.count == 1u );
+                        DIVIDE_ASSERT( imageView._image._srcTexture != nullptr && imageView._image._subRange._mipLevels._count == 1u );
 
                         const vkTexture* vkTex = static_cast<const vkTexture*>(imageView._image._srcTexture);
 
@@ -1409,11 +1405,11 @@ namespace Divide
                         vkTexture::CachedImageView::Descriptor descriptor{};
                         descriptor._usage = imageView._usage;
                         descriptor._format = vkTex->vkFormat();
-                        descriptor._type = imageView._image.targetType();
+                        descriptor._type = TargetType( imageView._image );
                         descriptor._subRange = imageView._image._subRange;
 
                         // Should use TextureType::TEXTURE_CUBE_ARRAY
-                        DIVIDE_ASSERT( descriptor._type != TextureType::TEXTURE_CUBE_MAP || descriptor._subRange._layerRange.count == 1u );
+                        DIVIDE_ASSERT( descriptor._type != TextureType::TEXTURE_CUBE_MAP || descriptor._subRange._layerRange._count == 1u );
 
                         const VkImageLayout targetLayout = descriptor._usage == ImageUsage::SHADER_READ ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
                         VkDescriptorImageInfo& imageInfo = imageInfoArray[imageInfoIndex++];
@@ -2378,7 +2374,7 @@ namespace Divide
                 DIVIDE_ASSERT(crtCmd->_usage != ImageUsage::COUNT);
 
                 PROFILE_SCOPE( "VK: View - based computation", Profiler::Category::Graphics );
-                static_cast<vkTexture*>(crtCmd->_texture)->generateMipmaps( cmdBuffer, 0u, crtCmd->_layerRange.offset, crtCmd->_layerRange.count, crtCmd->_usage );
+                static_cast<vkTexture*>(crtCmd->_texture)->generateMipmaps( cmdBuffer, 0u, crtCmd->_layerRange._offset, crtCmd->_layerRange._count, crtCmd->_usage );
             }break;
             case GFX::CommandType::DRAW_COMMANDS:
             {
@@ -2593,9 +2589,9 @@ namespace Divide
 
                     auto subRange = it._targetView._subRange;
                     if ( IsCubeTexture( vkTex->descriptor().texType() ) &&
-                         subRange._layerRange.count != U16_MAX )
+                         subRange._layerRange._count != U16_MAX )
                     {
-                        subRange._layerRange.count *= 6u;
+                        subRange._layerRange._count *= 6u;
                     }
 
                     const VkImageLayout targetLayout = IsDepthTexture( vkTex->descriptor().packing() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -2604,11 +2600,10 @@ namespace Divide
                     memBarrier = vk::imageMemoryBarrier2();
                     memBarrier.image = vkTex->image()->_image;
                     memBarrier.subresourceRange.aspectMask = vkTexture::GetAspectFlags(vkTex->descriptor());
-                    memBarrier.subresourceRange.baseMipLevel = subRange._mipLevels.offset;
-                    memBarrier.subresourceRange.levelCount = subRange._mipLevels.count == U16_MAX ? VK_REMAINING_MIP_LEVELS : subRange._mipLevels.count;
-                    memBarrier.subresourceRange.baseArrayLayer = subRange._layerRange.offset;
-                    memBarrier.subresourceRange.layerCount = subRange._layerRange.count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : subRange._layerRange.count;
-
+                    memBarrier.subresourceRange.baseMipLevel = subRange._mipLevels._offset;
+                    memBarrier.subresourceRange.levelCount = subRange._mipLevels._count == U16_MAX ? VK_REMAINING_MIP_LEVELS : subRange._mipLevels._count;
+                    memBarrier.subresourceRange.baseArrayLayer = subRange._layerRange._offset;
+                    memBarrier.subresourceRange.layerCount = subRange._layerRange._count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : subRange._layerRange._count;
 
                     switch ( it._targetLayout )
                     {

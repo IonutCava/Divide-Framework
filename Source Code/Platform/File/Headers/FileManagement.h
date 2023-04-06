@@ -157,7 +157,6 @@ using FileList = vector<FileEntry>;
 
 [[nodiscard]] std::string getWorkingDirectory();
 
-using asPath = std::filesystem::path;
 ///Returns true if both paths are identical regardless of number of slashes and capitalization
 [[nodiscard]] bool pathCompare(const char* filePathA, const char* filePathB);
 

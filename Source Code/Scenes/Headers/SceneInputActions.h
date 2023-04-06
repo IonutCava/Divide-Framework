@@ -100,9 +100,9 @@ public:
     };
 
     struct Entry {
-        PROPERTY_RW(std::set<Input::KeyCode>, modifiers);
-        PROPERTY_RW(std::set<U16>, pressIDs);
-        PROPERTY_RW(std::set<U16>, releaseIDs);
+        PROPERTY_RW(eastl::set<Input::KeyCode>, modifiers);
+        PROPERTY_RW(eastl::set<U16>, pressIDs);
+        PROPERTY_RW(eastl::set<U16>, releaseIDs);
 
         void clear() noexcept {
             modifiers().clear();

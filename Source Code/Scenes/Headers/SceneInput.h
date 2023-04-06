@@ -70,7 +70,7 @@ namespace Divide
     {
         struct Entry
         {
-            std::set<Input::KeyCode> _modifiers;
+            eastl::set<Input::KeyCode> _modifiers;
             std::array<vector<DELEGATE<void, InputParams>>, to_base( PressReleaseActions::Action::COUNT )> _actions;
         };
 

@@ -37,9 +37,9 @@
 #include "GUIText.h"
 
 namespace CEGUI {
-class Window;
-class Font;
-class EventArgs;
+    class Window;
+    class Font;
+    class EventArgs;
 };
 
 namespace Divide {

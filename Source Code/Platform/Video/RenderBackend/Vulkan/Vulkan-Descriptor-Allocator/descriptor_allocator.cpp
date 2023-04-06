@@ -19,13 +19,13 @@
 
     }
 
-    vke::DescriptorAllocatorPool* vke::DescriptorAllocatorPool::Create(const VkDevice& device, int nFrames)
+    vke::DescriptorAllocatorPool* vke::DescriptorAllocatorPool::Create(const VkDevice& device, Divide::I32 nFrames)
     {
         DescriptorAllocatorPool* impl = new DescriptorAllocatorPool();
         impl->_device = device;
         impl->_frameIndex = 0;
         impl->_maxFrames = nFrames;
-        for (int32_t i = 0; i < nFrames; i++)
+        for ( Divide::I32 i = 0; i < nFrames; i++)
         {
             impl->_descriptorPools.push_back(eastl::make_unique<PoolStorage>());
         }
@@ -84,7 +84,7 @@
         ownerPool = nullptr;
     }
 
-    bool DescriptorAllocatorHandle::Allocate(const VkDescriptorSetLayout& layout, VkDescriptorSet& builtSet, int8_t retryCount)
+    bool DescriptorAllocatorHandle::Allocate(const VkDescriptorSetLayout& layout, VkDescriptorSet& builtSet, Divide::I8 retryCount)
     {
         DescriptorAllocatorPool*implPool = static_cast<DescriptorAllocatorPool*>(ownerPool);
 
@@ -126,7 +126,7 @@
         return true;
     }
 
-    VkDescriptorPool DescriptorAllocatorPool::createPool(int count, VkDescriptorPoolCreateFlags flags)
+    VkDescriptorPool DescriptorAllocatorPool::createPool( Divide::I32 count, VkDescriptorPoolCreateFlags flags)
     {
         thread_local Divide::vector_fast<VkDescriptorPoolSize> sizes;
 
@@ -135,13 +135,13 @@
 
         for (auto sz : _poolSizes.sizes)
         {
-            sizes.push_back({ sz.type, uint32_t(sz.multiplier * count) });
+            sizes.push_back({ sz.type, Divide::to_U32(sz.multiplier * count) });
         }
 
         VkDescriptorPoolCreateInfo pool_info = {.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
         pool_info.flags = flags;
         pool_info.maxSets = count;
-        pool_info.poolSizeCount = (uint32_t)sizes.size();
+        pool_info.poolSizeCount = Divide::to_U32(sizes.size());
         pool_info.pPoolSizes = sizes.data();
 
         VkDescriptorPool descriptorPool;
@@ -229,7 +229,7 @@
 
         bool foundAllocator = false;
 
-        int32_t poolIndex = _frameIndex;
+        Divide::I32 poolIndex = _frameIndex;
 
         DescriptorAllocator allocator{};
         //try reuse an allocated pool

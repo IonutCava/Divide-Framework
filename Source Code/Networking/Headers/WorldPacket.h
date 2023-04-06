@@ -7,8 +7,6 @@
 #include "Utils.h"
 #include "Core/Headers/ByteBuffer.h"
 
-#include <boost/serialization/vector.hpp>
-
 namespace Divide {
 
 class WorldPacket : public ByteBuffer {

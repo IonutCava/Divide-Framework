@@ -10,8 +10,6 @@
 #include "Core/Headers/StringHelper.h"
 #include "Core/Resources/Headers/Resource.h"
 
-#include <iostream>
-
 namespace Divide
 {
 

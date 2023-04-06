@@ -31,6 +31,8 @@
 #define FONTSTASH_IMPLEMENTATION
 #include "Platform/Video/Headers/fontstash.h"
 
+#include <CEGUI/CEGUI.h>
+
 namespace Divide
 {
     struct DVDFONSContext final : private NonCopyable
@@ -217,7 +219,7 @@ namespace Divide
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
-        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+        DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
         Set( binding._data, _fonsContext->_fontRenderingTexture->getView(), samplerHash );
 
         size_t drawCount = 0;

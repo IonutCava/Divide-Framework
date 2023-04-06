@@ -762,23 +762,23 @@ namespace Divide
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
         cmd->_usage = DescriptorSetUsage::PER_BATCH;
         {
-            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::NONE ); //Command buffer only
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::NONE ); //Command buffer only
             Set( binding._data, _cmdBuffer.get(), { startOffset, Config::MAX_VISIBLE_NODES});
         }
         {
-            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 2u, ShaderStageVisibility::COMPUTE );
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::COMPUTE );
             Set( binding._data, _cmdBuffer.get(), { startOffset, Config::MAX_VISIBLE_NODES } );
         }
         {
-            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 3u, ShaderStageVisibility::ALL );
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 3u, ShaderStageVisibility::ALL );
             Set(binding._data, _transformBuffer._gpuBuffer.get(), { 0u, MIN_NODE_COUNT(_transformBuffer._highWaterMark, Config::MAX_VISIBLE_NODES )});
         }
         {
-            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 4u, ShaderStageVisibility::ALL );
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 4u, ShaderStageVisibility::ALL );
             Set( binding._data, _indirectionBuffer._gpuBuffer.get(), { 0u, MIN_NODE_COUNT(_indirectionBuffer._highWaterMark, Config::MAX_VISIBLE_NODES )});
         }
         {
-            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 5u, ShaderStageVisibility::FRAGMENT );
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 5u, ShaderStageVisibility::FRAGMENT );
             Set( binding._data, _materialBuffer._gpuBuffer.get(), { 0u, MIN_NODE_COUNT(_materialBuffer._highWaterMark, Config::MAX_CONCURRENT_MATERIALS )});
         }
 
@@ -1048,19 +1048,19 @@ namespace Divide
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_PASS;
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
                 Set( binding._data, normalsAttMS->texture()->getView(), normalsAttMS->descriptor()._samplerHash );
             }
             if ( hasHiZ )
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
                 const RenderTarget* hizTarget = _context.renderTargetPool().getRenderTarget( params._targetHIZ );
                 RTAttachment* hizAtt = hizTarget->getAttachment( RTAttachmentType::COLOUR );
                 Set( binding._data, hizAtt->texture()->getView(), hizAtt->descriptor()._samplerHash );
             }
             else if ( prePassExecuted )
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
                 RTAttachment* depthAtt = target.getAttachment( RTAttachmentType::DEPTH );
                 Set( binding._data, depthAtt->texture()->getView(), depthAtt->descriptor()._samplerHash );
             }
@@ -1098,7 +1098,7 @@ namespace Divide
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_PASS;
-            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 2u, ShaderStageVisibility::FRAGMENT );
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::FRAGMENT );
             Set( binding._data, colourAtt->texture()->getView(), colourAtt->descriptor()._samplerHash );
         }
 
@@ -1128,11 +1128,11 @@ namespace Divide
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
                 Set( binding._data, accumAtt->texture()->getView(), accumAtt->descriptor()._samplerHash );
             }
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
                 Set( binding._data, revAtt->texture()->getView(), revAtt->descriptor()._samplerHash );
             }
         }
@@ -1231,11 +1231,11 @@ namespace Divide
                 auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
                 cmd->_usage = DescriptorSetUsage::PER_DRAW;
                 {
-                    DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+                    DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
                     Set( binding._data, velocityAtt->texture()->getView(), velocityAtt->descriptor()._samplerHash );
                 }
                 {
-                    DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+                    DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
                     Set( binding._data, normalsAtt->texture()->getView(), normalsAtt->descriptor()._samplerHash );
                 }
 
@@ -1386,11 +1386,11 @@ namespace Divide
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
         cmd->_usage = DescriptorSetUsage::PER_PASS;
         {
-            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
             Set( binding._data, DescriptorCombinedImageSampler{});
         }
         {
-            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
             Set( binding._data, DescriptorCombinedImageSampler{} );
         }
 

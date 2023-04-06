@@ -300,8 +300,8 @@ namespace Divide
             }
 
             const Light::ShadowProperties& propsSource = light->getShadowProperties();
-            vec2<U16>& layerRange = computeMipMapsCommand._layerRange;
-            layerRange.offset = std::min( layerRange.offset, light->getShadowArrayOffset() );
+            SubRange& layerRange = computeMipMapsCommand._layerRange;
+            layerRange._offset = std::min( layerRange._offset, light->getShadowArrayOffset() );
 
             switch ( lType )
             {
@@ -310,7 +310,7 @@ namespace Divide
                     PointShadowProperties& propsTarget = _shadowBufferData._pointLights[shadowIndex];
                     propsTarget._details = propsSource._lightDetails;
                     propsTarget._position = propsSource._lightPosition[0];
-                    layerRange.count = std::max( layerRange.count, to_U16( light->getShadowArrayOffset() + 1u ) );
+                    layerRange._count = std::max( layerRange._count, to_U16( light->getShadowArrayOffset() + 1u ) );
                 }break;
                 case LightType::SPOT:
                 {
@@ -318,7 +318,7 @@ namespace Divide
                     propsTarget._details = propsSource._lightDetails;
                     propsTarget._vpMatrix = propsSource._lightVP[0];
                     propsTarget._position = propsSource._lightPosition[0];
-                    layerRange.count = std::max( layerRange.count, to_U16( light->getShadowArrayOffset() + 1u ) );
+                    layerRange._count = std::max( layerRange._count, to_U16( light->getShadowArrayOffset() + 1u ) );
                 }break;
                 case LightType::DIRECTIONAL:
                 {
@@ -326,7 +326,7 @@ namespace Divide
                     propsTarget._details = propsSource._lightDetails;
                     std::memcpy( propsTarget._position.data(), propsSource._lightPosition.data(), sizeof( vec4<F32> ) * Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT );
                     std::memcpy( propsTarget._vpMatrix.data(), propsSource._lightVP.data(), sizeof( mat4<F32> ) * Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT );
-                    layerRange.count = std::max( layerRange.count, to_U16( light->getShadowArrayOffset() + static_cast<DirectionalLightComponent*>(light)->csmSplitCount() ) );
+                    layerRange._count = std::max( layerRange._count, to_U16( light->getShadowArrayOffset() + static_cast<DirectionalLightComponent*>(light)->csmSplitCount() ) );
                 }break;
                 case LightType::COUNT:
                 DIVIDE_UNEXPECTED_CALL();
@@ -596,7 +596,7 @@ namespace Divide
                 auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
                 cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
-                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
                 Set( binding._data, _lightIconsTexture->getView(), s_debugSamplerHash );
             }
 

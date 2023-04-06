@@ -1566,11 +1566,11 @@ namespace Divide
                         cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
                         {
-                            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+                            DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
                             Set(binding._data, tex == nullptr ? Texture::DefaultTexture2D()->getView() : tex->getView(), _editorSamplerHash );
                         }
                         {
-                            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+                            DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
                             Set(binding._data, Texture::DefaultTexture2DArray()->getView(), Texture::DefaultSamplerHash());
                         }
                         crtImguiTexID = imguiTexID;
@@ -2283,14 +2283,14 @@ namespace Divide
                     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( buffer );
                     cmd->_usage = DescriptorSetUsage::PER_DRAW;
                     {
-                        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+                        DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
                         const ImageView texView = Texture::DefaultTexture2D()->getView(TextureType::TEXTURE_2D,
                                                                                        { 0u, 1u },
                                                                                        { 0u, 1u });
                         Set( binding._data, texView, Texture::DefaultSamplerHash() );
                     }
                     {
-                        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+                        DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
 
                         if ( isTextureCube )
                         {
@@ -2450,7 +2450,8 @@ namespace Divide
                                     zoom,
                                     zoomCenter,
                                     2,
-                                    3 );
+                                    3,
+                                    ImVec2( 16.f, 1.025f ) );
 
             if ( nonDefaultColours )
             {

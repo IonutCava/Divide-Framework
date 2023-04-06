@@ -33,6 +33,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _EDITOR_DOCKED_WINDOW_H_
 #define _EDITOR_DOCKED_WINDOW_H_
 
+#ifndef IMGUI_API
+#include <imgui/imgui.h>
+#endif //IMGUI_API
+
 namespace Divide {
 
 class Editor;

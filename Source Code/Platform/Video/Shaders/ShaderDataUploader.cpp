@@ -503,11 +503,12 @@ namespace Divide
         if ( _uniformBlock._bindingSlot != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr )
         {
             const U8 targetBlock = to_U8( _uniformBlock._bindingSlot );
-            for ( DescriptorSetBinding& it : set )
+            for ( U8 i = 0u; i < set._bindingCount; ++i )
             {
+                DescriptorSetBinding& it = set._bindings[i];
                 if ( it._slot == targetBlock )
                 {
-                    assert( Type( it._data ) == DescriptorSetBindingType::UNIFORM_BUFFER );
+                    assert( it._data._type == DescriptorSetBindingType::UNIFORM_BUFFER );
 
                     it._shaderStageVisibility = _shaderStageVisibilityMask;
                     Set( it._data, _buffer.get(), { 0u, _buffer->getPrimitiveCount() } );

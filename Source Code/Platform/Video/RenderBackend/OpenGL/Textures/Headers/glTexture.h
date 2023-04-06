@@ -54,7 +54,7 @@ class glTexture final : public Texture {
 
     bool unload() override;
 
-    void clearData( const UColour4& clearColour, vec2<U16> layerRange, U8 mipLevel ) const;
+    void clearData( const UColour4& clearColour, SubRange layerRange, U8 mipLevel ) const;
 
     [[nodiscard]] ImageReadbackData readData(U8 mipLevel, const PixelAlignment& pixelPackAlignment) const override;
 

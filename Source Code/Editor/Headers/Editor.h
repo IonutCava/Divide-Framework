@@ -35,10 +35,11 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "UndoManager.h"
 
-#include "Core/Time/Headers/ProfileTimer.h"
-#include "Core/Headers/PlatformContextComponent.h"
-#include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
 #include "Core/Headers/FrameListener.h"
+#include "Core/Headers/PlatformContextComponent.h"
+#include "Core/Time/Headers/ProfileTimer.h"
+#include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
+#include "Core/TemplateLibraries/Headers/CircularBuffer.h"
 #include "Rendering/Camera/Headers/CameraSnapshot.h"
 #include "Editor/Widgets/Headers/Gizmo.h"
 
@@ -46,7 +47,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Platform/Headers/DisplayWindow.h"
 #include "Platform/Input/Headers/InputAggregatorInterface.h"
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
-
 #include <ImGuiMisc/imguistyleserializer/imguistyleserializer.h>
 
 struct ImDrawData;

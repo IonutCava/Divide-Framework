@@ -90,7 +90,7 @@ void GUISplash::render(GFXDevice& context) const {
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(buffer);
     cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
-    DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+    DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
     Set( binding._data, _splashImage->getView(), splashSampler.getHash() );
 
     GFX::EnqueueCommand<GFX::DrawCommand>(buffer);

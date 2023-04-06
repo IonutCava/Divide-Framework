@@ -10,8 +10,6 @@
 
 #include "Utility/Headers/Localization.h"
 
-#include <iomanip>
-
 namespace Divide
 {
 

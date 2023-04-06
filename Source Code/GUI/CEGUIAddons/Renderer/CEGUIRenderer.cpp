@@ -35,6 +35,7 @@
 #include "CEGUI/Exceptions.h"
 #include "CEGUI/ImageCodec.h"
 #include "CEGUI/Logger.h"
+#include "CEGUI/System.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/CommandBuffer.h"

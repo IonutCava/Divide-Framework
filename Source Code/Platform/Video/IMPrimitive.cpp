@@ -635,7 +635,7 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
         return;
     }
 
-    const bool useTexture = _texture.targetType() != TextureType::COUNT;
+    const bool useTexture = TargetType( _texture ) != TextureType::COUNT;
     if (useTexture )
     {
         _basePipelineDescriptor._shaderProgramHandle = _context.imShaders()->imWorldShader()->handle();
@@ -658,9 +658,9 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
     {
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(commandBufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
-        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+        DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
 
-        if ( _texture.targetType() == TextureType::COUNT )
+        if ( TargetType( _texture ) == TextureType::COUNT )
         {
             Set( binding._data, Texture::DefaultTexture2D()->getView(), Texture::DefaultSamplerHash());
         }

@@ -40,6 +40,7 @@ namespace Divide
     class Texture;
     class ShaderBuffer;
 
+    struct DescriptorSet;
     struct DescriptorSetBinding;
 
     constexpr U8 MAX_BINDINGS_PER_DESCRIPTOR_SET = 16u;
@@ -53,7 +54,6 @@ namespace Divide
         COUNT
     };
 
-    using DescriptorSet = eastl::fixed_vector<DescriptorSetBinding, MAX_BINDINGS_PER_DESCRIPTOR_SET, false>;
 
     struct DescriptorSetEntry
     {

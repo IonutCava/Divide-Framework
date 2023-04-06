@@ -118,10 +118,10 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource
 
         [[nodiscard]] ImageView getView() const noexcept;
         [[nodiscard]] ImageView getView( TextureType targetType ) const noexcept;
-        [[nodiscard]] ImageView getView( vec2<U16> mipRange/*offset, count*/ ) const noexcept;
-        [[nodiscard]] ImageView getView( vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/ ) const noexcept;
-        [[nodiscard]] ImageView getView( TextureType targetType, vec2<U16> mipRange/*offset, count*/ ) const noexcept;
-        [[nodiscard]] ImageView getView( TextureType targetType, vec2<U16> mipRange/*offset, count*/, vec2<U16> layerRange/*offset, count*/ ) const noexcept;
+        [[nodiscard]] ImageView getView( SubRange mipRange ) const noexcept;
+        [[nodiscard]] ImageView getView( SubRange mipRange, SubRange layerRange ) const noexcept;
+        [[nodiscard]] ImageView getView( TextureType targetType, SubRange mipRange ) const noexcept;
+        [[nodiscard]] ImageView getView( TextureType targetType, SubRange mipRange, SubRange layerRange/*offset, count*/ ) const noexcept;
 
         [[nodiscard]] virtual ImageReadbackData readData( U8 mipLevel, const PixelAlignment& pixelPackAlignment) const = 0;
 

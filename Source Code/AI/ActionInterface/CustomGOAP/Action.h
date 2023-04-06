@@ -8,20 +8,19 @@
 
 #pragma once
 
-#include "EASTL/unordered_map.h"
-
+namespace Divide {
 namespace goap {
     struct WorldState;
 
     class Action {
     public: 
-        typedef eastl::unordered_map<int, bool> operations;
-        typedef eastl::unordered_map<int, bool>::const_iterator operationsIterator;
+        using operations = hashMap<I32, bool>;
+        using operationsIterator = hashMap<I32, bool>::const_iterator;
 
         virtual ~Action() = default;
     private:
-        Divide::string name_; // The human-readable action name
-        int cost_;        // The numeric cost of this action
+        string name_; // The human-readable action name
+        I32 cost_;        // The numeric cost of this action
 
         // Preconditions are things that must be satisfied before this
         // action can be taken. Only preconditions that "matter" are here.
@@ -32,7 +31,7 @@ namespace goap {
 
     public:
         Action() noexcept;
-        Action(const Divide::string& name, int cost);
+        Action(const string& name, I32 cost);
 
         /**
          Is this action eligible to operate on the given worldstate?
@@ -54,28 +53,22 @@ namespace goap {
          @param key the name of the precondition
          @param value the value the precondition must hold
          */
-        void setPrecondition(const int key, const bool value) {
-            preconditions_[key] = value;
-        }
+        inline void setPrecondition(const I32 key, const bool value) { preconditions_[key] = value; }
 
         /**
          Set the given effect of this action, in terms of variable and new value.
          @param key the name of the effect
          @param value the value that will result
          */
-        void setEffect(const int key, const bool value) {
-            effects_[key] = value;
-        }
+        inline void setEffect(const I32 key, const bool value) { effects_[key] = value; }
 
         inline const operations& effects() const noexcept { return effects_; }
 
         int cost() const noexcept { return cost_; }
 
-        const Divide::string& name() const noexcept { return name_; }
+        const string& name() const noexcept { return name_; }
 
-        virtual bool checkImplDependentCondition() const {
-            return true;
-        }
+        virtual bool checkImplDependentCondition() const { return true; }
     };
-
-};
+} //namespace goap
+} //namespace Divide

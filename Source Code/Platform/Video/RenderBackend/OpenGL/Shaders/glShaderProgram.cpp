@@ -16,7 +16,7 @@ namespace {
     moodycamel::BlockingConcurrentQueue<ValidationEntry> g_sValidationQueue;
 
     SharedMutex      g_deletionSetLock;
-    std::set<GLuint> g_deletionSet;
+    eastl::set<GLuint> g_deletionSet;
 }
 
 void glShaderProgram::Idle(PlatformContext& platformContext)

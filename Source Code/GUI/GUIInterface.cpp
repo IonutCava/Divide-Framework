@@ -17,6 +17,9 @@
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Audio/Headers/AudioDescriptor.h"
 
+#include <Cegui/Window.h>
+#include <Cegui/WindowManager.h>
+
 namespace Divide {
 
 GUIInterface::GUIInterface(GUI& context)

@@ -73,8 +73,8 @@ FileAndPath splitPathToNameAndLocation(const char* input) {
 }
 
 bool pathCompare(const char* filePathA, const char* filePathB) {
-    auto pathA = asPath(filePathA).lexically_normal();
-    auto pathB = asPath(filePathB).lexically_normal();
+    auto pathA = std::filesystem::path{filePathA}.lexically_normal();
+    auto pathB = std::filesystem::path{filePathB}.lexically_normal();
 
     const bool ret = pathA.compare(pathB) == 0;
     if (!ret) {

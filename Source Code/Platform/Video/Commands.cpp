@@ -310,14 +310,17 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent)
 {
     U8 bufferCount = 0u;
     U8 imageCount = 0u;
-    for (const auto& binding : cmd._bindings)
+    for (U8 i = 0u; i < cmd._set._bindingCount; ++i)
     {
-        if ( Has<ShaderBufferEntry>( binding._data))
+        const DescriptorSetBinding& binding = cmd._set._bindings[i];
+
+        if ( binding._data._type  == DescriptorSetBindingType::UNIFORM_BUFFER ||
+             binding._data._type == DescriptorSetBindingType::SHADER_STORAGE_BUFFER )
         {
             ++bufferCount;
         }
-        else if ( Has<DescriptorCombinedImageSampler>( binding._data) ||
-                  Has<DescriptorImageView>( binding._data))
+        else if ( binding._data._type == DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER ||
+                  binding._data._type == DescriptorSetBindingType::IMAGE)
         {
             ++imageCount;
         }
@@ -325,9 +328,12 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent)
 
     string ret = Util::StringFormat(" [ Buffers: %d, Images: %d ]\n", bufferCount, imageCount);
 
-    for (const auto& binding : cmd._bindings)
+    for ( U8 i = 0u; i < cmd._set._bindingCount; ++i )
     {
-        if ( Has<ShaderBufferEntry>( binding._data ))
+        const DescriptorSetBinding& binding = cmd._set._bindings[i];
+
+        if ( binding._data._type == DescriptorSetBindingType::UNIFORM_BUFFER ||
+             binding._data._type == DescriptorSetBindingType::SHADER_STORAGE_BUFFER )
         {
             ret.append( "    " );
             for (U16 j = 0; j < indent; ++j)
@@ -335,20 +341,21 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent)
                 ret.append("    ");
             }
 
-            const auto& data = binding._data;
-            const auto& bufferEntry = As<ShaderBufferEntry>( data);
             ret.append(Util::StringFormat("Buffer [ %d - %d ] Range [%zu - %zu] Read Index [ %d ]\n",
                        binding._slot,
-                       bufferEntry._buffer->getGUID(),
-                       bufferEntry._range._startOffset,
-                       bufferEntry._range._length,
-                       bufferEntry._queueReadIndex));
+                       binding._data._buffer._buffer->getGUID(),
+                       binding._data._buffer._range._startOffset,
+                       binding._data._buffer._range._length,
+                       binding._data._buffer._queueReadIndex));
         }
     }
 
-    for (const auto& binding : cmd._bindings)
+    for ( U8 i = 0u; i < cmd._set._bindingCount; ++i )
     {
-        if (!Has<ShaderBufferEntry>(binding._data))
+        const DescriptorSetBinding& binding = cmd._set._bindings[i];
+
+        if ( binding._data._type == DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER ||
+             binding._data._type == DescriptorSetBindingType::IMAGE )
         {
             if (binding._slot == INVALID_TEXTURE_BINDING)
             {
@@ -361,33 +368,35 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent)
                 ret.append("    ");
             }
 
-            if ( Has<DescriptorCombinedImageSampler>( binding._data ))
+            if ( binding._data._type == DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER )
             {
-                const Texture* srcTex = As<DescriptorCombinedImageSampler>( binding._data)._image._srcTexture;
+                const DescriptorCombinedImageSampler& sampledImage = binding._data._sampledImage;
+                const Texture* srcTex = sampledImage._image._srcTexture;
 
                 ret.append(Util::StringFormat("Texture [ %d - %zu - %s - %zu ] Layers: [ %d - %d ] MipRange: [ %d - %d ]\n",
                             binding._slot,
                             srcTex != nullptr ? srcTex->getGUID() : 0u,
                             srcTex != nullptr ? srcTex->resourceName().c_str() : "no-name",
-                            As<DescriptorCombinedImageSampler>(binding._data)._samplerHash,
-                            As<DescriptorCombinedImageSampler>(binding._data)._image._subRange._layerRange.offset,
-                            As<DescriptorCombinedImageSampler>(binding._data)._image._subRange._layerRange.count,
-                            As<DescriptorCombinedImageSampler>(binding._data)._image._subRange._mipLevels.offset,
-                            As<DescriptorCombinedImageSampler>(binding._data)._image._subRange._mipLevels.count));
+                            sampledImage._samplerHash,
+                            sampledImage._image._subRange._layerRange._offset,
+                            sampledImage._image._subRange._layerRange._count,
+                            sampledImage._image._subRange._mipLevels._offset,
+                            sampledImage._image._subRange._mipLevels._count));
             }
             else
             {
-                const Texture* srcTex = As<DescriptorImageView>( binding._data)._image._srcTexture;
+                const DescriptorImageView& imageView = binding._data._imageView;
+                const Texture* srcTex = imageView._image._srcTexture;
 
                 ret.append(Util::StringFormat("Image binds: Slot [%d] - Src GUID [ %d ] - Src Name [ %s ] - Layers [%d - %d] - Levels [%d - %d] - Flag [ %s ]",
                            binding._slot,
                            srcTex != nullptr ? srcTex->getGUID() : 0u,
                            srcTex != nullptr ? srcTex->resourceName().c_str() : "no-name",
-                           As<DescriptorImageView>(binding._data)._image._subRange._layerRange.offset,
-                           As<DescriptorImageView>(binding._data)._image._subRange._layerRange.count,
-                           As<DescriptorImageView>(binding._data)._image._subRange._mipLevels.offset,
-                           As<DescriptorImageView>(binding._data)._image._subRange._mipLevels.count,
-                           Divide::Names::imageUsage[to_base( As<DescriptorImageView>( binding._data )._usage )] ));
+                           imageView._image._subRange._layerRange._offset,
+                           imageView._image._subRange._layerRange._count,
+                           imageView._image._subRange._mipLevels._offset,
+                           imageView._image._subRange._mipLevels._count,
+                           Divide::Names::imageUsage[to_base( imageView._usage )] ));
             }
         }
     }

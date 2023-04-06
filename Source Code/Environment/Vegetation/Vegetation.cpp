@@ -725,12 +725,12 @@ namespace Divide
             cmd->_usage = DescriptorSetUsage::PER_PASS;
             if ( s_treeData )
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 5u, ShaderStageVisibility::ALL );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 5u, ShaderStageVisibility::ALL );
                 Set( binding._data, s_treeData.get(), { 0u, s_treeData->getPrimitiveCount() } );
             }
             if ( s_grassData )
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 6u, ShaderStageVisibility::ALL );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 6u, ShaderStageVisibility::ALL );
                 Set( binding._data, s_grassData.get(), { 0u, s_grassData->getPrimitiveCount() } );
             }
         }
@@ -776,7 +776,7 @@ namespace Divide
                 {
                     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
                     cmd->_usage = DescriptorSetUsage::PER_DRAW;
-                    DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::COMPUTE );
+                    DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::COMPUTE );
                     Set( binding._data, hizTexture->getView(), hizAttachment->descriptor()._samplerHash );
                 }
 

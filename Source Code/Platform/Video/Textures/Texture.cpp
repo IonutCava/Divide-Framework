@@ -574,7 +574,7 @@ namespace Divide
 
     ImageView Texture::getView() const noexcept
     {
-        const U32 layerCount = _descriptor.texType() == TextureType::TEXTURE_3D ? 1u : _depth;
+        const U16 layerCount = _descriptor.texType() == TextureType::TEXTURE_3D ? 1u : _depth;
 
         ImageView view{};
         view._srcTexture = this;
@@ -582,8 +582,8 @@ namespace Divide
         view._descriptor._dataType = _descriptor.dataType();
         view._descriptor._baseFormat = _descriptor.baseFormat();
         view._descriptor._packing = _descriptor.packing();
-        view._subRange._layerRange = {0u, layerCount },
-        view._subRange._mipLevels.count = _mipCount;
+        view._subRange._layerRange._count = layerCount,
+        view._subRange._mipLevels._count = _mipCount;
 
         return view;
     }
@@ -595,31 +595,31 @@ namespace Divide
         return ret;
     }
 
-    ImageView Texture::getView( const vec2<U16> mipRange ) const noexcept
+    ImageView Texture::getView( const SubRange mipRange ) const noexcept
     {
         ImageView ret = getView();
-        ret._subRange._mipLevels = { mipRange.offset, std::min( mipRange.count, ret._subRange._mipLevels.count) };
+        ret._subRange._mipLevels = { mipRange._offset, std::min( mipRange._count, ret._subRange._mipLevels._count) };
         return ret;
     }
 
-    ImageView Texture::getView( const vec2<U16> mipRange, const vec2<U16> layerRange ) const noexcept
+    ImageView Texture::getView( const SubRange mipRange, const SubRange layerRange ) const noexcept
     {
         ImageView ret = getView( mipRange );
-        ret._subRange._layerRange = { layerRange.offset, std::min(layerRange.count, ret._subRange._layerRange.count) };
+        ret._subRange._layerRange = { layerRange._offset, std::min(layerRange._count, ret._subRange._layerRange._count) };
         return ret;
     }
 
-    ImageView Texture::getView( const TextureType targetType, const vec2<U16> mipRange ) const noexcept
+    ImageView Texture::getView( const TextureType targetType, const SubRange mipRange ) const noexcept
     {
         ImageView ret = getView( targetType );
-        ret._subRange._mipLevels = { mipRange.offset, std::min( mipRange.count, ret._subRange._mipLevels.count ) };
+        ret._subRange._mipLevels = { mipRange._offset, std::min( mipRange._count, ret._subRange._mipLevels._count ) };
         return ret;
     }
 
-    ImageView Texture::getView( const TextureType targetType, const vec2<U16> mipRange, const vec2<U16> layerRange ) const noexcept
+    ImageView Texture::getView( const TextureType targetType, const SubRange mipRange, const SubRange layerRange ) const noexcept
     {
         ImageView ret = getView( targetType, mipRange );
-        ret._subRange._layerRange = { layerRange.offset, std::min( layerRange.count, ret._subRange._layerRange.count ) };
+        ret._subRange._layerRange = { layerRange._offset, std::min( layerRange._count, ret._subRange._layerRange._count ) };
         return ret;
     }
 };

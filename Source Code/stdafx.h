@@ -127,15 +127,14 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/TemplateLibraries/Headers/TemplateAllocator.h"
 
 #include <EASTL/include/EASTL/set.h>
+#include <EASTL/include/EASTL/map.h>
 #include <EASTL/include/EASTL/list.h>
 #include <EASTL/include/EASTL/array.h>
 #include <EASTL/include/EASTL/stack.h>
 #include <EASTL/include/EASTL/queue.h>
 #include <EASTL/include/EASTL/string.h>
-#include <EASTL/include/EASTL/variant.h>
-#include <EASTL/include/EASTL/fixed_set.h>
+#include <EASTL/include/EASTL/shared_ptr.h>
 #include <EASTL/include/EASTL/fixed_vector.h>
-#include <EASTL/include/EASTL/weak_ptr.h>
 #include <EASTL/include/EASTL/unordered_set.h>
 
 #include <climits>
@@ -147,6 +146,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <any>
 #include <limits>
 #include <execution>
+#include <fstream>
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/asio/streambuf.hpp>
@@ -176,8 +176,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma warning (pop)
 #endif
 
-#include <simplefilewatcher/include/FileWatcher/FileWatcher.h>
-
 #include <ArenaAllocator/arena_allocator.h>
 
 #include <ConcurrentQueue/concurrentqueue.h>
@@ -186,16 +184,11 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fmt/include/fmt/format.h>
 #include <fmt/include/fmt/printf.h>
 
-#include <imgui.h>
-
-#include <CEGUI/CEGUI.h>
-
 #include "Platform/Threading/Headers/SharedMutex.h"
 
 #include "Core/TemplateLibraries/Headers/HashMap.h"
 #include "Core/TemplateLibraries/Headers/Vector.h"
 #include "Core/TemplateLibraries/Headers/String.h"
-#include "Core/TemplateLibraries/Headers/CircularBuffer.h"
 
 #include <EntityComponentSystem/include/ECS/ECS.h>
 

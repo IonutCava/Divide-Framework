@@ -2,19 +2,22 @@
 
 #include "Planner.h"
 
-int goap::Planner::calculateHeuristic(const WorldState& now, const WorldState& goal) const {
+namespace Divide::goap
+{
+
+int Planner::calculateHeuristic(const WorldState& now, const WorldState& goal) const {
     return now.distanceTo(goal);
 }
 
-void goap::Planner::addToOpenList(Node&& n) {
+void Planner::addToOpenList(Node&& n) {
     // insert maintaining sort order
-    auto it = eastl::lower_bound(eastl::begin(open_),
-                                 eastl::end(open_),
+    auto it = eastl::lower_bound(begin(open_),
+                                 end(open_),
                                  n);
     open_.emplace(it, MOV(n));
 }
 
-goap::Node& goap::Planner::popAndClose() {
+Node& Planner::popAndClose() {
     assert(!open_.empty());
     closed_.push_back( MOV(open_.front()));
     open_.erase(std::begin(open_));
@@ -22,37 +25,39 @@ goap::Node& goap::Planner::popAndClose() {
     return closed_.back();
 }
 
-bool goap::Planner::memberOfClosed(const WorldState& ws) const {
+bool Planner::memberOfClosed(const WorldState& ws) const {
     if (std::find_if(std::begin(closed_), std::end(closed_), [&](const Node& n) { return n.ws_ == ws; }) == std::end(closed_)) {
         return false;
     }
     return true;
 }
 
-eastl::vector<goap::Node>::iterator goap::Planner::memberOfOpen(const WorldState& ws) {
+vector<Node>::iterator Planner::memberOfOpen(const WorldState& ws) {
     return std::find_if(std::begin(open_), std::end(open_), [&](const Node& n) { return n.ws_ == ws; });
 }
 
-void goap::Planner::printOpenList(Divide::string& output) const {
-    std::stringstream ss;
-    for (const auto& n : open_) {
-        ss << n << "\n";
+void Planner::printOpenList(string& output) const
+{
+    for (const auto& n : open_)
+    {
+        output.append(n.toString());
+        output.append("\n");
     }
-    output = ss.str();
 }
 
-void goap::Planner::printClosedList(Divide::string& output) const {
-    std::stringstream ss;
-    for (const auto& n : closed_) {
-        ss << n << "\n";
+void Planner::printClosedList(string& output) const
+{
+    for (const auto& n : closed_)
+    {
+        output.append( n.toString() );
+        output.append( "\n" );
     }
-    output = ss.str();
 }
 
-eastl::vector<const goap::Action*> goap::Planner::plan(const WorldState& start, const WorldState& goal, const eastl::vector<const Action*>& actions) {
+vector<const Action*> Planner::plan(const WorldState& start, const WorldState& goal, const vector<const Action*>& actions) {
     if (start.meetsGoal(goal)) {
         //throw std::runtime_error("Planner cannot plan when the start state and the goal state are the same!");
-        return eastl::vector<const goap::Action*>();
+        return vector<const Action*>();
     }
 
     // Feasible we'd re-use a planner, so clear out the prior results
@@ -84,7 +89,7 @@ eastl::vector<const goap::Action*> goap::Planner::plan(const WorldState& start, 
 
         // Is our current state the goal state? If so, we've found a path, yay.
         if (current.ws_.meetsGoal(goal)) {
-            eastl::vector<const Action*> the_plan;
+            vector<const Action*> the_plan;
             do {
                 the_plan.push_back(current.action_);
                 current = known_nodes_.at(current.parent_id_);
@@ -119,7 +124,7 @@ eastl::vector<const goap::Action*> goap::Planner::plan(const WorldState& start, 
                         needle->parent_id_ = current.id_;                     // make current its parent
                         needle->g_ = current.g_ + action->cost();              // recalc G & H
                         needle->h_ = calculateHeuristic(possibility, goal);
-                        eastl::sort(eastl::begin(open_), eastl::end(open_));                // resort open list to account for the new F
+                        eastl::sort(begin(open_), end(open_));                // resort open list to account for the new F
                         // sorting likely invalidates the iterator, but we don't need it anymore
                     }
                 }
@@ -129,5 +134,7 @@ eastl::vector<const goap::Action*> goap::Planner::plan(const WorldState& start, 
 
     // If there's nothing left to evaluate, then we have no possible path left
     //throw std::runtime_error("A* planner could not find a path from start to goal");
-    return eastl::vector<const goap::Action*>();
+    return vector<const Action*>();
 }
+
+} //namespace Divide::goap

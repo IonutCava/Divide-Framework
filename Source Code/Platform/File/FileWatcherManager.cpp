@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "Headers/FileWatcherManager.h"
+#include "Headers/FileUpdateMonitor.h"
 
 namespace Divide {
     namespace {

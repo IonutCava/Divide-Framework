@@ -220,10 +220,10 @@ namespace Divide
     {
         _hash = 1337;
         Util::Hash_combine( _hash,
-                            _subRange._layerRange.offset,
-                            _subRange._layerRange.count,
-                            _subRange._mipLevels.offset,
-                            _subRange._mipLevels.count,
+                            _subRange._layerRange._offset,
+                            _subRange._layerRange._count,
+                            _subRange._mipLevels._offset,
+                            _subRange._mipLevels._count,
                             _format,
                             _type,
                             _usage,
@@ -301,10 +301,10 @@ namespace Divide
             ImageSubRange baseSubRange = {};
             baseSubRange._mipLevels = { baseLevel, 1u };
             baseSubRange._layerRange = { baseLayer, layerCount };
-            memBarrier.subresourceRange.baseMipLevel = baseSubRange._mipLevels.offset;
-            memBarrier.subresourceRange.levelCount = baseSubRange._mipLevels.count;;
-            memBarrier.subresourceRange.baseArrayLayer = baseSubRange._layerRange.offset;
-            memBarrier.subresourceRange.layerCount = baseSubRange._layerRange.count;
+            memBarrier.subresourceRange.baseMipLevel = baseSubRange._mipLevels._offset;
+            memBarrier.subresourceRange.levelCount = baseSubRange._mipLevels._count;
+            memBarrier.subresourceRange.baseArrayLayer = baseSubRange._layerRange._offset;
+            memBarrier.subresourceRange.layerCount = baseSubRange._layerRange._count;
         }
 
         bool barrier = false;
@@ -900,7 +900,7 @@ namespace Divide
         }, "vkTexture::loadDataInternal" );
     }
 
-    void vkTexture::clearData( VkCommandBuffer cmdBuffer, const UColour4& clearColour, vec2<U16> layerRange, U8 mipLevel ) const noexcept
+    void vkTexture::clearData( VkCommandBuffer cmdBuffer, const UColour4& clearColour, SubRange layerRange, U8 mipLevel ) const noexcept
     {
         if ( mipLevel == U8_MAX )
         {
@@ -910,8 +910,8 @@ namespace Divide
 
         VkImageSubresourceRange range;
         range.aspectMask = GetAspectFlags( _descriptor );
-        range.baseArrayLayer = layerRange.offset;
-        range.layerCount = layerRange.count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : layerRange.count;
+        range.baseArrayLayer = layerRange._offset;
+        range.layerCount = layerRange._count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : layerRange._count;
         range.baseMipLevel = mipLevel;
         range.levelCount = 1u;
 
@@ -1129,10 +1129,10 @@ namespace Divide
             range.aspectMask = GetAspectFlags( _descriptor );
         }
 
-        range.baseMipLevel = newView._descriptor._subRange._mipLevels.offset;
-        range.levelCount = newView._descriptor._subRange._mipLevels.count == U16_MAX ? VK_REMAINING_MIP_LEVELS : newView._descriptor._subRange._mipLevels.count;
-        range.baseArrayLayer = newView._descriptor._subRange._layerRange.offset;
-        range.layerCount = newView._descriptor._subRange._layerRange.count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : newView._descriptor._subRange._layerRange.count;
+        range.baseMipLevel = newView._descriptor._subRange._mipLevels._offset;
+        range.levelCount = newView._descriptor._subRange._mipLevels._count == U16_MAX ? VK_REMAINING_MIP_LEVELS : newView._descriptor._subRange._mipLevels._count;
+        range.baseArrayLayer = newView._descriptor._subRange._layerRange._offset;
+        range.layerCount = newView._descriptor._subRange._layerRange._count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : newView._descriptor._subRange._layerRange._count;
         if ( IsCubeTexture(newView._descriptor._type) && _vkType == VK_IMAGE_TYPE_2D && range.layerCount != VK_REMAINING_ARRAY_LAYERS )
         {
             range.layerCount *= 6;

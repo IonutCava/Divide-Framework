@@ -138,11 +138,11 @@ bool DoFPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
     cmd->_usage = DescriptorSetUsage::PER_DRAW;
     {
-        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+        DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
         Set( binding._data, screenTex, screenAtt->descriptor()._samplerHash );
     }
     {
-        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+        DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
         Set( binding._data, extraTex, extraAtt->descriptor()._samplerHash );
     }
 

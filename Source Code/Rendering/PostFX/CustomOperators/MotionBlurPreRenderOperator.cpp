@@ -90,11 +90,11 @@ bool MotionBlurPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
     cmd->_usage = DescriptorSetUsage::PER_DRAW;
     {
-        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 0u, ShaderStageVisibility::FRAGMENT );
+        DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
         Set( binding._data, screenAtt->texture()->getView(), screenAtt->descriptor()._samplerHash );
     }
     {
-        DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 1u, ShaderStageVisibility::FRAGMENT );
+        DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
         Set( binding._data, velocityAtt->texture()->getView(), velocityAtt->descriptor()._samplerHash );
     }
 

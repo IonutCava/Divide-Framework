@@ -33,14 +33,19 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _EDITOR_IMGUI_EXTENSIONS_H_
 #define _EDITOR_IMGUI_EXTENSIONS_H_
 
+struct ImVec2;
+
 namespace ImGui {
+#ifndef ImTextureID
+    typedef void* ImTextureID;          // Default: store a pointer or an integer fitting in a pointer (most renderer backends are ok with that)
+#endif
 
     bool ToggleButton(const char* str_id, bool* v);
 
     //From: https://github.com/Flix01/imgui
     // zoomCenter is panning in [(0,0),(1,1)]
     // returns true if some user interaction have been processed
-    IMGUI_API bool ImageZoomAndPan(ImTextureID user_texture_id, const ImVec2& size,float aspectRatio,float& zoom,ImVec2& zoomCenter,int panMouseButtonDrag=1,int resetZoomAndPanMouseButton=2,const ImVec2& zoomMaxAndZoomStep=ImVec2(16.f,1.025f));
+    bool ImageZoomAndPan( ImTextureID user_texture_id, const ImVec2& size,float aspectRatio,float& zoom, ImVec2& zoomCenter,int panMouseButtonDrag,int resetZoomAndPanMouseButton,const ImVec2& zoomMaxAndZoomStep);
 } //namespace ImGui
 
 #endif //_EDITOR_IMGUI_EXTENSIONS_H_

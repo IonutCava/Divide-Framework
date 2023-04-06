@@ -37,7 +37,7 @@ namespace Divide
         {
             auto bindCmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             bindCmd->_usage = DescriptorSetUsage::PER_FRAME;
-            auto& set = bindCmd->_bindings;
+            DescriptorSet& set = bindCmd->_set;
 
             if ( _probeDataDirty )
             {

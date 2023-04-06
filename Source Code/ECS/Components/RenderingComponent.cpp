@@ -513,7 +513,7 @@ namespace Divide
                     pipelineDescriptor._primitiveTopology = _materialInstance->topology();
                     pipelineDescriptor._vertexFormat = _materialInstance->shaderAttributes();
                     pkg.descriptorSetCmd()._usage = DescriptorSetUsage::PER_DRAW;
-                    pkg.descriptorSetCmd()._bindings = _materialInstance->getDescriptorSet( renderStagePass );
+                    pkg.descriptorSetCmd()._set = _materialInstance->getDescriptorSet( renderStagePass );
                 }
                 else
                 {
@@ -561,8 +561,10 @@ namespace Divide
             {
                 const auto updateBinding = [](DescriptorSet& targetSet, const U8 slot, DescriptorSetBindingData& data )
                 {
-                    for ( DescriptorSetBinding& bindingEntry : targetSet )
+                    for ( U8 i = 0u; i < targetSet._bindingCount; ++i )
                     {
+                        DescriptorSetBinding& bindingEntry = targetSet._bindings[i];
+
                         if ( bindingEntry._slot == slot )
                         {
                             bindingEntry._data = data;
@@ -585,7 +587,7 @@ namespace Divide
                         Set(data, Texture::DefaultTexture2D()->getView(), Texture::DefaultSamplerHash());
                     }
 
-                    updateBinding( pkg.descriptorSetCmd()._bindings, 10, data);
+                    updateBinding( pkg.descriptorSetCmd()._set, 10, data);
                 }
                 if ( _updateRefraction )
                 {
@@ -599,7 +601,7 @@ namespace Divide
                     {
                         Set( data, Texture::DefaultTexture2D()->getView(), Texture::DefaultSamplerHash() );
                     }
-                    updateBinding( pkg.descriptorSetCmd()._bindings, 11, data );
+                    updateBinding( pkg.descriptorSetCmd()._set, 11, data );
                 }
             }
             Attorney::SceneGraphNodeComponent::prepareRender( _parentSGN, *this, pkg, postDrawMemCmd, cameraSnapshot, renderStagePass, refreshData );

@@ -338,10 +338,10 @@ namespace Divide
     bool Material::setTextureLocked( const TextureSlot textureUsageSlot, const Texture_ptr& texture, const size_t samplerHash, const TextureOperation op, const bool useInGeometryPasses )
     {
         // Invalidate our descriptor sets
-        _descriptorSetMainPass.resize( 0 );
-        _descriptorSetSecondaryPass.resize( 0 );
-        _descriptorSetPrePass.resize( 0 );
-        _descriptorSetShadow.resize( 0 );
+        _descriptorSetMainPass._bindingCount = {0u};
+        _descriptorSetSecondaryPass._bindingCount = { 0u };
+        _descriptorSetPrePass._bindingCount = { 0u };
+        _descriptorSetShadow._bindingCount = { 0u };
 
         const U32 slot = to_U32( textureUsageSlot );
 
@@ -1115,11 +1115,11 @@ namespace Divide
                                                                 ? _descriptorSetMainPass
                                                                 : _descriptorSetSecondaryPass;
 
-        if ( descriptor.empty() )
+        if ( descriptor._bindingCount == 0u )
         {
             SharedLock<SharedMutex> r_lock( _textureLock );
             // Check again
-            if ( descriptor.empty() )
+            if ( descriptor._bindingCount == 0u )
             {
                 for ( U8 i = 0u; i < to_U8( TextureSlot::COUNT ); ++i )
                 {

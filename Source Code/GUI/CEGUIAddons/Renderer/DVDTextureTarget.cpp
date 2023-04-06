@@ -30,6 +30,8 @@
 #include "Headers/DVDGeometryBuffer.h"
 
 #include "CEGUI/Logger.h"
+#include "CEGUI/RenderQueue.h"
+#include "CEGUI/PropertyHelper.h"
 
 #include "Core/Headers/StringHelper.h"
 

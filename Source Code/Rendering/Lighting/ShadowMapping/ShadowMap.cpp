@@ -298,13 +298,13 @@ namespace Divide
             const ShadowType shadowType = static_cast<ShadowType>(i);
             const U8 bindSlot = LightPool::GetShadowBindSlotOffset( shadowType );
             RTAttachment* shadowTexture = sm._rt->getAttachment( RTAttachmentType::COLOUR );
-            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, bindSlot, ShaderStageVisibility::FRAGMENT );
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, bindSlot, ShaderStageVisibility::FRAGMENT );
             Set( binding._data, shadowTexture->texture()->getView(), shadowTexture->descriptor()._samplerHash );
         }
 
         if ( pool.shadowBuffer() != nullptr )
         {
-            DescriptorSetBinding& binding = AddBinding( cmd->_bindings, 9u, ShaderStageVisibility::FRAGMENT );
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 9u, ShaderStageVisibility::FRAGMENT );
             Set( binding._data, pool.shadowBuffer(), { 0u, 1u } );
         }
     }

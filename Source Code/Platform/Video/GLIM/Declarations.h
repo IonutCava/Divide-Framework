@@ -8,7 +8,6 @@
 #define GLIM_DECLARATIONS_H
 
 #include "Core/TemplateLibraries/Headers/String.h"
-#include <assert.h>
 
 namespace NS_GLIM
 {

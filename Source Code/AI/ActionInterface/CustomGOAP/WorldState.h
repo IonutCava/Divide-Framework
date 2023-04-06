@@ -8,15 +8,12 @@
 
 #pragma once
 
-#include <ostream>
-#include <string>
-#include <map>
-
+namespace Divide {
 namespace goap {
     struct WorldState {
-        float priority_; // useful if this is a goal state, to distinguish from other possible goals
-        Divide::string name_; // the human-readable name of the state
-        std::map<int, bool> vars_; // the variables that in aggregate describe a worldstate
+        F32 priority_; // useful if this is a goal state, to distinguish from other possible goals
+        string name_; // the human-readable name of the state
+        hashMap<I32, bool> vars_; // the variables that in aggregate describe a worldstate
 
         explicit WorldState(const Divide::string& name="") noexcept;
 
@@ -58,20 +55,7 @@ namespace goap {
          */
         bool operator==(const WorldState& other) const;
 
-        // A friend function of a class is defined outside that class' scope but it has the
-        // right to access all private and protected members of the class. Even though the
-        // prototypes for friend functions appear in the class definition, friends are not
-        // member functions.
-        friend std::ostream& operator<<(std::ostream& out, const WorldState& n);
+        [[nodiscard]] string toString() const;
     };
-
-    inline std::ostream& operator<<(std::ostream& out, const WorldState& n) {
-        out << "WorldState { ";
-        for (const auto& kv : n.vars_) {
-            out << kv.second << " ";
-        }
-        out << "}";
-        return out;
-    }
-
-}
+} //namespace goap
+} //namespace Divide

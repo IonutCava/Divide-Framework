@@ -35,7 +35,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide
 {
-    inline bool operator==( const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs ) noexcept
+    inline bool operator==( const ImageViewDescriptor& lhs, const ImageViewDescriptor& rhs ) noexcept
     {
         return lhs._msaaSamples == rhs._msaaSamples &&
                lhs._dataType == rhs._dataType &&
@@ -43,7 +43,7 @@ namespace Divide
                lhs._packing == rhs._packing;
     }
 
-    inline bool operator!=( const ImageView::Descriptor& lhs, const ImageView::Descriptor& rhs ) noexcept
+    inline bool operator!=( const ImageViewDescriptor& lhs, const ImageViewDescriptor& rhs ) noexcept
     {
         return lhs._msaaSamples != rhs._msaaSamples ||
                lhs._dataType != rhs._dataType ||
@@ -53,18 +53,30 @@ namespace Divide
 
     inline bool operator==( const ImageView& lhs, const ImageView& rhs ) noexcept
     {
-        return lhs.targetType() == rhs.targetType() &&
-               lhs._subRange == rhs._subRange &&
+        return lhs._subRange == rhs._subRange &&
                lhs._descriptor == rhs._descriptor &&
+               TargetType(lhs) == TargetType(rhs) &&
                lhs._srcTexture == rhs._srcTexture;
     }
 
     inline bool operator!=( const ImageView& lhs, const ImageView& rhs ) noexcept
     {
-        return lhs.targetType() != rhs.targetType() ||
+        return lhs._srcTexture != rhs._srcTexture ||
                lhs._subRange != rhs._subRange ||
-               lhs._srcTexture != rhs._srcTexture ||
+               TargetType(lhs) != TargetType(rhs) ||
                lhs._descriptor != rhs._descriptor;
+    }
+
+    inline bool operator==( const SubRange& lhs, const SubRange& rhs ) noexcept
+    {
+        return lhs._offset == rhs._offset &&
+               lhs._count == rhs._count;
+    }
+
+    inline bool operator!=( const SubRange& lhs, const SubRange& rhs ) noexcept
+    {
+        return lhs._offset != rhs._offset ||
+               lhs._count != rhs._count;
     }
 
     inline bool operator==( const ImageSubRange& lhs, const ImageSubRange& rhs ) noexcept
@@ -117,41 +129,64 @@ namespace Divide
                lhs._usage != rhs._usage;
     }
 
-    inline bool IsSet( const DescriptorSetBindingData& data ) noexcept
+    inline bool operator==( const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs ) noexcept
     {
-        return data.index() != 0;
-    }
-
-    template<typename T>
-    inline T& As( DescriptorSetBindingData& data ) noexcept
-    {
-        if ( data.index() == 0 )
+        if ( lhs._type != rhs._type )
         {
-            return data.emplace<T>();
+            return false;
         }
-        return eastl::get<T>( data );
+
+        switch ( lhs._type )
+        {
+            case DescriptorSetBindingType::UNIFORM_BUFFER : 
+            case DescriptorSetBindingType::SHADER_STORAGE_BUFFER : return lhs._buffer == rhs._buffer;
+            case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: return lhs._sampledImage == rhs._sampledImage;
+            case DescriptorSetBindingType::IMAGE : return lhs._imageView == rhs._imageView;
+            default: break;
+        }
+
+        return true;
     }
 
-    template<typename T>
-    inline bool Has( const DescriptorSetBindingData& data ) noexcept
+    inline bool operator!=( const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs) noexcept
     {
-        return eastl::holds_alternative<T>( data );
+        if ( lhs._type == rhs._type )
+        {
+            switch ( lhs._type )
+            {
+                case DescriptorSetBindingType::UNIFORM_BUFFER:
+                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: return lhs._buffer != rhs._buffer;
+                case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: return lhs._sampledImage != rhs._sampledImage;
+                case DescriptorSetBindingType::IMAGE: return lhs._imageView != rhs._imageView;
+                default: return false;
+            }
+        }
+
+        return true;
     }
 
-    template<typename T>
-    inline const T& As( const DescriptorSetBindingData& data ) noexcept
+    inline bool operator==( const DescriptorSet& lhs, const DescriptorSet& rhs ) noexcept
     {
-        return eastl::get<T>( data );
+        return lhs._bindingCount == rhs._bindingCount &&
+               lhs._bindings == rhs._bindings;
+    }
+
+    inline bool operator!=( const DescriptorSet& lhs, const DescriptorSet& rhs ) noexcept
+    {
+        return lhs._bindingCount != rhs._bindingCount ||
+               lhs._bindings != rhs._bindings;
     }
 
     inline void Set( DescriptorSetBindingData& dataInOut, const DescriptorImageView& view ) noexcept
     {
-        As<DescriptorImageView>( dataInOut ) = view;
+        dataInOut._imageView = view;
+        dataInOut._type = DescriptorSetBindingType::IMAGE;
     }
 
     inline void Set( DescriptorSetBindingData& dataInOut, const DescriptorCombinedImageSampler& combinedImageSampler ) noexcept
     {
-        As<DescriptorCombinedImageSampler>( dataInOut ) = combinedImageSampler;
+        dataInOut._sampledImage = combinedImageSampler;
+        dataInOut._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
     }
 
     inline void Set( DescriptorSetBindingData& dataInOut, const ImageView& view, const ImageUsage usage ) noexcept
@@ -166,10 +201,11 @@ namespace Divide
 
     inline DescriptorSetBinding& AddBinding( DescriptorSet& setInOut, const U8 slot, const U16 stageVisibilityMask )
     {
-        DescriptorSetBinding& newBinding = setInOut.emplace_back();
-        newBinding._shaderStageVisibility = stageVisibilityMask;
-        newBinding._slot = slot;
-        return newBinding;
+        return setInOut._bindings[setInOut._bindingCount++] = DescriptorSetBinding
+        {
+            ._shaderStageVisibility = stageVisibilityMask,
+            ._slot = slot
+        };
     }
 
     inline  DescriptorSetBinding& AddBinding( DescriptorSet& setInOut, const U8 slot, const ShaderStageVisibility stageVisibility )

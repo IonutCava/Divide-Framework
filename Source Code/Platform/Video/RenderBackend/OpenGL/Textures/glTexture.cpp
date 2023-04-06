@@ -262,7 +262,7 @@ void glTexture::loadDataInternal( const Byte* data, const size_t size, const U8 
     GL_API::GetStateTracker().setPixelUnpackAlignment({});
 }
 
-void glTexture::clearData( const UColour4& clearColour, vec2<U16> layerRange, U8 mipLevel ) const
+void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, U8 mipLevel ) const
 {
     FColour4 floatData;
     vec4<U16> shortData;
@@ -311,25 +311,30 @@ void glTexture::clearData( const UColour4& clearColour, vec2<U16> layerRange, U8
     const GLenum glFormat = GLUtil::ImageFormat(_descriptor.baseFormat(), _descriptor.packing());
     const GLenum dataType = GLUtil::InternalDataType( _descriptor.dataType(), _descriptor.packing() );
 
-    if ( layerRange.offset == 0u && (layerRange.count == U16_MAX || layerRange.count == _depth))
+    if ( layerRange._offset == 0u && (layerRange._count == U16_MAX || layerRange._count == _depth))
     {
         glClearTexImage( _textureHandle, mipLevel, glFormat, dataType, GetClearData( _descriptor.dataType() ) );
     }
     else
     {
+        if ( layerRange._count >= _depth )
+        {
+            layerRange._count = _depth;
+        }
+
         const bool isCubeMap = IsCubeTexture( _descriptor.texType() );
-        const U32 layerOffset = isCubeMap ? layerRange.offset * 6 : layerRange.offset;
-        const U32 depth = isCubeMap ? layerRange.count * 6 : layerRange.count;
+        const U32 layerOffset = isCubeMap ? layerRange._offset * 6 : layerRange._offset;
+        const U32 depth = isCubeMap ? layerRange._count * 6 : layerRange._count;
         const U16 mipWidth = _width >> mipLevel;
         const U16 mipHeight = _height >> mipLevel;
 
         glClearTexSubImage(_textureHandle,
                             mipLevel,
                             0,
-                            _descriptor.texType() == TextureType::TEXTURE_1D_ARRAY ? layerRange.offset : 0,
+                            _descriptor.texType() == TextureType::TEXTURE_1D_ARRAY ? layerRange._offset : 0,
                             layerOffset,
                             mipWidth,
-                            _descriptor.texType() == TextureType::TEXTURE_1D_ARRAY ? layerRange.count : mipHeight,
+                            _descriptor.texType() == TextureType::TEXTURE_1D_ARRAY ? layerRange._count : mipHeight,
                             depth,
                             glFormat,
                             dataType,

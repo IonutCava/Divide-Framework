@@ -7,7 +7,7 @@
 namespace Divide {
 
 ResourcePath::ResourcePath(const std::string_view& path)
-    : _str(asPath(path).generic_string())
+    : _str( std::filesystem::path{path}.generic_string() )
 {
 }
 

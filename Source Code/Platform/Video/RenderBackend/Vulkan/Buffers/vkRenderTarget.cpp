@@ -63,20 +63,20 @@ namespace Divide
 
             if ( IsCubeTexture(tex->descriptor().texType()))
             {
-                subRange._layerRange.offset *= 6u;
-                if ( subRange._layerRange.count != U16_MAX )
+                subRange._layerRange._offset *= 6u;
+                if ( subRange._layerRange._count != U16_MAX )
                 {
-                    subRange._layerRange.count *= 6u;
+                    subRange._layerRange._count *= 6u;
                 }
             }
 
             memBarrierOut = vk::imageMemoryBarrier2();
 
             memBarrierOut.subresourceRange.aspectMask = vkTexture::GetAspectFlags( tex->descriptor() );
-            memBarrierOut.subresourceRange.baseMipLevel = subRange._mipLevels.offset;
-            memBarrierOut.subresourceRange.levelCount = subRange._mipLevels.count == U16_MAX ? VK_REMAINING_MIP_LEVELS : subRange._mipLevels.count;
-            memBarrierOut.subresourceRange.baseArrayLayer = subRange._layerRange.offset;
-            memBarrierOut.subresourceRange.layerCount = subRange._layerRange.count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : subRange._layerRange.count;
+            memBarrierOut.subresourceRange.baseMipLevel = subRange._mipLevels._offset;
+            memBarrierOut.subresourceRange.levelCount = subRange._mipLevels._count == U16_MAX ? VK_REMAINING_MIP_LEVELS : subRange._mipLevels._count;
+            memBarrierOut.subresourceRange.baseArrayLayer = subRange._layerRange._offset;
+            memBarrierOut.subresourceRange.layerCount = subRange._layerRange._count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : subRange._layerRange._count;
             memBarrierOut.image = image;
 
             const VkImageLayout targetLayout = IsDepthTexture( tex->descriptor().packing() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -355,10 +355,10 @@ namespace Divide
                 }
 
                 subresourceRange.aspectMask = vkTexture::GetAspectFlags( vkTex->descriptor() );
-                subresourceRange.baseMipLevel = targetView._subRange._mipLevels.offset;
-                subresourceRange.levelCount = targetView._subRange._mipLevels.count == U16_MAX ? VK_REMAINING_MIP_LEVELS : targetView._subRange._mipLevels.count;
-                subresourceRange.baseArrayLayer = targetView._subRange._layerRange.offset;
-                subresourceRange.layerCount = targetView._subRange._layerRange.count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : targetView._subRange._layerRange.count;
+                subresourceRange.baseMipLevel = targetView._subRange._mipLevels._offset;
+                subresourceRange.levelCount = targetView._subRange._mipLevels._count == U16_MAX ? VK_REMAINING_MIP_LEVELS : targetView._subRange._mipLevels._count;
+                subresourceRange.baseArrayLayer = targetView._subRange._layerRange._offset;
+                subresourceRange.layerCount = targetView._subRange._layerRange._count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : targetView._subRange._layerRange._count;
 
                 transitionTexture( subresourceRange, vkTex->image()->_image, false, false, false, memBarriers[memBarrierCount++] );
 
@@ -402,10 +402,10 @@ namespace Divide
             const bool hasStencil = att->descriptor()._type == RTAttachmentType::DEPTH_STENCIL;
 
             subresourceRange.aspectMask = vkTexture::GetAspectFlags( vkTex->descriptor() );
-            subresourceRange.baseMipLevel = targetView._subRange._mipLevels.offset;
-            subresourceRange.levelCount = targetView._subRange._mipLevels.count == U16_MAX ? VK_REMAINING_MIP_LEVELS : targetView._subRange._mipLevels.count;
-            subresourceRange.baseArrayLayer = targetView._subRange._layerRange.offset;
-            subresourceRange.layerCount = targetView._subRange._layerRange.count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : targetView._subRange._layerRange.count;
+            subresourceRange.baseMipLevel = targetView._subRange._mipLevels._offset;
+            subresourceRange.levelCount = targetView._subRange._mipLevels._count == U16_MAX ? VK_REMAINING_MIP_LEVELS : targetView._subRange._mipLevels._count;
+            subresourceRange.baseArrayLayer = targetView._subRange._layerRange._offset;
+            subresourceRange.layerCount = targetView._subRange._layerRange._count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : targetView._subRange._layerRange._count;
 
             transitionTexture( subresourceRange, vkTex->image()->_image, true, hasStencil, false, memBarriers[memBarrierCount++]);
             
@@ -488,7 +488,7 @@ namespace Divide
                 }
 
                 imageViewDescriptor._format = vkTex->vkFormat();
-                imageViewDescriptor._type = imageViewDescriptor._subRange._layerRange.count > 1u ? TextureType::TEXTURE_2D_ARRAY : TextureType::TEXTURE_2D;
+                imageViewDescriptor._type = imageViewDescriptor._subRange._layerRange._count > 1u ? TextureType::TEXTURE_2D_ARRAY : TextureType::TEXTURE_2D;
                 imageViewDescriptor._usage = ImageUsage::RT_COLOUR_ATTACHMENT;
 
                 VkRenderingAttachmentInfo& info = _colourAttachmentInfo[i];
@@ -565,7 +565,7 @@ namespace Divide
 
 
             imageViewDescriptor._format = vkTex->vkFormat();
-            imageViewDescriptor._type = imageViewDescriptor._subRange._layerRange.count > 1u ? TextureType::TEXTURE_2D_ARRAY : TextureType::TEXTURE_2D;
+            imageViewDescriptor._type = imageViewDescriptor._subRange._layerRange._count > 1u ? TextureType::TEXTURE_2D_ARRAY : TextureType::TEXTURE_2D;
             imageViewDescriptor._usage = hasStencil ? ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT : ImageUsage::RT_DEPTH_ATTACHMENT;
 
             _depthAttachmentInfo.imageView = vkTex->getImageView( imageViewDescriptor );

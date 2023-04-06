@@ -3,16 +3,22 @@
 #include "Action.h"
 #include "WorldState.h"
 
-goap::Action::Action()  noexcept : cost_(0) {
+namespace Divide::goap
+{
+
+Action::Action()  noexcept
+    : cost_( 0 )
+{
 }
 
-goap::Action::Action(const Divide::string& name, int cost) : Action() {
+Action::Action(const string& name, I32 cost) : Action()
+{
     // Because delegating constructors cannot initialize & delegate at the same time...
     name_ = name;
     cost_ = cost;
 }
 
-bool goap::Action::eligibleFor(const WorldState& ws) const {
+bool Action::eligibleFor(const WorldState& ws) const {
     if (!checkImplDependentCondition()) {
         return false;
     }
@@ -30,11 +36,12 @@ bool goap::Action::eligibleFor(const WorldState& ws) const {
     return true;
 }
 
-goap::WorldState goap::Action::actOn(const WorldState& ws) const {
-    goap::WorldState tmp(ws);
+WorldState Action::actOn(const WorldState& ws) const {
+    WorldState tmp(ws);
     for (const auto& effect : effects_) {
         tmp.setVariable(effect.first, effect.second);
     }
     return tmp;
 }
 
+} //namespace Divide::goap
