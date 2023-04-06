@@ -78,7 +78,7 @@ public:
         std::lock_guard<Mutex> lock(_lock);
 
         if (!empty()) {
-            const T val = _buffer[tail_];
+            const T val = _buffer[_tail];
             _isFull = false;
             _tail = (_tail + 1) % _maxSize;
 
@@ -105,10 +105,10 @@ public:
 private:
     mutable Mutex _lock;
     eastl::unique_ptr<T[]> _buffer;
-    size_t _head = 0u;
-    size_t _tail = 0u;
+    size_t _head{0u};
+    size_t _tail{0u};
     const size_t _maxSize;
-    bool _isFull = false;
+    bool _isFull{false};
 };
 
 }; //namespace Divide
