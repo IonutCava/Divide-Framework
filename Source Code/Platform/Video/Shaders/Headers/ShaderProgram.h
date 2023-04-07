@@ -122,8 +122,7 @@ namespace Divide
     {
         public:
         static constexpr const char* UNIFORM_BLOCK_NAME = "dvd_uniforms";
-        static constexpr U8 BONE_CRT_BUFFER_BINDING_SLOT = 12u;
-        static constexpr U8 BONE_PREV_BUFFER_BINDING_SLOT = 13u;
+        static constexpr U8 BONE_BUFFER_BINDING_SLOT = 12u;
 
         static U8 k_commandBufferID;
 
@@ -248,6 +247,7 @@ namespace Divide
         static [[nodiscard]] BindingSetData& GetBindingSetData() noexcept;
 
         static void RegisterSetLayoutBinding( DescriptorSetUsage usage, U8 slot, DescriptorSetBindingType type, ShaderStageVisibility visibility );
+        static U32  GetBindingCount( DescriptorSetUsage usage, DescriptorSetBindingType type);
 
         PROPERTY_R_IW();
         PROPERTY_RW( bool, highPriority, true );

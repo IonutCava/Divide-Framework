@@ -98,7 +98,7 @@ namespace DVDConverter {
     namespace detail{
         void LoadSubMeshGeometry(const aiMesh* source, 
                                  Import::SubMeshData& subMeshData,
-                                 bool isAnimated);
+                                 Import::ImportData& target);
 
         void LoadSubMeshMaterial(Import::MaterialData& material,
                                  const aiScene* source,

@@ -53,8 +53,8 @@ class VertexBuffer final : public VertexDataInterface {
         UColour4  _colour;
         vec3<F32> _position;
         vec2<F32> _texcoord;
-        P32       _weights{0u};
-        P32       _indices{0u};
+        vec4<U8>  _weights{0u};
+        vec4<U8>  _indices{0u};
         F32       _normal{0.f};
         F32       _tangent{0.f};
     };
@@ -84,9 +84,9 @@ class VertexBuffer final : public VertexDataInterface {
 
     [[nodiscard]] F32 getTangent(const U32 index, vec3<F32>& tangentOut) const;
 
-    [[nodiscard]] P32 getBoneIndices(const U32 index) const;
+    [[nodiscard]] vec4<U8> getBoneIndices(const U32 index) const;
 
-    [[nodiscard]] P32 getBoneWeightsPacked(const U32 index) const;
+    [[nodiscard]] vec4<U8> getBoneWeightsPacked(const U32 index) const;
 
     [[nodiscard]] vec4<F32> getBoneWeights(const U32 index) const;
 
@@ -126,11 +126,11 @@ class VertexBuffer final : public VertexDataInterface {
 
     void modifyTexCoordValue(const U32 index, const F32 s, const F32 t);
 
-    void modifyBoneIndices(const U32 index, const P32 indices);
+    void modifyBoneIndices(const U32 index, const vec4<U8> indices);
 
     void modifyBoneWeights(const U32 index, const FColour4& weights);
 
-    void modifyBoneWeights(const U32 index, const P32 packedWeights);
+    void modifyBoneWeights(const U32 index, const vec4<U8> packedWeights);
 
     [[nodiscard]] size_t partitionCount() const noexcept;
 

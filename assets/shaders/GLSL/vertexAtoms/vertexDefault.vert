@@ -21,6 +21,8 @@ layout(location = ATTRIB_COLOR)       in vec4 inColourData;
 layout(location = ATTRIB_BONE_WEIGHT) in vec4 inBoneWeightData;
 #endif //HAS_BONE_WEIGHT_ATTRIBUTE
 #if defined(HAS_BONE_INDICE_ATTRIBUTE)
+uint dvd_CurrentAnimationOffset;
+uint dvd_PreviousAnimationOffset;
 layout(location = ATTRIB_BONE_INDICE) in uvec4 inBoneIndiceData;
 #endif //HAS_BONE_INDICE_ATTRIBUTE
 #endif //USE_GPU_SKINNING
@@ -38,5 +40,10 @@ vec3   dvd_Tangent;
 #if !defined(DEPTH_PASS)
 vec4   dvd_Colour;
 #endif //DEPTH_PASS
+
+#if defined(USE_GPU_SKINNING)
+vec4 dvd_BoneWeight;
+uvec4 dvd_BoneIndices;
+#endif //USE_GPU_SKINNING
 
 #endif //_VERTEX_DEFAULT_VERT_

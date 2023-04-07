@@ -669,43 +669,31 @@ void SceneGraphNode::prepareRender( RenderingComponent& rComp,
 
     if (HasComponents(ComponentType::ANIMATION))
     {
-        const AnimationComponent::AnimData data = get<AnimationComponent>()->getAnimationData();
+        ShaderBuffer* boneBuffer = get<AnimationComponent>()->getBoneBuffer();
         // We always bind a bone buffer if we have animation data available as the shaders will expect the data to be there
-        DIVIDE_ASSERT(data._boneBuffer != nullptr && data._prevBoneBufferRange._length > 0);
-        DescriptorSet& set = pkg.descriptorSetCmd()._set;
-
-        DescriptorSetBinding *boneEntry = nullptr, *prevBoneEntry = nullptr;
-        for ( U8 i = 0u; i < set._bindingCount; ++i )
+        if(boneBuffer != nullptr)
         {
-            DescriptorSetBinding& entry = set._bindings[i];
+            DescriptorSet& set = pkg.descriptorSetCmd()._set;
 
-            if (entry._slot == ShaderProgram::BONE_CRT_BUFFER_BINDING_SLOT)
+            DescriptorSetBinding *boneEntry = nullptr;
+            for ( U8 i = 0u; i < set._bindingCount; ++i )
             {
-                boneEntry = &entry;
-                continue;
+                DescriptorSetBinding& entry = set._bindings[i];
+
+                if (entry._slot == ShaderProgram::BONE_BUFFER_BINDING_SLOT )
+                {
+                    boneEntry = &entry;
+                    break;
+                }
             }
 
-            if (entry._slot == ShaderProgram::BONE_PREV_BUFFER_BINDING_SLOT)
+            if (!boneEntry)
             {
-                prevBoneEntry = &entry;
-                continue;
+                boneEntry = &AddBinding( set, ShaderProgram::BONE_BUFFER_BINDING_SLOT, ShaderStageVisibility::VERTEX );
             }
-            if (boneEntry && prevBoneEntry)
-            {
-                break;
-            }
-        }
-        if (!boneEntry)
-        {
-            boneEntry = &AddBinding( set, ShaderProgram::BONE_CRT_BUFFER_BINDING_SLOT, ShaderStageVisibility::VERTEX );
-        }
-        if (!prevBoneEntry)
-        {
-            prevBoneEntry = &AddBinding( set, ShaderProgram::BONE_PREV_BUFFER_BINDING_SLOT, ShaderStageVisibility::VERTEX );
-        }
 
-        Set(boneEntry->_data,     data._boneBuffer, data._boneBufferRange);
-        Set(prevBoneEntry->_data, data._boneBuffer, data._prevBoneBufferRange);
+            Set(boneEntry->_data, boneBuffer, {0u, boneBuffer->getPrimitiveCount()});
+        }
     }
 
     _node->prepareRender(this, rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData);

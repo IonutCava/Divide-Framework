@@ -44,11 +44,11 @@ void FillSmallData5(const vector<VertexBuffer::Vertex>& dataIn, Byte* dataOut) n
         }
 
         if constexpr(Bones) {
-            std::memcpy(dataOut, &data._weights.i, sizeof data._weights.i);
-            dataOut += sizeof data._weights.i;
+            std::memcpy(dataOut, data._weights._v, sizeof data._weights);
+            dataOut += sizeof data._weights;
 
-            std::memcpy(dataOut, &data._indices.i, sizeof data._indices.i);
-            dataOut += sizeof data._indices.i;
+            std::memcpy(dataOut, data._indices._v, sizeof data._indices );
+            dataOut += sizeof data._indices;
         }
     }
 }
@@ -173,20 +173,20 @@ F32 VertexBuffer::getTangent(const U32 index, vec3<F32>& tangentOut) const {
     return tangent;
 }
 
-P32 VertexBuffer::getBoneIndices(const U32 index) const {
+vec4<U8> VertexBuffer::getBoneIndices(const U32 index) const {
     return _data[index]._indices;
 }
 
-P32 VertexBuffer::getBoneWeightsPacked(const U32 index) const {
+vec4<U8> VertexBuffer::getBoneWeightsPacked(const U32 index) const {
     return _data[index]._weights;
 }
 
 vec4<F32> VertexBuffer::getBoneWeights(const U32 index) const {
-    const P32& weight = _data[index]._weights;
-    return vec4<F32>(UNORM_CHAR_TO_FLOAT(weight.b[0]),
-        UNORM_CHAR_TO_FLOAT(weight.b[1]),
-        UNORM_CHAR_TO_FLOAT(weight.b[2]),
-        UNORM_CHAR_TO_FLOAT(weight.b[3]));
+    const vec4<U8>& weight = _data[index]._weights;
+    return vec4<F32>(UNORM_CHAR_TO_FLOAT(weight.x),
+                     UNORM_CHAR_TO_FLOAT(weight.y),
+                     UNORM_CHAR_TO_FLOAT(weight.z),
+                     UNORM_CHAR_TO_FLOAT(weight.w));
 }
 
 size_t VertexBuffer::getIndexCount() const noexcept {
@@ -210,9 +210,9 @@ void VertexBuffer::addIndex(const U32 index) {
 
 void VertexBuffer::addIndices(const vector_fast<U16>& indices) {
     eastl::transform(eastl::cbegin(indices),
-        eastl::cend(indices),
-        back_inserter(_indices),
-        static_caster<U16, U32>());
+                     eastl::cend(indices),
+                     back_inserter(_indices),
+                     static_caster<U16, U32>());
 
     _indicesChanged = true;
 }
@@ -328,7 +328,7 @@ void VertexBuffer::modifyTexCoordValue(const U32 index, const F32 s, const F32 t
     _refreshQueued = true;
 }
 
-void VertexBuffer::modifyBoneIndices(const U32 index, const P32 indices) {
+void VertexBuffer::modifyBoneIndices(const U32 index, const vec4<U8> indices) {
     assert(index < _data.size());
 
     DIVIDE_ASSERT(_staticBuffer == false ||
@@ -342,26 +342,28 @@ void VertexBuffer::modifyBoneIndices(const U32 index, const P32 indices) {
 }
 
 void VertexBuffer::modifyBoneWeights(const U32 index, const FColour4& weights) {
-    P32 boneWeights;
-    boneWeights.b[0] = FLOAT_TO_CHAR_UNORM(weights.x);
-    boneWeights.b[1] = FLOAT_TO_CHAR_UNORM(weights.y);
-    boneWeights.b[2] = FLOAT_TO_CHAR_UNORM(weights.z);
-    boneWeights.b[3] = FLOAT_TO_CHAR_UNORM(weights.w);
+    vec4<U8> boneWeights;
+    boneWeights.x = FLOAT_TO_CHAR_UNORM(weights.x);
+    boneWeights.y = FLOAT_TO_CHAR_UNORM(weights.y);
+    boneWeights.z = FLOAT_TO_CHAR_UNORM(weights.z);
+    boneWeights.w = FLOAT_TO_CHAR_UNORM(weights.w);
     modifyBoneWeights(index, boneWeights);
 }
 
-void VertexBuffer::modifyBoneWeights(const U32 index, const P32 packedWeights) {
-    assert(index < _data.size());
+void VertexBuffer::modifyBoneWeights( const U32 index, const vec4<U8> packedWeights )
+{
+    assert( index < _data.size() );
 
-    DIVIDE_ASSERT(_staticBuffer == false ||
-        _staticBuffer == true && !_data.empty(),
-        "VertexBuffer error: Modifying static buffers after creation is not allowed!");
+    DIVIDE_ASSERT( _staticBuffer == false ||
+                   _staticBuffer == true && !_data.empty(),
+                   "VertexBuffer error: Modifying static buffers after creation is not allowed!" );
 
     _data[index]._weights = packedWeights;
-    _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base(AttribLocation::BONE_WEIGHT)];
-    _useAttribute[to_base(AttribLocation::BONE_WEIGHT)] = true;
+    _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base( AttribLocation::BONE_WEIGHT )];
+    _useAttribute[to_base( AttribLocation::BONE_WEIGHT )] = true;
     _refreshQueued = true;
 }
+
 
 size_t VertexBuffer::partitionCount() const noexcept {
     return _partitions.size();
@@ -759,9 +761,9 @@ AttributeOffsets VertexBuffer::GetAttributeOffsets(const AttributeFlags& usedAtt
 
     if (usedAttributes[to_base(AttribLocation::BONE_INDICE)]) {
         offsets[to_base(AttribLocation::BONE_WEIGHT)] = to_U32(totalDataSizeOut);
-        totalDataSizeOut += sizeof(U32);
+        totalDataSizeOut += sizeof(vec4<U8>);
         offsets[to_base(AttribLocation::BONE_INDICE)] = to_U32(totalDataSizeOut);
-        totalDataSizeOut += sizeof(U32);
+        totalDataSizeOut += sizeof( vec4<U8> );
     }
 
     return offsets;

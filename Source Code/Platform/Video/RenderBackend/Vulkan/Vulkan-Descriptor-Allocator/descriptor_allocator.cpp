@@ -135,7 +135,11 @@
 
         for (auto sz : _poolSizes.sizes)
         {
-            sizes.push_back({ sz.type, Divide::to_U32(sz.multiplier * count) });
+            const Divide::U32 targetSize = Divide::to_U32( sz.multiplier * count );
+            if ( targetSize > 0u )
+            {
+                sizes.push_back( { sz.type, targetSize } );
+            }
         }
 
         VkDescriptorPoolCreateInfo pool_info = {.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };

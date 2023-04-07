@@ -763,7 +763,7 @@ namespace Divide
                     ImGui::NewLine();
                     ImGui::NewLine();
                     ImGui::SameLine( ImGui::GetWindowSize().x * 0.5f - (buttonWidth * 0.5f) );
-                    if ( ImGui::Button( ICON_FK_FLOPPY_O" Save Node", ImVec2( buttonWidth, 15 ) ) )
+                    if ( ImGui::Button( ICON_FK_FLOPPY_O" Save Node", ImVec2( buttonWidth, 25 ) ) )
                     {
                         Attorney::EditorPropertyWindow::saveNode( _parent, sgnNode );
                     }
@@ -803,7 +803,7 @@ namespace Divide
             ImGui::Separator();
             ImGui::NewLine();
             ImGui::SameLine( xOffset );
-            if ( ImGui::Button( ICON_FK_PLUS" ADD NEW", ImVec2( buttonWidth, 15 ) ) )
+            if ( ImGui::Button( ICON_FK_PLUS" ADD NEW", ImVec2( buttonWidth, 25 ) ) )
             {
                 Util::OpenCenteredPopup( "COMP_SELECTION_GROUP" );
             }

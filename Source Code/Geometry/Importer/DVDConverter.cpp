@@ -44,7 +44,8 @@ namespace {
 
     constexpr bool g_removeLinesAndPoints = true;
 
-    struct vertexWeight {
+    struct vertexWeight 
+    {
         U8 _boneID = 0;
         F32 _boneWeight = 0.0f;
     };
@@ -233,21 +234,30 @@ bool Load(PlatformContext& context, Import::ImportData& target) {
     }
 
     target.hasAnimations(aiScenePointer->HasAnimations());
+
     if (target.hasAnimations()) {
         target._skeleton = CreateBoneTree(aiScenePointer->mRootNode, nullptr);
-        target._bones.reserve(to_I32(target._skeleton->hierarchyDepth()));
 
-        for (U16 meshPointer = 0u; meshPointer < aiScenePointer->mNumMeshes; ++meshPointer) {
+        target._bones.reserve( target._skeleton->hierarchyDepth() );
+
+        mat4<F32> out;
+        U8 boneID = 0u;
+        for ( U16 meshPointer = 0u; meshPointer < aiScenePointer->mNumMeshes; ++meshPointer )
+        {
             const aiMesh* mesh = aiScenePointer->mMeshes[meshPointer];
-            for (U32 n = 0; n < mesh->mNumBones; ++n) {
+            for ( U32 n = 0; n < mesh->mNumBones; ++n )
+            {
                 const aiBone* bone = mesh->mBones[n];
 
-                Bone* found = target._skeleton->find(bone->mName.data);
-                if (found != nullptr) {
-                    mat4<F32> out;
-                    AnimUtils::TransformMatrix(bone->mOffsetMatrix, out);
-                    found->offsetMatrix(out);
-                    target._bones.push_back(found);
+                Bone* found = target._skeleton->find( bone->mName.data );
+                DIVIDE_ASSERT( found != nullptr, "DVDConverter::Load: Invalid skeleton detected while extracting bone data!" );
+
+                if ( found->boneID() == -1 )
+                {
+                    AnimUtils::TransformMatrix( bone->mOffsetMatrix, out );
+                    found->offsetMatrix( out );
+                    found->boneID( boneID++ );
+                    target._bones.push_back( found );
                 }
             }
         }
@@ -290,7 +300,7 @@ bool Load(PlatformContext& context, Import::ImportData& target) {
         subMeshTemp.name(fullName.length() >= maxMeshNameLength ? fullName.substr(0, maxMeshNameLength - 1u) : fullName);
         subMeshTemp.index(to_U32(n));
         subMeshTemp.boneCount(to_U8(currentMesh->mNumBones));
-        detail::LoadSubMeshGeometry(currentMesh, subMeshTemp, target.hasAnimations());
+        detail::LoadSubMeshGeometry(currentMesh, subMeshTemp, target);
 
         const string& modelFolderName = getTopLevelFolderName(filePath.c_str());
         detail::LoadSubMeshMaterial(subMeshTemp._material,
@@ -388,8 +398,8 @@ void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target) 
                     const U32 targetIdx = i + previousOffset;
 
                     Import::SubMeshData::Vertex& vert = vertices[i];
-                    P32& boneIndices = vert.indices;
-                    for (U8& idx : boneIndices.b) {
+                    vec4<U8>& boneIndices = vert.indices;
+                    for (U8& idx : boneIndices._v) {
                         idx += subMeshBoneOffset;
                     }
 
@@ -405,8 +415,11 @@ void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target) 
     } //lod
 }
 
-void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData, const bool isAnimated)
+
+void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData, Import::ImportData& target)
 {
+    const bool isAnimated = target.hasAnimations();
+
     subMeshData.maxPos( { source->mAABB.mMax.x, source->mAABB.mMax.y, source->mAABB.mMax.z } );
     subMeshData.minPos( { source->mAABB.mMin.x, source->mAABB.mMin.y, source->mAABB.mMin.z } );
     subMeshData.worldOffset( isAnimated ? VECTOR3_ZERO : ((subMeshData.maxPos() + subMeshData.minPos()) * 0.5f) );
@@ -457,49 +470,36 @@ void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData,
 
     if (source->mNumBones > 0u)
     {
-        if (source->mNumBones > U8_MAX)
+        if (source->mNumBones >= Config::MAX_BONE_COUNT_PER_NODE )
         {
-            Console::errorfn( Locale::Get( _ID( "SUBMESH_TOO_MANY_BONES" ) ), subMeshData.name().c_str(), source->mNumBones );
+            Console::errorfn( Locale::Get( _ID( "SUBMESH_TOO_MANY_BONES" ) ), subMeshData.name().c_str(), source->mNumBones, Config::MAX_BONE_COUNT_PER_NODE , Config::MAX_BONE_COUNT_PER_NODE );
         }
 
-        const U8 boneCount = to_U8(std::min(source->mNumBones, to_U32(U8_MAX)));
-
-        vector<vector<vertexWeight> > weightsPerVertex(source->mNumVertices);
-        for ( auto& weights : weightsPerVertex )
+        for ( U32 boneIndex = 0u; boneIndex < source->mNumBones; ++boneIndex )
         {
-            // guaranteed to be max 4 thanks to aiProcess_LimitBoneWeights 
-            weights.reserve(4u);
-        }
 
-        for (U8 a = 0u; a < boneCount; ++a)
-        {
-            const aiBone* bone = source->mBones[a];
-            if ( bone->mNumWeights > 4u )
+            Bone* bone = target._skeleton->find(source->mBones[boneIndex]->mName.data);
+            assert( bone->boneID() != -1);
+
+            aiVertexWeight* weights = source->mBones[boneIndex]->mWeights;
+            I32 numWeights = source->mBones[boneIndex]->mNumWeights;
+            for ( I32 weightIndex = 0; weightIndex < numWeights; ++weightIndex )
             {
-                Console::errorfn( Locale::Get( _ID( "SUBMESH_TOO_MANY_BONE_WEIGHTS" ) ), subMeshData.name().c_str(), bone->mNumWeights );
+                I32 vertexId = weights[weightIndex].mVertexId;
+                F32 weight = weights[weightIndex].mWeight;
+                assert( vertexId <= vertices.size() );
+
+                Import::SubMeshData::Vertex& vertex = vertices[vertexId];
+                for ( U8 i = 0; i < 4u; ++i )
+                {
+                    if ( vertex.indices[i] == 0u )
+                    {
+                        vertex.weights[i] = weight;
+                        vertex.indices[i] = to_U8( bone->boneID() );
+                        break;
+                    }
+                }
             }
-
-            for (U32 b = 0u; b < std::min(bone->mNumWeights, 4u); ++b)
-            {
-                weightsPerVertex[bone->mWeights[b].mVertexId].push_back({ a, bone->mWeights[b].mWeight });
-            }
-        }
-
-        vec4<F32> weights;
-        P32       indices;
-        for (U32 j = 0u; j < source->mNumVertices; ++j)
-        {
-            indices.i = 0;
-            weights = VECTOR4_ZERO;
-
-            for (size_t a = 0u; a < weightsPerVertex[j].size(); ++a)
-            {
-                indices.b[a] = to_U8(weightsPerVertex[j][a]._boneID);
-                weights[a] = weightsPerVertex[j][a]._boneWeight;
-            }
-
-            vertices[j].indices = indices;
-            vertices[j].weights.set(weights);
         }
     }
 

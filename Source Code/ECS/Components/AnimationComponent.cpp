@@ -140,15 +140,10 @@ const vector<Line>& AnimationComponent::skeletonLines() const {
     return  _animator->skeletonLines(_currentAnimIndex, animTimeStamp);
 }
 
-AnimationComponent::AnimData AnimationComponent::getAnimationData() const {
-    AnimData ret = {};
-
-    const AnimEvaluator& anim = getAnimationByIndex(std::max(_previousAnimationIndex, 0));
-    ret._boneBuffer = anim.boneBuffer();
-    ret._boneBufferRange = { to_size(std::max(0, _frameIndex._curr)), 1u};
-    ret._prevBoneBufferRange = { to_size(std::max(0, _frameIndex._prev)), 1u};
-
-    return ret;
+ShaderBuffer* AnimationComponent::getBoneBuffer() const
+{
+    const AnimEvaluator& anim = getAnimationByIndex( std::max( _previousAnimationIndex, 0 ) );
+    return anim.boneBuffer();
 }
 
 I32 AnimationComponent::frameCount(const U32 animationID) const {

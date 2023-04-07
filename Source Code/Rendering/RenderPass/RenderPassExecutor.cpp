@@ -429,26 +429,24 @@ namespace Divide
 
         U8 boneCount = 0u;
         U8 frameTicked = 0u;
-        { //Animation
-            if ( node->HasComponents( ComponentType::ANIMATION ) )
+        AnimEvaluator::FrameIndex frameIndex{};
+        if ( node->HasComponents( ComponentType::ANIMATION ) )
+        {
+            const AnimationComponent* animComp = node->get<AnimationComponent>();
+            boneCount = animComp->boneCount();
+            if ( animComp->playAnimations() )
             {
-                const AnimationComponent* animComp = node->get<AnimationComponent>();
-                boneCount = animComp->boneCount();
-                if ( animComp->playAnimations() && animComp->frameTicked() )
+                if ( animComp->frameTicked() )
                 {
                     frameTicked = 1u;
                 }
+
+                frameIndex = animComp->frameIndex();
             }
         }
+
         { //Misc
             transformOut._normalMatrixW.setRow( 3, node->get<BoundsComponent>()->getBoundingSphere().asVec4() );
-
-            transformOut._normalMatrixW.element( 0, 3 ) = to_F32( Util::PACK_UNORM4x8(
-                0u,
-                frameTicked,
-                rComp->getLoDLevel( _stage ),
-                rComp->occlusionCull() ? 1u : 0u
-            ) );
 
             U8 selectionFlag = 0u;
             // We don't propagate selection flags to children outside of the editor, so check for that
@@ -461,7 +459,15 @@ namespace Divide
             {
                 selectionFlag = 1u;
             }
-            transformOut._normalMatrixW.element( 1, 3 ) = to_F32( selectionFlag );
+
+            transformOut._normalMatrixW.element( 0, 3 ) = to_F32( Util::PACK_UNORM4x8(
+                selectionFlag,
+                frameTicked,
+                rComp->getLoDLevel( _stage ),
+                rComp->occlusionCull() ? 1u : 0u
+            ) );
+
+            transformOut._normalMatrixW.element( 1, 3 ) = to_F32( std::max( frameIndex._curr, 0) );
             transformOut._normalMatrixW.element( 2, 3 ) = to_F32( boneCount );
         }
         {

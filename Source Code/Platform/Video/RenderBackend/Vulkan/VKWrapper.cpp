@@ -2834,16 +2834,28 @@ namespace Divide
             pool._frameCount = Config::MAX_FRAMES_IN_FLIGHT + 1u;
             pool._allocatorPool.reset( vke::DescriptorAllocatorPool::Create( _device->getVKDevice(), pool._frameCount) );
        
-            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4.f );
-            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 4.f );
-            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1.f );
-            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1.f );
-            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1.f );
-            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1.f );
-            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2.f );
-            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2.f );
-            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 4.f );
-            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 0.5f );
+            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 0.f );
+            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 0.f );
+            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 0.f );
+            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 0.f );
+
+            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, ShaderProgram::GetBindingCount(static_cast<DescriptorSetUsage>(i), DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER) * 1.f);
+            pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, ShaderProgram::GetBindingCount( static_cast<DescriptorSetUsage>(i), DescriptorSetBindingType::IMAGE ) * 1.f );
+            if ( s_hasPushDescriptorSupport && i == to_base( DescriptorSetUsage::PER_DRAW ) )
+            {
+                pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, ShaderProgram::GetBindingCount( static_cast<DescriptorSetUsage>(i), DescriptorSetBindingType::UNIFORM_BUFFER ) * 1.f );
+                pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, ShaderProgram::GetBindingCount( static_cast<DescriptorSetUsage>(i), DescriptorSetBindingType::SHADER_STORAGE_BUFFER ) * 1.f );
+                pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 0.f);
+                pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 0.f);
+            }
+            else
+            {
+                pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ShaderProgram::GetBindingCount( static_cast<DescriptorSetUsage>(i), DescriptorSetBindingType::UNIFORM_BUFFER ) * 1.f );
+                pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, ShaderProgram::GetBindingCount( static_cast<DescriptorSetUsage>(i), DescriptorSetBindingType::SHADER_STORAGE_BUFFER ) * 1.f );
+                pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0.f );
+                pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0.f );
+            }
+
             pool._handle = pool._allocatorPool->GetAllocator();
         }
     }

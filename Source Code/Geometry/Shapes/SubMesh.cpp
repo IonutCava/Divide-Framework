@@ -40,10 +40,10 @@ void SubMesh::onAnimationChange(SceneGraphNode* sgn, const I32 newIndex) {
     Object3D::onAnimationChange(sgn, newIndex);
 }
 
-void SubMesh::buildBoundingBoxesForAnim([[maybe_unused]] const Task& parentTask,
-    const I32 animationIndex,
-    const AnimationComponent* const animComp) {
-    if (animationIndex < 0) {
+void SubMesh::buildBoundingBoxesForAnim([[maybe_unused]] const Task& parentTask, const I32 animationIndex, const AnimationComponent* const animComp)
+{
+    if (animationIndex < 0)
+    {
         return;
     }
 
@@ -61,14 +61,14 @@ void SubMesh::buildBoundingBoxesForAnim([[maybe_unused]] const Task& parentTask,
         // loop through all vertex weights of all bones
         for (U32 j = 0u; j < partitionCount; ++j) {
             const U32 idx = parentVB->getIndex(j + partitionOffset);
-            const P32 ind = parentVB->getBoneIndices(idx);
+            const vec4<U8> ind = parentVB->getBoneIndices(idx);
             const vec4<F32>& wgh = parentVB->getBoneWeights(idx);
             const vec3<F32>& curentVert = parentVB->getPosition(idx);
 
-            currentBB.add(wgh.x * (matrices[ind.b[0]] * curentVert) +
-                          wgh.y * (matrices[ind.b[1]] * curentVert) +
-                          wgh.z * (matrices[ind.b[2]] * curentVert) +
-                          wgh.w * (matrices[ind.b[3]] * curentVert));
+            currentBB.add((wgh.x * (matrices[ind.x] * curentVert)) +
+                          (wgh.y * (matrices[ind.y] * curentVert)) +
+                          (wgh.z * (matrices[ind.z] * curentVert)) +
+                          (wgh.w * (matrices[ind.w] * curentVert)) );
         }
     }
 }

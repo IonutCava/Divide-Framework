@@ -46,13 +46,6 @@ class SceneGraphNode;
 FWD_DECLARE_MANAGED_CLASS(SceneAnimator);
 BEGIN_COMPONENT(Animation, ComponentType::ANIMATION)
    public:
-      struct AnimData {
-          BufferRange _boneBufferRange = { 0u, 0u };
-          BufferRange _prevBoneBufferRange = { 0u, 0u };
-          ShaderBuffer* _boneBuffer = nullptr;
-      };
-      
-   public:
     explicit AnimationComponent(SceneGraphNode* parentSGN, PlatformContext& context);
 
     /// Select an animation by name
@@ -70,7 +63,7 @@ BEGIN_COMPONENT(Animation, ComponentType::ANIMATION)
     [[nodiscard]] bool frameTicked() const noexcept;
 
     [[nodiscard]] const vector<Line>& skeletonLines() const;
-    [[nodiscard]] AnimData getAnimationData() const;
+    [[nodiscard]] ShaderBuffer* getBoneBuffer() const;
     
     [[nodiscard]] AnimEvaluator& getAnimationByIndex(I32 animationID) const;
 

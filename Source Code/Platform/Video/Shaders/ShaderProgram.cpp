@@ -251,9 +251,14 @@ namespace Divide
         bool s_useShaderCache = true;
         bool s_targetVulkan = false;
 
-        constexpr U8 s_reserverdTextureSlotsPerDraw = to_base( TextureSlot::COUNT ) + 2; /*Reflection and refraction*/
-        constexpr U8 s_reserverdBufferSlotsPerDraw = MAX_BINDINGS_PER_DESCRIPTOR_SET - s_reserverdTextureSlotsPerDraw;
-        constexpr U8 s_reservedImageSlotsPerDraw = MAX_BINDINGS_PER_DESCRIPTOR_SET - s_reserverdBufferSlotsPerDraw - s_reserverdTextureSlotsPerDraw;
+        constexpr U8 s_reserverdTextureSlotsPerDraw = to_base( TextureSlot::COUNT ) + 2; /*{Reflection + Refraction}*/
+        constexpr U8 s_reserverdUBOSlotsPerDraw = 0u;
+        // One pair of each: { globalIndexCount, lightClusterAABB}, {histogram buffer}, {bone transforms}
+        constexpr U8 s_reserverdSSBOSlotsPerDraw = 3u; 
+        constexpr U8 s_reserverdBufferSlotsPerDraw = s_reserverdUBOSlotsPerDraw + s_reserverdSSBOSlotsPerDraw;
+
+        // One of each: HiZ Output, Irradiance Target, LUT Target, PreFiltered target, Luminance Input, Luminance Average Target
+        constexpr U8 s_reservedImageSlotsPerDraw = MAX_BINDINGS_PER_DESCRIPTOR_SET - s_reserverdBufferSlotsPerDraw - s_reserverdUBOSlotsPerDraw; 
 
         U8 s_textureSlot = s_reserverdTextureSlotsPerDraw;
         U8 s_bufferSlot = s_textureSlot + s_reserverdBufferSlotsPerDraw;
@@ -419,8 +424,7 @@ namespace Divide
                 AppendSetBindings( DescriptorSetUsage::PER_PASS );
                 AppendSetBindings( DescriptorSetUsage::PER_FRAME );
 
-                AppendToShaderHeader( ShaderType::VERTEX, Util::StringFormat( "#define PER_DRAW_BONE_CRT_BUFFER_BINDING %d", ShaderProgram::BONE_CRT_BUFFER_BINDING_SLOT ) );
-                AppendToShaderHeader( ShaderType::VERTEX, Util::StringFormat( "#define PER_DRAW_BONE_PREV_BUFFER_BINDING %d", ShaderProgram::BONE_PREV_BUFFER_BINDING_SLOT ) );
+                AppendToShaderHeader( ShaderType::VERTEX, Util::StringFormat( "#define PER_DRAW_BONE_BUFFER_BINDING %d", ShaderProgram::BONE_BUFFER_BINDING_SLOT ) );
 
                 AppendToShaderHeader( ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE(SET, BINDING) layout(binding = CONCATENATE(SET, BINDING))" );
                 AppendToShaderHeader( ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_OFFSET(SET, BINDING, OFFSET) layout(binding = CONCATENATE(SET, BINDING), offset = OFFSET)" );
@@ -429,8 +433,7 @@ namespace Divide
             }
             else
             {
-                AppendToShaderHeader( ShaderType::VERTEX, Util::StringFormat( "#define BONE_CRT_BUFFER_BINDING %d", ShaderProgram::BONE_CRT_BUFFER_BINDING_SLOT ) );
-                AppendToShaderHeader( ShaderType::VERTEX, Util::StringFormat( "#define BONE_PREV_BUFFER_BINDING %d", ShaderProgram::BONE_PREV_BUFFER_BINDING_SLOT ) );
+                AppendToShaderHeader( ShaderType::VERTEX, Util::StringFormat( "#define BONE_BUFFER_BINDING %d", ShaderProgram::BONE_BUFFER_BINDING_SLOT ) );
 
                 for ( U8 i = 0u; i < to_base( DescriptorSetUsage::COUNT ); ++i )
                 {
@@ -1190,7 +1193,36 @@ namespace Divide
                 break;
         }
     }
+    
+    U32 ShaderProgram::GetBindingCount( const DescriptorSetUsage usage, const DescriptorSetBindingType type )
+    {
+        DIVIDE_ASSERT( usage != DescriptorSetUsage::COUNT );
 
+        U32 count = 0u;
+        if ( usage == DescriptorSetUsage::PER_DRAW )
+        {
+            switch ( type )
+            {
+                case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: count = s_reserverdTextureSlotsPerDraw; break;
+                case DescriptorSetBindingType::IMAGE: count = s_reservedImageSlotsPerDraw; break;
+                case DescriptorSetBindingType::UNIFORM_BUFFER: count = s_reserverdUBOSlotsPerDraw; break;
+                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: count = s_reserverdSSBOSlotsPerDraw; break;
+            }
+        }
+        else
+        {
+            for ( const BindingsPerSet& binding : s_bindingsPerSet[to_base( usage )] )
+            {
+                if ( binding._type == type )
+                {
+                    ++count;
+                }
+            }
+        }
+        
+        return count;
+
+    }
     bool ShaderProgram::OnThreadCreated( const GFXDevice& gfx, [[maybe_unused]] const std::thread::id& threadID )
     {
         return InitGLSW( gfx, GFXDevice::GetDeviceInformation(), gfx.context().config() );

@@ -20,8 +20,8 @@ struct NodeTransformData {
     mat4 _worldMatrix;
     mat4 _prevWorldMatrix;
     //[0][0]...[2][2] - normalMatrix
-    //[0][3] = 4x8U: reserverd, animation ticked this frame (for motion blur), LoDLevel, occlusion cull
-    //[1][3] = selectionFlag
+    //[0][3] = 4x8U: selectionFlag, animation ticked this frame (for motion blur), LoDLevel, occlusion cull
+    //[1][3] = animationFrameCurrent
     //[2][3] = boneCount
     //[3][0..3] = boundingSphere
     mat4 _normalMatrixW;
@@ -84,10 +84,11 @@ struct NodeMaterialData
 #define dvd_WorldMatrix(transformData) transformData._worldMatrix
 #define dvd_NormalMatrixW(transformData) mat3(transformData._normalMatrixW)
 #define dvd_NodeData(transformData) unpackUnorm4x8(uint(transformData._normalMatrixW[0][3]))
+#define dvd_SelectionFlag(transformData) uint(dvd_NodeData(transformData).x * 255)
 #define dvd_FrameTicked(transformData) (uint(dvd_NodeData(transformData).y  * 255) == 1u)
 #define dvd_LoDLevel(transformData) uint(dvd_NodeData(transformData).z * 255)
 #define dvd_CullNode(transformData) (uint(dvd_NodeData(transformData).w * 255) == 1u)
-#define dvd_SelectionFlag(transformData) (uint(transformData._normalMatrixW[1][3]))
+#define dvd_AnimationFrame(transformData) uint(transformData._normalMatrixW[1][3])
 #define dvd_BoneCount(transformData) uint(transformData._normalMatrixW[2][3])
 #define dvd_BoundingSphere(transformData) transformData._normalMatrixW[3]
 
