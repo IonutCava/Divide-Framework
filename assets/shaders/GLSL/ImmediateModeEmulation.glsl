@@ -55,7 +55,7 @@ void main(){
     }
 #endif //NO_TEXTURE
 #if defined(WORLD_PASS)
-    writeScreenColour(colourTemp);
+    writeScreenColour(colourTemp, vec3(0.f));
 #else //WORLD_PASS
     _colourOut = colourTemp;
 #endif //WORLD_PASS

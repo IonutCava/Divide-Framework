@@ -135,6 +135,8 @@ namespace Divide {
             vector<U32> _indices[MAX_LOD_LEVELS];
             vector<Vertex> _vertices[MAX_LOD_LEVELS];
 
+            AttributeFlags _useAttribute{};
+
             MaterialData _material;
         };
 

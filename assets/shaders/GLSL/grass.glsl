@@ -130,7 +130,7 @@ void main (void){
     if (albedo.a > ALPHA_DISCARD_THRESHOLD) {
         colour = getPixelColour(albedo, data, normalWV);
     }
-    writeScreenColour(colour);
+    writeScreenColour(colour, normalWV);
 }
 
 --Fragment.PrePass

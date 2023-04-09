@@ -737,6 +737,7 @@ namespace Divide
             {
                 InternalRTAttachmentDescriptor{ accumulationDescriptor, accumulationSamplerHash, RTAttachmentType::COLOUR, ScreenTargets::ACCUMULATION },
                 InternalRTAttachmentDescriptor{ revealageDescriptor,    accumulationSamplerHash, RTAttachmentType::COLOUR, ScreenTargets::REVEALAGE },
+                InternalRTAttachmentDescriptor{ normalsDescriptor,      samplerHash,             RTAttachmentType::COLOUR, ScreenTargets::NORMALS },
             };
 
             const RenderTargetID rtSource[] = {
@@ -754,13 +755,11 @@ namespace Divide
                 oitAttachments[1]._texDescriptor.msaaSamples( sampleCount[i] );
 
                 const RenderTarget* screenTarget = _rtPool->getRenderTarget( rtSource[i] );
-                RTAttachment* screenNormalsAttachment = screenTarget->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::NORMALS );
                 RTAttachment* screenDepthAttachment = screenTarget->getAttachment( RTAttachmentType::DEPTH );
 
                 ExternalRTAttachmentDescriptors externalAttachments
                 {
-                    ExternalRTAttachmentDescriptor{ screenNormalsAttachment,  screenNormalsAttachment->descriptor()._samplerHash, RTAttachmentType::COLOUR, ScreenTargets::NORMALS },
-                    ExternalRTAttachmentDescriptor{ screenDepthAttachment,    screenDepthAttachment->descriptor()._samplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 }
+                    ExternalRTAttachmentDescriptor{ screenDepthAttachment, screenDepthAttachment->descriptor()._samplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 }
                 };
 
                 if constexpr( Config::USE_COLOURED_WOIT )

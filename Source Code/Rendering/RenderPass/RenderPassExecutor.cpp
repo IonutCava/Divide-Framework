@@ -1048,12 +1048,12 @@ namespace Divide
 
             GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut, renderPassCmd );
 
-            const RenderTarget* screenTargetMS = _context.renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN_MS );
-            const RTAttachment* normalsAttMS = screenTargetMS->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS );
-
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_PASS;
+            if ( params._stagePass._stage == RenderStage::DISPLAY )
             {
+                const RenderTarget* screenTargetMS = _context.renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN_MS );
+                const RTAttachment* normalsAttMS = screenTargetMS->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS );
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
                 Set( binding._data, normalsAttMS->texture()->getView(), normalsAttMS->descriptor()._samplerHash );
             }
@@ -1090,14 +1090,13 @@ namespace Divide
 
         // Step1: Draw translucent items into the accumulation and revealage buffers
         GFX::BeginRenderPassCommand* beginRenderPassOitCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
-        beginRenderPassOitCmd->_name = "DO_OIT_PASS_1";
+        beginRenderPassOitCmd->_name = "OIT PASS 1";
         beginRenderPassOitCmd->_target = params._targetOIT;
         beginRenderPassOitCmd->_clearDescriptor[to_base( GFXDevice::ScreenTargets::ACCUMULATION )] = { VECTOR4_ZERO,           true };
         beginRenderPassOitCmd->_clearDescriptor[to_base( GFXDevice::ScreenTargets::REVEALAGE )]    = { { 1.f, 0.f, 0.f, 0.f }, true };
-
-        beginRenderPassOitCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::VELOCITY )] = true;
+        beginRenderPassOitCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::ACCUMULATION )] = true;
+        beginRenderPassOitCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::REVEALAGE )] = true;
         beginRenderPassOitCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::NORMALS )]  = true;
-
         {
             const RenderTarget* nonMSTarget = _context.renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN );
             const auto& colourAtt = nonMSTarget->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO );
@@ -1119,9 +1118,10 @@ namespace Divide
         RenderTarget* oitRT = _context.renderTargetPool().getRenderTarget( params._targetOIT );
         const auto& accumAtt = oitRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ACCUMULATION );
         const auto& revAtt = oitRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::REVEALAGE );
+        const auto& normalsAtt = oitRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS );
 
         GFX::BeginRenderPassCommand beginRenderPassCompCmd{};
-        beginRenderPassCompCmd._name = "DO_OIT_PASS_2";
+        beginRenderPassCompCmd._name = "OIT PASS 2";
         beginRenderPassCompCmd._target = params._target;
         beginRenderPassCompCmd._descriptor = params._targetDescriptorMainPass;
 
@@ -1140,6 +1140,10 @@ namespace Divide
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
                 Set( binding._data, revAtt->texture()->getView(), revAtt->descriptor()._samplerHash );
+            }
+            {
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::FRAGMENT );
+                Set( binding._data, normalsAtt->texture()->getView(), normalsAtt->descriptor()._samplerHash );
             }
         }
         GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );

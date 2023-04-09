@@ -218,7 +218,7 @@ namespace Divide
 
                 EditorComponentField camField = {};
                 camField._name = "Speed";
-                camField._range = { 0.001f, 100.f };
+                camField._range = { 0.001f, std::max(Camera::MAX_CAMERA_MOVE_SPEED, Camera::MAX_CAMERA_TURN_SPEED)};
                 camField._labels = CamSpeedLabels;
                 camField._basicType = GFX::PushConstantType::VEC3;
                 camField._type = EditorComponentFieldType::SLIDER_TYPE;

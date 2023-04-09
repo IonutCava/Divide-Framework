@@ -5,7 +5,7 @@
 
 layout(location = TARGET_ALBEDO) out vec4 _colourOut;
 
-#define writeScreenColour(COL) _colourOut = COL
+#define writeScreenColour(COL, NORM) _colourOut = COL
 
 #else //OIT_PASS
 
@@ -13,6 +13,7 @@ layout(location = TARGET_ALBEDO) out vec4 _colourOut;
 
 layout(location = TARGET_ACCUMULATION) out vec4  _accum;
 layout(location = TARGET_REVEALAGE) out float _revealage;
+layout(location = TARGET_NORMALS) out vec3 _normalsOut;
 
 DESCRIPTOR_SET_RESOURCE(PER_PASS, 1) uniform sampler2D texDepth;
 #define SampleDepth(UV) texture(texDepth, UV).r
@@ -55,10 +56,14 @@ void writePixel(in vec4 premultipliedReflect, in vec3 transmit, in float viewSpa
     _revealage = premultipliedReflect.a;
 }
 
-void writeScreenColour(in vec4 colour) {
+void writeScreenColour(in vec4 colour, in vec3 normalWV)
+{
     const vec3 transmit = vec3(0.f);//texture(texTransmitance, dvd_screenPositionNormalised).rgb;
     const float viewSpaceZ = ViewSpaceZ(SampleDepth(dvd_screenPositionNormalised), dvd_InverseProjectionMatrix);
     writePixel(vec4(colour.rgb * colour.a, colour.a), transmit, viewSpaceZ);
+
+    _normalsOut.rg = packNormal(normalWV);
+    _normalsOut.b = 0.f;
 }
 #endif //OIT_PASS
 

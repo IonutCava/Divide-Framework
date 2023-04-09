@@ -342,6 +342,10 @@ void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target) 
     U32 previousOffset = 0u;
     for ( Import::SubMeshData& data : target._subMeshData )
     {
+        const bool hasBones = data._useAttribute[to_base(AttribLocation::BONE_INDICE)] && data._useAttribute[to_base( AttribLocation::BONE_WEIGHT )];
+        const bool hasTexCoord = data._useAttribute[to_base( AttribLocation::TEXCOORD )];
+        const bool hasTangent = data._useAttribute[to_base( AttribLocation::TANGENT )];
+
         U8 subMeshBoneOffset = 0u;
         for ( U8 lod = 0u; lod < data.lodCount(); ++lod )
         {
@@ -372,10 +376,6 @@ void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target) 
 
             auto& vertices = data._vertices[lod];
             const U32 vertCount = to_U32(vertices.size());
-
-            const bool hasBones = data.boneCount() > 0;
-            const bool hasTexCoord = !IS_ZERO(vertices[0].texcoord.z);
-            const bool hasTangent = !IS_ZERO(vertices[0].tangent.w);
 
             for (U32 i = 0; i < vertCount; ++i) {
                 const U32 targetIdx = i + previousOffset;
@@ -445,6 +445,8 @@ void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData,
         vertices[j].position.set(vec3<F32>{ position.x, position.y, position.z } - subMeshData.worldOffset());
         vertices[j].normal.set( normal.x, normal.y, normal.z );
     }
+    subMeshData._useAttribute[to_base( AttribLocation::POSITION )] = true;
+    subMeshData._useAttribute[to_base( AttribLocation::NORMAL )] = true;
 
     if (source->mTextureCoords[0] != nullptr)
     {
@@ -453,6 +455,7 @@ void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData,
             const aiVector3D texCoord = source->mTextureCoords[0][j];
             vertices[j].texcoord.set(texCoord.x, texCoord.y, texCoord.z);
         }
+        subMeshData._useAttribute[to_base( AttribLocation::TEXCOORD )] = true;
     }
 
     if (source->mTangents != nullptr)
@@ -462,6 +465,7 @@ void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData,
             const aiVector3D tangent = source->mTangents[j];
             vertices[j].tangent.set( tangent.x, tangent.y, tangent.z, 1.f);
         }
+        subMeshData._useAttribute[to_base( AttribLocation::TANGENT )] = true;
     }
     else
     {
@@ -501,6 +505,8 @@ void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData,
                 }
             }
         }
+        subMeshData._useAttribute[to_base( AttribLocation::BONE_INDICE )] = true;
+        subMeshData._useAttribute[to_base( AttribLocation::BONE_WEIGHT )] = true;
     }
 
     constexpr F32 kThreshold = 1.02f;   // allow up to 2% worse ACMR to get more reordering opportunities for overdraw
@@ -592,7 +598,7 @@ void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData,
                 target_indices.resize( next_indices );
 
                 // reorder indices for overdraw, balancing overdraw and vertex cache efficiency
-                meshopt_optimizeVertexCache( target_indices.data(),
+                meshopt_optimizeVertexCache(target_indices.data(),
                                              target_indices.data(),
                                              target_indices.size(),
                                              source_vertices.size() );
@@ -704,7 +710,6 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
         }
     }
 
-    F32 specStrength = 0.f;
     { // Load specular colour
         F32 specShininess = 0.f;
         if (AI_SUCCESS == aiGetMaterialFloat(mat, AI_MATKEY_SHININESS, &specShininess)) {
@@ -715,31 +720,20 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
                 case GeometryFormat::FBX:  specShininess *= 10.f;                         break; // percentage (0-100%)
                 case GeometryFormat::OBJ:  specShininess *= 1.f;                          break; // 0...1000.f
                 case GeometryFormat::DAE:  REMAP(specShininess, 0.f, 511.f, 0.f, 1000.f); break; // 511.f
-                case GeometryFormat::X:    specShininess = 1000.f;                        break; //no supported. 0 = gouraud shading
+                case GeometryFormat::X:    DIVIDE_ASSERT(IS_ZERO(specShininess));         break; // not supported. 0 = gouraud shading. If this ever changes (somehow) we need to handle it, so assert for now
             };
             CLAMP(specShininess, 0.f, 1000.f);
         }
         // Once the value has been remaped to 0...1000, remap it what we can handle in the engine;
-#if 0
-        specShininess = CLAMPED(specShininess, 0.f, Material::MAX_SHININESS);
-#else
         specShininess = MAP(specShininess, 0.f, 1000.f, 0.f, Material::MAX_SHININESS);
-#endif
-        bool hasSpecStrength = false;
-        if (AI_SUCCESS == aiGetMaterialFloat(mat, AI_MATKEY_SHININESS_STRENGTH, &specStrength)) {
-            hasSpecStrength = true;
-        }
 
-        material.specular({ specStrength, specStrength, specStrength, specShininess });
+        F32 specStrength = 1.f;
+        aiGetMaterialFloat(mat, AI_MATKEY_SHININESS_STRENGTH, &specStrength);
 
-        aiColor4D specular;
-        if (AI_SUCCESS == aiGetMaterialColor(mat, AI_MATKEY_COLOR_SPECULAR, &specular)) {
-            if (!hasSpecStrength) {
-                specStrength = 1.f;
-            }
+        aiColor4D specular = {1.f, 1.f, 1.f, 1.f};
+        aiGetMaterialColor(mat, AI_MATKEY_COLOR_SPECULAR, &specular);
 
-            material.specular({ specular.r * specStrength, specular.g * specStrength, specular.b * specStrength, specShininess });
-        }
+        material.specular({ specular.r * specStrength, specular.g * specStrength, specular.b * specStrength, specShininess });
     }
     { // Load emissive colour
         material.emissive(FColour3(0.f, 0.f, 0.f));
@@ -949,7 +943,7 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
             if (tName.length > 0) {
                 loadTexture(TextureSlot::SPECULAR, detail::aiTextureOperationTable[op], tName, mode);
                 // Undo the spec colour and leave only the strength component in!
-                material.specular({ specStrength, specStrength, specStrength, material.specular().a });
+                material.specular({ 0.f, 0.f, 0.f, material.specular().a });
             } else {
                 Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "SPECULAR");
             }

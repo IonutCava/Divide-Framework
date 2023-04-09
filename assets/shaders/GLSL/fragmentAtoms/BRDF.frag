@@ -28,22 +28,25 @@ vec3 ApplyFog(in vec3 rgb) // original color of the pixel
 #endif //NO_FOG
 
 vec4 getPixelColour(in vec4 albedo, in NodeMaterialData materialData, in vec3 normalWV) {
-    const vec2 uv = VAR._texCoord;
     const vec3 viewVec = normalize(VAR._viewDirectionWV);
     const float NdotV = max(dot(normalWV, viewVec), 0.f);
-    const PBRMaterial material = initMaterialProperties(materialData, albedo.rgb, uv, normalWV, NdotV);
+    const PBRMaterial material = initMaterialProperties(materialData, albedo.rgb, VAR._texCoord, normalWV, NdotV);
 
     vec3 radianceOut = vec3(0.f);
 #if defined(MAIN_DISPLAY_PASS)
-    if (getDebugColour(material, materialData, uv, normalWV, radianceOut)) {
+    if (getDebugColour(material, materialData, VAR._texCoord, normalWV, radianceOut))
+    {
         return vec4(radianceOut, albedo.a);
     }
 #if !defined(PRE_PASS)
-    if (SELECTION_FLAG != SELECTION_FLAG_NONE) {
+    if (SELECTION_FLAG != SELECTION_FLAG_NONE)
+    {
         const float NdotV2 = max(dot(VAR._normalWV, viewVec), 0.f);
         const vec3 lineColour = vec3(SELECTION_FLAG == SELECTION_FLAG_HOVERED ? 1.f : 0.f, SELECTION_FLAG == SELECTION_FLAG_SELECTED ? 1.f : 0.f, 0.f);
         radianceOut = mix(lineColour, radianceOut, smoothstep(0.25f, 0.45f, NdotV2));
-    } else {
+    }
+    else
+    {
         radianceOut += ApplyIBL(material, viewVec, normalWV, NdotV, VAR._vertexW.xyz, dvd_ProbeIndex(materialData));
         radianceOut = ApplySSR(material._roughness, radianceOut);
     }

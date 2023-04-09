@@ -341,12 +341,12 @@ namespace Divide
 
                     if ( IsCubeTexture( vkTex->descriptor().texType() ) )
                     {
-                        targetView._subRange._layerRange = { targetColourLayer._cubeFace + (targetColourLayer._layer * 6u), 6u - targetColourLayer._cubeFace };
+                        targetView._subRange._layerRange = { targetColourLayer._cubeFace + (targetColourLayer._layer * 6u), descriptor._layeredRendering ? U16_MAX : 6u - targetColourLayer._cubeFace };
                     }
                     else
                     {
                         assert( targetColourLayer._cubeFace == 0u );
-                        targetView._subRange._layerRange = { targetColourLayer._layer, 1u };
+                        targetView._subRange._layerRange = { targetColourLayer._layer, descriptor._layeredRendering ? U16_MAX : 1u };
                     }
                 }
                 else if ( descriptor._mipWriteLevel > 0u )
@@ -386,11 +386,11 @@ namespace Divide
                 const DrawLayerEntry depthEntry = srcDepthLayer._layer == INVALID_INDEX ? targetDepthLayer : srcDepthLayer;
                 if ( IsCubeTexture( vkTex->descriptor().texType() ) )
                 {
-                    targetView._subRange._layerRange = { depthEntry._cubeFace + (depthEntry._layer * 6u), 6u - depthEntry._cubeFace };
+                    targetView._subRange._layerRange = { depthEntry._cubeFace + (depthEntry._layer * 6u), descriptor._layeredRendering ? U16_MAX : 6u - depthEntry._cubeFace };
                 }
                 else
                 {
-                    targetView._subRange._layerRange = { depthEntry._layer, 1u };
+                    targetView._subRange._layerRange = { depthEntry._layer, descriptor._layeredRendering ? U16_MAX : 1u };
                 }
             }
 
@@ -474,12 +474,12 @@ namespace Divide
                     targetColourLayer = descriptor._writeLayers[i]._layer == INVALID_INDEX ? targetColourLayer : descriptor._writeLayers[i];
                     if ( IsCubeTexture( vkTex->descriptor().texType() ) )
                     {
-                        imageViewDescriptor._subRange._layerRange = { targetColourLayer._cubeFace + (targetColourLayer._layer * 6u), 6u - targetColourLayer._cubeFace };
+                        imageViewDescriptor._subRange._layerRange = { targetColourLayer._cubeFace + (targetColourLayer._layer * 6u), descriptor._layeredRendering ? U16_MAX : 6u - targetColourLayer._cubeFace };
                     }
                     else
                     {
                         assert( targetColourLayer._cubeFace == 0u );
-                        imageViewDescriptor._subRange._layerRange = { targetColourLayer._layer, 1u };
+                        imageViewDescriptor._subRange._layerRange = { targetColourLayer._layer, descriptor._layeredRendering ? U16_MAX : 1u };
                     }
                 }
                 else if ( descriptor._mipWriteLevel > 0u )
@@ -550,12 +550,12 @@ namespace Divide
                 targetDepthLayer = descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer == INVALID_INDEX ? targetDepthLayer : descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX];
                 if ( IsCubeTexture( vkTex->descriptor().texType() ) )
                 {
-                    imageViewDescriptor._subRange._layerRange = { targetDepthLayer._cubeFace + (targetDepthLayer._layer * 6u), 6u - targetDepthLayer._cubeFace };
+                    imageViewDescriptor._subRange._layerRange = { targetDepthLayer._cubeFace + (targetDepthLayer._layer * 6u), descriptor._layeredRendering ? U16_MAX : 6u - targetDepthLayer._cubeFace };
                 }
                 else
                 {
                     assert( targetColourLayer._cubeFace == 0u );
-                    imageViewDescriptor._subRange._layerRange = { targetDepthLayer._layer, 1u };
+                    imageViewDescriptor._subRange._layerRange = { targetDepthLayer._layer, descriptor._layeredRendering ? U16_MAX : 1u };
                 }
             }
             else if ( descriptor._mipWriteLevel != U16_MAX )

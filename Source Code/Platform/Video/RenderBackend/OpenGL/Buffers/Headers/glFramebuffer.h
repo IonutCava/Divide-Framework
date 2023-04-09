@@ -68,22 +68,13 @@ class glFramebuffer final : public RenderTarget {
     {
         DrawLayerEntry _layer{};
         U16 _levelOffset{0u};
+        bool _layeredRendering{false};
         AttachmentState _attState{ AttachmentState::COUNT };
-    };
-
-
-    struct RTDrawLayerParams
-    {
-        DrawLayerEntry _layer{};
-        U16 _mipLevel{ 0u };
-        U16 _index{ INVALID_INDEX };
     };
 
    public:
     explicit glFramebuffer(GFXDevice& context, const RenderTargetDescriptor& descriptor);
     ~glFramebuffer();
-
-    void drawToLayer(const RTDrawLayerParams& params);
 
     void setMipLevel(U16 writeLevel);
 
@@ -92,8 +83,6 @@ class glFramebuffer final : public RenderTarget {
     /// Bake in all settings and attachments to Prepare it for rendering
     bool create() override;
 
-    BindingState getAttachmentState(GLenum binding) const;
-    bool toggleAttachment(const RTAttachment_uptr& attachment, AttachmentState state, U16 levelOffset, DrawLayerEntry layerOffset);
 
 protected:
     void queueCheckStatus() noexcept;
@@ -103,7 +92,8 @@ protected:
 
     bool initAttachment(RTAttachment* att, RTAttachmentType type, RTColourAttachmentSlot slot, bool isExternal) override;
 
-    void setAttachmentState(GLenum binding, BindingState state);
+    void setAttachmentState( U8 attachmentIdx, BindingState state);
+    bool toggleAttachment( U8 attachmentIdx, AttachmentState state, U16 levelOffset, DrawLayerEntry layerOffset, bool layeredRendering);
 
     void clear(const RTClearDescriptor& descriptor);
     void begin(const RTDrawDescriptor& drawPolicy, const RTClearDescriptor& clearPolicy);
@@ -113,10 +103,9 @@ protected:
     PROPERTY_R_IW(GLuint, framebufferHandle, GLUtil::k_invalidObjectID);
 
    protected:
-    bool setMipLevelInternal(const RTAttachment_uptr& attachment, U16 writeLevel);
+    bool setMipLevelInternal( U8 attachmentIdx, U16 writeLevel);
 
-    /// Reset layer and mip back to 0 and bind the entire target texture. Returns true if state was modified.
-    bool setDefaultAttachmentBinding(const RTAttachment_uptr& attachment);
+    BindingState getAttachmentState( U8 attachmentIdx ) const;
 
     static void QueueMipMapsRecomputation(const RTAttachment_uptr& attachment);
 

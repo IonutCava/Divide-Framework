@@ -86,6 +86,10 @@ namespace Divide
     class Camera final : public Resource
     {
         public:
+        static constexpr F32 DEFAULT_CAMERA_MOVE_SPEED = 20.f;
+        static constexpr F32 DEFAULT_CAMERA_TURN_SPEED = 20.f;
+        static constexpr F32 MAX_CAMERA_MOVE_SPEED = 20.f;
+        static constexpr F32 MAX_CAMERA_TURN_SPEED = 20.f;
         static constexpr F32 s_minNearZ = 0.1f;
 
         enum class Mode : U8

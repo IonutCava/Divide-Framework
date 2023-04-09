@@ -84,7 +84,11 @@ void main(){
     const NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
     writeGBuffer(data);
 #else //PRE_PASS
-    writeScreenColour(colour);
+    float normalVariation = 0.f;
+    const NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
+    const vec3 normalWV = getNormalWV( data, vec3( VAR._texCoord, 0 ), normalVariation );
+
+    writeScreenColour(colour, normalWV );
 #ensif //PRE_PASS
 
 }

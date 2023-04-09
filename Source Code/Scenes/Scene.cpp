@@ -69,8 +69,6 @@ namespace Divide
 
     namespace
     {
-        constexpr F32 DEFAULT_CAMERA_MOVE_SPEED = 4.f;
-        constexpr F32 DEFAULT_CAMERA_TURN_SPEED = 5.f;
         constexpr U16 BYTE_BUFFER_VERSION = 1u;
         constexpr const char* const g_defaultPlayerName = "Player_%d";
     }
@@ -877,11 +875,11 @@ namespace Divide
             if ( cam->mode() != Camera::Mode::STATIC &&
                 cam->mode() != Camera::Mode::SCRIPTED )
             {
-                if ( cam->speedFactor().move < 50.f )
+                if ( cam->speedFactor().move < Camera::MAX_CAMERA_MOVE_SPEED )
                 {
                     cam->speedFactor().move += 1.f;
                 }
-                if ( cam->speedFactor().turn < 50.f )
+                if ( cam->speedFactor().turn < Camera::MAX_CAMERA_TURN_SPEED )
                 {
                     cam->speedFactor().turn += 1.f;
                 }
@@ -1245,8 +1243,8 @@ namespace Divide
         const F32 hFoV = _context.config().runtime.horizontalFOV;
         const F32 vFoV = Angle::to_VerticalFoV( hFoV, to_D64( baseCamera->snapshot()._aspectRatio ) );
         baseCamera->setProjection( vFoV, { Camera::s_minNearZ, _context.config().runtime.cameraViewDistance } );
-        baseCamera->speedFactor().move = DEFAULT_CAMERA_MOVE_SPEED;
-        baseCamera->speedFactor().turn = DEFAULT_CAMERA_TURN_SPEED;
+        baseCamera->speedFactor().move = Camera::DEFAULT_CAMERA_MOVE_SPEED;
+        baseCamera->speedFactor().turn = Camera::DEFAULT_CAMERA_TURN_SPEED;
         baseCamera->updateLookAt();
 
         SceneGraphNode* rootNode = _sceneGraph->getRoot();

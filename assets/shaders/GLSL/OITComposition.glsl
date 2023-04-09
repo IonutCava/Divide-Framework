@@ -15,7 +15,10 @@ DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform SamplerType accumTexture;
 /* prod(1 - a) */
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform SamplerType revealageTexture;
 
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 2) uniform SamplerType nornmalsTexture;
+
 layout(location = TARGET_ALBEDO) out vec4 _colourOut;
+layout(location = TARGET_NORMALS)  out vec3 _normalsOut;
 
 void main() {
     const ivec2 C = ivec2(gl_FragCoord.xy);
@@ -27,10 +30,14 @@ void main() {
     }
 
     vec4 accum = texelFetch(accumTexture, C, SampleID);
-    vec3 averageColor  = accum.rgb / clamp(accum.a, 1e-4f, 5e4f);
+    vec3 averageColor  = accum.rgb / max(accum.a, M_EPSILON);
     // dst' =  (accum.rgb / accum.a) * (1 - revealage) + dst
     // [dst has already been modulated by the transmission colors and coverage and the blend mode inverts revealage for us] 
     _colourOut = vec4(averageColor, 1.0f - revealage);
+    if ( revealage < 0.5f)
+    {
+        _normalsOut.rg = texelFetch( nornmalsTexture, C, SampleID ).rg;
+    }
 }
 
 

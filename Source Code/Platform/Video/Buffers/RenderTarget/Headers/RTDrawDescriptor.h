@@ -39,14 +39,14 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide
 {
 
-constexpr U16 INVALID_INDEX = U16_MAX;
+constexpr U8 INVALID_INDEX = U8_MAX;
 constexpr U16 MAX_BLIT_ENTRIES = 8u;
 
 struct BlitEntry
 {
     U16 _layerOffset{0u};
     U16 _mipOffset{0u};
-    U16 _index{ INVALID_INDEX };
+    U8 _index{ INVALID_INDEX };
 };
 
 struct DrawLayerEntry
@@ -80,6 +80,8 @@ struct RTDrawDescriptor
 {
     RTDrawMask _drawMask = create_array<to_base( RTColourAttachmentSlot::COUNT )>( false );
     RTDrawLayerDescriptor _writeLayers;
+    /// Set to true to bind all image layers to the render target (e.g. for Geometry Shader layered rendering support)
+    bool _layeredRendering{false};
     U16 _mipWriteLevel{ 0u };
 };
 

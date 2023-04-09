@@ -127,7 +127,7 @@ class Material final : public CachedResource {
     friend class Attorney::MaterialRenderBin;
 
   public:
-    static constexpr F32 MAX_SHININESS = 128.f;
+    static constexpr F32 MAX_SHININESS = 255.f;
 
     using SpecularGlossiness = vec2<F32>;
     using ComputeShaderCBK = DELEGATE_STD<ShaderProgramDescriptor, Material*, RenderStagePass>;
