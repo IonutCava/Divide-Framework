@@ -246,21 +246,37 @@ namespace Divide
         if ( arg.wheelEvent() )
         {
             const I32 wheel = arg.WheelV();
-            state.zoom( wheel > 0 ? MoveDirection::POSITIVE
-                        : wheel < 0 ? MoveDirection::NEGATIVE
-                        : MoveDirection::NONE );
+            if ( wheel == 0 )
+            {
+                state._zoom.reset();
+            }
+            else
+            {
+                state._zoom.push( wheel > 0 ? MoveDirection::POSITIVE : MoveDirection::NEGATIVE );
+            } 
         }
         else if ( state.cameraLockedToMouse() )
         {
             const I32 xRel = arg.relativePos().x;
             const I32 yRel = arg.relativePos().y;
-            state.angleLR( xRel > 0 ? MoveDirection::POSITIVE
-                           : xRel < 0 ? MoveDirection::NEGATIVE
-                           : MoveDirection::NONE );
 
-            state.angleUD( yRel > 0 ? MoveDirection::POSITIVE
-                           : yRel < 0 ? MoveDirection::NEGATIVE
-                           : MoveDirection::NONE );
+            if ( xRel == 0 )
+            {
+                state._angleLR.reset();
+            }
+            else
+            {
+                state._angleLR.push( xRel > 0 ? MoveDirection::POSITIVE : MoveDirection::NEGATIVE );
+            }
+
+            if ( yRel == 0 )
+            {
+                state._angleUD.reset();
+            }
+            else
+            {
+                state._angleUD.push( yRel > 0 ? MoveDirection::POSITIVE : MoveDirection::NEGATIVE );
+            }
         }
 
         return Attorney::SceneInput::mouseMoved( _parentScene, arg );

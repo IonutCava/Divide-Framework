@@ -656,18 +656,22 @@ namespace Divide
         bool updated = false;
         if ( mode() == Mode::FREE_FLY )
         {
-            updated = moveRelative( { to_base( playerState.moveFB() ),
-                                     to_base( playerState.moveLR() ),
-                                     to_base( playerState.moveUD() ) } ) || updated;
+            const I8 moveFB = to_base(playerState._moveFB.top());
+            const I8 moveLR = to_base(playerState._moveLR.top());
+            const I8 moveUD = to_base(playerState._moveUD.top());
+
+            updated = moveRelative( { moveFB, moveLR, moveUD } ) || updated;
         }
 
-        updated = rotateRelative( { to_base( playerState.angleUD() ), //pitch
-                                  to_base( playerState.angleLR() ), //yaw
-                                  to_base( playerState.roll() ) } ) || updated; //roll
+        const I8 angleUD = to_base( playerState._angleUD.top() );
+        const I8 angleLR = to_base( playerState._angleLR.top() );
+        const I8 roll    = to_base( playerState._roll.top() );
+
+        updated = rotateRelative( { angleUD, angleLR, roll } ) || updated; //roll
 
         if ( mode() == Mode::ORBIT || mode() == Mode::THIRD_PERSON )
         {
-            updated = zoom( to_base( playerState.zoom() ) ) || updated;
+            updated = zoom( to_base( playerState._zoom.top() ) ) || updated;
         }
 
         return updated;
@@ -694,8 +698,7 @@ namespace Divide
 
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
-        const F32 turnSpeed = speedFactor().turn * s_lastFrameTimeSec;
-        vec3<Angle::DEGREES<F32>> rotation( relRotation.pitch * turnSpeed, relRotation.yaw * turnSpeed, relRotation.roll * turnSpeed );
+        vec3<Angle::DEGREES<F32>> rotation( relRotation * speedFactor().turn * s_lastFrameTimeSec );
 
         if ( mode() == Mode::THIRD_PERSON || mode() == Mode::ORBIT )
         {

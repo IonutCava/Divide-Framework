@@ -133,7 +133,8 @@ class SceneRenderState : public SceneComponent {
 
 class Camera;
 
-enum class MoveDirection : I8 {
+enum class MoveDirection : I8
+{
     NONE = 0,
     NEGATIVE = -1,
     POSITIVE = 1
@@ -141,20 +142,42 @@ enum class MoveDirection : I8 {
 
 constexpr F32 DEFAULT_PLAYER_HEIGHT = 1.82f;
 
+struct MovementStack
+{
+    std::array<MoveDirection, 2> _directions = { MoveDirection::NONE, MoveDirection::NONE };
+
+    [[nodiscard]] MoveDirection top() const noexcept
+    {
+        return _directions[0];
+    }
+
+    void push( const MoveDirection direction ) noexcept
+    {
+        _directions[1] = _directions[0];
+        _directions[0] = direction;
+    }
+
+    void reset() noexcept
+    {
+        _directions.fill(MoveDirection::NONE);
+    }
+};
+
 struct SceneStatePerPlayer {
-    void resetMoveDirections(bool keepMovement) noexcept;
+    void resetMoveDirections() noexcept;
     void resetAll() noexcept;
 
     PROPERTY_RW(bool, cameraUnderwater, false);
     PROPERTY_RW(bool, cameraUpdated, false);
     PROPERTY_RW(bool, cameraLockedToMouse, false);
-    PROPERTY_RW(MoveDirection, moveFB, MoveDirection::NONE);   ///< forward-back move change detected
-    PROPERTY_RW(MoveDirection, moveLR, MoveDirection::NONE);   ///< left-right move change detected
-    PROPERTY_RW(MoveDirection, moveUD, MoveDirection::NONE);   ///< up-down move change detected
-    PROPERTY_RW(MoveDirection, angleUD, MoveDirection::NONE);  ///< up-down angle change detected
-    PROPERTY_RW(MoveDirection, angleLR, MoveDirection::NONE);  ///< left-right angle change detected
-    PROPERTY_RW(MoveDirection, roll, MoveDirection::NONE);     ///< roll left or right change detected
-    PROPERTY_RW(MoveDirection, zoom, MoveDirection::NONE);     ///< zoom in or out detected
+
+    MovementStack _moveFB;
+    MovementStack _moveLR;
+    MovementStack _moveUD;
+    MovementStack _angleUD;
+    MovementStack _angleLR;
+    MovementStack _roll;
+    MovementStack _zoom;
 
     POINTER_RW(Camera, overrideCamera, nullptr);
 

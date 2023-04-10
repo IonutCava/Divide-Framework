@@ -8,40 +8,42 @@ namespace Divide
     [[nodiscard]] bool operator==( const WaterBodyData& lhs, const WaterBodyData& rhs ) noexcept
     {
         return lhs._positionW == rhs._positionW &&
-            lhs._extents == rhs._extents;
+               lhs._extents == rhs._extents;
     }
 
     [[nodiscard]] bool operator!=( const WaterBodyData& lhs, const WaterBodyData& rhs ) noexcept
     {
         return lhs._positionW != rhs._positionW ||
-            lhs._extents != rhs._extents;
+               lhs._extents != rhs._extents;
     }
 
     [[nodiscard]] bool operator==( const FogDetails& lhs, const FogDetails& rhs ) noexcept
     {
         return lhs._colourAndDensity == rhs._colourAndDensity &&
-            lhs._colourSunScatter == rhs._colourSunScatter;
+               lhs._colourSunScatter == rhs._colourSunScatter;
     }
 
     [[nodiscard]] bool operator!=( const FogDetails& lhs, const FogDetails& rhs ) noexcept
     {
         return lhs._colourAndDensity != rhs._colourAndDensity ||
-            lhs._colourSunScatter != rhs._colourSunScatter;
+               lhs._colourSunScatter != rhs._colourSunScatter;
     }
 
-    void SceneStatePerPlayer::resetMoveDirections( const bool keepMovement ) noexcept
+    void SceneStatePerPlayer::resetMoveDirections( ) noexcept
     {
-        if ( !keepMovement )
-        {
-            _moveFB = _moveLR = _moveUD = MoveDirection::NONE;
-        }
-
-        _angleUD = _angleLR = _roll = _zoom = MoveDirection::NONE;
+        _moveFB.reset();
+        _moveLR.reset();
+        _moveUD.reset();
+        _angleUD.reset();
+        _angleLR.reset();
+        _roll.reset();
+        _zoom.reset();
     }
 
     void SceneStatePerPlayer::resetAll() noexcept
     {
-        resetMoveDirections(false);
+        resetMoveDirections();
+
         _cameraUnderwater = false;
         _cameraUpdated = false;
         _overrideCamera = nullptr;

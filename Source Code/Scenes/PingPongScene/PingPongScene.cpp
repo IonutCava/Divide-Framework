@@ -277,13 +277,13 @@ namespace Divide
         // Move LR = Left/Right
         static F32 paddleMovementDivisor = 10;
         // Camera controls
-        if ( state()->playerState( idx ).angleLR() != MoveDirection::NONE )
+        if ( state()->playerState( idx )._angleLR.top() != MoveDirection::NONE)
         {
-            _paddleCam->rotateYaw( Angle::DEGREES<F32>( state()->playerState( idx ).angleLR() ) );
+            _paddleCam->rotateYaw( Angle::DEGREES<F32>( state()->playerState( idx )._angleLR.top() ) );
         }
-        if ( state()->playerState( idx ).angleUD() != MoveDirection::NONE )
+        if ( state()->playerState( idx )._angleUD.top() != MoveDirection::NONE )
         {
-            _paddleCam->rotatePitch( Angle::DEGREES<F32>( state()->playerState( idx ).angleUD() ) );
+            _paddleCam->rotatePitch( Angle::DEGREES<F32>( state()->playerState( idx )._angleUD.top() ) );
         }
 
         SceneGraphNode* paddle( _sceneGraph->findNode( "paddle" ) );
@@ -291,27 +291,27 @@ namespace Divide
         const vec3<F32> pos = paddle->get<TransformComponent>()->getWorldPosition();
 
         // Paddle movement is limited to the [-3,3] range except for Y-descent
-        if ( state()->playerState( idx ).moveFB() != MoveDirection::NONE )
+        if ( state()->playerState( idx )._moveFB.top() != MoveDirection::NONE )
         {
-            if ( state()->playerState( idx ).moveFB() == MoveDirection::POSITIVE && pos.y >= 3 ||
-                state()->playerState( idx ).moveFB() == MoveDirection::NEGATIVE && pos.y <= 0.5f )
+            if ( state()->playerState( idx )._moveFB.top() == MoveDirection::POSITIVE && pos.y >= 3 ||
+                 state()->playerState( idx )._moveFB.top() == MoveDirection::NEGATIVE && pos.y <= 0.5f )
             {
                 Scene::processInput( idx, gameDeltaTimeUS, appDeltaTimeUS );
                 return;
             }
-            paddle->get<TransformComponent>()->translateY( to_I32( state()->playerState( idx ).moveFB() ) / paddleMovementDivisor );
+            paddle->get<TransformComponent>()->translateY( to_I32( state()->playerState( idx )._moveFB.top() ) / paddleMovementDivisor );
         }
 
-        if ( state()->playerState( idx ).moveLR() != MoveDirection::NONE )
+        if ( state()->playerState( idx )._moveLR.top() != MoveDirection::NONE )
         {
             // Left/right movement is flipped for proper control
-            if ( state()->playerState( idx ).moveLR() == MoveDirection::NEGATIVE && pos.x >= 3 ||
-                state()->playerState( idx ).moveLR() == MoveDirection::POSITIVE && pos.x <= -3 )
+            if ( state()->playerState( idx )._moveLR.top() == MoveDirection::NEGATIVE && pos.x >= 3 ||
+                 state()->playerState( idx )._moveLR.top() == MoveDirection::POSITIVE && pos.x <= -3 )
             {
                 Scene::processInput( idx, gameDeltaTimeUS, appDeltaTimeUS );
                 return;
             }
-            paddle->get<TransformComponent>()->translateX( to_I32( state()->playerState( idx ).moveLR() ) / paddleMovementDivisor );
+            paddle->get<TransformComponent>()->translateX( to_I32( state()->playerState( idx )._moveLR.top() ) / paddleMovementDivisor );
         }
 
         Scene::processInput( idx, gameDeltaTimeUS, appDeltaTimeUS );
