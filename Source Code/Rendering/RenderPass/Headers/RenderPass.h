@@ -33,8 +33,6 @@
 #ifndef _RENDERING_RENDER_PASS_RENDERPASS_H_
 #define _RENDERING_RENDER_PASS_RENDERPASS_H_
 
-#include "Platform/Video/Headers/RenderAPIEnums.h"
-
 namespace Divide {
 
 namespace Time {

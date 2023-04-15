@@ -57,7 +57,7 @@ BoundsComponent::BoundsComponent(SceneGraphNode* sgn, PlatformContext& context)
     vbbField._dataGetter = [this](void* dataOut) { *static_cast<bool*>(dataOut) = _showAABB; };
     vbbField._dataSetter = [this](const void* data) { showAABB(*static_cast<const bool*>(data)); };
     vbbField._type = EditorComponentFieldType::SWITCH_TYPE;
-    vbbField._basicType = GFX::PushConstantType::BOOL;
+    vbbField._basicType = PushConstantType::BOOL;
     vbbField._readOnly = false;
 
     _editorComponent.registerField(MOV(vbbField));
@@ -67,7 +67,7 @@ BoundsComponent::BoundsComponent(SceneGraphNode* sgn, PlatformContext& context)
     vobbField._dataGetter = [this](void* dataOut) { *static_cast<bool*>(dataOut) = _showOBB; };
     vobbField._dataSetter = [this](const void* data) { showOBB(*static_cast<const bool*>(data)); };
     vobbField._type = EditorComponentFieldType::SWITCH_TYPE;
-    vobbField._basicType = GFX::PushConstantType::BOOL;
+    vobbField._basicType = PushConstantType::BOOL;
     vobbField._readOnly = false;
 
     _editorComponent.registerField(MOV(vobbField));
@@ -77,7 +77,7 @@ BoundsComponent::BoundsComponent(SceneGraphNode* sgn, PlatformContext& context)
     vbsField._dataGetter = [this](void* dataOut) { *static_cast<bool*>(dataOut) = _showBS; };
     vbsField._dataSetter = [this](const void* data) { showBS(*static_cast<const bool*>(data)); };
     vbsField._type = EditorComponentFieldType::SWITCH_TYPE;
-    vbsField._basicType = GFX::PushConstantType::BOOL;
+    vbsField._basicType = PushConstantType::BOOL;
     vbsField._readOnly = false;
     _editorComponent.registerField(MOV(vbsField));
 

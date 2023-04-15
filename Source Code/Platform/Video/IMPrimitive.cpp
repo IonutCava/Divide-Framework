@@ -646,8 +646,8 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
     }
     DIVIDE_ASSERT(_basePipelineDescriptor._shaderProgramHandle != SHADER_INVALID_HANDLE, "IMPrimitive error: Draw call received without a valid shader defined!");
 
-    _additionalConstats.set(_ID("dvd_WorldMatrix"), GFX::PushConstantType::MAT4, worldMatrix);
-    _additionalConstats.set(_ID("useTexture"), GFX::PushConstantType::BOOL, useTexture);
+    _additionalConstats.set(_ID("dvd_WorldMatrix"), PushConstantType::MAT4, worldMatrix);
+    _additionalConstats.set(_ID("useTexture"), PushConstantType::BOOL, useTexture);
 
     GenericDrawCommand drawCmd{};
     drawCmd._drawCount = 1u;

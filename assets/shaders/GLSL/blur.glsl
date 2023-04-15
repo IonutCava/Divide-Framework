@@ -259,4 +259,5 @@ void main(void) {
     }
 
     _outColour /= float(nSamples);
+    _outColour.a = 1.f;
 }

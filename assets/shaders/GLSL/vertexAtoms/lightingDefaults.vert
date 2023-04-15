@@ -2,7 +2,8 @@
 #define _LIGHTING_DEFAULTS_VERT_
 
 #if defined(COMPUTE_TBN)
-mat3 computeTBN(in mat3 normalMatrixW) {
+mat3 computeTBN(in mat3 normalMatrixW)
+{
     const vec3 N = normalize(normalMatrixW * dvd_Normal);
     vec3 T = normalize(normalMatrixW * dvd_Tangent);
     // re-orthogonalize T with respect to N (Gram-Schmidt)
@@ -12,13 +13,8 @@ mat3 computeTBN(in mat3 normalMatrixW) {
 }
 #endif //COMPUTE_TBN
 
-void computeViewDirectionWV(in NodeTransformData data) {
-    const vec3 cameraDirection = normalize(dvd_CameraPosition - VAR._vertexW.xyz);
-    VAR._viewDirectionWV = normalize(mat3(dvd_ViewMatrix) * cameraDirection);
-}
-
-void computeLightVectors(in NodeTransformData data) {
-    computeViewDirectionWV(data);
+void computeLightVectors(in NodeTransformData data)
+{
 
 #if defined(COMPUTE_TBN)
     VAR._tbnWV = computeTBN(dvd_NormalMatrixW(data));

@@ -30,38 +30,33 @@ namespace Divide
         }
     }
 
-    GFX::MemoryBarrierCommand SceneShaderData::updateSceneDescriptorSet( GFX::CommandBuffer& bufferInOut )
+    void SceneShaderData::updateSceneDescriptorSet( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        GFX::MemoryBarrierCommand memBarrier{};
-        if ( _sceneDataDirty || _probeDataDirty )
+        if ( _probeDataDirty )
         {
-            auto bindCmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
-            bindCmd->_usage = DescriptorSetUsage::PER_FRAME;
-            DescriptorSet& set = bindCmd->_set;
-
-            if ( _probeDataDirty )
-            {
-                _probeShaderData->incQueue();
-                memBarrier._bufferLocks.push_back( _probeShaderData->writeData( _probeData.data() ) );
-
-                DescriptorSetBinding& binding = AddBinding( set, 7u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, _probeShaderData.get(), {0u, GLOBAL_PROBE_COUNT});
-
-                _probeDataDirty = false;
-            }
-
-            if ( _sceneDataDirty )
-            {
-                _sceneShaderData->incQueue();
-                memBarrier._bufferLocks.push_back( _sceneShaderData->writeData( &_sceneBufferData ) );
-
-                DescriptorSetBinding& binding = AddBinding( set, 8u, ShaderStageVisibility::ALL_DRAW );
-                Set( binding._data, _sceneShaderData.get(), {0u, 1u});
-
-                _sceneDataDirty = false;
-            }
+            _probeShaderData->incQueue();
+            memCmdInOut._bufferLocks.push_back( _probeShaderData->writeData( _probeData.data() ) );
+            _probeDataDirty = false;
         }
-        return memBarrier;
+
+        if ( _sceneDataDirty )
+        {
+            _sceneShaderData->incQueue();
+            memCmdInOut._bufferLocks.push_back( _sceneShaderData->writeData( &_sceneBufferData ) );
+            _sceneDataDirty = false;
+        }
+
+        auto bindCmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
+        bindCmd->_usage = DescriptorSetUsage::PER_FRAME;
+        DescriptorSet& set = bindCmd->_set;
+        {
+            DescriptorSetBinding& binding = AddBinding( set, 7u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, _probeShaderData.get(), {0u, GLOBAL_PROBE_COUNT});
+        }
+        {
+            DescriptorSetBinding& binding = AddBinding( set, 8u, ShaderStageVisibility::ALL_DRAW );
+            Set( binding._data, _sceneShaderData.get(), {0u, 1u});
+        }
     }
 
 } //namespace Divide

@@ -81,7 +81,7 @@ namespace Divide
             }
 
             att->binding( binding );
-            setAttachmentState( to_base(slot), {} );
+            _attachmentState[to_base(slot)] = {};
             return true;
         }
 
@@ -117,7 +117,7 @@ namespace Divide
         };
 
         // Compare with old state
-        if ( bState != getAttachmentState( attachmentIdx ) )
+        if ( bState != _attachmentState[attachmentIdx] )
         {
             const GLenum binding = static_cast<GLenum>(attachment->binding());
 
@@ -132,23 +132,19 @@ namespace Divide
                 {
                     glNamedFramebufferTexture( _framebufferHandle, binding, handle, bState._levelOffset);
                 }
+                else if ( IsCubeTexture( tex->descriptor().texType() ) )
+                {
+                    glNamedFramebufferTextureLayer( _framebufferHandle, binding, handle, bState._levelOffset, bState._layer._cubeFace + (bState._layer._layer * 6u) );
+                }
                 else
                 {
-                    if ( IsCubeTexture( tex->descriptor().texType() ) )
-                    {
-                        glNamedFramebufferTextureLayer( _framebufferHandle, binding, handle, bState._levelOffset, bState._layer._cubeFace + (bState._layer._layer * 6u) );
-                    }
-                    else
-                    {
-                        assert(bState._layer._cubeFace == 0u);
-                        glNamedFramebufferTextureLayer( _framebufferHandle, binding, handle, bState._levelOffset, bState._layer._layer );
-                    }
+                    assert(bState._layer._cubeFace == 0u);
+                    glNamedFramebufferTextureLayer( _framebufferHandle, binding, handle, bState._levelOffset, bState._layer._layer );
                 }
             }
 
             queueCheckStatus();
-            setAttachmentState( attachmentIdx, bState );
-
+            _attachmentState[attachmentIdx] = bState;
             return true;
         }
 
@@ -405,10 +401,6 @@ namespace Divide
 
         clear( clearPolicy );
 
-        /// Set the depth range
-        GL_API::GetStateTracker().setDepthRange( _descriptor._depthRange.min, _descriptor._depthRange.max );
-        _context.setDepthRange( _descriptor._depthRange );
-
         // Memorize the current draw policy to speed up later calls
         _previousPolicy = drawPolicy;
     }
@@ -503,7 +495,17 @@ namespace Divide
         if ( _attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX] && descriptor[RT_DEPTH_ATTACHMENT_IDX]._enabled )
         {
             PROFILE_SCOPE( "Clear Depth", Profiler::Category::Graphics );
-            glClearNamedFramebufferfv( _framebufferHandle, GL_DEPTH, 0, &descriptor[RT_DEPTH_ATTACHMENT_IDX]._colour.r);
+
+            GL_API::GetStateTracker().setDepthWrite(true);
+            const FColour4& clearColour = descriptor[RT_DEPTH_ATTACHMENT_IDX]._colour;
+            if ( _attachments[RT_DEPTH_ATTACHMENT_IDX]->descriptor()._type == RTAttachmentType::DEPTH_STENCIL )
+            {
+                glClearNamedFramebufferfi( _framebufferHandle, GL_DEPTH_STENCIL, 0, clearColour.r, to_I32( clearColour.g) );
+            }
+            else
+            {
+                glClearNamedFramebufferfv( _framebufferHandle, GL_DEPTH, 0, &clearColour.r );
+            }
             _context.registerDrawCall();
         }
     }
@@ -514,7 +516,7 @@ namespace Divide
 
         if ( _attachmentsUsed[attachmentIdx] )
         {
-            const BindingState& state = getAttachmentState( attachmentIdx );
+            const BindingState& state = _attachmentState[attachmentIdx];
             return toggleAttachment( attachmentIdx, state._attState, writeLevel, state._layer, state._layeredRendering );
         }
 
@@ -543,7 +545,7 @@ namespace Divide
         {
             for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ) + 1; ++i )
             {
-                const BindingState& state = getAttachmentState( i );
+                const BindingState& state = _attachmentState[i];
 
                 if ( state._levelOffset != writeLevel )
                 {
@@ -551,16 +553,6 @@ namespace Divide
                 }
             }
         }
-    }
-
-    void glFramebuffer::setAttachmentState( const U8 attachmentIdx, const BindingState state )
-    {
-        _attachmentState[attachmentIdx] = state;
-    }
-
-    glFramebuffer::BindingState glFramebuffer::getAttachmentState( const U8 attachmentIdx ) const
-    {
-        return _attachmentState[attachmentIdx];
     }
 
     void glFramebuffer::queueCheckStatus() noexcept
@@ -574,12 +566,12 @@ namespace Divide
         {
             return true;
         }
-
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
         _statusCheckQueued = false;
+
         if constexpr ( Config::ENABLE_GPU_VALIDATION )
         {
+            PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
             // check FB status
             const GLenum status = glCheckNamedFramebufferStatus( _framebufferHandle, GL_FRAMEBUFFER );
             if ( status == GL_FRAMEBUFFER_COMPLETE )

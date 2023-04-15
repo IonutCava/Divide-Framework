@@ -194,7 +194,7 @@ void RenderPassManager::render(const RenderParams& params)
        {
             PROFILE_SCOPE("RenderPassManager::update sky light", Profiler::Category::Scene );
             _skyLightRenderBuffer->clear(false);
-            memCmd = gfx.updateSceneDescriptorSet(*_skyLightRenderBuffer);
+            gfx.updateSceneDescriptorSet(*_skyLightRenderBuffer, memCmd );
             SceneEnvironmentProbePool::UpdateSkyLight(gfx, *_skyLightRenderBuffer, memCmd );
        }
 
@@ -240,6 +240,7 @@ void RenderPassManager::render(const RenderParams& params)
         Time::ScopedTimer timeAll(*_renderPassTimer);
         startRenderTasks(params, pool, cam->snapshot());
     }
+    
     GFX::MemoryBarrierCommand flushMemCmd{};
     {
         PROFILE_SCOPE("RenderPassManager::FlushCommandBuffers", Profiler::Category::Scene );

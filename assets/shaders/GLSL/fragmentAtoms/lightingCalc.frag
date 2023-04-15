@@ -120,4 +120,10 @@ vec3 getLightContribution(in PBRMaterial material, in vec3 N, in vec3 V, in bool
     return radianceIn + material._emissive;
 }
 
+vec3 computeViewDirectionWV()
+{
+    const vec3 cameraDirection = normalize( dvd_CameraPosition - VAR._vertexW.xyz );
+    return normalize( mat3( dvd_ViewMatrix ) * cameraDirection );
+}
+
 #endif //_LIGHTING_CALC_FRAG_

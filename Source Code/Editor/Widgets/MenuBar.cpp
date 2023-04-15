@@ -988,7 +988,7 @@ namespace Divide
                 {
                     Light* crtLight = lights[j];
                     bool selected = pool.debugLight() == crtLight;
-                    if ( ImGui::MenuItem( crtLight->getSGN()->name().c_str(), "", &selected ) )
+                    if ( ImGui::MenuItem( crtLight->sgn()->name().c_str(), "", &selected ) )
                     {
                         pool.debugLight( crtLight );
                     }
@@ -1049,7 +1049,7 @@ namespace Divide
                             if ( crtLight->castsShadows() )
                             {
                                 bool selected = pool.debugLight() == crtLight;
-                                if ( ImGui::MenuItem( crtLight->getSGN()->name().c_str(), "", &selected ) )
+                                if ( ImGui::MenuItem( crtLight->sgn()->name().c_str(), "", &selected ) )
                                 {
                                     pool.debugLight( crtLight );
                                 }

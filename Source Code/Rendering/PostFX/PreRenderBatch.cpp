@@ -54,6 +54,15 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
 {
     const auto& configParams = _context.context().config().rendering.postFX.toneMap;
 
+    SamplerDescriptor lumaSampler = {};
+    lumaSampler.wrapUVW( TextureWrap::CLAMP_TO_EDGE );
+    lumaSampler.minFilter( TextureFilter::NEAREST );
+    lumaSampler.magFilter( TextureFilter::NEAREST );
+    lumaSampler.mipSampling( TextureMipSampling::NONE );
+    lumaSampler.anisotropyLevel( 0 );
+    _lumaSamplingHash = lumaSampler.getHash();
+
+
     std::atomic_uint loadTasks = 0;
     _toneMapParams._function = TypeUtil::StringToToneMapFunctions(configParams.mappingFunction);
     _toneMapParams._manualExposureFactor = configParams.manualExposureFactor;
@@ -564,138 +573,136 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     _toneMapParams._width = screenRT()._rt->getWidth();
     _toneMapParams._height = screenRT()._rt->getHeight();
 
-    // We usually want accurate data when debugging material properties, so tonemapping should probably be disabled
-    if (adaptiveExposureControl()) {
-        GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Compute Adaptive Exposure" });
+    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Compute Adaptive Exposure" });
 
-        const F32 logLumRange = _toneMapParams._maxLogLuminance - _toneMapParams._minLogLuminance;
+    const F32 logLumRange = _toneMapParams._maxLogLuminance - _toneMapParams._minLogLuminance;
 
-        { // Histogram Pass
-            const Texture_ptr& screenColour = screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO)->texture();
-            const ImageView screenImage = screenColour->getView();
+    { // Histogram Pass
+        const Texture_ptr& screenColour = screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO)->texture();
+        const ImageView screenImage = screenColour->getView();
 
-            GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "CreateLuminanceHistogram" });
+        GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "CreateLuminanceHistogram" });
 
-                        // ToDo: This can be changed to a simple sampler instead, thus avoiding this layout change
-            GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back(TextureLayoutChange
-            {
-                ._targetView = screenImage,
-                ._sourceLayout = ImageUsage::SHADER_READ,
-                ._targetLayout = ImageUsage::SHADER_READ_WRITE
-            });
+                    // ToDo: This can be changed to a simple sampler instead, thus avoiding this layout change
+        GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back(TextureLayoutChange
+        {
+            ._targetView = screenImage,
+            ._sourceLayout = ImageUsage::SHADER_READ,
+            ._targetLayout = ImageUsage::SHADER_READ_WRITE
+        });
 
-            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-            cmd->_usage = DescriptorSetUsage::PER_DRAW;
-            {
-                DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::COMPUTE );
-                Set(binding._data, screenImage, ImageUsage::SHADER_READ_WRITE);
-            }
-            {
-                DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::COMPUTE );
-                Set(binding._data, _histogramBuffer.get(), {0u, _histogramBuffer->getPrimitiveCount()});
-            }
-            GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipelineLumCalcHistogram });
-            PushConstantsStruct params{};
-            params.data[0]._vec[0].set( _toneMapParams._minLogLuminance,
-                                        1.f / logLumRange,
-                                        to_F32( _toneMapParams._width ),
-                                        to_F32( _toneMapParams._height ) );
+        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+        cmd->_usage = DescriptorSetUsage::PER_DRAW;
+        {
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::COMPUTE );
+            Set(binding._data, screenImage, ImageUsage::SHADER_READ_WRITE);
+        }
+        {
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::COMPUTE );
+            Set(binding._data, _histogramBuffer.get(), {0u, _histogramBuffer->getPrimitiveCount()});
+        }
+        GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipelineLumCalcHistogram });
+        PushConstantsStruct params{};
+        params.data[0]._vec[0].set( _toneMapParams._minLogLuminance,
+                                    1.f / logLumRange,
+                                    to_F32( _toneMapParams._width ),
+                                    to_F32( _toneMapParams._height ) );
 
-            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set( params );
+        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set( params );
 
-            const U32 groupsX = to_U32(std::ceil(_toneMapParams._width / to_F32(GROUP_X_THREADS)));
-            const U32 groupsY = to_U32(std::ceil(_toneMapParams._height / to_F32(GROUP_Y_THREADS)));
-            GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{groupsX, groupsY, 1});
+        const U32 groupsX = to_U32(std::ceil(_toneMapParams._width / to_F32(GROUP_X_THREADS)));
+        const U32 groupsY = to_U32(std::ceil(_toneMapParams._height / to_F32(GROUP_Y_THREADS)));
+        GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{groupsX, groupsY, 1});
 
-            auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut );
-            memCmd->_bufferLocks.emplace_back(BufferLock
+        auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut );
+        memCmd->_bufferLocks.emplace_back(BufferLock
+        {
+            ._range = { 0u, U32_MAX },
+            ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_READ,
+            ._buffer = _histogramBuffer->getBufferImpl()
+        });
+
+        // ToDo: This can be changed to a simple sampler instead, thus avoiding this layout change
+        memCmd->_textureLayoutChanges.emplace_back(TextureLayoutChange
+        {
+            ._targetView = screenImage,
+            ._sourceLayout = ImageUsage::SHADER_READ_WRITE,
+            ._targetLayout = ImageUsage::SHADER_READ
+        });
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
+    }
+
+    { // Averaging pass
+        GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "AverageLuminanceHistogram" });
+
+        GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_textureLayoutChanges.emplace_back(TextureLayoutChange
+        {
+            ._targetView = _currentLuminance->getView(),
+            ._sourceLayout = ImageUsage::SHADER_READ,
+            ._targetLayout = ImageUsage::SHADER_WRITE,
+        });
+
+        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+        cmd->_usage = DescriptorSetUsage::PER_DRAW;
+        {
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::COMPUTE );
+            Set(binding._data, _histogramBuffer.get(), { 0u, _histogramBuffer->getPrimitiveCount() });
+        }
+        {
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::COMPUTE );
+            Set(binding._data, _currentLuminance->getView(), ImageUsage::SHADER_WRITE );
+        }
+
+        GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipelineLumCalcAverage });
+
+        PushConstantsStruct params{};
+        params.data[0]._vec[0].set(_toneMapParams._minLogLuminance,
+                                    logLumRange,
+                                    CLAMPED_01( 1.0f - std::exp( -Time::MicrosecondsToSeconds<F32>( _lastDeltaTimeUS ) * _toneMapParams._tau ) ),
+                                    to_F32( _toneMapParams._width ) * _toneMapParams._height );
+
+
+        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(params);
+        GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ 1, 1, 1, });
+        {
+            auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut);
+            memCmd->_bufferLocks.emplace_back( BufferLock
             {
                 ._range = { 0u, U32_MAX },
                 ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_READ,
                 ._buffer = _histogramBuffer->getBufferImpl()
             });
 
-            // ToDo: This can be changed to a simple sampler instead, thus avoiding this layout change
             memCmd->_textureLayoutChanges.emplace_back(TextureLayoutChange
             {
-                ._targetView = screenImage,
-                ._sourceLayout = ImageUsage::SHADER_READ_WRITE,
-                ._targetLayout = ImageUsage::SHADER_READ
+                ._targetView = _currentLuminance->getView(),
+                ._sourceLayout = ImageUsage::SHADER_WRITE,
+                ._targetLayout = ImageUsage::SHADER_READ,
             });
-            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
         }
 
-        { // Averaging pass
-            GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "AverageLuminanceHistogram" });
+        if ( _adaptiveExposureValueNeedsUpdate )
+        {
+            _adaptiveExposureValueNeedsUpdate = false;
 
-            GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_textureLayoutChanges.emplace_back(TextureLayoutChange
+            auto readTextureCmd = GFX::EnqueueCommand<GFX::ReadTextureCommand>(bufferInOut);
+            readTextureCmd->_texture = _currentLuminance.get();
+            readTextureCmd->_pixelPackAlignment._alignment = 1u;
+            readTextureCmd->_callback = [&](const ImageReadbackData& data)
             {
-                ._targetView = _currentLuminance->getView(),
-                ._sourceLayout = ImageUsage::SHADER_READ,
-                ._targetLayout = ImageUsage::SHADER_WRITE,
-            });
-
-            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-            cmd->_usage = DescriptorSetUsage::PER_DRAW;
-            {
-                DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::COMPUTE );
-                Set(binding._data, _histogramBuffer.get(), { 0u, _histogramBuffer->getPrimitiveCount() });
-            }
-            {
-                DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::COMPUTE );
-                Set(binding._data, _currentLuminance->getView(), ImageUsage::SHADER_WRITE );
-            }
-
-            GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipelineLumCalcAverage });
-
-            PushConstantsStruct params{};
-            params.data[0]._vec[0].set(_toneMapParams._minLogLuminance,
-                                       logLumRange,
-                                       CLAMPED_01( 1.0f - std::exp( -Time::MicrosecondsToSeconds<F32>( _lastDeltaTimeUS ) * _toneMapParams._tau ) ),
-                                       to_F32( _toneMapParams._width ) * _toneMapParams._height );
-
-
-            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(params);
-            GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ 1, 1, 1, });
-            {
-                auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut);
-                memCmd->_bufferLocks.emplace_back( BufferLock
+                if ( !data._data.empty() )
                 {
-                    ._range = { 0u, U32_MAX },
-                    ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_READ,
-                    ._buffer = _histogramBuffer->getBufferImpl()
-                });
+                    const Byte* imageData = data._data.data();
+                    _adaptiveExposureValue = *reinterpret_cast<const F32*>(imageData);
+                }
+            };
 
-                memCmd->_textureLayoutChanges.emplace_back(TextureLayoutChange
-                {
-                    ._targetView = _currentLuminance->getView(),
-                    ._sourceLayout = ImageUsage::SHADER_WRITE,
-                    ._targetLayout = ImageUsage::SHADER_READ,
-                });
-            }
-
-            if ( _adaptiveExposureValueNeedsUpdate )
-            {
-                _adaptiveExposureValueNeedsUpdate = false;
-
-                auto readTextureCmd = GFX::EnqueueCommand<GFX::ReadTextureCommand>(bufferInOut);
-                readTextureCmd->_texture = _currentLuminance.get();
-                readTextureCmd->_pixelPackAlignment._alignment = 1u;
-                readTextureCmd->_callback = [&](const ImageReadbackData& data)
-                {
-                    if ( !data._data.empty() )
-                    {
-                        _adaptiveExposureValue = *reinterpret_cast<F32*>(data._data.front());
-                    }
-                };
-
-            }
-
-            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
         }
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }
+
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 
     // We handle SSR between the Pre and Main render passes
     if (filterStack & (1u << to_U32(FilterType::FILTER_SS_REFLECTIONS)))
@@ -764,17 +771,6 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 
     { // ToneMap and generate LDR render target (Alpha channel contains pre-toneMapped luminance value)
-        static size_t lumaSamplerHash = 0u;
-        if (lumaSamplerHash == 0u) {
-            SamplerDescriptor lumaSampler = {};
-            lumaSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
-            lumaSampler.minFilter(TextureFilter::NEAREST);
-            lumaSampler.magFilter(TextureFilter::NEAREST);
-            lumaSampler.mipSampling(TextureMipSampling::NONE);
-            lumaSampler.anisotropyLevel(0);
-            lumaSamplerHash = lumaSampler.getHash();
-        }
-
         const auto& screenAtt = getInput(true)._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
         const auto& screenDepthAtt = screenRT()._rt->getAttachment(RTAttachmentType::DEPTH);
 
@@ -788,7 +784,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, _currentLuminance->getView(), lumaSamplerHash );
+            Set( binding._data, _currentLuminance->getView(), lumaSamplingHash() );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::FRAGMENT );

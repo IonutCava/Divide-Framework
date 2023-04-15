@@ -889,11 +889,11 @@ namespace Divide
 
             const auto addValAnd10Percent = []( const F32 val )
             {
-                return val + ((val + 10) / 100.f);
+                return val + ((val * 10) / 100.f);
             };
             const auto addValMinus20Percent = []( const F32 val )
             {
-                return val - ((val + 20) / 100.f);
+                return val - ((val * 20) / 100.f);
             };
 
             std::array<IM::ConeDescriptor, 6> descriptors;
@@ -909,7 +909,7 @@ namespace Divide
             descriptors[2].direction = WORLD_Z_NEG_AXIS;
 
             descriptors[0].length = 2.0f;
-            descriptors[1].length = 2.5f;
+            descriptors[1].length = 1.5f;
             descriptors[2].length = 2.0f;
 
             descriptors[0].root = VECTOR3_ZERO + vec3<F32>( addValAnd10Percent( descriptors[0].length ), 0.f, 0.f );
@@ -934,7 +934,7 @@ namespace Divide
             descriptors[5].length = 0.5f;
 
             descriptors[3].root = VECTOR3_ZERO + vec3<F32>( addValMinus20Percent( descriptors[0].length ) + 0.50f, 0.f, 0.f );
-            descriptors[4].root = VECTOR3_ZERO + vec3<F32>( 0.f, addValMinus20Percent( descriptors[1].length ) - 0.35f, 0.f );
+            descriptors[4].root = VECTOR3_ZERO + vec3<F32>( 0.f, addValMinus20Percent( descriptors[1].length ) + 0.50f, 0.f );
             descriptors[5].root = VECTOR3_ZERO + vec3<F32>( 0.f, 0.f, addValMinus20Percent( descriptors[2].length ) + 0.50f );
 
             descriptors[3].radius = 0.15f;
@@ -1234,11 +1234,7 @@ namespace Divide
             // Create a world matrix using a look at function with the eye position
             // backed up from the camera's view direction
             const mat4<F32>& viewMatrix = cameraSnapshot._viewMatrix;
-
-            const mat4<F32> worldMatrix( mat4<F32>( -viewMatrix.getForwardVec() * 5,
-                                                    VECTOR3_ZERO,
-                                                    viewMatrix.getUpVec() )
-                                         * cameraSnapshot._invViewMatrix );
+            const mat4<F32> worldMatrix( Camera::LookAt( -viewMatrix.getForwardVec() * 5, VECTOR3_ZERO, viewMatrix.getUpVec() ) * cameraSnapshot._invViewMatrix );
 
             constexpr I32 viewportDim = 256;
             constexpr I32 viewportPadding = 6;
@@ -1597,7 +1593,7 @@ namespace Divide
         }
     }
 
-    void Editor::selectionChangeCallback( const PlayerIndex idx, const vector<SceneGraphNode*>& nodes ) const
+    void Editor::selectionChangeCallback( const PlayerIndex idx, const vector_fast<SceneGraphNode*>& nodes ) const
     {
         if ( idx != 0 )
         {
@@ -1823,7 +1819,7 @@ namespace Divide
             return false;
         }
 
-        if ( !arg.wheelEvent() )
+        if ( !arg._wheelEvent )
         {
             if ( WindowManager::IsRelativeMouseMode() )
             {
@@ -1883,19 +1879,19 @@ namespace Divide
             for ( ImGuiContext* ctx : _imguiContexts )
             {
                 ImGui::SetCurrentContext( ctx );
-                if ( arg.WheelH() > 0 )
+                if ( arg.state().HWheel > 0 )
                 {
                     ctx->IO.AddMouseWheelEvent( ctx->IO.MouseWheelH + 1, ctx->IO.MouseWheel );
                 }
-                if ( arg.WheelH() < 0 )
+                if ( arg.state().HWheel < 0 )
                 {
                     ctx->IO.AddMouseWheelEvent( ctx->IO.MouseWheelH - 1, ctx->IO.MouseWheel );
                 }
-                if ( arg.WheelV() > 0 )
+                if ( arg.state().VWheel > 0 )
                 {
                     ctx->IO.AddMouseWheelEvent( ctx->IO.MouseWheelH, ctx->IO.MouseWheel + 1 );
                 }
-                if ( arg.WheelV() < 0 )
+                if ( arg.state().VWheel < 0 )
                 {
                     ctx->IO.AddMouseWheelEvent( ctx->IO.MouseWheelH, ctx->IO.MouseWheel - 1 );
                 }
@@ -2630,7 +2626,7 @@ namespace Divide
         nodeDescriptor._name = name;
         nodeDescriptor._componentMask = normalMask;
         nodeDescriptor._node = mesh;
-
+        
         const Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
         const SceneGraphNode* node = activeScene.sceneGraph()->getRoot()->addChildNode( nodeDescriptor );
         if ( node != nullptr )

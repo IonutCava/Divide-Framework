@@ -78,6 +78,7 @@ public:
     static constexpr U8 TRANSFORM_IDX = 0u;
     static constexpr U8 MATERIAL_IDX = 1u;
     static constexpr U8 TEXTURES_IDX = 2u;
+    static constexpr U8 SELECTION_FLAG = 3u;
 
     // 2Mb worth of data
     static constexpr U32 MAX_INDIRECTION_ENTRIES = (2 * 1024 * 1024) / sizeof(NodeIndirectionData);
@@ -91,7 +92,6 @@ public:
             U16 _framesSinceLastUsed{ g_invalidMaterialIndex };
         };
 
-        using FlagContainer = std::array<std::atomic_bool, Config::MAX_VISIBLE_NODES>;
         using LookupInfoContainer = std::array<LookupInfo, Config::MAX_CONCURRENT_MATERIALS>;
         using MaterialDataContainer = std::array<NodeMaterialData, Config::MAX_CONCURRENT_MATERIALS>;
         MaterialDataContainer _gpuData{};
@@ -100,28 +100,24 @@ public:
 
     struct BufferTransformData
     {
-        using FlagContainer = std::array<std::atomic_bool, Config::MAX_VISIBLE_NODES>;
         using TransformDataContainer = std::array<NodeTransformData, Config::MAX_VISIBLE_NODES>;
         TransformDataContainer _gpuData{};
         std::array<bool, Config::MAX_VISIBLE_NODES> _freeList{};
     };
 
-    struct BufferIndirectionData {
-        std::array<NodeIndirectionData, MAX_INDIRECTION_ENTRIES> _gpuData;
-    };
+    using BufferIndirectionData = std::array<NodeIndirectionData, MAX_INDIRECTION_ENTRIES>;
     
     template<typename DataContainer>
     struct ExecutorBuffer {
-        U32 _highWaterMark{ 0u };
-        ShaderBuffer_uptr _gpuBuffer{ nullptr };
-        Mutex _lock;
         DataContainer _data;
+        eastl::fixed_vector<U32, MAX_INDIRECTION_ENTRIES, false> _nodeProcessedThisFrame;
+        vector<BufferUpdateRange> _bufferUpdateRangeHistory;
+        SharedMutex _proccessedLock;
+        Mutex _lock;
+        ShaderBuffer_uptr _gpuBuffer{ nullptr };
         BufferUpdateRange _bufferUpdateRange;
         BufferUpdateRange _bufferUpdateRangePrev;
-        vector<BufferUpdateRange> _bufferUpdateRangeHistory;
-
-        SharedMutex _proccessedLock;
-        eastl::fixed_vector<U32, MAX_INDIRECTION_ENTRIES, false> _nodeProcessedThisFrame;
+        U32 _highWaterMark{ 0u };
         U32 _queueLength{ Config::MAX_FRAMES_IN_FLIGHT + 1u };
     };
 
@@ -174,8 +170,7 @@ private:
                              GFX::CommandBuffer& bufferInOut,
                              GFX::MemoryBarrierCommand& memCmdInOut);
 
-    void processVisibleNodeTransform(RenderingComponent* rComp,
-                                     D64 interpolationFactor);
+    void processVisibleNodeTransform( RenderingComponent* rComp );
 
     [[nodiscard]] U16 processVisibleNodeMaterial(RenderingComponent* rComp, bool& cacheHit);
 

@@ -78,7 +78,7 @@ void Terrain::postLoad(SceneGraphNode* sgn) {
         tessTriangleWidthField._type = EditorComponentFieldType::SLIDER_TYPE;
         tessTriangleWidthField._readOnly = false;
         tessTriangleWidthField._serialise = true;
-        tessTriangleWidthField._basicType = GFX::PushConstantType::UINT;
+        tessTriangleWidthField._basicType = PushConstantType::UINT;
         tessTriangleWidthField._range = { 1.0f, 50.0f };
         tessTriangleWidthField._step = 1.0f;
 
@@ -107,7 +107,7 @@ void Terrain::postLoad(SceneGraphNode* sgn) {
             rState.grassVisibility(*static_cast<const F32*>(data)); 
         };
         grassVisibilityDistanceField._type = EditorComponentFieldType::PUSH_TYPE;
-        grassVisibilityDistanceField._basicType = GFX::PushConstantType::FLOAT;
+        grassVisibilityDistanceField._basicType = PushConstantType::FLOAT;
         grassVisibilityDistanceField._readOnly = false;
         _editorComponent.registerField(MOV(grassVisibilityDistanceField));
 
@@ -124,7 +124,7 @@ void Terrain::postLoad(SceneGraphNode* sgn) {
             rState.treeVisibility(*static_cast<const F32*>(data));
         };
         treeVisibilityDistanceField._type = EditorComponentFieldType::PUSH_TYPE;
-        treeVisibilityDistanceField._basicType = GFX::PushConstantType::FLOAT;
+        treeVisibilityDistanceField._basicType = PushConstantType::FLOAT;
         treeVisibilityDistanceField._readOnly = false;
         _editorComponent.registerField(MOV(treeVisibilityDistanceField));
         _initialSetupDone = true;
@@ -305,9 +305,9 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
                                     mat3<F32>());
 
     PushConstants& constants = pkg.pushConstantsCmd()._constants;
-    constants.set(_ID("dvd_terrainWorld"), GFX::PushConstantType::MAT4, terrainWorldMat);
-    constants.set(_ID("dvd_uvEyeOffset"), GFX::PushConstantType::VEC2, uvEye);
-    constants.set(_ID("dvd_tessTriangleWidth"),  GFX::PushConstantType::FLOAT, triangleWidth);
+    constants.set(_ID("dvd_terrainWorld"), PushConstantType::MAT4, terrainWorldMat);
+    constants.set(_ID("dvd_uvEyeOffset"), PushConstantType::VEC2, uvEye);
+    constants.set(_ID("dvd_tessTriangleWidth"),  PushConstantType::FLOAT, triangleWidth);
     
 
     Object3D::prepareRender(sgn, rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData);

@@ -32,7 +32,7 @@ DirectionalLightComponent::DirectionalLightComponent(SceneGraphNode* sgn, Platfo
     directionField._dataSetter = [this](const void* data) { setDirection(*static_cast<const vec3<F32>*>(data)); };
     directionField._type = EditorComponentFieldType::PUSH_TYPE;
     directionField._readOnly = lockDirection();
-    directionField._basicType = GFX::PushConstantType::VEC3;
+    directionField._basicType = PushConstantType::VEC3;
 
     editorComponent().registerField(MOV(directionField));
 
@@ -42,7 +42,7 @@ DirectionalLightComponent::DirectionalLightComponent(SceneGraphNode* sgn, Platfo
         sceneFitField._data = &_csmUseSceneAABBFit[cascade];
         sceneFitField._type = EditorComponentFieldType::PUSH_TYPE;
         sceneFitField._readOnly = cascade >= csmSplitCount();
-        sceneFitField._basicType = GFX::PushConstantType::BOOL;
+        sceneFitField._basicType = PushConstantType::BOOL;
 
         editorComponent().registerField(MOV(sceneFitField));
     }
@@ -53,7 +53,7 @@ DirectionalLightComponent::DirectionalLightComponent(SceneGraphNode* sgn, Platfo
     csmNearClipField._range = { -g_defaultLightDistance, g_defaultLightDistance };
     csmNearClipField._type = EditorComponentFieldType::PUSH_TYPE;
     csmNearClipField._readOnly = false;
-    csmNearClipField._basicType = GFX::PushConstantType::FLOAT;
+    csmNearClipField._basicType = PushConstantType::FLOAT;
 
     editorComponent().registerField(MOV(csmNearClipField));
 
@@ -62,7 +62,7 @@ DirectionalLightComponent::DirectionalLightComponent(SceneGraphNode* sgn, Platfo
     showConeField._data = &_showDirectionCone;
     showConeField._type = EditorComponentFieldType::PUSH_TYPE;
     showConeField._readOnly = false;
-    showConeField._basicType = GFX::PushConstantType::BOOL;
+    showConeField._basicType = PushConstantType::BOOL;
 
     editorComponent().registerField(MOV(showConeField));
 

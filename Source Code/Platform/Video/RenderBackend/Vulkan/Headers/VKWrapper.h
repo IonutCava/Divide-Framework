@@ -72,6 +72,7 @@ public:
     [[nodiscard]] GFXDevice& context() noexcept { return _context; };
     [[nodiscard]] const GFXDevice& context() const noexcept { return _context; };
 
+
 protected:
     [[nodiscard]] VkCommandBuffer getCurrentCommandBuffer() const noexcept;
 
@@ -115,11 +116,10 @@ private:
     void bindDynamicState(const RenderStateBlock& currentState, const RTBlendStates& blendStates, VkCommandBuffer cmdBuffer) noexcept;
     [[nodiscard]] bool bindShaderResources( const DescriptorSetEntries& descriptorSetEntries ) override;
 
-    void onShaderRegisterChanged( ShaderProgram* program, bool state ) override;
 
 
     static bool Draw(const GenericDrawCommand& cmd, VkCommandBuffer cmdBuffer);
-    public:
+public:
     static [[nodiscard]] VKStateTracker& GetStateTracker() noexcept;
     static [[nodiscard]] VkSampler GetSamplerHandle(size_t samplerHash);
 
@@ -133,6 +133,7 @@ private:
     static void PushDebugMessage(VkCommandBuffer cmdBuffer, const char* message, U32 id = U32_MAX);
     static void PopDebugMessage(VkCommandBuffer cmdBuffer);
 
+    static void OnShaderReloaded( vkShaderProgram* program);
 private:
     GFXDevice& _context;
     vkb::Instance _vkbInstance;
@@ -154,7 +155,7 @@ private:
 
     bool _pushConstantsNeedLock{ false };
     
-    private:
+private:
     using SamplerObjectMap = hashMap<size_t, VkSampler, NoHash<size_t>>;
 
     static SharedMutex s_samplerMapLock;
@@ -164,7 +165,9 @@ private:
     static VKDeletionQueue s_deviceDeleteQueue;
     static VKTransferQueue s_transferQueue;
 
-    public:
+    static eastl::stack<vkShaderProgram*> s_reloadedShaders;
+
+public:
     struct DepthFormatInformation
     {
         bool _d24s8Supported{false};

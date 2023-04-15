@@ -16,7 +16,6 @@ layout(location = TARGET_REVEALAGE) out float _revealage;
 layout(location = TARGET_NORMALS) out vec3 _normalsOut;
 
 DESCRIPTOR_SET_RESOURCE(PER_PASS, 1) uniform sampler2D texDepth;
-#define SampleDepth(UV) texture(texDepth, UV).r
 
 #if defined(USE_COLOURED_WOIT)
 layout(location = TARGET_MODULATE) out vec4  _modulate;
@@ -59,7 +58,7 @@ void writePixel(in vec4 premultipliedReflect, in vec3 transmit, in float viewSpa
 void writeScreenColour(in vec4 colour, in vec3 normalWV)
 {
     const vec3 transmit = vec3(0.f);//texture(texTransmitance, dvd_screenPositionNormalised).rgb;
-    const float viewSpaceZ = ViewSpaceZ(SampleDepth(dvd_screenPositionNormalised), dvd_InverseProjectionMatrix);
+    const float viewSpaceZ = ViewSpaceZ( texture( texDepth, dvd_screenPositionNormalised).r, inverse( dvd_ProjectionMatrix ) );
     writePixel(vec4(colour.rgb * colour.a, colour.a), transmit, viewSpaceZ);
 
     _normalsOut.rg = packNormal(normalWV);

@@ -22,7 +22,7 @@ SpotLightComponent::SpotLightComponent(SceneGraphNode* sgn, PlatformContext& con
     cutoffAngle._type = EditorComponentFieldType::PUSH_TYPE;
     cutoffAngle._readOnly = false;
     cutoffAngle._range = { EPSILON_F32, 179.99f };
-    cutoffAngle._basicType = GFX::PushConstantType::FLOAT;
+    cutoffAngle._basicType = PushConstantType::FLOAT;
     editorComponent().registerField(MOV(cutoffAngle));
 
     EditorComponentField outerCutoffAngle = {};
@@ -31,7 +31,7 @@ SpotLightComponent::SpotLightComponent(SceneGraphNode* sgn, PlatformContext& con
     outerCutoffAngle._type = EditorComponentFieldType::PUSH_TYPE;
     outerCutoffAngle._readOnly = false;
     outerCutoffAngle._range = { EPSILON_F32, 180.0f };
-    outerCutoffAngle._basicType = GFX::PushConstantType::FLOAT;
+    outerCutoffAngle._basicType = PushConstantType::FLOAT;
     editorComponent().registerField(MOV(outerCutoffAngle));
 
     EditorComponentField directionField = {};
@@ -40,7 +40,7 @@ SpotLightComponent::SpotLightComponent(SceneGraphNode* sgn, PlatformContext& con
     directionField._dataSetter = [this](const void* data) { setDirection(*static_cast<const vec3<F32>*>(data)); };
     directionField._type = EditorComponentFieldType::PUSH_TYPE;
     directionField._readOnly = true;
-    directionField._basicType = GFX::PushConstantType::VEC3;
+    directionField._basicType = PushConstantType::VEC3;
 
     editorComponent().registerField(MOV(directionField));
 
@@ -49,7 +49,7 @@ SpotLightComponent::SpotLightComponent(SceneGraphNode* sgn, PlatformContext& con
     showConeField._data = &_showDirectionCone;
     showConeField._type = EditorComponentFieldType::PUSH_TYPE;
     showConeField._readOnly = false;
-    showConeField._basicType = GFX::PushConstantType::BOOL;
+    showConeField._basicType = PushConstantType::BOOL;
 
     editorComponent().registerField(MOV(showConeField));
 

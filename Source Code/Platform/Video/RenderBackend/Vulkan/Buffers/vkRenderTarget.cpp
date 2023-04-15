@@ -341,7 +341,7 @@ namespace Divide
 
                     if ( IsCubeTexture( vkTex->descriptor().texType() ) )
                     {
-                        targetView._subRange._layerRange = { targetColourLayer._cubeFace + (targetColourLayer._layer * 6u), descriptor._layeredRendering ? U16_MAX : 6u - targetColourLayer._cubeFace };
+                        targetView._subRange._layerRange = { targetColourLayer._cubeFace + (targetColourLayer._layer * 6u), descriptor._layeredRendering ? U16_MAX : 1u };
                     }
                     else
                     {
@@ -386,7 +386,7 @@ namespace Divide
                 const DrawLayerEntry depthEntry = srcDepthLayer._layer == INVALID_INDEX ? targetDepthLayer : srcDepthLayer;
                 if ( IsCubeTexture( vkTex->descriptor().texType() ) )
                 {
-                    targetView._subRange._layerRange = { depthEntry._cubeFace + (depthEntry._layer * 6u), descriptor._layeredRendering ? U16_MAX : 6u - depthEntry._cubeFace };
+                    targetView._subRange._layerRange = { depthEntry._cubeFace + (depthEntry._layer * 6u), descriptor._layeredRendering ? U16_MAX : 1u };
                 }
                 else
                 {
@@ -461,6 +461,8 @@ namespace Divide
         vkTexture::CachedImageView::Descriptor imageViewDescriptor{};
         imageViewDescriptor._subRange = {};
 
+        U16 layerCount = 1u;
+
         U8 stagingIndex = 0u;
         VkImageMemoryBarrier2 memBarrier{};
         for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
@@ -471,10 +473,12 @@ namespace Divide
                 imageViewDescriptor._subRange = vkTex->getView()._subRange;
                 if ( descriptor._writeLayers[i]._layer != INVALID_INDEX || needLayeredColour )
                 {
+                    layerCount = std::max( layerCount, vkTex->depth() );
                     targetColourLayer = descriptor._writeLayers[i]._layer == INVALID_INDEX ? targetColourLayer : descriptor._writeLayers[i];
                     if ( IsCubeTexture( vkTex->descriptor().texType() ) )
                     {
-                        imageViewDescriptor._subRange._layerRange = { targetColourLayer._cubeFace + (targetColourLayer._layer * 6u), descriptor._layeredRendering ? U16_MAX : 6u - targetColourLayer._cubeFace };
+                        imageViewDescriptor._subRange._layerRange = { targetColourLayer._cubeFace + (targetColourLayer._layer * 6u), descriptor._layeredRendering ? U16_MAX : 1u };
+                        layerCount *= 6u;
                     }
                     else
                     {
@@ -486,6 +490,7 @@ namespace Divide
                 {
                     imageViewDescriptor._subRange._mipLevels = { descriptor._mipWriteLevel, 1u };
                 }
+
 
                 imageViewDescriptor._format = vkTex->vkFormat();
                 imageViewDescriptor._type = imageViewDescriptor._subRange._layerRange._count > 1u ? TextureType::TEXTURE_2D_ARRAY : TextureType::TEXTURE_2D;
@@ -547,10 +552,12 @@ namespace Divide
             imageViewDescriptor._subRange = vkTex->getView()._subRange;
             if ( descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer != INVALID_INDEX || needLayeredDepth )
             {
+                layerCount = std::max( layerCount, vkTex->depth() );
                 targetDepthLayer = descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer == INVALID_INDEX ? targetDepthLayer : descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX];
                 if ( IsCubeTexture( vkTex->descriptor().texType() ) )
                 {
-                    imageViewDescriptor._subRange._layerRange = { targetDepthLayer._cubeFace + (targetDepthLayer._layer * 6u), descriptor._layeredRendering ? U16_MAX : 6u - targetDepthLayer._cubeFace };
+                    imageViewDescriptor._subRange._layerRange = { targetDepthLayer._cubeFace + (targetDepthLayer._layer * 6u), descriptor._layeredRendering ? U16_MAX : 1u };
+                    layerCount *= 6u;
                 }
                 else
                 {
@@ -600,7 +607,7 @@ namespace Divide
             pipelineRenderingCreateInfoOut.depthAttachmentFormat = VK_FORMAT_UNDEFINED;
             _renderingInfo.pDepthAttachment = nullptr;
         }
-
+        _renderingInfo.layerCount = descriptor._layeredRendering ? layerCount : 1;
         transitionAttachments( cmdBuffer, descriptor, true );
     }
 

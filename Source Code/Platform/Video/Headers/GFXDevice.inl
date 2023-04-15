@@ -128,8 +128,6 @@ inline const GFXDevice::GFXDescriptorSet& GFXDevice::descriptorSet(const Descrip
     return _descriptorSets[to_base(usage)];
 }
 
-inline void GFXDevice::onShaderRegisterChanged( ShaderProgram* program, const bool state ) { _api->onShaderRegisterChanged( program, state ); }
-
 
 inline ShaderProgram_ptr GFXDevice::newShaderProgram( const size_t descriptorHash,
                                                       const Str256& resourceName,

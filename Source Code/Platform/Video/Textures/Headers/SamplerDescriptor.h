@@ -35,7 +35,6 @@
 
 #include "Core/Headers/Hashable.h"
 #include "Utility/Headers/Colours.h"
-#include "Platform/Video/Headers/RenderAPIEnums.h"
 
 namespace Divide {
 

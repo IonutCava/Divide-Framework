@@ -114,7 +114,7 @@ namespace {
                 FColour3 fogColour = activeSceneState->renderState().fogDetails()._colourAndDensity.rgb;
                 EditorComponentField tempField = {};
                 tempField._name = "[Fog Colour]";
-                tempField._basicType = GFX::PushConstantType::FCOLOUR3;
+                tempField._basicType = PushConstantType::FCOLOUR3;
                 tempField._type = EditorComponentFieldType::PUSH_TYPE;
                 tempField._readOnly = false;
                 tempField._data = &fogColour;
@@ -393,9 +393,10 @@ namespace {
             checkBox(FilterType::FILTER_BLOOM);
             PreRenderOperator* op = batch.getOperator(FilterType::FILTER_BLOOM);
             BloomPreRenderOperator& bloomOp = static_cast<BloomPreRenderOperator&>(*op);
-            F32 threshold = bloomOp.luminanceThreshold();
-            if (ImGui::SliderFloat("Luminance Threshold", &threshold, 0.0f, 1.0f)) {
-                bloomOp.luminanceThreshold(threshold);
+            F32 bias = bloomOp.luminanceBias();
+            if (ImGui::SliderFloat("Luminance Bias", &bias, 0.001f, 0.999f))
+            {
+                bloomOp.luminanceBias(bias);
             }
         }
 

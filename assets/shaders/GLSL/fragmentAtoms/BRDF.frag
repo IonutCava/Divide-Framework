@@ -28,7 +28,7 @@ vec3 ApplyFog(in vec3 rgb) // original color of the pixel
 #endif //NO_FOG
 
 vec4 getPixelColour(in vec4 albedo, in NodeMaterialData materialData, in vec3 normalWV) {
-    const vec3 viewVec = normalize(VAR._viewDirectionWV);
+    const vec3 viewVec = computeViewDirectionWV();
     const float NdotV = max(dot(normalWV, viewVec), 0.f);
     const PBRMaterial material = initMaterialProperties(materialData, albedo.rgb, VAR._texCoord, normalWV, NdotV);
 
@@ -41,9 +41,15 @@ vec4 getPixelColour(in vec4 albedo, in NodeMaterialData materialData, in vec3 no
 #if !defined(PRE_PASS)
     if (SELECTION_FLAG != SELECTION_FLAG_NONE)
     {
+        const vec3 selection_colors[4] = vec3[](
+            vec3( 1.00f, 0.00f, 0.00f ), // HOVERED
+            vec3( 0.75f, 0.25f, 0.00f ), // PARENT_HOVERED
+            vec3( 0.00f, 1.00f, 0.00f ), // SELECTED
+            vec3( 0.00f, 0.75f, 0.25f )  // PARENT_SELECTED
+        );
+
         const float NdotV2 = max(dot(VAR._normalWV, viewVec), 0.f);
-        const vec3 lineColour = vec3(SELECTION_FLAG == SELECTION_FLAG_HOVERED ? 1.f : 0.f, SELECTION_FLAG == SELECTION_FLAG_SELECTED ? 1.f : 0.f, 0.f);
-        radianceOut = mix(lineColour, radianceOut, smoothstep(0.25f, 0.45f, NdotV2));
+        radianceOut = mix( selection_colors[SELECTION_FLAG - 1u], radianceOut, smoothstep(0.25f, 0.45f, NdotV2));
     }
     else
     {

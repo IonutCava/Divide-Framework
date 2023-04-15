@@ -643,6 +643,10 @@ namespace Divide
         if ( renderStagePass._stage == RenderStage::DISPLAY )
         {
             shaderDescriptor._globalDefines.emplace_back( "MAIN_DISPLAY_PASS", true );
+            if ( !properties().isStatic() )
+            {
+                shaderDescriptor._globalDefines.emplace_back( "HAS_VELOCITY", true );
+            }
         }
         if ( renderStagePass._passType == RenderPassType::OIT_PASS )
         {
@@ -933,28 +937,29 @@ namespace Divide
         // If we haven't defined a state for this variant, use the default one
         if ( !isSet )
         {
-            ret._cullMode = ( properties().doubleSided() ? CullMode::NONE : CullMode::BACK );
+            // Defaults
+            ret._cullMode = properties().doubleSided() ? CullMode::NONE : CullMode::BACK;
+            ret._colourWrite.b[0] = ret._colourWrite.b[1] = ret._colourWrite.b[2] = ret._colourWrite.b[3] = true;
 
-            const bool isColourPass = !IsDepthPass( renderStagePass );
-            const bool isZPrePass   = IsZPrePass( renderStagePass );
-            const bool isShadowPass = IsShadowPass( renderStagePass );
-            const bool isDepthPass  = !isColourPass && !isZPrePass && !isShadowPass;
-
-            ret._zFunc = ( isColourPass ? ComparisonFunction::EQUAL : ComparisonFunction::LEQUAL );
-            if ( isShadowPass )
+            if ( IsDepthPass( renderStagePass ) ) // DEPTH, Z-PREPASS, SHADOW
             {
-                ret._colourWrite.b[0] = ret._colourWrite.b[1] = true;
-                ret._colourWrite.b[2] = ret._colourWrite.b[3] = false;
-                //ret.setZBias(1.1f, 4.f);
-                ret._cullMode = CullMode::BACK;
+                ret._zFunc = ComparisonFunction::LEQUAL;
+                ret._depthWriteEnabled = true;
+
+                if ( IsShadowPass( renderStagePass ) ) //SHADOW
+                {
+                    ret._colourWrite.b[2] = ret._colourWrite.b[3] = false;
+                    ret._cullMode = CullMode::BACK;
+                    //ret.setZBias(1.1f, 4.f);
+                }
+                else if ( !IsZPrePass( renderStagePass ) ) // DEPTH
+                {
+                    ret._colourWrite.b[0] = ret._colourWrite.b[1] = ret._colourWrite.b[2] = ret._colourWrite.b[3] = false;
+                }
             }
-            else if ( isDepthPass )
+            else // Colour pass: MAIN/OIT/TRANSPARENT
             {
-                ret._colourWrite.b[0] = ret._colourWrite.b[1] = ret._colourWrite.b[2] = ret._colourWrite.b[3] = false;
-            }
-
-            if ( !isShadowPass && !isZPrePass )
-            {
+                ret._zFunc = ComparisonFunction::EQUAL;
                 ret._depthWriteEnabled = false;
             }
 

@@ -125,7 +125,6 @@ Pipeline::Pipeline(const PipelineDescriptor& descriptor )
     , _blendStateHash( GetHash( descriptor._blendStates ) )
 {
     _vertexFormatHash = GetHash( descriptor._vertexFormat );
-
     _compiledPipelineHash = GetVulkanPipelineHash(*this, _vertexFormatHash );
     _stateHash = GetFullStateHash(*this, _compiledPipelineHash, _blendStateHash );
 }

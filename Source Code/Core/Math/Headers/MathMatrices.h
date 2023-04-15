@@ -471,7 +471,12 @@ class mat4 {
     // m12 m13 m14 m15
    public:
     mat4() noexcept;
-    mat4(std::initializer_list<T> matrix) noexcept;
+
+    template<typename U>
+    mat4( U m0,  U m1,  U m2,  U m3,
+          U m4,  U m5,  U m6,  U m7,
+          U m8,  U m9,  U m10, U m11,
+          U m12, U m13, U m14, U m15 ) noexcept;
     template<typename U>
     explicit mat4(U value) noexcept;
     template<typename U>
@@ -495,10 +500,6 @@ class mat4 {
     explicit mat4(const vec3<U> &axis, Angle::RADIANS<U> angle) noexcept;
     template<typename U>
     explicit mat4(U x, U y, U z, Angle::RADIANS<U> angle) noexcept;
-    template<typename U>
-    explicit mat4(const vec3<U> &eye, const vec3<U> &target, const vec3<U> &up) noexcept;
-    template<typename U>
-    explicit mat4(const Rect<U> &orthoRect, vec2<U> clip) noexcept;
     template<typename U>
     explicit mat4(const Plane<U>& reflectionPlane) noexcept;
 
@@ -685,15 +686,6 @@ class mat4 {
     const mat4& reflect(const Plane<U> &plane) noexcept;
 
     template<typename U>
-    void lookAt(const vec3<U> &eye, const vec3<U> &target, const vec3<U> &up) noexcept;
-    template<typename U>
-    void ortho(U left, U right, U bottom, U top, U zNear, U zFar) noexcept;
-    template<typename U>
-    void perspective(Angle::DEGREES<U> fovyRad, U aspect, U zNear, U zFar) noexcept;
-    template<typename U>
-    void frustum(U left, U right, U bottom, U top, U nearVal, U farVal) noexcept;
-
-    template<typename U>
     void extractMat3(mat3<U> &matrix3) const noexcept;
 
     static mat4<T> Multiply(const mat4<T>& matrixA, const mat4<T>& matrixB) noexcept;
@@ -718,19 +710,24 @@ class mat4 {
 };
 #pragma pack(pop)
 
-static const mat2<F32> MAT2_BIAS{ 0.5, 0.0,
-                                  0.0, 0.5 };
-static const mat3<F32> MAT3_BIAS{ 0.5, 0.0, 0.0,
-                                  0.0, 0.5, 0.0,
-                                  0.0, 0.0, 0.5 };
-static const mat4<F32> MAT4_BIAS{ 0.5, 0.0, 0.0, 0.0,
-                                  0.0, 0.5, 0.0, 0.0,
-                                  0.0, 0.0, 0.5, 0.0,
-                                  0.5, 0.5, 0.5, 1.0 };
+static const mat4<F32> MAT4_BIAS_NEGATIVE_ONE_Z{ 0.5, 0.0, 0.0, 0.0,
+                                                 0.0, 0.5, 0.0, 0.0,
+                                                 0.0, 0.0, 0.5, 0.0,
+                                                 0.5, 0.5, 0.5, 1.0 };
 
-static const mat2<F32> MAT2_ZERO{ 0.0f };
-static const mat3<F32> MAT3_ZERO{ 0.0f };
-static const mat4<F32> MAT4_ZERO{ 0.0f };
+static const mat4<F32> MAT4_BIAS_ZERO_ONE_Z{ 0.5, 0.0, 0.0, 0.0,
+                                             0.0, 0.5, 0.0, 0.0,
+                                             0.0, 0.0, 1.0, 0.0,
+                                             0.5, 0.5, 0.0, 1.0 };
+static const mat2<F32> MAT2_ZERO{ 0.f, 0.f,
+                                  0.f, 0.f };
+static const mat3<F32> MAT3_ZERO{ 0.f, 0.f, 0.f,
+                                  0.f, 0.f, 0.f,
+                                  0.f, 0.f, 0.f };
+static const mat4<F32> MAT4_ZERO{ 0.f, 0.f, 0.f, 0.f,
+                                  0.f, 0.f, 0.f, 0.f,
+                                  0.f, 0.f, 0.f, 0.f,
+                                  0.f, 0.f, 0.f, 0.f };
 
 static const mat2<F32> MAT2_IDENTITY{};
 static const mat3<F32> MAT3_IDENTITY{};

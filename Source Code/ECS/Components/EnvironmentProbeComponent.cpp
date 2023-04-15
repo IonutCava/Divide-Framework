@@ -48,8 +48,8 @@ EnvironmentProbeComponent::EnvironmentProbeComponent(SceneGraphNode* sgn, Platfo
     layerField._type = EditorComponentFieldType::PUSH_TYPE;
     layerField._readOnly = true;
     layerField._serialise = false;
-    layerField._basicType = GFX::PushConstantType::INT;
-    layerField._basicTypeSize = GFX::PushConstantSize::WORD;
+    layerField._basicType = PushConstantType::INT;
+    layerField._basicTypeSize = PushConstantSize::WORD;
 
     editorComponent().registerField(MOV(layerField));
 
@@ -63,7 +63,7 @@ EnvironmentProbeComponent::EnvironmentProbeComponent(SceneGraphNode* sgn, Platfo
     };
     typeField._type = EditorComponentFieldType::PUSH_TYPE;
     typeField._readOnly = false;
-    typeField._basicType = GFX::PushConstantType::BOOL;
+    typeField._basicType = PushConstantType::BOOL;
 
     editorComponent().registerField(MOV(typeField));
 
@@ -81,8 +81,8 @@ EnvironmentProbeComponent::EnvironmentProbeComponent(SceneGraphNode* sgn, Platfo
     updateRateField._type = EditorComponentFieldType::PUSH_TYPE;
     updateRateField._readOnly = false;
     updateRateField._range = { 0.f, Config::TARGET_FRAME_RATE };
-    updateRateField._basicType = GFX::PushConstantType::UINT;
-    updateRateField._basicTypeSize = GFX::PushConstantSize::BYTE;
+    updateRateField._basicType = PushConstantType::UINT;
+    updateRateField._basicTypeSize = PushConstantSize::BYTE;
 
     editorComponent().registerField(MOV(updateRateField));
 
@@ -108,7 +108,7 @@ EnvironmentProbeComponent::EnvironmentProbeComponent(SceneGraphNode* sgn, Platfo
     showBoxField._data = &_showParallaxAABB;
     showBoxField._type = EditorComponentFieldType::PUSH_TYPE;
     showBoxField._readOnly = false;
-    showBoxField._basicType = GFX::PushConstantType::BOOL;
+    showBoxField._basicType = PushConstantType::BOOL;
 
     editorComponent().registerField(MOV(showBoxField)); 
 
@@ -182,13 +182,7 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut, GFX::Me
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("EnvironmentProbePass Id: [ %d ]", rtLayerIndex()).c_str(), to_U32(rtLayerIndex())));
 
-    vector<Camera*>& probeCameras = SceneEnvironmentProbePool::ProbeCameras();
-
-    std::array<Camera*, 6> cameras = {};
-    std::copy_n(std::begin(probeCameras), std::min(cameras.size(), probeCameras.size()), std::begin(cameras));
-
     RenderPassParams params = {};
-    SetDefaultDrawDescriptor( params );
 
     params._target = SceneEnvironmentProbePool::ReflectionTarget()._targetID;
     params._sourceNode = findNodeToIgnore();
@@ -197,15 +191,20 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut, GFX::Me
     params._stagePass = { RenderStage::REFLECTION, RenderPassType::COUNT, Config::MAX_REFLECTIVE_NODES_IN_VIEW + rtLayerIndex(), static_cast<RenderStagePass::VariantType>(ReflectorType::CUBE) };
 
     params._drawMask &= ~(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES));
-    params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )]._colour = DefaultColours::BLUE;
+    params._drawMask &= ~(1u << to_base(RenderPassParams::Flags::DRAW_TRANSLUCENT_NODES));
+
+    params._targetDescriptorPrePass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = false;
+    params._clearDescriptorPrePass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
+
+    params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
+    params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::BLUE, true };
 
     _context.gfx().generateCubeMap(params,
                                    rtLayerIndex(),
                                    _aabb.getCenter(),
-                                   vec2<F32>(0.1f, _aabb.getHalfExtent().length()),
+                                   vec2<F32>(0.01f, _aabb.getHalfExtent().length()),
                                    bufferInOut,
-                                   memCmdInOut,
-                                   cameras);
+                                   memCmdInOut);
  
     SceneEnvironmentProbePool::ProcessEnvironmentMap(_context.gfx(), rtLayerIndex(), updateType() == UpdateType::ALWAYS, bufferInOut);
 
@@ -284,47 +283,6 @@ void EnvironmentProbeComponent::OnData(const ECS::CustomEvent& data) {
             _drawImpostor = data._dataFirst == 1u;
         }
     }
-}
-
-std::array<Camera*, 6> EnvironmentProbeComponent::probeCameras() const noexcept {
-    // Because we pool probe cameras, the current look at and projection settings may not  match
-    // this probe specifically. Because we update the cameras per refresh call, changing camera settings
-    // should be safe.
-
-    static const std::array<vec3<F32>, 6> TabUp ={
-          WORLD_Y_NEG_AXIS,
-          WORLD_Y_NEG_AXIS,
-          WORLD_Z_AXIS,
-          WORLD_Z_NEG_AXIS,
-          WORLD_Y_NEG_AXIS,
-          WORLD_Y_NEG_AXIS
-    };
-
-    // Get the center and up vectors for each cube face
-    static const std::array<vec3<F32>,6> TabCenter = {
-        vec3<F32>( 1.0f,  0.0f,  0.0f), //Pos X
-        vec3<F32>(-1.0f,  0.0f,  0.0f), //Neg X
-        vec3<F32>( 0.0f,  1.0f,  0.0f), //Pos Y
-        vec3<F32>( 0.0f, -1.0f,  0.0f), //Neg Y
-        vec3<F32>( 0.0f,  0.0f,  1.0f), //Pos Z
-        vec3<F32>( 0.0f,  0.0f, -1.0f)  //Neg Z
-    };
-
-    vector<Camera*>& probeCameras = SceneEnvironmentProbePool::ProbeCameras();
-
-    std::array<Camera*, 6> cameras = {};
-    std::copy_n(std::begin(probeCameras), std::min(cameras.size(), probeCameras.size()), std::begin(cameras));
-
-    for (U8 i = 0; i < 6; ++i) {
-        Camera* camera = cameras[i];
-        // Set a 90 degree horizontal FoV perspective projection
-        camera->setProjection(1.0f, Angle::to_VerticalFoV(Angle::DEGREES<F32>(90.0f), 1.0f), vec2<F32>(0.1f, _aabb.getHalfExtent().length()));
-        // Point our camera to the correct face
-        camera->lookAt(_aabb.getCenter(), _aabb.getCenter() + TabCenter[i] * _aabb.getHalfExtent().length(), TabUp[i]);
-        camera->updateLookAt();
-    }
-
-    return cameras;
 }
 
 void EnvironmentProbeComponent::loadFromXML(const boost::property_tree::ptree& pt) {

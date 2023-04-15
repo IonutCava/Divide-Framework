@@ -432,9 +432,9 @@ namespace Divide
         return ShaderProgram::OnStartup( context().kernel().resourceCache() );
     }
 
-    GFX::MemoryBarrierCommand GFXDevice::updateSceneDescriptorSet( GFX::CommandBuffer& bufferInOut ) const
+    void GFXDevice::updateSceneDescriptorSet( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut ) const
     {
-        return _sceneData->updateSceneDescriptorSet( bufferInOut );
+        _sceneData->updateSceneDescriptorSet( bufferInOut, memCmdInOut );
     }
 
     void GFXDevice::resizeGPUBlocks( size_t targetSizeCam, size_t targetSizeCullCounter )
@@ -456,7 +456,7 @@ namespace Divide
             return;
         }
 
-        DIVIDE_ASSERT( ValidateGPUDataStructure() );
+        DIVIDE_ASSERT( ValidateGPUDataStructure(), "GFXDevice::resizeBlock: GPUBlock does not meet alignment requirements!");
 
         _gfxBuffers.reset( resizeCamBuffer, resizeCullCounter );
 
@@ -595,13 +595,23 @@ namespace Divide
             RenderTargetNames::SCREEN_PREV = _rtPool->allocateRT( screenDesc )._targetID;
         }
         {
+            SamplerDescriptor samplerBackBuffer = {};
+            samplerBackBuffer.wrapUVW( TextureWrap::CLAMP_TO_EDGE );
+            samplerBackBuffer.minFilter( TextureFilter::LINEAR );
+            samplerBackBuffer.magFilter( TextureFilter::LINEAR );
+            samplerBackBuffer.mipSampling( TextureMipSampling::NONE );
+            samplerBackBuffer.anisotropyLevel( 0 );
+            const size_t samplerHashBackBuffer = samplerBackBuffer.getHash();
+
             // This could've been RGB, but Vulkan doesn't seem to support VK_FORMAT_R8G8B8_UNORM in this situation, so ... well ... whatever.
+            // This will contained the final tonemaped image, so unless we desire HDR output, RGBA8 here is fine as anything else will require
+            // changes to the swapchain images!
             TextureDescriptor backBufferDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA ); 
             backBufferDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
             backBufferDescriptor.addImageUsageFlag( ImageUsage::SHADER_READ );
             InternalRTAttachmentDescriptors attachments
             {
-                InternalRTAttachmentDescriptor{ backBufferDescriptor, samplerHash, RTAttachmentType::COLOUR, ScreenTargets::ALBEDO },
+                InternalRTAttachmentDescriptor{ backBufferDescriptor, samplerHashBackBuffer, RTAttachmentType::COLOUR, ScreenTargets::ALBEDO },
             };
 
             RenderTargetDescriptor screenDesc = {};
@@ -674,8 +684,8 @@ namespace Divide
         // Reflection Targets
         SamplerDescriptor reflectionSampler = {};
         reflectionSampler.wrapUVW( TextureWrap::CLAMP_TO_EDGE );
-        reflectionSampler.minFilter( TextureFilter::NEAREST );
-        reflectionSampler.magFilter( TextureFilter::NEAREST );
+        reflectionSampler.minFilter( TextureFilter::LINEAR );
+        reflectionSampler.magFilter( TextureFilter::LINEAR );
         reflectionSampler.mipSampling( TextureMipSampling::NONE );
         const size_t reflectionSamplerHash = reflectionSampler.getHash();
 
@@ -1242,7 +1252,10 @@ namespace Divide
         // Pass the idle call to the post processing system
         _renderer->idle();
         // And to the shader manager
-        ShaderProgram::Idle( context() );
+        if ( !fast )
+        {
+            ShaderProgram::Idle( context() );
+        }
     }
 
     void GFXDevice::update( const U64 deltaTimeUSFixed, const U64 deltaTimeUSApp )
@@ -1290,6 +1303,11 @@ namespace Divide
     bool GFXDevice::frameStarted( const FrameEvent& evt )
     {
         ++s_frameCount;
+
+        for ( GFXDescriptorSet& set : _descriptorSets )
+        {
+            set.clear();
+        }
 
         if ( _queuedScreenSampleChange != s_invalidQueueSampleCount )
         {
@@ -1396,37 +1414,26 @@ namespace Divide
                                      const vec2<F32> zPlanes,
                                      GFX::CommandBuffer& commandsInOut,
                                      GFX::MemoryBarrierCommand& memCmdInOut,
-                                     std::array<Camera*, 6>& cameras )
+                                     mat4<F32>* viewProjectionOut)
     {
         PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);
 
-        if ( arrayOffset < 0 )
-        {
-            return;
-        }
-
-        // Only the first colour attachment or the depth attachment is used for now
-        // and it must be a cube map texture
+        // Only the first colour attachment or the depth attachment is used for now and it must be a cube map texture
         RenderTarget* cubeMapTarget = _rtPool->getRenderTarget( params._target );
-        // Colour attachment takes precedent over depth attachment
-        const bool hasColour = cubeMapTarget->hasAttachment( RTAttachmentType::COLOUR );
-        const bool hasDepth = cubeMapTarget->hasAttachment( RTAttachmentType::DEPTH );
-        const vec2<U16> targetResolution = cubeMapTarget->getResolution();
 
-        // Everyone's innocent until proven guilty
+        // Colour attachment takes precedent over depth attachment
         bool isValidFB = false;
-        if ( hasColour )
+        if ( cubeMapTarget->hasAttachment( RTAttachmentType::COLOUR ) )
         {
-            RTAttachment* colourAttachment = cubeMapTarget->getAttachment( RTAttachmentType::COLOUR );
             // We only need the colour attachment
-            isValidFB = IsCubeTexture( colourAttachment->texture()->descriptor().texType() );
+            isValidFB = IsCubeTexture( cubeMapTarget->getAttachment( RTAttachmentType::COLOUR )->texture()->descriptor().texType() );
         }
-        else
+        else if ( cubeMapTarget->hasAttachment( RTAttachmentType::DEPTH ) )
         {
-            RTAttachment* depthAttachment = cubeMapTarget->getAttachment( RTAttachmentType::DEPTH );
             // We don't have a colour attachment, so we require a cube map depth attachment
-            isValidFB = hasDepth && IsCubeTexture( depthAttachment->texture()->descriptor().texType() );
+            isValidFB = IsCubeTexture( cubeMapTarget->getAttachment( RTAttachmentType::DEPTH )->texture()->descriptor().texType() );
         }
+
         // Make sure we have a proper render target to draw to
         if ( !isValidFB )
         {
@@ -1435,44 +1442,41 @@ namespace Divide
             return;
         }
 
-        // No dual-paraboloid rendering here. Just draw once for each face.
-        static const std::array<std::pair<vec3<F32>, vec3<F32>>, 6> CameraDirections = { {
-                // Target Dir          Up Dir
-                {WORLD_X_AXIS,      WORLD_Y_AXIS    },
-                {WORLD_X_NEG_AXIS,  WORLD_Y_AXIS    },
-                {WORLD_Y_AXIS,      WORLD_Z_NEG_AXIS},
-                {WORLD_Y_NEG_AXIS,  WORLD_Z_AXIS    },
-                {WORLD_Z_AXIS,      WORLD_Y_AXIS    },
-                {WORLD_Z_NEG_AXIS,  WORLD_Y_AXIS    }
-          } };
+        static const vec3<F32> CameraDirections[] = { WORLD_X_AXIS,  WORLD_X_NEG_AXIS, WORLD_Y_AXIS,  WORLD_Y_NEG_AXIS,  WORLD_Z_AXIS,  WORLD_Z_NEG_AXIS };
+        static const vec3<F32> CameraUpVectors[] =  { WORLD_Y_AXIS,  WORLD_Y_AXIS,     WORLD_Z_AXIS,  WORLD_Z_NEG_AXIS,  WORLD_Y_AXIS,  WORLD_Y_AXIS     };
+        constexpr const char* PassNames[] =         { "CUBEMAP_X+",  "CUBEMAP_X-",     "CUBEMAP_Y+",  "CUBEMAP_Y-",      "CUBEMAP_Z+",  "CUBEMAP_Z-"     };
 
-        // For each of the environment's faces (TOP, DOWN, NORTH, SOUTH, EAST, WEST)
-        params._passName = "CubeMap";
-        const D64 aspect = to_D64( targetResolution.width ) / targetResolution.height;
+        DIVIDE_ASSERT( cubeMapTarget->getWidth() == cubeMapTarget->getHeight());
 
         RenderPassManager* passMgr = context().kernel().renderPassManager();
 
+        Camera* camera = Camera::GetUtilityCamera( Camera::UtilityCamera::CUBE );
+
+        // For each of the environment's faces (TOP, DOWN, NORTH, SOUTH, EAST, WEST)
         for ( U8 i = 0u; i < 6u; ++i )
         {
-            // Draw to the current cubemap face
-            params._targetDescriptorMainPass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )] = { arrayOffset, i};
-            params._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX] = { arrayOffset, i };
-            params._targetDescriptorPrePass._writeLayers[to_base(RTColourAttachmentSlot::SLOT_0)] = { arrayOffset, i };
-            params._targetDescriptorPrePass._writeLayers[RT_DEPTH_ATTACHMENT_IDX] = { arrayOffset, i };
+            params._passName = PassNames[i];
+            params._stagePass._pass = static_cast<RenderStagePass::PassIndex>(i);
 
-            Camera* camera = cameras[i];
-            if ( camera == nullptr )
-            {
-                camera = Camera::GetUtilityCamera( Camera::UtilityCamera::CUBE );
-            }
+            const DrawLayerEntry layer = { arrayOffset, i};
+
+            // Draw to the current cubemap face
+            params._targetDescriptorPrePass._writeLayers[RT_DEPTH_ATTACHMENT_IDX] = layer;
+            params._targetDescriptorPrePass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )] = layer;
+            params._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX] = layer;
+            params._targetDescriptorMainPass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )] = layer;
 
             // Set a 90 degree horizontal FoV perspective projection
-            camera->setProjection( to_F32( aspect ), Angle::to_VerticalFoV( Angle::DEGREES<F32>( 90.0f ), aspect ), zPlanes );
+            camera->setProjection( 1.f, Angle::to_VerticalFoV( Angle::DEGREES<F32>( 90.f ), 1.f ), zPlanes );
             // Point our camera to the correct face
-            camera->lookAt( pos, pos + CameraDirections[i].first * zPlanes.max, -CameraDirections[i].second );
-            params._stagePass._pass = static_cast<RenderStagePass::PassIndex>(i);
+            camera->lookAt( pos, pos + (CameraDirections[i] * zPlanes.max), CameraUpVectors[i] );
             // Pass our render function to the renderer
             passMgr->doCustomPass( camera, params, commandsInOut, memCmdInOut );
+
+            if ( viewProjectionOut != nullptr )
+            {
+                viewProjectionOut[i] = camera->viewProjectionMatrix();
+            }
         }
     }
 
@@ -1482,7 +1486,7 @@ namespace Divide
                                                const vec2<F32> zPlanes,
                                                GFX::CommandBuffer& bufferInOut,
                                                GFX::MemoryBarrierCommand& memCmdInOut,
-                                               std::array<Camera*, 2>& cameras )
+                                               mat4<F32>* viewProjectionOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -1522,19 +1526,17 @@ namespace Divide
         const D64 aspect = to_D64( targetResolution.width ) / targetResolution.height;
         RenderPassManager* passMgr = context().kernel().renderPassManager();
 
+        Camera* camera = Camera::GetUtilityCamera( Camera::UtilityCamera::DUAL_PARABOLOID );
+
         for ( U8 i = 0u; i < 2u; ++i )
         {
-            Camera* camera = cameras[i];
-            if ( !camera )
-            {
-                camera = Camera::GetUtilityCamera( Camera::UtilityCamera::DUAL_PARABOLOID );
-            }
+            const U16 layer = arrayOffset + i;
 
-            params._targetDescriptorMainPass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )]._layer = arrayOffset + i;
-            params._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer = arrayOffset + i;
-            params._targetDescriptorPrePass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )]._layer = arrayOffset + i;
-            params._targetDescriptorPrePass._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer = arrayOffset + i;
-            
+            params._targetDescriptorPrePass._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer = layer;
+            params._targetDescriptorPrePass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )]._layer = layer;
+            params._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer = layer;
+            params._targetDescriptorMainPass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )]._layer = layer;
+
             // Point our camera to the correct face
             camera->lookAt( pos, pos + (i == 0 ? WORLD_Z_NEG_AXIS : WORLD_Z_AXIS) * zPlanes.y );
             // Set a 180 degree vertical FoV perspective projection
@@ -1544,6 +1546,11 @@ namespace Divide
             params._stagePass._pass = static_cast<RenderStagePass::PassIndex>(i);
 
             passMgr->doCustomPass( camera, params, bufferInOut, memCmdInOut );
+
+            if ( viewProjectionOut != nullptr )
+            {
+                viewProjectionOut[i] = camera->viewProjectionMatrix();
+            }
         }
     }
 
@@ -1947,7 +1954,6 @@ namespace Divide
         if ( cameraSnapshot._projectionMatrix != data._ProjectionMatrix )
         {
             data._ProjectionMatrix.set( cameraSnapshot._projectionMatrix );
-            data._InvProjectionMatrix.set( cameraSnapshot._invProjectionMatrix );
             projectionDirty = true;
         }
 
@@ -2026,21 +2032,20 @@ namespace Divide
 
 
         bool projectionDirty = false, viewDirty = false;
-        if ( _gpuBlock._camData._PreviousViewMatrix != prevViewMatrix )
+        if ( _gpuBlock._prevFrameData._PreviousViewMatrix != prevViewMatrix )
         {
-            _gpuBlock._camData._PreviousViewMatrix = prevViewMatrix;
+            _gpuBlock._prevFrameData._PreviousViewMatrix = prevViewMatrix;
             viewDirty = true;
         }
-        if ( _gpuBlock._camData._PreviousProjectionMatrix != prevProjectionMatrix )
+        if ( _gpuBlock._prevFrameData._PreviousProjectionMatrix != prevProjectionMatrix )
         {
-            _gpuBlock._camData._PreviousProjectionMatrix = prevProjectionMatrix;
+            _gpuBlock._prevFrameData._PreviousProjectionMatrix = prevProjectionMatrix;
             projectionDirty = true;
         }
 
         if ( projectionDirty || viewDirty )
         {
-            mat4<F32>::Multiply( _gpuBlock._camData._PreviousViewMatrix, _gpuBlock._camData._PreviousProjectionMatrix, _gpuBlock._camData._PreviousViewProjectionMatrix );
-            _gpuBlock._camNeedsUpload = true;
+            mat4<F32>::Multiply( _gpuBlock._prevFrameData._PreviousViewMatrix, _gpuBlock._prevFrameData._PreviousProjectionMatrix, _gpuBlock._prevFrameData._PreviousViewProjectionMatrix );
         }
     }
 
@@ -2074,6 +2079,11 @@ namespace Divide
     const GFXShaderData::CamData& GFXDevice::cameraData() const noexcept
     {
         return _gpuBlock._camData;
+    }
+
+    const GFXShaderData::PrevFrameData& GFXDevice::previousFrameData() const noexcept
+    {
+        return _gpuBlock._prevFrameData;
     }
 #pragma endregion
 
@@ -2377,11 +2387,11 @@ namespace Divide
         fastConstants.data[1] = cameraSnapshot._viewMatrix;
 
         GFX::SendPushConstantsCommand HIZPushConstantsCMD = {};
-        HIZPushConstantsCMD._constants.set( _ID( "countCulledItems" ), GFX::PushConstantType::UINT, countCulledNodes ? 1u : 0u );
-        HIZPushConstantsCMD._constants.set( _ID( "numEntities" ), GFX::PushConstantType::UINT, cmdCount );
-        HIZPushConstantsCMD._constants.set( _ID( "nearPlane" ), GFX::PushConstantType::FLOAT, cameraSnapshot._zPlanes.x );
-        HIZPushConstantsCMD._constants.set( _ID( "viewSize" ), GFX::PushConstantType::VEC2, vec2<F32>( hizBuffer->width(), hizBuffer->height() ) );
-        HIZPushConstantsCMD._constants.set( _ID( "frustumPlanes" ), GFX::PushConstantType::VEC4, cameraSnapshot._frustumPlanes );
+        HIZPushConstantsCMD._constants.set( _ID( "countCulledItems" ), PushConstantType::UINT, countCulledNodes ? 1u : 0u );
+        HIZPushConstantsCMD._constants.set( _ID( "numEntities" ), PushConstantType::UINT, cmdCount );
+        HIZPushConstantsCMD._constants.set( _ID( "nearPlane" ), PushConstantType::FLOAT, cameraSnapshot._zPlanes.x );
+        HIZPushConstantsCMD._constants.set( _ID( "viewSize" ), PushConstantType::VEC2, vec2<F32>( hizBuffer->width(), hizBuffer->height() ) );
+        HIZPushConstantsCMD._constants.set( _ID( "frustumPlanes" ), PushConstantType::VEC4, cameraSnapshot._frustumPlanes );
         HIZPushConstantsCMD._constants.set( fastConstants );
 
         GFX::EnqueueCommand( bufferInOut, HIZPushConstantsCMD );
@@ -2502,10 +2512,10 @@ namespace Divide
             HiZ->_texture = renderTargetPool().getRenderTarget( RenderTargetNames::HI_Z )->getAttachment( RTAttachmentType::COLOUR )->texture();
             HiZ->_samplerHash = renderTargetPool().getRenderTarget( RenderTargetNames::HI_Z )->getAttachment( RTAttachmentType::COLOUR )->descriptor()._samplerHash;
             HiZ->_name = "Hierarchical-Z";
-            HiZ->_shaderData.set( _ID( "lodLevel" ), GFX::PushConstantType::FLOAT, 0.f );
-            HiZ->_shaderData.set( _ID( "channelsArePacked" ), GFX::PushConstantType::BOOL, false );
-            HiZ->_shaderData.set( _ID( "startChannel" ), GFX::PushConstantType::UINT, 0u );
-            HiZ->_shaderData.set( _ID( "channelCount" ), GFX::PushConstantType::UINT, 1u );
+            HiZ->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.f );
+            HiZ->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
+            HiZ->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
+            HiZ->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 1u );
             HiZ->_cycleMips = true;
 
             DebugView_ptr DepthPreview = std::make_shared<DebugView>();
@@ -2513,65 +2523,65 @@ namespace Divide
             DepthPreview->_texture = renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN )->getAttachment( RTAttachmentType::DEPTH )->texture();
             DepthPreview->_samplerHash = renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN )->getAttachment( RTAttachmentType::DEPTH )->descriptor()._samplerHash;
             DepthPreview->_name = "Depth Buffer";
-            DepthPreview->_shaderData.set( _ID( "lodLevel" ), GFX::PushConstantType::FLOAT, 0.0f );
-            DepthPreview->_shaderData.set( _ID( "_zPlanes" ), GFX::PushConstantType::VEC2, vec2<F32>( Camera::s_minNearZ, _context.config().runtime.cameraViewDistance ) );
+            DepthPreview->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
+            DepthPreview->_shaderData.set( _ID( "_zPlanes" ), PushConstantType::VEC2, vec2<F32>( Camera::s_minNearZ, _context.config().runtime.cameraViewDistance ) );
 
             DebugView_ptr NormalPreview = std::make_shared<DebugView>();
             NormalPreview->_shader = _renderTargetDraw;
             NormalPreview->_texture = renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::NORMALS )->texture();
             NormalPreview->_samplerHash = renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::NORMALS )->descriptor()._samplerHash;
             NormalPreview->_name = "Normals";
-            NormalPreview->_shaderData.set( _ID( "lodLevel" ), GFX::PushConstantType::FLOAT, 0.0f );
-            NormalPreview->_shaderData.set( _ID( "channelsArePacked" ), GFX::PushConstantType::BOOL, true );
-            NormalPreview->_shaderData.set( _ID( "startChannel" ), GFX::PushConstantType::UINT, 0u );
-            NormalPreview->_shaderData.set( _ID( "channelCount" ), GFX::PushConstantType::UINT, 2u );
-            NormalPreview->_shaderData.set( _ID( "multiplier" ), GFX::PushConstantType::FLOAT, 1.0f );
+            NormalPreview->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
+            NormalPreview->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, true );
+            NormalPreview->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
+            NormalPreview->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 2u );
+            NormalPreview->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.0f );
 
             DebugView_ptr VelocityPreview = std::make_shared<DebugView>();
             VelocityPreview->_shader = _renderTargetDraw;
             VelocityPreview->_texture = renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::VELOCITY )->texture();
             VelocityPreview->_samplerHash = renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::VELOCITY )->descriptor()._samplerHash;
             VelocityPreview->_name = "Velocity Map";
-            VelocityPreview->_shaderData.set( _ID( "lodLevel" ), GFX::PushConstantType::FLOAT, 0.0f );
-            VelocityPreview->_shaderData.set( _ID( "scaleAndBias" ), GFX::PushConstantType::BOOL, true );
-            VelocityPreview->_shaderData.set( _ID( "normalizeOutput" ), GFX::PushConstantType::BOOL, true );
-            VelocityPreview->_shaderData.set( _ID( "channelsArePacked" ), GFX::PushConstantType::BOOL, false );
-            VelocityPreview->_shaderData.set( _ID( "startChannel" ), GFX::PushConstantType::UINT, 0u );
-            VelocityPreview->_shaderData.set( _ID( "channelCount" ), GFX::PushConstantType::UINT, 2u );
-            VelocityPreview->_shaderData.set( _ID( "multiplier" ), GFX::PushConstantType::FLOAT, 5.0f );
+            VelocityPreview->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
+            VelocityPreview->_shaderData.set( _ID( "scaleAndBias" ), PushConstantType::BOOL, true );
+            VelocityPreview->_shaderData.set( _ID( "normalizeOutput" ), PushConstantType::BOOL, true );
+            VelocityPreview->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
+            VelocityPreview->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
+            VelocityPreview->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 2u );
+            VelocityPreview->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 5.0f );
 
             DebugView_ptr SSAOPreview = std::make_shared<DebugView>();
             SSAOPreview->_shader = _renderTargetDraw;
             SSAOPreview->_texture = renderTargetPool().getRenderTarget( RenderTargetNames::SSAO_RESULT )->getAttachment( RTAttachmentType::COLOUR )->texture();
             SSAOPreview->_samplerHash = renderTargetPool().getRenderTarget( RenderTargetNames::SSAO_RESULT )->getAttachment( RTAttachmentType::COLOUR )->descriptor()._samplerHash;
             SSAOPreview->_name = "SSAO Map";
-            SSAOPreview->_shaderData.set( _ID( "lodLevel" ), GFX::PushConstantType::FLOAT, 0.0f );
-            SSAOPreview->_shaderData.set( _ID( "channelsArePacked" ), GFX::PushConstantType::BOOL, false );
-            SSAOPreview->_shaderData.set( _ID( "startChannel" ), GFX::PushConstantType::UINT, 0u );
-            SSAOPreview->_shaderData.set( _ID( "channelCount" ), GFX::PushConstantType::UINT, 1u );
-            SSAOPreview->_shaderData.set( _ID( "multiplier" ), GFX::PushConstantType::FLOAT, 1.0f );
+            SSAOPreview->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
+            SSAOPreview->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
+            SSAOPreview->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
+            SSAOPreview->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 1u );
+            SSAOPreview->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.0f );
 
             DebugView_ptr AlphaAccumulationHigh = std::make_shared<DebugView>();
             AlphaAccumulationHigh->_shader = _renderTargetDraw;
             AlphaAccumulationHigh->_texture = renderTargetPool().getRenderTarget( RenderTargetNames::OIT )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::ALBEDO )->texture();
             AlphaAccumulationHigh->_samplerHash = renderTargetPool().getRenderTarget( RenderTargetNames::OIT )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::ALBEDO )->descriptor()._samplerHash;
             AlphaAccumulationHigh->_name = "Alpha Accumulation High";
-            AlphaAccumulationHigh->_shaderData.set( _ID( "lodLevel" ), GFX::PushConstantType::FLOAT, 0.0f );
-            AlphaAccumulationHigh->_shaderData.set( _ID( "channelsArePacked" ), GFX::PushConstantType::BOOL, false );
-            AlphaAccumulationHigh->_shaderData.set( _ID( "startChannel" ), GFX::PushConstantType::UINT, 0u );
-            AlphaAccumulationHigh->_shaderData.set( _ID( "channelCount" ), GFX::PushConstantType::UINT, 4u );
-            AlphaAccumulationHigh->_shaderData.set( _ID( "multiplier" ), GFX::PushConstantType::FLOAT, 1.0f );
+            AlphaAccumulationHigh->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
+            AlphaAccumulationHigh->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
+            AlphaAccumulationHigh->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
+            AlphaAccumulationHigh->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 4u );
+            AlphaAccumulationHigh->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.0f );
 
             DebugView_ptr AlphaRevealageHigh = std::make_shared<DebugView>();
             AlphaRevealageHigh->_shader = _renderTargetDraw;
             AlphaRevealageHigh->_texture = renderTargetPool().getRenderTarget( RenderTargetNames::OIT )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::REVEALAGE )->texture();
             AlphaRevealageHigh->_samplerHash = renderTargetPool().getRenderTarget( RenderTargetNames::OIT )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::REVEALAGE )->descriptor()._samplerHash;
             AlphaRevealageHigh->_name = "Alpha Revealage High";
-            AlphaRevealageHigh->_shaderData.set( _ID( "lodLevel" ), GFX::PushConstantType::FLOAT, 0.0f );
-            AlphaRevealageHigh->_shaderData.set( _ID( "channelsArePacked" ), GFX::PushConstantType::BOOL, false );
-            AlphaRevealageHigh->_shaderData.set( _ID( "startChannel" ), GFX::PushConstantType::UINT, 0u );
-            AlphaRevealageHigh->_shaderData.set( _ID( "channelCount" ), GFX::PushConstantType::UINT, 1u );
-            AlphaRevealageHigh->_shaderData.set( _ID( "multiplier" ), GFX::PushConstantType::FLOAT, 1.0f );
+            AlphaRevealageHigh->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
+            AlphaRevealageHigh->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
+            AlphaRevealageHigh->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
+            AlphaRevealageHigh->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 1u );
+            AlphaRevealageHigh->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.0f );
 
             SamplerDescriptor lumaSampler = {};
             lumaSampler.wrapUVW( TextureWrap::CLAMP_TO_EDGE );
@@ -2585,11 +2595,11 @@ namespace Divide
             Luminance->_texture = getRenderer().postFX().getFilterBatch().luminanceTex();
             Luminance->_samplerHash = lumaSampler.getHash();
             Luminance->_name = "Luminance";
-            Luminance->_shaderData.set( _ID( "lodLevel" ), GFX::PushConstantType::FLOAT, 0.0f );
-            Luminance->_shaderData.set( _ID( "channelsArePacked" ), GFX::PushConstantType::BOOL, false );
-            Luminance->_shaderData.set( _ID( "startChannel" ), GFX::PushConstantType::UINT, 0u );
-            Luminance->_shaderData.set( _ID( "channelCount" ), GFX::PushConstantType::UINT, 1u );
-            Luminance->_shaderData.set( _ID( "multiplier" ), GFX::PushConstantType::FLOAT, 1.0f );
+            Luminance->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
+            Luminance->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
+            Luminance->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
+            Luminance->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 1u );
+            Luminance->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.0f );
 
             const RenderTargetHandle& edgeRTHandle = getRenderer().postFX().getFilterBatch().edgesRT();
 
@@ -2598,11 +2608,11 @@ namespace Divide
             Edges->_texture = renderTargetPool().getRenderTarget( edgeRTHandle._targetID )->getAttachment( RTAttachmentType::COLOUR )->texture();
             Edges->_samplerHash = renderTargetPool().getRenderTarget( edgeRTHandle._targetID )->getAttachment( RTAttachmentType::COLOUR )->descriptor()._samplerHash;
             Edges->_name = "Edges";
-            Edges->_shaderData.set( _ID( "lodLevel" ), GFX::PushConstantType::FLOAT, 0.0f );
-            Edges->_shaderData.set( _ID( "channelsArePacked" ), GFX::PushConstantType::BOOL, false );
-            Edges->_shaderData.set( _ID( "startChannel" ), GFX::PushConstantType::UINT, 0u );
-            Edges->_shaderData.set( _ID( "channelCount" ), GFX::PushConstantType::UINT, 4u );
-            Edges->_shaderData.set( _ID( "multiplier" ), GFX::PushConstantType::FLOAT, 1.0f );
+            Edges->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
+            Edges->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
+            Edges->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
+            Edges->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 4u );
+            Edges->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.0f );
 
             addDebugView( HiZ );
             addDebugView( DepthPreview );
@@ -2679,7 +2689,7 @@ namespace Divide
             if ( view->_cycleMips )
             {
                 const F32 lodLevel = to_F32( mipTimer % view->_texture->mipCount() );
-                view->_shaderData.set( _ID( "lodLevel" ), GFX::PushConstantType::FLOAT, lodLevel );
+                view->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, lodLevel );
                 labelStack.emplace_back( Util::StringFormat( "Mip level: %d", to_U8( lodLevel ) ), viewport.sizeY * 4, viewport );
             }
             const ShaderProgramHandle crtShader = pipelineDesc._shaderProgramHandle;

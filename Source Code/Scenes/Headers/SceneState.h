@@ -33,7 +33,6 @@
 #ifndef _SCENE_STATE_H_
 #define _SCENE_STATE_H_
 
-#include "Platform/Video/Headers/RenderAPIEnums.h"
 #include "Scenes/Headers/SceneComponent.h"
 
 /// This class contains all the variables that define each scene's

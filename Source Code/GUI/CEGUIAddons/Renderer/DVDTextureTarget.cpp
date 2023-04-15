@@ -40,6 +40,10 @@
 #include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 
+#ifndef GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#endif
+
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 

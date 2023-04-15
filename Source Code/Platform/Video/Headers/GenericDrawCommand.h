@@ -33,7 +33,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _GENERIC_DRAW_COMMAND_H_
 #define _GENERIC_DRAW_COMMAND_H_
 
-#include "RenderAPIEnums.h"
 #include "Core/Headers/PoolHandle.h"
 
 namespace Divide {

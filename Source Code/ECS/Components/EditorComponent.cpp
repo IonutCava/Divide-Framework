@@ -61,7 +61,7 @@ namespace Divide {
 
     void EditorComponent::registerField(EditorComponentField&& field) {
         dvd_erase_if(_fields, [&field](const EditorComponentField& it) { return it._name == field._name && it._type == field._type; });
-        assert(field._basicTypeSize == GFX::PushConstantSize::DWORD || field.supportsByteCount());
+        assert(field._basicTypeSize == PushConstantSize::DWORD || field.supportsByteCount());
 
         _fields.push_back(field);
     }
@@ -381,281 +381,281 @@ namespace Divide {
         auto entryName = GetFullFieldName(_name.c_str(), field._name);
 
         switch (field._basicType) {
-            case GFX::PushConstantType::BOOL: {
+            case PushConstantType::BOOL: {
                 pt.put(entryName.c_str(), field.get<bool>());
             } break;
-            case GFX::PushConstantType::INT: {
+            case PushConstantType::INT: {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: pt.put(entryName.c_str(), field.get<I64>()); break;
-                    case GFX::PushConstantSize::DWORD: pt.put(entryName.c_str(), field.get<I32>()); break;
-                    case GFX::PushConstantSize::WORD:  pt.put(entryName.c_str(), field.get<I16>()); break;
-                    case GFX::PushConstantSize::BYTE:  pt.put(entryName.c_str(), field.get<I8>()); break;
+                    case PushConstantSize::QWORD: pt.put(entryName.c_str(), field.get<I64>()); break;
+                    case PushConstantSize::DWORD: pt.put(entryName.c_str(), field.get<I32>()); break;
+                    case PushConstantSize::WORD:  pt.put(entryName.c_str(), field.get<I16>()); break;
+                    case PushConstantSize::BYTE:  pt.put(entryName.c_str(), field.get<I8>()); break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::UINT: {
+            case PushConstantType::UINT: {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: pt.put(entryName.c_str(), field.get<U64>()); break;
-                    case GFX::PushConstantSize::DWORD: pt.put(entryName.c_str(), field.get<U32>()); break;
-                    case GFX::PushConstantSize::WORD:  pt.put(entryName.c_str(), field.get<U16>()); break;
-                    case GFX::PushConstantSize::BYTE:  pt.put(entryName.c_str(), field.get<U8>()); break;
+                    case PushConstantSize::QWORD: pt.put(entryName.c_str(), field.get<U64>()); break;
+                    case PushConstantSize::DWORD: pt.put(entryName.c_str(), field.get<U32>()); break;
+                    case PushConstantSize::WORD:  pt.put(entryName.c_str(), field.get<U16>()); break;
+                    case PushConstantSize::BYTE:  pt.put(entryName.c_str(), field.get<U8>()); break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::FLOAT: {
+            case PushConstantType::FLOAT: {
                 pt.put(entryName.c_str(), field.get<F32>());
             } break;
-            case GFX::PushConstantType::DOUBLE: {
+            case PushConstantType::DOUBLE: {
                 pt.put(entryName.c_str(), field.get<D64>());
             } break;
-            case GFX::PushConstantType::IVEC2: {
+            case PushConstantType::IVEC2: {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: {
+                    case PushConstantSize::QWORD: {
                         saveVector<vec2<I64>, 2>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::DWORD: {
+                    case PushConstantSize::DWORD: {
                         saveVector<vec2<I32>, 2>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::WORD: {
+                    case PushConstantSize::WORD: {
                         saveVector<vec2<I16>, 2>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::BYTE: {
+                    case PushConstantSize::BYTE: {
                         saveVector<vec2<I8>, 2>(entryName, field, pt);
                     } break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::IVEC3: {
+            case PushConstantType::IVEC3: {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: {
+                    case PushConstantSize::QWORD: {
                         saveVector<vec3<I64>, 3>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::DWORD: {
+                    case PushConstantSize::DWORD: {
                         saveVector<vec3<I32>, 3>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::WORD: {
+                    case PushConstantSize::WORD: {
                         saveVector<vec3<I16>, 3>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::BYTE: {
+                    case PushConstantSize::BYTE: {
                         saveVector<vec3<I8>, 3>(entryName, field, pt);
                     } break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::IVEC4: {
+            case PushConstantType::IVEC4: {
                switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: {
+                    case PushConstantSize::QWORD: {
                         saveVector<vec4<I64>, 4>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::DWORD: {
+                    case PushConstantSize::DWORD: {
                         saveVector<vec4<I32>, 4>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::WORD: {
+                    case PushConstantSize::WORD: {
                         saveVector<vec4<I16>, 4>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::BYTE: {
+                    case PushConstantSize::BYTE: {
                         saveVector<vec4<I8>, 4>(entryName, field, pt);
                     } break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::UVEC2: {
+            case PushConstantType::UVEC2: {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: {
+                    case PushConstantSize::QWORD: {
                         saveVector<vec2<U64>, 2>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::DWORD: {
+                    case PushConstantSize::DWORD: {
                         saveVector<vec2<U32>, 2>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::WORD: {
+                    case PushConstantSize::WORD: {
                         saveVector<vec2<U16>, 2>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::BYTE: {
+                    case PushConstantSize::BYTE: {
                         saveVector<vec2<U8>, 2>(entryName, field, pt);
                     } break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::UVEC3: {
+            case PushConstantType::UVEC3: {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: {
+                    case PushConstantSize::QWORD: {
                         saveVector<vec3<U64>, 3>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::DWORD: {
+                    case PushConstantSize::DWORD: {
                         saveVector<vec3<U32>, 3>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::WORD: {
+                    case PushConstantSize::WORD: {
                         saveVector<vec3<U16>, 3>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::BYTE: {
+                    case PushConstantSize::BYTE: {
                         saveVector<vec3<U8>, 3>(entryName, field, pt);
                     } break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::UVEC4: {
+            case PushConstantType::UVEC4: {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: {
+                    case PushConstantSize::QWORD: {
                         saveVector<vec4<U64>, 4>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::DWORD: {
+                    case PushConstantSize::DWORD: {
                         saveVector<vec4<U32>, 4>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::WORD: {
+                    case PushConstantSize::WORD: {
                         saveVector<vec4<U16>, 4>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::BYTE: {
+                    case PushConstantSize::BYTE: {
                         saveVector<vec4<U8>, 4>(entryName, field, pt);
                     } break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::VEC2: {
+            case PushConstantType::VEC2: {
                 saveVector<vec2<F32>, 2>(entryName, field, pt);
             } break;
-            case GFX::PushConstantType::VEC3: {
+            case PushConstantType::VEC3: {
                 saveVector<vec3<F32>, 3>(entryName, field, pt);
             } break;
-            case GFX::PushConstantType::VEC4: {
+            case PushConstantType::VEC4: {
                 saveVector<vec4<F32>, 4>(entryName, field, pt);
             } break;
-            case GFX::PushConstantType::DVEC2: {
+            case PushConstantType::DVEC2: {
                 saveVector<vec2<D64>, 2>(entryName, field, pt);
             } break;
-            case GFX::PushConstantType::DVEC3: {
+            case PushConstantType::DVEC3: {
                 saveVector<vec3<D64>, 3>(entryName, field, pt);
             } break;
-            case GFX::PushConstantType::DVEC4: {
+            case PushConstantType::DVEC4: {
                 saveVector<vec4<D64>, 4>(entryName, field, pt);
             } break;
-            case GFX::PushConstantType::IMAT2: {
+            case PushConstantType::IMAT2: {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: {
+                    case PushConstantSize::QWORD: {
                         saveMatrix<mat2<I64>, 2>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::DWORD: {
+                    case PushConstantSize::DWORD: {
                         saveMatrix<mat2<I32>, 2>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::WORD: {
+                    case PushConstantSize::WORD: {
                         saveMatrix<mat2<I16>, 2>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::BYTE: {
+                    case PushConstantSize::BYTE: {
                         saveMatrix<mat2<I8>, 2>(entryName, field, pt);
                     } break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::IMAT3: {
+            case PushConstantType::IMAT3: {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: {
+                    case PushConstantSize::QWORD: {
                         saveMatrix<mat3<I64>, 3>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::DWORD: {
+                    case PushConstantSize::DWORD: {
                         saveMatrix<mat3<I32>, 3>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::WORD: {
+                    case PushConstantSize::WORD: {
                         saveMatrix<mat3<I16>, 3>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::BYTE: {
+                    case PushConstantSize::BYTE: {
                         saveMatrix<mat3<I8>, 3>(entryName, field, pt);
                     } break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::IMAT4: {
+            case PushConstantType::IMAT4: {
                  switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: {
+                    case PushConstantSize::QWORD: {
                         saveMatrix<mat4<I64>, 4>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::DWORD: {
+                    case PushConstantSize::DWORD: {
                         saveMatrix<mat4<I32>, 4>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::WORD: {
+                    case PushConstantSize::WORD: {
                         saveMatrix<mat4<I16>, 4>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::BYTE: {
+                    case PushConstantSize::BYTE: {
                         saveMatrix<mat4<I8>, 4>(entryName, field, pt);
                     } break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::UMAT2: {
+            case PushConstantType::UMAT2: {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: {
+                    case PushConstantSize::QWORD: {
                         saveMatrix<mat2<U64>, 2>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::DWORD: {
+                    case PushConstantSize::DWORD: {
                         saveMatrix<mat2<U32>, 2>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::WORD: {
+                    case PushConstantSize::WORD: {
                         saveMatrix<mat2<U16>, 2>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::BYTE: {
+                    case PushConstantSize::BYTE: {
                         saveMatrix<mat2<U8>, 2>(entryName, field, pt);
                     } break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::UMAT3: {
+            case PushConstantType::UMAT3: {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: {
+                    case PushConstantSize::QWORD: {
                         saveMatrix<mat3<U64>, 3>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::DWORD: {
+                    case PushConstantSize::DWORD: {
                         saveMatrix<mat3<U32>, 3>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::WORD: {
+                    case PushConstantSize::WORD: {
                         saveMatrix<mat3<U16>, 3>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::BYTE: {
+                    case PushConstantSize::BYTE: {
                         saveMatrix<mat3<U8>, 3>(entryName, field, pt);
                     } break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::UMAT4: {
+            case PushConstantType::UMAT4: {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: {
+                    case PushConstantSize::QWORD: {
                         saveMatrix<mat4<U64>, 4>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::DWORD: {
+                    case PushConstantSize::DWORD: {
                         saveMatrix<mat4<U32>, 4>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::WORD: {
+                    case PushConstantSize::WORD: {
                         saveMatrix<mat4<U16>, 4>(entryName, field, pt);
                     } break;
-                    case GFX::PushConstantSize::BYTE: {
+                    case PushConstantSize::BYTE: {
                         saveMatrix<mat4<U8>, 4>(entryName, field, pt);
                     } break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::MAT2: {
+            case PushConstantType::MAT2: {
                 saveMatrix<mat2<F32>, 2>(entryName, field, pt);
             } break;
-            case GFX::PushConstantType::MAT3: {
+            case PushConstantType::MAT3: {
                 saveMatrix<mat3<F32>, 3>(entryName, field, pt);
             } break;
-            case GFX::PushConstantType::MAT4: {
+            case PushConstantType::MAT4: {
                 saveMatrix<mat4<F32>, 4>(entryName, field, pt);
             } break;
-            case GFX::PushConstantType::DMAT2: {
+            case PushConstantType::DMAT2: {
                 saveMatrix<mat2<D64>, 2>(entryName, field, pt);
             } break;
-            case GFX::PushConstantType::DMAT3: {
+            case PushConstantType::DMAT3: {
                 saveMatrix<mat3<D64>, 3>(entryName, field, pt);
             } break;
-            case GFX::PushConstantType::DMAT4: {
+            case PushConstantType::DMAT4: {
                 saveMatrix<mat4<D64>, 4>(entryName, field, pt);
             } break;
-            case GFX::PushConstantType::FCOLOUR3: {
+            case PushConstantType::FCOLOUR3: {
                 FColour3 data = {};
                 field.get<FColour3>(data);
                 pt.put((entryName + ".<xmlattr>.r").c_str(), data.r);
                 pt.put((entryName + ".<xmlattr>.g").c_str(), data.g);
                 pt.put((entryName + ".<xmlattr>.b").c_str(), data.b);
             } break;
-            case GFX::PushConstantType::FCOLOUR4: {
+            case PushConstantType::FCOLOUR4: {
                 FColour4 data = {};
                 field.get<FColour4>(data);
                 pt.put((entryName + ".<xmlattr>.r").c_str(), data.r);
@@ -671,208 +671,208 @@ namespace Divide {
         auto entryName = GetFullFieldName(_name.c_str(), field._name);
         
         switch (field._basicType) {
-            case GFX::PushConstantType::BOOL:
+            case PushConstantType::BOOL:
             {
                 bool val = pt.get(entryName.c_str(), field.get<bool>());
                 field.set<bool>(val);
             } break;
-            case GFX::PushConstantType::INT:
+            case PushConstantType::INT:
             {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: field.set<I64>(GetClamped<I64>(field, pt, entryName.c_str())); break;
-                    case GFX::PushConstantSize::DWORD: field.set<I32>(GetClamped<I32>(field, pt, entryName.c_str())); break;
-                    case GFX::PushConstantSize::WORD:  field.set<I16>(GetClamped<I16>(field, pt, entryName.c_str())); break;
-                    case GFX::PushConstantSize::BYTE:  field.set<I8>(GetClamped<I8>(field, pt, entryName.c_str())); break;
+                    case PushConstantSize::QWORD: field.set<I64>(GetClamped<I64>(field, pt, entryName.c_str())); break;
+                    case PushConstantSize::DWORD: field.set<I32>(GetClamped<I32>(field, pt, entryName.c_str())); break;
+                    case PushConstantSize::WORD:  field.set<I16>(GetClamped<I16>(field, pt, entryName.c_str())); break;
+                    case PushConstantSize::BYTE:  field.set<I8>(GetClamped<I8>(field, pt, entryName.c_str())); break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::UINT:
+            case PushConstantType::UINT:
             {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: field.set<U64>(GetClamped<U64>(field, pt, entryName.c_str())); break;
-                    case GFX::PushConstantSize::DWORD: field.set<U32>(GetClamped<U32>(field, pt, entryName.c_str())); break;
-                    case GFX::PushConstantSize::WORD:  field.set<U16>(GetClamped<U16>(field, pt, entryName.c_str())); break;
-                    case GFX::PushConstantSize::BYTE:  field.set<U8>(GetClamped<U8>(field, pt, entryName.c_str())); break;
+                    case PushConstantSize::QWORD: field.set<U64>(GetClamped<U64>(field, pt, entryName.c_str())); break;
+                    case PushConstantSize::DWORD: field.set<U32>(GetClamped<U32>(field, pt, entryName.c_str())); break;
+                    case PushConstantSize::WORD:  field.set<U16>(GetClamped<U16>(field, pt, entryName.c_str())); break;
+                    case PushConstantSize::BYTE:  field.set<U8>(GetClamped<U8>(field, pt, entryName.c_str())); break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::FLOAT:
+            case PushConstantType::FLOAT:
             {
                 field.set<F32>(GetClamped<F32>(field, pt, entryName.c_str()));
             } break;
-            case GFX::PushConstantType::DOUBLE:
+            case PushConstantType::DOUBLE:
             {
                 field.set<D64>(GetClamped<D64>(field, pt, entryName.c_str()));
             } break;
-            case GFX::PushConstantType::IVEC2:
+            case PushConstantType::IVEC2:
             {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: loadVector<vec2<I64>, 2>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::DWORD: loadVector<vec2<I32>, 2>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::WORD:  loadVector<vec2<I16>, 2>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::BYTE:  loadVector<vec2<I8>, 2>(entryName, field, pt); break;
+                    case PushConstantSize::QWORD: loadVector<vec2<I64>, 2>(entryName, field, pt); break;
+                    case PushConstantSize::DWORD: loadVector<vec2<I32>, 2>(entryName, field, pt); break;
+                    case PushConstantSize::WORD:  loadVector<vec2<I16>, 2>(entryName, field, pt); break;
+                    case PushConstantSize::BYTE:  loadVector<vec2<I8>, 2>(entryName, field, pt); break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::IVEC3:
+            case PushConstantType::IVEC3:
             {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: loadVector<vec3<I64>, 3>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::DWORD: loadVector<vec3<I32>, 3>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::WORD:  loadVector<vec3<I16>, 3>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::BYTE:  loadVector<vec3<I8>, 3>(entryName, field, pt); break;
+                    case PushConstantSize::QWORD: loadVector<vec3<I64>, 3>(entryName, field, pt); break;
+                    case PushConstantSize::DWORD: loadVector<vec3<I32>, 3>(entryName, field, pt); break;
+                    case PushConstantSize::WORD:  loadVector<vec3<I16>, 3>(entryName, field, pt); break;
+                    case PushConstantSize::BYTE:  loadVector<vec3<I8>, 3>(entryName, field, pt); break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::IVEC4:
+            case PushConstantType::IVEC4:
             {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: loadVector<vec4<I64>, 4>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::DWORD: loadVector<vec4<I32>, 5>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::WORD:  loadVector<vec4<I16>, 4>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::BYTE:  loadVector<vec4<I8>, 4>(entryName, field, pt); break;
+                    case PushConstantSize::QWORD: loadVector<vec4<I64>, 4>(entryName, field, pt); break;
+                    case PushConstantSize::DWORD: loadVector<vec4<I32>, 5>(entryName, field, pt); break;
+                    case PushConstantSize::WORD:  loadVector<vec4<I16>, 4>(entryName, field, pt); break;
+                    case PushConstantSize::BYTE:  loadVector<vec4<I8>, 4>(entryName, field, pt); break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::UVEC2:
+            case PushConstantType::UVEC2:
             {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: loadVector<vec2<U64>, 2>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::DWORD: loadVector<vec2<U32>, 2>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::WORD:  loadVector<vec2<U16>, 2>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::BYTE:  loadVector<vec2<U8>, 2>(entryName, field, pt); break;
+                    case PushConstantSize::QWORD: loadVector<vec2<U64>, 2>(entryName, field, pt); break;
+                    case PushConstantSize::DWORD: loadVector<vec2<U32>, 2>(entryName, field, pt); break;
+                    case PushConstantSize::WORD:  loadVector<vec2<U16>, 2>(entryName, field, pt); break;
+                    case PushConstantSize::BYTE:  loadVector<vec2<U8>, 2>(entryName, field, pt); break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::UVEC3:
+            case PushConstantType::UVEC3:
             {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: loadVector<vec3<U64>, 3>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::DWORD: loadVector<vec3<U32>, 3>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::WORD:  loadVector<vec3<U16>, 3>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::BYTE:  loadVector<vec3<U8>, 3>(entryName, field, pt); break;
+                    case PushConstantSize::QWORD: loadVector<vec3<U64>, 3>(entryName, field, pt); break;
+                    case PushConstantSize::DWORD: loadVector<vec3<U32>, 3>(entryName, field, pt); break;
+                    case PushConstantSize::WORD:  loadVector<vec3<U16>, 3>(entryName, field, pt); break;
+                    case PushConstantSize::BYTE:  loadVector<vec3<U8>, 3>(entryName, field, pt); break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::UVEC4:
+            case PushConstantType::UVEC4:
             {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: loadVector<vec4<U64>, 4>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::DWORD: loadVector<vec4<U32>, 4>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::WORD:  loadVector<vec4<U16>, 4>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::BYTE:  loadVector<vec4<U8>, 4>(entryName, field, pt); break;
+                    case PushConstantSize::QWORD: loadVector<vec4<U64>, 4>(entryName, field, pt); break;
+                    case PushConstantSize::DWORD: loadVector<vec4<U32>, 4>(entryName, field, pt); break;
+                    case PushConstantSize::WORD:  loadVector<vec4<U16>, 4>(entryName, field, pt); break;
+                    case PushConstantSize::BYTE:  loadVector<vec4<U8>, 4>(entryName, field, pt); break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::VEC2:
+            case PushConstantType::VEC2:
             {
                 loadVector<vec2<F32>, 2>(entryName, field, pt);
             } break;
-            case GFX::PushConstantType::VEC3:
+            case PushConstantType::VEC3:
             {
                 loadVector<vec3<F32>, 3>(entryName, field, pt);
             } break;
-            case GFX::PushConstantType::VEC4:
+            case PushConstantType::VEC4:
             {
                 loadVector<vec4<F32>, 4>(entryName, field, pt);
             } break;
-            case GFX::PushConstantType::DVEC2:
+            case PushConstantType::DVEC2:
             {
                 loadVector<vec2<D64>, 2>(entryName, field, pt);
             } break;
-            case GFX::PushConstantType::DVEC3:
+            case PushConstantType::DVEC3:
             {
                 loadVector<vec3<D64>, 3>(entryName, field, pt);
             } break;
-            case GFX::PushConstantType::DVEC4:
+            case PushConstantType::DVEC4:
             {
                 loadVector<vec4<D64>, 4>(entryName, field, pt);
             } break;
-            case GFX::PushConstantType::IMAT2:
+            case PushConstantType::IMAT2:
             {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: loadMatrix<mat2<I64>, 2>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::DWORD: loadMatrix<mat2<I32>, 2>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::WORD:  loadMatrix<mat2<I16>, 2>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::BYTE:  loadMatrix<mat2<I8>, 2>(entryName, field, pt); break;
+                    case PushConstantSize::QWORD: loadMatrix<mat2<I64>, 2>(entryName, field, pt); break;
+                    case PushConstantSize::DWORD: loadMatrix<mat2<I32>, 2>(entryName, field, pt); break;
+                    case PushConstantSize::WORD:  loadMatrix<mat2<I16>, 2>(entryName, field, pt); break;
+                    case PushConstantSize::BYTE:  loadMatrix<mat2<I8>, 2>(entryName, field, pt); break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::IMAT3:
+            case PushConstantType::IMAT3:
             {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: loadMatrix<mat3<I64>, 3>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::DWORD: loadMatrix<mat3<I32>, 3>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::WORD:  loadMatrix<mat3<I16>, 3>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::BYTE:  loadMatrix<mat3<I8>, 3>(entryName, field, pt); break;
+                    case PushConstantSize::QWORD: loadMatrix<mat3<I64>, 3>(entryName, field, pt); break;
+                    case PushConstantSize::DWORD: loadMatrix<mat3<I32>, 3>(entryName, field, pt); break;
+                    case PushConstantSize::WORD:  loadMatrix<mat3<I16>, 3>(entryName, field, pt); break;
+                    case PushConstantSize::BYTE:  loadMatrix<mat3<I8>, 3>(entryName, field, pt); break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::IMAT4:
+            case PushConstantType::IMAT4:
             {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: loadMatrix<mat4<I64>, 4>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::DWORD: loadMatrix<mat4<I32>, 4>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::WORD:  loadMatrix<mat4<I16>, 4>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::BYTE:  loadMatrix<mat4<I8>, 4>(entryName, field, pt); break;
+                    case PushConstantSize::QWORD: loadMatrix<mat4<I64>, 4>(entryName, field, pt); break;
+                    case PushConstantSize::DWORD: loadMatrix<mat4<I32>, 4>(entryName, field, pt); break;
+                    case PushConstantSize::WORD:  loadMatrix<mat4<I16>, 4>(entryName, field, pt); break;
+                    case PushConstantSize::BYTE:  loadMatrix<mat4<I8>, 4>(entryName, field, pt); break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::UMAT2:
+            case PushConstantType::UMAT2:
             {
                switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: loadMatrix<mat2<U64>, 2>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::DWORD: loadMatrix<mat2<U32>, 2>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::WORD:  loadMatrix<mat2<U16>, 2>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::BYTE:  loadMatrix<mat2<U8>, 2>(entryName, field, pt); break;
+                    case PushConstantSize::QWORD: loadMatrix<mat2<U64>, 2>(entryName, field, pt); break;
+                    case PushConstantSize::DWORD: loadMatrix<mat2<U32>, 2>(entryName, field, pt); break;
+                    case PushConstantSize::WORD:  loadMatrix<mat2<U16>, 2>(entryName, field, pt); break;
+                    case PushConstantSize::BYTE:  loadMatrix<mat2<U8>, 2>(entryName, field, pt); break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::UMAT3:
+            case PushConstantType::UMAT3:
             {
                switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: loadMatrix<mat3<U64>, 3>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::DWORD: loadMatrix<mat3<U32>, 3>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::WORD:  loadMatrix<mat3<U16>, 3>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::BYTE:  loadMatrix<mat3<U8>, 3>(entryName, field, pt); break;
+                    case PushConstantSize::QWORD: loadMatrix<mat3<U64>, 3>(entryName, field, pt); break;
+                    case PushConstantSize::DWORD: loadMatrix<mat3<U32>, 3>(entryName, field, pt); break;
+                    case PushConstantSize::WORD:  loadMatrix<mat3<U16>, 3>(entryName, field, pt); break;
+                    case PushConstantSize::BYTE:  loadMatrix<mat3<U8>, 3>(entryName, field, pt); break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::UMAT4:
+            case PushConstantType::UMAT4:
             {
                    switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: loadMatrix<mat4<U64>, 4>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::DWORD: loadMatrix<mat4<U32>, 4>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::WORD:  loadMatrix<mat4<U16>, 4>(entryName, field, pt); break;
-                    case GFX::PushConstantSize::BYTE:  loadMatrix<mat4<U8>, 4>(entryName, field, pt); break;
+                    case PushConstantSize::QWORD: loadMatrix<mat4<U64>, 4>(entryName, field, pt); break;
+                    case PushConstantSize::DWORD: loadMatrix<mat4<U32>, 4>(entryName, field, pt); break;
+                    case PushConstantSize::WORD:  loadMatrix<mat4<U16>, 4>(entryName, field, pt); break;
+                    case PushConstantSize::BYTE:  loadMatrix<mat4<U8>, 4>(entryName, field, pt); break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case GFX::PushConstantType::MAT2:
+            case PushConstantType::MAT2:
             {
                 loadMatrix<mat2<F32>, 2>(entryName, field, pt);
             } break;
-            case GFX::PushConstantType::MAT3:
+            case PushConstantType::MAT3:
             {
                 loadMatrix<mat3<F32>, 3>(entryName, field, pt);
             } break;
-            case GFX::PushConstantType::MAT4:
+            case PushConstantType::MAT4:
             {
                 loadMatrix<mat4<F32>, 4>(entryName, field, pt);
             } break;
-            case GFX::PushConstantType::DMAT2:
+            case PushConstantType::DMAT2:
             {
                 loadMatrix<mat2<D64>, 2>(entryName, field, pt);
             } break;
-            case GFX::PushConstantType::DMAT3:
+            case PushConstantType::DMAT3:
             {
                 loadMatrix<mat3<D64>, 3>(entryName, field, pt);
             } break;
-            case GFX::PushConstantType::DMAT4:
+            case PushConstantType::DMAT4:
             {
                 loadMatrix<mat4<D64>, 4>(entryName, field, pt);
             } break;
-            case GFX::PushConstantType::FCOLOUR3:
+            case PushConstantType::FCOLOUR3:
             {
                 FColour3 data = field.get<FColour3>();
                 data.set(pt.get((entryName + ".<xmlattr>.r").c_str(), data.r),
@@ -880,7 +880,7 @@ namespace Divide {
                          pt.get((entryName + ".<xmlattr>.b").c_str(), data.b));
                 field.set<FColour3>(data);
             } break;
-            case GFX::PushConstantType::FCOLOUR4:
+            case PushConstantType::FCOLOUR4:
             {
                 FColour4 data = field.get<FColour4>();
                 data.set(pt.get((entryName + ".<xmlattr>.r").c_str(), data.r),

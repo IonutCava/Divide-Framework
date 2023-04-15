@@ -33,17 +33,15 @@
 #ifndef _RENDER_PASS_NODE_BUFFERED_DATA_H_
 #define _RENDER_PASS_NODE_BUFFERED_DATA_H_
 
-#include "Platform/Video/Headers/RenderAPIEnums.h"
-
 namespace Divide {
 
 #pragma pack(push, 1)
     struct NodeTransformData
     {
         mat4<F32> _worldMatrix = MAT4_INITIAL_TRANSFORM;
-        mat4<F32> _prevWorldMatrix = MAT4_INITIAL_TRANSFORM;
+        mat4<F32> _prevWVPMatrix = MAT4_INITIAL_TRANSFORM;
         //[0][0]...[2][2] - normalMatrix
-        //[0][3] = 4x8U: selectionFlag, animation ticked this frame (for motion blur), LoDLevel, occlusion cull
+        //[0][3] = 4x8U: unused, unused, LoDLevel, occlusion cull
         //[1][3] = animationFrame
         //[2][3] = boneCount
         //[3][0..3] = boundingSphere

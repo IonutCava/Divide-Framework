@@ -608,6 +608,9 @@
     <ClCompile Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\DVDTexture.cpp">
       <Filter>GUI\CEGUIAddons\Renderer</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source Code\ECS\Systems\SelectionSystem.cpp">
+      <Filter>ECS\Systems</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="../../Source Code/Rendering\Camera\Headers\Camera.h">
@@ -1073,6 +1076,9 @@
     <ClInclude Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\DVDTexture.h">
       <Filter>GUI\CEGUIAddons\Renderer\Headers</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Source Code\ECS\Systems\Headers\SelectionSystem.h">
+      <Filter>ECS\Systems\Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="../../localisation\enGB.ini">
@@ -1116,6 +1122,12 @@
     </None>
     <None Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\DVDTextureTarget.inl">
       <Filter>GUI\CEGUIAddons\Renderer\Headers</Filter>
+    </None>
+    <None Include="..\..\Source Code\Rendering\Lighting\Headers\Light.inl">
+      <Filter>Rendering\Lighting\Headers</Filter>
+    </None>
+    <None Include="..\..\Source Code\ECS\Components\Headers\EditorComponent.inl">
+      <Filter>ECS\Components\Headers</Filter>
     </None>
   </ItemGroup>
 </Project>

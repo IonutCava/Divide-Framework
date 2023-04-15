@@ -32,10 +32,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _SGN_EDITOR_COMPONENT_H_
 #define _SGN_EDITOR_COMPONENT_H_
 
-//Temp
-#include "Platform/Video/Headers/PushConstant.h"
-
-namespace Divide {
+namespace Divide
+{
     class Editor;
     class SGNComponent;
     class ByteBuffer;
@@ -43,12 +41,14 @@ namespace Divide {
     class SceneGraphNode;
     class PropertyWindow;
 
-    namespace Attorney {
+    namespace Attorney
+    {
         class EditorComponentEditor;
         class EditorComponentSceneGraphNode;
     }; //namespace Attorney
 
-    enum class ComponentType : U32 {
+    enum class ComponentType : U32
+    {
         TRANSFORM = toBit(1),
         ANIMATION = toBit(2),
         INVERSE_KINEMATICS = toBit(3),
@@ -69,7 +69,8 @@ namespace Divide {
     };
 
     namespace Names {
-        static const char* componentType[] = {
+        static const char* componentType[] = 
+        {
             "TRANSFORM",
             "ANIMATION",
             "INVERSE_KINEMATICS",
@@ -91,12 +92,14 @@ namespace Divide {
     };
 
     static_assert(ArrayCount(Names::componentType) == to_base(ComponentType::COUNT) + 1u, "ComponentType name array out of sync!");
-    namespace TypeUtil {
+    namespace TypeUtil
+    {
         [[nodiscard]] const char* ComponentTypeToString(const ComponentType compType) noexcept;
         [[nodiscard]] ComponentType StringToComponentType(const string & name);
     };
 
-    enum class EditorComponentFieldType : U8 {
+    enum class EditorComponentFieldType : U8
+    {
         PUSH_TYPE = 0,
         SWITCH_TYPE,
         SLIDER_TYPE,
@@ -125,101 +128,33 @@ namespace Divide {
         F32 _resetValue = 0.f;
         const char* _format = "";
         const char* const* _labels = nullptr;
-        GFX::PushConstantType _basicType = GFX::PushConstantType::COUNT;
+        PushConstantType _basicType = PushConstantType::COUNT;
         EditorComponentFieldType _type = EditorComponentFieldType::COUNT;
         // Use this to configure smaller data sizes for integers only (signed or unsigned) like:
         // U8: (PushConstantType::UINT, _byteCount=BYTE)
         // I16: (PushConstantType::INT, _byteCount=WORD)
         // etc
         // byteCount of 3 is currently NOT supported
-        GFX::PushConstantSize _basicTypeSize = GFX::PushConstantSize::DWORD;
+        PushConstantSize _basicTypeSize = PushConstantSize::DWORD;
 
         bool _readOnly = false;
         bool _serialise = true;
         bool _hexadecimal = false;
 
         template<typename T>
-        T* getPtr() const {
-            if (_dataGetter) {
-                T* ret = nullptr;
-                _dataGetter(ret);
-                return ret;
-            }
-            return static_cast<T*>(_data);
-        }
+        T* getPtr() const;
         template<typename T>
-        T get() const {
-            if (_dataGetter) {
-                T dataOut = {};
-                _dataGetter(&dataOut);
-                return dataOut;
-            } 
-
-            return *static_cast<T*>(_data);
-        }
+        T get() const;
 
         template<typename T>
-        void get(T& dataOut) const {
-            if (_dataGetter) {
-                _dataGetter(&dataOut);
-            } else {
-                dataOut = *static_cast<T*>(_data);
-            }
-        }
+        void get(T& dataOut) const;
 
         template<typename T>
-        void set(const T& dataIn) {
-            if (_readOnly) {
-                return;
-            }
+        void set(const T& dataIn);
 
-            if (_dataSetter) {
-                _dataSetter(&dataIn);
-            } else if (_data) {
-                *static_cast<T*>(_data) = dataIn;
-            } else {
-                DIVIDE_UNEXPECTED_CALL();
-            }
-        }
-
-        const char* getDisplayName(const U8 index) const {
-            if (_displayNameGetter) {
-                return _displayNameGetter(index);
-            }
-            return "Error: no name getter!";
-        }
-
-        [[nodiscard]] bool supportsByteCount() const noexcept {
-            return _basicType == GFX::PushConstantType::INT ||
-                   _basicType == GFX::PushConstantType::UINT ||
-                   _basicType == GFX::PushConstantType::IVEC2 ||
-                   _basicType == GFX::PushConstantType::IVEC3 ||
-                   _basicType == GFX::PushConstantType::IVEC4 ||
-                   _basicType == GFX::PushConstantType::UVEC2 ||
-                   _basicType == GFX::PushConstantType::UVEC3 ||
-                   _basicType == GFX::PushConstantType::UVEC4 ||
-                   _basicType == GFX::PushConstantType::IMAT2 ||
-                   _basicType == GFX::PushConstantType::IMAT3 ||
-                   _basicType == GFX::PushConstantType::IMAT4 ||
-                   _basicType == GFX::PushConstantType::UMAT2 ||
-                   _basicType == GFX::PushConstantType::UMAT3 ||
-                   _basicType == GFX::PushConstantType::UMAT4;
-        }
-
-        [[nodiscard]] bool isMatrix() const noexcept {
-            return _basicType == GFX::PushConstantType::IMAT2 ||
-                   _basicType == GFX::PushConstantType::IMAT3 ||
-                   _basicType == GFX::PushConstantType::IMAT4 ||
-                   _basicType == GFX::PushConstantType::UMAT2 ||
-                   _basicType == GFX::PushConstantType::UMAT3 ||
-                   _basicType == GFX::PushConstantType::UMAT4 ||
-                   _basicType == GFX::PushConstantType::DMAT2 ||
-                   _basicType == GFX::PushConstantType::DMAT3 ||
-                   _basicType == GFX::PushConstantType::DMAT4 ||
-                   _basicType == GFX::PushConstantType::MAT2 ||
-                   _basicType == GFX::PushConstantType::MAT3 ||
-                   _basicType == GFX::PushConstantType::MAT4;
-        }
+        [[nodiscard]] const char* getDisplayName(const U8 index) const;
+        [[nodiscard]] bool supportsByteCount() const noexcept;
+        [[nodiscard]] bool isMatrix() const noexcept;
     };
 
     class EditorComponent final : public GUIDWrapper
@@ -302,3 +237,5 @@ namespace Divide {
 
 };  // namespace Divide
 #endif //_SGN_EDITOR_COMPONENT_H_
+
+#include "EditorComponent.inl"

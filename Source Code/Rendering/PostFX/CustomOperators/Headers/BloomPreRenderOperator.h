@@ -49,8 +49,8 @@ class BloomPreRenderOperator final : public PreRenderOperator {
     [[nodiscard]] bool execute(PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) override;
     void reshape(U16 width, U16 height) override;
 
-    [[nodiscard]] F32 luminanceThreshold() const noexcept { return _bloomThreshold; }
-    void luminanceThreshold(F32 val);
+    [[nodiscard]] F32 luminanceBias() const noexcept { return _luminanceBias; }
+    void luminanceBias(F32 val);
 
     [[nodiscard]] bool ready() const noexcept override;
 
@@ -58,13 +58,13 @@ class BloomPreRenderOperator final : public PreRenderOperator {
     RenderTargetHandle _bloomOutput;
     RenderTargetHandle _bloomBlurBuffer[2];
 
-    ShaderProgram_ptr _bloomCalc = nullptr;
-    ShaderProgram_ptr _bloomApply = nullptr;
+    ShaderProgram_ptr _bloomCalc{ nullptr };
+    ShaderProgram_ptr _bloomApply{ nullptr };
 
-    Pipeline* _bloomCalcPipeline = nullptr;
-    Pipeline* _bloomApplyPipeline = nullptr;
+    Pipeline* _bloomCalcPipeline{ nullptr };
+    Pipeline* _bloomApplyPipeline{ nullptr };
 
-    F32 _bloomThreshold = 0.99f;
+    F32 _luminanceBias{ 0.75f };
 };
 
 }  // namespace Divide

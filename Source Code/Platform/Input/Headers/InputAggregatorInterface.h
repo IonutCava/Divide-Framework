@@ -40,20 +40,42 @@
 namespace Divide {
 
 class DisplayWindow;
-namespace Input {
+namespace Input 
+{
+
+class InputHandler;
 
 namespace Attorney {
     class MouseEventKernel;
+    class MouseEventInputHandler;
 };
 
-struct InputEvent {
+struct InputEvent 
+{
     explicit InputEvent(DisplayWindow* sourceWindow, U8 deviceIndex) noexcept;
 
     U8 _deviceIndex = 0;
     DisplayWindow* _sourceWindow = nullptr;
 };
 
-struct MouseButtonEvent final : InputEvent {
+struct MouseEvent : public InputEvent
+{
+    friend class Attorney::MouseEventKernel;
+    friend class Attorney::MouseEventInputHandler;
+
+
+    explicit MouseEvent( DisplayWindow* sourceWindow, U8 deviceIndex ) noexcept;
+
+    [[nodiscard]] inline const MouseState& state() const noexcept { return _state; }
+
+    PROPERTY_RW(bool, inScenePreviewRect, false);
+
+protected:
+    MouseState _state;
+};
+
+struct MouseButtonEvent final : MouseEvent
+{
     friend class Attorney::MouseEventKernel;
 
     explicit MouseButtonEvent(DisplayWindow* sourceWindow, U8 deviceIndex) noexcept;
@@ -61,52 +83,35 @@ struct MouseButtonEvent final : InputEvent {
     PROPERTY_RW(bool, pressed, false);
     PROPERTY_RW(MouseButton, button, MouseButton::MB_Left);
     PROPERTY_RW(U8, numCliks, 0u);
-    PROPERTY_RW(vec2<I32>, absPosition, vec2<I32>(-1));
-
-protected:
-    bool _remapped = false;
 };
 
-struct MouseMoveEvent final : InputEvent {
+struct MouseMoveEvent final : MouseEvent
+{
     friend class Attorney::MouseEventKernel;
 
-    explicit MouseMoveEvent(DisplayWindow* sourceWindow, U8 deviceIndex, MouseState stateIn, bool wheelEvent) noexcept;
+    explicit MouseMoveEvent(DisplayWindow* sourceWindow, U8 deviceIndex, bool wheelEvent) noexcept;
 
-    [[nodiscard]] MouseAxis X() const noexcept;
-    [[nodiscard]] MouseAxis Y() const noexcept;
-
-    [[nodiscard]] I32 WheelV() const noexcept;
-    [[nodiscard]] I32 WheelH() const noexcept;
-
-    [[nodiscard]] vec2<I32> relativePos() const noexcept;
-    [[nodiscard]] vec2<I32> absolutePos() const noexcept;
-    [[nodiscard]] bool remapped() const noexcept;
-
-    [[nodiscard]] const MouseState& state() const noexcept;
-    
-    [[nodiscard]] bool wheelEvent() const noexcept;
-
-protected:
-    void absolutePos(vec2<I32> newPos) noexcept;
-
- private:
-    MouseState _stateIn;
-    bool _remapped = false;
-    const bool _wheelEvent = false;
+    const bool _wheelEvent { false };
 };
 namespace Attorney {
     class MouseEventKernel {
         private:
-            static void absolutePos(MouseMoveEvent& evt, const vec2<I32> newPos) noexcept {
-                evt.absolutePos(newPos);
-                evt._remapped = true;
+            static MouseState& state(MouseEvent& evt) noexcept 
+            {
+                return evt._state;
             }
 
-            static void absolutePos(MouseButtonEvent& evt, const vec2<I32> pos) noexcept {
-                evt.absPosition(pos);
-                evt._remapped = true;
+            friend class Kernel;
+    };
+    
+    class MouseEventInputHandler {
+        private:
+            static MouseState& state(MouseEvent& evt) noexcept 
+            {
+                return evt._state;
             }
-        friend class Kernel;
+
+            friend class Input::InputHandler;
     };
 } //Attorney
 

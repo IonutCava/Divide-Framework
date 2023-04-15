@@ -5,7 +5,6 @@
 #include "Core/Headers/StringHelper.h"
 #include "Utility/Headers/Localization.h"
 #include "Platform/File/Headers/FileManagement.h"
-#include "Platform/Video/Headers/RenderAPIEnums.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 
 #define STB_IMAGE_IMPLEMENTATION

@@ -65,11 +65,7 @@ namespace Divide
         _unpackAlignment = {};
         _activeShaderProgramHandle = 0u;
         _activeShaderPipelineHandle = 0u;
-        _depthNearVal = -1.f;
-        _depthFarVal = -1.f;
-        _lowerLeftOrigin = true;
-        _negativeOneToOneDepth = true;
-        _alphatoCoverageEnabled = false;
+        _alphaToCoverageEnabled = false;
         _blendPropertiesGlobal = {};
         _blendEnabledGlobal = GL_FALSE;
         _currentBindConfig = {};
@@ -761,32 +757,6 @@ namespace Divide
         return BindResult::ALREADY_BOUND;
     }
 
-    void GLStateTracker::setDepthRange( F32 nearVal, F32 farVal )
-    {
-        CLAMP_01( nearVal );
-        CLAMP_01( farVal );
-        if ( !COMPARE( nearVal, _depthNearVal ) && !COMPARE( farVal, _depthFarVal ) )
-        {
-            glDepthRange( nearVal, farVal );
-            _depthNearVal = nearVal;
-            _depthFarVal = farVal;
-        }
-    }
-
-    void GLStateTracker::setClippingPlaneState( const bool lowerLeftOrigin, const bool negativeOneToOneDepth )
-    {
-        if ( _lowerLeftOrigin != lowerLeftOrigin || _negativeOneToOneDepth != negativeOneToOneDepth )
-        {
-            glClipControl(
-                lowerLeftOrigin ? GL_LOWER_LEFT : GL_UPPER_LEFT,
-                negativeOneToOneDepth ? GL_NEGATIVE_ONE_TO_ONE : GL_ZERO_TO_ONE
-            );
-
-            _lowerLeftOrigin = lowerLeftOrigin;
-            _negativeOneToOneDepth = negativeOneToOneDepth;
-        }
-    }
-
     void GLStateTracker::setBlendColour( const UColour4& blendColour )
     {
         if ( _blendColour != blendColour )
@@ -990,9 +960,9 @@ namespace Divide
 
     bool GLStateTracker::setAlphaToCoverage( const bool state )
     {
-        if ( _alphatoCoverageEnabled != state )
+        if ( _alphaToCoverageEnabled != state )
         {
-            _alphatoCoverageEnabled = state;
+            _alphaToCoverageEnabled = state;
             if ( state )
             {
                 glEnable( GL_SAMPLE_ALPHA_TO_COVERAGE );
@@ -1042,6 +1012,17 @@ namespace Divide
         viewportOut = _activeViewport;
     }
 
+    bool GLStateTracker::setDepthWrite( const bool state )
+    {
+        if ( _activeState._depthWriteEnabled != state )
+        {
+            glDepthMask( state ? GL_TRUE : GL_FALSE );
+            return true;
+        }
+
+        return false;
+    }
+
     /// A state block should contain all rendering state changes needed for the next draw call.
     /// Some may be redundant, so we check each one individually
     bool GLStateTracker::activateStateBlock( const RenderStateBlock& newBlock )
@@ -1067,11 +1048,12 @@ namespace Divide
             ret = true;
         }
 
-        if ( _activeState._depthWriteEnabled != newBlock._depthWriteEnabled )
+        if ( setDepthWrite( newBlock._depthWriteEnabled ) )
         {
-            glDepthMask( newBlock._depthWriteEnabled ? GL_TRUE : GL_FALSE);
             ret = true;
         }
+
+        
         if ( _activeState._rasterizationEnabled != newBlock._rasterizationEnabled )
         {
             newBlock._rasterizationEnabled ? glDisable( GL_RASTERIZER_DISCARD )

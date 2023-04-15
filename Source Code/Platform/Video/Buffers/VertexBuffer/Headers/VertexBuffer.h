@@ -35,9 +35,10 @@
 
 #include "VertexDataInterface.h"
 #include "Platform/Video/Headers/AttributeDescriptor.h"
-#include "Platform/Video/Headers/RenderAPIEnums.h"
 
-namespace Divide {
+namespace Divide
+{
+
 class ByteBuffer;
 FWD_DECLARE_MANAGED_CLASS(GenericVertexData);
 /// Vertex Buffer interface class to allow API-independent implementation of data

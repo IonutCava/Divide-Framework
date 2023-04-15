@@ -349,6 +349,7 @@ F32 UINT_TO_FLOAT(const I32 src) {
 I32 FLOAT_TO_INT(const F32 src) {
     return glm::floatBitsToInt(src);
 }
+
 U32 PACK_HALF2x16(const F32 x, const F32 y) {
     return to_U32(glm::packHalf2x16(glm::mediump_vec2(x, y)));
 }

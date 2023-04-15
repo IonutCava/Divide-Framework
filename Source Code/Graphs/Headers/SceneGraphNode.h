@@ -37,8 +37,6 @@
 #include "SGNRelationshipCache.h"
 #include "IntersectionRecord.h"
 
-#include "Platform/Video/Headers/RenderAPIEnums.h"
-
 #include "ECS/Components/Headers/EditorComponent.h"
 #include "ECS/Components/Headers/SGNComponent.h"
 

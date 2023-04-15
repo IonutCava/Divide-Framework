@@ -102,8 +102,6 @@ struct Selections
 
 struct DragSelectData
 {
-    Rect<I32> _sourceViewport;
-    Rect<I32> _targetViewport;
     vec2<I32> _startDragPos;
     vec2<I32> _endDragPos;
     bool _isDragging = false;
@@ -176,7 +174,7 @@ class Scene : public Resource, public PlatformContextComponent {
         [[nodiscard]] bool              findSelection(PlayerIndex idx, bool clearOld);
 
         [[nodiscard]] bool resetSelection(PlayerIndex idx, const bool resetIfLocked);
-        void setSelected(PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, bool recursive);
+        void setSelected(PlayerIndex idx, const vector_fast<SceneGraphNode*>& SGNs, bool recursive);
 
         void beginDragSelection(PlayerIndex idx, vec2<I32> mousePos);
         void endDragSelection(PlayerIndex idx, bool clearSelection);
@@ -289,7 +287,7 @@ class Scene : public Resource, public PlatformContextComponent {
     private:
         /// Returns true if the camera was moved/rotated/etc
         bool updateCameraControls(U64 deltaTimeUS, PlayerIndex idx) const;
-        void updateSelectionData(PlayerIndex idx, DragSelectData& data, bool remapped);
+        void updateSelectionData(PlayerIndex idx, DragSelectData& data);
         [[nodiscard]] bool checkCameraUnderwater(PlayerIndex idx) const;
         [[nodiscard]] bool checkCameraUnderwater(const Camera& camera) const noexcept;
         [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Scene"; }
@@ -396,7 +394,7 @@ class SceneManager {
         return scene.resetSelection(idx, resetIfLocked);
     }
 
-    static void setSelected(Scene& scene, const PlayerIndex idx, const vector<SceneGraphNode*>& sgns, const bool recursive) {
+    static void setSelected(Scene& scene, const PlayerIndex idx, const vector_fast<SceneGraphNode*>& sgns, const bool recursive) {
         scene.setSelected(idx, sgns, recursive);
     }
 

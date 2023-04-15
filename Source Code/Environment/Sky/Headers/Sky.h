@@ -81,6 +81,7 @@ class Sky final : public SceneNode {
     PROPERTY_R(bool, useNightSkybox, true);
     PROPERTY_R(F32,  moonScale, 0.5f);
     PROPERTY_R(F32,  weatherScale, 8.f);
+    PROPERTY_R(F32,  skyLuminance, 1.f);
     PROPERTY_R(FColour4, moonColour, DefaultColours::WHITE);
     PROPERTY_R(FColour4, nightSkyColour, DefaultColours::BLACK);
 
@@ -90,6 +91,7 @@ class Sky final : public SceneNode {
     void useNightSkybox(bool val);
     void moonScale(F32 val);
     void weatherScale(F32 val);
+    void skyLuminance(F32 val);
     void moonColour(FColour4 val);
     void nightSkyColour(FColour4 val);
 

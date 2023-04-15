@@ -84,7 +84,7 @@ namespace Divide
             occlusionCullField._name = "HiZ Occlusion Cull";
             occlusionCullField._data = &_occlusionCull;
             occlusionCullField._type = EditorComponentFieldType::SWITCH_TYPE;
-            occlusionCullField._basicType = GFX::PushConstantType::BOOL;
+            occlusionCullField._basicType = PushConstantType::BOOL;
             occlusionCullField._readOnly = false;
             _editorComponent.registerField( MOV( occlusionCullField ) );
         }
@@ -93,7 +93,7 @@ namespace Divide
             vaxisField._name = "Show Debug Axis";
             vaxisField._data = &_showAxis;
             vaxisField._type = EditorComponentFieldType::SWITCH_TYPE;
-            vaxisField._basicType = GFX::PushConstantType::BOOL;
+            vaxisField._basicType = PushConstantType::BOOL;
             vaxisField._readOnly = false;
             _editorComponent.registerField( MOV( vaxisField ) );
         }
@@ -102,7 +102,7 @@ namespace Divide
             receivesShadowsField._name = "Receives Shadows";
             receivesShadowsField._data = &_receiveShadows;
             receivesShadowsField._type = EditorComponentFieldType::SWITCH_TYPE;
-            receivesShadowsField._basicType = GFX::PushConstantType::BOOL;
+            receivesShadowsField._basicType = PushConstantType::BOOL;
             receivesShadowsField._readOnly = false;
             _editorComponent.registerField( MOV( receivesShadowsField ) );
         }
@@ -111,7 +111,7 @@ namespace Divide
             castsShadowsField._name = "Casts Shadows";
             castsShadowsField._data = &_castsShadows;
             castsShadowsField._type = EditorComponentFieldType::SWITCH_TYPE;
-            castsShadowsField._basicType = GFX::PushConstantType::BOOL;
+            castsShadowsField._basicType = PushConstantType::BOOL;
             castsShadowsField._readOnly = false;
             _editorComponent.registerField( MOV( castsShadowsField ) );
         }
@@ -173,8 +173,8 @@ namespace Divide
             EditorComponentField lockLodField = {};
             lockLodField._name = "Rendered LOD Level";
             lockLodField._type = EditorComponentFieldType::PUSH_TYPE;
-            lockLodField._basicTypeSize = GFX::PushConstantSize::BYTE;
-            lockLodField._basicType = GFX::PushConstantType::UINT;
+            lockLodField._basicTypeSize = PushConstantSize::BYTE;
+            lockLodField._basicType = PushConstantType::UINT;
             lockLodField._data = &_lodLevels[to_base( RenderStage::DISPLAY )];
             lockLodField._readOnly = true;
             lockLodField._serialise = false;
@@ -184,8 +184,8 @@ namespace Divide
             lockLodLevelField._name = "Lock LoD Level";
             lockLodLevelField._type = EditorComponentFieldType::PUSH_TYPE;
             lockLodLevelField._range = { 0.0f, to_F32( MAX_LOD_LEVEL ) };
-            lockLodLevelField._basicType = GFX::PushConstantType::UINT;
-            lockLodLevelField._basicTypeSize = GFX::PushConstantSize::BYTE;
+            lockLodLevelField._basicType = PushConstantType::UINT;
+            lockLodLevelField._basicTypeSize = PushConstantSize::BYTE;
             lockLodLevelField._data = &_lodLockLevels[to_base( RenderStage::DISPLAY )].second;
             lockLodLevelField._readOnly = false;
             _editorComponent.registerField( MOV( lockLodLevelField ) );
@@ -193,7 +193,7 @@ namespace Divide
             EditorComponentField renderLodField = {};
             renderLodField._name = "Lock LoD";
             renderLodField._type = EditorComponentFieldType::SWITCH_TYPE;
-            renderLodField._basicType = GFX::PushConstantType::BOOL;
+            renderLodField._basicType = PushConstantType::BOOL;
             renderLodField._data = &_lodLockLevels[to_base( RenderStage::DISPLAY )].first;
             renderLodField._readOnly = false;
             _editorComponent.registerField( MOV( renderLodField ) );
@@ -498,7 +498,7 @@ namespace Divide
 
                 if ( isInstanced() )
                 {
-                    pkg.pushConstantsCmd()._constants.set( _ID( "INDIRECT_DATA_IDX" ), GFX::PushConstantType::UINT, 0u );
+                    pkg.pushConstantsCmd()._constants.set( _ID( "INDIRECT_DATA_IDX" ), PushConstantType::UINT, 0u );
                     if ( _materialInstance != nullptr )
                     {
                         _materialInstance->properties().isInstanced( true );
@@ -620,7 +620,7 @@ namespace Divide
             RenderPackage& pkg = getDrawPackage( stagePass );
             if ( isInstanced() )
             {
-                pkg.pushConstantsCmd()._constants.set( _ID( "INDIRECT_DATA_IDX" ), GFX::PushConstantType::UINT, iBufferEntry );
+                pkg.pushConstantsCmd()._constants.set( _ID( "INDIRECT_DATA_IDX" ), PushConstantType::UINT, iBufferEntry );
             }
             pkg.stagePassBaseIndex( BaseIndex( stagePass ) );
 

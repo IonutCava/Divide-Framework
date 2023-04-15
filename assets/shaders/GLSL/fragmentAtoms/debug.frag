@@ -6,7 +6,7 @@
 
 bool getDebugColour(in PBRMaterial material, in NodeMaterialData materialData, in vec2 uv, in vec3 normalWV, out vec3 debugColour) {
 
-    const vec3 viewVec = normalize(VAR._viewDirectionWV);
+    const vec3 viewVec = computeViewDirectionWV();
 
     debugColour = vec3(0.f);
 
@@ -14,6 +14,7 @@ bool getDebugColour(in PBRMaterial material, in NodeMaterialData materialData, i
     switch (dvd_MaterialDebugFlag) {
         case DEBUG_NONE:
         case DEBUG_SSR:
+        case DEBUG_VELOCITY:
         case DEBUG_SSR_BLEND:
         case DEBUG_DEPTH: {
             returnFlag = false;
@@ -93,11 +94,14 @@ bool getDebugColour(in PBRMaterial material, in NodeMaterialData materialData, i
                 vec3 colour = vec3(0.f);
 
                 const uint dirLightCount = dvd_LightData.x;
-                for (int lightIdx = 0; lightIdx < dirLightCount; ++lightIdx) {
+                for (int lightIdx = 0; lightIdx < dirLightCount; ++lightIdx)
+                {
                     const Light light = dvd_LightSource[lightIdx];
                     const int shadowIndex = dvd_LightSource[lightIdx]._options.y;
-                    if (shadowIndex > -1) {
-                        switch (getCSMSlice(dvd_CSMShadowTransforms[shadowIndex].dvd_shadowLightPosition)) {
+                    if (shadowIndex > -1)
+                    {
+                        switch (getCSMSlice(dvd_CSMShadowTransforms[shadowIndex].dvd_shadowLightPosition))
+                        {
                             case  0: colour.r += 0.15f; break;
                             case  1: colour.g += 0.25f; break;
                             case  2: colour.b += 0.40f; break;

@@ -21,12 +21,13 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_BATCH, 4, std430) coherent ACCESS_R buffer dv
     NodeIndirectionData dvd_IndirectionData[];
 };
 
-void ComputeIndirectionData() {
+void ComputeIndirectionData()
+{
     const NodeIndirectionData indirectionData = dvd_IndirectionData[INDIRECT_DATA_IDX];
     TRANSFORM_IDX = indirectionData._transformIdx;
     MATERIAL_IDX = indirectionData._materialIdx;
     TEXTURE_IDX = indirectionData._texturesIdx * MATERIAL_TEXTURE_COUNT;
-    SELECTION_FLAG = dvd_SelectionFlag(dvd_Transforms[TRANSFORM_IDX]);
+    SELECTION_FLAG = indirectionData._selectionIdx;
 }
 
 #endif //VERT_SHADER

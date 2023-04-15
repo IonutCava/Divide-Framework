@@ -142,12 +142,18 @@ bool InputHandler::onSDLEvent(SDL_Event event) {
                     break;
                 default: break;
             };
-            arg.numCliks(to_U8(event.button.clicks));
-            arg.absPosition({ event.button.x, event.button.y });
 
-            if (arg.pressed()) {
+            arg.numCliks(to_U8(event.button.clicks));
+            auto& state = Attorney::MouseEventInputHandler::state(arg);
+            state.X.abs = event.button.x;
+            state.Y.abs = event.button.y;
+
+            if (arg.pressed())
+            {
                 _eventListener.mouseButtonPressed(arg);
-            } else {
+            }
+            else
+            {
                 _eventListener.mouseButtonReleased(arg);
             }
             return true;
@@ -155,7 +161,8 @@ bool InputHandler::onSDLEvent(SDL_Event event) {
         case SDL_MOUSEWHEEL:
         case SDL_MOUSEMOTION:
         {
-            MouseState state = {};
+            MouseMoveEvent arg(eventWindow, to_U8(event.motion.which), event.type == SDL_MOUSEWHEEL);
+            auto& state = Attorney::MouseEventInputHandler::state( arg );
             state.X.abs = event.motion.x;
             state.X.rel = event.motion.xrel;
             state.Y.abs = event.motion.y;
@@ -163,7 +170,6 @@ bool InputHandler::onSDLEvent(SDL_Event event) {
             state.HWheel = event.wheel.x;
             state.VWheel = event.wheel.y;
 
-            const MouseMoveEvent arg(eventWindow, to_U8(event.motion.which), state, event.type == SDL_MOUSEWHEEL);
             _eventListener.mouseMoved(arg);
             return true;
         };

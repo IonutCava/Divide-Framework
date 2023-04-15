@@ -89,8 +89,9 @@ struct VolumeTileAABB
 #if !defined(COMPUTE_SHADER)
 
 // cluster depth index from depth in screen coordinates (gl_FragCoord.z)
-uint GetClusterZIndex(in float screenDepth) {
-    const float eyeDepth = ToLinearDepth( 0.5f * screenDepth + 0.5f, dvd_ZPlanes);
+uint GetClusterZIndex(in float screenDepth)
+{
+    const float eyeDepth = ToLinearDepth(screenDepth, dvd_ZPlanes);
     
     return uint( max( log( eyeDepth ) * dvd_LightScale + dvd_LightBias, 0.f ) );
 }

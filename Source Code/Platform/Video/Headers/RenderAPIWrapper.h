@@ -33,7 +33,6 @@
 #ifndef _RENDER_API_H_
 #define _RENDER_API_H_
 
-#include "RenderAPIEnums.h"
 #include "Platform/Video/Headers/DescriptorSetsFwd.h"
 
 namespace CEGUI {
@@ -174,8 +173,6 @@ protected:
     virtual void onThreadCreated(const std::thread::id& threadID) = 0;
 
     virtual bool bindShaderResources( const DescriptorSetEntries& descriptorSetEntries ) = 0;
-
-    virtual void onShaderRegisterChanged( ShaderProgram* program, bool state ) = 0;
 
     virtual void initDescriptorSets() = 0;
     

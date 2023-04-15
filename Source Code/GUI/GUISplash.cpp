@@ -49,8 +49,8 @@ void GUISplash::render(GFXDevice& context) const {
 
     SamplerDescriptor splashSampler = {};
     splashSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
-    splashSampler.minFilter(TextureFilter::NEAREST);
-    splashSampler.magFilter(TextureFilter::NEAREST);
+    splashSampler.minFilter(TextureFilter::LINEAR);
+    splashSampler.magFilter(TextureFilter::LINEAR);
     splashSampler.mipSampling(TextureMipSampling::NONE);
     splashSampler.anisotropyLevel(0);
 
@@ -74,11 +74,11 @@ void GUISplash::render(GFXDevice& context) const {
     GFX::EnqueueCommand(buffer, pipelineCmd);
 
     GFX::SendPushConstantsCommand pushConstantsCommand = {};
-    pushConstantsCommand._constants.set(_ID("lodLevel"), GFX::PushConstantType::FLOAT, 1.f);
-    pushConstantsCommand._constants.set(_ID("channelsArePacked"), GFX::PushConstantType::BOOL, false);
-    pushConstantsCommand._constants.set(_ID("channelCount"), GFX::PushConstantType::UINT, 4u);
-    pushConstantsCommand._constants.set(_ID("startChannel"), GFX::PushConstantType::UINT, 0u);
-    pushConstantsCommand._constants.set(_ID("multiplier"), GFX::PushConstantType::FLOAT, 1.f);
+    pushConstantsCommand._constants.set(_ID("lodLevel"), PushConstantType::FLOAT, 1.f);
+    pushConstantsCommand._constants.set(_ID("channelsArePacked"), PushConstantType::BOOL, false);
+    pushConstantsCommand._constants.set(_ID("channelCount"), PushConstantType::UINT, 4u);
+    pushConstantsCommand._constants.set(_ID("startChannel"), PushConstantType::UINT, 0u);
+    pushConstantsCommand._constants.set(_ID("multiplier"), PushConstantType::FLOAT, 1.f);
     GFX::EnqueueCommand(buffer, pushConstantsCommand);
 
     GFX::SetViewportCommand viewportCommand;

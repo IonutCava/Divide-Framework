@@ -255,6 +255,7 @@ namespace Divide
     VKDeletionQueue VK_API::s_deviceDeleteQueue;
     VKTransferQueue VK_API::s_transferQueue;
     VKStateTracker VK_API::s_stateTracker;
+    eastl::stack<vkShaderProgram*> VK_API::s_reloadedShaders;
     SharedMutex VK_API::s_samplerMapLock;
     VK_API::SamplerObjectMap VK_API::s_samplerMap{};
     VK_API::DepthFormatInformation VK_API::s_depthFormatInformation;
@@ -649,6 +650,23 @@ namespace Divide
     {
         s_transientDeleteQueue.onFrameEnd();
         s_deviceDeleteQueue.onFrameEnd();
+
+        while ( !s_reloadedShaders.empty() )
+        {
+            vkShaderProgram* program = s_reloadedShaders.top();
+            for ( auto& it : _compiledPipelines )
+            {
+                if ( !it.second._isValid )
+                {
+                    continue;
+                }
+                if ( it.second._program->getGUID() == program->getGUID() )
+                {
+                    destroyPipeline( it.second, true );
+                }
+            }
+            s_reloadedShaders.pop();
+        }
 
         //vkResetCommandPool(_device->getVKDevice(), _device->graphicsCommandPool(), VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
 
@@ -1756,8 +1774,8 @@ namespace Divide
             bool isGraphicsPipeline = false;
             for ( const auto& stage : shaderStages )
             {
-                pipelineBuilder._shaderStages.push_back( vk::pipelineShaderStageCreateInfo( stage->stageMask(), stage->handle() ) );
-                isGraphicsPipeline = isGraphicsPipeline || stage->stageMask() != VK_SHADER_STAGE_COMPUTE_BIT;
+                pipelineBuilder._shaderStages.push_back( vk::pipelineShaderStageCreateInfo( stage._shader->stageMask(), stage._shader->handle() ) );
+                isGraphicsPipeline = isGraphicsPipeline || stage._shader->stageMask() != VK_SHADER_STAGE_COMPUTE_BIT;
             }
             compiledPipeline._bindPoint = isGraphicsPipeline ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
 
@@ -1884,8 +1902,7 @@ namespace Divide
         {
             _descriptorDynamicBindings[stageIdx] = compiledPipeline._program->dynamicBindings();
         }
-
-        return ShaderResult::OK;
+        return compiledPipeline._program->validatePreBind(false);
     }
 
     void VK_API::flushPushConstantsLocks()
@@ -2150,6 +2167,8 @@ namespace Divide
                 thread_local vector<VkFormat> swapChainImageFormat( to_base( RTColourAttachmentSlot::COUNT ), VK_FORMAT_UNDEFINED);
 
                 const GFX::BeginRenderPassCommand* crtCmd = cmd->As<GFX::BeginRenderPassCommand>();
+                PushDebugMessage( cmdBuffer, crtCmd->_name.c_str() );
+
                 stateTracker._activeRenderTargetID = crtCmd->_target;
 
                 // We can do this outside of a renderpass
@@ -2230,7 +2249,6 @@ namespace Divide
                 _context.setScissor( renderArea );
                 vkCmdBeginRendering( cmdBuffer, &renderingInfo);
 
-                PushDebugMessage( cmdBuffer, crtCmd->_name.c_str() );
             } break;
             case GFX::CommandType::END_RENDER_PASS:
             {
@@ -2318,8 +2336,8 @@ namespace Divide
                 PROFILE_SCOPE( "READ_TEXTURE", Profiler::Category::Graphics );
 
                 const GFX::ReadTextureCommand* crtCmd = cmd->As<GFX::ReadTextureCommand>();
-                auto res = static_cast<vkTexture*>(crtCmd->_texture)->readData( cmdBuffer, crtCmd->_mipLevel, crtCmd->_pixelPackAlignment);
-                crtCmd->_callback( res );
+                const ImageReadbackData data = static_cast<vkTexture*>(crtCmd->_texture)->readData( cmdBuffer, crtCmd->_mipLevel, crtCmd->_pixelPackAlignment);
+                crtCmd->_callback( data );
             }break;
             case GFX::CommandType::BIND_PIPELINE:
             {
@@ -2439,9 +2457,6 @@ namespace Divide
                     const GFX::DispatchComputeCommand* crtCmd = cmd->As<GFX::DispatchComputeCommand>();
                     vkCmdDispatch( cmdBuffer, crtCmd->_computeGroupSize.x, crtCmd->_computeGroupSize.y, crtCmd->_computeGroupSize.z );
                 }
-            } break;
-            case GFX::CommandType::SET_CLIPING_STATE:
-            {
             } break;
             case GFX::CommandType::MEMORY_BARRIER:
             {
@@ -2864,25 +2879,14 @@ namespace Divide
     {
     }
 
-    void VK_API::onShaderRegisterChanged( ShaderProgram* program, const bool state )
+    void VK_API::OnShaderReloaded( vkShaderProgram* program )
     {
         if ( program == nullptr )
         {
             return;
         }
 
-        for ( auto& it : _compiledPipelines )
-        {
-            if ( !it.second._isValid )
-            {
-                continue;
-            }
-            if ( it.second._program->getGUID() == program->getGUID() )
-            {
-                destroyPipeline( it.second, true );
-            }
-        }
-
+        s_reloadedShaders.push(program);
     }
 
     VKStateTracker& VK_API::GetStateTracker() noexcept

@@ -58,10 +58,6 @@ namespace Divide {
 
         void setDefaultState();
 
-        /// Set a new depth range. Default is 0 - 1 with 0 mapping to the near plane and 1 to the far plane
-        void setDepthRange(F32 nearVal, F32 farVal);
-        // Just a wrapper around glClipControl
-        void setClippingPlaneState(bool lowerLeftOrigin, bool negativeOneToOneDepth);
         void setBlending(const BlendingSettings& blendingProperties);
         void resetBlending() { setBlending(_blendPropertiesGlobal); setBlendColour({ 0u, 0u, 0u, 0u }); }
         /// Set the blending properties for the specified draw buffer
@@ -129,7 +125,10 @@ namespace Divide {
         bool setClearColour(const UColour4& colour) { return setClearColour(Util::ToFloatColour(colour)); }
         bool setClearDepth(F32 value);
 
+        inline const RenderStateBlock& getActiveState() const { return _activeState; };
+
         bool setAlphaToCoverage(bool state);
+        bool setDepthWrite(bool state);
 
         [[nodiscard]] GLuint getBoundTextureHandle(U8 slot) const noexcept;
         [[nodiscard]] GLuint getBoundSamplerHandle(U8 slot) const noexcept;
@@ -182,11 +181,7 @@ namespace Divide {
 
         GLuint _activeShaderProgramHandle{ 0u }; //GLUtil::_invalidObjectID;
         GLuint _activeShaderPipelineHandle{ 0u };//GLUtil::_invalidObjectID;
-        GLfloat _depthNearVal{ -1.f };
-        GLfloat _depthFarVal{ -1.f };
-        bool _lowerLeftOrigin{ true };
-        bool _negativeOneToOneDepth{ true };
-        bool _alphatoCoverageEnabled{ false };
+        bool _alphaToCoverageEnabled{ false };
         BlendingSettings _blendPropertiesGlobal;
         GLboolean _blendEnabledGlobal{ GL_FALSE };
 

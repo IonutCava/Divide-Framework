@@ -33,8 +33,6 @@
 #ifndef _UTILITY_IMAGETOOLS_FWD_H
 #define _UTILITY_IMAGETOOLS_FWD_H
 
-#include "Platform/Video/Headers/RenderAPIEnums.h"
-
 namespace Divide {
     namespace ImageTools {
 

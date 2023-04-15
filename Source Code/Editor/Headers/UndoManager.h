@@ -39,7 +39,7 @@ namespace Divide {
     struct IUndoEntry {
         virtual ~IUndoEntry() = default;
 
-        GFX::PushConstantType _type = GFX::PushConstantType::COUNT;
+        PushConstantType _type = PushConstantType::COUNT;
         string _name = "";
         DELEGATE<void, std::string_view> _onChangedCbk;
 

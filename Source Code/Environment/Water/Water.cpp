@@ -51,7 +51,7 @@ namespace Divide
         blurReflectionField._data = &_blurReflections;
         blurReflectionField._type = EditorComponentFieldType::PUSH_TYPE;
         blurReflectionField._readOnly = false;
-        blurReflectionField._basicType = GFX::PushConstantType::BOOL;
+        blurReflectionField._basicType = PushConstantType::BOOL;
 
         getEditorComponent().registerField( MOV( blurReflectionField ) );
 
@@ -60,8 +60,8 @@ namespace Divide
         blurKernelSizeField._data = &_blurKernelSize;
         blurKernelSizeField._type = EditorComponentFieldType::SLIDER_TYPE;
         blurKernelSizeField._readOnly = false;
-        blurKernelSizeField._basicType = GFX::PushConstantType::UINT;
-        blurKernelSizeField._basicTypeSize = GFX::PushConstantSize::WORD;
+        blurKernelSizeField._basicType = PushConstantType::UINT;
+        blurKernelSizeField._basicTypeSize = PushConstantSize::WORD;
         blurKernelSizeField._range = { 2.f, 20.f };
         blurKernelSizeField._step = 1.f;
 
@@ -73,7 +73,7 @@ namespace Divide
         reflPlaneOffsetField._range = { -5.0f, 5.0f };
         reflPlaneOffsetField._type = EditorComponentFieldType::PUSH_TYPE;
         reflPlaneOffsetField._readOnly = false;
-        reflPlaneOffsetField._basicType = GFX::PushConstantType::FLOAT;
+        reflPlaneOffsetField._basicType = PushConstantType::FLOAT;
 
         getEditorComponent().registerField( MOV( reflPlaneOffsetField ) );
 
@@ -83,7 +83,7 @@ namespace Divide
         refrPlaneOffsetField._range = { -5.0f, 5.0f };
         refrPlaneOffsetField._type = EditorComponentFieldType::PUSH_TYPE;
         refrPlaneOffsetField._readOnly = false;
-        refrPlaneOffsetField._basicType = GFX::PushConstantType::FLOAT;
+        refrPlaneOffsetField._basicType = PushConstantType::FLOAT;
 
         getEditorComponent().registerField( MOV( refrPlaneOffsetField ) );
 
@@ -93,7 +93,7 @@ namespace Divide
         fogDistanceField._range = { 0.0f, 4096.0f };
         fogDistanceField._type = EditorComponentFieldType::PUSH_TYPE;
         fogDistanceField._readOnly = false;
-        fogDistanceField._basicType = GFX::PushConstantType::VEC2;
+        fogDistanceField._basicType = PushConstantType::VEC2;
 
         getEditorComponent().registerField( MOV( fogDistanceField ) );
 
@@ -102,7 +102,7 @@ namespace Divide
         waterFogField._data = &_waterDistanceFogColour;
         waterFogField._type = EditorComponentFieldType::PUSH_TYPE;
         waterFogField._readOnly = false;
-        waterFogField._basicType = GFX::PushConstantType::FCOLOUR3;
+        waterFogField._basicType = PushConstantType::FCOLOUR3;
 
         getEditorComponent().registerField( MOV( waterFogField ) );
 
@@ -112,7 +112,7 @@ namespace Divide
         noiseTileSizeField._range = { 0.0f, 1000.0f };
         noiseTileSizeField._type = EditorComponentFieldType::PUSH_TYPE;
         noiseTileSizeField._readOnly = false;
-        noiseTileSizeField._basicType = GFX::PushConstantType::VEC2;
+        noiseTileSizeField._basicType = PushConstantType::VEC2;
 
         getEditorComponent().registerField( MOV( noiseTileSizeField ) );
 
@@ -122,7 +122,7 @@ namespace Divide
         noiseFactorField._range = { 0.0f, 10.0f };
         noiseFactorField._type = EditorComponentFieldType::PUSH_TYPE;
         noiseFactorField._readOnly = false;
-        noiseFactorField._basicType = GFX::PushConstantType::VEC2;
+        noiseFactorField._basicType = PushConstantType::VEC2;
 
         getEditorComponent().registerField( MOV( noiseFactorField ) );
 
@@ -131,7 +131,7 @@ namespace Divide
         refractionTintField._data = &_refractionTint;
         refractionTintField._type = EditorComponentFieldType::PUSH_TYPE;
         refractionTintField._readOnly = false;
-        refractionTintField._basicType = GFX::PushConstantType::FCOLOUR3;
+        refractionTintField._basicType = PushConstantType::FCOLOUR3;
 
         getEditorComponent().registerField( MOV( refractionTintField ) );
 
@@ -141,7 +141,7 @@ namespace Divide
         specularShininessField._type = EditorComponentFieldType::PUSH_TYPE;
         specularShininessField._readOnly = false;
         specularShininessField._range = { 0.01f, Material::MAX_SHININESS };
-        specularShininessField._basicType = GFX::PushConstantType::FLOAT;
+        specularShininessField._basicType = PushConstantType::FLOAT;
 
         getEditorComponent().registerField( MOV( specularShininessField ) );
 
@@ -383,7 +383,8 @@ namespace Divide
         params._target = renderParams._renderTarget;
         params._clippingPlanes.set( 0, refractionPlane );
         params._passName = "Refraction";
-        params._clearDescriptorMainPass[to_base(RTColourAttachmentSlot::SLOT_0)]._colour = DefaultColours::BLUE;
+        params._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
+        params._clearDescriptorMainPass[to_base(RTColourAttachmentSlot::SLOT_0)] = { DefaultColours::BLUE, true };
 
         if ( !underwater )
         {
@@ -435,7 +436,8 @@ namespace Divide
         params._target = renderParams._renderTarget;
         params._clippingPlanes.set( 0, reflectionPlane );
         params._passName = "Reflection";
-        params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )]._colour = DefaultColours::BLUE;
+        params._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
+        params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::BLUE, true };
 
         params._drawMask &= ~(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES));
 

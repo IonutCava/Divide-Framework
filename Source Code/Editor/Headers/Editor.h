@@ -193,7 +193,7 @@ namespace Divide
         void toggle( bool state );
         void onWindowSizeChange( const SizeChangeParams& params );
         void onResolutionChange( const SizeChangeParams& params );
-        void selectionChangeCallback( PlayerIndex idx, const vector<SceneGraphNode*>& nodes ) const;
+        void selectionChangeCallback( PlayerIndex idx, const vector_fast<SceneGraphNode*>& nodes ) const;
         void onChangeScene( Scene* newScene );
 
         [[nodiscard]] bool Undo() const;

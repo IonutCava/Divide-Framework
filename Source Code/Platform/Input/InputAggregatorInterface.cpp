@@ -59,58 +59,20 @@ InputEvent::InputEvent(DisplayWindow* sourceWindow, const U8 deviceIndex) noexce
 {
 }
 
-MouseButtonEvent::MouseButtonEvent(DisplayWindow* sourceWindow, const U8 deviceIndex) noexcept
+MouseEvent::MouseEvent( DisplayWindow* sourceWindow, U8 deviceIndex ) noexcept
     : InputEvent(sourceWindow, deviceIndex)
 {
-
 }
 
-MouseMoveEvent::MouseMoveEvent(DisplayWindow* sourceWindow, const U8 deviceIndex, const MouseState stateIn, const bool wheelEvent) noexcept
-    : InputEvent(sourceWindow, deviceIndex),
-      _stateIn(stateIn),
-      _wheelEvent(wheelEvent)
+MouseButtonEvent::MouseButtonEvent(DisplayWindow* sourceWindow, const U8 deviceIndex) noexcept
+   : MouseEvent(sourceWindow, deviceIndex)
 {
 }
 
-const MouseState& MouseMoveEvent::state() const noexcept {
-    return _stateIn;
-}
-
-MouseAxis MouseMoveEvent::X() const  noexcept {
-    return state().X;
-}
-
-MouseAxis MouseMoveEvent::Y() const  noexcept {
-    return state().Y;
-}
-
-I32 MouseMoveEvent::WheelH() const noexcept {
-    return _stateIn.HWheel;
-}
-
-I32 MouseMoveEvent::WheelV() const noexcept {
-    return _stateIn.VWheel;
-}
-
-vec2<I32> MouseMoveEvent::relativePos() const noexcept {
-    return vec2<I32>(state().X.rel, state().Y.rel);
-}
-
-vec2<I32> MouseMoveEvent::absolutePos() const noexcept {
-    return vec2<I32>(state().X.abs, state().Y.abs);
-}
-
-bool MouseMoveEvent::wheelEvent() const noexcept {
-    return _wheelEvent;
-}
-
-void MouseMoveEvent::absolutePos(const vec2<I32> newPos) noexcept {
-    _stateIn.X.abs = newPos.x;
-    _stateIn.Y.abs = newPos.y;
-}
-
-bool MouseMoveEvent::remapped() const noexcept {
-    return _remapped;
+MouseMoveEvent::MouseMoveEvent(DisplayWindow* sourceWindow, const U8 deviceIndex, const bool wheelEvent) noexcept
+    : MouseEvent( sourceWindow, deviceIndex )
+    ,  _wheelEvent(wheelEvent)
+{
 }
 
 JoystickEvent::JoystickEvent(DisplayWindow* sourceWindow, const U8 deviceIndex) noexcept
@@ -124,10 +86,10 @@ KeyEvent::KeyEvent(DisplayWindow* sourceWindow, const U8 deviceIndex) noexcept
 }
 
 TextEvent::TextEvent(DisplayWindow* sourceWindow, const U8 deviceIndex, const char* text) noexcept
-    : InputEvent(sourceWindow, deviceIndex),
-      _text(text)
+    : InputEvent(sourceWindow, deviceIndex)
+    , _text(text)
 {
-
 }
+
 }; //namespace Input
 }; //namespace Divide

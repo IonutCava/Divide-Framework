@@ -26,7 +26,6 @@ layout(location = ATTRIB_FREE_START + 1) in vec4 _vertexWVP;
 #define NO_OMR_TEX
 #define NO_ENV_MAPPING
 #define NO_SSAO
-#define NO_VELOCITY
 
 #if defined(PRE_PASS)
 #include "prePass.frag"

@@ -39,25 +39,25 @@ namespace Divide
 #endif
 
     template<typename T1, typename T2, typename T3, typename T4>
-    constexpr auto MakeShuffleMask( T1 x, T2 y, T3 z, T4 w )
+    constexpr auto MakeShuffleMask( const T1 x, const T2 y, const T3 z, const T4 w )
     {
         return x | y << 2 | z << 4 | w << 6;
     }
 
     // vec(0, 1, 2, 3) -> (vec[x], vec[y], vec[z], vec[w])
-#define VecSwizzle(vec, x,y,z,w)           _mm_shuffle_ps(vec, vec, MakeShuffleMask(x,y,z,w))
-#define VecSwizzle1(vec, x)                _mm_shuffle_ps(vec, vec, MakeShuffleMask(x,x,x,x))
-    // special swizzle
-#define VecSwizzle_0101(vec)               _mm_movelh_ps(vec, vec)
-#define VecSwizzle_2323(vec)               _mm_movehl_ps(vec, vec)
-#define VecSwizzle_0022(vec)               _mm_moveldup_ps(vec)
-#define VecSwizzle_1133(vec)               _mm_movehdup_ps(vec)
+#   define VecSwizzle(vec, x,y,z,w)        _mm_shuffle_ps(vec, vec, MakeShuffleMask(x,y,z,w))
+#   define VecSwizzle1(vec, x)             _mm_shuffle_ps(vec, vec, MakeShuffleMask(x,x,x,x))
+     // special swizzle                      
+#   define VecSwizzle_0101(vec)            _mm_movelh_ps(vec, vec)
+#   define VecSwizzle_2323(vec)            _mm_movehl_ps(vec, vec)
+#   define VecSwizzle_0022(vec)            _mm_moveldup_ps(vec)
+#   define VecSwizzle_1133(vec)            _mm_movehdup_ps(vec)
 
     // return (vec1[x], vec1[y], vec2[z], vec2[w])
-#define VecShuffle(vec1, vec2, x,y,z,w)    _mm_shuffle_ps(vec1, vec2, MakeShuffleMask(x,y,z,w))
-    // special shuffle
-#define VecShuffle_0101(vec1, vec2)        _mm_movelh_ps(vec1, vec2)
-#define VecShuffle_2323(vec1, vec2)        _mm_movehl_ps(vec2, vec1)
+#   define VecShuffle(vec1, vec2, x,y,z,w) _mm_shuffle_ps(vec1, vec2, MakeShuffleMask(x,y,z,w))
+     // special shuffle
+#   define VecShuffle_0101(vec1, vec2)     _mm_movelh_ps(vec1, vec2)
+#   define VecShuffle_2323(vec1, vec2)     _mm_movehl_ps(vec2, vec1)
 
     constexpr F32 SMALL_NUMBER = 1.e-8f;
 
@@ -70,7 +70,7 @@ namespace Divide
             const __m128 row2 = _mm_load_ps( &B[4] );
             const __m128 row3 = _mm_load_ps( &B[8] );
             const __m128 row4 = _mm_load_ps( &B[12] );
-            for ( U8 i = 0; i < 4; ++i )
+            for ( U8 i = 0u; i < 4u; ++i )
             {
                 const __m128 brod1 = _mm_set1_ps( A[4 * i + 0] );
                 const __m128 brod2 = _mm_set1_ps( A[4 * i + 1] );
@@ -134,7 +134,7 @@ namespace Divide
         // 2x2 column major Matrix multiply A*B
         FORCE_INLINE __m128 Mat2Mul( const __m128 vec1, const __m128 vec2 ) noexcept
         {
-            return  _mm_add_ps( _mm_mul_ps( vec1, VecSwizzle( vec2, 0, 0, 3, 3 ) ),
+            return  _mm_add_ps( _mm_mul_ps( vec1,                           VecSwizzle( vec2, 0, 0, 3, 3 ) ),
                                 _mm_mul_ps( VecSwizzle( vec1, 2, 3, 0, 1 ), VecSwizzle( vec2, 1, 1, 2, 2 ) ) );
         }
         // 2x2 column major Matrix adjugate multiply (A#)*B
@@ -147,7 +147,7 @@ namespace Divide
         // 2x2 column major Matrix multiply adjugate A*(B#)
         FORCE_INLINE __m128 Mat2MulAdj( const __m128 vec1, const __m128 vec2 ) noexcept
         {
-            return  _mm_sub_ps( _mm_mul_ps( vec1, VecSwizzle( vec2, 3, 3, 0, 0 ) ),
+            return  _mm_sub_ps( _mm_mul_ps( vec1,                           VecSwizzle( vec2, 3, 3, 0, 0 ) ),
                                 _mm_mul_ps( VecSwizzle( vec1, 2, 3, 0, 1 ), VecSwizzle( vec2, 1, 1, 2, 2 ) ) );
         }
 
@@ -310,7 +310,7 @@ namespace Divide
     mat2<T>::mat2( U m0, U m1,
                    U m2, U m3 ) noexcept
         : mat{ static_cast<T>(m0), static_cast<T>(m1),
-              static_cast<T>(m2), static_cast<T>(m3) }
+               static_cast<T>(m2), static_cast<T>(m3) }
     {
     }
 
@@ -356,7 +356,7 @@ namespace Divide
     vec2<T> mat2<T>::operator*( const vec2<U> v ) const noexcept
     {
         return { mat[0] * v[0] + mat[1] * v[1],
-                mat[2] * v[0] + mat[3] * v[1] };
+                 mat[2] * v[0] + mat[3] * v[1] };
     }
 
     template<typename T>
@@ -364,8 +364,8 @@ namespace Divide
     vec3<T> mat2<T>::operator*( const vec3<U>& v ) const noexcept
     {
         return { mat[0] * v[0] + mat[1] * v[1],
-                mat[2] * v[0] + mat[3] * v[1],
-                v[2] };
+                 mat[2] * v[0] + mat[3] * v[1],
+                 v[2] };
     }
 
     template<typename T>
@@ -373,9 +373,9 @@ namespace Divide
     vec4<T> mat2<T>::operator*( const vec4<U>& v ) const noexcept
     {
         return { mat[0] * v[0] + mat[1] * v[1],
-                mat[2] * v[0] + mat[3] * v[1],
-                v[2],
-                v[3] };
+                 mat[2] * v[0] + mat[3] * v[1],
+                 v[2],
+                 v[3] };
     }
 
     template<typename T>
@@ -751,7 +751,7 @@ namespace Divide
     bool mat2<T>::isIdentity() const noexcept
     {
         return COMPARE( mat[0], 1 ) && IS_ZERO( mat[1] ) &&
-            IS_ZERO( mat[2] ) && COMPARE( mat[3], 1 );
+               IS_ZERO( mat[2] ) && COMPARE( mat[3], 1 );
     }
 
     template<typename T>
@@ -783,8 +783,8 @@ namespace Divide
         assert( !IS_ZERO( idet ) );
         idet = 1 / idet;
 
-        set( mat[3] * idet, -mat[1] * idet,
-             -mat[2] * idet, mat[0] * idet );
+        set(  mat[3] * idet, -mat[1] * idet,
+             -mat[2] * idet,  mat[0] * idet );
     }
 
     template<typename T>
@@ -875,8 +875,8 @@ namespace Divide
                    U m3, U m4, U m5,
                    U m6, U m7, U m8 ) noexcept
         : mat{ static_cast<T>(m0), static_cast<T>(m1), static_cast<T>(m2),
-              static_cast<T>(m3), static_cast<T>(m4), static_cast<T>(m5),
-              static_cast<T>(m6), static_cast<T>(m7), static_cast<T>(m8) }
+               static_cast<T>(m3), static_cast<T>(m4), static_cast<T>(m5),
+               static_cast<T>(m6), static_cast<T>(m7), static_cast<T>(m8) }
     {
     }
 
@@ -894,7 +894,7 @@ namespace Divide
     mat3<T>::mat3( const mat2<U>& B, const bool zeroFill ) noexcept
         : mat3( B[0], B[1], 0,
                 B[2], B[3], 0,
-                0, 0, zeroFill ? 0 : 1 )
+                0,    0,    zeroFill ? 0 : 1 )
     {
     }
 
@@ -1362,8 +1362,8 @@ namespace Divide
     bool mat3<T>::isIdentity() const noexcept
     {
         return COMPARE( mat[0], 1 ) && IS_ZERO( mat[1] ) && IS_ZERO( mat[2] ) &&
-            IS_ZERO( mat[3] ) && COMPARE( mat[4], 1 ) && IS_ZERO( mat[5] ) &&
-            IS_ZERO( mat[6] ) && IS_ZERO( mat[7] ) && COMPARE( mat[8], 1 );
+               IS_ZERO( mat[3] ) && COMPARE( mat[4], 1 ) && IS_ZERO( mat[5] ) &&
+               IS_ZERO( mat[6] ) && IS_ZERO( mat[7] ) && COMPARE( mat[8], 1 );
     }
 
     template<typename T>
@@ -1380,8 +1380,8 @@ namespace Divide
         const vec3<F32> col2 = getCol( 2 );
 
         return AreOrthogonal( col0, col1 ) &&
-            AreOrthogonal( col0, col2 ) &&
-            AreOrthogonal( col1, col2 );
+               AreOrthogonal( col0, col2 ) &&
+               AreOrthogonal( col1, col2 );
     }
 
     template<typename T>
@@ -1404,26 +1404,26 @@ namespace Divide
     T mat3<T>::det() const noexcept
     {
         return mat[0] * mat[4] * mat[8] +
-            mat[3] * mat[7] * mat[2] +
-            mat[6] * mat[1] * mat[5] -
-            mat[6] * mat[4] * mat[2] -
-            mat[3] * mat[1] * mat[8] -
-            mat[0] * mat[7] * mat[5];
+               mat[3] * mat[7] * mat[2] +
+               mat[6] * mat[1] * mat[5] -
+               mat[6] * mat[4] * mat[2] -
+               mat[3] * mat[1] * mat[8] -
+               mat[0] * mat[7] * mat[5];
     }
 
     template<typename T>
     T mat3<T>::elementSum() const noexcept
     {
         return mat[0] + mat[1] + mat[2] +
-            mat[3] + mat[4] + mat[5] +
-            mat[6] + mat[7] + mat[8];
+               mat[3] + mat[4] + mat[5] +
+               mat[6] + mat[7] + mat[8];
     }
 
     template<typename T>
     void mat3<T>::inverse() noexcept
     {
         F32 idet = det();
-        if ( IS_ZERO( idet ) )
+        if ( IS_ZERO( idet ) ) [[unlikely]]
         {
             return;
         }
@@ -1431,13 +1431,13 @@ namespace Divide
         idet = 1 / idet;
 
         set( (mat[4] * mat[8] - mat[7] * mat[5]) * idet,
-             -(mat[1] * mat[8] - mat[7] * mat[2]) * idet,
+            -(mat[1] * mat[8] - mat[7] * mat[2]) * idet,
              (mat[1] * mat[5] - mat[4] * mat[2]) * idet,
-             -(mat[3] * mat[8] - mat[6] * mat[5]) * idet,
+            -(mat[3] * mat[8] - mat[6] * mat[5]) * idet,
              (mat[0] * mat[8] - mat[6] * mat[2]) * idet,
-             -(mat[0] * mat[5] - mat[3] * mat[2]) * idet,
+            -(mat[0] * mat[5] - mat[3] * mat[2]) * idet,
              (mat[3] * mat[7] - mat[6] * mat[4]) * idet,
-             -(mat[0] * mat[7] - mat[6] * mat[1]) * idet,
+            -(mat[0] * mat[7] - mat[6] * mat[1]) * idet,
              (mat[0] * mat[4] - mat[3] * mat[1]) * idet );
     }
 
@@ -1543,9 +1543,9 @@ namespace Divide
         const U c = std::cos( angle );
         const U s = std::sin( angle );
 
-        set( one, zero, zero,
-             zero, c, s,
-             zero, -s, c );
+        set( one,   zero, zero,
+             zero,  c,    s,
+             zero, -s,    c);
     }
 
     template<typename T>
@@ -1558,9 +1558,9 @@ namespace Divide
         const U c = std::cos( angle );
         const U s = std::sin( angle );
 
-        set( c, zero, -s,
-             zero, one, zero,
-             s, zero, c );
+        set( c,    zero, -s,
+             zero, one,   zero,
+             s,    zero,  c );
     }
 
     template<typename T>
@@ -1573,9 +1573,9 @@ namespace Divide
         const U c = std::cos( angle );
         const U s = std::sin( angle );
 
-        set( c, s, zero,
-             -s, c, zero,
-             zero, zero, one );
+        set(  c,    s,    zero,
+             -s,    c,    zero,
+              zero, zero, one );
     }
 
     // setScale replaces the main diagonal!
@@ -1693,8 +1693,15 @@ namespace Divide
     }
 
     template<typename T>
-    mat4<T>::mat4( std::initializer_list<T> matrix ) noexcept
-        : mat4( matrix.begin() )
+    template<typename U>
+    mat4<T>::mat4(U m0, U m1, U m2, U m3,
+                  U m4, U m5, U m6, U m7,
+                  U m8, U m9, U m10, U m11,
+                  U m12, U m13, U m14, U m15 ) noexcept
+        : mat{ static_cast<T>(m0),  static_cast<T>(m1),  static_cast<T>(m2),  static_cast<T>(m3),
+               static_cast<T>(m4),  static_cast<T>(m5),  static_cast<T>(m6),  static_cast<T>(m7),
+               static_cast<T>(m8),  static_cast<T>(m9),  static_cast<T>(m10), static_cast<T>(m11),
+               static_cast<T>(m12), static_cast<T>(m13), static_cast<T>(m14), static_cast<T>(m15) }
     {
     }
 
@@ -1712,9 +1719,9 @@ namespace Divide
     template<typename U>
     mat4<T>::mat4( const mat2<U>& B, const bool zeroFill ) noexcept
         : mat4( { B[0],              B[1],              static_cast<U>(0), static_cast<U>(0),
-                 B[2],              B[3],              static_cast<U>(0), static_cast<U>(0),
-                 static_cast<U>(0), static_cast<U>(0), static_cast<U>(zeroFill ? 0 : 1), static_cast<U>(0),
-                 static_cast<U>(0), static_cast<U>(0), static_cast<U>(0), static_cast<U>(zeroFill ? 0 : 1) } )
+                  B[2],              B[3],              static_cast<U>(0), static_cast<U>(0),
+                  static_cast<U>(0), static_cast<U>(0), static_cast<U>(zeroFill ? 0 : 1), static_cast<U>(0),
+                  static_cast<U>(0), static_cast<U>(0), static_cast<U>(0), static_cast<U>(zeroFill ? 0 : 1) } )
     {
     }
 
@@ -1722,9 +1729,9 @@ namespace Divide
     template<typename U>
     mat4<T>::mat4( const mat3<U>& B, const bool zeroFill ) noexcept
         : mat4( { B[0],              B[1],              B[2],              static_cast<U>(0),
-                 B[3],              B[4],              B[5],              static_cast<U>(0),
-                 B[6],              B[7],              B[8],              static_cast<U>(0),
-                 static_cast<U>(0), static_cast<U>(0), static_cast<U>(0), static_cast<U>(zeroFill ? 0 : 1) } )
+                  B[3],              B[4],              B[5],              static_cast<U>(0),
+                  B[6],              B[7],              B[8],              static_cast<U>(0),
+                  static_cast<U>(0), static_cast<U>(0), static_cast<U>(0), static_cast<U>(zeroFill ? 0 : 1) } )
     {
     }
 
@@ -1745,9 +1752,9 @@ namespace Divide
     template<typename U>
     mat4<T>::mat4( const vec3<U>& translation, const vec3<U>& scale ) noexcept
         : mat4( { scale.x,           static_cast<U>(0), static_cast<U>(0), static_cast<U>(0),
-                 static_cast<U>(0), scale.y,           static_cast<U>(0), static_cast<U>(0),
-                 static_cast<U>(0), static_cast<U>(0), scale.z,           static_cast<U>(0),
-                 translation.x,     translation.y,     translation.z,     static_cast<U>(1) } )
+                  static_cast<U>(0), scale.y,           static_cast<U>(0), static_cast<U>(0),
+                  static_cast<U>(0), static_cast<U>(0), scale.z,           static_cast<U>(0),
+                  translation.x,     translation.y,     translation.z,     static_cast<U>(1) } )
     {
     }
 
@@ -1755,9 +1762,9 @@ namespace Divide
     template<typename U>
     mat4<T>::mat4( const vec3<U>& translation, const vec3<U>& scale, const mat3<U>& rotation ) noexcept
         : mat4( { scale.x,           static_cast<U>(0), static_cast<U>(0), static_cast<U>(0),
-                static_cast<U>(0), scale.y,           static_cast<U>(0), static_cast<U>(0),
-                static_cast<U>(0), static_cast<U>(0), scale.z,           static_cast<U>(0),
-                static_cast<U>(0), static_cast<U>(0), static_cast<U>(0), static_cast<U>(1) } )
+                  static_cast<U>(0), scale.y,           static_cast<U>(0), static_cast<U>(0),
+                  static_cast<U>(0), static_cast<U>(0), scale.z,           static_cast<U>(0),
+                  static_cast<U>(0), static_cast<U>(0), static_cast<U>(0), static_cast<U>(1) } )
     {
         // Rotate around origin then move!
         set( *this * mat4<U>( rotation, false ) );
@@ -1775,9 +1782,9 @@ namespace Divide
     template<typename U>
     mat4<T>::mat4( U translationX, U translationY, U translationZ ) noexcept
         : mat4( { static_cast<U>(1), static_cast<U>(0), static_cast<U>(0), static_cast<U>(0),
-                static_cast<U>(0), static_cast<U>(1), static_cast<U>(0), static_cast<U>(0),
-                static_cast<U>(0), static_cast<U>(0), static_cast<U>(1), static_cast<U>(0),
-                translationX,      translationY,      translationZ,      static_cast<U>(1) } )
+                  static_cast<U>(0), static_cast<U>(1), static_cast<U>(0), static_cast<U>(0),
+                  static_cast<U>(0), static_cast<U>(0), static_cast<U>(1), static_cast<U>(0),
+                  translationX,      translationY,      translationZ,      static_cast<U>(1) } )
     {
     }
 
@@ -1794,22 +1801,6 @@ namespace Divide
         : mat4()
     {
         fromRotation( x, y, z, angle );
-    }
-
-    template<typename T>
-    template<typename U>
-    mat4<T>::mat4( const vec3<U>& eye, const vec3<U>& target, const vec3<U>& up ) noexcept
-        : mat4()
-    {
-        lookAt( eye, target, up );
-    }
-
-    template<typename T>
-    template<typename U>
-    mat4<T>::mat4( const Rect<U>& orthoRect, const vec2<U> clip ) noexcept
-        : mat4()
-    {
-        ortho( orthoRect.left, orthoRect.right, orthoRect.bottom, orthoRect.top, clip.x, clip.y );
     }
 
     template<typename T>
@@ -1839,9 +1830,9 @@ namespace Divide
     FORCE_INLINE vec4<U> mat4<T>::operator*( const vec4<U>& v ) const noexcept
     {
         return { mat[0] * v.x + mat[4] * v.y + mat[8] * v.z + mat[12] * v.w,
-                mat[1] * v.x + mat[5] * v.y + mat[9] * v.z + mat[13] * v.w,
-                mat[2] * v.x + mat[6] * v.y + mat[10] * v.z + mat[14] * v.w,
-                mat[3] * v.x + mat[7] * v.y + mat[11] * v.z + mat[15] * v.w };
+                 mat[1] * v.x + mat[5] * v.y + mat[9] * v.z + mat[13] * v.w,
+                 mat[2] * v.x + mat[6] * v.y + mat[10] * v.z + mat[14] * v.w,
+                 mat[3] * v.x + mat[7] * v.y + mat[11] * v.z + mat[15] * v.w };
     }
 
     template<typename T>
@@ -2030,16 +2021,14 @@ namespace Divide
             return false;
         }
         */
-        for ( U8 i = 0u; i < 4u; ++i )
+        for ( U8 i = 0u; i <  16u; ++i )
         {
-            for ( U8 j = 0u; j < 4u; ++j )
+            if ( !COMPARE( mat[i], B.mat[i] ) )
             {
-                if ( !COMPARE( m[i][j], B.m[i][j] ) )
-                {
-                    return false;
-                }
+                return false;
             }
         }
+
         return true;
     }
 
@@ -2054,14 +2043,11 @@ namespace Divide
             return true;
         }
         */
-        for ( U8 i = 0u; i < 4u; ++i )
+        for ( U8 i = 0u; i < 16u; ++i )
         {
-            for ( U8 j = 0u; j < 4u; ++j )
+            if ( !COMPARE( mat[i][j], B.mat[i][j] ) )
             {
-                if ( !COMPARE( m[i][j], B.m[i][j] ) )
-                {
-                    return true;
-                }
+                return true;
             }
         }
 
@@ -2143,9 +2129,9 @@ namespace Divide
     template<typename U>
     FORCE_INLINE void mat4<T>::set( U const* matrix ) noexcept
     {
-        if constexpr ( sizeof( T ) == sizeof( U ) )
+        if constexpr ( std::is_same<T, U>::value )
         {
-            std::memcpy( mat, matrix, sizeof( U ) * 16 );
+            std::memcpy( mat, matrix, sizeof( T ) * 16 );
         }
         else
         {
@@ -2160,7 +2146,7 @@ namespace Divide
     template<typename U>
     FORCE_INLINE void mat4<T>::set( const mat2<U>& matrix ) noexcept
     {
-        memset( mat, 0, 16 * sizeof( T ) );
+        zero();
 
         mat[0] = matrix[0];  mat[1] = matrix[1];
         mat[4] = matrix[2];  mat[5] = matrix[3];
@@ -2170,10 +2156,10 @@ namespace Divide
     template<typename U>
     FORCE_INLINE void mat4<T>::set( const mat3<U>& matrix ) noexcept
     {
-        memset( mat, 0, 16 * sizeof( T ) );
+        zero();
 
-        mat[0] = matrix[0]; mat[1] = matrix[1]; mat[2] = matrix[2];
-        mat[4] = matrix[3]; mat[5] = matrix[4]; mat[6] = matrix[5];
+        mat[0] = matrix[0]; mat[1] = matrix[1]; mat[2]  = matrix[2];
+        mat[4] = matrix[3]; mat[5] = matrix[4]; mat[6]  = matrix[5];
         mat[8] = matrix[6]; mat[9] = matrix[7]; mat[10] = matrix[8];
         mat[15] = 1.f;
     }
@@ -2189,11 +2175,13 @@ namespace Divide
     template<typename U>
     void mat4<T>::set( const vec3<U>& translation, const vec3<U>& scale, const mat4<U>& rotation ) noexcept
     {
-        set( scale.x, static_cast<U>(0), static_cast<U>(0), static_cast<U>(0),
-             static_cast<U>(0), scale.y, static_cast<U>(0), static_cast<U>(0),
-             static_cast<U>(0), static_cast<U>(0), scale.z, static_cast<U>(0),
+        set( scale.x,           static_cast<U>(0), static_cast<U>(0), static_cast<U>(0),
+             static_cast<U>(0), scale.y,           static_cast<U>(0), static_cast<U>(0),
+             static_cast<U>(0), static_cast<U>(0), scale.z,           static_cast<U>(0),
              static_cast<U>(0), static_cast<U>(0), static_cast<U>(0), static_cast<U>(1) );
+
         set( *this * rotation );
+
         setTranslation( translation );
     }
 
@@ -2271,7 +2259,8 @@ namespace Divide
     template<typename T>
     FORCE_INLINE void mat4<T>::identity() noexcept
     {
-        memset( mat, 0, 16 * sizeof( T ) );
+        zero();
+
         m[0][0] = m[1][1] = m[2][2] = m[3][3] = static_cast<T>(1);
     }
 
@@ -2295,49 +2284,34 @@ namespace Divide
         const vec3<F32> col2 = getCol( 2 ).xyz;
 
         return AreOrthogonal( col0, col1 ) &&
-            AreOrthogonal( col0, col2 ) &&
-            AreOrthogonal( col1, col2 );
+               AreOrthogonal( col0, col2 ) &&
+               AreOrthogonal( col1, col2 );
     }
 
     template<typename T>
     void mat4<T>::swap( mat4& B ) noexcept
     {
-        std::swap( m[0][0], B.m[0][0] );
-        std::swap( m[0][1], B.m[0][1] );
-        std::swap( m[0][2], B.m[0][2] );
-        std::swap( m[0][3], B.m[0][3] );
-
-        std::swap( m[1][0], B.m[1][0] );
-        std::swap( m[1][1], B.m[1][1] );
-        std::swap( m[1][2], B.m[1][2] );
-        std::swap( m[1][3], B.m[1][3] );
-
-        std::swap( m[2][0], B.m[2][0] );
-        std::swap( m[2][1], B.m[2][1] );
-        std::swap( m[2][2], B.m[2][2] );
-        std::swap( m[2][3], B.m[2][3] );
-
-        std::swap( m[3][0], B.m[3][0] );
-        std::swap( m[3][1], B.m[3][1] );
-        std::swap( m[3][2], B.m[3][2] );
-        std::swap( m[3][3], B.m[3][3] );
+        for ( U8 i = 0u; i < 16u; ++i )
+        {
+            std::swap( mat[i], B.mat[i] );
+        }
     }
 
     template<typename T>
     FORCE_INLINE T mat4<T>::det() const noexcept
     {
         return mat[0] * mat[5] * mat[10] + mat[4] * mat[9] * mat[2] +
-            mat[8] * mat[1] * mat[6] - mat[8] * mat[5] * mat[2] -
-            mat[4] * mat[1] * mat[10] - mat[0] * mat[9] * mat[6];
+               mat[8] * mat[1] * mat[6]  - mat[8] * mat[5] * mat[2] -
+               mat[4] * mat[1] * mat[10] - mat[0] * mat[9] * mat[6];
     }
 
     template<typename T>
     FORCE_INLINE T mat4<T>::elementSum() const noexcept
     {
-        return mat[0] + mat[1] + mat[2] + mat[3] +
-            mat[4] + mat[5] + mat[6] + mat[7] +
-            mat[8] + mat[9] + mat[10] + mat[11] +
-            mat[12] + mat[13] + mat[14] + mat[15];
+        return mat[0]  + mat[1]  + mat[2]  + mat[3] +
+               mat[4]  + mat[5]  + mat[6]  + mat[7] +
+               mat[8]  + mat[9]  + mat[10] + mat[11] +
+               mat[12] + mat[13] + mat[14] + mat[15];
     }
 
     template<typename T>
@@ -2370,7 +2344,7 @@ namespace Divide
             mat[1], mat[5], mat[9],  mat[13],
             mat[2], mat[6], mat[10], mat[14],
             mat[3], mat[7], mat[11], mat[15]
-             } );
+        } );
     }
 
     template<typename T>
@@ -2385,9 +2359,11 @@ namespace Divide
     FORCE_INLINE mat4<T> mat4<T>::transposeRotation() const noexcept
     {
         set( { mat[0],   mat[4],  mat[8], mat[3],
-              mat[1],   mat[5],  mat[9], mat[7],
-              mat[2],   mat[6], mat[10], mat[11],
-              mat[12], mat[13], mat[14], mat[15] } );
+               mat[1],   mat[5],  mat[9], mat[7],
+               mat[2],   mat[6], mat[10], mat[11],
+               mat[12], mat[13], mat[14], mat[15]
+        } );
+
         return *this;
     }
 
@@ -2423,18 +2399,18 @@ namespace Divide
     FORCE_INLINE mat4<T> mat4<T>::getTranspose() const noexcept
     {
         return mat4( { mat[0], mat[4], mat[8],  mat[12],
-                     mat[1], mat[5], mat[9],  mat[13],
-                     mat[2], mat[6], mat[10], mat[14],
-                     mat[3], mat[7], mat[11], mat[15] } );
+                       mat[1], mat[5], mat[9],  mat[13],
+                       mat[2], mat[6], mat[10], mat[14],
+                       mat[3], mat[7], mat[11], mat[15] } );
     }
 
     template<typename T>
     FORCE_INLINE void mat4<T>::getTranspose( mat4& out ) const noexcept
     {
         out.set( { mat[0], mat[4], mat[8],  mat[12],
-                 mat[1], mat[5], mat[9],  mat[13],
-                 mat[2], mat[6], mat[10], mat[14],
-                 mat[3], mat[7], mat[11], mat[15] } );
+                   mat[1], mat[5], mat[9],  mat[13],
+                   mat[2], mat[6], mat[10], mat[14],
+                   mat[3], mat[7], mat[11], mat[15] } );
     }
 
     template<typename T>
@@ -2656,11 +2632,11 @@ namespace Divide
     {
         //Transforms the given 3-D vector by the matrix, projecting the result back into <i>w</i> = 1. (OGRE reference)
         const F32 fInvW = 1.f / (m[0][3] * v.x + m[1][3] * v.y +
-                                  m[2][3] * v.z + m[3][3]);
+                                 m[2][3] * v.z + m[3][3] * 1.f);
 
         return { (m[0][0] * v.x + m[1][1] * v.y + m[2][0] * v.z + m[3][0]) * fInvW,
-                (m[0][1] * v.x + m[1][1] * v.y + m[2][1] * v.z + m[3][1]) * fInvW,
-                (m[0][2] * v.x + m[1][2] * v.y + m[2][2] * v.z + m[3][2]) * fInvW };
+                 (m[0][1] * v.x + m[1][1] * v.y + m[2][1] * v.z + m[3][1]) * fInvW,
+                 (m[0][2] * v.x + m[1][2] * v.y + m[2][2] * v.z + m[3][2]) * fInvW };
     }
 
     template<typename T>
@@ -2697,17 +2673,17 @@ namespace Divide
     template<typename U>
     void mat4<T>::scale( U x, U y, U z ) noexcept
     {
-        mat[0] *= static_cast<T>(x);
-        mat[4] *= static_cast<T>(y);
-        mat[8] *= static_cast<T>(z);
-        mat[1] *= static_cast<T>(x);
-        mat[5] *= static_cast<T>(y);
-        mat[9] *= static_cast<T>(z);
-        mat[2] *= static_cast<T>(x);
-        mat[6] *= static_cast<T>(y);
+        mat[0]  *= static_cast<T>(x);
+        mat[1]  *= static_cast<T>(x);
+        mat[2]  *= static_cast<T>(x);
+        mat[3]  *= static_cast<T>(x);
+        mat[4]  *= static_cast<T>(y);
+        mat[5]  *= static_cast<T>(y);
+        mat[6]  *= static_cast<T>(y);
+        mat[7]  *= static_cast<T>(y);
+        mat[8]  *= static_cast<T>(z);
+        mat[9]  *= static_cast<T>(z);
         mat[10] *= static_cast<T>(z);
-        mat[3] *= static_cast<T>(x);
-        mat[7] *= static_cast<T>(y);
         mat[11] *= static_cast<T>(z);
     }
 
@@ -2724,7 +2700,6 @@ namespace Divide
     template<typename T>
     mat4<T> mat4<T>::getRotation() const
     {
-
         const T zero = static_cast<T>(0);
         const T one = static_cast<T>(1);
         mat4 ret( { mat[0],  mat[1], mat[2],  zero,
@@ -2732,6 +2707,7 @@ namespace Divide
                     mat[8],  mat[9], mat[10], zero,
                     zero,    zero,   zero,    one } );
         ret.orthoNormalize();
+
         return ret;
     }
 
@@ -2757,90 +2733,11 @@ namespace Divide
         U d = eq.w;
 
         *this = mat4( { -2 * x * x + 1,  -2 * y * x,      -2 * z * x,      zero,
-                       -2 * x * y,      -2 * y * y + 1,  -2 * z * y,      zero,
-                       -2 * x * z,      -2 * y * z,      -2 * z * z + 1,  zero,
-                       -2 * x * d,      -2 * y * d,      -2 * z * d,      one } ) * *this;
+                        -2 * x * y,      -2 * y * y + 1,  -2 * z * y,      zero,
+                        -2 * x * z,      -2 * y * z,      -2 * z * z + 1,  zero,
+                        -2 * x * d,      -2 * y * d,      -2 * z * d,      one } ) * *this;
 
         return *this;
-    }
-
-    template<typename T>
-    template<typename U>
-    void mat4<T>::lookAt( const vec3<U>& eye, const vec3<U>& target, const vec3<U>& up ) noexcept
-    {
-        const vec3<U> zAxis( Normalized( eye - target ) );
-        const vec3<U> xAxis( Normalized( Cross( up, zAxis ) ) );
-        const vec3<U> yAxis( Normalized( Cross( zAxis, xAxis ) ) );
-
-        m[0][0] = static_cast<T>(xAxis.x);
-        m[1][0] = static_cast<T>(xAxis.y);
-        m[2][0] = static_cast<T>(xAxis.z);
-        m[3][0] = static_cast<T>(-xAxis.dot( eye ));
-
-        m[0][1] = static_cast<T>(yAxis.x);
-        m[1][1] = static_cast<T>(yAxis.y);
-        m[2][1] = static_cast<T>(yAxis.z);
-        m[3][1] = static_cast<T>(-yAxis.dot( eye ));
-
-        m[0][2] = static_cast<T>(zAxis.x);
-        m[1][2] = static_cast<T>(zAxis.y);
-        m[2][2] = static_cast<T>(zAxis.z);
-        m[3][2] = static_cast<T>(-zAxis.dot( eye ));
-
-        m[0][3] = static_cast<T>(0);
-        m[1][3] = static_cast<T>(0);
-        m[2][3] = static_cast<T>(0);
-        m[3][3] = static_cast<T>(1);
-    }
-
-    template<typename T>
-    template<typename U>
-    void mat4<T>::ortho( U left, U right, U bottom, U top, U zNear, U zFar )  noexcept
-    {
-        zero();
-
-        m[0][0] = static_cast<T>(2.0f / (right - left));
-        m[1][1] = static_cast<T>(2.0f / (top - bottom));
-        m[2][2] = -static_cast<T>(2.0f / (zFar - zNear));
-        m[3][3] = static_cast<T>(1);
-
-
-        m[3][0] = -static_cast<T>(to_F32( right + left ) / (right - left));
-        m[3][1] = -static_cast<T>(to_F32( top + bottom ) / (top - bottom));
-        m[3][2] = -static_cast<T>(to_F32( zFar + zNear ) / (zFar - zNear));
-    }
-
-    template<typename T>
-    template<typename U>
-    void mat4<T>::perspective( const Angle::DEGREES<U> fovyRad, const U aspect, const U zNear, const U zFar ) noexcept
-    {
-        assert( !IS_ZERO( aspect ) );
-        assert( zFar > zNear );
-
-        Angle::RADIANS<F32> tanHalfFovy = std::tan( Angle::to_RADIANS( fovyRad ) * 0.5f );
-
-        zero();
-
-        m[0][0] = static_cast<T>(1.0f / (aspect * tanHalfFovy));
-        m[1][1] = static_cast<T>(1.0f / tanHalfFovy);
-        m[2][2] = -static_cast<T>(to_F32( zFar + zNear ) / (zFar - zNear));
-        m[2][3] = -static_cast<T>(1);
-        m[3][2] = -static_cast<T>(2.0f * zFar * zNear / (zFar - zNear));
-    }
-
-    template<typename T>
-    template<typename U>
-    void mat4<T>::frustum( const U left, const U right, const U bottom, const U top, const U nearVal, const U farVal ) noexcept
-    {
-        zero();
-
-        m[0][0] = static_cast<T>(2.0f * nearVal / (right - left));
-        m[1][1] = static_cast<T>(2.0f * nearVal / (top - bottom));
-        m[2][0] = static_cast<T>(to_F32( right + left ) / (right - left));
-        m[2][1] = static_cast<T>(to_F32( top + bottom ) / (top - bottom));
-        m[2][2] = -static_cast<T>(to_F32( farVal + nearVal ) / (farVal - nearVal));
-        m[2][3] = static_cast<T>(-1);
-        m[3][2] = -static_cast<T>(2.0f * farVal * nearVal / (farVal - nearVal));
     }
 
     template<typename T>
@@ -2864,7 +2761,10 @@ namespace Divide
         for ( U8 i = 0u; i < 4u; ++i )
         {
             const vec4<T>& rowA = matrixA.getRow( i );
-            ret.setRow( i, matrixB.getRow( 0 ) * rowA[0] + matrixB.getRow( 1 ) * rowA[1] + matrixB.getRow( 2 ) * rowA[2] + matrixB.getRow( 3 ) * rowA[3] );
+            ret.setRow( i, matrixB.getRow( 0 ) * rowA[0] + 
+                           matrixB.getRow( 1 ) * rowA[1] +
+                           matrixB.getRow( 2 ) * rowA[2] +
+                           matrixB.getRow( 3 ) * rowA[3] );
         }
     }
 
@@ -2899,9 +2799,9 @@ namespace Divide
     template<typename T>
     void mat4<T>::Inverse( const T* in, T* out ) noexcept
     {
-        const T m00 = in[0], m10 = in[1], m20 = in[2], m30 = in[3];
-        const T m01 = in[4], m11 = in[5], m21 = in[6], m31 = in[7];
-        const T m02 = in[8], m12 = in[9], m22 = in[10], m32 = in[11];
+        const T m00 = in[0],  m10 = in[1],  m20 = in[2],  m30 = in[3];
+        const T m01 = in[4],  m11 = in[5],  m21 = in[6],  m31 = in[7];
+        const T m02 = in[8],  m12 = in[9],  m22 = in[10], m32 = in[11];
         const T m03 = in[12], m13 = in[13], m23 = in[14], m33 = in[15];
 
         const T a0 = m00 * m11 - m10 * m01;
@@ -2920,26 +2820,26 @@ namespace Divide
         // should be accurate enough
         F32 idet = to_F32( a0 ) * b5 - a1 * b4 + a2 * b3 + a3 * b2 - a4 * b1 + a5 * b0;
 
-        if ( !IS_ZERO( idet ) )
+        if ( !IS_ZERO( idet ) ) [[likely]]
         {
-            idet = 1.0f / idet;
+            idet = 1.f / idet;
 
-            out[0] = static_cast<T>((m11 * b5 - m21 * b4 + m31 * b3) * idet);
-            out[1] = static_cast<T>((-m10 * b5 + m20 * b4 - m30 * b3) * idet);
-            out[2] = static_cast<T>((m13 * a5 - m23 * a4 + m33 * a3) * idet);
-            out[3] = static_cast<T>((-m12 * a5 + m22 * a4 - m32 * a3) * idet);
-            out[4] = static_cast<T>((-m01 * b5 + m21 * b2 - m31 * b1) * idet);
-            out[5] = static_cast<T>((m00 * b5 - m20 * b2 + m30 * b1) * idet);
-            out[6] = static_cast<T>((-m03 * a5 + m23 * a2 - m33 * a1) * idet);
-            out[7] = static_cast<T>((m02 * a5 - m22 * a2 + m32 * a1) * idet);
-            out[8] = static_cast<T>((m01 * b4 - m11 * b2 + m31 * b0) * idet);
-            out[9] = static_cast<T>((-m00 * b4 + m10 * b2 - m30 * b0) * idet);
-            out[10] = static_cast<T>((m03 * a4 - m13 * a2 + m33 * a0) * idet);
+            out[0]  = static_cast<T>(( m11 * b5 - m21 * b4 + m31 * b3) * idet);
+            out[1]  = static_cast<T>((-m10 * b5 + m20 * b4 - m30 * b3) * idet);
+            out[2]  = static_cast<T>(( m13 * a5 - m23 * a4 + m33 * a3) * idet);
+            out[3]  = static_cast<T>((-m12 * a5 + m22 * a4 - m32 * a3) * idet);
+            out[4]  = static_cast<T>((-m01 * b5 + m21 * b2 - m31 * b1) * idet);
+            out[5]  = static_cast<T>(( m00 * b5 - m20 * b2 + m30 * b1) * idet);
+            out[6]  = static_cast<T>((-m03 * a5 + m23 * a2 - m33 * a1) * idet);
+            out[7]  = static_cast<T>(( m02 * a5 - m22 * a2 + m32 * a1) * idet);
+            out[8]  = static_cast<T>(( m01 * b4 - m11 * b2 + m31 * b0) * idet);
+            out[9]  = static_cast<T>((-m00 * b4 + m10 * b2 - m30 * b0) * idet);
+            out[10] = static_cast<T>(( m03 * a4 - m13 * a2 + m33 * a0) * idet);
             out[11] = static_cast<T>((-m02 * a4 + m12 * a2 - m32 * a0) * idet);
             out[12] = static_cast<T>((-m01 * b3 + m11 * b1 - m21 * b0) * idet);
-            out[13] = static_cast<T>((m00 * b3 - m10 * b1 + m20 * b0) * idet);
+            out[13] = static_cast<T>(( m00 * b3 - m10 * b1 + m20 * b0) * idet);
             out[14] = static_cast<T>((-m03 * a3 + m13 * a1 - m23 * a0) * idet);
-            out[15] = static_cast<T>((m02 * a3 - m12 * a1 + m22 * a0) * idet);
+            out[15] = static_cast<T>(( m02 * a3 - m12 * a1 + m22 * a0) * idet);
         }
         else
         {

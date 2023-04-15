@@ -30,40 +30,35 @@ CubeShadowMapGenerator::CubeShadowMapGenerator(GFXDevice& context)
 void CubeShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-    const vec3<F32> lightPos = light.getSGN()->get<TransformComponent>()->getWorldPosition();
-
-    auto& shadowCameras = ShadowMap::shadowCameras(ShadowType::CUBEMAP);
-
-    std::array<Camera*, 6> cameras = {};
-    std::copy_n(std::begin(shadowCameras), std::min(cameras.size(),shadowCameras.size()), std::begin(cameras));
+    const vec3<F32> lightPos = light.sgn()->get<TransformComponent>()->getWorldPosition();
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Cube Shadow Pass Light: [ %d ]", lightIndex).c_str(), lightIndex));
-    GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = false;
 
     RenderPassParams params = {};
     params._target = ShadowMap::getShadowMap(_type)._targetID;
-    params._sourceNode = light.getSGN();
+    params._sourceNode = light.sgn();
     params._refreshLightData = false;
     params._stagePass = { RenderStage::SHADOW, RenderPassType::MAIN_PASS, lightIndex, static_cast<RenderStagePass::VariantType>(light.getLightType()) };
     params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
     params._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
     params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
 
+    mat4<F32> viewProjMatrix[6];
     _context.generateCubeMap(params,
                              light.getShadowArrayOffset(),
-                             light.getSGN()->get<TransformComponent>()->getWorldPosition(),
-                             vec2<F32>(0.001f, light.range() * 1.1f),
+                             light.sgn()->get<TransformComponent>()->getWorldPosition(),
+                             vec2<F32>(0.01f, light.range() * 1.1f),
                              bufferInOut,
                              memCmdInOut,
-                             cameras);
+                             viewProjMatrix);
 
-    for (U8 i = 0u; i < 6u; ++i) {
+    for (U8 i = 0u; i < 6u; ++i)
+    {
         light.setShadowLightPos(  i, lightPos);
-        light.setShadowFloatValue(i, shadowCameras[i]->snapshot()._zPlanes.max);
-        light.setShadowVPMatrix(  i, mat4<F32>::Multiply(shadowCameras[i]->viewProjectionMatrix(), MAT4_BIAS));
+        light.setShadowFloatValue(i, light.range() * 1.1f );
+        light.setShadowVPMatrix(  i, mat4<F32>::Multiply(viewProjMatrix[i], MAT4_BIAS_ZERO_ONE_Z ));
     }
 
-    GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = true;
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 

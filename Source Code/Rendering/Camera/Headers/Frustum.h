@@ -33,8 +33,6 @@
 #ifndef _FRUSTUM_H_
 #define _FRUSTUM_H_
 
-#include "Platform/Video/Headers/RenderAPIEnums.h"
-
 namespace Divide {
 
 class Camera;
@@ -113,4 +111,4 @@ class Frustum {
 
 };  // namespace Divide
 
-#endif
+#endif //_FRUSTUM_H_

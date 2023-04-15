@@ -243,9 +243,9 @@ namespace Divide
         const PlayerIndex idx = getPlayerIndexForDevice( arg._deviceIndex );
         SceneStatePerPlayer& state = _parentScene.state()->playerState( idx );
 
-        if ( arg.wheelEvent() )
+        if ( arg._wheelEvent )
         {
-            const I32 wheel = arg.WheelV();
+            const I32 wheel = arg.state().VWheel;
             if ( wheel == 0 )
             {
                 state._zoom.reset();
@@ -257,8 +257,8 @@ namespace Divide
         }
         else if ( state.cameraLockedToMouse() )
         {
-            const I32 xRel = arg.relativePos().x;
-            const I32 yRel = arg.relativePos().y;
+            const I32 xRel = arg.state().X.rel;
+            const I32 yRel = arg.state().Y.rel;
 
             if ( xRel == 0 )
             {
@@ -284,12 +284,11 @@ namespace Divide
 
     bool SceneInput::mouseButtonPressed( const Input::MouseButtonEvent& arg )
     {
-
         if ( g_recordInput )
         {
             _mouseBtnLog[arg._deviceIndex].emplace_back(
                 MouseLogState{
-                    ._position = vec2<I32>( arg.absPosition().x, arg.absPosition().y ),
+                    ._position = {arg.state().X.abs, arg.state().Y.abs},
                     ._button = arg.button(),
                     ._state = Input::InputState::PRESSED
                 }
@@ -300,8 +299,8 @@ namespace Divide
         if ( getMouseMapping( arg.button(), cbks ) )
         {
             InputParams params( arg._deviceIndex, to_I32( arg.button() ) );
-            params._var[2] = arg.absPosition().x;
-            params._var[3] = arg.absPosition().y;
+            params._var[2] = arg.state().X.abs;
+            params._var[3] = arg.state().Y.abs;
             return handleCallbacks( cbks, params, true );
         }
 
@@ -314,7 +313,7 @@ namespace Divide
         {
             _mouseBtnLog[arg._deviceIndex].emplace_back(
                 MouseLogState{
-                    ._position = vec2<I32>( arg.absPosition().x, arg.absPosition().y ),
+                    ._position = {arg.state().X.abs, arg.state().Y.abs},
                     ._button = arg.button(),
                     ._state = Input::InputState::RELEASED
                 }
@@ -325,8 +324,8 @@ namespace Divide
         if ( getMouseMapping( arg.button(), cbks ) )
         {
             InputParams params( arg._deviceIndex, to_I32( arg.button() ) );
-            params._var[2] = arg.absPosition().x;
-            params._var[3] = arg.absPosition().y;
+            params._var[2] = arg.state().X.abs;
+            params._var[3] = arg.state().Y.abs;
             return handleCallbacks( cbks, params, false );
         }
 

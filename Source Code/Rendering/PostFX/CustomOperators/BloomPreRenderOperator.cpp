@@ -23,8 +23,7 @@ namespace {
 }
 
 BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, ResourceCache* cache)
-    : PreRenderOperator(context, parent, FilterType::FILTER_BLOOM),
-      _bloomThreshold(0.99f)
+    : PreRenderOperator(context, parent, FilterType::FILTER_BLOOM)
 {
     ShaderModuleDescriptor vertModule = {};
     vertModule._moduleType = ShaderType::VERTEX;
@@ -39,7 +38,7 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
     ShaderProgramDescriptor shaderDescriptor = {};
     shaderDescriptor._modules.push_back(vertModule);
     shaderDescriptor._modules.push_back(fragModule);
-    shaderDescriptor._globalDefines.emplace_back( "luminanceThreshold PushData0[0].x" );
+    shaderDescriptor._globalDefines.emplace_back( "luminanceBias PushData0[0].x" );
 
     ResourceDescriptor bloomCalc("BloomCalc");
     bloomCalc.propertyDescriptor(shaderDescriptor);
@@ -101,7 +100,7 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
     desc._resolution = vec2<U16>(res / resolutionDownscaleFactor);
     _bloomOutput = _context.renderTargetPool().allocateRT(desc);
 
-    luminanceThreshold(_context.context().config().rendering.postFX.bloom.threshold);
+    luminanceBias(_context.context().config().rendering.postFX.bloom.luminanceBias);
 }
 
 BloomPreRenderOperator::~BloomPreRenderOperator()
@@ -135,10 +134,10 @@ void BloomPreRenderOperator::reshape(const U16 width, const U16 height)
     _bloomBlurBuffer[1]._rt->resize(width, height);
 }
 
-void BloomPreRenderOperator::luminanceThreshold(const F32 val)
+void BloomPreRenderOperator::luminanceBias(const F32 val)
 {
-    _bloomThreshold = val;
-    _context.context().config().rendering.postFX.bloom.threshold = val;
+    _luminanceBias = val;
+    _context.context().config().rendering.postFX.bloom.luminanceBias = val;
     _context.context().config().changed(true);
 }
 
@@ -150,66 +149,70 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
     const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
     const auto& screenTex = screenAtt->texture()->getView();
 
-    // Step 1: generate bloom - render all of the "bright spots"
-    GFX::BeginRenderPassCommand beginRenderPassCmd{};
-    beginRenderPassCmd._target = _bloomOutput._targetID;
-    beginRenderPassCmd._name = "DO_BLOOM_PASS";
-    beginRenderPassCmd._descriptor = _screenOnlyDraw;
-    beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
-    GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
+    { // Step 1: generate bloom - render all of the "bright spots"
+        GFX::BeginRenderPassCommand beginRenderPassCmd{};
+        beginRenderPassCmd._target = _bloomOutput._targetID;
+        beginRenderPassCmd._name = "DO_BLOOM_PASS";
+        beginRenderPassCmd._descriptor = _screenOnlyDraw;
+        beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
+        GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
-    PushConstantsStruct params{};
-    params.data[0]._vec[0].x = _bloomThreshold;
-    GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ _bloomCalcPipeline } );
-    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( params );
-
-    {
+        PushConstantsStruct params{};
+        params.data[0]._vec[0].x = luminanceBias();
+        GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ _bloomCalcPipeline } );
+        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( params );
+    
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
-        DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-        Set( binding._data, screenTex, screenAtt->descriptor()._samplerHash );
+        {
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, screenTex, screenAtt->descriptor()._samplerHash );
+        }
+        {
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, _parent.luminanceTex()->getView(), _parent.lumaSamplingHash());
+        }
+
+
+        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
     }
-
-
-    GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
-    GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
-
-    // Step 2: blur bloom
-    _context.blurTarget(_bloomOutput,
-                        _bloomBlurBuffer[0],
-                        _bloomBlurBuffer[1],
-                        RTAttachmentType::COLOUR,
-                        RTColourAttachmentSlot::SLOT_0,
-                        10,
-                        true,
-                        1,
-                        bufferInOut);
-
-    // Step 3: apply bloom
-    const auto& bloomAtt = _bloomBlurBuffer[1]._rt->getAttachment(RTAttachmentType::COLOUR );
-    const auto& bloomTex = bloomAtt->texture()->getView();
-
-    beginRenderPassCmd._target = output._targetID;
-    beginRenderPassCmd._descriptor = _screenOnlyDraw;
-    GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
-
-    auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
-    cmd->_usage = DescriptorSetUsage::PER_DRAW;
-    {
-        DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-        Set( binding._data, screenTex, screenAtt->descriptor()._samplerHash );
+    {// Step 2: blur bloom
+        _context.blurTarget(_bloomOutput,
+                            _bloomBlurBuffer[0],
+                            _bloomBlurBuffer[1],
+                            RTAttachmentType::COLOUR,
+                            RTColourAttachmentSlot::SLOT_0,
+                            10,
+                            true,
+                            1,
+                            bufferInOut);
     }
-    {
-        DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
-        Set( binding._data, bloomTex, bloomAtt->descriptor()._samplerHash );
+    {// Step 3: apply bloom
+        const auto& bloomAtt = _bloomBlurBuffer[1]._rt->getAttachment(RTAttachmentType::COLOUR );
+        const auto& bloomTex = bloomAtt->texture()->getView();
+
+        GFX::BeginRenderPassCommand beginRenderPassCmd{};
+        beginRenderPassCmd._target = output._targetID;
+        beginRenderPassCmd._descriptor = _screenOnlyDraw;
+        GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
+
+        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
+        cmd->_usage = DescriptorSetUsage::PER_DRAW;
+        {
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, screenTex, screenAtt->descriptor()._samplerHash );
+        }
+        {
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, bloomTex, bloomAtt->descriptor()._samplerHash );
+        }
+
+        GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ _bloomApplyPipeline } );
+
+        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
     }
-
-    GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ _bloomApplyPipeline } );
-
-
-    GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
-    GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
-
 
     return true;
 }

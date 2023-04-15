@@ -110,13 +110,13 @@ namespace Divide
 
         g_gameTaskID = CreateTask( [this]( const Task& /*parent*/ )
         {
-            test( Random( 4 ), GFX::PushConstantType::INT );
+            test( Random( 4 ), PushConstantType::INT );
         } );
 
         registerTask( *g_gameTaskID );
     }
 
-    void PingPongScene::test( std::any a, GFX::PushConstantType type )
+    void PingPongScene::test( std::any a, PushConstantType type )
     {
         bool updated = false;
         string message;
@@ -236,7 +236,7 @@ namespace Divide
                 message = "You lost!";
                 _score--;
 
-                if ( type == GFX::PushConstantType::INT )
+                if ( type == PushConstantType::INT )
                 {
                     I32 quote = std::any_cast<I32>(a);
                     if ( _score % 3 == 0 )

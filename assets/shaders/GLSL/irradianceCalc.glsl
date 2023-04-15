@@ -22,10 +22,10 @@ void main()
 
         vec3 color = vec3(0.f);
         uint sampleCount = 0u;
-        float deltaPhi = TWO_PI / 360.0;
-        float deltaTheta = HALF_PI / 90.0;
-        for (float phi = 0.0; phi < TWO_PI; phi += deltaPhi) {
-            for (float theta = 0.0; theta < HALF_PI; theta += deltaTheta) {
+        float deltaPhi = TWO_M_PI / 360.0;
+        float deltaTheta = M_PI_DIV_2 / 90.0;
+        for (float phi = 0.0; phi < TWO_M_PI; phi += deltaPhi) {
+            for (float theta = 0.0; theta < M_PI_DIV_2; theta += deltaTheta) {
                 // Spherical to World Space in two steps...
                 vec3 tempVec = cos(phi) * right + sin(phi) * up;
                 vec3 sampleVector = cos(theta) * N + sin(theta) * tempVec;
@@ -34,7 +34,7 @@ void main()
             }
         }
 
-        imageStore(s_target, ivec3(gl_GlobalInvocationID.xy, (layerIndex * 6) + i), vec4(PI * color / float(sampleCount), 1.f));
+        imageStore(s_target, ivec3(gl_GlobalInvocationID.xy, (layerIndex * 6) + i), vec4( M_PI * color / float(sampleCount), 1.f));
     }
 }
 
@@ -141,7 +141,7 @@ vec3 prefilterEnvMap(in vec3 R)
             // Solid angle of current sample -- bigger for less likely samples
             float omegaS = 1.0 / (float(NUM_SAMPLES) * pdf);
             // Solid angle of texel
-            float omegaP = 4.0 * PI / (6.0 * imgSizeX * imgSizeX);
+            float omegaP = 4.0 * M_PI / (6.0 * imgSizeX * imgSizeX);
             // Mip level is determined by the ratio of our sample's solid angle to a texel's solid angle
             float mipLevelTemp = max(0.5 * log2(omegaS / omegaP), 0.0);
             prefilteredColor += textureLod(s_source, vec4(L, layerIndex), mipLevelTemp).rgb * NoL;

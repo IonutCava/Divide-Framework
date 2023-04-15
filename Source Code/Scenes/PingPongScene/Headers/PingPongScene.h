@@ -40,11 +40,6 @@ namespace Divide
 
     class Sphere3D;
 
-    namespace GFX
-    {
-        enum class PushConstantType : U8;
-    };
-
     BEGIN_SCENE( PingPongScene )
         explicit PingPongScene( PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name );
 
@@ -60,7 +55,7 @@ namespace Divide
     U16  registerInputActions() override;
 
     private:
-    void test( std::any a, GFX::PushConstantType type );
+    void test( std::any a, PushConstantType type );
     void serveBall();
     void resetGame();
 

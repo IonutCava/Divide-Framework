@@ -3,7 +3,6 @@
 #include "Headers/glResources.h"
 #include "Headers/glHardwareQuery.h"
 
-#include "Platform/Video/Headers/RenderAPIEnums.h"
 #include "Platform/Video/Headers/GenericDrawCommand.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 #include "Platform/Video/GLIM/glim.h"

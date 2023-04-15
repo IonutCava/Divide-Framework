@@ -76,6 +76,7 @@ namespace Divide
     Str8 ShaderProgram::shaderAtomExtensionName[to_base( ShaderType::COUNT ) + 1];
 
     ShaderProgram::ShaderQueue ShaderProgram::s_recompileQueue;
+    ShaderProgram::ShaderQueue ShaderProgram::s_recompileFailedQueue;
     ShaderProgram::ShaderProgramMap ShaderProgram::s_shaderPrograms;
     ShaderProgram::LastRequestedShader ShaderProgram::s_lastRequestedShaderProgram = {};
     U8 ShaderProgram::k_commandBufferID = U8_MAX - MAX_BINDINGS_PER_DESCRIPTOR_SET;
@@ -448,15 +449,12 @@ namespace Divide
 
         constexpr std::pair<const char*, const char*> shaderVaryings[] =
         {
-            { "vec4"       , "_vertexW"},          // 16 bytes
-            { "vec4"       , "_vertexWV"},         // 32 bytes
-            { "vec4"       , "_prevVertexWVP"},    // 48 bytes
-            { "vec3"       , "_normalWV"},         // 60 bytes
-            { "vec3"       , "_viewDirectionWV"},  // 72 bytes
-            { "vec2"       , "_texCoord"},         // 80 bytes
-            { "flat uvec4" , "_indirectionIDs"},   // 96 bytes
-            { "flat uint"  , "_LoDLevel"},         // 100 bytes
-            //{ "mat3" , "_tbnWV"},                // 136 bytes
+            { "vec4"       , "_vertexW"},        
+            { "vec4"       , "_vertexWV"},       
+            { "vec3"       , "_normalWV"},       
+            { "vec2"       , "_texCoord"},       
+            { "flat uvec4" , "_indirectionIDs"}, 
+            { "flat uint"  , "_LoDLevel"},       
         };
 
         constexpr const char* crossTypeGLSLHLSL = "#define float2 vec2\n"
@@ -486,6 +484,10 @@ namespace Divide
                 passData.append( "\n" );
             }
 
+            passData.append( "#if defined(HAS_VELOCITY)\n" );
+            passData.append( Util::StringFormat( baseString.c_str(), "_prevVertexWVP", "_prevVertexWVP" ) );
+            passData.append( "\n#endif //HAS_VELOCITY\n" );
+
             passData.append( "#if defined(ENABLE_TBN)\n" );
             passData.append( Util::StringFormat( baseString.c_str(), "_tbnWV", "_tbnWV" ) );
             passData.append( "\n#endif //ENABLE_TBN\n" );
@@ -501,6 +503,10 @@ namespace Divide
             {
                 AppendToShaderHeader( type, Util::StringFormat( "    %s %s;", varType, name ) );
             }
+            AppendToShaderHeader( type, "#if defined(HAS_VELOCITY)" );
+            AppendToShaderHeader( type, "    vec4 _prevVertexWVP;" );
+            AppendToShaderHeader( type, "#endif //HAS_VELOCITY" );
+            
             AppendToShaderHeader( type, "#if defined(ENABLE_TBN)" );
             AppendToShaderHeader( type, "    mat3 _tbnWV;" );
             AppendToShaderHeader( type, "#endif //ENABLE_TBN" );
@@ -579,10 +585,11 @@ namespace Divide
             AppendToShaderHeader( ShaderType::COUNT, "#define USE_COLOURED_WOIT" );
         }
 
+        constexpr float Z_TEST_SIGMA = 0.00001f;// 1.f / U8_MAX;
         // ToDo: Automate adding of buffer bindings by using, for example, a TypeUtil::bufferBindingToString -Ionut
         AppendToShaderHeader( ShaderType::COUNT, "#define ALPHA_DISCARD_THRESHOLD " + Util::to_string( Config::ALPHA_DISCARD_THRESHOLD ) + "f" );
-        AppendToShaderHeader( ShaderType::COUNT, "#define Z_TEST_SIGMA " + Util::to_string( Config::Z_TEST_SIGMA ) + "f" );
-        AppendToShaderHeader( ShaderType::COUNT, "#define INV_Z_TEST_SIGMA " + Util::to_string( 1.f - Config::Z_TEST_SIGMA ) + "f" );
+        AppendToShaderHeader( ShaderType::COUNT, "#define Z_TEST_SIGMA " + Util::to_string( Z_TEST_SIGMA ) + "f" );
+        AppendToShaderHeader( ShaderType::COUNT, "#define INV_Z_TEST_SIGMA " + Util::to_string( 1.f - Z_TEST_SIGMA ) + "f" );
         AppendToShaderHeader( ShaderType::COUNT, "#define MAX_CSM_SPLITS_PER_LIGHT " + Util::to_string( Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT ) );
         AppendToShaderHeader( ShaderType::COUNT, "#define MAX_SHADOW_CASTING_LIGHTS " + Util::to_string( Config::Lighting::MAX_SHADOW_CASTING_LIGHTS ) );
         AppendToShaderHeader( ShaderType::COUNT, "#define MAX_SHADOW_CASTING_DIR_LIGHTS " + Util::to_string( Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS ) );
@@ -623,8 +630,10 @@ namespace Divide
 
         AppendToShaderHeader( ShaderType::COUNT, "#define M_EPSILON 1e-5f" );
         AppendToShaderHeader( ShaderType::COUNT, "#define M_PI 3.14159265358979323846" );
-        AppendToShaderHeader( ShaderType::COUNT, "#define M_PI_2 (3.14159265358979323846 / 2)" );
-        AppendToShaderHeader( ShaderType::COUNT, "#define INV_M_PI 0.31830988618" );
+        AppendToShaderHeader( ShaderType::COUNT, "#define M_PI_DIV_2 1.57079632679489661923" );
+        AppendToShaderHeader( ShaderType::COUNT, "#define INV_M_PI 0.31830988618379067153" );
+        AppendToShaderHeader( ShaderType::COUNT, "#define TWO_M_PI 6.28318530717958647692" );
+        AppendToShaderHeader( ShaderType::COUNT, "#define EULER_CONST 2.71828182845904523536" );
 
         AppendToShaderHeader( ShaderType::COUNT, "#define ACCESS_RW" );
         AppendToShaderHeader( ShaderType::COUNT, "#define ACCESS_R readonly" );
@@ -806,17 +815,34 @@ namespace Divide
     bool operator==( const ShaderProgramMapEntry& lhs, const ShaderProgramMapEntry& rhs ) noexcept
     {
         return lhs._generation == rhs._generation &&
-            lhs._program == rhs._program;
+               lhs._program == rhs._program;
     }
 
     bool operator!=( const ShaderProgramMapEntry& lhs, const ShaderProgramMapEntry& rhs ) noexcept
     {
         return lhs._generation != rhs._generation ||
-            lhs._program != rhs._program;
+               lhs._program != rhs._program;
     }
 
     SharedMutex ShaderModule::s_shaderNameLock;
     ShaderModule::ShaderMap ShaderModule::s_shaderNameMap;
+
+    void ShaderModule::Idle()
+    {
+        SharedLock<SharedMutex> r_lock( s_shaderNameLock );
+        for ( auto it = s_shaderNameMap.begin(); it != s_shaderNameMap.end(); )
+        {
+            if ( !it->second->inUse() && it->second->lastUsedFrame() + MAX_FRAME_LIFETIME < GFXDevice::FrameCount() )
+            {
+                Console::warnfn(Locale::Get(_ID("SHADER_MODULE_EXPIRED")), it->second->name().c_str());
+                it = s_shaderNameMap.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+    }
 
     void ShaderModule::InitStaticData()
     {
@@ -826,33 +852,7 @@ namespace Divide
     void ShaderModule::DestroyStaticData()
     {
         LockGuard<SharedMutex> w_lock( s_shaderNameLock );
-        DIVIDE_ASSERT( s_shaderNameMap.empty() );
-    }
-
-    /// Remove a shader entity. The shader is deleted only if it isn't referenced by a program
-    void ShaderModule::RemoveShader( ShaderModule* s, const bool force )
-    {
-        LockGuard<SharedMutex> w_lock( s_shaderNameLock );
-        RemoveShaderLocked( s, force );
-    }
-
-    void ShaderModule::RemoveShaderLocked( ShaderModule* s, const bool force )
-    {
-        assert( s != nullptr );
-
-        // Try to find it
-        const U64 nameHash = s->nameHash();
-        const ShaderMap::iterator it = s_shaderNameMap.find( nameHash );
-        if ( it != std::end( s_shaderNameMap ) )
-        {
-            // Subtract one reference from it.
-            if ( force || s->SubRef() == 0 )
-            {
-                // If the new reference count is 0, delete the shader (as in leave it in the object arena)
-                s_shaderNameMap.erase( nameHash );
-                MemoryManager::DELETE( s );
-            }
-        }
+        s_shaderNameMap.clear();
     }
 
     ShaderModule* ShaderModule::GetShader( const Str256& name )
@@ -867,22 +867,28 @@ namespace Divide
         const ShaderMap::iterator it = s_shaderNameMap.find( _ID( name.c_str() ) );
         if ( it != std::end( s_shaderNameMap ) )
         {
-            return it->second;
+            return it->second.get();
         }
 
         return nullptr;
     }
 
-    ShaderModule::ShaderModule( GFXDevice& context, const Str256& name )
-        : GUIDWrapper(),
-        GraphicsResource( context, Type::SHADER, getGUID(), _ID( name.c_str() ) ),
-        _name( name )
+    ShaderModule::ShaderModule( GFXDevice& context, const Str256& name, const U32 generation )
+        : GUIDWrapper()
+        , GraphicsResource( context, Type::SHADER, getGUID(), _ID( name.c_str() ) )
+        , _name( name )
+        , _generation( generation )
     {
     }
 
     ShaderModule::~ShaderModule()
     {
+    }
 
+    void ShaderModule::inUse( const bool state )
+    {
+        _inUse = state;
+        _lastUsedFrame = GFXDevice::FrameCount();
     }
 
     ShaderProgram::ShaderProgram( GFXDevice& context,
@@ -911,21 +917,16 @@ namespace Divide
         s_shaderCount.fetch_sub( 1, std::memory_order_relaxed );
     }
 
-    void ShaderProgram::threadedLoad( const bool reloadExisting )
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
-
-        hashMap<U64, PerFileShaderData> loadDataByFile{};
-        reloadShaders( loadDataByFile, reloadExisting );
-        RegisterShaderProgram( this );
-        CachedResource::load();
-    };
-
     bool ShaderProgram::load()
     {
         Start( *CreateTask( [this]( const Task& )
                             {
-                                threadedLoad( false );
+                                PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
+
+                                hashMap<U64, PerFileShaderData> loadDataByFile{};
+                                loadInternal( loadDataByFile, false );
+                                RegisterShaderProgram( this );
+                                CachedResource::load();
                             } ),
                _context.context().taskPool( TaskPoolType::HIGH_PRIORITY ) );
 
@@ -948,24 +949,67 @@ namespace Divide
     /// Rebuild the specified shader stages from source code
     bool ShaderProgram::recompile( bool& skipped )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         skipped = true;
-        return getState() == ResourceState::RES_LOADED;
+        if ( getState() == ResourceState::RES_LOADED )
+        {
+            if ( validatePreBind( false ) != ShaderResult::OK )
+            {
+                return false;
+            }
+
+            skipped = false;
+            hashMap<U64, PerFileShaderData> loadDataByFile{};
+            return loadInternal( loadDataByFile, true );
+        }
+
+        return false;
+    }
+
+    ShaderResult ShaderProgram::validatePreBind( [[maybe_unused]] const bool rebind)
+    {
+        return ShaderResult::OK;
     }
 
     void ShaderProgram::Idle( PlatformContext& platformContext )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
+        ShaderModule::Idle();
+
+        if ( !s_recompileFailedQueue.empty() )
+        {
+            ShaderQueueEntry& entry = s_recompileFailedQueue.top();
+            if ( entry._queueDelay > 0u )
+            {
+                --entry._queueDelay;
+            }
+            else
+            {
+                s_recompileQueue.push( entry );
+                s_recompileFailedQueue.pop();
+            }
+        }
+
         // If we don't have any shaders queued for recompilation, return early
         if ( !s_recompileQueue.empty() )
         {
             // Else, recompile the top program from the queue
-            bool skipped = false;
-            ShaderProgram* program = s_recompileQueue.top();
-            if ( !program->recompile( skipped ) )
+            ShaderQueueEntry entry = s_recompileQueue.top();
+            if ( !entry._program->recompile() )
             {
-                Console::errorfn( Locale::Get( _ID( "ERROR_SHADER_RECOMPILE_FAILED" ) ), program->resourceName().c_str() );
+                Console::errorfn( Locale::Get( _ID( "ERROR_SHADER_RECOMPILE_FAILED" ) ), entry._program->resourceName().c_str() );
+
+                // We can delay a recomputation up to an interval of a minute
+                if ( entry._queueDelayHighWaterMark < Config::TARGET_FRAME_RATE * 60)
+                {
+                    entry._queueDelayHighWaterMark += 1u;
+                    entry._queueDelay = entry._queueDelayHighWaterMark;
+                }
+                s_recompileFailedQueue.push(entry);
             }
+
             s_recompileQueue.pop();
         }
 
@@ -1001,7 +1045,7 @@ namespace Divide
             if ( shaderName.find( name ) != Str256::npos || shaderName.compare( name ) == 0 )
             {
                 // We process every partial match. So add it to the recompilation queue
-                s_recompileQueue.push( program );
+                s_recompileQueue.push( ShaderQueueEntry{ ._program = program } );
                 // Mark as found
                 state = true;
             }
@@ -1256,8 +1300,6 @@ namespace Divide
 
         assert( shaderProgram != nullptr );
 
-        Attorney::GFXDeviceShaderProgram::onShaderRegisterChanged(shaderProgram->_context, shaderProgram, true);
-
         LockGuard<SharedMutex> lock( s_programLock );
         if ( shaderProgram->handle() != SHADER_INVALID_HANDLE )
         {
@@ -1301,8 +1343,6 @@ namespace Divide
         {
             LockGuard<SharedMutex> lock( s_programLock );
             ShaderProgramMapEntry& entry = s_shaderPrograms[shaderHandle._id];
-
-            Attorney::GFXDeviceShaderProgram::onShaderRegisterChanged( entry._program->_context, entry._program, false );
 
             if ( entry._generation == shaderHandle._generation )
             {
@@ -1352,7 +1392,7 @@ namespace Divide
         {
             if ( entry._program != nullptr )
             {
-                s_recompileQueue.push( entry._program );
+                s_recompileQueue.push( ShaderQueueEntry{ ._program = entry._program } );
             }
         }
     }
@@ -1409,7 +1449,7 @@ namespace Divide
         return atomLocations;
     }
 
-    const string& ShaderProgram::ShaderFileRead( const ResourcePath& filePath, const ResourcePath& atomName, const bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed )
+    const eastl::string& ShaderProgram::ShaderFileRead( const ResourcePath& filePath, const ResourcePath& atomName, const bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed )
     {
         LockGuard<Mutex> w_lock( s_atomLock );
         return ShaderFileReadLocked( filePath, atomName, recurse, foundAtomIDsInOut, wasParsed );
@@ -1504,7 +1544,7 @@ namespace Divide
     }
 
     /// Open the file found at 'filePath' matching 'atomName' and return it's source code
-    const string& ShaderProgram::ShaderFileReadLocked( const ResourcePath& filePath, const ResourcePath& atomName, const bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed )
+    const eastl::string& ShaderProgram::ShaderFileReadLocked( const ResourcePath& filePath, const ResourcePath& atomName, const bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed )
     {
         const U64 atomNameHash = _ID( atomName.c_str() );
         // See if the atom was previously loaded and still in cache
@@ -1516,7 +1556,7 @@ namespace Divide
             const auto& atoms = s_atomIncludes[atomNameHash];
             for ( const auto& atom : atoms )
             {
-                foundAtomIDsInOut.insert( _ID( atom.c_str() ) );
+                foundAtomIDsInOut.insert( atom );
             }
             wasParsed = true;
             return it->second;
@@ -1527,29 +1567,27 @@ namespace Divide
         assert( !filePath.empty() );
 
         // Open the atom file and add the code to the atom cache for future reference
-        eastl::string output;
+        eastl::string& output = s_atoms[atomNameHash];
+        output.clear();
+        eastl::set<U64>& atoms = s_atomIncludes[atomNameHash];
+        atoms.clear();
+
         if ( readFile( filePath, atomName, output, FileType::TEXT ) != FileError::NONE )
         {
             DIVIDE_UNEXPECTED_CALL();
         }
-
-        vector<ResourcePath> atoms = {};
         if ( recurse )
         {
-            output = PreprocessIncludes( atomName, output, 0, foundAtomIDsInOut, false );
+            output = PreprocessIncludes( atomName, output, 0, atoms, false );
         }
 
         for ( const auto& atom : atoms )
         {
-            foundAtomIDsInOut.insert( _ID( atom.c_str() ) );
+            foundAtomIDsInOut.insert( atom );
         }
 
-        const auto& [entry, result] = s_atoms.insert( { atomNameHash, output.c_str() } );
-        assert( result );
-        s_atomIncludes.insert( { atomNameHash, atoms } );
-
         // Return the source code
-        return entry->second;
+        return output;
     }
 
     bool ShaderProgram::SaveToCache( const LoadData::ShaderCacheType cache, const LoadData& dataIn, const eastl::set<U64>& atomIDsIn )
@@ -1680,10 +1718,10 @@ namespace Divide
         return false;
     }
 
-    bool ShaderProgram::reloadShaders( hashMap<U64, PerFileShaderData>& fileData, bool reloadExisting )
+    bool ShaderProgram::loadInternal( hashMap<U64, PerFileShaderData>& fileData, const bool overwrite )
     {
         // The context is thread_local so each call to this should be thread safe
-        if ( reloadExisting )
+        if ( overwrite )
         {
             glswClearCurrentContext();
         }
@@ -1734,9 +1772,9 @@ namespace Divide
                 }
                 stageData._shaderName.append("." + shaderAtomExtensionName[to_U8(type)]);
 
-                if ( !loadSourceCode( data._defines, reloadExisting, stageData, previousUniforms, blockOffset ) )
+                if ( !loadSourceCode( data._defines, overwrite, stageData, previousUniforms, blockOffset ) )
                 {
-                    //ToDo: Add an error message here! -Ionut
+                    Console::errorfn(Locale::Get(_ID("ERROR_SHADER_LOAD_SOURCE_CODE_FAILED")), stageData._shaderName.c_str(), overwrite ? "TRUE" : "FALSE");
                     return false;
                 }
 
@@ -1929,8 +1967,8 @@ namespace Divide
             }
         }
 
-        // Load SPIRV code from cache
-        if ( !LoadFromCache( LoadData::ShaderCacheType::SPIRV, loadDataInOut, atomIDs ) )
+        // Load SPIRV code from cache (if needed)
+        if ( reloadExisting || !LoadFromCache( LoadData::ShaderCacheType::SPIRV, loadDataInOut, atomIDs ) )
         {
             needGLSL = true;
         }
@@ -1938,8 +1976,8 @@ namespace Divide
         // We either have SPIRV code or we explicitly require GLSL code (e.g. for OpenGL)
         if ( needGLSL )
         {
-            // Try and load GLSL code from cache
-            if ( !LoadFromCache( LoadData::ShaderCacheType::GLSL, loadDataInOut, atomIDs ) )
+            // Try and load GLSL code from cache (if needed)
+            if ( reloadExisting || !LoadFromCache( LoadData::ShaderCacheType::GLSL, loadDataInOut, atomIDs ) )
             {
                 // That failed, so re-parse the code
                 loadAndParseGLSL( defines, reloadExisting, loadDataInOut, previousUniformsInOut, blockIndexInOut, atomIDs );
@@ -1982,7 +2020,7 @@ namespace Divide
         // Whatever the process to get here was, we need SPIRV to proceed
         DIVIDE_ASSERT( !loadDataInOut._sourceCodeSpirV.empty() );
         // Time to see if we have any cached reflection data, and, if not, build it
-        if ( !LoadFromCache( LoadData::ShaderCacheType::REFLECTION, loadDataInOut, atomIDs ) )
+        if ( reloadExisting || !LoadFromCache( LoadData::ShaderCacheType::REFLECTION, loadDataInOut, atomIDs ) )
         {
             // Well, we failed. Time to build our reflection data again
             if ( !SpirvHelper::BuildReflectionData( loadDataInOut._type, loadDataInOut._sourceCodeSpirV, s_targetVulkan, loadDataInOut._reflectionData ) )
@@ -2126,27 +2164,55 @@ namespace Divide
         Util::ReplaceStringInPlace( loadDataInOut._sourceCodeGLSL, "//_PUSH_CONSTANTS_DEFINE_\\", pushConstantCodeBlock );
     }
 
+    void ShaderProgram::EraseAtom( const U64 atomHash )
+    {
+        // Clear the atom from the cache
+        LockGuard<Mutex> w_lock( s_atomLock );
+        EraseAtomLocked(atomHash);
+    }
+
+    void ShaderProgram::EraseAtomLocked( const U64 atomHash )
+    {
+        eastl::fixed_vector<U64, 128, true> queuedDeletion;
+
+        s_atoms.erase( atomHash );
+
+        for ( auto it = s_atomIncludes.cbegin(); it != s_atomIncludes.cend(); )
+        {
+            if ( it->first == atomHash)
+            {
+                it = s_atomIncludes.erase( it );
+                continue;
+            }
+
+            if ( it->second.find( atomHash ) != it->second.cend() )
+            {
+                // Remove all atoms that included our target atom as well
+                queuedDeletion.push_back( it->first );
+            }
+            ++it;
+        }
+
+        for (const U64 atom : queuedDeletion )
+        {
+            EraseAtomLocked(atom);
+        }
+    }
+
+
     void ShaderProgram::OnAtomChange( const std::string_view atomName, const FileUpdateEvent evt )
     {
         DIVIDE_ASSERT( evt != FileUpdateEvent::COUNT );
 
         // Do nothing if the specified file is "deleted". We do not want to break running programs
+        // ADD and MODIFY events should get processed as usual
         if ( evt == FileUpdateEvent::DELETE )
         {
             return;
         }
 
         const U64 atomNameHash = _ID( string{ atomName }.c_str() );
-
-        // ADD and MODIFY events should get processed as usual
-        {
-            // Clear the atom from the cache
-            LockGuard<Mutex> w_lock( s_atomLock );
-            if ( s_atoms.erase( atomNameHash ) == 1 )
-            {
-                NOP();
-            }
-        }
+        EraseAtomLocked(atomNameHash);
 
         //Get list of shader programs that use the atom and rebuild all shaders in list;
         SharedLock<SharedMutex> lock( s_programLock );
@@ -2158,7 +2224,7 @@ namespace Divide
                 {
                     if ( atomID == atomNameHash )
                     {
-                        s_recompileQueue.push( entry._program );
+                        s_recompileQueue.push( ShaderQueueEntry{ ._program = entry._program } );
                         break;
                     }
                 }

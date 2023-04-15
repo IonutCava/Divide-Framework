@@ -72,6 +72,8 @@ namespace Divide
     {
         s_debugSamplerHash = 0u;
 
+        ShadowMap::reset();
+
         const SharedLock<SharedMutex> r_lock( _lightLock );
         for ( const LightList& lightList : _lights )
         {

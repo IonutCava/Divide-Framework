@@ -386,9 +386,8 @@ void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, U8 
     }
 }
 
-ImageReadbackData glTexture::readData(U8 mipLevel, const PixelAlignment& pixelPackAlignment) const {
-
-
+ImageReadbackData glTexture::readData(U8 mipLevel, const PixelAlignment& pixelPackAlignment) const
+{
     ImageReadbackData grabData{};
 
     grabData._bpp = Texture::GetBytesPerPixel( _descriptor.dataType(), _descriptor.baseFormat(), _descriptor.packing() );
@@ -398,22 +397,30 @@ ImageReadbackData glTexture::readData(U8 mipLevel, const PixelAlignment& pixelPa
     DIVIDE_ASSERT(_depth == 1u && !IsCubeTexture(_descriptor.texType()), "glTexture:readData: unsupported image for readback. Support is very limited!");
 
     mipLevel = std::min(mipLevel, to_U8(mipCount() - 1u));
-    {
-        GLint width = _width, height = _height;
-        glGetTextureLevelParameteriv(_textureHandle, static_cast<GLint>(mipLevel), GL_TEXTURE_WIDTH,  &width );
-        glGetTextureLevelParameteriv(_textureHandle, static_cast<GLint>(mipLevel), GL_TEXTURE_HEIGHT, &height );
-        grabData._width = to_U16(width);
-        grabData._height = to_U16(height);
-    }
-
-    grabData._data.resize( to_size( grabData._width ) * grabData._height * _depth * grabData._bpp );
-
     if ( IsCompressed( _descriptor.baseFormat() ) )
     {
-        glGetCompressedTextureImage( _textureHandle, mipLevel, (GLsizei)grabData._data.size(), (bufferPtr)grabData._data.data());
+        GLint compressedSize = 0u;
+        glGetTextureLevelParameteriv(_textureHandle, static_cast<GLint>(mipLevel) , GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &compressedSize);
+        if ( compressedSize > 0u )
+        {
+            grabData._data.resize(compressedSize);
+            glGetCompressedTextureImage( _textureHandle, mipLevel, compressedSize, (bufferPtr)grabData._data.data() );
+        }
     }
     else
     {
+        grabData._numComponents = 4; //glGetTextureImage pads the data to RGBA
+        {
+            GLint width = _width, height = _height;
+            glGetTextureLevelParameteriv(_textureHandle, static_cast<GLint>(mipLevel), GL_TEXTURE_WIDTH,  &width );
+            glGetTextureLevelParameteriv(_textureHandle, static_cast<GLint>(mipLevel), GL_TEXTURE_HEIGHT, &height );
+            grabData._width = to_U16(width);
+            grabData._height = to_U16(height);
+        }
+
+        const U8 storagePerComponent = grabData._bpp / numChannels();
+        grabData._data.resize( to_size( grabData._width ) * grabData._height * _depth * storagePerComponent * 4 );
+
         GL_API::GetStateTracker().setPixelPackAlignment(pixelPackAlignment);
 
         glGetTextureImage(_textureHandle,

@@ -33,7 +33,6 @@
 #ifndef _RENDER_PASS_CULLER_H_
 #define _RENDER_PASS_CULLER_H_
 
-#include "Platform/Video/Headers/RenderAPIEnums.h"
 #include "Platform/Video/Headers/ClipPlanes.h"
 
 /// This class performs all the necessary visibility checks on the scene's
@@ -51,13 +50,13 @@ class SceneGraphNode;
 class PlatformContext;
 enum class RenderStage : U8;
 
-enum class CullOptions : U16 {
+enum class CullOptions : U16
+{
     CULL_STATIC_NODES = toBit(1),
     CULL_DYNAMIC_NODES = toBit(2),
     CULL_AGAINST_CLIPPING_PLANES = toBit(3),
     CULL_AGAINST_FRUSTUM = toBit(4),
     CULL_AGAINST_LOD = toBit(5),
-    KEEP_SKY_NODES = toBit(6), //Even if we cull agains frustum, lods, dynamic/static, etc, we always render at least the sky
     DEFAULT_CULL_OPTIONS = CULL_AGAINST_CLIPPING_PLANES | CULL_AGAINST_FRUSTUM | CULL_AGAINST_LOD
 };
 

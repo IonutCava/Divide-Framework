@@ -40,7 +40,7 @@ Object3D::Object3D(GFXDevice& context, ResourceCache* parentCache, const size_t 
         playAnimationsField._name = "Toogle Animation Playback";
         playAnimationsField._data = &_playAnimationsOverride;
         playAnimationsField._type = EditorComponentFieldType::SWITCH_TYPE;
-        playAnimationsField._basicType = GFX::PushConstantType::BOOL;
+        playAnimationsField._basicType = PushConstantType::BOOL;
         playAnimationsField._readOnly = false;
         _editorComponent.registerField(MOV(playAnimationsField));
     }

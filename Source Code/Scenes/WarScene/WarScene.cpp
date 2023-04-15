@@ -41,7 +41,7 @@ WarScene::WarScene(PlatformContext& context, ResourceCache* cache, SceneManager&
     _timeLimitMinutes(5),
     _scoreLimit(3)
 {
-    const size_t idx = parent.addSelectionCallback([&](PlayerIndex /*idx*/, const vector<SceneGraphNode*>& node) {
+    const size_t idx = parent.addSelectionCallback([&](PlayerIndex /*idx*/, const vector_fast<SceneGraphNode*>& node) {
         string selectionText;
         for (SceneGraphNode* it : node) {
             selectionText.append("\n");

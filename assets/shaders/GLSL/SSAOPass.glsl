@@ -50,9 +50,10 @@ void main(void) {
         return;
     }
 
+    const float sceneRange = _zPlanes.y - _zPlanes.x;
     const float sceneDepth = texture(texDepthMap, VAR._texCoord).r;
-    const float linDepth = ToLinearDepth(sceneDepth, _zPlanes) / _zPlanes.y;
-    if (linDepth <= maxRange)
+    const float linDepth01 = ToLinearDepth( sceneDepth, _zPlanes ) / sceneRange;
+    if ( linDepth01 <= maxRange )
     {
         // Normal gathering.
         const vec3 normalView = normalize(unpackNormal(GetNormal(VAR._texCoord)));
@@ -70,7 +71,8 @@ void main(void) {
         const vec3 fragPos = ViewSpacePos(VAR._texCoord, sceneDepth, invProjectionMatrix);
         float occlusion = 0.f;
         // Go through the kernel samples and create occlusion factor.
-        for (int i = 0; i < SSAO_SAMPLE_COUNT; ++i) {
+        for (int i = 0; i < SSAO_SAMPLE_COUNT; ++i)
+        {
             // Reorient sample vector in view space
             const vec3 sampleVector = kernelMatrix * sampleKernel[i].xyz;
             // Calculate sample point
@@ -81,7 +83,7 @@ void main(void) {
             const vec3 samplePointNDC = Homogenize(projectionMatrix * vec4(samplePos, 1.f));
             const vec2 samplePointUv = samplePointNDC.xy * 0.5f + 0.5f;
 
-            const float sampleDepth = ViewSpaceZ(texture(texDepthMap, samplePointUv).r, invProjectionMatrix);
+            const float sampleDepth = ViewSpaceZ(texture(texDepthMap, samplePointUv).r, invProjectionMatrix );
 
             // If the depth for that XY position in the scene is larger than
             // the sample's, then the sample is occluded by scene's geometry and
@@ -90,7 +92,7 @@ void main(void) {
             occlusion += (sampleDepth >= samplePos.z + SSAO_BIAS ? 1.f : 0.f) * rangeCheck;
         }
         // We output ambient intensity in the range [0,1]
-        _ssaoOut = Saturate(pow(1.f - (occlusion / SSAO_SAMPLE_COUNT), SSAO_INTENSITY) + smoothstep(fadeStart * maxRange, maxRange, linDepth));
+        _ssaoOut = Saturate(pow(1.f - (occlusion / SSAO_SAMPLE_COUNT), SSAO_INTENSITY) + smoothstep(fadeStart * maxRange, maxRange, linDepth01));
     }else {
         _ssaoOut = 1.f;
     }

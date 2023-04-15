@@ -183,9 +183,9 @@ namespace Divide
             std::function<void( ByteBuffer&, BufferMember& )> loadBufferMember;
             loadBufferMember = [&loadBufferMember]( ByteBuffer& buffer, BufferMember& entry )
             {
-                BaseType<GFX::PushConstantType> tempType{ 0u };
+                BaseType<PushConstantType> tempType{ 0u };
 
-                buffer >> tempType; entry._type = static_cast<GFX::PushConstantType>(tempType);
+                buffer >> tempType; entry._type = static_cast<PushConstantType>(tempType);
                 buffer >> entry._offset;
                 buffer >> entry._absoluteOffset;
                 buffer >> entry._size;
@@ -319,14 +319,14 @@ namespace Divide
         _parentShaderName( parentShaderName ),
         _uniformBlock( uniformBlock )
     {
-        const auto GetSizeOf = []( const GFX::PushConstantType type ) noexcept -> size_t
+        const auto GetSizeOf = []( const PushConstantType type ) noexcept -> size_t
         {
             switch ( type )
             {
-                case GFX::PushConstantType::INT: return sizeof( I32 );
-                case GFX::PushConstantType::UINT: return sizeof( U32 );
-                case GFX::PushConstantType::FLOAT: return sizeof( F32 );
-                case GFX::PushConstantType::DOUBLE: return sizeof( D64 );
+                case PushConstantType::INT: return sizeof( I32 );
+                case PushConstantType::UINT: return sizeof( U32 );
+                case PushConstantType::FLOAT: return sizeof( F32 );
+                case PushConstantType::DOUBLE: return sizeof( D64 );
             };
 
             DIVIDE_UNEXPECTED_CALL_MSG( "Unexpected push constant type" );
@@ -439,7 +439,7 @@ namespace Divide
 
     void UniformBlockUploader::uploadPushConstant( const GFX::PushConstant& constant, bool force ) noexcept
     {
-        if ( constant.type() == GFX::PushConstantType::COUNT || constant.bindingHash() == 0u )
+        if ( constant.type() == PushConstantType::COUNT || constant.bindingHash() == 0u )
         {
             return;
         }

@@ -40,7 +40,7 @@ namespace Divide {
 
 namespace Util {
 template<typename T, bool SeparateActivate, typename Pred>
-inline void RegisterUndo(Editor& editor, GFX::PushConstantType type, const T& oldVal, const T& newVal, const char* name, Pred&& dataSetter) {
+inline void RegisterUndo(Editor& editor, PushConstantType type, const T& oldVal, const T& newVal, const char* name, Pred&& dataSetter) {
     static hashMap<U64, UndoEntry<T>> _undoEntries;
     UndoEntry<T>& undo = _undoEntries[_ID(name)];
     if (!SeparateActivate || ImGui::IsItemActivated()) {
@@ -174,7 +174,7 @@ inline bool colourInput4(Editor& parent, const char* name, FColour4& col, const 
     EndPropertyTable();
 
     if (!readOnly && ret) {
-        RegisterUndo<FColour4, true>(parent, GFX::PushConstantType::FCOLOUR4, col, col, name, dataSetter);
+        RegisterUndo<FColour4, true>(parent, PushConstantType::FCOLOUR4, col, col, name, dataSetter);
     }
         
     return readOnly ? false : (ret ? dataSetter(col) : false);
@@ -194,7 +194,7 @@ inline bool colourInput3(Editor& parent, const char* name, FColour3& col, const 
     }
     EndPropertyTable();
     if (!readOnly && ret) {
-        RegisterUndo<FColour3, true>(parent, GFX::PushConstantType::FCOLOUR3, col, col, name, dataSetter);
+        RegisterUndo<FColour3, true>(parent, PushConstantType::FCOLOUR3, col, col, name, dataSetter);
     }
 
     return readOnly ? false : (ret ? dataSetter(col) : false);

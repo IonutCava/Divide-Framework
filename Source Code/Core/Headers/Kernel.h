@@ -53,7 +53,9 @@ class PlatformContext;
 class SceneRenderState;
 class RenderPassManager;
 
-namespace Input {
+namespace Input
+{
+    struct MouseState;
     class InputInterface;
 };
 
@@ -140,7 +142,7 @@ class Kernel final : public Input::InputAggregatorInterface,
     void onWindowSizeChange(const SizeChangeParams& params);
     void onResolutionChange(const SizeChangeParams& params);
 
-    vec2<I32> remapMouseCoords(vec2<I32> absPositionIn, bool& remappedOut) const noexcept;
+    void remapAbsolutePosition(Input::MouseEvent& eventInOut) const noexcept;
 
    private:
     enum class InputConsumerType : U8 {

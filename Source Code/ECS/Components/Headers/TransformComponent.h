@@ -53,12 +53,6 @@ enum class TransformType : U8 {
 BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
     friend class Attorney::TransformComponentSGN;
 
-    enum class WorldMatrixType : U8 {
-        CURRENT = 0u,
-        PREVIOUS,
-        COUNT
-    };
-
     public:
         enum class ScalingMode : U8 {
             UNIFORM = 0u,
@@ -71,15 +65,22 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
 
      void reset();
 
-     void getPreviousWorldMatrix(mat4<F32>& matOut) const;
-
                    void      getWorldMatrix(mat4<F32>& matOut) const;
-                   void      getWorldMatrix(D64 interpolationFactor, mat4<F32>& matrixOut) const;
+                   void      getWorldMatrixInterpolated( mat4<F32>& matrixOut) const;
      [[nodiscard]] mat4<F32> getWorldMatrix() const;
-     [[nodiscard]] mat4<F32> getWorldMatrix(D64 interpolationFactor) const;
+     [[nodiscard]] mat4<F32> getWorldMatrixInterpolated() const;
 
-     void getLocalMatrix(mat4<F32>& matOut) const;
-     void getLocalMatrix(D64 interpolationFactor, mat4<F32>& matOut) const;
+     /// This returns a "normal matrix". If we have uniform scaling, this is just the upper 3x3 part of our world matrix
+     /// If we have non-uniform scaling, that 3x3 mat goes through an inverse-transpose step to get rid of any scaling factors but keep rotations
+     /// Padded to fit into a mat4 for convenient. Can cast to a mat3 afterwards as row 3 and column 3 are just 0,0,0,1
+     void getLocalRotationMatrix( mat4<F32>& matOut ) const;
+     void getLocalRotationMatrixInterpolated( mat4<F32>& matOut ) const;
+
+     /// This returns a "normal matrix". If we have uniform scaling, this is just the upper 3x3 part of our local matrix
+     /// If we have non-uniform scaling, that 3x3 mat goes through an inverse-transpose step to get rid of any scaling factors but keep rotations
+     /// Padded to fit into a mat4 for convenient. Can cast to a mat3 afterwards as row 3 and column 3 are just 0,0,0,1
+     void getWorldRotationMatrix( mat4<F32>& matOut ) const;
+     void getWorldRotationMatrixInterpolated( mat4<F32>& matOut ) const;
 
      /// Component <-> Transform interface
      void setPosition(const vec3<F32>& position) override;
@@ -131,9 +132,9 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      /// Return the local position
      [[nodiscard]] vec3<F32> getLocalPosition() const;
      /// Return the position
-     [[nodiscard]] vec3<F32> getWorldPosition(D64 interpolationFactor) const;
+     [[nodiscard]] vec3<F32> getWorldPositionInterpolated() const;
      /// Return the local position
-     [[nodiscard]] vec3<F32> getLocalPosition(D64 interpolationFactor) const;
+     [[nodiscard]] vec3<F32> getLocalPositionInterpolated() const;
 
      /// Return the derived forward direction
      [[nodiscard]] vec3<F32> getFwdVector() const;
@@ -147,18 +148,21 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      /// Return the local scale factor
      [[nodiscard]] vec3<F32> getLocalScale() const;
      /// Return the scale factor
-     [[nodiscard]] vec3<F32> getWorldScale(D64 interpolationFactor) const;
+     [[nodiscard]] vec3<F32> getWorldScaleInterpolated() const;
      /// Return the local scale factor
-     [[nodiscard]] vec3<F32> getLocalScale(D64 interpolationFactor) const;
+     [[nodiscard]] vec3<F32> getLocalScaleInterpolated() const;
 
      /// Return the orientation quaternion
      [[nodiscard]] Quaternion<F32> getWorldOrientation() const;
      /// Return the local orientation quaternion
      [[nodiscard]] Quaternion<F32> getLocalOrientation() const;
      /// Return the orientation quaternion
-     [[nodiscard]] Quaternion<F32> getWorldOrientation(D64 interpolationFactor) const;
+     [[nodiscard]] Quaternion<F32> getWorldOrientationInterpolated() const;
      /// Return the local orientation quaternion
-     [[nodiscard]] Quaternion<F32> getLocalOrientation(D64 interpolationFactor) const;
+     [[nodiscard]] Quaternion<F32> getLocalOrientationInterpolated() const;
+
+     void getWorldTransforms(vec3<F32>& positionOut, vec3<F32>& scaleOut, Quaternion<F32>& rotationOut);
+     void getWorldTransformsInterpolated(vec3<F32>& positionOut, vec3<F32>& scaleOut, Quaternion<F32>& rotationOut);
 
      void setTransforms(const mat4<F32>& transform);
 
@@ -180,10 +184,14 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      PROPERTY_RW(bool, editorLockScale, false);
      PROPERTY_RW(ScalingMode, scalingMode, ScalingMode::UNIFORM);
 
+     PROPERTY_R_IW(mat4<F32>, localMatrix, MAT4_IDENTITY);
+     PROPERTY_R_IW(mat4<F32>, localMatrixInterpolated, MAT4_IDENTITY);
+
   protected:
      friend class TransformSystem;
      template<typename T, typename U>
      friend class ECSSystem;
+
 
      void setTransformDirty(TransformType type) noexcept;
      void setTransformDirty(U32 typeMask) noexcept;
@@ -193,8 +201,6 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      void onParentTransformDirty(U32 transformMask) noexcept;
      void onParentUsageChanged(NodeUsageContext context) noexcept;
 
-     //Called only when then transform changed in the main update loop!
-     void updateLocalMatrix();
      void onParentChanged(const SceneGraphNode* oldParent, const SceneGraphNode* newParent);
 
      // Local transform interface access (all are in local space)
@@ -207,6 +213,12 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      [[nodiscard]] vec3<F32>       getDerivedPosition()    const;
      [[nodiscard]] vec3<F32>       getDerivedScale()       const;
 
+     //Called only when then transform changed in the main update loop!
+     void updateLocalMatrix( D64 interpolationFactor );
+  private:
+     void updateLocalMatrixLocked();
+     void updateLocalMatrixInterpolated( D64 interpolationFactor );
+
   private:
     std::pair<bool, mat4<F32>> _transformOffset;
 
@@ -214,6 +226,7 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
 
     std::atomic_uint _transformUpdatedMask{};
     TransformValues  _prevTransformValues;
+    TransformValues  _transformValuesInterpolated;
     TransformStack   _transformStack{};
     Transform        _transformInterface;
 
@@ -221,12 +234,11 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
 
     bool _cacheDirty = true;
     bool _uniformScaled = true;
-    bool _previousLocalMatrixDirty = true;
 
     mutable SharedMutex _localMatrixLock{};
     mutable SharedMutex _lock{};
 
-    eastl::array<mat4<F32>, to_base(WorldMatrixType::COUNT)> _localMatrix;
+
 END_COMPONENT(Transform);
 
 namespace Attorney {

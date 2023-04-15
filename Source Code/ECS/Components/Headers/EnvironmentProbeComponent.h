@@ -91,8 +91,6 @@ public:
     void loadFromXML(const boost::property_tree::ptree& pt) override;
 
     [[nodiscard]] F32 distanceSqTo(const vec3<F32>& pos) const noexcept;
-    
-    [[nodiscard]] std::array<Camera*, 6> probeCameras() const noexcept;
 
     //Only "dirty" probes gets refreshed. A probe might get dirty if, for example, a reflective node
     //gets rendered that has this probe as the nearest one

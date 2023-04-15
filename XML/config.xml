@@ -107,7 +107,7 @@
 				<maxLogLuminance>3</maxLogLuminance>
 				<tau>1.10000002</tau>
 				<!-- REINHARD, REINHARD_MODIFIED, GT, ACES, UNREAL_ACES, AMD_ACES, GT_DIFF_PARAMETERS, UNCHARTED_2, NONE -->
-				<mappingFunction>UNREAL_ACES</mappingFunction>
+				<mappingFunction>REINHARD_MODIFIED</mappingFunction>
 			</toneMap>
 			<dof>
 				<enabled>false</enabled>
@@ -163,7 +163,8 @@
 			<bloom>
 				<enabled>true</enabled>
 				<factor>0.800000012</factor>
-				<threshold>0.999000013</threshold>
+				<!-- Bias applied to the scene's average luminance. Everything above avg luminance + bias is considered a bright spot-->
+				<luminanceBias>0.800000012</luminanceBias>
 			</bloom>
 			<ssao>
 				<enable>true</enable>
@@ -202,7 +203,7 @@
 			<!-- Resolution will be rounded up to the next POW_2. -->
 			<csm>
 				<enabled>true</enabled>
-				<shadowMapResolution>1024</shadowMapResolution>
+				<shadowMapResolution>2048</shadowMapResolution>
 				<MSAASamples>2</MSAASamples>
 				<enableBlurring>true</enableBlurring>
 				<maxAnisotropicFilteringLevel>2</maxAnisotropicFilteringLevel>

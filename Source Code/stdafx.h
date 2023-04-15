@@ -113,6 +113,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define TINYXML_STATIC
 #endif
 
+#ifndef GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#endif
+
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4244) //warning C4244: 'return': conversion from 'int' to 'int8_t', possible loss of data
@@ -207,5 +211,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Math/Headers/Quaternion.h"
 #include "Core/Headers/TaskPool.h"
 #include "Core/Headers/Console.h"
+#include "Platform/Video/Headers/RenderAPIEnums.h"
 
 #endif //_DIVIDE_PCH_

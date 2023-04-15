@@ -1,7 +1,6 @@
 --Vertex
 
 #define COMPUTE_TBN
-#define NO_VELOCITY
 #include "vbInputData.vert"
 #include "vegetationData.cmn"
 #include "sceneData.cmn"
@@ -89,7 +88,6 @@ layout(early_fragment_tests) in;
 #endif //!PRE_PASS
 
 #define NO_REFLECTIONS
-#define NO_VELOCITY
 //#define DEBUG_LODS
 
 #include "BRDF.frag"
@@ -135,7 +133,6 @@ void main (void){
 
 --Fragment.PrePass
 
-#define NO_VELOCITY
 #include "prePass.frag"
 #include "texturing.frag"
 

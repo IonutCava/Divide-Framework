@@ -5,6 +5,7 @@
 #include "ECS/Systems/Headers/AnimationSystem.h"
 #include "ECS/Systems/Headers/BoundsSystem.h"
 #include "ECS/Systems/Headers/RenderingSystem.h"
+#include "ECS/Systems/Headers/SelectionSystem.h"
 #include "ECS/Systems/Headers/TransformSystem.h"
 #include "ECS/Systems/Headers/DirectionalLightSystem.h"
 #include "ECS/Systems/Headers/PointLightSystem.h"
@@ -35,7 +36,6 @@ STUB_SYSTEM(IK);
 STUB_SYSTEM(Networking);
 STUB_SYSTEM(Ragdoll);
 STUB_SYSTEM(Script);
-STUB_SYSTEM(Selection);
 STUB_SYSTEM(Unit);
 
 ECSManager::ECSManager(PlatformContext& context, ECS::ECSEngine& engine)
@@ -55,7 +55,7 @@ ECSManager::ECSManager(PlatformContext& context, ECS::ECSEngine& engine)
     auto* RagSys = _ecsEngine.GetSystemManager()->AddSystem<RagdollSystem>(_ecsEngine);
     auto* RBSys = _ecsEngine.GetSystemManager()->AddSystem<RigidBodySystem>(_ecsEngine, _context);
     auto* ScpSys = _ecsEngine.GetSystemManager()->AddSystem<ScriptSystem>(_ecsEngine);
-    auto* SelSys = _ecsEngine.GetSystemManager()->AddSystem<SelectionSystem>(_ecsEngine);
+    auto* SelSys = _ecsEngine.GetSystemManager()->AddSystem<SelectionSystem>(_ecsEngine, _context);
     auto* UnitSys = _ecsEngine.GetSystemManager()->AddSystem<UnitSystem>(_ecsEngine);
     auto* ProbeSys = _ecsEngine.GetSystemManager()->AddSystem<EnvironmentProbeSystem>(_ecsEngine, _context);
     

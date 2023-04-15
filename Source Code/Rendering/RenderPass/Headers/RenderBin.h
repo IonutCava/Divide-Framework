@@ -39,8 +39,6 @@
 #ifndef _RENDER_BIN_H_
 #define _RENDER_BIN_H_
 
-#include "Platform/Video/Headers/RenderAPIEnums.h"
-
 namespace Divide {
 
 struct Task;

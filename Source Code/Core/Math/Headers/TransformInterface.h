@@ -33,18 +33,23 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _TRANSFORM_INTERFACE_H_
 #define _TRANSFORM_INTERFACE_H_
 
-namespace Divide {
+namespace Divide
+{
 
-struct TransformValues {
+struct TransformValues
+{
     /// All orientation/rotation info is stored in a Quaternion
     /// (because they are awesome and also have an internal mat4 if needed)
-    Quaternion<F32> _orientation = {};
+    Quaternion<F32> _orientation{};
     /// The object's position in the world as a 3 component vector
-    vec3<F32> _translation = VECTOR3_ZERO;
+    vec3<F32> _translation{ VECTOR3_ZERO };
     /// Scaling is stored as a 3 component vector.
     /// This helps us check more easily if it's an uniform scale or not
-    vec3<F32> _scale = VECTOR3_UNIT;
+    vec3<F32> _scale{ VECTOR3_UNIT };
 };
+
+[[nodiscard]] TransformValues Lerp(const TransformValues& a, const TransformValues& b, F32 t);
+[[nodiscard]] mat4<F32> GetMatrix(const TransformValues& values);
 
 bool operator==(const TransformValues& lhs, const TransformValues& rhs);
 bool operator!=(const TransformValues& lhs, const TransformValues& rhs);
@@ -115,55 +120,28 @@ public:
     virtual void rotateY(Angle::DEGREES<F32> angle) = 0;
     /// Rotate on the Z axis (Axis-Angle used) by the specified angle (either degrees or radians)
     virtual void rotateZ(Angle::DEGREES<F32> angle) = 0;
-
     /// Set an uniform scale on all three axis
-    void setScale(const F32 amount) {
-        setScale(vec3<F32>(amount));
-    }
-
-    void setScale(const F32 x, const F32 y, const F32 z) {
-        setScale(vec3<F32>(x, y, z));
-    }
-
+    void setScale( F32 amount );
+    /// Set a scaling factor for each axis
+    void setScale( F32 x, F32 y, F32 z );
     /// Set the euler rotation in degrees
-    void setRotationEuler(const vec3<F32>& euler) {
-        setRotation(euler.pitch, euler.yaw, euler.roll);
-    }
-
-    void translate(const F32 x, const F32 y, const F32 z) {
-        translate(vec3<F32>(x, y, z));
-    }
-    
+    void setRotationEuler( const vec3<F32>& euler );
+    /// Translate the object on each axis by the specified amount 
+    void translate( F32 x, F32 y, F32 z );
     /// Translate the object on the X axis by the specified amount
-    void translateX(const F32 positionX) {
-        translate(vec3<F32>(positionX, 0.0f, 0.0f));
-    }
-
+    void translateX( F32 positionX);
     /// Translate the object on the Y axis by the specified amount
-    void translateY(const F32 positionY) {
-        translate(vec3<F32>(0.0f, positionY, 0.0f));
-    }
-
+    void translateY( F32 positionY);
     /// Translate the object on the Z axis by the specified amount
-    void translateZ(const F32 positionZ) {
-        translate(vec3<F32>(0.0f, 0.0f, positionZ));
-    }
+    void translateZ( F32 positionZ);
     /// Increase the scaling factor on all three axis by an uniform factor
-    void scale(const F32 amount) {
-        scale(vec3<F32>(amount));
-    }
-
-    void scale(const F32 x, const F32 y, const F32 z) {
-        scale(vec3<F32>(x, y, z));
-    }
-
-    void rotate(const F32 xAxis, const F32 yAxis, const F32 zAxis, const Angle::DEGREES<F32> degrees) {
-        rotate(vec3<F32>(xAxis, yAxis, zAxis), degrees);
-    }
-
-    void rotate(const vec3<F32>& euler) {
-        rotate(euler.pitch, euler.yaw, euler.roll);
-    }
+    void scale( F32 amount);
+    /// Increase the scaling factor on all three axis by the specified amounts
+    void scale( F32 x, F32 y, F32 z);
+    /// Apply an axis-angle rotation
+    void rotate( F32 xAxis, F32 yAxis, F32 zAxis, Angle::DEGREES<F32> degrees);
+    /// Apply an euler rotation
+    void rotate( const vec3<F32>& euler);
     
     /// Return the scale factor
     virtual void getScale(vec3<F32>& scaleOut) const = 0;
@@ -173,6 +151,7 @@ public:
     virtual void getOrientation(Quaternion<F32>& quatOut) const = 0;
 };
 
-
 }
 #endif //_TRANSFORM_INTERFACE_H_
+
+#include "TransformInterface.inl"

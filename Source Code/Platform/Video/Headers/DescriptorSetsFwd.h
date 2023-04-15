@@ -33,8 +33,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _DESCRIPTOR_SETS_FWD_H_
 #define _DESCRIPTOR_SETS_FWD_H_
 
-#include "RenderAPIEnums.h"
-
 namespace Divide
 {
     class Texture;

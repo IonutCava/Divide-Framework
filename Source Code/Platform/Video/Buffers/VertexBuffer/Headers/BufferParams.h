@@ -33,8 +33,6 @@
 #ifndef _BUFFER_PARAMS_H_
 #define _BUFFER_PARAMS_H_
 
-#include "Platform/Video/Headers/RenderAPIEnums.h"
-
 namespace Divide {
     struct BufferFlags
     {

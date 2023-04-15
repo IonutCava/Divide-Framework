@@ -24,6 +24,10 @@
 
 namespace Divide {
 namespace {
+
+    constexpr bool s_AlwaysRefreshSkyLight = false;
+    constexpr bool s_AlwaysProcessFullProbeRefreshPerFrame = false;
+
     Mutex s_queueLock;
     constexpr U16 s_IrradianceTextureSize = 64u;
     constexpr U16 s_LUTTextureSize = 128u;
@@ -36,7 +40,6 @@ namespace {
 }
 
 vector<DebugView_ptr> SceneEnvironmentProbePool::s_debugViews;
-vector<Camera*> SceneEnvironmentProbePool::s_probeCameras;
 bool SceneEnvironmentProbePool::s_probesDirty = true;
 
 std::array<SceneEnvironmentProbePool::ProbeSlice, Config::MAX_REFLECTIVE_PROBES_PER_PASS> SceneEnvironmentProbePool::s_availableSlices;
@@ -87,10 +90,6 @@ void SceneEnvironmentProbePool::UnlockSlice(const I16 slice) noexcept {
 
 void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
     SkyLightNeedsRefresh(true);
-
-    for (U32 i = 0; i < 6; ++i) {
-        s_probeCameras.emplace_back(Camera::CreateCamera(Util::StringFormat("ProbeCamera_%d", i), Camera::Mode::STATIC ));
-    }
 
     s_availableSlices.fill({});
 
@@ -238,10 +237,7 @@ void SceneEnvironmentProbePool::OnShutdown(GFXDevice& context) {
     {
         DIVIDE_UNEXPECTED_CALL();
     }
-    for (auto& camera : s_probeCameras) {
-        Camera::DestroyCamera(camera);
-    }
-    s_probeCameras.clear();
+
     // Remove old views
     if (!s_debugViews.empty()) {
         for (const DebugView_ptr& view : s_debugViews) {
@@ -308,7 +304,8 @@ void SceneEnvironmentProbePool::Prepare(GFX::CommandBuffer& bufferInOut) {
 void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
     PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);
 
-    if (s_lutTextureDirty) {
+    if (s_lutTextureDirty)
+    {
         PipelineDescriptor pipelineDescriptor{};
         pipelineDescriptor._stateBlock = context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = s_lutComputeShader->handle();
@@ -357,27 +354,27 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
     {
         GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand("SkyLight Pass"));
 
-        vector<Camera*>& probeCameras = ProbeCameras();
-        std::array<Camera*, 6> cameras = {};
-        std::copy_n(std::begin(probeCameras), std::min(cameras.size(), probeCameras.size()), std::begin(cameras));
-
         RenderPassParams params = {};
-        SetDefaultDrawDescriptor(params);
 
         params._target = SceneEnvironmentProbePool::ReflectionTarget()._targetID;
         params._stagePass = { RenderStage::REFLECTION, RenderPassType::COUNT, Config::MAX_REFLECTIVE_NODES_IN_VIEW + SkyProbeLayerIndex(), static_cast<RenderStagePass::VariantType>(ReflectorType::CUBE) };
 
         params._drawMask &= ~(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES));
         params._drawMask &= ~(1u << to_base(RenderPassParams::Flags::DRAW_STATIC_NODES));
-        params._drawMask |=  (1u << to_base(RenderPassParams::Flags::DRAW_SKY_NODES));
+        params._drawMask &= ~(1u << to_base(RenderPassParams::Flags::DRAW_TRANSLUCENT_NODES));
+
+        params._targetDescriptorPrePass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = false;
+        params._clearDescriptorPrePass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
+
+        params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
+        params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::BLUE, true };
 
         context.generateCubeMap(params,
                                 SkyProbeLayerIndex(),
                                 VECTOR3_ZERO,
-                                vec2<F32>(0.1f, 10000.f),
+                                vec2<F32>(0.1f, 100.f),
                                 bufferInOut,
-                                memCmdInOut,
-                                cameras);
+                                memCmdInOut);
 
         ProcessEnvironmentMap(context, SkyProbeLayerIndex(), false, bufferInOut);
 
@@ -395,10 +392,13 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
             s_computationSet.erase(s_queuedLayer);
         }
 
-        if (s_queuedStage != ComputationStages::COUNT)
-        //while (s_queuedStage != ComputationStages::COUNT)
+        while (s_queuedStage != ComputationStages::COUNT)
         {
             ProcessEnvironmentMapInternal(context, s_queuedLayer, s_queuedStage, bufferInOut);
+            if constexpr ( !s_AlwaysProcessFullProbeRefreshPerFrame )
+            {
+                break;
+            }
         }
     }
     {
@@ -428,7 +428,7 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
     }
 }
 
-void SceneEnvironmentProbePool::ProcessEnvironmentMap(GFXDevice& context, const U16 layerID, const bool highPriority, GFX::CommandBuffer& bufferInOut)
+void SceneEnvironmentProbePool::ProcessEnvironmentMap(GFXDevice& context, const U16 layerID, [[maybe_unused]] const bool highPriority, GFX::CommandBuffer& bufferInOut)
 {
     LockGuard<Mutex> w_lock(s_queueLock);
     if (s_computationSet.insert(layerID).second)
@@ -685,8 +685,8 @@ void SceneEnvironmentProbePool::createDebugView(const U16 layerIndex) {
             probeView->_samplerHash = ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->descriptor()._samplerHash;
         }
         probeView->_shader = s_previewShader;
-        probeView->_shaderData.set(_ID("layer"), GFX::PushConstantType::INT, layerIndex);
-        probeView->_shaderData.set(_ID("face"), GFX::PushConstantType::INT, i % 6u);
+        probeView->_shaderData.set(_ID("layer"), PushConstantType::INT, layerIndex);
+        probeView->_shaderData.set(_ID("face"), PushConstantType::INT, i % 6u);
         if (i > 11) {
             probeView->_name = Util::StringFormat("Probe_%d_Filtered_face_%d", layerIndex, i % 6u);
         } else if (i > 5) {
@@ -740,7 +740,7 @@ void SceneEnvironmentProbePool::DebuggingSkyLight(const bool state) noexcept {
 }
 
 bool SceneEnvironmentProbePool::SkyLightNeedsRefresh() noexcept {
-    return s_skyLightNeedsRefresh;
+    return s_skyLightNeedsRefresh || s_AlwaysRefreshSkyLight;
 }
 
 void SceneEnvironmentProbePool::SkyLightNeedsRefresh(const bool state) noexcept {

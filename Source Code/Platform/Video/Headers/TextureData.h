@@ -33,11 +33,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _TEXTURE_DATA_H_
 #define _TEXTURE_DATA_H_
 
-#include "RenderAPIEnums.h"
-
 namespace Divide {
 
-struct CopyTexParams {
+struct CopyTexParams 
+{
     vec2<U16> _layerRange{0u, 1u};
     vec2<U32> _sourceCoords;
     vec2<U32> _targetCoords;

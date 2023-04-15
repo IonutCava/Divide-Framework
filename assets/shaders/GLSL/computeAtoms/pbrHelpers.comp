@@ -3,12 +3,6 @@
 
 //ref: https://github.com/BruOp/bae/blob/2c29bc6d3cbadcd0ded190e935be6d247b598b9e/examples/common/pbr_helpers.sh
 
-#ifndef PI
-#define PI 3.141592653589793
-#define TWO_PI 6.2831853071795864769252867665590
-#define HALF_PI 1.5707963267948966192313216916398
-#endif // PI
-
 #define DIELECTRIC_SPECULAR 0.04
 #define MIN_ROUGHNESS 0.045
 
@@ -29,7 +23,7 @@ float D_GGX(in float NoH, in float roughnessIn) {
     float alpha = roughnessIn * roughnessIn;
     float a = NoH * alpha;
     float k = alpha / (1.0 - NoH * NoH + a * a);
-    return k * k * (1.0 / PI);
+    return k * k * (1.0 / M_PI);
 }
 
 vec3 F_Schlick(float VoH, float metallic, vec3 baseColor) {
@@ -53,7 +47,7 @@ vec3 importanceSampleGGX(vec2 Xi, float roughnessIn, vec3 N)
 {
     float a = roughnessIn * roughnessIn;
     // Sample in spherical coordinates
-    float phi = 2.0 * PI * Xi.x;
+    float phi = 2.0 * M_PI * Xi.x;
     float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a * a - 1.0) * Xi.y));
     float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
     // Construct tangent space vector

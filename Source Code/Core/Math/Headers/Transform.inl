@@ -34,18 +34,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-inline bool operator==(const TransformValues& lhs, const TransformValues& rhs) {
-    return lhs._scale.compare(rhs._scale) &&
-           lhs._orientation.compare(rhs._orientation) &&
-           lhs._translation.compare(rhs._translation);
-}
-
-inline bool operator!=(const TransformValues& lhs, const TransformValues& rhs) {
-    return !lhs._scale.compare(rhs._scale) ||
-           !lhs._orientation.compare(rhs._orientation) ||
-           !lhs._translation.compare(rhs._translation);
-}
-
 /// Set the local X,Y and Z position
 inline void Transform::setPosition(const vec3<F32>& position) noexcept {
     setPosition(position.x, position.y, position.z);

@@ -214,5 +214,85 @@ namespace Divide
     {
         return unProject( winCoords.x, winCoords.y, viewport );
     }
+
+    template<bool zeroToOneDepth>
+    mat4<F32> Camera::Ortho( const F32 left, const F32 right, const F32 bottom, const F32 top, const F32 zNear, const F32 zFar )  noexcept
+    {
+        mat4<F32> ret{ MAT4_ZERO };
+
+        ret.m[0][0] = 2.f / (right - left);
+        ret.m[1][1] = 2.f / (top - bottom);
+        ret.m[3][3] = 1;
+
+        ret.m[3][0] = -( right + left ) / (right - left);
+        ret.m[3][1] = -( top + bottom ) / (top - bottom);
+
+        if constexpr ( zeroToOneDepth )
+        {
+            ret.m[2][2] = -1.f / (zFar - zNear);
+            ret.m[3][2] = -zNear / (zFar - zNear);
+        }
+        else
+        {
+            ret.m[2][2] = -2.f / (zFar - zNear);
+            ret.m[3][2] = -( zFar + zNear ) / (zFar - zNear);
+        }
+
+        return ret;
+    }
+
+    template<bool zeroToOneDepth>
+    mat4<F32> Camera::Perspective( const Angle::DEGREES<F32> fovyRad, const F32 aspect, const F32 zNear, const F32 zFar) noexcept
+    {
+        mat4<F32> ret{ MAT4_ZERO };
+
+        assert( !IS_ZERO( aspect ) );
+        assert( zFar > zNear );
+
+        Angle::RADIANS<F32> tanHalfFovy = std::tan( Angle::to_RADIANS( fovyRad ) * 0.5f );
+
+        ret.m[0][0] = 1.f / (aspect * tanHalfFovy);
+        ret.m[1][1] = 1.f / tanHalfFovy;
+        ret.m[2][3] = -1.f;
+
+        if constexpr ( zeroToOneDepth )
+        {
+            ret.m[2][2] = zFar / (zNear - zFar);
+            ret.m[3][2] = -(zFar * zNear) / (zFar - zNear);
+        }
+        else
+        {
+            ret.m[2][2] = -( zFar + zNear ) / (zFar - zNear);
+            ret.m[3][2] = -2.f * zFar * zNear / (zFar - zNear);
+        }
+
+        return ret;
+    }
+
+    template<bool zeroToOneDepth>
+    mat4<F32> Camera::FrustumMatrix( const F32 left, const F32 right, const F32 bottom, const F32 top, const F32 nearVal, const F32 farVal) noexcept
+    {
+        mat4<F32> ret{MAT4_ZERO};
+
+        ret.m[0][0] = 2.f * nearVal / (right - left);
+        ret.m[1][1] = 2.f * nearVal / (top - bottom);
+        ret.m[2][0] = ( right + left ) / (right - left);
+        ret.m[2][1] = ( top + bottom ) / (top - bottom);
+        ret.m[2][3] = -1.f;
+
+        if constexpr ( zeroToOneDepth )
+        {
+            ret.m[2][2] = farVal / (nearVal - farVa);
+            ret.m[3][2] = -(farVal * nearVal) / (farVal - nearVal);
+        }
+        else
+        {
+            ret.m[2][2] = -( farVal + nearVal ) / (farVal - nearVal);
+            ret.m[3][2] = -2.f * farVal * nearVal / (farVal - nearVal);
+        }
+
+        return ret;
+    }
+
 }; //namespace Divide
 #endif //_CAMERA_INL_

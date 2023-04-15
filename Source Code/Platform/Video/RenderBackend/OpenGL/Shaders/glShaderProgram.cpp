@@ -127,12 +127,11 @@ bool glShaderProgram::unload()
         _handle = GLUtil::k_invalidObjectID;
     }
 
-    // Remove every shader attached to this program
-    eastl::for_each(begin(_shaderStage),
-                    end(_shaderStage),
-                    [](glShader* shader) {
-                        ShaderModule::RemoveShader(shader);
-                    });
+    for ( glShaderEntry& shader : _shaderStage )
+    {
+        shader._shader->inUse(false);
+    }
+
     _shaderStage.clear();
 
      return ShaderProgram::unload();
@@ -150,16 +149,15 @@ void glShaderProgram::processValidation()
     _validationQueued = false;
 
     UseProgramStageMask stageMask = UseProgramStageMask::GL_NONE_BIT;
-    for (glShader* shader : _shaderStage)
+    for ( glShaderEntry& shader : _shaderStage)
     {
-
-        if (!shader->valid())
+        if (!shader._shader->valid())
         {
             continue;
         }
 
-        shader->onParentValidation();
-        stageMask |= shader->stageMask();
+        shader._shader->onParentValidation();
+        stageMask |= shader._shader->stageMask();
     }
 
     if constexpr(Config::ENABLE_GPU_VALIDATION)
@@ -171,89 +169,86 @@ void glShaderProgram::processValidation()
 ShaderResult glShaderProgram::validatePreBind(const bool rebind)
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-    if (!_stagesBound && rebind)
+    ShaderResult ret = ShaderProgram::validatePreBind(rebind);
+    if ( ret == ShaderResult::OK)
     {
-
-        assert(getState() == ResourceState::RES_LOADED);
-        ShaderResult ret = ShaderResult::OK;
-        if (_handle == GLUtil::k_invalidObjectID) {
-            glCreateProgramPipelines(1, &_handle);
-            if constexpr(Config::ENABLE_GPU_VALIDATION) {
-                glObjectLabel(GL_PROGRAM_PIPELINE, _handle, -1, resourceName().c_str());
-            }
-            // We can reuse previous handles
-            LockGuard<SharedMutex> w_lock(g_deletionSetLock);
-            g_deletionSet.erase(_handle);
+        for ( glShaderEntry& shader : _shaderStage )
+        {
+            shader._shader->inUse(true);
         }
 
-        if (rebind) {
-            assert(_handle != GLUtil::k_invalidObjectID);
+        if (!_stagesBound && rebind)
+        {
+            assert(getState() == ResourceState::RES_LOADED);
+            if (_handle == GLUtil::k_invalidObjectID) {
+                glCreateProgramPipelines(1, &_handle);
+                if constexpr(Config::ENABLE_GPU_VALIDATION) {
+                    glObjectLabel(GL_PROGRAM_PIPELINE, _handle, -1, resourceName().c_str());
+                }
+                // We can reuse previous handles
+                LockGuard<SharedMutex> w_lock(g_deletionSetLock);
+                g_deletionSet.erase(_handle);
+            }
 
-            for (glShader* shader : _shaderStage)
-            {
-                ret = shader->uploadToGPU(_handle);
-                if (ret != ShaderResult::OK) {
-                    _stagesBound = true;
-                    break;
+            if (rebind) {
+                assert(_handle != GLUtil::k_invalidObjectID);
+
+                for ( glShaderEntry& shader : _shaderStage)
+                {
+                    ret = shader._shader->uploadToGPU(_handle);
+                    if (ret != ShaderResult::OK) {
+                        _stagesBound = true;
+                        break;
+                    }
+
+                    // If a shader exists for said stage, attach it
+                    glUseProgramStages(_handle, shader._shader->stageMask(), shader._shader->handle());
                 }
 
-                // If a shader exists for said stage, attach it
-                glUseProgramStages(_handle, shader->stageMask(), shader->handle());
-            }
-
-            if (ret == ShaderResult::OK)
-            {
-                _validationQueued = true;
-                _stagesBound = true;
+                if (ret == ShaderResult::OK)
+                {
+                    _validationQueued = true;
+                    _stagesBound = true;
+                }
             }
         }
-
-        return ret;
-        
     }
-
-    return ShaderResult::OK;
+    return ret;
 }
 
-bool glShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, const bool reloadExisting) {
+bool glShaderProgram::loadInternal(hashMap<U64, PerFileShaderData>& fileData, const bool overwrite ) {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-    if (ShaderProgram::reloadShaders(fileData, reloadExisting)) {
+    if (ShaderProgram::loadInternal(fileData, overwrite))
+    {
         _stagesBound = false;
-        _shaderStage.clear();
 
-        for (auto& [fileHash, loadDataPerFile] : fileData) {
+        for (auto& [fileHash, loadDataPerFile] : fileData)
+        {
             assert(!loadDataPerFile._modules.empty());
 
-            glShader* shader = glShader::LoadShader(_context, loadDataPerFile._programName, reloadExisting, loadDataPerFile._loadData);
-            _shaderStage.push_back(shader);
+            bool found = false;
+            U32 targetGeneration = 0u;
+            for ( glShaderEntry& stage : _shaderStage )
+            {
+                if ( stage._fileHash == _ID ( loadDataPerFile._programName.c_str()) )
+                {
+                    targetGeneration = overwrite ? stage._generation + 1u : stage._generation;
+                    stage = glShader::LoadShader( _context, loadDataPerFile._programName, targetGeneration, loadDataPerFile._loadData );
+                    found = true;
+                    break;
+                }
+            }
+            if (!found )
+            {
+                _shaderStage.push_back( glShader::LoadShader(_context, loadDataPerFile._programName, targetGeneration, loadDataPerFile._loadData) );
+            }
         }
 
         return !_shaderStage.empty();
     }
 
     return false;
-}
-
-bool glShaderProgram::recompile(bool& skipped)
-{
-    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-    if (!ShaderProgram::recompile(skipped))
-    {
-        return false;
-    }
-
-    if (validatePreBind(false) != ShaderResult::OK)
-    {
-        return false;
-    }
-
-    skipped = false;
-    threadedLoad(true);
-
-    return true;
 }
 
 /// Bind this shader program
@@ -282,15 +277,15 @@ void glShaderProgram::uploadPushConstants(const PushConstantsStruct& pushConstan
 {
     if (pushConstants._set)
     {
-        for (glShader* shader : _shaderStage)
+        for ( glShaderEntry& shader : _shaderStage)
         {
 
-            if (!shader->valid())
+            if (!shader._shader->valid())
             {
                 continue;
             }
 
-            shader->uploadPushConstants(pushConstants);
+            shader._shader->uploadPushConstants(pushConstants);
         }
     }
 }

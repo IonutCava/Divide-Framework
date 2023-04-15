@@ -66,52 +66,45 @@ namespace Divide
         [[nodiscard]] DescriptorSetUsage StringToDescriptorSetUsage( const string& name );
     };
 
+    FWD_DECLARE_MANAGED_CLASS( ShaderModule );
+
     class ShaderModule : public GUIDWrapper, public GraphicsResource
     {
-        protected:
-        using ShaderMap = ska::bytell_hash_map<U64, ShaderModule*>;
-        public:
-        explicit ShaderModule( GFXDevice& context, const Str256& name );
+    protected:
+        using ShaderMap = hashMap<U64, ShaderModule_uptr>;
+
+        // 10 seconds should be enough
+        static constexpr U32 MAX_FRAME_LIFETIME = Config::TARGET_FRAME_RATE * 10;
+
+    public:
+        explicit ShaderModule( GFXDevice& context, const Str256& name, U32 generation );
         virtual ~ShaderModule();
 
-        void AddRef() noexcept
-        {
-            _refCount.fetch_add( 1 );
-        }
-        /// Returns true if ref count reached 0
-        size_t SubRef() noexcept
-        {
-            return _refCount.fetch_sub( 1 );
-        }
-
-        [[nodiscard]] size_t GetRef() const noexcept
-        {
-            return _refCount.load();
-        }
+        void inUse( bool state);
 
         PROPERTY_R( Str256, name );
         PROPERTY_R( bool, valid, false );
+        PROPERTY_R( bool, inUse, true );
+        PROPERTY_R( U32, generation, 0u);
+        PROPERTY_R( U64, lastUsedFrame, U64_MAX - MAX_FRAME_LIFETIME - 1u);
 
-        public:
+    public:
         // ======================= static data ========================= //
-        /// Remove a shader from the cache
-        static void RemoveShader( ShaderModule* s, bool force = false );
         /// Returns a reference to an already loaded shader, null otherwise
         static ShaderModule* GetShader( const Str256& name );
 
+        static void Idle();
         static void InitStaticData();
         static void DestroyStaticData();
 
-        protected:
+    protected:
         static ShaderModule* GetShaderLocked( const Str256& name );
-        static void RemoveShaderLocked( ShaderModule* s, bool force = false );
 
-        protected:
-        std::atomic_size_t _refCount{ 0u };
+    protected:
         /// A list of preprocessor defines (if the bool in the pair is true, #define is automatically added
         vector<ModuleDefine> _definesList;
 
-        protected:
+    protected:
         /// Shader cache
         static ShaderMap s_shaderNameMap;
         static SharedMutex s_shaderNameLock;
@@ -120,7 +113,7 @@ namespace Divide
     class NOINITVTABLE ShaderProgram : public CachedResource,
         public GraphicsResource
     {
-        public:
+    public:
         static constexpr const char* UNIFORM_BLOCK_NAME = "dvd_uniforms";
         static constexpr U8 BONE_BUFFER_BINDING_SLOT = 12u;
 
@@ -156,15 +149,22 @@ namespace Divide
             Reflection::Data _reflectionData{};
             bool _compiled{ false };
         };
+
+        struct ShaderQueueEntry
+        {
+            ShaderProgram* _program{nullptr};
+            U32 _queueDelay{0u};
+            U32 _queueDelayHighWaterMark{1u};
+        };
+
         using RenderTargets = std::array<bool, to_base( RTColourAttachmentSlot::COUNT )>;
         using ShaderLoadData = std::array<LoadData, to_base( ShaderType::COUNT )>;
 
         using ShaderProgramMap = std::array<ShaderProgramMapEntry, U16_MAX>;
 
-        using AtomMap = ska::bytell_hash_map<U64 /*name hash*/, string>;
-        //using AtomInclusionMap = ska::bytell_hash_map<U64 /*name hash*/, vector<ResourcePath>>;
-        using AtomInclusionMap = hashMap<U64 /*name hash*/, vector<ResourcePath>>;
-        using ShaderQueue = eastl::stack<ShaderProgram*, vector_fast<ShaderProgram*> >;
+        using AtomMap = hashMap<U64 /*name hash*/, eastl::string>;
+        using AtomInclusionMap = hashMap<U64 /*name hash*/, eastl::set<U64>>;
+        using ShaderQueue = eastl::stack<ShaderQueueEntry, vector_fast<ShaderQueueEntry>>;
 
         struct BindingsPerSet
         {
@@ -176,8 +176,7 @@ namespace Divide
         using SetUsageData = std::array<bool, to_base(DescriptorSetUsage::COUNT)>;
         using BindingSetData = std::array<BindingsPerSetArray, to_base( DescriptorSetUsage::COUNT )>;
 
-        public:
-        public:
+    public:
         explicit ShaderProgram( GFXDevice& context,
                                 size_t descriptorHash,
                                 const Str256& shaderName,
@@ -197,7 +196,9 @@ namespace Divide
             return recompile( skipped );
         }
 
-        virtual bool recompile( bool& skipped );
+        bool recompile( bool& skipped );
+
+        virtual ShaderResult validatePreBind( bool rebind = true );
 
         [[nodiscard]] bool uploadUniformData( const PushConstants& data, DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut );
 
@@ -258,14 +259,14 @@ namespace Divide
 
         static Mutex g_cacheLock;
 
-        protected:
+    protected:
 
         static bool SaveToCache( LoadData::ShaderCacheType cache, const LoadData& dataIn, const eastl::set<U64>& atomIDsIn );
         static bool LoadFromCache( LoadData::ShaderCacheType cache, LoadData& dataInOut, eastl::set<U64>& atomIDsOut );
 
-        protected:
-        /// Only 1 shader program per frame should be recompiled to avoid a lot of stuttering
+    protected:
         static ShaderQueue s_recompileQueue;
+        static ShaderQueue s_recompileFailedQueue;
         /// Shader program cache
         static ShaderProgramMap s_shaderPrograms;
 
@@ -277,9 +278,8 @@ namespace Divide
         static LastRequestedShader s_lastRequestedShaderProgram;
         static SharedMutex s_programLock;
 
-        protected:
-        void threadedLoad( bool reloadExisting );
-        virtual bool reloadShaders( hashMap<U64, PerFileShaderData>& fileData, bool reloadExisting );
+    protected:
+        virtual bool loadInternal( hashMap<U64, PerFileShaderData>& fileData, bool overwrite );
 
         bool loadSourceCode( const ModuleDefines& defines,
                              bool reloadExisting,
@@ -297,23 +297,27 @@ namespace Divide
         void initDrawDescriptorSetLayout( const PerFileShaderData& loadData );
         void initUniformUploader( const PerFileShaderData& loadData );
 
-        private:
-        static const string& ShaderFileRead( const ResourcePath& filePath, const ResourcePath& atomName, bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed );
-        static const string& ShaderFileReadLocked( const ResourcePath& filePath, const ResourcePath& atomName, bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed );
+
+    private:
+        static void EraseAtom(const U64 atomHash);
+        static void EraseAtomLocked(const U64 atomHash);
+
+        static const eastl::string& ShaderFileRead( const ResourcePath& filePath, const ResourcePath& atomName, bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed );
+        static const eastl::string& ShaderFileReadLocked( const ResourcePath& filePath, const ResourcePath& atomName, bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed );
 
         static eastl::string PreprocessIncludes( const ResourcePath& name,
                                                  const eastl::string& source,
                                                  I32 level,
                                                  eastl::set<U64>& foundAtomIDsInOut,
                                                  bool lock );
-        protected:
+    protected:
         template <typename T>
         friend class ImplResourceLoader;
 
         ResourceCache& _parentCache;
         const ShaderProgramDescriptor _descriptor;
 
-        protected:
+    protected:
         vector<UniformBlockUploader> _uniformBlockBuffers;
         eastl::set<U64> _usedAtomIDs;
 

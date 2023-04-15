@@ -47,7 +47,7 @@ SSRPreRenderOperator::SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& p
 
     const vec2<U16> res = _parent.screenRT()._rt->getResolution();
 
-    _constantsCmd._constants.set(_ID("size"), GFX::PushConstantType::VEC2, res);
+    _constantsCmd._constants.set(_ID("size"), PushConstantType::VEC2, res);
 
     const vec2<F32> s = res * 0.5f;
     _projToPixelBasis = mat4<F32>
@@ -71,16 +71,16 @@ bool SSRPreRenderOperator::ready() const noexcept {
 void SSRPreRenderOperator::parametersChanged() {
 
     const auto& parameters = _context.context().config().rendering.postFX.ssr;
-    _constantsCmd._constants.set(_ID("maxSteps"), GFX::PushConstantType::FLOAT, to_F32(parameters.maxSteps));
-    _constantsCmd._constants.set(_ID("binarySearchIterations"), GFX::PushConstantType::FLOAT, to_F32(parameters.binarySearchIterations));
-    _constantsCmd._constants.set(_ID("jitterAmount"), GFX::PushConstantType::FLOAT, parameters.jitterAmount);
-    _constantsCmd._constants.set(_ID("maxDistance"), GFX::PushConstantType::FLOAT, parameters.maxDistance);
-    _constantsCmd._constants.set(_ID("stride"), GFX::PushConstantType::FLOAT, parameters.stride);
-    _constantsCmd._constants.set(_ID("zThickness"), GFX::PushConstantType::FLOAT, parameters.zThickness);
-    _constantsCmd._constants.set(_ID("strideZCutoff"), GFX::PushConstantType::FLOAT, parameters.strideZCutoff);
-    _constantsCmd._constants.set(_ID("screenEdgeFadeStart"), GFX::PushConstantType::FLOAT, parameters.screenEdgeFadeStart);
-    _constantsCmd._constants.set(_ID("eyeFadeStart"), GFX::PushConstantType::FLOAT, parameters.eyeFadeStart);
-    _constantsCmd._constants.set(_ID("eyeFadeEnd"), GFX::PushConstantType::FLOAT, parameters.eyeFadeEnd);
+    _constantsCmd._constants.set(_ID("maxSteps"), PushConstantType::FLOAT, to_F32(parameters.maxSteps));
+    _constantsCmd._constants.set(_ID("binarySearchIterations"), PushConstantType::FLOAT, to_F32(parameters.binarySearchIterations));
+    _constantsCmd._constants.set(_ID("jitterAmount"), PushConstantType::FLOAT, parameters.jitterAmount);
+    _constantsCmd._constants.set(_ID("maxDistance"), PushConstantType::FLOAT, parameters.maxDistance);
+    _constantsCmd._constants.set(_ID("stride"), PushConstantType::FLOAT, parameters.stride);
+    _constantsCmd._constants.set(_ID("zThickness"), PushConstantType::FLOAT, parameters.zThickness);
+    _constantsCmd._constants.set(_ID("strideZCutoff"), PushConstantType::FLOAT, parameters.strideZCutoff);
+    _constantsCmd._constants.set(_ID("screenEdgeFadeStart"), PushConstantType::FLOAT, parameters.screenEdgeFadeStart);
+    _constantsCmd._constants.set(_ID("eyeFadeStart"), PushConstantType::FLOAT, parameters.eyeFadeStart);
+    _constantsCmd._constants.set(_ID("eyeFadeEnd"), PushConstantType::FLOAT, parameters.eyeFadeEnd);
     _constantsDirty = true;
 }
 
@@ -128,16 +128,18 @@ bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& 
         screenMipCount -= 2u;
     }
 
-    //const CameraSnapshot& prevSnapshot = _parent.getCameraSnapshot(idx);
-    const CameraSnapshot& prevSnapshot = _context.getCameraSnapshot(idx);
-    _constantsCmd._constants.set(_ID("previousViewProjection"), GFX::PushConstantType::MAT4, mat4<F32>::Multiply(prevSnapshot._viewMatrix, prevSnapshot._projectionMatrix));
-    _constantsCmd._constants.set(_ID("projToPixel"), GFX::PushConstantType::MAT4, cameraSnapshot._projectionMatrix * _projToPixelBasis);
-    _constantsCmd._constants.set(_ID("projectionMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._projectionMatrix);
-    _constantsCmd._constants.set(_ID("invProjectionMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix);
-    _constantsCmd._constants.set(_ID("invViewMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._invViewMatrix);
-    _constantsCmd._constants.set(_ID("screenDimensions"), GFX::PushConstantType::VEC2, vec2<F32>(screenAtt->texture()->width(), screenAtt->texture()->height()));
-    _constantsCmd._constants.set(_ID("maxScreenMips"), GFX::PushConstantType::UINT, screenMipCount);
-    _constantsCmd._constants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
+    const GFXShaderData::PrevFrameData& prevFrameData = _context.previousFrameData();
+
+    _constantsCmd._constants.set(_ID("projToPixel"), PushConstantType::MAT4, cameraSnapshot._projectionMatrix * _projToPixelBasis);
+    _constantsCmd._constants.set(_ID("projectionMatrix"), PushConstantType::MAT4, cameraSnapshot._projectionMatrix);
+    _constantsCmd._constants.set(_ID("invProjectionMatrix"), PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix);
+    _constantsCmd._constants.set(_ID("invViewMatrix"), PushConstantType::MAT4, cameraSnapshot._invViewMatrix);
+    _constantsCmd._constants.set(_ID("previousViewMatrix"), PushConstantType::MAT4, prevFrameData._PreviousViewMatrix);
+    _constantsCmd._constants.set(_ID("previousProjectionMatrix"), PushConstantType::MAT4, prevFrameData._PreviousProjectionMatrix);
+    _constantsCmd._constants.set(_ID("previousViewProjectionMatrix"), PushConstantType::MAT4, prevFrameData._PreviousViewProjectionMatrix);
+    _constantsCmd._constants.set(_ID("screenDimensions"), PushConstantType::VEC2, vec2<F32>(screenAtt->texture()->width(), screenAtt->texture()->height()));
+    _constantsCmd._constants.set(_ID("maxScreenMips"), PushConstantType::UINT, screenMipCount);
+    _constantsCmd._constants.set(_ID("_zPlanes"), PushConstantType::VEC2, cameraSnapshot._zPlanes);
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;

@@ -271,7 +271,7 @@ namespace Divide
         };
     }
 
-    void Gizmo::updateSelections( const vector<SceneGraphNode*>& nodes )
+    void Gizmo::updateSelections( const vector_fast<SceneGraphNode*>& nodes )
     {
         _selectedNodes.resize( 0 );
         _workMatrix.identity();

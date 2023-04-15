@@ -40,7 +40,6 @@ namespace Divide {
 
 BEGIN_COMPONENT_EXT1(DirectionalLight, ComponentType::DIRECTIONAL_LIGHT, Light)
    public:
-    using Light::getSGN;
     using PerSplitToggle = std::array<bool, Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT>;
 
    public:

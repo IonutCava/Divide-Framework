@@ -35,54 +35,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 namespace GFX {
-    enum class PushConstantSize : U8 {
-        BYTE = 0,
-        WORD,
-        DWORD,
-        QWORD,
-        COUNT
-    };
-
-    //ToDo: Make this more generic. Also used by the Editor -Ionut
-    enum class PushConstantType : U8 {
-        BOOL = 0,
-        INT,
-        UINT,
-        FLOAT,
-        DOUBLE,
-        //BVEC2, use vec2<I32>(1/0, 1/0)
-        //BVEC3, use vec3<I32>(1/0, 1/0, 1/0)
-        //BVEC4, use vec4<I32>(1/0, 1/0, 1/0, 1/0)
-        IVEC2,
-        IVEC3,
-        IVEC4,
-        UVEC2,
-        UVEC3,
-        UVEC4,
-        VEC2,
-        VEC3,
-        VEC4,
-        DVEC2,
-        DVEC3,
-        DVEC4,
-        IMAT2,
-        IMAT3,
-        IMAT4,
-        UMAT2,
-        UMAT3,
-        UMAT4,
-        MAT2,
-        MAT3,
-        MAT4,
-        DMAT2,
-        DMAT3,
-        DMAT4,
-        FCOLOUR3,
-        FCOLOUR4,
-        //MAT_N_x_M,
-        COUNT
-    };
-
     struct PushConstant {
         template<typename T>
         PushConstant(const U64 bindingHash, const PushConstantType type, const T& data);

@@ -46,10 +46,9 @@ namespace {
     }
 }
 
-glShader::glShader(GFXDevice& context, const Str256& name)
-    : ShaderModule(context, name)
+glShader::glShader(GFXDevice& context, const Str256& name, const U32 generation)
+    : ShaderModule(context, name, generation)
 {
-    _pushConstantsLocation = -1;
 }
 
 glShader::~glShader() {
@@ -70,7 +69,8 @@ namespace {
 };
 
 ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
-    if (!_valid) {
+    if (!_valid)
+    {
         const auto getTimerAndReset = [](Time::ProfileTimer& timer) {
             timer.stop();
             const U64 ret = timer.get();
@@ -243,10 +243,6 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
                          perStageTiming.c_str());
     }
 
-    if (_valid)
-    {
-        _pushConstantsLocation  = glGetUniformLocation(_handle, "PushConstantData");
-    }
     return _valid ? ShaderResult::OK : ShaderResult::Failed;
 }
 
@@ -277,35 +273,39 @@ bool glShader::load(const ShaderProgram::ShaderLoadData& data) {
 }
 
 /// Load a shader by name, source code and stage
-glShader* glShader::LoadShader(GFXDevice& context,
-                               const Str256& name,
-                               const bool overwriteExisting,
-                               ShaderProgram::ShaderLoadData& data) {
+glShaderEntry glShader::LoadShader(GFXDevice& context,
+                                   const Str256& name,
+                                   const U32 targetGeneration,
+                                   ShaderProgram::ShaderLoadData& data)
+{
     LockGuard<SharedMutex> w_lock(ShaderModule::s_shaderNameLock);
 
-    // See if we have the shader already loaded
-    ShaderModule* shader = GetShaderLocked(name);
-    if (overwriteExisting && shader != nullptr) {
-        RemoveShaderLocked(shader, true);
-        shader = nullptr;
-    }
+    glShaderEntry ret
+    {
+        ._fileHash = _ID( name.c_str() ),
+        ._generation = targetGeneration
+    };
 
-    // If we do, and don't need a recompile, just return it
-    if (shader == nullptr) {
-        shader = MemoryManager_NEW glShader(context, name);
-        // If we loaded the source code successfully,  register it
-        s_shaderNameMap.insert({ shader->nameHash(), shader });
+    // If we loaded the source code successfully,  register it
+    auto& shader_ptr = s_shaderNameMap[ret._fileHash];
+    if (shader_ptr == nullptr || shader_ptr->generation() < ret._generation )
+    {
+        shader_ptr.reset( new glShader( context, name, ret._generation ) );
 
         // At this stage, we have a valid Shader object, so load the source code
-        if (!static_cast<glShader*>(shader)->load(data)) {
+        if (!static_cast<glShader*>(shader_ptr.get())->load(data))
+        {
             DIVIDE_UNEXPECTED_CALL();
         }
-    } else {
-        shader->AddRef();
-        Console::d_printfn(Locale::Get(_ID("SHADER_MANAGER_GET_INC")), shader->name().c_str(), shader->GetRef());
+    } 
+    else 
+    {
+        Console::d_printfn(Locale::Get(_ID("SHADER_MANAGER_GET_INC")), shader_ptr->name().c_str());
     }
 
-    return static_cast<glShader*>(shader);
+    ret._shader = static_cast<glShader*>(shader_ptr.get());
+    
+    return ret;
 }
 
 void glShader::onParentValidation()
@@ -324,7 +324,12 @@ void glShader::onParentValidation()
 
 void glShader::uploadPushConstants(const PushConstantsStruct& pushConstants)
 {
-    if (_pushConstantsLocation != -1)
+    if (_pushConstantsLocation == -2)
+    {
+        _pushConstantsLocation = glGetUniformLocation( _handle, "PushConstantData" );
+    }
+
+    if ( _pushConstantsLocation > -1 )
     {
         glProgramUniformMatrix4fv(_handle, _pushConstantsLocation, 2, GL_FALSE, pushConstants.dataPtr());
     }

@@ -278,7 +278,7 @@ void Sky::OnStartup( PlatformContext& context )
 Sky::Sky( GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str256& name, U32 diameter )
     : SceneNode( parentCache, descriptorHash, name, ResourcePath{ name }, {}, SceneNodeType::TYPE_SKY, to_base( ComponentType::TRANSFORM ) | to_base( ComponentType::BOUNDS ) | to_base( ComponentType::SCRIPT ) ),
     _context( context ),
-    _diameter( diameter )
+    _diameter( 2 )
 {
     nightSkyColour( { 0.05f, 0.06f, 0.1f, 1.f } );
     moonColour( { 1.0f, 1.f, 0.8f } );
@@ -324,17 +324,27 @@ Sky::Sky( GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash,
         sunIntensityField._type = EditorComponentFieldType::SLIDER_TYPE;
         sunIntensityField._readOnly = false;
         sunIntensityField._range = { 0.01f, 15.0f };
-        sunIntensityField._basicType = GFX::PushConstantType::FLOAT;
+        sunIntensityField._basicType = PushConstantType::FLOAT;
         getEditorComponent().registerField( MOV( sunIntensityField ) );
 
+        EditorComponentField skyLuminanceField = {};
+        skyLuminanceField._name = "Sky Luminance";
+        skyLuminanceField._tooltip = "(1.00 - 1.99) - Tone mapping luminance value.";
+        skyLuminanceField._data = &_skyLuminance;
+        skyLuminanceField._type = EditorComponentFieldType::SLIDER_TYPE;
+        skyLuminanceField._readOnly = false;
+        skyLuminanceField._range = { 1.0f, 1.999f };
+        skyLuminanceField._basicType = PushConstantType::FLOAT;
+        getEditorComponent().registerField( MOV( skyLuminanceField ) );
+
         EditorComponentField rayleighCoeffField = {};
-        rayleighCoeffField._name = "Rayleigh Coefficients";
-        rayleighCoeffField._tooltip = "[0.01...100] x e-6 - Rayleigh scattering coefficient.";
+        rayleighCoeffField._name = "Rayleigh Coeff (x 1e-6)";
+        rayleighCoeffField._tooltip = "[0.01...100] x 1e-6 - Rayleigh scattering coefficient.";
         rayleighCoeffField._data = _atmosphere._RayleighCoeff._v;
         rayleighCoeffField._type = EditorComponentFieldType::PUSH_TYPE;
         rayleighCoeffField._readOnly = false;
         rayleighCoeffField._range = { 0.01f, 100.0f };
-        rayleighCoeffField._basicType = GFX::PushConstantType::VEC3;
+        rayleighCoeffField._basicType = PushConstantType::VEC3;
         getEditorComponent().registerField( MOV( rayleighCoeffField ) );
 
         EditorComponentField rayleighScaleField = {};
@@ -344,17 +354,17 @@ Sky::Sky( GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash,
         rayleighScaleField._type = EditorComponentFieldType::SLIDER_TYPE;
         rayleighScaleField._range = { 0.01f, 12000.f };
         rayleighScaleField._readOnly = false;
-        rayleighScaleField._basicType = GFX::PushConstantType::FLOAT;
+        rayleighScaleField._basicType = PushConstantType::FLOAT;
         getEditorComponent().registerField( MOV( rayleighScaleField ) );
 
         EditorComponentField mieCoeffField = {};
-        mieCoeffField._name = "Mie Coefficients";
-        mieCoeffField._tooltip = "[0.00001...0.1] - Mie scattering coefficient.";
+        mieCoeffField._name = "Mie Coeff (x 1e-6)";
+        mieCoeffField._tooltip = "[1.f...50.f] x 1e-6 - Mie scattering coefficient.";
         mieCoeffField._data = &_atmosphere._MieCoeff;
         mieCoeffField._type = EditorComponentFieldType::PUSH_TYPE;
         mieCoeffField._readOnly = false;
-        mieCoeffField._range = { 0.00001f, 0.1f };
-        mieCoeffField._basicType = GFX::PushConstantType::FLOAT;
+        mieCoeffField._range = { 1.f, 50.f };
+        mieCoeffField._basicType = PushConstantType::FLOAT;
         getEditorComponent().registerField( MOV( mieCoeffField ) );
 
         EditorComponentField mieScaleField = {};
@@ -364,7 +374,7 @@ Sky::Sky( GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash,
         mieScaleField._type = EditorComponentFieldType::SLIDER_TYPE;
         mieScaleField._readOnly = false;
         mieScaleField._range = { 0.01f, 6000.0f };
-        mieScaleField._basicType = GFX::PushConstantType::FLOAT;
+        mieScaleField._basicType = PushConstantType::FLOAT;
         getEditorComponent().registerField( MOV( mieScaleField ) );
     }
     {
@@ -375,52 +385,52 @@ Sky::Sky( GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash,
 
         EditorComponentField sunScaleField = {};
         sunScaleField._name = "Sun Penetration Power";
-        sunScaleField._tooltip = "(0.01x - 50.0x) - Factor used to calculate atmosphere transmitance for clour layer.";
+        sunScaleField._tooltip = "(0.01x - 200.0x) - Factor used to calculate atmosphere transmitance for clour layer.";
         sunScaleField._data = &_atmosphere._sunPenetrationPower;
         sunScaleField._type = EditorComponentFieldType::SLIDER_TYPE;
         sunScaleField._readOnly = false;
-        sunScaleField._range = { 0.01f, 50.0f };
-        sunScaleField._basicType = GFX::PushConstantType::FLOAT;
+        sunScaleField._range = { 0.01f, 200.0f };
+        sunScaleField._basicType = PushConstantType::FLOAT;
         getEditorComponent().registerField( MOV( sunScaleField ) );
 
         EditorComponentField planetRadiusField = {};
-        planetRadiusField._name = "Planet Radius [1m...20000m]";
-        planetRadiusField._tooltip = "The radius of the Earth (default: 6371e3 m)";
+        planetRadiusField._name = "Planet Radius (m)";
+        planetRadiusField._tooltip = "The radius of the Earth (default: 6371e3m, range: [1m...20000m])";
         planetRadiusField._data = &_atmosphere._planetRadius;
         planetRadiusField._type = EditorComponentFieldType::PUSH_TYPE;
         planetRadiusField._readOnly = false;
         planetRadiusField._range = { 1.f, 20000.f };
-        planetRadiusField._basicType = GFX::PushConstantType::FLOAT;
+        planetRadiusField._basicType = PushConstantType::FLOAT;
         getEditorComponent().registerField( MOV( planetRadiusField ) );
 
         EditorComponentField cloudRadiusField = {};
-        cloudRadiusField._name = "Cloud Radius [1m...400000m]";
-        cloudRadiusField._tooltip = "Radius of the cloud layer (default: 200e3f m)";
+        cloudRadiusField._name = "Cloud Radius (m)";
+        cloudRadiusField._tooltip = "Radius of the cloud layer in meters (default: 200e3m, range: [1m...400000m])";
         cloudRadiusField._data = &_atmosphere._cloudSphereRadius;
         cloudRadiusField._type = EditorComponentFieldType::PUSH_TYPE;
         cloudRadiusField._readOnly = false;
         cloudRadiusField._range = { 1.f, 400000.f };
-        cloudRadiusField._basicType = GFX::PushConstantType::FLOAT;
+        cloudRadiusField._basicType = PushConstantType::FLOAT;
         getEditorComponent().registerField( MOV( cloudRadiusField ) );
 
         EditorComponentField atmosphereOffsetField = {};
-        atmosphereOffsetField._name = "Atmosphere Offset [1m - 2000m]";
-        atmosphereOffsetField._tooltip = "Atmosphere distance in meters starting from the planet radius.";
+        atmosphereOffsetField._name = "Atmosphere Offset (m)";
+        atmosphereOffsetField._tooltip = "Atmosphere distance in meters starting from the planet radius (range: [1m - 2000m]).";
         atmosphereOffsetField._data = &_atmosphere._atmosphereOffset;
         atmosphereOffsetField._type = EditorComponentFieldType::SLIDER_TYPE;
         atmosphereOffsetField._readOnly = false;
         atmosphereOffsetField._range = { 1.f, 2000.f };
-        atmosphereOffsetField._basicType = GFX::PushConstantType::FLOAT;
+        atmosphereOffsetField._basicType = PushConstantType::FLOAT;
         getEditorComponent().registerField( MOV( atmosphereOffsetField ) );
 
         EditorComponentField cloudHeightOffsetField = {};
-        cloudHeightOffsetField._name = "Cloud layer height range (m)";
+        cloudHeightOffsetField._name = "Cloud height range (m)";
         cloudHeightOffsetField._tooltip = "Cloud layer will be limited to the range [cloudRadius + x, cloudRadius + y].";
         cloudHeightOffsetField._data = &_atmosphere._cloudLayerMinMaxHeight;
         cloudHeightOffsetField._type = EditorComponentFieldType::PUSH_TYPE;
         cloudHeightOffsetField._readOnly = false;
         cloudHeightOffsetField._range = { 10.f, 50000.f };
-        cloudHeightOffsetField._basicType = GFX::PushConstantType::VEC2;
+        cloudHeightOffsetField._basicType = PushConstantType::VEC2;
         getEditorComponent().registerField( MOV( cloudHeightOffsetField ) );
     }
     {
@@ -459,7 +469,7 @@ Sky::Sky( GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash,
         weatherScaleField._type = EditorComponentFieldType::SLIDER_TYPE;
         weatherScaleField._readOnly = false;
         weatherScaleField._range = { 1.f, 100.f };
-        weatherScaleField._basicType = GFX::PushConstantType::FLOAT;
+        weatherScaleField._basicType = PushConstantType::FLOAT;
         getEditorComponent().registerField( MOV( weatherScaleField ) );
 
         EditorComponentField separator3Field = {};
@@ -472,7 +482,7 @@ Sky::Sky( GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash,
         useDaySkyboxField._data = &_useDaySkybox;
         useDaySkyboxField._type = EditorComponentFieldType::PUSH_TYPE;
         useDaySkyboxField._readOnly = false;
-        useDaySkyboxField._basicType = GFX::PushConstantType::BOOL;
+        useDaySkyboxField._basicType = PushConstantType::BOOL;
         getEditorComponent().registerField( MOV( useDaySkyboxField ) );
 
         EditorComponentField useNightSkyboxField = {};
@@ -480,7 +490,7 @@ Sky::Sky( GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash,
         useNightSkyboxField._data = &_useNightSkybox;
         useNightSkyboxField._type = EditorComponentFieldType::PUSH_TYPE;
         useNightSkyboxField._readOnly = false;
-        useNightSkyboxField._basicType = GFX::PushConstantType::BOOL;
+        useNightSkyboxField._basicType = PushConstantType::BOOL;
         getEditorComponent().registerField( MOV( useNightSkyboxField ) );
 
         EditorComponentField useProceduralCloudsField = {};
@@ -488,7 +498,7 @@ Sky::Sky( GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash,
         useProceduralCloudsField._data = &_enableProceduralClouds;
         useProceduralCloudsField._type = EditorComponentFieldType::PUSH_TYPE;
         useProceduralCloudsField._readOnly = false;
-        useProceduralCloudsField._basicType = GFX::PushConstantType::BOOL;
+        useProceduralCloudsField._basicType = PushConstantType::BOOL;
         getEditorComponent().registerField( MOV( useProceduralCloudsField ) );
 
         EditorComponentField nightColourField = {};
@@ -496,7 +506,7 @@ Sky::Sky( GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash,
         nightColourField._data = &_nightSkyColour;
         nightColourField._type = EditorComponentFieldType::PUSH_TYPE;
         nightColourField._readOnly = false;
-        nightColourField._basicType = GFX::PushConstantType::FCOLOUR4;
+        nightColourField._basicType = PushConstantType::FCOLOUR4;
         getEditorComponent().registerField( MOV( nightColourField ) );
 
         EditorComponentField moonColourField = {};
@@ -504,7 +514,7 @@ Sky::Sky( GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash,
         moonColourField._data = &_moonColour;
         moonColourField._type = EditorComponentFieldType::PUSH_TYPE;
         moonColourField._readOnly = false;
-        moonColourField._basicType = GFX::PushConstantType::FCOLOUR4;
+        moonColourField._basicType = PushConstantType::FCOLOUR4;
         getEditorComponent().registerField( MOV( moonColourField ) );
 
         EditorComponentField moonScaleField = {};
@@ -513,7 +523,7 @@ Sky::Sky( GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash,
         moonScaleField._type = EditorComponentFieldType::PUSH_TYPE;
         moonScaleField._readOnly = false;
         moonScaleField._range = { 0.001f, 0.99f };
-        moonScaleField._basicType = GFX::PushConstantType::FLOAT;
+        moonScaleField._basicType = PushConstantType::FLOAT;
         getEditorComponent().registerField( MOV( moonScaleField ) );
     }
 }
@@ -635,7 +645,6 @@ bool Sky::load()
         fragModule._sourceFile = "sky.glsl";
 
         ShaderProgramDescriptor shaderDescriptor = {};
-        shaderDescriptor._globalDefines.emplace_back( "NO_VELOCITY", true);
         shaderDescriptor._globalDefines.emplace_back( "SKIP_REFLECT_REFRACT", true);
         shaderDescriptor._globalDefines.emplace_back( "dvd_nightSkyColour PushData0[0].xyz" );
         shaderDescriptor._globalDefines.emplace_back( "dvd_raySteps uint(PushData0[0].w)" );
@@ -654,16 +663,20 @@ bool Sky::load()
         shaderDescriptor._globalDefines.emplace_back( "dvd_RayleighScale PushData1[1].z" );
         shaderDescriptor._globalDefines.emplace_back( "dvd_MieScaleHeight PushData1[1].w" );
         shaderDescriptor._globalDefines.emplace_back( "dvd_enableClouds uint(PushData1[2].x)" );
+        shaderDescriptor._globalDefines.emplace_back( "dvd_luminance uint(PushData1[2].y)" );
         shaderDescriptor._globalDefines.emplace_back( "dvd_useDaySkybox (dvd_useSkyboxes.x == 1)" );
         shaderDescriptor._globalDefines.emplace_back( "dvd_useNightSkybox (dvd_useSkyboxes.y == 1)" );
 
         if ( IsDepthPass( stagePass ) )
         {
             vertModule._variant = "NoClouds";
+            vertModule._defines.emplace_back("NO_CLOUDS", true);
+
             shaderDescriptor._modules.push_back( vertModule );
 
             if ( stagePass._stage == RenderStage::DISPLAY )
             {
+                fragModule._defines.emplace_back( "NO_CLOUDS", true );
                 fragModule._variant = "PrePass";
                 shaderDescriptor._modules.push_back( fragModule );
                 shaderDescriptor._name = "sky_PrePass";
@@ -841,6 +854,12 @@ void Sky::weatherScale( const F32 val )
     _atmosphereChanged = true;
 }
 
+void Sky::skyLuminance( const F32 val )
+{
+    _skyLuminance = val;
+    _atmosphereChanged = true;
+}
+
 void Sky::moonColour( const FColour4 val )
 {
     _moonColour = val;
@@ -861,8 +880,10 @@ void Sky::setSkyShaderData( const U32 rayCount, PushConstants& constantsInOut )
     fastData.data[0]._vec[2].set( useDaySkybox() ? 1.f : 0.f, useNightSkybox() ? 1.f : 0.f, _atmosphere._cloudLayerMinMaxHeight.min, _atmosphere._cloudLayerMinMaxHeight.max );
     fastData.data[0]._vec[3].set( _atmosphere._RayleighCoeff * 1e-6f, weatherScale() * 1e-5f );
     fastData.data[1]._vec[0].set( _atmosphere._sunIntensity, _atmosphere._sunPenetrationPower, _atmosphere._planetRadius, _atmosphere._cloudSphereRadius );
-    fastData.data[1]._vec[1].set( _atmosphere._atmosphereOffset, _atmosphere._MieCoeff, _atmosphere._RayleighScale, _atmosphere._MieScaleHeight );
+    fastData.data[1]._vec[1].set( _atmosphere._atmosphereOffset, _atmosphere._MieCoeff * 1e-6f, _atmosphere._RayleighScale, _atmosphere._MieScaleHeight );
     fastData.data[1]._vec[2].x = enableProceduralClouds() ? 1.f : 0.f;
+    fastData.data[1]._vec[2].y = skyLuminance();
+
     constantsInOut.set( fastData );
 }
 

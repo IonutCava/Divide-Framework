@@ -331,9 +331,6 @@ void main()
     _out._normalW = dvd_NormalMatrixW(dvd_Transforms[TRANSFORM_IDX]) * getNormal(_out._texCoord);
     _out._tbnWV = mat3(dvd_ViewMatrix) * getTBNW(_out._normalW);
     _out._indirectionIDs = _in[0]._indirectionIDs;
-#if !defined(PRE_PASS) && !defined(SHADOW_PASS)
-    _out._viewDirectionWV = mat3(dvd_ViewMatrix) * normalize(dvd_CameraPosition - _out._vertexW.xyz);
-#endif //PRE_PASS && SHADOW_PASS
 
     tes_waterData = GetWaterDetails(_out._vertexW.xyz, TERRAIN_HEIGHT_OFFSET);
 

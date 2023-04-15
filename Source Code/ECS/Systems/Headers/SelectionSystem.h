@@ -30,31 +30,29 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _SELECTION_COMPONENT_H_
-#define _SELECTION_COMPONENT_H_
+#ifndef _SELECTION_SYSTEM_H_
+#define _SELECTION_SYSTEM_H_
 
+#include "ECSSystem.h"
+#include "Core/Headers/PlatformContextComponent.h"
+#include "ECS/Components/Headers/SelectionComponent.h"
 
-#include "SGNComponent.h"
+namespace Divide
+{
 
-namespace Divide {
-BEGIN_COMPONENT(Selection, ComponentType::SELECTION)
-    public:
-       enum class SelectionType : U8
-       {
-           NONE = 0,
-           HOVERED,
-           PARENT_HOVERED,
-           SELECTED,
-           PARENT_SELECTED,
-           COUNT
-       };
-    public:
-        SelectionComponent(SceneGraphNode* parentSGN, PlatformContext& context);
+    class SelectionSystem final : public PlatformContextComponent,
+        public ECSSystem<SelectionSystem, SelectionComponent>
+    {
+        using Parent = ECSSystem<SelectionSystem, SelectionComponent>;
+      public:
+        SelectionSystem( ECS::ECSEngine& parentEngine, PlatformContext& context );
+        virtual ~SelectionSystem();
 
-        PROPERTY_R_IW( SelectionType, selectionType, SelectionType::NONE);
+        void Update( F32 dt ) override;
 
-END_COMPONENT(Selection);
+        bool saveCache( const SceneGraphNode* sgn, ByteBuffer& outputBuffer ) override;
+        bool loadCache( SceneGraphNode* sgn, ByteBuffer& inputBuffer ) override;
+    };
+}
 
-} //namespace Divide
-
-#endif //_SELECTION_COMPONENT_H_
+#endif //_SELECTION_SYSTEM_H_

@@ -89,8 +89,6 @@ public:
 
     void onNodeUpdated(const SceneGraphNode& node) noexcept;
 
-    static vector<Camera*>& ProbeCameras() noexcept { return s_probeCameras; }
-
     static I16  AllocateSlice(bool lock);
     static void UnlockSlice(I16 slice) noexcept;
 
@@ -121,7 +119,6 @@ protected:
     EnvironmentProbeList _envProbes;
 
     static vector<DebugView_ptr> s_debugViews;
-    static vector<Camera*> s_probeCameras;
     static bool s_probesDirty;
     static bool s_debuggingSkyLight;
     static bool s_skyLightNeedsRefresh;

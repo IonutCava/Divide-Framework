@@ -20,7 +20,7 @@ AnimationComponent::AnimationComponent(SceneGraphNode* parentSGN, PlatformContex
     vskelField._name = "Show Skeleton";
     vskelField._data = &_showSkeleton;
     vskelField._type = EditorComponentFieldType::SWITCH_TYPE;
-    vskelField._basicType = GFX::PushConstantType::BOOL;
+    vskelField._basicType = PushConstantType::BOOL;
     vskelField._readOnly = false;
     _editorComponent.registerField(MOV(vskelField));
 
@@ -28,7 +28,7 @@ AnimationComponent::AnimationComponent(SceneGraphNode* parentSGN, PlatformContex
     playAnimationsField._name = "Play Animations";
     playAnimationsField._data = &_playAnimations;
     playAnimationsField._type = EditorComponentFieldType::SWITCH_TYPE;
-    playAnimationsField._basicType = GFX::PushConstantType::BOOL;
+    playAnimationsField._basicType = PushConstantType::BOOL;
     playAnimationsField._readOnly = false;
     _editorComponent.registerField(MOV(playAnimationsField));
 
@@ -36,7 +36,7 @@ AnimationComponent::AnimationComponent(SceneGraphNode* parentSGN, PlatformContex
     animationSpeedField._name = "Animation Speed";
     animationSpeedField._data = &_animationSpeed;
     animationSpeedField._type = EditorComponentFieldType::PUSH_TYPE;
-    animationSpeedField._basicType = GFX::PushConstantType::FLOAT;
+    animationSpeedField._basicType = PushConstantType::FLOAT;
     animationSpeedField._range = { 0.01f, 100.0f };
     animationSpeedField._readOnly = false;
     _editorComponent.registerField(MOV(animationSpeedField));
@@ -46,7 +46,7 @@ AnimationComponent::AnimationComponent(SceneGraphNode* parentSGN, PlatformContex
     animationFrameIndexInfoField._tooltip = " [Curr - Prev - Next]";
     animationFrameIndexInfoField._dataGetter = [this](void* dataOut) noexcept { *static_cast<vec3<I32>*>(dataOut) = vec3<I32>{ _frameIndex._curr, _frameIndex._prev, _frameIndex._next }; };
     animationFrameIndexInfoField._type = EditorComponentFieldType::PUSH_TYPE;
-    animationFrameIndexInfoField._basicType = GFX::PushConstantType::IVEC3;
+    animationFrameIndexInfoField._basicType = PushConstantType::IVEC3;
     animationFrameIndexInfoField._readOnly = true;
     _editorComponent.registerField(MOV(animationFrameIndexInfoField));
 

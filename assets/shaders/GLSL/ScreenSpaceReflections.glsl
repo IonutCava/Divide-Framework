@@ -12,8 +12,10 @@ DESCRIPTOR_SET_RESOURCE(PER_DRAW, 2) uniform sampler2D texNormal;
 uniform mat4 projToPixel; // A projection matrix that maps to pixel coordinates (not [-1, +1] normalized device coordinates)
 uniform mat4 projectionMatrix;
 uniform mat4 invProjectionMatrix;
-uniform mat4 previousViewProjection;
 uniform mat4 invViewMatrix;
+uniform mat4 previousViewMatrix;
+uniform mat4 previousProjectionMatrix;
+uniform mat4 previousViewProjectionMatrix;
 uniform vec2 _zPlanes;
 uniform vec2 screenDimensions;
 uniform uint maxScreenMips = 5u;
@@ -27,6 +29,7 @@ uniform float strideZCutoff = 100.f;
 uniform float screenEdgeFadeStart = 0.75f;
 uniform float eyeFadeStart = 0.5f;
 uniform float eyeFadeEnd = 1.f;
+
 
 layout(location = 0) out vec4 _colourOut;
 
@@ -210,15 +213,11 @@ void main() {
                     // Sample reflection in previous frame with temporal reprojection
 #if 0
                     vec4 prevHit = invViewMatrix * vec4(hitPoint.xyz, 1);
-                    prevHit = dvd_PreviousViewMatrix * prevHit;
-                    prevHit = dvd_PreviousProjectionMatrix * prevHit;
+                    prevHit = previousViewMatrix * prevHit;
+                    prevHit = previousProjectionMatrix * prevHit;
                     prevHit.xyz /= prevHit.w;
 #else
-#if 0
-                    const vec3 prevHit = Homogenize(previousViewProjection * (invViewMatrix * vec4(hitPoint, 1.f)));
-#else
-                    const vec3 prevHit = Homogenize(dvd_PreviousViewProjectionMatrix * (invViewMatrix * vec4(hitPoint, 1.f)));
-#endif
+                    const vec3 prevHit = Homogenize( previousViewProjectionMatrix * (invViewMatrix * vec4(hitPoint, 1.f)));
 #endif
                     // Blend between reprojected SSR sample and IBL
                     reflBlend = ComputeBlendFactorForIntersection(iterations, hitPixel, hitPoint, vsPos, vsReflect);

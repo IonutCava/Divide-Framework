@@ -33,7 +33,6 @@
 #ifndef _SHADER_PROGRAM_FWD_H_
 #define _SHADER_PROGRAM_FWD_H_
 
-#include "Platform/Video/Headers/RenderAPIEnums.h"
 #include "Core/Resources/Headers/ResourceDescriptor.h"
 
 #include "Core/Headers/PoolHandle.h"

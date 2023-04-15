@@ -8,8 +8,9 @@ layout(location = ATTRIB_POSITION) in vec3 inVertexData;
 layout(location = ATTRIB_FREE_START + 0) out vec3 nearPoint;
 layout(location = ATTRIB_FREE_START + 1) out vec3 farPoint;
 
-vec3 UnprojectPoint(in float x, in  float y, in  float z) {
-    const vec4 transformedPoint = dvd_InverseViewMatrix * dvd_InverseProjectionMatrix * vec4(x, y, z, 1.f);
+vec3 UnprojectPoint(in float x, in  float y, in  float z) 
+{
+    const vec4 transformedPoint = dvd_InverseViewMatrix * inverse(dvd_ProjectionMatrix) * vec4(x, y, z, 1.f);
     return Homogenize(transformedPoint);
 }
 

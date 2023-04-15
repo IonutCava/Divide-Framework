@@ -132,7 +132,7 @@ namespace Divide
         instanceCountGrassField._data = &_instanceCountGrass;
         instanceCountGrassField._type = EditorComponentFieldType::PUSH_TYPE;
         instanceCountGrassField._readOnly = true;
-        instanceCountGrassField._basicType = GFX::PushConstantType::UINT;
+        instanceCountGrassField._basicType = PushConstantType::UINT;
         _editorComponent.registerField( MOV( instanceCountGrassField ) );
 
         EditorComponentField visDistanceGrassField = {};
@@ -140,7 +140,7 @@ namespace Divide
         visDistanceGrassField._data = &_grassDistance;
         visDistanceGrassField._type = EditorComponentFieldType::PUSH_TYPE;
         visDistanceGrassField._readOnly = true;
-        visDistanceGrassField._basicType = GFX::PushConstantType::FLOAT;
+        visDistanceGrassField._basicType = PushConstantType::FLOAT;
         _editorComponent.registerField( MOV( visDistanceGrassField ) );
 
         EditorComponentField instanceCountTreesField = {};
@@ -148,7 +148,7 @@ namespace Divide
         instanceCountTreesField._data = &_instanceCountTrees;
         instanceCountTreesField._type = EditorComponentFieldType::PUSH_TYPE;
         instanceCountTreesField._readOnly = true;
-        instanceCountTreesField._basicType = GFX::PushConstantType::UINT;
+        instanceCountTreesField._basicType = PushConstantType::UINT;
         _editorComponent.registerField( MOV( instanceCountTreesField ) );
 
         EditorComponentField visDistanceTreesField = {};
@@ -156,7 +156,7 @@ namespace Divide
         visDistanceTreesField._data = &_treeDistance;
         visDistanceTreesField._type = EditorComponentFieldType::PUSH_TYPE;
         visDistanceTreesField._readOnly = true;
-        visDistanceTreesField._basicType = GFX::PushConstantType::FLOAT;
+        visDistanceTreesField._basicType = PushConstantType::FLOAT;
         _editorComponent.registerField( MOV( visDistanceTreesField ) );
 
         EditorComponentField terrainIDField = {};
@@ -167,7 +167,7 @@ namespace Divide
         };
         terrainIDField._type = EditorComponentFieldType::PUSH_TYPE;
         terrainIDField._readOnly = true;
-        terrainIDField._basicType = GFX::PushConstantType::UINT;
+        terrainIDField._basicType = PushConstantType::UINT;
         _editorComponent.registerField( MOV( terrainIDField ) );
 
     }
@@ -714,7 +714,7 @@ namespace Divide
                                     const CameraSnapshot& cameraSnapshot,
                                     bool refreshData )
     {
-        pkg.pushConstantsCmd()._constants.set( _ID( "dvd_terrainChunkOffset" ), GFX::PushConstantType::UINT, _terrainChunk.ID() );
+        pkg.pushConstantsCmd()._constants.set( _ID( "dvd_terrainChunkOffset" ), PushConstantType::UINT, _terrainChunk.ID() );
 
         GFX::CommandBuffer& bufferInOut = *GetCommandBuffer( pkg );
         bufferInOut.clear( false );
@@ -760,15 +760,15 @@ namespace Divide
 
                 GFX::SendPushConstantsCommand cullConstantsCmd{};
                 PushConstants& constants = cullConstantsCmd._constants;
-                constants.set( _ID( "nearPlane" ), GFX::PushConstantType::FLOAT, cameraSnapshot._zPlanes.min );
-                constants.set( _ID( "viewSize" ), GFX::PushConstantType::VEC2, vec2<F32>( hizTexture->width(), hizTexture->height() ) );
-                constants.set( _ID( "frustumPlanes" ), GFX::PushConstantType::VEC4, cameraSnapshot._frustumPlanes );
-                constants.set( _ID( "cameraPosition" ), GFX::PushConstantType::VEC3, cameraSnapshot._eye );
-                constants.set( _ID( "dvd_grassVisibilityDistance" ), GFX::PushConstantType::FLOAT, _grassDistance );
-                constants.set( _ID( "dvd_treeVisibilityDistance" ), GFX::PushConstantType::FLOAT, _treeDistance );
-                constants.set( _ID( "treeExtents" ), GFX::PushConstantType::VEC4, _treeExtents );
-                constants.set( _ID( "grassExtents" ), GFX::PushConstantType::VEC4, _grassExtents );
-                constants.set( _ID( "dvd_terrainChunkOffset" ), GFX::PushConstantType::UINT, _terrainChunk.ID() );
+                constants.set( _ID( "nearPlane" ), PushConstantType::FLOAT, cameraSnapshot._zPlanes.min );
+                constants.set( _ID( "viewSize" ), PushConstantType::VEC2, vec2<F32>( hizTexture->width(), hizTexture->height() ) );
+                constants.set( _ID( "frustumPlanes" ), PushConstantType::VEC4, cameraSnapshot._frustumPlanes );
+                constants.set( _ID( "cameraPosition" ), PushConstantType::VEC3, cameraSnapshot._eye );
+                constants.set( _ID( "dvd_grassVisibilityDistance" ), PushConstantType::FLOAT, _grassDistance );
+                constants.set( _ID( "dvd_treeVisibilityDistance" ), PushConstantType::FLOAT, _treeDistance );
+                constants.set( _ID( "treeExtents" ), PushConstantType::VEC4, _treeExtents );
+                constants.set( _ID( "grassExtents" ), PushConstantType::VEC4, _grassExtents );
+                constants.set( _ID( "dvd_terrainChunkOffset" ), PushConstantType::UINT, _terrainChunk.ID() );
                 constants.set( fastConstants );
 
                 GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Occlusion Cull Vegetation" } );

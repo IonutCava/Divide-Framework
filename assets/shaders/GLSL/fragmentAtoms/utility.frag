@@ -52,7 +52,7 @@ float computeDepth(in vec4 posWV, in mat4 projMatrix, in vec2 zPlanes) {
 }
 
 #define IsInScreenRect(COORDS) all(bvec4(COORDS.x >= 0.f, COORDS.x <= 1.f, COORDS.y >= 0.f, COORDS.y <= 1.f))
-#define IsInFrustum(COORDS)  (COORDS.z <= 1.f && IsInScreenRect(COORDS.xy))
+#define IsInFrustum(COORDS)  (COORDS.z >= 0.f && COORDS.z <= 1.f && IsInScreenRect(COORDS.xy))
 
 #define packVec2(X, Y) uintBitsToFloat(packHalf2x16(vec2(x, y)))
 vec2 unpackVec2(in uint pckd)  { return unpackHalf2x16(pckd); }

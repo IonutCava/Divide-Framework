@@ -33,7 +33,6 @@
 #ifndef _RENDER_STATE_BLOCK_H
 #define _RENDER_STATE_BLOCK_H
 
-#include "RenderAPIEnums.h"
 #include "Core/Headers/Hashable.h"
 
 namespace Divide {

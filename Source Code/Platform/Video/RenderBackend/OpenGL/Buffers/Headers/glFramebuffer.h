@@ -92,7 +92,6 @@ protected:
 
     bool initAttachment(RTAttachment* att, RTAttachmentType type, RTColourAttachmentSlot slot, bool isExternal) override;
 
-    void setAttachmentState( U8 attachmentIdx, BindingState state);
     bool toggleAttachment( U8 attachmentIdx, AttachmentState state, U16 levelOffset, DrawLayerEntry layerOffset, bool layeredRendering);
 
     void clear(const RTClearDescriptor& descriptor);
@@ -104,9 +103,6 @@ protected:
 
    protected:
     bool setMipLevelInternal( U8 attachmentIdx, U16 writeLevel);
-
-    BindingState getAttachmentState( U8 attachmentIdx ) const;
-
     static void QueueMipMapsRecomputation(const RTAttachment_uptr& attachment);
 
    protected:

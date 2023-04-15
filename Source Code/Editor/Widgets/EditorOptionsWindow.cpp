@@ -59,7 +59,7 @@ namespace Divide {
             ImGui::ResetStyle(static_cast<ImGuiStyleEnum>(selection));
             Attorney::EditorOptionsWindow::setTheme(_context.editor(), static_cast<ImGuiStyleEnum>(selection));
 
-            undo._type = GFX::PushConstantType::INT;
+            undo._type = PushConstantType::INT;
             undo._name = "Theme Selection";
             undo._oldVal = crtThemeIdx;
             undo._newVal = selection;

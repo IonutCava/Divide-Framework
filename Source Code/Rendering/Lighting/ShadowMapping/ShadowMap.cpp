@@ -106,8 +106,8 @@ namespace Divide
 
         SamplerDescriptor shadowMapSamplerCache = {};
         shadowMapSamplerCache.wrapUVW( TextureWrap::CLAMP_TO_EDGE );
-        shadowMapSamplerCache.magFilter( TextureFilter::NEAREST );
-        shadowMapSamplerCache.minFilter( TextureFilter::NEAREST );
+        shadowMapSamplerCache.magFilter( TextureFilter::LINEAR );
+        shadowMapSamplerCache.minFilter( TextureFilter::LINEAR );
         shadowMapSamplerCache.mipSampling( TextureMipSampling::NONE );
         shadowMapSamplerCache.anisotropyLevel( 0u );
 
@@ -261,6 +261,19 @@ namespace Divide
         }
 
         s_shadowMapGenerators.fill( nullptr );
+    }
+
+    void ShadowMap::reset()
+    {
+        LockGuard<Mutex> w_lock( s_shadowMapUsageLock );
+        for (LayerLifetimeMask& lifetimeMask : s_shadowMapLifetime)
+        {
+            for ( auto& mast : lifetimeMask )
+            {
+                mast._lifetime = MAX_SHADOW_FRAME_LIFETIME;
+                mast._lightGUID = -1;
+            }
+        }
     }
 
     void ShadowMap::resetShadowMaps( GFX::CommandBuffer& bufferInOut )
@@ -552,7 +565,7 @@ namespace Divide
                         shadow->_texture = getShadowMap( LightType::DIRECTIONAL )._rt->getAttachment( RTAttachmentType::COLOUR )->texture();
                         shadow->_samplerHash = getShadowMap( LightType::DIRECTIONAL )._rt->getAttachment( RTAttachmentType::COLOUR )->descriptor()._samplerHash;
                         shadow->_shader = previewShader;
-                        shadow->_shaderData.set( _ID( "layer" ), GFX::PushConstantType::INT, i + light->getShadowArrayOffset() );
+                        shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, i + light->getShadowArrayOffset() );
                         shadow->_name = Util::StringFormat( "CSM_%d", i + light->getShadowArrayOffset() );
                         shadow->_groupID = Base + to_I16( light->shadowPropertyIndex() );
                         shadow->_enabled = true;
@@ -576,7 +589,7 @@ namespace Divide
                     shadow->_texture = getShadowMap( LightType::SPOT )._rt->getAttachment( RTAttachmentType::COLOUR )->texture();
                     shadow->_samplerHash = getShadowMap( LightType::SPOT )._rt->getAttachment( RTAttachmentType::COLOUR )->descriptor()._samplerHash;
                     shadow->_shader = CreateResource<ShaderProgram>( context.context().kernel().resourceCache(), shadowPreviewShader );
-                    shadow->_shaderData.set( _ID( "layer" ), GFX::PushConstantType::INT, light->getShadowArrayOffset() );
+                    shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, light->getShadowArrayOffset() );
                     shadow->_name = Util::StringFormat( "SM_%d", light->getShadowArrayOffset() );
                     shadow->_enabled = true;
                     shadow->_groupID = Base + to_I16( light->shadowPropertyIndex() );
@@ -605,8 +618,8 @@ namespace Divide
                         shadow->_texture = getShadowMap( LightType::POINT )._rt->getAttachment( RTAttachmentType::COLOUR )->texture();
                         shadow->_samplerHash = getShadowMap( LightType::POINT )._rt->getAttachment( RTAttachmentType::COLOUR )->descriptor()._samplerHash;
                         shadow->_shader = previewShader;
-                        shadow->_shaderData.set( _ID( "layer" ), GFX::PushConstantType::INT, light->getShadowArrayOffset() );
-                        shadow->_shaderData.set( _ID( "face" ), GFX::PushConstantType::INT, i );
+                        shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, light->getShadowArrayOffset() );
+                        shadow->_shaderData.set( _ID( "face" ), PushConstantType::INT, i );
                         shadow->_groupID = Base + to_I16( light->shadowPropertyIndex() );
                         shadow->_name = Util::StringFormat( "CubeSM_%d_face_%d", light->getShadowArrayOffset(), i );
                         shadow->_enabled = true;

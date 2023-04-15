@@ -42,7 +42,6 @@ IMPLEMENT_COMMAND(DispatchComputeCommand);
 IMPLEMENT_COMMAND(MemoryBarrierCommand);
 IMPLEMENT_COMMAND(ReadBufferDataCommand);
 IMPLEMENT_COMMAND(ClearBufferDataCommand);
-IMPLEMENT_COMMAND(SetClippingStateCommand);
 
 string ToString(const BindPipelineCommand& cmd, U16 indent) {
     assert(cmd._pipeline != nullptr);
@@ -451,10 +450,6 @@ string ToString(const MemoryBarrierCommand& cmd, U16 indent) {
     return ret;
 }
 
-string ToString(const SetClippingStateCommand& cmd, U16 indent) {
-    return Util::StringFormat(" [ Origin: %s ] [ Depth: %s ]", cmd._lowerLeftOrigin ? "LOWER_LEFT" : "UPPER_LEFT", cmd._negativeOneToOneDepth ? "-1 to 1 " : "0 to 1");
-}
-
 string ToString( const BeginGPUQueryCommand& cmd, const U16 indent )
 {
     string ret = " Bit Mask: ";
@@ -623,10 +618,6 @@ string ToString(const CommandBase& cmd, U16 indent) {
         case CommandType::ADD_DEBUG_MESSAGE:
         {
             ret.append(ToString(static_cast<const AddDebugMessageCommand&>(cmd), indent));
-        }break;
-        case CommandType::SET_CLIPING_STATE:
-        {
-            ret.append(ToString(static_cast<const SetClippingStateCommand&>(cmd), indent));
         }break;
         default: break;
     }

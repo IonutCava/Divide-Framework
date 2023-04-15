@@ -61,7 +61,7 @@ namespace Divide
         {
             DRAW_STATIC_NODES = 0,
             DRAW_DYNAMIC_NODES,
-            DRAW_SKY_NODES,
+            DRAW_TRANSLUCENT_NODES,
             COUNT
         };
 
@@ -90,7 +90,8 @@ namespace Divide
         bool _refreshLightData{true};
 
         U8 _drawMask = 1 << to_base( Flags::DRAW_DYNAMIC_NODES ) |
-                       1 << to_base( Flags::DRAW_STATIC_NODES );
+                       1 << to_base( Flags::DRAW_STATIC_NODES ) |
+                       1 << to_base( Flags::DRAW_TRANSLUCENT_NODES );
     };
 
     void SetDefaultDrawDescriptor(RenderPassParams& params);

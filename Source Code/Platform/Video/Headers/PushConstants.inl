@@ -35,7 +35,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
     template<typename T>
-    void PushConstants::set(U64 bindingHash, GFX::PushConstantType type, const T* values, size_t count) {
+    void PushConstants::set(U64 bindingHash, PushConstantType type, const T* values, size_t count) {
         for (GFX::PushConstant& constant : _data) {
             if (constant.bindingHash() == bindingHash) {
                 assert(constant.type() == type);
@@ -48,17 +48,17 @@ namespace Divide {
     }
 
     template<typename T>
-    void PushConstants::set(U64 bindingHash, GFX::PushConstantType type, const T& value) {
+    void PushConstants::set(U64 bindingHash, PushConstantType type, const T& value) {
         set(bindingHash, type, &value, 1);
     }
 
     template<typename T>
-    void PushConstants::set(U64 bindingHash, GFX::PushConstantType type, const vector<T>& values) {
+    void PushConstants::set(U64 bindingHash, PushConstantType type, const vector<T>& values) {
         set(bindingHash, type, values.data(), values.size());
     }
 
     template<typename T, size_t N>
-    void PushConstants::set(U64 bindingHash, GFX::PushConstantType type, const std::array<T, N>& values) {
+    void PushConstants::set(U64 bindingHash, PushConstantType type, const std::array<T, N>& values) {
         set(bindingHash, type, values.data(), N);
     }
 

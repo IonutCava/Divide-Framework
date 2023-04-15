@@ -33,17 +33,15 @@
 #ifndef GL_SHADER_PROGRAM_H
 #define GL_SHADER_PROGRAM_H
 
-#include "glShaderProgram.h"
+#include "glShader.h"
 #include "AI/ActionInterface/Headers/AIProcessor.h"
 #include "Platform/Video/GLIM/Declarations.h"
-#include "Platform/Video/RenderBackend/OpenGL/Headers/glResources.h"
-#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 namespace Divide {
 
-class PlatformContext;
 class GL_API;
-class glShader;
+class PlatformContext;
+
 struct PushConstantsStruct;
 
 struct ValidationEntry
@@ -59,6 +57,8 @@ namespace Attorney {
 /// OpenGL implementation of the ShaderProgram entity
 class glShaderProgram final : public ShaderProgram {
     friend class Attorney::GLAPIShaderProgram;
+   public:
+     using glShaders = eastl::fixed_vector<glShaderEntry, to_base( ShaderType::COUNT ), false>;
 
    public:
     explicit glShaderProgram(GFXDevice& context,
@@ -77,13 +77,11 @@ class glShaderProgram final : public ShaderProgram {
     bool unload() override;
 
   protected:
-    ShaderResult validatePreBind(bool rebind = true);
+    [[nodiscard]] ShaderResult validatePreBind(bool rebind = true) override;
     void processValidation();
-    
-    bool recompile(bool& skipped) override;
 
     /// Returns true if at least one shader linked successfully
-    bool reloadShaders(hashMap<U64, PerFileShaderData>& fileData, bool reloadExisting) override;
+    bool loadInternal(hashMap<U64, PerFileShaderData>& fileData, bool overwrite) override;
 
     /// Bind this shader program (returns false if the program failed validation)
     ShaderResult bind();
@@ -97,7 +95,7 @@ class glShaderProgram final : public ShaderProgram {
 
     bool _validationQueued = false;
     bool _stagesBound = false;
-    vector<glShader*> _shaderStage;
+    glShaders _shaderStage;
 };
 
 namespace Attorney

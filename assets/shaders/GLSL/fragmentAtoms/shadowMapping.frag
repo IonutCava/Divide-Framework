@@ -22,6 +22,7 @@ float chebyshevUpperBound(in vec2 moments, in float distance) {
     const float variance = max(moments.y - Squared(moments.x), dvd_MinVariance);
     // Compute probabilistic upper bound.
     const float mD = moments.x - distance;
+
     const float p_max = variance / (variance + Squared(mD));
 
     // Reduce light bleed
@@ -37,15 +38,20 @@ float getShadowMultiplierDirectional(in int shadowIndex, in float TanAcosNdotL) 
 
     const int Split = getCSMSlice(properties.dvd_shadowLightPosition);
     vec4 sc = properties.dvd_shadowLightVP[Split] * VAR._vertexW;
-    const vec3 shadowCoord = Homogenize(sc);
-    if (IsInFrustum(shadowCoord))
+    vec3 shadowCoord = Homogenize(sc);
+    
+    //if (IsInFrustum(shadowCoord))
     {
         const vec4 crtDetails = properties.dvd_shadowLightDetails;
         const float bias = clamp(crtDetails.z * TanAcosNdotL, 0.f, 0.00001f);
+        
         // now get current linear depth as the length between the fragment and light position
         const float currentDepth = shadowCoord.z - bias;
         const vec2 moments = texture(layeredDepthMaps, vec3(shadowCoord.xy, crtDetails.y + Split)).rg;
+        return moments.x;
+
         const float ret = chebyshevUpperBound(moments, currentDepth);
+
         return Saturate(ret * crtDetails.w);
     }
 #endif // !DISABLE_SHADOW_MAPPING_CSM
@@ -54,6 +60,7 @@ float getShadowMultiplierDirectional(in int shadowIndex, in float TanAcosNdotL) 
 }
 
 float getShadowMultiplierSpot(in int shadowIndex, in float TanAcosNdotL) {
+
 #if !defined(DISABLE_SHADOW_MAPPING_SPOT)
     const SpotShadowProperties properties = dvd_SpotShadowTransforms[shadowIndex];
 
@@ -75,6 +82,7 @@ float getShadowMultiplierSpot(in int shadowIndex, in float TanAcosNdotL) {
 }
 
 float getShadowMultiplierPoint(in int shadowIndex, in float TanAcosNdotL) {
+
 #if !defined(DISABLE_SHADOW_MAPPING_POINT)
     const PointShadowProperties properties = dvd_PointShadowTransforms[shadowIndex];
 

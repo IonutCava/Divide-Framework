@@ -308,6 +308,9 @@ namespace Divide
         // GL_FALSE causes a conflict here. Thanks glbinding ...
         glClampColor( GL_CLAMP_READ_COLOR, GL_NONE );
 
+        // Match Vulkan's depth range
+        glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
+
         // Cap max anisotropic level to what the hardware supports
         CLAMP( config.rendering.maxAnisotropicFilteringLevel,
                to_U8( 0 ),
@@ -1044,7 +1047,8 @@ namespace Divide
 
                 const GFX::ReadTextureCommand* crtCmd = cmd->As<GFX::ReadTextureCommand>();
                 glTexture* tex = static_cast<glTexture*>(crtCmd->_texture);
-                crtCmd->_callback( tex->readData( crtCmd->_mipLevel, crtCmd->_pixelPackAlignment ) );
+                const ImageReadbackData readData = tex->readData( crtCmd->_mipLevel, crtCmd->_pixelPackAlignment );
+                crtCmd->_callback( readData );
             }break;
             case GFX::CommandType::BIND_PIPELINE:
             {
@@ -1194,11 +1198,6 @@ namespace Divide
                     glDispatchCompute( crtCmd->_computeGroupSize.x, crtCmd->_computeGroupSize.y, crtCmd->_computeGroupSize.z );
                 }
             }break;
-            case GFX::CommandType::SET_CLIPING_STATE:
-            {
-                const GFX::SetClippingStateCommand* crtCmd = cmd->As<GFX::SetClippingStateCommand>();
-                s_stateTracker.setClippingPlaneState( crtCmd->_lowerLeftOrigin, crtCmd->_negativeOneToOneDepth );
-            } break;
             case GFX::CommandType::MEMORY_BARRIER:
             {
                 const GFX::MemoryBarrierCommand* crtCmd = cmd->As<GFX::MemoryBarrierCommand>();
@@ -1679,10 +1678,6 @@ namespace Divide
         }
 
         return ret;
-    }
-
-    void GL_API::onShaderRegisterChanged( [[maybe_unused]] ShaderProgram* program, [[maybe_unused]] const bool state )
-    {
     }
 
     GLStateTracker& GL_API::GetStateTracker() noexcept

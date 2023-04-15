@@ -141,12 +141,10 @@ namespace Divide
                 }
 
                 GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Main Display Pass" } );
-                GFX::EnqueueCommand<GFX::SetClippingStateCommand>( bufferInOut )->_negativeOneToOneDepth = false;
 
                 Camera* playerCamera = Attorney::SceneManagerCameraAccessor::playerCamera( _parent.parent().sceneManager() );
                 _parent.doCustomPass( playerCamera, params, bufferInOut, memCmdInOut );
 
-                GFX::EnqueueCommand<GFX::SetClippingStateCommand>( bufferInOut )->_negativeOneToOneDepth = true;
                 GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
             } break;
             case RenderStage::NODE_PREVIEW:
@@ -196,7 +194,6 @@ namespace Divide
                 Camera* camera = Attorney::SceneManagerCameraAccessor::playerCamera( mgr );
 
                 GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Reflection Pass" } );
-                GFX::EnqueueCommand<GFX::SetClippingStateCommand>( bufferInOut )->_negativeOneToOneDepth = false;
                 {
                     PROFILE_SCOPE( "RenderPass - Probes", Profiler::Category::Scene );
                     SceneEnvironmentProbePool::Prepare( bufferInOut );
@@ -239,7 +236,6 @@ namespace Divide
                         }
                     }
                 }
-                GFX::EnqueueCommand<GFX::SetClippingStateCommand>( bufferInOut )->_negativeOneToOneDepth = true;
                 GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
 
             } break;
@@ -249,7 +245,6 @@ namespace Divide
                 static VisibleNodeList s_Nodes;
 
                 GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Refraction Pass" } );
-                GFX::EnqueueCommand<GFX::SetClippingStateCommand>( bufferInOut )->_negativeOneToOneDepth = false;
 
                 PROFILE_SCOPE( "RenderPass - Refraction", Profiler::Category::Scene );
                 // Get list of refractive nodes from the scene manager
@@ -276,7 +271,6 @@ namespace Divide
                     }
                 }
 
-                GFX::EnqueueCommand<GFX::SetClippingStateCommand>( bufferInOut )->_negativeOneToOneDepth = true;
                 GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
 
             } break;

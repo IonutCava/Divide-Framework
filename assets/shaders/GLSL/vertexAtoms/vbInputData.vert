@@ -1,7 +1,6 @@
 #ifndef _VB_INPUT_DATA_VERT_
 #define _VB_INPUT_DATA_VERT_
 
-#include "velocityCheck.cmn"
 #include "vertexDefault.vert"
 #include "nodeBufferedInput.cmn"
 #if defined(USE_GPU_SKINNING)
@@ -77,25 +76,20 @@ NodeTransformData fetchInputData() {
 vec4 computeData(in NodeTransformData data) {
     VAR._LoDLevel  = dvd_LoDLevel(data);
     VAR._vertexW   = data._worldMatrix * dvd_Vertex;
-#if 0
     VAR._vertexWV  = dvd_ViewMatrix * VAR._vertexW;
-#else
-    // Higher precision
-    VAR._vertexWV = (dvd_ViewMatrix * data._worldMatrix) * dvd_Vertex;
-#endif
 
 #if defined(HAS_VELOCITY)
 #if defined(HAS_POSITION_ATTRIBUTE)
-#if defined(USE_GPU_SKINNING)
-    vec4 inputVertex = applyBoneTransforms( vec4( inVertexData, 1.f ), dvd_PreviousAnimationOffset );
-#else //USE_GPU_SKINNING
     vec4 inputVertex = vec4( inVertexData, 1.f );
-#endif //USE_GPU_SKINNING
 #else //HAS_POSITION_ATTRIBUTE
     vec4 inputVertex = vec4( 0.f, 0.f, 0.f, 1.f );
 #endif //HAS_POSITION_ATTRIBUTE
 
-    VAR._prevVertexWVP = (dvd_PreviousViewProjectionMatrix * data._prevWorldMatrix) * inputVertex;
+#if defined(USE_GPU_SKINNING)
+    inputVertex = applyBoneTransforms( inputVertex, dvd_PreviousAnimationOffset );
+#endif //USE_GPU_SKINNING
+
+    VAR._prevVertexWVP = data._prevWVPMatrix * inputVertex;
 #endif //HAS_VELOCITY
 
     return dvd_ProjectionMatrix * VAR._vertexWV;

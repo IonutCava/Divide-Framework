@@ -314,32 +314,19 @@ namespace Divide
                 }
             }
 
-            // Lets store the ortho rect in case we need it;
             const vec2<F32> clip
             {
-                0.001f,
+                0.0001f,
                 maxExtents.z - minExtents.z
             };
 
-            mat4<F32> lightOrthoMatrix
-            {
-                Rect<F32>
-                {
-                    minExtents.x,
-                    maxExtents.x,
-                    minExtents.y,
-                    maxExtents.y
-                },
-                clip
-            };
+            mat4<F32> lightOrthoMatrix = Camera::Ortho( minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, clip.min, clip.max );
 
             // The rounding matrix that ensures that shadow edges do not shimmer
             // http://www.gamedev.net/topic/591684-xna-40---shimmering-shadow-maps/
             {
                 const mat4<F32> shadowMatrix = mat4<F32>::Multiply( lightViewMatrix, lightOrthoMatrix );
-                const vec4<F32> shadowOrigin = shadowMatrix *
-                    vec4<F32>{0.0f, 0.0f, 0.0f, 1.0f } *
-                    (g_shadowSettings.csm.shadowMapResolution * 0.5f);
+                const vec4<F32> shadowOrigin = shadowMatrix * vec4<F32>{VECTOR3_ZERO, 1.f } * (g_shadowSettings.csm.shadowMapResolution * 0.5f);
 
                 vec4<F32> roundedOrigin = shadowOrigin;
                 roundedOrigin.round();
@@ -354,11 +341,10 @@ namespace Divide
             }
             lightCam->updateLookAt();
 
-            mat4<F32> lightVP = light.getShadowVPMatrix( cascadeIterator );
-            mat4<F32>::Multiply( lightViewMatrix, lightOrthoMatrix, lightVP );
+            const mat4<F32> lightVP = mat4<F32>::Multiply( lightViewMatrix, lightOrthoMatrix );
 
             light.setShadowLightPos( cascadeIterator, lightPosition );
-            light.setShadowVPMatrix( cascadeIterator, mat4<F32>::Multiply( lightVP, MAT4_BIAS ) );
+            light.setShadowVPMatrix( cascadeIterator, mat4<F32>::Multiply( lightVP, MAT4_BIAS_ZERO_ONE_Z ) );
         }
     }
 
@@ -372,14 +358,14 @@ namespace Divide
         applyFrustumSplits( dirLight, playerCamera, numSplits );
 
         RenderPassParams params = {};
-        params._sourceNode = light.getSGN();
+        params._sourceNode = light.sgn();
         params._stagePass = { RenderStage::SHADOW, RenderPassType::COUNT, lightIndex, static_cast<RenderStagePass::VariantType>(light.getLightType()) };
         params._target = _drawBufferDepth._targetID;
         params._maxLoD = -1;
         params._refreshLightData = false;
 
-        params._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX]._enabled = true;
-        params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::WHITE, true };
+        params._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
+        params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
 
         params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
@@ -395,7 +381,6 @@ namespace Divide
             125.0f
         };
 
-        GFX::EnqueueCommand<GFX::SetClippingStateCommand>( bufferInOut )->_negativeOneToOneDepth = true; //Ortho camera
         for ( I8 i = numSplits - 1; i >= 0 && i < numSplits; i-- )
         {
             params._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer = i;
@@ -450,6 +435,8 @@ namespace Divide
         if ( g_shadowSettings.csm.enableBlurring )
         {
             GFX::BeginRenderPassCommand beginRenderPassCmd{};
+            beginRenderPassCmd._descriptor._layeredRendering = true;
+
             beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::WHITE, true };
             beginRenderPassCmd._descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 

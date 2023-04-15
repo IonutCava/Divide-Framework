@@ -59,7 +59,6 @@ class NONE_API final : public RenderAPIWrapper {
       bool setViewportInternal(const Rect<I32>& newViewport) noexcept override;
       bool setScissorInternal(const Rect<I32>& newScissor) noexcept override;
       void onThreadCreated(const std::thread::id& threadID) noexcept override;
-      void onShaderRegisterChanged( ShaderProgram* program, bool state ) override;
       void initDescriptorSets() override;
 
       [[nodiscard]] bool bindShaderResources( const DescriptorSetEntries& descriptorSetEntries ) override;

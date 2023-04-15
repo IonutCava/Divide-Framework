@@ -65,7 +65,7 @@ namespace Divide
         }
         ImGui::PopStyleVar();
         ImGuiWindow* window = ImGui::GetCurrentWindow();
-        ImGui::SameLine( window->SizeFull.x - 100 );
+        ImGui::SameLine( window->SizeFull.x - 200 );
         if ( ImGui::SmallButton( "Clear" ) )
         {
             clearLog();
@@ -184,7 +184,7 @@ namespace Divide
         }
         {
             bool tooltip = false;
-            ImGui::SameLine( window->SizeFull.x - 55 );
+            ImGui::SameLine( window->SizeFull.x - 125 );
             ImGui::Text( ICON_FK_ARROW_CIRCLE_DOWN ); tooltip = tooltip || ImGui::IsItemHovered();
             ImGui::SameLine();
             ImGui::PushID( ICON_FK_ARROW_CIRCLE_DOWN"_ID" );

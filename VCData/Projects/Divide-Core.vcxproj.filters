@@ -53,6 +53,9 @@
     <None Include="..\..\Source Code\Core\Headers\PoolHandle.inl">
       <Filter>Headers</Filter>
     </None>
+    <None Include="..\..\Source Code\Core\Math\Headers\TransformInterface.inl">
+      <Filter>Math\Headers</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Utility">

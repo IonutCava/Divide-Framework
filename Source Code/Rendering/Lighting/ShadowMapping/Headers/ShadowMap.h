@@ -96,6 +96,8 @@ class NOINITVTABLE ShadowMap {
     static void initShadowMaps(GFXDevice& context);
     static void destroyShadowMaps(GFXDevice& context);
 
+    static void reset();
+
     // Reset usage flags and set render targets back to default settings
     static void resetShadowMaps(GFX::CommandBuffer& bufferInOut);
 
@@ -123,6 +125,7 @@ class NOINITVTABLE ShadowMap {
   protected:
       static bool commitLayerRange(Light& light);
       static bool freeShadowMapOffsetLocked(const Light& light);
+
   protected:
     struct ShadowLayerData {
         I64 _lightGUID = -1;

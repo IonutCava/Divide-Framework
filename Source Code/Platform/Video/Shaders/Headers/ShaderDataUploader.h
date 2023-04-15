@@ -79,7 +79,7 @@ namespace Divide
             size_t _arrayOuterSize{ 0u }; // array[innerSize][outerSize]
             size_t _vectorDimensions{ 0u };
             size_t _memberCount{ 0u };
-            GFX::PushConstantType _type{ GFX::PushConstantType::COUNT };
+            PushConstantType _type{ PushConstantType::COUNT };
         };
 
         struct BufferEntry : DataEntry

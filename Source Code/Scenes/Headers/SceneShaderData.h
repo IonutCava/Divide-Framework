@@ -184,7 +184,7 @@ class SceneShaderData
         return false;
     }
 
-    GFX::MemoryBarrierCommand updateSceneDescriptorSet(GFX::CommandBuffer& bufferInOut);
+    void updateSceneDescriptorSet(GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
 
   private:
       using ProbeBufferData = std::array<ProbeData, GLOBAL_PROBE_COUNT>;

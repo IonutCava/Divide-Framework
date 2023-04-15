@@ -677,10 +677,10 @@ namespace Divide
         particleNodeDescriptor._node = emitter;
         particleNodeDescriptor._usageContext = NodeUsageContext::NODE_DYNAMIC;
         particleNodeDescriptor._componentMask = to_base( ComponentType::TRANSFORM ) |
-            to_base( ComponentType::BOUNDS ) |
-            to_base( ComponentType::RENDERING ) |
-            to_base( ComponentType::NETWORKING ) |
-            to_base( ComponentType::SELECTION );
+                                                to_base( ComponentType::BOUNDS ) |
+                                                to_base( ComponentType::RENDERING ) |
+                                                to_base( ComponentType::NETWORKING ) |
+                                                to_base( ComponentType::SELECTION );
 
         return parentNode->addChildNode( particleNodeDescriptor );
     }
@@ -703,11 +703,11 @@ namespace Divide
             terrainNodeDescriptor._node = std::static_pointer_cast<Terrain>(res->shared_from_this());
             terrainNodeDescriptor._usageContext = NodeUsageContext::NODE_STATIC;
             terrainNodeDescriptor._componentMask = to_base( ComponentType::NAVIGATION ) |
-                to_base( ComponentType::TRANSFORM ) |
-                to_base( ComponentType::RIGID_BODY ) |
-                to_base( ComponentType::BOUNDS ) |
-                to_base( ComponentType::RENDERING ) |
-                to_base( ComponentType::NETWORKING );
+                                                   to_base( ComponentType::TRANSFORM ) |
+                                                   to_base( ComponentType::RIGID_BODY ) |
+                                                   to_base( ComponentType::BOUNDS ) |
+                                                   to_base( ComponentType::RENDERING ) |
+                                                   to_base( ComponentType::NETWORKING );
             terrainNodeDescriptor._node->loadFromXML( pt );
 
             SceneGraphNode* terrainTemp = parentNode->addChildNode( terrainNodeDescriptor );
@@ -737,9 +737,9 @@ namespace Divide
             lightNodeDescriptor._name = Util::StringFormat( "Flashlight_%d", idx );
             lightNodeDescriptor._usageContext = NodeUsageContext::NODE_DYNAMIC;
             lightNodeDescriptor._componentMask = to_base( ComponentType::TRANSFORM ) |
-                to_base( ComponentType::BOUNDS ) |
-                to_base( ComponentType::NETWORKING ) |
-                to_base( ComponentType::SPOT_LIGHT );
+                                                 to_base( ComponentType::BOUNDS ) |
+                                                 to_base( ComponentType::NETWORKING ) |
+                                                 to_base( ComponentType::SPOT_LIGHT );
             flashLight = _sceneGraph->getRoot()->addChildNode( lightNodeDescriptor );
             SpotLightComponent* spotLight = flashLight->get<SpotLightComponent>();
             spotLight->castsShadows( true );
@@ -770,7 +770,7 @@ namespace Divide
         ResourceDescriptor skyDescriptor( "DefaultSky_" + nodeName );
         skyDescriptor.ID( to_U32( std::floor( Camera::GetUtilityCamera( Camera::UtilityCamera::DEFAULT )->snapshot()._zPlanes.max * 2 ) ) );
 
-        std::shared_ptr<Sky> skyItem = CreateResource<Sky>( resourceCache(), skyDescriptor );
+        Sky_ptr skyItem = CreateResource<Sky>( resourceCache(), skyDescriptor );
         DIVIDE_ASSERT( skyItem != nullptr, "Scene::addSky error: Could not create sky resource!" );
         skyItem->loadFromXML( pt );
 
@@ -779,9 +779,9 @@ namespace Divide
         skyNodeDescriptor._name = nodeName;
         skyNodeDescriptor._usageContext = NodeUsageContext::NODE_STATIC;
         skyNodeDescriptor._componentMask = to_base( ComponentType::TRANSFORM ) |
-            to_base( ComponentType::BOUNDS ) |
-            to_base( ComponentType::RENDERING ) |
-            to_base( ComponentType::NETWORKING );
+                                           to_base( ComponentType::BOUNDS ) |
+                                           to_base( ComponentType::RENDERING ) |
+                                           to_base( ComponentType::NETWORKING );
 
         SceneGraphNode* skyNode = parentNode->addChildNode( skyNodeDescriptor );
         skyNode->setFlag( SceneGraphNode::Flags::VISIBILITY_LOCKED );
@@ -800,11 +800,11 @@ namespace Divide
             waterNodeDescriptor._node = std::static_pointer_cast<WaterPlane>(res->shared_from_this());
             waterNodeDescriptor._usageContext = NodeUsageContext::NODE_STATIC;
             waterNodeDescriptor._componentMask = to_base( ComponentType::NAVIGATION ) |
-                to_base( ComponentType::TRANSFORM ) |
-                to_base( ComponentType::RIGID_BODY ) |
-                to_base( ComponentType::BOUNDS ) |
-                to_base( ComponentType::RENDERING ) |
-                to_base( ComponentType::NETWORKING );
+                                                 to_base( ComponentType::TRANSFORM ) |
+                                                 to_base( ComponentType::RIGID_BODY ) |
+                                                 to_base( ComponentType::BOUNDS ) |
+                                                 to_base( ComponentType::RENDERING ) |
+                                                 to_base( ComponentType::NETWORKING );
 
             waterNodeDescriptor._node->loadFromXML( pt );
 
@@ -842,8 +842,8 @@ namespace Divide
         planeNodeDescriptor._name = nodeName;
         planeNodeDescriptor._usageContext = NodeUsageContext::NODE_STATIC;
         planeNodeDescriptor._componentMask = to_base( ComponentType::TRANSFORM ) |
-            to_base( ComponentType::BOUNDS ) |
-            to_base( ComponentType::RENDERING );
+                                             to_base( ComponentType::BOUNDS ) |
+                                             to_base( ComponentType::RENDERING );
 
         SceneGraphNode* ret = parentNode->addChildNode( planeNodeDescriptor );
         ret->loadFromXML( pt );
@@ -1298,7 +1298,7 @@ namespace Divide
         DirectionalLightComponent* sun = nullptr;
         for ( auto light : dirLights )
         {
-            const auto dirLight = light->getSGN()->get<DirectionalLightComponent>();
+            const auto dirLight = light->sgn()->get<DirectionalLightComponent>();
             if ( dirLight->tag() == SUN_LIGHT_TAG )
             {
                 sun = dirLight;
@@ -1563,14 +1563,14 @@ namespace Divide
 
     bool Scene::mouseMoved( const Input::MouseMoveEvent& arg )
     {
-        if ( !arg.wheelEvent() )
+        if ( !arg._wheelEvent )
         {
             const PlayerIndex idx = getPlayerIndexForDevice( arg._deviceIndex );
             DragSelectData& data = _dragSelectData[idx];
             if ( data._isDragging )
             {
-                data._endDragPos = arg.absolutePos();
-                updateSelectionData( idx, data, arg.remapped() );
+                data._endDragPos = vec2<U16>(arg.state().X.abs, arg.state().Y.abs);
+                updateSelectionData( idx, data );
             }
             else
             {
@@ -1579,7 +1579,7 @@ namespace Divide
 
                 if ( sceneFocused && sceneHovered && !state()->playerState( idx ).cameraLockedToMouse() )
                 {
-                    findHoverTarget( idx, arg.absolutePos() );
+                    findHoverTarget( idx, vec2<U16>( arg.state().X.abs, arg.state().Y.abs ) );
                 }
                 else if ( !sceneHovered )
                 {
@@ -1739,7 +1739,7 @@ namespace Divide
                 {
                     SceneEnvironmentProbePool::OnTimeOfDayChange( *_envProbePool );
                 }
-                _dayNightData._sunLight->getSGN()->get<TransformComponent>()->setDirection( getSunDirection() );
+                _dayNightData._sunLight->sgn()->get<TransformComponent>()->setDirection( getSunDirection() );
             }
 
             const F32 speedFactor = dayNightCycleEnabled() ? _dayNightData._speedFactor : 0.f;
@@ -1806,7 +1806,7 @@ namespace Divide
                 _dayNightData._time._hour = to_U8( timeOfDay.tm_hour );
                 _dayNightData._time._minutes = to_U8( timeOfDay.tm_min );
 
-                light->getSGN()->get<TransformComponent>()->setDirection( getSunDirection() * (isNight ? -1 : 1) );
+                light->sgn()->get<TransformComponent>()->setDirection( getSunDirection() * (isNight ? -1 : 1) );
             }
         }
     }
@@ -1867,6 +1867,7 @@ namespace Divide
             SceneNodeType::TYPE_VEGETATION
         };
 
+        const vec2<U16> windowSize = _context.mainWindow().getDrawableSize();
         const Camera* crtCamera = playerCamera( idx );
         const vec2<U16> renderingResolution = _context.gfx().renderingResolution();
         const vec3<F32> direction = crtCamera->unProject( to_F32( aimPos.x ),
@@ -2028,7 +2029,7 @@ namespace Divide
         return tempSelections._selectionCount == 0u;
     }
 
-    void Scene::setSelected( const PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, const bool recursive )
+    void Scene::setSelected( const PlayerIndex idx, const vector_fast<SceneGraphNode*>& SGNs, const bool recursive )
     {
         Selections& playerSelections = _currentSelection[idx];
 
@@ -2090,33 +2091,21 @@ namespace Divide
 
     void Scene::beginDragSelection( const PlayerIndex idx, const vec2<I32> mousePos )
     {
-        const bool editorRunning = Config::Build::ENABLE_EDITOR ? _context.editor().running() : false;
-
         if constexpr( Config::Build::ENABLE_EDITOR )
         {
-            if ( _context.editor().isHovered() )
+            if ( _context.editor().running() && _context.editor().isHovered() )
             {
                 return;
             }
         }
 
         DragSelectData& data = _dragSelectData[idx];
-        data._sourceViewport = editorRunning ? _context.gfx().activeViewport() : _context.mainWindow().renderingViewport();
-        if ( data._sourceViewport.contains( mousePos ) )
-        {
-            const vec2<U16> resolution = _context.gfx().renderingResolution();
-            data._targetViewport.set( 0, 0, resolution.width, resolution.height );
-            data._startDragPos = COORD_REMAP( mousePos, data._sourceViewport, data._targetViewport );
-            data._endDragPos = data._startDragPos;
-            data._isDragging = true;
-        }
-        else
-        {
-            data._isDragging = false;
-        }
+        data._startDragPos =  mousePos;
+        data._endDragPos = data._startDragPos;
+        data._isDragging = true;
     }
 
-    void Scene::updateSelectionData( PlayerIndex idx, DragSelectData& data, bool remapped )
+    void Scene::updateSelectionData( PlayerIndex idx, DragSelectData& data )
     {
         static std::array<Line, 4> s_lines = {
             Line{VECTOR3_ZERO, VECTOR3_UNIT, DefaultColours::GREEN_U8, DefaultColours::GREEN_U8, 2.0f, 1.0f},
@@ -2133,31 +2122,20 @@ namespace Divide
                 endDragSelection( idx, false );
                 return;
             }
-
-            if ( editor.running() && !remapped )
-            {
-                const Rect<I32> previewRect = _context.editor().scenePreviewRect( false );
-                data._endDragPos = COORD_REMAP( previewRect.clamp( data._endDragPos ), previewRect, _context.gfx().activeViewport() );
-            }
         }
 
         _parent.wantsMouse( true );
-        data._endDragPos = COORD_REMAP( data._endDragPos, data._sourceViewport, data._targetViewport );
 
-        const vec2<I32> startPos = {
-            data._startDragPos.x,
-            data._targetViewport.w - data._startDragPos.y - 1
-        };
+        const vec2<U16> resolution = _context.gfx().renderingResolution();
 
-        const vec2<I32> endPos = {
-            data._endDragPos.x,
-            data._targetViewport.w - data._endDragPos.y - 1
-        };
+        const vec2<I32> startPos = { data._startDragPos.x, resolution.height - data._startDragPos.y };
+
+        const vec2<I32> endPos  = { data._endDragPos.x, resolution.height - data._endDragPos.y };
 
         const I32 startX = std::min( startPos.x, endPos.x );
         const I32 startY = std::min( startPos.y, endPos.y );
 
-        const Rect<I32> selectionRect = {
+        const Rect<I32> selectionRect {
             startX,
             startY,
             std::abs( endPos.x - startPos.x ),
@@ -2188,7 +2166,10 @@ namespace Divide
             if ( _parent.resetSelection( idx, false ) )
             {
                 const Camera* crtCamera = playerCamera( idx );
-                vector<SceneGraphNode*> nodes = Attorney::SceneManagerScene::getNodesInScreenRect( _parent, selectionRect, *crtCamera, data._targetViewport );
+
+                thread_local vector_fast<SceneGraphNode*> nodes;
+                Attorney::SceneManagerScene::getNodesInScreenRect( _parent, selectionRect, *crtCamera, nodes );
+
                 _parent.setSelected( idx, nodes, false );
             }
         }
@@ -2225,7 +2206,7 @@ namespace Divide
         _dayNightData._timeAccumulatorSec = Time::Seconds( 1.1f );
         _dayNightData._timeAccumulatorHour = 0.f;
         sunLight.lockDirection( true );
-        sunLight.getSGN()->get<TransformComponent>()->setDirection( getSunDirection() );
+        sunLight.sgn()->get<TransformComponent>()->setDirection( getSunDirection() );
     }
 
     void Scene::setDayNightCycleTimeFactor( const F32 factor ) noexcept

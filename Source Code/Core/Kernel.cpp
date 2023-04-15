@@ -816,11 +816,13 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
 
     _renderPassManager->postInit();
 
-    if constexpr (Config::Build::ENABLE_EDITOR) {
-        if (!_platformContext.editor().init(config.runtime.resolution)) {
+    if constexpr (Config::Build::ENABLE_EDITOR) 
+    {
+        if (!_platformContext.editor().init(config.runtime.resolution)) 
+        {
             return ErrorCode::EDITOR_INIT_ERROR;
         }
-        _sceneManager->addSelectionCallback([ctx = &_platformContext](const PlayerIndex idx, const vector<SceneGraphNode*>& nodes) {
+        _sceneManager->addSelectionCallback([ctx = &_platformContext](const PlayerIndex idx, const vector_fast<SceneGraphNode*>& nodes) {
             ctx->editor().selectionChangeCallback(idx, nodes);
         });
     }
@@ -881,43 +883,49 @@ void Kernel::onResolutionChange(const SizeChangeParams& params) {
 }
 
 #pragma region Input Management
-vec2<I32> Kernel::remapMouseCoords(const vec2<I32> absPositionIn, bool& remappedOut) const noexcept {
-    remappedOut = false;
-    if constexpr(Config::Build::ENABLE_EDITOR)
+void Kernel::remapAbsolutePosition( Input::MouseEvent& eventInOut ) const noexcept
+{
+    vec2<I32> absPositionIn = { eventInOut.state().X.abs, eventInOut.state().Y.abs };
+
+    const Rect<I32> renderingViewport = _platformContext.mainWindow().renderingViewport();
+    CLAMP_IN_RECT(absPositionIn.x, absPositionIn.y, renderingViewport);
+
+    if (Config::Build::ENABLE_EDITOR &&
+        _platformContext.editor().running() &&
+        !_platformContext.editor().hasFocus())
     {
-        if (!_platformContext.editor().hasFocus())
+        const Rect<I32> previewRect = _platformContext.editor().scenePreviewRect( false );
+        absPositionIn = COORD_REMAP( absPositionIn, previewRect, renderingViewport );
+        if ( !previewRect.contains(absPositionIn) )
         {
-            const Rect<I32>& sceneRect = _platformContext.editor().scenePreviewRect(false);
-            if (sceneRect.contains(absPositionIn))
-            {
-                remappedOut = true;
-                return COORD_REMAP(absPositionIn, sceneRect, _platformContext.gfx().activeViewport());
-            }
+            CLAMP_IN_RECT( absPositionIn.x, absPositionIn.y, renderingViewport );
+            eventInOut.inScenePreviewRect(true);
         }
     }
 
-    return absPositionIn;
+    const vec2<U16> resolution = _platformContext.gfx().renderingResolution();
+    absPositionIn = COORD_REMAP( absPositionIn, renderingViewport, { 0, 0, to_I32( resolution.width ), to_I32( resolution.height ) } );
+    Input::MouseState& state = Input::Attorney::MouseEventKernel::state(eventInOut);
+    state.X.abs = absPositionIn.x;
+    state.Y.abs = absPositionIn.y;
 }
 
-bool Kernel::mouseMoved(const Input::MouseMoveEvent& arg) {
+bool Kernel::mouseMoved(const Input::MouseMoveEvent& arg)
+{
     if (_inputConsumers[to_base(InputConsumerType::Editor)] &&
         !_sceneManager->wantsMouse() &&
-        _inputConsumers[to_base(InputConsumerType::Editor)]->mouseMoved(arg)) {
+        _inputConsumers[to_base(InputConsumerType::Editor)]->mouseMoved(arg))
+    {
         return true;
     }
 
-    //Remap coords in case we are using the Editor's scene view
     Input::MouseMoveEvent remapArg = arg;
-    if constexpr(Config::Build::ENABLE_EDITOR) {
-        bool remapped = false;
-        const vec2<I32> newPos = remapMouseCoords(arg.absolutePos(), remapped);
-        if (remapped) {
-            Input::Attorney::MouseEventKernel::absolutePos(remapArg, newPos);
-        }
-    } 
+    remapAbsolutePosition( remapArg );
 
-    for (U8 i = 1; i < to_base(InputConsumerType::COUNT); ++i) {
-        if (_inputConsumers[i] && _inputConsumers[i]->mouseMoved(remapArg)) {
+    for (U8 i = 1u; i < to_base(InputConsumerType::COUNT); ++i) 
+    {
+        if (_inputConsumers[i] && _inputConsumers[i]->mouseMoved(remapArg))
+        {
             return true;
         }
     }
@@ -928,21 +936,18 @@ bool Kernel::mouseMoved(const Input::MouseMoveEvent& arg) {
 bool Kernel::mouseButtonPressed(const Input::MouseButtonEvent& arg) {
     if (_inputConsumers[to_base(InputConsumerType::Editor)] &&
         !_sceneManager->wantsMouse() &&
-        _inputConsumers[to_base(InputConsumerType::Editor)]->mouseButtonPressed(arg))     {
+        _inputConsumers[to_base(InputConsumerType::Editor)]->mouseButtonPressed(arg))
+    {
         return true;
     }
 
     Input::MouseButtonEvent remapArg = arg;
-    if constexpr(Config::Build::ENABLE_EDITOR) {
-        bool remapped = false;
-        const vec2<I32> newPos = remapMouseCoords(arg.absPosition(), remapped);
-        if (remapped) {
-            Input::Attorney::MouseEventKernel::absolutePos(remapArg, newPos);
-        }
-    }
+    remapAbsolutePosition( remapArg );
 
-    for (U8 i = 1; i < to_base(InputConsumerType::COUNT); ++i) {
-        if (_inputConsumers[i] && _inputConsumers[i]->mouseButtonPressed(remapArg)) {
+    for (U8 i = 1u; i < to_base(InputConsumerType::COUNT); ++i)
+    {
+        if (_inputConsumers[i] && _inputConsumers[i]->mouseButtonPressed(remapArg))
+        {
             return true;
         }
     }
@@ -959,16 +964,12 @@ bool Kernel::mouseButtonReleased(const Input::MouseButtonEvent& arg) {
     }
 
     Input::MouseButtonEvent remapArg = arg;
-    if constexpr(Config::Build::ENABLE_EDITOR) {
-        bool remapped = false;
-        const vec2<I32> newPos = remapMouseCoords(arg.absPosition(), remapped);
-        if (remapped) {
-            Input::Attorney::MouseEventKernel::absolutePos(remapArg, newPos);
-        }
-    }
+    remapAbsolutePosition( remapArg );
 
-    for (U8 i = 1; i < to_base(InputConsumerType::COUNT); ++i) {
-        if (_inputConsumers[i] && _inputConsumers[i]->mouseButtonReleased(remapArg)) {
+    for (U8 i = 1u; i < to_base(InputConsumerType::COUNT); ++i)
+    {
+        if (_inputConsumers[i] && _inputConsumers[i]->mouseButtonReleased(remapArg))
+        {
             return true;
         }
     }

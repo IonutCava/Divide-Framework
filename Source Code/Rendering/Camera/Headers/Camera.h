@@ -256,14 +256,23 @@ namespace Divide
         PROPERTY_RW( bool, movementLocked, false );
         PROPERTY_R_IW( bool, reflectionActive, false );
 
-        protected:
+    public:
+        [[nodiscard]] static mat4<F32> LookAt( const vec3<F32>& eye, const vec3<F32>& target, const vec3<F32>& up ) noexcept;
+        template<bool zeroToOneDepth = true>
+        [[nodiscard]] static mat4<F32> Ortho( F32 left, F32 right, F32 bottom, F32 top, F32 zNear, F32 zFar ) noexcept;
+        template<bool zeroToOneDepth = true>
+        [[nodiscard]] static mat4<F32> Perspective( Angle::DEGREES<F32> fovyRad, F32 aspect, F32 zNear, F32 zFar ) noexcept;
+        template<bool zeroToOneDepth = true>
+        [[nodiscard]] static mat4<F32> FrustumMatrix( F32 left, F32 right, F32 bottom, F32 top, F32 nearVal, F32 farVal ) noexcept;
+
+    protected:
         /// Extract the frustum associated with our current PoV
         bool updateFrustum();
         bool updateViewMatrix() noexcept;
         bool updateProjection() noexcept;
         void update() noexcept;
 
-        protected:
+    protected:
         CameraListenerMap _updateCameraListeners;
         CameraSnapshot _data;
         Frustum _frustum;

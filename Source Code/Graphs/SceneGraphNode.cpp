@@ -85,6 +85,13 @@ SceneGraphNode::SceneGraphNode(SceneGraph* sceneGraph, const SceneGraphNodeDescr
     }
 
     assert(_node != nullptr);
+    const U32 dynamicNodeComponents = to_base( ComponentType::ANIMATION ) |
+                                      to_base ( ComponentType::INVERSE_KINEMATICS ) |
+                                      to_base ( ComponentType::RAGDOLL );
+    if ( descriptor._componentMask & dynamicNodeComponents )
+    {
+        _usageContext = NodeUsageContext::NODE_DYNAMIC;
+    }
 
     AddComponents(descriptor._componentMask, false);
     AddComponents(_node->requiredComponentMask(), false);
@@ -92,6 +99,7 @@ SceneGraphNode::SceneGraphNode(SceneGraph* sceneGraph, const SceneGraphNodeDescr
     {
         setFlag(Flags::IS_CONTAINER);
     }
+
 }
 
 /// If we are destroying the current graph node
@@ -854,7 +862,7 @@ FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
         return FrustumCollision::FRUSTUM_OUT;
     }
 
-    if ((cullFlags & to_base(CullOptions::KEEP_SKY_NODES)) && _node->type() == SceneNodeType::TYPE_SKY)
+    if ( _node->type() == SceneNodeType::TYPE_SKY )
     {
         return FrustumCollision::FRUSTUM_IN;
     }
@@ -940,23 +948,28 @@ FrustumCollision SceneGraphNode::frustumCullNode(const NodeCullParams& params,
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-    const F32 maxDistanceSQ = SQUARED(params._cullMaxDistance);
-    const BoundsComponent* bComp = get<BoundsComponent>();
-
-    distanceToClosestPointSQ = bComp == nullptr ? 0.f : bComp->getBoundingSphere().getDistanceSQFromPoint(params._cameraEyePos);
-    
     // We may wish to skip frustum culling but still grab the distance to the node
-    // We may also wish to always render this node for whatever reason (e.g. to preload shaders)
-    // We may also wish to keep the sky always visible (e.g. for dynamic cubemaps)
-    // We may also not have a BoundsComponent for whatever reason
-    if (!(cullFlags & to_base(CullOptions::CULL_AGAINST_FRUSTUM) ||
-        hasFlag(Flags::VISIBILITY_LOCKED) ||
-        ((cullFlags & to_base(CullOptions::KEEP_SKY_NODES)) && _node->type() == SceneNodeType::TYPE_SKY)) ||
-        bComp == nullptr) 
+    if ( !(cullFlags & to_base( CullOptions::CULL_AGAINST_FRUSTUM )) )
     {
         return FrustumCollision::FRUSTUM_IN;
     }
 
+    const F32 maxDistanceSQ = SQUARED(params._cullMaxDistance);
+    const BoundsComponent* bComp = get<BoundsComponent>();
+    // We may also not have a BoundsComponent for whatever reason
+    if ( bComp == nullptr )
+    {
+        return FrustumCollision::FRUSTUM_IN;
+    }
+
+    // We may also wish to always render this node for whatever reason (e.g. to preload shaders)
+    // We may also wish to keep the sky always visible (e.g. for dynamic cubemaps)
+    if ( hasFlag( Flags::VISIBILITY_LOCKED ) || _node->type() == SceneNodeType::TYPE_SKY )
+    {
+        return FrustumCollision::FRUSTUM_IN;
+    }
+
+    distanceToClosestPointSQ = bComp->getBoundingSphere().getDistanceSQFromPoint(params._cameraEyePos);
     if (distanceToClosestPointSQ > maxDistanceSQ)
     {
         // Node is too far away

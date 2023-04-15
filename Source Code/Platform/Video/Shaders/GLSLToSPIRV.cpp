@@ -8,18 +8,18 @@
 
 namespace
 {
-    Divide::GFX::PushConstantType GetGFXType( const  glslang::TBasicType type ) noexcept
+    Divide::PushConstantType GetGFXType( const  glslang::TBasicType type ) noexcept
     {
         switch ( type )
         {
-            case glslang::TBasicType::EbtFloat:  return Divide::GFX::PushConstantType::FLOAT;
-            case glslang::TBasicType::EbtDouble: return Divide::GFX::PushConstantType::DOUBLE;
-            case glslang::TBasicType::EbtInt:    return Divide::GFX::PushConstantType::INT;
-            case glslang::TBasicType::EbtUint:   return Divide::GFX::PushConstantType::UINT;
+            case glslang::TBasicType::EbtFloat:  return Divide::PushConstantType::FLOAT;
+            case glslang::TBasicType::EbtDouble: return Divide::PushConstantType::DOUBLE;
+            case glslang::TBasicType::EbtInt:    return Divide::PushConstantType::INT;
+            case glslang::TBasicType::EbtUint:   return Divide::PushConstantType::UINT;
             default: Divide::DIVIDE_UNEXPECTED_CALL(); break;
         }
 
-        return Divide::GFX::PushConstantType::COUNT;
+        return Divide::PushConstantType::COUNT;
     }
 
     EShLanguage FindLanguage( const Divide::ShaderType shader_type ) noexcept
@@ -384,11 +384,11 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
         {
             if ( binding.numeric.scalar.signedness == 1 )
             {
-                target._type = Divide::GFX::PushConstantType::INT;
+                target._type = Divide::PushConstantType::INT;
             }
             else
             {
-                target._type = Divide::GFX::PushConstantType::UINT;
+                target._type = Divide::PushConstantType::UINT;
             }
         }
         else if ( typeFlags & SpvReflectTypeFlagBits::SPV_REFLECT_TYPE_FLAG_FLOAT )
@@ -396,11 +396,11 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
             Divide::DIVIDE_ASSERT( binding.numeric.scalar.signedness == 0 );
             if ( binding.numeric.scalar.width == 32 )
             {
-                target._type = Divide::GFX::PushConstantType::FLOAT;
+                target._type = Divide::PushConstantType::FLOAT;
             }
             else if ( binding.numeric.scalar.width == 64 )
             {
-                target._type = Divide::GFX::PushConstantType::DOUBLE;
+                target._type = Divide::PushConstantType::DOUBLE;
             }
             else
             {

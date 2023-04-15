@@ -14,15 +14,15 @@
                 <distance>0</distance>
                 <active>false</active>
             </reflectionPlane>
-            <accumPitchDegrees>-28.9473019</accumPitchDegrees>
+            <accumPitchDegrees>13.1071014</accumPitchDegrees>
             <frustumLocked>false</frustumLocked>
-            <euler x="-28.947649" y="39.6168175" z="-0.000537539017"/>
-            <eye x="59.9083252" y="47.7664223" z="54.5309105"/>
-            <orientation x="-0.235147536" y="0.328121871" z="0.0846936107" w="0.910971165"/>
+            <euler x="13.0796213" y="74.1713867" z="-0.0285728015"/>
+            <eye x="0.287061691" y="5.12158871" z="10.6998911"/>
+            <orientation x="0.0910057276" y="0.599065423" z="-0.0688767806" w="0.79252243"/>
             <aspectRatio>1.77777779</aspectRatio>
             <zPlanes min="0.100000001" max="1000"/>
             <FoV>58.7155075</FoV>
-            <speedFactor turn="45" move="4" zoom="5"/>
+            <speedFactor turn="45" move="18" zoom="5"/>
             <fixedYawAxis x="0" y="1" z="0"/>
             <yawFixed>true</yawFixed>
             <rotationLocked>false</rotationLocked>
@@ -39,11 +39,11 @@
                 <distance>0</distance>
                 <active>false</active>
             </reflectionPlane>
-            <accumPitchDegrees>-0</accumPitchDegrees>
+            <accumPitchDegrees>-13.7388887</accumPitchDegrees>
             <frustumLocked>false</frustumLocked>
-            <euler x="0" y="-0" z="0"/>
-            <eye x="0" y="0" z="0"/>
-            <orientation x="0" y="0" z="0" w="0.99987793"/>
+            <euler x="-13.7417545" y="30.4491882" z="-7.43018575e-07"/>
+            <eye x="28.1644096" y="13.587534" z="47.89505"/>
+            <orientation x="-0.115417235" y="0.260754377" z="0.0314202681" w="0.957838535"/>
             <aspectRatio>1.77777779</aspectRatio>
             <zPlanes min="0.100000001" max="1000"/>
             <FoV>58.7155075</FoV>
@@ -52,11 +52,14 @@
             <yawFixed>true</yawFixed>
             <rotationLocked>false</rotationLocked>
             <movementLocked>false</movementLocked>
-            <maxRadius>10</maxRadius>
-            <minRadius>0.100000001</minRadius>
-            <curRadius>8</curRadius>
-            <cameraRotation x="0" y="0" z="0"/>
+            <maxRadius>464.250061</maxRadius>
+            <minRadius>34.8187561</minRadius>
+            <curRadius>57.3118324</curRadius>
+            <cameraRotation x="-0.239838839" y="-2.61001062" z="0"/>
             <offsetDir x="0" y="0" z="0"/>
         </Node__Preview__Camera>
     </camera>
+    <recentScene>
+        <entry>TestPBR</entry>
+    </recentScene>
 </editor>

@@ -70,7 +70,7 @@ namespace Util {
     };
     // Separate activate is used for stuff that do continuous value changes, e.g. colour selectors, but you only want to register the old val once
     template<typename T, bool SeparateActivate, typename Pred>
-    void RegisterUndo(Editor& editor, GFX::PushConstantType type, const T& oldVal, const T& newVal, const char* name, Pred&& dataSetter);
+    void RegisterUndo(Editor& editor, PushConstantType type, const T& oldVal, const T& newVal, const char* name, Pred&& dataSetter);
 
     struct DrawReturnValue {
         bool wasChanged = false;

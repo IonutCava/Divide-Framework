@@ -34,6 +34,7 @@
 #include "ECS/Components/Headers/AnimationComponent.h"
 #include "ECS/Components/Headers/BoundsComponent.h"
 #include "ECS/Components/Headers/RenderingComponent.h"
+#include "ECS/Components/Headers/SelectionComponent.h"
 #include "ECS/Components/Headers/TransformComponent.h"
 
 
@@ -187,7 +188,18 @@ namespace Divide
                 }
             }
 
-            memCmdInOut._bufferLocks.push_back( executorBuffer._gpuBuffer->writeData( { target._firstIDX, target.range() }, &executorBuffer._data._gpuData[target._firstIDX] ) );
+            bufferPtr data = nullptr;
+            if constexpr ( std::is_same<DataContainer, RenderPassExecutor::BufferIndirectionData>::value )
+            {
+                data = &executorBuffer._data[target._firstIDX];
+
+            }
+            else
+            {
+                data = &executorBuffer._data._gpuData[target._firstIDX];
+            }
+
+            memCmdInOut._bufferLocks.push_back( executorBuffer._gpuBuffer->writeData( { target._firstIDX, target.range() }, data));
         }
 
         template<typename DataContainer>
@@ -387,7 +399,7 @@ namespace Divide
             _materialBuffer._queueLength = bufferDescriptor._ringBufferLength;
         }
         {// Indirection Buffer
-            bufferDescriptor._bufferParams._elementCount = to_U32( _indirectionBuffer._data._gpuData.size() );
+            bufferDescriptor._bufferParams._elementCount = to_U32( _indirectionBuffer._data.size() );
             bufferDescriptor._bufferParams._elementSize = sizeof( NodeIndirectionData );
             bufferDescriptor._name = Util::StringFormat( "NODE_INDIRECTION_DATA_%s", TypeUtil::RenderStageToString( _stage ) );
             _indirectionBuffer._gpuBuffer = _context.newSB( bufferDescriptor );
@@ -396,9 +408,13 @@ namespace Divide
         }
     }
 
-    void RenderPassExecutor::processVisibleNodeTransform( RenderingComponent* rComp, const D64 interpolationFactor )
+    void RenderPassExecutor::processVisibleNodeTransform( RenderingComponent* rComp )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+
+        U8 boneCount = 0u;
+        U8 selectionFlag = 0u;
+        AnimEvaluator::FrameIndex frameIndex{};
 
         const U32 indirectionIDX = Attorney::RenderingCompRenderPassExecutor::getIndirectionBufferEntry( rComp );
 
@@ -407,93 +423,67 @@ namespace Divide
             return;
         }
 
-        NodeTransformData transformOut;
+        PROFILE_SCOPE( "Buffer idx update", Profiler::Category::Scene );
+        U32 transformIdx = U32_MAX;
+        {
+            LockGuard<Mutex> w_lock( _transformBuffer._lock );
+            for ( U32 idx = 0u; idx < Config::MAX_VISIBLE_NODES; ++idx )
+            {
+                if ( _transformBuffer._data._freeList[idx] )
+                {
+                    _transformBuffer._data._freeList[idx] = false;
+                    transformIdx = idx;
+                    break;
+                }
+            }
+            DIVIDE_ASSERT( transformIdx != U32_MAX );
+        }
+
+        NodeTransformData& transformOut = _transformBuffer._data._gpuData[transformIdx];
+        // Out last used transform matrix is now our previous transform
+        mat4<F32>::Multiply( transformOut._worldMatrix, _context.previousFrameData()._PreviousViewProjectionMatrix, transformOut._prevWVPMatrix);
 
         const SceneGraphNode* node = rComp->parentSGN();
 
-        { // Transform
-            PROFILE_SCOPE( "Transform query", Profiler::Category::Scene );
-            const TransformComponent* const transform = node->get<TransformComponent>();
-
-            // Get the node's world matrix properly interpolated
-            transform->getPreviousWorldMatrix( transformOut._prevWorldMatrix );
-            transform->getWorldMatrix( interpolationFactor, transformOut._worldMatrix );
-            transformOut._normalMatrixW.set( mat3<F32>( transformOut._worldMatrix ) );
-
-            if ( !transform->isUniformScaled() )
-            {
-                // Non-uniform scaling requires an inverseTranspose to negatescaling contribution but preserve rotation
-                transformOut._normalMatrixW.inverseTranspose();
-            }
-        }
-
-        U8 boneCount = 0u;
-        U8 frameTicked = 0u;
-        AnimEvaluator::FrameIndex frameIndex{};
         if ( node->HasComponents( ComponentType::ANIMATION ) )
         {
             const AnimationComponent* animComp = node->get<AnimationComponent>();
             boneCount = animComp->boneCount();
             if ( animComp->playAnimations() )
             {
-                if ( animComp->frameTicked() )
-                {
-                    frameTicked = 1u;
-                }
-
                 frameIndex = animComp->frameIndex();
             }
         }
-
-        { //Misc
-            transformOut._normalMatrixW.setRow( 3, node->get<BoundsComponent>()->getBoundingSphere().asVec4() );
-
-            U8 selectionFlag = 0u;
-            // We don't propagate selection flags to children outside of the editor, so check for that
-            if ( node->hasFlag( SceneGraphNode::Flags::SELECTED ) ||
-                 node->parent() && node->parent()->hasFlag( SceneGraphNode::Flags::SELECTED ) )
-            {
-                selectionFlag = 2u;
-            }
-            else if ( node->hasFlag( SceneGraphNode::Flags::HOVERED ) )
-            {
-                selectionFlag = 1u;
-            }
-
-            transformOut._normalMatrixW.element( 0, 3 ) = to_F32( Util::PACK_UNORM4x8(
-                selectionFlag,
-                frameTicked,
-                rComp->getLoDLevel( _stage ),
-                rComp->occlusionCull() ? 1u : 0u
-            ) );
-
-            transformOut._normalMatrixW.element( 1, 3 ) = to_F32( std::max( frameIndex._curr, 0) );
-            transformOut._normalMatrixW.element( 2, 3 ) = to_F32( boneCount );
-        }
+        if ( node->HasComponents( ComponentType::SELECTION ) )
         {
-            PROFILE_SCOPE( "Buffer idx update", Profiler::Category::Scene );
-            U32 transformIdx = U32_MAX;
-            {
-                LockGuard<Mutex> w_lock( _transformBuffer._lock );
-                for ( U32 idx = 0u; idx < Config::MAX_VISIBLE_NODES; ++idx )
-                {
-                    if ( _transformBuffer._data._freeList[idx] )
-                    {
-                        _transformBuffer._data._freeList[idx] = false;
-                        transformIdx = idx;
-                        break;
-                    }
-                }
-                DIVIDE_ASSERT( transformIdx != U32_MAX );
-            }
-            _transformBuffer._data._gpuData[transformIdx] = transformOut;
-            UpdateBufferRangeLocked( _transformBuffer, transformIdx );
+            selectionFlag = to_U8( node->get<SelectionComponent>()->selectionType() );
+        }
 
-            if ( _indirectionBuffer._data._gpuData[indirectionIDX][TRANSFORM_IDX] != transformIdx || transformIdx == 0u )
-            {
-                _indirectionBuffer._data._gpuData[indirectionIDX][TRANSFORM_IDX] = transformIdx;
-                UpdateBufferRange( _indirectionBuffer, indirectionIDX );
-            }
+        const TransformComponent* const transform = node->get<TransformComponent>();
+        transform->getWorldMatrixInterpolated( transformOut._worldMatrix );
+        transform->getWorldRotationMatrixInterpolated( transformOut._normalMatrixW );
+        transformOut._normalMatrixW.setRow( 3, node->get<BoundsComponent>()->getBoundingSphere().asVec4() );
+
+        transformOut._normalMatrixW.element( 0, 3 ) = to_F32( Util::PACK_UNORM4x8(
+            0u,
+            0u,
+            rComp->getLoDLevel( _stage ),
+            rComp->occlusionCull() ? 1u : 0u
+        ) );
+
+        transformOut._normalMatrixW.element( 1, 3 ) = to_F32( std::max( frameIndex._curr, 0) );
+        transformOut._normalMatrixW.element( 2, 3 ) = to_F32( boneCount );
+
+
+        UpdateBufferRangeLocked( _transformBuffer, transformIdx );
+
+        if ( _indirectionBuffer._data[indirectionIDX][TRANSFORM_IDX] != transformIdx ||
+             _indirectionBuffer._data[indirectionIDX][SELECTION_FLAG] != selectionFlag ||
+             transformIdx == 0u)
+        {
+            _indirectionBuffer._data[indirectionIDX][TRANSFORM_IDX] = transformIdx;
+            _indirectionBuffer._data[indirectionIDX][SELECTION_FLAG] = selectionFlag;
+            UpdateBufferRange( _indirectionBuffer, indirectionIDX );
         }
     }
 
@@ -594,9 +584,9 @@ namespace Divide
             const U16 idx = processVisibleNodeMaterial( queue[i], cacheHit );
             DIVIDE_ASSERT( idx != g_invalidMaterialIndex && idx != U32_MAX );
 
-            if ( _indirectionBuffer._data._gpuData[indirectionIDX][MATERIAL_IDX] != idx || idx == 0u )
+            if ( _indirectionBuffer._data[indirectionIDX][MATERIAL_IDX] != idx || idx == 0u )
             {
-                _indirectionBuffer._data._gpuData[indirectionIDX][MATERIAL_IDX] = idx;
+                _indirectionBuffer._data[indirectionIDX][MATERIAL_IDX] = idx;
                 UpdateBufferRange( _indirectionBuffer, indirectionIDX );
             }
         }
@@ -646,27 +636,24 @@ namespace Divide
                 {
                     Start( *CreateTask( updateTask, [this, &queue, queueSize]( const Task& )
                                         {
-                                            const D64 interpFactor = GFXDevice::FrameInterpolationFactor();
                                             for ( U32 i = 0u; i < queueSize / 2; ++i )
                                             {
-                                                processVisibleNodeTransform( queue[i], interpFactor );
+                                                processVisibleNodeTransform( queue[i] );
                                             }
                                         } ), pool );
                     Start( *CreateTask( updateTask, [this, &queue, queueSize]( const Task& )
                                         {
-                                            const D64 interpFactor = GFXDevice::FrameInterpolationFactor();
                                             for ( U32 i = queueSize / 2; i < queueSize; ++i )
                                             {
-                                                processVisibleNodeTransform( queue[i], interpFactor );
+                                                processVisibleNodeTransform( queue[i] );
                                             }
                                         } ), pool );
                 }
                 else
                 {
-                    const D64 interpFactor = GFXDevice::FrameInterpolationFactor();
                     for ( U32 i = 0u; i < queueSize; ++i )
                     {
-                        processVisibleNodeTransform( queue[i], interpFactor );
+                        processVisibleNodeTransform( queue[i] );
                     }
                 }
                 nodeCount += queueSize;
@@ -1324,10 +1311,6 @@ namespace Divide
             {
                 cullFlags |= to_base( CullOptions::CULL_STATIC_NODES );
             }
-            if ( params._drawMask & to_U8( 1 << to_base( RenderPassParams::Flags::DRAW_SKY_NODES ) ) )
-            {
-                cullFlags |= to_base( CullOptions::KEEP_SKY_NODES );
-            }
             Attorney::SceneManagerRenderPass::cullScene( _parent.parent().sceneManager(), cullParams, cullFlags, _visibleNodesCache );
         }
         else
@@ -1335,12 +1318,14 @@ namespace Divide
             Attorney::SceneManagerRenderPass::findNode( _parent.parent().sceneManager(), camera->snapshot()._eye, params._singleNodeRenderGUID, _visibleNodesCache );
         }
 
+        const bool drawTranslucents = (params._drawMask & to_U8( 1 << to_base( RenderPassParams::Flags::DRAW_TRANSLUCENT_NODES)));
+
         constexpr bool doMainPass = true;
         // PrePass requires a depth buffer
         const bool doPrePass = _stage != RenderStage::SHADOW &&
                                params._target != INVALID_RENDER_TARGET_ID &&
                                target->usesAttachment( RTAttachmentType::DEPTH );
-        const bool doOITPass = params._targetOIT != INVALID_RENDER_TARGET_ID;
+        const bool doOITPass = drawTranslucents && params._targetOIT != INVALID_RENDER_TARGET_ID;
         const bool doOcclusionPass = doPrePass && params._targetHIZ != INVALID_RENDER_TARGET_ID;
 
         bool hasInvalidNodes = false;
@@ -1361,7 +1346,7 @@ namespace Divide
                 params._stagePass._passType = RenderPassType::OIT_PASS;
                 hasInvalidNodes = validateNodesForStagePass( params._stagePass ) || hasInvalidNodes;
             }
-            else
+            else if ( drawTranslucents )
             {
                 params._stagePass._passType = RenderPassType::TRANSPARENCY_PASS;
                 hasInvalidNodes = validateNodesForStagePass( params._stagePass ) || hasInvalidNodes;
@@ -1452,7 +1437,7 @@ namespace Divide
 #   pragma endregion
 
 #   pragma region TRANSPARENCY_PASS
-        if ( _stage != RenderStage::SHADOW )
+        if ( drawTranslucents && _stage != RenderStage::SHADOW )
         {
             // If doIOTPass is false, use forward pass shaders (i.e. MAIN_PASS again for transparents)
             if ( doOITPass )

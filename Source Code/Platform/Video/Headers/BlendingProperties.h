@@ -33,8 +33,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _BLENDING_PROPERTIES_H_
 #define _BLENDING_PROPERTIES_H_
 
-#include "RenderAPIEnums.h"
-
 namespace Divide {
 
 struct BlendingSettings {

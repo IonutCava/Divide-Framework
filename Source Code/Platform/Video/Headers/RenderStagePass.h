@@ -33,8 +33,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _RENDER_STAGE_PASS_H_
 #define _RENDER_STAGE_PASS_H_
 
-#include "RenderAPIEnums.h"
-
 namespace Divide {
 
 static constexpr U16 g_AllIndicesID = U16_MAX;

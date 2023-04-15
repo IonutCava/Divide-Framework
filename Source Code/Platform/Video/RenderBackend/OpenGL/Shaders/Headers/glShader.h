@@ -42,22 +42,32 @@ enum class ShaderResult : U8;
 
 struct PushConstantsStruct;
 
+class glShader;
+
+struct glShaderEntry
+{
+    glShader* _shader{ nullptr };
+    U64 _fileHash{ 0u };
+    U32 _generation{ 0u };
+};
+
 /// glShader represents one of a program's rendering stages (vertex, geometry, fragment, etc)
 /// It can be used simultaneously in multiple programs/pipelines
-class glShader final : public ShaderModule {
+class glShader final : public ShaderModule
+{
    public:
     /// The shader's name is the period-separated list of properties, type is
     /// the render stage this shader is used for
-    explicit glShader(GFXDevice& context, const Str256& name);
+    explicit glShader(GFXDevice& context, const Str256& name, const U32 generation);
     ~glShader();
 
     [[nodiscard]] bool load(const ShaderProgram::ShaderLoadData& data);
 
     /// Add or refresh a shader from the cache
-    [[nodiscard]] static glShader* LoadShader(GFXDevice& context,
-                                              const Str256& name,
-                                              bool overwriteExisting,
-                                              ShaderProgram::ShaderLoadData& data);
+    [[nodiscard]] static glShaderEntry LoadShader(GFXDevice& context,
+                                                  const Str256& name,
+                                                  U32 targetGeneration,
+                                                  ShaderProgram::ShaderLoadData& data);
 
     PROPERTY_R_IW(UseProgramStageMask, stageMask, UseProgramStageMask::GL_NONE_BIT);
     PROPERTY_R_IW(GLuint, handle, GLUtil::k_invalidObjectID);
@@ -74,7 +84,7 @@ class glShader final : public ShaderModule {
     ShaderProgram::ShaderLoadData _loadData;
     vector<GLuint> _shaderIDs;
     bool _linked = false;
-    GLint _pushConstantsLocation{-1};
+    GLint _pushConstantsLocation{-2};
 };
 
 };  // namespace Divide

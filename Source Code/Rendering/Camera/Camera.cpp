@@ -319,7 +319,7 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
         _data._eye.set( eye );
-        _data._orientation.fromMatrix( mat4<F32>( eye, target, up ) );
+        _data._orientation.fromMatrix( LookAt( eye, target, up ) );
         _viewMatrixDirty = true;
         _frustumDirty = true;
 
@@ -438,19 +438,19 @@ namespace Divide
         {
             if ( _data._isOrthoCamera )
             {
-                _data._projectionMatrix.ortho( _orthoRect.left,
-                                               _orthoRect.right,
-                                               _orthoRect.bottom,
-                                               _orthoRect.top,
-                                               _data._zPlanes.x,
-                                               _data._zPlanes.y );
+                _data._projectionMatrix = Ortho( _orthoRect.left,
+                                                 _orthoRect.right,
+                                                 _orthoRect.bottom,
+                                                 _orthoRect.top,
+                                                 _data._zPlanes.x,
+                                                 _data._zPlanes.y );
             }
             else
             {
-                _data._projectionMatrix.perspective( _data._FoV,
-                                                     _data._aspectRatio,
-                                                     _data._zPlanes.x,
-                                                     _data._zPlanes.y );
+                _data._projectionMatrix = Perspective( _data._FoV,
+                                                       _data._aspectRatio,
+                                                       _data._zPlanes.x,
+                                                       _data._zPlanes.y );
             }
             _data._projectionMatrix.getInverse( _data._invProjectionMatrix );
             _frustumDirty = true;
@@ -829,16 +829,17 @@ namespace Divide
         const I32 winWidth = viewport.z;
         const I32 winHeight = viewport.w;
 
-        const vec2<F32> ndcSpace = {
-            offsetWinCoordsX / (winWidth * 0.5f) - 1.0f,
+        const vec2<F32> ndcSpace = 
+        {
+            offsetWinCoordsX / (winWidth  * 0.5f) - 1.0f,
             offsetWinCoordsY / (winHeight * 0.5f) - 1.0f
         };
 
         const vec4<F32> clipSpace = {
             ndcSpace.x,
             ndcSpace.y,
-            -1.0f, //z
-            1.0f   //w
+            0.0f, //z
+            1.0f  //w
         };
 
         const mat4<F32> invProjMatrix = GetInverse( projectionMatrix() );
@@ -848,8 +849,8 @@ namespace Divide
         const vec4<F32> eyeSpace = {
             tempEyeSpace.x,
             tempEyeSpace.y,
-            -1.0f,    // z
-            0.0f      // w
+            -1.0f, // z
+             0.0f  // w
         };
 
         const vec3<F32> worldSpace = (worldMatrix() * eyeSpace).xyz;
@@ -876,6 +877,37 @@ namespace Divide
         const vec2<F32> winSpace = (ndcSpace + 1.0f) * 0.5f * winSize;
 
         return winOffset + winSpace;
+    }
+
+    mat4<F32> Camera::LookAt( const vec3<F32>& eye, const vec3<F32>& target, const vec3<F32>& up ) noexcept
+    {
+        const vec3<F32> zAxis( Normalized( eye - target ) );
+        const vec3<F32> xAxis( Normalized( Cross( up, zAxis ) ) );
+        const vec3<F32> yAxis( Normalized( Cross( zAxis, xAxis ) ) );
+
+        mat4<F32> ret;
+
+        ret.m[0][0] = xAxis.x;
+        ret.m[1][0] = xAxis.y;
+        ret.m[2][0] = xAxis.z;
+        ret.m[3][0] = -xAxis.dot( eye );
+
+        ret.m[0][1] = yAxis.x;
+        ret.m[1][1] = yAxis.y;
+        ret.m[2][1] = yAxis.z;
+        ret.m[3][1] = -yAxis.dot( eye );
+
+        ret.m[0][2] = zAxis.x;
+        ret.m[1][2] = zAxis.y;
+        ret.m[2][2] = zAxis.z;
+        ret.m[3][2] = -zAxis.dot( eye );
+
+        ret.m[0][3] = 0;
+        ret.m[1][3] = 0;
+        ret.m[2][3] = 0;
+        ret.m[3][3] = 1;
+
+        return ret;
     }
 
     void Camera::saveToXML( boost::property_tree::ptree& pt, const string prefix ) const

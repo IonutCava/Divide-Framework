@@ -58,7 +58,6 @@ namespace
             case CommandType::SET_CAMERA:
             case CommandType::SET_CLIP_PLANES:
             case CommandType::SEND_PUSH_CONSTANTS:
-            case CommandType::SET_CLIPING_STATE:
                 return true;
             default: break;
         }
@@ -186,7 +185,6 @@ namespace
                 case CommandType::SET_VIEWPORT:
                 case CommandType::PUSH_VIEWPORT:
                 case CommandType::POP_VIEWPORT:
-                case CommandType::SET_CLIPING_STATE:
                 {
                     hasWork = true;
                 } break;

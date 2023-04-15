@@ -41,7 +41,6 @@
 #include "Core/Resources/Headers/Resource.h"
 #include "Core/Resources/Headers/ResourceDescriptor.h"
 
-#include "Platform/Video/Headers/RenderAPIEnums.h"
 #include "Platform/Video/Headers/RenderStagePass.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Headers/AttributeDescriptor.h"

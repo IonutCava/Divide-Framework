@@ -90,7 +90,7 @@ namespace Divide
         rangeField._type = EditorComponentFieldType::PUSH_TYPE;
         rangeField._readOnly = false;
         rangeField._range = { EPSILON_F32, 10000.f };
-        rangeField._basicType = GFX::PushConstantType::FLOAT;
+        rangeField._basicType = PushConstantType::FLOAT;
         comp.registerField( MOV( rangeField ) );
 
         EditorComponentField intensityField = {};
@@ -99,7 +99,7 @@ namespace Divide
         intensityField._type = EditorComponentFieldType::PUSH_TYPE;
         intensityField._readOnly = false;
         intensityField._range = { EPSILON_F32, 25.f };
-        intensityField._basicType = GFX::PushConstantType::FLOAT;
+        intensityField._basicType = PushConstantType::FLOAT;
         comp.registerField( MOV( intensityField ) );
 
         EditorComponentField colourField = {};
@@ -114,7 +114,7 @@ namespace Divide
         };
         colourField._type = EditorComponentFieldType::PUSH_TYPE;
         colourField._readOnly = false;
-        colourField._basicType = GFX::PushConstantType::FCOLOUR3;
+        colourField._basicType = PushConstantType::FCOLOUR3;
         comp.registerField( MOV( colourField ) );
 
         EditorComponentField castsShadowsField = {};
@@ -122,7 +122,7 @@ namespace Divide
         castsShadowsField._data = &_castsShadows;
         castsShadowsField._type = EditorComponentFieldType::PUSH_TYPE;
         castsShadowsField._readOnly = false;
-        castsShadowsField._basicType = GFX::PushConstantType::BOOL;
+        castsShadowsField._basicType = PushConstantType::BOOL;
         comp.registerField( MOV( castsShadowsField ) );
 
         EditorComponentField shadowBiasField = {};
@@ -132,7 +132,7 @@ namespace Divide
         shadowBiasField._readOnly = false;
         shadowBiasField._format = "%.5f";
         shadowBiasField._range = { EPSILON_F32, 1.0f };
-        shadowBiasField._basicType = GFX::PushConstantType::FLOAT;
+        shadowBiasField._basicType = PushConstantType::FLOAT;
         comp.registerField( MOV( shadowBiasField ) );
 
         EditorComponentField shadowStrengthField = {};
@@ -141,7 +141,7 @@ namespace Divide
         shadowStrengthField._type = EditorComponentFieldType::SLIDER_TYPE;
         shadowStrengthField._readOnly = false;
         shadowStrengthField._range = { EPSILON_F32, 10.0f };
-        shadowStrengthField._basicType = GFX::PushConstantType::FLOAT;
+        shadowStrengthField._basicType = PushConstantType::FLOAT;
         comp.registerField( MOV( shadowStrengthField ) );
 
         EditorComponentField lightTagField = {};
@@ -150,7 +150,7 @@ namespace Divide
         lightTagField._type = EditorComponentFieldType::PUSH_TYPE;
         lightTagField._readOnly = false;
         lightTagField._hexadecimal = true;
-        lightTagField._basicType = GFX::PushConstantType::UINT;
+        lightTagField._basicType = PushConstantType::UINT;
 
         comp.registerField( MOV( lightTagField ) );
     }

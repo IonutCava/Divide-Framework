@@ -72,10 +72,10 @@ namespace Divide
         postFXShaderDescriptor._modules.push_back( vertModule );
         postFXShaderDescriptor._modules.push_back( fragModule );
 
-        _drawConstantsCmd._constants.set( _ID( "_noiseTile" ), GFX::PushConstantType::FLOAT, 0.1f );
-        _drawConstantsCmd._constants.set( _ID( "_noiseFactor" ), GFX::PushConstantType::FLOAT, 0.02f );
-        _drawConstantsCmd._constants.set( _ID( "_fadeActive" ), GFX::PushConstantType::BOOL, false );
-        _drawConstantsCmd._constants.set( _ID( "_zPlanes" ), GFX::PushConstantType::VEC2, vec2<F32>( 0.01f, 500.0f ) );
+        _drawConstantsCmd._constants.set( _ID( "_noiseTile" ), PushConstantType::FLOAT, 0.1f );
+        _drawConstantsCmd._constants.set( _ID( "_noiseFactor" ), PushConstantType::FLOAT, 0.02f );
+        _drawConstantsCmd._constants.set( _ID( "_fadeActive" ), PushConstantType::BOOL, false );
+        _drawConstantsCmd._constants.set( _ID( "_zPlanes" ), PushConstantType::VEC2, vec2<F32>( 0.01f, 500.0f ) );
 
         TextureDescriptor texDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
 
@@ -181,15 +181,15 @@ namespace Divide
 
         if ( _filtersDirty )
         {
-            _drawConstantsCmd._constants.set( _ID( "vignetteEnabled" ), GFX::PushConstantType::BOOL, getFilterState( FilterType::FILTER_VIGNETTE ) );
-            _drawConstantsCmd._constants.set( _ID( "noiseEnabled" ), GFX::PushConstantType::BOOL, getFilterState( FilterType::FILTER_NOISE ) );
-            _drawConstantsCmd._constants.set( _ID( "underwaterEnabled" ), GFX::PushConstantType::BOOL, getFilterState( FilterType::FILTER_UNDERWATER ) );
-            _drawConstantsCmd._constants.set( _ID( "lutCorrectionEnabled" ), GFX::PushConstantType::BOOL, getFilterState( FilterType::FILTER_LUT_CORECTION ) );
+            _drawConstantsCmd._constants.set( _ID( "vignetteEnabled" ), PushConstantType::BOOL, getFilterState( FilterType::FILTER_VIGNETTE ) );
+            _drawConstantsCmd._constants.set( _ID( "noiseEnabled" ), PushConstantType::BOOL, getFilterState( FilterType::FILTER_NOISE ) );
+            _drawConstantsCmd._constants.set( _ID( "underwaterEnabled" ), PushConstantType::BOOL, getFilterState( FilterType::FILTER_UNDERWATER ) );
+            _drawConstantsCmd._constants.set( _ID( "lutCorrectionEnabled" ), PushConstantType::BOOL, getFilterState( FilterType::FILTER_LUT_CORECTION ) );
             _filtersDirty = false;
         };
 
-        _drawConstantsCmd._constants.set( _ID( "_zPlanes" ), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes );
-        _drawConstantsCmd._constants.set( _ID( "_invProjectionMatrix" ), GFX::PushConstantType::VEC2, cameraSnapshot._invProjectionMatrix );
+        _drawConstantsCmd._constants.set( _ID( "_zPlanes" ), PushConstantType::VEC2, cameraSnapshot._zPlanes );
+        _drawConstantsCmd._constants.set( _ID( "_invProjectionMatrix" ), PushConstantType::VEC2, cameraSnapshot._invProjectionMatrix );
 
         GFX::EnqueueCommand( bufferInOut, _drawConstantsCmd );
         const auto& rtPool = context().gfx().renderTargetPool();
@@ -198,7 +198,6 @@ namespace Divide
         const auto& ssrDataAtt = rtPool.getRenderTarget( RenderTargetNames::SSR_RESULT )->getAttachment( RTAttachmentType::COLOUR );
         const auto& sceneDataAtt = rtPool.getRenderTarget( RenderTargetNames::SCREEN )->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS );
         const auto& velocityAtt = rtPool.getRenderTarget( RenderTargetNames::SCREEN )->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::VELOCITY );
-        const auto& depthAtt = rtPool.getRenderTarget( RenderTargetNames::SCREEN )->getAttachment( RTAttachmentType::DEPTH );
 
         SamplerDescriptor defaultSampler = {};
         defaultSampler.wrapUVW( TextureWrap::REPEAT );
@@ -207,20 +206,16 @@ namespace Divide
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
         {
-            DescriptorSetBinding& binding = AddBinding( cmd->_set, 8u, ShaderStageVisibility::FRAGMENT );
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 7u, ShaderStageVisibility::FRAGMENT );
             Set( binding._data, velocityAtt->texture()->getView(), samplerHash );
         }
         {
-            DescriptorSetBinding& binding = AddBinding( cmd->_set, 7u, ShaderStageVisibility::FRAGMENT );
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 6u, ShaderStageVisibility::FRAGMENT );
             Set( binding._data, sceneDataAtt->texture()->getView(), samplerHash );
         }
         {
-            DescriptorSetBinding& binding = AddBinding( cmd->_set, 6u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, ssrDataAtt->texture()->getView(), samplerHash );
-        }
-        {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 5u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, depthAtt->texture()->getView(), samplerHash );
+            Set( binding._data, ssrDataAtt->texture()->getView(), samplerHash );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 4u, ShaderStageVisibility::FRAGMENT );
@@ -264,8 +259,8 @@ namespace Divide
                 _randomFlashCoefficient = Random( 1000 ) * 0.001f;
             }
 
-            _drawConstantsCmd._constants.set( _ID( "randomCoeffNoise" ), GFX::PushConstantType::FLOAT, _randomNoiseCoefficient );
-            _drawConstantsCmd._constants.set( _ID( "randomCoeffFlash" ), GFX::PushConstantType::FLOAT, _randomFlashCoefficient );
+            _drawConstantsCmd._constants.set( _ID( "randomCoeffNoise" ), PushConstantType::FLOAT, _randomNoiseCoefficient );
+            _drawConstantsCmd._constants.set( _ID( "randomCoeffFlash" ), PushConstantType::FLOAT, _randomFlashCoefficient );
         }
     }
 
@@ -298,12 +293,12 @@ namespace Divide
                 }
             }
 
-            _drawConstantsCmd._constants.set( _ID( "_fadeStrength" ), GFX::PushConstantType::FLOAT, fadeStrength );
+            _drawConstantsCmd._constants.set( _ID( "_fadeStrength" ), PushConstantType::FLOAT, fadeStrength );
 
             _fadeActive = fadeStrength > EPSILON_D64;
             if ( !_fadeActive )
             {
-                _drawConstantsCmd._constants.set( _ID( "_fadeActive" ), GFX::PushConstantType::BOOL, false );
+                _drawConstantsCmd._constants.set( _ID( "_fadeActive" ), PushConstantType::BOOL, false );
                 if ( _fadeInComplete )
                 {
                     _fadeInComplete();
@@ -317,8 +312,8 @@ namespace Divide
 
     void PostFX::setFadeOut( const UColour3& targetColour, const D64 durationMS, const D64 waitDurationMS, DELEGATE<void> onComplete )
     {
-        _drawConstantsCmd._constants.set( _ID( "_fadeColour" ), GFX::PushConstantType::VEC4, Util::ToFloatColour( targetColour ) );
-        _drawConstantsCmd._constants.set( _ID( "_fadeActive" ), GFX::PushConstantType::BOOL, true );
+        _drawConstantsCmd._constants.set( _ID( "_fadeColour" ), PushConstantType::VEC4, Util::ToFloatColour( targetColour ) );
+        _drawConstantsCmd._constants.set( _ID( "_fadeActive" ), PushConstantType::BOOL, true );
         _targetFadeTimeMS = durationMS;
         _currentFadeTimeMS = 0.0;
         _fadeWaitDurationMS = waitDurationMS;
@@ -335,7 +330,7 @@ namespace Divide
         _currentFadeTimeMS = 0.0;
         _fadeOut = false;
         _fadeActive = true;
-        _drawConstantsCmd._constants.set( _ID( "_fadeActive" ), GFX::PushConstantType::BOOL, true );
+        _drawConstantsCmd._constants.set( _ID( "_fadeActive" ), PushConstantType::BOOL, true );
         _fadeInComplete = MOV( onComplete );
     }
 

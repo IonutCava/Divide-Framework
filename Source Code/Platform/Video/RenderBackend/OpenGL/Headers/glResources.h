@@ -33,8 +33,6 @@
 #ifndef _GL_RESOURCES_H_
 #define _GL_RESOURCES_H_
 
-#include "Platform/Video/Headers/RenderAPIEnums.h"
-
 #include <glbinding/gl/gl.h>
 
 using namespace gl;

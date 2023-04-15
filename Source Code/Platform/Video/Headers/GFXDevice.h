@@ -296,7 +296,7 @@ public:  // GPU interface
                          vec2<F32> zPlanes,
                          GFX::CommandBuffer& commandsInOut,
                          GFX::MemoryBarrierCommand& memCmdInOut,
-                         std::array<Camera*, 6>& cameras);
+                         mat4<F32>* viewProjectionOut = nullptr);
 
     void generateDualParaboloidMap(RenderPassParams& params,
                                    U16 arrayOffset,
@@ -304,9 +304,10 @@ public:  // GPU interface
                                    vec2<F32> zPlanes,
                                    GFX::CommandBuffer& bufferInOut,
                                    GFX::MemoryBarrierCommand& memCmdInOut,
-                                   std::array<Camera*, 2>& cameras);
+                                   mat4<F32>* viewProjectionOut = nullptr);
 
     const GFXShaderData::CamData& cameraData() const noexcept;
+    const GFXShaderData::PrevFrameData& previousFrameData() const noexcept;
 
     /// Returns true if the viewport was changed
     bool setViewport(const Rect<I32>& viewport);
@@ -416,7 +417,7 @@ public:
                     U8 layerCount,
                     GFX::CommandBuffer& bufferInOut);
 
-    [[nodiscard]] GFX::MemoryBarrierCommand updateSceneDescriptorSet(GFX::CommandBuffer& bufferInOut) const;
+    void updateSceneDescriptorSet(GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut ) const;
 
     [[nodiscard]] GFXDescriptorSet& descriptorSet(DescriptorSetUsage usage) noexcept;
     [[nodiscard]] const GFXDescriptorSet& descriptorSet(DescriptorSetUsage usage) const noexcept;
@@ -463,9 +464,6 @@ protected:
     void debugDrawCones( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
     void debugDrawSpheres( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
     void debugDrawFrustums( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
-
-
-    void onShaderRegisterChanged( ShaderProgram* program, bool state );
 
 protected:
     friend class RenderPassManager;
@@ -677,14 +675,8 @@ namespace Attorney {
         }
 
         friend class Divide::SceneManager;
-    };  
-    
-    class GFXDeviceShaderProgram {
-        static void onShaderRegisterChanged(GFXDevice& device, ShaderProgram* program, const bool state) noexcept {
-            device.onShaderRegisterChanged(program, state);
-        }
-        friend class Divide::ShaderProgram;
     };
+
 };  // namespace Attorney
 };  // namespace Divide
 

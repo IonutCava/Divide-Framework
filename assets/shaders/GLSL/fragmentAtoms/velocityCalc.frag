@@ -1,8 +1,6 @@
 #ifndef _VELOCITY_CALC_FRAG_
 #define _VELOCITY_CALC_FRAG_
 
-#include "velocityCheck.cmn"
-
 //ref: https://developer.nvidia.com/gpugems/gpugems3/part-iv-image-effects/chapter-27-motion-blur-post-processing-effect
 #if defined(HAS_VELOCITY)
 vec2 velocityCalc() {

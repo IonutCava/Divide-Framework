@@ -242,51 +242,54 @@ namespace Divide
         assert( _sceneSwitchTarget._isSet );
 
         const Str256 name = _sceneSwitchTarget._targetSceneName;
-        const bool unloadPrevious = _sceneSwitchTarget._unloadPreviousScene;
         const bool threaded = _sceneSwitchTarget._loadInSeparateThread;
+        bool unloadPrevious = _sceneSwitchTarget._unloadPreviousScene;
         _sceneSwitchTarget = {};
 
         assert( !name.empty() );
 
         Scene* sceneToUnload = &_scenePool->activeScene();
-
+        if ( sceneToUnload != nullptr && sceneToUnload->resourceName().compare( name ) == 0 )
+        {
+            unloadPrevious = false;
+        }
         // We use our rendering task pool for scene changes because we might be creating / loading GPU assets (shaders, textures, buffers, etc)
-        Start( *CreateTask(
-            [this, unloadPrevious, &name, &sceneToUnload]( const Task& /*parentTask*/ )
-        {
-            // Load first, unload after to make sure we don't reload common resources
-            if ( load( name ) != nullptr )
+        Start( *CreateTask([this, unloadPrevious, &name, &sceneToUnload]( const Task& /*parentTask*/ )
             {
-                if ( unloadPrevious && sceneToUnload )
+                // Load first, unload after to make sure we don't reload common resources
+                if ( load( name ) != nullptr )
                 {
-                    Attorney::SceneManager::onRemoveActive( *sceneToUnload );
-                    unloadScene( sceneToUnload );
+                    if ( unloadPrevious && sceneToUnload )
+                    {
+                        Attorney::SceneManager::onRemoveActive( *sceneToUnload );
+                        unloadScene( sceneToUnload );
+                    }
                 }
-            }
-        } ),
+            }),
             _platformContext->taskPool( TaskPoolType::HIGH_PRIORITY ),
-            threaded ? TaskPriority::DONT_CARE : TaskPriority::REALTIME,
-            [this, name, unloadPrevious, &sceneToUnload]()
-        {
-            bool foundInCache = false;
-            Scene* loadedScene = _scenePool->getOrCreateScene( *_platformContext, parent().resourceCache(), *this, name, foundInCache );
-            assert( loadedScene != nullptr && foundInCache );
-
-            if ( loadedScene->getState() == ResourceState::RES_LOADING )
+                                        threaded ? TaskPriority::DONT_CARE : TaskPriority::REALTIME,
+                                        [this, name, unloadPrevious, &sceneToUnload]()
             {
-                Attorney::SceneManager::postLoadMainThread( *loadedScene );
+                bool foundInCache = false;
+                Scene* loadedScene = _scenePool->getOrCreateScene( *_platformContext, parent().resourceCache(), *this, name, foundInCache );
+                assert( loadedScene != nullptr && foundInCache );
+
+                if ( loadedScene->getState() == ResourceState::RES_LOADING )
+                {
+                    Attorney::SceneManager::postLoadMainThread( *loadedScene );
+                }
+                assert( loadedScene->getState() == ResourceState::RES_LOADED );
+                setActiveScene( loadedScene );
+
+                if ( unloadPrevious )
+                {
+                    _scenePool->deleteScene( sceneToUnload != nullptr ? sceneToUnload->getGUID() : -1 );
+                }
+
+                _parent.platformContext().app().timer().resetFPSCounter();
+
             }
-            assert( loadedScene->getState() == ResourceState::RES_LOADED );
-            setActiveScene( loadedScene );
-
-            if ( unloadPrevious )
-            {
-                _scenePool->deleteScene( sceneToUnload != nullptr ? sceneToUnload->getGUID() : -1 );
-            }
-
-            _parent.platformContext().app().timer().resetFPSCounter();
-
-        } );
+        );
 
         return true;
     }
@@ -420,7 +423,7 @@ namespace Divide
         }
     }
 
-    vector<SceneGraphNode*> SceneManager::getNodesInScreenRect( const Rect<I32>& screenRect, const Camera& camera, const Rect<I32>& viewport ) const
+    void SceneManager::getNodesInScreenRect( const Rect<I32>& screenRect, const Camera& camera, vector_fast<SceneGraphNode*>& nodesOut ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -436,6 +439,11 @@ namespace Divide
         static VisibleNodeList<VisibleNode, 1024> inRectList;
         static VisibleNodeList<VisibleNode, 1024> LoSList;
 
+        nodesOut.clear();
+        inRectList.reset();
+        LoSList.reset();
+        rayResults.clear();
+
         const auto& sceneGraph = getActiveScene().sceneGraph();
         const vec3<F32>& eye = camera.snapshot()._eye;
         const vec2<F32>  zPlanes = camera.snapshot()._zPlanes;
@@ -444,6 +452,8 @@ namespace Divide
         intersectionParams._includeTransformNodes = false;
         intersectionParams._ignoredTypes = s_ignoredNodes.data();
         intersectionParams._ignoredTypesCount = s_ignoredNodes.size();
+
+        const GFXDevice& gfx = parent().platformContext().gfx();
 
         const auto CheckPointLoS = [&]( const vec3<F32>& point, const I64 nodeGUID, const I64 parentNodeGUID ) -> bool
         {
@@ -481,7 +491,7 @@ namespace Divide
             return CheckPointLoS( point, nodeGUID, parentNodeGUID );
         };
 
-        const auto IsNodeInRect = [&screenRect, &camera, &viewport]( SceneGraphNode* node )
+        const auto IsNodeInRect = [&screenRect, &camera, &gfx]( SceneGraphNode* node )
         {
             assert( node != nullptr );
             const SceneNode& sNode = node->getNode();
@@ -507,7 +517,9 @@ namespace Divide
                     if ( bComp != nullptr )
                     {
                         const vec3<F32>& center = bComp->getBoundingSphere().getCenter();
-                        return screenRect.contains( camera.project( center, viewport ) );
+                        const vec2<U16> resolution = gfx.renderingResolution();
+                        const Rect<I32> targetViewport( 0, 0, to_I32( resolution.width ), to_I32( resolution.height ) );
+                        return screenRect.contains( camera.project( center, targetViewport ) );
                     }
                 }
             }
@@ -516,14 +528,16 @@ namespace Divide
         };
 
         //Step 1: Grab ALL nodes in rect
-        vector<SceneGraphNode*> ret = {};
-
         for ( size_t i = 0u; i < _recentlyRenderedNodes.size(); ++i )
         {
             const VisibleNode& node = _recentlyRenderedNodes.node( i );
             if ( IsNodeInRect( node._node ) )
             {
                 inRectList.append( node );
+                if ( inRectList.size() == 1024 )
+                {
+                    break;
+                }
             }
         }
 
@@ -569,14 +583,12 @@ namespace Divide
                     }
                 }
 
-                if ( eastl::find( cbegin( ret ), cend( ret ), parsedNode ) == cend( ret ) )
+                if ( eastl::find( cbegin( nodesOut ), cend( nodesOut ), parsedNode ) == cend( nodesOut ) )
                 {
-                    ret.push_back( parsedNode );
+                    nodesOut.push_back( parsedNode );
                 }
             }
         }
-
-        return ret;
     }
 
     bool SceneManager::frameStarted( const FrameEvent& evt )
@@ -947,7 +959,7 @@ namespace Divide
         return false;
     }
 
-    void SceneManager::setSelected( const PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, const bool recursive )
+    void SceneManager::setSelected( const PlayerIndex idx, const vector_fast<SceneGraphNode*>& SGNs, const bool recursive )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 

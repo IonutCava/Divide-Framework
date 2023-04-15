@@ -3,14 +3,15 @@
 #include "Headers/vkShaderProgram.h"
 
 #include "Platform/Headers/PlatformRuntime.h"
+#include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 
 #include "Utility/Headers/Localization.h"
 
 namespace Divide {
 
-    vkShader::vkShader(GFXDevice& context, const Str256& name)
-        : ShaderModule(context, name)
+    vkShader::vkShader(GFXDevice& context, const Str256& name, const U32 generation)
+        : ShaderModule(context, name, generation)
     {
     }
 
@@ -30,41 +31,37 @@ namespace Divide {
     }
 
     /// Load a shader by name, source code and stage
-    vkShader* vkShader::LoadShader(GFXDevice& context,
-                                   const bool overwriteExisting,
-                                   ShaderProgram::LoadData& data)
+    vkShaderEntry vkShader::LoadShader(GFXDevice& context,
+                                       const U32 targetGeneration,
+                                       ShaderProgram::LoadData& data)
     {
         LockGuard<SharedMutex> w_lock(ShaderModule::s_shaderNameLock);
 
-        // See if we have the shader already loaded
-        ShaderModule* shader = GetShaderLocked( data._shaderName );
-        if (overwriteExisting && shader != nullptr)
+        vkShaderEntry ret
         {
-            RemoveShaderLocked(shader, true);
-            shader = nullptr;
-        }
+            ._fileHash = _ID( data._shaderName.c_str() ),
+            ._generation = targetGeneration
+        };
 
-        // If we do, and don't need a recompile, just return it
-        if (shader == nullptr)
+        // If we loaded the source code successfully,  register it
+        auto& shader_ptr = s_shaderNameMap[ret._fileHash];
+        if (shader_ptr == nullptr || shader_ptr->generation() < ret._generation )
         {
-            shader = MemoryManager_NEW vkShader(context, data._shaderName );
-
-            // If we loaded the source code successfully,  register it
-            s_shaderNameMap.insert({ shader->nameHash(), shader });
-
+            shader_ptr.reset( new vkShader( context, data._shaderName, ret._generation ));
             // At this stage, we have a valid Shader object, so load the source code
-            if (!static_cast<vkShader*>(shader)->load(data))
+            if (!static_cast<vkShader*>(shader_ptr.get())->load(data))
             {
                 DIVIDE_UNEXPECTED_CALL();
             }
         }
         else
         {
-            shader->AddRef();
-            Console::d_printfn(Locale::Get(_ID("SHADER_MANAGER_GET_INC")), shader->name().c_str(), shader->GetRef());
+            Console::d_printfn(Locale::Get(_ID("SHADER_MANAGER_GET_INC")), shader_ptr->name().c_str());
         }
 
-        return static_cast<vkShader*>(shader);
+        ret._shader = static_cast<vkShader*>(shader_ptr.get());
+
+        return ret;
     }
 
     bool vkShader::load(const ShaderProgram::LoadData& data)
@@ -131,19 +128,17 @@ namespace Divide {
 
     bool vkShaderProgram::unload() 
     {
-        // Remove every shader attached to this program
-        eastl::for_each(begin(_shaderStage),
-                        end(_shaderStage),
-                        [](vkShader* shader) 
-                        {
-                            ShaderModule::RemoveShader(shader);
-                        });
+        for ( vkShaderEntry& shader : _shaderStage )
+        {
+            shader._shader->inUse(false);
+        }
+
         _shaderStage.clear();
 
         return ShaderProgram::unload();
     }
 
-    const vector<vkShader*>& vkShaderProgram::shaderStages() const noexcept
+    const vkShaderProgram::vkShaders& vkShaderProgram::shaderStages() const noexcept
     {
         return _shaderStage;
     }
@@ -151,51 +146,34 @@ namespace Divide {
     VkShaderStageFlags vkShaderProgram::stageMask() const noexcept
     {
         VkShaderStageFlags ret{};
-        for (const vkShader* shader : _shaderStage) 
+        for (const vkShaderEntry& shader : _shaderStage)
         {
-            ret |= shader->stageMask();
+            ret |= shader._shader->stageMask();
         }
         return ret;
     }
 
-    ShaderResult vkShaderProgram::validatePreBind(const bool rebind)
+    ShaderResult vkShaderProgram::validatePreBind( const bool rebind )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        return ShaderResult::OK;
-    }
-
-    bool vkShaderProgram::recompile(bool& skipped)
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        if (!ShaderProgram::recompile(skipped))
+        ShaderResult ret = ShaderProgram::validatePreBind( rebind );
+        if ( ret == ShaderResult::OK )
         {
-            return false;
+            for ( vkShaderEntry& shader : _shaderStage )
+            {
+                shader._shader->inUse(true);
+            }
         }
 
-        if (validatePreBind(false) != ShaderResult::OK)
-        {
-            return false;
-        }
-
-        skipped = false;
-
-        threadedLoad(true);
-
-        
-        return true;
+        return ret;
     }
 
-    bool vkShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, bool reloadExisting)
+    bool vkShaderProgram::loadInternal(hashMap<U64, PerFileShaderData>& fileData, bool overwrite)
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        if (ShaderProgram::reloadShaders(fileData, reloadExisting))
+        if (ShaderProgram::loadInternal(fileData, overwrite))
         {
-            _stagesBound = false;
-            _shaderStage.clear();
-
             for (auto& [fileHash, loadDataPerFile] : fileData)
             {
                 assert(!loadDataPerFile._modules.empty());
@@ -207,14 +185,31 @@ namespace Divide {
                         continue;
                     }
 
-                    vkShader* shader = vkShader::LoadShader(_context, reloadExisting, loadData);
-                    _shaderStage.push_back(shader);
-                    _stagesBound = true;
+                    bool found = false;
+                    U32 targetGeneration = 0u;
+                    for ( vkShaderEntry& stage : _shaderStage )
+                    {
+                        if ( stage._fileHash == _ID( loadData._shaderName.c_str() ) )
+                        {
+                            targetGeneration = overwrite ? stage._generation + 1u : stage._generation;
+                            stage = vkShader::LoadShader( _context, targetGeneration, loadData );
+                            found = true;
+                            break;
+                        }
+                    }
+                    if ( !found )
+                    {
+                        _shaderStage.push_back( vkShader::LoadShader( _context, targetGeneration, loadData ) );
+                    }
                 }
   
             }
 
-            return !_shaderStage.empty();
+            if ( !_shaderStage.empty() )
+            {
+                VK_API::OnShaderReloaded(this);
+                return true;
+            }
         }
 
         return false;

@@ -143,7 +143,7 @@ namespace Divide
         }
 
         // returns selection callback id
-        size_t addSelectionCallback( const DELEGATE<void, U8, const vector<SceneGraphNode*>&>& selectionCallback )
+        size_t addSelectionCallback( const DELEGATE<void, U8, const vector_fast<SceneGraphNode*>&>& selectionCallback )
         {
             static std::atomic_size_t index = 0u;
 
@@ -161,7 +161,7 @@ namespace Divide
         }
 
         [[nodiscard]] bool resetSelection( PlayerIndex idx, const bool resetIfLocked );
-        void setSelected( PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, bool recursive );
+        void setSelected( PlayerIndex idx, const vector_fast<SceneGraphNode*>& SGNs, bool recursive );
         void onNodeDestroy( SceneGraphNode* node );
         /// cull the SceneGraph against the current view frustum. 
         void cullSceneGraph( const NodeCullParams& cullParams, const U16 cullFlags, VisibleNodeList<>& nodesOut );
@@ -257,7 +257,7 @@ namespace Divide
         // Returns true if the player was previously registered
         // On success, player pointer will be reset
         void removePlayer( Scene& parentScene, SceneGraphNode* playerNode, bool queue );
-        [[nodiscard]] vector<SceneGraphNode*> getNodesInScreenRect( const Rect<I32>& screenRect, const Camera& camera, const Rect<I32>& viewport ) const;
+        [[nodiscard]] void getNodesInScreenRect( const Rect<I32>& screenRect, const Camera& camera, vector_fast<SceneGraphNode*>& nodesOut ) const;
 
         [[nodiscard]] bool switchSceneInternal();
 
@@ -305,7 +305,7 @@ namespace Divide
         eastl::queue<std::pair<Scene*, SceneGraphNode*>>  _playerRemoveQueue;
         AI::Navigation::DivideRecast_uptr _recast = nullptr;
 
-        vector<std::pair<size_t, DELEGATE<void, U8 /*player index*/, const vector<SceneGraphNode*>& /*nodes*/>> > _selectionChangeCallbacks;
+        vector<std::pair<size_t, DELEGATE<void, U8 /*player index*/, const vector_fast<SceneGraphNode*>& /*nodes*/>> > _selectionChangeCallbacks;
         VisibleNodeList<> _recentlyRenderedNodes;
         struct SwitchSceneTarget
         {
@@ -331,9 +331,9 @@ namespace Divide
                 manager.removePlayer( parentScene, playerNode, queue );
             }
 
-            static vector<SceneGraphNode*> getNodesInScreenRect( const Divide::SceneManager& manager, const Rect<I32>& screenRect, const Camera& camera, const Rect<I32>& viewport )
+            static void getNodesInScreenRect( const Divide::SceneManager& manager, const Rect<I32>& screenRect, const Camera& camera, vector_fast<SceneGraphNode*>& nodesOut )
             {
-                return manager.getNodesInScreenRect( screenRect, camera, viewport );
+                manager.getNodesInScreenRect( screenRect, camera, nodesOut );
             }
 
             friend class Divide::Scene;

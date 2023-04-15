@@ -193,10 +193,10 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
     mat4<F32>::Multiply(viewMatrix, projectionMatrix, lightVP);
     light.setShadowLightPos(0, lightPos);
     light.setShadowFloatValue(0, shadowCameras[0]->snapshot()._zPlanes.max);
-    light.setShadowVPMatrix(0, mat4<F32>::Multiply(lightVP, MAT4_BIAS));
+    light.setShadowVPMatrix(0, mat4<F32>::Multiply(lightVP, MAT4_BIAS_ZERO_ONE_Z ));
 
     RenderPassParams params = {};
-    params._sourceNode = light.getSGN();
+    params._sourceNode = light.sgn();
     params._stagePass = { RenderStage::SHADOW, RenderPassType::COUNT, lightIndex, static_cast<RenderStagePass::VariantType>(light.getLightType()) };
     params._target = _drawBufferDepth._targetID;
     params._passName = "SingleShadowMap";
@@ -207,13 +207,11 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
     params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Single Shadow Pass Light: [ %d ]", lightIndex).c_str(), lightIndex));
-    GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = false;
 
     _context.context().kernel().renderPassManager()->doCustomPass(shadowCameras[0], params, bufferInOut, memCmdInOut);
 
     postRender(spotLight, bufferInOut);
 
-    GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = true;
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 

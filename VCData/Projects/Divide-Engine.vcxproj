@@ -717,6 +717,7 @@
     <ClCompile Include="..\..\Source Code\ECS\Systems\PointLightSystem.cpp" />
     <ClCompile Include="..\..\Source Code\ECS\Systems\RenderingSystem.cpp" />
     <ClCompile Include="..\..\Source Code\ECS\Systems\RigidBodySystem.cpp" />
+    <ClCompile Include="..\..\Source Code\ECS\Systems\SelectionSystem.cpp" />
     <ClCompile Include="..\..\Source Code\ECS\Systems\SpotLightSystem.cpp" />
     <ClCompile Include="..\..\Source Code\ECS\Systems\TransformSystem.cpp" />
     <ClCompile Include="..\..\3rdParty\EntityComponentSystem\src\API.cpp" />
@@ -862,6 +863,7 @@
     <ClInclude Include="..\..\Source Code\ECS\Systems\Headers\PointLightSystem.h" />
     <ClInclude Include="..\..\Source Code\ECS\Systems\Headers\RenderingSystem.h" />
     <ClInclude Include="..\..\Source Code\ECS\Systems\Headers\RigidBodySystem.h" />
+    <ClInclude Include="..\..\Source Code\ECS\Systems\Headers\SelectionSystem.h" />
     <ClInclude Include="..\..\Source Code\ECS\Systems\Headers\SpotLightSystem.h" />
     <ClInclude Include="..\..\Source Code\ECS\Systems\Headers\TransformSystem.h" />
     <ClInclude Include="..\..\Source Code\Geometry\Material\Headers\MaterialEnums.h" />
@@ -913,6 +915,7 @@
     <None Include="../../Source Code/Geometry\Material\Headers\Material.inl" />
     <None Include="../../Source Code/Scripting\Headers\Script.inl" />
     <None Include="..\..\Source Code\Core\Headers\EngineTaskPool.inl" />
+    <None Include="..\..\Source Code\ECS\Components\Headers\EditorComponent.inl" />
     <None Include="..\..\Source Code\ECS\Components\Headers\SGNComponent.inl" />
     <None Include="..\..\Source Code\ECS\Systems\Headers\ECSSystem.inl" />
     <None Include="..\..\Source Code\Graphs\Headers\SceneGraphNode.inl" />
@@ -921,6 +924,7 @@
     <None Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\DVDTexture.inl" />
     <None Include="..\..\Source Code\GUI\CEGUIAddons\Renderer\Headers\DVDTextureTarget.inl" />
     <None Include="..\..\Source Code\Rendering\Camera\Headers\Camera.inl" />
+    <None Include="..\..\Source Code\Rendering\Lighting\Headers\Light.inl" />
     <None Include="..\..\Source Code\Rendering\PostFX\Headers\PreRenderBatch.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

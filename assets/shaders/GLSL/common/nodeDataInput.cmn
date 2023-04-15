@@ -44,13 +44,9 @@ out gl_PerVertex
 DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_BATCH, 1, std140) uniform dvd_CamBlock
 {
     mat4  dvd_ProjectionMatrix;
-    mat4  dvd_InverseProjectionMatrix;
     mat4  dvd_ViewMatrix;
     mat4  dvd_InverseViewMatrix;
     mat4  dvd_ViewProjectionMatrix;
-    mat4  dvd_PreviousViewMatrix;
-    mat4  dvd_PreviousProjectionMatrix;
-    mat4  dvd_PreviousViewProjectionMatrix;
     vec4  dvd_ViewPort;
     //x - scale, y - bias, z - light bleed bias, w - min shadow variance
     vec4  dvd_lightingTweakValues;

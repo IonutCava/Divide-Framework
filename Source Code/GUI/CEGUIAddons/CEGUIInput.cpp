@@ -203,13 +203,12 @@ bool CEGUIInput::mouseMoved(const Input::MouseMoveEvent& arg)
         return false;
     }
 
-    if (arg.wheelEvent())
+    if (arg._wheelEvent)
     {
-        return _parent.getCEGUIContext()->injectMouseWheelChange(to_F32(arg.WheelV()));
+        return _parent.getCEGUIContext()->injectMouseWheelChange(to_F32(arg.state().VWheel ));
     }
 
-    const vec2<F32> mousePos(to_F32(arg.X().abs), to_F32(arg.Y().abs));
-    return _parent.getCEGUIContext()->injectMousePosition(mousePos.x, mousePos.y);
+    return _parent.getCEGUIContext()->injectMousePosition( to_F32( arg.state().X.abs ), to_F32( arg.state().Y.abs ) );
 }
 
 // Return true if input was consumed

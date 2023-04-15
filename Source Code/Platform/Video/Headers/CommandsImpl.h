@@ -82,7 +82,6 @@ enum class CommandType : U8 {
     BEGIN_DEBUG_SCOPE,
     END_DEBUG_SCOPE,
     ADD_DEBUG_MESSAGE,
-    SET_CLIPING_STATE,
     COUNT
 };
 
@@ -92,7 +91,7 @@ namespace Names {
         "SET_SCISSOR", "BLIT_RT", "COPY_TEXTURE", "READ_TEXTURE", "CLEAR_TEXTURE", "COMPUTE_MIPMAPS",
         "SET_CAMERA", "PUSH_CAMERA", "POP_CAMERA", "SET_CLIP_PLANES", "BIND_PIPELINE", "BIND_SHADER_RESOURCES", "SEND_PUSH_CONSTANTS",
         "DRAW_COMMANDS", "DISPATCH_COMPUTE", "MEMORY_BARRIER", "READ_BUFFER_DATA", "CLEAR_BUFFER_DATA",
-        "BEGIN_DEBUG_SCOPE","END_DEBUG_SCOPE", "ADD_DEBUG_MESSAGE", "SET_CLIPING_STATE", "UNKNOWN"
+        "BEGIN_DEBUG_SCOPE","END_DEBUG_SCOPE", "ADD_DEBUG_MESSAGE", "UNKNOWN"
     };
 };
 
@@ -281,11 +280,6 @@ DEFINE_COMMAND_BEGIN(ClearBufferDataCommand, CommandType::CLEAR_BUFFER_DATA);
     U32           _offsetElementCount{ 0 };
     U32           _elementCount{ 0 };
 DEFINE_COMMAND_END(ClearBufferDataCommand);
-
-DEFINE_COMMAND_BEGIN(SetClippingStateCommand, CommandType::SET_CLIPING_STATE)
-    bool _lowerLeftOrigin{true};
-    bool _negativeOneToOneDepth{true};
-DEFINE_COMMAND_END(SetClippingStateCommand);
 
 }; //namespace GFX
 }; //namespace Divide

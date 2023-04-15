@@ -152,6 +152,7 @@
     <None Include="..\..\Source Code\Core\Headers\ObjectPool.inl" />
     <None Include="..\..\Source Code\Core\Headers\PoolHandle.inl" />
     <None Include="..\..\Source Code\Core\Headers\TaskPool.inl" />
+    <None Include="..\..\Source Code\Core\Math\Headers\TransformInterface.inl" />
     <None Include="Divide-Core.ruleset" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

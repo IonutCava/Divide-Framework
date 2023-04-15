@@ -79,7 +79,7 @@ namespace Divide {
         F32 _planetRadius = 6360e3f;    // radius of the planet in meters
         F32 _cloudSphereRadius = 200e3f;// cloud sphere radius. Does not need to match planet radius
         F32 _atmosphereOffset = 60.f;   // planetRadius + atmoOffset = radius of the atmosphere in meters
-        F32 _MieCoeff = 21e-6f;         // Mie scattering coefficient
+        F32 _MieCoeff = 21.f;           // Mie scattering coefficient
         F32 _RayleighScale = 7994.f;    // Rayleigh scale height
         F32 _MieScaleHeight = 1200.f;   // Mie scale height
     };

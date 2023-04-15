@@ -9,10 +9,9 @@ DESCRIPTOR_SET_RESOURCE( PER_DRAW, 1 ) uniform sampler2D texVignette;
 DESCRIPTOR_SET_RESOURCE( PER_DRAW, 2 ) uniform sampler2D texNoise;
 DESCRIPTOR_SET_RESOURCE( PER_DRAW, 3 ) uniform sampler2D texWaterNoiseNM;
 DESCRIPTOR_SET_RESOURCE( PER_DRAW, 4 ) uniform sampler2D texLinearDepth;
-DESCRIPTOR_SET_RESOURCE( PER_DRAW, 5 ) uniform sampler2D texDepth;
-DESCRIPTOR_SET_RESOURCE( PER_DRAW, 6 ) uniform sampler2D texSSR;
-DESCRIPTOR_SET_RESOURCE( PER_DRAW, 7 ) uniform sampler2D texSceneData;
-DESCRIPTOR_SET_RESOURCE( PER_DRAW, 8 ) uniform sampler2D texSceneVelocity;
+DESCRIPTOR_SET_RESOURCE( PER_DRAW, 5 ) uniform sampler2D texSSR;
+DESCRIPTOR_SET_RESOURCE( PER_DRAW, 6 ) uniform sampler2D texSceneData;
+DESCRIPTOR_SET_RESOURCE( PER_DRAW, 7 ) uniform sampler2D texSceneVelocity;
 
 uniform vec4 _fadeColour;
 uniform mat4 _invProjectionMatrix;
@@ -80,7 +79,7 @@ void main( void )
 {
     if ( dvd_MaterialDebugFlag == DEBUG_DEPTH )
     {
-        _colourOut = vec4( vec3( texture(texLinearDepth, VAR._texCoord).r / _zPlanes.y + _zPlanes.x ), 1.0f );
+        _colourOut = vec4( vec3( texture(texLinearDepth, VAR._texCoord).r / _zPlanes.y ), 1.0f );
         return;
     }
     else if ( dvd_MaterialDebugFlag == DEBUG_SSR )
@@ -103,6 +102,27 @@ void main( void )
         else
         {
             _colourOut = vec4( vec3( blend ), 1.f );
+        }
+        return;
+    }
+    else if ( dvd_MaterialDebugFlag == DEBUG_VELOCITY )
+    {
+        const vec2 velocity = texture(texSceneVelocity, VAR._texCoord).rg;
+        if ( velocity.x >= 0.f && velocity.y >= 0.f )
+        {
+            _colourOut = vec4( velocity, 0.f, 1.f );
+        }
+        else if (velocity.x < 0.f )
+        {
+            _colourOut = vec4(-velocity.x, velocity.y, -velocity.x, 1.f);
+        }
+        else if ( velocity.y < 0.f )
+        {
+            _colourOut = vec4( 0.f, -velocity.y, -velocity.y, 1.f );
+        }
+        else
+        {
+            _colourOut = vec4( -velocity.x, 0.f, -velocity.y, 1.f );
         }
         return;
     }

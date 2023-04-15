@@ -39,17 +39,26 @@
 #include <Vulkan/vulkan_core.h>
 
 namespace Divide {
+    class vkShader;
+
+    struct vkShaderEntry
+    {
+        vkShader* _shader{ nullptr };
+        U64 _fileHash{ 0u };
+        U32 _generation{ 0u };
+    };
+
     class vkShader final : public ShaderModule {
     public:
-        explicit vkShader(GFXDevice& context, const Str256& name);
+        explicit vkShader(GFXDevice& context, const Str256& name, U32 generation);
         ~vkShader();
 
         [[nodiscard]] bool load(const ShaderProgram::LoadData& data);
 
         /// Add or refresh a shader from the cache
-        [[nodiscard]] static vkShader* LoadShader(GFXDevice& context,
-                                                  bool overwriteExisting,
-                                                  ShaderProgram::LoadData& data);
+        [[nodiscard]] static vkShaderEntry LoadShader(GFXDevice& context,
+                                                      U32 targetGeneration,
+                                                      ShaderProgram::LoadData& data);
 
         PROPERTY_R_IW(VkShaderStageFlagBits, stageMask, VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM);
         PROPERTY_R_IW(VkShaderModule, handle, VK_NULL_HANDLE);
@@ -64,6 +73,8 @@ namespace Divide {
 
     class vkShaderProgram final : public ShaderProgram {
     public:
+        using vkShaders = eastl::fixed_vector<vkShaderEntry, to_base( ShaderType::COUNT ), false>;
+    public:
         vkShaderProgram(GFXDevice& context,
             const size_t descriptorHash,
             const Str256& name,
@@ -75,24 +86,21 @@ namespace Divide {
 
         static void Idle(PlatformContext& platformContext);
 
-        [[nodiscard]] const vector<vkShader*>& shaderStages() const noexcept;
+        [[nodiscard]] const vkShaders& shaderStages() const noexcept;
         [[nodiscard]] VkShaderStageFlags stageMask() const noexcept;
+        [[nodiscard]] ShaderResult validatePreBind( const bool rebind ) override;
 
         PROPERTY_RW( VkDescriptorSetLayout, descriptorSetLayout, VK_NULL_HANDLE);
         PROPERTY_RW( DynamicBindings, dynamicBindings);
 
     protected:
-        [[nodiscard]] ShaderResult validatePreBind(bool rebind = true);
         /// Make sure this program is ready for deletion
         [[nodiscard]] bool unload() override;
-        [[nodiscard]] bool recompile(bool& skipped) override;
         /// Returns true if at least one shader linked successfully
-        [[nodiscard]] bool reloadShaders(hashMap<U64, PerFileShaderData>& fileData, bool reloadExisting) override;
+        [[nodiscard]] bool loadInternal(hashMap<U64, PerFileShaderData>& fileData, bool overwrite) override;
 
     private:
-       bool _validationQueued = false;
-       bool _stagesBound = false;
-       vector<vkShader*> _shaderStage;
+       vkShaders _shaderStage;
     };
 
 

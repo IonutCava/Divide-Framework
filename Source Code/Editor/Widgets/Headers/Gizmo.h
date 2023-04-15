@@ -106,7 +106,7 @@ namespace Divide {
         void render(const Camera* camera, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
         void renderSingleSelection(const Camera* camera);
         void renderMultipleSelections(const Camera* camera);
-        void updateSelections(const vector<SceneGraphNode*>& nodes);
+        void updateSelections(const vector_fast<SceneGraphNode*>& nodes);
         void setTransformSettings(const TransformSettings& settings) noexcept;
         [[nodiscard]] const TransformSettings& getTransformSettings() const noexcept;
         void onSceneFocus(bool state) noexcept;
@@ -140,7 +140,7 @@ namespace Divide {
                 gizmo->render(camera, targetViewport, bufferInOut, memCmdInOut);
             }
 
-            static void updateSelection(Gizmo* gizmo, const vector<SceneGraphNode*>& nodes) {
+            static void updateSelection(Gizmo* gizmo, const vector_fast<SceneGraphNode*>& nodes) {
                 gizmo->updateSelections(nodes);
             }
 
