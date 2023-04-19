@@ -55,8 +55,6 @@ BEGIN_SCENE(WarScene)
     bool load() override;
     bool unload() override;
     void postLoadMainThread() override;
-    void processTasks( U64 gameDeltaTimeUS, U64 appDeltaTimeUS ) override;
-    void processGUI( U64 gameDeltaTimeUS, U64 appDeltaTimeUS ) override;
     void updateSceneStateInternal(U64 deltaTimeUS) override;
     U16  registerInputActions() override;
 

@@ -70,7 +70,7 @@ void PlatformContext::terminate()
     MemoryManager::DELETE(_paramHandler);
 }
 
-void PlatformContext::idle(const bool fast)
+void PlatformContext::idle(const bool fast, const U64 deltaTimeUSGame, const U64 deltaTimeUSApp )
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::IO );
 
@@ -81,7 +81,7 @@ void PlatformContext::idle(const bool fast)
 
     if (componentMask() & to_base(SystemComponentType::GFXDevice))
     {
-        _gfx->idle(fast);
+        _gfx->idle(fast, deltaTimeUSGame, deltaTimeUSApp );
     }
     if (componentMask() & to_base(SystemComponentType::SFXDevice))
     {
@@ -124,11 +124,11 @@ const Kernel& PlatformContext::kernel() const noexcept
     return _kernel;
 }
 
-void PlatformContext::onThreadCreated(const TaskPoolType poolType, const std::thread::id& threadID) const
+void PlatformContext::onThreadCreated(const TaskPoolType poolType, const std::thread::id& threadID, bool isMainRenderThread ) const
 {
     if (poolType != TaskPoolType::LOW_PRIORITY)
     {
-        _gfx->onThreadCreated(threadID);
+        _gfx->onThreadCreated(threadID, isMainRenderThread);
     }
 }
 

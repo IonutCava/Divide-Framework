@@ -69,7 +69,7 @@ public:
     void prePass(PlayerIndex idx, const CameraSnapshot& cameraSnapshot,GFX::CommandBuffer& bufferInOut);
     void apply(PlayerIndex idx, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut);
 
-    void idle(const Configuration& config);
+    void idle(const Configuration& config, U64 deltaTimeUSGame);
     void update(U64 deltaTimeUSFixed, U64 deltaTimeUSApp);
 
     void updateResolution(U16 newWidth, U16 newHeight);

@@ -37,7 +37,6 @@
 
 #include "Core/Headers/StringHelper.h"
 #include "Platform/Video/Headers/GFXDevice.h"
-#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
 

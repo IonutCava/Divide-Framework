@@ -57,6 +57,7 @@ namespace Divide {
 
         /// Add or refresh a shader from the cache
         [[nodiscard]] static vkShaderEntry LoadShader(GFXDevice& context,
+                                                      vkShaderProgram* parent,
                                                       U32 targetGeneration,
                                                       ShaderProgram::LoadData& data);
 

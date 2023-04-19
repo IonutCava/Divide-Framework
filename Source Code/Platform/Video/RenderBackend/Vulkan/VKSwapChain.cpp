@@ -48,6 +48,8 @@ namespace Divide {
 
     ErrorCode VKSwapChain::create(const bool vSync, const bool adaptiveSync, VkSurfaceKHR targetSurface)
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         vkb::SwapchainBuilder swapchainBuilder{ _device.getPhysicalDevice(),
                                                 _device.getDevice(),
                                                 targetSurface,
@@ -117,14 +119,25 @@ namespace Divide {
 
     VkResult VKSwapChain::beginFrame()
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         //wait until the GPU has finished rendering the last frame.
-        VK_CHECK(vkWaitForFences(_device.getVKDevice(), 1, &_inFlightFences[_currentFrameIdx], VK_TRUE, U64_MAX));
+        {
+            PROFILE_SCOPE( "Wait for fences", Profiler::Category::Graphics);
+            VK_CHECK( vkWaitForFences( _device.getVKDevice(), 1, &_inFlightFences[_currentFrameIdx], VK_TRUE, U64_MAX ) );
+        }
+        _currentFrameIdx = (_currentFrameIdx + 1) % Config::MAX_FRAMES_IN_FLIGHT;
 
         //request image from the swapchain, one second timeout
-        VkResult ret = vkAcquireNextImageKHR(_device.getVKDevice(), _swapChain.swapchain, U64_MAX, _imageAvailableSemaphores[_currentFrameIdx], nullptr, &_swapchainImageIndex);
+        VkResult ret = VK_ERROR_UNKNOWN;
+        {
+            PROFILE_SCOPE( "Aquire Next Image", Profiler::Category::Graphics );
+            ret = vkAcquireNextImageKHR(_device.getVKDevice(), _swapChain.swapchain, U64_MAX, _imageAvailableSemaphores[_currentFrameIdx], nullptr, &_swapchainImageIndex);
+        }
 
         if ( ret == VK_SUCCESS )
         {
+            PROFILE_SCOPE( "Begin Command Buffer", Profiler::Category::Graphics );
             //begin the command buffer recording. We will use this command buffer exactly once, so we want to let Vulkan know that
             VkCommandBufferBeginInfo cmdBeginInfo = vk::commandBufferBeginInfo( VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT );
             VK_CHECK( vkBeginCommandBuffer( _commandBuffers[_currentFrameIdx], &cmdBeginInfo ) );
@@ -135,6 +148,8 @@ namespace Divide {
 
     VkResult VKSwapChain::endFrame( QueueType queue ) 
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         // prepare the submission to the queue.
         // we want to wait on the _presentSemaphore, as that semaphore is signaled when the swapchain is ready
         // we will signal the _renderSemaphore, to signal that rendering has finished
@@ -143,6 +158,7 @@ namespace Divide {
 
         if (_imagesInFlight[_swapchainImageIndex] != VK_NULL_HANDLE)
         {
+            PROFILE_SCOPE( "Wait for fences", Profiler::Category::Graphics );
             vkWaitForFences(_device.getVKDevice(), 1, &_imagesInFlight[_swapchainImageIndex], VK_TRUE, U64_MAX);
         }
 
@@ -159,8 +175,10 @@ namespace Divide {
         submit.commandBufferCount = 1;
         submit.pCommandBuffers = &_commandBuffers[_currentFrameIdx];
 
-        VK_CHECK(vkResetFences(_device.getVKDevice(), 1, &_inFlightFences[_currentFrameIdx]));
-
+        {
+            PROFILE_SCOPE( "Reset fences", Profiler::Category::Graphics );
+            VK_CHECK(vkResetFences(_device.getVKDevice(), 1, &_inFlightFences[_currentFrameIdx]));
+        }
         // submit command buffer to the queue and execute it. _renderFence will now block until the graphic commands finish execution
         _device.submitToQueue(queue, submit, _inFlightFences[_currentFrameIdx]);
 
@@ -175,7 +193,6 @@ namespace Divide {
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pImageIndices = &_swapchainImageIndex;
 
-        _currentFrameIdx = (_currentFrameIdx + 1) % Config::MAX_FRAMES_IN_FLIGHT;
         return _device.queuePresent(queue, presentInfo);
     }
 

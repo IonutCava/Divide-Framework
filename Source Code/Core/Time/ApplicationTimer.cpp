@@ -57,22 +57,6 @@ void ApplicationTimer::update() {
     }
 }
 
-namespace Game {
-    /// The following functions return the time updated in the main app loop only!
-    U64 ElapsedNanoseconds() noexcept {
-        return MicrosecondsToNanoseconds(ElapsedMicroseconds());
-    }
-    U64 ElapsedMicroseconds() noexcept {
-        return g_elapsedTimeUs;
-    }
-    D64 ElapsedMilliseconds() noexcept {
-        return MicrosecondsToMilliseconds<D64, U64>(ElapsedMicroseconds());
-    }
-    D64 ElapsedSeconds() noexcept {
-        return MicrosecondsToSeconds(ElapsedMicroseconds());
-    }
-}
-
 namespace App {
     /// The following functions force a timer update (a call to query performance timer).
     U64 ElapsedNanoseconds() noexcept {

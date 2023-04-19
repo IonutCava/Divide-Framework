@@ -87,7 +87,8 @@ namespace Names {
 
 static_assert(std::size( Names::errorType ) == to_base( ErrorType::COUNT ) + 1u, "ErrorType name array out of sync!");
 
-class CommandBuffer final : GUIDWrapper, NonCopyable, NonMovable {
+class CommandBuffer : private NonCopyable
+{
     friend class CommandBufferPool;
   public:
       using CommandEntry = PolyContainerEntry;
@@ -95,6 +96,9 @@ class CommandBuffer final : GUIDWrapper, NonCopyable, NonMovable {
       using CommandOrderContainer = eastl::fixed_vector<CommandEntry, 512, true, eastl::dvd_allocator>;
 
   public:
+    CommandBuffer() = default;
+    ~CommandBuffer() = default;
+
     template<typename T> requires std::is_base_of_v<CommandBase, T>
     T* add();
     template<typename T> requires std::is_base_of_v<CommandBase, T>
@@ -159,10 +163,10 @@ class CommandBuffer final : GUIDWrapper, NonCopyable, NonMovable {
     static void ToString(const CommandBase& cmd, CommandType type, I32& crtIndent, string& out);
 
   protected:
-      CommandOrderContainer _commandOrder;
-      eastl::array<U24, to_base(CommandType::COUNT)> _commandCount;
+      CommandOrderContainer _commandOrder{};
+      eastl::array<U24, to_base(CommandType::COUNT)> _commandCount{};
 
-      Container _commands;
+      Container _commands{};
       bool _batched{ false };
 };
 

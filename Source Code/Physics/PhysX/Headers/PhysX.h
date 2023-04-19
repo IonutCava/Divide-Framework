@@ -65,8 +65,8 @@ public:
 
     [[nodiscard]] ErrorCode initPhysicsAPI(U8 targetFrameRate, F32 simSpeed) override;
     [[nodiscard]] bool closePhysicsAPI() override;
-    void update(U64 deltaTimeUS) override;
-    void process(U64 deltaTimeUS) override;
+    void frameStarted(U64 deltaTimeGameUS ) override;
+    void frameEnded(U64 deltaTimeGameUS ) override;
     void idle() override;
 
     void updateTimeStep(U8 timeStepFactor, F32 simSpeed) override;

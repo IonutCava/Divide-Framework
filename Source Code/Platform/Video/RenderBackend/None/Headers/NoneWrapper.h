@@ -47,7 +47,7 @@ class NONE_API final : public RenderAPIWrapper {
       void idle(bool fast) noexcept override;
 
       [[nodiscard]] bool drawToWindow( DisplayWindow& window ) override;
-                    void flushWindow( DisplayWindow& window ) override;
+                    void flushWindow( DisplayWindow& window, bool isRenderThread ) override;
       [[nodiscard]] bool frameStarted() override;
       [[nodiscard]] bool frameEnded() override;
 
@@ -58,7 +58,7 @@ class NONE_API final : public RenderAPIWrapper {
       void postFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) noexcept override;
       bool setViewportInternal(const Rect<I32>& newViewport) noexcept override;
       bool setScissorInternal(const Rect<I32>& newScissor) noexcept override;
-      void onThreadCreated(const std::thread::id& threadID) noexcept override;
+      void onThreadCreated(const std::thread::id& threadID, bool isMainRenderThread ) noexcept override;
       void initDescriptorSets() override;
 
       [[nodiscard]] bool bindShaderResources( const DescriptorSetEntries& descriptorSetEntries ) override;

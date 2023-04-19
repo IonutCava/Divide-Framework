@@ -282,7 +282,7 @@ namespace Divide
 
         if constexpr ( zeroToOneDepth )
         {
-            ret.m[2][2] = farVal / (nearVal - farVa);
+            ret.m[2][2] = farVal / (nearVal - farVal);
             ret.m[3][2] = -(farVal * nearVal) / (farVal - nearVal);
         }
         else

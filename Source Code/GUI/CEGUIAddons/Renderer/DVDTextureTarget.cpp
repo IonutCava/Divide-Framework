@@ -37,7 +37,6 @@
 
 #include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Headers/GFXDevice.h"
-#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 
 #ifndef GLM_FORCE_DEPTH_ZERO_TO_ONE

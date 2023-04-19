@@ -36,6 +36,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Headers/PlatformContextComponent.h"
 
 #include "Platform/Headers/SDLEventListener.h"
+#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Input/Headers/InputAggregatorInterface.h"
 
 using SDL_Window = struct SDL_Window;
@@ -98,6 +99,7 @@ class PlatformContext;
 struct WindowDescriptor;
 
 enum class ErrorCode : I8;
+
 // Platform specific window
 class DisplayWindow final : public GUIDWrapper,
                             public PlatformContextComponent,
@@ -209,6 +211,9 @@ public:
 
     [[nodiscard]] bool onSDLEvent(SDL_Event event) override;
 
+
+    [[nodiscard]] GFX::CommandBuffer* getCurrentCommandBuffer();
+
     /// The display on which this window was initially created on
     PROPERTY_R(U32, initialDisplay, 0u);
     PROPERTY_R(U32, flags, 0u);
@@ -242,6 +247,7 @@ private:
     U8 _opacity = 255u;
     U8 _prevOpacity = 255u;
     
+    std::array<GFX::CommandBuffer, Config::MAX_FRAMES_IN_FLIGHT> _commandBuffers;
     /// Did we generate the window move event?
     bool _internalMoveEvent = false;
     bool _internalResizeEvent = false;

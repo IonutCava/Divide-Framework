@@ -10,7 +10,6 @@
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
-#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h"
@@ -565,10 +564,6 @@ namespace Divide
 
         _lightBuffer->incQueue();
         _sceneBuffer->incQueue();
-    }
-
-    void LightPool::postRenderAllPasses() noexcept
-    {
     }
 
     void LightPool::drawLightImpostors( GFX::CommandBuffer& bufferInOut ) const

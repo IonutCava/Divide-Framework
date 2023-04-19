@@ -6,6 +6,7 @@
 #include "Core/Headers/PlatformContext.h"
 #include "Platform/Headers/SDLEventManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/CommandBufferPool.h"
 #include "Utility/Headers/Localization.h"
 
 #include <sdl/include/SDL_vulkan.h>
@@ -27,9 +28,10 @@ DisplayWindow::~DisplayWindow()
     destroyWindow();
 }
 
-ErrorCode DisplayWindow::destroyWindow() {
-
-    if (_type != WindowType::COUNT && _sdlWindow != nullptr) {
+ErrorCode DisplayWindow::destroyWindow()
+{
+    if (_type != WindowType::COUNT && _sdlWindow != nullptr) 
+    {
         if (_destroyCbk) {
             _destroyCbk();
         }
@@ -507,6 +509,11 @@ vec2<U16> DisplayWindow::getDimensions() const noexcept {
 
 void DisplayWindow::renderingViewport(const Rect<I32>& viewport) noexcept {
     _renderingViewport.set(viewport);
+}
+
+GFX::CommandBuffer* DisplayWindow::getCurrentCommandBuffer()
+{
+    return &_commandBuffers[GFXDevice::FrameCount() % Config::MAX_FRAMES_IN_FLIGHT];
 }
 
 }; //namespace Divide

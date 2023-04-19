@@ -13,7 +13,6 @@
 #include "Managers/Headers/SceneManager.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
-#include "Platform/Video/Headers/CommandBuffer.h"
 
 #include "Rendering/Lighting/Headers/LightPool.h"
 #include "Rendering/Camera/Headers/Camera.h"

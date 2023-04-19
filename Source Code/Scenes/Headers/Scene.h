@@ -135,7 +135,7 @@ class Scene : public Resource, public PlatformContextComponent {
 
     protected:
         static Mutex s_perFrameArenaMutex;
-        static MyArena<Config::REQUIRED_RAM_SIZE_IN_BYTES / 3> s_perFrameArena;
+        static MyArena<TO_MEGABYTES(64)> s_perFrameArena;
 
     protected:
         static bool OnStartup(PlatformContext& context);
@@ -161,6 +161,7 @@ class Scene : public Resource, public PlatformContextComponent {
         virtual void updateSceneStateInternal(U64 deltaTimeUS);
         /// Update animations, network data, sounds, triggers etc.
         void updateSceneState(U64 deltaTimeUS);
+
 #pragma endregion
 
 #pragma region Task Management
@@ -228,7 +229,15 @@ class Scene : public Resource, public PlatformContextComponent {
         PROPERTY_R(SceneEnvironmentProbePool_uptr, envProbePool);
         PROPERTY_R_IW(bool, loadComplete, false);
         PROPERTY_R_IW(U64, sceneRuntimeUS, 0ULL);
+
     protected:
+        enum class TimerClass : U8
+        {
+            GAME_TIME = 0,
+            APP_TIME,
+            COUNT
+        };
+
                       virtual void onSetActive();
                       virtual void onRemoveActive();
         [[nodiscard]] virtual bool frameStarted();
@@ -236,8 +245,6 @@ class Scene : public Resource, public PlatformContextComponent {
 
         /// Returns the first available action ID
         [[nodiscard]] virtual U16 registerInputActions();
-
-        void rebuildShaders(bool selectionOnly = true) const;
 
         void          onNodeDestroy(SceneGraphNode* node);
         SceneNode_ptr createNode(SceneNodeType type, const ResourceDescriptor& descriptor) const;
@@ -277,35 +284,42 @@ class Scene : public Resource, public PlatformContextComponent {
         void removePlayerInternal(PlayerIndex idx);
         void onPlayerAdd(const Player_ptr& player);
         void onPlayerRemove(const Player_ptr& player);
-        void currentPlayerPass(U64 deltaTimeUS, PlayerIndex idx);
+        void currentPlayerPass( PlayerIndex idx);
 
         [[nodiscard]] U8      getSceneIndexForPlayer(PlayerIndex idx) const;
         [[nodiscard]] Player* getPlayerForIndex(PlayerIndex idx) const;
         [[nodiscard]] U8      getPlayerIndexForDevice(U8 deviceIndex) const;
 #pragma endregion
 
+        void addGuiTimer( TimerClass intervalClass, U64 intervalUS, DELEGATE<void, U64/*elapsed time*/> cbk);
+        void addTaskTimer( TimerClass intervalClass, U64 intervalUS, DELEGATE<void, U64/*elapsed time*/> cbk);
+
     private:
+        struct TimerStruct
+        {
+            U64 _internalTimer{0u};
+            U64 _internalTimerTotal{0u};
+            const U64 _callbackIntervalUS{0u};
+            const TimerClass _timerClass{TimerClass::GAME_TIME};
+            DELEGATE<void, U64/*elapsed time US*/> _cbk;
+        };
+
+    private:
+        void processInternalTimers( U64 appDeltaUS, U64 gameDeltaUS, vector<TimerStruct>& timers );
         /// Returns true if the camera was moved/rotated/etc
-        bool updateCameraControls(U64 deltaTimeUS, PlayerIndex idx) const;
+        bool updateCameraControls(PlayerIndex idx) const;
         void updateSelectionData(PlayerIndex idx, DragSelectData& data);
         [[nodiscard]] bool checkCameraUnderwater(PlayerIndex idx) const;
         [[nodiscard]] bool checkCameraUnderwater(const Camera& camera) const noexcept;
         [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Scene"; }
 
     protected:
-        enum class TimerClass : U8
-        {
-            GAME_TIME = 0,
-            APP_TIME,
-            COUNT
-        };
-
-        SceneManager&                         _parent;
-        vector<Player*>                       _scenePlayers;
-        vector<D64>                           _taskTimers[to_base(TimerClass::COUNT)];
-        vector<D64>                           _guiTimersMS[to_base(TimerClass::COUNT)];
-        std::atomic_uint                      _loadingTasks{0u};
-        XML::SceneNode                        _xmlSceneGraphRootNode;
+        SceneManager&    _parent;
+        vector<Player*>  _scenePlayers;
+        std::atomic_uint _loadingTasks{0u};
+        XML::SceneNode   _xmlSceneGraphRootNode;
+        IMPrimitive*     _linesPrimitive = nullptr;
+        vector<size_t>   _selectionCallbackIndices;
 
         std::array<Selections,      Config::MAX_LOCAL_PLAYER_COUNT> _currentSelection;
         std::array<Selections,      Config::MAX_LOCAL_PLAYER_COUNT> _tempSelection;
@@ -313,14 +327,14 @@ class Scene : public Resource, public PlatformContextComponent {
         std::array<DragSelectData,  Config::MAX_LOCAL_PLAYER_COUNT> _dragSelectData;
         std::array<SceneGraphNode*, Config::MAX_LOCAL_PLAYER_COUNT> _flashLight;
         std::array<U32,             Config::MAX_LOCAL_PLAYER_COUNT> _cameraUpdateListeners;
+
     private:
         SharedMutex          _tasksMutex;
         vector<Task*>        _tasks;
         vector<SGNRayResult> _sceneSelectionCandidates;
 
-    protected:
-        IMPrimitive*         _linesPrimitive = nullptr;
-        vector<size_t>       _selectionCallbackIndices;
+        vector<TimerStruct> _taskTimers;
+        vector<TimerStruct> _guiTimers;
 };
 
 namespace Attorney {
@@ -338,8 +352,8 @@ class SceneManager {
         scene.onPlayerRemove(player);
     }
 
-    static void currentPlayerPass(Scene& scene, const U64 deltaTimeUS, const PlayerIndex idx) {
-        scene.currentPlayerPass(deltaTimeUS, idx);
+    static void currentPlayerPass(Scene& scene, const PlayerIndex idx) {
+        scene.currentPlayerPass(idx);
     }
 
     static void debugDraw(Scene& scene, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut ) {

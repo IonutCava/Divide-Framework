@@ -50,8 +50,6 @@ namespace Divide
     bool load() override;
     void postLoadMainThread() override;
     void processInput( PlayerIndex idx, U64 gameDeltaTimeUS, U64 appDeltaTimeUS ) override;
-    void processTasks( U64 gameDeltaTimeUS, U64 appDeltaTimeUS ) override;
-    void processGUI( U64 gameDeltaTimeUS, U64 appDeltaTimeUS ) override;
     U16  registerInputActions() override;
 
     private:
@@ -62,7 +60,6 @@ namespace Divide
     private:
     I8 _score;
     vector<string> _quotes;
-    vec3<F32> _sunvector;
     std::shared_ptr<Sphere3D> _ball;
     SceneGraphNode* _ballSGN = nullptr;
     Camera* _paddleCam;

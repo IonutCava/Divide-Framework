@@ -129,7 +129,7 @@ bool glShaderProgram::unload()
 
     for ( glShaderEntry& shader : _shaderStage )
     {
-        shader._shader->inUse(false);
+        shader._shader->deregisterParent( this );
     }
 
     _shaderStage.clear();
@@ -172,11 +172,6 @@ ShaderResult glShaderProgram::validatePreBind(const bool rebind)
     ShaderResult ret = ShaderProgram::validatePreBind(rebind);
     if ( ret == ShaderResult::OK)
     {
-        for ( glShaderEntry& shader : _shaderStage )
-        {
-            shader._shader->inUse(true);
-        }
-
         if (!_stagesBound && rebind)
         {
             assert(getState() == ResourceState::RES_LOADED);
@@ -234,14 +229,14 @@ bool glShaderProgram::loadInternal(hashMap<U64, PerFileShaderData>& fileData, co
                 if ( stage._fileHash == _ID ( loadDataPerFile._programName.c_str()) )
                 {
                     targetGeneration = overwrite ? stage._generation + 1u : stage._generation;
-                    stage = glShader::LoadShader( _context, loadDataPerFile._programName, targetGeneration, loadDataPerFile._loadData );
+                    stage = glShader::LoadShader( _context, this, loadDataPerFile._programName, targetGeneration, loadDataPerFile._loadData );
                     found = true;
                     break;
                 }
             }
             if (!found )
             {
-                _shaderStage.push_back( glShader::LoadShader(_context, loadDataPerFile._programName, targetGeneration, loadDataPerFile._loadData) );
+                _shaderStage.push_back( glShader::LoadShader(_context, this, loadDataPerFile._programName, targetGeneration, loadDataPerFile._loadData) );
             }
         }
 
@@ -279,7 +274,6 @@ void glShaderProgram::uploadPushConstants(const PushConstantsStruct& pushConstan
     {
         for ( glShaderEntry& shader : _shaderStage)
         {
-
             if (!shader._shader->valid())
             {
                 continue;

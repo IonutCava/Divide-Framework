@@ -42,39 +42,22 @@ constexpr U64 MAX_FRAME_TIME_US = Time::MillisecondsToMicroseconds( 250 );
 
 struct LoopTimingData
 {
-    PROPERTY_R( U64, currentTimeUS, 0ULL );
-    PROPERTY_R( U64, previousTimeUS, 0ULL );
-    PROPERTY_R( U64, currentTimeDeltaUS, 0ULL );
+    PROPERTY_R( U64, appCurrentTimeUS, 0ULL );
+    PROPERTY_R( U64, gameCurrentTimeUS, 0ULL );
+
+    /// Real app delta time between frames. Can't be paused (e.g. used by editor)
+    PROPERTY_R( U64, appTimeDeltaUS, 0ULL );
+    /// Simulated app delta time between frames. Can be paused. (e.g. used by physics)
+    PROPERTY_R( U64, gameTimeDeltaUS, 0ULL );
+
     PROPERTY_RW( U64, accumulator, 0ULL );
 
     PROPERTY_RW( U8, updateLoops, 0u );
-    PROPERTY_R( bool, freezeLoopTime, false );  //Pause scene processing
-    PROPERTY_R( bool, forceRunPhysics, false ); //Simulate physics even if the scene is paused
-    PROPERTY_R( U64, currentTimeFrozenUS, 0ULL );
-
-    /// Real app delta time between frames. Can't be paused (e.g. used by editor)
-    [[nodiscard]] inline U64 appTimeDeltaUS() const noexcept
-    {
-        return currentTimeDeltaUS();
-    }
-
-    /// Simulated app delta time between frames. Can be paused. (e.g. used by physics)
-    [[nodiscard]] inline U64 realTimeDeltaUS() const noexcept
-    {
-        return _freezeLoopTime ? 0ULL : appTimeDeltaUS();
-    }
-
-    /// Framerate independent delta time between frames. Can be paused. (e.g. used by scene updates)
-    [[nodiscard]] inline U64 fixedTimeStep() const noexcept
-    {
-        return _freezeLoopTime ? 0ULL : FIXED_UPDATE_RATE_US;
-    }
+    PROPERTY_RW( bool, freezeGameTime, true );  //Pause scene processing
 
     [[nodiscard]] F32 alpha() const noexcept;
 
-    void update( const U64 elapsedTimeUS ) noexcept;
-    /// return true on change
-    bool freezeTime( const bool state ) noexcept;
+    void update( U64 elapsedTimeUSApp, U64 fixedGameTickDurationUS ) noexcept;
 };
 
 } //namespace Divide

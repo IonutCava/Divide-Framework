@@ -37,15 +37,18 @@ namespace Divide {
 namespace GFX {
 
 template <typename T, CommandType EnumVal>
-void Command<T, EnumVal>::addToBuffer(CommandBuffer* buffer) const {
+void Command<T, EnumVal>::addToBuffer(CommandBuffer* buffer) const
+{
     buffer->add(static_cast<const T&>(*this));
 }
 
-FORCE_INLINE void DELETE_CMD(CommandBase*& cmd) {
+FORCE_INLINE void DELETE_CMD(CommandBase*& cmd)
+{
     cmd->getDeleter().del(cmd);
 }
 
-FORCE_INLINE size_t RESERVE_CMD(const U8 typeIndex) noexcept {
+FORCE_INLINE size_t RESERVE_CMD(const U8 typeIndex) noexcept
+{
     switch (static_cast<CommandType>(typeIndex)) {
         case CommandType::BIND_SHADER_RESOURCES: return 2;
         case CommandType::SEND_PUSH_CONSTANTS  : return 3;
@@ -57,14 +60,16 @@ FORCE_INLINE size_t RESERVE_CMD(const U8 typeIndex) noexcept {
 }
 
 template<typename T> requires std::is_base_of_v<CommandBase, T>
-T* CommandBuffer::allocateCommand() {
+T* CommandBuffer::allocateCommand()
+{
     const CommandEntry& newEntry = _commandOrder.emplace_back(to_U8(T::EType), _commandCount[to_U8(T::EType)]++);
 
     return get<T>(newEntry);
 }
 
 template<typename T> requires std::is_base_of_v<CommandBase, T>
-T* CommandBuffer::add() {
+T* CommandBuffer::add()
+{
     T* mem = allocateCommand<T>();
 
     if (mem != nullptr) {

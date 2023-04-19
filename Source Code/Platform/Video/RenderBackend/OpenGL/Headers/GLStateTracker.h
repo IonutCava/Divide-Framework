@@ -155,8 +155,9 @@ namespace Divide {
         RenderStateBlock _activeState{};
 
         std::array<std::pair<Str256, U32>, 32> _debugScope;
+        std::pair<Str256, U32> _lastInsertedDebugMessage;
+
         U8 _debugScopeDepth{ 0u };
-        std::pair<Str256, U32> _lastDebugMessage;
 
         Pipeline const* _activePipeline{ nullptr };
         glShaderProgram* _activeShaderProgram{ nullptr };

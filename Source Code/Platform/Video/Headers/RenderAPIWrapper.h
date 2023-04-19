@@ -154,7 +154,7 @@ protected:
     friend class GFXDevice;
 
     virtual [[nodiscard]] bool drawToWindow(DisplayWindow& window) = 0;
-    virtual               void flushWindow(DisplayWindow& window) = 0;
+    virtual               void flushWindow(DisplayWindow& window, bool isRenderThread) = 0;
     virtual [[nodiscard]] bool frameStarted() = 0;
     virtual [[nodiscard]] bool frameEnded() = 0;
 
@@ -170,7 +170,7 @@ protected:
     virtual bool setViewportInternal(const Rect<I32>& newViewport) = 0;
     virtual bool setScissorInternal(const Rect<I32>& newScissor) = 0;
 
-    virtual void onThreadCreated(const std::thread::id& threadID) = 0;
+    virtual void onThreadCreated(const std::thread::id& threadID, bool isMainRenderThread ) = 0;
 
     virtual bool bindShaderResources( const DescriptorSetEntries& descriptorSetEntries ) = 0;
 

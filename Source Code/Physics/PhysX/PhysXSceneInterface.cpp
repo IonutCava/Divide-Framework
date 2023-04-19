@@ -171,6 +171,8 @@ namespace Divide
         bool expected = true;
         if ( _rigidActorsQueued.compare_exchange_strong( expected, false ) )
         {
+            PROFILE_SCOPE( "Registering rigid actors", Profiler::Category::Physics );
+
             PhysXActor* crtActor = nullptr;
             while ( _sceneRigidQueue.try_dequeue( crtActor ) )
             {
@@ -178,9 +180,17 @@ namespace Divide
                 _gScene->addActor( *(crtActor->_actor) );
             }
         }
+        else
+        {
+            const U32 componentMask = _parentScene.context().componentMask();
+
+            _parentScene.context().componentMask( componentMask & ~to_base(PlatformContext::SystemComponentType::PXDevice) );
+            _parentScene.context().idle();
+            _parentScene.context().componentMask( componentMask );
+        }
     }
 
-    void PhysXSceneInterface::update( const U64 deltaTimeUS )
+    void PhysXSceneInterface::frameEnded( [[maybe_unused]] const U64 deltaTimeGameUS )
     {
         if ( _gScene == nullptr )
         {
@@ -188,12 +198,27 @@ namespace Divide
         }
         PROFILE_SCOPE_AUTO( Profiler::Category::Physics );
 
+        bool expected = true;
+        if ( _physxResultsPending.compare_exchange_strong( expected, false ) )
+        {
+            PROFILE_SCOPE( "Waiting for simulation results", Profiler::Category::Physics );
+
+            bool block = false;
+            while ( !_gScene->fetchResults( block ) )
+            {
+                idle();
+                block = true;
+            }
+        }
+
         // retrieve array of actors that moved
         physx::PxU32 nbActiveActors = 0;
         physx::PxActor** activeActors = _gScene->getActiveActors( nbActiveActors );
 
         if ( nbActiveActors > 0u )
         {
+            PROFILE_SCOPE( "Updating actors", Profiler::Category::Physics );
+
             // update each render object with the new transform
             ParallelForDescriptor descriptor = {};
             descriptor._iterCount = to_U32( nbActiveActors );
@@ -223,20 +248,14 @@ namespace Divide
         tComp->setPosition( pT.p.x, pT.p.y, pT.p.z );
     }
 
-    void PhysXSceneInterface::process( const U64 deltaTimeUS )
+    void PhysXSceneInterface::frameStarted( const U64 deltaTimeGameUS )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Physics );
+
         if ( _gScene != nullptr )
         {
-            PROFILE_SCOPE_AUTO( Profiler::Category::Physics );
-
-            _gScene->simulate( Time::MicrosecondsToMilliseconds<physx::PxReal>( deltaTimeUS ) );
-
-            bool block = false;
-            while ( !_gScene->fetchResults( block ) )
-            {
-                idle();
-                block = true;
-            }
+            _gScene->simulate( Time::MicrosecondsToMilliseconds<physx::PxReal>( deltaTimeGameUS ) );
+            _physxResultsPending.store(true);
         }
     }
 

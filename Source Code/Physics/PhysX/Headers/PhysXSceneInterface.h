@@ -52,8 +52,8 @@ class PhysXSceneInterface final : public PhysicsSceneInterface {
     [[nodiscard]] bool isInit() const noexcept override;
     void idle() override;
     void release() override;
-    void update(U64 deltaTimeUS) override;
-    void process(U64 deltaTimeUS) override;
+    void frameStarted(U64 deltaTimeGameUS ) override;
+    void frameEnded(U64 deltaTimeGameUS ) override;
 
     // We DO NOT take ownership of actors. Ownership remains with RigidBodyComponent
     void addRigidActor(PhysXActor* actor);
@@ -71,6 +71,8 @@ class PhysXSceneInterface final : public PhysicsSceneInterface {
     RigidMap _sceneRigidActors;
 
     std::atomic_bool _rigidActorsQueued{false};
+    std::atomic_bool _physxResultsPending{false};
+
     LoadQueue _sceneRigidQueue;
 };
 

@@ -7,39 +7,22 @@ namespace Divide
     F32 LoopTimingData::alpha() const noexcept
     {
         const F32 diff = Time::MicrosecondsToMilliseconds<F32>( _accumulator ) / Time::MicrosecondsToMilliseconds<F32>( FIXED_UPDATE_RATE_US );
-        return _freezeLoopTime ? 1.f : CLAMPED_01( diff );
+        return _freezeGameTime ? 1.f : CLAMPED_01( diff );
     }
 
-    void LoopTimingData::update( const U64 elapsedTimeUS ) noexcept
+    void LoopTimingData::update( const U64 elapsedTimeUSApp, const U64 fixedGameTickDurationUS ) noexcept
     {
-        if ( _currentTimeUS == 0u )
-        {
-            _currentTimeUS = elapsedTimeUS;
-        }
-
         _updateLoops = 0u;
-        _previousTimeUS = _currentTimeUS;
-        _currentTimeUS = elapsedTimeUS;
-        _currentTimeDeltaUS = _currentTimeUS - _previousTimeUS;
+
+        _gameTimeDeltaUS = _freezeGameTime ? 0u : fixedGameTickDurationUS;
+        _gameCurrentTimeUS += _gameTimeDeltaUS;
 
         // In case we break in the debugger
-        if ( _currentTimeDeltaUS > MAX_FRAME_TIME_US )
-        {
-            _currentTimeDeltaUS = MAX_FRAME_TIME_US;
-        }
+        _appTimeDeltaUS = elapsedTimeUSApp - _appCurrentTimeUS;
+        _appCurrentTimeUS += _appTimeDeltaUS;
+        _appTimeDeltaUS = std::min( _appTimeDeltaUS, MAX_FRAME_TIME_US);
 
-        _accumulator += _currentTimeDeltaUS;
+        _accumulator += _appTimeDeltaUS;
     }
 
-    // return true on change
-    bool LoopTimingData::freezeTime( const bool state ) noexcept
-    {
-        if ( _freezeLoopTime != state )
-        {
-            _freezeLoopTime = state;
-            _currentTimeFrozenUS = _currentTimeUS;
-            return true;
-        }
-        return false;
-    }
 } //namespace Divide

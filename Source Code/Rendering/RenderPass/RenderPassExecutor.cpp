@@ -17,7 +17,6 @@
 
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GFXRTPool.h"
-#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Buffers/RenderTarget/Headers/RTAttachment.h"
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 #include "Platform/Video/Headers/GenericDrawCommand.h"
@@ -622,6 +621,8 @@ namespace Divide
                       } );
         }
 
+        bool updateTaskDirty = false;
+
         TaskPool& pool = _context.context().taskPool( TaskPoolType::HIGH_PRIORITY );
         Task* updateTask = CreateTask( TASK_NOP );
         {
@@ -648,6 +649,7 @@ namespace Divide
                                                 processVisibleNodeTransform( queue[i] );
                                             }
                                         } ), pool );
+                    updateTaskDirty = true;
                 }
                 else
                 {
@@ -676,6 +678,7 @@ namespace Divide
                                         {
                                             parseMaterialRange( queue, midPoint, queueSize );
                                         } ), pool );
+                    updateTaskDirty = true;
                 }
                 else
                 {
@@ -683,6 +686,7 @@ namespace Divide
                 }
             }
         }
+        if (updateTaskDirty) 
         {
             PROFILE_SCOPE( "buildDrawCommands - process nodes: Waiting for tasks to finish", Profiler::Category::Scene );
             Start( *updateTask, pool );

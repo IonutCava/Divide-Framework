@@ -70,6 +70,7 @@ class PlatformContext final {
 
  public:
     enum class SystemComponentType : U32 {
+        NONE = 0,
         Application = 1 << 1,
         GFXDevice = 1 << 2,
         SFXDevice = 1 << 3,
@@ -90,7 +91,7 @@ class PlatformContext final {
     explicit PlatformContext(Application& app, Kernel& kernel);
     ~PlatformContext();
 
-    void idle(bool fast);
+    void idle(bool fast = true, U64 deltaTimeUSGame = 0u, U64 deltaTimeUSApp = 0u );
 
     void terminate();
 
@@ -142,10 +143,10 @@ class PlatformContext final {
     [[nodiscard]] DisplayWindow& mainWindow() noexcept;
     [[nodiscard]] const DisplayWindow& mainWindow() const noexcept;
 
-    PROPERTY_R_IW(U32, componentMask, 0u);
+    PROPERTY_RW(U32, componentMask, 0u);
 
   protected:
-    void onThreadCreated(TaskPoolType poolType, const std::thread::id& threadID) const;
+    void onThreadCreated(TaskPoolType poolType, const std::thread::id& threadID, bool isMainRenderThread) const;
 
   private:
     /// Main application instance
@@ -185,14 +186,9 @@ namespace Attorney
 {
     class PlatformContextKernel
     {
-        static void onThreadCreated(const PlatformContext& context, const TaskPoolType poolType, const std::thread::id& threadID)
+        static void onThreadCreated(const PlatformContext& context, const TaskPoolType poolType, const std::thread::id& threadID, const bool isMainRenderThread )
         {
-            context.onThreadCreated(poolType, threadID);
-        }
-
-        static void setComponentMask( PlatformContext& context, const U32 componentMask )
-        {
-            context.componentMask(componentMask);
+            context.onThreadCreated(poolType, threadID, isMainRenderThread);
         }
 
         friend class Divide::Kernel;

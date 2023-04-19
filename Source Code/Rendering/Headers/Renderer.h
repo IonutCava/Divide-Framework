@@ -54,7 +54,7 @@ class Renderer final : public PlatformContextComponent {
 
     void prepareLighting(RenderStage stage, const Rect<I32>& viewport, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut);
 
-    void idle() const;
+    void idle(const U64 deltaTimeUSGame ) const;
 
     void updateResolution(U16 newWidth, U16 newHeight) const;
 

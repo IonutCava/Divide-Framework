@@ -15,10 +15,6 @@ namespace Divide {
     {
     }
 
-    DirectionalLightSystem::~DirectionalLightSystem()
-    {
-    }
-
     void DirectionalLightSystem::PreUpdate(const F32 dt) {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -37,27 +33,4 @@ namespace Divide {
         }
     }
 
-    void DirectionalLightSystem::Update(const F32 dt) {
-        Parent::Update(dt);
-    }
-
-    void DirectionalLightSystem::PostUpdate(const F32 dt) {
-        Parent::PostUpdate(dt);
-    }
-
-    void DirectionalLightSystem::OnFrameStart() {
-        Parent::OnFrameStart();
-    }
-
-    void DirectionalLightSystem::OnFrameEnd() {
-        Parent::OnFrameEnd();
-    }
-
-    bool DirectionalLightSystem::saveCache(const SceneGraphNode * sgn, ByteBuffer & outputBuffer) {
-        return Parent::saveCache(sgn, outputBuffer);
-    }
-
-    bool DirectionalLightSystem::loadCache(SceneGraphNode * sgn, ByteBuffer & inputBuffer) {
-        return Parent::loadCache(sgn, inputBuffer);
-    }
 } //namespace Divide

@@ -23,7 +23,6 @@
 
 #include "Platform/Audio/Headers/SFXDevice.h"
 #include "Platform/Video/Headers/GFXDevice.h"
-#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
@@ -248,8 +247,8 @@ namespace Divide
                 previousStyle = entry.textLabelStyleHash();
             }
 
-            F32 textX = entry.position().d_x.d_scale * targetViewport.sizeX + entry.position().d_x.d_offset;
-            F32 textY = targetViewport.sizeY - (entry.position().d_y.d_scale * targetViewport.sizeY + entry.position().d_y.d_offset);
+            F32 textX = entry.position()._x._scale * targetViewport.sizeX + entry.position()._x._offset;
+            F32 textY = targetViewport.sizeY - (entry.position()._y._scale * targetViewport.sizeY + entry.position()._y._offset);
 
             textX += targetViewport.offsetX;
             textY += targetViewport.offsetY;
@@ -291,6 +290,7 @@ namespace Divide
         }
 
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
+
         GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Pre-Render GUI" } );
 
         if ( _ceguiRenderer != nullptr )
@@ -313,6 +313,7 @@ namespace Divide
         {
             return;
         }
+
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
         GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Render GUI" } );

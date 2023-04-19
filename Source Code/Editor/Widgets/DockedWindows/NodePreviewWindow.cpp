@@ -11,7 +11,6 @@
 #include "Platform/Headers/DisplayWindow.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
-#include "Platform/Video/Headers/CommandBuffer.h"
 
 #include <imgui_internal.h>
 #include <IconFontCppHeaders/IconsForkAwesome.h>

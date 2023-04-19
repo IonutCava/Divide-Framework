@@ -40,7 +40,7 @@ float getShadowMultiplierDirectional(in int shadowIndex, in float TanAcosNdotL) 
     vec4 sc = properties.dvd_shadowLightVP[Split] * VAR._vertexW;
     vec3 shadowCoord = Homogenize(sc);
     
-    //if (IsInFrustum(shadowCoord))
+    if (IsInFrustum(shadowCoord))
     {
         const vec4 crtDetails = properties.dvd_shadowLightDetails;
         const float bias = clamp(crtDetails.z * TanAcosNdotL, 0.f, 0.00001f);

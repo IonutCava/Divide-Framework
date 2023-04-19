@@ -12,10 +12,6 @@ namespace Divide {
     {
     }
 
-    SpotLightSystem::~SpotLightSystem()
-    {
-    }
-
     void SpotLightSystem::PreUpdate(const F32 dt) {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -36,27 +32,4 @@ namespace Divide {
         }
     }
 
-    void SpotLightSystem::Update(const F32 dt) {
-        Parent::Update(dt);
-    }
-
-    void SpotLightSystem::PostUpdate(const F32 dt) {
-        Parent::PostUpdate(dt);
-    }
-
-    void SpotLightSystem::OnFrameStart() {
-        Parent::OnFrameStart();
-    }
-
-    void SpotLightSystem::OnFrameEnd() {
-        Parent::OnFrameEnd();
-    }
-
-    bool SpotLightSystem::saveCache(const SceneGraphNode * sgn, ByteBuffer & outputBuffer) {
-        return Parent::saveCache(sgn, outputBuffer);
-    }
-
-    bool SpotLightSystem::loadCache(SceneGraphNode * sgn, ByteBuffer & inputBuffer) {
-        return Parent::loadCache(sgn, inputBuffer);
-    }
 } //namespace Divide

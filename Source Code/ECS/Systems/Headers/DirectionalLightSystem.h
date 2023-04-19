@@ -39,20 +39,13 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
     class DirectionalLightSystem final : public PlatformContextComponent,
-                                         public ECSSystem<DirectionalLightSystem, DirectionalLightComponent> {
+                                         public ECSSystem<DirectionalLightSystem, DirectionalLightComponent>
+    {
         using Parent = ECSSystem<DirectionalLightSystem, DirectionalLightComponent>;
     public:
         DirectionalLightSystem(ECS::ECSEngine& parentEngine, PlatformContext& context);
-        virtual ~DirectionalLightSystem();
 
         void PreUpdate(F32 dt) override;
-        void Update(F32 dt) override;
-        void PostUpdate(F32 dt) override;
-        void OnFrameStart() override;
-        void OnFrameEnd() override;
-
-        bool saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) override;
-        bool loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer) override;
     };
 }
 

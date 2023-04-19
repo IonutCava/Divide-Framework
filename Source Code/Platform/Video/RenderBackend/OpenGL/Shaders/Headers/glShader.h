@@ -43,6 +43,7 @@ enum class ShaderResult : U8;
 struct PushConstantsStruct;
 
 class glShader;
+class glShaderProgram;
 
 struct glShaderEntry
 {
@@ -50,6 +51,7 @@ struct glShaderEntry
     U64 _fileHash{ 0u };
     U32 _generation{ 0u };
 };
+
 
 /// glShader represents one of a program's rendering stages (vertex, geometry, fragment, etc)
 /// It can be used simultaneously in multiple programs/pipelines
@@ -65,6 +67,7 @@ class glShader final : public ShaderModule
 
     /// Add or refresh a shader from the cache
     [[nodiscard]] static glShaderEntry LoadShader(GFXDevice& context,
+                                                  glShaderProgram* parent,
                                                   const Str256& name,
                                                   U32 targetGeneration,
                                                   ShaderProgram::ShaderLoadData& data);

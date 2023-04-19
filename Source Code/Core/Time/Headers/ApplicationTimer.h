@@ -70,13 +70,6 @@ class ApplicationTimer {
     U64 _lastBenchmarkTimeStamp = 0UL;
 };
 
-namespace Game {
-    /// The following functions return the time updated in the main app loop only!
-    U64 ElapsedNanoseconds() noexcept;
-    U64 ElapsedMicroseconds() noexcept;
-    D64 ElapsedMilliseconds() noexcept;
-    D64 ElapsedSeconds() noexcept;
-}
 
 namespace App {
     /// The following functions force a timer update (a call to query performance timer).

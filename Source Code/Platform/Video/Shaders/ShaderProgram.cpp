@@ -824,22 +824,34 @@ namespace Divide
                lhs._program != rhs._program;
     }
 
+    std::atomic_bool ShaderModule::s_modulesRemoved;
     SharedMutex ShaderModule::s_shaderNameLock;
     ShaderModule::ShaderMap ShaderModule::s_shaderNameMap;
 
-    void ShaderModule::Idle()
+    void ShaderModule::Idle( const bool fast )
     {
-        SharedLock<SharedMutex> r_lock( s_shaderNameLock );
-        for ( auto it = s_shaderNameMap.begin(); it != s_shaderNameMap.end(); )
+        if ( fast )
         {
-            if ( !it->second->inUse() && it->second->lastUsedFrame() + MAX_FRAME_LIFETIME < GFXDevice::FrameCount() )
+            NOP();
+            return;
+        }
+
+        bool expected = true;
+        if ( s_modulesRemoved.compare_exchange_strong(expected, false) )
+        {
+            LockGuard<SharedMutex> w_lock( s_shaderNameLock );
+            for ( auto it = s_shaderNameMap.begin(); it != s_shaderNameMap.end(); )
             {
-                Console::warnfn(Locale::Get(_ID("SHADER_MODULE_EXPIRED")), it->second->name().c_str());
-                it = s_shaderNameMap.erase(it);
-            }
-            else
-            {
-                ++it;
+                ShaderModule* shaderModule = it->second.get();
+                if ( !shaderModule->_inUse && shaderModule->_lastUsedFrame + MAX_FRAME_LIFETIME < GFXDevice::FrameCount() )
+                {
+                    Console::warnfn(Locale::Get(_ID("SHADER_MODULE_EXPIRED")), shaderModule->_name.c_str());
+                    it = s_shaderNameMap.erase(it);
+                }
+                else
+                {
+                    ++it;
+                }
             }
         }
     }
@@ -883,12 +895,46 @@ namespace Divide
 
     ShaderModule::~ShaderModule()
     {
+        LockGuard<Mutex> w_lock( _parentLock );
+        DIVIDE_ASSERT(_parents.empty());
     }
 
-    void ShaderModule::inUse( const bool state )
+    void ShaderModule::registerParent( ShaderProgram* parent )
     {
-        _inUse = state;
-        _lastUsedFrame = GFXDevice::FrameCount();
+        DIVIDE_ASSERT(parent != nullptr);
+
+        LockGuard<Mutex> w_lock(_parentLock);
+        for ( ShaderProgram* it : _parents )
+        {
+            if ( it->getGUID() == parent->getGUID() )
+            {
+                return;
+            }
+        }
+
+        _parents.push_back(parent);
+        _inUse = true;
+    }
+
+    void ShaderModule::deregisterParent( ShaderProgram* parent )
+    {
+        DIVIDE_ASSERT( parent != nullptr );
+
+        const I64 targetGUID = parent->getGUID();
+        LockGuard<Mutex> w_lock( _parentLock );
+        if ( dvd_erase_if( _parents,
+                           [targetGUID]( ShaderProgram* it )
+                           {
+                               return it->getGUID() == targetGUID;
+                           } ) )
+        {
+            if ( _parents.empty() )
+            {
+                _inUse = false;
+                _lastUsedFrame = GFXDevice::FrameCount();
+                s_modulesRemoved.store(true);
+            }
+        }
     }
 
     ShaderProgram::ShaderProgram( GFXDevice& context,
@@ -972,11 +1018,11 @@ namespace Divide
         return ShaderResult::OK;
     }
 
-    void ShaderProgram::Idle( PlatformContext& platformContext )
+    void ShaderProgram::Idle( PlatformContext& platformContext, const bool fast )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        ShaderModule::Idle();
+        ShaderModule::Idle( fast );
 
         if ( !s_recompileFailedQueue.empty() )
         {
@@ -1012,8 +1058,6 @@ namespace Divide
 
             s_recompileQueue.pop();
         }
-
-        UniformBlockUploader::Idle();
     }
 
     void ShaderProgram::InitStaticData()
@@ -1274,6 +1318,8 @@ namespace Divide
 
     void ShaderProgram::OnEndFrame( GFXDevice& gfx )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         size_t totalUniformBufferSize = 0u;
         SharedLock<SharedMutex> lock( s_programLock );
         for ( const ShaderProgramMapEntry& entry : s_shaderPrograms )
@@ -1365,6 +1411,8 @@ namespace Divide
 
     ShaderProgram* ShaderProgram::FindShaderProgram( const ShaderProgramHandle shaderHandle )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         SharedLock<SharedMutex> lock( s_programLock );
 
         if ( shaderHandle == s_lastRequestedShaderProgram._handle )

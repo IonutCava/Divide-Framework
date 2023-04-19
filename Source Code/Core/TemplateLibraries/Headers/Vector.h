@@ -64,7 +64,7 @@ namespace Divide
     {
         if constexpr (bEnableOverflow)
         {
-            fixed_vector.resize( 0 );
+            fixed_vector.clear();
         }
         else
         {

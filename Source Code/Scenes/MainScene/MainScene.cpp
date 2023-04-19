@@ -33,22 +33,10 @@ namespace Divide
     }
 
     MainScene::MainScene( PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name )
-        : Scene( context, cache, parent, name ),
-        _musicPlaying( false ),
-        _freeflyCamera( true/*false*/ ),
-        _updateLights( true ),
-        _beep( nullptr )
+        : Scene( context, cache, parent, name )
     {
     }
 
-    void MainScene::updateLights()
-    {
-        if ( !_updateLights )
-        {
-            return;
-        }
-        _updateLights = false;
-    }
 
     void MainScene::processInput( PlayerIndex idx, const U64 gameDeltaTimeUS, const U64 appDeltaTimeUS )
     {
@@ -101,52 +89,6 @@ namespace Divide
         Scene::processInput( idx, gameDeltaTimeUS, appDeltaTimeUS );
     }
 
-    void MainScene::processGUI( const U64 gameDeltaTimeUS, const U64 appDeltaTimeUS )
-    {
-        constexpr D64 FpsDisplay = Time::SecondsToMilliseconds( 0.5 );
-        constexpr D64 TimeDisplay = Time::SecondsToMilliseconds( 1.0 );
-
-        if ( _guiTimersMS[to_base(TimerClass::APP_TIME)][0] >= FpsDisplay )
-        {
-            _GUI->modifyText( "underwater",
-                             Util::StringFormat( "Underwater [ %s ] | WaterLevel [%.2f] ]",
-                                                 state()->playerState( 0 ).cameraUnderwater() ? "true" : "false",
-                                                 state()->waterBodies()[0]._positionW.y ), false );
-            _GUI->modifyText( "RenderBinCount",
-                             Util::StringFormat( "Number of items in Render Bin: %d.",
-                                                 _context.kernel().renderPassManager()->getLastTotalBinSize( RenderStage::DISPLAY ) ), false );
-            _guiTimersMS[to_base( TimerClass::APP_TIME )][0] = 0.0;
-        }
-
-        if ( _guiTimersMS[to_base( TimerClass::APP_TIME )][1] >= TimeDisplay )
-        {
-            _GUI->modifyText( "timeDisplay",
-                             Util::StringFormat( "Elapsed time: %5.0f", Time::Game::ElapsedSeconds() ), false );
-            _guiTimersMS[to_base( TimerClass::APP_TIME )][1] = 0.0;
-        }
-
-        Scene::processGUI( gameDeltaTimeUS, appDeltaTimeUS );
-    }
-
-    void MainScene::processTasks( const U64 gameDeltaTimeUS, const U64 appDeltaTimeUS )
-    {
-        updateLights();
-
-        constexpr D64 SunDisplay = Time::SecondsToMilliseconds( 1.50 );
-
-        if ( _taskTimers[to_base( TimerClass::GAME_TIME )][0] >= SunDisplay )
-        {
-            vector<SceneGraphNode*> terrains = _sceneGraph->getNodesByType( SceneNodeType::TYPE_TERRAIN );
-
-            //for (SceneGraphNode* terrainNode : terrains) {
-                //terrainNode.lock()->get<TransformComponent>()->setPositionY(terrainNode.lock()->get<TransformComponent>()->getPosition().y - 0.5f);
-            //}
-            _taskTimers[to_base( TimerClass::GAME_TIME )][0] = 0.0;
-        }
-
-        Scene::processTasks( gameDeltaTimeUS, appDeltaTimeUS );
-    }
-
     bool MainScene::load()
     {
         // Load scene resources
@@ -173,9 +115,26 @@ namespace Divide
 
         if ( loadState )
         {
-            _taskTimers[to_base( TimerClass::GAME_TIME )].push_back( 0.0 ); // Sun
-            _guiTimersMS[to_base( TimerClass::APP_TIME )].push_back( 0.0 );  // Fps
-            _guiTimersMS[to_base( TimerClass::APP_TIME )].push_back( 0.0 );  // Time
+            addGuiTimer( TimerClass::APP_TIME,
+                         Time::SecondsToMicroseconds( 0.5 ),
+                         [this]( [[maybe_unused]] const U64 elapsedTimeUS )
+                         {
+                             _GUI->modifyText( "underwater",
+                                               Util::StringFormat( "Underwater [ %s ] | WaterLevel [%.2f] ]", state()->playerState( 0 ).cameraUnderwater() ? "true" : "false", state()->waterBodies()[0]._positionW.y ),
+                                               false );
+                             _GUI->modifyText( "RenderBinCount",
+                                                Util::StringFormat( "Number of items in Render Bin: %d.", _context.kernel().renderPassManager()->getLastTotalBinSize( RenderStage::DISPLAY ) ),
+                                                 false );
+                         });
+
+            addGuiTimer( TimerClass::APP_TIME,
+                         Time::SecondsToMicroseconds( 1.0 ),
+                         [this]( const U64 elapsedTimeUS )
+                         {
+                             _GUI->modifyText( "timeDisplay",
+                                              Util::StringFormat( "Elapsed time: %5.0f", Time::MicrosecondsToSeconds( elapsedTimeUS )),
+                                              false );
+                         });
 
             removeTask( *g_boxMoveTaskID );
             g_boxMoveTaskID = CreateTask( [this]( const Task& /*parent*/ )
@@ -285,72 +244,79 @@ namespace Divide
     void MainScene::test()
     {
         static bool switchAB = false;
-        vec3<F32> pos;
-        SceneGraphNode* boxNode( _sceneGraph->findNode( "box" ) );
-
-        if ( boxNode )
-        {
-            pos = boxNode->get<TransformComponent>()->getWorldPosition();
-        }
-
-        if ( !switchAB )
-        {
-            if ( pos.x < 300 && IS_ZERO( pos.z ) ) pos.x++;
-            if ( COMPARE( pos.x, 300.f ) )
-            {
-                if ( pos.y < 800 && IS_ZERO( pos.z ) ) pos.y++;
-                if ( COMPARE( pos.y, 800.f ) )
-                {
-                    if ( pos.z > -500 ) pos.z--;
-                    if ( COMPARE( pos.z, -500.f ) ) switchAB = true;
-                }
-            }
-        }
-        else
-        {
-            if ( pos.x > -300 && COMPARE( pos.z, -500 ) ) pos.x--;
-            if ( COMPARE( pos.x, -300.f ) )
-            {
-                if ( pos.y > 100 && COMPARE( pos.z, -500 ) ) pos.y--;
-                if ( COMPARE( pos.y, 100 ) )
-                {
-                    if ( pos.z < 0 ) pos.z++;
-                    if ( IS_ZERO( pos.z ) ) switchAB = false;
-                }
-            }
-        }
-        if ( boxNode )
-        {
-            boxNode->get<TransformComponent>()->setPosition( pos );
-        }
-
-        std::this_thread::sleep_for( std::chrono::milliseconds( 30 ) );
         g_boxMoveTaskID = CreateTask( [this]( const Task& /*parent*/ )
         {
-            test();
-        } );
+            vec3<F32> pos;
+            SceneGraphNode* boxNode( _sceneGraph->findNode( "box" ) );
+
+            if ( boxNode )
+            {
+                pos = boxNode->get<TransformComponent>()->getWorldPosition();
+            }
+
+            if ( !switchAB )
+            {
+                if ( pos.x < 300 && IS_ZERO( pos.z ) ) pos.x++;
+                if ( COMPARE( pos.x, 300.f ) )
+                {
+                    if ( pos.y < 800 && IS_ZERO( pos.z ) ) pos.y++;
+                    if ( COMPARE( pos.y, 800.f ) )
+                    {
+                        if ( pos.z > -500 ) pos.z--;
+                        if ( COMPARE( pos.z, -500.f ) ) switchAB = true;
+                    }
+                }
+            }
+            else
+            {
+                if ( pos.x > -300 && COMPARE( pos.z, -500 ) ) pos.x--;
+                if ( COMPARE( pos.x, -300.f ) )
+                {
+                    if ( pos.y > 100 && COMPARE( pos.z, -500 ) ) pos.y--;
+                    if ( COMPARE( pos.y, 100 ) )
+                    {
+                        if ( pos.z < 0 ) pos.z++;
+                        if ( IS_ZERO( pos.z ) ) switchAB = false;
+                    }
+                }
+            }
+            if ( boxNode )
+            {
+                boxNode->get<TransformComponent>()->setPosition( pos );
+            }
+        });
 
         registerTask( *g_boxMoveTaskID );
     }
 
     void MainScene::postLoadMainThread()
     {
-        _GUI->addText( "timeDisplay", pixelPosition( 60, 80 ), Font::DIVIDE_DEFAULT,
-            UColour4( 164, 64, 64, 255 ),
-            Util::StringFormat( "Elapsed time: %5.0f", Time::Game::ElapsedSeconds() ) );
-        _GUI->addText( "underwater", pixelPosition( 60, 115 ), Font::DIVIDE_DEFAULT,
-                      UColour4( 64, 200, 64, 255 ),
-            Util::StringFormat( "Underwater [ %s ] | WaterLevel [%.2f] ]", "false", 0 ) );
-        _GUI->addText( "RenderBinCount", pixelPosition( 60, 135 ), Font::BATANG,
-                      UColour4( 164, 64, 64, 255 ),
-            Util::StringFormat( "Number of items in Render Bin: %d", 0 ) );
+        _GUI->addText( "timeDisplay",
+                       pixelPosition( 60, 80 ),
+                       Font::DIVIDE_DEFAULT,
+                       UColour4( 164, 64, 64, 255 ),
+                       "Elapsed time: 0.0f" );
+
+        _GUI->addText( "underwater",
+                       pixelPosition( 60, 115 ),
+                       Font::DIVIDE_DEFAULT,
+                       UColour4( 64, 200, 64, 255 ),
+                       "Underwater [ false ] | WaterLevel [ 0.0f ] ]");
+
+        _GUI->addText( "RenderBinCount",
+                       pixelPosition( 60, 135 ),
+                       Font::BATANG,
+                       UColour4( 164, 64, 64, 255 ),
+                       "Number of items in Render Bin: 0");
 
         const vec3<F32>& eyePos = Camera::GetUtilityCamera( Camera::UtilityCamera::DEFAULT )->snapshot()._eye;
         const vec3<F32>& euler = Camera::GetUtilityCamera( Camera::UtilityCamera::DEFAULT )->euler();
-        _GUI->addText( "camPosition", pixelPosition( 60, 100 ), Font::DIVIDE_DEFAULT,
-                      UColour4( 64, 200, 64, 255 ),
-            Util::StringFormat( "Position [ X: %5.0f | Y: %5.0f | Z: %5.0f ] [Pitch: %5.2f | Yaw: %5.2f]",
-                                eyePos.x, eyePos.y, eyePos.z, euler.pitch, euler.yaw ) );
+        _GUI->addText( "camPosition",
+                       pixelPosition( 60, 100 ),
+                       Font::DIVIDE_DEFAULT,
+                       UColour4( 64, 200, 64, 255 ),
+                       Util::StringFormat( "Position [ X: %5.0f | Y: %5.0f | Z: %5.0f ] [Pitch: %5.2f | Yaw: %5.2f]",
+                                            eyePos.x, eyePos.y, eyePos.z, euler.pitch, euler.yaw ) );
 
         Scene::postLoadMainThread();
     }

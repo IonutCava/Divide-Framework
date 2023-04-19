@@ -49,46 +49,6 @@ namespace Divide
         _wasInFreeFly = false;
     }
 
-    void PingPongScene::processGUI( const U64 gameDeltaTimeUS, const U64 appDeltaTimeUS )
-    {
-        constexpr D64 FpsDisplay = Time::SecondsToMilliseconds( 0.3 );
-
-        if ( _guiTimersMS[to_base(TimerClass::APP_TIME)][0] >= FpsDisplay )
-        {
-            _guiTimersMS[to_base(TimerClass::APP_TIME)][0] = 0.0;
-        }
-        Scene::processGUI( gameDeltaTimeUS, appDeltaTimeUS );
-    }
-
-    void PingPongScene::processTasks( const U64 gameDeltaTimeUS, const U64 appDeltaTimeUS )
-    {
-        static vec2<F32> _sunAngle =
-            vec2<F32>( 0.0f, Angle::to_RADIANS( 45.0f ) );
-        static bool direction = false;
-        if ( !direction )
-        {
-            _sunAngle.y += 0.005f;
-            _sunAngle.x += 0.005f;
-        }
-        else
-        {
-            _sunAngle.y -= 0.005f;
-            _sunAngle.x -= 0.005f;
-        }
-
-        if ( _sunAngle.y <= Angle::to_RADIANS( 25 ) ||
-            _sunAngle.y >= Angle::to_RADIANS( 70 ) )
-            direction = !direction;
-
-        _sunvector =
-            vec3<F32>( -cosf( _sunAngle.x ) * sinf( _sunAngle.y ), -cosf( _sunAngle.y ),
-                      -sinf( _sunAngle.x ) * sinf( _sunAngle.y ) );
-
-        //_currentSky->getNode<Sky>().enableSun(true, _sun->get<DirectionalLightComponent>()->getDiffuseColour(), _sunvector);
-
-        Scene::processTasks( gameDeltaTimeUS, appDeltaTimeUS );
-    }
-
     void PingPongScene::resetGame()
     {
         _directionTowardsAdversary = true;
@@ -356,9 +316,6 @@ namespace Divide
             "You're lucky the room's empty. I'd be so ashamed otherwise if I were "
             "you" );
         _quotes.push_back( "It's not the hard. Even a monkey can do it." );
-
-        _guiTimersMS[to_base(TimerClass::APP_TIME)].push_back(0.0);  // Fps
-        _taskTimers[to_base( TimerClass::GAME_TIME )].push_back(0.0);  // Light
 
         _paddleCam = Camera::CreateCamera( "paddleCam", Camera::Mode::FREE_FLY );
         _paddleCam->fromCamera( *playerCamera() );

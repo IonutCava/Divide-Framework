@@ -61,107 +61,6 @@ WarScene::~WarScene()
     }
 }
 
-void WarScene::processGUI(const U64 gameDeltaTimeUS, const U64 appDeltaTimeUS ) {
-    constexpr D64 FpsDisplay = Time::SecondsToMilliseconds(0.3);
-    static SceneGraphNode* terrain = nullptr;
-    if (terrain == nullptr) {
-        vector<SceneGraphNode*> terrains =_sceneGraph->getNodesByType(SceneNodeType::TYPE_TERRAIN);
-        if (!terrains.empty()) {
-            terrain = terrains.front();
-        }
-    }
-
-    if (_guiTimersMS[to_base(TimerClass::APP_TIME)][0] >= FpsDisplay ) {
-        const Camera& cam = *_scenePlayers.front()->camera();
-        vec3<F32> eyePos = cam.snapshot()._eye;
-        const vec3<F32>& euler = cam.euler();
-
-        _GUI->modifyText("RenderBinCount",
-                         Util::StringFormat("Number of items in Render Bin: %d.",
-                         _context.kernel().renderPassManager()->getLastTotalBinSize(RenderStage::DISPLAY)), false);
-
-        _GUI->modifyText("camPosition",
-                         Util::StringFormat("Position [ X: %5.2f | Y: %5.2f | Z: %5.2f ] [Pitch: %5.2f | Yaw: %5.2f]",
-                                            eyePos.x, eyePos.y, eyePos.z, euler.pitch, euler.yaw), false); 
-        
-        if (terrain != nullptr) {
-            const Terrain& ter = terrain->getNode<Terrain>();
-            CLAMP<F32>(eyePos.x,
-                       ter.getDimensions().width * 0.5f * -1.0f,
-                       ter.getDimensions().width * 0.5f);
-            CLAMP<F32>(eyePos.z,
-                       ter.getDimensions().height * 0.5f * -1.0f,
-                       ter.getDimensions().height * 0.5f);
-            mat4<F32> mat = MAT4_IDENTITY;
-            terrain->get<TransformComponent>()->getWorldMatrix(mat);
-            Terrain::Vert terVert = ter.getVertFromGlobal(eyePos.x, eyePos.z, true);
-            const vec3<F32> terPos = mat * terVert._position;
-            const vec3<F32>& terNorm = terVert._normal;
-            const vec3<F32>& terTan = terVert._tangent;
-            _GUI->modifyText("terrainInfoDisplay",
-                             Util::StringFormat("Position [ X: %5.2f | Y: %5.2f | Z: %5.2f ]\nNormal [ X: %5.2f | Y: %5.2f | Z: %5.2f ]\nTangent [ X: %5.2f | Y: %5.2f | Z: %5.2f ]",
-                                 terPos.x, terPos.y, terPos.z, 
-                                 terNorm.x, terNorm.y, terNorm.z,
-                                 terTan.x, terTan.y, terTan.z),
-                            true);
-        }
-        _guiTimersMS[to_base(TimerClass::APP_TIME)][0] = 0.0;
-    }
-
-    if (_guiTimersMS[to_base(TimerClass::APP_TIME)][1] >= Time::SecondsToMilliseconds(1) ) {
-        string selectionText;
-        const Selections& selections = _currentSelection[0];
-        for (U8 i = 0u; i < selections._selectionCount; ++i) {
-            SceneGraphNode* node = sceneGraph()->findNode(selections._selections[i]);
-            if (node != nullptr) {
-                AI::AIEntity* entity = findAI(node);
-                if (entity) {
-                    selectionText.append("\n");
-                    selectionText.append(entity->toString());
-                }
-            }
-        }
-        if (!selectionText.empty()) {
-            _GUI->modifyText("entityState", selectionText, true);
-        }
-        _guiTimersMS[to_base(TimerClass::APP_TIME)][1] = 0.0;
-    }
-
-    if (_guiTimersMS[to_base(TimerClass::GAME_TIME)][0] >= 66 ) {
-        U32 elapsedTimeMinutes = Time::MicrosecondsToSeconds<U32>(_elapsedGameTime) / 60 % 60;
-        U32 elapsedTimeSeconds = Time::MicrosecondsToSeconds<U32>(_elapsedGameTime) % 60;
-        U32 elapsedTimeMilliseconds = Time::MicrosecondsToMilliseconds<U32>(_elapsedGameTime) % 1000;
-
-
-        U32 limitTimeMinutes = _timeLimitMinutes;
-        U32 limitTimeSeconds = 0;
-        U32 limitTimeMilliseconds = 0;
-
-        _GUI->modifyText("scoreDisplay",
-            Util::StringFormat("Score: A -  %d B - %d [Limit: %d]\nElapsed game time [ %d:%d:%d / %d:%d:%d]",
-                               AI::WarSceneAIProcessor::getScore(0),
-                               AI::WarSceneAIProcessor::getScore(1),
-                               _scoreLimit,
-                               elapsedTimeMinutes,
-                               elapsedTimeSeconds,
-                               elapsedTimeMilliseconds,
-                               limitTimeMinutes,
-                               limitTimeSeconds,
-                               limitTimeMilliseconds),
-                               true);
-
-        _guiTimersMS[to_base(TimerClass::GAME_TIME)][0] = 0.0;
-    }
-
-    Scene::processGUI(gameDeltaTimeUS, appDeltaTimeUS);
-}
-
-namespace {
-    F32 phiLight = 0.0f;
-    bool initPosSetLight = false;
-    vector<vec3<F32>> initPosLight;
-}
-
 void WarScene::toggleTerrainMode() {
     _terrainMode = !_terrainMode;
 }
@@ -184,71 +83,6 @@ void WarScene::debugDraw(GFX::CommandBuffer& bufferInOut,
         _context.gfx().destroyIMP(_targetLines);
     }
     Scene::debugDraw(bufferInOut, memCmdInOut);
-}
-
-void WarScene::processTasks(const U64 gameDeltaTimeUS, const U64 appDeltaTimeUS ) {
-    if (!_sceneReady) {
-        return;
-    }
-
-    constexpr D64 AnimationTimer1 = Time::SecondsToMilliseconds(5);
-    constexpr D64 AnimationTimer2 = Time::SecondsToMilliseconds(10);
-    constexpr D64 updateLights = Time::Milliseconds(32);
-
-    if (_taskTimers[to_base( TimerClass::GAME_TIME )][1] >= AnimationTimer1) {
-        /*for (SceneGraphNode* npc : _armyNPCs[0]) {
-            assert(npc);
-            npc->get<UnitComponent>()->getUnit<NPC>()->playNextAnimation();
-        }*/
-        _taskTimers[to_base( TimerClass::GAME_TIME )][1] = 0.0;
-    }
-
-    if (_taskTimers[to_base( TimerClass::GAME_TIME )][2] >= AnimationTimer2) {
-        /*for (SceneGraphNode* npc : _armyNPCs[1]) {
-            assert(npc);
-            npc->get<UnitComponent>()->getUnit<NPC>()->playNextAnimation();
-        }*/
-        _taskTimers[to_base( TimerClass::GAME_TIME )][2] = 0.0;
-    }
-
-    const size_t lightCount = _lightNodeTransforms.size();
-    if (!initPosSetLight) {
-        initPosLight.resize(lightCount);
-        for (size_t i = 0u; i < lightCount; ++i) {
-            initPosLight[i].set(_lightNodeTransforms[i]->getWorldPosition());
-        }
-        initPosSetLight = true;
-    }
-
-    if (_taskTimers[to_base( TimerClass::GAME_TIME )][3] >= updateLights) {
-        constexpr F32 radius = 150.f;
-        constexpr F32 height = 25.f;
-
-        phiLight += 0.01f;
-        if (phiLight > 360.0f) {
-            phiLight = 0.0f;
-        }
-
-        const F32 s1 = std::sin( phiLight);
-        const F32 c1 = std::cos( phiLight);
-        const F32 s2 = std::sin(-phiLight);
-        const F32 c2 = std::cos(-phiLight);
-        
-        for ( size_t i = 0u; i < lightCount; ++i ) {
-            const F32 c = i % 2 == 0 ? c1 : c2;
-            const F32 s = i % 2 == 0 ? s1 : s2;
-
-            const vec3<F32>& initPos = initPosLight[i];
-            _lightNodeTransforms[i]->setPosition(
-                radius  * c + initPos.x,
-                height  * s + initPos.y,
-                radius  * s + initPos.z
-            );
-        }
-        _taskTimers[to_base( TimerClass::GAME_TIME )][3] = 0.0;
-    }
-
-    Scene::processTasks(gameDeltaTimeUS, appDeltaTimeUS);
 }
 
 namespace {
@@ -727,13 +561,6 @@ void WarScene::postLoadMainThread() {
                                      pixelScale(100, 25));
     btn->setEventCallback(GUIButton::Event::MouseClick, [this](const I64 btnGUID) { startSimulation(btnGUID); });
 
-    btn = _GUI->addButton("ShaderReload",
-                          "Shader Reload",
-                          pixelPosition(targetRenderViewport.sizeX - 220, 30),
-                          pixelScale(100, 25));
-    btn->setEventCallback(GUIButton::Event::MouseClick,
-                         [this](I64 /*btnID*/) { rebuildShaders(); });
-
     btn = _GUI->addButton("TerrainMode",
                           "Terrain Mode Toggle",
                           pixelPosition(targetRenderViewport.sizeX - 240, 90),
@@ -789,13 +616,173 @@ void WarScene::postLoadMainThread() {
         cam->speedFactor().move = 0.02f;
         cam->speedFactor().turn = 0.01f;
     }
-    _guiTimersMS[to_base( TimerClass::APP_TIME )].push_back(0.0); // Fps
-    _guiTimersMS[to_base( TimerClass::APP_TIME )].push_back(0.0); // AI info
-    _guiTimersMS[to_base( TimerClass::GAME_TIME )].push_back(0.0); // Game info
-    _taskTimers[to_base( TimerClass::GAME_TIME )].push_back(0.0); // Sun animation
-    _taskTimers[to_base( TimerClass::GAME_TIME )].push_back(0.0); // animation team 1
-    _taskTimers[to_base( TimerClass::GAME_TIME )].push_back(0.0); // animation team 2
-    _taskTimers[to_base( TimerClass::GAME_TIME )].push_back(0.0); // light timer
+
+    /*
+    addTaskTimer(TimerClass::GAME_TIME,
+                 Time::SecondsToMicroseconds( 5.0 ),
+                 [this]( [[maybe_unused]] const U64 elapsedTimeUS )
+                 {
+                     for (SceneGraphNode* npc : _armyNPCs[0]) {
+                         assert(npc);
+                         npc->get<UnitComponent>()->getUnit<NPC>()->playNextAnimation();
+                     
+                 } );
+
+    addTaskTimer( TimerClass::GAME_TIME,
+                 Time::SecondsToMicroseconds( 10.0 ),
+                 [this]( [[maybe_unused]] const U64 elapsedTimeUS )
+                 {
+                     for (SceneGraphNode* npc : _armyNPCs[1]) {
+                         assert(npc);
+                         npc->get<UnitComponent>()->getUnit<NPC>()->playNextAnimation();
+                     }
+                 });
+    */
+
+    addTaskTimer( TimerClass::GAME_TIME,
+                  Time::MillisecondsToMicroseconds( 33 ),
+                  [this]( [[maybe_unused]] const U64 elapsedTimeUS )
+                  {
+                      thread_local F32 phiLight = 0.0f;
+                      thread_local bool initPosSetLight = false;
+                      thread_local vector<vec3<F32>> initPosLight;
+
+                      if ( !initPosSetLight )
+                      {
+                          const size_t lightCount = _lightNodeTransforms.size();
+                          initPosLight.resize( lightCount );
+                          for ( size_t i = 0u; i < lightCount; ++i )
+                          {
+                              initPosLight[i].set( _lightNodeTransforms[i]->getWorldPosition() );
+                          }
+                          initPosSetLight = true;
+                      }
+
+                      const size_t lightCount = _lightNodeTransforms.size();
+                      constexpr F32 radius = 150.f;
+                      constexpr F32 height = 25.f;
+                      
+                      phiLight += 0.01f;
+                      if (phiLight > 360.0f)
+                      {
+                          phiLight = 0.0f;
+                      }
+                      
+                      const F32 s1 = std::sin( phiLight);
+                      const F32 c1 = std::cos( phiLight);
+                      const F32 s2 = std::sin(-phiLight);
+                      const F32 c2 = std::cos(-phiLight);
+                      
+                      for ( size_t i = 0u; i < lightCount; ++i )
+                      {
+                          const F32 c = i % 2 == 0 ? c1 : c2;
+                          const F32 s = i % 2 == 0 ? s1 : s2;
+                      
+                          _lightNodeTransforms[i]->setPosition(
+                              radius  * c + initPosLight[i].x,
+                              height  * s + initPosLight[i].y,
+                              radius  * s + initPosLight[i].z
+                          );
+                      }
+                  });
+
+    addGuiTimer( TimerClass::APP_TIME,
+                 Time::SecondsToMicroseconds( 0.25),
+                 [this]( [[maybe_unused]] const U64 elapsedTimeUS )
+                 {
+                     const Camera& cam = *_scenePlayers.front()->camera();
+                     vec3<F32> eyePos = cam.snapshot()._eye;
+                     const vec3<F32>& euler = cam.euler();
+     
+                     _GUI->modifyText("RenderBinCount",
+                                         Util::StringFormat("Number of items in Render Bin: %d.",
+                                         _context.kernel().renderPassManager()->getLastTotalBinSize(RenderStage::DISPLAY)), false);
+     
+                     _GUI->modifyText("camPosition",
+                                         Util::StringFormat("Position [ X: %5.2f | Y: %5.2f | Z: %5.2f ] [Pitch: %5.2f | Yaw: %5.2f]",
+                                                         eyePos.x, eyePos.y, eyePos.z, euler.pitch, euler.yaw), false); 
+         
+                     static SceneGraphNode* terrain = nullptr;
+                     if ( terrain == nullptr )
+                     {
+                         vector<SceneGraphNode*> terrains = _sceneGraph->getNodesByType( SceneNodeType::TYPE_TERRAIN );
+                         if ( !terrains.empty() )
+                         {
+                             terrain = terrains.front();
+                         }
+                     }
+
+                     if (terrain != nullptr)
+                     {
+                         const Terrain& ter = terrain->getNode<Terrain>();
+                         CLAMP<F32>(eyePos.x,
+                                     ter.getDimensions().width * 0.5f * -1.0f,
+                                     ter.getDimensions().width * 0.5f);
+                         CLAMP<F32>(eyePos.z,
+                                     ter.getDimensions().height * 0.5f * -1.0f,
+                                     ter.getDimensions().height * 0.5f);
+                         mat4<F32> mat = MAT4_IDENTITY;
+                         terrain->get<TransformComponent>()->getWorldMatrix(mat);
+                         Terrain::Vert terVert = ter.getVertFromGlobal(eyePos.x, eyePos.z, true);
+                         const vec3<F32> terPos = mat * terVert._position;
+                         const vec3<F32>& terNorm = terVert._normal;
+                         const vec3<F32>& terTan = terVert._tangent;
+                         _GUI->modifyText("terrainInfoDisplay",
+                                             Util::StringFormat("Position [ X: %5.2f | Y: %5.2f | Z: %5.2f ]\nNormal [ X: %5.2f | Y: %5.2f | Z: %5.2f ]\nTangent [ X: %5.2f | Y: %5.2f | Z: %5.2f ]",
+                                                 terPos.x, terPos.y, terPos.z, 
+                                                 terNorm.x, terNorm.y, terNorm.z,
+                                                 terTan.x, terTan.y, terTan.z),
+                                         true);
+                     }
+                 });
+
+    addGuiTimer( TimerClass::GAME_TIME,
+                 Time::SecondsToMicroseconds( 1.0 ),
+                 [this]( [[maybe_unused]] const U64 elapsedTimeUS )
+                 {
+                    string selectionText;
+                    const Selections& selections = _currentSelection[0];
+                    for (U8 i = 0u; i < selections._selectionCount; ++i) {
+                        SceneGraphNode* node = sceneGraph()->findNode(selections._selections[i]);
+                        if (node != nullptr) {
+                            AI::AIEntity* entity = findAI(node);
+                            if (entity) {
+                                selectionText.append("\n");
+                                selectionText.append(entity->toString());
+                            }
+                        }
+                    }
+                    if (!selectionText.empty()) {
+                        _GUI->modifyText("entityState", selectionText, true);
+                    }
+                 });
+
+    addGuiTimer( TimerClass::GAME_TIME,
+                 Time::SecondsToMicroseconds( 5.0 ),
+                 [this]( [[maybe_unused]] const U64 elapsedTimeUS )
+                 {
+                    U32 elapsedTimeMinutes = Time::MicrosecondsToSeconds<U32>(_elapsedGameTime) / 60 % 60;
+                    U32 elapsedTimeSeconds = Time::MicrosecondsToSeconds<U32>(_elapsedGameTime) % 60;
+                    U32 elapsedTimeMilliseconds = Time::MicrosecondsToMilliseconds<U32>(_elapsedGameTime) % 1000;
+
+
+                    U32 limitTimeMinutes = _timeLimitMinutes;
+                    U32 limitTimeSeconds = 0;
+                    U32 limitTimeMilliseconds = 0;
+
+                    _GUI->modifyText("scoreDisplay",
+                        Util::StringFormat("Score: A -  %d B - %d [Limit: %d]\nElapsed game time [ %d:%d:%d / %d:%d:%d]",
+                                            AI::WarSceneAIProcessor::getScore(0),
+                                            AI::WarSceneAIProcessor::getScore(1),
+                                            _scoreLimit,
+                                            elapsedTimeMinutes,
+                                            elapsedTimeSeconds,
+                                            elapsedTimeMilliseconds,
+                                            limitTimeMinutes,
+                                            limitTimeSeconds,
+                                            limitTimeMilliseconds),
+                                            true);
+                 });
 
     Scene::postLoadMainThread();
 }

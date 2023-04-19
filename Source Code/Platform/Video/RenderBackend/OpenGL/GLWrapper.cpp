@@ -69,6 +69,18 @@ namespace Divide
             bool _inUse = false;
         };
 
+        inline bool ValidateSDL( const I32 errCode )
+        {
+            if ( errCode != 0 )
+            {
+                Console::errorfn( Locale::Get( _ID( "SDL_ERROR" ) ), SDL_GetError() );
+                DIVIDE_UNEXPECTED_CALL();
+                return false;
+            }
+
+            return true;
+        }
+
         struct ContextPool
         {
             bool init( const size_t size, const DisplayWindow& window )
@@ -128,10 +140,9 @@ namespace Divide
         const DisplayWindow& window = *_context.context().app().windowManager().mainWindow();
         g_ContextPool.init( _context.context().kernel().totalThreadCount(), window );
 
-        SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()->_glContext );
+        ValidateSDL(SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()->_glContext ));
+
         GLUtil::s_glMainRenderWindow = &window;
-        _currentContext._windowGUID = window.getGUID();
-        _currentContext._context = window.userData()->_glContext;
 
         glbinding::Binding::initialize( []( const char* proc ) noexcept
                                         {
@@ -524,26 +535,11 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        SDL_GLContext glContext = window.userData()->_glContext;
-        const I64 windowGUID = window.getGUID();
-
-        if ( glContext != nullptr && (_currentContext._windowGUID != windowGUID || _currentContext._context != glContext) )
-        {
-            SDL_GL_MakeCurrent( window.getRawWindow(), glContext );
-            _currentContext._windowGUID = windowGUID;
-            _currentContext._context = glContext;
-        }
-
-        // Clears are registered as draw calls by most software, so we do the same to stay in sync with third party software
-        _context.registerDrawCall();
-
-        const vec2<U16> drawableSize = window.getDrawableSize();
-        _context.setViewport( 0, 0, drawableSize.width, drawableSize.height );
-
+        ValidateSDL( SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()->_glContext ) );
         return true;
     }
 
-    void GL_API::flushWindow( DisplayWindow& window )
+    void GL_API::flushWindow( DisplayWindow& window, [[maybe_unused]] const bool isRenderThread )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -553,18 +549,6 @@ namespace Divide
             endPerformanceQueries();
             _swapBufferTimer.start();
         }
-
-        // Swap buffers    
-        SDL_GLContext glContext = window.userData()->_glContext;
-        const I64 windowGUID = window.getGUID();
-
-        if ( glContext != nullptr && (_currentContext._windowGUID != windowGUID || _currentContext._context != glContext) )
-        {
-            PROFILE_SCOPE( "GL_API: Swap Context", Profiler::Category::Graphics );
-            SDL_GL_MakeCurrent( window.getRawWindow(), glContext );
-            _currentContext._windowGUID = windowGUID;
-            _currentContext._context = glContext;
-        }
         {
             PROFILE_SCOPE( "GL_API: Swap Buffers", Profiler::Category::Graphics );
             SDL_GL_SwapWindow( window.getRawWindow() );
@@ -573,8 +557,6 @@ namespace Divide
         if ( mainWindow ) 
         {
             _swapBufferTimer.stop();
-            //PROFILE_SCOPE("Post-swap delay", Profiler::Category::Graphics);
-            //SDL_Delay(1);
         }
     }
 
@@ -882,8 +864,7 @@ namespace Divide
 
     void GL_API::flushCommand( GFX::CommandBase* cmd )
     {
-        PROFILE_SCOPE( GFX::Names::commandType[to_base( cmd->Type() )], Profiler::Category::Graphics );
-        PROFILE_TAG( "Type", to_base( cmd->Type() ) );
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         if ( GFXDevice::IsSubmitCommand( cmd->Type() ) )
         {
@@ -899,6 +880,8 @@ namespace Divide
         {
             case GFX::CommandType::BEGIN_RENDER_PASS:
             {
+                PROFILE_SCOPE( "BEGIN_RENDER_PASS", Profiler::Category::Graphics );
+
                 const GFX::BeginRenderPassCommand* crtCmd = cmd->As<GFX::BeginRenderPassCommand>();
 
                 s_stateTracker._activeRenderTargetID = crtCmd->_target;
@@ -946,11 +929,14 @@ namespace Divide
                     Attorney::GLAPIRenderTarget::begin( *rt, crtCmd->_descriptor, crtCmd->_clearDescriptor );
                     s_stateTracker._activeRenderTarget = rt;
                     s_stateTracker._activeRenderTargetDimensions = { rt->getWidth(), rt->getHeight() };
-                    PushDebugMessage( Util::StringFormat( "%s - %s", crtCmd->_name.c_str(), rt->debugMessage().c_str() ).c_str(), crtCmd->_target );
+                    PushDebugMessage(crtCmd->_name.c_str(), crtCmd->_target);
+                    AddDebugMessage(rt->debugMessage().c_str(), crtCmd->_target );
                 }
             }break;
             case GFX::CommandType::END_RENDER_PASS:
             {
+                PROFILE_SCOPE( "END_RENDER_PASS", Profiler::Category::Graphics );
+
                 PopDebugMessage();
 
                 if ( GL_API::s_stateTracker._activeRenderTarget == nullptr )
@@ -976,6 +962,8 @@ namespace Divide
             } break;
             case GFX::CommandType::BEGIN_GPU_QUERY:
             {
+                PROFILE_SCOPE( "BEGIN_GPU_QUERY", Profiler::Category::Graphics );
+
                 const GFX::BeginGPUQueryCommand* crtCmd = cmd->As<GFX::BeginGPUQueryCommand>();
                 if ( crtCmd->_queryMask != 0u ) [[likely]]
                 {
@@ -1002,6 +990,8 @@ namespace Divide
             }break;
             case GFX::CommandType::END_GPU_QUERY:
             {
+                PROFILE_SCOPE( "END_GPU_QUERY", Profiler::Category::Graphics );
+
                 if ( !_queryContext.empty() ) [[likely]]
                 {
                     const GFX::EndGPUQueryCommand* crtCmd = cmd->As<GFX::EndGPUQueryCommand>();
@@ -1024,6 +1014,8 @@ namespace Divide
             }break;
             case GFX::CommandType::COPY_TEXTURE:
             {
+                PROFILE_SCOPE( "COPY_TEXTURE", Profiler::Category::Graphics );
+
                 const GFX::CopyTextureCommand* crtCmd = cmd->As<GFX::CopyTextureCommand>();
                 glTexture::Copy( static_cast<glTexture*>(crtCmd->_source),
                                  crtCmd->_sourceMSAASamples,
@@ -1052,6 +1044,8 @@ namespace Divide
             }break;
             case GFX::CommandType::BIND_PIPELINE:
             {
+                PROFILE_SCOPE( "BIND_PIPELINE", Profiler::Category::Graphics );
+
                 const Pipeline* pipeline = cmd->As<GFX::BindPipelineCommand>()->_pipeline;
                 assert( pipeline != nullptr );
                 if ( BindPipeline(_context, *pipeline ) == ShaderResult::Failed )
@@ -1061,6 +1055,8 @@ namespace Divide
             } break;
             case GFX::CommandType::SEND_PUSH_CONSTANTS:
             {
+                PROFILE_SCOPE( "SEND_PUSH_CONSTANTS", Profiler::Category::Graphics );
+
                 const auto dumpLogs = [this]()
                 {
                     Console::d_errorfn( Locale::Get( _ID( "ERROR_GLSL_INVALID_PUSH_CONSTANTS" ) ) );
@@ -1096,22 +1092,28 @@ namespace Divide
             } break;
             case GFX::CommandType::BEGIN_DEBUG_SCOPE:
             {
+                PROFILE_SCOPE( "BEGIN_DEBUG_SCOPE", Profiler::Category::Graphics );
+
                 const auto& crtCmd = cmd->As<GFX::BeginDebugScopeCommand>();
                 PushDebugMessage( crtCmd->_scopeName.c_str(), crtCmd->_scopeId );
             } break;
             case GFX::CommandType::END_DEBUG_SCOPE:
             {
+                PROFILE_SCOPE( "END_DEBUG_SCOPE", Profiler::Category::Graphics );
+
                 PopDebugMessage();
             } break;
             case GFX::CommandType::ADD_DEBUG_MESSAGE:
             {
+                PROFILE_SCOPE( "ADD_DEBUG_MESSAGE", Profiler::Category::Graphics );
+
                 const auto& crtCmd = cmd->As<GFX::AddDebugMessageCommand>();
-                PushDebugMessage( crtCmd->_msg.c_str(), crtCmd->_msgId );
-                PopDebugMessage();
-                s_stateTracker._lastDebugMessage = { crtCmd->_msg, crtCmd->_msgId };
+                AddDebugMessage( crtCmd->_msg.c_str(), crtCmd->_msgId );
             }break;
             case GFX::CommandType::COMPUTE_MIPMAPS:
             {
+                PROFILE_SCOPE( "COMPUTE_MIPMAPS", Profiler::Category::Graphics );
+
                 const GFX::ComputeMipMapsCommand* crtCmd = cmd->As<GFX::ComputeMipMapsCommand>();
                 DIVIDE_ASSERT( crtCmd->_usage != ImageUsage::COUNT );
 
@@ -1162,6 +1164,8 @@ namespace Divide
             }break;
             case GFX::CommandType::DRAW_COMMANDS:
             {
+                PROFILE_SCOPE( "DRAW_COMMANDS", Profiler::Category::Graphics );
+
                 if ( s_stateTracker._activePipeline != nullptr )
                 {
                     U32 drawCount = 0u;
@@ -1190,6 +1194,8 @@ namespace Divide
             }break;
             case GFX::CommandType::DISPATCH_COMPUTE:
             {
+                PROFILE_SCOPE( "DISPATCH_COMPUTE", Profiler::Category::Graphics );
+
                 if ( s_stateTracker._activePipeline != nullptr )
                 {
                     assert( s_stateTracker._activeTopology == PrimitiveTopology::COMPUTE );
@@ -1200,6 +1206,8 @@ namespace Divide
             }break;
             case GFX::CommandType::MEMORY_BARRIER:
             {
+                PROFILE_SCOPE( "MEMORY_BARRIER", Profiler::Category::Graphics );
+
                 const GFX::MemoryBarrierCommand* crtCmd = cmd->As<GFX::MemoryBarrierCommand>();
 
                 MemoryBarrierMask mask = GL_NONE_BIT;
@@ -1363,8 +1371,14 @@ namespace Divide
         NOP();
     }
 
-    void GL_API::onThreadCreated( [[maybe_unused]] const std::thread::id& threadID )
+    void GL_API::onThreadCreated( [[maybe_unused]] const std::thread::id& threadID, const bool isMainRenderThread )
     {
+        if ( isMainRenderThread )
+        {
+            // We'll try and use the same context from the main thread
+            return;
+        }
+
         // Double check so that we don't run into a race condition!
         LockGuard<Mutex> lock( GLUtil::s_glSecondaryContextMutex );
         assert( SDL_GL_GetCurrentContext() == NULL );
@@ -1374,7 +1388,7 @@ namespace Divide
         [[maybe_unused]] const bool ctxFound = g_ContextPool.getAvailableContext( GLUtil::s_glSecondaryContext );
         assert( ctxFound && "GL_API::syncToThread: context not found for current thread!" );
 
-        SDL_GL_MakeCurrent( GLUtil::s_glMainRenderWindow->getRawWindow(), GLUtil::s_glSecondaryContext );
+        ValidateSDL( SDL_GL_MakeCurrent( GLUtil::s_glMainRenderWindow->getRawWindow(), GLUtil::s_glSecondaryContext ) );
         glbinding::Binding::initialize( []( const char* proc ) noexcept
                                         {
                                             return (glbinding::ProcAddress)SDL_GL_GetProcAddress( proc );
@@ -1398,6 +1412,8 @@ namespace Divide
     /// Reset as much of the GL default state as possible within the limitations given
     void GL_API::clearStates(GLStateTracker& stateTracker) const
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         if ( !stateTracker.unbindTextures() )
         {
             DIVIDE_UNEXPECTED_CALL();
@@ -1446,7 +1462,7 @@ namespace Divide
 
     bool GL_API::bindShaderResources( const DescriptorSetEntries& descriptorSetEntries )
     {
-        PROFILE_SCOPE( "BIND_SHADER_RESOURCES", Profiler::Category::Graphics );
+        PROFILE_SCOPE_AUTO(Profiler::Category::Graphics );
 
         for ( const DescriptorSetEntry& entry : descriptorSetEntries )
         {
@@ -1544,6 +1560,8 @@ namespace Divide
 
     bool GL_API::makeTextureViewResident( const DescriptorSetUsage set, const U8 bindingSlot, const ImageView& imageView, const size_t samplerHash ) const
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         const U8 glBinding = ShaderProgram::GetGLBindingForDescriptorSlot( set, bindingSlot );
 
         if ( imageView._srcTexture == nullptr )
@@ -1714,6 +1732,17 @@ namespace Divide
         {
             s_glFlushQueued.store( true );
         }
+    }
+
+    void GL_API::AddDebugMessage( const char* message, const U32 id )
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+        if constexpr ( Config::ENABLE_GPU_VALIDATION )
+        {
+            glPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, id, -1, message );
+            glPopDebugGroup();
+        }
+        s_stateTracker._lastInsertedDebugMessage = {message, id};
     }
 
     void GL_API::PushDebugMessage( const char* message, const U32 id )
@@ -1902,6 +1931,8 @@ namespace Divide
     /// Return the OpenGL sampler object's handle for the given hash value
     GLuint GL_API::GetSamplerHandle( const size_t samplerHash )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         // If the hash value is 0, we assume the code is trying to unbind a sampler object
         if ( samplerHash > 0 )
         {
@@ -1924,7 +1955,7 @@ namespace Divide
                     // Cache miss. Create the sampler object now.
                     // Create and store the newly created sample object. GL_API is responsible for deleting these!
                     const GLuint sampler = glSamplerObject::Construct( SamplerDescriptor::Get( samplerHash ) );
-                    emplace( s_samplerMap, samplerHash, sampler );
+                    s_samplerMap[samplerHash] = sampler;
                     return sampler;
                 }
             }
@@ -1940,7 +1971,7 @@ namespace Divide
 
     GLsync GL_API::CreateFenceSync()
     {
-        PROFILE_SCOPE( "Create Sync", Profiler::Category::Graphics );
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         DIVIDE_ASSERT( s_fenceSyncCounter[s_LockFrameLifetime - 1u] < U32_MAX );
 
@@ -1950,7 +1981,7 @@ namespace Divide
 
     void GL_API::DestroyFenceSync( GLsync& sync )
     {
-        PROFILE_SCOPE( "Delete Sync", Profiler::Category::Graphics );
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         DIVIDE_ASSERT( s_fenceSyncCounter[s_LockFrameLifetime - 1u] > 0u );
 

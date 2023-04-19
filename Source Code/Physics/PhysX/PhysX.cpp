@@ -262,13 +262,13 @@ namespace Divide
     }
 
     /// Process results
-    void PhysX::process( const U64 deltaTimeUS )
+    void PhysX::frameStarted( const U64 deltaTimeGameUS )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Physics );
 
         if ( _targetScene && _timeStep > 0.0f )
         {
-            _accumulator += Time::MicrosecondsToMilliseconds<physx::PxReal>( deltaTimeUS );
+            _accumulator += Time::MicrosecondsToMilliseconds<physx::PxReal>( deltaTimeGameUS );
 
             if ( _accumulator < _timeStep )
             {
@@ -276,17 +276,17 @@ namespace Divide
             }
 
             _accumulator -= _timeStep;
-            _targetScene->process( Time::SecondsToMicroseconds( _timeStep ) );
+            _targetScene->frameStarted( Time::SecondsToMicroseconds( _timeStep ) );
         }
     }
 
     /// Update actors
-    void PhysX::update( const U64 deltaTimeUS )
+    void PhysX::frameEnded( const U64 deltaTimeGameUS )
     {
         if ( _targetScene != nullptr )
         {
             PROFILE_SCOPE_AUTO( Profiler::Category::Physics );
-            _targetScene->update( deltaTimeUS );
+            _targetScene->frameEnded( deltaTimeGameUS );
         }
     }
 

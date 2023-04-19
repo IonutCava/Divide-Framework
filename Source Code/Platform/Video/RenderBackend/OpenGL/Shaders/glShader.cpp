@@ -51,8 +51,10 @@ glShader::glShader(GFXDevice& context, const Str256& name, const U32 generation)
 {
 }
 
-glShader::~glShader() {
-    if (_handle != GLUtil::k_invalidObjectID) {
+glShader::~glShader()
+{
+    if (_handle != GLUtil::k_invalidObjectID)
+    {
         Console::d_printfn(Locale::Get(_ID("SHADER_DELETE")), name().c_str());
         GL_API::DeleteShaderPrograms(1, &_handle);
     }
@@ -274,37 +276,40 @@ bool glShader::load(const ShaderProgram::ShaderLoadData& data) {
 
 /// Load a shader by name, source code and stage
 glShaderEntry glShader::LoadShader(GFXDevice& context,
+                                   glShaderProgram* program,
                                    const Str256& name,
                                    const U32 targetGeneration,
                                    ShaderProgram::ShaderLoadData& data)
 {
-    LockGuard<SharedMutex> w_lock(ShaderModule::s_shaderNameLock);
 
     glShaderEntry ret
     {
         ._fileHash = _ID( name.c_str() ),
         ._generation = targetGeneration
     };
-
-    // If we loaded the source code successfully,  register it
-    auto& shader_ptr = s_shaderNameMap[ret._fileHash];
-    if (shader_ptr == nullptr || shader_ptr->generation() < ret._generation )
     {
-        shader_ptr.reset( new glShader( context, name, ret._generation ) );
-
-        // At this stage, we have a valid Shader object, so load the source code
-        if (!static_cast<glShader*>(shader_ptr.get())->load(data))
+        // If we loaded the source code successfully,  register it
+        LockGuard<SharedMutex> w_lock(ShaderModule::s_shaderNameLock);
+        auto& shader_ptr = s_shaderNameMap[ret._fileHash];
+        if (shader_ptr == nullptr || shader_ptr->generation() < ret._generation )
         {
-            DIVIDE_UNEXPECTED_CALL();
+            shader_ptr.reset( new glShader( context, name, ret._generation ) );
+
+            // At this stage, we have a valid Shader object, so load the source code
+            if (!static_cast<glShader*>(shader_ptr.get())->load(data))
+            {
+                DIVIDE_UNEXPECTED_CALL();
+            }
+        } 
+        else 
+        {
+            Console::d_printfn(Locale::Get(_ID("SHADER_MANAGER_GET_INC")), shader_ptr->name().c_str());
         }
-    } 
-    else 
-    {
-        Console::d_printfn(Locale::Get(_ID("SHADER_MANAGER_GET_INC")), shader_ptr->name().c_str());
+
+        ret._shader = static_cast<glShader*>(shader_ptr.get());
     }
 
-    ret._shader = static_cast<glShader*>(shader_ptr.get());
-    
+    ret._shader->registerParent(program);
     return ret;
 }
 

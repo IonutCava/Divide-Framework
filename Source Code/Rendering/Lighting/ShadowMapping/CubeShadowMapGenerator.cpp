@@ -10,7 +10,6 @@
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Lighting/Headers/Light.h"
 #include "Platform/Video/Headers/GFXDevice.h"
-#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Utility/Headers/Localization.h"
 #include "ECS/Components/Headers/TransformComponent.h"
 #include "Managers/Headers/RenderPassManager.h"

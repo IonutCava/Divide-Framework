@@ -43,13 +43,10 @@ namespace Divide {
         using Parent = ECSSystem<RenderingSystem, RenderingComponent>;
     public:
         RenderingSystem(ECS::ECSEngine& parentEngine, PlatformContext& context);
-        virtual ~RenderingSystem();
 
         void PreUpdate(F32 dt) override;
         void Update(F32 dt) override;
         void PostUpdate(F32 dt) override;
-        void OnFrameStart() override;
-        void OnFrameEnd() override;
 
         bool saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) override;
         bool loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer) override;

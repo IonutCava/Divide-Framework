@@ -151,6 +151,8 @@ namespace Divide
 
     VKQueue VKDevice::getQueueInternal( const QueueType type, bool dedicated ) const noexcept
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         constexpr const char* QueueName[] = { "Graphics", "Compute", "Transfer" };
         constexpr vkb::QueueType VKBQueueType[] = {vkb::QueueType::graphics, vkb::QueueType::compute, vkb::QueueType::transfer};
 
@@ -215,6 +217,8 @@ namespace Divide
 
     VkCommandPool VKDevice::createCommandPool( const uint32_t queueFamilyIndex, const VkCommandPoolCreateFlags createFlags ) const
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         VkCommandPoolCreateInfo cmdPoolInfo = vk::commandPoolCreateInfo();
         cmdPoolInfo.queueFamilyIndex = queueFamilyIndex;
         cmdPoolInfo.flags = createFlags;
@@ -225,6 +229,8 @@ namespace Divide
 
     void VKDevice::submitToQueue( const QueueType queue, const VkSubmitInfo& submitInfo, VkFence& fence ) const
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         // Submit command buffer to the queue and execute it.
         // "fence" will now block until the graphic commands finish execution
         LockGuard<Mutex> w_lock( _queueLocks[to_base( queue )] );
@@ -233,6 +239,8 @@ namespace Divide
 
     VkResult VKDevice::queuePresent( const QueueType queue, const VkPresentInfoKHR& presentInfo ) const
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         LockGuard<Mutex> w_lock( _queueLocks[to_base( queue )] );
         return vkQueuePresentKHR( _queues[to_base( queue )]._queue, &presentInfo );
     }

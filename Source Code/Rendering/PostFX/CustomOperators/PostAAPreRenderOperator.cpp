@@ -10,7 +10,6 @@
 #include "Core/Headers/PlatformContext.h"
 #include "Rendering/PostFX/Headers/PostFX.h"
 #include "Core/Resources/Headers/ResourceCache.h"
-#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Rendering/PostFX/Headers/PreRenderBatch.h"

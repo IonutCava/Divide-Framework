@@ -13,7 +13,6 @@
 #include "Managers/Headers/RenderPassManager.h"
 #include "Managers/Headers/SceneManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
-#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Scenes/Headers/SceneShaderData.h"
 #include "Scenes/Headers/SceneEnvironmentProbePool.h"

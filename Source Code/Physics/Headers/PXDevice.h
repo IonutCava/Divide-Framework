@@ -40,7 +40,8 @@
 namespace Divide {
 
 class PhysicsAsset;
-class PXDevice final : public PhysicsAPIWrapper {
+class PXDevice final : public PhysicsAPIWrapper, public FrameListener
+{
 public:
     enum class PhysicsAPI : U8 {
         PhysX = 0,
@@ -59,8 +60,6 @@ public:
     bool closePhysicsAPI() override;
 
     void updateTimeStep(U8 timeStepFactor, F32 simSpeed) override;
-    void update(U64 deltaTimeUS) override;
-    void process(U64 deltaTimeUS) override;
     void idle() override;
     bool convertActor(PhysicsAsset* actor, PhysicsGroup newGroup) override;
 
@@ -73,6 +72,13 @@ public:
     [[nodiscard]] const PhysicsAPIWrapper& getImpl() const { assert(_api != nullptr); return *_api; }
 
     bool intersect(const Ray& intersectionRay, vec2<F32> range, vector<SGNRayResult>& intersectionsOut) const override;
+
+    [[nodiscard]] bool frameStarted( const FrameEvent& evt ) override;
+    [[nodiscard]] bool frameEnded( const FrameEvent& evt ) noexcept override;
+
+protected:
+    [[nodiscard]] void frameStarted( U64 deltaTimeGameUS ) override;
+    [[nodiscard]] void frameEnded( U64 deltaTimeGameUS ) noexcept override;
 
 private:
     F32 _simulationSpeed = 1.0f;

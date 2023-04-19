@@ -425,7 +425,8 @@ bool WarScene::deinitializeAI(bool /*continueOnErrors*/) {
     return false;
 }
 
-void WarScene::startSimulation(I64 /*btnGUID*/) {
+void WarScene::startSimulation(I64 /*btnGUID*/)
+{
     if (g_navMeshStarted || _armyNPCs[0].empty()) {
         return;
     }
@@ -437,15 +438,15 @@ void WarScene::startSimulation(I64 /*btnGUID*/) {
     _infoBox->setMessageType(GUIMessageBox::MessageType::MESSAGE_INFO);
     bool previousMesh = false;
     bool loadedFromFile = true;
-    const U64 currentTime = Time::Game::ElapsedMicroseconds();
+    const U64 currentTime = Time::App::ElapsedMicroseconds();
     const U64 diffTime = currentTime - _lastNavMeshBuildTime;
 
     AI::AIEntity* aiEntity = _armyNPCs[0][0]->get<UnitComponent>()->getUnit<NPC>()->getAIEntity();
-    if (_lastNavMeshBuildTime == 0UL ||
-        diffTime > Time::SecondsToMicroseconds(10)) {
-        AI::Navigation::NavigationMesh* navMesh = 
-            _aiManager->getNavMesh(aiEntity->getAgentRadiusCategory());
-        if (navMesh) {
+
+    if (_lastNavMeshBuildTime == 0UL || diffTime > Time::SecondsToMicroseconds(10)) {
+        AI::Navigation::NavigationMesh* navMesh =  _aiManager->getNavMesh(aiEntity->getAgentRadiusCategory());
+        if (navMesh)
+        {
             previousMesh = true;
             _aiManager->destroyNavMesh(aiEntity->getAgentRadiusCategory());
         }

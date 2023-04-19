@@ -50,7 +50,6 @@ namespace Divide
         _activeState = {};
         _debugScope.fill( {} );
         _debugScopeDepth = 0u;
-        _lastDebugMessage = {};
         _activePipeline = nullptr;
         _activeShaderProgram = nullptr;
         _activeTopology = PrimitiveTopology::COUNT;

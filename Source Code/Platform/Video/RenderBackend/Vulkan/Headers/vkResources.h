@@ -229,8 +229,9 @@ struct VKStateTracker
     size_t _renderTargetFormatHash{0u};
     vec2<U16> _activeRenderTargetDimensions{ 1u };
 
-    std::pair<Str256, U32> _lastDebugMessage;
     std::array<std::pair<Str256, U32>, 32> _debugScope;
+    std::pair<Str256, U32> _lastInsertedDebugMessage;
+
     U8 _debugScopeDepth{ 0u };
 
     U8 _activeMSAASamples{ 1u };

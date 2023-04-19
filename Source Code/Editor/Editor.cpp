@@ -1258,6 +1258,11 @@ namespace Divide
 
     bool Editor::framePostRender( [[maybe_unused]] const FrameEvent& evt )
     {
+        return true;
+    }
+
+    void Editor::getCommandBuffer( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
+    {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
         for ( DockedWindow* window : _dockedWindows )
@@ -1267,7 +1272,7 @@ namespace Divide
 
         if ( !running() )
         {
-            return true;
+            return;
         }
 
         Time::ScopedTimer timer( _editorRenderTimer );
@@ -1313,28 +1318,19 @@ namespace Divide
 
             pDrawData->ScaleClipRects( ImGui::GetIO().DisplayFramebufferScale );
 
-            GFX::ScopedCommandBuffer sBuffer = GFX::AllocateScopedCommandBuffer();
-            GFX::CommandBuffer& buffer = sBuffer();
-            GFX::MemoryBarrierCommand memCmd{};
             renderDrawList( pDrawData,
                             0,
                             targetViewport,
                             true,
-                            buffer,
-                            memCmd);
-            GFX::EnqueueCommand(buffer, memCmd);
-            _context.gfx().flushCommandBuffer( buffer, false );
-
+                            bufferInOut,
+                            memCmdInOut );
+            
             if ( io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable ) [[likely]]
             {
                 ImGui::UpdatePlatformWindows();
                 ImGui::RenderPlatformWindowsDefault( &context(), &context() );
             }
-
-            return true;
         }
-
-        return false;
     }
 
     bool Editor::frameEnded( [[maybe_unused]] const FrameEvent& evt ) noexcept

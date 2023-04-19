@@ -15,7 +15,6 @@
 
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GFXRTPool.h"
-#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Geometry/Shapes/Predefined/Headers/Quad3D.h"

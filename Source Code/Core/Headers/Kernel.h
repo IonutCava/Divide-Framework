@@ -91,7 +91,7 @@ class Kernel final : public Input::InputAggregatorInterface,
     void onLoop();
     /// Called after a swap-buffer call and before a clear-buffer call.
     /// In a GPU-bound application, the CPU will wait on the GPU to finish processing the frame so this should keep it busy (old-GLUT heritage)
-    void idle(bool fast);
+    void idle(bool fast, U64 deltaTimeUSGame, U64 deltaTimeUSApp );
     
     /// Key pressed
     bool onKeyDown(const Input::KeyEvent& key) override;
@@ -164,9 +164,7 @@ class Kernel final : public Input::InputAggregatorInterface,
     Time::ProfileTimer& _frameTimer;
     Time::ProfileTimer& _appIdleTimer;
     Time::ProfileTimer& _appScenePass;
-    Time::ProfileTimer& _physicsUpdateTimer;
-    Time::ProfileTimer& _physicsProcessTimer;
-    Time::ProfileTimer& _sceneUpdateTimer;
+        Time::ProfileTimer& _sceneUpdateTimer;
     Time::ProfileTimer& _sceneUpdateLoopTimer;
     Time::ProfileTimer& _cameraMgrTimer;
     Time::ProfileTimer& _flushToScreenTimer;

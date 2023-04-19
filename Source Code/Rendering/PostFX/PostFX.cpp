@@ -14,7 +14,6 @@
 
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GFXRTPool.h"
-#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
@@ -244,14 +243,14 @@ namespace Divide
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
     }
 
-    void PostFX::idle( const Configuration& config )
+    void PostFX::idle( const Configuration& config, const U64 deltaTimeUSGame )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         // Update states
         if ( getFilterState( FilterType::FILTER_NOISE ) )
         {
-            _noiseTimer += Time::Game::ElapsedMilliseconds();
+            _noiseTimer += Time::MicrosecondsToMilliseconds<D64>( deltaTimeUSGame );
             if ( _noiseTimer > _tickInterval )
             {
                 _noiseTimer = 0.0;

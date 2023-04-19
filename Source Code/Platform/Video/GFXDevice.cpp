@@ -102,6 +102,19 @@ namespace Divide
         {
             return (threadCount + localSize - 1u) / localSize;
         }
+
+        template<typename Data, size_t N>
+        inline void DecrementPrimitiveLifetime( DebugPrimitiveHandler<Data, N>& container )
+        {
+            LockGuard<Mutex> w_lock( container._dataLock );
+            for ( auto& entry : container._debugData )
+            {
+                if ( entry._frameLifeTime > 0u )
+                {
+                    entry._frameLifeTime -= 1u;
+                }
+            }
+        }
     };
 
     RenderTargetID RenderTargetNames::BACK_BUFFER = INVALID_RENDER_TARGET_ID;
@@ -434,11 +447,15 @@ namespace Divide
 
     void GFXDevice::updateSceneDescriptorSet( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut ) const
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         _sceneData->updateSceneDescriptorSet( bufferInOut, memCmdInOut );
     }
 
     void GFXDevice::resizeGPUBlocks( size_t targetSizeCam, size_t targetSizeCullCounter )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         if ( targetSizeCam == 0u )
         {
             targetSizeCam = 1u;
@@ -1229,9 +1246,10 @@ namespace Divide
         _graphicResources.clear();
     }
 
-    void GFXDevice::onThreadCreated( const std::thread::id& threadID ) const
+    void GFXDevice::onThreadCreated( const std::thread::id& threadID, const bool isMainRenderThread ) const
     {
-        _api->onThreadCreated( threadID );
+        _api->onThreadCreated( threadID, isMainRenderThread );
+
         if ( !ShaderProgram::OnThreadCreated( *this, threadID ) )
         {
             DIVIDE_UNEXPECTED_CALL();
@@ -1242,7 +1260,7 @@ namespace Divide
 
 #pragma region Main frame loop
     /// After a swap buffer call, the CPU may be idle waiting for the GPU to draw to the screen, so we try to do some processing
-    void GFXDevice::idle( const bool fast )
+    void GFXDevice::idle( const bool fast, const U64 deltaTimeUSGame, [[maybe_unused]] const U64 deltaTimeUSApp )
     {
         PROFILE_SCOPE_AUTO(Profiler::Category::Graphics );
 
@@ -1250,12 +1268,9 @@ namespace Divide
 
         _shaderComputeQueue->idle();
         // Pass the idle call to the post processing system
-        _renderer->idle();
+        _renderer->idle( deltaTimeUSGame );
         // And to the shader manager
-        if ( !fast )
-        {
-            ShaderProgram::Idle( context() );
-        }
+        ShaderProgram::Idle( context(), fast );
     }
 
     void GFXDevice::update( const U64 deltaTimeUSFixed, const U64 deltaTimeUSApp )
@@ -1288,19 +1303,35 @@ namespace Divide
         {
             NOP();
         }
+        
+        _activeWindow = &window;
+        const vec2<U16> windowDimensions = window.getDrawableSize();
+        setViewport( { 0, 0, windowDimensions.width, windowDimensions.height } );
+        setScissor( { 0, 0, windowDimensions.width, windowDimensions.height } );
+
     }
 
     void GFXDevice::flushWindow( DisplayWindow& window )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        DIVIDE_ASSERT( _cameraSnapshots.empty(), "Not all camera snapshots have been cleared properly! Check command buffers for missmatched push/pop!" );
-        DIVIDE_ASSERT( _viewportStack.empty(), "Not all viewports have been cleared properly! Check command buffers for missmatched push/pop!" );
-        // Activate the default render states
-        _api->flushWindow( window );
+        {
+            LockGuard<Mutex> w_lock( _queuedCommandbufferLock );
+            GFX::CommandBuffer& buffer = *window.getCurrentCommandBuffer();
+            flushCommandBufferInternal(buffer);
+            buffer.clear();
+        }
+
+        _api->flushWindow( window, false );
+        _activeWindow = nullptr;
     }
 
-    bool GFXDevice::frameStarted( const FrameEvent& evt )
+    bool GFXDevice::framePreRender( [[maybe_unused]] const FrameEvent& evt )
+    {
+        return true;
+    }
+
+    bool GFXDevice::frameStarted( [[maybe_unused]] const FrameEvent& evt )
     {
         ++s_frameCount;
 
@@ -1332,31 +1363,15 @@ namespace Divide
         return false;
     }
 
-
-    namespace
-    {
-        template<typename Data, size_t N>
-        inline void DecrementPrimitiveLifetime( DebugPrimitiveHandler<Data, N>& container )
-        {
-            LockGuard<Mutex> w_lock( container._dataLock );
-            for ( auto& entry : container._debugData )
-            {
-                if ( entry._frameLifeTime > 0u )
-                {
-                    entry._frameLifeTime -= 1u;
-                }
-            }
-        }
-    };
-
     bool GFXDevice::frameEnded( const FrameEvent& evt ) noexcept
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-
         const bool editorRunning = Config::Build::ENABLE_EDITOR && context().editor().running();
         if ( !editorRunning )
         {
+            PROFILE_SCOPE("Blit Backbuffer", Profiler::Category::Graphics);
+
             GFX::ScopedCommandBuffer sBuffer = GFX::AllocateScopedCommandBuffer();
             GFX::CommandBuffer& buffer = sBuffer();
 
@@ -1376,21 +1391,29 @@ namespace Divide
             flushCommandBuffer( buffer );
         }
 
-        frameDrawCallsPrev( frameDrawCalls() );
-        frameDrawCalls( 0u );
+        flushWindow( context().mainWindow() );
 
-        DecrementPrimitiveLifetime( _debugLines );
-        DecrementPrimitiveLifetime( _debugBoxes );
-        DecrementPrimitiveLifetime( _debugOBBs );
-        DecrementPrimitiveLifetime( _debugFrustums );
-        DecrementPrimitiveLifetime( _debugCones );
-        DecrementPrimitiveLifetime( _debugSpheres );
+        {
+            PROFILE_SCOPE( "Lifetime updates", Profiler::Category::Graphics );
 
-        _performanceMetrics._scratchBufferQueueUsage[0] = to_U32( _gfxBuffers.crtBuffers()._camWritesThisFrame );
-        _performanceMetrics._scratchBufferQueueUsage[1] = to_U32( _gfxBuffers.crtBuffers()._renderWritesThisFrame );
+            frameDrawCallsPrev( frameDrawCalls() );
+            frameDrawCalls( 0u );
+
+            DecrementPrimitiveLifetime( _debugLines );
+            DecrementPrimitiveLifetime( _debugBoxes );
+            DecrementPrimitiveLifetime( _debugOBBs );
+            DecrementPrimitiveLifetime( _debugFrustums );
+            DecrementPrimitiveLifetime( _debugCones );
+            DecrementPrimitiveLifetime( _debugSpheres );
+
+            _performanceMetrics._scratchBufferQueueUsage[0] = to_U32( _gfxBuffers.crtBuffers()._camWritesThisFrame );
+            _performanceMetrics._scratchBufferQueueUsage[1] = to_U32( _gfxBuffers.crtBuffers()._renderWritesThisFrame );
+        }
 
         if ( _gfxBuffers._needsResizeCam )
         {
+            PROFILE_SCOPE( "Resize GFX Blocks", Profiler::Category::Graphics );
+
             const GFXBuffers::PerFrameBuffers& frameBuffers = _gfxBuffers.crtBuffers();
             const U32 currentSizeCam = frameBuffers._camDataBuffer->queueLength();
             const U32 currentSizeCullCounter = frameBuffers._cullCounter->queueLength();
@@ -1400,8 +1423,7 @@ namespace Divide
 
         _gfxBuffers.onEndFrame();
         ShaderProgram::OnEndFrame( *this );
-
-        _api->flushWindow(context().mainWindow());
+        
         return _api->frameEnded();
     }
 #pragma endregion
@@ -2118,15 +2140,18 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        if constexpr( Config::ENABLE_GPU_VALIDATION )
-        {
-            DIVIDE_ASSERT( Runtime::isMainThread(), "GFXDevice::flushCommandBuffer called from worker thread!" );
-        }
-
         if ( batch )
         {
             commandBuffer.batch();
         }
+
+        LockGuard<Mutex> w_lock( _queuedCommandbufferLock );
+        _activeWindow->getCurrentCommandBuffer()->add(commandBuffer);
+    }
+
+    void GFXDevice::flushCommandBufferInternal( GFX::CommandBuffer& commandBuffer )
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         const Rect<I32> initialViewport = activeViewport();
         const Rect<I32> initialScissor = activeScissor();
@@ -2222,6 +2247,8 @@ namespace Divide
                 } break;
                 case GFX::CommandType::BIND_SHADER_RESOURCES:
                 {
+                    PROFILE_SCOPE( "BIND_SHADER_RESOURCES", Profiler::Category::Graphics );
+
                     const auto resCmd = commandBuffer.get<GFX::BindShaderResourcesCommand>( cmd );
                     descriptorSet( resCmd->_usage ).update( resCmd->_usage, resCmd->_set );
 
@@ -2317,7 +2344,6 @@ namespace Divide
             pushConstants.data[0]._vec[1].x = wasEven ? 1.f : 0.f;
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( cmdBufferInOut )->_constants.set( pushConstants );
 
-            // Dummy draw command as the full screen quad is generated completely in the vertex shader
             GFX::EnqueueCommand<GFX::DispatchComputeCommand>( cmdBufferInOut )->_computeGroupSize =
             {
                 getGroupCount( twidth, DEPTH_REDUCE_LOCAL_SIZE ),
@@ -2379,28 +2405,23 @@ namespace Divide
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 7u, ShaderStageVisibility::COMPUTE );
             Set( binding._data, cullBuffer, { 0u, 1u });
         }
-        mat4<F32> viewProjectionMatrix;
-        mat4<F32>::Multiply( cameraSnapshot._viewMatrix, cameraSnapshot._projectionMatrix, viewProjectionMatrix );
 
         PushConstantsStruct fastConstants{};
-        fastConstants.data[0] = viewProjectionMatrix;
+        mat4<F32>::Multiply( cameraSnapshot._viewMatrix, cameraSnapshot._projectionMatrix, fastConstants.data[0] );
         fastConstants.data[1] = cameraSnapshot._viewMatrix;
 
-        GFX::SendPushConstantsCommand HIZPushConstantsCMD = {};
-        HIZPushConstantsCMD._constants.set( _ID( "countCulledItems" ), PushConstantType::UINT, countCulledNodes ? 1u : 0u );
-        HIZPushConstantsCMD._constants.set( _ID( "numEntities" ), PushConstantType::UINT, cmdCount );
-        HIZPushConstantsCMD._constants.set( _ID( "nearPlane" ), PushConstantType::FLOAT, cameraSnapshot._zPlanes.x );
-        HIZPushConstantsCMD._constants.set( _ID( "viewSize" ), PushConstantType::VEC2, vec2<F32>( hizBuffer->width(), hizBuffer->height() ) );
-        HIZPushConstantsCMD._constants.set( _ID( "frustumPlanes" ), PushConstantType::VEC4, cameraSnapshot._frustumPlanes );
-        HIZPushConstantsCMD._constants.set( fastConstants );
-
-        GFX::EnqueueCommand( bufferInOut, HIZPushConstantsCMD );
+        auto& pushConstants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants;
+        pushConstants.set( _ID( "countCulledItems" ), PushConstantType::UINT, countCulledNodes ? 1u : 0u );
+        pushConstants.set( _ID( "numEntities" ), PushConstantType::UINT, cmdCount );
+        pushConstants.set( _ID( "nearPlane" ), PushConstantType::FLOAT, cameraSnapshot._zPlanes.x );
+        pushConstants.set( _ID( "viewSize" ), PushConstantType::VEC2, vec2<F32>( hizBuffer->width(), hizBuffer->height() ) );
+        pushConstants.set( _ID( "frustumPlanes" ), PushConstantType::VEC4, cameraSnapshot._frustumPlanes );
+        pushConstants.set( fastConstants );
 
         GFX::EnqueueCommand( bufferInOut, GFX::DispatchComputeCommand{ threadCount, 1, 1 } );
 
         // Occlusion culling barrier
-        auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut );
-        memCmd->_bufferLocks.emplace_back(BufferLock
+        GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back(BufferLock
         {
             ._range = {0u, U32_MAX },
             ._type = BufferSyncUsage::GPU_WRITE_TO_CPU_READ,
@@ -2676,7 +2697,7 @@ namespace Divide
 
         Pipeline* crtPipeline = nullptr;
         U16 idx = 0u;
-        const I32 mipTimer = to_I32( std::ceil( Time::Game::ElapsedMilliseconds() / 750.0f ) );
+        const I32 mipTimer = to_I32( std::ceil( Time::App::ElapsedMilliseconds() / 750.0f ) );
         for ( U16 i = 0; i < to_U16( _debugViews.size() ); ++i )
         {
             if ( !_debugViews[i]->_enabled )
@@ -2735,7 +2756,7 @@ namespace Divide
         {
             GFX::EnqueueCommand<GFX::SetViewportCommand>( bufferInOut )->_viewport.set( viewportIn );
 
-            text.position().d_y.d_offset = to_F32( viewportOffsetY );
+            text.position()._y._offset = to_F32( viewportOffsetY );
             text.text( labelText.c_str(), false );
             _context.gui().drawText( TextElementBatch{ text }, viewportIn, bufferInOut, memCmdInOut, false );
         }

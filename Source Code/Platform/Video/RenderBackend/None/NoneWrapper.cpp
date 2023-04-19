@@ -21,12 +21,10 @@ namespace Divide
     bool NONE_API::drawToWindow( DisplayWindow& window )
     {
         SDL_RenderClear( _renderer );
-        const vec2<U16> drawableSize = window.getDrawableSize();
-        _context.setViewport( 0, 0, drawableSize.width, drawableSize.height );
         return true;
     }
 
-    void NONE_API::flushWindow( DisplayWindow& window )
+    void NONE_API::flushWindow( DisplayWindow& window, [[maybe_unused]] const bool isRenderThread )
     {
         static constexpr U32 ChangeTimerInSeconds = 3;
 
@@ -141,7 +139,7 @@ namespace Divide
         return true;
     }
 
-    void NONE_API::onThreadCreated( [[maybe_unused]] const std::thread::id& threadID ) noexcept
+    void NONE_API::onThreadCreated( [[maybe_unused]] const std::thread::id& threadID, [[maybe_unused]] const bool isMainRenderThread ) noexcept
     {
     }
 

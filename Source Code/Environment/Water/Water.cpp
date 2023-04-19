@@ -9,7 +9,6 @@
 
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GFXRTPool.h"
-#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Platform/File/Headers/FileManagement.h"
 

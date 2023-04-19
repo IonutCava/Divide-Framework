@@ -308,11 +308,6 @@ namespace Divide
 
     };
 
-    void UniformBlockUploader::Idle()
-    {
-
-    }
-
     UniformBlockUploader::UniformBlockUploader( GFXDevice& context, const eastl::string& parentShaderName, const Reflection::BufferEntry& uniformBlock, const U16 shaderStageVisibilityMask )
         : _context( context ),
         _shaderStageVisibilityMask( shaderStageVisibilityMask ),

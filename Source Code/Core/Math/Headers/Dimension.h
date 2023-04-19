@@ -33,34 +33,57 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _CORE_MATH_DIMENSION_H
 #define _CORE_MATH_DIMENSION_H
 
-#if !defined(_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING)
-#define _SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING
-#endif //_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING
-#include <CEGUI/Vector.h>
-#include <CEGUI/Size.h>
-#undef _SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING
-
 namespace Divide {
-    // ToDo: We need our own ... -Ionut
-    using RelativeValue = CEGUI::UDim;
-    using RelativePosition2D = CEGUI::UVector2;
-    using RelativeScale2D = CEGUI::USize;
+    struct RelativeValue
+    {
+        F32 _scale {0.f};
+        F32 _offset{0.f};
+    };
+
+    struct RelativeSize
+    {
+        F32 _width{0.f};
+        F32 _height{0.f};
+    };
+    struct RelativePosition2D
+    {
+        RelativeValue _x;
+        RelativeValue _y;
+    };
+
+    struct RelativeScale2D
+    {
+        RelativeSize _x;
+        RelativeSize _y;
+    };
 
 
-    inline RelativePosition2D pixelPosition(const I32 x, const I32 y) {
+    inline RelativePosition2D pixelPosition(const I32 x, const I32 y)
+    {
         // ToDo: Remove these and use proper offsets from the start -Ionut"
-        return RelativePosition2D(RelativeValue(0.0f, to_F32(x)), RelativeValue(0.0f, to_F32(y)));
+        return RelativePosition2D
+        {
+            ._x = RelativeValue{ ._offset = to_F32(x) },
+            ._y = RelativeValue{ ._offset = to_F32(y) }
+        };
     }
 
-    inline RelativePosition2D pixelPosition(const vec2<I32> offset) {
+    inline RelativePosition2D pixelPosition(const vec2<I32> offset)
+    {
         return pixelPosition(offset.x, offset.y);
     }
 
-    inline RelativeScale2D pixelScale(const I32 x, const I32 y) {
-        return RelativeScale2D(RelativeValue(0.0f, to_F32(x)), RelativeValue(0.0f, to_F32(y)));
+    inline RelativeScale2D pixelScale(const I32 x, const I32 y)
+    {
+        return RelativeScale2D
+        {
+            ._x = RelativeSize{._width = to_F32( x ) },
+            ._y = RelativeSize{._height = to_F32( y ) }
+        };
     }
 
-    inline RelativeScale2D pixelScale(const vec2<I32> scale) {
+    inline RelativeScale2D pixelScale(const vec2<I32> scale)
+    {
         return pixelScale(scale.x, scale.y);
     }
 

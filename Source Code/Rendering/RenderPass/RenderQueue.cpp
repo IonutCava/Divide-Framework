@@ -182,6 +182,7 @@ namespace Divide
         }
         else
         {
+            bool sortTaskDirty = false;
             TaskPool& pool = parent().platformContext().taskPool( TaskPoolType::HIGH_PRIORITY );
             Task* sortTask = CreateTask( TASK_NOP );
             for (U8 i = 0u; i < to_base( RenderBinType::COUNT ); ++i)
@@ -198,10 +199,14 @@ namespace Divide
                                             renderBin.sort( rbType, sortOrder );
                                         } ),
                            pool );
+                    sortTaskDirty = true;
                 }
             }
 
-            Start( *sortTask, pool );
+            if ( sortTaskDirty )
+            {
+                Start( *sortTask, pool );
+            }
 
             for ( U8 i = 0u; i < to_base( RenderBinType::COUNT ); ++i )
             {
@@ -214,7 +219,10 @@ namespace Divide
                 }
             }
 
-            Wait( *sortTask, pool );
+            if ( sortTaskDirty )
+            {
+                Wait( *sortTask, pool );
+            }
         }
     }
 

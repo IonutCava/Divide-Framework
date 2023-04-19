@@ -268,29 +268,34 @@ bool AIEntity::setPosition(const vec3<F32>& position) {
     return true;
 }
 
-void AIEntity::updatePosition(const U64 deltaTimeUS) {
-    if (isAgentLoaded() && getAgent()->active) {
+void AIEntity::updatePosition(const U64 deltaTimeUS)
+{
+    if (isAgentLoaded() && getAgent()->active)
+    {
         _previousDistanceToTarget = _distanceToTarget;
         _distanceToTarget = _currentPosition.distanceSquared(_destination);
         const F32 distanceDelta = std::abs(_previousDistanceToTarget - _distanceToTarget);
+
         // if we are walking but did not change distance in a while
-        if (distanceDelta < DESTINATION_RADIUS_SQ) {
+        if (distanceDelta < DESTINATION_RADIUS_SQ)
+        {
             _moveWaitTimer += deltaTimeUS;
 
-            if (Time::MicrosecondsToSeconds<D64>(_moveWaitTimer) > 5) {
+            if (Time::MicrosecondsToSeconds<D64>(_moveWaitTimer) > 5)
+            {
                 // DISABLED FOR NOW!
-                if constexpr(false) {
+                if constexpr(false)
+                {
                     _moveWaitTimer = 0;
                     stop();
-                    if (_detourCrowd) {
+                    if (_detourCrowd)
+                    {
                         vec3<F32> result;
-                        const bool isPointOnNavMesh =
-                            _detourCrowd->getNavMesh().getClosestPosition(_currentPosition,
-                                vec3<F32>(5),
-                                DESTINATION_RADIUS_F,
-                                result);
+                        const bool isPointOnNavMesh = _detourCrowd->getNavMesh().getClosestPosition(_currentPosition, vec3<F32>(5), DESTINATION_RADIUS_F, result);
+
                         DIVIDE_ASSERT(isPointOnNavMesh, "AIEntity::updatePosition error: Invalid NavMesh position returned!");
-                        if (!_unitRef->moveTo(result)) {
+                        if (!_unitRef->moveTo(result, deltaTimeUS))
+                        {
                             DIVIDE_UNEXPECTED_CALL();
                         }
                     }

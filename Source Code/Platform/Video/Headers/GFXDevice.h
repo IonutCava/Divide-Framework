@@ -38,7 +38,7 @@
 #include "ClipPlanes.h"
 #include "GFXShaderData.h"
 #include "Pipeline.h"
-#include "CommandsImpl.h"
+#include "CommandBuffer.h"
 #include "PushConstants.h"
 #include "RenderAPIWrapper.h"
 #include "RenderStagePass.h"
@@ -48,7 +48,6 @@
 #include "Core/Headers/FrameListener.h"
 #include "Core/Headers/PlatformContextComponent.h"
 #include "Geometry/Material/Headers/MaterialEnums.h"
-
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 
 #include "Rendering/Camera/Headers/Frustum.h"
@@ -274,9 +273,11 @@ public:  // GPU interface
     ErrorCode postInitRenderingAPI(vec2<U16> renderResolution);
     void closeRenderingAPI();
 
-    void idle(bool fast);
+    void idle(bool fast, U64 deltaTimeUSGame, U64 deltaTimeUSApp);
     void drawToWindow(DisplayWindow& window);
     void flushWindow(DisplayWindow& window);
+
+    void flushCommandBuffer(GFX::CommandBuffer& commandBuffer, bool batch = true);
 
     void debugDraw( const SceneRenderState& sceneRenderState, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
     void debugDrawLines(const I64 ID, IM::LineDescriptor descriptor) noexcept;
@@ -285,7 +286,6 @@ public:  // GPU interface
     void debugDrawSphere(const I64 ID, IM::SphereDescriptor descriptor) noexcept;
     void debugDrawCone(const I64 ID, IM::ConeDescriptor descriptor) noexcept;
     void debugDrawFrustum(const I64 ID, IM::FrustumDescriptor descriptor) noexcept;
-    void flushCommandBuffer(GFX::CommandBuffer& commandBuffer, bool batch = true);
     void validateAndUploadDescriptorSets();
     /// Generate a cubemap from the given position
     /// It renders the entire scene graph (with culling) as default
@@ -360,7 +360,7 @@ public:  // Accessors and Mutators
     [[nodiscard]] PerformanceMetrics& getPerformanceMetrics() noexcept;
     [[nodiscard]] const PerformanceMetrics& getPerformanceMetrics() const noexcept;
 
-    void onThreadCreated(const std::thread::id& threadID) const;
+    void onThreadCreated(const std::thread::id& threadID, bool isMainRenderThread) const;
 
     static void FrameInterpolationFactor(const D64 interpolation) noexcept { s_interpolationFactor = interpolation; }
     [[nodiscard]] static D64 FrameInterpolationFactor() noexcept { return s_interpolationFactor; }
@@ -434,6 +434,7 @@ public:
     POINTER_R(SceneShaderData, sceneData, nullptr);
     PROPERTY_R(ImShaders_uptr, imShaders);
 
+   [[nodiscard]] bool framePreRender( const FrameEvent& evt ) override;
    [[nodiscard]] bool frameStarted( const FrameEvent& evt ) override;
    [[nodiscard]] bool frameEnded( const FrameEvent& evt ) noexcept override;
 
@@ -454,8 +455,10 @@ protected:
 
     void initDebugViews();
     void renderDebugViews(Rect<I32> targetViewport, I32 padding, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
-    
+
     void stepResolution(bool increment);
+
+    void flushCommandBufferInternal(GFX::CommandBuffer& commandBuffer);
 
     [[nodiscard]] PipelineDescriptor& getDebugPipeline(const IM::BaseDescriptor& descriptor) noexcept;
     void debugDrawLines( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
@@ -563,7 +566,10 @@ private:
 
     mutable Mutex _debugViewLock;
     vector<DebugView_ptr> _debugViews;
-    
+
+    Mutex _queuedCommandbufferLock;
+    DisplayWindow* _activeWindow{nullptr};
+
     struct GFXBuffers {
         static constexpr U8 PerFrameBufferCount = 3u;
 
@@ -592,7 +598,8 @@ private:
             crtBuffers()._renderWritesThisFrame = 0u;
         }
 
-        inline void onEndFrame() noexcept {
+        inline void onEndFrame() noexcept
+        {
             _perFrameBufferIndex = (_perFrameBufferIndex + 1u) % PerFrameBufferCount;
             crtBuffers()._camWritesThisFrame = 0u;
             crtBuffers()._renderWritesThisFrame = 0u;

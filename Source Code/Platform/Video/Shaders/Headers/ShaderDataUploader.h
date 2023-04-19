@@ -155,8 +155,6 @@ public:
         size_t _arrayInnerSize{ 0u };
     };
 
-    static void Idle();
-
     explicit UniformBlockUploader( GFXDevice& context, const eastl::string& parentShaderName, const Reflection::BufferEntry& uniformBlock, const U16 shaderStageVisibilityMask );
 
     void uploadPushConstant( const GFX::PushConstant& constant, bool force = false ) noexcept;

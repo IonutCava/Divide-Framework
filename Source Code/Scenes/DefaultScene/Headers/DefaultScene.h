@@ -43,7 +43,6 @@ BEGIN_SCENE(DefaultScene)
     bool load() override;
     void postLoadMainThread() override;
 
-    void processGUI( U64 gameDeltaTimeUS, U64 appDeltaTimeUS ) override;
 END_SCENE(DefaultScene)
 
 } // namespace Divide

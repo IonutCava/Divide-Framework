@@ -13,10 +13,6 @@ namespace Divide {
     {
     }
 
-    PointLightSystem::~PointLightSystem()
-    {
-    }
-
     void PointLightSystem::PreUpdate(const F32 dt) {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -37,27 +33,4 @@ namespace Divide {
         }
     }
 
-    void PointLightSystem::Update(const F32 dt) {
-        Parent::Update(dt);
-    }
-
-    void PointLightSystem::PostUpdate(const F32 dt) {
-        Parent::PostUpdate(dt);
-    }
-
-    void PointLightSystem::OnFrameStart() {
-        Parent::OnFrameStart();
-    }
-
-    void PointLightSystem::OnFrameEnd() {
-        Parent::OnFrameEnd();
-    }
-
-    bool PointLightSystem::saveCache(const SceneGraphNode * sgn, ByteBuffer & outputBuffer) {
-        return Parent::saveCache(sgn, outputBuffer);
-    }
-
-    bool PointLightSystem::loadCache(SceneGraphNode * sgn, ByteBuffer & inputBuffer) {
-        return Parent::loadCache(sgn, inputBuffer);
-    }
 } //namespace Divide

@@ -272,7 +272,7 @@ namespace Divide
         [[nodiscard]] Camera* playerCamera( bool skipOverride = false ) const noexcept;
         [[nodiscard]] Camera* playerCamera( PlayerIndex idx, bool skipOverride = false ) const noexcept;
         void editorPreviewNode( const I64 editorPreviewNode ) noexcept;
-        void currentPlayerPass( U64 deltaTimeUS, PlayerIndex idx );
+        void currentPlayerPass( PlayerIndex idx );
         BoundingSphere moveCameraToNode( Camera* camera, const SceneGraphNode* targetNode ) const;
         bool saveNode( const SceneGraphNode* targetNode ) const;
         bool loadNode( SceneGraphNode* targetNode ) const;
@@ -346,9 +346,9 @@ namespace Divide
                 manager->initPostLoadState();
             }
 
-            static void currentPlayerPass( Divide::SceneManager* manager, const U64 deltaTimeUS, const PlayerIndex idx )
+            static void currentPlayerPass( Divide::SceneManager* manager, const PlayerIndex idx )
             {
-                manager->currentPlayerPass( deltaTimeUS, idx );
+                manager->currentPlayerPass( idx );
             }
 
             static bool networkUpdate( Divide::SceneManager* manager, const U64 frameCount )

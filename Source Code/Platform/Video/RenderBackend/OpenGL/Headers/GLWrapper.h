@@ -87,7 +87,7 @@ private:
     void closeRenderingAPI() override;
 
     [[nodiscard]] bool drawToWindow( DisplayWindow& window ) override;
-                  void flushWindow( DisplayWindow& window ) override;
+                  void flushWindow( DisplayWindow& window, bool isRenderThread ) override;
     [[nodiscard]] bool frameStarted() override;
     [[nodiscard]] bool frameEnded() override;
 
@@ -101,7 +101,7 @@ private:
 
     void postFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) override;
 
-    void onThreadCreated(const std::thread::id& threadID) override;
+    void onThreadCreated(const std::thread::id& threadID, bool isMainRenderThread ) override;
 
     /// Reset as much of the GL default state as possible within the limitations given
     void clearStates(GLStateTracker& stateTracker) const;
@@ -135,6 +135,7 @@ public:
 
     static void QueueFlush() noexcept;
 
+    static void AddDebugMessage( const char* message, U32 id = U32_MAX );
     static void PushDebugMessage( const char* message, U32 id = U32_MAX );
     static void PopDebugMessage();
 
@@ -167,11 +168,6 @@ private:
         COUNT
     };
 
-    struct WindowGLContext {
-        I64 _windowGUID{-1};
-        SDL_GLContext _context{ nullptr };
-    };
-
     struct glHardwareQueryEntry {
         glHardwareQueryRing* _query{ nullptr };
         QueryType _type{ QueryType::COUNT };
@@ -189,7 +185,7 @@ private:
     using HardwareQueryContext = std::array<glHardwareQueryEntry, to_base(QueryType::COUNT)>;
     HardwareQueryContext _primitiveQueries;
     /// /*sampler hash value*/ /*sampler object*/
-    using SamplerObjectMap = hashMap<size_t, GLuint, NoHash<size_t>>;
+    using SamplerObjectMap = ska::bytell_hash_map<size_t, GLuint>;
 
 private:
     GFXDevice& _context;
@@ -199,8 +195,6 @@ private:
     std::array<glHardwareQueryRing_uptr, to_base(GlobalQueryTypes::COUNT)> _performanceQueries;
     // OpenGL rendering is not thread-safe anyway, so this works
     eastl::stack<HardwareQueryContext> _queryContext;
-
-    WindowGLContext _currentContext{};
 
     bool _runQueries{false};
 

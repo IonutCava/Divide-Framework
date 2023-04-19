@@ -28,7 +28,6 @@ Unit::Unit(const UnitType type)
       _moveSpeed(Metric::Base(1.0f)),
       _acceleration(Metric::Base(1.0f)),
       _moveTolerance(0.1f),
-      _prevTime(0),
       _node(nullptr)
 {
 }
@@ -40,7 +39,8 @@ void Unit::setParentNode(SceneGraphNode* node) {
 
 /// Pathfinding, collision detection, animation playback should all be
 /// controlled from here
-bool Unit::moveTo(const vec3<F32>& targetPosition) {
+bool Unit::moveTo(const vec3<F32>& targetPosition, const U64 deltaTimeUS)
+{
     // We should always have a node
     if (!_node) {
         return false;
@@ -51,19 +51,12 @@ bool Unit::moveTo(const vec3<F32>& targetPosition) {
     _currentPosition = _node->get<TransformComponent>()->getWorldPosition();
     _currentTargetPosition = targetPosition;
 
-    if (_prevTime <= 0) {
-        _prevTime = Time::Game::ElapsedMilliseconds();
-    }
-    // get current time in ms
-    D64 currentTime = Time::Game::ElapsedMilliseconds();
     // figure out how many milliseconds have elapsed since last move time
-    const D64 timeDif = std::max(currentTime - _prevTime, 0.0);
-    // update previous time
-    _prevTime = currentTime;
+    const D64 timeDif = Time::MicrosecondsToSeconds<D64>( deltaTimeUS );
+
     // 'moveSpeed' m/s = '0.001 * moveSpeed' m / ms
     // distance = timeDif * 0.001 * moveSpeed
-    F32 moveDistance = std::min(to_F32(_moveSpeed * Time::MillisecondsToSeconds(timeDif)),
-                                0.0f);
+    F32 moveDistance = std::min(to_F32(_moveSpeed * timeDif), 0.f);
 
     bool returnValue = IS_TOLERANCE(moveDistance, Metric::Centi(1.0f));
 
@@ -122,7 +115,8 @@ bool Unit::moveTo(const vec3<F32>& targetPosition) {
 }
 
 /// Move along the X axis
-bool Unit::moveToX(const F32 targetPosition) {
+bool Unit::moveToX(const F32 targetPosition, const U64 deltaTimeUS )
+{
     if (!_node) {
         return false;
     }
@@ -133,11 +127,13 @@ bool Unit::moveToX(const F32 targetPosition) {
     }
     return moveTo(vec3<F32>(targetPosition,
                             _currentPosition.y,
-                            _currentPosition.z));
+                            _currentPosition.z),
+                            deltaTimeUS);
 }
 
 /// Move along the Y axis
-bool Unit::moveToY(const F32 targetPosition) {
+bool Unit::moveToY(const F32 targetPosition, const U64 deltaTimeUS )
+{
     if (!_node) {
         return false;
     }
@@ -148,11 +144,13 @@ bool Unit::moveToY(const F32 targetPosition) {
     }
     return moveTo(vec3<F32>(_currentPosition.x,
                             targetPosition,
-                            _currentPosition.z));
+                            _currentPosition.z),
+                            deltaTimeUS);
 }
 
 /// Move along the Z axis
-bool Unit::moveToZ(const F32 targetPosition) {
+bool Unit::moveToZ(const F32 targetPosition, const U64 deltaTimeUS )
+{
     if (!_node) {
         return false;
     }
@@ -163,7 +161,8 @@ bool Unit::moveToZ(const F32 targetPosition) {
     }
     return moveTo(vec3<F32>(_currentPosition.x,
                             _currentPosition.y,
-                            targetPosition));
+                            targetPosition),
+                            deltaTimeUS);
 }
 
 /// Further improvements may imply a cooldown and collision detection at

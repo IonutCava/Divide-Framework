@@ -21,7 +21,10 @@
 #include "Managers/Headers/RenderPassManager.h"
 
 
-namespace Divide {
+namespace Divide 
+{
+
+
 DefaultScene::DefaultScene(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name)
     : Scene(context, cache, parent, name)
 {
@@ -31,43 +34,41 @@ DefaultScene::DefaultScene(PlatformContext& context, ResourceCache* cache, Scene
 bool DefaultScene::load() {
     const bool loadState = Scene::load();
     state()->saveLoadDisabled(true);
-    _guiTimersMS[to_base( TimerClass::APP_TIME )].push_back( 0.0 );  // Fps
-    _guiTimersMS[to_base( TimerClass::APP_TIME )].push_back( 0.0 );  // Time
+
+    addGuiTimer(TimerClass::APP_TIME,
+                 Time::SecondsToMicroseconds( 0.25),
+                 [this]( [[maybe_unused]] const U64 elapsedTimeUS )
+                 {
+                     _GUI->modifyText( "RenderBinCount",
+                                       Util::StringFormat( "Number of items in Render Bin: %d.", _context.kernel().renderPassManager()->getLastTotalBinSize( RenderStage::DISPLAY ) ),
+                                       false );
+                 });
+
+    addGuiTimer( TimerClass::APP_TIME,
+                 Time::SecondsToMicroseconds( 1.0 ),
+                 [this]( const U64 elapsedTimeUS )
+                 {
+                     _GUI->modifyText( "timeDisplay",
+                                      Util::StringFormat( "Elapsed time: %5.0f", Time::MicrosecondsToSeconds(elapsedTimeUS)),
+                                      false);
+                 });
 
     return loadState;
 }
 
-void DefaultScene::processGUI( const U64 gameDeltaTimeUS, const U64 appDeltaTimeUS )
-{
-    constexpr D64 FpsDisplay = Time::SecondsToMilliseconds( 0.5 );
-    constexpr D64 TimeDisplay = Time::SecondsToMilliseconds( 1.0 );
-
-    if ( _guiTimersMS[to_base( TimerClass::APP_TIME )][0] >= FpsDisplay )
-    {
-        _GUI->modifyText( "RenderBinCount",
-                          Util::StringFormat( "Number of items in Render Bin: %d.",
-                                              _context.kernel().renderPassManager()->getLastTotalBinSize( RenderStage::DISPLAY ) ), false );
-        _guiTimersMS[to_base( TimerClass::APP_TIME )][0] = 0.0;
-    }
-
-    if ( _guiTimersMS[to_base( TimerClass::APP_TIME )][1] >= TimeDisplay )
-    {
-        _GUI->modifyText( "timeDisplay",
-                          Util::StringFormat( "Elapsed time: %5.0f", Time::Game::ElapsedSeconds() ), false );
-        _guiTimersMS[to_base( TimerClass::APP_TIME )][1] = 0.0;
-    }
-
-    Scene::processGUI(gameDeltaTimeUS, appDeltaTimeUS);
-}
-
 void DefaultScene::postLoadMainThread()
 {
-    _GUI->addText( "timeDisplay", pixelPosition( 60, 80 ), Font::DIVIDE_DEFAULT,
+    _GUI->addText( "timeDisplay",
+                   pixelPosition( 60, 80 ),
+                   Font::DIVIDE_DEFAULT,
                    UColour4( 64, 64, 355, 255 ),
-                   Util::StringFormat( "Elapsed time: %5.0f", Time::Game::ElapsedSeconds() ) );
-    _GUI->addText( "RenderBinCount", pixelPosition( 60, 135 ), Font::BATANG,
+                   "Elapsed time: 0.0f" );
+
+    _GUI->addText( "RenderBinCount",
+                   pixelPosition( 60, 135 ),
+                   Font::BATANG,
                    UColour4( 164, 32, 32, 255 ),
-                   Util::StringFormat( "Number of items in Render Bin: %d", 0 ) );
+                   "Number of items in Render Bin: 0" );
     Scene::postLoadMainThread();
 }
 

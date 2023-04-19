@@ -510,7 +510,6 @@ namespace Divide
         _pipelineStageMask = VK_FLAGS_NONE;
         _pushConstantsValid = false;
         _pipelineRenderInfo = {};
-        _lastDebugMessage = {};
         _pipelineRenderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
     }
 
@@ -550,11 +549,15 @@ namespace Divide
 
     void VK_API::idle( [[maybe_unused]] const bool fast ) noexcept
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         vkShaderProgram::Idle( _context.context() );
     }
 
     bool VK_API::drawToWindow( DisplayWindow& window )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         VKPerWindowState& windowState = _perWindowState[window.getGUID()];
         if ( windowState._window == nullptr )
         {
@@ -587,14 +590,13 @@ namespace Divide
             return false;
         }
 
-        _context.setViewport( { 0, 0, windowDimensions.width, windowDimensions.height } );
-        _context.setScissor( { 0, 0, windowDimensions.width, windowDimensions.height } );
-
         return true;
     }
 
-    void VK_API::flushWindow( DisplayWindow& window )
+    void VK_API::flushWindow( DisplayWindow& window, [[maybe_unused]] const bool isRenderThread )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         VKPerWindowState& windowState = _perWindowState[window.getGUID()];
         assert( windowState._window != nullptr );
 
@@ -631,6 +633,8 @@ namespace Divide
 
     bool VK_API::frameStarted()
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         for ( U8 i = 0u; i < to_base(DescriptorSetUsage::COUNT); ++i )
         {
             auto& pool = s_stateTracker._descriptorAllocators[i];
@@ -648,6 +652,8 @@ namespace Divide
 
     bool VK_API::frameEnded()
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         s_transientDeleteQueue.onFrameEnd();
         s_deviceDeleteQueue.onFrameEnd();
 
@@ -676,6 +682,8 @@ namespace Divide
 
     void VK_API::recreateSwapChain( VKPerWindowState& windowState )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         if ( windowState._window->minimized() )
         {
             idle( false );
@@ -688,6 +696,7 @@ namespace Divide
 
         if (windowState._window->getGUID() == _context.context().mainWindow().getGUID() )
         {
+            PROFILE_SCOPE( "Wait for idle", Profiler::Category::Graphics);
             s_deviceDeleteQueue.flush( _device->getVKDevice(), true );
             vkDeviceWaitIdle( _device->getVKDevice() );
         }
@@ -1701,6 +1710,8 @@ namespace Divide
 
     ShaderResult VK_API::bindPipeline( const Pipeline& pipeline, VkCommandBuffer cmdBuffer )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         size_t stateHash = pipeline.stateHash();
         Util::Hash_combine(stateHash, GetStateTracker()._renderTargetFormatHash );
         if ( !s_hasDynamicBlendStateSupport )
@@ -1711,6 +1722,8 @@ namespace Divide
         CompiledPipeline& compiledPipeline = _compiledPipelines[stateHash];
         if ( !compiledPipeline._isValid )
         {
+            PROFILE_SCOPE( "Compile PSO", Profiler::Category::Graphics);
+
             thread_local RenderStateBlock defaultState{};
             thread_local VkDescriptorSetLayout dummyLayout = VK_NULL_HANDLE;
 
@@ -1907,6 +1920,8 @@ namespace Divide
 
     void VK_API::flushPushConstantsLocks()
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         if ( _pushConstantsNeedLock )
         {
             _pushConstantsNeedLock = false;
@@ -1960,6 +1975,8 @@ namespace Divide
 
         void FlushBarriers( VkCommandBuffer cmd, bool toWrite )
         {
+            PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
             for ( const auto& request : s_transferQueueBatched )
             {
                 PrepareTransferRequest( request, toWrite, s_barriers.emplace_back() );
@@ -1978,6 +1995,8 @@ namespace Divide
 
         void FlushCopyRequests( VkCommandBuffer cmd )
         {
+            PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
             for ( const PerBufferCopies& request : s_copyRequests )
             {
                 VkCopyBufferInfo2 copyInfo = { .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2 };
@@ -1992,6 +2011,8 @@ namespace Divide
 
         void PrepareBufferCopyBarriers()
         {
+            PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
             s_copyRequests.clear();
             s_copyRequests.reserve( s_transferQueueBatched.size() );
 
@@ -2026,6 +2047,8 @@ namespace Divide
 
         void BatchTransferQueue( VKTransferQueue& transferQueue )
         {
+            PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
             s_transferQueueBatched.clear();
 
             while ( !transferQueue._requests.empty() )
@@ -2046,6 +2069,8 @@ namespace Divide
 
         void FlushTransferQueue( VkCommandBuffer cmdBuffer, VKTransferQueue& transferQueue )
         {
+            PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
             BatchTransferQueue( transferQueue );
             FlushBarriers( cmdBuffer, true );
             PrepareBufferCopyBarriers();
@@ -2059,6 +2084,8 @@ namespace Divide
 
     void VK_API::SubmitTransferRequest( const VKTransferQueue::TransferRequest& request, VkCommandBuffer cmd )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         VkBufferMemoryBarrier2 barriers[2] = {};
         VkDependencyInfo dependencyInfo = vk::dependencyInfo();
         dependencyInfo.bufferMemoryBarrierCount = 1u;
@@ -2088,6 +2115,8 @@ namespace Divide
 
     void VK_API::FlushBufferTransferRequests()
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         if ( s_transferQueue._dirty.load() )
         {
             VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer([](VkCommandBuffer cmd, const QueueType queue, const bool isDedicatedQueue )
@@ -2126,8 +2155,7 @@ namespace Divide
         auto& stateTracker = GetStateTracker();
 
         const GFX::CommandType cmdType = cmd->Type();
-        PROFILE_SCOPE( GFX::Names::commandType[to_base( cmdType )], Profiler::Category::Graphics );
-        PROFILE_TAG( "Type", to_base( cmdType ) );
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
 
@@ -2145,6 +2173,8 @@ namespace Divide
         {
             case GFX::CommandType::BEGIN_RENDER_PASS:
             {
+                PROFILE_SCOPE( "BEGIN_RENDER_PASS", Profiler::Category::Graphics );
+
                 thread_local VkRenderingAttachmentInfo dummyAttachment
                 {
                     .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
@@ -2252,6 +2282,8 @@ namespace Divide
             } break;
             case GFX::CommandType::END_RENDER_PASS:
             {
+                PROFILE_SCOPE( "END_RENDER_PASS", Profiler::Category::Graphics );
+
                 vkCmdEndRendering( cmdBuffer );
                 if ( stateTracker._activeRenderTargetID == SCREEN_TARGET_ID )
                 {
@@ -2305,9 +2337,11 @@ namespace Divide
             } break;
             case GFX::CommandType::BEGIN_GPU_QUERY:
             {
+                PROFILE_SCOPE( "BEGIN_GPU_QUERY", Profiler::Category::Graphics );
             }break;
             case GFX::CommandType::END_GPU_QUERY:
             {
+                PROFILE_SCOPE( "END_GPU_QUERY", Profiler::Category::Graphics );
             }break;
             case GFX::CommandType::COPY_TEXTURE:
             {
@@ -2341,6 +2375,8 @@ namespace Divide
             }break;
             case GFX::CommandType::BIND_PIPELINE:
             {
+                PROFILE_SCOPE( "BIND_PIPELINE", Profiler::Category::Graphics );
+
                 const Pipeline* pipeline = cmd->As<GFX::BindPipelineCommand>()->_pipeline;
                 assert( pipeline != nullptr );
                 if ( bindPipeline( *pipeline, cmdBuffer ) == ShaderResult::Failed )
@@ -2350,6 +2386,8 @@ namespace Divide
             } break;
             case GFX::CommandType::SEND_PUSH_CONSTANTS:
             {
+                PROFILE_SCOPE( "SEND_PUSH_CONSTANTS", Profiler::Category::Graphics );
+
                 if ( stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE )
                 {
                     const PushConstants& pushConstants = cmd->As<GFX::SendPushConstantsCommand>()->_constants;
@@ -2374,20 +2412,28 @@ namespace Divide
             } break;
             case GFX::CommandType::BEGIN_DEBUG_SCOPE:
             {
+                PROFILE_SCOPE( "BEGIN_DEBUG_SCOPE", Profiler::Category::Graphics );
+
                 const GFX::BeginDebugScopeCommand* crtCmd = cmd->As<GFX::BeginDebugScopeCommand>();
                 PushDebugMessage( cmdBuffer, crtCmd->_scopeName.c_str(), crtCmd->_scopeId );
             } break;
             case GFX::CommandType::END_DEBUG_SCOPE:
             {
+                PROFILE_SCOPE( "END_DEBUG_SCOPE", Profiler::Category::Graphics );
+
                 PopDebugMessage( cmdBuffer );
             } break;
             case GFX::CommandType::ADD_DEBUG_MESSAGE:
             {
+                PROFILE_SCOPE( "ADD_DEBUG_MESSAGE", Profiler::Category::Graphics );
+
                 const GFX::AddDebugMessageCommand* crtCmd = cmd->As<GFX::AddDebugMessageCommand>();
                 InsertDebugMessage( cmdBuffer, crtCmd->_msg.c_str(), crtCmd->_msgId );
             }break;
             case GFX::CommandType::COMPUTE_MIPMAPS:
             {
+                PROFILE_SCOPE( "COMPUTE_MIPMAPS", Profiler::Category::Graphics );
+
                 const GFX::ComputeMipMapsCommand* crtCmd = cmd->As<GFX::ComputeMipMapsCommand>();
                 DIVIDE_ASSERT(crtCmd->_usage != ImageUsage::COUNT);
 
@@ -2396,6 +2442,8 @@ namespace Divide
             }break;
             case GFX::CommandType::DRAW_COMMANDS:
             {
+                PROFILE_SCOPE( "DRAW_COMMANDS", Profiler::Category::Graphics );
+
                 const GFX::DrawCommand::CommandContainer& drawCommands = cmd->As<GFX::DrawCommand>()->_drawCommands;
 
                 if ( stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE )
@@ -2440,6 +2488,8 @@ namespace Divide
             }break;
             case GFX::CommandType::DISPATCH_COMPUTE:
             {
+                PROFILE_SCOPE( "DISPATCH_COMPUTE", Profiler::Category::Graphics );
+
                 if ( !stateTracker._pushConstantsValid )
                 {
                     vkCmdPushConstants( cmdBuffer,
@@ -2460,6 +2510,8 @@ namespace Divide
             } break;
             case GFX::CommandType::MEMORY_BARRIER:
             {
+                PROFILE_SCOPE( "MEMORY_BARRIER", Profiler::Category::Graphics );
+
                 constexpr U8 MAX_BUFFER_BARRIERS_PER_CMD{64};
 
                 std::array<VkImageMemoryBarrier2, to_base( RTColourAttachmentSlot::COUNT ) + 1> imageBarriers{};
@@ -2875,7 +2927,7 @@ namespace Divide
         }
     }
 
-    void VK_API::onThreadCreated( [[maybe_unused]] const std::thread::id& threadID ) noexcept
+    void VK_API::onThreadCreated( [[maybe_unused]] const std::thread::id& threadID, [[maybe_unused]] const bool isMainRenderThread ) noexcept
     {
     }
 
@@ -2907,7 +2959,7 @@ namespace Divide
 
             Debug::vkCmdInsertDebugUtilsLabelEXT( cmdBuffer, &labelInfo );
         }
-        GetStateTracker()._lastDebugMessage = { message , id };
+        GetStateTracker()._lastInsertedDebugMessage = { message, id };
     }
 
     void VK_API::PushDebugMessage( VkCommandBuffer cmdBuffer, const char* message, const U32 id )

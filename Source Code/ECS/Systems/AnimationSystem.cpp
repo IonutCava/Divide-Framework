@@ -11,10 +11,6 @@ namespace Divide {
     {
     }
 
-    AnimationSystem::~AnimationSystem()
-    {
-    }
-
     void AnimationSystem::PreUpdate(const F32 dt) {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -78,14 +74,6 @@ namespace Divide {
                 );
             }
         }
-    }
-
-    void AnimationSystem::OnFrameStart() {
-        Parent::OnFrameStart();
-    }
-
-    void AnimationSystem::OnFrameEnd() {
-        Parent::OnFrameEnd();
     }
 
     bool AnimationSystem::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) {

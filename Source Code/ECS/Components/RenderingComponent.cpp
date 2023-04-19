@@ -21,7 +21,6 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Headers/IMPrimitive.h"
-#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 #include "Scenes/Headers/SceneState.h"

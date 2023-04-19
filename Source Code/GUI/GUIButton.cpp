@@ -25,9 +25,17 @@ GUIButton::GUIButton(const string& name,
     if (parent != nullptr) {
         _btnWindow = CEGUI::WindowManager::getSingleton().createWindow(buttonInfo.c_str(), name.c_str());
 
-        _btnWindow->setPosition(offset);
+        const CEGUI::UDim sizeX(0.f, size._x._width);
+        const CEGUI::UDim sizeY(0.f, size._y._height);
+        const CEGUI::USize ceguiSize(sizeX, sizeY);
 
-        _btnWindow->setSize(size);
+        const CEGUI::UDim posX(offset._x._scale, offset._x._offset);
+        const CEGUI::UDim posY(offset._y._scale, offset._y._offset);
+        const CEGUI::UVector2 ceguiPosition(posX, posY);
+
+        _btnWindow->setPosition( ceguiPosition );
+
+        _btnWindow->setSize( ceguiSize );
 
         _btnWindow->setText(text.c_str());
 

@@ -2,7 +2,6 @@
 
 #include "Headers/SceneShaderData.h"
 #include "Platform/Video/Headers/GFXDevice.h"
-#include "Platform/Video/Headers/CommandBuffer.h"
 
 namespace Divide
 {
@@ -32,6 +31,8 @@ namespace Divide
 
     void SceneShaderData::updateSceneDescriptorSet( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         if ( _probeDataDirty )
         {
             _probeShaderData->incQueue();

@@ -13,10 +13,6 @@ namespace Divide
     {
     }
 
-    RenderingSystem::~RenderingSystem()
-    {
-    }
-
     void RenderingSystem::PreUpdate( const F32 dt )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
@@ -97,16 +93,6 @@ namespace Divide
         {
             comp->_materialUpdateMask = to_base( MaterialUpdateResult::OK );
         }
-    }
-
-    void RenderingSystem::OnFrameStart()
-    {
-        Parent::OnFrameStart();
-    }
-
-    void RenderingSystem::OnFrameEnd()
-    {
-        Parent::OnFrameEnd();
     }
 
     bool RenderingSystem::saveCache( const SceneGraphNode* sgn, ByteBuffer& outputBuffer )

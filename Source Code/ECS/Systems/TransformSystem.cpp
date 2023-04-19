@@ -16,10 +16,6 @@ namespace Divide {
     {
     }
 
-    TransformSystem::~TransformSystem()
-    {
-    }
-
     void TransformSystem::PreUpdate(const F32 dt)
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
@@ -106,16 +102,6 @@ namespace Divide {
         {
             comp->updateCachedValues();
         }
-    }
-
-    void TransformSystem::OnFrameStart()
-    {
-        Parent::OnFrameStart();
-    }
-
-    void TransformSystem::OnFrameEnd()
-    {
-        Parent::OnFrameEnd();
     }
 
     bool TransformSystem::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer)

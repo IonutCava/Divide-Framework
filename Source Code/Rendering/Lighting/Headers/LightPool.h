@@ -143,7 +143,6 @@ class LightPool final : public FrameListener,
     void drawLightImpostors(GFX::CommandBuffer& bufferInOut) const;
 
     void preRenderAllPasses(const Camera* playerCamera);
-    void postRenderAllPasses() noexcept;
 
     void onVolumeMoved(const BoundingSphere& volume, bool staticSource);
 

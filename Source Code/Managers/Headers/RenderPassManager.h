@@ -130,7 +130,7 @@ namespace Divide
         void postInit();
 
         private:
-        void startRenderTasks( const RenderParams& params, TaskPool& pool, const CameraSnapshot& cameraSnapshot );
+        void startRenderTasks( const RenderParams& params, TaskPool& pool, Task* parentTask, const CameraSnapshot& cameraSnapshot );
 
         private:
         friend class RenderPassExecutor;
@@ -150,9 +150,13 @@ namespace Divide
             GFX::CommandBuffer* _cmdBuffer{ nullptr };
             GFX::MemoryBarrierCommand _memCmd{};
         };
-        std::array<RenderPassData, MAX_RENDER_PASSES> _renderPassData{};
 
-        Task* _postFXWorkTask{ nullptr };
+        Mutex _waitForDependenciesLock;
+        std::condition_variable _waitForDependencies;
+
+        std::array<RenderPassData, to_base(RenderStage::COUNT)> _renderPassData{};
+        std::array<std::atomic_bool, to_base( RenderStage::COUNT )> _renderPassCompleted{};
+
         GFX::CommandBuffer* _postFXCmdBuffer{ nullptr };
 
         std::array<RenderPassExecutor_uptr, to_base( RenderStage::COUNT )> _executors;

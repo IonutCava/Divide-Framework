@@ -80,7 +80,8 @@ namespace Divide
         explicit ShaderModule( GFXDevice& context, const Str256& name, U32 generation );
         virtual ~ShaderModule();
 
-        void inUse( bool state);
+        void registerParent(ShaderProgram* parent);
+        void deregisterParent(ShaderProgram* parent);
 
         PROPERTY_R( Str256, name );
         PROPERTY_R( bool, valid, false );
@@ -88,12 +89,13 @@ namespace Divide
         PROPERTY_R( U32, generation, 0u);
         PROPERTY_R( U64, lastUsedFrame, U64_MAX - MAX_FRAME_LIFETIME - 1u);
 
+    
     public:
         // ======================= static data ========================= //
         /// Returns a reference to an already loaded shader, null otherwise
         static ShaderModule* GetShader( const Str256& name );
 
-        static void Idle();
+        static void Idle(bool fast);
         static void InitStaticData();
         static void DestroyStaticData();
 
@@ -101,11 +103,12 @@ namespace Divide
         static ShaderModule* GetShaderLocked( const Str256& name );
 
     protected:
-        /// A list of preprocessor defines (if the bool in the pair is true, #define is automatically added
-        vector<ModuleDefine> _definesList;
+        Mutex _parentLock;
+        eastl::fixed_vector<ShaderProgram*, 4, true> _parents;
 
     protected:
         /// Shader cache
+        static std::atomic_bool s_modulesRemoved;
         static ShaderMap s_shaderNameMap;
         static SharedMutex s_shaderNameLock;
     };
@@ -203,7 +206,7 @@ namespace Divide
         [[nodiscard]] bool uploadUniformData( const PushConstants& data, DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut );
 
         //==================== static methods ===============================//
-        static void Idle( PlatformContext& platformContext );
+        static void Idle( PlatformContext& platformContext, bool fast );
         static void InitStaticData();
         static void DestroyStaticData();
 

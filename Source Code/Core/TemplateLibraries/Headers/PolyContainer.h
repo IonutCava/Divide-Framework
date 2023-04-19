@@ -101,6 +101,7 @@ namespace Divide
 
         PolyContainer() noexcept
         {
+            _collection.fill({});
             for ( U8 i = 0; i < N; ++i )
             {
                 const auto reserveSize = RES( i );

@@ -51,18 +51,14 @@ namespace Divide
 
     private:
     /*Specific Scene Requirement*/
-    void updateLights();
-    void processInput( PlayerIndex idx, U64 gameDeltaTimeUS, U64 appDeltaTimeUS )override;
-    void processTasks( U64 gameDeltaTimeUS, U64 appDeltaTimeUS )override;
-    void processGUI( U64 gameDeltaTimeUS, U64 appDeltaTimeUS )override;
+    void processInput( PlayerIndex idx, U64 gameDeltaTimeUS, U64 appDeltaTimeUS ) override;
     void test();
     U16  registerInputActions() override;
 
     private:
-    bool _musicPlaying;
-    bool _freeflyCamera;
-    bool _updateLights;
-    AudioDescriptor_ptr _beep;
+    bool _musicPlaying{false};
+    bool _freeflyCamera{true};
+    AudioDescriptor_ptr _beep{nullptr};
 
     END_SCENE( MainScene )
 

@@ -77,10 +77,10 @@ class Unit : public GUIDWrapper {
 
     /// moveTo makes the unit follow a path from it's current position to the
     /// targets position
-    [[nodiscard]] virtual bool moveTo(const vec3<F32>& targetPosition);
-    [[nodiscard]] virtual bool moveToX(F32 targetPosition);
-    [[nodiscard]] virtual bool moveToY(F32 targetPosition);
-    [[nodiscard]] virtual bool moveToZ(F32 targetPosition);
+    [[nodiscard]] virtual bool moveTo(const vec3<F32>& targetPosition, const U64 deltaTimeUS );
+    [[nodiscard]] virtual bool moveToX(F32 targetPosition, const U64 deltaTimeUS );
+    [[nodiscard]] virtual bool moveToY(F32 targetPosition, const U64 deltaTimeUS );
+    [[nodiscard]] virtual bool moveToZ(F32 targetPosition, const U64 deltaTimeUS );
     /// teleportTo instantly places the unit at the desired position
     [[nodiscard]] virtual bool teleportTo(const vec3<F32>& targetPosition);
 
@@ -132,8 +132,6 @@ class Unit : public GUIDWrapper {
     F32 _acceleration;
     /// acceptable distance from target
     F32 _moveTolerance;
-    /// previous time, in milliseconds when last move was applied
-    D64 _prevTime;
     /// Unit position in world
     vec3<F32> _currentPosition;
     /// Current destination point cached

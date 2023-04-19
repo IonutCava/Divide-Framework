@@ -14,7 +14,6 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Headers/PushConstants.h"
-#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
@@ -306,6 +305,9 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
 
     if (s_lutTextureDirty)
     {
+
+        PROFILE_SCOPE("Upadate LUT", Profiler::Category::Graphics);
+
         PipelineDescriptor pipelineDescriptor{};
         pipelineDescriptor._stateBlock = context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = s_lutComputeShader->handle();
@@ -352,6 +354,8 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
 
     if (SkyLightNeedsRefresh() && s_queuedLayer != SkyProbeLayerIndex())
     {
+        PROFILE_SCOPE( "Upadate Sky Probe", Profiler::Category::Graphics );
+
         GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand("SkyLight Pass"));
 
         RenderPassParams params = {};
@@ -402,6 +406,8 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         }
     }
     {
+        PROFILE_SCOPE( "Upadate Descriptor Sets", Profiler::Category::Graphics );
+
         RTAttachment* prefiltered = SceneEnvironmentProbePool::PrefilteredTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
         RTAttachment* irradiance = SceneEnvironmentProbePool::IrradianceTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
         RTAttachment* brdfLut = SceneEnvironmentProbePool::BRDFLUTTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
@@ -446,6 +452,8 @@ void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal(GFXDevice& context
     {
         case ComputationStages::MIP_MAP_SOURCE:
         {
+            PROFILE_SCOPE( "Generate Mipmaps", Profiler::Category::Graphics );
+
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Process environment map #%d-MipMapsSource", layerID).c_str()));
             RTAttachment* sourceAtt = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
 
@@ -475,6 +483,8 @@ void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal(GFXDevice& context
 
 void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 layerID, GFX::CommandBuffer& bufferInOut)
 {
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
     RTAttachment* sourceAtt = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
     RTAttachment* destinationAtt = SceneEnvironmentProbePool::PrefilteredTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
     const Texture* sourceTex = sourceAtt->texture().get();
@@ -540,7 +550,10 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
-void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U16 layerID, GFX::CommandBuffer& bufferInOut) {
+void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U16 layerID, GFX::CommandBuffer& bufferInOut)
+{
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
     RTAttachment* sourceAtt = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
     RTAttachment* destinationAtt = SceneEnvironmentProbePool::IrradianceTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
 

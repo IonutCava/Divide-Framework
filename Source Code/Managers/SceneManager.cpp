@@ -30,7 +30,6 @@
 #include "Graphs/Headers/SceneGraph.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
-#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/File/Headers/FileManagement.h"
 
 #include "Environment/Vegetation/Headers/Vegetation.h"
@@ -734,12 +733,12 @@ namespace Divide
         return playerCamera( _currentPlayerPass, skipOverride );
     }
 
-    void SceneManager::currentPlayerPass( const U64 deltaTimeUS, const PlayerIndex idx )
+    void SceneManager::currentPlayerPass( const PlayerIndex idx )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         _currentPlayerPass = idx;
-        Attorney::SceneManager::currentPlayerPass( getActiveScene(), deltaTimeUS, _currentPlayerPass );
+        Attorney::SceneManager::currentPlayerPass( getActiveScene(), _currentPlayerPass );
         playerCamera()->updateLookAt();
     }
 

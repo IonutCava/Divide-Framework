@@ -188,9 +188,14 @@ namespace Divide
         const vec2<U16> inputDim = input->_descriptor._resolution;
         const vec2<U16> outputDim = output->_descriptor._resolution;
 
+        PROFILE_TAG( "Input_Width", inputDim.width );
+        PROFILE_TAG( "Input_Height", inputDim.height );
+        PROFILE_TAG( "Output_Width", outputDim.width );
+        PROFILE_TAG( "Output_Height",outputDim.height );
+
         // When reading/writing from/to an FBO, we need to make sure it is complete and doesn't throw a GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS.
         // An easy way to achieve this is to disable attachments we don't need to write to
-        const auto preparetAttachments = []( glFramebuffer* fbo, const U16 attIndex, const U16 layer, const U16 mip )
+        const auto prepareAttachments = []( glFramebuffer* fbo, const U16 attIndex, const U16 layer, const U16 mip )
         {
             bool ret = false;
             for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ) + 1u; ++i )
@@ -206,12 +211,17 @@ namespace Divide
                 }
             }
 
-            if ( ret )
+            if constexpr (false)
             {
-                return fbo->checkStatus();
+                if ( ret )
+                {
+                    return fbo->checkStatus();
+                }
+
+                return false;
             }
 
-            return false;
+            return ret;
         };
 
         bool readBufferDirty = false;
@@ -234,6 +244,8 @@ namespace Divide
             const bool isColourBlit = entry._input._index != RT_DEPTH_ATTACHMENT_IDX;
             if ( isColourBlit )
             {
+                PROFILE_SCOPE( "Prepare RW Buffers", Profiler::Category::Graphics );
+
                 DIVIDE_ASSERT( entry._output._index != RT_DEPTH_ATTACHMENT_IDX );
                 if ( readBuffer != input->_activeReadBuffer )
                 {
@@ -259,42 +271,56 @@ namespace Divide
                 layerCount *= 6u;
             }
 
-            for ( U8 layer = 0u; layer < layerCount; ++layer )
             {
-                for ( U8 mip = 0u; mip < entry._mipCount; ++mip )
+                PROFILE_SCOPE( "Blit layers", Profiler::Category::Graphics );
+                for ( U8 layer = 0u; layer < layerCount; ++layer )
                 {
-                    if ( preparetAttachments( input, entry._input._index, entry._input._layerOffset + layer, entry._input._mipOffset + mip ) )
+                    PROFILE_TAG("Layer", layer);
+
+                    for ( U8 mip = 0u; mip < entry._mipCount; ++mip )
                     {
-                        inputDirty = true;
+                        PROFILE_SCOPE( "Blit Mip", Profiler::Category::Graphics );
+                        PROFILE_TAG("Mip", mip);
+
+                        {
+                            PROFILE_SCOPE( "Prepare Attachments Input", Profiler::Category::Graphics );
+                            if ( prepareAttachments( input, entry._input._index, entry._input._layerOffset + layer, entry._input._mipOffset + mip ) )
+                            {
+                                inputDirty = true;
+                            }
+                        }
+                        {
+                            PROFILE_SCOPE( "Prepare Attachments Output", Profiler::Category::Graphics );
+                            if ( prepareAttachments( output, entry._output._index, entry._output._layerOffset + layer, entry._output._mipOffset + mip ) )
+                            {
+                                outputDirty = true;
+                            }
+                        }
+
+                        glBlitNamedFramebuffer( input->_framebufferHandle,
+                                                output->_framebufferHandle,
+                                                0, 0,
+                                                inputDim.width, inputDim.height,
+                                                0, 0,
+                                                outputDim.width, outputDim.height,
+                                                isColourBlit ? GL_COLOR_BUFFER_BIT : GL_DEPTH_BUFFER_BIT,
+                                                GL_NEAREST );
+
+                        _context.registerDrawCall();
+                        blitted = true;
                     }
-
-                    if ( preparetAttachments( output, entry._output._index, entry._output._layerOffset + layer, entry._output._mipOffset + mip ) )
-                    {
-                        outputDirty = true;
-                    }
-                    
-
-                    glBlitNamedFramebuffer( input->_framebufferHandle,
-                                            output->_framebufferHandle,
-                                            0, 0,
-                                            inputDim.width, inputDim.height,
-                                            0, 0,
-                                            outputDim.width, outputDim.height,
-                                            isColourBlit ? GL_COLOR_BUFFER_BIT : GL_DEPTH_BUFFER_BIT,
-                                            GL_NEAREST );
-
-                    _context.registerDrawCall();
-                    blitted = true;
                 }
             }
 
             if ( inputDirty )
             {
+                PROFILE_SCOPE( "Reset Input Attachments", Profiler::Category::Graphics );
                 DIVIDE_ASSERT( input->_attachmentsUsed[entry._input._index] );
                 input->toggleAttachment( entry._input._index, AttachmentState::STATE_ENABLED, 0u, { ._layer = 0u, ._cubeFace = 0u }, true );
             }
             if ( outputDirty )
             {
+                PROFILE_SCOPE( "Reset Output Attachments", Profiler::Category::Graphics );
                 DIVIDE_ASSERT( output->_attachmentsUsed[entry._output._index] );
                 output->toggleAttachment( entry._output._index, AttachmentState::STATE_ENABLED, 0u, { ._layer = 0u, ._cubeFace = 0u }, true );
             }
@@ -315,7 +341,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        if ( _previousPolicy._drawMask != drawPolicy._drawMask || _colourBuffers._dirty )
+        if ( _colourBuffers._dirty || _previousPolicy._drawMask != drawPolicy._drawMask )
         {
             bool set = false;
             // handle colour buffers first
@@ -418,6 +444,8 @@ namespace Divide
 
     void glFramebuffer::QueueMipMapsRecomputation( const RTAttachment_uptr& attachment )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         if ( attachment == nullptr )
         {
             return;

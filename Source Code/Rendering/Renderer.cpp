@@ -13,7 +13,6 @@
 
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GFXRTPool.h"
-#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
@@ -314,10 +313,11 @@ void Renderer::prepareLighting(const RenderStage stage,
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
-void Renderer::idle() const {
+void Renderer::idle(const U64 deltaTimeUSGame) const
+{
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-    _postFX->idle(_context.config());
+    _postFX->idle(_context.config(), deltaTimeUSGame);
 }
 
 void Renderer::updateResolution(const U16 newWidth, const U16 newHeight) const {

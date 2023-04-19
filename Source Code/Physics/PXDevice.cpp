@@ -4,6 +4,8 @@
 
 #include "Utility/Headers/Localization.h"
 #include "Physics/PhysX/Headers/PhysX.h"
+#include "Core/Headers/Kernel.h"
+#include "Core/Headers/PlatformContext.h"
 
 #ifndef _PHYSICS_API_FOUND_
 #error "No physics library implemented!"
@@ -19,6 +21,7 @@ namespace Divide
 
     PXDevice::PXDevice( PlatformContext& context ) noexcept
         : PhysicsAPIWrapper("PXDevice", context )
+        , FrameListener( "PXDevice", context.kernel().frameListenerMgr(), 2u )
     {
     }
 
@@ -69,20 +72,32 @@ namespace Divide
         _api->updateTimeStep( timeStepFactor, simSpeed );
     }
 
-    void PXDevice::update( const U64 deltaTimeUS )
+    bool PXDevice::frameEnded( const FrameEvent& evt ) noexcept
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Physics );
+        
+        frameEnded( evt._time._game._deltaTimeUS );
+        return true;
+    }
+
+    void PXDevice::frameEnded( const U64 deltaTimeGameUS ) noexcept
+    {
+        _api->frameEnded( deltaTimeGameUS );
+    }
+
+    bool PXDevice::frameStarted( const FrameEvent& evt )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Physics );
 
-        _api->update( deltaTimeUS );
+        frameStarted( evt._time._game._deltaTimeUS );
+        return true;
     }
 
-    void PXDevice::process( const U64 deltaTimeUS )
+    void PXDevice::frameStarted( const U64 deltaTimeGameUS )
     {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Physics );
-
-        _api->process( deltaTimeUS );
+        _api->frameStarted( deltaTimeGameUS );
     }
-
+    
     void PXDevice::idle()
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Physics );

@@ -32,35 +32,38 @@ namespace Divide {
 
     /// Load a shader by name, source code and stage
     vkShaderEntry vkShader::LoadShader(GFXDevice& context,
+                                       vkShaderProgram* parent,
                                        const U32 targetGeneration,
                                        ShaderProgram::LoadData& data)
     {
-        LockGuard<SharedMutex> w_lock(ShaderModule::s_shaderNameLock);
 
         vkShaderEntry ret
         {
             ._fileHash = _ID( data._shaderName.c_str() ),
             ._generation = targetGeneration
         };
-
-        // If we loaded the source code successfully,  register it
-        auto& shader_ptr = s_shaderNameMap[ret._fileHash];
-        if (shader_ptr == nullptr || shader_ptr->generation() < ret._generation )
         {
-            shader_ptr.reset( new vkShader( context, data._shaderName, ret._generation ));
-            // At this stage, we have a valid Shader object, so load the source code
-            if (!static_cast<vkShader*>(shader_ptr.get())->load(data))
+            // If we loaded the source code successfully,  register it
+            LockGuard<SharedMutex> w_lock(ShaderModule::s_shaderNameLock);
+            auto& shader_ptr = s_shaderNameMap[ret._fileHash];
+            if (shader_ptr == nullptr || shader_ptr->generation() < ret._generation )
             {
-                DIVIDE_UNEXPECTED_CALL();
+                shader_ptr.reset( new vkShader( context, data._shaderName, ret._generation ));
+                // At this stage, we have a valid Shader object, so load the source code
+                if (!static_cast<vkShader*>(shader_ptr.get())->load(data))
+                {
+                    DIVIDE_UNEXPECTED_CALL();
+                }
             }
-        }
-        else
-        {
-            Console::d_printfn(Locale::Get(_ID("SHADER_MANAGER_GET_INC")), shader_ptr->name().c_str());
+            else
+            {
+                Console::d_printfn(Locale::Get(_ID("SHADER_MANAGER_GET_INC")), shader_ptr->name().c_str());
+            }
+
+            ret._shader = static_cast<vkShader*>(shader_ptr.get());
         }
 
-        ret._shader = static_cast<vkShader*>(shader_ptr.get());
-
+        ret._shader->registerParent( parent );
         return ret;
     }
 
@@ -130,7 +133,7 @@ namespace Divide {
     {
         for ( vkShaderEntry& shader : _shaderStage )
         {
-            shader._shader->inUse(false);
+            shader._shader->deregisterParent(this);
         }
 
         _shaderStage.clear();
@@ -156,16 +159,7 @@ namespace Divide {
     ShaderResult vkShaderProgram::validatePreBind( const bool rebind )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-        ShaderResult ret = ShaderProgram::validatePreBind( rebind );
-        if ( ret == ShaderResult::OK )
-        {
-            for ( vkShaderEntry& shader : _shaderStage )
-            {
-                shader._shader->inUse(true);
-            }
-        }
-
-        return ret;
+        return ShaderProgram::validatePreBind( rebind );
     }
 
     bool vkShaderProgram::loadInternal(hashMap<U64, PerFileShaderData>& fileData, bool overwrite)
@@ -192,14 +186,14 @@ namespace Divide {
                         if ( stage._fileHash == _ID( loadData._shaderName.c_str() ) )
                         {
                             targetGeneration = overwrite ? stage._generation + 1u : stage._generation;
-                            stage = vkShader::LoadShader( _context, targetGeneration, loadData );
+                            stage = vkShader::LoadShader( _context, this, targetGeneration, loadData );
                             found = true;
                             break;
                         }
                     }
                     if ( !found )
                     {
-                        _shaderStage.push_back( vkShader::LoadShader( _context, targetGeneration, loadData ) );
+                        _shaderStage.push_back( vkShader::LoadShader( _context, this, targetGeneration, loadData ) );
                     }
                 }
   

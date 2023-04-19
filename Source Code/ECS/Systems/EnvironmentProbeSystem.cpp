@@ -12,10 +12,6 @@ namespace Divide {
     {
     }
 
-    EnvironmentProbeSystem::~EnvironmentProbeSystem()
-    {
-    }
-
     void EnvironmentProbeSystem::PreUpdate(const F32 dt) {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -59,29 +55,5 @@ namespace Divide {
                     break;
             }
         }
-    }
-
-    void EnvironmentProbeSystem::Update(const F32 dt) {
-        Parent::Update(dt);
-    }
-
-    void EnvironmentProbeSystem::PostUpdate(const F32 dt) {
-        Parent::PostUpdate(dt);
-    }
-
-    void EnvironmentProbeSystem::OnFrameStart() {
-        Parent::OnFrameStart();
-    }
-
-    void EnvironmentProbeSystem::OnFrameEnd() {
-        Parent::OnFrameEnd();
-    }
-
-    bool EnvironmentProbeSystem::saveCache(const SceneGraphNode * sgn, ByteBuffer & outputBuffer) {
-        return Parent::saveCache(sgn, outputBuffer);
-    }
-
-    bool EnvironmentProbeSystem::loadCache(SceneGraphNode * sgn, ByteBuffer & inputBuffer) {
-        return Parent::loadCache(sgn, inputBuffer);
     }
 } //namespace Divide

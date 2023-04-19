@@ -53,10 +53,10 @@ class PhysicsSceneInterface : public SceneComponent,
     virtual void release() = 0;
     /// Custom physics idle calls
     virtual void idle() = 0;
-    /// Physics update callback for custom behavior
-    virtual void update(U64 deltaTimeUS) = 0;
     /// Custom process step
-    virtual void process(U64 deltaTimeUS) = 0;
+    virtual void frameStarted( U64 deltaTimeGameUS ) = 0;
+    /// Physics update callback for custom behavior
+    virtual void frameEnded( U64 deltaTimeGameUS ) = 0;
 };
 
 };  // namespace Divide

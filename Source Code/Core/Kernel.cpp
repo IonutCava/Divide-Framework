@@ -57,8 +57,6 @@ Kernel::Kernel(const I32 argc, char** argv, Application& parentApp)
       _frameTimer(Time::ADD_TIMER("Total Frame Timer")),
       _appIdleTimer(Time::ADD_TIMER("Loop Idle Timer")),
       _appScenePass(Time::ADD_TIMER("Loop Scene Pass Timer")),
-      _physicsUpdateTimer(Time::ADD_TIMER("Physics Update Timer")),
-      _physicsProcessTimer(Time::ADD_TIMER("Physics Process Timer")),
       _sceneUpdateTimer(Time::ADD_TIMER("Scene Update Timer")),
       _sceneUpdateLoopTimer(Time::ADD_TIMER("Scene Update Loop timer")),
       _cameraMgrTimer(Time::ADD_TIMER("Camera Manager Update Timer")),
@@ -76,8 +74,6 @@ Kernel::Kernel(const I32 argc, char** argv, Application& parentApp)
     _appLoopTimerInternal.addChildTimer(_frameTimer);
     _frameTimer.addChildTimer(_appScenePass);
     _appScenePass.addChildTimer(_cameraMgrTimer);
-    _appScenePass.addChildTimer(_physicsUpdateTimer);
-    _appScenePass.addChildTimer(_physicsProcessTimer);
     _appScenePass.addChildTimer(_sceneUpdateTimer);
     _appScenePass.addChildTimer(_flushToScreenTimer);
     _flushToScreenTimer.addChildTimer(_preRenderTimer);
@@ -116,14 +112,14 @@ void Kernel::startSplashScreen() {
     _splashTask = CreateTask(
         [this, &splash, &window](const Task& /*task*/) {
         U64 previousTimeUS = 0;
-        while (_splashScreenUpdating) {
+        while (_splashScreenUpdating)
+        {
             const U64 deltaTimeUS = Time::App::ElapsedMicroseconds() - previousTimeUS;
             previousTimeUS += deltaTimeUS;
 
             _platformContext.gfx().drawToWindow(window);
             splash.render(_platformContext.gfx());
             _platformContext.gfx().flushWindow(window);
-
             std::this_thread::sleep_for(std::chrono::milliseconds(15));
 
             break;
@@ -148,14 +144,16 @@ void Kernel::stopSplashScreen() {
     SDLEventManager::pollEvents();
 }
 
-void Kernel::idle(const bool fast) {
+void Kernel::idle(const bool fast, const U64 deltaTimeUSGame, const U64 deltaTimeUSApp )
+{
     PROFILE_SCOPE_AUTO( Profiler::Category::IO );
 
-    if constexpr(!Config::Build::IS_SHIPPING_BUILD) {
+    if constexpr(!Config::Build::IS_SHIPPING_BUILD)
+    {
         Locale::Idle();
     }
 
-    _platformContext.idle(fast);
+    _platformContext.idle(fast, deltaTimeUSGame, deltaTimeUSApp );
 
     _sceneManager->idle();
     Script::idle();
@@ -167,13 +165,14 @@ void Kernel::idle(const bool fast) {
 
     if constexpr(Config::Build::ENABLE_EDITOR) {
         const bool freezeLoopTime = _platformContext.editor().simulationPaused() && _platformContext.editor().stepQueue() == 0u;
-        if (_timingData.freezeTime(freezeLoopTime)) {
-            _platformContext.app().mainLoopPaused(_timingData.freezeLoopTime());
-        }
+        _timingData.freezeGameTime(freezeLoopTime);
+        _platformContext.app().mainLoopPaused(freezeLoopTime);
+
     }
 }
 
-void Kernel::onLoop() {
+void Kernel::onLoop()
+{
     PROFILE_SCOPE_AUTO( Profiler::Category::IO );
 
     {
@@ -195,80 +194,93 @@ void Kernel::onLoop() {
 
         // Update internal timer
         _platformContext.app().timer().update();
-        {
-            keepAlive(true);
-            // Update time at every render loop
-            _timingData.update(Time::Game::ElapsedMicroseconds());
-            FrameEvent evt = {};
-            evt._time._app._currentTimeUS = Time::App::ElapsedMicroseconds();
-            evt._time._app._deltaTimeUS = _timingData.appTimeDeltaUS();
-            evt._time._game._currentTimeUS = Time::Game::ElapsedMicroseconds();
-            evt._time._game._deltaTimeUS = _timingData.realTimeDeltaUS();
 
-            Attorney::PlatformContextKernel::setComponentMask( _platformContext, to_base( PlatformContext::SystemComponentType::ALL ) );
+        keepAlive(true);
+
+        // Update time at every render loop
+        _timingData.update( Time::App::ElapsedMicroseconds(), FIXED_UPDATE_RATE_US );
+
+        FrameEvent evt = {};
+        evt._time._app._currentTimeUS = _timingData.appCurrentTimeUS();
+        evt._time._app._deltaTimeUS = _timingData.appTimeDeltaUS();
+
+        evt._time._game._currentTimeUS += _timingData.gameCurrentTimeUS();
+        evt._time._game._deltaTimeUS = _timingData.gameTimeDeltaUS();
+
+        {
+            _platformContext.componentMask( to_base( PlatformContext::SystemComponentType::ALL ) );
             {
                 Time::ScopedTimer timer3(_frameTimer);
 
                 // Launch the FRAME_STARTED event
-                if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_EVENT_STARTED, evt)) {
+                if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_EVENT_STARTED, evt))
+                {
                     keepAlive(false);
                 }
 
                 // Process the current frame
-                if (!mainLoopScene(evt)) {
+                if (!mainLoopScene(evt))
+                {
                     keepAlive(false);
                 }
 
                 // Launch the FRAME_PROCESS event (a.k.a. the frame processing has ended event)
-                if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_EVENT_PROCESS, evt)) {
+                if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_EVENT_PROCESS, evt))
+                {
                     keepAlive(false);
                 }
             }
 
-            if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_EVENT_ENDED, evt)) {
+            if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_EVENT_ENDED, evt))
+            {
                 keepAlive(false);
             }
 
-            if (_platformContext.app().RestartRequested() || _platformContext.app().ShutdownRequested() ) {
+            if (_platformContext.app().RestartRequested() || _platformContext.app().ShutdownRequested() )
+            {
                 keepAlive(false);
             }
 
             const ErrorCode err = _platformContext.app().errorCode();
 
-            if (err != ErrorCode::NO_ERR) {
+            if (err != ErrorCode::NO_ERR)
+            {
                 Console::errorfn(Locale::Get(_ID("GENERIC_ERROR")), TypeUtil::ErrorCodeToString(err));
                 keepAlive(false);
             }
         }
 
-        if (platformContext().debug().enabled()) {
+        if (platformContext().debug().enabled())
+        {
             static bool statsEnabled = false;
             // Turn on perf metric measuring 2 seconds before perf dump
-            if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE * Time::Seconds(8)) == 0) {
+            if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE * Time::Seconds(8)) == 0)
+            {
                 statsEnabled = platformContext().gfx().queryPerformanceStats();
                 platformContext().gfx().queryPerformanceStats(true);
             }
             // Our stats should be up to date now
-            if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE * Time::Seconds(10)) == 0) {
+            if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE * Time::Seconds(10)) == 0)
+            {
                 Console::printfn(platformContext().debug().output().c_str());
-                if (!statsEnabled) {
+                if (!statsEnabled)
+                {
                     platformContext().gfx().queryPerformanceStats(false);
                 }
             }
 
-            if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE / 8) == 0u) {
+            if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE / 8) == 0u)
+            {
                 _platformContext.gui().modifyText("ProfileData", platformContext().debug().output(), true);
             }
         }
 
-        if constexpr(!Config::Build::IS_SHIPPING_BUILD) {
-            if (GFXDevice::FrameCount() % 6 == 0u) {
-
+        if constexpr(!Config::Build::IS_SHIPPING_BUILD)
+        {
+            if (GFXDevice::FrameCount() % 6 == 0u)
+            {
                 DisplayWindow& window = _platformContext.mainWindow();
-                static string originalTitle;
-                if (originalTitle.empty()) {
-                    originalTitle = window.title();
-                }
+                static string originalTitle = window.title();
 
                 F32 fps = 0.f, frameTime = 0.f;
                 _platformContext.app().timer().getFrameRateAndTime(fps, frameTime);
@@ -290,18 +302,20 @@ void Kernel::onLoop() {
 
         {
             Time::ScopedTimer timer2(_appIdleTimer);
-            idle(false);
+            idle(false, evt._time._game._deltaTimeUS, evt._time._app._deltaTimeUS );
         }
     }
 
     // Cap FPS
     const I16 frameLimit = _platformContext.config().runtime.frameRateLimit;
-    if (frameLimit > 0) {
+    if (frameLimit > 0)
+    {
         const F32 elapsedMS = Time::MicrosecondsToMilliseconds<F32>(_appLoopTimerMain.get());
         const F32 deltaMilliseconds = std::floorf(elapsedMS - (elapsedMS * 0.015f));
         const F32 targetFrameTime = 1000.0f / frameLimit;
 
-        if (deltaMilliseconds < targetFrameTime) {
+        if (deltaMilliseconds < targetFrameTime)
+        {
             //Sleep the remaining frame time 
             SetThreadPriority(ThreadPriority::ABOVE_NORMAL);
             std::this_thread::sleep_for(std::chrono::milliseconds(to_I32(targetFrameTime - deltaMilliseconds)));
@@ -319,22 +333,18 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
         Time::ScopedTimer timer2(_cameraMgrTimer);
         // Update cameras. Always use app timing as pausing time would freeze the cameras in place
         // ToDo: add a speed slider in the editor -Ionut
-        Camera::Update(_timingData.appTimeDeltaUS());
+        Camera::Update( evt._time._app._deltaTimeUS );
     }
 
-    if (_platformContext.mainWindow().minimized()) {
-        idle(false);
+    if (_platformContext.mainWindow().minimized())
+    {
+        idle(false, 0u, evt._time._app._deltaTimeUS );
         SDLEventManager::pollEvents();
         return true;
     }
+
     if (!_platformContext.app().freezeRendering())
     {
-        {// We should pause physics simulations if needed, but the framerate dependency is handled by whatever 3rd party pfx library we are using
-            Time::ScopedTimer timer2(_physicsProcessTimer);
-            if (!_timingData.freezeLoopTime() || _timingData.forceRunPhysics()) {
-                _platformContext.pfx().process(_timingData.realTimeDeltaUS());
-            }
-        }
         {
             Time::ScopedTimer timer2(_sceneUpdateTimer);
 
@@ -344,23 +354,26 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
 
             constexpr U8 MAX_FRAME_SKIP = 4u;
 
-            const U64 fixedTimestep = _timingData.fixedTimeStep();
-            const U64 appDeltaTimeUS = _timingData.appTimeDeltaUS();
+            {
+                PROFILE_SCOPE("GUI Update", Profiler::Category::IO );
+                _sceneManager->getActiveScene().processGUI( evt._time._game._deltaTimeUS, evt._time._app._deltaTimeUS );
+            }
 
-            while (_timingData.accumulator() >= FIXED_UPDATE_RATE_US) {
+            while (_timingData.accumulator() >= FIXED_UPDATE_RATE_US)
+            {
                 PROFILE_SCOPE("Run Update Loop", Profiler::Category::IO);
                 // Everything inside here should use fixed timesteps, apart from GFX updates which should use both!
                 // Some things (e.g. tonemapping) need to resolve even if the simulation is paused (might not remain true in the future)
 
-                if (_timingData.updateLoops() == 0u) {
+                if (_timingData.updateLoops() == 0u)
+                {
                     _sceneUpdateLoopTimer.start();
                 }
-                {
-                    PROFILE_SCOPE("GUI Update", Profiler::Category::IO );
-                    _sceneManager->getActiveScene().processGUI(fixedTimestep, appDeltaTimeUS );
-                }
+
+
                 // Flush any pending threaded callbacks
-                for (U8 i = 0u; i < to_U8(TaskPoolType::COUNT); ++i) {
+                for (U8 i = 0u; i < to_U8(TaskPoolType::COUNT); ++i)
+                {
                     _platformContext.taskPool(static_cast<TaskPoolType>(i)).flushCallbackQueue();
                 }
 
@@ -369,26 +382,31 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
                     PROFILE_SCOPE("Process input", Profiler::Category::IO );
                     for (U8 i = 0u; i < playerCount; ++i) {
                         PROFILE_TAG("Player index", i);
-                        _sceneManager->getActiveScene().processInput(i, fixedTimestep, appDeltaTimeUS );
+                        _sceneManager->getActiveScene().processInput(i, evt._time._game._deltaTimeUS, evt._time._app._deltaTimeUS );
                     }
                 }
+
                 // process all scene events
                 {
                     PROFILE_SCOPE("Process scene events", Profiler::Category::IO );
-                    _sceneManager->getActiveScene().processTasks(fixedTimestep, appDeltaTimeUS);
+                    _sceneManager->getActiveScene().processTasks( evt._time._game._deltaTimeUS, evt._time._app._deltaTimeUS );
                 }
+
                 // Update the scene state based on current time (e.g. animation matrices)
-                _sceneManager->updateSceneState(fixedTimestep, _timingData.appTimeDeltaUS());
+                _sceneManager->updateSceneState( evt._time._game._deltaTimeUS, evt._time._app._deltaTimeUS );
                 // Update visual effect timers as well
-                Attorney::GFXDeviceKernel::update(_platformContext.gfx(), fixedTimestep, _timingData.appTimeDeltaUS());
+                Attorney::GFXDeviceKernel::update(_platformContext.gfx(), evt._time._game._deltaTimeUS, evt._time._app._deltaTimeUS );
 
                 _timingData.updateLoops(_timingData.updateLoops() + 1u);
                 _timingData.accumulator(_timingData.accumulator() - FIXED_UPDATE_RATE_US);
+
                 const U8 loopCount = _timingData.updateLoops();
-                if (loopCount == 1u) {
+                if (loopCount == 1u)
+                {
                     _sceneUpdateLoopTimer.stop();
                 }
-                else if (loopCount == MAX_FRAME_SKIP) {
+                else if (loopCount == MAX_FRAME_SKIP)
+                {
                     _timingData.accumulator(FIXED_UPDATE_RATE_US);
                     break;
                 }
@@ -396,10 +414,13 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
         }
     }
 
-    if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE / Config::Networking::NETWORK_SEND_FREQUENCY_HZ) == 0) {
+    if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE / Config::Networking::NETWORK_SEND_FREQUENCY_HZ) == 0)
+    {
         U32 retryCount = 0;
-        while (!Attorney::SceneManagerKernel::networkUpdate(_sceneManager, GFXDevice::FrameCount())) {
-            if (retryCount++ > Config::Networking::NETWORK_SEND_RETRY_COUNT) {
+        while (!Attorney::SceneManagerKernel::networkUpdate(_sceneManager, GFXDevice::FrameCount()))
+        {
+            if (retryCount++ > Config::Networking::NETWORK_SEND_RETRY_COUNT)
+            {
                 break;
             }
         }
@@ -410,17 +431,12 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
     // Update windows and get input events
     SDLEventManager::pollEvents();
 
-    {
-        Time::ScopedTimer timer3(_physicsUpdateTimer);
-        // Update physics
-        _platformContext.pfx().update(_timingData.realTimeDeltaUS());
-    }
-
     // Update the graphical user interface
-    _platformContext.gui().update(_timingData.realTimeDeltaUS());
+    _platformContext.gui().update( evt._time._game._deltaTimeUS );
 
-    if constexpr(Config::Build::ENABLE_EDITOR) {
-        _platformContext.editor().update(_timingData.appTimeDeltaUS());
+    if constexpr(Config::Build::ENABLE_EDITOR)
+    {
+        _platformContext.editor().update( evt._time._app._deltaTimeUS );
     }
 
     return presentToScreen(evt);
@@ -563,12 +579,11 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
     renderParams._sceneRenderState = &_sceneManager->getActiveScene().state()->renderState();
 
     for (U8 i = 0u; i < playerCount; ++i) {
-        const U64 deltaTimeUS = Time::App::ElapsedMicroseconds();
-
-        Attorney::SceneManagerKernel::currentPlayerPass(_sceneManager, deltaTimeUS, i);
+        Attorney::SceneManagerKernel::currentPlayerPass(_sceneManager, i);
         renderParams._playerPass = i;
 
-        if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_SCENERENDER_START, evt)) {
+        if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_SCENERENDER_START, evt))
+        {
             return false;
         }
 
@@ -602,17 +617,19 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
 }
 
 // The first loops compiles all the visible data, so do not render the first couple of frames
-void Kernel::warmup() {
+void Kernel::warmup()
+{
     Console::printfn(Locale::Get(_ID("START_RENDER_LOOP")));
 
-    _timingData.freezeTime(true);
+    _timingData.freezeGameTime(true);
 
-    for (U8 i = 0u; i < g_warmupFrameCount; ++i) {
+    for (U8 i = 0u; i < g_warmupFrameCount; ++i)
+    {
         onLoop();
     }
-    _timingData.freezeTime(false);
+    _timingData.freezeGameTime(false);
 
-    _timingData.update(Time::App::ElapsedMicroseconds());
+    _timingData.update(Time::App::ElapsedMicroseconds(), FIXED_UPDATE_RATE_US );
 
     stopSplashScreen();
 
@@ -707,8 +724,9 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
         {
             const TaskPool::TaskPoolType poolType = blocking ? TaskPool::TaskPoolType::TYPE_BLOCKING : TaskPool::TaskPoolType::TYPE_LOCKFREE;
             if (!_platformContext.taskPool(taskPoolType).init(threadCount, poolType, 
-                [this, taskPoolType, &threadCounter](const std::thread::id& threadID) {
-                    Attorney::PlatformContextKernel::onThreadCreated(platformContext(), taskPoolType, threadID);
+                [this, taskPoolType, &threadCounter](const std::thread::id& threadID)
+                {
+                    Attorney::PlatformContextKernel::onThreadCreated(platformContext(), taskPoolType, threadID, false);
                     threadCounter.fetch_sub(1);
                 },
                 threadPrefix))
@@ -798,7 +816,7 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
 
     ShadowMap::initShadowMaps(_platformContext.gfx());
     _sceneManager->init(_platformContext, resourceCache());
-    _platformContext.gfx().idle(true);
+    _platformContext.gfx().idle(true, 0u, 0u);
 
     const char* firstLoadedScene = Config::Build::IS_EDITOR_BUILD
                                         ? Config::DEFAULT_SCENE_NAME

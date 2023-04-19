@@ -271,6 +271,8 @@ namespace Divide
         [[nodiscard]] bool isDefaultScene() const noexcept;
 
         void postRender( RenderStage stage, const CameraSnapshot& cameraSnapshot, RenderTargetID target, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
+        void getCommandBuffer( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
+
         void renderModelSpawnModal();
 
         PROPERTY_R_IW( I64, previewNodeGUID, -1 );
@@ -717,12 +719,18 @@ namespace Divide
 
         class EditorRenderPassExecutor
         {
-            static void postRender( Editor& editor, const RenderStage stage, const CameraSnapshot& cameraSnapshot, const RenderTargetID target, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
+            static void getCommandBuffer( Editor& editor, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
+            {
+                editor.getCommandBuffer( bufferInOut, memCmdInOut );
+            }
+
+             static void postRender( Editor& editor, const RenderStage stage, const CameraSnapshot& cameraSnapshot, const RenderTargetID target, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
             {
                 editor.postRender( stage, cameraSnapshot, target, bufferInOut, memCmdInOut );
             }
 
             friend class RenderPassExecutor;
+            friend class RenderPassManager;
         };
 
         class EditorEditorComponent

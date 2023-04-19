@@ -62,7 +62,7 @@ enum class ErrorCode : I8;
 enum class PhysicsGroup : U8;
 class RigidBodyComponent;
 
-class NOINITVTABLE PhysicsAPIWrapper : public PlatformContextComponent, public FrameListener
+class NOINITVTABLE PhysicsAPIWrapper : public PlatformContextComponent
 {
    public:
     explicit PhysicsAPIWrapper( const Str64& name, PlatformContext& context );
@@ -76,19 +76,16 @@ class NOINITVTABLE PhysicsAPIWrapper : public PlatformContextComponent, public F
     virtual ErrorCode initPhysicsAPI(U8 targetFrameRate, F32 simSpeed) = 0;
     virtual bool closePhysicsAPI() = 0;
     virtual void updateTimeStep(U8 timeStepFactor, F32 simSpeed) = 0;
-    virtual void update(U64 deltaTimeUS) = 0;
-    virtual void process(U64 deltaTimeUS) = 0;
     virtual void idle() = 0;
     virtual bool initPhysicsScene(Scene& scene) = 0;
     virtual bool destroyPhysicsScene(const Scene& scene) = 0;
 
+    virtual void frameStarted( const U64 deltaTimeGameUS ) = 0;
+    virtual void frameEnded( const U64 deltaTimeGameUS ) = 0;
+
     virtual PhysicsAsset* createRigidActor(SceneGraphNode* node, RigidBodyComponent& parentComp) = 0;
 
     virtual bool intersect(const Ray& intersectionRay, vec2<F32> range, vector<SGNRayResult>& intersectionsOut) const = 0;
-
-    protected:
-    [[nodiscard]] virtual bool frameStarted( const FrameEvent& evt ) override { return true; }
-    [[nodiscard]] virtual bool frameEnded( const FrameEvent& evt ) noexcept override { return true; }
 };
 
 FWD_DECLARE_MANAGED_CLASS(PhysicsAPIWrapper);

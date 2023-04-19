@@ -59,7 +59,6 @@
 #include "Platform/Audio/Headers/SFXDevice.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Headers/GFXDevice.h"
-#include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Headers/IMPrimitive.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
@@ -75,13 +74,13 @@ namespace Divide
 
     I64 Scene::DEFAULT_SCENE_GUID = 0;
     Mutex Scene::s_perFrameArenaMutex{};
-    MyArena<Config::REQUIRED_RAM_SIZE_IN_BYTES / 3> Scene::s_perFrameArena{};
+    MyArena<TO_MEGABYTES( 64 )> Scene::s_perFrameArena{};
 
     Scene::Scene( PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name )
-        : Resource( ResourceType::DEFAULT, name ),
-        PlatformContextComponent( context ),
-        _parent( parent ),
-        _resourceCache( cache )
+        : Resource( ResourceType::DEFAULT, name )
+        , PlatformContextComponent( context )
+        , _parent( parent )
+        , _resourceCache( cache )
     {
         _loadingTasks.store( 0 );
         _flashLight.fill( nullptr );
@@ -106,10 +105,7 @@ namespace Divide
 
     Scene::~Scene()
     {
-        if ( _linesPrimitive )
-        {
-            _context.gfx().destroyIMP( _linesPrimitive );
-        }
+        _context.gfx().destroyIMP( _linesPrimitive );
     }
 
     bool Scene::OnStartup( PlatformContext& context )
@@ -127,7 +123,7 @@ namespace Divide
 
     bool Scene::frameStarted()
     {
-        PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         LockGuard<Mutex> lk( s_perFrameArenaMutex );
         s_perFrameArena.clear();
@@ -141,7 +137,8 @@ namespace Divide
     }
 
     bool Scene::idle()
-    {  // Called when application is idle
+    {  
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
         if ( !_tasks.empty() )
         {
             // Check again to avoid race conditions
@@ -989,7 +986,7 @@ namespace Divide
 
         const auto togglePauseState = [this]( const InputParams /*param*/ ) noexcept
         {
-            _context.kernel().timingData().freezeTime( !_context.kernel().timingData().freezeLoopTime() );
+            _context.kernel().timingData().freezeGameTime( !_context.kernel().timingData().freezeGameTime() );
         };
 
         const auto takeScreenShot = [this]( [[maybe_unused]] const InputParams param )
@@ -1238,7 +1235,6 @@ namespace Divide
 
     bool Scene::load()
     {
-
         // Load the main scene from XML
         if ( !loadXML() )
         {
@@ -1377,39 +1373,17 @@ namespace Divide
         setState( ResourceState::RES_LOADED );
     }
 
-    void Scene::rebuildShaders( const bool selectionOnly ) const
-    {
-        if ( selectionOnly )
-        {
-            for ( const Selections& selections : _currentSelection )
-            {
-                for ( U8 i = 0u; i < selections._selectionCount; ++i )
-                {
-                    const SceneGraphNode* node = sceneGraph()->findNode( selections._selections[i] );
-                    if ( node != nullptr )
-                    {
-                        node->get<RenderingComponent>()->rebuildMaterial();
-                    }
-                }
-            }
-        }
-        else
-        {
-            ShaderProgram::RebuildAllShaders();
-        }
-    }
-
     string Scene::GetPlayerSGNName( const PlayerIndex idx )
     {
         return Util::StringFormat( g_defaultPlayerName, idx + 1 );
     }
 
-    void Scene::currentPlayerPass( const U64 deltaTimeUS, const PlayerIndex idx )
+    void Scene::currentPlayerPass( const PlayerIndex idx )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
         //ToDo: These don't necessarily need to match -Ionut
-        updateCameraControls( deltaTimeUS, idx );
+        updateCameraControls( idx );
         state()->renderState().renderPass( idx );
         state()->playerPass( idx );
 
@@ -1425,7 +1399,7 @@ namespace Divide
 
     void Scene::onSetActive()
     {
-        PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         _aiManager->pauseUpdate( false );
 
@@ -1590,7 +1564,7 @@ namespace Divide
         return false;
     }
 
-    bool Scene::updateCameraControls( const U64 deltaTimeUS, const PlayerIndex idx ) const
+    bool Scene::updateCameraControls( const PlayerIndex idx ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
@@ -1641,7 +1615,7 @@ namespace Divide
                 endDragSelection( player->index(), false );
             }
             _parent.wantsMouse( false );
-            //_context.kernel().timingData().freezeTime(true);
+            //_context.kernel().timingData().freezeGameTime(true);
         }
         else
         {
@@ -1692,36 +1666,70 @@ namespace Divide
     {
     }
 
+    void Scene::addGuiTimer( const TimerClass intervalClass, const U64 intervalUS, DELEGATE<void, U64/*elapsed time*/> cbk )
+    {
+        if ( !cbk )
+        {
+            DIVIDE_UNEXPECTED_CALL();
+        }
+
+        _guiTimers.emplace_back( TimerStruct
+        {
+            ._callbackIntervalUS = intervalUS,
+            ._timerClass = intervalClass,
+            ._cbk = cbk
+        });
+    }
+
+    void Scene::addTaskTimer( const TimerClass intervalClass, const U64 intervalUS, DELEGATE<void, U64/*elapsed time*/> cbk )
+    {
+        if ( !cbk )
+        {
+            DIVIDE_UNEXPECTED_CALL();
+        }
+
+        _taskTimers.emplace_back( TimerStruct
+        {
+            ._callbackIntervalUS = intervalUS,
+            ._timerClass = intervalClass,
+            ._cbk = cbk
+        });
+    }
+
+    void Scene::processInternalTimers( const U64 appDeltaUS, const U64 gameDeltaUS, vector<TimerStruct>& timers )
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+
+        eastl::for_each( begin( timers ),
+                         end( timers ),
+                         [appDeltaUS, gameDeltaUS]( TimerStruct& timer)
+        {
+            const U64 delta = timer._timerClass == TimerClass::APP_TIME ? appDeltaUS : gameDeltaUS;
+
+            timer._internalTimer += delta;
+            timer._internalTimerTotal += delta;
+
+            if ( timer._internalTimer >= timer._callbackIntervalUS )
+            {
+                timer._cbk(timer._internalTimerTotal );
+                timer._internalTimer = 0u;
+            }
+
+        });
+    }
+
     void Scene::processGUI( const U64 gameDeltaTimeUS, const U64 appDeltaTimeUS )
     {
-        const D64 appDelta = Time::MicrosecondsToMilliseconds<D64>( appDeltaTimeUS );
-        const D64 gameDelta = Time::MicrosecondsToMilliseconds<D64>( gameDeltaTimeUS );
-
-        eastl::for_each( begin( _guiTimersMS[to_base(TimerClass::APP_TIME)]), end(_guiTimersMS[to_base( TimerClass::APP_TIME )] ), [appDelta](D64& timer)
-        {
-            timer += appDelta;
-        });
-        eastl::for_each( begin( _guiTimersMS[to_base( TimerClass::GAME_TIME )] ), end( _guiTimersMS[to_base( TimerClass::GAME_TIME )] ), [gameDelta](D64& timer )
-        {
-            timer += gameDelta;
-        });
+        processInternalTimers( appDeltaTimeUS, gameDeltaTimeUS, _guiTimers);
     }
 
     void Scene::processTasks( const U64 gameDeltaTimeUS, const U64 appDeltaTimeUS )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+
         static bool increaseWeatherScale = true;
 
-        const D64 gameDelta = Time::MicrosecondsToMilliseconds<D64>( gameDeltaTimeUS );
-        const D64 appDelta = Time::MicrosecondsToMilliseconds<D64>( gameDeltaTimeUS );
-
-        eastl::for_each( begin( _taskTimers[to_base( TimerClass::APP_TIME )]), end(_taskTimers[to_base( TimerClass::APP_TIME )] ), [appDelta](D64& timer)
-        {
-            timer += appDelta;
-        } ); 
-        eastl::for_each( begin( _taskTimers[to_base( TimerClass::GAME_TIME )]), end(_taskTimers[to_base( TimerClass::GAME_TIME )] ), [gameDelta](D64& timer)
-        {
-            timer += gameDelta;
-        } );
+        processInternalTimers( appDeltaTimeUS, gameDeltaTimeUS, _taskTimers );
 
         if ( _dayNightData._skyInstance != nullptr )
         {
@@ -1813,6 +1821,8 @@ namespace Divide
 
     void Scene::drawCustomUI( const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+
         if ( _linesPrimitive->hasBatch() )
         {
             GFX::EnqueueCommand( bufferInOut, GFX::SetViewportCommand{ targetViewport } );
@@ -1822,6 +1832,8 @@ namespace Divide
 
     void Scene::debugDraw( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+
         // Show NavMeshes
         _aiManager->debugDraw( bufferInOut, memCmdInOut, false );
         _lightPool->drawLightImpostors( bufferInOut );
@@ -1829,6 +1841,8 @@ namespace Divide
 
     bool Scene::checkCameraUnderwater( const PlayerIndex idx ) const
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+
         const Camera* crtCamera = Attorney::SceneManagerCameraAccessor::playerCamera( _parent, idx );
         return checkCameraUnderwater( *crtCamera );
     }
@@ -1858,6 +1872,8 @@ namespace Divide
 
     void Scene::findHoverTarget( PlayerIndex idx, const vec2<I32> aimPos )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+
         constexpr std::array<SceneNodeType, 6> s_ignoredNodes = {
             SceneNodeType::TYPE_TRANSFORM,
             SceneNodeType::TYPE_WATER,
@@ -1963,6 +1979,7 @@ namespace Divide
 
     void Scene::clearHoverTarget( const PlayerIndex idx )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         if ( _currentHoverTarget[idx] != -1 )
         {
