@@ -58,17 +58,19 @@ class CascadedShadowMapsGenerator final : public ShadowMapGenerator {
     ~CascadedShadowMapsGenerator();
 
     void render(const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) override;
+    void generateWorldAO( const Camera& playerCamera, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
 
    protected:
     using SplitDepths = std::array<F32, Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT>;
-
-    void postRender(const DirectionalLightComponent& light, GFX::CommandBuffer& bufferInOut);
 
     SplitDepths calculateSplitDepths( DirectionalLightComponent& light, const vec2<F32> nearFarPlanes) const noexcept;
 
     void applyFrustumSplits(DirectionalLightComponent& light, const Camera& shadowCamera, U8 numSplits) const;
 
     void updateMSAASampleCount(U8 sampleCount) override;
+
+  protected:
+    void blurTarget( U16 layerOffset, U16 layerCount, GFX::CommandBuffer& bufferInOut );
 
   protected:
     Pipeline* _blurPipeline = nullptr;

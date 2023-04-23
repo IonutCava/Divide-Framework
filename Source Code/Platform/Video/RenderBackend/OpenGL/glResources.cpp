@@ -646,7 +646,7 @@ namespace Divide
 
         void glTextureViewCache::onFrameEnd()
         {
-            PROFILE_SCOPE( "Texture Pool: onFrameEnd", Profiler::Category::Graphics );
+            PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
             LockGuard<SharedMutex> w_lock( _lock );
             GLuint count = 0u;
@@ -711,6 +711,8 @@ namespace Divide
 
         std::pair<GLuint, bool> glTextureViewCache::allocate( const size_t hash, const bool retry )
         {
+            PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
             {
                 LockGuard<SharedMutex> w_lock( _lock );
 
@@ -762,6 +764,7 @@ namespace Divide
 
         void glTextureViewCache::deallocate( const GLuint handle, const U32 frameDelay )
         {
+            PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
             LockGuard<SharedMutex> w_lock( _lock );
             const U32 count = to_U32( _handles.size() );

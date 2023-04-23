@@ -1931,11 +1931,20 @@ namespace Divide
     /// Return the OpenGL sampler object's handle for the given hash value
     GLuint GL_API::GetSamplerHandle( const size_t samplerHash )
     {
+        thread_local size_t cached_hash = 0u;
+        thread_local GLuint cached_handle = GLUtil::k_invalidObjectID;
+
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         // If the hash value is 0, we assume the code is trying to unbind a sampler object
         if ( samplerHash > 0 )
         {
+            if ( cached_hash == samplerHash )
+            {
+                return cached_handle;
+            }
+            cached_hash = samplerHash;
+
             {
                 SharedLock<SharedMutex> r_lock( s_samplerMapLock );
                 // If we fail to find the sampler object for the given hash, we print an error and return the default OpenGL handle
@@ -1943,7 +1952,8 @@ namespace Divide
                 if ( it != std::cend( s_samplerMap ) )
                 {
                     // Return the OpenGL handle for the sampler object matching the specified hash value
-                    return it->second;
+                    cached_handle = it->second;
+                    return cached_handle;
                 }
             }
             {
@@ -1956,7 +1966,9 @@ namespace Divide
                     // Create and store the newly created sample object. GL_API is responsible for deleting these!
                     const GLuint sampler = glSamplerObject::Construct( SamplerDescriptor::Get( samplerHash ) );
                     s_samplerMap[samplerHash] = sampler;
-                    return sampler;
+
+                    cached_handle = sampler;
+                    return cached_handle;
                 }
             }
         }

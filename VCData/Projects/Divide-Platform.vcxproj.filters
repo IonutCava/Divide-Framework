@@ -582,6 +582,9 @@
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Vulkan-Descriptor-Allocator\descriptor_allocator.cpp">
       <Filter>Video\RenderBackend\Vulkan\Vulkan-Descriptor-Allocator</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderStagePass.cpp">
+      <Filter>Video</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Audio">

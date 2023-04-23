@@ -440,7 +440,7 @@ namespace Divide
 
         NodeTransformData& transformOut = _transformBuffer._data._gpuData[transformIdx];
         // Out last used transform matrix is now our previous transform
-        mat4<F32>::Multiply( transformOut._worldMatrix, _context.previousFrameData()._PreviousViewProjectionMatrix, transformOut._prevWVPMatrix);
+        mat4<F32>::Multiply( _context.previousFrameData()._PreviousViewProjectionMatrix, transformOut._worldMatrix, transformOut._prevWVPMatrix);
 
         const SceneGraphNode* node = rComp->parentSGN();
 

@@ -37,20 +37,9 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
 
     g_shadowSettings = context.context().config().rendering.shadowMapping;
     {
-        ShaderModuleDescriptor vertModule = {};
-        vertModule._moduleType = ShaderType::VERTEX;
-        vertModule._sourceFile = "baseVertexShaders.glsl";
-        vertModule._variant = "FullScreenQuad";
-
-        ShaderModuleDescriptor geomModule = {};
-        geomModule._moduleType = ShaderType::GEOMETRY;
-        geomModule._sourceFile = "blur.glsl";
-        geomModule._variant = "GaussBlur";
-
-        ShaderModuleDescriptor fragModule = {};
-        fragModule._moduleType = ShaderType::FRAGMENT;
-        fragModule._sourceFile = "blur.glsl";
-        fragModule._variant = "GaussBlur.Layered";
+        ShaderModuleDescriptor vertModule{ ShaderType::VERTEX,   "baseVertexShaders.glsl", "FullScreenQuad" };
+        ShaderModuleDescriptor geomModule{ ShaderType::GEOMETRY, "blur.glsl",              "GaussBlur" };
+        ShaderModuleDescriptor fragModule{ ShaderType::FRAGMENT, "blur.glsl",              "GaussBlur.Layered" };
 
         geomModule._defines.emplace_back( "verticalBlur uint(PushData0[1].x)" );
         geomModule._defines.emplace_back( "layerCount int(PushData0[1].y)" );
@@ -59,6 +48,7 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
 
         geomModule._defines.emplace_back( "layerOffsetWrite int(PushData0[1].w)" );
 
+        fragModule._defines.emplace_back( "LAYERED" );
         fragModule._defines.emplace_back( "layer uint(PushData0[0].x)" );
         fragModule._defines.emplace_back( "size PushData0[0].yz" );
         fragModule._defines.emplace_back( "kernelSize int(PushData0[0].w)" );
@@ -125,11 +115,13 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
         RenderTargetDescriptor desc = {};
         desc._resolution = rt->getResolution();
 
-        TextureDescriptor colourDescriptor(TextureType::TEXTURE_2D, texDescriptor.dataType(), texDescriptor.baseFormat() );
+        TextureDescriptor colourDescriptor(TextureType::TEXTURE_2D_ARRAY, texDescriptor.dataType(), texDescriptor.baseFormat() );
+        colourDescriptor.layerCount(1u);
         colourDescriptor.msaaSamples(g_shadowSettings.spot.MSAASamples);
         colourDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        TextureDescriptor depthDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::RED, GFXImagePacking::DEPTH);
+        TextureDescriptor depthDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::RED, GFXImagePacking::DEPTH);
+        depthDescriptor.layerCount( 1u );
         depthDescriptor.msaaSamples(g_shadowSettings.spot.MSAASamples);
         depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
@@ -147,7 +139,7 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
 
     //Blur FBO
     {
-        TextureDescriptor blurMapDescriptor(TextureType::TEXTURE_2D, texDescriptor.dataType(), texDescriptor.baseFormat() );
+        TextureDescriptor blurMapDescriptor(TextureType::TEXTURE_2D_ARRAY, texDescriptor.dataType(), texDescriptor.baseFormat() );
         blurMapDescriptor.layerCount(1u);
         blurMapDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
@@ -178,8 +170,6 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-    const SpotLightComponent& spotLight = static_cast<SpotLightComponent&>(light);
-
     const vec3<F32> lightPos = light.positionCache();
     const F32 farPlane = light.range() * 1.2f;
 
@@ -189,14 +179,14 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
     shadowCameras[0]->updateLookAt();
 
     mat4<F32> lightVP = light.getShadowVPMatrix(0);
-    mat4<F32>::Multiply(viewMatrix, projectionMatrix, lightVP);
+    mat4<F32>::Multiply(projectionMatrix, viewMatrix, lightVP);
     light.setShadowLightPos(0, lightPos);
     light.setShadowFloatValue(0, shadowCameras[0]->snapshot()._zPlanes.max);
-    light.setShadowVPMatrix(0, mat4<F32>::Multiply(lightVP, MAT4_BIAS_ZERO_ONE_Z ));
+    light.setShadowVPMatrix(0, mat4<F32>::Multiply( MAT4_BIAS_ZERO_ONE_Z, lightVP ));
 
     RenderPassParams params = {};
     params._sourceNode = light.sgn();
-    params._stagePass = { RenderStage::SHADOW, RenderPassType::COUNT, lightIndex, static_cast<RenderStagePass::VariantType>(light.getLightType()) };
+    params._stagePass = { RenderStage::SHADOW, RenderPassType::COUNT, lightIndex, static_cast<RenderStagePass::VariantType>(ShadowType::SINGLE) };
     params._target = _drawBufferDepth._targetID;
     params._passName = "SingleShadowMap";
     params._maxLoD = -1;
@@ -209,91 +199,92 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
 
     _context.context().kernel().renderPassManager()->doCustomPass(shadowCameras[0], params, bufferInOut, memCmdInOut);
 
-    postRender(spotLight, bufferInOut);
-
-    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
-}
-
-void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::CommandBuffer& bufferInOut)
-{
-    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-    const RenderTargetHandle& handle = ShadowMap::getShadowMap( _type );
-    const RenderTarget* shadowMapRT = handle._rt;
-    const auto& shadowAtt = shadowMapRT->getAttachment( RTAttachmentType::COLOUR );
-
-    const U16 layerOffset = light.getShadowArrayOffset();
-    constexpr I32 layerCount = 1;
-
     GFX::BlitRenderTargetCommand blitRenderTargetCommand = {};
     blitRenderTargetCommand._source = _drawBufferDepth._targetID;
-    blitRenderTargetCommand._destination = handle._targetID;
+    blitRenderTargetCommand._destination = ShadowMap::getShadowMap( _type )._targetID;
     blitRenderTargetCommand._params.emplace_back( RTBlitEntry{
         ._input = {
             ._layerOffset = 0u,
             ._index = 0u
         },
         ._output = {
-            ._layerOffset = layerOffset,
+            ._layerOffset = light.getShadowArrayOffset(),
             ._index = 0u
         }
-                                                  } );
+    } );
+
     GFX::EnqueueCommand(bufferInOut, blitRenderTargetCommand);
 
+    if ( g_shadowSettings.spot.enableBlurring )
+    {
+        blurTarget( light.getShadowArrayOffset(), bufferInOut );
+    }
+
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
+}
+
+void SingleShadowMapGenerator::blurTarget( const U16 layerOffset, GFX::CommandBuffer& bufferInOut )
+{
+    const RenderTargetHandle& handle = ShadowMap::getShadowMap( _type );
+    const RenderTarget* shadowMapRT = handle._rt;
+    const auto& shadowAtt = shadowMapRT->getAttachment( RTAttachmentType::COLOUR );
 
     // Now we can either blur our target or just skip to mipmap computation
-    if (g_shadowSettings.spot.enableBlurring)
+    GFX::BeginRenderPassCommand beginRenderPassCmd{};
+    beginRenderPassCmd._descriptor._layeredRendering = true;
+
+    beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::WHITE, true };
+    beginRenderPassCmd._descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
+
+    // Blur horizontally
+    beginRenderPassCmd._target = _blurBuffer._targetID;
+    beginRenderPassCmd._name = "DO_SM_BLUR_PASS_HORIZONTAL";
+    GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
+
+    GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _blurPipeline });
     {
-        GFX::BeginRenderPassCommand beginRenderPassCmd{};
-        beginRenderPassCmd._descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
-        beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::WHITE, true };
-
-        // Blur horizontally
-        beginRenderPassCmd._target = _blurBuffer._targetID;
-        beginRenderPassCmd._name = "DO_SM_BLUR_PASS_HORIZONTAL";
-
-        GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
-
-        GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _blurPipeline });
-        {
-            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-            cmd->_usage = DescriptorSetUsage::PER_DRAW;
-            DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, shadowAtt->texture()->getView(), shadowAtt->descriptor()._samplerHash );
-        }
-
-        _shaderConstants.data[0]._vec[1].x = 0.f;
-        _shaderConstants.data[0]._vec[1].y = to_F32( layerCount );
-        _shaderConstants.data[0]._vec[1].z = to_F32( layerOffset );
-        _shaderConstants.data[0]._vec[1].w = 0.f;
-
-        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set( _shaderConstants );
-        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
-        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
-
-        // Blur vertically
-        const auto& blurAtt = _blurBuffer._rt->getAttachment(RTAttachmentType::COLOUR);
-        {
-            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-            cmd->_usage = DescriptorSetUsage::PER_DRAW;
-            DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, blurAtt->texture()->getView(), blurAtt->descriptor()._samplerHash );
-        }
-
-        beginRenderPassCmd._target = handle._targetID;
-        beginRenderPassCmd._descriptor = {};
-        beginRenderPassCmd._name = "DO_SM_BLUR_PASS_VERTICAL";
-        GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
-
-        _shaderConstants.data[0]._vec[1].x = 1.f;
-        _shaderConstants.data[0]._vec[1].y = to_F32( layerCount );
-        _shaderConstants.data[0]._vec[1].z = 0.f;
-        _shaderConstants.data[0]._vec[1].w = to_F32( layerOffset );
-
-        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( _shaderConstants );
-        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
-        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
+        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+        cmd->_usage = DescriptorSetUsage::PER_DRAW;
+        DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
+        Set( binding._data, shadowAtt->texture()->getView(), shadowAtt->descriptor()._samplerHash );
     }
+
+    _shaderConstants.data[0]._vec[1].x = 0.f;
+    _shaderConstants.data[0]._vec[1].y = 1.f;
+    _shaderConstants.data[0]._vec[1].z = to_F32( layerOffset );
+    _shaderConstants.data[0]._vec[1].w = 0.f;
+
+    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set( _shaderConstants );
+
+    GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+
+    GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
+
+    // Blur vertically
+    beginRenderPassCmd._target = handle._targetID;
+    beginRenderPassCmd._name = "DO_SM_BLUR_PASS_VERTICAL";
+    GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
+
+    const auto& blurAtt = _blurBuffer._rt->getAttachment(RTAttachmentType::COLOUR);
+    {
+        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+        cmd->_usage = DescriptorSetUsage::PER_DRAW;
+        DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
+        Set( binding._data, blurAtt->texture()->getView(), blurAtt->descriptor()._samplerHash );
+    }
+
+
+    _shaderConstants.data[0]._vec[1].x = 1.f;
+    _shaderConstants.data[0]._vec[1].y = 1.f;
+    _shaderConstants.data[0]._vec[1].z = 0.f;
+    _shaderConstants.data[0]._vec[1].w = to_F32( layerOffset );
+
+    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( _shaderConstants );
+
+    GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+
+    GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
+
 }
 
 void SingleShadowMapGenerator::updateMSAASampleCount(const U8 sampleCount)

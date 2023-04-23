@@ -156,11 +156,6 @@ namespace Lighting {
     /// Used for CSM or PSSM to determine the maximum number of frustum splits
     constexpr unsigned short MAX_CSM_SPLITS_PER_LIGHT = 4;
 
-    /// Maximum possible number of shadow passes per frame
-    static constexpr U32 MAX_SHADOW_PASSES = MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS * MAX_CSM_SPLITS_PER_LIGHT +
-                                             MAX_SHADOW_CASTING_POINT_LIGHTS * 6 +
-                                             MAX_SHADOW_CASTING_SPOT_LIGHTS;
-
     /// Maximum number of lights we process per frame. We need this upper bound for pre-allocating arrays and setting up shaders. Increasing it shouldn't hurt performance in a linear fashion
     constexpr unsigned short MAX_ACTIVE_LIGHTS_PER_FRAME = 1 << 12;
 

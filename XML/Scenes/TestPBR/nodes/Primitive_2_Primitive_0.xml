@@ -21,6 +21,8 @@
         <emissive r="0" g="0" b="0"/>
         <ambient r="0" g="0" b="0"/>
         <specular r="0" g="0" b="0" a="1"/>
+        <specular_factor>0</specular_factor>
+        <glossiness_factor>0</glossiness_factor>
         <metallic>0.5</metallic>
         <roughness>0.5</roughness>
         <doubleSided>false</doubleSided>
@@ -32,17 +34,39 @@
         <useAlphaDiscard>true</useAlphaDiscard>
         <isRefractive>false</isRefractive>
         <RenderStates>
-            <1>
-                <colourWrite r="true" g="true" b="false" a="false"/>
+            <0>
+                <colourWrite r="true" g="true" b="true" a="true"/>
                 <zBias>0</zBias>
                 <zUnits>0</zUnits>
-                <zFunc>LESS</zFunc>
-                <tessControlPoints>3</tessControlPoints>
-                <cullMode>CW/BACK</cullMode>
+                <zFunc>LEQUAL</zFunc>
+                <tessControlPoints>4</tessControlPoints>
+                <cullMode>BACK</cullMode>
                 <fillMode>Solid</fillMode>
                 <frontFaceCCW>true</frontFaceCCW>
                 <scissorTestEnabled>false</scissorTestEnabled>
                 <depthTestEnabled>true</depthTestEnabled>
+                <depthWriteEnabled>true</depthWriteEnabled>
+                <stencilEnable>false</stencilEnable>
+                <stencilFailOp>KEEP</stencilFailOp>
+                <stencilPassOp>KEEP</stencilPassOp>
+                <stencilZFailOp>KEEP</stencilZFailOp>
+                <stencilFunc>NEVER</stencilFunc>
+                <stencilRef>0</stencilRef>
+                <stencilMask>4294967295</stencilMask>
+                <stencilWriteMask>4294967295</stencilWriteMask>
+            </0>
+            <1>
+                <colourWrite r="true" g="true" b="true" a="true"/>
+                <zBias>0</zBias>
+                <zUnits>0</zUnits>
+                <zFunc>EQUAL</zFunc>
+                <tessControlPoints>4</tessControlPoints>
+                <cullMode>BACK</cullMode>
+                <fillMode>Solid</fillMode>
+                <frontFaceCCW>true</frontFaceCCW>
+                <scissorTestEnabled>false</scissorTestEnabled>
+                <depthTestEnabled>true</depthTestEnabled>
+                <depthWriteEnabled>false</depthWriteEnabled>
                 <stencilEnable>false</stencilEnable>
                 <stencilFailOp>KEEP</stencilFailOp>
                 <stencilPassOp>KEEP</stencilPassOp>
@@ -53,16 +77,17 @@
                 <stencilWriteMask>4294967295</stencilWriteMask>
             </1>
             <2>
-                <colourWrite r="true" g="true" b="true" a="true"/>
+                <colourWrite r="true" g="true" b="false" a="false"/>
                 <zBias>0</zBias>
                 <zUnits>0</zUnits>
                 <zFunc>LEQUAL</zFunc>
-                <tessControlPoints>3</tessControlPoints>
-                <cullMode>CW/BACK</cullMode>
+                <tessControlPoints>4</tessControlPoints>
+                <cullMode>BACK</cullMode>
                 <fillMode>Solid</fillMode>
                 <frontFaceCCW>true</frontFaceCCW>
                 <scissorTestEnabled>false</scissorTestEnabled>
                 <depthTestEnabled>true</depthTestEnabled>
+                <depthWriteEnabled>true</depthWriteEnabled>
                 <stencilEnable>false</stencilEnable>
                 <stencilFailOp>KEEP</stencilFailOp>
                 <stencilPassOp>KEEP</stencilPassOp>
@@ -72,167 +97,14 @@
                 <stencilMask>4294967295</stencilMask>
                 <stencilWriteMask>4294967295</stencilWriteMask>
             </2>
-            <3>
-                <colourWrite r="true" g="true" b="true" a="true"/>
-                <zBias>0</zBias>
-                <zUnits>0</zUnits>
-                <zFunc>EQUAL</zFunc>
-                <tessControlPoints>3</tessControlPoints>
-                <cullMode>CW/BACK</cullMode>
-                <fillMode>Solid</fillMode>
-                <frontFaceCCW>true</frontFaceCCW>
-                <scissorTestEnabled>false</scissorTestEnabled>
-                <depthTestEnabled>true</depthTestEnabled>
-                <stencilEnable>false</stencilEnable>
-                <stencilFailOp>KEEP</stencilFailOp>
-                <stencilPassOp>KEEP</stencilPassOp>
-                <stencilZFailOp>KEEP</stencilZFailOp>
-                <stencilFunc>NEVER</stencilFunc>
-                <stencilRef>0</stencilRef>
-                <stencilMask>4294967295</stencilMask>
-                <stencilWriteMask>4294967295</stencilWriteMask>
-            </3>
         </RenderStates>
-        <SHADOW>
-            <PRE_PASS>
-                <0>
-                    <id>1</id>
-                </0>
-                <1>
-                    <id>1</id>
-                </1>
-                <2>
-                    <id>1</id>
-                </2>
-            </PRE_PASS>
-            <MAIN_PASS>
-                <0>
-                    <id>1</id>
-                </0>
-                <1>
-                    <id>1</id>
-                </1>
-                <2>
-                    <id>1</id>
-                </2>
-            </MAIN_PASS>
-            <OIT_PASS>
-                <0>
-                    <id>1</id>
-                </0>
-                <1>
-                    <id>1</id>
-                </1>
-                <2>
-                    <id>1</id>
-                </2>
-            </OIT_PASS>
-        </SHADOW>
-        <REFLECTION>
-            <PRE_PASS>
-                <0>
-                    <id>2</id>
-                </0>
-                <1>
-                    <id>2</id>
-                </1>
-                <2>
-                    <id>2</id>
-                </2>
-            </PRE_PASS>
-            <MAIN_PASS>
-                <0>
-                    <id>3</id>
-                </0>
-                <1>
-                    <id>3</id>
-                </1>
-                <2>
-                    <id>3</id>
-                </2>
-            </MAIN_PASS>
-            <OIT_PASS>
-                <0>
-                    <id>2</id>
-                </0>
-                <1>
-                    <id>2</id>
-                </1>
-                <2>
-                    <id>2</id>
-                </2>
-            </OIT_PASS>
-        </REFLECTION>
-        <REFRACTION>
-            <PRE_PASS>
-                <0>
-                    <id>2</id>
-                </0>
-                <1>
-                    <id>2</id>
-                </1>
-                <2>
-                    <id>2</id>
-                </2>
-            </PRE_PASS>
-            <MAIN_PASS>
-                <0>
-                    <id>3</id>
-                </0>
-                <1>
-                    <id>3</id>
-                </1>
-                <2>
-                    <id>3</id>
-                </2>
-            </MAIN_PASS>
-            <OIT_PASS>
-                <0>
-                    <id>2</id>
-                </0>
-                <1>
-                    <id>2</id>
-                </1>
-                <2>
-                    <id>2</id>
-                </2>
-            </OIT_PASS>
-        </REFRACTION>
-        <DISPLAY>
-            <PRE_PASS>
-                <0>
-                    <id>2</id>
-                </0>
-                <1>
-                    <id>2</id>
-                </1>
-                <2>
-                    <id>2</id>
-                </2>
-            </PRE_PASS>
-            <MAIN_PASS>
-                <0>
-                    <id>3</id>
-                </0>
-                <1>
-                    <id>3</id>
-                </1>
-                <2>
-                    <id>3</id>
-                </2>
-            </MAIN_PASS>
-            <OIT_PASS>
-                <0>
-                    <id>2</id>
-                </0>
-                <1>
-                    <id>2</id>
-                </1>
-                <2>
-                    <id>2</id>
-                </2>
-            </OIT_PASS>
-        </DISPLAY>
+        <RenderStateIndex>
+            <PerStagePass index="0" stage="0" pass="0" variant="0"/>
+            <PerStagePass index="1" stage="0" pass="1" variant="0"/>
+            <PerStagePass index="1" stage="0" pass="2" variant="0"/>
+            <PerStagePass index="2" stage="4" pass="1" variant="0"/>
+            <PerStagePass index="2" stage="4" pass="1" variant="1"/>
+        </RenderStateIndex>
     </Material>
     <Lock__LoD__Level>0</Lock__LoD__Level>
 </RENDERING>

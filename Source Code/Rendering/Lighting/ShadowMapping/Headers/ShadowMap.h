@@ -39,14 +39,14 @@ namespace Divide {
 
 enum class ShadowType : U8 {
     SINGLE = 0,
-    LAYERED,
+    CSM,
     CUBEMAP,
     COUNT
 };
 
 namespace Names {
     static const char* shadowType[] = {
-          "SINGLE", "LAYERED", "CUBEMAP", "UNKNOWN"
+          "SINGLE", "CSM", "CUBEMAP", "UNKNOWN"
     };
 }
 
@@ -90,6 +90,7 @@ FWD_DECLARE_MANAGED_STRUCT(DebugView);
 class NOINITVTABLE ShadowMap {
   public:
     static constexpr U8 MAX_SHADOW_FRAME_LIFETIME = 32u;
+    static constexpr U8 WORLD_AO_LAYER_INDEX = (Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS * Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT) ;
 
   public:
     // Init and destroy buffers, shaders, etc
@@ -121,6 +122,8 @@ class NOINITVTABLE ShadowMap {
     static void setMSAASampleCount(ShadowType type, U8 sampleCount);
 
     static vector<Camera*>& shadowCameras(const ShadowType type) noexcept { return s_shadowCameras[to_base(type)]; }
+
+    static void generateWorldAO(const Camera& playerCamera, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
 
   protected:
       static bool commitLayerRange(Light& light);

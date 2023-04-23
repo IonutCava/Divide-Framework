@@ -224,6 +224,7 @@
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\vkResources.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\vkSwapChain.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Vulkan-Descriptor-Allocator\descriptor_allocator.cpp" />
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderStagePass.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\Shaders\GLSLToSPIRV.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\Shaders\ShaderDataUploader.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\Textures\SamplerDescriptor.cpp" />

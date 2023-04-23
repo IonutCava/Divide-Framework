@@ -4,7 +4,7 @@
     <showSampleWindow>false</showSampleWindow>
     <themeIndex>6</themeIndex>
     <textEditor/>
-    <lastOpenSceneName>DefaultScene</lastOpenSceneName>
+    <lastOpenSceneName>TestPBR</lastOpenSceneName>
     <grid enabled_scene="true" enabled_node="true" axisWidth="2" scale="1"/>
     <nodeBGColour r="0.349999994" g="0.319999993" b="0.449999988"/>
     <camera>
@@ -14,11 +14,11 @@
                 <distance>0</distance>
                 <active>false</active>
             </reflectionPlane>
-            <accumPitchDegrees>13.1071014</accumPitchDegrees>
+            <accumPitchDegrees>-18.9737186</accumPitchDegrees>
             <frustumLocked>false</frustumLocked>
-            <euler x="13.0796213" y="74.1713867" z="-0.0285728015"/>
-            <eye x="0.287061691" y="5.12158871" z="10.6998911"/>
-            <orientation x="0.0910057276" y="0.599065423" z="-0.0688767806" w="0.79252243"/>
+            <euler x="-19.0039711" y="75.3038712" z="-0.0312624127"/>
+            <eye x="33.8613701" y="14.0462389" z="12.2734947"/>
+            <orientation x="-0.130536154" y="0.602520883" z="0.100629881" w="0.780896783"/>
             <aspectRatio>1.77777779</aspectRatio>
             <zPlanes min="0.100000001" max="1000"/>
             <FoV>58.7155075</FoV>

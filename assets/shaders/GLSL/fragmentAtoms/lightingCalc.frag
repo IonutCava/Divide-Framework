@@ -13,18 +13,16 @@
 #include "specialBRDFs.frag"
 #endif //SHADING_MODE_PBR..
 
-#include "shadowMapping.frag"
-
 // Same as "Saturate(tan(acos(ndl)))" but maybe faster?
 #define TanAcosNdL(NdL) (Saturate(sqrt(1.f - Squared(NdL)) / NdL))
 #define GetNdotL(N, L) clamp(dot(N, L), M_EPSILON, 1.f)
 
-float getShadowMultiplier(in vec3 normalWV) {
+float getShadowMultiplier(in vec3 normalWV)
+{
     float ret = 1.f;
 
-    const uint dirLightCount = DIRECTIONAL_LIGHT_COUNT;
-
-    for (int lightIdx = 0; lightIdx < dirLightCount; ++lightIdx) {
+    for (int lightIdx = 0; lightIdx < DIRECTIONAL_LIGHT_COUNT; ++lightIdx)
+    {
         const Light light = dvd_LightSource[lightIdx];
 
         const vec3 lightVec = normalize(-light._directionWV.xyz);
@@ -34,25 +32,19 @@ float getShadowMultiplier(in vec3 normalWV) {
 
     const uint cluster = GetClusterIndex(gl_FragCoord);
     const uint lightIndexOffset = lightGrid[cluster]._offset;
+
     const uint lightCountPoint = lightGrid[cluster]._countPoint;
-    const uint lightCountSpot = lightGrid[cluster]._countSpot;
-
-    for (int i = 0; i < lightCountPoint; ++i) {
-        const uint lightIdx = globalLightIndexList[lightIndexOffset + i] + dirLightCount;
-
-        const Light light = dvd_LightSource[lightIdx];
-        const vec3 lightDir = light._positionWV.xyz - VAR._vertexWV.xyz;
-        const int shadowIndex = light._options.y;
-        ret *= (shadowIndex >= 0 ? getShadowMultiplierPoint(shadowIndex, TanAcosNdL(GetNdotL(normalWV, normalize(lightDir)))) : 1.f);
+    for (int i = 0; i < lightCountPoint; ++i)
+    {
+        const Light light = dvd_LightSource[globalLightIndexList[lightIndexOffset + i] + DIRECTIONAL_LIGHT_COUNT];
+        ret *= (light._options.y >= 0 ? getShadowMultiplierPoint( light._options.y, TanAcosNdL(GetNdotL(normalWV, normalize( light._positionWV.xyz - VAR._vertexWV.xyz )))) : 1.f);
     }
 
-    for (int i = 0; i < lightCountSpot; ++i) {
-        const uint lightIdx = globalLightIndexList[lightIndexOffset + lightCountPoint + i] + dirLightCount;
-
-        const Light light = dvd_LightSource[lightIdx];
-        const vec3 lightDir = light._positionWV.xyz - VAR._vertexWV.xyz;
-        const int shadowIndex = light._options.y;
-        ret *= (shadowIndex >= 0 ? getShadowMultiplierSpot(shadowIndex, TanAcosNdL(GetNdotL(normalWV, normalize(lightDir)))) : 1.f);
+    const uint lightCountSpot = lightGrid[cluster]._countSpot;
+    for (int i = 0; i < lightCountSpot; ++i)
+    {
+        const Light light = dvd_LightSource[globalLightIndexList[lightIndexOffset + lightCountPoint + i] + DIRECTIONAL_LIGHT_COUNT];
+        ret *= (light._options.y >= 0 ? getShadowMultiplierSpot( light._options.y, TanAcosNdL(GetNdotL(normalWV, normalize( light._positionWV.xyz - VAR._vertexWV.xyz )))) : 1.f);
     }
 
     return ret;
@@ -60,19 +52,15 @@ float getShadowMultiplier(in vec3 normalWV) {
 
 vec3 getLightContribution(in PBRMaterial material, in vec3 N, in vec3 V, in bool receivesShadows, vec3 radianceIn)
 {
+    radianceIn += material._emissive;
+
 #if defined(SHADING_MODE_FLAT)
     radianceIn += material._diffuseColour * material._occlusion * (receivesShadows ? getShadowMultiplier(N) : 1.f);
 #else //SHADING_MODE_FLAT
 
-    const LightGrid grid = lightGrid[GetClusterIndex(gl_FragCoord)];
-    const uint dirLightCount = DIRECTIONAL_LIGHT_COUNT;
-    const uint pointLightCount = grid._countPoint;
-    const uint spotLightCount = grid._countSpot;
-    const uint lightIndexOffset = grid._offset;
-
     const float ndv = abs(dot(N, V)) + M_EPSILON;
-
-    for ( uint lightIdx = 0u; lightIdx < dirLightCount; ++lightIdx ) {
+    for ( uint lightIdx = 0u; lightIdx < DIRECTIONAL_LIGHT_COUNT; ++lightIdx )
+    {
         const Light light = dvd_LightSource[lightIdx];
         const vec3 lightVec = normalize(-light._directionWV.xyz);
         const float ndl = GetNdotL(N, lightVec);
@@ -81,8 +69,13 @@ vec3 getLightContribution(in PBRMaterial material, in vec3 N, in vec3 V, in bool
         radianceIn += GetBRDF(lightVec, V, N, light._colour.rgb, shadowMultiplier, ndl, ndv, material);
     }
 
-    for (uint i = 0u; i < pointLightCount; ++i) {
-        const Light light = dvd_LightSource[globalLightIndexList[lightIndexOffset + i] + dirLightCount];
+    const LightGrid grid = lightGrid[GetClusterIndex(gl_FragCoord)];
+    const uint lightIndexOffset = grid._offset;
+
+    const uint pointLightCount = grid._countPoint;
+    for (uint i = 0u; i < pointLightCount; ++i)
+    {
+        const Light light = dvd_LightSource[globalLightIndexList[lightIndexOffset + i] + DIRECTIONAL_LIGHT_COUNT];
         const vec3 lightDir = light._positionWV.xyz - VAR._vertexWV.xyz;
         const vec3 lightVec = normalize(lightDir);
 
@@ -94,8 +87,10 @@ vec3 getLightContribution(in PBRMaterial material, in vec3 N, in vec3 V, in bool
         radianceIn += GetBRDF(lightVec, V, N, light._colour.rgb, Squared(att) * shadowMultiplier, ndl, ndv, material);
     }
 
-    for (uint i = 0u; i < spotLightCount; ++i) {
-        const Light light = dvd_LightSource[globalLightIndexList[lightIndexOffset + pointLightCount + i] + dirLightCount];
+    const uint spotLightCount = grid._countSpot;
+    for (uint i = 0u; i < spotLightCount; ++i)
+    {
+        const Light light = dvd_LightSource[globalLightIndexList[lightIndexOffset + pointLightCount + i] + DIRECTIONAL_LIGHT_COUNT];
         const vec3 lightDir = light._positionWV.xyz - VAR._vertexWV.xyz;
         const vec3 lightVec = normalize(lightDir);
 
@@ -117,13 +112,12 @@ vec3 getLightContribution(in PBRMaterial material, in vec3 N, in vec3 V, in bool
     }
 #endif //SHADING_MODE_FLAT
 
-    return radianceIn + material._emissive;
+    return radianceIn;
 }
 
 vec3 computeViewDirectionWV()
 {
-    const vec3 cameraDirection = normalize( dvd_CameraPosition - VAR._vertexW.xyz );
-    return normalize( mat3( dvd_ViewMatrix ) * cameraDirection );
+    return normalize( mat3( dvd_ViewMatrix ) * normalize( dvd_CameraPosition - VAR._vertexW.xyz ) );
 }
 
 #endif //_LIGHTING_CALC_FRAG_

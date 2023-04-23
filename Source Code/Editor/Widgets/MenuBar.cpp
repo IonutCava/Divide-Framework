@@ -559,7 +559,7 @@ namespace Divide
                     if ( sType != ShadowType::CUBEMAP &&
                          ImGui::BeginMenu( Util::StringFormat( "%s ShadowMap MSAA", Names::shadowType[type] ).c_str() ) )
                     {
-                        const U8 currentCount = sType == ShadowType::LAYERED
+                        const U8 currentCount = sType == ShadowType::CSM
                             ? config.rendering.shadowMapping.csm.MSAASamples
                             : config.rendering.shadowMapping.spot.MSAASamples;
 

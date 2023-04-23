@@ -126,8 +126,6 @@ namespace Divide {
             PROFILE_SCOPE( "Wait for fences", Profiler::Category::Graphics);
             VK_CHECK( vkWaitForFences( _device.getVKDevice(), 1, &_inFlightFences[_currentFrameIdx], VK_TRUE, U64_MAX ) );
         }
-        _currentFrameIdx = (_currentFrameIdx + 1) % Config::MAX_FRAMES_IN_FLIGHT;
-
         //request image from the swapchain, one second timeout
         VkResult ret = VK_ERROR_UNKNOWN;
         {
@@ -193,6 +191,7 @@ namespace Divide {
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pImageIndices = &_swapchainImageIndex;
 
+        _currentFrameIdx = (_currentFrameIdx + 1) % Config::MAX_FRAMES_IN_FLIGHT;
         return _device.queuePresent(queue, presentInfo);
     }
 

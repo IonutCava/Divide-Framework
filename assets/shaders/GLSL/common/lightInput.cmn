@@ -3,12 +3,19 @@
 
 #include "nodeDataInput.cmn"
 
-const int LIGHT_DIRECTIONAL = 0;
-const int LIGHT_OMNIDIRECTIONAL = 1;
-const int LIGHT_SPOT = 2;
-const int LIGHT_NONE = 3;
+#define LIGHT_DIRECTIONAL 0
+#define LIGHT_OMNIDIRECTIONAL 1
+#define LIGHT_SPOT 2
+#define LIGHT_NONE 3
+#define DIRECTIONAL_LIGHT_COUNT dvd_LightData.x
+#define POINT_LIGHT_COUNT       dvd_LightData.y
+#define SPOT_LIGHT_COUNT        dvd_LightData.z
+#define _TYPE _options.x
+#define _SHADOW_INDEX _options.y
+#define _SPOT_CONE_SLANT_HEIGHT _options.z
 
-struct Light {
+struct Light
+{
     /// rgb = colour
     /// w = cos(outer cone angle)
     vec4   _colour;
@@ -25,9 +32,6 @@ struct Light {
     ivec4  _options;
 };
 
-#define _TYPE _options.x
-#define _SHADOW_INDEX _options.y
-#define _SPOT_CONE_SLANT_HEIGHT _options.z
 
 DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_PASS, 9, std430) coherent ACCESS_R buffer dvd_LightBlock
 {
@@ -35,19 +39,25 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_PASS, 9, std430) coherent ACCESS_R buffer dvd
     //RenderDoc: vec3 colour; float cosOuterCone; vec3 positionWV; float range; vec3 directionWV; float spotAngle; int lightType; int castsShadows; ivec2 null;
 };
 
-vec4 getPositionAndRangeForLight(in Light source) {
-    vec4 returnValue = vec4(0.f);
+vec4 getPositionAndRangeForLight(in Light source)
+{
 
-    if (source._TYPE == LIGHT_SPOT) {
+    if (source._TYPE == LIGHT_SPOT)
+    {
+        vec4 returnValue = vec4( 0.f );
         returnValue.w = source._SPOT_CONE_SLANT_HEIGHT * 0.5f;//range to radius conversion
         returnValue.xyz = source._positionWV.xyz + (source._directionWV.xyz * returnValue.w);
-    } else if (source._TYPE == LIGHT_OMNIDIRECTIONAL) {
-        returnValue = source._positionWV;
-    } else {
-        returnValue = vec4(source._directionWV.xyz * source._positionWV.w * -1.f, 2.f);
+        return returnValue;
+    }
+    else if (source._TYPE == LIGHT_OMNIDIRECTIONAL)
+    {
+        return source._positionWV;
+    }
+    //else if (source._TYPE == LIGHT_DIRECTIONAL)
+    {
+        return vec4(source._directionWV.xyz * source._positionWV.w * -1.f, 2.f);
     }
 
-    return returnValue;
 }
 
 DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_PASS, 8, std140) uniform dvd_LightSceneDataBlock
@@ -59,11 +69,9 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_PASS, 8, std140) uniform dvd_LightSceneDataBl
     vec4 _light_padding1[2];
 };
 
-#define DIRECTIONAL_LIGHT_COUNT dvd_LightData.x
-#define POINT_LIGHT_COUNT       dvd_LightData.y
-#define SPOT_LIGHT_COUNT        dvd_LightData.z
 
 #if defined(FRAG_SHADER) || defined(COMPUTE_SHADER)
+
 DESCRIPTOR_SET_RESOURCE_LAYOUT( PER_PASS, 10, std430 ) COMP_ONLY_W buffer lightIndexSSBO
 {
     uint globalLightIndexList[];
@@ -91,20 +99,19 @@ struct VolumeTileAABB
 // cluster depth index from depth in screen coordinates (gl_FragCoord.z)
 uint GetClusterZIndex(in float screenDepth)
 {
-    const float eyeDepth = ToLinearDepth(screenDepth, dvd_ZPlanes);
-    
-    return uint( max( log( eyeDepth ) * dvd_LightScale + dvd_LightBias, 0.f ) );
+    return uint( max( log( ToLinearDepth( screenDepth, dvd_ZPlanes ) ) * dvd_LightScale + dvd_LightBias, 0.f ) );
 }
 
-uint GetClusterIndex(in vec4 fragCoord) {
-    const uint zIndex = GetClusterZIndex(fragCoord.z);
-    const uvec3 indices = uvec3(uvec2(fragCoord.xy / dvd_ClusterSizes), zIndex);
+uint GetClusterIndex(in vec4 fragCoord)
+{
+    const uvec3 indices = uvec3(uvec2(fragCoord.xy / dvd_ClusterSizes), GetClusterZIndex( fragCoord.z ) );
     return (CLUSTERS_X * CLUSTERS_Y) * indices.z +
             CLUSTERS_X * indices.y +
             indices.x;
 }
 
 #else //COMPUTE_SHADER
+
 DESCRIPTOR_SET_RESOURCE_LAYOUT( PER_DRAW, 0, std430 ) COMP_ONLY_W buffer globalIndexCountSSBO
 {
     uint globalIndexCount[];
@@ -114,6 +121,7 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT( PER_DRAW, 1, std430 ) COMP_ONLY_RW buffer lightC
 {
     VolumeTileAABB lightClusterAABBs[CLUSTERS_X * CLUSTERS_Y * CLUSTERS_Z];
 };
+
 #endif //COMPUTE_SHADER
 
 #endif //FRAG_SHADER || COMPUTE_SHADER

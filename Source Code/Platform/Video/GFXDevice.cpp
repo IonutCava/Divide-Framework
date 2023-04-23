@@ -1951,7 +1951,7 @@ namespace Divide
                 }
             }
 
-            _gpuBlock._camData._renderProperties.x = to_F32( count );
+            _gpuBlock._camData._cameraProperties.w = to_F32( count );
             _gpuBlock._camNeedsUpload = true;
         }
     }
@@ -1972,10 +1972,30 @@ namespace Divide
 
         GFXShaderData::CamData& data = _gpuBlock._camData;
 
-        bool needsUpdate = false, projectionDirty = false, viewDirty = false;
+        bool projectionDirty = false, viewDirty = false;
+
         if ( cameraSnapshot._projectionMatrix != data._ProjectionMatrix )
         {
+            const F32 zNear = cameraSnapshot._zPlanes.min;
+            const F32 zFar = cameraSnapshot._zPlanes.max;
+
             data._ProjectionMatrix.set( cameraSnapshot._projectionMatrix );
+            data._cameraProperties.xyz.set( zNear, zFar, cameraSnapshot._FoV );
+
+            if ( cameraSnapshot._isOrthoCamera )
+            {
+                data._lightingTweakValues.x = 1.f; //scale
+                data._lightingTweakValues.y = 0.f; //bias
+            }
+            else
+            {
+                //ref: http://www.aortiz.me/2018/12/21/CG.html
+                constexpr F32 CLUSTERS_Z = to_F32( Config::Lighting::ClusteredForward::CLUSTERS_Z );
+                const F32 zLogRatio = std::log( zFar / zNear );
+
+                data._lightingTweakValues.x = CLUSTERS_Z / zLogRatio; //scale
+                data._lightingTweakValues.y = -(CLUSTERS_Z * std::log( zNear ) / zLogRatio); //bias
+            }
             projectionDirty = true;
         }
 
@@ -1988,49 +2008,11 @@ namespace Divide
 
         if ( projectionDirty || viewDirty )
         {
-            mat4<F32>::Multiply( data._ViewMatrix, data._ProjectionMatrix, data._ViewProjectionMatrix );
-
             for ( U8 i = 0u; i < to_U8( FrustumPlane::COUNT ); ++i )
             {
                 data._frustumPlanes[i].set( cameraSnapshot._frustumPlanes[i]._equation );
             }
-            needsUpdate = true;
-        }
 
-        const vec4<F32> cameraProperties( cameraSnapshot._zPlanes, cameraSnapshot._FoV, data._cameraProperties.w );
-        if ( data._cameraProperties != cameraProperties )
-        {
-            data._cameraProperties.set( cameraProperties );
-
-            if ( cameraSnapshot._isOrthoCamera )
-            {
-                data._lightingTweakValues.x = 1.f; //scale
-                data._lightingTweakValues.y = 0.f; //bias
-            }
-            else
-            {
-                const F32 zFar = cameraSnapshot._zPlanes.max;
-                const F32 zNear = cameraSnapshot._zPlanes.min;
-
-                //ref: http://www.aortiz.me/2018/12/21/CG.html
-                constexpr F32 CLUSTERS_Z = to_F32( Config::Lighting::ClusteredForward::CLUSTERS_Z );
-                const F32 zLogRatio = std::log( zFar / zNear );
-
-                data._lightingTweakValues.x = CLUSTERS_Z / zLogRatio; //scale
-                data._lightingTweakValues.y = -(CLUSTERS_Z * std::log( zNear ) / zLogRatio); //bias
-            }
-            needsUpdate = true;
-        }
-
-        const U8 orthoFlag = (cameraSnapshot._isOrthoCamera ? 1u : 0u);
-        if ( to_U8( data._cameraProperties.w ) != orthoFlag )
-        {
-            data._cameraProperties.w = to_F32( orthoFlag );
-            needsUpdate = true;
-        }
-
-        if ( needsUpdate )
-        {
             _gpuBlock._camNeedsUpload = true;
             _activeCameraSnapshot = cameraSnapshot;
         }
@@ -2046,6 +2028,13 @@ namespace Divide
             data._lightingTweakValues.zw = { lightBleedBias, minShadowVariance };
             _gpuBlock._camNeedsUpload = true;
         }
+    }
+
+    void GFXDevice::worldAOViewProjectionMatrix( const mat4<F32>& vpMatrix ) noexcept
+    {
+        GFXShaderData::CamData& data = _gpuBlock._camData;
+        data._WorldAOVPMatrix = vpMatrix;
+        _gpuBlock._camNeedsUpload = true;
     }
 
     void GFXDevice::setPreviousViewProjectionMatrix( const mat4<F32>& prevViewMatrix, const mat4<F32> prevProjectionMatrix )
@@ -2067,7 +2056,7 @@ namespace Divide
 
         if ( projectionDirty || viewDirty )
         {
-            mat4<F32>::Multiply( _gpuBlock._prevFrameData._PreviousViewMatrix, _gpuBlock._prevFrameData._PreviousProjectionMatrix, _gpuBlock._prevFrameData._PreviousViewProjectionMatrix );
+            mat4<F32>::Multiply( _gpuBlock._prevFrameData._PreviousProjectionMatrix, _gpuBlock._prevFrameData._PreviousViewMatrix, _gpuBlock._prevFrameData._PreviousViewProjectionMatrix );
         }
     }
 
@@ -2407,7 +2396,7 @@ namespace Divide
         }
 
         PushConstantsStruct fastConstants{};
-        mat4<F32>::Multiply( cameraSnapshot._viewMatrix, cameraSnapshot._projectionMatrix, fastConstants.data[0] );
+        mat4<F32>::Multiply( cameraSnapshot._projectionMatrix, cameraSnapshot._viewMatrix, fastConstants.data[0] );
         fastConstants.data[1] = cameraSnapshot._viewMatrix;
 
         auto& pushConstants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants;

@@ -154,6 +154,10 @@ bool getDebugColour(in PBRMaterial material, in NodeMaterialData materialData, i
         case DEBUG_SHADING_MODE: {
             debugColour = turboColormap(float(dvd_ShadingMode(materialData) + 1) / SHADING_COUNT); break;
         } break;
+        case DEBUG_WORLD_AO:
+        {
+            debugColour = vec3( getWorldAO());
+        } break;
     }
 
     return returnFlag;

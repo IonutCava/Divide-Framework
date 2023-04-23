@@ -127,6 +127,8 @@ namespace Divide
             }
             else
             {
+                DIVIDE_ASSERT( bState._layer._layer < tex->depth() && bState._levelOffset < tex->mipCount());
+
                 const GLuint handle = static_cast<glTexture*>(tex.get())->textureHandle();
                 if ( bState._layer._layer == 0u && bState._layer._cubeFace == 0u && layeredRendering )
                 {
@@ -209,16 +211,6 @@ namespace Divide
                 {
                     ret = true;
                 }
-            }
-
-            if constexpr (false)
-            {
-                if ( ret )
-                {
-                    return fbo->checkStatus();
-                }
-
-                return false;
             }
 
             return ret;

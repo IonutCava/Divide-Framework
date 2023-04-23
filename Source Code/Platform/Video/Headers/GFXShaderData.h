@@ -45,19 +45,17 @@ struct GFXShaderData {
           mat4<F32> _ProjectionMatrix = MAT4_IDENTITY;
           mat4<F32> _ViewMatrix = MAT4_IDENTITY;
           mat4<F32> _InvViewMatrix = MAT4_IDENTITY;
-          mat4<F32> _ViewProjectionMatrix = MAT4_IDENTITY;
+          mat4<F32> _WorldAOVPMatrix = MAT4_IDENTITY;
           vec4<F32> _ViewPort = { 0.0f, 0.0f, 1.0f, 1.0f };
           // x - scale, y - bias, z - light bleed bias, w - min shadow variance
           vec4<F32> _lightingTweakValues = { 1.f, 1.f, 0.2f, 0.001f};
-          //x - nearPlane, y - farPlane, z - FoV, w - camera flag
+          //x - nearPlane, y - farPlane, z - FoV, w - clip plane count
           vec4<F32> _cameraProperties = { 0.01f, 1.0f, 40.f, 0.f };
           //xy - depth range, zw - light cluster size X / Y
           vec4<F32> _renderTargetInfo{0.f, 1.f, 1.f, 1.f};
-          //x - clip plane count
-          vec4<F32> _renderProperties = VECTOR4_ZERO;
           vec4<F32> _clipPlanes[Config::MAX_CLIP_DISTANCES];
           vec4<F32> _frustumPlanes[6];
-          vec4<F32> _padding[2];
+          vec4<F32> _padding[3];
       } _camData;
 #pragma pack(pop)
 

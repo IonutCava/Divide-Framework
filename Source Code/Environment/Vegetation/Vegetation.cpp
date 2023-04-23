@@ -98,14 +98,14 @@ namespace Divide
 
         renderState().addToDrawExclusionMask( RenderStage::REFLECTION );
         renderState().addToDrawExclusionMask( RenderStage::REFRACTION );
-        renderState().addToDrawExclusionMask( RenderStage::SHADOW, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(LightType::POINT) );
-        renderState().addToDrawExclusionMask( RenderStage::SHADOW, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(LightType::SPOT) );
+        renderState().addToDrawExclusionMask( RenderStage::SHADOW, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(ShadowType::CUBEMAP) );
+        renderState().addToDrawExclusionMask( RenderStage::SHADOW, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(ShadowType::SINGLE) );
         for ( U8 i = 1u; i < Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT; ++i )
         {
             renderState().addToDrawExclusionMask(
                 RenderStage::SHADOW,
                 RenderPassType::COUNT,
-                static_cast<RenderStagePass::VariantType>(LightType::DIRECTIONAL),
+                static_cast<RenderStagePass::VariantType>(ShadowType::CSM),
                 g_AllIndicesID,
                 static_cast<RenderStagePass::PassIndex>(i) );
         }
@@ -633,7 +633,7 @@ namespace Divide
                         meshPtr->renderState().addToDrawExclusionMask(
                             RenderStage::SHADOW,
                             RenderPassType::MAIN_PASS,
-                            static_cast<RenderStagePass::VariantType>(LightType::DIRECTIONAL),
+                            static_cast<RenderStagePass::VariantType>(ShadowType::CSM),
                             g_AllIndicesID,
                             RenderStagePass::PassIndex::PASS_2 );
                         s_treeMeshes.push_back( meshPtr );
@@ -752,7 +752,7 @@ namespace Divide
                 const Texture_ptr& hizTexture = hizAttachment->texture();
 
                 mat4<F32> viewProjectionMatrix;
-                mat4<F32>::Multiply( cameraSnapshot._viewMatrix, cameraSnapshot._projectionMatrix, viewProjectionMatrix );
+                mat4<F32>::Multiply( cameraSnapshot._projectionMatrix, cameraSnapshot._viewMatrix, viewProjectionMatrix );
 
                 PushConstantsStruct fastConstants{};
                 fastConstants.data[0] = viewProjectionMatrix;

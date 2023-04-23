@@ -21,11 +21,10 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT( PER_DRAW, BONE_BUFFER_BINDING, std430 ) coherent
         boneTransforms[OFFSET + dvd_BoneIndices.w])
 
 #if defined(HAS_VELOCITY)
+
 vec4 applyBoneTransforms(in vec4 vector, in uint animationOffset )
 {
-    const mat4 transformMatrix[4] = GET_BONE_MATRICES( animationOffset );
-
-    return TRANSFORM_VECTOR( vector, transformMatrix );
+    return TRANSFORM_VECTOR( vector, GET_BONE_MATRICES( animationOffset ) );
 }
 #endif //HAS_VELOCITY
 

@@ -339,7 +339,7 @@ namespace Divide
 
         if ( cameraUpdated )
         {
-            mat4<F32>::Multiply( _data._viewMatrix, _data._projectionMatrix, _viewProjectionMatrix );
+            mat4<F32>::Multiply( _data._projectionMatrix, _data._viewMatrix, _viewProjectionMatrix );
 
             for ( const auto& it : _updateCameraListeners )
             {

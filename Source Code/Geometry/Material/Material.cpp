@@ -141,9 +141,9 @@ namespace Divide
     }
 
     Material::Material( GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const Str256& name )
-        : CachedResource( ResourceType::DEFAULT, descriptorHash, name ),
-        _context( context ),
-        _parentCache( parentCache )
+        : CachedResource( ResourceType::DEFAULT, descriptorHash, name )
+        , _context( context )
+        , _parentCache( parentCache )
     {
         properties().receivesShadows( _context.context().config().rendering.shadowMapping.enabled );
 
@@ -172,9 +172,12 @@ namespace Divide
             const Str64 fragSource = isDepthPass ? material->baseShaderData()._depthShaderFragSource : material->baseShaderData()._colourShaderFragSource;
 
             Str32 vertVariant = isDepthPass ? isShadowPass ? material->baseShaderData()._shadowShaderVertVariant
-                : material->baseShaderData()._depthShaderVertVariant
-                : material->baseShaderData()._colourShaderVertVariant;
-            Str32 fragVariant = isDepthPass ? material->baseShaderData()._depthShaderFragVariant : material->baseShaderData()._colourShaderFragVariant;
+                                                           : material->baseShaderData()._depthShaderVertVariant
+                                            : material->baseShaderData()._colourShaderVertVariant;
+
+            Str32 fragVariant = isDepthPass ? material->baseShaderData()._depthShaderFragVariant
+                                            : material->baseShaderData()._colourShaderFragVariant;
+
             ShaderProgramDescriptor shaderDescriptor{};
             shaderDescriptor._name = vertSource + "_" + fragSource;
 
@@ -182,10 +185,6 @@ namespace Divide
             {
                 vertVariant += "Shadow";
                 fragVariant += "Shadow.VSM";
-                if ( to_U8( renderStagePass._variant ) == to_U8( LightType::DIRECTIONAL ) )
-                {
-                    fragVariant += ".ORTHO";
-                }
             }
             else if ( isDepthPass )
             {
@@ -618,6 +617,7 @@ namespace Divide
         const bool isDepthPass = IsDepthPass( renderStagePass );
         const bool isPrePass = renderStagePass._passType == RenderPassType::PRE_PASS;
         const bool isShadowPass = renderStagePass._stage == RenderStage::SHADOW;
+        const bool isWorldAOPass = isShadowPass && renderStagePass._index == ShadowMap::WORLD_AO_LAYER_INDEX;
 
         DIVIDE_ASSERT( properties().shadingMode() != ShadingMode::COUNT, "Material computeShader error: Invalid shading mode specified!" );
         std::array<ModuleDefines, to_base( ShaderType::COUNT )> moduleDefines = {};
@@ -626,17 +626,27 @@ namespace Divide
         {
             shaderDescriptor._globalDefines.emplace_back( "MSAA_SCREEN_TARGET", true );
         }
-        if ( renderStagePass._stage == RenderStage::SHADOW )
+
+        if ( isShadowPass )
         {
             shaderDescriptor._globalDefines.emplace_back( "SHADOW_PASS", true );
             shaderDescriptor._globalDefines.emplace_back( "SKIP_REFLECT_REFRACT", true );
+
+            if ( isWorldAOPass || to_base( renderStagePass._variant) == to_base( ShadowType::CSM ) )
+            {
+                shaderDescriptor._globalDefines.emplace_back( "ORTHO_PROJECTION", true );
+                if ( isWorldAOPass )
+                {
+                    shaderDescriptor._globalDefines.emplace_back( "WORLD_AO_PASS", true );
+                }
+            }
         }
         else if ( isDepthPass )
         {
             shaderDescriptor._globalDefines.emplace_back( "PRE_PASS", true );
             shaderDescriptor._globalDefines.emplace_back( "SKIP_REFLECT_REFRACT", true );
         }
-        if ( renderStagePass._stage == RenderStage::REFLECTION && to_U8( renderStagePass._variant ) != to_base( ReflectorType::CUBE ) )
+        if ( renderStagePass._stage == RenderStage::REFLECTION && to_base( renderStagePass._variant ) != to_base( ReflectorType::CUBE ) )
         {
             shaderDescriptor._globalDefines.emplace_back( "REFLECTION_PASS", true );
         }

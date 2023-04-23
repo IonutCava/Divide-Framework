@@ -73,6 +73,7 @@ class Quad3D;
 class Texture;
 class Object3D;
 class GFXRTPool;
+class ShadowMap;
 class IMPrimitive;
 class SceneManager;
 class ResourceCache;
@@ -80,6 +81,7 @@ class SceneGraphNode;
 class SceneShaderData;
 class SceneRenderState;
 class ShaderComputeQueue;
+class CascadedShadowMapsGenerator;
 
 struct SizeChangeParams;
 struct ShaderBufferDescriptor;
@@ -99,6 +101,7 @@ namespace Attorney {
     class GFXDeviceGFXRTPool;
     class GFXDeviceSceneManager;
     class GFXDeviceShaderProgram;
+    class GFXDeviceShadowMap;
     class KernelApplication;
 };
 
@@ -242,6 +245,7 @@ class GFXDevice final : public PlatformContextComponent, public FrameListener {
     friend class Attorney::GFXDeviceGraphicsResource;
     friend class Attorney::GFXDeviceGFXRTPool;
     friend class Attorney::GFXDeviceShaderProgram;
+    friend class Attorney::GFXDeviceShadowMap;
     friend class Attorney::GFXDeviceSceneManager;
 
 public:
@@ -496,6 +500,8 @@ private:
     void setClipPlanes(const FrustumClipPlanes& clipPlanes);
     void renderFromCamera(const CameraSnapshot& cameraSnapshot);
     void shadowingSettings(const F32 lightBleedBias, const F32 minShadowVariance) noexcept;
+    void worldAOViewProjectionMatrix(const mat4<F32>& vpMatrix) noexcept;
+
     ErrorCode createAPIInstance(RenderAPI api);
 
 private:
@@ -682,6 +688,17 @@ namespace Attorney {
         }
 
         friend class Divide::SceneManager;
+    };
+
+    class GFXDeviceShadowMap
+    {
+        static void worldAOViewProjectionMatrix( GFXDevice& device, const mat4<F32>& vpMatrix ) noexcept
+        {
+            device.worldAOViewProjectionMatrix( vpMatrix );
+        }
+
+        friend class Divide::ShadowMap;
+        friend class Divide::CascadedShadowMapsGenerator;
     };
 
 };  // namespace Attorney

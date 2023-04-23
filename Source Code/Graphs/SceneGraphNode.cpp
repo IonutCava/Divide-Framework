@@ -882,7 +882,7 @@ FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
         }
     }
 
-    // This one should be obvious
+    // This one should be obvious. Should we really exclude them from the top-down world AO too? Yes for now, but needs actually testing in-game
     if (params._stage == RenderStage::SHADOW && !castsShadows(this))
     {
         return FrustumCollision::FRUSTUM_OUT;

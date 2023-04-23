@@ -183,19 +183,18 @@ private:
     static eastl::fixed_vector<TexBindEntry, 32, false> s_TexBindQueue;
 
     using HardwareQueryContext = std::array<glHardwareQueryEntry, to_base(QueryType::COUNT)>;
-    HardwareQueryContext _primitiveQueries;
-    /// /*sampler hash value*/ /*sampler object*/
-    using SamplerObjectMap = ska::bytell_hash_map<size_t, GLuint>;
+    using VAOMap = hashMap<size_t, GLuint>;
+    using SamplerObjectMap = hashMap<size_t, GLuint>;
 
 private:
     GFXDevice& _context;
     Time::ProfileTimer& _swapBufferTimer;
 
+    HardwareQueryContext _primitiveQueries;
     /// Hardware query objects used for performance measurements
     std::array<glHardwareQueryRing_uptr, to_base(GlobalQueryTypes::COUNT)> _performanceQueries;
     // OpenGL rendering is not thread-safe anyway, so this works
     eastl::stack<HardwareQueryContext> _queryContext;
-
     bool _runQueries{false};
 
     bool _pushConstantsNeedLock{false};
@@ -213,8 +212,6 @@ private:
     static std::array<size_t, to_base(GLUtil::GLMemory::GLMemoryType::COUNT)> s_memoryAllocatorSizes;
 
     static GLUtil::glTextureViewCache s_textureViewCache;
-
-    using VAOMap = hashMap<size_t, GLuint>;
     static VAOMap s_vaoCache;
 
     static glHardwareQueryPool* s_hardwareQueryPool;

@@ -61,6 +61,7 @@ namespace Divide {
         VELOCITY,
         SSR,
         SSR_BLEND,
+        WORLD_AO,
         COUNT
     };
     namespace Names {
@@ -91,6 +92,7 @@ namespace Divide {
             "VELOCITY",
             "SSR",
             "SSR_BLEND",
+            "WORLD_AO",
             "NONE"
         };
     };

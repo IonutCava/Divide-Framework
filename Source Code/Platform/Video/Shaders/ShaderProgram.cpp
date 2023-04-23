@@ -595,6 +595,7 @@ namespace Divide
         AppendToShaderHeader( ShaderType::COUNT, "#define MAX_SHADOW_CASTING_DIR_LIGHTS " + Util::to_string( Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS ) );
         AppendToShaderHeader( ShaderType::COUNT, "#define MAX_SHADOW_CASTING_POINT_LIGHTS " + Util::to_string( Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS ) );
         AppendToShaderHeader( ShaderType::COUNT, "#define MAX_SHADOW_CASTING_SPOT_LIGHTS " + Util::to_string( Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS ) );
+        AppendToShaderHeader( ShaderType::COUNT, "#define WORLD_AO_LAYER_INDEX " + Util::to_string( ShadowMap::WORLD_AO_LAYER_INDEX ) );
         AppendToShaderHeader( ShaderType::COUNT, "#define MAX_LIGHTS " + Util::to_string( Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME ) );
         AppendToShaderHeader( ShaderType::COUNT, "#define MAX_VISIBLE_NODES " + Util::to_string( Config::MAX_VISIBLE_NODES ) );
         AppendToShaderHeader( ShaderType::COUNT, "#define MAX_CONCURRENT_MATERIALS " + Util::to_string( Config::MAX_CONCURRENT_MATERIALS ) );

@@ -379,11 +379,10 @@ layout(line_strip, max_vertices = 18) out;
 layout(triangle_strip, max_vertices = 4) out;
 #endif //TOGGLE_NORMALS
 
-#define GetWVPPositon(i) (dvd_ViewProjectionMatrix * gl_in[i].gl_Position)
-
-void PerVertex(in int i, in vec3 edge_dist) {
+void PerVertex(in int i, in vec3 edge_dist, in mat4 viewProjectionMatrix)
+{
     PassData(i);
-    gl_Position = GetWVPPositon(i);
+    gl_Position = viewProjectionMatrix * gl_in[i].gl_Position;
 
     _out._LoDLevel = tes_ringID[i];
     
@@ -397,12 +396,14 @@ void PerVertex(in int i, in vec3 edge_dist) {
 
 void main(void)
 {
+    const mat4 ViewProjectionMatrix = dvd_ProjectionMatrix* dvd_ViewMatrix;
+
     // Calculate edge distances for wireframe
     vec3 edge_dist = vec3(0.0);
     {
-        vec4 pos0 = GetWVPPositon(0);
-        vec4 pos1 = GetWVPPositon(1);
-        vec4 pos2 = GetWVPPositon(2);
+        vec4 pos0 = ViewProjectionMatrix * gl_in[0].gl_Position;
+        vec4 pos1 = ViewProjectionMatrix * gl_in[1].gl_Position;
+        vec4 pos2 = ViewProjectionMatrix * gl_in[2].gl_Position;
 
         vec2 p0 = vec2(dvd_ViewPort.zw * (pos0.xy / pos0.w));
         vec2 p1 = vec2(dvd_ViewPort.zw * (pos1.xy / pos1.w));
@@ -429,38 +430,38 @@ void main(void)
         const vec3 T = cross(N, B);
 
         vec3 P = gl_in[i].gl_Position.xyz;
-        PerVertex(i, edge_dist);
+        PerVertex(i, edge_dist, ViewProjectionMatrix );
 
         { // normals
             gs_wireColor = vec3(0.0f, 0.0f, 1.0f);
-            gl_Position = dvd_ViewProjectionMatrix * vec4(P, 1.0);
+            gl_Position = ViewProjectionMatrix * vec4(P, 1.0);
             EmitVertex();
 
-            PerVertex(1, edge_dist);
+            PerVertex(1, edge_dist, ViewProjectionMatrix );
             gs_wireColor = vec3(0.0f, 0.0f, 1.0f);
-            gl_Position = dvd_ViewProjectionMatrix * vec4(P + N * sizeFactor, 1.0);
+            gl_Position = ViewProjectionMatrix * vec4(P + N * sizeFactor, 1.0);
             EmitVertex();
 
             EndPrimitive();
         }
         { // binormals
             gs_wireColor = vec3(0.0f, 1.0f, 0.0f);
-            gl_Position = dvd_ViewProjectionMatrix * vec4(P, 1.0);
+            gl_Position = ViewProjectionMatrix * vec4(P, 1.0);
             EmitVertex();
 
             gs_wireColor = vec3(0.0f, 1.0f, 0.0f);
-            gl_Position = dvd_ViewProjectionMatrix * vec4(P + B * sizeFactor, 1.0);
+            gl_Position = ViewProjectionMatrix * vec4(P + B * sizeFactor, 1.0);
             EmitVertex();
 
             EndPrimitive();
         }
         { // tangents
             gs_wireColor = vec3(1.0f, 0.0f, 0.0f);
-            gl_Position = dvd_ViewProjectionMatrix * vec4(P, 1.0);
+            gl_Position = ViewProjectionMatrix * vec4(P, 1.0);
             EmitVertex();
 
             gs_wireColor = vec3(1.0f, 0.0f, 0.0f);
-            gl_Position = dvd_ViewProjectionMatrix * vec4(P + T * sizeFactor, 1.0);
+            gl_Position = ViewProjectionMatrix * vec4(P + T * sizeFactor, 1.0);
             EmitVertex();
 
             EndPrimitive();
@@ -469,14 +470,15 @@ void main(void)
 #else //TOGGLE_NORMALS
 
     // Output verts
-    for (int i = 0; i < count; ++i) {
-        PerVertex(i, edge_dist);
+    for (int i = 0; i < count; ++i)
+    {
+        PerVertex(i, edge_dist, ViewProjectionMatrix );
         gs_wireColor = tes_debugColour[i];
         EmitVertex();
     }
 
     // This closes the triangle
-    PerVertex(0, edge_dist);
+    PerVertex(0, edge_dist, ViewProjectionMatrix );
     gs_wireColor = tes_debugColour[0];
     EmitVertex();
 

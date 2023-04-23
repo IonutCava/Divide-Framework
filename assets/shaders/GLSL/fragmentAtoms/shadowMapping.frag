@@ -1,37 +1,50 @@
 #ifndef _SHADOW_MAPPING_FRAG_
 #define _SHADOW_MAPPING_FRAG_
 
+// Can't disable CSM maps as it also contains our worldAO
+DESCRIPTOR_SET_RESOURCE(PER_FRAME, 5) uniform sampler2DArray    layeredDepthMaps;
+
+#define LinStep(LOW, HIGH, V) Saturate(((V) - (LOW)) / ((HIGH) - (LOW)))
+
+float chebyshevUpperBound( in vec2 moments, in float distance )
+{
+    // Compute and clamp minimum variance to avoid numeric issues that may occur during filtering
+    const float variance = max( moments.y - Squared( moments.x ), dvd_MinVariance );
+    // Compute probabilistic upper bound.
+    const float mD = moments.x - distance;
+
+    const float p_max = variance / (variance + Squared( mD ));
+
+    // Reduce light bleed
+    const float p = LinStep( dvd_LightBleedBias, 1.f, p_max );
+
+    return max( p, (distance <= moments.x ? 1.f : 0.f) );
+}
+
+float getWorldAO()
+{
+    const vec4 aoCoords = dvd_WorldAOVPMatrix * VAR._vertexW;
+    const vec3 lookupCoords = Homogenize( aoCoords );
+    const float currentDepth = lookupCoords.z - 0.01f;
+    const vec2 moments = texture( layeredDepthMaps, vec3( lookupCoords.xy, WORLD_AO_LAYER_INDEX ) ).rg;
+    return chebyshevUpperBound( moments, currentDepth );
+}
+
 #if !defined(DISABLE_SHADOW_MAPPING)
 
 #if !defined(DISABLE_SHADOW_MAPPING_SPOT)
 DESCRIPTOR_SET_RESOURCE(PER_FRAME, 4) uniform sampler2DArray    singleDepthMaps;
 #endif //DISABLE_SHADOW_MAPPING_SPOT
-#if !defined(DISABLE_SHADOW_MAPPING_CSM)
-DESCRIPTOR_SET_RESOURCE(PER_FRAME, 5) uniform sampler2DArray    layeredDepthMaps;
-#endif //DISABLE_SHADOW_MAPPING_CSM
+
 #if !defined(DISABLE_SHADOW_MAPPING_POINT)
 DESCRIPTOR_SET_RESOURCE(PER_FRAME, 6) uniform samplerCubeArray  cubeDepthMaps;
 #endif //DISABLE_SHADOW_MAPPING_POINT
 
 #include "shadowUtils.frag"
 
-#define LinStep(LOW, HIGH, V) Saturate(((V) - (LOW)) / ((HIGH) - (LOW)))
 
-float chebyshevUpperBound(in vec2 moments, in float distance) {
-    // Compute and clamp minimum variance to avoid numeric issues that may occur during filtering
-    const float variance = max(moments.y - Squared(moments.x), dvd_MinVariance);
-    // Compute probabilistic upper bound.
-    const float mD = moments.x - distance;
-
-    const float p_max = variance / (variance + Squared(mD));
-
-    // Reduce light bleed
-    const float p = LinStep(dvd_LightBleedBias, 1.f, p_max);
-
-    return max(p, (distance <= moments.x ? 1.f : 0.f));
-}
-
-float getShadowMultiplierDirectional(in int shadowIndex, in float TanAcosNdotL) {
+float getShadowMultiplierDirectional(in int shadowIndex, in float TanAcosNdotL)
+{
 
 #if !defined(DISABLE_SHADOW_MAPPING_CSM)
     const CSMShadowProperties properties = dvd_CSMShadowTransforms[shadowIndex];
@@ -48,7 +61,6 @@ float getShadowMultiplierDirectional(in int shadowIndex, in float TanAcosNdotL) 
         // now get current linear depth as the length between the fragment and light position
         const float currentDepth = shadowCoord.z - bias;
         const vec2 moments = texture(layeredDepthMaps, vec3(shadowCoord.xy, crtDetails.y + Split)).rg;
-        return moments.x;
 
         const float ret = chebyshevUpperBound(moments, currentDepth);
 

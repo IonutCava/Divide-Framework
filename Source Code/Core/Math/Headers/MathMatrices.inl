@@ -1840,7 +1840,7 @@ namespace Divide
     mat4<T> mat4<T>::operator*( const mat4<U>& matrix ) const noexcept
     {
         mat4<T> retValue;
-        Multiply( *this, matrix, retValue );
+        Multiply( matrix, *this, retValue );
         return retValue;
     }
 
@@ -1849,7 +1849,7 @@ namespace Divide
     mat4<T> mat4<T>::operator/( const mat4<U>& matrix ) const noexcept
     {
         mat4<T> retValue;
-        Multiply( *this, matrix.getInverse(), retValue );
+        Multiply( matrix.getInverse(), *this, retValue );
         return retValue;
     }
 
@@ -1871,7 +1871,7 @@ namespace Divide
     template<typename U>
     FORCE_INLINE mat4<T>& mat4<T>::operator*=( const mat4<U>& matrix ) noexcept
     {
-        Multiply( *this, matrix, *this );
+        Multiply( matrix, *this, *this );
         return *this;
     }
 
@@ -1879,7 +1879,7 @@ namespace Divide
     template<typename U>
     FORCE_INLINE mat4<T>& mat4<T>::operator/=( const mat4<U>& matrix ) noexcept
     {
-        Multiply( *this, matrix.getInverse(), *this );
+        Multiply( matrix.getInverse(), *this, *this );
         return *this;
     }
 
@@ -2760,11 +2760,11 @@ namespace Divide
     {
         for ( U8 i = 0u; i < 4u; ++i )
         {
-            const vec4<T>& rowA = matrixA.getRow( i );
-            ret.setRow( i, matrixB.getRow( 0 ) * rowA[0] + 
-                           matrixB.getRow( 1 ) * rowA[1] +
-                           matrixB.getRow( 2 ) * rowA[2] +
-                           matrixB.getRow( 3 ) * rowA[3] );
+            const vec4<T>& rowA = matrixB.getRow( i );
+            ret.setRow( i, matrixA.getRow( 0 ) * rowA[0] + 
+                           matrixA.getRow( 1 ) * rowA[1] +
+                           matrixA.getRow( 2 ) * rowA[2] +
+                           matrixA.getRow( 3 ) * rowA[3] );
         }
     }
 
@@ -2780,18 +2780,18 @@ namespace Divide
     FORCE_INLINE void mat4<F32>::Multiply( const mat4<F32>& matrixA, const mat4<F32>& matrixB, mat4<F32>& ret ) noexcept
     {
 #if !defined(USE_AVX)
-        ret._reg[0]._reg = AVX::lincomb_SSE( matrixA._reg[0]._reg, matrixB );
-        ret._reg[1]._reg = AVX::lincomb_SSE( matrixA._reg[1]._reg, matrixB );
-        ret._reg[2]._reg = AVX::lincomb_SSE( matrixA._reg[2]._reg, matrixB );
-        ret._reg[3]._reg = AVX::lincomb_SSE( matrixA._reg[3]._reg, matrixB );
+        ret._reg[0]._reg = AVX::lincomb_SSE( matrixB._reg[0]._reg, matrixA);
+        ret._reg[1]._reg = AVX::lincomb_SSE( matrixB._reg[1]._reg, matrixA );
+        ret._reg[2]._reg = AVX::lincomb_SSE( matrixB._reg[2]._reg, matrixA );
+        ret._reg[3]._reg = AVX::lincomb_SSE( matrixB._reg[3]._reg, matrixA );
 #else //!USE_AVX
         // using AVX instructions, 4-wide
         // this can be better if A is in memory.
         _mm256_zeroupper();
-        ret._reg[0]._reg = AVX::lincomb_AVX_4mem( matrixA.m[0], matrixB );
-        ret._reg[1]._reg = AVX::lincomb_AVX_4mem( matrixA.m[1], matrixB );
-        ret._reg[2]._reg = AVX::lincomb_AVX_4mem( matrixA.m[2], matrixB );
-        ret._reg[3]._reg = AVX::lincomb_AVX_4mem( matrixA.m[3], matrixB );
+        ret._reg[0]._reg = AVX::lincomb_AVX_4mem( matrixB.m[0], matrixA );
+        ret._reg[1]._reg = AVX::lincomb_AVX_4mem( matrixB.m[1], matrixA );
+        ret._reg[2]._reg = AVX::lincomb_AVX_4mem( matrixB.m[2], matrixA );
+        ret._reg[3]._reg = AVX::lincomb_AVX_4mem( matrixB.m[3], matrixA );
 #endif //!USE_AVX
     }
 

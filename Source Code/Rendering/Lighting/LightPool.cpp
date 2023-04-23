@@ -340,6 +340,8 @@ namespace Divide
             GFX::EnqueueCommand( bufferInOut, computeMipMapsCommand );
         }
 
+        ShadowMap::generateWorldAO( playerCamera, bufferInOut, memCmdInOut );
+
         memCmdInOut._bufferLocks.push_back( _shadowBuffer->writeData( _shadowBufferData.data() ) );
 
         _shadowBufferDirty = true;

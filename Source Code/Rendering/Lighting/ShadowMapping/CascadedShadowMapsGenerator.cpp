@@ -30,10 +30,18 @@ namespace Divide
     namespace
     {
         Configuration::Rendering::ShadowMapping g_shadowSettings;
+
+        constexpr F32 g_minExtentsFactors[]
+        {
+            0.025f,
+            1.75f,
+            75.0f,
+            125.0f
+        };
     }
 
     CascadedShadowMapsGenerator::CascadedShadowMapsGenerator( GFXDevice& context )
-        : ShadowMapGenerator( context, ShadowType::LAYERED )
+        : ShadowMapGenerator( context, ShadowType::CSM )
     {
         Console::printfn( Locale::Get( _ID( "LIGHT_CREATE_SHADOW_FB" ) ), "EVCSM" );
 
@@ -68,14 +76,14 @@ namespace Divide
 
             _blurDepthMapShader = CreateResource<ShaderProgram>( context.context().kernel().resourceCache(), blurDepthMapShader );
             _blurDepthMapShader->addStateCallback( ResourceState::RES_LOADED, [this]( CachedResource* )
-                                                   {
-                                                       PipelineDescriptor pipelineDescriptor = {};
-                                                       pipelineDescriptor._stateBlock = _context.get2DStateBlock();
-                                                       pipelineDescriptor._shaderProgramHandle = _blurDepthMapShader->handle();
-                                                       pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
+            {
+                PipelineDescriptor pipelineDescriptor = {};
+                pipelineDescriptor._stateBlock = _context.get2DStateBlock();
+                pipelineDescriptor._shaderProgramHandle = _blurDepthMapShader->handle();
+                pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
 
-                                                       _blurPipeline = _context.newPipeline( pipelineDescriptor );
-                                                   } );
+                _blurPipeline = _context.newPipeline( pipelineDescriptor );
+            } );
         }
 
         _shaderConstants.data[0]._vec[1].y = to_F32( Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT );
@@ -220,7 +228,7 @@ namespace Divide
         F32 appliedDiff = 0.0f;
         for ( U8 cascadeIterator = 0; cascadeIterator < numSplits; ++cascadeIterator )
         {
-            Camera* lightCam = ShadowMap::shadowCameras( ShadowType::LAYERED )[cascadeIterator];
+            Camera* lightCam = ShadowMap::shadowCameras( ShadowType::CSM )[cascadeIterator];
 
             const F32 prevSplitDistance = cascadeIterator == 0 ? 0.0f : splitDepths[cascadeIterator - 1];
             const F32 splitDistance = splitDepths[cascadeIterator];
@@ -324,7 +332,7 @@ namespace Divide
             // The rounding matrix that ensures that shadow edges do not shimmer
             // http://www.gamedev.net/topic/591684-xna-40---shimmering-shadow-maps/
             {
-                const mat4<F32> shadowMatrix = mat4<F32>::Multiply( lightViewMatrix, lightOrthoMatrix );
+                const mat4<F32> shadowMatrix = mat4<F32>::Multiply( lightOrthoMatrix, lightViewMatrix );
                 const vec4<F32> shadowOrigin = shadowMatrix * vec4<F32>{VECTOR3_ZERO, 1.f } * (g_shadowSettings.csm.shadowMapResolution * 0.5f);
 
                 vec4<F32> roundedOrigin = shadowOrigin;
@@ -340,10 +348,10 @@ namespace Divide
             }
             lightCam->updateLookAt();
 
-            const mat4<F32> lightVP = mat4<F32>::Multiply( lightViewMatrix, lightOrthoMatrix );
+            const mat4<F32> lightVP = mat4<F32>::Multiply( lightOrthoMatrix, lightViewMatrix );
 
             light.setShadowLightPos( cascadeIterator, lightPosition );
-            light.setShadowVPMatrix( cascadeIterator, mat4<F32>::Multiply( lightVP, MAT4_BIAS_ZERO_ONE_Z ) );
+            light.setShadowVPMatrix( cascadeIterator, mat4<F32>::Multiply( MAT4_BIAS_ZERO_ONE_Z, lightVP ) );
         }
     }
 
@@ -358,7 +366,7 @@ namespace Divide
 
         RenderPassParams params = {};
         params._sourceNode = light.sgn();
-        params._stagePass = { RenderStage::SHADOW, RenderPassType::COUNT, lightIndex, static_cast<RenderStagePass::VariantType>(light.getLightType()) };
+        params._stagePass = { RenderStage::SHADOW, RenderPassType::COUNT, lightIndex, static_cast<RenderStagePass::VariantType>(ShadowType::CSM) };
         params._target = _drawBufferDepth._targetID;
         params._maxLoD = -1;
         params._refreshLightData = false;
@@ -372,14 +380,6 @@ namespace Divide
 
         RenderPassManager* rpm = _context.context().kernel().renderPassManager();
 
-        constexpr F32 minExtentsFactors[]
-        {
-            0.025f,
-            1.75f,
-            75.0f,
-            125.0f
-        };
-
         for ( I8 i = numSplits - 1; i >= 0 && i < numSplits; i-- )
         {
             params._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer = i;
@@ -387,7 +387,7 @@ namespace Divide
 
             params._passName = Util::StringFormat( "CSM_PASS_%d", i ).c_str();
             params._stagePass._pass = static_cast<RenderStagePass::PassIndex>(i);
-            params._minExtents.set( minExtentsFactors[i] );
+            params._minExtents.set( g_minExtentsFactors[i] );
             if ( i > 0 && dirLight.csmUseSceneAABBFit()[i] )
             {
                 STUBBED( "CascadedShadowMapsGenerator::render: Validate AABBFit for first cascade!" );
@@ -395,29 +395,20 @@ namespace Divide
                 params._feedBackContainer->resize( 0 );
             }
 
-            rpm->doCustomPass( ShadowMap::shadowCameras( ShadowType::LAYERED )[i], params, bufferInOut, memCmdInOut );
+            rpm->doCustomPass( ShadowMap::shadowCameras( ShadowType::CSM )[i], params, bufferInOut, memCmdInOut );
         }
 
-        postRender( dirLight, bufferInOut );
-
-        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
-    }
-
-    void CascadedShadowMapsGenerator::postRender( const DirectionalLightComponent& light, GFX::CommandBuffer& bufferInOut )
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        const I32 layerOffset = to_I32( light.getShadowArrayOffset() );
-        const I32 layerCount = to_I32( light.csmSplitCount() );
+        const U16 layerOffset = dirLight.getShadowArrayOffset();
+        const U8 layerCount = dirLight.csmSplitCount();
 
         const RenderTargetHandle& rtHandle = ShadowMap::getShadowMap( _type );
 
         GFX::BlitRenderTargetCommand* blitRenderTargetCommand = GFX::EnqueueCommand<GFX::BlitRenderTargetCommand>( bufferInOut );
         blitRenderTargetCommand->_source = _drawBufferDepth._targetID;
         blitRenderTargetCommand->_destination = rtHandle._targetID;
-        for ( U8 i = 0u; i < light.csmSplitCount(); ++i )
+        for ( U8 i = 0u; i < dirLight.csmSplitCount(); ++i )
         {
-            blitRenderTargetCommand->_params.emplace_back(RTBlitEntry
+            blitRenderTargetCommand->_params.emplace_back( RTBlitEntry
             {
                 ._input = {
                     ._layerOffset = i,
@@ -427,68 +418,141 @@ namespace Divide
                     ._layerOffset = to_U16( layerOffset + i ),
                     ._index = 0u
                 }
-            });
+            } );
         }
 
         // Now we can either blur our target or just skip to mipmap computation
         if ( g_shadowSettings.csm.enableBlurring )
         {
-            GFX::BeginRenderPassCommand beginRenderPassCmd{};
-            beginRenderPassCmd._descriptor._layeredRendering = true;
-
-            beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::WHITE, true };
-            beginRenderPassCmd._descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
-
-            // Blur horizontally
-            const auto& shadowAtt = rtHandle._rt->getAttachment( RTAttachmentType::COLOUR );
-
-            beginRenderPassCmd._target = _blurBuffer._targetID;
-            beginRenderPassCmd._name = "DO_CSM_BLUR_PASS_HORIZONTAL";
-            GFX::EnqueueCommand( bufferInOut, beginRenderPassCmd );
-
-            GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _blurPipeline;
-            {
-                auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
-                cmd->_usage = DescriptorSetUsage::PER_DRAW;
-                DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, shadowAtt->texture()->getView(), shadowAtt->descriptor()._samplerHash );
-            }
-
-            _shaderConstants.data[0]._vec[1].x = 0.f;
-            _shaderConstants.data[0]._vec[1].y = to_F32( layerCount );
-            _shaderConstants.data[0]._vec[1].z = to_F32( layerOffset );
-            _shaderConstants.data[0]._vec[1].w = 0.f;
-
-            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( _shaderConstants );
-
-            GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
-
-            GFX::EnqueueCommand<GFX::EndRenderPassCommand>( bufferInOut );
-
-            // Blur vertically
-            beginRenderPassCmd._target = rtHandle._targetID;
-            beginRenderPassCmd._name = "DO_CSM_BLUR_PASS_VERTICAL";
-            GFX::EnqueueCommand( bufferInOut, beginRenderPassCmd );
-
-            const auto& blurAtt = _blurBuffer._rt->getAttachment( RTAttachmentType::COLOUR );
-            {
-                auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
-                cmd->_usage = DescriptorSetUsage::PER_DRAW;
-                DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, blurAtt->texture()->getView(), blurAtt->descriptor()._samplerHash );
-            }
-
-            _shaderConstants.data[0]._vec[1].x = 1.f;
-            _shaderConstants.data[0]._vec[1].y = to_F32( layerCount );
-            _shaderConstants.data[0]._vec[1].z = 0.f;
-            _shaderConstants.data[0]._vec[1].w = to_F32( layerOffset );
-
-            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( _shaderConstants );
-
-            GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
-
-            GFX::EnqueueCommand<GFX::EndRenderPassCommand>( bufferInOut );
+            blurTarget( layerOffset, layerCount, bufferInOut );
         }
+
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
+    }
+
+    void CascadedShadowMapsGenerator::generateWorldAO( const Camera & playerCamera, GFX::CommandBuffer & bufferInOut, GFX::MemoryBarrierCommand & memCmdInOut )
+    {
+        //ToDo: compute this:
+        constexpr F32 offset = 500.f;
+
+        // Use a top down camera encompasing most of the scene
+        const vec3<F32> playerCamPos = playerCamera.snapshot()._eye;
+
+        const vec2<F32> maxExtents( offset, offset );
+        const vec2<F32> minExtents = -maxExtents;
+
+        const Rect<I32> orthoRect = { minExtents.x, maxExtents.x, minExtents.y, maxExtents.y };
+        const vec2<F32> zPlanes = { 1.f, offset * 1.5f };
+
+        auto& shadowCameras = ShadowMap::shadowCameras( ShadowType::SINGLE );
+        Camera* shadowCamera = shadowCameras[0];
+        const mat4<F32> viewMatrix = shadowCamera->lookAt( playerCamPos + vec3<F32>( 0.f, offset, 0.f ), playerCamPos, WORLD_Z_NEG_AXIS );
+        const mat4<F32> projMatrix = shadowCamera->setProjection( orthoRect, zPlanes );
+        shadowCamera->updateLookAt();
+
+        // Render large(ish) objects into shadow map
+        RenderPassParams params = {};
+        params._sourceNode = nullptr;
+        params._stagePass = { RenderStage::SHADOW, RenderPassType::COUNT, ShadowMap::WORLD_AO_LAYER_INDEX, static_cast<RenderStagePass::VariantType>(ShadowType::CSM) };
+        params._target = _drawBufferDepth._targetID;
+        params._maxLoD = -1;
+        params._refreshLightData = false;
+        params._passName = "WorldAOPass";
+        params._minExtents.set( g_minExtentsFactors[1] );
+        params._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
+        params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
+        params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
+
+        GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand( "World AO Render Pass" ) );
+        _context.context().kernel().renderPassManager()->doCustomPass( shadowCamera, params, bufferInOut, memCmdInOut );
+
+        const RenderTargetHandle& handle = ShadowMap::getShadowMap( _type );
+
+        GFX::BlitRenderTargetCommand blitRenderTargetCommand = {};
+        blitRenderTargetCommand._source = _drawBufferDepth._targetID;
+        blitRenderTargetCommand._destination = handle._targetID;
+        blitRenderTargetCommand._params.emplace_back( RTBlitEntry
+        {
+            ._input = {
+                ._layerOffset = 0u,
+                ._index = 0u
+            },
+            ._output = {
+                ._layerOffset = ShadowMap::WORLD_AO_LAYER_INDEX,
+                ._index = 0u
+            }
+        } );
+
+        GFX::EnqueueCommand( bufferInOut, blitRenderTargetCommand );
+
+        // Apply a large blur to the map
+        blurTarget( ShadowMap::WORLD_AO_LAYER_INDEX, 1u, bufferInOut );
+        // Used when sampling from sky probes. Us world X/Z to determine if we are in shadow or not. If we are, don't sample sky probe
+        // Can be used for other effects (e.g. rain culling)
+
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
+
+        Attorney::GFXDeviceShadowMap::worldAOViewProjectionMatrix( _context, mat4<F32>::Multiply( projMatrix, viewMatrix ) );
+    }
+
+    void CascadedShadowMapsGenerator::blurTarget( const U16 layerOffset, const U16 layerCount, GFX::CommandBuffer & bufferInOut )
+    {
+        const RenderTargetHandle& rtHandle = ShadowMap::getShadowMap( _type );
+        const auto& shadowAtt = rtHandle._rt->getAttachment( RTAttachmentType::COLOUR );
+
+        GFX::BeginRenderPassCommand beginRenderPassCmd{};
+        beginRenderPassCmd._descriptor._layeredRendering = true;
+
+        beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::WHITE, true };
+        beginRenderPassCmd._descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
+
+        // Blur horizontally
+        beginRenderPassCmd._target = _blurBuffer._targetID;
+        beginRenderPassCmd._name = "DO_CSM_BLUR_PASS_HORIZONTAL";
+        GFX::EnqueueCommand( bufferInOut, beginRenderPassCmd );
+
+        GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _blurPipeline;
+        {
+            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
+            cmd->_usage = DescriptorSetUsage::PER_DRAW;
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, shadowAtt->texture()->getView(), shadowAtt->descriptor()._samplerHash );
+        }
+
+        _shaderConstants.data[0]._vec[1].x = 0.f;
+        _shaderConstants.data[0]._vec[1].y = to_F32( layerCount );
+        _shaderConstants.data[0]._vec[1].z = to_F32( layerOffset );
+        _shaderConstants.data[0]._vec[1].w = 0.f;
+
+        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( _shaderConstants );
+
+        GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
+
+        GFX::EnqueueCommand<GFX::EndRenderPassCommand>( bufferInOut );
+
+        // Blur vertically
+        beginRenderPassCmd._target = rtHandle._targetID;
+        beginRenderPassCmd._name = "DO_CSM_BLUR_PASS_VERTICAL";
+        GFX::EnqueueCommand( bufferInOut, beginRenderPassCmd );
+
+        const auto& blurAtt = _blurBuffer._rt->getAttachment( RTAttachmentType::COLOUR );
+        {
+            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
+            cmd->_usage = DescriptorSetUsage::PER_DRAW;
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, blurAtt->texture()->getView(), blurAtt->descriptor()._samplerHash );
+        }
+
+        _shaderConstants.data[0]._vec[1].x = 1.f;
+        _shaderConstants.data[0]._vec[1].y = to_F32( layerCount );
+        _shaderConstants.data[0]._vec[1].z = 0.f;
+        _shaderConstants.data[0]._vec[1].w = to_F32( layerOffset );
+
+        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( _shaderConstants );
+
+        GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
+
+        GFX::EnqueueCommand<GFX::EndRenderPassCommand>( bufferInOut );
     }
 
     void CascadedShadowMapsGenerator::updateMSAASampleCount( const U8 sampleCount )

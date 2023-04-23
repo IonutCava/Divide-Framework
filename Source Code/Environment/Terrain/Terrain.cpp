@@ -58,8 +58,8 @@ Terrain::Terrain(GFXDevice& context, ResourceCache* parentCache, const size_t de
     : Object3D(context, parentCache, descriptorHash, name, ResourcePath{ name }, {}, SceneNodeType::TYPE_TERRAIN, ObjectFlag::OBJECT_FLAG_NO_VB),
       _terrainQuadtree()
 {
-    _renderState.addToDrawExclusionMask(RenderStage::SHADOW, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(LightType::SPOT));
-    _renderState.addToDrawExclusionMask(RenderStage::SHADOW, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(LightType::POINT));
+    _renderState.addToDrawExclusionMask(RenderStage::SHADOW, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(ShadowType::CUBEMAP));
+    _renderState.addToDrawExclusionMask(RenderStage::SHADOW, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(ShadowType::SINGLE));
 }
 
 void Terrain::postLoad(SceneGraphNode* sgn) {

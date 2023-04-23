@@ -154,22 +154,6 @@ class LightPool final : public FrameListener,
         return _shadowLocation[to_U32(type)];
     }
 
-    /// Get the appropriate shadow bind slot offset for every light's shadow
-    [[nodiscard]] static U8 GetShadowBindSlotOffset(const LightType lightType) noexcept {
-        switch (lightType) {
-            case LightType::SPOT:
-                return GetShadowBindSlotOffset(ShadowType::SINGLE);
-            case LightType::POINT:
-                return GetShadowBindSlotOffset(ShadowType::CUBEMAP);
-            case LightType::DIRECTIONAL:
-                return GetShadowBindSlotOffset(ShadowType::LAYERED);
-            case LightType::COUNT:
-                DIVIDE_UNEXPECTED_CALL();
-                break;
-        };
-        return 0u;
-    }
-    
     PROPERTY_RW(bool, lightImpostorsEnabled, false);
     POINTER_R(Light, debugLight, nullptr);
 

@@ -28,17 +28,21 @@
         <aspectRatio>1.76999998</aspectRatio>
         <zPlanes min="0.100000001" max="1000"/>
         <FoV>58.9304428</FoV>
-        <flag>0</flag>
         <speedFactor turn="50" move="40" zoom="35"/>
         <fixedYawAxis x="0" y="1" z="0"/>
         <yawFixed>true</yawFixed>
         <rotationLocked>false</rotationLocked>
         <movementLocked>false</movementLocked>
+        <maxRadius>10</maxRadius>
+        <minRadius>0.100000001</minRadius>
+        <curRadius>8</curRadius>
+        <cameraRotation x="0" y="0" z="0"/>
+        <offsetDir x="0" y="0" z="1"/>
     </Player_Cam_0>
 </camera>
 <fog>
-    <fogDensityB>0.0700000003</fogDensityB>
-    <fogDensityC>0.00700000022</fogDensityC>
+    <fogDensity>0.0700000003</fogDensity>
+    <fogScatter>0.00700000022</fogScatter>
     <fogColour r="0.5" g="0.5" b="0.550000012"/>
 </fog>
 <lod>

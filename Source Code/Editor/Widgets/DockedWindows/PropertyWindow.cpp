@@ -591,7 +591,7 @@ namespace Divide
                                     DirectionalLightComponent* dirLight = static_cast<DirectionalLightComponent*>(light);
                                     for ( U8 split = 0u; split < dirLight->csmSplitCount(); ++split )
                                     {
-                                        Camera* shadowCamera = ShadowMap::shadowCameras( ShadowType::LAYERED )[split];
+                                        Camera* shadowCamera = ShadowMap::shadowCameras( ShadowType::CSM )[split];
                                         if ( drawCamera( shadowCamera ) )
                                         {
                                             sceneChanged = true;

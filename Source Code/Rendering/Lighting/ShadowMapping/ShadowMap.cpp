@@ -50,7 +50,7 @@ namespace Divide
     {
         switch ( type )
         {
-            case LightType::DIRECTIONAL: return ShadowType::LAYERED;
+            case LightType::DIRECTIONAL: return ShadowType::CSM;
             case LightType::POINT: return ShadowType::CUBEMAP;
             case LightType::SPOT: return ShadowType::SINGLE;
             case LightType::COUNT: break;
@@ -63,7 +63,7 @@ namespace Divide
     {
         switch ( type )
         {
-            case ShadowType::LAYERED: return LightType::DIRECTIONAL;
+            case ShadowType::CSM: return LightType::DIRECTIONAL;
             case ShadowType::CUBEMAP: return LightType::POINT;
             case ShadowType::SINGLE: return LightType::SPOT;
             case ShadowType::COUNT: break;
@@ -114,10 +114,10 @@ namespace Divide
         {
             switch ( static_cast<ShadowType>(i) )
             {
-                case ShadowType::LAYERED:
+                case ShadowType::CSM:
                 case ShadowType::SINGLE:
                 {
-                    const bool isCSM = i == to_U8( ShadowType::LAYERED );
+                    const bool isCSM = i == to_U8( ShadowType::CSM );
                     if ( isCSM && !settings.csm.enabled )
                     {
                         continue;
@@ -131,8 +131,8 @@ namespace Divide
 
                     // Default filters, LINEAR is OK for this
                     TextureDescriptor shadowMapDescriptor( TextureType::TEXTURE_2D_ARRAY, isCSM ? GFXDataFormat::FLOAT_32 : GFXDataFormat::FLOAT_16, GFXImageFormat::RG );
-                    shadowMapDescriptor.layerCount( isCSM ? Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS * Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT
-                                                          : Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS );
+                    shadowMapDescriptor.layerCount( isCSM ? (Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS * Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT) + 1u /* world AO*/
+                                                          : Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS);
 
                     shadowMapDescriptor.mipMappingState( TextureDescriptor::MipMappingState::MANUAL );
 
@@ -480,6 +480,11 @@ namespace Divide
             }
 
         return false;
+    }
+
+    void ShadowMap::generateWorldAO( const Camera& playerCamera, GFX::CommandBuffer& bufferInOut,GFX::MemoryBarrierCommand& memCmdInOut )
+    {
+        static_cast<CascadedShadowMapsGenerator*>(s_shadowMapGenerators[to_base( ShadowType::CSM )])->generateWorldAO( playerCamera , bufferInOut, memCmdInOut );
     }
 
     const RenderTargetHandle& ShadowMap::getShadowMap( const LightType type )

@@ -54,7 +54,7 @@ class SingleShadowMapGenerator final : public ShadowMapGenerator {
     void updateMSAASampleCount(U8 sampleCount) override;
 
   protected:
-    void postRender(const SpotLightComponent& light, GFX::CommandBuffer& bufferInOut);
+    void blurTarget(U16 layerOffset, GFX::CommandBuffer& bufferInOut );
 
   protected:
     Pipeline* _blurPipeline = nullptr;

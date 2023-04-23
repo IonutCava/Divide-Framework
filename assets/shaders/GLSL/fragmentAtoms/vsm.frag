@@ -3,9 +3,14 @@
 
 #include "nodeDataInput.cmn"
 
-vec2 computeMoments() {
-    const float Depth = dvd_IsOrthoCamera ? gl_FragCoord.z
-                                          : length(VAR._vertexW.xyz - dvd_CameraPosition) / dvd_ZPlanes.y;
+vec2 computeMoments()
+{
+#if defined(ORTHO_PROJECTION)
+    const float Depth = gl_FragCoord.z;
+#else //ORTHO_PROJECTION
+    const float Depth = length(VAR._vertexW.xyz - dvd_CameraPosition) / dvd_ZPlanes.y;
+#endif //ORTHO_PROJECTION
+
     // Compute partial derivatives of depth. 
     const float dx = dFdx(Depth);
     const float dy = dFdy(Depth);
