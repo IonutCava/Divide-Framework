@@ -33,7 +33,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _PROFILER_H_
 #define _PROFILER_H_
 
-#include <Optick/src/optick.h>
+#include <Optick/optick.h>
 #include "config.h"
 
 namespace Divide
@@ -72,5 +72,29 @@ namespace Category
 #define PROFILE_SCOPE_AUTO(CATEGORY) OPTICK_EVENT(OPTICK_FUNC, CATEGORY); static_assert(true, "")
 #define PROFILE_TAG(NAME, ...) OPTICK_TAG( NAME, __VA_ARGS__ ); static_assert(true, "")
 #define PROFILE_FRAME(NAME) OPTICK_FRAME( NAME ); static_assert(true, "")
+
+
+#if 1
+
+#define PROFILE_VK_INIT(DEVICES, PHYSICAL_DEVICES, CMD_QUEUES, CMD_QUEUES_FAMILY, NUM_CMD_QUEUS, FUNCTIONS) OPTICK_GPU_INIT_VULKAN(DEVICES, PHYSICAL_DEVICES, CMD_QUEUES, CMD_QUEUES_FAMILY, NUM_CMD_QUEUS, FUNCTIONS); static_assert(true, "")
+#define PROFILE_VK_PRESENT(SWAP_CHAIN) OPTICK_GPU_FLIP(SWAP_CHAIN); static_assert(true, "")
+
+#define PROFILE_VK_EVENT_AUTO() OPTICK_GPU_EVENT(OPTICK_FUNC); static_assert(true, "")
+#define PROFILE_VK_EVENT(NAME) OPTICK_GPU_EVENT(NAME); static_assert(true, "")
+#define PROFILE_VK_EVENT_AND_CONTEX(NAME, BUFFER) OPTICK_GPU_CONTEXT(BUFFER) \
+                                                  PROFILE_VK_EVENT(NAME); static_assert(true, "")
+#define PROFILE_VK_EVENT_AUTO_AND_CONTEX(BUFFER) PROFILE_VK_EVENT_AND_CONTEX(OPTICK_FUNC, BUFFER); static_assert(true, "")
+
+#else
+
+#define PROFILE_VK_INIT(DEVICES, PHYSICAL_DEVICES, CMD_QUEUES, CMD_QUEUES_FAMILY, NUM_CMD_QUEUS, FUNCTIONS) static_assert(true, "")
+#define PROFILE_VK_PRESENT(SWAP_CHAIN) static_assert(true, "")
+
+#define PROFILE_VK_EVENT_AUTO()  PROFILE_SCOPE_AUTO(Profiler::Category::Graphics ); static_assert(true, "")
+#define PROFILE_VK_EVENT(NAME)  PROFILE_SCOPE(NAME, Profiler::Category::Graphics ); static_assert(true, "")
+#define PROFILE_VK_EVENT_AND_CONTEX(NAME, BUFFER) PROFILE_VK_EVENT(NAME); static_assert(true, "")
+#define PROFILE_VK_EVENT_AUTO_AND_CONTEX(BUFFER) PROFILE_VK_EVENT_AUTO(); static_assert(true, "")
+
+#endif
 
 #endif //_PROFILER_H_

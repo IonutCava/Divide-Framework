@@ -37,7 +37,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-struct glSyncObject final : SyncObject {
+struct glSyncObject final : SyncObject
+{
+    explicit glSyncObject( U8 flag, U64 frameIdx );
+
     void reset() override;
 
     GLsync _syncObject{ nullptr };
@@ -48,12 +51,7 @@ class glLockManager final : public LockManager {
   public:
       ~glLockManager();
 
-      static bool InitLockPoolEntry( BufferLockPoolEntry& entry );
-
-      inline [[nodiscard]] static SyncObjectHandle CreateSyncObject( const U8 flag = DEFAULT_SYNC_FLAG_INTERNAL )
-      {
-          return LockManager::CreateSyncObject( RenderAPI::OpenGL, flag );
-      }
+      static bool InitLockPoolEntry( BufferLockPoolEntry& entry, U8 flag, U64 frameIdx );
 
   protected:
       bool waitForLockedRangeLocked(const SyncObject_uptr& sync, const BufferRange& testRange, const BufferLockInstance& lock) override;

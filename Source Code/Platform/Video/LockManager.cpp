@@ -4,12 +4,18 @@
 
 #include "Headers/GFXDevice.h"
 #include "RenderBackend/OpenGL/Headers/glLockManager.h"
-#include "RenderBackend/Vulkan/Buffers/Headers/vkLockManager.h"
 
 namespace Divide
 {
     Mutex LockManager::s_bufferLockLock;
     LockManager::BufferLockPool LockManager::s_bufferLockPool;
+
+    SyncObject::SyncObject( const U8 flag, const U64 frameIdx )
+        : _frameNumber(frameIdx)
+        , _flag(flag)
+    {
+
+    }
 
     SyncObject::~SyncObject()
     {
@@ -23,7 +29,7 @@ namespace Divide
 
     BufferLockInstance::BufferLockInstance( const BufferRange& range, const SyncObjectHandle& handle ) noexcept
         : _range( range ),
-        _syncObjHandle( handle )
+          _syncObjHandle( handle )
     {
     }
 
@@ -34,22 +40,19 @@ namespace Divide
         LockGuard<Mutex> r_lock( s_bufferLockLock );
         for ( const BufferLockPoolEntry& syncObject : s_bufferLockPool )
         {
-            LockGuard<Mutex> w_lock( syncObject._ptr->_fenceLock );
             bool reset = false;
             switch (api)
             {
+                case RenderAPI::None:
                 case RenderAPI::Vulkan:
                 {
-                    reset = frameNumber - syncObject._ptr->_frameNumber > Config::MAX_FRAMES_IN_FLIGHT;
+                    reset = frameNumber - syncObject._ptr->_frameNumber >= Config::MAX_FRAMES_IN_FLIGHT;
                 } break;
                 case RenderAPI::OpenGL:
                 {
                     reset = syncObject._ptr->_frameNumber < frameNumber;
                 } break;
-                case RenderAPI::None:
-                {
-                    reset = true;
-                }
+
                 default : DIVIDE_UNEXPECTED_CALL(); break;
             }
 
@@ -66,50 +69,56 @@ namespace Divide
         s_bufferLockPool.clear();
     }
 
-    bool LockManager::InitLockPoolEntry( const RenderAPI api, BufferLockPoolEntry& entry )
+    bool LockManager::InitLockPoolEntry( const RenderAPI api, BufferLockPoolEntry& entry, const U8 flag, const U64 frameIdx )
     {
         switch ( api )
         {
-            case RenderAPI::OpenGL: return glLockManager::InitLockPoolEntry(entry);
-            case RenderAPI::Vulkan: return vkLockManager::InitLockPoolEntry(entry);
-            case RenderAPI::None: return true;
+            case RenderAPI::OpenGL:
+            {
+                if ( !glLockManager::InitLockPoolEntry( entry, flag, frameIdx ) )
+                {
+                    return false;
+                }
+            } break;
+            case RenderAPI::Vulkan:
+            case RenderAPI::None: 
+            {
+                if (entry._ptr != nullptr)
+                {
+                    return false;
+                }
+
+                entry._ptr = eastl::make_unique<SyncObject>(flag, frameIdx);
+            } break;
         }
 
-        return false;
+        return true;
     }
 
-    SyncObjectHandle LockManager::CreateSyncObjectLocked( const RenderAPI api, const U8 flag, const bool isRetry )
+    SyncObjectHandle LockManager::CreateSyncObjectLocked( const RenderAPI api, const U8 flag )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        if ( isRetry )
-        {
-            // We failed once, so create a new object
-            BufferLockPoolEntry newEntry{};
-            if ( InitLockPoolEntry(api, newEntry ) )
-            {
-                newEntry._ptr->_frameNumber = GFXDevice::FrameCount();
-                newEntry._flag = flag;
-                s_bufferLockPool.emplace_back( MOV( newEntry ) );
-                return SyncObjectHandle{ s_bufferLockPool.size() - 1u, newEntry._generation };
-            }
-        }
 
         // Attempt reuse
         for ( size_t i = 0u; i < s_bufferLockPool.size(); ++i )
         {
             BufferLockPoolEntry& syncObject = s_bufferLockPool[i];
 
-            LockGuard<Mutex> w_lock_sync( syncObject._ptr->_fenceLock );
-            if ( InitLockPoolEntry(api, syncObject ) )
+            if ( InitLockPoolEntry(api, syncObject, flag, GFXDevice::FrameCount() ) )
             {
-                syncObject._ptr->_frameNumber = GFXDevice::FrameCount();
-                syncObject._flag = flag;
                 return SyncObjectHandle{ i, ++syncObject._generation };
             }
         }
 
-        return CreateSyncObjectLocked(api, flag, true );
+        // We failed once, so create a new object
+        BufferLockPoolEntry newEntry{};
+        if ( !InitLockPoolEntry( api, newEntry, flag, GFXDevice::FrameCount() ) )
+        {
+            DIVIDE_UNEXPECTED_CALL();
+        }
+
+        s_bufferLockPool.emplace_back( MOV( newEntry ) );
+        return SyncObjectHandle{ s_bufferLockPool.size() - 1u, newEntry._generation };
     }
 
     bool LockManager::waitForLockedRange( const size_t lockBeginBytes, const size_t lockLength )
@@ -142,7 +151,6 @@ namespace Divide
             }
             else
             {
-                LockGuard<Mutex> w_lock( syncLockInstance._ptr->_fenceLock );
                 if ( !waitForLockedRangeLocked( syncLockInstance._ptr, testRange, lock ) )
                 {
                     _swapLocks.push_back( lock );
@@ -153,6 +161,12 @@ namespace Divide
         _bufferLocks.swap( _swapLocks );
 
         return !error;
+    }
+
+    bool LockManager::waitForLockedRangeLocked( const SyncObject_uptr& sync, const BufferRange& testRange, const BufferLockInstance& lock )
+    {
+        sync->reset();
+        return true;
     }
 
     bool LockManager::lockRange( size_t lockBeginBytes, size_t lockLength, SyncObjectHandle syncObj )

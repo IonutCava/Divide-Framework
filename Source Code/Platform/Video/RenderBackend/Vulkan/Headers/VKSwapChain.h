@@ -41,6 +41,20 @@ namespace Divide {
     class VKDevice;
     class GFXDevice;
 
+    struct Fence
+    {
+        VkFence _handle;
+        U8 _tag{U8_MAX};
+    };
+
+    struct FrameData
+    {
+        VkSemaphore _presentSemaphore{VK_NULL_HANDLE};
+        VkSemaphore _renderSemaphore{VK_NULL_HANDLE};
+        VkCommandBuffer _commandBuffer{VK_NULL_HANDLE};
+        Fence _renderFence;
+    };
+
     class VKSwapChain final : NonCopyable, NonMovable {
     public:
         VKSwapChain(VK_API& context, const VKDevice& device, const DisplayWindow& window);
@@ -50,13 +64,13 @@ namespace Divide {
         void destroy();
 
         [[nodiscard]] VkResult beginFrame();
-        [[nodiscard]] VkResult endFrame(QueueType queue);
+        [[nodiscard]] VkResult endFrame();
 
         [[nodiscard]] vkb::Swapchain& getSwapChain() noexcept;
         [[nodiscard]] VkImage         getCurrentImage() const noexcept;
         [[nodiscard]] VkImageView     getCurrentImageView() const noexcept;
-        [[nodiscard]] VkCommandBuffer getCurrentCommandBuffer() const noexcept;
-        [[nodiscard]] VkFence         getCurrentFence() const noexcept;
+
+        [[nodiscard]] FrameData&      getFrameData() noexcept;
 
         PROPERTY_R_IW(VkExtent2D, surfaceExtent);
         
@@ -65,19 +79,14 @@ namespace Divide {
         const VKDevice& _device;
         const DisplayWindow& _window;
 
+        std::array<FrameData, Config::MAX_FRAMES_IN_FLIGHT> _frames;
         vkb::Swapchain _swapChain{};
 
-        vector<VkSemaphore> _imageAvailableSemaphores;
-        vector<VkSemaphore> _renderFinishedSemaphores;
-        vector<VkFence> _inFlightFences;
-        vector<VkFence> _imagesInFlight;
-        vector<VkCommandBuffer> _commandBuffers{};
 
         std::vector<VkImage> _swapchainImages;
         std::vector<VkImageView> _swapchainImageViews;
 
         U32 _swapchainImageIndex{ 0u };
-        U8 _currentFrameIdx{ 0u };
     };
 
     FWD_DECLARE_MANAGED_CLASS(VKSwapChain);

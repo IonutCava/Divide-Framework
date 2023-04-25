@@ -41,7 +41,7 @@ namespace Divide
 
     void vkRenderTarget::blitFrom( VkCommandBuffer cmdBuffer, vkRenderTarget* source, const RTBlitParams& params ) noexcept
     {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
 
         if ( source == nullptr || !IsValid(params) )
         {
@@ -251,13 +251,65 @@ namespace Divide
         VK_API::PopDebugMessage( cmdBuffer );
     }
 
+    void vkRenderTarget::transitionTexture( const bool toWrite, const VkImageSubresourceRange& subresourceRange, const VkImage image, const bool isDepth, const bool hasStencil, const bool isResolve, VkImageMemoryBarrier2& memBarrier )
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        memBarrier = vk::imageMemoryBarrier2();
+        memBarrier.image = image;
+        memBarrier.subresourceRange = subresourceRange;
+
+        if ( toWrite )
+        {
+            memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+            memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+            memBarrier.oldLayout = isDepth ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+            if ( isDepth )
+            {
+                memBarrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+                memBarrier.newLayout = hasStencil ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+            }
+            else
+            {
+                memBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+                memBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            }
+        }
+        else
+        {
+            memBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+            memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+            memBarrier.newLayout = isDepth ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+            if ( isDepth )
+            {
+
+                memBarrier.srcAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+                memBarrier.oldLayout = hasStencil ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+            }
+            else
+            {
+                memBarrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+                memBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            }
+        }
+    }
+
     void vkRenderTarget::transitionAttachments( VkCommandBuffer cmdBuffer, const RTDrawDescriptor& descriptor, const bool toWrite )
     {
+        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+
+        DIVIDE_ASSERT( descriptor._mipWriteLevel != INVALID_INDEX );
         // Double the number of barriers needed in case we have an MSAA RenderTarget (we need to transition the resolve targets as well)
         static std::array<VkImageMemoryBarrier2, (to_base( RTColourAttachmentSlot::COUNT ) + 1) * 2> memBarriers{};
         U8 memBarrierCount = 0u;
 
-        const DrawLayerEntry srcDepthLayer = descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX];
+        const DrawLayerEntry& srcDepthLayer = descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX];
         DrawLayerEntry targetDepthLayer{};
 
         bool needLayeredDepth = (srcDepthLayer._layer != INVALID_INDEX && (srcDepthLayer._layer > 0u || srcDepthLayer._cubeFace > 0u));
@@ -277,105 +329,62 @@ namespace Divide
             }
         }
 
-        DIVIDE_ASSERT( descriptor._mipWriteLevel != INVALID_INDEX );
-
-        const auto transitionTexture = [toWrite](const VkImageSubresourceRange& subresourceRange, const VkImage image, const bool isDepth, const bool hasStencil, const bool isResolve, VkImageMemoryBarrier2& memBarrier)
-        {
-            memBarrier = vk::imageMemoryBarrier2();
-            memBarrier.image = image;
-            memBarrier.subresourceRange = subresourceRange;
-
-            if ( toWrite )
-            {
-                memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-                memBarrier.oldLayout = isDepth ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-                if (isDepth )
-                {
-                    memBarrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-                    memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
-                    memBarrier.newLayout = hasStencil ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-                }
-                else
-                {
-                    memBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                    memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
-                    memBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                }
-            }
-            else
-            {
-                memBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-                memBarrier.newLayout = isDepth ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-                if (isDepth )
-                {
-
-                    memBarrier.srcAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-                    memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
-                    memBarrier.oldLayout = hasStencil ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-                }
-                else
-                {
-                    memBarrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                    memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
-                    memBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                }
-            }
-        };
-
-
         VkImageSubresourceRange subresourceRange{};
-        for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
+
         {
-            if ( _attachmentsUsed[i] && descriptor._drawMask[i] )
+            PROFILE_SCOPE( "Colour Attachments", Profiler::Category::Graphics);
+            for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
             {
-                vkTexture* vkTex = static_cast<vkTexture*>(_attachments[i]->texture().get());
-
-                ImageView targetView = vkTex->getView();
-                if ( needLayeredDepth || (descriptor._writeLayers[i]._layer != INVALID_INDEX && (descriptor._writeLayers[i]._layer > 0u || descriptor._writeLayers[i]._cubeFace > 0u)) )
+                if ( _attachmentsUsed[i] && descriptor._drawMask[i] )
                 {
-                    const DrawLayerEntry targetColourLayer = descriptor._writeLayers[i]._layer == INVALID_INDEX ? targetDepthLayer : descriptor._writeLayers[i];
+                    vkTexture* vkTex = static_cast<vkTexture*>(_attachments[i]->texture().get());
 
-                    if ( IsCubeTexture( vkTex->descriptor().texType() ) )
+                    ImageView targetView = vkTex->getView();
+                    if ( needLayeredDepth || (descriptor._writeLayers[i]._layer != INVALID_INDEX && (descriptor._writeLayers[i]._layer > 0u || descriptor._writeLayers[i]._cubeFace > 0u)) )
                     {
-                        targetView._subRange._layerRange = { targetColourLayer._cubeFace + (targetColourLayer._layer * 6u), descriptor._layeredRendering ? U16_MAX : 1u };
+                        const DrawLayerEntry targetColourLayer = descriptor._writeLayers[i]._layer == INVALID_INDEX ? targetDepthLayer : descriptor._writeLayers[i];
+
+                        if ( IsCubeTexture( vkTex->descriptor().texType() ) )
+                        {
+                            targetView._subRange._layerRange = { targetColourLayer._cubeFace + (targetColourLayer._layer * 6u), descriptor._layeredRendering ? U16_MAX : 1u };
+                        }
+                        else
+                        {
+                            assert( targetColourLayer._cubeFace == 0u );
+                            targetView._subRange._layerRange = { targetColourLayer._layer, descriptor._layeredRendering ? U16_MAX : 1u };
+                        }
                     }
-                    else
+                    else if ( descriptor._mipWriteLevel > 0u )
                     {
-                        assert( targetColourLayer._cubeFace == 0u );
-                        targetView._subRange._layerRange = { targetColourLayer._layer, descriptor._layeredRendering ? U16_MAX : 1u };
+                        targetView._subRange._mipLevels =  { descriptor._mipWriteLevel, 1u };
                     }
-                }
-                else if ( descriptor._mipWriteLevel > 0u )
-                {
-                    targetView._subRange._mipLevels =  { descriptor._mipWriteLevel, 1u };
-                }
 
-                subresourceRange.aspectMask = vkTexture::GetAspectFlags( vkTex->descriptor() );
-                subresourceRange.baseMipLevel = targetView._subRange._mipLevels._offset;
-                subresourceRange.levelCount = targetView._subRange._mipLevels._count == U16_MAX ? VK_REMAINING_MIP_LEVELS : targetView._subRange._mipLevels._count;
-                subresourceRange.baseArrayLayer = targetView._subRange._layerRange._offset;
-                subresourceRange.layerCount = targetView._subRange._layerRange._count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : targetView._subRange._layerRange._count;
-
-                transitionTexture( subresourceRange, vkTex->image()->_image, false, false, false, memBarriers[memBarrierCount++] );
-
-                if ( vkTex->sampleFlagBits() != VK_SAMPLE_COUNT_1_BIT )
-                {
                     subresourceRange.aspectMask = vkTexture::GetAspectFlags( vkTex->descriptor() );
-                    subresourceRange.baseMipLevel = 0u;
-                    subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
-                    subresourceRange.baseArrayLayer = 0u;
-                    subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
-                    transitionTexture( subresourceRange, vkTex->resolvedImage()->_image, false, false, true, memBarriers[memBarrierCount++] );
+                    subresourceRange.baseMipLevel = targetView._subRange._mipLevels._offset;
+                    subresourceRange.levelCount = targetView._subRange._mipLevels._count == U16_MAX ? VK_REMAINING_MIP_LEVELS : targetView._subRange._mipLevels._count;
+                    subresourceRange.baseArrayLayer = targetView._subRange._layerRange._offset;
+                    subresourceRange.layerCount = targetView._subRange._layerRange._count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : targetView._subRange._layerRange._count;
+
+                    transitionTexture(toWrite, subresourceRange, vkTex->image()->_image, false, false, false, memBarriers[memBarrierCount++] );
+
+                    if ( vkTex->sampleFlagBits() != VK_SAMPLE_COUNT_1_BIT )
+                    {
+                        PROFILE_SCOPE( "Colour Resolve", Profiler::Category::Graphics );
+
+                        subresourceRange.aspectMask = vkTexture::GetAspectFlags( vkTex->descriptor() );
+                        subresourceRange.baseMipLevel = 0u;
+                        subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
+                        subresourceRange.baseArrayLayer = 0u;
+                        subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+                        transitionTexture(toWrite, subresourceRange, vkTex->resolvedImage()->_image, false, false, true, memBarriers[memBarrierCount++] );
+                    }
                 }
             }
         }
 
         if ( _attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX] )
         {
+            PROFILE_SCOPE( "Depth Attachment", Profiler::Category::Graphics );
 
             const auto& att = _attachments[RT_DEPTH_ATTACHMENT_IDX];
             vkTexture* vkTex = static_cast<vkTexture*>(att->texture().get());
@@ -407,21 +416,25 @@ namespace Divide
             subresourceRange.baseArrayLayer = targetView._subRange._layerRange._offset;
             subresourceRange.layerCount = targetView._subRange._layerRange._count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : targetView._subRange._layerRange._count;
 
-            transitionTexture( subresourceRange, vkTex->image()->_image, true, hasStencil, false, memBarriers[memBarrierCount++]);
+            transitionTexture( toWrite, subresourceRange, vkTex->image()->_image, true, hasStencil, false, memBarriers[memBarrierCount++]);
             
             if ( vkTex->sampleFlagBits() != VK_SAMPLE_COUNT_1_BIT )
             {
+                PROFILE_SCOPE( "Depth Resolve", Profiler::Category::Graphics );
+
                 subresourceRange.aspectMask = vkTexture::GetAspectFlags( vkTex->descriptor() );
                 subresourceRange.baseMipLevel = 0u;
                 subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
                 subresourceRange.baseArrayLayer = 0u;
                 subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
-                transitionTexture( subresourceRange, vkTex->resolvedImage()->_image, true, hasStencil, true, memBarriers[memBarrierCount++] );
+                transitionTexture(toWrite, subresourceRange, vkTex->resolvedImage()->_image, true, hasStencil, true, memBarriers[memBarrierCount++] );
             }
         }
 
         if ( memBarrierCount > 0u )
         {
+            PROFILE_SCOPE( "Pipeline Barrier", Profiler::Category::Graphics );
+
             VkDependencyInfo dependencyInfo = vk::dependencyInfo();
             dependencyInfo.imageMemoryBarrierCount = memBarrierCount;
             dependencyInfo.pImageMemoryBarriers = memBarriers.data();
@@ -433,6 +446,8 @@ namespace Divide
 
     void vkRenderTarget::begin( VkCommandBuffer cmdBuffer, const RTDrawDescriptor& descriptor, const RTClearDescriptor& clearPolicy, VkPipelineRenderingCreateInfo& pipelineRenderingCreateInfoOut )
     {
+        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+
         _previousPolicy = descriptor;
 
         assert(pipelineRenderingCreateInfoOut.sType == VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO);
@@ -465,78 +480,81 @@ namespace Divide
 
         U8 stagingIndex = 0u;
         VkImageMemoryBarrier2 memBarrier{};
-        for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
+
         {
-            if ( _attachmentsUsed[i] && descriptor._drawMask[i] )
+            PROFILE_SCOPE( "Colour Attachments", Profiler::Category::Graphics );
+            for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
             {
-                vkTexture* vkTex = static_cast<vkTexture*>(_attachments[i]->texture().get());
-                imageViewDescriptor._subRange = vkTex->getView()._subRange;
-                if ( descriptor._writeLayers[i]._layer != INVALID_INDEX || needLayeredColour )
+                if ( _attachmentsUsed[i] && descriptor._drawMask[i] )
                 {
-                    layerCount = std::max( layerCount, vkTex->depth() );
-                    targetColourLayer = descriptor._writeLayers[i]._layer == INVALID_INDEX ? targetColourLayer : descriptor._writeLayers[i];
-                    if ( IsCubeTexture( vkTex->descriptor().texType() ) )
+                    vkTexture* vkTex = static_cast<vkTexture*>(_attachments[i]->texture().get());
+                    imageViewDescriptor._subRange = vkTex->getView()._subRange;
+                    if ( descriptor._writeLayers[i]._layer != INVALID_INDEX || needLayeredColour )
                     {
-                        imageViewDescriptor._subRange._layerRange = { targetColourLayer._cubeFace + (targetColourLayer._layer * 6u), descriptor._layeredRendering ? U16_MAX : 1u };
-                        layerCount *= 6u;
+                        layerCount = std::max( layerCount, vkTex->depth() );
+                        targetColourLayer = descriptor._writeLayers[i]._layer == INVALID_INDEX ? targetColourLayer : descriptor._writeLayers[i];
+                        if ( IsCubeTexture( vkTex->descriptor().texType() ) )
+                        {
+                            imageViewDescriptor._subRange._layerRange = { targetColourLayer._cubeFace + (targetColourLayer._layer * 6u), descriptor._layeredRendering ? U16_MAX : 1u };
+                            layerCount *= 6u;
+                        }
+                        else
+                        {
+                            assert( targetColourLayer._cubeFace == 0u );
+                            imageViewDescriptor._subRange._layerRange = { targetColourLayer._layer, descriptor._layeredRendering ? U16_MAX : 1u };
+                        }
+                    }
+                    else if ( descriptor._mipWriteLevel > 0u )
+                    {
+                        imageViewDescriptor._subRange._mipLevels = { descriptor._mipWriteLevel, 1u };
+                    }
+
+
+                    imageViewDescriptor._format = vkTex->vkFormat();
+                    imageViewDescriptor._type = imageViewDescriptor._subRange._layerRange._count > 1u ? TextureType::TEXTURE_2D_ARRAY : TextureType::TEXTURE_2D;
+                    imageViewDescriptor._usage = ImageUsage::RT_COLOUR_ATTACHMENT;
+
+                    VkRenderingAttachmentInfo& info = _colourAttachmentInfo[i];
+                    info.imageView = vkTex->getImageView( imageViewDescriptor );
+                    _colourAttachmentFormats[stagingIndex] = vkTex->vkFormat();
+                    if ( clearPolicy[i]._enabled || !_attachmentsUsed[i] )
+                    {
+                        info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+                        info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+                        info.clearValue.color = {
+                            clearPolicy[i]._colour.r,
+                            clearPolicy[i]._colour.g,
+                            clearPolicy[i]._colour.b,
+                            clearPolicy[i]._colour.a
+                        };
                     }
                     else
                     {
-                        assert( targetColourLayer._cubeFace == 0u );
-                        imageViewDescriptor._subRange._layerRange = { targetColourLayer._layer, descriptor._layeredRendering ? U16_MAX : 1u };
+                        info.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+                        info.storeOp = VK_ATTACHMENT_STORE_OP_NONE;
+                        info.clearValue = {};
                     }
-                }
-                else if ( descriptor._mipWriteLevel > 0u )
-                {
-                    imageViewDescriptor._subRange._mipLevels = { descriptor._mipWriteLevel, 1u };
-                }
 
-
-                imageViewDescriptor._format = vkTex->vkFormat();
-                imageViewDescriptor._type = imageViewDescriptor._subRange._layerRange._count > 1u ? TextureType::TEXTURE_2D_ARRAY : TextureType::TEXTURE_2D;
-                imageViewDescriptor._usage = ImageUsage::RT_COLOUR_ATTACHMENT;
-
-                VkRenderingAttachmentInfo& info = _colourAttachmentInfo[i];
-                info.imageView = vkTex->getImageView( imageViewDescriptor );
-                _colourAttachmentFormats[stagingIndex] = vkTex->vkFormat();
-                if ( clearPolicy[i]._enabled || !_attachmentsUsed[i] )
-                {
-                    info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-                    info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-                    info.clearValue.color = {
-                        clearPolicy[i]._colour.r,
-                        clearPolicy[i]._colour.g,
-                        clearPolicy[i]._colour.b,
-                        clearPolicy[i]._colour.a
-                    };
+                    if ( vkTex->sampleFlagBits() != VK_SAMPLE_COUNT_1_BIT )
+                    {
+                        imageViewDescriptor._resolveTarget = true;
+                        info.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
+                        info.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                        info.resolveImageView = vkTex->getImageView( imageViewDescriptor );
+                        imageViewDescriptor._resolveTarget = false;
+                    }
+                    _stagingColourAttachmentInfo[stagingIndex] = info;
                 }
                 else
                 {
-                    info.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-                    info.storeOp = VK_ATTACHMENT_STORE_OP_NONE;
-                    info.clearValue = {};
+                    _colourAttachmentFormats[stagingIndex] = VK_FORMAT_UNDEFINED;
+                    _stagingColourAttachmentInfo[stagingIndex] = {};
+                    _stagingColourAttachmentInfo[stagingIndex].sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
                 }
 
-                if ( vkTex->sampleFlagBits() != VK_SAMPLE_COUNT_1_BIT )
-                {
-                    imageViewDescriptor._resolveTarget = true;
-                    info.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
-                    info.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                    info.resolveImageView = vkTex->getImageView( imageViewDescriptor );
-                    imageViewDescriptor._resolveTarget = false;
-                }
-                _stagingColourAttachmentInfo[stagingIndex] = info;
+                ++stagingIndex;
             }
-            else
-            {
-                _colourAttachmentFormats[stagingIndex] = VK_FORMAT_UNDEFINED;
-                _stagingColourAttachmentInfo[stagingIndex] = {};
-                _stagingColourAttachmentInfo[stagingIndex].sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-            }
-
-            ++stagingIndex;
         }
-
         pipelineRenderingCreateInfoOut.colorAttachmentCount = stagingIndex;
         pipelineRenderingCreateInfoOut.pColorAttachmentFormats = _colourAttachmentFormats.data();
 
@@ -545,6 +563,8 @@ namespace Divide
 
         if ( _attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX] )
         {
+            PROFILE_SCOPE( "Depth Attachment", Profiler::Category::Graphics );
+
             const auto& att = _attachments[RT_DEPTH_ATTACHMENT_IDX];
             const bool hasStencil = att->descriptor()._type == RTAttachmentType::DEPTH_STENCIL;
 
@@ -607,12 +627,15 @@ namespace Divide
             pipelineRenderingCreateInfoOut.depthAttachmentFormat = VK_FORMAT_UNDEFINED;
             _renderingInfo.pDepthAttachment = nullptr;
         }
+
         _renderingInfo.layerCount = descriptor._layeredRendering ? layerCount : 1;
         transitionAttachments( cmdBuffer, descriptor, true );
     }
 
     void vkRenderTarget::end( VkCommandBuffer cmdBuffer )
     {
+        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+
         transitionAttachments( cmdBuffer, _previousPolicy, false );
     }
 

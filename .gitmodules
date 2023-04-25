@@ -10,10 +10,6 @@
 	path = 3rdParty/meshoptimizer
 	url = https://github.com/zeux/meshoptimizer
 	ignore = dirty
-[submodule "Source Code/Libs/Optick"]
-	path = 3rdParty/Optick
-	url = https://github.com/bombomby/optick
-	ignore = dirty
 [submodule "Source Code/Libs/ConcurrentQueue"]
 	path = 3rdParty/ConcurrentQueue
 	url = https://github.com/cameron314/concurrentqueue

@@ -50,6 +50,8 @@ namespace Divide
 
         void CopyInternal( VkCommandBuffer cmdBuffer, VkImage source, VkImageAspectFlags sourceAspect, VkImageLayout sourceLayout, VkImage destination, VkImageAspectFlags destinationAspect, VkImageLayout destinationLayout, const CopyTexParams& params, const U16 depth )
         {
+            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+
             const bool isStagingSource = destinationLayout == VK_IMAGE_LAYOUT_GENERAL;
 
             VkImageSubresourceLayers srcSubresource{};
@@ -94,6 +96,8 @@ namespace Divide
             */
             const auto transitionImage = [&cmdBuffer](const bool isStagingSource, VkImage image, VkImageSubresourceLayers subresource, VkImageLayout layout, VkImageMemoryBarrier2& memBarrierOut, TransitionType transitionType )
             {
+                PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+
                 memBarrierOut = vk::imageMemoryBarrier2();
 
                 memBarrierOut.subresourceRange.aspectMask = subresource.aspectMask;
@@ -281,6 +285,8 @@ namespace Divide
 
     void vkTexture::generateMipmaps( VkCommandBuffer cmdBuffer, const U16 baseLevel, U16 baseLayer, U16 layerCount, ImageUsage crtUsage )
     {
+        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+
         VK_API::PushDebugMessage(cmdBuffer, "vkTexture::generateMipmaps");
 
         VkImageMemoryBarrier2 memBarrier = vk::imageMemoryBarrier2();
@@ -447,8 +453,12 @@ namespace Divide
 
     void vkTexture::submitTextureData()
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [&]( VkCommandBuffer cmd, const QueueType queue, const bool isDedicatedQueue )
         {
+            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmd );
+
             const VkImageLayout targetLayout = IsDepthTexture( _descriptor.packing() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
             VkImageSubresourceRange range;
@@ -488,6 +498,8 @@ namespace Divide
 
     void vkTexture::prepareTextureData( const U16 width, const U16 height, const U16 depth, const bool emptyAllocation )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         Texture::prepareTextureData( width, height, depth, emptyAllocation );
 
         vkFormat( VKUtil::InternalFormat( _descriptor.baseFormat(), _descriptor.dataType(), _descriptor.packing() ) );
@@ -611,6 +623,8 @@ namespace Divide
 
     void vkTexture::loadDataInternal( const Byte* data, const size_t size, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         DIVIDE_ASSERT(_descriptor.allowRegionUpdates());
 
         if ( size == 0u )
@@ -694,6 +708,8 @@ namespace Divide
 
         VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [&]( VkCommandBuffer cmd, const QueueType queue, const bool isDedicatedQueue )
         {
+            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmd );
+
             const VkImageLayout targetLayout = IsDepthTexture( _descriptor.packing() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
             VkImageSubresourceRange range;
@@ -765,6 +781,8 @@ namespace Divide
 
     void vkTexture::loadDataInternal( const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         const U16 numLayers = imageData.layerCount();
         const U8 numMips = imageData.mipCount();
         _mipData.resize(numMips);
@@ -808,6 +826,8 @@ namespace Divide
 
         VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [&]( VkCommandBuffer cmd, const QueueType queue, const bool isDedicatedQueue )
         {
+            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmd );
+
             const VkImageLayout targetLayout = IsDepthTexture( _descriptor.packing() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
             VkImageSubresourceRange range;
@@ -902,6 +922,8 @@ namespace Divide
 
     void vkTexture::clearData( VkCommandBuffer cmdBuffer, const UColour4& clearColour, SubRange layerRange, U8 mipLevel ) const noexcept
     {
+        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+
         if ( mipLevel == U8_MAX )
         {
             assert( mipCount() > 0u );
@@ -962,9 +984,13 @@ namespace Divide
 
     ImageReadbackData vkTexture::readData( U8 mipLevel, const PixelAlignment& pixelPackAlignment ) const noexcept
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         ImageReadbackData ret{};
         VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [&]( VkCommandBuffer cmd, const QueueType queue, const bool isDedicatedQueue )
         {
+            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmd );
+
             ret = readData(cmd, mipLevel, pixelPackAlignment );
         }, "vkTexture::readData()" );
         return ret;
@@ -972,6 +998,8 @@ namespace Divide
 
     ImageReadbackData vkTexture::readData( VkCommandBuffer cmdBuffer, U8 mipLevel, const PixelAlignment& pixelPackAlignment) const noexcept
     {
+        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+
         ImageReadbackData grabData{};
         grabData._numComponents = numChannels();
 
@@ -1106,6 +1134,8 @@ namespace Divide
 
     VkImageView vkTexture::getImageView( const CachedImageView::Descriptor& viewDescriptor ) const
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         const size_t viewHash = viewDescriptor.getHash();
 
         const auto it = _imageViewCache.find( viewHash );
@@ -1161,7 +1191,7 @@ namespace Divide
 
     /*static*/ void vkTexture::Copy(VkCommandBuffer cmdBuffer, const vkTexture* source, const U8 sourceSamples, const vkTexture* destination, const U8 destinationSamples, CopyTexParams params)
     {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
 
         // We could handle this with a custom shader pass and temp render targets, so leaving the option i
         DIVIDE_ASSERT( sourceSamples == destinationSamples == 0u, "vkTexture::copy Multisampled textures is not supported yet!" );

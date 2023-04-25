@@ -64,7 +64,7 @@ namespace Divide
         void end(VkCommandBuffer cmdBuffer);
         void blitFrom( VkCommandBuffer cmdBuffer, vkRenderTarget* source, const RTBlitParams& params ) noexcept;
         void transitionAttachments( VkCommandBuffer cmdBuffer, const RTDrawDescriptor& descriptor, bool toWrite );
-
+        void transitionTexture(bool toWrite, const VkImageSubresourceRange& subresourceRange, VkImage image, bool isDepth, bool hasStencil, bool isResolve, VkImageMemoryBarrier2& memBarrier );
     private:
         std::array<VkRenderingAttachmentInfo, to_base(RTColourAttachmentSlot::COUNT)> _colourAttachmentInfo{};
         VkRenderingAttachmentInfo _depthAttachmentInfo{};

@@ -1,11 +1,15 @@
 #include "stdafx.h"
 
 #include "Headers/vkShaderBuffer.h"
+#include "Headers/vkBufferImpl.h"
 
+#include "Platform/Video/Headers/LockManager.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 
 #include "Core/Headers/StringHelper.h"
 #include "Utility/Headers/Localization.h"
+
+#include "Platform/Video/Headers/GFXDevice.h"
 
 namespace Divide
 {

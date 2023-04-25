@@ -120,6 +120,7 @@ namespace Divide
             {
                 Console::errorfn( Locale::Get( _ID( "ERROR_VK_INIT" ) ), presentIndex.error().message().c_str() );
             }
+
         }
     }
 

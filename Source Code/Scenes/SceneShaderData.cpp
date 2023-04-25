@@ -9,7 +9,7 @@ namespace Divide
         : _context( context )
     {
         ShaderBufferDescriptor bufferDescriptor = {};
-        bufferDescriptor._ringBufferLength = 3;
+        bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
         bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::CONSTANT_BUFFER;
         bufferDescriptor._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
         bufferDescriptor._bufferParams._flags._updateFrequency = BufferUpdateFrequency::OCASSIONAL;

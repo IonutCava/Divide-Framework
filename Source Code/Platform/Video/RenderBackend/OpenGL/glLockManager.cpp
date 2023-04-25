@@ -12,6 +12,11 @@ namespace Divide
 
     constexpr GLuint64 kOneSecondInNanoSeconds = 1000000000;
 
+    glSyncObject::glSyncObject( const U8 flag, const U64 frameIdx )
+        : SyncObject(flag, frameIdx)
+    {
+    }
+
     void glSyncObject::reset()
     {
         GL_API::DestroyFenceSync( _syncObject );
@@ -24,22 +29,20 @@ namespace Divide
     }
 
 
-    bool glLockManager::InitLockPoolEntry( BufferLockPoolEntry& entry )
+    bool glLockManager::InitLockPoolEntry( BufferLockPoolEntry& entry, const U8 flag, const U64 frameIdx )
     {
         if ( entry._ptr == nullptr )
         {
-            entry._ptr = eastl::make_unique<glSyncObject>();
-            static_cast<glSyncObject*>(entry._ptr.get())->_syncObject = GL_API::CreateFenceSync();
-            return true;
+            entry._ptr = eastl::make_unique<glSyncObject>(flag, frameIdx);
         }
-        else
+
+        glSyncObject* glSync = static_cast<glSyncObject*>(entry._ptr.get());
+        if ( glSync->_syncObject == nullptr )
         {
-            glSyncObject* glSync = static_cast<glSyncObject*>(entry._ptr.get());
-            if ( glSync->_syncObject == nullptr )
-            {
-                glSync->_syncObject = GL_API::CreateFenceSync();
-                return true;
-            }
+            glSync->_syncObject = GL_API::CreateFenceSync();
+            glSync->_frameNumber = frameIdx;
+            glSync->_flag = flag;
+            return true;
         }
 
         return false;
@@ -103,13 +106,12 @@ namespace Divide
         U8 retryCount = 0u;
         if ( Wait( glSync->_syncObject, retryCount ) ) [[likely]]
         {
-            glSync->reset();
-
             if ( retryCount > g_MaxLockWaitRetries - 1 )
             {
                 Console::errorfn(Locale::Get(_ID("ERROR_GL_LOCK_WAIT_RETRY")), testRange._startOffset, testRange._length, retryCount);
             }
-            return true;
+
+            return LockManager::waitForLockedRangeLocked(sync, testRange, lock);
         }
 
         return false;

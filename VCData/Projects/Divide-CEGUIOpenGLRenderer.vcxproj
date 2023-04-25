@@ -574,22 +574,22 @@
     <ClInclude Include="..\..\3rdParty\imgui\imstb_truetype.h" />
     <ClInclude Include="..\..\3rdParty\imgui_club\imgui_memory_editor\imgui_memory_editor.h" />
     <ClInclude Include="..\..\3rdParty\meshoptimizer\src\meshoptimizer.h" />
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick.config.h" />
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick.h" />
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_capi.h" />
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_common.h" />
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_core.freebsd.h" />
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_core.h" />
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_core.linux.h" />
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_core.macos.h" />
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_core.platform.h" />
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_core.win.h" />
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_gpu.h" />
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_memory.h" />
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_message.h" />
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_miniz.h" />
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_serialization.h" />
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_server.h" />
+    <ClInclude Include="..\..\3rdParty\Optick\optick.config.h" />
+    <ClInclude Include="..\..\3rdParty\Optick\optick.h" />
+    <ClInclude Include="..\..\3rdParty\Optick\optick_capi.h" />
+    <ClInclude Include="..\..\3rdParty\Optick\optick_common.h" />
+    <ClInclude Include="..\..\3rdParty\Optick\optick_core.freebsd.h" />
+    <ClInclude Include="..\..\3rdParty\Optick\optick_core.h" />
+    <ClInclude Include="..\..\3rdParty\Optick\optick_core.linux.h" />
+    <ClInclude Include="..\..\3rdParty\Optick\optick_core.macos.h" />
+    <ClInclude Include="..\..\3rdParty\Optick\optick_core.platform.h" />
+    <ClInclude Include="..\..\3rdParty\Optick\optick_core.win.h" />
+    <ClInclude Include="..\..\3rdParty\Optick\optick_gpu.h" />
+    <ClInclude Include="..\..\3rdParty\Optick\optick_memory.h" />
+    <ClInclude Include="..\..\3rdParty\Optick\optick_message.h" />
+    <ClInclude Include="..\..\3rdParty\Optick\optick_miniz.h" />
+    <ClInclude Include="..\..\3rdParty\Optick\optick_serialization.h" />
+    <ClInclude Include="..\..\3rdParty\Optick\optick_server.h" />
     <ClInclude Include="..\..\3rdParty\ReCast\DebugUtils\Include\DebugDraw.h" />
     <ClInclude Include="..\..\3rdParty\ReCast\DebugUtils\Include\DetourDebugDraw.h" />
     <ClInclude Include="..\..\3rdParty\ReCast\DebugUtils\Include\RecastDebugDraw.h" />
@@ -811,29 +811,14 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\3rdParty\Optick\src\optick_capi.cpp" />
-    <ClCompile Include="..\..\3rdParty\Optick\src\optick_core.cpp" />
-    <ClCompile Include="..\..\3rdParty\Optick\src\optick_gpu.cpp" />
-    <ClCompile Include="..\..\3rdParty\Optick\src\optick_gpu.d3d12.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\Optick\src\optick_gpu.vulkan.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">false</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\Optick\src\optick_message.cpp" />
-    <ClCompile Include="..\..\3rdParty\Optick\src\optick_miniz.cpp" />
-    <ClCompile Include="..\..\3rdParty\Optick\src\optick_serialization.cpp" />
-    <ClCompile Include="..\..\3rdParty\Optick\src\optick_server.cpp" />
+    <ClCompile Include="..\..\3rdParty\Optick\optick_capi.cpp" />
+    <ClCompile Include="..\..\3rdParty\Optick\optick_core.cpp" />
+    <ClCompile Include="..\..\3rdParty\Optick\optick_gpu.cpp" />
+    <ClCompile Include="..\..\3rdParty\Optick\optick_gpu.vulkan.cpp" />
+    <ClCompile Include="..\..\3rdParty\Optick\optick_message.cpp" />
+    <ClCompile Include="..\..\3rdParty\Optick\optick_miniz.cpp" />
+    <ClCompile Include="..\..\3rdParty\Optick\optick_serialization.cpp" />
+    <ClCompile Include="..\..\3rdParty\Optick\optick_server.cpp" />
     <ClCompile Include="..\..\3rdParty\ReCast\DebugUtils\Source\DebugDraw.cpp" />
     <ClCompile Include="..\..\3rdParty\ReCast\DebugUtils\Source\DetourDebugDraw.cpp" />
     <ClCompile Include="..\..\3rdParty\ReCast\DebugUtils\Source\RecastDebugDraw.cpp" />

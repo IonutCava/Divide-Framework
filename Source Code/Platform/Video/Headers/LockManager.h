@@ -43,26 +43,30 @@ namespace Divide {
 
     constexpr U8 g_MaxLockWaitRetries = 5u;
 
-    struct SyncObject {
+    struct SyncObject
+    {
         inline static constexpr U64 INVALID_FRAME_NUMBER = U64_MAX;
 
+        explicit SyncObject( U8 flag, U64 frameIdx );
         virtual ~SyncObject();
         virtual void reset();
 
-        Mutex _fenceLock;
         U64 _frameNumber{ INVALID_FRAME_NUMBER };
+        U8 _flag{0u};
     };
 
     FWD_DECLARE_MANAGED_STRUCT(SyncObject);
 
-    struct SyncObjectHandle {
+    struct SyncObjectHandle
+    {
         static constexpr size_t INVALID_SYNC_ID = SIZE_MAX;
 
         size_t _id{ INVALID_SYNC_ID };
         size_t _generation{ 0u };
     };
 
-    struct BufferLockInstance {
+    struct BufferLockInstance
+    {
         BufferLockInstance() = default;
         BufferLockInstance(const BufferRange& range, const SyncObjectHandle& handle) noexcept;
 
@@ -77,11 +81,12 @@ namespace Divide {
         static constexpr U8 DEFAULT_SYNC_FLAG_SSBO = 252u;
         static constexpr U8 DEFAULT_SYNC_FLAG_TEXTURE = 253u;
 
-        struct BufferLockPoolEntry {
+        struct BufferLockPoolEntry
+        {
             SyncObject_uptr _ptr{ nullptr };
             size_t _generation{ 0u };
-            U8 _flag{ 0u };
         };
+
         using BufferLockPool = eastl::fixed_vector<BufferLockPoolEntry, 1024, true>;
 
         static void CleanExpiredSyncObjects( RenderAPI api, U64 frameNumber );
@@ -98,10 +103,10 @@ namespace Divide {
         static [[nodiscard]] SyncObjectHandle CreateSyncObject(RenderAPI api, U8 flag = DEFAULT_SYNC_FLAG_INTERNAL);
 
     protected:
-        static [[nodiscard]] bool InitLockPoolEntry( RenderAPI api, BufferLockPoolEntry& entry );
-        static [[nodiscard]] SyncObjectHandle CreateSyncObjectLocked( RenderAPI api, U8 flag, bool isRetry = false);
+        static [[nodiscard]] bool InitLockPoolEntry( RenderAPI api, BufferLockPoolEntry& entry, U8 flag, U64 frameIdx );
+        static [[nodiscard]] SyncObjectHandle CreateSyncObjectLocked( RenderAPI api, U8 flag);
 
-        virtual bool waitForLockedRangeLocked(const SyncObject_uptr& sync, const BufferRange& testRange, const BufferLockInstance& lock) = 0;
+        virtual bool waitForLockedRangeLocked(const SyncObject_uptr& sync, const BufferRange& testRange, const BufferLockInstance& lock);
 
     protected:
         mutable Mutex _bufferLockslock; // :D

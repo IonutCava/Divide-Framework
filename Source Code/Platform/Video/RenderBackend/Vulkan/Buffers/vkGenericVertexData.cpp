@@ -1,8 +1,10 @@
 #include "stdafx.h"
 
 #include "Headers/vkGenericVertexData.h"
+#include "Headers/vkBufferImpl.h"
 
 #include "Platform/Video/Headers/GenericDrawCommand.h"
+#include "Platform/Video/Headers/LockManager.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 
 #include "Core/Headers/StringHelper.h"
@@ -22,8 +24,11 @@ namespace Divide {
         _idxBuffers.clear();
     }
 
-    void vkGenericVertexData::draw(const GenericDrawCommand& command, VDIUserData* userData) noexcept {
+    void vkGenericVertexData::draw(const GenericDrawCommand& command, VDIUserData* userData) noexcept
+    {
         vkUserData* vkData = static_cast<vkUserData*>(userData);
+
+        PROFILE_VK_EVENT_AUTO_AND_CONTEX( *vkData->_cmdBuffer );
 
         for (const auto& buffer : _bufferObjects) 
         
@@ -47,21 +52,31 @@ namespace Divide {
                 }
                 vkCmdBindIndexBuffer(*vkData->_cmdBuffer, idxBuffer._buffer->_buffer, offsetInBytes, idxBuffer._data.smallIndices ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
             }
-            // Submit the draw command
-            VKUtil::SubmitRenderCommand( command, *vkData->_cmdBuffer, idxBuffer._buffer != nullptr, renderIndirect() );
+
+            {
+                // Submit the draw command
+                PROFILE_VK_EVENT( "Submit indexed" );
+                VKUtil::SubmitRenderCommand( command, *vkData->_cmdBuffer, idxBuffer._buffer != nullptr, renderIndirect() );
+            }
         }
         else
         {
             DIVIDE_ASSERT( command._bufferFlag == 0u );
+            PROFILE_VK_EVENT( "Submit non-indexed" );
             VKUtil::SubmitRenderCommand( command, *vkData->_cmdBuffer, false, renderIndirect() );
         }
 
     }
 
-    void vkGenericVertexData::bindBufferInternal(const SetBufferParams::BufferBindConfig& bindConfig, VkCommandBuffer& cmdBuffer) {
+    void vkGenericVertexData::bindBufferInternal(const SetBufferParams::BufferBindConfig& bindConfig, VkCommandBuffer& cmdBuffer)
+    {
+        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+
         GenericBufferImpl* impl = nullptr;
-        for (auto& bufferImpl : _bufferObjects) {
-            if (bufferImpl._bindConfig._bufferIdx == bindConfig._bufferIdx) {
+        for (auto& bufferImpl : _bufferObjects)
+        {
+            if (bufferImpl._bindConfig._bufferIdx == bindConfig._bufferIdx)
+            {
                 impl = &bufferImpl;
                 break;
             }
@@ -89,8 +104,10 @@ namespace Divide {
 
         // Make sure we specify buffers in order.
         GenericBufferImpl* impl = nullptr;
-        for (auto& buffer : _bufferObjects) {
-            if (buffer._bindConfig._bufferIdx == params._bindConfig._bufferIdx) {
+        for (auto& buffer : _bufferObjects)
+        {
+            if (buffer._bindConfig._bufferIdx == params._bindConfig._bufferIdx)
+            {
                 impl = &buffer;
                 break;
             }

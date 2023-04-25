@@ -240,54 +240,6 @@
     <ClInclude Include="..\..\3rdParty\meshoptimizer\src\meshoptimizer.h">
       <Filter>meshoptimizer\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick.h">
-      <Filter>Optik</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_capi.h">
-      <Filter>Optik</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_common.h">
-      <Filter>Optik</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_core.freebsd.h">
-      <Filter>Optik</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_core.h">
-      <Filter>Optik</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_core.linux.h">
-      <Filter>Optik</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_core.macos.h">
-      <Filter>Optik</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_core.platform.h">
-      <Filter>Optik</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_core.win.h">
-      <Filter>Optik</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_gpu.h">
-      <Filter>Optik</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_memory.h">
-      <Filter>Optik</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_message.h">
-      <Filter>Optik</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_miniz.h">
-      <Filter>Optik</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_serialization.h">
-      <Filter>Optik</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick_server.h">
-      <Filter>Optik</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\3rdParty\Optick\src\optick.config.h">
-      <Filter>Optik</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\3rdParty\SimpleINI\ConvertUTF.h">
       <Filter>SimpleINI</Filter>
     </ClInclude>
@@ -507,6 +459,54 @@
     <ClInclude Include="..\..\3rdParty\ImGuiMisc\imguistyleserializer\imguistyleserializer.h">
       <Filter>ImGuiMisc\imguistyleserializer</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\3rdParty\Optick\optick.config.h">
+      <Filter>Optik</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rdParty\Optick\optick.h">
+      <Filter>Optik</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rdParty\Optick\optick_capi.h">
+      <Filter>Optik</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rdParty\Optick\optick_common.h">
+      <Filter>Optik</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rdParty\Optick\optick_core.freebsd.h">
+      <Filter>Optik</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rdParty\Optick\optick_core.h">
+      <Filter>Optik</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rdParty\Optick\optick_core.linux.h">
+      <Filter>Optik</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rdParty\Optick\optick_core.macos.h">
+      <Filter>Optik</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rdParty\Optick\optick_core.platform.h">
+      <Filter>Optik</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rdParty\Optick\optick_core.win.h">
+      <Filter>Optik</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rdParty\Optick\optick_gpu.h">
+      <Filter>Optik</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rdParty\Optick\optick_memory.h">
+      <Filter>Optik</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rdParty\Optick\optick_message.h">
+      <Filter>Optik</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rdParty\Optick\optick_miniz.h">
+      <Filter>Optik</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rdParty\Optick\optick_serialization.h">
+      <Filter>Optik</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rdParty\Optick\optick_server.h">
+      <Filter>Optik</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\3rdParty\ChaiScript\src\chaiscript_stdlib_module.cpp">
@@ -661,33 +661,6 @@
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\meshoptimizer\tools\wasmstubs.cpp">
       <Filter>meshoptimizer\tools</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\Optick\src\optick_capi.cpp">
-      <Filter>Optik</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\Optick\src\optick_core.cpp">
-      <Filter>Optik</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\Optick\src\optick_gpu.cpp">
-      <Filter>Optik</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\Optick\src\optick_gpu.d3d12.cpp">
-      <Filter>Optik</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\Optick\src\optick_gpu.vulkan.cpp">
-      <Filter>Optik</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\Optick\src\optick_message.cpp">
-      <Filter>Optik</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\Optick\src\optick_miniz.cpp">
-      <Filter>Optik</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\Optick\src\optick_serialization.cpp">
-      <Filter>Optik</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\Optick\src\optick_server.cpp">
-      <Filter>Optik</Filter>
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\SimpleINI\ConvertUTF.c">
       <Filter>SimpleINI</Filter>
@@ -889,6 +862,30 @@
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\ImGuiMisc\imguistyleserializer\imguistyleserializer.cpp">
       <Filter>ImGuiMisc\imguistyleserializer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rdParty\Optick\optick_capi.cpp">
+      <Filter>Optik</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rdParty\Optick\optick_core.cpp">
+      <Filter>Optik</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rdParty\Optick\optick_gpu.cpp">
+      <Filter>Optik</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rdParty\Optick\optick_gpu.vulkan.cpp">
+      <Filter>Optik</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rdParty\Optick\optick_message.cpp">
+      <Filter>Optik</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rdParty\Optick\optick_miniz.cpp">
+      <Filter>Optik</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rdParty\Optick\optick_serialization.cpp">
+      <Filter>Optik</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rdParty\Optick\optick_server.cpp">
+      <Filter>Optik</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

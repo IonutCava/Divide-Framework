@@ -3,8 +3,8 @@
 #include "Headers/vkBufferImpl.h"
 #include "Core/Headers/StringHelper.h"
 #include "Utility/Headers/Localization.h"
+#include "Platform/Video/Headers/LockManager.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
-#include "Platform/Video/RenderBackend/Vulkan/Buffers/Headers/vkLockManager.h"
 
 namespace Divide
 {
@@ -68,7 +68,7 @@ namespace Divide
         , _alignedBufferSize( alignedBufferSize )
         , _totalBufferSize( _alignedBufferSize * ringQueueLength )
     {
-        _lockManager = eastl::make_unique<vkLockManager>();
+        _lockManager = eastl::make_unique<LockManager>();
 
         VkAccessFlags2 dstAccessMask = VK_ACCESS_2_NONE;
         VkPipelineStageFlags2 dstStageMask = VK_PIPELINE_STAGE_2_NONE;
@@ -197,6 +197,7 @@ namespace Divide
             request.dstStageMask = dstStageMask;
             VK_API::GetStateTracker().IMCmdContext(QueueType::GRAPHICS)->flushCommandBuffer([&request](VkCommandBuffer cmd, const QueueType queue, const bool isDedicatedQueue)
             {
+                PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmd );
                 VK_API::SubmitTransferRequest( request, cmd );
             }, scopeName.c_str() );
         }
@@ -211,7 +212,6 @@ namespace Divide
             _stagingBuffer = VKUtil::createStagingBuffer( alignedBufferSize, bufferName, false );
         }
     }
-
 
     BufferLock vkBufferImpl::writeBytes( const BufferRange range,
                                          VkAccessFlags2 dstAccessMask,

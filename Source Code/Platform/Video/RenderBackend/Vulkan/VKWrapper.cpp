@@ -12,11 +12,13 @@
 #include "Platform/Headers/SDLEventManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GFXRTPool.h"
+#include "Platform/Video/Headers/LockManager.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 
 #include "Buffers/Headers/vkRenderTarget.h"
+#include "Buffers/Headers/vkBufferImpl.h"
 #include "Buffers/Headers/vkShaderBuffer.h"
 #include "Buffers/Headers/vkGenericVertexData.h"
 
@@ -29,8 +31,6 @@
 
 #define VMA_IMPLEMENTATION
 #include "Headers/vkMemAllocatorInclude.h"
-
-#include "Platform/Video/Headers/fontstash.h"
 
 namespace
 {
@@ -363,7 +363,7 @@ namespace Divide
     void VKDeletionQueue::push( DELEGATE<void, VkDevice>&& function )
     {
         LockGuard<Mutex> w_lock( _deletionLock );
-        _deletionQueue.emplace_back( MOV( function ), (flags() & to_base(Flags::TREAT_AS_TRANSIENT)) ? Config::MAX_FRAMES_IN_FLIGHT : 0 );
+        _deletionQueue.emplace_back( MOV( function ), (flags() & to_base(Flags::TREAT_AS_TRANSIENT)) ? Config::MAX_FRAMES_IN_FLIGHT + 1u : 0 );
     }
 
     void VKDeletionQueue::flush( VkDevice device, const bool force )
@@ -449,15 +449,17 @@ namespace Divide
 
         const VkCommandBufferBeginInfo cmdBeginInfo = vk::commandBufferBeginInfo( VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT );
 
-        VkCommandBuffer cmd = _commandBuffers[_bufferIndex];
         VkFence fence = _bufferFences[_bufferIndex];
 
-        if ( WRAP_COUNTER > 0u ) {
+        if ( WRAP_COUNTER > 0u )
+        {
             vkWaitForFences( _context.getVKDevice(), 1, &fence, true, 9999999999 );
             vkResetFences( _context.getVKDevice(), 1, &fence );
         }
 
+        VkCommandBuffer cmd = _commandBuffers[_bufferIndex];
         VK_CHECK( vkBeginCommandBuffer( cmd, &cmdBeginInfo ) );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmd );
 
         VK_API::PushDebugMessage( cmd, scopeName );
 
@@ -473,6 +475,7 @@ namespace Divide
 
         _context.submitToQueue( _type, submitInfo, fence );
         _bufferIndex = ++_bufferIndex % BUFFER_COUNT;
+
         if ( _bufferIndex == 0u )
         {
             ++WRAP_COUNTER;
@@ -544,7 +547,7 @@ namespace Divide
 
     VkCommandBuffer VK_API::getCurrentCommandBuffer() const noexcept
     {
-        return s_stateTracker._activeWindow->_swapChain->getCurrentCommandBuffer();
+        return s_stateTracker._activeWindow->_swapChain->getFrameData()._commandBuffer;
     }
 
     void VK_API::idle( [[maybe_unused]] const bool fast ) noexcept
@@ -610,12 +613,12 @@ namespace Divide
             return;
         }
 
-        VkCommandBuffer cmd = windowState._swapChain->getCurrentCommandBuffer();
+        VkCommandBuffer cmd = windowState._swapChain->getFrameData()._commandBuffer;
         FlushBufferTransferRequests( cmd );
         windowState._activeState = {};
         s_dynamicOffsets.clear();
 
-        const VkResult result = windowState._swapChain->endFrame( QueueType::GRAPHICS );
+        const VkResult result = windowState._swapChain->endFrame();
 
         if ( result != VK_SUCCESS )
         {
@@ -637,6 +640,7 @@ namespace Divide
 
         for ( U8 i = 0u; i < to_base(DescriptorSetUsage::COUNT); ++i )
         {
+            PROFILE_SCOPE( "Flip descriptor pools", Profiler::Category::Graphics);
             auto& pool = s_stateTracker._descriptorAllocators[i];
             if ( pool._frameCount > 1u )
             {
@@ -813,7 +817,8 @@ namespace Divide
 
         _device = eastl::make_unique<VKDevice>( *this, _vkbInstance, perWindowContext._surface );
 
-        if ( _device->getVKDevice() == nullptr)
+        VkDevice vkDevice = _device->getVKDevice();
+        if ( vkDevice == VK_NULL_HANDLE )
         {
             return ErrorCode::VK_DEVICE_CREATE_FAILED;
         }
@@ -828,61 +833,64 @@ namespace Divide
             return ErrorCode::VK_NO_PRESENT_QUEUE;
         }
 
+        VKQueue graphicsQueue = _device->getQueue( QueueType::GRAPHICS );
+        VkPhysicalDevice physicalDevice = _device->getVKPhysicalDevice();
+        PROFILE_VK_INIT( &vkDevice, &physicalDevice, &graphicsQueue._queue, &graphicsQueue._index, 1, nullptr);
 
         if ( s_hasDebugMarkerSupport )
         {
-            Debug::vkCmdBeginDebugUtilsLabelEXT  = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetDeviceProcAddr(  _device->getVKDevice(), "vkCmdBeginDebugUtilsLabelEXT"  );
-            Debug::vkCmdEndDebugUtilsLabelEXT    = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetDeviceProcAddr(    _device->getVKDevice(), "vkCmdEndDebugUtilsLabelEXT"    );
-            Debug::vkCmdInsertDebugUtilsLabelEXT = (PFN_vkCmdInsertDebugUtilsLabelEXT)vkGetDeviceProcAddr( _device->getVKDevice(), "vkCmdInsertDebugUtilsLabelEXT" );
-            Debug::vkSetDebugUtilsObjectNameEXT  = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(  _device->getVKDevice(), "vkSetDebugUtilsObjectNameEXT"  );
-            Debug::vkSetDebugUtilsObjectTagEXT   = (PFN_vkSetDebugUtilsObjectTagEXT)vkGetDeviceProcAddr(   _device->getVKDevice(), "vkSetDebugUtilsObjectTagEXT"   );
+            Debug::vkCmdBeginDebugUtilsLabelEXT  = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetDeviceProcAddr(  vkDevice, "vkCmdBeginDebugUtilsLabelEXT"  );
+            Debug::vkCmdEndDebugUtilsLabelEXT    = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetDeviceProcAddr(    vkDevice, "vkCmdEndDebugUtilsLabelEXT"    );
+            Debug::vkCmdInsertDebugUtilsLabelEXT = (PFN_vkCmdInsertDebugUtilsLabelEXT)vkGetDeviceProcAddr( vkDevice, "vkCmdInsertDebugUtilsLabelEXT" );
+            Debug::vkSetDebugUtilsObjectNameEXT  = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(  vkDevice, "vkSetDebugUtilsObjectNameEXT"  );
+            Debug::vkSetDebugUtilsObjectTagEXT   = (PFN_vkSetDebugUtilsObjectTagEXT)vkGetDeviceProcAddr(   vkDevice, "vkSetDebugUtilsObjectTagEXT"   );
         }
 
         s_hasDynamicBlendStateSupport = config.debug.renderer.useExtensions && _device->supportsDynamicExtension3();
         if ( s_hasDynamicBlendStateSupport )
         {
-            vkCmdSetColorBlendEnableEXT   = (PFN_vkCmdSetColorBlendEnableEXT)vkGetDeviceProcAddr(   _device->getVKDevice(), "vkCmdSetColorBlendEnableEXT"   );
-            vkCmdSetColorBlendEquationEXT = (PFN_vkCmdSetColorBlendEquationEXT)vkGetDeviceProcAddr( _device->getVKDevice(), "vkCmdSetColorBlendEquationEXT" );
-            vkCmdSetColorWriteMaskEXT     = (PFN_vkCmdSetColorWriteMaskEXT)vkGetDeviceProcAddr(     _device->getVKDevice(), "vkCmdSetColorWriteMaskEXT"     );
+            vkCmdSetColorBlendEnableEXT   = (PFN_vkCmdSetColorBlendEnableEXT)vkGetDeviceProcAddr(   vkDevice, "vkCmdSetColorBlendEnableEXT"   );
+            vkCmdSetColorBlendEquationEXT = (PFN_vkCmdSetColorBlendEquationEXT)vkGetDeviceProcAddr( vkDevice, "vkCmdSetColorBlendEquationEXT" );
+            vkCmdSetColorWriteMaskEXT     = (PFN_vkCmdSetColorWriteMaskEXT)vkGetDeviceProcAddr(     vkDevice, "vkCmdSetColorWriteMaskEXT"     );
         }
 
         s_hasPushDescriptorSupport = config.debug.renderer.useExtensions && _device->supportsPushDescriptors();
         if ( s_hasPushDescriptorSupport )
         {
-            vkCmdPushDescriptorSetKHR = (PFN_vkCmdPushDescriptorSetKHR)vkGetDeviceProcAddr( _device->getVKDevice(), "vkCmdPushDescriptorSetKHR" );
+            vkCmdPushDescriptorSetKHR = (PFN_vkCmdPushDescriptorSetKHR)vkGetDeviceProcAddr( vkDevice, "vkCmdPushDescriptorSetKHR" );
         }
 
         s_hasDescriptorBufferSupport = config.debug.renderer.useExtensions && _device->supportsDescriptorBuffers();
         if ( s_hasDescriptorBufferSupport )
         {
-             vkGetDescriptorSetLayoutSizeEXT              = (PFN_vkGetDescriptorSetLayoutSizeEXT)vkGetDeviceProcAddr(              _device->getVKDevice(), "vkGetDescriptorSetLayoutSizeEXT"             );
-             vkGetDescriptorSetLayoutBindingOffsetEXT     = (PFN_vkGetDescriptorSetLayoutBindingOffsetEXT)vkGetDeviceProcAddr(     _device->getVKDevice(), "vkGetDescriptorSetLayoutBindingOffsetEXT"    ); 
-             vkGetDescriptorEXT                           = (PFN_vkGetDescriptorEXT)vkGetDeviceProcAddr(                           _device->getVKDevice(), "vkGetDescriptorEXT"                          ); 
-             vkCmdBindDescriptorBuffersEXT                = (PFN_vkCmdBindDescriptorBuffersEXT)vkGetDeviceProcAddr(                _device->getVKDevice(), "vkCmdBindDescriptorBuffersEXT"               ); 
-             vkCmdSetDescriptorBufferOffsetsEXT           = (PFN_vkCmdSetDescriptorBufferOffsetsEXT)vkGetDeviceProcAddr(           _device->getVKDevice(), "vkCmdSetDescriptorBufferOffsetsEXT"          ); 
-             vkCmdBindDescriptorBufferEmbeddedSamplersEXT = (PFN_vkCmdBindDescriptorBufferEmbeddedSamplersEXT)vkGetDeviceProcAddr( _device->getVKDevice(), "vkCmdBindDescriptorBufferEmbeddedSamplersEXT"); 
+             vkGetDescriptorSetLayoutSizeEXT              = (PFN_vkGetDescriptorSetLayoutSizeEXT)vkGetDeviceProcAddr(              vkDevice, "vkGetDescriptorSetLayoutSizeEXT"             );
+             vkGetDescriptorSetLayoutBindingOffsetEXT     = (PFN_vkGetDescriptorSetLayoutBindingOffsetEXT)vkGetDeviceProcAddr(     vkDevice, "vkGetDescriptorSetLayoutBindingOffsetEXT"    ); 
+             vkGetDescriptorEXT                           = (PFN_vkGetDescriptorEXT)vkGetDeviceProcAddr(                           vkDevice, "vkGetDescriptorEXT"                          ); 
+             vkCmdBindDescriptorBuffersEXT                = (PFN_vkCmdBindDescriptorBuffersEXT)vkGetDeviceProcAddr(                vkDevice, "vkCmdBindDescriptorBuffersEXT"               ); 
+             vkCmdSetDescriptorBufferOffsetsEXT           = (PFN_vkCmdSetDescriptorBufferOffsetsEXT)vkGetDeviceProcAddr(           vkDevice, "vkCmdSetDescriptorBufferOffsetsEXT"          ); 
+             vkCmdBindDescriptorBufferEmbeddedSamplersEXT = (PFN_vkCmdBindDescriptorBufferEmbeddedSamplersEXT)vkGetDeviceProcAddr( vkDevice, "vkCmdBindDescriptorBufferEmbeddedSamplersEXT"); 
         }
 
-        VKUtil::OnStartup( _device->getVKDevice() );
+        VKUtil::OnStartup( vkDevice );
 
         VkFormatProperties2 properties{};
         properties.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2;
 
-        vkGetPhysicalDeviceFormatProperties2( _device->getPhysicalDevice(), VK_FORMAT_D24_UNORM_S8_UINT, &properties );
+        vkGetPhysicalDeviceFormatProperties2( physicalDevice, VK_FORMAT_D24_UNORM_S8_UINT, &properties );
         s_depthFormatInformation._d24s8Supported = properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
-        vkGetPhysicalDeviceFormatProperties2( _device->getPhysicalDevice(), VK_FORMAT_D32_SFLOAT_S8_UINT, &properties );
+        vkGetPhysicalDeviceFormatProperties2( physicalDevice, VK_FORMAT_D32_SFLOAT_S8_UINT, &properties );
         s_depthFormatInformation._d32s8Supported = properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
         DIVIDE_ASSERT( s_depthFormatInformation._d24s8Supported || s_depthFormatInformation._d32s8Supported );
 
 
-        vkGetPhysicalDeviceFormatProperties2( _device->getPhysicalDevice(), VK_FORMAT_X8_D24_UNORM_PACK32, &properties );
+        vkGetPhysicalDeviceFormatProperties2( physicalDevice, VK_FORMAT_X8_D24_UNORM_PACK32, &properties );
         s_depthFormatInformation._d24x8Supported = properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
-        vkGetPhysicalDeviceFormatProperties2( _device->getPhysicalDevice(), VK_FORMAT_D32_SFLOAT, &properties );
+        vkGetPhysicalDeviceFormatProperties2( physicalDevice, VK_FORMAT_D32_SFLOAT, &properties );
         s_depthFormatInformation._d32FSupported = properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
         DIVIDE_ASSERT( s_depthFormatInformation._d24x8Supported || s_depthFormatInformation._d32FSupported );
 
         VkPhysicalDeviceProperties deviceProperties{};
-        vkGetPhysicalDeviceProperties( _device->getPhysicalDevice().physical_device, &deviceProperties );
+        vkGetPhysicalDeviceProperties( physicalDevice, &deviceProperties );
 
         DeviceInformation deviceInformation{};
         deviceInformation._renderer = GPURenderer::UNKNOWN;
@@ -930,13 +938,13 @@ namespace Divide
 
         {
             U32 toolCount = 0u;
-            VK_CHECK( vkGetPhysicalDeviceToolProperties( _device->getPhysicalDevice(), &toolCount, NULL ) );
+            VK_CHECK( vkGetPhysicalDeviceToolProperties( physicalDevice, &toolCount, NULL ) );
 
             if ( toolCount > 0u )
             {
                 std::vector<VkPhysicalDeviceToolPropertiesEXT> tools;
                 tools.resize( toolCount );
-                VK_CHECK( vkGetPhysicalDeviceToolProperties( _device->getPhysicalDevice(), &toolCount, tools.data() ) );
+                VK_CHECK( vkGetPhysicalDeviceToolProperties( physicalDevice, &toolCount, tools.data() ) );
 
                 Console::printfn( Locale::Get( _ID( "VK_TOOL_INFO" ) ), toolCount );
     
@@ -1045,8 +1053,8 @@ namespace Divide
         DIVIDE_ASSERT( Config::MINIMUM_VULKAN_MINOR_VERSION > 2 );
 
         VmaAllocatorCreateInfo allocatorInfo = {};
-        allocatorInfo.physicalDevice = _device->getPhysicalDevice();
-        allocatorInfo.device = _device->getDevice();
+        allocatorInfo.physicalDevice = physicalDevice;
+        allocatorInfo.device = vkDevice;
         allocatorInfo.instance = _vkbInstance.instance;
         allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_3;
         allocatorInfo.preferredLargeHeapBlockSize = 0;
@@ -1071,7 +1079,7 @@ namespace Divide
 
         if ( _context.context().config().runtime.usePipelineCache )
         {
-            VK_CHECK( vkCreatePipelineCache( _device->getVKDevice(), &pipelineCacheCreateInfo, nullptr, &_pipelineCache ) );
+            VK_CHECK( vkCreatePipelineCache( vkDevice, &pipelineCacheCreateInfo, nullptr, &_pipelineCache ) );
         }
 
         initStatePerWindow( perWindowContext );
@@ -1144,7 +1152,7 @@ namespace Divide
             s_samplerMap.clear();
         }
 
-        vkLockManager::Clear();
+        LockManager::Clear();
         if ( _device != nullptr )
         {
             if ( _device->getVKDevice() != VK_NULL_HANDLE )
@@ -1202,7 +1210,8 @@ namespace Divide
 
     bool VK_API::Draw( const GenericDrawCommand& cmd, VkCommandBuffer cmdBuffer )
     {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+
         DIVIDE_ASSERT( cmd._drawCount < GFXDevice::GetDeviceInformation()._maxDrawIndirectCount );
 
         if ( cmd._sourceBuffer._id == 0u )
@@ -1274,7 +1283,7 @@ namespace Divide
 
     bool VK_API::bindShaderResources( const DescriptorSetEntries& descriptorSetEntries )
     {
-        PROFILE_SCOPE( "BIND_SHADER_RESOURCES", Profiler::Category::Graphics );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEX( getCurrentCommandBuffer() );
 
         auto& program = GetStateTracker()._pipeline._program;
         DIVIDE_ASSERT( program != nullptr );
@@ -1320,6 +1329,8 @@ namespace Divide
                     case DescriptorSetBindingType::UNIFORM_BUFFER:
                     case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
                     {
+                        PROFILE_SCOPE( "Bind buffer", Profiler::Category::Graphics);
+
                         const ShaderBufferEntry& bufferEntry = srcBinding._data._buffer;
 
                         DIVIDE_ASSERT( bufferEntry._buffer != nullptr );
@@ -1376,6 +1387,8 @@ namespace Divide
                     } break;
                     case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER:
                     {
+                        PROFILE_SCOPE( "Bind image sampler", Profiler::Category::Graphics );
+
                         if ( srcBinding._slot == INVALID_TEXTURE_BINDING )
                         {
                             continue;
@@ -1417,6 +1430,8 @@ namespace Divide
                     } break;
                     case DescriptorSetBindingType::IMAGE:
                     {
+                        PROFILE_SCOPE( "Bind image", Profiler::Category::Graphics );
+
                         const DescriptorImageView& imageView = srcBinding._data._imageView;
                         if ( imageView._image._srcTexture == nullptr )
                         {
@@ -1463,18 +1478,28 @@ namespace Divide
             {
                 if ( !isPushDescriptor )
                 {
-                    DescriptorBuilder builder = DescriptorBuilder::Begin( _descriptorLayoutCache.get(), &s_stateTracker._descriptorAllocators[usageIdx]._handle );
-                    builder.buildSetFromLayout( _descriptorSets[usageIdx], _descriptorSetLayouts[usageIdx], _device->getVKDevice() );
+                    PROFILE_SCOPE( "Build and update sets", Profiler::Category::Graphics );
+                    PROFILE_TAG("Usage IDX", usageIdx);
 
-                    for ( VkWriteDescriptorSet& w : descriptorWrites )
                     {
-                        w.dstSet = _descriptorSets[usageIdx];
+                        PROFILE_SCOPE( "Build", Profiler::Category::Graphics);
+                        DescriptorBuilder builder = DescriptorBuilder::Begin( _descriptorLayoutCache.get(), &s_stateTracker._descriptorAllocators[usageIdx]._handle );
+                        builder.buildSetFromLayout( _descriptorSets[usageIdx], _descriptorSetLayouts[usageIdx], _device->getVKDevice() );
                     }
-                    vkUpdateDescriptorSets( _device->getVKDevice(), to_U32( descriptorWrites.size() ), descriptorWrites.data(), 0, nullptr );
+                    {
+                        PROFILE_SCOPE( "Update", Profiler::Category::Graphics);
+                        for ( VkWriteDescriptorSet& w : descriptorWrites )
+                        {
+                            w.dstSet = _descriptorSets[usageIdx];
+                        }
+                        vkUpdateDescriptorSets( _device->getVKDevice(), to_U32( descriptorWrites.size() ), descriptorWrites.data(), 0, nullptr );
+                    }
                     needsBind = true;
                 }
                 else
                 {
+                    PROFILE_SCOPE( "Push descriptor set", Profiler::Category::Graphics );
+
                     const auto& pipeline = GetStateTracker()._pipeline;
                     vkCmdPushDescriptorSetKHR( getCurrentCommandBuffer(),
                                                pipeline._bindPoint,
@@ -1490,6 +1515,7 @@ namespace Divide
 
         if ( needsBind )
         {
+            PROFILE_SCOPE( "Bind descriptor sets", Profiler::Category::Graphics );
 
             thread_local VkDescriptorSetLayout tempLayout{ VK_NULL_HANDLE };
 
@@ -1546,6 +1572,8 @@ namespace Divide
 
     void VK_API::bindDynamicState( const RenderStateBlock& currentState, const RTBlendStates& blendStates, VkCommandBuffer cmdBuffer ) noexcept
     {
+        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+
         bool ret = false;
 
         auto& activeState = GetStateTracker()._activeWindow->_activeState;
@@ -1710,7 +1738,7 @@ namespace Divide
 
     ShaderResult VK_API::bindPipeline( const Pipeline& pipeline, VkCommandBuffer cmdBuffer )
     {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
 
         size_t stateHash = pipeline.stateHash();
         Util::Hash_combine(stateHash, GetStateTracker()._renderTargetFormatHash );
@@ -1975,7 +2003,7 @@ namespace Divide
 
         void FlushBarriers( VkCommandBuffer cmd, bool toWrite )
         {
-            PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmd );
 
             for ( const auto& request : s_transferQueueBatched )
             {
@@ -1995,7 +2023,7 @@ namespace Divide
 
         void FlushCopyRequests( VkCommandBuffer cmd )
         {
-            PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmd );
 
             for ( const PerBufferCopies& request : s_copyRequests )
             {
@@ -2069,7 +2097,7 @@ namespace Divide
 
         void FlushTransferQueue( VkCommandBuffer cmdBuffer, VKTransferQueue& transferQueue )
         {
-            PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
 
             BatchTransferQueue( transferQueue );
             FlushBarriers( cmdBuffer, true );
@@ -2084,7 +2112,7 @@ namespace Divide
 
     void VK_API::SubmitTransferRequest( const VKTransferQueue::TransferRequest& request, VkCommandBuffer cmd )
     {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmd );
 
         VkBufferMemoryBarrier2 barriers[2] = {};
         VkDependencyInfo dependencyInfo = vk::dependencyInfo();
@@ -2128,7 +2156,7 @@ namespace Divide
 
     void VK_API::FlushBufferTransferRequests( VkCommandBuffer cmdBuffer  )
     {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
 
         if ( s_transferQueue._dirty.load() )
         {
@@ -2151,13 +2179,12 @@ namespace Divide
     void VK_API::flushCommand( GFX::CommandBase* cmd ) noexcept
     {
         static mat4<F32> s_defaultPushConstants[2] = { MAT4_ZERO, MAT4_ZERO };
-
         auto& stateTracker = GetStateTracker();
 
         const GFX::CommandType cmdType = cmd->Type();
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
+        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
 
         if ( GFXDevice::IsSubmitCommand( cmdType ) )
         {
@@ -2206,6 +2233,8 @@ namespace Divide
 
                 if ( crtCmd->_target == SCREEN_TARGET_ID )
                 {
+                    PROFILE_SCOPE( "Draw to screen", Profiler::Category::Graphics);
+
                     VKSwapChain* swapChain = stateTracker._activeWindow->_swapChain.get();
 
                     attachmentInfo[0].imageView = swapChain->getCurrentImageView(),
@@ -2259,26 +2288,29 @@ namespace Divide
                     stateTracker._activeMSAASamples = rt->getSampleCount();
                 }
 
-                const Rect<I32> renderArea = { 
-                     renderingInfo.renderArea.offset.x,
-                     renderingInfo.renderArea.offset.y,
-                     to_I32(renderingInfo.renderArea.extent.width),
-                     to_I32(renderingInfo.renderArea.extent.height)
-                };
-
-                stateTracker._activeRenderTargetDimensions = { renderArea.sizeX, renderArea.sizeY};
-
-
-                stateTracker._renderTargetFormatHash = 0u;
-                for ( U32 i = 0u; i < stateTracker._pipelineRenderInfo.colorAttachmentCount; ++i )
                 {
-                    Util::Hash_combine( stateTracker._renderTargetFormatHash, stateTracker._pipelineRenderInfo.pColorAttachmentFormats[i]);
-                }
-                
-                _context.setViewport( renderArea );
-                _context.setScissor( renderArea );
-                vkCmdBeginRendering( cmdBuffer, &renderingInfo);
+                    PROFILE_SCOPE( "Begin Rendering", Profiler::Category::Graphics );
 
+                    const Rect<I32> renderArea = { 
+                         renderingInfo.renderArea.offset.x,
+                         renderingInfo.renderArea.offset.y,
+                         to_I32(renderingInfo.renderArea.extent.width),
+                         to_I32(renderingInfo.renderArea.extent.height)
+                    };
+
+                    stateTracker._activeRenderTargetDimensions = { renderArea.sizeX, renderArea.sizeY};
+
+
+                    stateTracker._renderTargetFormatHash = 0u;
+                    for ( U32 i = 0u; i < stateTracker._pipelineRenderInfo.colorAttachmentCount; ++i )
+                    {
+                        Util::Hash_combine( stateTracker._renderTargetFormatHash, stateTracker._pipelineRenderInfo.pColorAttachmentFormats[i]);
+                    }
+                
+                    _context.setViewport( renderArea );
+                    _context.setScissor( renderArea );
+                    vkCmdBeginRendering( cmdBuffer, &renderingInfo);
+                }
             } break;
             case GFX::CommandType::END_RENDER_PASS:
             {
@@ -2546,7 +2578,7 @@ namespace Divide
                         {
                             if ( handle._id == SyncObjectHandle::INVALID_SYNC_ID )
                             {
-                                handle = vkLockManager::CreateSyncObject();
+                                handle = LockManager::CreateSyncObject( RenderAPI::Vulkan );
                             }
 
                             memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
@@ -2633,6 +2665,8 @@ namespace Divide
 
                     if ( bufferBarrierCount == MAX_BUFFER_BARRIERS_PER_CMD )
                     {
+                        PROFILE_SCOPE( "Pipeline Barrier Overflow", Profiler::Category::Graphics );
+
                         // Too many buffer barriers. Flushing ...
                         VkDependencyInfo dependencyInfo = vk::dependencyInfo();
                         dependencyInfo.bufferMemoryBarrierCount = bufferBarrierCount;
@@ -2767,6 +2801,8 @@ namespace Divide
 
                 if ( imageBarrierCount > 0u || bufferBarrierCount > 0u)
                 {
+                    PROFILE_SCOPE( "Pipeline Barrier", Profiler::Category::Graphics );
+
                     VkDependencyInfo dependencyInfo = vk::dependencyInfo();
                     dependencyInfo.imageMemoryBarrierCount = imageBarrierCount;
                     dependencyInfo.pImageMemoryBarriers = imageBarriers.data();
@@ -2782,6 +2818,8 @@ namespace Divide
 
     void VK_API::preFlushCommandBuffer( [[maybe_unused]] const GFX::CommandBuffer& commandBuffer )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         GetStateTracker()._activeRenderTargetID = SCREEN_TARGET_ID;
         GetStateTracker()._activeRenderTargetDimensions = s_stateTracker._activeWindow->_window->getDrawableSize();
         // We don't really know what happened before this state and at worst this is going to end up into an 
@@ -2792,6 +2830,8 @@ namespace Divide
 
     void VK_API::postFlushCommandBuffer( [[maybe_unused]] const GFX::CommandBuffer& commandBuffer ) noexcept
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         flushPushConstantsLocks();
         s_transientDeleteQueue.flush( _device->getDevice() );
         GetStateTracker()._activeRenderTargetID = INVALID_RENDER_TARGET_ID;
@@ -2805,6 +2845,8 @@ namespace Divide
 
     bool VK_API::setViewportInternal( const Rect<I32>& newViewport, VkCommandBuffer cmdBuffer ) noexcept
     {
+        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+
         VkViewport targetViewport{};
         targetViewport.width = to_F32( newViewport.sizeX );
         targetViewport.height = -to_F32( newViewport.sizeY );
@@ -2832,6 +2874,8 @@ namespace Divide
 
     bool VK_API::setScissorInternal( const Rect<I32>& newScissor, VkCommandBuffer cmdBuffer ) noexcept
     {
+        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+
         const VkOffset2D offset{ std::max( 0, newScissor.offsetX ), std::max( 0, newScissor.offsetY ) };
         const VkExtent2D extent{ to_U32( newScissor.sizeX ),to_U32( newScissor.sizeY ) };
         const VkRect2D targetScissor{ offset, extent };
@@ -2841,6 +2885,8 @@ namespace Divide
 
     VkDescriptorSetLayout VK_API::createLayoutFromBindings(const DescriptorSetUsage usage, const ShaderProgram::BindingsPerSetArray& bindings, DynamicBindings& dynamicBindings )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         thread_local eastl::fixed_vector<VkDescriptorSetLayoutBinding, MAX_BINDINGS_PER_DESCRIPTOR_SET, false> layoutBinding{};
 
         layoutBinding.clear();
@@ -2950,6 +2996,8 @@ namespace Divide
     {
         if ( s_hasDebugMarkerSupport )
         {
+            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+
             static F32 color[4] = { 0.0f, 1.0f, 0.0f, 1.f };
 
             VkDebugUtilsLabelEXT labelInfo{};
@@ -2959,6 +3007,7 @@ namespace Divide
 
             Debug::vkCmdInsertDebugUtilsLabelEXT( cmdBuffer, &labelInfo );
         }
+
         GetStateTracker()._lastInsertedDebugMessage = { message, id };
     }
 
@@ -2966,6 +3015,8 @@ namespace Divide
     {
         if ( s_hasDebugMarkerSupport )
         {
+            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+
             static F32 color[4] = { 0.5f, 0.5f, 0.5f, 1.f };
             VkDebugUtilsLabelEXT labelInfo{};
             labelInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
@@ -2982,6 +3033,8 @@ namespace Divide
     {
         if ( s_hasDebugMarkerSupport )
         {
+            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+
             Debug::vkCmdEndDebugUtilsLabelEXT( cmdBuffer );
         }
 
@@ -2992,6 +3045,8 @@ namespace Divide
     /// Return the Vulkan sampler object's handle for the given hash value
     VkSampler VK_API::GetSamplerHandle( const size_t samplerHash )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         // If the hash value is 0, we assume the code is trying to unbind a sampler object
         if ( samplerHash > 0 )
         {

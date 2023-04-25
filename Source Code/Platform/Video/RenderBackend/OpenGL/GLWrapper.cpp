@@ -1229,7 +1229,7 @@ namespace Divide
                         {
                             if ( handle._id == SyncObjectHandle::INVALID_SYNC_ID )
                             {
-                                handle = glLockManager::CreateSyncObject();
+                                handle = LockManager::CreateSyncObject( RenderAPI::OpenGL );
                             }
 
                             if ( !buffer->lockRange( lock._range, handle ) )

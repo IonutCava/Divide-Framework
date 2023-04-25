@@ -41,9 +41,6 @@ ErrorCode Engine::run(const int argc, char** argv)
     if ( errorCode == ErrorCode::NO_ERR )
     {
         Profiler::InitAllocators();
-        SCOPE_EXIT{
-            Profiler::Shutdown();
-        };
 
         Application::StepResult result = Application::StepResult::COUNT;
 
@@ -65,6 +62,7 @@ ErrorCode Engine::run(const int argc, char** argv)
                 }
             }
 
+            Profiler::Shutdown();
             _app->stop(result);
             _app.reset();
 

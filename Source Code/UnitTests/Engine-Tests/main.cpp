@@ -1,7 +1,7 @@
 #include "stdafx.h"
 
 // A lot of statics and mem allocators in here and whatnot
-#include "Optick/src/optick_core.cpp"
+#include "Optick/optick_core.cpp"
 
 #include "Headers/Defines.h"
 

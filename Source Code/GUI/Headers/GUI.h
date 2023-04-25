@@ -34,6 +34,7 @@
 #define GUI_H_
 
 #include "GUIInterface.h"
+#include "Core/Headers/FrameListener.h"
 #include "Core/Headers/KernelComponent.h"
 #include "GUI/CEGUIAddons/Headers/CEGUIInput.h"
 #include "Platform/Video/Headers/PushConstants.h"
@@ -74,8 +75,9 @@ FWD_DECLARE_MANAGED_STRUCT( DVDFONSContext );
 
 /// Graphical User Interface
 class GUI final : public GUIInterface,
-                    public KernelComponent,
-                    public Input::InputAggregatorInterface
+                  public KernelComponent,
+                  public FrameListener,
+                  public Input::InputAggregatorInterface
 {
     public:
         using GUIMapPerScene = hashMap<I64, SceneGUIElements*>;
@@ -131,6 +133,8 @@ class GUI final : public GUIInterface,
 
 
     protected:
+         bool frameStarted( const FrameEvent& evt ) override;
+
         /// Key pressed: return true if input was consumed
         [[nodiscard]] bool onKeyDown( const Input::KeyEvent& key ) override;
         /// Key released: return true if input was consumed

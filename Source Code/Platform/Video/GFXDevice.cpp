@@ -1333,8 +1333,6 @@ namespace Divide
 
     bool GFXDevice::frameStarted( [[maybe_unused]] const FrameEvent& evt )
     {
-        ++s_frameCount;
-
         for ( GFXDescriptorSet& set : _descriptorSets )
         {
             set.clear();
@@ -1424,7 +1422,9 @@ namespace Divide
         _gfxBuffers.onEndFrame();
         ShaderProgram::OnEndFrame( *this );
         
-        return _api->frameEnded();
+        const bool ret = _api->frameEnded();
+        ++s_frameCount;
+        return ret;
     }
 #pragma endregion
 

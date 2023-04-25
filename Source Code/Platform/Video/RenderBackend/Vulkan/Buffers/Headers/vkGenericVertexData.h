@@ -34,9 +34,10 @@
 #define VK_GENERIC_VERTEX_DATA_H
 
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
-#include "vkLockManager.h"
 
 namespace Divide {
+
+FWD_DECLARE_MANAGED_STRUCT(vkBufferImpl);
 
 class vkGenericVertexData final : public GenericVertexData {
     public:

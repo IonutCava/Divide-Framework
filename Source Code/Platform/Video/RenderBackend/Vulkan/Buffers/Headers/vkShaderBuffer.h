@@ -35,9 +35,9 @@
 
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 
-#include "vkLockManager.h"
-
 namespace Divide {
+
+    FWD_DECLARE_MANAGED_STRUCT( vkBufferImpl );
 
     class vkShaderBuffer final : public ShaderBuffer {
     public:

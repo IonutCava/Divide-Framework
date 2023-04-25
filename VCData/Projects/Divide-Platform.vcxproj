@@ -99,7 +99,6 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\Headers\DescriptorSetsFwd.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\Headers\fontstash.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\Headers\LockManager.h" />
-    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkLockManager.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\VKWrapper.h" />
     <ClInclude Include="../../Source Code\Platform\Headers\SDLEventManager.h" />
     <ClInclude Include="../../Source Code\Platform\Headers\SDLEventListener.h" />
@@ -214,7 +213,6 @@
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkBufferImpl.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkRenderTarget.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkGenericVertexData.cpp" />
-    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkLockManager.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkShaderBuffer.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Shaders\vkShaderProgram.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Textures\vkSamplerObject.cpp" />

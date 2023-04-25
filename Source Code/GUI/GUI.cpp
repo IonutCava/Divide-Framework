@@ -46,7 +46,7 @@ namespace Divide
         }
 
         U32  _writeOffset = 0u;
-        U32  _bufferSizeFactor = 512u;
+        U32  _bufferSizeFactor = 1024u;
         bool _bufferNeedsResize = false;
 
         GFXDevice* _parent{ nullptr };
@@ -85,7 +85,7 @@ namespace Divide
         {
             DVDFONSContext* dvd = (DVDFONSContext*)userPtr;
 
-            dvd->_fontRenderingBuffer = dvd->_parent->newGVD( Config::MAX_FRAMES_IN_FLIGHT, false, "GUIFontBuffer" );
+            dvd->_fontRenderingBuffer = dvd->_parent->newGVD( Config::MAX_FRAMES_IN_FLIGHT + 1u, false, "GUIFontBuffer" );
 
             RefreshBufferSize(dvd);
 
@@ -129,10 +129,11 @@ namespace Divide
     }
 
     GUI::GUI( Kernel& parent )
-        : GUIInterface( *this ),
-        KernelComponent( parent ),
-        _ceguiInput( *this ),
-        _textRenderInterval( Time::MillisecondsToMicroseconds( 10 ) )
+        : GUIInterface( *this )
+        , KernelComponent( parent )
+        , FrameListener( "GUI", parent.frameListenerMgr(), 2 )
+        , _ceguiInput( *this )
+        , _textRenderInterval( Time::MillisecondsToMicroseconds( 10 ) )
     {
         // 500ms
         _ceguiInput.setInitialDelay( 0.500f );
@@ -381,7 +382,10 @@ namespace Divide
         {
             _console->update( deltaTimeUS );
         }
+    }
 
+    bool GUI::frameStarted( [[maybe_unused]] const FrameEvent& evt )
+    {
         if ( _fonsContext != nullptr )
         {
             _fonsContext->_fontRenderingBuffer->incQueue();
@@ -394,6 +398,8 @@ namespace Divide
                 _fonsContext->_bufferNeedsResize = false;
             }
         }
+
+        return true;
     }
 
     ErrorCode GUI::init( PlatformContext& context, ResourceCache* cache )

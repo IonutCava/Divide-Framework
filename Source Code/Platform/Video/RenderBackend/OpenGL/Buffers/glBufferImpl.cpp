@@ -97,7 +97,7 @@ namespace Divide
 
         if ( !Runtime::isMainThread() )
         {
-            auto sync = glLockManager::CreateSyncObject( LockManager::DEFAULT_SYNC_FLAG_SSBO );
+            auto sync = LockManager::CreateSyncObject( RenderAPI::OpenGL, LockManager::DEFAULT_SYNC_FLAG_SSBO );
             if ( !lockRange( { 0u, _params._dataSize }, sync ) )
             {
                 DIVIDE_UNEXPECTED_CALL();
