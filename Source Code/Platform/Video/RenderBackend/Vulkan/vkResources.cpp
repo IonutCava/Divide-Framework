@@ -166,7 +166,7 @@ namespace Divide
             vkTextureTypeTable[to_base( TextureType::TEXTURE_1D )] = VK_IMAGE_TYPE_1D;
             vkTextureTypeTable[to_base( TextureType::TEXTURE_2D )] = VK_IMAGE_TYPE_2D;
             vkTextureTypeTable[to_base( TextureType::TEXTURE_3D )] = VK_IMAGE_TYPE_3D;
-            vkTextureTypeTable[to_base( TextureType::TEXTURE_CUBE_MAP )] = VK_IMAGE_TYPE_3D;
+            vkTextureTypeTable[to_base( TextureType::TEXTURE_CUBE_MAP )] = VK_IMAGE_TYPE_2D;
             vkTextureTypeTable[to_base( TextureType::TEXTURE_1D_ARRAY )] = VK_IMAGE_TYPE_1D;
             vkTextureTypeTable[to_base( TextureType::TEXTURE_2D_ARRAY )] = VK_IMAGE_TYPE_2D;
             vkTextureTypeTable[to_base( TextureType::TEXTURE_CUBE_ARRAY )] = VK_IMAGE_TYPE_2D;
@@ -279,7 +279,7 @@ namespace Divide
                             case GFXDataFormat::UNSIGNED_SHORT:  return VK_FORMAT_D16_UNORM;
                             case GFXDataFormat::SIGNED_INT:
                             case GFXDataFormat::UNSIGNED_INT:    return VK_API::s_depthFormatInformation._d24x8Supported ? VK_FORMAT_X8_D24_UNORM_PACK32 : VK_FORMAT_D32_SFLOAT;
-                            case GFXDataFormat::FLOAT_16:
+                            case GFXDataFormat::FLOAT_16:        DIVIDE_UNEXPECTED_CALL_MSG( "VKUtil::InternalFormat: Vulkan does not support half-float depth buffers!" ); break;
                             case GFXDataFormat::FLOAT_32:        return VK_API::s_depthFormatInformation._d32FSupported ? VK_FORMAT_D32_SFLOAT : VK_FORMAT_X8_D24_UNORM_PACK32;
                             default: break;
                         };
@@ -294,7 +294,7 @@ namespace Divide
                             case GFXDataFormat::UNSIGNED_SHORT:
                             case GFXDataFormat::SIGNED_INT:
                             case GFXDataFormat::UNSIGNED_INT:     return VK_API::s_depthFormatInformation._d24s8Supported ? VK_FORMAT_D24_UNORM_S8_UINT : VK_FORMAT_D32_SFLOAT_S8_UINT;
-                            case GFXDataFormat::FLOAT_16:
+                            case GFXDataFormat::FLOAT_16:         DIVIDE_UNEXPECTED_CALL_MSG("VKUtil::InternalFormat: Vulkan does not support half-float depth buffers!"); break;
                             case GFXDataFormat::FLOAT_32:         return  VK_API::s_depthFormatInformation._d32s8Supported ? VK_FORMAT_D32_SFLOAT_S8_UINT : VK_FORMAT_D24_UNORM_S8_UINT;
                             default: break;
                         };

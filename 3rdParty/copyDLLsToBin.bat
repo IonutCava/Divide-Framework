@@ -9,26 +9,26 @@ robocopy assimp/bin/Release/ ../Build/ assimp-vc142-mt.dll /NP /NJH /NJS
 robocopy freetype/bin/ ../Build/ freetype.dll /NP /NJH /NJS
 robocopy sdl/bin/Release/ ../Build/ SDL2.dll /NP /NJH /NJS
 robocopy sdl/bin/Release/ ../Build/ SDL2_mixer.dll /NP /NJH /NJS
+robocopy physx4/bin/win.x86_64.vc142.mt/release/ ../Build/ PhysXDevice64.dll /NP /NJH /NJS
+robocopy physx4/bin/win.x86_64.vc143.mt/release/ ../Build/ PhysXGpu_64.dll /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc143.mt/release/ ../Build/ PhysX_64.dll  /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc143.mt/release/ ../Build/ PhysXCommon_64.dll /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc143.mt/release/ ../Build/ PhysXCooking_64.dll /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc143.mt/release/ ../Build/ PhysXFoundation_64.dll /NP /NJH /NJS
-robocopy physx4//bin/win.x86_64.vc142.mt/release/ ../Build/ PhysXDevice64.dll /NP /NJH /NJS
-robocopy physx4//bin/win.x86_64.vc143.mt/release/ ../Build/ PhysXGpu_64.dll /NP /NJH /NJS
 goto run_Common
 
 :run_Profile
 ECHO Copying Profile DLLs
-robocopy assimp/bin/RelWithDebInfo/ ../Build/ assimp-vc142-mt.dll /NP /NJH /NJS
+robocopy assimp/bin/Release/ ../Build/ assimp-vc142-mt.dll /NP /NJH /NJS
 robocopy freetype/bin/ ../Build/ freetype.dll /NP /NJH /NJS
 robocopy sdl/bin/Release/ ../Build/ SDL2.dll /NP /NJH /NJS
 robocopy sdl/bin/Release/ ../Build/ SDL2_mixer.dll /NP /NJH /NJS
+robocopy physx4/bin/win.x86_64.vc142.mt/profile/ ../Build/ PhysXDevice64.dll /NP /NJH /NJS
+robocopy physx4/bin/win.x86_64.vc143.mt/profile/ ../Build/ PhysXGpu_64.dll /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc143.mt/profile/ ../Build/ PhysX_64.dll  /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc143.mt/profile/ ../Build/ PhysXCommon_64.dll /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc143.mt/profile/ ../Build/ PhysXCooking_64.dll /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc143.mt/profile/ ../Build/ PhysXFoundation_64.dll /NP /NJH /NJS
-robocopy physx4/bin/win.x86_64.vc142.mt/profile/ ../Build/ PhysXDevice64.dll /NP /NJH /NJS
-robocopy physx4/bin/win.x86_64.vc143.mt/profile/ ../Build/ PhysXGpu_64.dll /NP /NJH /NJS
 goto run_Common
 
 :run_Debug
@@ -37,12 +37,12 @@ robocopy assimp/bin/Debug/ ../Build/ assimp-vc142-mtd.dll /NP /NJH /NJS
 robocopy freetype/bin/ ../Build/ freetype_d.dll /NP /NJH /NJS
 robocopy sdl/bin/Debug/ ../Build/ SDL2.dll /NP /NJH /NJS
 robocopy sdl/bin/Debug/ ../Build/ SDL2_mixer.dll /NP /NJH /NJS
+robocopy physx4/bin/win.x86_64.vc142.mt/debug/ ../Build/ PhysXDevice64.dll /NP /NJH /NJS
+robocopy physx4/bin/win.x86_64.vc143.mt/debug/ ../Build/ PhysXGpu_64.dll /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc143.mt/debug/ ../Build/ PhysX_64.dll  /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc143.mt/debug/ ../Build/ PhysXCommon_64.dll /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc143.mt/debug/ ../Build/ PhysXCooking_64.dll /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc143.mt/debug/ ../Build/ PhysXFoundation_64.dll /NP /NJH /NJS
-robocopy physx4/bin/win.x86_64.vc142.mt/debug/ ../Build/ PhysXDevice64.dll /NP /NJH /NJS
-robocopy physx4/bin/win.x86_64.vc143.mt/debug/ ../Build/ PhysXGpu_64.dll /NP /NJH /NJS
 goto run_Common
 
 :run_Common

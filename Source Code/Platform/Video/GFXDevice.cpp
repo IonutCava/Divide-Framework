@@ -2442,9 +2442,7 @@ namespace Divide
 #pragma region Drawing functions
     void GFXDevice::drawTextureInViewport( const ImageView& texture, const size_t samplerHash, const Rect<I32>& viewport, const bool convertToSrgb, const bool drawToDepthOnly, bool drawBlend, GFX::CommandBuffer& bufferInOut )
     {
-        static GFX::BeginDebugScopeCommand   s_beginDebugScopeCmd{ "Draw Texture In Viewport" };
-
-        GFX::EnqueueCommand( bufferInOut, s_beginDebugScopeCmd );
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Draw Texture In Viewport";
         GFX::EnqueueCommand( bufferInOut, GFX::PushCameraCommand{ Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->snapshot() } );
         GFX::EnqueueCommand( bufferInOut, drawToDepthOnly ? _drawFSDepthPipelineCmd : drawBlend ? _drawFSTexturePipelineBlendCmd : _drawFSTexturePipelineCmd );
 
@@ -2463,8 +2461,8 @@ namespace Divide
         }
 
         GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
-        GFX::EnqueueCommand( bufferInOut, GFX::PopViewportCommand{} );
-        GFX::EnqueueCommand( bufferInOut, GFX::PopCameraCommand{} );
+        GFX::EnqueueCommand<GFX::PopViewportCommand>( bufferInOut );
+        GFX::EnqueueCommand<GFX::PopCameraCommand>( bufferInOut );
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
     }
 #pragma endregion
@@ -2639,8 +2637,9 @@ namespace Divide
 
     void GFXDevice::renderDebugViews( const Rect<I32> targetViewport, const I32 padding, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        static vector_fast<std::tuple<string, I32, Rect<I32>>> labelStack;
         static size_t labelStyleHash = TextLabelStyle( Font::DROID_SERIF_BOLD, UColour4( 196 ), 96 ).getHash();
+
+        thread_local vector_fast<std::tuple<string, I32, Rect<I32>>> labelStack;
 
         initDebugViews();
 

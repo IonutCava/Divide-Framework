@@ -273,7 +273,8 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
     _hasDummyAlphaChannel = false;
     {
         I32 x, y, n;
-        if (stbi_info_from_file(f, &x, &y, &n) && n == 3) {
+        if (stbi_info_from_file(f, &x, &y, &n) && n == 3)
+        {
             _hasDummyAlphaChannel = true;
             Console::warnfn(Locale::Get(_ID("WARN_IMAGETOOLS_RGB_FORMAT")), fullPath.c_str());
         }
@@ -568,11 +569,16 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
         checkError();
     }
 
-    // We don't support paletted images
-    if (imageInfo.Format == IL_COLOUR_INDEX) {
+    ILint channelCount = ilGetInteger(IL_IMAGE_CHANNELS);
+    // We don't support paletted images (or RGB8 in Vulkan)
+    if (imageInfo.Format == IL_COLOUR_INDEX || (channelCount == 3 && imageInfo.Type == IL_UNSIGNED_BYTE) )
+    {
+        Console::warnfn( Locale::Get( _ID( "WARN_IMAGETOOLS_RGB_FORMAT" ) ), fullPath.c_str() );
+
         ilConvertImage(IL_RGBA, IL_UNSIGNED_BYTE);
         imageInfo.Format = IL_RGBA;
         imageInfo.Type = IL_UNSIGNED_BYTE;
+        channelCount = 4u;
         checkError();
     }
 
@@ -618,7 +624,6 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
         checkError();
     }
 
-    const ILint channelCount = ilGetInteger(IL_IMAGE_CHANNELS);
     checkError();
 
     if (compressed) {

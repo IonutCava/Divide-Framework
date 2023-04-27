@@ -143,11 +143,6 @@ struct DeviceInformation
 /// Renderer Programming Interface
 class NOINITVTABLE RenderAPIWrapper : NonCopyable {
 public:
-
-    static constexpr U32 MaxFrameQueueSize = 2;
-    static_assert(MaxFrameQueueSize > 0, "FrameQueueSize is invalid!");
-
-public:
     virtual ~RenderAPIWrapper() = default;
 
 protected:

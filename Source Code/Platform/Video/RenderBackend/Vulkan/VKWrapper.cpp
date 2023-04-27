@@ -81,13 +81,36 @@ namespace
             return ret;
         };
 
-        if ( pCallbackData->messageIdNumber == -2111305990 || //UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension-debugging
-             pCallbackData->messageIdNumber == -101606015  || //UNASSIGNED-BestPractices-vkCreateDevice-specialuse-extension-d3demulation
-             pCallbackData->messageIdNumber == -1882996427)   //UNASSIGNED-BestPractices-vkCreateDevice-specialuse-extension-glemulation
-        {
-            return VK_FALSE;
-        }
+        constexpr const char* kSkippedMessages[] = {
+            "UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension-debugging",
+            "UNASSIGNED-BestPractices-vkCreateDevice-specialuse-extension-d3demulation",
+            "UNASSIGNED-BestPractices-vkCreateDevice-specialuse-extension-glemulation",
+            "UNASSIGNED-BestPractices-vkBindMemory-small-dedicated-allocation",
+            "UNASSIGNED-BestPractices-vkAllocateMemory-small-allocation",
+            "UNASSIGNED-BestPractices-SpirvDeprecated_WorkgroupSize"
+        };
 
+        if ( pCallbackData->pMessageIdName != nullptr )
+        {
+            if ( strstr( pCallbackData->pMessageIdName, "UNASSIGNED-BestPractices-Error-Result") != nullptr )
+            {
+                // We don't care about this error since we use VMA for our allocations and this is standard behaviour with that library
+                if ( strstr( pCallbackData->pMessage, "vkAllocateMemory()" ) != nullptr )
+                {
+                    return VK_FALSE;
+                }
+            }
+            else
+            {
+                for ( const char* msg : kSkippedMessages )
+                {
+                    if ( strstr( pCallbackData->pMessageIdName, msg ) != nullptr )
+                    {
+                        return VK_FALSE;
+                    }
+                }
+            }
+        }
         const string outputError = Util::StringFormat("[ %s ] %s : %s\n",
                                                       to_string_message_severity( messageSeverity ),
                                                       to_string_message_type( messageType ).c_str(),
@@ -443,15 +466,13 @@ namespace Divide
 
     void VKImmediateCmdContext::flushCommandBuffer( FlushCallback&& function, const char* scopeName )
     {
-        static U64 WRAP_COUNTER = 0u;
-
         LockGuard<Mutex> w_lock( _submitLock );
 
         const VkCommandBufferBeginInfo cmdBeginInfo = vk::commandBufferBeginInfo( VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT );
 
         VkFence fence = _bufferFences[_bufferIndex];
 
-        if ( WRAP_COUNTER > 0u )
+        if ( _wrapCounter > 0u )
         {
             vkWaitForFences( _context.getVKDevice(), 1, &fence, true, 9999999999 );
             vkResetFences( _context.getVKDevice(), 1, &fence );
@@ -478,7 +499,7 @@ namespace Divide
 
         if ( _bufferIndex == 0u )
         {
-            ++WRAP_COUNTER;
+            ++_wrapCounter;
         }
     }
 
@@ -1246,11 +1267,12 @@ namespace Divide
         else
         {
             // Because this can only happen on the main thread, try and avoid costly lookups for hot-loop drawing
-            static VertexDataInterface::Handle s_lastID = { U16_MAX, 0u };
-            static VertexDataInterface* s_lastBuffer = nullptr;
+            thread_local VertexDataInterface::Handle s_lastID = { U16_MAX, 0u };
+            thread_local VertexDataInterface* s_lastBuffer = nullptr;
 
             if ( s_lastID != cmd._sourceBuffer )
             {
+                SharedLock<SharedMutex> r_lock( VertexDataInterface::s_VDIPoolLock );
                 s_lastID = cmd._sourceBuffer;
                 s_lastBuffer = VertexDataInterface::s_VDIPool.find( s_lastID );
             }
@@ -1967,13 +1989,9 @@ namespace Divide
             vector<VkBufferCopy2> _copiesPerBuffer;
         };
 
-        static vector<PerBufferCopies> s_copyRequests;
-
+        using CopyContainer = vector<PerBufferCopies>;
         using BarrierContainer = eastl::fixed_vector<VkBufferMemoryBarrier2, 32, true>;
-        static BarrierContainer s_barriers{};
-
         using BatchedTransferQueue = eastl::fixed_vector<VKTransferQueue::TransferRequest, 64, false>;
-        static BatchedTransferQueue s_transferQueueBatched;
 
         void PrepareTransferRequest( const VKTransferQueue::TransferRequest& request, bool toWrite, VkBufferMemoryBarrier2& memBarrierOut )
         {
@@ -2001,31 +2019,31 @@ namespace Divide
             memBarrierOut.buffer = request.dstBuffer;
         }
 
-        void FlushBarriers( VkCommandBuffer cmd, bool toWrite )
+        void FlushBarriers( BarrierContainer& barriers, BatchedTransferQueue& transferQueueBatched, VkCommandBuffer cmd, bool toWrite )
         {
             PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmd );
 
-            for ( const auto& request : s_transferQueueBatched )
+            for ( const auto& request : transferQueueBatched )
             {
-                PrepareTransferRequest( request, toWrite, s_barriers.emplace_back() );
+                PrepareTransferRequest( request, toWrite, barriers.emplace_back() );
             }
 
-            if ( !s_barriers.empty() )
+            if ( !barriers.empty() )
             {
                 VkDependencyInfo dependencyInfo = vk::dependencyInfo();
-                dependencyInfo.bufferMemoryBarrierCount = to_U32( s_barriers.size() );
-                dependencyInfo.pBufferMemoryBarriers = s_barriers.data();
+                dependencyInfo.bufferMemoryBarrierCount = to_U32( barriers.size() );
+                dependencyInfo.pBufferMemoryBarriers = barriers.data();
 
                 vkCmdPipelineBarrier2( cmd, &dependencyInfo );
-                efficient_clear( s_barriers );
+                efficient_clear( barriers );
             }
         }
 
-        void FlushCopyRequests( VkCommandBuffer cmd )
+        void FlushCopyRequests( CopyContainer& copyRequests, VkCommandBuffer cmd )
         {
             PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmd );
 
-            for ( const PerBufferCopies& request : s_copyRequests )
+            for ( const PerBufferCopies& request : copyRequests )
             {
                 VkCopyBufferInfo2 copyInfo = { .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2 };
                 copyInfo.dstBuffer = request._dstBuffer;
@@ -2037,23 +2055,23 @@ namespace Divide
             }
         }
 
-        void PrepareBufferCopyBarriers()
+        void PrepareBufferCopyBarriers( CopyContainer& copyRequests, BatchedTransferQueue& transferQueueBatched )
         {
             PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-            s_copyRequests.clear();
-            s_copyRequests.reserve( s_transferQueueBatched.size() );
+            copyRequests.clear();
+            copyRequests.reserve( transferQueueBatched.size() );
 
             VkBufferCopy2 copy{ .sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
 
-            for ( const auto& request : s_transferQueueBatched )
+            for ( const auto& request : transferQueueBatched )
             {
                 copy.dstOffset = request.dstOffset;
                 copy.srcOffset = request.srcOffset;
                 copy.size = request.size;
 
                 bool found = false;
-                for ( PerBufferCopies& entry : s_copyRequests )
+                for ( PerBufferCopies& entry : copyRequests )
                 {
                     if ( entry._srcBuffer == request.srcBuffer && entry._dstBuffer == request.dstBuffer )
                     {
@@ -2065,7 +2083,7 @@ namespace Divide
 
                 if ( !found )
                 {
-                    PerBufferCopies& cRequest = s_copyRequests.emplace_back();
+                    PerBufferCopies& cRequest = copyRequests.emplace_back();
                     cRequest._srcBuffer = request.srcBuffer;
                     cRequest._dstBuffer = request.dstBuffer;
                     cRequest._copiesPerBuffer.emplace_back( copy );
@@ -2073,22 +2091,22 @@ namespace Divide
             }
         }
 
-        void BatchTransferQueue( VKTransferQueue& transferQueue )
+        void BatchTransferQueue(BarrierContainer& barriers, BatchedTransferQueue& transferQueueBatched, VKTransferQueue& transferQueue )
         {
             PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-            s_transferQueueBatched.clear();
+            transferQueueBatched.clear();
 
             while ( !transferQueue._requests.empty() )
             {
                 const VKTransferQueue::TransferRequest& request = transferQueue._requests.front();
                 if ( request.srcBuffer != VK_NULL_HANDLE )
                 {
-                    s_transferQueueBatched.push_back( request );
+                    transferQueueBatched.push_back( request );
                 }
                 else
                 {
-                    PrepareTransferRequest( request, false, s_barriers.emplace_back() );
+                    PrepareTransferRequest( request, false, barriers.emplace_back() );
                 }
 
                 transferQueue._requests.pop_front();
@@ -2099,11 +2117,15 @@ namespace Divide
         {
             PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
 
-            BatchTransferQueue( transferQueue );
-            FlushBarriers( cmdBuffer, true );
-            PrepareBufferCopyBarriers();
-            FlushCopyRequests( cmdBuffer );
-            FlushBarriers( cmdBuffer, false );
+            thread_local vector<PerBufferCopies> s_copyRequests;
+            thread_local BarrierContainer s_barriers{};
+            thread_local BatchedTransferQueue s_transferQueueBatched;
+
+            BatchTransferQueue(s_barriers, s_transferQueueBatched, transferQueue );
+            FlushBarriers(s_barriers, s_transferQueueBatched, cmdBuffer, true );
+            PrepareBufferCopyBarriers( s_copyRequests, s_transferQueueBatched );
+            FlushCopyRequests( s_copyRequests, cmdBuffer );
+            FlushBarriers(s_barriers, s_transferQueueBatched, cmdBuffer, false );
 
             s_transferQueueBatched.clear();
             transferQueue._dirty.store(false);
@@ -2291,6 +2313,12 @@ namespace Divide
                 {
                     PROFILE_SCOPE( "Begin Rendering", Profiler::Category::Graphics );
 
+                    stateTracker._renderTargetFormatHash = 0u;
+                    for ( U32 i = 0u; i < stateTracker._pipelineRenderInfo.colorAttachmentCount; ++i )
+                    {
+                        Util::Hash_combine( stateTracker._renderTargetFormatHash, stateTracker._pipelineRenderInfo.pColorAttachmentFormats[i]);
+                    }
+                
                     const Rect<I32> renderArea = { 
                          renderingInfo.renderArea.offset.x,
                          renderingInfo.renderArea.offset.y,
@@ -2300,13 +2328,6 @@ namespace Divide
 
                     stateTracker._activeRenderTargetDimensions = { renderArea.sizeX, renderArea.sizeY};
 
-
-                    stateTracker._renderTargetFormatHash = 0u;
-                    for ( U32 i = 0u; i < stateTracker._pipelineRenderInfo.colorAttachmentCount; ++i )
-                    {
-                        Util::Hash_combine( stateTracker._renderTargetFormatHash, stateTracker._pipelineRenderInfo.pColorAttachmentFormats[i]);
-                    }
-                
                     _context.setViewport( renderArea );
                     _context.setScissor( renderArea );
                     vkCmdBeginRendering( cmdBuffer, &renderingInfo);
@@ -2677,34 +2698,19 @@ namespace Divide
                     }
                 }
 
-                constexpr VkPipelineStageFlags2 PIPELINE_FRAGMENT_TEST_BITS = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
-
                 for ( const auto& it : crtCmd->_textureLayoutChanges )
                 {
                     if ( it._sourceLayout == it._targetLayout )
                     {
                         continue;
                     }
+                    DIVIDE_ASSERT( it._targetLayout != ImageUsage::UNDEFINED);
 
                     const vkTexture* vkTex = static_cast<const vkTexture*>(it._targetView._srcTexture);
 
-                    auto subRange = it._targetView._subRange;
-                    if ( IsCubeTexture( vkTex->descriptor().texType() ) &&
-                         subRange._layerRange._count != U16_MAX )
-                    {
-                        subRange._layerRange._count *= 6u;
-                    }
+                    const bool isDepthTexture = IsDepthTexture( vkTex->descriptor().packing() );
 
-                    const VkImageLayout targetLayout = IsDepthTexture( vkTex->descriptor().packing() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-                    auto& memBarrier = imageBarriers[imageBarrierCount++];
-                    memBarrier = vk::imageMemoryBarrier2();
-                    memBarrier.image = vkTex->image()->_image;
-                    memBarrier.subresourceRange.aspectMask = vkTexture::GetAspectFlags(vkTex->descriptor());
-                    memBarrier.subresourceRange.baseMipLevel = subRange._mipLevels._offset;
-                    memBarrier.subresourceRange.levelCount = subRange._mipLevels._count == U16_MAX ? VK_REMAINING_MIP_LEVELS : subRange._mipLevels._count;
-                    memBarrier.subresourceRange.baseArrayLayer = subRange._layerRange._offset;
-                    memBarrier.subresourceRange.layerCount = subRange._layerRange._count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : subRange._layerRange._count;
+                    vkTexture::TransitionType transitionType = vkTexture::TransitionType::COUNT;
 
                     switch ( it._targetLayout )
                     {
@@ -2714,88 +2720,145 @@ namespace Divide
                         } break;
                         case ImageUsage::SHADER_READ:
                         {
-                            memBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                            memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-                            memBarrier.newLayout = targetLayout;
+                            switch ( it._sourceLayout )
+                            {
+                                case ImageUsage::UNDEFINED:
+                                {
+                                    transitionType = isDepthTexture ? vkTexture::TransitionType::UNDEFINED_TO_SHADER_READ_DEPTH : vkTexture::TransitionType::UNDEFINED_TO_SHADER_READ_COLOUR;
+                                } break;
+                                case ImageUsage::SHADER_READ:
+                                {
+                                    DIVIDE_UNEXPECTED_CALL();
+                                } break;
+                                case ImageUsage::SHADER_WRITE:
+                                {
+                                    transitionType = isDepthTexture ? vkTexture::TransitionType::GENERAL_TO_SHADER_READ_DEPTH : vkTexture::TransitionType::GENERAL_TO_SHADER_READ_COLOUR;
+                                }break;
+                                case ImageUsage::SHADER_READ_WRITE:
+                                {
+                                    transitionType = isDepthTexture ? vkTexture::TransitionType::SHADER_READ_WRITE_TO_SHADER_READ_DEPTH : vkTexture::TransitionType::SHADER_READ_WRITE_TO_SHADER_READ_COLOUR;
+                                } break;
+                                case ImageUsage::RT_COLOUR_ATTACHMENT:
+                                {
+                                    transitionType = vkTexture::TransitionType::COLOUR_ATTACHMENT_TO_SHADER_READ;
+                                } break;
+                                case ImageUsage::RT_DEPTH_ATTACHMENT:
+                                {
+                                    transitionType = vkTexture::TransitionType::DEPTH_ATTACHMENT_TO_SHADER_READ;
+                                } break;
+                                case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT:
+                                {
+                                    transitionType = vkTexture::TransitionType::DEPTH_STENCIL_ATTACHMENT_TO_SHADER_READ;
+                                } break;
+                                default:
+                                {
+                                    DIVIDE_UNEXPECTED_CALL();
+                                } break;
+                            }
                         } break;
                         case ImageUsage::SHADER_WRITE:
                         {
-                            memBarrier.dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
-                            memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-                            memBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+                            switch ( it._sourceLayout )
+                            {
+                                case ImageUsage::UNDEFINED:
+                                {
+                                    transitionType = vkTexture::TransitionType::UNDEFINED_TO_GENERAL;
+                                } break;
+                                case ImageUsage::SHADER_READ:
+                                {
+                                    transitionType = isDepthTexture ? vkTexture::TransitionType::SHADER_READ_DEPTH_TO_GENERAL : vkTexture::TransitionType::SHADER_READ_COLOUR_TO_GENERAL;
+                                } break;
+                                case ImageUsage::SHADER_WRITE:
+                                {
+                                    DIVIDE_UNEXPECTED_CALL();
+                                }break;
+                                case ImageUsage::SHADER_READ_WRITE:
+                                {
+                                    NOP(); // Both in general layout
+                                } break;
+                                case ImageUsage::RT_COLOUR_ATTACHMENT:
+                                {
+                                    transitionType = vkTexture::TransitionType::COLOUR_ATTACHMENT_TO_SHADER_WRITE;
+                                } break;
+                                case ImageUsage::RT_DEPTH_ATTACHMENT:
+                                {
+                                    transitionType = vkTexture::TransitionType::DEPTH_ATTACHMENT_TO_SHADER_WRITE;
+                                } break;
+                                case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT:
+                                {
+                                    transitionType = vkTexture::TransitionType::DEPTH_STENCIL_ATTACHMENT_TO_SHADER_WRITE;
+                                } break;
+                                default:
+                                {
+                                    DIVIDE_UNEXPECTED_CALL();
+                                } break;
+                            }
                         } break;
                         case ImageUsage::SHADER_READ_WRITE:
                         {
-                            memBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
-                            memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-                            memBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+                            switch ( it._sourceLayout )
+                            {
+                                case ImageUsage::UNDEFINED:
+                                {
+                                    transitionType = vkTexture::TransitionType::UNDEFINED_TO_SHADER_READ_WRITE;
+                                } break;
+                                case ImageUsage::SHADER_READ:
+                                {
+                                    transitionType = isDepthTexture ? vkTexture::TransitionType::SHADER_READ_DEPTH_TO_SHADER_READ_WRITE : vkTexture::TransitionType::SHADER_READ_COLOUR_TO_SHADER_READ_WRITE;
+                                } break;
+                                case ImageUsage::SHADER_WRITE:
+                                {
+                                    NOP(); // Both in general layout
+                                }break;
+                                case ImageUsage::SHADER_READ_WRITE:
+                                {
+                                    DIVIDE_UNEXPECTED_CALL();
+                                } break;
+                                case ImageUsage::RT_COLOUR_ATTACHMENT:
+                                {
+                                    transitionType = vkTexture::TransitionType::COLOUR_ATTACHMENT_TO_SHADER_READ_WRITE;
+                                } break;
+                                case ImageUsage::RT_DEPTH_ATTACHMENT:
+                                {
+                                    transitionType = vkTexture::TransitionType::DEPTH_ATTACHMENT_TO_SHADER_READ_WRITE;
+                                } break;
+                                case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT:
+                                {
+                                    transitionType = vkTexture::TransitionType::DEPTH_STENCIL_ATTACHMENT_TO_SHADER_READ_WRITE;
+                                } break;
+                                default:
+                                {
+                                    DIVIDE_UNEXPECTED_CALL();
+                                } break;
+                            }
                         } break;
                         case ImageUsage::RT_COLOUR_ATTACHMENT:
                         {
-                            memBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                            memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-                            memBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                            transitionType = vkTexture::TransitionType::UNDEFINED_TO_COLOUR_ATTACHMENT;
                         } break;
                         case ImageUsage::RT_DEPTH_ATTACHMENT:
                         {
-                            memBarrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-                            memBarrier.dstStageMask = PIPELINE_FRAGMENT_TEST_BITS;
-                            memBarrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+                            transitionType = vkTexture::TransitionType::UNDEFINED_TO_DEPTH_ATTACHMENT;
                         } break;
                         case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT:
                         {
-                            memBarrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-                            memBarrier.dstStageMask = PIPELINE_FRAGMENT_TEST_BITS;
-                            memBarrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                            transitionType = vkTexture::TransitionType::UNDEFINED_TO_DEPTH_STENCIL_ATTACHMENT;
                         } break;
                         default: DIVIDE_UNEXPECTED_CALL();
                     };
 
-                    switch ( it._sourceLayout )
+                    if ( transitionType != vkTexture::TransitionType::COUNT )
                     {
-                        case ImageUsage::UNDEFINED:
-                        {
-                            memBarrier.srcAccessMask = VK_ACCESS_2_NONE;
-                            memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
-                            memBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-                        } break;
-                        case ImageUsage::SHADER_READ:
-                        {
-                            memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                            memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-                            memBarrier.oldLayout = targetLayout;
-                        } break;
-                        case ImageUsage::SHADER_WRITE:
-                        {
-                            memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
-                            memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-                            memBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-                        } break;
-                        case ImageUsage::SHADER_READ_WRITE:
-                        {
-                            memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
-                            memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-                            memBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-                        } break;
-                        case ImageUsage::RT_COLOUR_ATTACHMENT:
-                        {
-                            memBarrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                            memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-                            memBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                        } break;
-                        case ImageUsage::RT_DEPTH_ATTACHMENT:
-                        {
-                            memBarrier.srcAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-                            memBarrier.srcStageMask = PIPELINE_FRAGMENT_TEST_BITS;
-                            memBarrier.oldLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-                        } break;
-                        case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT:
-                        {
-                            memBarrier.srcAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-                            memBarrier.srcStageMask = PIPELINE_FRAGMENT_TEST_BITS;
-                            memBarrier.oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-                        } break;
-                        default: DIVIDE_UNEXPECTED_CALL();
+                        auto subRange = it._targetView._subRange;
+                        const VkImageSubresourceRange subResourceRange = {
+                            .aspectMask = vkTexture::GetAspectFlags( vkTex->descriptor() ),
+                            .baseMipLevel = subRange._mipLevels._offset,
+                            .levelCount = subRange._mipLevels._count == U16_MAX ? VK_REMAINING_MIP_LEVELS : subRange._mipLevels._count,
+                            .baseArrayLayer = subRange._layerRange._offset,
+                            .layerCount = subRange._layerRange._count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : subRange._layerRange._count,
+                        };
+
+                        vkTexture::TransitionTexture( transitionType, subResourceRange, vkTex->image()->_image, imageBarriers[imageBarrierCount++] );
                     }
                 }
 
@@ -2998,7 +3061,7 @@ namespace Divide
         {
             PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
 
-            static F32 color[4] = { 0.0f, 1.0f, 0.0f, 1.f };
+            constexpr F32 color[4] = { 0.0f, 1.0f, 0.0f, 1.f };
 
             VkDebugUtilsLabelEXT labelInfo{};
             labelInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
@@ -3017,7 +3080,8 @@ namespace Divide
         {
             PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
 
-            static F32 color[4] = { 0.5f, 0.5f, 0.5f, 1.f };
+            constexpr F32 color[4] = { 0.5f, 0.5f, 0.5f, 1.f };
+
             VkDebugUtilsLabelEXT labelInfo{};
             labelInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
             labelInfo.pLabelName = message;
@@ -3056,7 +3120,7 @@ namespace Divide
                 const SamplerObjectMap::const_iterator it = s_samplerMap.find( samplerHash );
                 if ( it != std::cend( s_samplerMap ) )
                 {
-                    // Return the OpenGL handle for the sampler object matching the specified hash value
+                    // Return the Vulkan handle for the sampler object matching the specified hash value
                     return it->second;
                 }
             }

@@ -142,6 +142,7 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         TextureDescriptor environmentDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RG );
         environmentDescriptor.mipMappingState(TextureDescriptor::MipMappingState::AUTO);
         environmentDescriptor.addImageUsageFlag(ImageUsage::SHADER_WRITE);
+        environmentDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
 
         RenderTargetDescriptor desc = {};
         desc._attachments = 

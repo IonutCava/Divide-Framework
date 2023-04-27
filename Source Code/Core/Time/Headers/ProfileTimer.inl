@@ -35,7 +35,8 @@
 namespace Divide {
 namespace Time {
 
-inline U64 ProfileTimer::get() const {
+inline U64 ProfileTimer::get() const
+{
     if (_timerAverage == 0) {
         return getChildTotal();
     }
@@ -43,27 +44,33 @@ inline U64 ProfileTimer::get() const {
     return _timerAverage / std::max(_timerCounter, 1u);
 }
 
-inline const string& ProfileTimer::name() const noexcept {
+inline const string& ProfileTimer::name() const noexcept
+{
     return _name;
 }
 
-inline ProfileTimer& ADD_TIMER(const char* timerName) {
+inline ProfileTimer& ADD_TIMER(const char* timerName)
+{
     return ProfileTimer::getNewTimer(timerName);
 }
 
-inline void START_TIMER(ProfileTimer& timer) noexcept {
+inline void START_TIMER(ProfileTimer& timer) noexcept
+{
     timer.start();
 }
 
-inline void STOP_TIMER(ProfileTimer& timer) noexcept {
+inline void STOP_TIMER(ProfileTimer& timer) noexcept
+{
     timer.stop();
 }
 
-inline string PRINT_TIMER(const ProfileTimer& timer) {
+inline string PRINT_TIMER(const ProfileTimer& timer) 
+{
     return timer.print();
 }
 
-inline void REMOVE_TIMER(ProfileTimer*& timer) { 
+inline void REMOVE_TIMER(ProfileTimer*& timer)
+{
     ProfileTimer::removeTimer(*timer);
 }
 

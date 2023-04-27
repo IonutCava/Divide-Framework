@@ -48,16 +48,8 @@ namespace Divide
             return;
         }
 
-        enum class TransitionType : U8
-        {
-            SHADER_READ_TO_BLIT_READ,
-            SHADER_READ_TO_BLIT_WRITE,
-            BLIT_READ_TO_SHADER_READ,
-            BLIT_WRITE_TO_SHADER_READ,
-            COUNT
-        };
 
-        const auto transitionImage = [&cmdBuffer]( vkTexture* tex, VkImage image, VkImageMemoryBarrier2& memBarrierOut, TransitionType transitionType )
+        const auto transitionImage = [&cmdBuffer]( vkTexture* tex, VkImage image, VkImageMemoryBarrier2& memBarrierOut, vkTexture::TransitionType type )
         {
             ImageSubRange subRange = tex->getView()._subRange;
 
@@ -70,59 +62,16 @@ namespace Divide
                 }
             }
 
-            memBarrierOut = vk::imageMemoryBarrier2();
-
-            memBarrierOut.subresourceRange.aspectMask = vkTexture::GetAspectFlags( tex->descriptor() );
-            memBarrierOut.subresourceRange.baseMipLevel = subRange._mipLevels._offset;
-            memBarrierOut.subresourceRange.levelCount = subRange._mipLevels._count == U16_MAX ? VK_REMAINING_MIP_LEVELS : subRange._mipLevels._count;
-            memBarrierOut.subresourceRange.baseArrayLayer = subRange._layerRange._offset;
-            memBarrierOut.subresourceRange.layerCount = subRange._layerRange._count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : subRange._layerRange._count;
-            memBarrierOut.image = image;
-
-            const VkImageLayout targetLayout = IsDepthTexture( tex->descriptor().packing() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-            switch ( transitionType )
-            {
-                case TransitionType::SHADER_READ_TO_BLIT_READ :
-                {
-                    memBarrierOut.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                    memBarrierOut.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-                    memBarrierOut.oldLayout = targetLayout;
-                    memBarrierOut.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
-                    memBarrierOut.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_BLIT_BIT;
-                    memBarrierOut.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-                } break;
-                case TransitionType::SHADER_READ_TO_BLIT_WRITE :
-                {
-                    memBarrierOut.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                    memBarrierOut.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-                    memBarrierOut.oldLayout = targetLayout;
-                    memBarrierOut.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-                    memBarrierOut.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_BLIT_BIT;
-                    memBarrierOut.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-
-                } break;
-                case TransitionType::BLIT_READ_TO_SHADER_READ :
-                {
-                    memBarrierOut.srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
-                    memBarrierOut.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_BLIT_BIT;
-                    memBarrierOut.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-                    memBarrierOut.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                    memBarrierOut.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-                    memBarrierOut.newLayout = targetLayout;
-                } break;
-                case TransitionType::BLIT_WRITE_TO_SHADER_READ :
-                {
-                    memBarrierOut.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-                    memBarrierOut.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_BLIT_BIT;
-                    memBarrierOut.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-                    memBarrierOut.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                    memBarrierOut.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-                    memBarrierOut.newLayout = targetLayout;
-                } break;
-
-                default: DIVIDE_UNEXPECTED_CALL(); break;
+            const VkImageSubresourceRange subResource = {
+                .aspectMask = vkTexture::GetAspectFlags( tex->descriptor() ),
+                .baseMipLevel = subRange._mipLevels._offset,
+                .levelCount = subRange._mipLevels._count == U16_MAX ? VK_REMAINING_MIP_LEVELS : subRange._mipLevels._count,
+                .baseArrayLayer = subRange._layerRange._offset,
+                .layerCount = subRange._layerRange._count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : subRange._layerRange._count
             };
+
+
+            vkTexture::TransitionTexture(type, subResource, image, memBarrierOut);
         };
 
         VK_API::PushDebugMessage(cmdBuffer, "vkRrenderTarget::blitFrom");
@@ -154,9 +103,16 @@ namespace Divide
 
             const bool needsResolve = vkTexIn->sampleFlagBits() != vkTexOut->sampleFlagBits() && vkTexIn->sampleFlagBits() != VK_SAMPLE_COUNT_1_BIT;
 
-            transitionImage( vkTexIn, needsResolve ? vkTexIn->resolvedImage()->_image : vkTexIn->image()->_image, imageBarriers[imageBarrierCount++], TransitionType::SHADER_READ_TO_BLIT_READ);
-            transitionImage( vkTexOut, vkTexOut->image()->_image, imageBarriers[imageBarrierCount++], TransitionType::SHADER_READ_TO_BLIT_WRITE );
+            const bool isDepthTextureIn = IsDepthTexture( vkTexIn->descriptor().packing() );
+            const bool isDepthTextureOut = IsDepthTexture( vkTexOut->descriptor().packing() );
 
+            {
+                const vkTexture::TransitionType sourceTransition = isDepthTextureIn ? vkTexture::TransitionType::SHADER_READ_TO_BLIT_READ_DEPTH : vkTexture::TransitionType::SHADER_READ_TO_BLIT_READ_COLOUR;
+                const vkTexture::TransitionType targetTransition = isDepthTextureOut ? vkTexture::TransitionType::SHADER_READ_TO_BLIT_WRITE_DEPTH : vkTexture::TransitionType::SHADER_READ_TO_BLIT_WRITE_COLOUR;
+
+                transitionImage( vkTexIn, needsResolve ? vkTexIn->resolvedImage()->_image : vkTexIn->image()->_image, imageBarriers[imageBarrierCount++], sourceTransition);
+                transitionImage( vkTexOut, vkTexOut->image()->_image, imageBarriers[imageBarrierCount++], targetTransition );
+            }
 
             const U16 srcDepth = vkTexIn->descriptor().texType() == TextureType::TEXTURE_3D ? vkTexIn->depth() : 1u;
             const U16 dstDepth = vkTexOut->descriptor().texType() == TextureType::TEXTURE_3D ? vkTexIn->depth() : 1u;
@@ -236,8 +192,14 @@ namespace Divide
                 vkCmdBlitImage2( cmdBuffer, &blitInfo );
             }
 
-            transitionImage( vkTexIn, needsResolve ? vkTexIn->resolvedImage()->_image : vkTexIn->image()->_image, imageBarriers[imageBarrierCount++],  TransitionType::BLIT_READ_TO_SHADER_READ );
-            transitionImage( vkTexOut, vkTexOut->image()->_image, imageBarriers[imageBarrierCount++], TransitionType::BLIT_WRITE_TO_SHADER_READ );
+            {
+                const vkTexture::TransitionType sourceTransition = isDepthTextureIn ? vkTexture::TransitionType::BLIT_READ_TO_SHADER_READ_DEPTH : vkTexture::TransitionType::BLIT_READ_TO_SHADER_READ_COLOUR;
+                const vkTexture::TransitionType targetTransition = isDepthTextureOut ? vkTexture::TransitionType::BLIT_WRITE_TO_SHADER_READ_DEPTH : vkTexture::TransitionType::BLIT_WRITE_TO_SHADER_READ_COLOUR;
+
+                transitionImage( vkTexIn, needsResolve ? vkTexIn->resolvedImage()->_image : vkTexIn->image()->_image, imageBarriers[imageBarrierCount++], sourceTransition );
+                transitionImage( vkTexOut, vkTexOut->image()->_image, imageBarriers[imageBarrierCount++], targetTransition );
+            }
+
             if ( imageBarrierCount > 0u )
             {
                 dependencyInfo.imageMemoryBarrierCount = imageBarrierCount;
@@ -251,62 +213,15 @@ namespace Divide
         VK_API::PopDebugMessage( cmdBuffer );
     }
 
-    void vkRenderTarget::transitionTexture( const bool toWrite, const VkImageSubresourceRange& subresourceRange, const VkImage image, const bool isDepth, const bool hasStencil, const bool isResolve, VkImageMemoryBarrier2& memBarrier )
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        memBarrier = vk::imageMemoryBarrier2();
-        memBarrier.image = image;
-        memBarrier.subresourceRange = subresourceRange;
-
-        if ( toWrite )
-        {
-            memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-            memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-            memBarrier.oldLayout = isDepth ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-            if ( isDepth )
-            {
-                memBarrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-                memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
-                memBarrier.newLayout = hasStencil ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-            }
-            else
-            {
-                memBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
-                memBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            }
-        }
-        else
-        {
-            memBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-            memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-            memBarrier.newLayout = isDepth ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-            if ( isDepth )
-            {
-
-                memBarrier.srcAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-                memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
-                memBarrier.oldLayout = hasStencil ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-            }
-            else
-            {
-                memBarrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
-                memBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            }
-        }
-    }
-
     void vkRenderTarget::transitionAttachments( VkCommandBuffer cmdBuffer, const RTDrawDescriptor& descriptor, const bool toWrite )
     {
         PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
 
         DIVIDE_ASSERT( descriptor._mipWriteLevel != INVALID_INDEX );
+
+        thread_local VkDependencyInfo dependencyInfo = vk::dependencyInfo();
         // Double the number of barriers needed in case we have an MSAA RenderTarget (we need to transition the resolve targets as well)
-        static std::array<VkImageMemoryBarrier2, (to_base( RTColourAttachmentSlot::COUNT ) + 1) * 2> memBarriers{};
+        thread_local std::array<VkImageMemoryBarrier2, (to_base( RTColourAttachmentSlot::COUNT ) + 1) * 2> memBarriers{};
         U8 memBarrierCount = 0u;
 
         const DrawLayerEntry& srcDepthLayer = descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX];
@@ -365,7 +280,7 @@ namespace Divide
                     subresourceRange.baseArrayLayer = targetView._subRange._layerRange._offset;
                     subresourceRange.layerCount = targetView._subRange._layerRange._count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : targetView._subRange._layerRange._count;
 
-                    transitionTexture(toWrite, subresourceRange, vkTex->image()->_image, false, false, false, memBarriers[memBarrierCount++] );
+                    vkTexture::TransitionTexture(toWrite ? vkTexture::TransitionType::UNDEFINED_TO_COLOUR_ATTACHMENT : vkTexture::TransitionType::COLOUR_ATTACHMENT_TO_SHADER_READ, subresourceRange, vkTex->image()->_image, memBarriers[memBarrierCount++] );
 
                     if ( vkTex->sampleFlagBits() != VK_SAMPLE_COUNT_1_BIT )
                     {
@@ -376,7 +291,7 @@ namespace Divide
                         subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
                         subresourceRange.baseArrayLayer = 0u;
                         subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
-                        transitionTexture(toWrite, subresourceRange, vkTex->resolvedImage()->_image, false, false, true, memBarriers[memBarrierCount++] );
+                        vkTexture::TransitionTexture( toWrite ? vkTexture::TransitionType::UNDEFINED_TO_COLOUR_RESOLVE_ATTACHMENT : vkTexture::TransitionType::COLOUR_RESOLVE_ATTACHMENT_TO_SHADER_READ, subresourceRange, vkTex->resolvedImage()->_image, memBarriers[memBarrierCount++] );
                     }
                 }
             }
@@ -416,8 +331,13 @@ namespace Divide
             subresourceRange.baseArrayLayer = targetView._subRange._layerRange._offset;
             subresourceRange.layerCount = targetView._subRange._layerRange._count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : targetView._subRange._layerRange._count;
 
-            transitionTexture( toWrite, subresourceRange, vkTex->image()->_image, true, hasStencil, false, memBarriers[memBarrierCount++]);
-            
+            vkTexture::TransitionTexture( hasStencil
+                                           ? toWrite ? vkTexture::TransitionType::UNDEFINED_TO_DEPTH_STENCIL_ATTACHMENT : vkTexture::TransitionType::DEPTH_STENCIL_ATTACHMENT_TO_SHADER_READ
+                                           : toWrite ? vkTexture::TransitionType::UNDEFINED_TO_DEPTH_ATTACHMENT : vkTexture::TransitionType::DEPTH_ATTACHMENT_TO_SHADER_READ,
+                                         subresourceRange, 
+                                         vkTex->image()->_image,
+                                         memBarriers[memBarrierCount++] );
+
             if ( vkTex->sampleFlagBits() != VK_SAMPLE_COUNT_1_BIT )
             {
                 PROFILE_SCOPE( "Depth Resolve", Profiler::Category::Graphics );
@@ -427,7 +347,12 @@ namespace Divide
                 subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
                 subresourceRange.baseArrayLayer = 0u;
                 subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
-                transitionTexture(toWrite, subresourceRange, vkTex->resolvedImage()->_image, true, hasStencil, true, memBarriers[memBarrierCount++] );
+                vkTexture::TransitionTexture( hasStencil
+                                               ? toWrite ? vkTexture::TransitionType::UNDEFINED_TO_DEPTH_STENCIL_RESOLVE_ATTACHMENT : vkTexture::TransitionType::DEPTH_STENCIL_RESOLVE_ATTACHMENT_TO_SHADER_READ
+                                               : toWrite ? vkTexture::TransitionType::UNDEFINED_TO_DEPTH_RESOLVE_ATTACHMENT : vkTexture::TransitionType::DEPTH_RESOLVE_ATTACHMENT_TO_SHADER_READ,
+                                              subresourceRange,
+                                              vkTex->resolvedImage()->_image,
+                                              memBarriers[memBarrierCount++] );
             }
         }
 
@@ -435,7 +360,6 @@ namespace Divide
         {
             PROFILE_SCOPE( "Pipeline Barrier", Profiler::Category::Graphics );
 
-            VkDependencyInfo dependencyInfo = vk::dependencyInfo();
             dependencyInfo.imageMemoryBarrierCount = memBarrierCount;
             dependencyInfo.pImageMemoryBarriers = memBarriers.data();
 
@@ -509,7 +433,7 @@ namespace Divide
                         imageViewDescriptor._subRange._mipLevels = { descriptor._mipWriteLevel, 1u };
                     }
 
-
+                    imageViewDescriptor._resolveTarget = false;
                     imageViewDescriptor._format = vkTex->vkFormat();
                     imageViewDescriptor._type = imageViewDescriptor._subRange._layerRange._count > 1u ? TextureType::TEXTURE_2D_ARRAY : TextureType::TEXTURE_2D;
                     imageViewDescriptor._usage = ImageUsage::RT_COLOUR_ATTACHMENT;
@@ -541,7 +465,6 @@ namespace Divide
                         info.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
                         info.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
                         info.resolveImageView = vkTex->getImageView( imageViewDescriptor );
-                        imageViewDescriptor._resolveTarget = false;
                     }
                     _stagingColourAttachmentInfo[stagingIndex] = info;
                 }
@@ -590,7 +513,7 @@ namespace Divide
                 imageViewDescriptor._subRange._mipLevels = { descriptor._mipWriteLevel, 1u };
             }
 
-
+            imageViewDescriptor._resolveTarget = false;
             imageViewDescriptor._format = vkTex->vkFormat();
             imageViewDescriptor._type = imageViewDescriptor._subRange._layerRange._count > 1u ? TextureType::TEXTURE_2D_ARRAY : TextureType::TEXTURE_2D;
             imageViewDescriptor._usage = hasStencil ? ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT : ImageUsage::RT_DEPTH_ATTACHMENT;
@@ -617,7 +540,6 @@ namespace Divide
                 _depthAttachmentInfo.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
                 _depthAttachmentInfo.resolveImageLayout = hasStencil ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
                 _depthAttachmentInfo.resolveImageView = vkTex->getImageView( imageViewDescriptor );
-                imageViewDescriptor._resolveTarget = false;
             }
             pipelineRenderingCreateInfoOut.depthAttachmentFormat = vkTex->vkFormat();
             _renderingInfo.pDepthAttachment = &_depthAttachmentInfo;

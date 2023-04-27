@@ -346,13 +346,20 @@ namespace Divide
         createWithData(data, dataSize, vec3<U16>{dimensions.width, dimensions.height, _descriptor.layerCount()}, pixelUnpackAlignment);
     }
 
+    void Texture::submitTextureData()
+    {
+        NOP();
+    }
+
     void Texture::createWithData( const Byte* data, const size_t dataSize, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
     {
         // This should never be called for compressed textures
         assert( !IsCompressed( _descriptor.baseFormat() ) );
 
+        const U16 slices = IsCubeTexture( _descriptor.texType() ) ? dimensions.depth * 6u : dimensions.depth;
+
         const bool emptyAllocation = dataSize == 0u || data == nullptr;
-        prepareTextureData( dimensions.width, dimensions.height, dimensions.depth, emptyAllocation );
+        prepareTextureData( dimensions.width, dimensions.height, slices, emptyAllocation );
 
         // We can't manually specify data for msaa textures.
         assert( _descriptor.msaaSamples() == 0u || data == nullptr );

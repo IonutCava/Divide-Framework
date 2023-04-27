@@ -57,12 +57,12 @@ VkCommandBuffer* _cmdBuffer = nullptr;
 
 class VK_API final : public RenderAPIWrapper {
 public:
-constexpr static VkPipelineStageFlagBits2 ALL_SHADER_STAGES = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
-                                                              VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
-                                                              VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT |
-                                                              VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT |
-                                                              VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
-                                                              VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+    static constexpr VkPipelineStageFlagBits2 ALL_SHADER_STAGES = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
+                                                                  VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
+                                                                  VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT |
+                                                                  VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT |
+                                                                  VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
+                                                                  VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
 public:
  
     VK_API(GFXDevice& context) noexcept;

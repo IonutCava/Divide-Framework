@@ -59,6 +59,7 @@ class NOINITVTABLE VertexDataInterface : public GUIDWrapper, public GraphicsReso
 
     using VDIPool = ObjectPool<VertexDataInterface, 4096>;
     // We only need this pool in order to get a valid handle to pass around to command buffers instead of using raw pointers
+    static SharedMutex s_VDIPoolLock;
     static VDIPool s_VDIPool;
 };
 

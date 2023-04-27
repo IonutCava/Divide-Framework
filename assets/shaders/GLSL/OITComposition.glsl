@@ -17,7 +17,7 @@ DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform SamplerType revealageTexture;
 
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 2) uniform SamplerType nornmalsTexture;
 
-layout(location = TARGET_ALBEDO) out vec4 _colourOut;
+layout(location = TARGET_ALBEDO)   out vec4 _colourOut;
 layout(location = TARGET_NORMALS)  out vec3 _normalsOut;
 
 void main() {

@@ -14,7 +14,6 @@ namespace Divide
         : _frameNumber(frameIdx)
         , _flag(flag)
     {
-
     }
 
     SyncObject::~SyncObject()
@@ -38,8 +37,13 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         LockGuard<Mutex> r_lock( s_bufferLockLock );
-        for ( const BufferLockPoolEntry& syncObject : s_bufferLockPool )
+        for ( BufferLockPoolEntry& syncObject : s_bufferLockPool )
         {
+            if ( syncObject._ptr->_frameNumber == SyncObject::INVALID_FRAME_NUMBER )
+            {
+                continue;
+            }
+
             bool reset = false;
             switch (api)
             {
@@ -75,20 +79,24 @@ namespace Divide
         {
             case RenderAPI::OpenGL:
             {
-                if ( !glLockManager::InitLockPoolEntry( entry, flag, frameIdx ) )
-                {
-                    return false;
-                }
+                return glLockManager::InitLockPoolEntry( entry, flag, frameIdx );
             } break;
             case RenderAPI::Vulkan:
             case RenderAPI::None: 
             {
-                if (entry._ptr != nullptr)
+                if ( entry._ptr == nullptr )
                 {
-                    return false;
+                    entry._ptr = eastl::make_unique<SyncObject>( flag, frameIdx );
+                    return true;
+                }
+                else if ( entry._ptr->_frameNumber == SyncObject::INVALID_FRAME_NUMBER )
+                {
+                    entry._ptr->_frameNumber = frameIdx;
+                    entry._ptr->_flag = flag;
+                    return true;
                 }
 
-                entry._ptr = eastl::make_unique<SyncObject>(flag, frameIdx);
+                return false;
             } break;
         }
 

@@ -41,6 +41,7 @@ struct glSyncObject final : SyncObject
 {
     explicit glSyncObject( U8 flag, U64 frameIdx );
 
+    ~glSyncObject();
     void reset() override;
 
     GLsync _syncObject{ nullptr };

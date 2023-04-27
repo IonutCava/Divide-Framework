@@ -206,6 +206,8 @@ namespace Divide
                                              GFXDataFormat::UNSIGNED_BYTE,
                                              GFXImageFormat::RGBA,
                                              GFXImagePacking::NORMALIZED );
+            texDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
+
             ResourceDescriptor resDescriptor( "IMGUI_font_texture" );
             resDescriptor.propertyDescriptor( texDescriptor );
             ResourceCache* parentCache = _context.kernel().resourceCache();
@@ -765,12 +767,12 @@ namespace Divide
         };
 
         editorDesc._resolution = renderResolution;
-        editorDesc._name = "Node preview";
+        editorDesc._name = "Node_Preview";
         TextureDescriptor depthDescriptor( TextureType::TEXTURE_2D,
-                                           GFXDataFormat::FLOAT_16,
+                                           GFXDataFormat::FLOAT_32,
                                            GFXImageFormat::RED,
                                            GFXImagePacking::DEPTH );
-
+        depthDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
         editorDesc._attachments.emplace_back(InternalRTAttachmentDescriptor
         {
             depthDescriptor, _editorSamplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0

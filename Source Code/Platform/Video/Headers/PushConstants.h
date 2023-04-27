@@ -39,8 +39,8 @@ namespace Divide {
 struct PushConstantsStruct {
     eastl::array<mat4<F32>, 2> data{MAT4_ZERO, MAT4_ZERO};
 
-    static [[nodiscard]] constexpr size_t Size() noexcept { return 2 * sizeof(mat4<F32>); }
-    inline [[nodiscard]] const F32* dataPtr() const { return data[0].mat; }
+    [[nodiscard]] static constexpr size_t Size() noexcept { return 2 * sizeof(mat4<F32>); }
+    [[nodiscard]] inline const F32* dataPtr() const { return data[0].mat; }
     bool _set{false};
 };
 

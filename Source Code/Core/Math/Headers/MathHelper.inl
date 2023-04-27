@@ -755,16 +755,16 @@ namespace Divide
     namespace Util
     {
 
-        inline size_t GetAlignmentCorrected( const size_t value, const size_t alignment ) noexcept
+        FORCE_INLINE size_t GetAlignmentCorrected( const size_t value, const size_t alignment ) noexcept
         {
             return value % alignment == 0u
-                ? value
-                : ((value + alignment - 1u) / alignment) * alignment;
+                                      ? value
+                                      : ((value + alignment - 1u) / alignment) * alignment;
         }
 
         /// a la Boost
         template<typename T, typename... Rest>
-        void Hash_combine( std::size_t& seed, const T& v, const Rest&... rest ) noexcept
+        FORCE_INLINE void Hash_combine( std::size_t& seed, const T& v, const Rest&... rest ) noexcept
         {
             seed ^= std::hash<T>{}(v)+0x9e3779b9 + (seed << 6) + (seed >> 2);
             (Hash_combine( seed, rest ), ...);
@@ -777,11 +777,10 @@ namespace Divide
             (Hash_combine( seed, rest ), ...);
         }
 
-        // U = to data type, T = from data type
-        template <typename U, typename T>
-        U ConvertData( const T& data )
+        template <typename TargetType, typename SourceType>
+        TargetType ConvertData( const SourceType& data )
         {
-            U targetValue;
+            TargetType targetValue;
             std::istringstream iss( data );
             iss >> targetValue;
             DIVIDE_ASSERT( !iss.fail(), "Util::convertData error : invalid conversion!" );

@@ -614,7 +614,7 @@ namespace Divide
         {
             PROFILE_SCOPE( "GL_API: Time Query", Profiler::Category::Graphics );
 
-            static std::array<I64, to_base( GlobalQueryTypes::COUNT )> results{};
+            thread_local std::array<I64, to_base( GlobalQueryTypes::COUNT )> results{};
             for ( U8 i = 0u; i < to_base( GlobalQueryTypes::COUNT ); ++i )
             {
                 results[i] = _performanceQueries[i]->getResultNoWait();
@@ -692,8 +692,8 @@ namespace Divide
         else [[likely]]
         {
             // Because this can only happen on the main thread, try and avoid costly lookups for hot-loop drawing
-            static VertexDataInterface::Handle s_lastID = VertexDataInterface::INVALID_VDI_HANDLE;
-            static VertexDataInterface* s_lastBuffer = nullptr;
+            thread_local VertexDataInterface::Handle s_lastID = VertexDataInterface::INVALID_VDI_HANDLE;
+            thread_local VertexDataInterface* s_lastBuffer = nullptr;
 
             if ( s_lastID != cmd._sourceBuffer )
             {
@@ -712,9 +712,9 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        static std::array<TexBindEntry, GLStateTracker::MAX_BOUND_TEXTURE_UNITS> s_textureCache;
-        static std::array<GLuint, GLStateTracker::MAX_BOUND_TEXTURE_UNITS> s_textureHandles;
-        static std::array<GLuint, GLStateTracker::MAX_BOUND_TEXTURE_UNITS> s_textureSamplers;
+        thread_local std::array<TexBindEntry, GLStateTracker::MAX_BOUND_TEXTURE_UNITS> s_textureCache;
+        thread_local std::array<GLuint, GLStateTracker::MAX_BOUND_TEXTURE_UNITS> s_textureHandles;
+        thread_local std::array<GLuint, GLStateTracker::MAX_BOUND_TEXTURE_UNITS> s_textureSamplers;
 
         if ( s_TexBindQueue.empty() )
         {

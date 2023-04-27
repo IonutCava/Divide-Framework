@@ -26,9 +26,9 @@ namespace Divide
 
     void NONE_API::flushWindow( DisplayWindow& window, [[maybe_unused]] const bool isRenderThread )
     {
-        static constexpr U32 ChangeTimerInSeconds = 3;
+        constexpr U32 ChangeTimerInSeconds = 3;
 
-        static auto beginTimer = std::chrono::high_resolution_clock::now();
+        thread_local auto beginTimer = std::chrono::high_resolution_clock::now();
 
         static I32 w = -1, offsetX = 5;
         static I32 h = -1, offsetY = 5;

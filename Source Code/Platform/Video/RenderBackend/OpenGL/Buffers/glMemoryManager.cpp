@@ -13,18 +13,18 @@ namespace GLMemory {
 
 namespace
 {
-    namespace detail {
+    namespace detail
+    {
         constexpr size_t zeroDataBaseSize = TO_MEGABYTES(64u);
-        constexpr Byte zeroByte = Byte{0u};
     };
 
-    eastl::vector<Byte> g_zeroData( detail::zeroDataBaseSize, detail::zeroByte );
+    eastl::vector<Byte> g_zeroData( detail::zeroDataBaseSize, Byte{ 0u });
 
     FORCE_INLINE Byte* GetZeroData( const size_t bufferSize )
     {
         while ( g_zeroData.size() < bufferSize )
         {
-            g_zeroData.resize( g_zeroData.size() + detail::zeroDataBaseSize, detail::zeroByte );
+            g_zeroData.resize( g_zeroData.size() + detail::zeroDataBaseSize, Byte{ 0u } );
         }
 
         return g_zeroData.data();
@@ -33,15 +33,16 @@ namespace
 
 void OnFrameEnd(const U64 frameCount )
 {
-    constexpr U64 memoryCleanInterval = 64u;
+    constexpr U64 memoryCleanInterval = 256u;
 
-    static U64 lastSyncedFrame = 0u;
+    thread_local U64 lastSyncedFrame = 0u;
 
     if ( frameCount - lastSyncedFrame > memoryCleanInterval )
     {
-        if ( !g_zeroData.empty() )
+        // This may be quite large at this point, so clear it to claim back some RAM
+        if (g_zeroData.size() >= detail::zeroDataBaseSize * 4 )
         {
-            efficient_clear(g_zeroData);
+            g_zeroData.set_capacity( 0 );
         }
 
         lastSyncedFrame = frameCount;
@@ -63,7 +64,8 @@ Chunk::Chunk(const bool poolAllocations,
     Block block;
     block._size = Util::GetAlignmentCorrected(size, alignment);// Code for the worst case?
 
-    if (_poolAllocations) {
+    if (_poolAllocations)
+    {
         static U32 g_bufferIndex = 0u;
         _memory = createAndAllocPersistentBuffer(block._size, storageMask, accessMask, block._bufferHandle, { nullptr, 0u }, Util::StringFormat("DVD_BUFFER_CHUNK_%d", g_bufferIndex++).c_str());
         block._ptr = _memory;
@@ -74,51 +76,65 @@ Chunk::Chunk(const bool poolAllocations,
 
 Chunk::~Chunk()
 {
-    if (_poolAllocations) {
-        if (_blocks[0]._bufferHandle > 0u) {
+    if (_poolAllocations) 
+    {
+        if (_blocks[0]._bufferHandle > 0u)
+        {
             glDeleteBuffers(1, &_blocks[0]._bufferHandle);
         }
     } else {
-        for (Block& block : _blocks) {
-            if (block._bufferHandle > 0u) {
+        for (Block& block : _blocks)
+        {
+            if (block._bufferHandle > 0u)
+            {
                 glDeleteBuffers(1, &block._bufferHandle);
             }
         }
     }
 }
 
-void Chunk::deallocate(const Block &block) {
+void Chunk::deallocate(const Block &block)
+{
     Block* const blockIt = eastl::find(begin(_blocks), end(_blocks), block);
     assert(blockIt != cend(_blocks));
     blockIt->_free = true;
 
-    if (!_poolAllocations) {
-        if (blockIt->_bufferHandle > 0u) {
+    if (!_poolAllocations)
+    {
+        if (blockIt->_bufferHandle > 0u)
+        {
             glDeleteBuffers(1, &blockIt->_bufferHandle);
             blockIt->_bufferHandle = 0u;
         }
     }
 }
 
-bool Chunk::allocate(const size_t size, const char* name, const std::pair<bufferPtr, size_t> initialData, Block &blockOut) {
+bool Chunk::allocate(const size_t size, const char* name, const std::pair<bufferPtr, size_t> initialData, Block &blockOut)
+{
     const size_t requestedSize = Util::GetAlignmentCorrected(size, _alignment);
 
-    if (requestedSize > _blocks.back()._size) {
+    if (requestedSize > _blocks.back()._size)
+    {
         return false;
     }
 
     const size_t count = _blocks.size();
-    for (size_t i = 0u; i < count; ++i) {
+    for (size_t i = 0u; i < count; ++i)
+    {
         Block& block = _blocks[i];
         const size_t remainingSize = block._size;
 
-        if (!block._free || remainingSize < requestedSize) {
+        if (!block._free || remainingSize < requestedSize)
+        {
             continue;
         }
 
-        if (_poolAllocations) {
+        if (_poolAllocations)
+        {
             memcpy(block._ptr, initialData.first, initialData.second);
-        } else {
+        }
+        else
+        {
             _memory = createAndAllocPersistentBuffer(requestedSize, storageMask(), accessMask(), block._bufferHandle, initialData, name);
             block._ptr = _memory;
         }
@@ -127,11 +143,13 @@ bool Chunk::allocate(const size_t size, const char* name, const std::pair<buffer
         block._size = requestedSize;
         blockOut = block;
 
-        if (remainingSize > requestedSize) {
+        if (remainingSize > requestedSize)
+        {
             Block nextBlock;
             nextBlock._bufferHandle = block._bufferHandle;
 
-            if (_poolAllocations) {
+            if (_poolAllocations)
+            {
                 nextBlock._offset = block._offset + requestedSize;
             }
             nextBlock._size = remainingSize - requestedSize;
@@ -145,7 +163,8 @@ bool Chunk::allocate(const size_t size, const char* name, const std::pair<buffer
     return false;
 }
 
-bool Chunk::containsBlock(const Block &block) const {
+bool Chunk::containsBlock(const Block &block) const
+{
     return eastl::find(begin(_blocks), end(_blocks), block) != cend(_blocks);
 }
 
@@ -171,7 +190,8 @@ DeviceAllocator::DeviceAllocator(const GLMemoryType memoryType) noexcept
 {
 }
 
-void DeviceAllocator::init(const size_t size) {
+void DeviceAllocator::init(const size_t size)
+{
     deallocate();
     _chunkAllocator = eastl::make_unique<ChunkAllocator>(size);
 }
@@ -188,31 +208,37 @@ Block DeviceAllocator::allocate(const bool poolAllocations,
     LockGuard<Mutex> w_lock(_chunkAllocatorLock);
 
     Block block;
-    for (Chunk* chunk : _chunks) {
+    for (Chunk* chunk : _chunks)
+    {
         if (chunk->storageMask() == storageMask && 
             chunk->accessMask() == accessMask &&
             chunk->usage() == usage &&
             chunk->alignment() == alignment &&
             chunk->poolAllocations() == poolAllocations)
         {
-            if (chunk->allocate(size, blockName, initialData, block)) {
+            if (chunk->allocate(size, blockName, initialData, block))
+            {
                 return block;
             }
         }
     }
 
     _chunks.emplace_back(_chunkAllocator->allocate(poolAllocations, size, alignment, storageMask, accessMask, usage));
-    if(!_chunks.back()->allocate(size, blockName, initialData, block)) {
+    if(!_chunks.back()->allocate(size, blockName, initialData, block))
+    {
         DIVIDE_UNEXPECTED_CALL();
     }
     return block;
 }
 
-void DeviceAllocator::deallocate(const Block &block) const {
+void DeviceAllocator::deallocate(const Block &block) const
+{
     LockGuard<Mutex> w_lock(_chunkAllocatorLock);
 
-    for (Chunk* chunk : _chunks) {
-        if (chunk->containsBlock(block)) {
+    for (Chunk* chunk : _chunks)
+    {
+        if (chunk->containsBlock(block))
+        {
             chunk->deallocate(block);
             return;
         }
@@ -221,7 +247,8 @@ void DeviceAllocator::deallocate(const Block &block) const {
     DIVIDE_UNEXPECTED_CALL_MSG("DeviceAllocator::deallocate error: unable to deallocate the block");
 }
 
-void DeviceAllocator::deallocate() {
+void DeviceAllocator::deallocate()
+{
     LockGuard<Mutex> w_lock(_chunkAllocatorLock);
     MemoryManager::DELETE_CONTAINER(_chunks);
 }
@@ -236,21 +263,23 @@ Byte* createAndAllocPersistentBuffer(const size_t bufferSize,
                                      const char* name)
 {
     glCreateBuffers(1, &bufferIdOut);
-    if constexpr(Config::ENABLE_GPU_VALIDATION) {
-        glObjectLabel(GL_BUFFER,
-                      bufferIdOut,
-                      -1,
+    if constexpr(Config::ENABLE_GPU_VALIDATION)
+    {
+        glObjectLabel(GL_BUFFER, bufferIdOut, -1,
                       name != nullptr
                            ? name
                            : Util::StringFormat("DVD_PERSISTENT_BUFFER_%d", bufferIdOut).c_str());
     }
+
     assert(bufferIdOut != 0 && "GLUtil::allocPersistentBuffer error: buffer creation failed");
     const bool hasAllSourceData = initialData.second == bufferSize && initialData.first != nullptr;
 
     glNamedBufferStorage(bufferIdOut, bufferSize, hasAllSourceData ? initialData.first : GLMemory::GetZeroData(bufferSize), storageMask);
     Byte* ptr = (Byte*)glMapNamedBufferRange(bufferIdOut, 0, bufferSize, accessMask);
     assert(ptr != nullptr);
-    if (!hasAllSourceData && initialData.second > 0 && initialData.first != nullptr) {
+
+    if (!hasAllSourceData && initialData.second > 0 && initialData.first != nullptr)
+    {
         memcpy(ptr, initialData.first, initialData.second);
     }
 
@@ -264,10 +293,9 @@ void createBuffer(size_t bufferSize,
 
     glCreateBuffers(1, &bufferIdOut);
 
-    if constexpr(Config::ENABLE_GPU_VALIDATION) {
-        glObjectLabel(GL_BUFFER,
-                      bufferIdOut,
-                      -1,
+    if constexpr(Config::ENABLE_GPU_VALIDATION)
+    {
+        glObjectLabel(GL_BUFFER, bufferIdOut, -1,
                       name != nullptr
                            ? name
                            : Util::StringFormat("DVD_GENERAL_BUFFER_%d", bufferIdOut).c_str());
@@ -287,6 +315,7 @@ void createAndAllocBuffer(const size_t bufferSize,
 
     assert(bufferIdOut != 0 && "GLUtil::allocBuffer error: buffer creation failed");
     glNamedBufferData(bufferIdOut, bufferSize, hasAllSourceData ? initialData.first : GLMemory::GetZeroData( bufferSize ), usageMask);
+
     if (!hasAllSourceData && initialData.second > 0u && initialData.first != nullptr )
     {
         const MapBufferAccessMask accessMask = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
@@ -297,13 +326,17 @@ void createAndAllocBuffer(const size_t bufferSize,
     }
 }
 
-void freeBuffer(GLuint& bufferId, bufferPtr mappedPtr) {
-    if (bufferId != GLUtil::k_invalidObjectID && bufferId != 0u) {
-        if (mappedPtr != nullptr) {
+void freeBuffer(GLuint& bufferId, bufferPtr mappedPtr)
+{
+    if (bufferId != GLUtil::k_invalidObjectID && bufferId != 0u)
+    {
+        if (mappedPtr != nullptr)
+        {
             [[maybe_unused]] const GLboolean result = glUnmapNamedBuffer(bufferId);
             assert(result != GL_FALSE && "GLUtil::freeBuffer error: buffer unmapping failed");
             mappedPtr = nullptr;
         }
+
         GL_API::DeleteBuffers(1, &bufferId);
         bufferId = GLUtil::k_invalidObjectID;
     }

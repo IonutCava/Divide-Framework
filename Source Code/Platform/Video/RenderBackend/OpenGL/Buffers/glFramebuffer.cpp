@@ -488,21 +488,24 @@ namespace Divide
                             case GFXDataFormat::SIGNED_SHORT:
                             case GFXDataFormat::SIGNED_INT:
                             {
-                                static vec4<I32> clearColour;
-                                clearColour.set( FLOAT_TO_CHAR_SNORM( colour.r ),
-                                                 FLOAT_TO_CHAR_SNORM( colour.g ),
-                                                 FLOAT_TO_CHAR_SNORM( colour.b ),
-                                                 FLOAT_TO_CHAR_SNORM( colour.a ) );
+                                thread_local vec4<I32> clearColour {
+                                    FLOAT_TO_CHAR_SNORM( colour.r ),
+                                    FLOAT_TO_CHAR_SNORM( colour.g ),
+                                    FLOAT_TO_CHAR_SNORM( colour.b ),
+                                    FLOAT_TO_CHAR_SNORM( colour.a ) 
+                                };
+
                                 glClearNamedFramebufferiv( _framebufferHandle, GL_COLOR, buffer, clearColour._v );
                             } break;
 
                             default:
                             {
-                                static vec4<U32> clearColour;
-                                clearColour.set( FLOAT_TO_CHAR_UNORM( colour.r ),
-                                                 FLOAT_TO_CHAR_UNORM( colour.g ),
-                                                 FLOAT_TO_CHAR_UNORM( colour.b ),
-                                                 FLOAT_TO_CHAR_UNORM( colour.a ) );
+                                thread_local vec4<U32> clearColour {
+                                     FLOAT_TO_CHAR_UNORM( colour.r ),
+                                     FLOAT_TO_CHAR_UNORM( colour.g ),
+                                     FLOAT_TO_CHAR_UNORM( colour.b ),
+                                     FLOAT_TO_CHAR_UNORM( colour.a ) 
+                                };
                                 glClearNamedFramebufferuiv( _framebufferHandle, GL_COLOR, buffer, clearColour._v );
                             } break;
                         }

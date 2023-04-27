@@ -1114,12 +1114,15 @@ namespace Divide
         GFX::BeginRenderPassCommand beginRenderPassCompCmd{};
         beginRenderPassCompCmd._name = "OIT PASS 2";
         beginRenderPassCompCmd._target = params._target;
-        beginRenderPassCompCmd._descriptor = params._targetDescriptorMainPass;
+        
+        beginRenderPassCompCmd._descriptor._drawMask[to_base( GFXDevice::ScreenTargets::ALBEDO )] = true;
+        beginRenderPassCompCmd._descriptor._drawMask[to_base( GFXDevice::ScreenTargets::VELOCITY )] = false;
+        beginRenderPassCompCmd._descriptor._drawMask[to_base( GFXDevice::ScreenTargets::NORMALS )] = true;
 
         // Step2: Composition pass
         // Don't clear depth & colours and do not write to the depth buffer
         GFX::EnqueueCommand( bufferInOut, GFX::SetCameraCommand{ Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->snapshot() } );
-        GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut, beginRenderPassCompCmd );
+        GFX::EnqueueCommand( bufferInOut, beginRenderPassCompCmd );
         GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ useMSAA ? s_OITCompositionMSPipeline : s_OITCompositionPipeline } );
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );

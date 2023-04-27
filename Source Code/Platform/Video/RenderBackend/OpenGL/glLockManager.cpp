@@ -17,6 +17,11 @@ namespace Divide
     {
     }
 
+    glSyncObject::~glSyncObject()
+    {
+        DIVIDE_ASSERT( _syncObject == nullptr);
+    }
+
     void glSyncObject::reset()
     {
         GL_API::DestroyFenceSync( _syncObject );
@@ -31,21 +36,27 @@ namespace Divide
 
     bool glLockManager::InitLockPoolEntry( BufferLockPoolEntry& entry, const U8 flag, const U64 frameIdx )
     {
+        bool ret = false;
         if ( entry._ptr == nullptr )
         {
             entry._ptr = eastl::make_unique<glSyncObject>(flag, frameIdx);
+            ret = true;
         }
-
-        glSyncObject* glSync = static_cast<glSyncObject*>(entry._ptr.get());
-        if ( glSync->_syncObject == nullptr )
+        else if ( entry._ptr->_frameNumber == SyncObject::INVALID_FRAME_NUMBER )
         {
-            glSync->_syncObject = GL_API::CreateFenceSync();
+            glSyncObject* glSync = static_cast<glSyncObject*>(entry._ptr.get());
+            DIVIDE_ASSERT( glSync->_syncObject == nullptr );
             glSync->_frameNumber = frameIdx;
             glSync->_flag = flag;
-            return true;
+            ret = true;
         }
 
-        return false;
+        if ( ret )
+        {
+            static_cast<glSyncObject*>(entry._ptr.get())->_syncObject = GL_API::CreateFenceSync();
+        }
+
+        return ret;
     }
 
     bool Wait( GLsync sync, U8& retryCount )

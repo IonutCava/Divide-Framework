@@ -153,8 +153,6 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        static U32 s_VAOidx = 0u;
-
         DIVIDE_ASSERT( Runtime::isMainThread() );
 
         vaoOut = GLUtil::k_invalidObjectID;
@@ -172,10 +170,12 @@ namespace Divide
         // Otherwise allocate a new VAO and save it in the cache
         glCreateVertexArrays( 1, &vaoOut );
         DIVIDE_ASSERT( vaoOut != GLUtil::k_invalidObjectID, Locale::Get( _ID( "ERROR_VAO_INIT" ) ) );
+
         if constexpr ( Config::ENABLE_GPU_VALIDATION )
         {
-            glObjectLabel( GL_VERTEX_ARRAY, vaoOut, -1, Util::StringFormat( "GENERIC_VAO_%d", s_VAOidx++ ).c_str() );
+            glObjectLabel( GL_VERTEX_ARRAY, vaoOut, -1, Util::StringFormat( "GENERIC_VAO_%d", GL_API::s_vaoCache.size()).c_str());
         }
+
         insert( GL_API::s_vaoCache, attributeHash, vaoOut );
         return false;
     }

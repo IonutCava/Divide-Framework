@@ -20,19 +20,12 @@ namespace {
     constexpr const char* g_binaryBinExtension = ".bin";
     constexpr const char* g_binaryFmtExtension = ".fmt";
 
-    struct MetricsShaderTimer {
-        eastl::string _hotspotShader = "";
-        U64 _hotspotShaderTimer = 0u;
-    };
-
-    SharedMutex s_hotspotShaderLock;
-    static MetricsShaderTimer s_hotspotShaderGPU;
-    static MetricsShaderTimer s_hotspotShaderDriver;
-
     size_t g_validationBufferMaxSize = 4096 * 16;
 
-    FORCE_INLINE UseProgramStageMask GetStageMask(const ShaderType type) noexcept {
-        switch (type) {
+    FORCE_INLINE UseProgramStageMask GetStageMask(const ShaderType type) noexcept
+    {
+        switch (type)
+        {
             case ShaderType::VERTEX: return UseProgramStageMask::GL_VERTEX_SHADER_BIT;
             case ShaderType::TESSELLATION_CTRL: return UseProgramStageMask::GL_TESS_CONTROL_SHADER_BIT;
             case ShaderType::TESSELLATION_EVAL: return UseProgramStageMask::GL_TESS_EVALUATION_SHADER_BIT;
@@ -61,19 +54,22 @@ glShader::~glShader()
 }
 
 namespace {
-    struct TimingData {
-        U64 _totalTime = 0u;
-        U64 _linkTime = 0u;
-        U64 _linkLogRetrievalTime = 0u;
+    struct TimingData
+    {
+        U64 _totalTime{ 0u };
+        U64 _linkTime{ 0u };
+        U64 _linkLogRetrievalTime{ 0u };
         std::array<U64, to_base(ShaderType::COUNT)> _stageCompileTime{};
         std::array<U64, to_base(ShaderType::COUNT)> _stageCompileLogRetrievalTime{};
     };
 };
 
-ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
+ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle)
+{
     if (!_valid)
     {
-        const auto getTimerAndReset = [](Time::ProfileTimer& timer) {
+        const auto getTimerAndReset = [](Time::ProfileTimer& timer)
+        {
             timer.stop();
             const U64 ret = timer.get();
             timer.reset();

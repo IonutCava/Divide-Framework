@@ -44,9 +44,11 @@
 namespace Divide {
 
 class NOINITVTABLE GenericVertexData : public VertexDataInterface,
-                                       public RingBuffer {
+                                       public RingBuffer
+{
    public:
-     struct IndexBuffer {
+     struct IndexBuffer
+     {
          bufferPtr data{ nullptr };
          size_t count{ 0u };
          U8 id{ 0u };
@@ -57,8 +59,8 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
          vector_fast<U16> _smallIndicesTemp;
      };
 
-
-     struct SetBufferParams {
+     struct SetBufferParams
+     {
          static constexpr size_t INVALID_ELEMENT_STRIDE = SIZE_MAX;
 
          struct BufferBindConfig {

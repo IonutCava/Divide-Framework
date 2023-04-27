@@ -163,9 +163,10 @@ struct VKImmediateCmdContext
     VkCommandPool _commandPool;
     Mutex _submitLock;
 
+
     std::array<VkFence, BUFFER_COUNT> _bufferFences;
     std::array<VkCommandBuffer, BUFFER_COUNT> _commandBuffers;
-
+    U64 _wrapCounter{ 0u };
     U8 _bufferIndex{ 0u };
 };
 

@@ -9,7 +9,8 @@
 #include "Core/Headers/StringHelper.h"
 
 namespace Divide {
-    VkSampler vkSamplerObject::Construct(const SamplerDescriptor& descriptor) {
+    VkSampler vkSamplerObject::Construct(const SamplerDescriptor& descriptor)
+    {
         VkSamplerCustomBorderColorCreateInfoEXT customBorderColour{};
         customBorderColour.sType = VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT;
 
@@ -29,17 +30,21 @@ namespace Divide {
         samplerInfo.mipLodBias = descriptor.biasLOD();
         samplerInfo.anisotropyEnable = maxAnisotropy > 0.f;
         samplerInfo.maxAnisotropy = maxAnisotropy;
-        if (descriptor.useRefCompare()) {
+        if (descriptor.useRefCompare())
+        {
             samplerInfo.compareEnable = true;
             samplerInfo.compareOp = vkCompareFuncTable[to_base(descriptor.cmpFunc())];
-        } else {
+        }
+        else
+        {
             samplerInfo.compareEnable = false;
         }
 
         samplerInfo.minLod = descriptor.minLOD();
         samplerInfo.maxLod = descriptor.maxLOD();
         
-        switch (descriptor.borderColour()) {
+        switch (descriptor.borderColour())
+        {
             default:
             case TextureBorderColour::TRANSPARENT_BLACK_INT: samplerInfo.borderColor = VK_BORDER_COLOR_INT_TRANSPARENT_BLACK;   break;
             case TextureBorderColour::TRANSPARENT_BLACK_F32: samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK; break;
@@ -49,23 +54,23 @@ namespace Divide {
             case TextureBorderColour::OPAQUE_WHITE_F32     : samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;      break;
         }
 
-        if (descriptor.customBorderColour() == TextureBorderColour::CUSTOM_INT ||
-            descriptor.customBorderColour() == TextureBorderColour::CUSTOM_F32)
+        if (descriptor.customBorderColour() == TextureBorderColour::CUSTOM_INT)
         {
-            if (descriptor.customBorderColour() == TextureBorderColour::CUSTOM_INT) {
-                customBorderColour.customBorderColor.uint32[0] = to_U32(descriptor.customBorderColour().r);
-                customBorderColour.customBorderColor.uint32[1] = to_U32(descriptor.customBorderColour().g);
-                customBorderColour.customBorderColor.uint32[2] = to_U32(descriptor.customBorderColour().b);
-                customBorderColour.customBorderColor.uint32[3] = to_U32(descriptor.customBorderColour().a);
-                customBorderColour.format = VK_FORMAT_R8_UINT;
-            } else {
-                const FColour4 fColour = Util::ToFloatColour(descriptor.customBorderColour());
-                customBorderColour.customBorderColor.float32[0] = fColour.r;
-                customBorderColour.customBorderColor.float32[1] = fColour.g;
-                customBorderColour.customBorderColor.float32[2] = fColour.b;
-                customBorderColour.customBorderColor.float32[3] = fColour.a;
-                customBorderColour.format = VK_FORMAT_R32_SFLOAT;
-            }
+            customBorderColour.customBorderColor.uint32[0] = to_U32(descriptor.customBorderColour().r);
+            customBorderColour.customBorderColor.uint32[1] = to_U32(descriptor.customBorderColour().g);
+            customBorderColour.customBorderColor.uint32[2] = to_U32(descriptor.customBorderColour().b);
+            customBorderColour.customBorderColor.uint32[3] = to_U32(descriptor.customBorderColour().a);
+            customBorderColour.format = VK_FORMAT_R8_UINT;
+            samplerInfo.pNext = &customBorderColour;
+        }
+        else if ( descriptor.customBorderColour() == TextureBorderColour::CUSTOM_F32 )
+        {
+            const FColour4 fColour = Util::ToFloatColour(descriptor.customBorderColour());
+            customBorderColour.customBorderColor.float32[0] = fColour.r;
+            customBorderColour.customBorderColor.float32[1] = fColour.g;
+            customBorderColour.customBorderColor.float32[2] = fColour.b;
+            customBorderColour.customBorderColor.float32[3] = fColour.a;
+            customBorderColour.format = VK_FORMAT_R32_SFLOAT;
             samplerInfo.pNext = &customBorderColour;
         }
 
@@ -77,8 +82,10 @@ namespace Divide {
         return ret;
     }
 
-    void vkSamplerObject::Destruct(VkSampler& handle) {
-        if (handle != VK_NULL_HANDLE) {
+    void vkSamplerObject::Destruct(VkSampler& handle)
+    {
+        if (handle != VK_NULL_HANDLE)
+        {
             VK_API::RegisterCustomAPIDelete([sampler = handle](VkDevice device) {
                 vkDestroySampler(device, sampler, nullptr);
             }, true);

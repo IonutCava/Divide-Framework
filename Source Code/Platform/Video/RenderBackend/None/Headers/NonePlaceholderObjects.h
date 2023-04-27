@@ -76,14 +76,12 @@ namespace Divide {
                   ResourceCache& parentCache)
             : Texture(context, descriptorHash, name, assetNames, assetLocations, texDescriptor, parentCache)
         {
-            static std::atomic_uint s_textureHandle = 1u;
         }
 
         [[nodiscard]] ImageReadbackData readData([[maybe_unused]] const U8 mipLevel, [[maybe_unused]] const PixelAlignment& pixelPackAlignment) const noexcept override { return {}; }
 
         void loadDataInternal([[maybe_unused]] const ImageTools::ImageData& imageData, [[maybe_unused]] const vec3<U16>& offset, [[maybe_unused]] const PixelAlignment& pixelUnpackAlignment ) override { }
         void loadDataInternal([[maybe_unused]] const Byte* data, [[maybe_unused]] size_t size, [[maybe_unused]] U8 targetMip, [[maybe_unused]] const vec3<U16>& offset, [[maybe_unused]] const vec3<U16>& dimensions, [[maybe_unused]] const PixelAlignment& pixelUnpackAlignment ) override {}
-        void submitTextureData() override {}
     };
 
     class noShaderProgram final : public ShaderProgram {

@@ -31,7 +31,7 @@ void glShaderProgram::Idle(PlatformContext& platformContext)
 
 void glShaderProgram::ProcessValidationQueue()
 {
-    static ValidationEntry s_validationOutputCache;
+    thread_local ValidationEntry s_validationOutputCache;
 
     if (g_sValidationQueue.try_dequeue(s_validationOutputCache))
     {

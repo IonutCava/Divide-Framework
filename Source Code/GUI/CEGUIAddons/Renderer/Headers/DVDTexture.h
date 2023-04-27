@@ -124,7 +124,7 @@ private:
 
 private:
     //! Size of the texture.
-    Sizef _size{0,0};
+    Sizef _size{1.f,1.f};
     //! original size of pixel data loaded into texture
     Sizef _dataSize{0, 0};
     //! cached pixel to texel mapping scale values.
