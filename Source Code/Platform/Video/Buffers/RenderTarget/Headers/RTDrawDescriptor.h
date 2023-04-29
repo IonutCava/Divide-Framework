@@ -70,7 +70,6 @@ struct RTBlitEntry
     U16 _mipCount{1u};
 };
 
-
 using RTDrawMask = std::array<bool, to_base(RTColourAttachmentSlot::COUNT)>;
 using RTBlitParams = eastl::fixed_vector<RTBlitEntry, MAX_BLIT_ENTRIES, false>;
 using RTClearDescriptor = std::array<RTClearEntry, RT_MAX_ATTACHMENT_COUNT>;
@@ -82,6 +81,8 @@ struct RTDrawDescriptor
     RTDrawLayerDescriptor _writeLayers;
     /// Set to true to bind all image layers to the render target (e.g. for Geometry Shader layered rendering support)
     bool _layeredRendering{false};
+    bool _autoResolveMSAA{true};
+    bool _keepMSAADataAfterResolve{ false };
     U16 _mipWriteLevel{ 0u };
 };
 

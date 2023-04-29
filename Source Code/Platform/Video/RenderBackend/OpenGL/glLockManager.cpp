@@ -24,6 +24,8 @@ namespace Divide
 
     void glSyncObject::reset()
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         GL_API::DestroyFenceSync( _syncObject );
         SyncObject::reset();
     }
@@ -36,6 +38,8 @@ namespace Divide
 
     bool glLockManager::InitLockPoolEntry( BufferLockPoolEntry& entry, const U8 flag, const U64 frameIdx )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         bool ret = false;
         if ( entry._ptr == nullptr )
         {

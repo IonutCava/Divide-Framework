@@ -34,13 +34,11 @@ namespace Divide
 
     glFramebuffer::glFramebuffer( GFXDevice& context, const RenderTargetDescriptor& descriptor )
         : RenderTarget( context, descriptor )
-        , _debugMessage( "Render Target: [ " + name() + " ]" )
+        , _debugMessage("Render Target: [ " + name() + " ]")
     {
         glCreateFramebuffers( 1, &_framebufferHandle );
-        assert( (_framebufferHandle != 0 && _framebufferHandle != GLUtil::k_invalidObjectID) &&
-                "glFramebuffer error: Tried to bind an invalid framebuffer!" );
 
-        _isLayeredDepth = false;
+        DIVIDE_ASSERT( (_framebufferHandle != 0 && _framebufferHandle != GLUtil::k_invalidObjectID), "glFramebuffer error: Tried to bind an invalid framebuffer!" );
 
         if constexpr ( Config::ENABLE_GPU_VALIDATION )
         {
@@ -48,7 +46,7 @@ namespace Divide
             glObjectLabel( GL_FRAMEBUFFER,
                            _framebufferHandle,
                            -1,
-                           name().empty() ? Util::StringFormat( "DVD_FB_%d", _framebufferHandle ).c_str() : name().c_str() );
+                           (name() + "_RENDER").c_str());
         }
 
         // Everything disabled so that the initial "begin" will override this
@@ -59,16 +57,21 @@ namespace Divide
     glFramebuffer::~glFramebuffer()
     {
         GL_API::DeleteFramebuffers( 1, &_framebufferHandle );
+
+        if ( _framebufferResolveHandle != GLUtil::k_invalidObjectID )
+        {
+            GL_API::DeleteFramebuffers( 1, &_framebufferResolveHandle );
+        }
     }
 
     bool glFramebuffer::initAttachment( RTAttachment* att, const RTAttachmentType type, const RTColourAttachmentSlot slot, const bool isExternal )
     {
         if ( RenderTarget::initAttachment( att, type, slot, isExternal ) )
         {
-            if ( !isExternal && att->texture()->descriptor().mipMappingState() == TextureDescriptor::MipMappingState::AUTO )
+            if ( !isExternal && att->resolvedTexture()->descriptor().mipMappingState() == TextureDescriptor::MipMappingState::AUTO )
             {
                 // We do this here to avoid any undefined data if we use this attachment as a texture before we actually draw to it
-                glGenerateTextureMipmap( static_cast<glTexture*>(att->texture().get())->textureHandle() );
+                glGenerateTextureMipmap( static_cast<glTexture*>(att->resolvedTexture().get())->textureHandle() );
             }
 
             // Find the appropriate binding point
@@ -77,11 +80,12 @@ namespace Divide
             {
                 binding = type == RTAttachmentType::DEPTH ? to_U32( GL_DEPTH_ATTACHMENT ) : to_U32( GL_DEPTH_STENCIL_ATTACHMENT );
                 // Most of these aren't even valid, but hey, doesn't hurt to check
-                _isLayeredDepth = SupportsZOffsetTexture( att->texture()->descriptor().texType() );
+                _isLayeredDepth = SupportsZOffsetTexture( att->resolvedTexture()->descriptor().texType() );
             }
 
             att->binding( binding );
             _attachmentState[to_base(slot)] = {};
+
             return true;
         }
 
@@ -93,7 +97,7 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         const RTAttachment_uptr& attachment = _attachments[ attachmentIdx ];
-        const Texture_ptr& tex = attachment->texture();
+        const Texture_ptr& tex = attachment->renderTexture();
         if ( tex == nullptr )
         {
             return false;
@@ -124,6 +128,10 @@ namespace Divide
             if ( state == AttachmentState::STATE_DISABLED )
             {
                 glNamedFramebufferTexture( _framebufferHandle, binding, 0u, 0u );
+                if ( _attachmentsAutoResolve[attachmentIdx] )
+                {
+                    glNamedFramebufferTexture( _framebufferResolveHandle, binding, 0u, 0u );
+                }
             }
             else
             {
@@ -133,15 +141,27 @@ namespace Divide
                 if ( bState._layer._layer == 0u && bState._layer._cubeFace == 0u && layeredRendering )
                 {
                     glNamedFramebufferTexture( _framebufferHandle, binding, handle, bState._levelOffset);
+                    if ( _attachmentsAutoResolve[attachmentIdx] )
+                    {
+                        glNamedFramebufferTexture( _framebufferResolveHandle, binding, static_cast<glTexture*>(attachment->resolvedTexture().get())->textureHandle(), bState._levelOffset );
+                    }
                 }
                 else if ( IsCubeTexture( tex->descriptor().texType() ) )
                 {
                     glNamedFramebufferTextureLayer( _framebufferHandle, binding, handle, bState._levelOffset, bState._layer._cubeFace + (bState._layer._layer * 6u) );
+                    if ( _attachmentsAutoResolve[attachmentIdx] )
+                    {
+                        glNamedFramebufferTextureLayer( _framebufferResolveHandle, binding, static_cast<glTexture*>(attachment->resolvedTexture().get())->textureHandle(), bState._levelOffset, bState._layer._cubeFace + (bState._layer._layer * 6u) );
+                    }
                 }
                 else
                 {
                     assert(bState._layer._cubeFace == 0u);
                     glNamedFramebufferTextureLayer( _framebufferHandle, binding, handle, bState._levelOffset, bState._layer._layer );
+                    if ( _attachmentsAutoResolve[attachmentIdx] )
+                    {
+                        glNamedFramebufferTextureLayer( _framebufferResolveHandle, binding, static_cast<glTexture*>(attachment->resolvedTexture().get())->textureHandle(), bState._levelOffset, bState._layer._layer );
+                    }
                 }
             }
 
@@ -160,6 +180,34 @@ namespace Divide
             return false;
         }
 
+        bool needsAutoResolve = false;
+        for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ) + 1u; ++i )
+        {
+            if ( _attachmentsAutoResolve[i] )
+            {
+                needsAutoResolve = true;
+                break;
+            }
+        }
+
+        if ( needsAutoResolve && _framebufferResolveHandle  == GLUtil::k_invalidObjectID )
+        {
+
+            glCreateFramebuffers( 1, &_framebufferResolveHandle );
+            if constexpr ( Config::ENABLE_GPU_VALIDATION )
+            {
+                glObjectLabel( GL_FRAMEBUFFER,
+                                _framebufferResolveHandle,
+                                -1,
+                                (name() + "_RESOLVE").c_str() );
+            }
+        }
+        else if ( !needsAutoResolve && _framebufferResolveHandle != GLUtil::k_invalidObjectID )
+        {
+            GL_API::DeleteFramebuffers( 1, &_framebufferResolveHandle );
+            _framebufferResolveHandle = GLUtil::k_invalidObjectID;
+        }
+
         for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ) + 1u; ++i )
         {
             if ( !_attachmentsUsed[i] )
@@ -170,7 +218,7 @@ namespace Divide
             toggleAttachment( i, AttachmentState::STATE_ENABLED, 0u, { ._layer = 0u, ._cubeFace = 0u }, true );
         }
 
-        /// Setup draw buffers
+        // Setup draw buffers
         prepareBuffers( {} );
 
         return checkStatus();
@@ -189,6 +237,12 @@ namespace Divide
         glFramebuffer* output = this;
         const vec2<U16> inputDim = input->_descriptor._resolution;
         const vec2<U16> outputDim = output->_descriptor._resolution;
+
+        GLuint inputHandle = input->_framebufferHandle;
+        if ( input->_framebufferResolveHandle != GLUtil::k_invalidObjectID )
+        {
+            inputHandle = input->_framebufferResolveHandle;
+        }
 
         PROFILE_TAG( "Input_Width", inputDim.width );
         PROFILE_TAG( "Input_Height", inputDim.height );
@@ -242,7 +296,7 @@ namespace Divide
                 if ( readBuffer != input->_activeReadBuffer )
                 {
                     input->_activeReadBuffer = readBuffer;
-                    glNamedFramebufferReadBuffer( input->_framebufferHandle, readBuffer );
+                    glNamedFramebufferReadBuffer( inputHandle, readBuffer );
                     readBufferDirty = true;
                 }
 
@@ -258,11 +312,12 @@ namespace Divide
 
             bool blitted = false, inputDirty = false, outputDirty = false;;
             U16 layerCount = entry._layerCount;
-            if ( IsCubeTexture( inAtt->texture()->descriptor().texType() ) )
+            DIVIDE_ASSERT( layerCount != U16_MAX && entry._mipCount != U16_MAX);
+            if ( IsCubeTexture( inAtt->resolvedTexture()->descriptor().texType() ) )
             {
                 layerCount *= 6u;
             }
-
+            
             {
                 PROFILE_SCOPE( "Blit layers", Profiler::Category::Graphics );
                 for ( U8 layer = 0u; layer < layerCount; ++layer )
@@ -289,7 +344,7 @@ namespace Divide
                             }
                         }
 
-                        glBlitNamedFramebuffer( input->_framebufferHandle,
+                        glBlitNamedFramebuffer( inputHandle,
                                                 output->_framebufferHandle,
                                                 0, 0,
                                                 inputDim.width, inputDim.height,
@@ -324,7 +379,7 @@ namespace Divide
 
         if ( readBufferDirty )
         {
-            glNamedFramebufferReadBuffer( input->_framebufferHandle, GL_NONE );
+            glNamedFramebufferReadBuffer( inputHandle, GL_NONE );
             input->_activeReadBuffer = GL_NONE;
         }
     }
@@ -372,34 +427,26 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
+
         DrawLayerEntry targetDepthLayer{};
-        for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
-        {
-            if ( !_attachmentsUsed[i] )
-            {
-                continue;
-            }
-
-            if ( drawPolicy._writeLayers[i]._layer != INVALID_INDEX && (drawPolicy._writeLayers[i]._layer > 0u || drawPolicy._writeLayers[i]._cubeFace > 0u))
-            {
-                targetDepthLayer = drawPolicy._writeLayers[i];
-                break;
-            }
-        }
-
-        if ( _attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX] )
-        {
-            const DrawLayerEntry srcDepthLayer = drawPolicy._writeLayers[RT_DEPTH_ATTACHMENT_IDX];
-            const DrawLayerEntry layer = srcDepthLayer._layer == INVALID_INDEX ? targetDepthLayer : srcDepthLayer;
-            toggleAttachment( RT_DEPTH_ATTACHMENT_IDX, AttachmentState::STATE_ENABLED, drawPolicy._mipWriteLevel, layer, drawPolicy._layeredRendering );
-        }
 
         for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
         {
             if ( _attachmentsUsed[i] )
             {
-                const DrawLayerEntry layer = drawPolicy._writeLayers[i]._layer == INVALID_INDEX ? targetDepthLayer : drawPolicy._writeLayers[i];
-                toggleAttachment( i, AttachmentState::STATE_ENABLED, drawPolicy._mipWriteLevel, layer, drawPolicy._layeredRendering );
+                if ( drawPolicy._writeLayers[i]._layer != INVALID_INDEX && (drawPolicy._writeLayers[i]._layer > 0u || drawPolicy._writeLayers[i]._cubeFace > 0u))
+                {
+                    targetDepthLayer = drawPolicy._writeLayers[i];
+                    break;
+                }
+            }
+        }
+        for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ) + 1u; ++i )
+        {
+            if ( _attachmentsUsed[i] )
+            {
+                _previousDrawLayers[i] = drawPolicy._writeLayers[i]._layer == INVALID_INDEX ? targetDepthLayer : drawPolicy._writeLayers[i];
+                toggleAttachment( i, AttachmentState::STATE_ENABLED, drawPolicy._mipWriteLevel, _previousDrawLayers[i], drawPolicy._layeredRendering);
             }
         }
 
@@ -418,8 +465,6 @@ namespace Divide
         _context.setViewport( 0, 0, to_I32( getWidth() ), to_I32( getHeight() ) );
 
         clear( clearPolicy );
-
-        // Memorize the current draw policy to speed up later calls
         _previousPolicy = drawPolicy;
     }
 
@@ -427,11 +472,65 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
+        resolve();
+
         for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ) + 1u; ++i )
         {
             QueueMipMapsRecomputation( _attachments[i] );
         }
 
+    }
+
+    void glFramebuffer::resolve()
+    {
+        if ( _descriptor._msaaSamples == 0u || !_previousPolicy._autoResolveMSAA )
+        {
+            return;
+        }
+
+        for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
+        {
+            if ( !_attachmentsUsed[i] || !_attachmentsAutoResolve[i] )
+            {
+                continue;
+            }
+
+            if ( _previousPolicy._drawMask[i] )
+            {
+                toggleAttachment( i, AttachmentState::STATE_ENABLED, _previousPolicy._mipWriteLevel, _previousDrawLayers[i], _previousPolicy._layeredRendering);
+
+                const GLenum rwBuffer = static_cast<GLenum>(_attachments[i]->binding());
+                glNamedFramebufferReadBuffer( _framebufferHandle, rwBuffer );
+                glNamedFramebufferDrawBuffers( _framebufferResolveHandle, 1u, &rwBuffer);
+
+                glBlitNamedFramebuffer( _framebufferHandle,
+                                        _framebufferResolveHandle,
+                                        0, 0,
+                                        _descriptor._resolution.width, _descriptor._resolution.height,
+                                        0, 0,
+                                        _descriptor._resolution.width, _descriptor._resolution.height,
+                                        GL_COLOR_BUFFER_BIT,
+                                        GL_NEAREST );
+            }
+        }
+
+        if ( _attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX] && _attachmentsAutoResolve[RT_DEPTH_ATTACHMENT_IDX] )
+        {
+            toggleAttachment( RT_DEPTH_ATTACHMENT_IDX, AttachmentState::STATE_ENABLED, _previousPolicy._mipWriteLevel, _previousDrawLayers[RT_DEPTH_ATTACHMENT_IDX], _previousPolicy._layeredRendering );
+
+            glBlitNamedFramebuffer( _framebufferHandle,
+                                    _framebufferResolveHandle,
+                                    0, 0,
+                                    _descriptor._resolution.width, _descriptor._resolution.height,
+                                    0, 0,
+                                    _descriptor._resolution.width, _descriptor._resolution.height,
+                                    GL_DEPTH_BUFFER_BIT,
+                                    GL_NEAREST );
+        }
+
+
+        glNamedFramebufferReadBuffer( _framebufferHandle, GL_NONE );
+        _activeReadBuffer = GL_NONE;
     }
 
     void glFramebuffer::QueueMipMapsRecomputation( const RTAttachment_uptr& attachment )
@@ -443,7 +542,7 @@ namespace Divide
             return;
         }
 
-        const Texture_ptr& texture = attachment->texture();
+        const Texture_ptr& texture = attachment->resolvedTexture();
         if ( texture != nullptr && texture->descriptor().mipMappingState() == TextureDescriptor::MipMappingState::AUTO )
         {
             glGenerateTextureMipmap( static_cast<glTexture*>(texture.get())->textureHandle() );
@@ -470,13 +569,13 @@ namespace Divide
                 {
                     const GLint buffer = static_cast<GLint>(binding - static_cast<GLint>(GL_COLOR_ATTACHMENT0));
                     const FColour4& colour = descriptor[i]._colour;
-                    if ( IsNormalizedTexture(att->texture()->descriptor().packing()) )
+                    if ( IsNormalizedTexture(att->renderTexture()->descriptor().packing()) )
                     {
                         glClearNamedFramebufferfv( _framebufferHandle, GL_COLOR, buffer, colour._v );
                     }
                     else
                     {
-                        switch ( att->texture()->descriptor().dataType() )
+                        switch ( att->renderTexture()->descriptor().dataType() )
                         {
                             case GFXDataFormat::FLOAT_16:
                             case GFXDataFormat::FLOAT_32:
@@ -590,13 +689,22 @@ namespace Divide
             return true;
         }
         _statusCheckQueued = false;
+        if ( _framebufferResolveHandle != GLUtil::k_invalidObjectID && !checkStatusInternal( _framebufferResolveHandle ) )
+        {
+            return false;
+        }
 
+        return checkStatusInternal( _framebufferHandle );
+    }
+
+    bool glFramebuffer::checkStatusInternal( const GLuint handle )
+    {
         if constexpr ( Config::ENABLE_GPU_VALIDATION )
         {
             PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
             // check FB status
-            const GLenum status = glCheckNamedFramebufferStatus( _framebufferHandle, GL_FRAMEBUFFER );
+            const GLenum status = glCheckNamedFramebufferStatus( handle, GL_FRAMEBUFFER );
             if ( status == GL_FRAMEBUFFER_COMPLETE )
             {
                 return true;
@@ -607,58 +715,53 @@ namespace Divide
                 case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
                 {
                     Console::errorfn( Locale::Get( _ID( "ERROR_RT_ATTACHMENT_INCOMPLETE" ) ) );
-                    return false;
-                }
+                } break;
                 case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
                 {
                     Console::errorfn( Locale::Get( _ID( "ERROR_RT_NO_IMAGE" ) ) );
-                    return false;
-                }
+                } break;
                 case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
                 {
                     Console::errorfn( Locale::Get( _ID( "ERROR_RT_INCOMPLETE_DRAW_BUFFER" ) ) );
-                    return false;
-                }
+                } break;
                 case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
                 {
                     Console::errorfn( Locale::Get( _ID( "ERROR_RT_INCOMPLETE_READ_BUFFER" ) ) );
-                    return false;
-                }
+                } break;
                 case GL_FRAMEBUFFER_UNSUPPORTED:
                 {
                     Console::errorfn( Locale::Get( _ID( "ERROR_RT_UNSUPPORTED" ) ) );
-                    return false;
-                }
+                } break;
                 case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
                 {
                     Console::errorfn( Locale::Get( _ID( "ERROR_RT_INCOMPLETE_MULTISAMPLE" ) ) );
-                    return false;
-                }
+                } break;
                 case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
                 {
                     Console::errorfn( Locale::Get( _ID( "ERROR_RT_INCOMPLETE_LAYER_TARGETS" ) ) );
-                    return false;
-                }
+                } break;
                 case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT:
                 {
                     Console::errorfn( Locale::Get( _ID( "ERROR_RT_DIMENSIONS" ) ) );
-                    return false;
-                }
+                } break;
                 case GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT:
                 {
                     Console::errorfn( Locale::Get( _ID( "ERROR_RT_FORMAT" ) ) );
-                    return false;
-                }
+                } break;
                 default:
                 {
                     Console::errorfn( Locale::Get( _ID( "ERROR_UNKNOWN" ) ) );
                 } break;
-            };
+            }
+
+            DIVIDE_ASSERT( !(*GL_API::GetStateTracker()._assertOnAPIError));
+
+            return false;
         }
-
-        DIVIDE_ASSERT( !GL_API::GetStateTracker().assertOnAPIError());
-
-        return false;
+        else
+        {
+            return true;
+        }
     }
 
 };  // namespace Divide

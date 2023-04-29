@@ -117,12 +117,10 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
 
         TextureDescriptor colourDescriptor(TextureType::TEXTURE_2D_ARRAY, texDescriptor.dataType(), texDescriptor.baseFormat() );
         colourDescriptor.layerCount(1u);
-        colourDescriptor.msaaSamples(g_shadowSettings.spot.MSAASamples);
         colourDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         TextureDescriptor depthDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::RED, GFXImagePacking::DEPTH);
         depthDescriptor.layerCount( 1u );
-        depthDescriptor.msaaSamples(g_shadowSettings.spot.MSAASamples);
         depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         desc._attachments = 
@@ -191,6 +189,7 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
     params._passName = "SingleShadowMap";
     params._maxLoD = -1;
     params._refreshLightData = false;
+    params._useMSAA = _context.context().config().rendering.shadowMapping.spot.MSAASamples;
     params._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
     params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
     params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;

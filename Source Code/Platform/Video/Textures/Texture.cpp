@@ -353,6 +353,8 @@ namespace Divide
 
     void Texture::createWithData( const Byte* data, const size_t dataSize, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         // This should never be called for compressed textures
         assert( !IsCompressed( _descriptor.baseFormat() ) );
 
@@ -378,6 +380,8 @@ namespace Divide
 
     void Texture::replaceData( const Byte* data, const size_t dataSize, const vec3<U16>& offset, const vec3<U16>& range, const PixelAlignment& pixelUnpackAlignment )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         if ( data == nullptr || dataSize == 0u )
         {
             return;
@@ -399,6 +403,8 @@ namespace Divide
 
     void Texture::createWithData( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         const U16 slices = Is3DTexture(_descriptor.texType()) ? imageData.dimensions( 0u, 0u ).depth : imageData.layerCount();
 
         prepareTextureData( imageData.dimensions( 0u, 0u ).width, imageData.dimensions( 0u, 0u ).height, slices, false );
@@ -416,7 +422,6 @@ namespace Divide
 
     bool Texture::checkTransparency( const ResourcePath& path, const ResourcePath& name, ImageTools::ImageData& fileData )
     {
-
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         if ( fileData.ignoreAlphaChannelTransparency() || fileData.hasDummyAlphaChannel() )

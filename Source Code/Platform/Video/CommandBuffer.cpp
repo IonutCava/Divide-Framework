@@ -603,8 +603,6 @@ namespace
         }
         out.append( "\n\n\n\n" );
 
-        assert( crtIndent == 0 );
-
         return out;
     }
 

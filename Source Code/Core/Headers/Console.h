@@ -35,7 +35,6 @@
 
 namespace Divide {
 
-constexpr int CONSOLE_OUTPUT_BUFFER_SIZE = 4096 * 16 * 2;
 constexpr int MAX_CONSOLE_ENTRIES = 128;
 
 struct Console : NonCopyable
@@ -105,10 +104,11 @@ struct Console : NonCopyable
         DECORATE_TIMESTAMP = toBit( 1 ),
         DECORATE_THREAD_ID = toBit( 2 ),
         DECORATE_SEVERITY = toBit( 3 ),
-        ENABLE_OUTPUT = toBit( 4 ),
-        ENABLE_ERROR_STREAM = toBit( 5 ),
-        PRINT_IMMEDIATE = toBit(6),
-        COUNT = 6
+        DECORATE_FRAME = toBit( 4 ),
+        ENABLE_OUTPUT = toBit( 5 ),
+        ENABLE_ERROR_STREAM = toBit( 6 ),
+        PRINT_IMMEDIATE = toBit( 7 ),
+        COUNT = 7
     };
 
     struct OutputEntry
@@ -141,12 +141,10 @@ struct Console : NonCopyable
     static void PrintCopyrightNotice();
 
     protected:
-        static void Output(const char* text, bool newline, EntryType type);
-        static void Output(std::ostream& outStream, const char* text, bool newline, EntryType type);
-        static void DecorateAndPrint(std::ostream& outStream, const char* text, bool newline, EntryType type);
+        static void Output(std::string_view text, bool newline, EntryType type);
+        static void Output(std::ostream& outStream, std::string_view text, bool newline, EntryType type);
+        static void DecorateAndPrint(std::ostream& outStream, std::string_view text, bool newline, EntryType type);
         static void PrintToFile(const OutputEntry& entry);
-
-        [[nodiscard]] static const char* FormatText( const char* format, ... ) noexcept;
 
     private:
         static SharedMutex                       s_callbackLock;

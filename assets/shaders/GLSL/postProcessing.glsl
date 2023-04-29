@@ -10,8 +10,7 @@ DESCRIPTOR_SET_RESOURCE( PER_DRAW, 2 ) uniform sampler2D texNoise;
 DESCRIPTOR_SET_RESOURCE( PER_DRAW, 3 ) uniform sampler2D texWaterNoiseNM;
 DESCRIPTOR_SET_RESOURCE( PER_DRAW, 4 ) uniform sampler2D texLinearDepth;
 DESCRIPTOR_SET_RESOURCE( PER_DRAW, 5 ) uniform sampler2D texSSR;
-DESCRIPTOR_SET_RESOURCE( PER_DRAW, 6 ) uniform sampler2D texSceneData;
-DESCRIPTOR_SET_RESOURCE( PER_DRAW, 7 ) uniform sampler2D texSceneVelocity;
+DESCRIPTOR_SET_RESOURCE( PER_DRAW, 6 ) uniform sampler2D texSceneVelocity;
 
 uniform vec4 _fadeColour;
 uniform mat4 _invProjectionMatrix;

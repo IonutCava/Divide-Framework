@@ -41,12 +41,14 @@
 namespace Divide {
 
 class RenderTarget;
-struct RenderTargetHandle {
+struct RenderTargetHandle
+{
     RenderTarget* _rt{ nullptr };
     RenderTargetID _targetID{ INVALID_RENDER_TARGET_ID };
 };
 
-struct RenderTargetDescriptor {
+struct RenderTargetDescriptor
+{
     Str64 _name{ "" };
     InternalRTAttachmentDescriptors _attachments;
     ExternalRTAttachmentDescriptors _externalAttachments;
@@ -94,13 +96,16 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
     PROPERTY_RW(bool, enableAttachmentChangeValidation, true);
 
    protected:
-    virtual bool initAttachment(RTAttachment* att, RTAttachmentType type, RTColourAttachmentSlot slot, bool isExternal);
+   [[nodiscard]] virtual bool initAttachment(RTAttachment* att, RTAttachmentType type, RTColourAttachmentSlot slot, bool isExternal);
+
+   [[nodiscard]] bool autoResolveAttachment(RTAttachment* att) const;
 
    protected:
     RenderTargetDescriptor _descriptor;
 
     std::array<RTAttachment_uptr, to_base( RTColourAttachmentSlot::COUNT ) + 1> _attachments{};
     std::array<bool, to_base( RTColourAttachmentSlot::COUNT ) + 1> _attachmentsUsed;
+    std::array<bool, to_base( RTColourAttachmentSlot::COUNT ) + 1> _attachmentsAutoResolve;
 };
 
 FWD_DECLARE_MANAGED_CLASS(RenderTarget);

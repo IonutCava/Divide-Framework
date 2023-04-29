@@ -75,6 +75,36 @@ ErrorCode Application::start(const string& entryPoint, const I32 argc, char** ar
     return err;
 }
 
+bool Application::onProfilerStateChanged( const Profiler::State state )
+{
+    if ( state == Profiler::State::COUNT ) [[unlikely]]
+    {
+        return false;
+    }
+    
+    PlatformContext& context = _kernel->platformContext();
+    static bool assertOnAPIError = context.config().debug.renderer.assertOnRenderAPIError;
+    static bool apiDebugging = context.config().debug.renderer.enableRenderAPIDebugging;
+
+    switch ( state )
+    {
+        case Profiler::State::STARTED:
+        {
+            context.config().debug.renderer.assertOnRenderAPIError = false;
+            context.config().debug.renderer.enableRenderAPIDebugging = false;
+        } break;
+        case Profiler::State::STOPPED:
+        {
+            context.config().debug.renderer.assertOnRenderAPIError = assertOnAPIError;
+            context.config().debug.renderer.enableRenderAPIDebugging = apiDebugging;
+        } break;
+        default: break;
+    }
+
+
+    return true;
+}
+
 ErrorCode Application::setRenderingAPI( const RenderAPI api )
 {
     PlatformContext& context = _kernel->platformContext();

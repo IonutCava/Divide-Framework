@@ -962,17 +962,28 @@ namespace Divide
                     ret._cullMode = CullMode::BACK;
                     //ret.setZBias(1.1f, 4.f);
                 }
-                else if ( !IsZPrePass( renderStagePass ) ) // DEPTH
+                else if ( IsZPrePass( renderStagePass ) ) //Z-PRE_PASS
+                {
+                    NOP();
+                }
+                else //DEPTH
                 {
                     ret._colourWrite.b[0] = ret._colourWrite.b[1] = ret._colourWrite.b[2] = ret._colourWrite.b[3] = false;
                 }
             }
-            else // Colour pass: MAIN/OIT/TRANSPARENT
+            else if( renderStagePass._passType == RenderPassType::MAIN_PASS )
             {
                 ret._zFunc = ComparisonFunction::EQUAL;
                 ret._depthWriteEnabled = false;
             }
-
+            else //OIT/TRANSPARENT
+            {
+                DIVIDE_ASSERT( renderStagePass._passType == RenderPassType::OIT_PASS ||
+                               renderStagePass._passType == RenderPassType::TRANSPARENCY_PASS );
+                // We use alpha-discard in the prepass for transparent/translucent objects, so depth values for translucent pixels will be invalid
+                ret._zFunc = ComparisonFunction::LEQUAL;
+                ret._depthWriteEnabled = false;
+            }
             if ( _computeRenderStateCBK )
             {
                 _computeRenderStateCBK( this, renderStagePass, ret );

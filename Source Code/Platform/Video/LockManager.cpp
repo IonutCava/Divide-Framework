@@ -84,6 +84,8 @@ namespace Divide
             case RenderAPI::Vulkan:
             case RenderAPI::None: 
             {
+                PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
                 if ( entry._ptr == nullptr )
                 {
                     entry._ptr = eastl::make_unique<SyncObject>( flag, frameIdx );

@@ -40,6 +40,11 @@ namespace
                                                                  void* )
     {
 
+        if ( Divide::VK_API::GetStateTracker()._enabledAPIDebugging && !(*Divide::VK_API::GetStateTracker()._enabledAPIDebugging) )
+        {
+            return VK_FALSE;
+        }
+
         using namespace Divide;
 
         const auto to_string_message_severity = []( VkDebugUtilsMessageSeverityFlagBitsEXT s ) -> const char*
@@ -134,7 +139,7 @@ namespace
         else
         {
             Console::errorfn( outputError.c_str() );
-            DIVIDE_ASSERT( !VK_API::GetStateTracker()._assertOnAPIError, outputError.c_str() );
+            DIVIDE_ASSERT( VK_API::GetStateTracker()._assertOnAPIError && !(*VK_API::GetStateTracker()._assertOnAPIError), outputError.c_str() );
         }
 
         Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY, severityDecoration );
@@ -146,8 +151,6 @@ namespace
 
 namespace Divide
 {
-
-
     PFN_vkCmdSetColorBlendEnableEXT   vkCmdSetColorBlendEnableEXT   = VK_NULL_HANDLE;
     PFN_vkCmdSetColorBlendEquationEXT vkCmdSetColorBlendEquationEXT = VK_NULL_HANDLE;
     PFN_vkCmdSetColorWriteMaskEXT     vkCmdSetColorWriteMaskEXT     = VK_NULL_HANDLE;
@@ -573,9 +576,7 @@ namespace Divide
 
     void VK_API::idle( [[maybe_unused]] const bool fast ) noexcept
     {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        vkShaderProgram::Idle( _context.context() );
+        NOP();
     }
 
     bool VK_API::drawToWindow( DisplayWindow& window )
@@ -1106,7 +1107,8 @@ namespace Divide
         initStatePerWindow( perWindowContext );
 
         s_stateTracker.init(_device.get(), &perWindowContext);
-        s_stateTracker._assertOnAPIError = config.debug.renderer.assertOnRenderAPIError;
+        s_stateTracker._assertOnAPIError = &config.debug.renderer.assertOnRenderAPIError;
+        s_stateTracker._enabledAPIDebugging = &config.debug.renderer.enableRenderAPIDebugging;
 
         return ErrorCode::NO_ERR;
     }
@@ -1509,26 +1511,23 @@ namespace Divide
                         builder.buildSetFromLayout( _descriptorSets[usageIdx], _descriptorSetLayouts[usageIdx], _device->getVKDevice() );
                     }
                     {
-                        PROFILE_SCOPE( "Update", Profiler::Category::Graphics);
                         for ( VkWriteDescriptorSet& w : descriptorWrites )
                         {
                             w.dstSet = _descriptorSets[usageIdx];
                         }
-                        vkUpdateDescriptorSets( _device->getVKDevice(), to_U32( descriptorWrites.size() ), descriptorWrites.data(), 0, nullptr );
+                        VK_PROFILE( vkUpdateDescriptorSets, _device->getVKDevice(), to_U32( descriptorWrites.size() ), descriptorWrites.data(), 0, nullptr );
                     }
                     needsBind = true;
                 }
                 else
                 {
-                    PROFILE_SCOPE( "Push descriptor set", Profiler::Category::Graphics );
-
                     const auto& pipeline = GetStateTracker()._pipeline;
-                    vkCmdPushDescriptorSetKHR( getCurrentCommandBuffer(),
-                                               pipeline._bindPoint,
-                                               pipeline._vkPipelineLayout,
-                                               0,
-                                               to_U32(descriptorWrites.size()),
-                                               descriptorWrites.data());
+                    VK_PROFILE( vkCmdPushDescriptorSetKHR, getCurrentCommandBuffer(),
+                                                           pipeline._bindPoint,
+                                                           pipeline._vkPipelineLayout,
+                                                           0,
+                                                           to_U32(descriptorWrites.size()),
+                                                           descriptorWrites.data());
                 }
                 descriptorWrites.clear();
                 s_dynamicBindings[usageIdx] = {};
@@ -1578,14 +1577,14 @@ namespace Divide
             }
 
             const auto& pipeline = GetStateTracker()._pipeline;
-            vkCmdBindDescriptorSets( getCurrentCommandBuffer(),
-                                     pipeline._bindPoint,
-                                     pipeline._vkPipelineLayout,
-                                     offset,
-                                     setCount,
-                                     tempSets,
-                                     to_U32( s_dynamicOffsets.size() ),
-                                     s_dynamicOffsets.data() );
+            VK_PROFILE( vkCmdBindDescriptorSets, getCurrentCommandBuffer(),
+                                                 pipeline._bindPoint,
+                                                 pipeline._vkPipelineLayout,
+                                                 offset,
+                                                 setCount,
+                                                 tempSets,
+                                                 to_U32( s_dynamicOffsets.size() ),
+                                                 s_dynamicOffsets.data() );
         }
 
 
@@ -1791,7 +1790,8 @@ namespace Divide
             ShaderProgram* program = ShaderProgram::FindShaderProgram( pipelineDescriptor._shaderProgramHandle );
             if ( program == nullptr )
             {
-                Console::errorfn( Locale::Get( _ID( "ERROR_GLSL_INVALID_HANDLE" ) ), pipelineDescriptor._shaderProgramHandle );
+                const auto handle = pipelineDescriptor._shaderProgramHandle;
+                Console::errorfn( Locale::Get( _ID( "ERROR_GLSL_INVALID_HANDLE" ) ), handle._id, handle._generation, handle._tag );
                 return ShaderResult::Failed;
             }
 
@@ -1947,7 +1947,7 @@ namespace Divide
             compiledPipeline._isValid = true;
         }
 
-        vkCmdBindPipeline( cmdBuffer, compiledPipeline._bindPoint, compiledPipeline._vkPipeline );
+        VK_PROFILE( vkCmdBindPipeline, cmdBuffer, compiledPipeline._bindPoint, compiledPipeline._vkPipeline );
 
         GetStateTracker()._pipeline = compiledPipeline;
         if ( GetStateTracker()._pipelineStageMask != compiledPipeline._stageFlags )
@@ -2034,7 +2034,7 @@ namespace Divide
                 dependencyInfo.bufferMemoryBarrierCount = to_U32( barriers.size() );
                 dependencyInfo.pBufferMemoryBarriers = barriers.data();
 
-                vkCmdPipelineBarrier2( cmd, &dependencyInfo );
+                VK_PROFILE( vkCmdPipelineBarrier2, cmd, &dependencyInfo );
                 efficient_clear( barriers );
             }
         }
@@ -2051,7 +2051,7 @@ namespace Divide
                 copyInfo.regionCount = to_U32( request._copiesPerBuffer.size() );
                 copyInfo.pRegions = request._copiesPerBuffer.data();
 
-                vkCmdCopyBuffer2( cmd, &copyInfo );
+                VK_PROFILE( vkCmdCopyBuffer2, cmd, &copyInfo );
             }
         }
 
@@ -2160,7 +2160,7 @@ namespace Divide
 
         PrepareTransferRequest( request, false, barriers[1] );
         dependencyInfo.pBufferMemoryBarriers = barriers;
-        vkCmdPipelineBarrier2( cmd, &dependencyInfo );
+        VK_PROFILE( vkCmdPipelineBarrier2, cmd, &dependencyInfo );
     }
 
     void VK_API::FlushBufferTransferRequests()
@@ -2297,7 +2297,7 @@ namespace Divide
                     dependencyInfo.imageMemoryBarrierCount = 1u;
                     dependencyInfo.pImageMemoryBarriers = &imageBarrier;
                     
-                    vkCmdPipelineBarrier2(cmdBuffer, &dependencyInfo);
+                    VK_PROFILE( vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo);
 
                     stateTracker._activeMSAASamples = 1u;
                 }
@@ -2330,14 +2330,14 @@ namespace Divide
 
                     _context.setViewport( renderArea );
                     _context.setScissor( renderArea );
-                    vkCmdBeginRendering( cmdBuffer, &renderingInfo);
+                    VK_PROFILE( vkCmdBeginRendering, cmdBuffer, &renderingInfo);
                 }
             } break;
             case GFX::CommandType::END_RENDER_PASS:
             {
                 PROFILE_SCOPE( "END_RENDER_PASS", Profiler::Category::Graphics );
 
-                vkCmdEndRendering( cmdBuffer );
+                VK_PROFILE( vkCmdEndRendering, cmdBuffer );
                 if ( stateTracker._activeRenderTargetID == SCREEN_TARGET_ID )
                 {
                     VkImageMemoryBarrier2 imageBarrier = vk::imageMemoryBarrier2();
@@ -2362,7 +2362,7 @@ namespace Divide
                     dependencyInfo.imageMemoryBarrierCount = 1u;
                     dependencyInfo.pImageMemoryBarriers = &imageBarrier;
                     
-                    vkCmdPipelineBarrier2(cmdBuffer, &dependencyInfo);
+                    VK_PROFILE( vkCmdPipelineBarrier2,cmdBuffer, &dependencyInfo );
                 }
                 else
                 {
@@ -2434,7 +2434,8 @@ namespace Divide
                 assert( pipeline != nullptr );
                 if ( bindPipeline( *pipeline, cmdBuffer ) == ShaderResult::Failed )
                 {
-                    Console::errorfn( Locale::Get( _ID( "ERROR_GLSL_INVALID_BIND" ) ), pipeline->descriptor()._shaderProgramHandle );
+                    const auto handle = pipeline->descriptor()._shaderProgramHandle;
+                    Console::errorfn( Locale::Get( _ID( "ERROR_GLSL_INVALID_BIND" ) ), handle._id, handle._generation, handle._tag );
                 }
             } break;
             case GFX::CommandType::SEND_PUSH_CONSTANTS:
@@ -2452,12 +2453,12 @@ namespace Divide
 
                     if ( pushConstants.fastData()._set )
                     {
-                        vkCmdPushConstants( cmdBuffer,
-                                            stateTracker._pipeline._vkPipelineLayout,
-                                            stateTracker._pipeline._program->stageMask(),
-                                            0,
-                                            to_U32( PushConstantsStruct::Size() ),
-                                            pushConstants.fastData().dataPtr() );
+                        VK_PROFILE( vkCmdPushConstants, cmdBuffer,
+                                                        stateTracker._pipeline._vkPipelineLayout,
+                                                        stateTracker._pipeline._program->stageMask(),
+                                                        0,
+                                                        to_U32( PushConstantsStruct::Size() ),
+                                                        pushConstants.fastData().dataPtr() );
 
                         stateTracker._pushConstantsValid = true;
                     }
@@ -2503,12 +2504,12 @@ namespace Divide
                 {
                     if ( !stateTracker._pushConstantsValid )
                     {
-                        vkCmdPushConstants( cmdBuffer,
-                                            stateTracker._pipeline._vkPipelineLayout,
-                                            stateTracker._pipeline._program->stageMask(),
-                                            0,
-                                            to_U32( PushConstantsStruct::Size() ),
-                                            &s_defaultPushConstants[0].mat );
+                        VK_PROFILE( vkCmdPushConstants, cmdBuffer,
+                                                        stateTracker._pipeline._vkPipelineLayout,
+                                                        stateTracker._pipeline._program->stageMask(),
+                                                        0,
+                                                        to_U32( PushConstantsStruct::Size() ),
+                                                        &s_defaultPushConstants[0].mat );
                         stateTracker._pushConstantsValid = true;
                     }
 
@@ -2528,10 +2529,10 @@ namespace Divide
                         {
                             PrimitiveTopology oldTopology = stateTracker._pipeline._topology;
                             stateTracker._pipeline._topology = PrimitiveTopology::LINES;
-                            vkCmdBindPipeline( cmdBuffer, stateTracker._pipeline._bindPoint, stateTracker._pipeline._vkPipelineWireframe );
+                            VK_PROFILE( vkCmdBindPipeline, cmdBuffer, stateTracker._pipeline._bindPoint, stateTracker._pipeline._vkPipelineWireframe );
                             Draw( currentDrawCommand, cmdBuffer );
                             ++drawCount;
-                            vkCmdBindPipeline( cmdBuffer, stateTracker._pipeline._bindPoint, stateTracker._pipeline._vkPipeline );
+                            VK_PROFILE( vkCmdBindPipeline, cmdBuffer, stateTracker._pipeline._bindPoint, stateTracker._pipeline._vkPipeline );
                             stateTracker._pipeline._topology = oldTopology;
                         }
                     }
@@ -2545,12 +2546,12 @@ namespace Divide
 
                 if ( !stateTracker._pushConstantsValid )
                 {
-                    vkCmdPushConstants( cmdBuffer,
-                                        stateTracker._pipeline._vkPipelineLayout,
-                                        stateTracker._pipeline._program->stageMask(),
-                                        0,
-                                        to_U32( PushConstantsStruct::Size() ),
-                                        &s_defaultPushConstants[0].mat );
+                    VK_PROFILE( vkCmdPushConstants, cmdBuffer,
+                                                    stateTracker._pipeline._vkPipelineLayout,
+                                                    stateTracker._pipeline._program->stageMask(),
+                                                    0,
+                                                    to_U32( PushConstantsStruct::Size() ),
+                                                    &s_defaultPushConstants[0].mat );
                     stateTracker._pushConstantsValid = true;
                 }
 
@@ -2558,7 +2559,7 @@ namespace Divide
                 if ( stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE )
                 {
                     const GFX::DispatchComputeCommand* crtCmd = cmd->As<GFX::DispatchComputeCommand>();
-                    vkCmdDispatch( cmdBuffer, crtCmd->_computeGroupSize.x, crtCmd->_computeGroupSize.y, crtCmd->_computeGroupSize.z );
+                    VK_PROFILE( vkCmdDispatch, cmdBuffer, crtCmd->_computeGroupSize.x, crtCmd->_computeGroupSize.y, crtCmd->_computeGroupSize.z );
                 }
             } break;
             case GFX::CommandType::MEMORY_BARRIER:
@@ -2686,14 +2687,12 @@ namespace Divide
 
                     if ( bufferBarrierCount == MAX_BUFFER_BARRIERS_PER_CMD )
                     {
-                        PROFILE_SCOPE( "Pipeline Barrier Overflow", Profiler::Category::Graphics );
-
                         // Too many buffer barriers. Flushing ...
                         VkDependencyInfo dependencyInfo = vk::dependencyInfo();
                         dependencyInfo.bufferMemoryBarrierCount = bufferBarrierCount;
                         dependencyInfo.pBufferMemoryBarriers = bufferBarriers.data();
 
-                        vkCmdPipelineBarrier2( cmdBuffer, &dependencyInfo );
+                        VK_PROFILE( vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo );
                         bufferBarrierCount = 0u;
                     }
                 }
@@ -2864,15 +2863,13 @@ namespace Divide
 
                 if ( imageBarrierCount > 0u || bufferBarrierCount > 0u)
                 {
-                    PROFILE_SCOPE( "Pipeline Barrier", Profiler::Category::Graphics );
-
                     VkDependencyInfo dependencyInfo = vk::dependencyInfo();
                     dependencyInfo.imageMemoryBarrierCount = imageBarrierCount;
                     dependencyInfo.pImageMemoryBarriers = imageBarriers.data();
                     dependencyInfo.bufferMemoryBarrierCount = bufferBarrierCount;
                     dependencyInfo.pBufferMemoryBarriers = bufferBarriers.data();
 
-                    vkCmdPipelineBarrier2( cmdBuffer, &dependencyInfo );
+                    VK_PROFILE( vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo );
                 }
             } break;
             default: break;

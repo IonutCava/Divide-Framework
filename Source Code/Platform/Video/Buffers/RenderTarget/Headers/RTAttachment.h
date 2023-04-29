@@ -50,14 +50,17 @@ enum class RTAttachmentType : U8 {
     COUNT
 };
 
-struct RTAttachmentDescriptor {
-    explicit RTAttachmentDescriptor(const size_t samplerHash, const RTAttachmentType type, const RTColourAttachmentSlot slot) noexcept
+struct RTAttachmentDescriptor
+{
+    explicit RTAttachmentDescriptor(const size_t samplerHash, const RTAttachmentType type, const RTColourAttachmentSlot slot, const bool autoResolve) noexcept
         : _samplerHash(samplerHash)
         , _type(type)
         , _slot(slot)
+        , _autoResolve(autoResolve)
     {
     }
 
+    bool _autoResolve{true};
     size_t _samplerHash{ 0u };
     RTAttachmentType _type{ RTAttachmentType::COUNT };
     RTColourAttachmentSlot _slot{ RTColourAttachmentSlot::COUNT };
@@ -67,12 +70,14 @@ constexpr static U32 RT_DEPTH_ATTACHMENT_IDX = to_base( RTColourAttachmentSlot::
 constexpr static U8 RT_MAX_ATTACHMENT_COUNT = to_base( RTColourAttachmentSlot::COUNT ) + 1;
 
 // External attachments get added last and OVERRIDE any normal attachments found at the same type+index location
-struct ExternalRTAttachmentDescriptor final : public RTAttachmentDescriptor {
+struct ExternalRTAttachmentDescriptor final : public RTAttachmentDescriptor
+{
     explicit ExternalRTAttachmentDescriptor(RTAttachment* attachment,
                                             const size_t samplerHash,
                                             const RTAttachmentType type,
-                                            const RTColourAttachmentSlot slot)
-        : RTAttachmentDescriptor(samplerHash, type, slot)
+                                            const RTColourAttachmentSlot slot,
+                                            bool autoResolve = true )
+        : RTAttachmentDescriptor(samplerHash, type, slot, autoResolve )
         , _attachment(attachment)
     {
     }
@@ -80,12 +85,14 @@ struct ExternalRTAttachmentDescriptor final : public RTAttachmentDescriptor {
     RTAttachment* _attachment{nullptr};
 };
 
-struct InternalRTAttachmentDescriptor final : public RTAttachmentDescriptor {
+struct InternalRTAttachmentDescriptor final : public RTAttachmentDescriptor
+{
     explicit InternalRTAttachmentDescriptor(TextureDescriptor& descriptor,
                                             const size_t samplerHash,
                                             const RTAttachmentType type,
-                                            const RTColourAttachmentSlot slot)
-        : RTAttachmentDescriptor(samplerHash, type, slot)
+                                            const RTColourAttachmentSlot slot,
+                                            bool autoResolve = true)
+        : RTAttachmentDescriptor(samplerHash, type, slot, autoResolve)
         , _texDescriptor(descriptor)
     {
     }
@@ -97,26 +104,28 @@ using InternalRTAttachmentDescriptors = vector<InternalRTAttachmentDescriptor>;
 using ExternalRTAttachmentDescriptors = vector<ExternalRTAttachmentDescriptor>;
 
 class RenderTarget;
-class RTAttachment final {
+class RTAttachment final
+{
     public:
         explicit RTAttachment(RenderTarget& parent, const RTAttachmentDescriptor& descriptor) noexcept;
 
         [[nodiscard]] const Texture_ptr& texture() const;
-        void setTexture(const Texture_ptr& tex, const bool isExternal) noexcept;
 
-        [[nodiscard]] const RTAttachmentDescriptor& descriptor() const noexcept;
+        void setTexture(const Texture_ptr& renderTexture, const Texture_ptr& resolveTexture, const bool isExternal) noexcept;
 
         RenderTarget& parent() noexcept;
         [[nodiscard]] const RenderTarget& parent() const noexcept;
 
+
+        PROPERTY_R_IW(Texture_ptr, renderTexture, nullptr );
+        PROPERTY_R_IW(Texture_ptr, resolvedTexture, nullptr );
+        PROPERTY_R_IW(RTAttachmentDescriptor, descriptor);
         PROPERTY_RW(U32, binding, 0u);
         PROPERTY_RW(bool, changed, false);
         PROPERTY_R_IW(bool, isExternal, false);
 
     protected:
         RenderTarget& _parent;
-        RTAttachmentDescriptor _descriptor;
-        Texture_ptr _texture = nullptr;
 };
 
 FWD_DECLARE_MANAGED_CLASS(RTAttachment);

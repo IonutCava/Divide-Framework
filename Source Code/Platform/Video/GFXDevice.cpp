@@ -119,10 +119,9 @@ namespace Divide
 
     RenderTargetID RenderTargetNames::BACK_BUFFER = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::SCREEN = INVALID_RENDER_TARGET_ID;
-    RenderTargetID RenderTargetNames::SCREEN_MS = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::SCREEN_PREV = INVALID_RENDER_TARGET_ID;
+    RenderTargetID RenderTargetNames::NORMALS_RESOLVED = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::OIT = INVALID_RENDER_TARGET_ID;
-    RenderTargetID RenderTargetNames::OIT_MS = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::OIT_REFLECT = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::SSAO_RESULT = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::SSR_RESULT = INVALID_RENDER_TARGET_ID;
@@ -562,8 +561,8 @@ namespace Divide
 
         //PrePass
         TextureDescriptor depthDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_32, GFXImageFormat::RED, GFXImagePacking::DEPTH );
-        TextureDescriptor velocityDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RGBA );
-        //RG - packed normal, B - roughness
+        TextureDescriptor velocityDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RG );
+        //RG - packed normal, B - roughness, A - unused
         TextureDescriptor normalsDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RGBA );
         depthDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
         velocityDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
@@ -582,34 +581,35 @@ namespace Divide
             {
                 InternalRTAttachmentDescriptor{ screenDescriptor,   samplerHash, RTAttachmentType::COLOUR, ScreenTargets::ALBEDO },
                 InternalRTAttachmentDescriptor{ velocityDescriptor, samplerHash, RTAttachmentType::COLOUR, ScreenTargets::VELOCITY },
-                InternalRTAttachmentDescriptor{ normalsDescriptor,  samplerHash, RTAttachmentType::COLOUR, ScreenTargets::NORMALS },
+                InternalRTAttachmentDescriptor{ normalsDescriptor,  samplerHash, RTAttachmentType::COLOUR, ScreenTargets::NORMALS, false },
                 InternalRTAttachmentDescriptor{ depthDescriptor,    samplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 }
             };
 
             RenderTargetDescriptor screenDesc = {};
             screenDesc._resolution = renderResolution;
             screenDesc._attachments = attachments;
-            screenDesc._msaaSamples = 0u;
+            screenDesc._msaaSamples = config.rendering.MSAASamples;
             screenDesc._name = "Screen";
             RenderTargetNames::SCREEN = _rtPool->allocateRT( screenDesc )._targetID;
 
-            for ( auto& attachment : attachments )
-            {
-                attachment._texDescriptor.msaaSamples( config.rendering.MSAASamples );
-                attachment._texDescriptor.removeImageUsageFlag(ImageUsage::SHADER_READ);
-            }
-            screenDesc._msaaSamples = config.rendering.MSAASamples;
-            screenDesc._name = "Screen MS";
-            RenderTargetNames::SCREEN_MS = _rtPool->allocateRT( screenDesc )._targetID;
-
-            auto& screenAttachment = attachments.front();
+            auto& screenAttachment = attachments[to_base( ScreenTargets::ALBEDO )];
             screenAttachment._texDescriptor.mipMappingState( TextureDescriptor::MipMappingState::MANUAL );
-            screenAttachment._texDescriptor.msaaSamples( 0 );
             screenAttachment._texDescriptor.addImageUsageFlag(ImageUsage::SHADER_READ);
             screenAttachment._samplerHash = samplerHashMips;
             screenDesc._msaaSamples = 0u;
             screenDesc._name = "Screen Prev";
+            screenDesc._attachments = { screenAttachment };
             RenderTargetNames::SCREEN_PREV = _rtPool->allocateRT( screenDesc )._targetID;
+
+            auto& normalAttachment = attachments[to_base( ScreenTargets::NORMALS )];
+            normalAttachment._slot = RTColourAttachmentSlot::SLOT_0;
+            normalAttachment._texDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
+            normalAttachment._texDescriptor.addImageUsageFlag( ImageUsage::SHADER_READ );
+            normalAttachment._samplerHash = samplerHashMips;
+            screenDesc._msaaSamples = 0u;
+            screenDesc._name = "Normals Resolved";
+            screenDesc._attachments = { normalAttachment };
+            RenderTargetNames::NORMALS_RESOLVED = _rtPool->allocateRT( screenDesc )._targetID;
         }
         {
             SamplerDescriptor samplerBackBuffer = {};
@@ -762,31 +762,17 @@ namespace Divide
 
             InternalRTAttachmentDescriptors oitAttachments
             {
-                InternalRTAttachmentDescriptor{ accumulationDescriptor, accumulationSamplerHash, RTAttachmentType::COLOUR, ScreenTargets::ACCUMULATION },
-                InternalRTAttachmentDescriptor{ revealageDescriptor,    accumulationSamplerHash, RTAttachmentType::COLOUR, ScreenTargets::REVEALAGE },
-                InternalRTAttachmentDescriptor{ normalsDescriptor,      samplerHash,             RTAttachmentType::COLOUR, ScreenTargets::NORMALS },
+                InternalRTAttachmentDescriptor{ accumulationDescriptor, accumulationSamplerHash, RTAttachmentType::COLOUR, ScreenTargets::ACCUMULATION, false },
+                InternalRTAttachmentDescriptor{ revealageDescriptor,    accumulationSamplerHash, RTAttachmentType::COLOUR, ScreenTargets::REVEALAGE, false },
+                InternalRTAttachmentDescriptor{ normalsDescriptor,      samplerHash,             RTAttachmentType::COLOUR, ScreenTargets::NORMALS, false },
             };
-
-            const RenderTargetID rtSource[] = {
-                RenderTargetNames::SCREEN,
-                RenderTargetNames::SCREEN_MS
-            };
-
-            const U8 sampleCount[] = { 0u, config.rendering.MSAASamples };
-            const Str64 targetName[] = { "OIT", "OIT_MS" };
-
-
-            for ( U8 i = 0u; i < 2u; ++i )
             {
-                oitAttachments[0]._texDescriptor.msaaSamples( sampleCount[i] );
-                oitAttachments[1]._texDescriptor.msaaSamples( sampleCount[i] );
-
-                const RenderTarget* screenTarget = _rtPool->getRenderTarget( rtSource[i] );
+                const RenderTarget* screenTarget = _rtPool->getRenderTarget( RenderTargetNames::SCREEN );
                 RTAttachment* screenDepthAttachment = screenTarget->getAttachment( RTAttachmentType::DEPTH );
 
                 ExternalRTAttachmentDescriptors externalAttachments
                 {
-                    ExternalRTAttachmentDescriptor{ screenDepthAttachment, screenDepthAttachment->descriptor()._samplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 }
+                    ExternalRTAttachmentDescriptor{ screenDepthAttachment, screenDepthAttachment->descriptor()._samplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, false }
                 };
 
                 if constexpr( Config::USE_COLOURED_WOIT )
@@ -798,25 +784,14 @@ namespace Divide
                 }
 
                 RenderTargetDescriptor oitDesc = {};
-                oitDesc._name = targetName[i];
+                oitDesc._name = "OIT";
                 oitDesc._resolution = renderResolution;
                 oitDesc._attachments = oitAttachments;
                 oitDesc._externalAttachments = externalAttachments;
-                oitDesc._msaaSamples = sampleCount[i];
-                const RenderTargetHandle handle = _rtPool->allocateRT( oitDesc );
-                if ( i == 0u )
-                {
-                    RenderTargetNames::OIT = handle._targetID;
-                }
-                else
-                {
-                    RenderTargetNames::OIT_MS = handle._targetID;
-                }
+                oitDesc._msaaSamples = config.rendering.MSAASamples;
+                RenderTargetNames::OIT = _rtPool->allocateRT( oitDesc )._targetID;
             }
             {
-                oitAttachments[0]._texDescriptor.msaaSamples( 0u );
-                oitAttachments[1]._texDescriptor.msaaSamples( 0u );
-
                 for ( U16 i = 0u; i < Config::MAX_REFLECTIVE_NODES_IN_VIEW; ++i )
                 {
                     const RenderTarget* reflectTarget = _rtPool->getRenderTarget( RenderTargetNames::REFLECTION_PLANAR[i] );
@@ -1764,8 +1739,8 @@ namespace Divide
         if ( _context.config().rendering.MSAASamples != sampleCount )
         {
             _context.config().rendering.MSAASamples = sampleCount;
-            _rtPool->getRenderTarget( RenderTargetNames::SCREEN_MS )->updateSampleCount( sampleCount );
-            _rtPool->getRenderTarget( RenderTargetNames::OIT_MS )->updateSampleCount( sampleCount );
+            _rtPool->getRenderTarget( RenderTargetNames::SCREEN )->updateSampleCount( sampleCount );
+            _rtPool->getRenderTarget( RenderTargetNames::OIT )->updateSampleCount( sampleCount );
             Material::RecomputeShaders();
         }
     }
@@ -1826,12 +1801,10 @@ namespace Divide
         _rtPool->getRenderTarget( RenderTargetNames::BACK_BUFFER )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::SCREEN )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::SCREEN_PREV )->resize( w, h );
-        _rtPool->getRenderTarget( RenderTargetNames::SCREEN_MS )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::SSAO_RESULT )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::SSR_RESULT )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::HI_Z )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::OIT )->resize( w, h );
-        _rtPool->getRenderTarget( RenderTargetNames::OIT_MS )->resize( w, h );
 
         // Update post-processing render targets and buffers
         _renderer->updateResolution( w, h );
@@ -2536,8 +2509,8 @@ namespace Divide
 
             DebugView_ptr NormalPreview = std::make_shared<DebugView>();
             NormalPreview->_shader = _renderTargetDraw;
-            NormalPreview->_texture = renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::NORMALS )->texture();
-            NormalPreview->_samplerHash = renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::NORMALS )->descriptor()._samplerHash;
+            NormalPreview->_texture = renderTargetPool().getRenderTarget( RenderTargetNames::NORMALS_RESOLVED )->getAttachment( RTAttachmentType::COLOUR )->texture();
+            NormalPreview->_samplerHash = renderTargetPool().getRenderTarget( RenderTargetNames::NORMALS_RESOLVED )->getAttachment( RTAttachmentType::COLOUR )->descriptor()._samplerHash;
             NormalPreview->_name = "Normals";
             NormalPreview->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
             NormalPreview->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, true );

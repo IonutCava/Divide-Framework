@@ -790,6 +790,10 @@ namespace Divide
                             const GLchar* message,
                             const void* userParam )
         {
+            if ( GL_API::GetStateTracker()._enabledAPIDebugging && !(*GL_API::GetStateTracker()._enabledAPIDebugging) )
+            {
+                return;
+            }
 
             if ( type == GL_DEBUG_TYPE_OTHER && severity == GL_DEBUG_SEVERITY_NOTIFICATION )
             {
@@ -894,16 +898,15 @@ namespace Divide
             const char* programMsg = "[%s Thread][Source: %s][Type: %s][ID: %d][Severity: %s][Bound Program : %d][DebugGroup: %s][Message: %s]";
             const char* pipelineMsg = "[%s Thread][Source: %s][Type: %s][ID: %d][Severity: %s][Bound Pipeline : %d][DebugGroup: %s][Message: %s]";
 
-            const string outputError = Util::StringFormat(
-                activeProgram != 0u ? programMsg : pipelineMsg,
-                userParam == nullptr ? "Main" : "Worker",
-                gl_source,
-                gl_type,
-                id,
-                gl_severity,
-                activeProgram != 0u ? activeProgram : activePipeline,
-                fullScope.c_str(),
-                message );
+            const string outputError = Util::StringFormat(activeProgram != 0u ? programMsg : pipelineMsg,
+                                                          userParam == nullptr ? "Main" : "Worker",
+                                                          gl_source,
+                                                          gl_type,
+                                                          id,
+                                                          gl_severity,
+                                                          activeProgram != 0u ? activeProgram : activePipeline,
+                                                          fullScope.c_str(),
+                                                          message );
 
             const bool isConsoleImmediate = Console::IsFlagSet( Console::Flags::PRINT_IMMEDIATE );
             const bool severityDecoration = Console::IsFlagSet( Console::Flags::DECORATE_SEVERITY );
@@ -921,7 +924,7 @@ namespace Divide
             else
             {
                 Console::errorfn( outputError.c_str() );
-                DIVIDE_ASSERT(!GL_API::GetStateTracker().assertOnAPIError(), outputError.c_str());
+                DIVIDE_ASSERT( GL_API::GetStateTracker()._assertOnAPIError && !(*GL_API::GetStateTracker()._assertOnAPIError), outputError.c_str());
             }
             Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY, severityDecoration );
             Console::ToggleFlag( Console::Flags::PRINT_IMMEDIATE, isConsoleImmediate );

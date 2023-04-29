@@ -237,7 +237,9 @@ struct VKStateTracker
 
     U8 _activeMSAASamples{ 1u };
     bool _pushConstantsValid{ false };
-    bool _assertOnAPIError{ false };
+
+    bool* _enabledAPIDebugging;
+    bool* _assertOnAPIError;
 
 
     private:
@@ -334,6 +336,15 @@ inline std::string VKErrorString(VkResult errorCode)
     } while (0)
 #endif //VK_CHECK
 
+#ifndef VK_PROFILE
+#define VK_PROFILE(FUNCTION, ...) \
+do                                \
+{                                 \
+    PROFILE_VK_EVENT(#FUNCTION);  \
+    FUNCTION(__VA_ARGS__);        \
+} while ( 0 )
+
+#endif //VK_PROFILE
     struct VulkanQueryType
     {
         VkQueryType _queryType { VK_QUERY_TYPE_MAX_ENUM };

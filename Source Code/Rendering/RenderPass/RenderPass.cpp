@@ -117,32 +117,54 @@ namespace Divide
 
                 params._targetDescriptorPrePass._drawMask[to_base( GFXDevice::ScreenTargets::VELOCITY )] = true;
                 params._targetDescriptorPrePass._drawMask[to_base( GFXDevice::ScreenTargets::NORMALS )] = true;
-                
+                params._targetDescriptorPrePass._keepMSAADataAfterResolve = true;
+
                 params._targetDescriptorMainPass._drawMask[to_base( GFXDevice::ScreenTargets::ALBEDO )] = true;
+                params._targetDescriptorMainPass._autoResolveMSAA = false; //< We use a custom GBuffer resolve for this
+                params._targetDescriptorMainPass._keepMSAADataAfterResolve = true;
 
                 params._targetHIZ = RenderTargetNames::HI_Z;
                 params._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX]._enabled = false;
-                //params._clearDescriptorMainPass[to_base(GFXDevice::ScreenTargets::ALBEDO)] = { DefaultColours::DIVIDE_BLUE, true };
+
+                if constexpr (true)
+                {
+                    STUBBED("TODO: Figure out why we need to clear the main render target in order to avoid NAN/INF issues in SSR -Ionut")
+                    params._clearDescriptorMainPass[to_base( GFXDevice::ScreenTargets::ALBEDO )] = { DefaultColours::DIVIDE_BLUE, true };
+                }
+
                 //Not everything gets drawn during the depth PrePass (E.g. sky)
                 params._clearDescriptorPrePass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
                 params._clearDescriptorPrePass[to_base( GFXDevice::ScreenTargets::VELOCITY )] = { VECTOR4_ZERO, true };
                 params._clearDescriptorPrePass[to_base( GFXDevice::ScreenTargets::NORMALS )] = { VECTOR4_ZERO, true };
-
-                if ( _config.rendering.MSAASamples > 0u )
-                {
-                    params._targetOIT = RenderTargetNames::OIT_MS;
-                    params._target = RenderTargetNames::SCREEN_MS;
-                }
-                else
-                {
-                    params._targetOIT = RenderTargetNames::OIT;
-                    params._target = RenderTargetNames::SCREEN;
-                }
+                params._targetOIT = RenderTargetNames::OIT;
+                params._target = RenderTargetNames::SCREEN;
+                params._useMSAA = _config.rendering.MSAASamples > 0u;
 
                 GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Main Display Pass" } );
 
                 Camera* playerCamera = Attorney::SceneManagerCameraAccessor::playerCamera( _parent.parent().sceneManager() );
                 _parent.doCustomPass( playerCamera, params, bufferInOut, memCmdInOut );
+                const CameraSnapshot& camSnapshot = playerCamera->snapshot();
+
+                GFX::EnqueueCommand( bufferInOut, GFX::PushCameraCommand{ camSnapshot } );
+
+                GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
+                beginRenderPassCmd->_name = "DO_POST_RENDER_PASS";
+                beginRenderPassCmd->_target = RenderTargetNames::SCREEN; //< Resolve here since rendering should be done
+                beginRenderPassCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::ALBEDO )] = true;
+
+                GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Debug Draw Pass";
+                Attorney::SceneManagerRenderPass::debugDraw( _parent.parent().sceneManager(), bufferInOut, memCmdInOut );
+                GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
+
+                if constexpr ( Config::Build::ENABLE_EDITOR )
+                {
+                    Attorney::EditorRenderPassExecutor::postRender( _context.context().editor(), RenderStage::DISPLAY, camSnapshot, RenderTargetNames::SCREEN, bufferInOut, memCmdInOut );
+                }
+
+                GFX::EnqueueCommand<GFX::EndRenderPassCommand>( bufferInOut );
+
+                GFX::EnqueueCommand<GFX::PopCameraCommand>( bufferInOut );
 
                 GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
             } break;
@@ -164,8 +186,25 @@ namespace Divide
                         params._passName = "Node Preview";
                         params._clearDescriptorPrePass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
                         params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = {editor.nodePreviewBGColour(), true};
+                        params._targetDescriptorPrePass._keepMSAADataAfterResolve = true;
+                        params._targetDescriptorMainPass._autoResolveMSAA = false; //< We use a custom GBuffer resolve for this
+                        params._targetDescriptorMainPass._keepMSAADataAfterResolve = true;
 
                         _parent.doCustomPass( editor.nodePreviewCamera(), params, bufferInOut, memCmdInOut );
+
+                        const CameraSnapshot& camSnapshot = editor.nodePreviewCamera()->snapshot();
+                        GFX::EnqueueCommand( bufferInOut, GFX::PushCameraCommand{ camSnapshot } );
+
+                        GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
+                        beginRenderPassCmd->_name = "DO_POST_RENDER_PASS";
+                        beginRenderPassCmd->_target = params._target; //< Resolve here since rendering should be done
+                        beginRenderPassCmd->_descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
+
+                        Attorney::EditorRenderPassExecutor::postRender( _context.context().editor(), RenderStage::NODE_PREVIEW, camSnapshot, params._target, bufferInOut, memCmdInOut );
+
+                        GFX::EnqueueCommand<GFX::EndRenderPassCommand>( bufferInOut );
+
+                        GFX::EnqueueCommand<GFX::PopCameraCommand>( bufferInOut );
                     }
                 }
             } break;

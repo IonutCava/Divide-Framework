@@ -38,6 +38,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide
 {
+class Application;
+
 namespace Profiler
 {
 namespace detail
@@ -45,10 +47,12 @@ namespace detail
     constexpr bool enabled = Config::Profile::ENABLE_FUNCTION_PROFILING;
 };
 
-void InitAllocators();
+void Initialise();
+void RegisterApp(Application* app);
 void Shutdown();
 void OnThreadStart(std::string_view threadName);
 void OnThreadStop();
+
 
 namespace Category
 {
@@ -62,6 +66,16 @@ namespace Category
     constexpr Optick::Category::Type Threading = Optick::Category::Wait;
     constexpr Optick::Category::Type IO = Optick::Category::IO;
 };
+
+enum class State : U8
+{
+    STARTED = 0u,
+    STOPPED,
+    COUNT
+};
+
+bool OnProfilerStateChanged( const Profiler::State state );
+
 }; //namespace Profiler
 
 }; //namespace Divide

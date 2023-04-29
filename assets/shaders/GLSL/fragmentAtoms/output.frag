@@ -13,7 +13,7 @@ layout(location = TARGET_ALBEDO) out vec4 _colourOut;
 
 layout(location = TARGET_ACCUMULATION) out vec4  _accum;
 layout(location = TARGET_REVEALAGE) out float _revealage;
-layout(location = TARGET_NORMALS) out vec3 _normalsOut;
+layout(location = TARGET_NORMALS) out vec4 _normalsOut;
 
 DESCRIPTOR_SET_RESOURCE(PER_PASS, 1) uniform sampler2D texDepth;
 
@@ -24,7 +24,11 @@ layout(location = TARGET_MODULATE) out vec4  _modulate;
 //DESCRIPTOR_SET_RESOURCE(PER_PASS, 2) uniform sampler2D texTransmitance;
 
 // Shameless copy-paste from http://casual-effects.blogspot.co.uk/2015/03/colored-blended-order-independent.html
-void writePixel(in vec4 premultipliedReflect, in vec3 transmit, in float viewSpaceZ) {
+void writePixel(in vec4 colourIn)
+{
+#if 0
+
+    const vec3 transmit = vec3( 0.f );//texture(texTransmitance, dvd_screenPositionNormalised).rgb;
 #if defined(USE_COLOURED_WOIT)
     // NEW: Perform this operation before modifying the coverage to account for transmission.
     _modulate.rgb = alpha * (vec3(1.f) - transmit);
@@ -37,6 +41,7 @@ void writePixel(in vec4 premultipliedReflect, in vec3 transmit, in float viewSpa
     //McGuire and Enderton, Colored Stochastic Shadow Maps, ACM I3D, February 2011
     //http://graphics.cs.williams.edu/papers/CSSM/
 
+    vec4 premultipliedReflect = vec4( colour.rgb * colour.a, colour.a );
     //for a full explanation and derivation.
     //premultipliedReflect.a *= 1.0f - Saturate((transmit.r + transmit.g + transmit.b) * 0.33f);
 
@@ -47,22 +52,33 @@ void writePixel(in vec4 premultipliedReflect, in vec3 transmit, in float viewSpa
     float b = -gl_FragCoord.z * 0.95f + 1.f;
 
     // If your scene has a lot of content very close to the far plane, then include this line (one rsqrt instruction):
+    const float viewSpaceZ = ViewSpaceZ( texture( texDepth, dvd_screenPositionNormalised ).r, inverse( dvd_ProjectionMatrix ) );
     b /= sqrt(1e4 * abs(viewSpaceZ));
 
     const float w = clamp(a * a * a * 1e3 * b * b * b, 1e-2, 3e2);
 
     _accum = premultipliedReflect * w;
     _revealage = premultipliedReflect.a;
+#else //https://learnopengl.com/Guest-Articles/2020/OIT/Weighted-Blended#:~:text=Weighted%2C%20Blended%20is%20an%20approximate,class%20of%20then%20gaming%20platforms.
+   // weight function
+    const float weight = clamp( pow( min( 1.f, colourIn.a * 10.f ) + 0.01f, 3.f ) * 1e8 *
+                                pow( 1.f - gl_FragCoord.z * 0.9f, 3.f ), 1e-2, 3e3 );
+
+    // store pixel color accumulation
+    _accum = vec4( colourIn.rgb * colourIn.a, colourIn.a ) * weight;
+
+    // store pixel revealage threshold
+    _revealage = colourIn.a;
+#endif
 }
 
 void writeScreenColour(in vec4 colour, in vec3 normalWV)
 {
-    const vec3 transmit = vec3(0.f);//texture(texTransmitance, dvd_screenPositionNormalised).rgb;
-    const float viewSpaceZ = ViewSpaceZ( texture( texDepth, dvd_screenPositionNormalised).r, inverse( dvd_ProjectionMatrix ) );
-    writePixel(vec4(colour.rgb * colour.a, colour.a), transmit, viewSpaceZ);
+    writePixel(colour);
 
     _normalsOut.rg = packNormal(normalWV);
     _normalsOut.b = 0.f;
+    _normalsOut.a = 1.f;
 }
 #endif //OIT_PASS
 

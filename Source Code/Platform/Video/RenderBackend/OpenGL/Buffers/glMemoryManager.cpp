@@ -95,6 +95,8 @@ Chunk::~Chunk()
 
 void Chunk::deallocate(const Block &block)
 {
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
     Block* const blockIt = eastl::find(begin(_blocks), end(_blocks), block);
     assert(blockIt != cend(_blocks));
     blockIt->_free = true;
@@ -111,6 +113,8 @@ void Chunk::deallocate(const Block &block)
 
 bool Chunk::allocate(const size_t size, const char* name, const std::pair<bufferPtr, size_t> initialData, Block &blockOut)
 {
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
     const size_t requestedSize = Util::GetAlignmentCorrected(size, _alignment);
 
     if (requestedSize > _blocks.back()._size)
@@ -181,6 +185,8 @@ Chunk* ChunkAllocator::allocate(const bool poolAllocations,
                                 const MapBufferAccessMask accessMask,
                                 const GLenum usage) const
 {
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
     const size_t overflowSize = to_size(1) << to_size(std::log2(size) + 1);
     return MemoryManager_NEW Chunk(poolAllocations, (size > _size ? overflowSize : _size), alignment, storageMask, accessMask, usage);
 }
@@ -205,6 +211,8 @@ Block DeviceAllocator::allocate(const bool poolAllocations,
                                 const char* blockName,
                                 const std::pair<bufferPtr, size_t> initialData)
 {
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
     LockGuard<Mutex> w_lock(_chunkAllocatorLock);
 
     Block block;
@@ -233,6 +241,8 @@ Block DeviceAllocator::allocate(const bool poolAllocations,
 
 void DeviceAllocator::deallocate(const Block &block) const
 {
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
     LockGuard<Mutex> w_lock(_chunkAllocatorLock);
 
     for (Chunk* chunk : _chunks)
@@ -262,6 +272,8 @@ Byte* createAndAllocPersistentBuffer(const size_t bufferSize,
                                      const std::pair<bufferPtr, size_t> initialData,
                                      const char* name)
 {
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
     glCreateBuffers(1, &bufferIdOut);
     if constexpr(Config::ENABLE_GPU_VALIDATION)
     {
@@ -290,6 +302,7 @@ void createBuffer(size_t bufferSize,
                   GLuint& bufferIdOut,
                   const char* name)
 {
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     glCreateBuffers(1, &bufferIdOut);
 
@@ -309,6 +322,8 @@ void createAndAllocBuffer(const size_t bufferSize,
                           const std::pair<bufferPtr, size_t> initialData,
                           const char* name)
 {
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
     createBuffer(bufferSize, bufferIdOut, name);
 
     const bool hasAllSourceData = initialData.second == bufferSize && initialData.first != nullptr;
@@ -328,6 +343,8 @@ void createAndAllocBuffer(const size_t bufferSize,
 
 void freeBuffer(GLuint& bufferId, bufferPtr mappedPtr)
 {
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
     if (bufferId != GLUtil::k_invalidObjectID && bufferId != 0u)
     {
         if (mappedPtr != nullptr)

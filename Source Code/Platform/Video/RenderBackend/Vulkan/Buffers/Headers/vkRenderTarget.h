@@ -64,6 +64,7 @@ namespace Divide
         void end(VkCommandBuffer cmdBuffer);
         void blitFrom( VkCommandBuffer cmdBuffer, vkRenderTarget* source, const RTBlitParams& params ) noexcept;
         void transitionAttachments( VkCommandBuffer cmdBuffer, const RTDrawDescriptor& descriptor, bool toWrite );
+
     private:
         std::array<VkRenderingAttachmentInfo, to_base(RTColourAttachmentSlot::COUNT)> _colourAttachmentInfo{};
         VkRenderingAttachmentInfo _depthAttachmentInfo{};
@@ -72,6 +73,16 @@ namespace Divide
 
         std::array<VkRenderingAttachmentInfo, to_base( RTColourAttachmentSlot::COUNT )> _stagingColourAttachmentInfo{};
         RTDrawDescriptor _previousPolicy;
+
+        enum class AttachmentUsage : U8
+        {
+            UNDEFINED = 0u,
+            ATTACHMENT,
+            SHADER_READ
+        };
+
+        std::array<AttachmentUsage, to_base( RTColourAttachmentSlot::COUNT ) + 1> _attachmentUsage;
+        bool _keptMSAAData{false};
     };
 
     namespace Attorney

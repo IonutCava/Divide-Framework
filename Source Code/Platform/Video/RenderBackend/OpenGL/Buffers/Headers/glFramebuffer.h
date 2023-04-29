@@ -87,6 +87,7 @@ class glFramebuffer final : public RenderTarget {
 protected:
     void queueCheckStatus() noexcept;
     bool checkStatus();
+    bool checkStatusInternal(GLuint handle);
 
     void prepareBuffers(const RTDrawDescriptor& drawPolicy);
 
@@ -97,16 +98,19 @@ protected:
     void clear(const RTClearDescriptor& descriptor);
     void begin(const RTDrawDescriptor& drawPolicy, const RTClearDescriptor& clearPolicy);
     void end();
-
     PROPERTY_R_IW(Str128, debugMessage, "");
     PROPERTY_R_IW(GLuint, framebufferHandle, GLUtil::k_invalidObjectID);
 
    protected:
+    void resolve();
     bool setMipLevelInternal( U8 attachmentIdx, U16 writeLevel);
     static void QueueMipMapsRecomputation(const RTAttachment_uptr& attachment);
 
    protected:
+    GLuint _framebufferResolveHandle{GLUtil::k_invalidObjectID};
+
     RTDrawDescriptor _previousPolicy;
+    std::array<DrawLayerEntry, to_base( RTColourAttachmentSlot::COUNT ) + 1> _previousDrawLayers;
 
     struct ColourBufferState
     {

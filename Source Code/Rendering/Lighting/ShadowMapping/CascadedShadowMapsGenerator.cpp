@@ -70,20 +70,39 @@ namespace Divide
             shaderDescriptor._modules.push_back( fragModule );
             shaderDescriptor._globalDefines.emplace_back( Util::StringFormat( "GS_MAX_INVOCATIONS %d", Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT ) );
 
-            ResourceDescriptor blurDepthMapShader( Util::StringFormat( "GaussBlur_%d_invocations", Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT ) );
-            blurDepthMapShader.waitForReady( true );
-            blurDepthMapShader.propertyDescriptor( shaderDescriptor );
-
-            _blurDepthMapShader = CreateResource<ShaderProgram>( context.context().kernel().resourceCache(), blurDepthMapShader );
-            _blurDepthMapShader->addStateCallback( ResourceState::RES_LOADED, [this]( CachedResource* )
             {
-                PipelineDescriptor pipelineDescriptor = {};
-                pipelineDescriptor._stateBlock = _context.get2DStateBlock();
-                pipelineDescriptor._shaderProgramHandle = _blurDepthMapShader->handle();
-                pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
+                ResourceDescriptor blurDepthMapShader( Util::StringFormat( "GaussBlur_%d_invocations", Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT ) );
+                blurDepthMapShader.waitForReady( true );
+                blurDepthMapShader.propertyDescriptor( shaderDescriptor );
 
-                _blurPipeline = _context.newPipeline( pipelineDescriptor );
-            } );
+                _blurDepthMapShader = CreateResource<ShaderProgram>( context.context().kernel().resourceCache(), blurDepthMapShader );
+                _blurDepthMapShader->addStateCallback( ResourceState::RES_LOADED, [this]( CachedResource* )
+                {
+                    PipelineDescriptor pipelineDescriptor = {};
+                    pipelineDescriptor._stateBlock = _context.get2DStateBlock();
+                    pipelineDescriptor._shaderProgramHandle = _blurDepthMapShader->handle();
+                    pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
+
+                    _blurPipelineCSM = _context.newPipeline( pipelineDescriptor );
+                } );
+            }
+            shaderDescriptor._globalDefines[0]._define = "GS_MAX_INVOCATIONS 1u";
+            {
+                ResourceDescriptor blurDepthMapShader( "GaussBlur_1_invocations" );
+                blurDepthMapShader.waitForReady( true );
+                blurDepthMapShader.propertyDescriptor( shaderDescriptor );
+
+                _blurAOMapShader = CreateResource<ShaderProgram>( context.context().kernel().resourceCache(), blurDepthMapShader );
+                _blurAOMapShader->addStateCallback( ResourceState::RES_LOADED, [this]( CachedResource* )
+                                                       {
+                                                           PipelineDescriptor pipelineDescriptor = {};
+                                                           pipelineDescriptor._stateBlock = _context.get2DStateBlock();
+                                                           pipelineDescriptor._shaderProgramHandle = _blurAOMapShader->handle();
+                                                           pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
+
+                                                           _blurPipelineAO = _context.newPipeline( pipelineDescriptor );
+                                                       } );
+            }
         }
 
         _shaderConstants.data[0]._vec[1].y = to_F32( Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT );
@@ -124,12 +143,10 @@ namespace Divide
             // MSAA rendering is supported
             TextureDescriptor colourDescriptor( TextureType::TEXTURE_2D_ARRAY, texDescriptor.dataType(), texDescriptor.baseFormat() );
             colourDescriptor.layerCount( Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT );
-            colourDescriptor.msaaSamples( g_shadowSettings.csm.MSAASamples );
             colourDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
 
             TextureDescriptor depthDescriptor( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::RED, GFXImagePacking::DEPTH );
             depthDescriptor.layerCount( Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT );
-            depthDescriptor.msaaSamples( g_shadowSettings.csm.MSAASamples );
             depthDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
 
             RenderTargetDescriptor desc = {};
@@ -164,7 +181,7 @@ namespace Divide
             _blurBuffer = _context.renderTargetPool().allocateRT( desc );
         }
 
-        WAIT_FOR_CONDITION( _blurPipeline != nullptr );
+        WAIT_FOR_CONDITION( _blurPipelineAO != nullptr );
     }
 
     CascadedShadowMapsGenerator::~CascadedShadowMapsGenerator()
@@ -370,6 +387,7 @@ namespace Divide
         params._target = _drawBufferDepth._targetID;
         params._maxLoD = -1;
         params._refreshLightData = false;
+        params._useMSAA = _context.context().config().rendering.shadowMapping.csm.MSAASamples;
 
         params._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
         params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
@@ -490,6 +508,14 @@ namespace Divide
         // Used when sampling from sky probes. Us world X/Z to determine if we are in shadow or not. If we are, don't sample sky probe
         // Can be used for other effects (e.g. rain culling)
 
+        GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
+        computeMipMapsCommand._texture = handle._rt->getAttachment( RTAttachmentType::COLOUR )->texture().get();
+        computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
+        SubRange& layerRange = computeMipMapsCommand._layerRange;
+        layerRange._offset = ShadowMap::WORLD_AO_LAYER_INDEX;
+        layerRange._count = 1u;
+        GFX::EnqueueCommand( bufferInOut, computeMipMapsCommand );
+
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
 
         Attorney::GFXDeviceShadowMap::worldAOViewProjectionMatrix( _context, mat4<F32>::Multiply( projMatrix, viewMatrix ) );
@@ -511,7 +537,7 @@ namespace Divide
         beginRenderPassCmd._name = "DO_CSM_BLUR_PASS_HORIZONTAL";
         GFX::EnqueueCommand( bufferInOut, beginRenderPassCmd );
 
-        GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _blurPipeline;
+        GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = layerCount == 1u ? _blurPipelineAO : _blurPipelineCSM;
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -533,8 +559,12 @@ namespace Divide
         // Blur vertically
         beginRenderPassCmd._target = rtHandle._targetID;
         beginRenderPassCmd._name = "DO_CSM_BLUR_PASS_VERTICAL";
-        GFX::EnqueueCommand( bufferInOut, beginRenderPassCmd );
+        if ( layerCount == 1u )
+        {
+            beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::WHITE, false };
+        }
 
+        GFX::EnqueueCommand( bufferInOut, beginRenderPassCmd );
         const auto& blurAtt = _blurBuffer._rt->getAttachment( RTAttachmentType::COLOUR );
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );

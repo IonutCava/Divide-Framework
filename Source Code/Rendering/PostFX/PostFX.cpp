@@ -195,7 +195,6 @@ namespace Divide
         const auto& prbAtt = _preRenderBatch.getOutput( false )._rt->getAttachment( RTAttachmentType::COLOUR );
         const auto& linDepthDataAtt = _preRenderBatch.getLinearDepthRT()._rt->getAttachment( RTAttachmentType::COLOUR );
         const auto& ssrDataAtt = rtPool.getRenderTarget( RenderTargetNames::SSR_RESULT )->getAttachment( RTAttachmentType::COLOUR );
-        const auto& sceneDataAtt = rtPool.getRenderTarget( RenderTargetNames::SCREEN )->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS );
         const auto& velocityAtt = rtPool.getRenderTarget( RenderTargetNames::SCREEN )->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::VELOCITY );
 
         SamplerDescriptor defaultSampler = {};
@@ -205,12 +204,8 @@ namespace Divide
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
         {
-            DescriptorSetBinding& binding = AddBinding( cmd->_set, 7u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, velocityAtt->texture()->getView(), samplerHash );
-        }
-        {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 6u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, sceneDataAtt->texture()->getView(), samplerHash );
+            Set( binding._data, velocityAtt->texture()->getView(), samplerHash );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 5u, ShaderStageVisibility::FRAGMENT );

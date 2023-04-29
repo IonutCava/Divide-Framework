@@ -729,6 +729,7 @@ namespace Divide
                 editor.postRender( stage, cameraSnapshot, target, bufferInOut, memCmdInOut );
             }
 
+            friend class RenderPass;
             friend class RenderPassExecutor;
             friend class RenderPassManager;
         };

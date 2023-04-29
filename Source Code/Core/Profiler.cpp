@@ -1,10 +1,44 @@
 #include "stdafx.h"
 
 #include "Headers/Profiler.h"
+#include "Core/Headers/Application.h"
 
 namespace Divide::Profiler
 {
-    void InitAllocators()
+    namespace
+    {
+        Divide::Application* g_appPtr = nullptr;
+    }
+
+    bool OnProfilerStateChanged( const Profiler::State state )
+    {
+        if ( g_appPtr != nullptr ) [[likely]]
+        {
+            return Attorney::ApplicationProfiler::onProfilerStateChanged( g_appPtr, state);
+        }
+
+        return true;
+    }
+
+    bool OnOptickStateChanged( const Optick::State::Type state )
+    {
+        switch(state)
+        {
+            case Optick::State::START_CAPTURE:  return OnProfilerStateChanged( Profiler::State::STARTED );
+            case Optick::State::STOP_CAPTURE:
+            case Optick::State::CANCEL_CAPTURE: return OnProfilerStateChanged( Profiler::State::STOPPED );
+            default: break;
+        }
+
+        return OnProfilerStateChanged( Profiler::State::COUNT );
+    }
+
+    void RegisterApp( Application * app )
+    {
+        g_appPtr = app;
+    }
+
+    void Initialise()
     {
         if constexpr( detail::enabled )
         {
@@ -21,11 +55,15 @@ namespace Divide::Profiler
                                              // Thread allocator
                                              NOP();
                                          })
+
+            //OPTICK_SET_STATE_CHANGED_CALLBACK( OnOptickStateChanged );
         }
     }
 
     void Shutdown()
     {
+        g_appPtr = nullptr;
+
         if constexpr (detail::enabled)
         {
             OPTICK_SHUTDOWN();

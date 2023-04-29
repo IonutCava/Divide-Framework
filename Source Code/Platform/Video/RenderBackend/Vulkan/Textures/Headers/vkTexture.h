@@ -62,6 +62,13 @@ namespace Divide
             UNDEFINED_TO_DEPTH_STENCIL_ATTACHMENT,
             UNDEFINED_TO_DEPTH_STENCIL_RESOLVE_ATTACHMENT,
 
+            SHADER_READ_TO_COLOUR_ATTACHMENT,
+            SHADER_READ_TO_COLOUR_RESOLVE_ATTACHMENT,
+            SHADER_READ_TO_DEPTH_ATTACHMENT,
+            SHADER_READ_TO_DEPTH_RESOLVE_ATTACHMENT,
+            SHADER_READ_TO_DEPTH_STENCIL_ATTACHMENT,
+            SHADER_READ_TO_DEPTH_STENCIL_RESOLVE_ATTACHMENT,
+
             COLOUR_ATTACHMENT_TO_SHADER_READ,
             COLOUR_RESOLVE_ATTACHMENT_TO_SHADER_READ,
             DEPTH_ATTACHMENT_TO_SHADER_READ,
@@ -105,7 +112,8 @@ namespace Divide
             BLIT_READ_TO_SHADER_READ_DEPTH,
             BLIT_WRITE_TO_SHADER_READ_DEPTH,
 
-            SHADER_READ_TO_COPY_WRITE,
+            SHADER_READ_TO_COPY_WRITE_COLOUR,
+            SHADER_READ_TO_COPY_WRITE_DEPTH,
 
             SHADER_READ_TO_COPY_READ_COLOUR,
             SHADER_READ_TO_COPY_READ_DEPTH,
@@ -158,7 +166,6 @@ namespace Divide
         void generateMipmaps( VkCommandBuffer cmdBuffer, U16 baseLevel, U16 baseLayer, U16 layerCount, ImageUsage crtUsage);
 
         PROPERTY_R( AllocatedImage_uptr, image, nullptr );
-        PROPERTY_R( AllocatedImage_uptr, resolvedImage, nullptr );
         PROPERTY_R_IW( VkImageType, vkType, VK_IMAGE_TYPE_MAX_ENUM );
         PROPERTY_R_IW( VkFormat, vkFormat, VK_FORMAT_MAX_ENUM );
         PROPERTY_R_IW( VkSampleCountFlagBits, sampleFlagBits, VK_SAMPLE_COUNT_1_BIT );

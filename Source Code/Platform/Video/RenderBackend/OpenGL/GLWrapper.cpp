@@ -471,7 +471,8 @@ namespace Divide
         _performanceQueries[to_base( GlobalQueryTypes::TESSELLATION_EVAL_INVOCATIONS )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_TESS_EVALUATION_SHADER_INVOCATIONS, 6 );
         _performanceQueries[to_base( GlobalQueryTypes::GPU_TIME )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_TIME_ELAPSED, 6 );
 
-        s_stateTracker.assertOnAPIError(config.debug.renderer.assertOnRenderAPIError);
+        s_stateTracker._enabledAPIDebugging = &config.debug.renderer.enableRenderAPIDebugging;
+        s_stateTracker._assertOnAPIError = &config.debug.renderer.assertOnRenderAPIError;
 
         // That's it. Everything should be ready for draw calls
         Console::printfn( Locale::Get( _ID( "START_OGL_API_OK" ) ) );
@@ -1050,7 +1051,8 @@ namespace Divide
                 assert( pipeline != nullptr );
                 if ( BindPipeline(_context, *pipeline ) == ShaderResult::Failed )
                 {
-                    Console::errorfn( Locale::Get( _ID( "ERROR_GLSL_INVALID_BIND" ) ), pipeline->descriptor()._shaderProgramHandle );
+                    const auto handle = pipeline->descriptor()._shaderProgramHandle;
+                    Console::errorfn( Locale::Get( _ID( "ERROR_GLSL_INVALID_BIND" ) ), handle._id, handle._generation, handle._tag );
                 }
             } break;
             case GFX::CommandType::SEND_PUSH_CONSTANTS:
@@ -1692,7 +1694,8 @@ namespace Divide
         }
         else
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_GLSL_INVALID_HANDLE" ) ), pipelineDescriptor._shaderProgramHandle );
+            const auto handle = pipelineDescriptor._shaderProgramHandle;
+            Console::errorfn( Locale::Get( _ID( "ERROR_GLSL_INVALID_HANDLE" ) ), handle._id, handle._generation, handle._tag );
         }
 
         return ret;

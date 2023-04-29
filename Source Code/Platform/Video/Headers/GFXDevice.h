@@ -222,10 +222,9 @@ FWD_DECLARE_MANAGED_STRUCT( ImShaders );
 struct RenderTargetNames {
     static RenderTargetID BACK_BUFFER;
     static RenderTargetID SCREEN;
-    static RenderTargetID SCREEN_MS;
     static RenderTargetID SCREEN_PREV;
+    static RenderTargetID NORMALS_RESOLVED;
     static RenderTargetID OIT;
-    static RenderTargetID OIT_MS;
     static RenderTargetID OIT_REFLECT;
     static RenderTargetID SSAO_RESULT;
     static RenderTargetID SSR_RESULT;

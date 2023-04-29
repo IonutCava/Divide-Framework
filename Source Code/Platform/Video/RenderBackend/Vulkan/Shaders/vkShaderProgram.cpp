@@ -103,13 +103,6 @@ namespace Divide {
         return true;
     }
 
-    void vkShaderProgram::Idle([[maybe_unused]] PlatformContext& platformContext)
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        assert(Runtime::isMainThread());
-    }
-
     vkShaderProgram::vkShaderProgram(GFXDevice& context,
                                      const size_t descriptorHash,
                                      const Str256& name,

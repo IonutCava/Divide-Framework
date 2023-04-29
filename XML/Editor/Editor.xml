@@ -14,11 +14,11 @@
                 <distance>0</distance>
                 <active>false</active>
             </reflectionPlane>
-            <accumPitchDegrees>-18.9737186</accumPitchDegrees>
+            <accumPitchDegrees>-33.6621437</accumPitchDegrees>
             <frustumLocked>false</frustumLocked>
-            <euler x="-19.0039711" y="75.3038712" z="-0.0312624127"/>
-            <eye x="33.8613701" y="14.0462389" z="12.2734947"/>
-            <orientation x="-0.130536154" y="0.602520883" z="0.100629881" w="0.780896783"/>
+            <euler x="-33.6571426" y="-33.3836288" z="-0.00925243646"/>
+            <eye x="-27.1014462" y="15.8300591" z="50.6560478"/>
+            <orientation x="-0.277331918" y="-0.274901509" z="-0.0832280517" w="0.916834831"/>
             <aspectRatio>1.77777779</aspectRatio>
             <zPlanes min="0.100000001" max="1000"/>
             <FoV>58.7155075</FoV>
@@ -39,11 +39,11 @@
                 <distance>0</distance>
                 <active>false</active>
             </reflectionPlane>
-            <accumPitchDegrees>-13.7388887</accumPitchDegrees>
+            <accumPitchDegrees>35.0200348</accumPitchDegrees>
             <frustumLocked>false</frustumLocked>
-            <euler x="-13.7417545" y="30.4491882" z="-7.43018575e-07"/>
-            <eye x="28.1644096" y="13.587534" z="47.89505"/>
-            <orientation x="-0.115417235" y="0.260754377" z="0.0314202681" w="0.957838535"/>
+            <euler x="157.025879" y="79.4329987" z="12.2734976"/>
+            <eye x="-3.34394073" y="-12.5870199" z="4.49241877"/>
+            <orientation x="0.735375345" y="0.2071376" z="-0.606652737" w="0.219192877"/>
             <aspectRatio>1.77777779</aspectRatio>
             <zPlanes min="0.100000001" max="1000"/>
             <FoV>58.7155075</FoV>
@@ -52,10 +52,10 @@
             <yawFixed>true</yawFixed>
             <rotationLocked>false</rotationLocked>
             <movementLocked>false</movementLocked>
-            <maxRadius>464.250061</maxRadius>
-            <minRadius>34.8187561</minRadius>
-            <curRadius>57.3118324</curRadius>
-            <cameraRotation x="-0.239838839" y="-2.61001062" z="0"/>
+            <maxRadius>464.123962</maxRadius>
+            <minRadius>34.8092957</minRadius>
+            <curRadius>46.4123955</curRadius>
+            <cameraRotation x="0.578829527" y="-1.50882041" z="0"/>
             <offsetDir x="0" y="0" z="0"/>
         </Node__Preview__Camera>
     </camera>

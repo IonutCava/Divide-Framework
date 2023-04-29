@@ -14,6 +14,7 @@ namespace Divide {
 ErrorCode Engine::init(const int argc, char** argv)
 {
     _app = eastl::make_unique<Application>();
+    Profiler::RegisterApp(_app.get());
 
     // Start our application based on XML configuration.
     // If it fails to start, it should automatically clear up all of its data
@@ -40,7 +41,7 @@ ErrorCode Engine::run(const int argc, char** argv)
 
     if ( errorCode == ErrorCode::NO_ERR )
     {
-        Profiler::InitAllocators();
+        Profiler::Initialise();
 
         Application::StepResult result = Application::StepResult::COUNT;
 

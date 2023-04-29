@@ -1043,10 +1043,11 @@ namespace Divide
             cmd->_usage = DescriptorSetUsage::PER_PASS;
             if ( params._stagePass._stage == RenderStage::DISPLAY )
             {
-                const RenderTarget* screenTargetMS = _context.renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN_MS );
-                const RTAttachment* normalsAttMS = screenTargetMS->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS );
+                const RenderTarget* MSSource = _context.renderTargetPool().getRenderTarget( params._target );
+                RTAttachment* normalsAtt = MSSource->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS );
+
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, normalsAttMS->texture()->getView(), normalsAttMS->descriptor()._samplerHash );
+                Set( binding._data, normalsAtt->texture()->getView(), normalsAtt->descriptor()._samplerHash );
             }
             if ( hasHiZ )
             {
@@ -1083,8 +1084,9 @@ namespace Divide
         GFX::BeginRenderPassCommand* beginRenderPassOitCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
         beginRenderPassOitCmd->_name = "OIT PASS 1";
         beginRenderPassOitCmd->_target = params._targetOIT;
-        beginRenderPassOitCmd->_clearDescriptor[to_base( GFXDevice::ScreenTargets::ACCUMULATION )] = { VECTOR4_ZERO,           true };
-        beginRenderPassOitCmd->_clearDescriptor[to_base( GFXDevice::ScreenTargets::REVEALAGE )]    = { { 1.f, 0.f, 0.f, 0.f }, true };
+        beginRenderPassOitCmd->_clearDescriptor[to_base( GFXDevice::ScreenTargets::ACCUMULATION )] = { VECTOR4_ZERO, true };
+        beginRenderPassOitCmd->_clearDescriptor[to_base( GFXDevice::ScreenTargets::REVEALAGE )]    = { VECTOR4_UNIT, true };
+        beginRenderPassOitCmd->_clearDescriptor[to_base( GFXDevice::ScreenTargets::NORMALS )]      = { VECTOR4_ZERO, true };
         beginRenderPassOitCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::ACCUMULATION )] = true;
         beginRenderPassOitCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::REVEALAGE )] = true;
         beginRenderPassOitCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::NORMALS )]  = true;
@@ -1103,14 +1105,13 @@ namespace Divide
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>( bufferInOut );
         GFX::EnqueueCommand( bufferInOut, memCmd );
 
-        const bool useMSAA = params._target == RenderTargetNames::SCREEN_MS;
-
-
         RenderTarget* oitRT = _context.renderTargetPool().getRenderTarget( params._targetOIT );
         const auto& accumAtt = oitRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ACCUMULATION );
         const auto& revAtt = oitRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::REVEALAGE );
         const auto& normalsAtt = oitRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS );
 
+        // Step2: Composition pass
+        // Don't clear depth & colours and do not write to the depth buffer
         GFX::BeginRenderPassCommand beginRenderPassCompCmd{};
         beginRenderPassCompCmd._name = "OIT PASS 2";
         beginRenderPassCompCmd._target = params._target;
@@ -1118,12 +1119,12 @@ namespace Divide
         beginRenderPassCompCmd._descriptor._drawMask[to_base( GFXDevice::ScreenTargets::ALBEDO )] = true;
         beginRenderPassCompCmd._descriptor._drawMask[to_base( GFXDevice::ScreenTargets::VELOCITY )] = false;
         beginRenderPassCompCmd._descriptor._drawMask[to_base( GFXDevice::ScreenTargets::NORMALS )] = true;
+        beginRenderPassCompCmd._descriptor._autoResolveMSAA = params._targetDescriptorMainPass._autoResolveMSAA;
+        beginRenderPassCompCmd._descriptor._keepMSAADataAfterResolve = params._targetDescriptorMainPass._keepMSAADataAfterResolve;
 
-        // Step2: Composition pass
-        // Don't clear depth & colours and do not write to the depth buffer
         GFX::EnqueueCommand( bufferInOut, GFX::SetCameraCommand{ Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->snapshot() } );
         GFX::EnqueueCommand( bufferInOut, beginRenderPassCompCmd );
-        GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ useMSAA ? s_OITCompositionMSPipeline : s_OITCompositionPipeline } );
+        GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ params._useMSAA ? s_OITCompositionMSPipeline : s_OITCompositionPipeline } );
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -1167,86 +1168,34 @@ namespace Divide
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
     }
 
-    void RenderPassExecutor::resolveMainScreenTarget( const RenderPassParams& params,
-                                                      const bool resolveDepth,
-                                                      const bool resolveGBuffer,
-                                                      const bool resolveColourBuffer,
-                                                      GFX::CommandBuffer& bufferInOut ) const
+    void RenderPassExecutor::resolveMainScreenTarget( const RenderPassParams& params, GFX::CommandBuffer& bufferInOut ) const
     {
-        if ( !resolveDepth && !resolveGBuffer && !resolveColourBuffer )
-        {
-            return;
-        }
-
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         // If we rendered to the multisampled screen target, we can now copy the colour to our regular buffer as we are done with it at this point
-        if ( params._target == RenderTargetNames::SCREEN_MS )
+        if ( params._target == RenderTargetNames::SCREEN && params._useMSAA )
         {
             GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ " - Resolve Screen Targets" } );
 
-            if ( resolveDepth || resolveColourBuffer )
-            {
-                // If we rendered to the multisampled screen target, we can now blit the depth buffer to our resolved target
-                GFX::BlitRenderTargetCommand* blitCmd = GFX::EnqueueCommand<GFX::BlitRenderTargetCommand>( bufferInOut );
-                blitCmd->_source = RenderTargetNames::SCREEN_MS;
-                blitCmd->_destination = RenderTargetNames::SCREEN;
-                if ( resolveDepth )
-                {
-                    blitCmd->_params.emplace_back( RTBlitEntry{
-                        ._input = {
-                            ._index = RT_DEPTH_ATTACHMENT_IDX
-                        },
-                        ._output = {
-                            ._index = RT_DEPTH_ATTACHMENT_IDX
-                        }
-                    });
-                }
-                if ( resolveColourBuffer )
-                {
-                    blitCmd->_params.emplace_back(RTBlitEntry{
-                        ._input = {
-                            ._index = to_U8( GFXDevice::ScreenTargets::ALBEDO )
-                        },
-                        ._output = {
-                            ._index = to_U8( GFXDevice::ScreenTargets::ALBEDO )
-                        }
-                    });
-                }
-            }
-            if ( resolveGBuffer )
-            {
-                GFX::BeginRenderPassCommand* beginRenderPassCommand = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
-                beginRenderPassCommand->_target = RenderTargetNames::SCREEN;
-                beginRenderPassCommand->_clearDescriptor[to_base( GFXDevice::ScreenTargets::VELOCITY)] = { VECTOR4_ZERO, true };
-                beginRenderPassCommand->_clearDescriptor[to_base( GFXDevice::ScreenTargets::NORMALS)] = { VECTOR4_ZERO,  true };
+            GFX::BeginRenderPassCommand* beginRenderPassCommand = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
+            beginRenderPassCommand->_target = RenderTargetNames::NORMALS_RESOLVED;
+            beginRenderPassCommand->_clearDescriptor[0u] = { VECTOR4_ZERO, true };
+            beginRenderPassCommand->_descriptor._drawMask[0u] = true;
+            beginRenderPassCommand->_name = "RESOLVE_MAIN_GBUFFER";
 
-                beginRenderPassCommand->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::ALBEDO )] = false;
-                beginRenderPassCommand->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::VELOCITY )] = true;
-                beginRenderPassCommand->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::NORMALS )] = true;
-                beginRenderPassCommand->_name = "RESOLVE_MAIN_GBUFFER";
+            GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ s_ResolveGBufferPipeline } );
 
-                GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ s_ResolveGBufferPipeline } );
+            const RenderTarget* MSSource = _context.renderTargetPool().getRenderTarget( params._target );
+            RTAttachment* normalsAtt = MSSource->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS );
 
-                const RenderTarget* MSSource = _context.renderTargetPool().getRenderTarget( params._target );
-                RTAttachment* velocityAtt = MSSource->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::VELOCITY );
-                RTAttachment* normalsAtt = MSSource->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS );
+            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
+            cmd->_usage = DescriptorSetUsage::PER_DRAW;
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
+            Set( binding._data, normalsAtt->texture()->getView(), normalsAtt->descriptor()._samplerHash );
 
-                auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
-                cmd->_usage = DescriptorSetUsage::PER_DRAW;
-                {
-                    DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-                    Set( binding._data, velocityAtt->texture()->getView(), velocityAtt->descriptor()._samplerHash );
-                }
-                {
-                    DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
-                    Set( binding._data, normalsAtt->texture()->getView(), normalsAtt->descriptor()._samplerHash );
-                }
+            GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
+            GFX::EnqueueCommand<GFX::EndRenderPassCommand>( bufferInOut );
 
-                GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
-                GFX::EnqueueCommand<GFX::EndRenderPassCommand>( bufferInOut );
-
-            }
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
         }
     }
@@ -1325,7 +1274,7 @@ namespace Divide
             Attorney::SceneManagerRenderPass::findNode( _parent.parent().sceneManager(), camera->snapshot()._eye, params._singleNodeRenderGUID, _visibleNodesCache );
         }
 
-        const bool drawTranslucents = (params._drawMask & to_U8( 1 << to_base( RenderPassParams::Flags::DRAW_TRANSLUCENT_NODES)));
+        const bool drawTranslucents = (params._drawMask & to_U8( 1 << to_base( RenderPassParams::Flags::DRAW_TRANSLUCENT_NODES))) && _stage != RenderStage::SHADOW;
 
         constexpr bool doMainPass = true;
         // PrePass requires a depth buffer
@@ -1406,14 +1355,12 @@ namespace Divide
         if ( doPrePass )
         {
             prePass( params, camSnapshot, bufferInOut );
+            if ( _stage == RenderStage::DISPLAY )
+            {
+                resolveMainScreenTarget( params, bufferInOut );
+            }
         }
 #   pragma endregion
-
-        if ( _stage == RenderStage::DISPLAY )
-        {
-            resolveMainScreenTarget( params, true, true, false, bufferInOut );
-        }
-
 #   pragma region HI_Z
         if ( doOcclusionPass )
         {
@@ -1435,6 +1382,7 @@ namespace Divide
         }
         if ( doMainPass ) [[likely]]
         {
+            // If we draw translucents, no point in resolving now. We can resolve after translucent pass
             mainPass( params, camSnapshot, *target, doPrePass, doOcclusionPass, bufferInOut );
         }
         else [[unlikely]]
@@ -1444,7 +1392,7 @@ namespace Divide
 #   pragma endregion
 
 #   pragma region TRANSPARENCY_PASS
-        if ( drawTranslucents && _stage != RenderStage::SHADOW )
+        if ( drawTranslucents )
         {
             // If doIOTPass is false, use forward pass shaders (i.e. MAIN_PASS again for transparents)
             if ( doOITPass )
@@ -1459,40 +1407,6 @@ namespace Divide
             }
         }
 #   pragma endregion
-
-        if ( _stage == RenderStage::DISPLAY || _stage == RenderStage::NODE_PREVIEW )
-        {
-            GFX::EnqueueCommand( bufferInOut, GFX::PushCameraCommand{ camSnapshot } );
-
-            GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
-            beginRenderPassCmd->_name = "DO_POST_RENDER_PASS";
-            beginRenderPassCmd->_target = params._target;
-
-            if ( _stage == RenderStage::DISPLAY )
-            {
-                beginRenderPassCmd->_descriptor._drawMask[to_base(GFXDevice::ScreenTargets::ALBEDO)] = true;
-
-                GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Debug Draw Pass";
-                Attorney::SceneManagerRenderPass::debugDraw( _parent.parent().sceneManager(), bufferInOut, memCmdInOut );
-                GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
-            }
-            else
-            {
-                beginRenderPassCmd->_descriptor._drawMask[to_base(RTColourAttachmentSlot::SLOT_0)] = true;
-            }
-            if constexpr( Config::Build::ENABLE_EDITOR )
-            {
-                Attorney::EditorRenderPassExecutor::postRender( _context.context().editor(), _stage, camSnapshot, params._target, bufferInOut, memCmdInOut );
-            }
-
-            GFX::EnqueueCommand( bufferInOut, GFX::EndRenderPassCommand{} );
-            GFX::EnqueueCommand( bufferInOut, GFX::PopCameraCommand{} );
-
-            if ( _stage == RenderStage::DISPLAY )
-            {
-                resolveMainScreenTarget( params, false, false, true, bufferInOut );
-            }
-        }
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
     }

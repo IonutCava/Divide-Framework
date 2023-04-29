@@ -30,11 +30,26 @@ RenderTarget::RenderTarget(GFXDevice& context, const RenderTargetDescriptor& des
     : GraphicsResource(context, Type::RENDER_TARGET, getGUID(), _ID(descriptor._name.c_str())),
      _descriptor(descriptor)
 {
+    if ( _descriptor._name.empty() )
+    {
+        _descriptor._name = Util::StringFormat( "DVD_FB_%d", getGUID() );
+    }
+}
+
+bool RenderTarget::autoResolveAttachment( RTAttachment* att ) const
+{
+    if (att == nullptr || _descriptor._msaaSamples == 0u )
+    {
+        return false;
+    }
+
+    return att->descriptor()._autoResolve;
 }
 
 bool RenderTarget::create()
 {
     _attachmentsUsed.fill(false);
+    _attachmentsAutoResolve.fill(false);
 
     // Avoid invalid dimensions
     assert(getWidth() != 0 && getHeight() != 0 && "glFramebuffer error: Invalid frame buffer dimensions!");
@@ -68,12 +83,12 @@ bool RenderTarget::create()
             Console::d_printfn(Locale::Get(_ID("WARNING_REPLACING_RT_ATTACHMENT")), getGUID(), getAttachmentName(attDesc._type), to_base(attDesc._slot));
         }
 
+
         return att;
     };
 
     for (InternalRTAttachmentDescriptor& attDesc : _descriptor._attachments)
     {
-        
         RTAttachment* att = updateAttachment(attDesc);
 
         const Str64 texName = Util::StringFormat("RT_%s_Att_%s_%d_%d",
@@ -88,25 +103,69 @@ bool RenderTarget::create()
                                                                                  ? ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT
                                                                                  : ImageUsage::RT_DEPTH_ATTACHMENT);
 
-        ResourceDescriptor textureAttachment(texName);
-        textureAttachment.waitForReady(true);
-        textureAttachment.propertyDescriptor(attDesc._texDescriptor);
+        const bool needsMSAAResolve = autoResolveAttachment(att);
 
-        ResourceCache* parentCache = context().context().kernel().resourceCache();
-        Texture_ptr tex = CreateResource<Texture>(parentCache, textureAttachment);
-        assert(tex);
+        Texture_ptr renderTexture = nullptr;
+        Texture_ptr resolveTexture = nullptr;
+        const TextureDescriptor::MipMappingState mipMapState = attDesc._texDescriptor.mipMappingState();
+        {
+            if ( needsMSAAResolve )
+            {
+                attDesc._texDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
+                attDesc._texDescriptor.removeImageUsageFlag( ImageUsage::SHADER_READ );
+                attDesc._texDescriptor.msaaSamples( _descriptor._msaaSamples );
+            }
 
-        tex->createWithData(nullptr, 0u, vec2<U16>(getWidth(), getHeight()), {});
-        att->setTexture(tex , false);
+            ResourceDescriptor textureAttachment(texName + "_RENDER");
+            textureAttachment.waitForReady(true);
+            textureAttachment.propertyDescriptor(attDesc._texDescriptor);
 
-        initAttachment(att, attDesc._type, attDesc._slot, false);
+            ResourceCache* parentCache = context().context().kernel().resourceCache();
+            renderTexture = CreateResource<Texture>(parentCache, textureAttachment);
+            assert( renderTexture );
+
+            renderTexture->createWithData(nullptr, 0u, vec2<U16>(getWidth(), getHeight()), {});
+        }
+
+        if ( needsMSAAResolve )
+        {
+            attDesc._texDescriptor.mipMappingState(mipMapState);
+            attDesc._texDescriptor.addImageUsageFlag( ImageUsage::SHADER_READ );
+            attDesc._texDescriptor.msaaSamples(0u);
+
+            ResourceDescriptor textureAttachment( texName + "_RESOLVE" );
+            textureAttachment.waitForReady( true );
+            textureAttachment.propertyDescriptor( attDesc._texDescriptor );
+
+            ResourceCache* parentCache = context().context().kernel().resourceCache();
+            resolveTexture = CreateResource<Texture>( parentCache, textureAttachment );
+            assert( resolveTexture );
+
+            resolveTexture->createWithData( nullptr, 0u, vec2<U16>( getWidth(), getHeight() ), {} );
+        }
+        else
+        {
+            resolveTexture = renderTexture;
+        }
+
+        att->setTexture(renderTexture, resolveTexture, false);
+
+        if ( !initAttachment( att, attDesc._type, attDesc._slot, false ) )
+        {
+            DIVIDE_UNEXPECTED_CALL();
+        }
     }
 
     for ( const ExternalRTAttachmentDescriptor& attDesc : _descriptor._externalAttachments )
     {
         RTAttachment* att = updateAttachment(attDesc);
-        att->setTexture(attDesc._attachment->texture(), true);
-        initAttachment(att, attDesc._type, attDesc._slot, true);
+        att->setTexture(attDesc._attachment->renderTexture(), attDesc._attachment->resolvedTexture(), true);
+        DIVIDE_ASSERT(attDesc._attachment->renderTexture()->descriptor().msaaSamples() == _descriptor._msaaSamples);
+
+        if ( !initAttachment( att, attDesc._type, attDesc._slot, true ) )
+        {
+            DIVIDE_UNEXPECTED_CALL();
+        }
     }
 
     return true;
@@ -225,7 +284,7 @@ bool RenderTarget::initAttachment(RTAttachment* att, const RTAttachmentType type
             attachmentTemp = parent.getAttachment(attachmentTemp->descriptor()._type, attachmentTemp->descriptor()._slot);
         }
 
-        att->setTexture(attachmentTemp->texture(), true);
+        att->setTexture(attachmentTemp->renderTexture(), attachmentTemp->resolvedTexture(), true);
     }
     else
     {
@@ -235,15 +294,17 @@ bool RenderTarget::initAttachment(RTAttachment* att, const RTAttachmentType type
         {
             att->texture()->createWithData(nullptr, 0u, vec2<U16>(getWidth(), getHeight()), {});
         }
-        const bool updateSampleCount = att->texture()->descriptor().msaaSamples() != _descriptor._msaaSamples;
+
+        const bool updateSampleCount = att->renderTexture()->descriptor().msaaSamples() != _descriptor._msaaSamples;
         if (updateSampleCount)
         {
-            att->texture()->setSampleCount(_descriptor._msaaSamples);
+            att->renderTexture()->setSampleCount(_descriptor._msaaSamples);
         }
     }
 
     att->changed(false);
     _attachmentsUsed[type == RTAttachmentType::COLOUR ? to_base(slot) : RT_DEPTH_ATTACHMENT_IDX] = true;
+    _attachmentsAutoResolve[type == RTAttachmentType::COLOUR ? to_base(slot) : RT_DEPTH_ATTACHMENT_IDX] = autoResolveAttachment( att );
 
     return true;
 }

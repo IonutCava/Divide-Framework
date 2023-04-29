@@ -138,7 +138,8 @@ namespace Divide {
 
         void getActiveViewport(Rect<I32>& viewportOut) const noexcept;
 
-        PROPERTY_RW(bool, assertOnAPIError, false);
+        bool* _enabledAPIDebugging{nullptr};
+        bool* _assertOnAPIError{nullptr};
 
       private:
         void setAttributesInternal(GLuint vaoID, const AttributeMap& attributes);

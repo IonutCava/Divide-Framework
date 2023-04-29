@@ -15,26 +15,27 @@ RTAttachment::RTAttachment(RenderTarget& parent, const RTAttachmentDescriptor& d
 {
 }
 
-const Texture_ptr& RTAttachment::texture() const {
-    return _texture;
+const Texture_ptr& RTAttachment::texture() const
+{
+    return _resolvedTexture;
 }
 
-void RTAttachment::setTexture(const Texture_ptr& tex, const bool isExternal) noexcept {
-    assert(tex != nullptr);
+void RTAttachment::setTexture( const Texture_ptr& renderTexture, const Texture_ptr& resolveTexture, const bool isExternal) noexcept
+{
+    assert( renderTexture != nullptr);
 
-    _texture = tex;
+    _renderTexture = renderTexture;
+    _resolvedTexture = resolveTexture;
     changed(true);
 }
 
-const RTAttachmentDescriptor& RTAttachment::descriptor() const noexcept {
-    return _descriptor;
-}
-
-RenderTarget& RTAttachment::parent() noexcept {
+RenderTarget& RTAttachment::parent() noexcept
+{
     return _parent;
 }
 
-const RenderTarget& RTAttachment::parent() const  noexcept {
+const RenderTarget& RTAttachment::parent() const  noexcept
+{
     return _parent;
 }
 

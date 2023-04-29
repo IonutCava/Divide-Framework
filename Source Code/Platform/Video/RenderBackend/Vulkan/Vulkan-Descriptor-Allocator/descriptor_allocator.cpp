@@ -86,6 +86,8 @@
 
     bool DescriptorAllocatorHandle::Allocate(const VkDescriptorSetLayout& layout, VkDescriptorSet& builtSet, Divide::I8 retryCount)
     {
+        PROFILE_SCOPE_AUTO( Divide::Profiler::Category::Graphics );
+
         DescriptorAllocatorPool*implPool = static_cast<DescriptorAllocatorPool*>(ownerPool);
 
         VkDescriptorSetAllocateInfo allocInfo{ .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
@@ -128,6 +130,8 @@
 
     VkDescriptorPool DescriptorAllocatorPool::createPool( Divide::I32 count, VkDescriptorPoolCreateFlags flags)
     {
+        PROFILE_SCOPE_AUTO( Divide::Profiler::Category::Graphics );
+
         thread_local Divide::vector_fast<VkDescriptorPoolSize> sizes;
 
         sizes.clear();
@@ -176,8 +180,11 @@
 
     void DescriptorAllocatorPool::Flip()
     {
-            _frameIndex = (_frameIndex+1) % _maxFrames;
-        
+        PROFILE_SCOPE_AUTO( Divide::Profiler::Category::Graphics );
+
+        _frameIndex = (_frameIndex+1) % _maxFrames;
+        {
+            PROFILE_SCOPE( "Flip full allocators", Divide::Profiler::Category::Graphics );
             for (auto al :  _descriptorPools[_frameIndex]->_fullAllocators )
             {
 
@@ -185,17 +192,17 @@
 
                 _clearAllocators.push_back(al);
             }
-
+        }
+        {
+            PROFILE_SCOPE( "Flip usable allocators", Divide::Profiler::Category::Graphics );
             for (auto al : _descriptorPools[_frameIndex]->_usableAllocators)
             {
-
                 vkResetDescriptorPool(_device, al.pool, VkDescriptorPoolResetFlags{ 0 });
-
                 _clearAllocators.push_back(al);
             }
-
-            _descriptorPools[_frameIndex]->_fullAllocators.clear();
-            _descriptorPools[_frameIndex]->_usableAllocators.clear();
+        }
+        _descriptorPools[_frameIndex]->_fullAllocators.clear();
+        _descriptorPools[_frameIndex]->_usableAllocators.clear();
     }
 
     void DescriptorAllocatorPool::SetPoolSizeMultiplier(VkDescriptorType type, float multiplier)
@@ -229,6 +236,8 @@
 
     vke::DescriptorAllocatorHandle DescriptorAllocatorPool::GetAllocator()
     {
+        PROFILE_SCOPE_AUTO( Divide::Profiler::Category::Graphics );
+
         Divide::LockGuard<Divide::Mutex> lk( _poolMutex );
 
         bool foundAllocator = false;

@@ -357,7 +357,7 @@ namespace Import {
         importTimer.stop();
         Console::d_printfn(Locale::Get(_ID("PARSE_MESH_TIME")),
                            dataIn.modelName().c_str(),
-                           Time::MicrosecondsToMilliseconds(importTimer.get()));
+                           Time::MicrosecondsToMilliseconds<F32>(importTimer.get()));
 
         return true;
     }

@@ -85,8 +85,6 @@ namespace Divide {
             ResourceCache& parentCache);
         ~vkShaderProgram();
 
-        static void Idle(PlatformContext& platformContext);
-
         [[nodiscard]] const vkShaders& shaderStages() const noexcept;
         [[nodiscard]] VkShaderStageFlags stageMask() const noexcept;
         [[nodiscard]] ShaderResult validatePreBind( const bool rebind ) override;

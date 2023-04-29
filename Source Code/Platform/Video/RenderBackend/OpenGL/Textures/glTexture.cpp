@@ -175,6 +175,8 @@ void glTexture::submitTextureData() {
         _loadSync = GL_API::CreateFenceSync();
         glFlush();
     }
+
+    Texture::submitTextureData();
 }
 
 void glTexture::loadDataInternal(const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment )

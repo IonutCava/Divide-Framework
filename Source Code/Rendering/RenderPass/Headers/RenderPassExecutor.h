@@ -190,11 +190,7 @@ private:
 
     [[nodiscard]] U32 renderQueueSize() const;
 
-    void resolveMainScreenTarget(const RenderPassParams& params,
-                                 bool resolveDepth,
-                                 bool resolveGBuffer,
-                                 bool resolveColourBuffer,
-                                 GFX::CommandBuffer& bufferInOut) const;
+    void resolveMainScreenTarget(const RenderPassParams& params, GFX::CommandBuffer& bufferInOut) const;
 
     [[nodiscard]] bool validateNodesForStagePass(RenderStagePass stagePass);
     void parseMaterialRange(RenderBin::SortedQueue& queue, U32 start, U32 end);

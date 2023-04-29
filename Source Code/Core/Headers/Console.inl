@@ -32,6 +32,8 @@
 #ifndef _CORE_CONSOLE_INL_
 #define _CORE_CONSOLE_INL_
 
+#include "StringHelper.h"
+
 struct sink 
 { 
     template<typename ...Args> 
@@ -120,73 +122,73 @@ NO_INLINE void Console::d_errorf(const char* format, Args&&... args)
 template <typename... Args>
 NO_INLINE void Console::printfn(const char* format, Args&&... args)
 {
-    Output( FormatText(format, FWD(args)...), true, EntryType::INFO);
+    Output( Util::StringFormat(format, FWD(args)...), true, EntryType::INFO);
 }
 
 template <typename... Args>
 NO_INLINE void Console::printf(const char* format, Args&&... args)
 {
-    Output( FormatText(format, FWD(args)...), false, EntryType::INFO);
+    Output( Util::StringFormat( format, FWD(args)...), false, EntryType::INFO);
 }
 
 template <typename... Args>
 NO_INLINE void Console::warnfn(const char* format, Args&&... args)
 {
-    Output( FormatText(format, FWD(args)...), true, EntryType::WARNING);
+    Output( Util::StringFormat( format, FWD(args)...), true, EntryType::WARNING);
 }
 
 template <typename... Args>
 NO_INLINE void Console::warnf(const char* format, Args&&... args)
 {
-    Output( FormatText(format, FWD(args)...), false, EntryType::WARNING);
+    Output( Util::StringFormat( format, FWD(args)...), false, EntryType::WARNING);
 }
 
 template <typename... Args>
 NO_INLINE void Console::errorfn(const char* format, Args&&... args)
 {
-    Output( FormatText(format, FWD(args)...), true, EntryType::ERR);
+    Output( Util::StringFormat( format, FWD(args)...), true, EntryType::ERR);
 }
 
 template <typename... Args>
 NO_INLINE void Console::errorf(const char* format, Args&&... args)
 {
-    Output( FormatText(format, FWD(args)...), false, EntryType::ERR);
+    Output( Util::StringFormat( format, FWD(args)...), false, EntryType::ERR);
 }
 
 template <typename... Args>
 NO_INLINE void Console::printfn(std::ofstream& outStream, const char* format, Args&&... args)
 {
-    Output(outStream, FormatText(format, FWD(args)...), true, EntryType::INFO);
+    Output(outStream, Util::StringFormat( format, FWD(args)...), true, EntryType::INFO);
 }
 
 template <typename... Args>
 NO_INLINE void Console::printf(std::ofstream& outStream, const char* format, Args&&... args)
 {
-    Output(outStream, FormatText(format, FWD(args)...), false, EntryType::INFO);
+    Output(outStream, Util::StringFormat( format, FWD(args)...), false, EntryType::INFO);
 }
 
 template <typename... Args>
 NO_INLINE void Console::warnfn(std::ofstream& outStream, const char* format, Args&&... args)
 {
-    Output(outStream, FormatText(format, FWD(args)...), true, EntryType::WARNING);
+    Output(outStream, Util::StringFormat( format, FWD(args)...), true, EntryType::WARNING);
 }
 
 template <typename... Args>
 NO_INLINE void Console::warnf(std::ofstream& outStream, const char* format, Args&&... args)
 {
-    Output(outStream, FormatText(format, FWD(args)...), false, EntryType::WARNING);
+    Output(outStream, Util::StringFormat( format, FWD(args)...), false, EntryType::WARNING);
 }
 
 template <typename... Args>
 NO_INLINE void Console::errorfn(std::ofstream& outStream, const char* format, Args&&... args)
 {
-    Output(outStream, FormatText(format, FWD(args)...), true, EntryType::ERR);
+    Output(outStream, Util::StringFormat( format, FWD(args)...), true, EntryType::ERR);
 }
 
 template <typename... Args>
 NO_INLINE void Console::errorf(std::ofstream& outStream, const char* format, Args&&... args)
 {
-    Output(outStream, FormatText(format, FWD(args)...), false, EntryType::ERR);
+    Output(outStream, Util::StringFormat( format, FWD(args)...), false, EntryType::ERR);
 }
 
 template <typename... Args>

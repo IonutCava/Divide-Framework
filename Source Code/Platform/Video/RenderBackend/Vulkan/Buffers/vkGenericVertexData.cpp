@@ -31,7 +31,6 @@ namespace Divide {
         PROFILE_VK_EVENT_AUTO_AND_CONTEX( *vkData->_cmdBuffer );
 
         for (const auto& buffer : _bufferObjects) 
-        
         {
             bindBufferInternal(buffer._bindConfig, *vkData->_cmdBuffer);
         }
@@ -50,14 +49,11 @@ namespace Divide {
                 {
                     offsetInBytes += idxBuffer._buffer->_params._elementCount * idxBuffer._buffer->_params._elementSize * queueIndex();
                 }
-                vkCmdBindIndexBuffer(*vkData->_cmdBuffer, idxBuffer._buffer->_buffer, offsetInBytes, idxBuffer._data.smallIndices ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
+                VK_PROFILE(vkCmdBindIndexBuffer, *vkData->_cmdBuffer, idxBuffer._buffer->_buffer, offsetInBytes, idxBuffer._data.smallIndices ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
             }
 
-            {
-                // Submit the draw command
-                PROFILE_VK_EVENT( "Submit indexed" );
-                VKUtil::SubmitRenderCommand( command, *vkData->_cmdBuffer, idxBuffer._buffer != nullptr, renderIndirect() );
-            }
+            // Submit the draw command
+            VK_PROFILE(VKUtil::SubmitRenderCommand, command, *vkData->_cmdBuffer, idxBuffer._buffer != nullptr, renderIndirect() );
         }
         else
         {
@@ -93,7 +89,7 @@ namespace Divide {
             offsetInBytes += bufferParams._elementCount * bufferParams._elementSize * queueIndex();
         }
 
-        vkCmdBindVertexBuffers(cmdBuffer, bindConfig._bindIdx, 1, &impl->_buffer->_buffer, &offsetInBytes);
+        VK_PROFILE(vkCmdBindVertexBuffers, cmdBuffer, bindConfig._bindIdx, 1, &impl->_buffer->_buffer, &offsetInBytes);
     }
 
     BufferLock vkGenericVertexData::setBuffer(const SetBufferParams& params) noexcept

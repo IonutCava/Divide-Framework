@@ -48,6 +48,7 @@ class Kernel;
 namespace Attorney
 {
     class ApplicationKernel;
+    class ApplicationProfiler;
 
     class DisplayManagerApplication;
     class DisplayManagerRenderingAPI;
@@ -58,6 +59,7 @@ namespace Attorney
 class Application final : public SDLEventListener
 {
     friend class Attorney::ApplicationKernel;
+    friend class Attorney::ApplicationProfiler;
 
 public:
       enum class StepResult : U32
@@ -107,10 +109,12 @@ public:
     void mainLoopActive(const bool state) noexcept;
     void freezeRendering(const bool state) noexcept;
 
+protected:
+    bool onProfilerStateChanged(Profiler::State state);
+
 private:
     [[nodiscard]] ErrorCode setRenderingAPI( const RenderAPI api );
     [[nodiscard]] bool onSDLEvent( SDL_Event event ) noexcept override;
-
 
 private:
     WindowManager _windowManager;
@@ -173,6 +177,16 @@ namespace Attorney
         }
 
         friend class Kernel;
+    }; 
+    
+    class ApplicationProfiler
+    {
+        [[nodiscard]] static bool onProfilerStateChanged( Application* app, const Profiler::State state )
+        {
+            return app->onProfilerStateChanged(state);
+        }
+
+        friend bool Profiler::OnProfilerStateChanged( const Profiler::State state);
     };
 
     class DisplayManagerWindowManager

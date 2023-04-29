@@ -747,6 +747,8 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         }
     }
 
+    RenderTarget* prevScreenRT = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_PREV);
+    auto& prevScreenTex = prevScreenRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO )->texture();
     // Copy our screen target PRE tonemap to feed back to PostFX operators in the next frame
     GFX::BlitRenderTargetCommand blitScreenColourCmd = {};
     blitScreenColourCmd._source = getInput(true)._targetID;
@@ -763,9 +765,8 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
 
     GFX::EnqueueCommand(bufferInOut, blitScreenColourCmd);
 
-    RenderTarget* prevScreenRT = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_PREV);
     GFX::ComputeMipMapsCommand computeMipMapsCommand{};
-    computeMipMapsCommand._texture = prevScreenRT->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO)->texture().get();
+    computeMipMapsCommand._texture = prevScreenTex.get();
     computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
     GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 

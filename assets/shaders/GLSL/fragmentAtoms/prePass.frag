@@ -13,14 +13,14 @@
 #define NO_METALNESS_TEX
 #include "materialData.frag"
 
-layout(location = TARGET_VELOCITY) out vec3 _velocityOut;
-layout(location = TARGET_NORMALS)  out vec3 _normalsOut;
+layout(location = TARGET_VELOCITY) out vec2 _velocityOut;
+layout(location = TARGET_NORMALS)  out vec4 _normalsOut;
 
 void writeGBuffer(in vec3 normalWV, in float roughness) {
-    _velocityOut.rg = velocityCalc();
-    _velocityOut.b = float(SELECTION_FLAG);
+    _velocityOut = velocityCalc();
     _normalsOut.rg = packNormal(normalWV);
     _normalsOut.b = roughness;
+    _normalsOut.a = 1.f;
 }
 
 void writeGBuffer(in NodeMaterialData data) {

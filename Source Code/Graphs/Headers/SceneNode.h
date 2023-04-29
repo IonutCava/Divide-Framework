@@ -35,6 +35,8 @@
 
 #include "SceneNodeFwd.h"
 #include "SceneNodeRenderState.h"
+
+#include "Core/Headers/Profiler.h"
 #include "Core/Math/BoundingVolumes/Headers/BoundingBox.h"
 #include "Core/Resources/Headers/Resource.h"
 #include "ECS/Components/Headers/EditorComponent.h"

@@ -158,7 +158,7 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource
         virtual void loadDataInternal( const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment ) = 0;
         virtual void loadDataInternal( const Byte* data, size_t size, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) = 0;
         virtual void prepareTextureData( U16 width, U16 height, U16 depth, bool emptyAllocation );
-        virtual void submitTextureData() = 0;
+        virtual void submitTextureData();
 
     protected:
         ResourceCache& _parentCache;

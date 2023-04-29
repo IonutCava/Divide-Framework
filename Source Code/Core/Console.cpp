@@ -3,6 +3,7 @@
 #include "Headers/Console.h"
 
 #include "Core/Time/Headers/ApplicationTimer.h"
+#include "Platform/Video/Headers/GFXDevice.h"
 
 #include <iostream>
 
@@ -14,6 +15,7 @@ vector<Console::ConsolePrintCallbackEntry> Console::s_guiConsoleCallbacks;
 constexpr U32 DEFAULT_FLAGS = to_base( Console::Flags::DECORATE_TIMESTAMP ) |
                               to_base( Console::Flags::DECORATE_THREAD_ID ) |
                               to_base( Console::Flags::DECORATE_SEVERITY ) |
+                              to_base( Console::Flags::DECORATE_FRAME ) |
                               to_base( Console::Flags::ENABLE_OUTPUT ) |
                               to_base( Console::Flags::ENABLE_ERROR_STREAM );
 
@@ -24,8 +26,6 @@ std::atomic_bool Console::s_running = false;
 //https://github.com/cameron314/concurrentqueue
 namespace
 {
-    thread_local char textBuffer[CONSOLE_OUTPUT_BUFFER_SIZE + 1];
-
     std::array<Console::OutputEntry, 16> g_outputCache;
 
     moodycamel::BlockingConcurrentQueue<Console::OutputEntry>& OutBuffer()
@@ -58,17 +58,7 @@ void Console::PrintCopyrightNotice()
               << "-------------------------------------------------------------------------------\n\n";
 }
 
-const char* Console::FormatText( const char* format, ... ) noexcept
-{
-    va_list args;
-    va_start( args, format );
-    assert( _vscprintf( format, args ) + 1 < CONSOLE_OUTPUT_BUFFER_SIZE );
-    vsprintf( textBuffer, format, args );
-    va_end( args );
-    return textBuffer;
-}
-
-void Console::DecorateAndPrint(std::ostream& outStream, const char* text, const bool newline, const EntryType type) {
+void Console::DecorateAndPrint(std::ostream& outStream, const std::string_view text, const bool newline, const EntryType type) {
     if (s_flags & to_base(Flags::DECORATE_TIMESTAMP)) [[likely]]
     {
         outStream << "[ " << std::internal
@@ -79,12 +69,14 @@ void Console::DecorateAndPrint(std::ostream& outStream, const char* text, const 
                           << Time::App::ElapsedSeconds()
                   << " ] ";
     }
-
+    if ( s_flags & to_base( Flags::DECORATE_FRAME ) ) [[likely]]
+    {
+        outStream << "[ " << GFXDevice::FrameCount() << " ] ";
+    }
     if ( s_flags & to_base( Flags::DECORATE_THREAD_ID ) ) [[likely]]
     {
         outStream << "[ " << std::this_thread::get_id() << " ] ";
     }
-
     if ( s_flags & to_base( Flags::DECORATE_SEVERITY ) && (type == EntryType::WARNING || type == EntryType::ERR) )
     {
         outStream << (type == EntryType::ERR ? " Error: " : " Warning: ");
@@ -98,7 +90,7 @@ void Console::DecorateAndPrint(std::ostream& outStream, const char* text, const 
     }
 }
 
-void Console::Output(std::ostream& outStream, const char* text, const bool newline, const EntryType type)
+void Console::Output(std::ostream& outStream, const std::string_view text, const bool newline, const EntryType type)
 {
     if (s_flags & to_base(Flags::ENABLE_OUTPUT) ) [[likely]]
     {
@@ -106,7 +98,7 @@ void Console::Output(std::ostream& outStream, const char* text, const bool newli
     }
 }
 
-void Console::Output(const char* text, const bool newline, const EntryType type)
+void Console::Output(const std::string_view text, const bool newline, const EntryType type)
 {
     if ( s_flags & to_base( Flags::ENABLE_OUTPUT ) )
     {
