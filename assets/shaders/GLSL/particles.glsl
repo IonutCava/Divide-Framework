@@ -88,7 +88,7 @@ void main(){
     const NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
     const vec3 normalWV = getNormalWV( data, vec3( VAR._texCoord, 0 ), normalVariation );
 
-    writeScreenColour(colour, normalWV );
+    writeScreenColour(colour, vec3( 0.f ), normalWV );
 #ensif //PRE_PASS
 
 }

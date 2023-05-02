@@ -84,33 +84,33 @@ class glFramebuffer final : public RenderTarget {
     bool create() override;
 
 
-protected:
-    void queueCheckStatus() noexcept;
+  protected:
     bool checkStatus();
     bool checkStatusInternal(GLuint handle);
 
     void prepareBuffers(const RTDrawDescriptor& drawPolicy);
 
-    bool initAttachment(RTAttachment* att, RTAttachmentType type, RTColourAttachmentSlot slot, bool isExternal) override;
+    bool initAttachment(RTAttachment* att, RTAttachmentType type, RTColourAttachmentSlot slot) override;
 
     bool toggleAttachment( U8 attachmentIdx, AttachmentState state, U16 levelOffset, DrawLayerEntry layerOffset, bool layeredRendering);
 
     void clear(const RTClearDescriptor& descriptor);
     void begin(const RTDrawDescriptor& drawPolicy, const RTClearDescriptor& clearPolicy);
-    void end();
+    void end(const RTTransitionMask& mask);
+
     PROPERTY_R_IW(Str128, debugMessage, "");
-    PROPERTY_R_IW(GLuint, framebufferHandle, GLUtil::k_invalidObjectID);
+    PROPERTY_R_IW(GLuint, framebufferHandle, GL_NULL_HANDLE);
 
    protected:
-    void resolve();
+    void resolve(const RTTransitionMask& mask);
     bool setMipLevelInternal( U8 attachmentIdx, U16 writeLevel);
     static void QueueMipMapsRecomputation(const RTAttachment_uptr& attachment);
 
    protected:
-    GLuint _framebufferResolveHandle{GLUtil::k_invalidObjectID};
+    GLuint _framebufferResolveHandle{GL_NULL_HANDLE};
 
     RTDrawDescriptor _previousPolicy;
-    std::array<DrawLayerEntry, to_base( RTColourAttachmentSlot::COUNT ) + 1> _previousDrawLayers;
+    std::array<DrawLayerEntry, RT_MAX_ATTACHMENT_COUNT> _previousDrawLayers;
 
     struct ColourBufferState
     {
@@ -135,8 +135,8 @@ namespace Attorney {
         static void begin(glFramebuffer& rt, const RTDrawDescriptor& drawPolicy, const RTClearDescriptor& clearPolicy) {
             rt.begin(drawPolicy, clearPolicy);
         }
-        static void end(glFramebuffer& rt) {
-            rt.end();
+        static void end( glFramebuffer& rt, const RTTransitionMask& mask ) {
+            rt.end( mask );
         }
 
         friend class GL_API;

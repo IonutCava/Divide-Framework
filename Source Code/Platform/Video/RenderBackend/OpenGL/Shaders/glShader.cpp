@@ -46,7 +46,7 @@ glShader::glShader(GFXDevice& context, const Str256& name, const U32 generation)
 
 glShader::~glShader()
 {
-    if (_handle != GLUtil::k_invalidObjectID)
+    if (_handle != GL_NULL_HANDLE)
     {
         Console::d_printfn(Locale::Get(_ID("SHADER_DELETE")), name().c_str());
         GL_API::DeleteShaderPrograms(1, &_handle);
@@ -88,7 +88,7 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle)
             timers[0].start();
         }
 
-        if (_handle != GLUtil::k_invalidObjectID) {
+        if (_handle != GL_NULL_HANDLE) {
             GL_API::DeleteShaderPrograms(1, &_handle);
         }
 
@@ -96,7 +96,7 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle)
         glProgramParameteri(_handle, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_FALSE);
         glProgramParameteri(_handle, GL_PROGRAM_SEPARABLE, GL_TRUE);
 
-        if (_handle == 0u || _handle == GLUtil::k_invalidObjectID) {
+        if (_handle == 0u || _handle == GL_NULL_HANDLE) {
             Console::errorfn(Locale::Get(_ID("ERROR_GLSL_CREATE_PROGRAM")), _name.c_str());
             _valid = false;
             return ShaderResult::Failed;
@@ -113,7 +113,7 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle)
             if constexpr(Config::ENABLE_GPU_VALIDATION) {
                 timers[1].start();
             }
-            GLuint shader = GLUtil::k_invalidObjectID;
+            GLuint shader = GL_NULL_HANDLE;
             DIVIDE_ASSERT(shader != 0u && !data._sourceCodeSpirV.empty() && !data._sourceCodeGLSL.empty());
 
             if constexpr(g_useSPIRVBinaryCode) {
@@ -133,7 +133,7 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle)
             if constexpr(Config::ENABLE_GPU_VALIDATION) {
                 timers[1].start();
             }
-            if (shader != GLUtil::k_invalidObjectID) {
+            if (shader != GL_NULL_HANDLE) {
                 GLboolean compiled = 0;
                 glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
                 if (compiled == GL_FALSE) {
@@ -249,7 +249,7 @@ bool glShader::load(const ShaderProgram::ShaderLoadData& data) {
 
     _valid = false; _linked = false; 
 
-    if (_handle != GLUtil::k_invalidObjectID) {
+    if (_handle != GL_NULL_HANDLE) {
         GL_API::DeleteShaderPrograms(1, &_handle);
     }
 
@@ -313,7 +313,7 @@ void glShader::onParentValidation()
 {
     for (auto& shader : _shaderIDs)
     {
-        if (shader != GLUtil::k_invalidObjectID)
+        if (shader != GL_NULL_HANDLE)
         {
             glDetachShader(_handle, shader);
             glDeleteShader(shader);

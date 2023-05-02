@@ -94,7 +94,7 @@ namespace Divide
     {
 
         /*-----------Object Management----*/
-        GLuint s_lastQueryResult = k_invalidObjectID;
+        GLuint s_lastQueryResult = GL_NULL_HANDLE;
 
         const DisplayWindow* s_glMainRenderWindow;
         thread_local SDL_GLContext s_glSecondaryContext = nullptr;
@@ -718,7 +718,7 @@ namespace Divide
 
                 if ( hash != 0u )
                 {
-                    U32 idx = GLUtil::k_invalidObjectID;
+                    U32 idx = GL_NULL_HANDLE;
                     const auto& cacheIt = _cache.find( hash );
                     if ( cacheIt != cend( _cache ) )
                     {
@@ -726,7 +726,7 @@ namespace Divide
                     }
 
 
-                    if ( idx != GLUtil::k_invalidObjectID )
+                    if ( idx != GL_NULL_HANDLE )
                     {
                         assert( _usageMap[idx] != State::FREE );
                         _usageMap[idx] = State::USED;

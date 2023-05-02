@@ -42,6 +42,6 @@ void main(void) {
     const vec3 albedo = overlayVec(texture(texDiffuse0, vec3(_scrollingUV.st, 0)).rgb,
                                    texture(texDiffuse0, vec3(_scrollingUV.pq, 0)).rgb);
 
-    writeScreenColour(vec4(albedo, 1.f), VAR._normalWV);
+    writeScreenColour(vec4(albedo, 1.f), vec3( 0.f ), VAR._normalWV);
 #endif //PRE_PASS
 }

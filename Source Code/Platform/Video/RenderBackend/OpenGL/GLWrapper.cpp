@@ -507,7 +507,7 @@ namespace Divide
 
         for ( VAOMap::value_type& value : s_vaoCache )
         {
-            if ( value.second != GLUtil::k_invalidObjectID )
+            if ( value.second != GL_NULL_HANDLE )
             {
                 GL_API::DeleteVAOs( 1, &value.second );
             }
@@ -747,7 +747,7 @@ namespace Divide
                 // Reset our cache
                 for ( auto& it : s_textureCache )
                 {
-                    it._handle = GLUtil::k_invalidObjectID;
+                    it._handle = GL_NULL_HANDLE;
                 }
 
                 // Grab min and max slot and fill in the cache with all of the available data
@@ -765,7 +765,7 @@ namespace Divide
                     const U8 slot = i + minSlot;
                     const TexBindEntry& it = s_textureCache[slot];
 
-                    if ( it._handle != GLUtil::k_invalidObjectID )
+                    if ( it._handle != GL_NULL_HANDLE )
                     {
                         s_textureHandles[idx] = it._handle;
                         s_textureSamplers[idx] = it._sampler;
@@ -820,7 +820,7 @@ namespace Divide
         {
             const GLuint srcHandle = static_cast<const glTexture*>(srcView._srcTexture)->textureHandle();
             
-            if ( srcHandle == GLUtil::k_invalidObjectID )
+            if ( srcHandle == GL_NULL_HANDLE )
             {
                 return srcHandle;
             }
@@ -946,7 +946,8 @@ namespace Divide
                 }
                 else
                 {
-                    Attorney::GLAPIRenderTarget::end( *s_stateTracker._activeRenderTarget );
+                    const GFX::EndRenderPassCommand* crtCmd = cmd->As<GFX::EndRenderPassCommand>();
+                    Attorney::GLAPIRenderTarget::end( *s_stateTracker._activeRenderTarget, crtCmd->_transitionMask );
                     s_stateTracker._activeRenderTarget = nullptr;
                 }
                 s_stateTracker._activeRenderTargetID = SCREEN_TARGET_ID;
@@ -1537,7 +1538,7 @@ namespace Divide
                                                                                            imageView._image._descriptor._packing )._format;
 
                         const GLuint handle = static_cast<const glTexture*>(imageView._image._srcTexture)->textureHandle();
-                        if ( handle != GLUtil::k_invalidObjectID &&
+                        if ( handle != GL_NULL_HANDLE &&
                              GL_API::s_stateTracker.bindTextureImage( srcBinding._slot,
                                                                       handle,
                                                                       imageView._image._subRange._mipLevels._offset,
@@ -1590,7 +1591,7 @@ namespace Divide
             entry._handle = static_cast<const glTexture*>(imageView._srcTexture)->textureHandle();
         }
 
-        if ( entry._handle == GLUtil::k_invalidObjectID )
+        if ( entry._handle == GL_NULL_HANDLE )
         {
             return false;
         }
@@ -1808,7 +1809,7 @@ namespace Divide
                     {
                         if ( handle == crtTex )
                         {
-                            handle = GLUtil::k_invalidObjectID;
+                            handle = GL_NULL_HANDLE;
                         }
                     }
 
@@ -1869,14 +1870,14 @@ namespace Divide
                 {
                     if ( boundBuffer == crtBuffer )
                     {
-                        boundBuffer = GLUtil::k_invalidObjectID;
+                        boundBuffer = GL_NULL_HANDLE;
                     }
                 }
                 for ( auto& boundBuffer : s_stateTracker._activeVAOIB )
                 {
                     if ( boundBuffer.second == crtBuffer )
                     {
-                        boundBuffer.second = GLUtil::k_invalidObjectID;
+                        boundBuffer.second = GL_NULL_HANDLE;
                     }
                 }
             }
@@ -1897,7 +1898,7 @@ namespace Divide
             {
                 if ( s_stateTracker._activeVAOID == vaos[i] )
                 {
-                    s_stateTracker._activeVAOID = GLUtil::k_invalidObjectID;
+                    s_stateTracker._activeVAOID = GL_NULL_HANDLE;
                     break;
                 }
             }
@@ -1920,7 +1921,7 @@ namespace Divide
                 {
                     if ( activeFB == crtFB )
                     {
-                        activeFB = GLUtil::k_invalidObjectID;
+                        activeFB = GL_NULL_HANDLE;
                     }
                 }
             }
@@ -1932,51 +1933,57 @@ namespace Divide
     }
 
     /// Return the OpenGL sampler object's handle for the given hash value
-    GLuint GL_API::GetSamplerHandle( const size_t samplerHash )
+    GLuint GL_API::GetSamplerHandle( size_t samplerHash )
     {
         thread_local size_t cached_hash = 0u;
-        thread_local GLuint cached_handle = GLUtil::k_invalidObjectID;
+        thread_local GLuint cached_handle = GL_NULL_HANDLE;
 
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        // If the hash value is 0, we assume the code is trying to unbind a sampler object
-        if ( samplerHash > 0 )
+        if ( samplerHash == 0u )
         {
-            if ( cached_hash == samplerHash )
+            samplerHash = Texture::DefaultSamplerHash();
+        }
+
+        if ( cached_hash == samplerHash )
+        {
+            return cached_handle;
+        }
+        cached_hash = samplerHash;
+
+        {
+            SharedLock<SharedMutex> r_lock( s_samplerMapLock );
+            // If we fail to find the sampler object for the given hash, we print an error and return the default OpenGL handle
+            const SamplerObjectMap::const_iterator it = s_samplerMap.find( samplerHash );
+            if ( it != std::cend( s_samplerMap ) )
             {
+                // Return the OpenGL handle for the sampler object matching the specified hash value
+                cached_handle = it->second;
                 return cached_handle;
-            }
-            cached_hash = samplerHash;
-
-            {
-                SharedLock<SharedMutex> r_lock( s_samplerMapLock );
-                // If we fail to find the sampler object for the given hash, we print an error and return the default OpenGL handle
-                const SamplerObjectMap::const_iterator it = s_samplerMap.find( samplerHash );
-                if ( it != std::cend( s_samplerMap ) )
-                {
-                    // Return the OpenGL handle for the sampler object matching the specified hash value
-                    cached_handle = it->second;
-                    return cached_handle;
-                }
-            }
-            {
-                LockGuard<SharedMutex> w_lock( s_samplerMapLock );
-                // Check again
-                const SamplerObjectMap::const_iterator it = s_samplerMap.find( samplerHash );
-                if ( it == std::cend( s_samplerMap ) )
-                {
-                    // Cache miss. Create the sampler object now.
-                    // Create and store the newly created sample object. GL_API is responsible for deleting these!
-                    const GLuint sampler = glSamplerObject::Construct( SamplerDescriptor::Get( samplerHash ) );
-                    s_samplerMap[samplerHash] = sampler;
-
-                    cached_handle = sampler;
-                    return cached_handle;
-                }
             }
         }
 
-        return 0u;
+        cached_handle = GL_NULL_HANDLE;
+        {
+            LockGuard<SharedMutex> w_lock( s_samplerMapLock );
+            // Check again
+            const SamplerObjectMap::const_iterator it = s_samplerMap.find( samplerHash );
+            if ( it == std::cend( s_samplerMap ) )
+            {
+                // Cache miss. Create the sampler object now.
+                // Create and store the newly created sample object. GL_API is responsible for deleting these!
+                const GLuint sampler = glSamplerObject::Construct( SamplerDescriptor::Get( samplerHash ) );
+                s_samplerMap[samplerHash] = sampler;
+
+                cached_handle = sampler;
+            }
+            else
+            {
+                cached_handle = it->second;
+            }
+        }
+
+        return cached_handle;
     }
 
     glHardwareQueryPool* GL_API::GetHardwareQueryPool() noexcept

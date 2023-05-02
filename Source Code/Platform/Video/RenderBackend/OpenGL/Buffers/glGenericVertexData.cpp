@@ -27,7 +27,7 @@ namespace Divide
         LockGuard<SharedMutex> w_lock( _idxBufferLock );
         for ( auto& idx : _idxBuffers )
         {
-            if ( idx._handle != GLUtil::k_invalidObjectID )
+            if ( idx._handle != GL_NULL_HANDLE )
             {
                 GLUtil::freeBuffer( idx._handle );
             }
@@ -99,7 +99,7 @@ namespace Divide
         {
             impl = &_idxBuffers.emplace_back();
         }
-        else if ( impl->_handle != GLUtil::k_invalidObjectID )
+        else if ( impl->_handle != GL_NULL_HANDLE )
         {
             if ( indices.count == 0u || // We don't need indices anymore
                  impl->_data.dynamic != indices.dynamic || // Buffer usage mode changed
@@ -117,7 +117,7 @@ namespace Divide
         }
 
         const size_t elementSize = indices.smallIndices ? sizeof( GLushort ) : sizeof( GLuint );
-        if ( impl->_handle == GLUtil::k_invalidObjectID )
+        if ( impl->_handle == GL_NULL_HANDLE )
         {
             impl->_data = indices;
             // At this point, we need an actual index buffer

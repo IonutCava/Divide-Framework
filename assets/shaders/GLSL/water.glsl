@@ -77,13 +77,13 @@ void main()
 #if defined(MAIN_DISPLAY_PASS)
     switch (dvd_MaterialDebugFlag) {
         case DEBUG_REFRACTIONS:
-            writeScreenColour(vec4(refractionColour, 1.f), normalWV );
+            writeScreenColour(vec4(refractionColour, 1.f), vec3( 0.f ), normalWV );
             return;
         case DEBUG_REFLECTIONS:
 #if defined(SKIP_REFLECT_REFRACT)
-            writeScreenColour(vec4(0.f, 0.f, 0.f ,1.f));
+            writeScreenColour(vec4(0.f, 0.f, 0.f ,1.f), vec3( 0.f ), vec3( 0.f ), );
 #else //SKIP_REFLECT_REFRACT
-            writeScreenColour(texture(texReflectPlanar, waterUV), normalWV );
+            writeScreenColour(texture(texReflectPlanar, waterUV), vec3( 0.f ), normalWV );
 #endif //SKIP_REFLECT_REFRACT
             return;
     }
@@ -119,7 +119,7 @@ void main()
     // Check to make sure the specular was positive so we aren't adding black spots to the water.
 
    
-    writeScreenColour(outColour + (specular > 0.f ? pow(specular, _specularShininess) : 0.f), normalWV );
+    writeScreenColour(outColour + (specular > 0.f ? pow(specular, _specularShininess) : 0.f), vec3( 0.f ), normalWV );
 
 #else //!PRE_PASS
     const float roughness = getRoughness(data, VAR._texCoord, 0.f);

@@ -73,7 +73,7 @@ class glShader final : public ShaderModule
                                                   ShaderProgram::ShaderLoadData& data);
 
     PROPERTY_R_IW(UseProgramStageMask, stageMask, UseProgramStageMask::GL_NONE_BIT);
-    PROPERTY_R_IW(GLuint, handle, GLUtil::k_invalidObjectID);
+    PROPERTY_R_IW(GLuint, handle, GL_NULL_HANDLE);
 
    private:
     friend class glShaderProgram;

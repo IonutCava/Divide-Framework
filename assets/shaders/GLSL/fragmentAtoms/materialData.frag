@@ -269,14 +269,17 @@ vec4 getTextureColour(in NodeMaterialData data, in vec3 uv) {
 #if defined(HAS_TRANSPARENCY)
 
 #if defined(USE_ALPHA_DISCARD)
-float getAlpha(in NodeMaterialData data, in vec3 uv) {
+float getAlpha(in NodeMaterialData data, in vec3 uv) 
+{
 #if defined(USE_OPACITY_TEXTURE)
-    if (dvd_TexOpOpacity(data) != TEX_NONE) {
+    if (dvd_TexOpOpacity(data) != TEX_NONE)
+    {
         return dvd_UseOpacityAlphaChannel(data) ? texture(texOpacityMap, uv).a : texture(texOpacityMap, uv).r;
     }
 #endif //USE_OPACITY_TEXTURE
 #if defined(USE_UNIT0_TEXTURE)
-    if (dvd_UseAlbedoTextureAlphaChannel(data) && dvd_TexOpUnit0(data) != TEX_NONE) {
+    if (dvd_UseAlbedoTextureAlphaChannel(data) && dvd_TexOpUnit0(data) != TEX_NONE)
+    {
         return texture(texDiffuse0, uv).a;
     }
 #endif //USE_UNIT0_TEXTURE
@@ -284,17 +287,19 @@ float getAlpha(in NodeMaterialData data, in vec3 uv) {
 }
 #endif //USE_ALPHA_DISCARD
 
-vec4 getAlbedo(in NodeMaterialData data, in vec3 uv) {
+vec4 getAlbedo(in NodeMaterialData data, in vec3 uv)
+{
     vec4 albedo = getTextureColour(data, uv);
 #if defined(USE_OPACITY_TEXTURE)
-    if (dvd_TexOpOpacity(data) != TEX_NONE) {
+    if (dvd_TexOpOpacity(data) != TEX_NONE)
+    {
         albedo.a = dvd_UseOpacityAlphaChannel(data) ? texture(texOpacityMap, uv).a : texture(texOpacityMap, uv).r;
     }
 #endif //USE_OPACITY_TEXTURE
-    if (!dvd_UseAlbedoTextureAlphaChannel(data)) {
+    if (!dvd_UseAlbedoTextureAlphaChannel(data))
+    {
         albedo.a = dvd_BaseColour(data).a;
     }
-
     return albedo;
 }
 #else //HAS_TRANSPARENCY

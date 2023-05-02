@@ -20,7 +20,7 @@ const Texture_ptr& RTAttachment::texture() const
     return _resolvedTexture;
 }
 
-void RTAttachment::setTexture( const Texture_ptr& renderTexture, const Texture_ptr& resolveTexture, const bool isExternal) noexcept
+void RTAttachment::setTexture( const Texture_ptr& renderTexture, const Texture_ptr& resolveTexture ) noexcept
 {
     assert( renderTexture != nullptr);
 

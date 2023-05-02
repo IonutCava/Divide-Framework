@@ -141,9 +141,6 @@ constexpr unsigned int MAX_REFLECTIVE_PROBES_PER_PASS = 6;
 /// Maximum number of players we support locally. We store per-player data such as key-bindings, camera positions, etc.
 constexpr unsigned int MAX_LOCAL_PLAYER_COUNT = 4;
 
-/// Use the coloured version of WOIT as detailed here: http://casual-effects.blogspot.com/2015/03/colored-blended-order-independent.html (Note: Not yet working!)
-constexpr bool USE_COLOURED_WOIT = false;
-
 namespace Lighting {
     /// How many lights (in order as passed to the shader for the node) should cast shadows
     constexpr unsigned short MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS = 2;

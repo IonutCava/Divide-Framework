@@ -53,11 +53,10 @@ void main()
     }
 
     vec3 averageColor  = accumulation.rgb / max( accumulation.a, M_EPSILON);
+
     // dst' =  (accumulation.rgb / accumulation.a) * (1 - revealage) + dst
     // [dst has already been modulated by the transmission colors and coverage and the blend mode inverts revealage for us] 
-
-    // blend pixels
-    _colourOut = vec4(averageColor, 1.f - revealage);
+    _colourOut = vec4(averageColor, revealage);
     if ( revealage < 0.5f)
     {
         _normalsOut.rg = texelFetch( normalsTexture, C, SampleID ).rg;

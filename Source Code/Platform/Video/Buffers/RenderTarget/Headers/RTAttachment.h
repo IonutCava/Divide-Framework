@@ -60,10 +60,11 @@ struct RTAttachmentDescriptor
     {
     }
 
-    bool _autoResolve{true};
     size_t _samplerHash{ 0u };
+    RTAttachment* _externalAttachment{nullptr};
     RTAttachmentType _type{ RTAttachmentType::COUNT };
     RTColourAttachmentSlot _slot{ RTColourAttachmentSlot::COUNT };
+    bool _autoResolve{true};
 };
 
 constexpr static U32 RT_DEPTH_ATTACHMENT_IDX = to_base( RTColourAttachmentSlot::COUNT );
@@ -77,12 +78,10 @@ struct ExternalRTAttachmentDescriptor final : public RTAttachmentDescriptor
                                             const RTAttachmentType type,
                                             const RTColourAttachmentSlot slot,
                                             bool autoResolve = true )
-        : RTAttachmentDescriptor(samplerHash, type, slot, autoResolve )
-        , _attachment(attachment)
+        : RTAttachmentDescriptor(samplerHash, type, slot, autoResolve)
     {
+        _externalAttachment = attachment;
     }
-
-    RTAttachment* _attachment{nullptr};
 };
 
 struct InternalRTAttachmentDescriptor final : public RTAttachmentDescriptor
@@ -100,29 +99,38 @@ struct InternalRTAttachmentDescriptor final : public RTAttachmentDescriptor
     TextureDescriptor _texDescriptor;
 };
 
-using InternalRTAttachmentDescriptors = vector<InternalRTAttachmentDescriptor>;
-using ExternalRTAttachmentDescriptors = vector<ExternalRTAttachmentDescriptor>;
+using InternalRTAttachmentDescriptors = eastl::fixed_vector<InternalRTAttachmentDescriptor, RT_MAX_ATTACHMENT_COUNT, false>;
+using ExternalRTAttachmentDescriptors = eastl::fixed_vector<ExternalRTAttachmentDescriptor, RT_MAX_ATTACHMENT_COUNT, false>;
 
 class RenderTarget;
 class RTAttachment final
 {
     public:
+        enum class Layout : U8
+        {
+            UNDEFINED = 0u,
+            ATTACHMENT,
+            SHADER_READ
+        };
+
+    public:
         explicit RTAttachment(RenderTarget& parent, const RTAttachmentDescriptor& descriptor) noexcept;
 
         [[nodiscard]] const Texture_ptr& texture() const;
 
-        void setTexture(const Texture_ptr& renderTexture, const Texture_ptr& resolveTexture, const bool isExternal) noexcept;
+        void setTexture(const Texture_ptr& renderTexture, const Texture_ptr& resolveTexture) noexcept;
 
         RenderTarget& parent() noexcept;
         [[nodiscard]] const RenderTarget& parent() const noexcept;
 
+        RTAttachmentDescriptor _descriptor;
+        Layout _attachmentUsage{ Layout::UNDEFINED };
 
         PROPERTY_R_IW(Texture_ptr, renderTexture, nullptr );
         PROPERTY_R_IW(Texture_ptr, resolvedTexture, nullptr );
-        PROPERTY_R_IW(RTAttachmentDescriptor, descriptor);
+
         PROPERTY_RW(U32, binding, 0u);
         PROPERTY_RW(bool, changed, false);
-        PROPERTY_R_IW(bool, isExternal, false);
 
     protected:
         RenderTarget& _parent;

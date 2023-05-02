@@ -114,7 +114,7 @@ namespace Divide
             DIVIDE_UNEXPECTED_CALL();
         }
 
-        if ( _memoryBlock._bufferHandle != GLUtil::k_invalidObjectID )
+        if ( _memoryBlock._bufferHandle != GL_NULL_HANDLE )
         {
             if ( _memoryBlock._ptr != nullptr )
             {
@@ -202,7 +202,7 @@ namespace Divide
         }
         else
         {
-            if ( _copyBufferTarget == GLUtil::k_invalidObjectID || _copyBufferSize < rangeInBytes )
+            if ( _copyBufferTarget == GL_NULL_HANDLE || _copyBufferSize < rangeInBytes )
             {
                 GLUtil::freeBuffer( _copyBufferTarget );
                 _copyBufferSize = rangeInBytes;

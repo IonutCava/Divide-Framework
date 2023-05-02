@@ -680,7 +680,7 @@ namespace Divide
         hiZSampler.anisotropyLevel( 0u );
         hiZSampler.magFilter( TextureFilter::NEAREST );
         hiZSampler.minFilter( TextureFilter::NEAREST );
-        hiZSampler.mipSampling( TextureMipSampling::NEAREST );
+        hiZSampler.mipSampling( TextureMipSampling::NONE );
 
         RenderTargetDescriptor hizRTDesc = {};
         hizRTDesc._attachments =
@@ -764,24 +764,18 @@ namespace Divide
             {
                 InternalRTAttachmentDescriptor{ accumulationDescriptor, accumulationSamplerHash, RTAttachmentType::COLOUR, ScreenTargets::ACCUMULATION, false },
                 InternalRTAttachmentDescriptor{ revealageDescriptor,    accumulationSamplerHash, RTAttachmentType::COLOUR, ScreenTargets::REVEALAGE, false },
-                InternalRTAttachmentDescriptor{ normalsDescriptor,      samplerHash,             RTAttachmentType::COLOUR, ScreenTargets::NORMALS, false },
+                InternalRTAttachmentDescriptor{ normalsDescriptor,      accumulationSamplerHash, RTAttachmentType::COLOUR, ScreenTargets::NORMALS, false },
             };
             {
                 const RenderTarget* screenTarget = _rtPool->getRenderTarget( RenderTargetNames::SCREEN );
+                RTAttachment* screenAttachment = screenTarget->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::ALBEDO );
                 RTAttachment* screenDepthAttachment = screenTarget->getAttachment( RTAttachmentType::DEPTH );
 
                 ExternalRTAttachmentDescriptors externalAttachments
                 {
-                    ExternalRTAttachmentDescriptor{ screenDepthAttachment, screenDepthAttachment->descriptor()._samplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, false }
+                    ExternalRTAttachmentDescriptor{ screenAttachment,  screenAttachment->_descriptor._samplerHash, RTAttachmentType::COLOUR, ScreenTargets::MODULATE },
+                    ExternalRTAttachmentDescriptor{ screenDepthAttachment, screenDepthAttachment->_descriptor._samplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, false }
                 };
-
-                if constexpr( Config::USE_COLOURED_WOIT )
-                {
-                    RTAttachment* screenAttachment = screenTarget->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::ALBEDO );
-                    externalAttachments.push_back(
-                        ExternalRTAttachmentDescriptor{ screenAttachment,  screenAttachment->descriptor()._samplerHash, RTAttachmentType::COLOUR, ScreenTargets::MODULATE }
-                    );
-                }
 
                 RenderTargetDescriptor oitDesc = {};
                 oitDesc._name = "OIT";
@@ -795,22 +789,16 @@ namespace Divide
                 for ( U16 i = 0u; i < Config::MAX_REFLECTIVE_NODES_IN_VIEW; ++i )
                 {
                     const RenderTarget* reflectTarget = _rtPool->getRenderTarget( RenderTargetNames::REFLECTION_PLANAR[i] );
+                    RTAttachment* screenAttachment = reflectTarget->getAttachment( RTAttachmentType::COLOUR );
                     RTAttachment* depthAttachment = reflectTarget->getAttachment( RTAttachmentType::DEPTH );
 
                     RenderTargetDescriptor oitDesc = {};
                     oitDesc._attachments = oitAttachments;
 
                     ExternalRTAttachmentDescriptors externalAttachments{
-                         ExternalRTAttachmentDescriptor{ depthAttachment, depthAttachment->descriptor()._samplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 }
+                        ExternalRTAttachmentDescriptor{ screenAttachment, screenAttachment->_descriptor._samplerHash, RTAttachmentType::COLOUR, ScreenTargets::MODULATE },
+                        ExternalRTAttachmentDescriptor{ depthAttachment, depthAttachment->_descriptor._samplerHash, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 }
                     };
-
-                    if constexpr( Config::USE_COLOURED_WOIT )
-                    {
-                        RTAttachment* screenAttachment = reflectTarget->getAttachment( RTAttachmentType::COLOUR );
-                        externalAttachments.push_back(
-                            ExternalRTAttachmentDescriptor{ screenAttachment, screenAttachment->descriptor()._samplerHash, RTAttachmentType::COLOUR, ScreenTargets::MODULATE }
-                        );
-                    }
 
                     oitDesc._name = Util::StringFormat( "OIT_REFLECT_RES_%d", i );
                     oitDesc._resolution = vec2<U16>( reflectRes );
@@ -1358,7 +1346,7 @@ namespace Divide
             const auto& screenAtt = renderTargetPool().getRenderTarget( RenderTargetNames::BACK_BUFFER )->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO );
             const auto& texData = screenAtt->texture()->getView();
 
-            drawTextureInViewport( texData, screenAtt->descriptor()._samplerHash, context().mainWindow().renderingViewport(), false, false, false, buffer );
+            drawTextureInViewport( texData, screenAtt->_descriptor._samplerHash, context().mainWindow().renderingViewport(), false, false, false, buffer );
 
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>( buffer );
             flushCommandBuffer( buffer );
@@ -1591,7 +1579,7 @@ namespace Divide
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, inputAttachment->texture()->getView(), inputAttachment->descriptor()._samplerHash );
+            Set( binding._data, inputAttachment->texture()->getView(), inputAttachment->_descriptor._samplerHash );
 
     
             if ( !gaussian && layerCount > 1 )
@@ -1627,7 +1615,7 @@ namespace Divide
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, bufferAttachment->texture()->getView(), bufferAttachment->descriptor()._samplerHash );
+            Set( binding._data, bufferAttachment->texture()->getView(), bufferAttachment->_descriptor._samplerHash );
 
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( pushData );
 
@@ -2299,7 +2287,7 @@ namespace Divide
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::COMPUTE );
-                Set( binding._data, inImage, HiZAtt->descriptor()._samplerHash );
+                Set( binding._data, inImage, HiZAtt->_descriptor._samplerHash );
             }
 
             pushConstants.data[0]._vec[0].set( owidth, oheight, twidth, theight );
@@ -2329,7 +2317,7 @@ namespace Divide
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( cmdBufferInOut );
 
-        return { HiZAtt->texture(), HiZAtt->descriptor()._samplerHash };
+        return { HiZAtt->texture(), HiZAtt->_descriptor._samplerHash };
     }
 
     void GFXDevice::occlusionCull( const RenderPass::BufferData& bufferData,
@@ -2491,7 +2479,7 @@ namespace Divide
             DebugView_ptr HiZ = std::make_shared<DebugView>();
             HiZ->_shader = _renderTargetDraw;
             HiZ->_texture = renderTargetPool().getRenderTarget( RenderTargetNames::HI_Z )->getAttachment( RTAttachmentType::COLOUR )->texture();
-            HiZ->_samplerHash = renderTargetPool().getRenderTarget( RenderTargetNames::HI_Z )->getAttachment( RTAttachmentType::COLOUR )->descriptor()._samplerHash;
+            HiZ->_samplerHash = renderTargetPool().getRenderTarget( RenderTargetNames::HI_Z )->getAttachment( RTAttachmentType::COLOUR )->_descriptor._samplerHash;
             HiZ->_name = "Hierarchical-Z";
             HiZ->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.f );
             HiZ->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
@@ -2502,7 +2490,7 @@ namespace Divide
             DebugView_ptr DepthPreview = std::make_shared<DebugView>();
             DepthPreview->_shader = _previewDepthMapShader;
             DepthPreview->_texture = renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN )->getAttachment( RTAttachmentType::DEPTH )->texture();
-            DepthPreview->_samplerHash = renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN )->getAttachment( RTAttachmentType::DEPTH )->descriptor()._samplerHash;
+            DepthPreview->_samplerHash = renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN )->getAttachment( RTAttachmentType::DEPTH )->_descriptor._samplerHash;
             DepthPreview->_name = "Depth Buffer";
             DepthPreview->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
             DepthPreview->_shaderData.set( _ID( "_zPlanes" ), PushConstantType::VEC2, vec2<F32>( Camera::s_minNearZ, _context.config().runtime.cameraViewDistance ) );
@@ -2510,7 +2498,7 @@ namespace Divide
             DebugView_ptr NormalPreview = std::make_shared<DebugView>();
             NormalPreview->_shader = _renderTargetDraw;
             NormalPreview->_texture = renderTargetPool().getRenderTarget( RenderTargetNames::NORMALS_RESOLVED )->getAttachment( RTAttachmentType::COLOUR )->texture();
-            NormalPreview->_samplerHash = renderTargetPool().getRenderTarget( RenderTargetNames::NORMALS_RESOLVED )->getAttachment( RTAttachmentType::COLOUR )->descriptor()._samplerHash;
+            NormalPreview->_samplerHash = renderTargetPool().getRenderTarget( RenderTargetNames::NORMALS_RESOLVED )->getAttachment( RTAttachmentType::COLOUR )->_descriptor._samplerHash;
             NormalPreview->_name = "Normals";
             NormalPreview->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
             NormalPreview->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, true );
@@ -2521,7 +2509,7 @@ namespace Divide
             DebugView_ptr VelocityPreview = std::make_shared<DebugView>();
             VelocityPreview->_shader = _renderTargetDraw;
             VelocityPreview->_texture = renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::VELOCITY )->texture();
-            VelocityPreview->_samplerHash = renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::VELOCITY )->descriptor()._samplerHash;
+            VelocityPreview->_samplerHash = renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::VELOCITY )->_descriptor._samplerHash;
             VelocityPreview->_name = "Velocity Map";
             VelocityPreview->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
             VelocityPreview->_shaderData.set( _ID( "scaleAndBias" ), PushConstantType::BOOL, true );
@@ -2534,7 +2522,7 @@ namespace Divide
             DebugView_ptr SSAOPreview = std::make_shared<DebugView>();
             SSAOPreview->_shader = _renderTargetDraw;
             SSAOPreview->_texture = renderTargetPool().getRenderTarget( RenderTargetNames::SSAO_RESULT )->getAttachment( RTAttachmentType::COLOUR )->texture();
-            SSAOPreview->_samplerHash = renderTargetPool().getRenderTarget( RenderTargetNames::SSAO_RESULT )->getAttachment( RTAttachmentType::COLOUR )->descriptor()._samplerHash;
+            SSAOPreview->_samplerHash = renderTargetPool().getRenderTarget( RenderTargetNames::SSAO_RESULT )->getAttachment( RTAttachmentType::COLOUR )->_descriptor._samplerHash;
             SSAOPreview->_name = "SSAO Map";
             SSAOPreview->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
             SSAOPreview->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
@@ -2545,7 +2533,7 @@ namespace Divide
             DebugView_ptr AlphaAccumulationHigh = std::make_shared<DebugView>();
             AlphaAccumulationHigh->_shader = _renderTargetDraw;
             AlphaAccumulationHigh->_texture = renderTargetPool().getRenderTarget( RenderTargetNames::OIT )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::ALBEDO )->texture();
-            AlphaAccumulationHigh->_samplerHash = renderTargetPool().getRenderTarget( RenderTargetNames::OIT )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::ALBEDO )->descriptor()._samplerHash;
+            AlphaAccumulationHigh->_samplerHash = renderTargetPool().getRenderTarget( RenderTargetNames::OIT )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::ALBEDO )->_descriptor._samplerHash;
             AlphaAccumulationHigh->_name = "Alpha Accumulation High";
             AlphaAccumulationHigh->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
             AlphaAccumulationHigh->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
@@ -2556,7 +2544,7 @@ namespace Divide
             DebugView_ptr AlphaRevealageHigh = std::make_shared<DebugView>();
             AlphaRevealageHigh->_shader = _renderTargetDraw;
             AlphaRevealageHigh->_texture = renderTargetPool().getRenderTarget( RenderTargetNames::OIT )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::REVEALAGE )->texture();
-            AlphaRevealageHigh->_samplerHash = renderTargetPool().getRenderTarget( RenderTargetNames::OIT )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::REVEALAGE )->descriptor()._samplerHash;
+            AlphaRevealageHigh->_samplerHash = renderTargetPool().getRenderTarget( RenderTargetNames::OIT )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::REVEALAGE )->_descriptor._samplerHash;
             AlphaRevealageHigh->_name = "Alpha Revealage High";
             AlphaRevealageHigh->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
             AlphaRevealageHigh->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
@@ -2587,7 +2575,7 @@ namespace Divide
             DebugView_ptr Edges = std::make_shared<DebugView>();
             Edges->_shader = _renderTargetDraw;
             Edges->_texture = renderTargetPool().getRenderTarget( edgeRTHandle._targetID )->getAttachment( RTAttachmentType::COLOUR )->texture();
-            Edges->_samplerHash = renderTargetPool().getRenderTarget( edgeRTHandle._targetID )->getAttachment( RTAttachmentType::COLOUR )->descriptor()._samplerHash;
+            Edges->_samplerHash = renderTargetPool().getRenderTarget( edgeRTHandle._targetID )->getAttachment( RTAttachmentType::COLOUR )->_descriptor._samplerHash;
             Edges->_name = "Edges";
             Edges->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
             Edges->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );

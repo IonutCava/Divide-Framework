@@ -727,7 +727,7 @@ void main()
     const vec3 ret = atmosphereColour(rayDirection, lerpValue);
 #endif //MAIN_DISPLAY_PASS
 
-    writeScreenColour(vec4(ret, 1.f), VAR._normalWV);
+    writeScreenColour(vec4(ret, 1.f), vec3( 0.f ), VAR._normalWV);
 }
 
 -- Fragment.PrePass

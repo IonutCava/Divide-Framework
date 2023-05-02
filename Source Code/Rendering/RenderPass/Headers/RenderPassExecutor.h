@@ -138,7 +138,8 @@ private:
     // Returns false if we skipped the pre-pass step
     void prePass(const RenderPassParams& params,
                  const CameraSnapshot& cameraSnapshot,
-                 GFX::CommandBuffer& bufferInOut);
+                 GFX::CommandBuffer& bufferInOut,
+                 GFX::MemoryBarrierCommand& memCmdInOut);
 
     void occlusionPass(PlayerIndex idx, 
                        const CameraSnapshot& cameraSnapshot,
@@ -153,15 +154,18 @@ private:
                   RenderTarget& target,
                   bool prePassExecuted,
                   bool hasHiZ,
-                  GFX::CommandBuffer& bufferInOut);
+                  GFX::CommandBuffer& bufferInOut,
+                  GFX::MemoryBarrierCommand& memCmdInOut);
 
     void transparencyPass(const RenderPassParams& params,
                           const CameraSnapshot& cameraSnapshot,
-                          GFX::CommandBuffer& bufferInOut);
+                          GFX::CommandBuffer& bufferInOut,
+                          GFX::MemoryBarrierCommand& memCmdInOut );
 
     void woitPass(const RenderPassParams& params,
                   const CameraSnapshot& cameraSnapshot,
-                  GFX::CommandBuffer& bufferInOut);
+                  GFX::CommandBuffer& bufferInOut,
+                  GFX::MemoryBarrierCommand& memCmdInOut );
 
     void prepareRenderQueues(const RenderPassParams& params,
                              const CameraSnapshot& cameraSnapshot,

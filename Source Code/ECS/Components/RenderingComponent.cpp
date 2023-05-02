@@ -542,14 +542,11 @@ namespace Divide
                     state1.blendDest( BlendProperty::INV_SRC_COLOR );
                     state1.blendOp( BlendOperation::ADD );
 
-                    if constexpr( Config::USE_COLOURED_WOIT )
-                    {
-                        BlendingSettings& state2 = pipelineDescriptor._blendStates._settings[to_U8( GFXDevice::ScreenTargets::MODULATE )];
-                        state2.enabled( true );
-                        state2.blendSrc( BlendProperty::ONE );
-                        state2.blendDest( BlendProperty::ONE );
-                        state2.blendOp( BlendOperation::ADD );
-                    }
+                    BlendingSettings& state2 = pipelineDescriptor._blendStates._settings[to_U8( GFXDevice::ScreenTargets::MODULATE )];
+                    state2.enabled( true );
+                    state2.blendSrc( BlendProperty::ZERO );
+                    state2.blendDest( BlendProperty::INV_SRC_COLOR );
+                    state2.blendOp( BlendOperation::ADD );
                 }
 
                 pipelineDescriptor._stateBlock._primitiveRestartEnabled = primitiveRestartRequired();
@@ -730,7 +727,7 @@ namespace Divide
             if ( _reflectorType == ReflectorType::PLANAR )
             {
                 RTAttachment* targetAtt = _context.renderTargetPool().getRenderTarget( reflectRTID )->getAttachment( RTAttachmentType::COLOUR );
-                temp = { targetAtt->texture().get(), targetAtt->descriptor()._samplerHash };
+                temp = { targetAtt->texture().get(), targetAtt->_descriptor._samplerHash };
             }
         }
 
@@ -770,7 +767,7 @@ namespace Divide
             }
 
             RTAttachment* targetAtt = _context.renderTargetPool().getRenderTarget( refractRTID )->getAttachment( RTAttachmentType::COLOUR );
-            temp = { targetAtt->texture().get(), targetAtt->descriptor()._samplerHash };
+            temp = { targetAtt->texture().get(), targetAtt->_descriptor._samplerHash };
         }
 
         if ( _refractionPlanar != temp )

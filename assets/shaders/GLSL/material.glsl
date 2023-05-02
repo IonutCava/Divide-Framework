@@ -10,7 +10,7 @@ void main (void) {
 
     const vec3 texCoord = vec3( VAR._texCoord, 0 );
 
-    const vec4 albedo = getAlbedo(data, texCoord);
+    vec4 albedo = getAlbedo(data, texCoord);
   
 #if defined(USE_ALPHA_DISCARD)
     if (albedo.a < ALPHA_DISCARD_THRESHOLD)
@@ -18,7 +18,6 @@ void main (void) {
         discard;
     }
 #endif //USE_ALPHA_DISCARD
-
     const vec3 normalWV = getNormalWV( data, texCoord );
-    writeScreenColour( getPixelColour( albedo, data, normalWV ), normalWV );
+    writeScreenColour( getPixelColour( albedo, data, normalWV ), vec3( 0.f ), normalWV );
 }

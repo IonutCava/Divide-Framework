@@ -145,15 +145,15 @@ bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& 
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, screenTex, screenAtt->descriptor()._samplerHash );
+            Set( binding._data, screenTex, screenAtt->_descriptor._samplerHash );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, depthTex, depthAtt->descriptor()._samplerHash );
+            Set( binding._data, depthTex, depthAtt->_descriptor._samplerHash );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, normalsTex, normalsAtt->descriptor()._samplerHash );
+            Set( binding._data, normalsTex, normalsAtt->_descriptor._samplerHash );
         }
 
     GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);

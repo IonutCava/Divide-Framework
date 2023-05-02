@@ -61,9 +61,9 @@ namespace Divide
 
     private:
         void begin(VkCommandBuffer cmdBuffer, const RTDrawDescriptor& descriptor, const RTClearDescriptor& clearPolicy, VkPipelineRenderingCreateInfo& pipelineRenderingCreateInfoOut);
-        void end(VkCommandBuffer cmdBuffer);
+        void end(VkCommandBuffer cmdBuffer, const RTTransitionMask& mask );
         void blitFrom( VkCommandBuffer cmdBuffer, vkRenderTarget* source, const RTBlitParams& params ) noexcept;
-        void transitionAttachments( VkCommandBuffer cmdBuffer, const RTDrawDescriptor& descriptor, bool toWrite );
+        void transitionAttachments( VkCommandBuffer cmdBuffer, const RTDrawDescriptor& descriptor, const RTTransitionMask& transitionMask, bool toWrite );
 
     private:
         std::array<VkRenderingAttachmentInfo, to_base(RTColourAttachmentSlot::COUNT)> _colourAttachmentInfo{};
@@ -74,14 +74,8 @@ namespace Divide
         std::array<VkRenderingAttachmentInfo, to_base( RTColourAttachmentSlot::COUNT )> _stagingColourAttachmentInfo{};
         RTDrawDescriptor _previousPolicy;
 
-        enum class AttachmentUsage : U8
-        {
-            UNDEFINED = 0u,
-            ATTACHMENT,
-            SHADER_READ
-        };
+        std::array<VkImageSubresourceRange, RT_MAX_ATTACHMENT_COUNT> _subresourceRange{};
 
-        std::array<AttachmentUsage, to_base( RTColourAttachmentSlot::COUNT ) + 1> _attachmentUsage;
         bool _keptMSAAData{false};
     };
 
@@ -93,9 +87,9 @@ namespace Divide
             {
                 rt.begin(cmdBuffer, descriptor, clearPolicy, pipelineRenderingCreateInfoOut);
             }
-            static void end(vkRenderTarget& rt, VkCommandBuffer cmdBuffer)
+            static void end(vkRenderTarget& rt, VkCommandBuffer cmdBuffer, const RTTransitionMask& mask )
             {
-                rt.end(cmdBuffer);
+                rt.end(cmdBuffer, mask);
             }
             static void blitFrom( vkRenderTarget& rt, VkCommandBuffer cmdBuffer, vkRenderTarget* source, const RTBlitParams& params ) noexcept
             {

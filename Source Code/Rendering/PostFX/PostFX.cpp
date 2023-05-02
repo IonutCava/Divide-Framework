@@ -229,7 +229,7 @@ namespace Divide
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, prbAtt->texture()->getView(), prbAtt->descriptor()._samplerHash );
+            Set( binding._data, prbAtt->texture()->getView(), prbAtt->_descriptor._samplerHash );
         }
         GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
 

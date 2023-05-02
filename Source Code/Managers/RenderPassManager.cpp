@@ -244,7 +244,7 @@ void RenderPassManager::render(const RenderParams& params)
            const auto& screenAtt = gfx.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
            const auto& texData = screenAtt->texture()->getView();
      
-           gfx.drawTextureInViewport(texData, screenAtt->descriptor()._samplerHash, targetViewport, false, false, false, buf);
+           gfx.drawTextureInViewport(texData, screenAtt->_descriptor._samplerHash, targetViewport, false, false, false, buf);
 
            {
                Time::ScopedTimer timeGUIBuffer(*_processGUITimer);

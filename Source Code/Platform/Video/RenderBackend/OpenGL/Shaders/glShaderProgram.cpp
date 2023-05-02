@@ -42,7 +42,7 @@ void glShaderProgram::ProcessValidationQueue()
                 return;
             }
         }
-        assert(s_validationOutputCache._handle != GLUtil::k_invalidObjectID);
+        assert(s_validationOutputCache._handle != GL_NULL_HANDLE);
 
         glValidateProgramPipeline(s_validationOutputCache._handle);
 
@@ -108,7 +108,7 @@ glShaderProgram::~glShaderProgram()
 
 bool glShaderProgram::unload() 
 {
-    if (_handle != GLUtil::k_invalidObjectID)
+    if (_handle != GL_NULL_HANDLE)
     {
         {
             LockGuard<SharedMutex> w_lock(g_deletionSetLock);
@@ -124,7 +124,7 @@ bool glShaderProgram::unload()
         }
 
         glDeleteProgramPipelines(1, &_handle);
-        _handle = GLUtil::k_invalidObjectID;
+        _handle = GL_NULL_HANDLE;
     }
 
     for ( glShaderEntry& shader : _shaderStage )
@@ -175,7 +175,7 @@ ShaderResult glShaderProgram::validatePreBind(const bool rebind)
         if (!_stagesBound && rebind)
         {
             assert(getState() == ResourceState::RES_LOADED);
-            if (_handle == GLUtil::k_invalidObjectID) {
+            if (_handle == GL_NULL_HANDLE) {
                 glCreateProgramPipelines(1, &_handle);
                 if constexpr(Config::ENABLE_GPU_VALIDATION) {
                     glObjectLabel(GL_PROGRAM_PIPELINE, _handle, -1, resourceName().c_str());
@@ -186,7 +186,7 @@ ShaderResult glShaderProgram::validatePreBind(const bool rebind)
             }
 
             if (rebind) {
-                assert(_handle != GLUtil::k_invalidObjectID);
+                assert(_handle != GL_NULL_HANDLE);
 
                 for ( glShaderEntry& shader : _shaderStage)
                 {

@@ -56,8 +56,8 @@ namespace Divide
         _activeRenderTarget = nullptr;
         _activeRenderTargetID = INVALID_RENDER_TARGET_ID;
         _activeRenderTargetDimensions = {1u, 1u};
-        _activeVAOID = GLUtil::k_invalidObjectID;
-        _activeFBID[0] = _activeFBID[1] = _activeFBID[2] = GLUtil::k_invalidObjectID;
+        _activeVAOID = GL_NULL_HANDLE;
+        _activeFBID[0] = _activeFBID[1] = _activeFBID[2] = GL_NULL_HANDLE;
         _activeVAOIB.clear();
         _drawIndirectBufferOffset = 0u;
         _packAlignment = {};
@@ -93,9 +93,9 @@ namespace Divide
         _blendProperties.resize( GFXDevice::GetDeviceInformation()._maxRTColourAttachments, BlendingSettings() );
         _blendEnabled.resize( GFXDevice::GetDeviceInformation()._maxRTColourAttachments, GL_FALSE );
 
-        _activeBufferID = create_array<13, GLuint>( GLUtil::k_invalidObjectID );
-        _textureBoundMap.fill( GLUtil::k_invalidObjectID );
-        _samplerBoundMap.fill( GLUtil::k_invalidObjectID );
+        _activeBufferID = create_array<13, GLuint>( GL_NULL_HANDLE );
+        _textureBoundMap.fill( GL_NULL_HANDLE );
+        _samplerBoundMap.fill( GL_NULL_HANDLE );
     }
 
     void GLStateTracker::setAttributesInternal( const GLuint vaoID, const AttributeMap& attributes )
@@ -155,7 +155,7 @@ namespace Divide
 
         DIVIDE_ASSERT( Runtime::isMainThread() );
 
-        vaoOut = GLUtil::k_invalidObjectID;
+        vaoOut = GL_NULL_HANDLE;
 
         // See if we already have a matching VAO
         const auto it = GL_API::s_vaoCache.find( attributeHash );
@@ -169,7 +169,7 @@ namespace Divide
 
         // Otherwise allocate a new VAO and save it in the cache
         glCreateVertexArrays( 1, &vaoOut );
-        DIVIDE_ASSERT( vaoOut != GLUtil::k_invalidObjectID, Locale::Get( _ID( "ERROR_VAO_INIT" ) ) );
+        DIVIDE_ASSERT( vaoOut != GL_NULL_HANDLE, Locale::Get( _ID( "ERROR_VAO_INIT" ) ) );
 
         if constexpr ( Config::ENABLE_GPU_VALIDATION )
         {
@@ -189,7 +189,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        GLuint vao = GLUtil::k_invalidObjectID;
+        GLuint vao = GL_NULL_HANDLE;
         if ( !getOrCreateVAO( attributeHash, vao ) )
         {
             // cache miss
@@ -355,7 +355,7 @@ namespace Divide
         {
             if ( _textureBoundMap[idx] == handle )
             {
-                _textureBoundMap[idx] = GLUtil::k_invalidObjectID;
+                _textureBoundMap[idx] = GL_NULL_HANDLE;
                 glBindTextureUnit( idx, 0u );
                 if ( bindSamplers( idx, 1, nullptr ) == BindResult::FAILED )
                 {
@@ -372,8 +372,8 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        _textureBoundMap.fill( GLUtil::k_invalidObjectID );
-        _samplerBoundMap.fill( GLUtil::k_invalidObjectID );
+        _textureBoundMap.fill( GL_NULL_HANDLE );
+        _samplerBoundMap.fill( GL_NULL_HANDLE );
 
         glBindTextures( 0u, GFXDevice::GetDeviceInformation()._maxTextureUnits - 1, nullptr );
         glBindSamplers( 0u, GFXDevice::GetDeviceInformation()._maxTextureUnits - 1, nullptr );
@@ -468,7 +468,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        DIVIDE_ASSERT( handle != GLUtil::k_invalidObjectID );
+        DIVIDE_ASSERT( handle != GL_NULL_HANDLE );
 
         ImageBindSettings tempSettings = { handle, level, layered ? GL_TRUE : GL_FALSE, layer, access, format };
 
@@ -488,7 +488,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        DIVIDE_ASSERT( _activeVAOID != GLUtil::k_invalidObjectID && _activeVAOID != 0u );
+        DIVIDE_ASSERT( _activeVAOID != GL_NULL_HANDLE && _activeVAOID != 0u );
 
         const VAOBindings::BufferBindingParams& bindings = _vaoBufferData.bindingParams( _activeVAOID, location );
         const VAOBindings::BufferBindingParams currentParams( bufferID, offset, stride );
@@ -509,7 +509,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        DIVIDE_ASSERT( _activeVAOID != GLUtil::k_invalidObjectID && _activeVAOID != 0u );
+        DIVIDE_ASSERT( _activeVAOID != GL_NULL_HANDLE && _activeVAOID != 0u );
 
         bool needsBind = false;
         for ( GLsizei i = 0u; i < count; ++i )
@@ -547,7 +547,7 @@ namespace Divide
         // return and then try to bind the queried handle
         // This is, for example, in save/restore FB scenarios. An invalid handle
         // will just reset the buffer binding
-        if ( ID == GLUtil::k_invalidObjectID )
+        if ( ID == GL_NULL_HANDLE )
         {
             ID = 0;
         }
@@ -608,7 +608,7 @@ namespace Divide
     /// Switch the currently active vertex array object
     GLStateTracker::BindResult GLStateTracker::setActiveVAO( const GLuint ID, GLuint& previousID )
     {
-        assert( ID != GLUtil::k_invalidObjectID );
+        assert( ID != GL_NULL_HANDLE );
 
         previousID = _activeVAOID;
         // Prevent double bind

@@ -983,6 +983,7 @@ namespace Divide
                 // We use alpha-discard in the prepass for transparent/translucent objects, so depth values for translucent pixels will be invalid
                 ret._zFunc = ComparisonFunction::LEQUAL;
                 ret._depthWriteEnabled = false;
+                ret._cullMode = CullMode::NONE;
             }
             if ( _computeRenderStateCBK )
             {

@@ -417,20 +417,20 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         cmd->_usage = DescriptorSetUsage::PER_FRAME;
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::COMPUTE );
-            Set( binding._data, prefiltered->texture()->getView(), prefiltered->descriptor()._samplerHash );
+            Set( binding._data, prefiltered->texture()->getView(), prefiltered->_descriptor._samplerHash );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::COMPUTE );
-            Set( binding._data, irradiance->texture()->getView(), irradiance->descriptor()._samplerHash );
+            Set( binding._data, irradiance->texture()->getView(), irradiance->_descriptor._samplerHash );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::COMPUTE );
-            Set( binding._data, brdfLut->texture()->getView(), brdfLut->descriptor()._samplerHash );
+            Set( binding._data, brdfLut->texture()->getView(), brdfLut->_descriptor._samplerHash );
         }
         {
             RTAttachment* targetAtt = context.renderTargetPool().getRenderTarget( RenderTargetNames::REFLECTION_CUBE )->getAttachment( RTAttachmentType::COLOUR );
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 3u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, targetAtt->texture()->getView(), targetAtt->descriptor()._samplerHash );
+            Set( binding._data, targetAtt->texture()->getView(), targetAtt->_descriptor._samplerHash );
         }
     }
 }
@@ -500,7 +500,7 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
         DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::COMPUTE );
-        Set( binding._data, sourceTex->getView(), sourceAtt->descriptor()._samplerHash );
+        Set( binding._data, sourceTex->getView(), sourceAtt->_descriptor._samplerHash );
     }
 
     ImageView destinationImage = destinationAtt->texture()->getView(TextureType::TEXTURE_CUBE_ARRAY, { 0u, 1u }, { 0u , U16_MAX });
@@ -575,7 +575,7 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U
     cmd->_usage = DescriptorSetUsage::PER_DRAW;
     {
         DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::COMPUTE );
-        Set( binding._data, sourceAtt->texture()->getView(), sourceAtt->descriptor()._samplerHash );
+        Set( binding._data, sourceAtt->texture()->getView(), sourceAtt->_descriptor._samplerHash );
     }
     {
         DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::COMPUTE );
@@ -690,13 +690,13 @@ void SceneEnvironmentProbePool::createDebugView(const U16 layerIndex) {
 
         if (i > 11) {
             probeView->_texture = PrefilteredTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->texture();
-            probeView->_samplerHash = PrefilteredTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->descriptor()._samplerHash;
+            probeView->_samplerHash = PrefilteredTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->_descriptor._samplerHash;
         } else if (i > 5) {
             probeView->_texture = IrradianceTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->texture();
-            probeView->_samplerHash = IrradianceTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->descriptor()._samplerHash;
+            probeView->_samplerHash = IrradianceTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->_descriptor._samplerHash;
         } else {
             probeView->_texture = ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->texture();
-            probeView->_samplerHash = ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->descriptor()._samplerHash;
+            probeView->_samplerHash = ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->_descriptor._samplerHash;
         }
         probeView->_shader = s_previewShader;
         probeView->_shaderData.set(_ID("layer"), PushConstantType::INT, layerIndex);

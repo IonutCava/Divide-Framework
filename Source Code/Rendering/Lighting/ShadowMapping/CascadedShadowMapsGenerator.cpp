@@ -542,7 +542,7 @@ namespace Divide
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, shadowAtt->texture()->getView(), shadowAtt->descriptor()._samplerHash );
+            Set( binding._data, shadowAtt->texture()->getView(), shadowAtt->_descriptor._samplerHash );
         }
 
         _shaderConstants.data[0]._vec[1].x = 0.f;
@@ -570,7 +570,7 @@ namespace Divide
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, blurAtt->texture()->getView(), blurAtt->descriptor()._samplerHash );
+            Set( binding._data, blurAtt->texture()->getView(), blurAtt->_descriptor._samplerHash );
         }
 
         _shaderConstants.data[0]._vec[1].x = 1.f;

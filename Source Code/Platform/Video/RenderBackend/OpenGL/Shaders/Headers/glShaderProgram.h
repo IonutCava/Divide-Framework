@@ -47,7 +47,7 @@ struct PushConstantsStruct;
 struct ValidationEntry
 {
     Str256 _name{};
-    GLuint _handle{ GLUtil::k_invalidObjectID };
+    GLuint _handle{ GL_NULL_HANDLE };
     UseProgramStageMask _stageMask{ UseProgramStageMask::GL_NONE_BIT };
 };
 
@@ -91,7 +91,7 @@ class glShaderProgram final : public ShaderProgram {
     static void ProcessValidationQueue();
 
    private:
-    GLuint _handle = GLUtil::k_invalidObjectID;
+    GLuint _handle = GL_NULL_HANDLE;
 
     bool _validationQueued = false;
     bool _stagesBound = false;

@@ -345,7 +345,7 @@ void freeBuffer(GLuint& bufferId, bufferPtr mappedPtr)
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-    if (bufferId != GLUtil::k_invalidObjectID && bufferId != 0u)
+    if (bufferId != GL_NULL_HANDLE && bufferId != 0u)
     {
         if (mappedPtr != nullptr)
         {
@@ -355,7 +355,7 @@ void freeBuffer(GLuint& bufferId, bufferPtr mappedPtr)
         }
 
         GL_API::DeleteBuffers(1, &bufferId);
-        bufferId = GLUtil::k_invalidObjectID;
+        bufferId = GL_NULL_HANDLE;
     }
 }
 

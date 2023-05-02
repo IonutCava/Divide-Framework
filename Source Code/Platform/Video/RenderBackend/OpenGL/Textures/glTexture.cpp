@@ -34,7 +34,7 @@ bool glTexture::unload() {
         if (GL_API::GetStateTracker().unbindTexture(descriptor().texType(), _textureHandle)) { NOP();
         }
         glDeleteTextures(1, &_textureHandle);
-        _textureHandle = GLUtil::k_invalidObjectID;
+        _textureHandle = GL_NULL_HANDLE;
     }
 
     return Texture::unload();

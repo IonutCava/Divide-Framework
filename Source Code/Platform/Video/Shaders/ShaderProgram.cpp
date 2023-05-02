@@ -580,11 +580,6 @@ namespace Divide
         // This line gets replaced in every shader at load with the custom list of defines specified by the material
         AppendToShaderHeader( ShaderType::COUNT, "_CUSTOM_DEFINES__" );
 
-        if constexpr ( Config::USE_COLOURED_WOIT )
-        {
-            AppendToShaderHeader( ShaderType::COUNT, "#define USE_COLOURED_WOIT" );
-        }
-
         constexpr float Z_TEST_SIGMA = 0.00001f;// 1.f / U8_MAX;
         // ToDo: Automate adding of buffer bindings by using, for example, a TypeUtil::bufferBindingToString -Ionut
         AppendToShaderHeader( ShaderType::COUNT, "#define ALPHA_DISCARD_THRESHOLD " + Util::to_string( Config::ALPHA_DISCARD_THRESHOLD ) + "f" );
@@ -896,8 +891,6 @@ namespace Divide
 
     ShaderModule::~ShaderModule()
     {
-        LockGuard<Mutex> w_lock( _parentLock );
-        DIVIDE_ASSERT(_parents.empty());
     }
 
     void ShaderModule::registerParent( ShaderProgram* parent )

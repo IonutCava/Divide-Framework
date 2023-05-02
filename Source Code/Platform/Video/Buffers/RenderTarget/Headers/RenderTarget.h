@@ -49,10 +49,10 @@ struct RenderTargetHandle
 
 struct RenderTargetDescriptor
 {
-    Str64 _name{ "" };
     InternalRTAttachmentDescriptors _attachments;
     ExternalRTAttachmentDescriptors _externalAttachments;
-    vec2<U16>  _resolution{ 1u, 1u };
+    Str64 _name{ "" };
+    vec2<U16> _resolution{ 1u, 1u };
     F32 _depthValue{ 1.0f };
     U8 _msaaSamples{ 0u };
 };
@@ -93,19 +93,17 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
 
     [[nodiscard]] const Str64& name() const noexcept;
 
-    PROPERTY_RW(bool, enableAttachmentChangeValidation, true);
-
    protected:
-   [[nodiscard]] virtual bool initAttachment(RTAttachment* att, RTAttachmentType type, RTColourAttachmentSlot slot, bool isExternal);
-
-   [[nodiscard]] bool autoResolveAttachment(RTAttachment* att) const;
+    [[nodiscard]] virtual bool initAttachment(RTAttachment* att, RTAttachmentType type, RTColourAttachmentSlot slot);
+    
+    [[nodiscard]] bool autoResolveAttachment(RTAttachment* att) const;
 
    protected:
     RenderTargetDescriptor _descriptor;
 
-    std::array<RTAttachment_uptr, to_base( RTColourAttachmentSlot::COUNT ) + 1> _attachments{};
-    std::array<bool, to_base( RTColourAttachmentSlot::COUNT ) + 1> _attachmentsUsed;
-    std::array<bool, to_base( RTColourAttachmentSlot::COUNT ) + 1> _attachmentsAutoResolve;
+    std::array<RTAttachment_uptr, RT_MAX_ATTACHMENT_COUNT> _attachments{};
+    std::array<bool, RT_MAX_ATTACHMENT_COUNT> _attachmentsUsed;
+    std::array<bool, RT_MAX_ATTACHMENT_COUNT> _attachmentsAutoResolve;
 };
 
 FWD_DECLARE_MANAGED_CLASS(RenderTarget);

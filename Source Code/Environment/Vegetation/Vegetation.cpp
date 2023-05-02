@@ -777,7 +777,7 @@ namespace Divide
                     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
                     cmd->_usage = DescriptorSetUsage::PER_DRAW;
                     DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::COMPUTE );
-                    Set( binding._data, hizTexture->getView(), hizAttachment->descriptor()._samplerHash );
+                    Set( binding._data, hizTexture->getView(), hizAttachment->_descriptor._samplerHash );
                 }
 
                 GFX::DispatchComputeCommand computeCmd = {};

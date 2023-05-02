@@ -176,8 +176,8 @@ private:
 
     struct TexBindEntry {
         GLubyte _slot{ INVALID_TEXTURE_BINDING };
-        GLuint _handle{ GLUtil::k_invalidObjectID };
-        GLuint _sampler{ GLUtil::k_invalidObjectID };
+        GLuint _handle{ GL_NULL_HANDLE };
+        GLuint _sampler{ GL_NULL_HANDLE };
     };
 
     static eastl::fixed_vector<TexBindEntry, 32, false> s_TexBindQueue;

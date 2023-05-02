@@ -78,8 +78,8 @@ public:
 protected:
     GFXDevice& _context;
 
-    GLuint _copyBufferTarget = GLUtil::k_invalidObjectID;
-    size_t _copyBufferSize = 0u;
+    GLuint _copyBufferTarget{ GL_NULL_HANDLE };
+    size_t _copyBufferSize{ 0u };
     mutable Mutex _mapLock;
 };
 

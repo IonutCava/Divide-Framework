@@ -168,13 +168,13 @@ namespace Divide {
         RenderTargetID _activeRenderTargetID{ INVALID_RENDER_TARGET_ID };
         vec2<U16> _activeRenderTargetDimensions{1u};
         /// Current active vertex array object's handle
-        GLuint _activeVAOID{ GLUtil::k_invalidObjectID };
+        GLuint _activeVAOID{ GL_NULL_HANDLE };
         /// 0 - current framebuffer, 1 - current read only framebuffer, 2 - current write only framebuffer
-        GLuint _activeFBID[3] { GLUtil::k_invalidObjectID,
-                                GLUtil::k_invalidObjectID,
-                                GLUtil::k_invalidObjectID };
+        GLuint _activeFBID[3] { GL_NULL_HANDLE,
+                                GL_NULL_HANDLE,
+                                GL_NULL_HANDLE };
         /// VB, IB, SB, TB, UB, PUB, DIB
-        std::array<GLuint, 13> _activeBufferID = create_array<13, GLuint>(GLUtil::k_invalidObjectID);
+        std::array<GLuint, 13> _activeBufferID = create_array<13, GLuint>(GL_NULL_HANDLE);
         hashMap<GLuint, GLuint> _activeVAOIB;
         size_t _drawIndirectBufferOffset{0u};
 

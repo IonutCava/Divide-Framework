@@ -1736,9 +1736,9 @@ namespace Divide
                     }
                     else
                     {
-                        equation.alphaBlendOp = VK_BLEND_OP_ADD;
-                        equation.srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-                        equation.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+                        equation.srcAlphaBlendFactor = equation.srcColorBlendFactor;
+                        equation.dstAlphaBlendFactor = equation.dstColorBlendFactor;
+                        equation.alphaBlendOp = equation.colorBlendOp;
                     }
                 }
 
@@ -1908,6 +1908,9 @@ namespace Divide
                     const BlendingSettings& blendState = pipelineDescriptor._blendStates._settings[i];
 
                     blend.blendEnable = blendState.enabled() ? VK_TRUE : VK_FALSE;
+                    blend.colorBlendOp = vkBlendOpTable[to_base( blendState.blendOp() )];
+                    blend.srcColorBlendFactor = vkBlendTable[to_base( blendState.blendSrc() )];
+                    blend.dstColorBlendFactor = vkBlendTable[to_base( blendState.blendDest() )];
                     if ( blendState.blendOpAlpha() != BlendOperation::COUNT )
                     {
                         blend.alphaBlendOp = vkBlendOpTable[to_base( blendState.blendOpAlpha() )];
@@ -1916,13 +1919,10 @@ namespace Divide
                     }
                     else
                     {
-                        blend.alphaBlendOp = VK_BLEND_OP_ADD;
-                        blend.srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-                        blend.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+                        blend.srcAlphaBlendFactor = blend.srcColorBlendFactor;
+                        blend.dstAlphaBlendFactor = blend.dstColorBlendFactor;
+                        blend.alphaBlendOp = blend.colorBlendOp;
                     }
-                    blend.colorBlendOp = vkBlendOpTable[to_base( blendState.blendOp() )];
-                    blend.srcColorBlendFactor = vkBlendTable[to_base( blendState.blendSrc() )];
-                    blend.dstColorBlendFactor = vkBlendTable[to_base( blendState.blendDest() )];
                     pipelineBuilder._colorBlendAttachments.emplace_back( blend );
                 }
             }
@@ -2367,7 +2367,8 @@ namespace Divide
                 else
                 {
                     vkRenderTarget* rt = static_cast<vkRenderTarget*>(_context.renderTargetPool().getRenderTarget( stateTracker._activeRenderTargetID ));
-                    Attorney::VKAPIRenderTarget::end( *rt, cmdBuffer );
+                    const GFX::EndRenderPassCommand* crtCmd = cmd->As<GFX::EndRenderPassCommand>();
+                    Attorney::VKAPIRenderTarget::end( *rt, cmdBuffer, crtCmd->_transitionMask );
                     stateTracker._activeRenderTargetID = SCREEN_TARGET_ID;
                 }
 
@@ -2568,7 +2569,7 @@ namespace Divide
 
                 constexpr U8 MAX_BUFFER_BARRIERS_PER_CMD{64};
 
-                std::array<VkImageMemoryBarrier2, to_base( RTColourAttachmentSlot::COUNT ) + 1> imageBarriers{};
+                std::array<VkImageMemoryBarrier2, RT_MAX_ATTACHMENT_COUNT> imageBarriers{};
                 U8 imageBarrierCount = 0u;
 
                 std::array<VkBufferMemoryBarrier2, MAX_BUFFER_BARRIERS_PER_CMD> bufferBarriers{};
@@ -3104,39 +3105,57 @@ namespace Divide
     }
 
     /// Return the Vulkan sampler object's handle for the given hash value
-    VkSampler VK_API::GetSamplerHandle( const size_t samplerHash )
+    VkSampler VK_API::GetSamplerHandle( size_t samplerHash )
     {
+        thread_local size_t cached_hash = 0u;
+        thread_local VkSampler cached_handle = VK_NULL_HANDLE;
+
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        // If the hash value is 0, we assume the code is trying to unbind a sampler object
-        if ( samplerHash > 0 )
+        if ( samplerHash == 0u )
         {
+            samplerHash = Texture::DefaultSamplerHash();
+        }
+
+        if ( cached_hash == samplerHash )
+        {
+            return cached_handle;
+        }
+
+        cached_hash = samplerHash;
+
+        {
+            SharedLock<SharedMutex> r_lock( s_samplerMapLock );
+            // If we fail to find the sampler object for the given hash, we print an error and return the default OpenGL handle
+            const SamplerObjectMap::const_iterator it = s_samplerMap.find( samplerHash );
+            if ( it != std::cend( s_samplerMap ) )
             {
-                SharedLock<SharedMutex> r_lock( s_samplerMapLock );
-                // If we fail to find the sampler object for the given hash, we print an error and return the default OpenGL handle
-                const SamplerObjectMap::const_iterator it = s_samplerMap.find( samplerHash );
-                if ( it != std::cend( s_samplerMap ) )
-                {
-                    // Return the Vulkan handle for the sampler object matching the specified hash value
-                    return it->second;
-                }
-            }
-            {
-                LockGuard<SharedMutex> w_lock( s_samplerMapLock );
-                // Check again
-                const SamplerObjectMap::const_iterator it = s_samplerMap.find( samplerHash );
-                if ( it == std::cend( s_samplerMap ) )
-                {
-                    // Cache miss. Create the sampler object now.
-                    // Create and store the newly created sample object. GL_API is responsible for deleting these!
-                    const VkSampler sampler = vkSamplerObject::Construct( SamplerDescriptor::Get( samplerHash ) );
-                    emplace( s_samplerMap, samplerHash, sampler );
-                    return sampler;
-                }
+                // Return the Vulkan handle for the sampler object matching the specified hash value
+                cached_handle = it->second;
+                return cached_handle;
             }
         }
 
-        return 0u;
+        cached_handle = VK_NULL_HANDLE;
+        {
+            LockGuard<SharedMutex> w_lock( s_samplerMapLock );
+            // Check again
+            const SamplerObjectMap::const_iterator it = s_samplerMap.find( samplerHash );
+            if ( it == std::cend( s_samplerMap ) )
+            {
+                // Cache miss. Create the sampler object now.
+                // Create and store the newly created sample object. GL_API is responsible for deleting these!
+                const VkSampler sampler = vkSamplerObject::Construct( SamplerDescriptor::Get( samplerHash ) );
+                emplace( s_samplerMap, samplerHash, sampler );
+                cached_handle = sampler;
+            }
+            else
+            {
+                cached_handle = it->second;
+            }
+        }
+
+        return cached_handle;
     }
 
     RenderTarget_uptr VK_API::newRT( const RenderTargetDescriptor& descriptor ) const

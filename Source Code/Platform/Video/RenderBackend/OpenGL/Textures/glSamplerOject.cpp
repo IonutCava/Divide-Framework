@@ -19,7 +19,8 @@ namespace {
         assert(minFilter != TextureFilter::COUNT);
         assert(mipSampling != TextureMipSampling::COUNT);
 
-        if (mipSampling == TextureMipSampling::NONE) {
+        if (mipSampling == TextureMipSampling::NONE)
+        {
             return getMagFilterMode(minFilter);
         }
 
@@ -33,7 +34,7 @@ namespace {
 
 GLuint glSamplerObject::Construct(const SamplerDescriptor& descriptor)
 {
-    GLuint samplerID = GLUtil::k_invalidObjectID;
+    GLuint samplerID = GL_NULL_HANDLE;
 
     glCreateSamplers(1, &samplerID);
     glSamplerParameterf(samplerID, GL_TEXTURE_LOD_BIAS, descriptor.biasLOD());
@@ -89,9 +90,21 @@ GLuint glSamplerObject::Construct(const SamplerDescriptor& descriptor)
     }
 
     const F32 maxAnisotropy = std::min(to_F32(descriptor.anisotropyLevel()), to_F32(GFXDevice::GetDeviceInformation()._maxAnisotropy));
-    if (maxAnisotropy > 1.f)
+    if ( descriptor.mipSampling() != TextureMipSampling::NONE && maxAnisotropy > 0.f )
     {
         glSamplerParameterf(samplerID, GL_TEXTURE_MAX_ANISOTROPY, maxAnisotropy);
+    }
+    else
+    {
+        glSamplerParameterf( samplerID, GL_TEXTURE_MAX_ANISOTROPY, 0.f );
+    }
+
+    if constexpr ( Config::ENABLE_GPU_VALIDATION )
+    {
+        glObjectLabel( GL_SAMPLER,
+                        samplerID,
+                        -1,
+                        Util::StringFormat("SAMPLER_%zu", descriptor.getHash()).c_str() );
     }
 
     return samplerID;
@@ -99,10 +112,10 @@ GLuint glSamplerObject::Construct(const SamplerDescriptor& descriptor)
 
 void glSamplerObject::Destruct(GLuint& handle)
 {
-    if (handle != GLUtil::k_invalidObjectID )
+    if (handle != GL_NULL_HANDLE )
     {
         glDeleteSamplers(1, &handle);
-        handle = GLUtil::k_invalidObjectID;
+        handle = GL_NULL_HANDLE;
     }
 }
 

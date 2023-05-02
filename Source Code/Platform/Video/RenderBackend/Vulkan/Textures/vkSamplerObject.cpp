@@ -28,8 +28,8 @@ namespace Divide {
         samplerInfo.addressModeV = vkWrapTable[to_base(descriptor.wrapV())];
         samplerInfo.addressModeW = vkWrapTable[to_base(descriptor.wrapW())];
         samplerInfo.mipLodBias = descriptor.biasLOD();
-        samplerInfo.anisotropyEnable = maxAnisotropy > 0.f;
-        samplerInfo.maxAnisotropy = maxAnisotropy;
+        samplerInfo.anisotropyEnable = descriptor.mipSampling() != TextureMipSampling::NONE && maxAnisotropy > 0.f;
+        samplerInfo.maxAnisotropy = samplerInfo.anisotropyEnable ? maxAnisotropy : 0.f;
         if (descriptor.useRefCompare())
         {
             samplerInfo.compareEnable = true;
@@ -78,7 +78,11 @@ namespace Divide {
 
         VkSampler ret;
         vkCreateSampler(VK_API::GetStateTracker()._device->getVKDevice(), &samplerInfo, nullptr, &ret);
-        Debug::SetObjectName(VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)ret, VK_OBJECT_TYPE_SAMPLER, Util::StringFormat("SAMPLER_%zu", descriptor.getHash()).c_str());
+
+        if constexpr ( Config::ENABLE_GPU_VALIDATION )
+        {
+            Debug::SetObjectName( VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)ret, VK_OBJECT_TYPE_SAMPLER, Util::StringFormat( "SAMPLER_%zu", descriptor.getHash() ).c_str() );
+        }
         return ret;
     }
 

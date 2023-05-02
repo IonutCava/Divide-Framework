@@ -43,7 +43,7 @@ bool RenderTarget::autoResolveAttachment( RTAttachment* att ) const
         return false;
     }
 
-    return att->descriptor()._autoResolve;
+    return att->_descriptor._autoResolve;
 }
 
 bool RenderTarget::create()
@@ -82,7 +82,6 @@ bool RenderTarget::create()
         {
             Console::d_printfn(Locale::Get(_ID("WARNING_REPLACING_RT_ATTACHMENT")), getGUID(), getAttachmentName(attDesc._type), to_base(attDesc._slot));
         }
-
 
         return att;
     };
@@ -148,9 +147,9 @@ bool RenderTarget::create()
             resolveTexture = renderTexture;
         }
 
-        att->setTexture(renderTexture, resolveTexture, false);
+        att->setTexture(renderTexture, resolveTexture);
 
-        if ( !initAttachment( att, attDesc._type, attDesc._slot, false ) )
+        if ( !initAttachment( att, attDesc._type, attDesc._slot ) )
         {
             DIVIDE_UNEXPECTED_CALL();
         }
@@ -159,10 +158,10 @@ bool RenderTarget::create()
     for ( const ExternalRTAttachmentDescriptor& attDesc : _descriptor._externalAttachments )
     {
         RTAttachment* att = updateAttachment(attDesc);
-        att->setTexture(attDesc._attachment->renderTexture(), attDesc._attachment->resolvedTexture(), true);
-        DIVIDE_ASSERT(attDesc._attachment->renderTexture()->descriptor().msaaSamples() == _descriptor._msaaSamples);
+        att->setTexture(attDesc._externalAttachment->renderTexture(), attDesc._externalAttachment->resolvedTexture());
+        DIVIDE_ASSERT(attDesc._externalAttachment->renderTexture()->descriptor().msaaSamples() == _descriptor._msaaSamples);
 
-        if ( !initAttachment( att, attDesc._type, attDesc._slot, true ) )
+        if ( !initAttachment( att, attDesc._type, attDesc._slot ) )
         {
             DIVIDE_UNEXPECTED_CALL();
         }
@@ -273,18 +272,11 @@ bool RenderTarget::updateSampleCount(U8 newSampleCount)
     return false;
 }
 
-bool RenderTarget::initAttachment(RTAttachment* att, const RTAttachmentType type, const RTColourAttachmentSlot slot, const bool isExternal)
+bool RenderTarget::initAttachment(RTAttachment* att, const RTAttachmentType type, const RTColourAttachmentSlot slot)
 {
-    if (isExternal)
+    if (att->_descriptor._externalAttachment != nullptr)
     {
-        RTAttachment* attachmentTemp = getAttachment(type, slot);
-        if (attachmentTemp->isExternal())
-        {
-            RenderTarget& parent = attachmentTemp->parent();
-            attachmentTemp = parent.getAttachment(attachmentTemp->descriptor()._type, attachmentTemp->descriptor()._slot);
-        }
-
-        att->setTexture(attachmentTemp->renderTexture(), attachmentTemp->resolvedTexture(), true);
+        att->setTexture( att->_descriptor._externalAttachment->renderTexture(), att->_descriptor._externalAttachment->resolvedTexture());
     }
     else
     {

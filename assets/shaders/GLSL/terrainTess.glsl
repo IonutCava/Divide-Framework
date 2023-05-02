@@ -564,7 +564,7 @@ void main(void) {
 #endif //TOGGLE_DEBUG
 
 #endif //TOGGLE_LODS
-    writeScreenColour(colourOut, normalWV);
+    writeScreenColour(colourOut, vec3( 0.f ), normalWV);
 }
 
 --Fragment.PrePass

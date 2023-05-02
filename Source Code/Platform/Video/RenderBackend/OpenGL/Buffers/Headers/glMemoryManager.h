@@ -53,7 +53,7 @@ namespace GLMemory{
         Byte* _ptr{ nullptr };
         size_t _offset{ 0u };
         size_t _size{ 0u };
-        GLuint _bufferHandle{ GLUtil::k_invalidObjectID };
+        GLuint _bufferHandle{ GL_NULL_HANDLE };
         bool _free{ true };
     };
 

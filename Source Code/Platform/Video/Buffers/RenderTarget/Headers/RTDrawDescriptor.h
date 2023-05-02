@@ -74,6 +74,7 @@ using RTDrawMask = std::array<bool, to_base(RTColourAttachmentSlot::COUNT)>;
 using RTBlitParams = eastl::fixed_vector<RTBlitEntry, MAX_BLIT_ENTRIES, false>;
 using RTClearDescriptor = std::array<RTClearEntry, RT_MAX_ATTACHMENT_COUNT>;
 using RTDrawLayerDescriptor = std::array<DrawLayerEntry, RT_MAX_ATTACHMENT_COUNT>;
+using RTTransitionMask = std::array<bool, RT_MAX_ATTACHMENT_COUNT>;
 
 struct RTDrawDescriptor
 {

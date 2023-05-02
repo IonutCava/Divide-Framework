@@ -58,7 +58,7 @@ class glTexture final : public Texture {
 
     [[nodiscard]] ImageReadbackData readData(U8 mipLevel, const PixelAlignment& pixelPackAlignment) const override;
 
-    PROPERTY_R_IW(GLuint, textureHandle, GLUtil::k_invalidObjectID);
+    PROPERTY_R_IW(GLuint, textureHandle, GL_NULL_HANDLE);
 
     static void Copy(const glTexture* source, U8 sourceSamples, const glTexture* destination, U8 destinationSamples, const CopyTexParams& params);
 
@@ -72,7 +72,7 @@ class glTexture final : public Texture {
 
    private:
     GLenum _type{GL_NONE};
-    GLuint _loadingHandle{ GLUtil::k_invalidObjectID };
+    GLuint _loadingHandle{ GL_NULL_HANDLE };
     GLsync _loadSync{ nullptr };
     bool _hasStorage{ false };
 };

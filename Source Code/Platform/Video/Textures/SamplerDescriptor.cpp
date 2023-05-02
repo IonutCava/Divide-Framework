@@ -93,7 +93,8 @@ namespace Divide {
                                      _customBorderColour.g,
                                      _customBorderColour.b,
                                      _customBorderColour.a);
-        if (tempHash != _hash) {
+        if (tempHash != _hash)
+        {
             LockGuard<SharedMutex> w_lock(s_samplerDescriptorMapMutex);
             insert(s_samplerDescriptorMap, tempHash, *this);
             _hash = tempHash;
@@ -142,7 +143,7 @@ namespace Divide {
             pt.put(entryName + ".Sampler.minLOD", sampler.minLOD());
             pt.put(entryName + ".Sampler.maxLOD", sampler.maxLOD());
             pt.put(entryName + ".Sampler.biasLOD", sampler.biasLOD());
-            pt.put(entryName + ".borderColour", TypeUtil::TextureBorderColourToString(sampler.borderColour()));
+            pt.put(entryName + ".Sampler.borderColour", TypeUtil::TextureBorderColourToString(sampler.borderColour()));
             pt.put(entryName + ".Sampler.customBorderColour.<xmlattr>.r", sampler.customBorderColour().r);
             pt.put(entryName + ".Sampler.customBorderColour.<xmlattr>.g", sampler.customBorderColour().g);
             pt.put(entryName + ".Sampler.customBorderColour.<xmlattr>.b", sampler.customBorderColour().b);
@@ -171,8 +172,7 @@ namespace Divide {
                     pt.get(entryName + ".Sampler.customBorderColour.<xmlattr>.b", to_U8(0u)),
                     pt.get(entryName + ".Sampler.customBorderColour.<xmlattr>.a", to_U8(1u))
                 }
-        );
-
+            );
             return sampler.getHash();
         }
     } //namespace XMLPareset

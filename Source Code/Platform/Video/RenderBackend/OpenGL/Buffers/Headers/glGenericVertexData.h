@@ -70,7 +70,7 @@ class glGenericVertexData final : public GenericVertexData {
         IndexBuffer _data;
 
         size_t _bufferSize{0u};
-        GLuint _handle{ GLUtil::k_invalidObjectID };
+        GLuint _handle{ GL_NULL_HANDLE };
         GLsync _idxBufferSync{ nullptr };
     };
 

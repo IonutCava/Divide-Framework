@@ -311,7 +311,7 @@ namespace Divide
             const U8 bindSlot = LightPool::GetShadowBindSlotOffset( shadowType );
             RTAttachment* shadowTexture = sm._rt->getAttachment( RTAttachmentType::COLOUR );
             DescriptorSetBinding& binding = AddBinding( cmd->_set, bindSlot, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, shadowTexture->texture()->getView(), shadowTexture->descriptor()._samplerHash );
+            Set( binding._data, shadowTexture->texture()->getView(), shadowTexture->_descriptor._samplerHash );
         }
 
         if ( pool.shadowBuffer() != nullptr )
@@ -567,7 +567,7 @@ namespace Divide
                     {
                         DebugView_ptr shadow = std::make_shared<DebugView>( to_I16( I16_MAX - 1 - splitCount + i ) );
                         shadow->_texture = getShadowMap( LightType::DIRECTIONAL )._rt->getAttachment( RTAttachmentType::COLOUR )->texture();
-                        shadow->_samplerHash = getShadowMap( LightType::DIRECTIONAL )._rt->getAttachment( RTAttachmentType::COLOUR )->descriptor()._samplerHash;
+                        shadow->_samplerHash = getShadowMap( LightType::DIRECTIONAL )._rt->getAttachment( RTAttachmentType::COLOUR )->_descriptor._samplerHash;
                         shadow->_shader = previewShader;
                         shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, i + light->getShadowArrayOffset() );
                         shadow->_name = Util::StringFormat( "CSM_%d", i + light->getShadowArrayOffset() );
@@ -591,7 +591,7 @@ namespace Divide
 
                     DebugView_ptr shadow = std::make_shared<DebugView>( to_I16( I16_MAX - 1 ) );
                     shadow->_texture = getShadowMap( LightType::SPOT )._rt->getAttachment( RTAttachmentType::COLOUR )->texture();
-                    shadow->_samplerHash = getShadowMap( LightType::SPOT )._rt->getAttachment( RTAttachmentType::COLOUR )->descriptor()._samplerHash;
+                    shadow->_samplerHash = getShadowMap( LightType::SPOT )._rt->getAttachment( RTAttachmentType::COLOUR )->_descriptor._samplerHash;
                     shadow->_shader = CreateResource<ShaderProgram>( context.context().kernel().resourceCache(), shadowPreviewShader );
                     shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, light->getShadowArrayOffset() );
                     shadow->_name = Util::StringFormat( "SM_%d", light->getShadowArrayOffset() );
@@ -620,7 +620,7 @@ namespace Divide
                     {
                         DebugView_ptr shadow = std::make_shared<DebugView>( to_I16( I16_MAX - 1 - 6 + i ) );
                         shadow->_texture = getShadowMap( LightType::POINT )._rt->getAttachment( RTAttachmentType::COLOUR )->texture();
-                        shadow->_samplerHash = getShadowMap( LightType::POINT )._rt->getAttachment( RTAttachmentType::COLOUR )->descriptor()._samplerHash;
+                        shadow->_samplerHash = getShadowMap( LightType::POINT )._rt->getAttachment( RTAttachmentType::COLOUR )->_descriptor._samplerHash;
                         shadow->_shader = previewShader;
                         shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, light->getShadowArrayOffset() );
                         shadow->_shaderData.set( _ID( "face" ), PushConstantType::INT, i );

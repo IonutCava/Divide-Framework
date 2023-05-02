@@ -119,6 +119,9 @@ private:
     U32 _maxBindings = 0u;
 };
 
+/// Invalid object value. Used to compare handles and determine if they were properly created
+constexpr GLuint GL_NULL_HANDLE = GL_INVALID_INDEX;
+
 namespace GLUtil {
 
 // Not thread-safe!
@@ -168,9 +171,6 @@ T getGLValueIndexed(GLenum param, GLint index = -1);
 void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
                    GLsizei length, const GLchar* message, const void* userParam);
 
-/// Invalid object value. Used to compare handles and determine if they were properly created
-constexpr GLuint k_invalidObjectID = GL_INVALID_INDEX;
-constexpr size_t k_invalidSyncID = SIZE_MAX;
 
 extern GLuint s_lastQueryResult;
 extern const DisplayWindow* s_glMainRenderWindow;
