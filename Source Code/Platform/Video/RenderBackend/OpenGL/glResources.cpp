@@ -26,68 +26,48 @@ namespace Divide
         _maxBindings = maxBindings;
     }
 
-    VAOBindings::VAOData* VAOBindings::getVAOData( const GLuint vao )
+    bool VAOBindings::instanceDivisorFlag( const GLuint index )
     {
-        if ( vao == _cachedVao )
-        {
-            return _cachedData;
-        }
-
-        _cachedVao = vao;
-        _cachedData = &_bindings[_cachedVao];
-        return _cachedData;
-    }
-
-    bool VAOBindings::instanceDivisorFlag( const GLuint vao, const GLuint index )
-    {
-        VAOData* data = getVAOData( vao );
-
-        const size_t count = data->second.size();
+        const size_t count = _bindings.second.size();
         if ( count > 0 )
         {
-            assert( index <= count );
-            return data->second[index];
+            DIVIDE_ASSERT( index <= count );
+            return _bindings.second[index];
         }
 
-        assert( _maxBindings != 0 );
-        data->second.resize( _maxBindings );
-        return data->second.front();
+        DIVIDE_ASSERT( _maxBindings != 0 );
+        _bindings.second.resize( _maxBindings );
+        return _bindings.second.front();
     }
 
-    void VAOBindings::instanceDivisorFlag( const GLuint vao, const GLuint index, const bool divisorFlag )
+    void VAOBindings::instanceDivisorFlag( const GLuint index, const bool divisorFlag )
     {
-        VAOData* data = getVAOData( vao );
+        const size_t count = _bindings.second.size();
+        DIVIDE_ASSERT( count > 0 && count > index );
 
-        [[maybe_unused]] const size_t count = data->second.size();
-        assert( count > 0 && count > index );
-
-        data->second[index] = divisorFlag;
+        _bindings.second[index] = divisorFlag;
     }
 
-    const VAOBindings::BufferBindingParams& VAOBindings::bindingParams( const GLuint vao, const GLuint index )
+    const VAOBindings::BufferBindingParams& VAOBindings::bindingParams( const GLuint index )
     {
-        VAOData* data = getVAOData( vao );
-
-        const size_t count = data->first.size();
+        const size_t count = _bindings.first.size();
         if ( count > 0 )
         {
-            assert( index <= count );
-            return data->first[index];
+            DIVIDE_ASSERT( index <= count );
+            return _bindings.first[index];
         }
 
-        assert( _maxBindings != 0 );
-        data->first.resize( _maxBindings );
-        return data->first.front();
+        DIVIDE_ASSERT( _maxBindings != 0 );
+        _bindings.first.resize( _maxBindings );
+        return _bindings.first.front();
     }
 
-    void VAOBindings::bindingParams( const GLuint vao, const GLuint index, const BufferBindingParams& newParams )
+    void VAOBindings::bindingParams(  const GLuint index, const BufferBindingParams& newParams )
     {
-        VAOData* data = getVAOData( vao );
+        const size_t count = _bindings.first.size();
+        DIVIDE_ASSERT( count > 0 && count > index );
 
-        [[maybe_unused]] const size_t count = data->first.size();
-        assert( count > 0 && count > index );
-
-        data->first[index] = newParams;
+        _bindings.first[index] = newParams;
     }
 
     namespace GLUtil

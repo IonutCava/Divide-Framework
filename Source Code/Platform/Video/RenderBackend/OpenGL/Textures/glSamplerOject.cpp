@@ -96,7 +96,7 @@ GLuint glSamplerObject::Construct(const SamplerDescriptor& descriptor)
     }
     else
     {
-        glSamplerParameterf( samplerID, GL_TEXTURE_MAX_ANISOTROPY, 0.f );
+        glSamplerParameterf( samplerID, GL_TEXTURE_MAX_ANISOTROPY, 1.f );
     }
 
     if constexpr ( Config::ENABLE_GPU_VALIDATION )

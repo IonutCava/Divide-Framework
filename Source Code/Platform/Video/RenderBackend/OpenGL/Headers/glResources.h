@@ -101,21 +101,16 @@ private:
 public:
     void init(U32 maxBindings) noexcept;
 
-    const BufferBindingParams& bindingParams(GLuint vao, GLuint index);
+    const BufferBindingParams& bindingParams(GLuint index);
 
-    bool instanceDivisorFlag(GLuint vao, GLuint index);
-    void instanceDivisorFlag(GLuint vao, GLuint index, bool perInstanceDivisor);
+    bool instanceDivisorFlag(GLuint index);
+    void instanceDivisorFlag(GLuint index, bool perInstanceDivisor);
 
-    void bindingParams(GLuint vao, GLuint index, const BufferBindingParams& newParams);
-
-private:
-    VAOData* getVAOData(GLuint vao);
+    void bindingParams(GLuint index, const BufferBindingParams& newParams);
 
 private:
-    mutable VAOData* _cachedData = nullptr;
-    mutable GLuint _cachedVao = 0;
 
-    hashMap<GLuint /*vao ID*/, VAOData> _bindings;
+    VAOData _bindings;
     U32 _maxBindings = 0u;
 };
 

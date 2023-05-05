@@ -38,7 +38,6 @@ namespace Divide
 {
 
     GLStateTracker GL_API::s_stateTracker;
-    GL_API::VAOMap GL_API::s_vaoCache;
     std::atomic_bool GL_API::s_glFlushQueued{false};
     GLUtil::glTextureViewCache GL_API::s_textureViewCache{};
     U32 GL_API::s_fenceSyncCounter[GL_API::s_LockFrameLifetime]{};
@@ -463,6 +462,14 @@ namespace Divide
                       DefaultColours::BLACK.b,
                       DefaultColours::BLACK.a );
 
+        glCreateVertexArrays( 1, &_dummyVAO );
+        DIVIDE_ASSERT( _dummyVAO != GL_NULL_HANDLE, Locale::Get( _ID( "ERROR_VAO_INIT" ) ) );
+
+        if constexpr ( Config::ENABLE_GPU_VALIDATION )
+        {
+            glObjectLabel( GL_VERTEX_ARRAY, _dummyVAO, -1, "GENERIC_VAO");
+        }
+        glBindVertexArray( _dummyVAO );
         s_stateTracker.setDefaultState();
 
         _performanceQueries[to_base( GlobalQueryTypes::VERTICES_SUBMITTED )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_VERTICES_SUBMITTED, 6 );
@@ -483,6 +490,13 @@ namespace Divide
     void GL_API::closeRenderingAPI()
     {
         glShaderProgram::DestroyStaticData();
+
+        if ( _dummyVAO != GL_NULL_HANDLE )
+        {
+            glBindVertexArray(0u);
+            glDeleteVertexArrays(1, &_dummyVAO );
+            _dummyVAO = GL_NULL_HANDLE;
+        }
 
         // Destroy sampler objects
         {
@@ -505,14 +519,6 @@ namespace Divide
         }
         g_ContextPool.destroy();
 
-        for ( VAOMap::value_type& value : s_vaoCache )
-        {
-            if ( value.second != GL_NULL_HANDLE )
-            {
-                GL_API::DeleteVAOs( 1, &value.second );
-            }
-        }
-        s_vaoCache.clear();
         glLockManager::Clear();
         s_stateTracker.setDefaultState();
     }
@@ -1422,10 +1428,6 @@ namespace Divide
             DIVIDE_UNEXPECTED_CALL();
         }
 
-        if ( stateTracker.setActiveVAO( 0 ) == GLStateTracker::BindResult::FAILED )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
         if ( stateTracker.setActiveBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 ) == GLStateTracker::BindResult::FAILED )
         {
             DIVIDE_UNEXPECTED_CALL();
@@ -1873,12 +1875,9 @@ namespace Divide
                         boundBuffer = GL_NULL_HANDLE;
                     }
                 }
-                for ( auto& boundBuffer : s_stateTracker._activeVAOIB )
+                if ( s_stateTracker._activeVAOIB == crtBuffer )
                 {
-                    if ( boundBuffer.second == crtBuffer )
-                    {
-                        boundBuffer.second = GL_NULL_HANDLE;
-                    }
+                    s_stateTracker._activeVAOIB = GL_NULL_HANDLE;
                 }
             }
 
@@ -1887,26 +1886,6 @@ namespace Divide
             return true;
         }
 
-        return false;
-    }
-
-    bool GL_API::DeleteVAOs( const GLuint count, GLuint* vaos )
-    {
-        if ( count > 0u && vaos != nullptr )
-        {
-            for ( GLuint i = 0u; i < count; ++i )
-            {
-                if ( s_stateTracker._activeVAOID == vaos[i] )
-                {
-                    s_stateTracker._activeVAOID = GL_NULL_HANDLE;
-                    break;
-                }
-            }
-
-            glDeleteVertexArrays( count, vaos );
-            memset( vaos, 0, count * sizeof( GLuint ) );
-            return true;
-        }
         return false;
     }
 

@@ -143,7 +143,6 @@ public:
     static [[nodiscard]] bool DeleteTextures(GLuint count, GLuint* textures, TextureType texType);
     static [[nodiscard]] bool DeleteSamplers(GLuint count, GLuint* samplers);
     static [[nodiscard]] bool DeleteBuffers(GLuint count, GLuint* buffers);
-    static [[nodiscard]] bool DeleteVAOs(GLuint count, GLuint* vaos);
     static [[nodiscard]] bool DeleteFramebuffers(GLuint count, GLuint* framebuffers);
 
     static [[nodiscard]] GLuint GetSamplerHandle(size_t samplerHash);
@@ -183,7 +182,6 @@ private:
     static eastl::fixed_vector<TexBindEntry, 32, false> s_TexBindQueue;
 
     using HardwareQueryContext = std::array<glHardwareQueryEntry, to_base(QueryType::COUNT)>;
-    using VAOMap = hashMap<size_t, GLuint>;
     using SamplerObjectMap = hashMap<size_t, GLuint>;
 
 private:
@@ -200,6 +198,8 @@ private:
     bool _pushConstantsNeedLock{false};
     GFX::MemoryBarrierCommand _pushConstantsMemCommand{};
 
+    GLuint _dummyVAO{ GL_NULL_HANDLE };
+
 private:
 
     static std::atomic_bool s_glFlushQueued;
@@ -212,7 +212,6 @@ private:
     static std::array<size_t, to_base(GLUtil::GLMemory::GLMemoryType::COUNT)> s_memoryAllocatorSizes;
 
     static GLUtil::glTextureViewCache s_textureViewCache;
-    static VAOMap s_vaoCache;
 
     static glHardwareQueryPool* s_hardwareQueryPool;
 

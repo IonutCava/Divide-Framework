@@ -56,9 +56,8 @@ namespace Divide
         _activeRenderTarget = nullptr;
         _activeRenderTargetID = INVALID_RENDER_TARGET_ID;
         _activeRenderTargetDimensions = {1u, 1u};
-        _activeVAOID = GL_NULL_HANDLE;
         _activeFBID[0] = _activeFBID[1] = _activeFBID[2] = GL_NULL_HANDLE;
-        _activeVAOIB.clear();
+        _activeVAOIB = GL_NULL_HANDLE;
         _drawIndirectBufferOffset = 0u;
         _packAlignment = {};
         _unpackAlignment = {};
@@ -98,87 +97,6 @@ namespace Divide
         _samplerBoundMap.fill( GL_NULL_HANDLE );
     }
 
-    void GLStateTracker::setAttributesInternal( const GLuint vaoID, const AttributeMap& attributes )
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        // Update vertex attributes if needed (e.g. if offsets changed)
-        for ( U8 idx = 0u; idx < to_base( AttribLocation::COUNT ); ++idx )
-        {
-            const AttributeDescriptor& descriptor = attributes._attributes[idx];
-
-            if ( descriptor._dataType == GFXDataFormat::COUNT )
-            {
-                glDisableVertexArrayAttrib( vaoID, idx );
-            }
-            else
-            {
-                glEnableVertexArrayAttrib( vaoID, idx );
-                glVertexArrayAttribBinding( vaoID, idx, descriptor._vertexBindingIndex );
-                const bool isIntegerType = descriptor._dataType != GFXDataFormat::FLOAT_16 &&
-                    descriptor._dataType != GFXDataFormat::FLOAT_32;
-
-                if ( !isIntegerType || descriptor._normalized )
-                {
-                    glVertexArrayAttribFormat( vaoID,
-                                               idx,
-                                               descriptor._componentsPerElement,
-                                               GLUtil::glDataFormatTable[to_U32( descriptor._dataType )],
-                                               descriptor._normalized ? GL_TRUE : GL_FALSE,
-                                               static_cast<GLuint>(descriptor._strideInBytes) );
-                }
-                else
-                {
-                    glVertexArrayAttribIFormat( vaoID,
-                                                idx,
-                                                descriptor._componentsPerElement,
-                                                GLUtil::glDataFormatTable[to_U32( descriptor._dataType )],
-                                                static_cast<GLuint>(descriptor._strideInBytes) );
-                }
-            }
-        }
-
-        for ( const VertexBinding& vertBinding : attributes._vertexBindings )
-        {
-            const bool perInstanceDivisor = !vertBinding._perVertexInputRate;
-            if ( _vaoBufferData.instanceDivisorFlag( vaoID, vertBinding._bufferBindIndex ) != perInstanceDivisor )
-            {
-                glVertexArrayBindingDivisor( vaoID, vertBinding._bufferBindIndex, perInstanceDivisor ? 1u : 0u );
-                _vaoBufferData.instanceDivisorFlag( vaoID, vertBinding._bufferBindIndex, perInstanceDivisor );
-            }
-        }
-    }
-
-    bool GLStateTracker::getOrCreateVAO( const size_t attributeHash, GLuint& vaoOut )
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        DIVIDE_ASSERT( Runtime::isMainThread() );
-
-        vaoOut = GL_NULL_HANDLE;
-
-        // See if we already have a matching VAO
-        const auto it = GL_API::s_vaoCache.find( attributeHash );
-        if ( it != std::cend( GL_API::s_vaoCache ) )
-        {
-            // Remember it if we do
-            vaoOut = it->second;
-            // Return true on a cache hit;
-            return true;
-        }
-
-        // Otherwise allocate a new VAO and save it in the cache
-        glCreateVertexArrays( 1, &vaoOut );
-        DIVIDE_ASSERT( vaoOut != GL_NULL_HANDLE, Locale::Get( _ID( "ERROR_VAO_INIT" ) ) );
-
-        if constexpr ( Config::ENABLE_GPU_VALIDATION )
-        {
-            glObjectLabel( GL_VERTEX_ARRAY, vaoOut, -1, Util::StringFormat( "GENERIC_VAO_%d", GL_API::s_vaoCache.size()).c_str());
-        }
-
-        insert( GL_API::s_vaoCache, attributeHash, vaoOut );
-        return false;
-    }
 
     void GLStateTracker::setPrimitiveTopology( const PrimitiveTopology topology )
     {
@@ -189,16 +107,51 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        GLuint vao = GL_NULL_HANDLE;
-        if ( !getOrCreateVAO( attributeHash, vao ) )
+        // Update vertex attributes if needed (e.g. if offsets changed)
+        for ( U8 idx = 0u; idx < to_base( AttribLocation::COUNT ); ++idx )
         {
-            // cache miss
-            setAttributesInternal( vao, attributes );
+            const AttributeDescriptor& descriptor = attributes._attributes[idx];
+
+            if (descriptor != _currentAttributes[idx] )
+            {
+                if ( descriptor._dataType == GFXDataFormat::COUNT )
+                {
+                    glDisableVertexAttribArray( idx );
+                }
+                else
+                {
+                    glEnableVertexAttribArray( idx );
+                    glVertexAttribBinding( idx, descriptor._vertexBindingIndex );
+                    const bool isIntegerType = descriptor._dataType != GFXDataFormat::FLOAT_16 && descriptor._dataType != GFXDataFormat::FLOAT_32;
+
+                    if ( !isIntegerType || descriptor._normalized )
+                    {
+                        glVertexAttribFormat( idx,
+                                              descriptor._componentsPerElement,
+                                              GLUtil::glDataFormatTable[to_U32( descriptor._dataType )],
+                                              descriptor._normalized ? GL_TRUE : GL_FALSE,
+                                              static_cast<GLuint>(descriptor._strideInBytes) );
+                    }
+                    else
+                    {
+                        glVertexAttribIFormat( idx,
+                                               descriptor._componentsPerElement,
+                                               GLUtil::glDataFormatTable[to_U32( descriptor._dataType )],
+                                               static_cast<GLuint>(descriptor._strideInBytes) );
+                    }
+                }
+                _currentAttributes[idx] = descriptor;
+            }
         }
 
-        if ( setActiveVAO( vao ) == BindResult::FAILED )
+        for ( const VertexBinding& vertBinding : attributes._vertexBindings )
         {
-            DIVIDE_UNEXPECTED_CALL();
+            const bool perInstanceDivisor = !vertBinding._perVertexInputRate;
+            if ( _vaoBufferData.instanceDivisorFlag( vertBinding._bufferBindIndex ) != perInstanceDivisor )
+            {
+                glVertexBindingDivisor( vertBinding._bufferBindIndex, perInstanceDivisor ? 1u : 0u );
+                _vaoBufferData.instanceDivisorFlag( vertBinding._bufferBindIndex, perInstanceDivisor );
+            }
         }
     }
 
@@ -488,17 +441,15 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        DIVIDE_ASSERT( _activeVAOID != GL_NULL_HANDLE && _activeVAOID != 0u );
-
-        const VAOBindings::BufferBindingParams& bindings = _vaoBufferData.bindingParams( _activeVAOID, location );
+        const VAOBindings::BufferBindingParams& bindings = _vaoBufferData.bindingParams( location );
         const VAOBindings::BufferBindingParams currentParams( bufferID, offset, stride );
 
         if ( bindings != currentParams )
         {
             // Bind the specified buffer handle to the desired buffer target
-            glVertexArrayVertexBuffer( _activeVAOID, location, bufferID, static_cast<GLintptr>(offset), static_cast<GLsizei>(stride) );
+            glBindVertexBuffer( location, bufferID, static_cast<GLintptr>(offset), static_cast<GLsizei>(stride) );
             // Remember the new binding for future reference
-            _vaoBufferData.bindingParams( _activeVAOID, location, currentParams );
+            _vaoBufferData.bindingParams( location, currentParams );
             return BindResult::JUST_BOUND;
         }
 
@@ -509,22 +460,20 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        DIVIDE_ASSERT( _activeVAOID != GL_NULL_HANDLE && _activeVAOID != 0u );
-
         bool needsBind = false;
         for ( GLsizei i = 0u; i < count; ++i )
         {
-            const VAOBindings::BufferBindingParams& bindings = _vaoBufferData.bindingParams( _activeVAOID, i );
+            const VAOBindings::BufferBindingParams& bindings = _vaoBufferData.bindingParams( i );
             const VAOBindings::BufferBindingParams currentParams( bufferIDs[i], offsets[i], strides[i] );
             if ( bindings != currentParams )
             {
-                _vaoBufferData.bindingParams( _activeVAOID, location + i, currentParams );
+                _vaoBufferData.bindingParams( location + i, currentParams );
                 needsBind = true;
             }
         }
         if ( needsBind )
         {
-            glVertexArrayVertexBuffers( _activeVAOID, location, count, bufferIDs, offsets, strides );
+            glBindVertexBuffers( location, count, bufferIDs, offsets, strides );
             return BindResult::JUST_BOUND;
         }
 
@@ -599,32 +548,6 @@ namespace Divide
         return BindResult::JUST_BOUND;
     }
 
-    GLStateTracker::BindResult GLStateTracker::setActiveVAO( const GLuint ID )
-    {
-        GLuint temp = 0;
-        return setActiveVAO( ID, temp );
-    }
-
-    /// Switch the currently active vertex array object
-    GLStateTracker::BindResult GLStateTracker::setActiveVAO( const GLuint ID, GLuint& previousID )
-    {
-        assert( ID != GL_NULL_HANDLE );
-
-        previousID = _activeVAOID;
-        // Prevent double bind
-        if ( _activeVAOID != ID )
-        {
-            // Remember the new binding for future reference
-            _activeVAOID = ID;
-            // Activate the specified VAO
-            glBindVertexArray( ID );
-            return BindResult::JUST_BOUND;
-        }
-
-        return BindResult::ALREADY_BOUND;
-    }
-
-
     /// Single place to change buffer objects for every target available
     GLStateTracker::BindResult GLStateTracker::setActiveBuffer( const GLenum target, const GLuint bufferHandle, GLuint& previousID )
     {
@@ -632,7 +555,7 @@ namespace Divide
 
         GLuint& crtBinding = target != GL_ELEMENT_ARRAY_BUFFER
             ? _activeBufferID[GetBufferTargetIndex( target )]
-            : _activeVAOIB[_activeVAOID];
+            : _activeVAOIB;
         previousID = crtBinding;
 
         // Prevent double bind (hope that this is the most common case. Should be.)

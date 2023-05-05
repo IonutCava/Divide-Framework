@@ -47,7 +47,7 @@ namespace Divide {
     struct GLStateTracker {
         static constexpr U8 MAX_BOUND_TEXTURE_UNITS = 32u;
 
-        using AttribHashes = std::array<size_t, to_base(AttribLocation::COUNT)>;
+        using AttributeSettings = std::array<AttributeDescriptor, to_base(AttribLocation::COUNT)>;
 
         enum class BindResult : U8 {
             JUST_BOUND = 0,
@@ -71,10 +71,6 @@ namespace Divide {
         void setPrimitiveTopology( PrimitiveTopology topology );
         void setVertexFormat(const AttributeMap& attributes, const size_t attributeHash);
 
-        /// Switch the currently active vertex array object
-        [[nodiscard]] BindResult setActiveVAO(GLuint ID);
-        /// Switch the currently active vertex array object
-        [[nodiscard]] BindResult setActiveVAO(GLuint ID, GLuint& previousID);
         /// Single place to change buffer objects for every target available
         [[nodiscard]] BindResult setActiveBuffer(GLenum target, GLuint bufferHandle);
         /// Single place to change buffer objects for every target available
@@ -141,10 +137,6 @@ namespace Divide {
         bool* _enabledAPIDebugging{nullptr};
         bool* _assertOnAPIError{nullptr};
 
-      private:
-        void setAttributesInternal(GLuint vaoID, const AttributeMap& attributes);
-        bool getOrCreateVAO(const size_t attributeHash, GLuint& vaoOut);
-
       public:
           struct BindConfigEntry
           {
@@ -157,6 +149,7 @@ namespace Divide {
 
         std::array<std::pair<Str256, U32>, 32> _debugScope;
         std::pair<Str256, U32> _lastInsertedDebugMessage;
+        AttributeSettings _currentAttributes;
 
         U8 _debugScopeDepth{ 0u };
 
@@ -167,15 +160,13 @@ namespace Divide {
         glFramebuffer* _activeRenderTarget{ nullptr };
         RenderTargetID _activeRenderTargetID{ INVALID_RENDER_TARGET_ID };
         vec2<U16> _activeRenderTargetDimensions{1u};
-        /// Current active vertex array object's handle
-        GLuint _activeVAOID{ GL_NULL_HANDLE };
         /// 0 - current framebuffer, 1 - current read only framebuffer, 2 - current write only framebuffer
         GLuint _activeFBID[3] { GL_NULL_HANDLE,
                                 GL_NULL_HANDLE,
                                 GL_NULL_HANDLE };
         /// VB, IB, SB, TB, UB, PUB, DIB
         std::array<GLuint, 13> _activeBufferID = create_array<13, GLuint>(GL_NULL_HANDLE);
-        hashMap<GLuint, GLuint> _activeVAOIB;
+        GLuint _activeVAOIB{GL_NULL_HANDLE};
         size_t _drawIndirectBufferOffset{0u};
 
         PixelAlignment _packAlignment{};
