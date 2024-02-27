@@ -28,7 +28,7 @@ min and max basically remap what 0 and 1 respectively mean in the heightmap
 </alphaMaps>
 
 <vegetation>
-    <vegetationTextureLocation>misc_images</vegetationTextureLocation>
+    <vegetationTextureLocation>MiscImages</vegetationTextureLocation>
     <grassMap>alpha_maps_Alpha1.png</grassMap>
     <grassBillboard1 scale="0.75">billboardgrass0001.png</grassBillboard1>
     <grassBillboard2 scale="0.5">grass_billboards1.png</grassBillboard2>

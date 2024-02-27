@@ -11,6 +11,7 @@
 
 #include "nodeBufferedInput.cmn"
 
+uniform vec4 dvd_frustumPlanes[6];
 uniform mat4 dvd_terrainWorld;
 uniform vec2 dvd_uvEyeOffset;
 uniform float dvd_tessTriangleWidth;
@@ -29,7 +30,8 @@ uniform float dvd_tessTriangleWidth;
 #endif //FRAG_SHADER
 
 #if defined(TESS_EVAL_SHADER) || defined(GEOM_SHADER)
-vec3 getNormal(in vec2 tex_coord) {
+vec3 getNormal(in vec2 tex_coord)
+{
     const vec3 UV = vec3(tex_coord, 0);
     const float hL = textureOffset(texHeight, UV, ivec2(-1,  0)).r;
     const float hR = textureOffset(texHeight, UV, ivec2( 1,  0)).r;

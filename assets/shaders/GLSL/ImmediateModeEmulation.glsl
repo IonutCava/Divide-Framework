@@ -113,7 +113,7 @@ void main(void)
 
 layout(location = ATTRIB_FREE_START + 0) in vec4 _colour;
 
-DESCRIPTOR_SET_RESOURCE( PER_DRAW, 0 ) uniform sampler2D texDiffuse0;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texDiffuse0;
 
 layout(location = 0) out vec4 _colourOut;
 

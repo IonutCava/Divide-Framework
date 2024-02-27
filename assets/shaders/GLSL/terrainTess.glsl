@@ -126,12 +126,15 @@ float LargerNeighbourAdjacencyFix(in int idx0, in int idx1, in int patchIdx, in 
     return LargerNeighbourAdjacencyClamp(0.5f * SphereToScreenSpaceTessellation(p0, p1, 2 * diameter, worldViewMat));
 }
 
-bool SphereInFrustum(in vec3 pos, in float r, in mat4 worldMat) {
+bool SphereInFrustum(in vec3 pos, in float radius, in mat4 worldMat)
+{
     const float minCmp = -0.15f;
 
     const vec4 posW = worldMat * vec4(pos, 1.f);
-    for (int i = 0; i < 6; i++) {
-        if (dot(posW, dvd_frustumPlanes[i]) + r < minCmp) {
+    for (int i = 0; i < 6; ++i)
+    {
+        if (dot(posW, dvd_frustumPlanes[i]) + radius + minCmp < 0.f)
+        {
             return false;
         }
     }
@@ -154,7 +157,7 @@ void main(void)
     const vec4 pos1 = worldMat * gl_in[2].gl_Position;
     const float radius = length(pos0.xyz - pos1.xyz) * 0.5f;
 
-    if (!SphereInFrustum(centre, radius, worldMat))
+    if ( !SphereInFrustum(centre, radius, worldMat) )
     {
           gl_TessLevelInner[0] = gl_TessLevelInner[1] = -1;
           gl_TessLevelOuter[0] = gl_TessLevelOuter[1] = -1;

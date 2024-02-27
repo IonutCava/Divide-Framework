@@ -124,16 +124,17 @@ vec3 GetCubeReflectionDirection(in vec3 viewDirectionWV, in vec3 normalWV, in ve
     return reflectionWV;
 }
 
+vec3 getIBLAmbient(in PBRMaterial material)
+{
+    return (dvd_AmbientColour.rgb * material._diffuseColour * material._occlusion);
+}
+
 #if !defined(NO_ENV_MAPPING) && !defined(NO_IBL)
 vec4 getReflectionLookup(in float roughness, in vec3 viewDirectionWV, in vec3 normalWV, in vec3 positionW, in uint probeID)
 {
     return vec4(GetCubeReflectionDirection(viewDirectionWV, normalWV, positionW, probeID, roughness), float(probeID));
 }
 
-vec3 getIBLAmbient(in PBRMaterial material)
-{
-    return (dvd_AmbientColour.rgb * material._diffuseColour * material._occlusion);
-}
 
 #if defined(SHADING_MODE_PBR)
 

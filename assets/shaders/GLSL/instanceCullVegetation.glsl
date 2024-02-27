@@ -3,19 +3,19 @@
 #define INVS_SQRT_3 0.57735026919f
 
 #if defined(CULL_TREES)
-uniform vec4 treeExtents;
+uniform vec4 dvd_treeExtents;
 uniform float dvd_treeVisibilityDistance;
 
 #   define MAX_INSTANCES MAX_TREE_INSTANCES
 #   define Data treeData
-#   define Extents treeExtents
+#   define Extents dvd_treeExtents
 #   define dvd_visibilityDistance dvd_treeVisibilityDistance
 #else
-uniform vec4 grassExtents;
+uniform vec4 dvd_grassExtents;
 
 #   define MAX_INSTANCES MAX_GRASS_INSTANCES
 #   define Data grassData
-#   define Extents grassExtents
+#   define Extents dvd_grassExtents
 #   define dvd_visibilityDistance dvd_grassVisibilityDistance
 uniform float dvd_grassVisibilityDistance;
 #endif
@@ -24,7 +24,7 @@ uniform float dvd_grassVisibilityDistance;
 vec3 _private_h_extents;
 #define getHalfExtents(P, R) _private_h_extents
 
-uniform vec3 cameraPosition;
+uniform vec3 dvd_cameraPosition;
 
 #include "HiZCullingAlgorithm.cmn";
 #include "vegetationData.cmn"
@@ -71,7 +71,7 @@ void main(void) {
     vert = rotate_vertex_position(vert * scale, instance.orientationQuad);
     const vec3 positionW = vert + instance.positionAndScale.xyz;
 
-    const float dist = distance(positionW.xz, cameraPosition.xz);
+    const float dist = distance(positionW.xz, dvd_cameraPosition.xz);
     // Too far away
     if (dist > dvd_visibilityDistance) {
         CullItem(nodeIndex);

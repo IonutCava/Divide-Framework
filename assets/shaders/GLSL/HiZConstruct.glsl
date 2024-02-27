@@ -2,7 +2,7 @@
 
 //ref: https://github.com/nvpro-samples/gl_occlusion_culling
 
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 0, r32f) uniform ACCESS_W image2D outImage;
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 12, r32f) uniform ACCESS_W image2D outImage;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform sampler2D inImage;
 
 layout(local_size_x = LOCAL_SIZE, local_size_y = LOCAL_SIZE, local_size_z = 1) in;

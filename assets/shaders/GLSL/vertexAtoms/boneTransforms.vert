@@ -1,7 +1,7 @@
 #ifndef _BONE_TRANSFORM_VERT_
 #define _BONE_TRANSFORM_VERT_
 
-DESCRIPTOR_SET_RESOURCE_LAYOUT( PER_DRAW, BONE_BUFFER_BINDING, std430 ) coherent ACCESS_R buffer dvd_BoneTransforms
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 13, std430) coherent ACCESS_R buffer dvd_BoneTransforms
 {
     mat4 boneTransforms[];
 };

@@ -5,7 +5,7 @@
 #define THREADS 8
 
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform samplerCubeArray s_source;
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 1, rgba16f) uniform ACCESS_W imageCubeArray s_target;
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 12, rgba16f) uniform ACCESS_W imageCubeArray s_target;
 
 layout(local_size_x = THREADS, local_size_y = THREADS, local_size_z = 1) in;
 void main()
@@ -44,7 +44,7 @@ void main()
 
 #define THREADS 16
 
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 0, rg16f) uniform ACCESS_W image2D s_target;
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 12, rg16f) uniform ACCESS_W image2D s_target;
 
 // Karis 2014
 vec2 integrateBRDF(float roughness, float NoV)
@@ -110,7 +110,7 @@ void main()
 #define NUM_SAMPLES 64u
 
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform samplerCubeArray s_source;
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 1, rgba16f) uniform ACCESS_W imageCubeArray s_target;
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 12, rgba16f) uniform ACCESS_W imageCubeArray s_target;
 
 // From Karis, 2014
 vec3 prefilterEnvMap(in vec3 R)

@@ -9,8 +9,8 @@
 // u_params.y = inverse of the log_2 luminance range
 
 // Our two inputs, the read-only HDR color image, and the histogramBuffer
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 0, rgba16f) uniform ACCESS_R image2D s_texColor;
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 1, std430) coherent ACCESS_W buffer histogramBuffer
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 12, rgba16f) uniform ACCESS_R image2D s_texColor;
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 13, std430) coherent ACCESS_W buffer histogramBuffer
 {
     uint histogram[];
 };
@@ -66,9 +66,9 @@ void main() {
 --Compute.Average
 
 // We'll be writing our average to s_target
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 0, r32f) uniform ACCESS_RW image2D s_target;
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 12, r32f) uniform ACCESS_RW image2D s_target;
 
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 1, std430) coherent ACCESS_RW buffer histogramBuffer
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 13, std430) coherent ACCESS_RW buffer histogramBuffer
 {
     uint histogram[];
 };

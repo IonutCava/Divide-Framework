@@ -9,12 +9,15 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_BATCH, 3, std430) coherent ACCESS_R buffer dv
     NodeTransformData dvd_Transforms[];
 };
 
-#if defined(VERT_SHADER)
 #if defined(OVERRIDE_DATA_IDX)
 uniform uint INDIRECT_DATA_IDX;
-#else //OVERRIDE_DATA_IDX
-#define INDIRECT_DATA_IDX (DVD_GL_BASE_INSTANCE - 1u)
 #endif //OVERRIDE_DATA_IDX
+
+#if defined(VERT_SHADER)
+
+#if !defined(OVERRIDE_DATA_IDX)
+#define INDIRECT_DATA_IDX (DVD_GL_BASE_INSTANCE - 1u)
+#endif //!OVERRIDE_DATA_IDX
 
 DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_BATCH, 4, std430) coherent ACCESS_R buffer dvd_IndirectionBlock
 {

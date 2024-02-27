@@ -15,8 +15,8 @@ struct FogDetails
 };
 
 DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_FRAME, 8, std140) uniform dvd_SceneData {
-    // w - reserved (normalize(-dvd_sunPosition) == dvd_sunDirection)
-    vec4 dvd_sunPosition;
+    // x,y,z - direction, w - reserved
+    vec4 dvd_sunDirection;
     // w - reserved
     vec4 dvd_sunColour;
     // x,y,z - direction, w - speed
@@ -28,7 +28,7 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_FRAME, 8, std140) uniform dvd_SceneData {
     vec4 _padding[6];
 };
 
-#define GetSunDirection() normalize(-dvd_sunPosition.xyz)
+#define GetSunFWDDirection() normalize(dvd_sunDirection.xyz)
 #define dvd_GameTimeMS int(dvd_appData.x)
 #define dvd_GlobalTimeMS int(dvd_appData.y)
 #define dvd_MaterialDebugFlag int(dvd_appData.z)
