@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<heightfield>heightfield.raw</heightfield>
+<heightfieldTex>heightfield.png</heightfieldTex>
+<!--
+Min size of 8x8. Terrain will fail to load with smaller samples 
+Why would we ever use a smaller terrain? We can define negative height on the edge of larger terrains if needed)
+-->
+<heightfieldResolution x="2048" y="2048"/>
+<!--
+startWidth = the size in world units of a path's side. Each ring doubles this initial value
+ringCount = how many tessellated rings we want the terrain to use. We can define as many or as few as we like
+			If ringCount == 0, ringCount is set to 1
+            If ringCount > #rings, the undefined rings will use the last defined ring's value. Default ring value is "8" (if missing)
+			If ringCount < #rings, the extra rings are ignored
+ring# = number of tiles per side of the "ring". See nVidia's DX11 Tessellated Terrain demo (i.e. the TileRing class)
+-->
+<tileSettings startWidth="0.25" ringCount="4" ring1="8" ring2="16" ring3="16" ring4 ="24" ring5="32" ring6="64"/>
+<!--
+min and max basically remap what 0 and 1 respectively mean in the heightmap
+-->
+<altitudeRange min="-39.02" max="75.13"/>
+<alphaMaps file="alpha_maps.xml">
+	<!--<tileFactor material="0...8" channel="0...3" s="1.0 ... 255.0" t="1.0f ... 255.0f"/> -->
+	<tileFactor material="0" channel="0" s="1.5" t="1.5"/>
+	<tileFactor material="0" channel="2" s="2" t="2"/> 
+	<tileFactor material="0" channel="3" s="1.5" t="1.5"/> 
+	<tileFactor material="1" channel="1" s="1.5" t="1.5"/> 
+</alphaMaps>
+
+<vegetation>
+    <vegetationTextureLocation>MiscImages</vegetationTextureLocation>
+    <grassMap>alpha_maps_Alpha1.png</grassMap>
+    <grassBillboard1 scale="0.75">billboardgrass0001.png</grassBillboard1>
+    <grassBillboard2 scale="0.5">grass_billboards1.png</grassBillboard2>
+    <grassBillboard3 scale="1">grass_billboards2.png</grassBillboard3>
+    <grassBillboard4 scale="1">grass_billboards3.png</grassBillboard4>
+    <treeMap>alpha_maps_Alpha1.png</treeMap>
+	<treeMesh1 scale = "0.075" rotate_x = "-90" rotate_y = "0" rotate_z = "0">tree_mango_01.fbx</treeMesh1>
+	<treeMesh2 scale = "0.075" rotate_x = "-90" rotate_y = "0" rotate_z = "0">tree_mango_02.fbx</treeMesh2>
+	<treeMesh3 scale = "0.0075" rotate_x = "0" rotate_y = "0" rotate_z = "0">birch_13m.obj</treeMesh3>
+</vegetation>

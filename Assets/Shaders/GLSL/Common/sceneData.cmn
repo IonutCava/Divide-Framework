@@ -1,0 +1,36 @@
+#ifndef _SCENE_DATA_INPUT_CMN_
+#define _SCENE_DATA_INPUT_CMN_
+
+struct WaterBodyData
+{
+    vec4 positionW;
+    ///length, depth, width
+    vec4 extents;
+};
+
+struct FogDetails
+{
+    vec4 _colourAndDensity;
+    vec4 _colourSunScatter;
+};
+
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_FRAME, 8, std140) uniform dvd_SceneData {
+    // x,y,z - direction, w - reserved
+    vec4 dvd_sunDirection;
+    // w - reserved
+    vec4 dvd_sunColour;
+    // x,y,z - direction, w - speed
+    vec4 dvd_windDetails;
+    // x - elapsed game time (ms), x - elapsed app time, z - material debug flag, w - unused
+    vec4 dvd_appData;
+    FogDetails dvd_fogDetails;
+    WaterBodyData dvd_waterEntities[GLOBAL_WATER_BODIES_COUNT];
+    vec4 _padding[6];
+};
+
+#define GetSunFWDDirection() normalize(dvd_sunDirection.xyz)
+#define dvd_GameTimeMS int(dvd_appData.x)
+#define dvd_GlobalTimeMS int(dvd_appData.y)
+#define dvd_MaterialDebugFlag int(dvd_appData.z)
+
+#endif //_SCENE_DATA_INPUT_CMN_

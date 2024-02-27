@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<GUILayout version="4" >
+    <Window type="GWEN/FrameWindow" name="MessageBox" >
+        <Property name="Area" value="{{0,0},{0,0},{0,551},{0,172}}" />
+        <Property name="Font" value="DejaVuSans-12-NoScale" />
+        <Property name="Text" value="Message Title" />
+        <Property name="AlwaysOnTop" value="true" />
+        <Property name="RollUpEnabled" value="false" />
+        <Property name="SizingEnabled" value="false" />
+        <Property name="DragDropTarget" value="false" />
+        <Property name="VerticalAlignment" value="Centre" />
+        <Property name="HorizontalAlignment" value="Centre" />
+        <Property name="AutoRenderingSurface" value="true" />
+        <AutoWindow namePath="__auto_titlebar__" >
+            <Property name="NonClient" value="true" />
+            <Property name="AlwaysOnTop" value="false" />
+        </AutoWindow>
+        <AutoWindow namePath="__auto_closebutton__" >
+            <Property name="NonClient" value="true" />
+            <Property name="AlwaysOnTop" value="true" />
+        </AutoWindow>
+        <Window type="GWEN/Button" name="ConfirmBtn" >
+            <Property name="Area" value="{{0,0},{0,113},{0,105},{0,140}}" />
+            <Property name="Font" value="DejaVuSans-10-NoScale" />
+            <Property name="Text" value="OK" />
+            <Property name="HorizontalAlignment" value="Centre" />
+        </Window>
+        <Window type="GWEN/StaticText" name="MessageText" >
+            <Property name="Area" value="{{0,0},{0,6},{1,0},{1,-31}}" />
+            <Property name="Font" value="DejaVuSans-10-NoScale" />
+            <Property name="MaxSize" value="{{1,0},{1,0}}" />
+            <Property name="FrameEnabled" value="false" />
+            <Property name="VertScrollbar" value="true" />
+            <Property name="DragDropTarget" value="false" />
+            <Property name="HorzFormatting" value="WordWrapCentreAligned" />
+            <Property name="BackgroundEnabled" value="false" />
+            <Property name="HorizontalAlignment" value="Centre" />
+            <AutoWindow namePath="__auto_hscrollbar__" >
+                <AutoWindow namePath="__auto_thumb__" >
+                    <Property name="MouseInputPropagationEnabled" value="true" />
+                </AutoWindow>
+            </AutoWindow>
+            <AutoWindow namePath="__auto_vscrollbar__" >
+                <Property name="VerticalScrollbar" value="true" />
+                <AutoWindow namePath="__auto_thumb__" >
+                    <Property name="MouseInputPropagationEnabled" value="true" />
+                </AutoWindow>
+            </AutoWindow>
+        </Window>
+    </Window>
+</GUILayout>

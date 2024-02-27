@@ -1,0 +1,4 @@
+newmtl box
+Ka 0.4000 0.4000 0.4000
+Ks 0.0300 0.0300 0.0300
+map_Kd ..\textures\textura_paralelipied.tga
