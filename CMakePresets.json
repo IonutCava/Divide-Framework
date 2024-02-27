@@ -47,11 +47,18 @@
             "cacheVariables": { "DIVIDE_STARTUP_TYPE": "IN_EDITOR" }
         },
         {
-            "name": "editor-x64-debug",
-            "displayName": "Editor-Debug",
-            "description": "Target Windows (64-bit) with the Visual Studio development environment. Debug build.",
+            "name": "editor-x64-release",
+            "displayName": "Editor-Release",
+            "description": "Target Windows (64-bit) with the Visual Studio development environment.",
             "inherits": "windows-base-in-editor",
-            "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+            "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+        },
+        {
+            "name": "game-x64-release",
+            "displayName": "Game-Release",
+            "description": "Target Windows (64-bit) with the Visual Studio development environment.",
+            "inherits": "windows-base",
+            "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
         },
         {
             "name": "editor-x64-profile",
@@ -61,20 +68,6 @@
             "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo" }
         },
         {
-            "name": "editor-x64-release",
-            "displayName": "Editor-Release",
-            "description": "Target Windows (64-bit) with the Visual Studio development environment.",
-            "inherits": "windows-base-in-editor",
-            "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
-        },
-        {
-            "name": "game-x64-debug",
-            "displayName": "Game-Debug",
-            "description": "Target Windows (64-bit) with the Visual Studio development environment. Debug build.",
-            "inherits": "windows-base",
-            "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
-        },
-        {
             "name": "game-x64-profile",
             "displayName": "Game-Profile",
             "description": "Target Windows (64-bit) with the Visual Studio development environment with debug symbols",
@@ -82,11 +75,18 @@
             "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo" }
         },
         {
-            "name": "game-x64-release",
-            "displayName": "Game-Release",
-            "description": "Target Windows (64-bit) with the Visual Studio development environment.",
+            "name": "editor-x64-debug",
+            "displayName": "Editor-Debug",
+            "description": "Target Windows (64-bit) with the Visual Studio development environment. Debug build.",
+            "inherits": "windows-base-in-editor",
+            "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+        },
+        {
+            "name": "game-x64-debug",
+            "displayName": "Game-Debug",
+            "description": "Target Windows (64-bit) with the Visual Studio development environment. Debug build.",
             "inherits": "windows-base",
-            "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+            "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
         }
     ]
 }

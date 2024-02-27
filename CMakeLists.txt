@@ -2,7 +2,9 @@
 
 cmake_minimum_required (VERSION 3.18)
 
-project ("Divide-Framework")
+# This is required to be before the first project() call of the CMake build.
+set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file.")
+
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
@@ -13,6 +15,15 @@ if (POLICY CMP0141)
   cmake_policy(SET CMP0141 NEW)
   set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
 endif()
+
+project ("Divide-Framework"
+         VERSION 0.1
+         LANGUAGES C CXX
+         HOMEPAGE_URL "http://divide-studio.co.uk"
+         DESCRIPTION "A test framework for various game development and rendering techniques"
+)
+
+set(PROJECT_LICENSE_FILE "${CMAKE_SOURCE_DIR}/../LICENSE" CACHE FILEPATH "Path to the license file for this project.")
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 set(CMAKE_CXX_STANDARD 20)
