@@ -636,9 +636,11 @@ void Kernel::warmup()
     Attorney::SceneManagerKernel::initPostLoadState(_sceneManager);
 }
 
-ErrorCode Kernel::initialize(const string& entryPoint) {
+ErrorCode Kernel::initialize(const string& entryPoint)
+{
     const SysInfo& systemInfo = const_sysInfo();
-    if (Config::REQUIRED_RAM_SIZE_IN_BYTES > systemInfo._availableRamInBytes) {
+    if (Config::REQUIRED_RAM_SIZE_IN_BYTES > systemInfo._availableRamInBytes)
+    {
         return ErrorCode::NOT_ENOUGH_RAM;
     }
 
@@ -687,9 +689,12 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
         }
     });
 
+    Console::printfn( Locale::Get( _ID( "START_RENDER_INTERFACE" ) ) );
+
     _platformContext.server().init(static_cast<U16>(443), "127.0.0.1", true);
 
-    if (!_platformContext.client().connect(entryData.serverAddress, 443)) {
+    if (!_platformContext.client().connect(entryData.serverAddress, 443))
+    {
         _platformContext.client().connect("127.0.0.1", 443);
     }
 
@@ -703,7 +708,8 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
     const RenderAPI renderingAPI = static_cast<RenderAPI>(config.runtime.targetRenderingAPI);
 
     ErrorCode initError = Attorney::ApplicationKernel::SetRenderingAPI(_platformContext.app(), renderingAPI);
-    if (initError != ErrorCode::NO_ERR) {
+    if (initError != ErrorCode::NO_ERR)
+    {
         return initError;
     }
 
@@ -713,7 +719,8 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
     initError = _platformContext.gfx().initRenderingAPI(_argc, _argv, renderingAPI);
 
     // If we could not initialize the graphics device, exit
-    if (initError != ErrorCode::NO_ERR) {
+    if (initError != ErrorCode::NO_ERR)
+    {
         return initError;
     }
     { // Start thread pools
@@ -818,9 +825,14 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
 
     const char* firstLoadedScene = entryData.startupScene.c_str();
 
-    if constexpr ( Config::Build::IS_EDITOR_BUILD && false )
+    if constexpr ( Config::Build::IS_EDITOR_BUILD )
     {
         firstLoadedScene = Config::DEFAULT_SCENE_NAME;
+        Console::printfn(Locale::Get(_ID("START_FRAMEWORK_EDITOR")));
+    }
+    else
+    {
+        Console::printfn( Locale::Get( _ID( "START_FRAMEWORK_EDITOR" ) ), firstLoadedScene );
     }
 
     if (!_sceneManager->switchScene(firstLoadedScene, true, false, false)) {

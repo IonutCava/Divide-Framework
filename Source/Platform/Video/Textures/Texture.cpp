@@ -402,7 +402,16 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        const U16 slices = Is3DTexture(_descriptor.texType()) ? imageData.dimensions( 0u, 0u ).depth : imageData.layerCount();
+        U16 slices = imageData.layerCount();
+        if ( IsCubeTexture(_descriptor.texType()) )
+        {
+            DIVIDE_ASSERT(slices >= 6u && slices % 6u == 0u);
+            slices = slices / 6u;
+        }
+        else if ( Is3DTexture( _descriptor.texType() ) )
+        {
+            slices = imageData.dimensions( 0u, 0u ).depth;
+        }
 
         prepareTextureData( imageData.dimensions( 0u, 0u ).width, imageData.dimensions( 0u, 0u ).height, slices, false );
 
@@ -461,7 +470,7 @@ namespace Divide
             if ( HasAlphaChannel( fileData.format() ) )
             {
                 bool hasTransulenctOrOpaquePixels = false;
-                // Allo about 4 pixels per partition to be ignored
+                // Allow about 4 pixels per partition to be ignored
                 constexpr U32 transparentPixelsSkipCount = 4u;
 
                 std::atomic_uint transparentPixelCount = 0u;

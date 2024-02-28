@@ -53,8 +53,8 @@ namespace ImGui {
 
 #define IMGUI_USE_STB_SPRINTF
 #define IMGUI_DEFINE_MATH_OPERATORS
+#define IMGUI_DISABLE_OBSOLETE_KEYIO
 #define IMGUI_DISABLE_OBSOLETE_FUNCTIONS
-
 #define AddBezierCurve AddBezierCubic
 
 #endif //_IMGUI_CUSTOM_CONFIG_H_

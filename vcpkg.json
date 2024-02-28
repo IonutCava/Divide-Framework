@@ -45,7 +45,7 @@
         "assimp",
         {
             "name": "imgui",
-            "features": [ "docking-experimental" ]
+            "features": [ "docking-experimental", "no-obsolete-keyio", "no-obsolete-functions"]
         },
         "imgui-node-editor",
         "imguizmo",

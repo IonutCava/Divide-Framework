@@ -1,0 +1,20 @@
+{
+  "version": "0.2.1",
+  "defaults": {},
+  "configurations": [
+    {
+        "type": "default",
+        "project": "CMakeLists.txt",
+        "projectTarget": "Divide-Framework_d.exe (bin\\Divide-Framework_d.exe)",
+        "name": "Divide-Framework_d.exe (bin\\Divide-Framework_d.exe)",
+        "currentDir": "${workspaceRoot}"
+    },
+    {
+        "type": "default",
+        "project": "CMakeLists.txt",
+        "projectTarget": "Divide-Framework.exe (bin\\Divide-Framework.exe)",
+        "name": "Divide-Framework.exe (bin\\Divide-Framework.exe)",
+        "currentDir": "${workspaceRoot}"
+    }
+  ]
+}

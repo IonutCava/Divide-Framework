@@ -12,7 +12,6 @@ add_compile_definitions(EASTL_CUSTOM_FLOAT_CONSTANTS_REQUIRED=1)
 add_compile_definitions(IMGUI_USER_CONFIG=\"${IMGUI_USER_CONFIG_PATH}\")
 
 find_package(imgui CONFIG REQUIRED)
-
 find_package(DevIL REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(fmt CONFIG REQUIRED)

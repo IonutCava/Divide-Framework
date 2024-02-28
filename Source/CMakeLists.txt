@@ -72,6 +72,25 @@ target_link_libraries( ${APP_EXE_DIVIDE} PRIVATE ${COMMON_LIBS}
                                          PRIVATE unofficial::imgui-node-editor::imgui-node-editor
 )
 
+if(TARGET unofficial::omniverse-physx-sdk::gpu-library)
+    if(UNIX)
+        # Add rpath setting to find .so libraries on unix based systems
+        set_target_properties( ${APP_EXE_DIVIDE} PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE INSTALL_RPATH "$ORIGIN" )
+    endif()
+
+    add_custom_command(TARGET ${APP_EXE_DIVIDE} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                                                                                      $<TARGET_FILE:unofficial::omniverse-physx-sdk::gpu-library>
+                                                                                      $<TARGET_FILE_DIR:${APP_EXE_DIVIDE}>
+    )
+    if(WIN32)
+        add_custom_command(TARGET ${APP_EXE_DIVIDE} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                                                                                        $<TARGET_FILE:unofficial::omniverse-physx-sdk::gpu-device-library>
+                                                                                        $<TARGET_FILE_DIR:${APP_EXE_DIVIDE}>)
+    endif()
+else()
+    message(WARNING "GPU acceleration library target not defined - GPU acceleration will NOT be available!")
+endif()
+
 # Unit test setup
 add_executable( ${APP_EXE_TEST_PLATFORM} ${TEST_PLATFORM_SOURCE} )
 add_executable( ${APP_EXE_TEST_ENGINE}   ${TEST_ENGINE_SOURCE}   )
@@ -91,8 +110,6 @@ foreach( APP_EXE ${APP_BUILD_EXES} )
     set_target_properties(${APP_EXE} PROPERTIES DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
     set_target_properties(${APP_EXE} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endforeach()
-
-set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${APP_EXE_DIVIDE})
 
 enable_testing()
 add_test(NAME PlatformTest COMMAND  $<TARGET_FILE:${APP_EXE_TEST_PLATFORM}> WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})

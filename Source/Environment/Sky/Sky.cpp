@@ -604,7 +604,8 @@ bool Sky::load()
         TextureDescriptor textureDescriptor( TextureType::TEXTURE_3D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
         textureDescriptor.baseFormat( GFXImageFormat::RGBA );
         textureDescriptor.textureOptions()._alphaChannelTransparency = false;
-        textureDescriptor.textureOptions()._useDDSCache = true;
+        STUBBED("ToDo: Investigate why weather textures don't work well with DDS conversion using NVTT + STB -Ionut");
+        textureDescriptor.textureOptions()._useDDSCache = false;
         textureDescriptor.mipMappingState(TextureDescriptor::MipMappingState::AUTO);
 
         ResourceDescriptor perlWorlDescriptor( "perlWorl" );
