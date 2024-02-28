@@ -2,91 +2,87 @@
     "version": 3,
     "configurePresets": [
         {
-            "name": "linux-debug",
-            "displayName": "Linux Debug",
-            "description": "Target the Windows Subsystem for Linux (WSL) or a remote Linux system.",
-            "generator": "Ninja",
+            "name": "ninja-multi-vcpkg",
+            "displayName": "Ninja Multi-Config",
+            "description": "Configure with vcpkg toolchain and generate Ninja project files for all configuration. Starts in Game.",
             "binaryDir": "${sourceDir}/Build/${presetName}",
-            "installDir": "${sourceDir}/Build/install/${presetName}",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
-            },
-            "condition": {
-                "type": "equals",
-                "lhs": "${hostSystemName}",
-                "rhs": "Linux"
-            },
-            "vendor": { "microsoft.com/VisualStudioRemoteSettings/CMake/1.0": { "sourceDir": "$env{HOME}/.vs/$ms{projectDirName}" } }
+            "generator": "Ninja Multi-Config",
+            "toolchainFile": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake"
         },
         {
-            "name": "windows-base",
-            "description": "Target Windows with the Visual Studio development environment.",
-            "hidden": true,
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/Build/${presetName}",
-            "installDir": "${sourceDir}/Build/Install/${presetName}",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "cl.exe",
-                "CMAKE_CXX_COMPILER": "cl.exe"
-            },
-            "architecture": {
-                "value": "x64",
-                "strategy": "external"
-            },
-            "condition": {
-                "type": "equals",
-                "lhs": "${hostSystemName}",
-                "rhs": "Windows"
-            }
-        },
-        {
-            "name": "windows-base-in-editor",
-            "description": "Target Windows with the Visual Studio development environment. Starts in editor.",
-            "hidden": true,
-            "inherits": "windows-base",
+            "name": "ninja-multi-vcpkg-editor",
+            "inherits": "ninja-multi-vcpkg",
+            "description": "Configure with vcpkg toolchain and generate Ninja project files for all configuration. Starts in Editor.",
             "cacheVariables": { "DIVIDE_STARTUP_TYPE": "IN_EDITOR" }
-        },
+        }
+    ],
+    "buildPresets":[
         {
             "name": "editor-x64-release",
             "displayName": "Editor-Release",
             "description": "Target Windows (64-bit) with the Visual Studio development environment.",
-            "inherits": "windows-base-in-editor",
-            "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+            "configurePreset": "ninja-multi-vcpkg-editor",
+            "configuration": "Release"
         },
         {
             "name": "game-x64-release",
             "displayName": "Game-Release",
             "description": "Target Windows (64-bit) with the Visual Studio development environment.",
-            "inherits": "windows-base",
-            "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+            "configurePreset": "ninja-multi-vcpkg",
+            "configuration": "Release"
         },
         {
             "name": "editor-x64-profile",
             "displayName": "Editor-Profile",
             "description": "Target Windows (64-bit) with the Visual Studio development environment with debug symbols",
-            "inherits": "windows-base-in-editor",
-            "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo" }
+            "configurePreset": "ninja-multi-vcpkg-editor",
+            "configuration": "RelWithDebInfo"
         },
         {
             "name": "game-x64-profile",
             "displayName": "Game-Profile",
             "description": "Target Windows (64-bit) with the Visual Studio development environment with debug symbols",
-            "inherits": "windows-base",
-            "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo" }
+            "configurePreset": "ninja-multi-vcpkg",
+            "configuration": "RelWithDebInfo"
         },
         {
             "name": "editor-x64-debug",
             "displayName": "Editor-Debug",
             "description": "Target Windows (64-bit) with the Visual Studio development environment. Debug build.",
-            "inherits": "windows-base-in-editor",
-            "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+            "configurePreset": "ninja-multi-vcpkg-editor",
+            "configuration": "Debug"
         },
         {
             "name": "game-x64-debug",
             "displayName": "Game-Debug",
             "description": "Target Windows (64-bit) with the Visual Studio development environment. Debug build.",
-            "inherits": "windows-base",
-            "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+            "configurePreset": "ninja-multi-vcpkg",
+            "configuration": "Debug"
+        }
+    ],
+    "testPresets":[
+         {
+            "name": "test-ninja-vcpkg",
+            "configurePreset": "ninja-multi-vcpkg",
+            "hidden": true
+        },
+        {
+            "name": "test-debug",
+            "description": "Test (Debug)",
+            "displayName": "Test (Debug)",
+            "configuration": "Debug",
+            "inherits": [
+                "test-ninja-vcpkg"
+            ]
+        },
+        {
+            "name": "test-release",
+            "description": "Test (Release)",
+            "displayName": "Test (Release)",
+            "configuration": "Release",
+            "inherits": [
+                "test-ninja-vcpkg"
+            ]
         }
     ]
 }

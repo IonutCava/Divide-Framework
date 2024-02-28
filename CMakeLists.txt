@@ -2,7 +2,7 @@
 cmake_minimum_required (VERSION 3.18)
 
 # This is required to be before the first project() call of the CMake build.
-set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file.")
+set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file.")
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 set(PRINT_ALL_CMAKE_VARIABLES TRUE)
 

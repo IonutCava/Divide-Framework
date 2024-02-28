@@ -29,15 +29,27 @@ jobs:
       with:
         vcpkgJsonGlob: 'vcpkg.json'
 
-      # Note: if the preset misses the "configuration", it is possible to explicitly select the
-      # configuration with the additional `--config` flag, e.g.:
-      #   buildPreset: 'ninja-vcpkg'
-      #   buildPresetAdditionalArgs: "[`--config`, `Release`]"
-      #   testPreset: 'ninja-vcpkg'
-      #   testPresetAdditionalArgs: "[`--config`, `Release`]"
-    - name: Run CMake+vcpkg+Ninja+CTest to build packages and generate/build/test the code.
+    - name: Build and test Editor in Debug mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'ninja-multi-vcpkg-editor'
+        buildPreset: 'editor-x64-debug'
+        testPreset: 'test-release'
+    - name: Build and test Editor in Release mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'ninja-multi-vcpkg-editor'
+        buildPreset: 'editor-x64-release'
+        testPreset: 'test-release'
+    - name: Build and test Game in Debug mode
       uses: lukka/run-cmake@v10
       with:
         configurePreset: 'ninja-multi-vcpkg'
-        buildPreset: 'ninja-vcpkg-release'
+        buildPreset: 'game-x64-debug'
+        testPreset: 'test-release'
+    - name: Build and test Game in Release mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'ninja-multi-vcpkg'
+        buildPreset: 'game-x64-release'
         testPreset: 'test-release'
