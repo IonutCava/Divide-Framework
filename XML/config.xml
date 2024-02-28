@@ -226,7 +226,7 @@
 		</shadowMapping>
 	</rendering>
 	<defaultAssetLocation>
-		<textures>textures</textures>
-		<shaders>shaders</shaders>
+		<textures>Textures</textures>
+		<shaders>Shaders</shaders>
 	</defaultAssetLocation>
 </config>

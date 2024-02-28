@@ -1,0 +1,4 @@
+
+use("defines.chai");
+
+global print = fun(x){ handle_output(to_string(x)); }
