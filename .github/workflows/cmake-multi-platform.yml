@@ -22,6 +22,9 @@ jobs:
       with:
         submodules: true
         
+    - name: Unshallow
+      run: git fetch --prune --unshallow
+
     - uses: lukka/get-cmake@latest
 
     - name: Restore from cache and setup vcpkg executable and data files.
