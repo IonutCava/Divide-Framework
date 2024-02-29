@@ -64,10 +64,8 @@ bool PreparePlatform()
 #include "Tests/StringTests.hpp"
 #include "Tests/ThreadingTests.hpp"
 
-int main(int argc, char **argv)
+int main( [[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 {
-    DIVIDE_UNUSED(argv);
-
     int state = 0;
     if (TEST_HAS_FAILED)
     {
@@ -82,11 +80,6 @@ int main(int argc, char **argv)
     if (!Divide::PlatformClose())
     {
         std::cout << "Platform close error!" << std::endl;
-    }
-
-    if (argc == 1)
-    {
-        system("pause");
     }
 
     ocl::TestClass::SetLogger(nullptr);

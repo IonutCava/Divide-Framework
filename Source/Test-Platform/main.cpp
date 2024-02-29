@@ -53,9 +53,8 @@ bool PreparePlatform()
 
 #include "Tests/FileManagement.hpp"
 
-int main(int argc, [[maybe_unused]] char **argv)
+int main( [[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 {
-
     std::cout << "Running Engine Unit Tests!" << std::endl;
 
     int state = 0;
@@ -72,11 +71,6 @@ int main(int argc, [[maybe_unused]] char **argv)
     if (!Divide::PlatformClose())
     {
         std::cout << "Platform close error!" << std::endl;
-    }
-
-    if (argc == 1)
-    {
-        system("pause");
     }
 
     ocl::TestClass::SetLogger( nullptr );
