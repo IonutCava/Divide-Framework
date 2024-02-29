@@ -22,9 +22,6 @@ jobs:
       with:
         submodules: true
         fetch-depth: 0
-        
-    - name: Unshallow
-      run: git fetch --prune --unshallow
 
     - uses: lukka/get-cmake@latest
 
