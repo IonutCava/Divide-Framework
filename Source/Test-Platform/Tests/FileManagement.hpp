@@ -1,9 +1,5 @@
-
-#include "Core/Headers/StringHelper.h"
-#include "Platform/File/Headers/FileManagement.h"
-
-bool PreparePlatform();
-#include <test/Test.hpp>
+namespace Divide
+{
 
 TEST(FileExistanceCheck)
 {
@@ -56,3 +52,5 @@ TEST(LexicallyNormalPathCompare)
     CHECK_EQUAL(Divide::ResourcePath(path1_in), Divide::ResourcePath(path_out));
     CHECK_EQUAL(Divide::ResourcePath(path2_in), Divide::ResourcePath(path_out));
 }
+
+} //namespace Divide

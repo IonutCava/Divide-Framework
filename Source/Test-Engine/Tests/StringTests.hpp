@@ -1,14 +1,9 @@
-#include "Platform/Headers/PlatformDefines.h"
-
 #include "Core/Headers/StringHelper.h"
 #include "Platform/File/Headers/FileManagement.h"
-
-#include <Test/Test.hpp>
 #include <boost/regex.hpp>
 
-bool PreparePlatform();
-
-namespace Divide {
+namespace Divide
+{
 
 //TEST_FAILURE_INDENT(4);
 // We are using third party string libraries (STL, Boost, EASTL) that went through proper testing

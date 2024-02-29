@@ -1,7 +1,6 @@
 set(IMGUI_USER_CONFIG_PATH "${CMAKE_SOURCE_DIR}/Source/Core/Headers/ImGUICustomConfig.h")
 
 
-add_compile_definitions(PCRE_STATIC)
 add_compile_definitions(IL_STATIC_LIB)
 add_compile_definitions(BOOST_EXCEPTION_DISABLE)
 add_compile_definitions(GLBINDING_STATIC_DEFINE)
@@ -16,7 +15,6 @@ find_package(DevIL REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(ZLIB REQUIRED)
-find_package(unofficial-pcre CONFIG REQUIRED)
 find_package(expat CONFIG REQUIRED)
 find_package(Stb REQUIRED)
 find_package(assimp CONFIG REQUIRED)

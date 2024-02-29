@@ -870,21 +870,23 @@ set( UTILITY_SOURCE Utility/Colours.cpp
                     Utility/XMLParser.cpp
 )
 
-set( TEST_ENGINE_SOURCE Test-Engine/main.cpp
-                        Test-Engine/Tests/ByteBufferTests.cpp
-                        Test-Engine/Tests/ConversionTests.cpp
-                        Test-Engine/Tests/DataTypeTests.cpp
-                        Test-Engine/Tests/HashTests.cpp
-                        Test-Engine/Tests/MathMatrixTests.cpp
-                        Test-Engine/Tests/MathVectorTests.cpp
-                        Test-Engine/Tests/ScriptingTests.cpp
-                        Test-Engine/Tests/StringTests.cpp
-                        Test-Engine/Tests/ThreadingTests.cpp
+set( TEST_ENGINE_SOURCE_HEADERS Test-Engine/Tests/ByteBufferTests.hpp
+                                Test-Engine/Tests/ConversionTests.hpp
+                                Test-Engine/Tests/DataTypeTests.hpp
+                                Test-Engine/Tests/HashTests.hpp
+                                Test-Engine/Tests/MathMatrixTests.hpp
+                                Test-Engine/Tests/MathVectorTests.hpp
+                                Test-Engine/Tests/ScriptingTests.hpp
+                                Test-Engine/Tests/StringTests.hpp
+                                Test-Engine/Tests/ThreadingTests.hpp
 )
 
-set( TEST_PLATFORM_SOURCE Test-Platform/main.cpp
-                          Test-Platform/Tests/FileManagement.cpp
+set_source_files_properties(${TEST_ENGINE_SOURCE_HEADERS} PROPERTIES HEADER_FILE_ONLY ON)
+
+set( TEST_PLATFORM_SOURCE_HEADERS Test-Platform/Tests/FileManagement.hpp
 )
+
+set_source_files_properties(${TEST_PLATFORM_SOURCE_HEADERS} PROPERTIES HEADER_FILE_ONLY ON)
 
 set( ENGINE_SOURCE_CODE_HEADERS ${AI_SOURCE_HEADERS}
                                 ${CORE_SOURCE_HEADERS}

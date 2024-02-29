@@ -1,11 +1,7 @@
-#include "Platform/Headers/PlatformDefines.h"
 #include "Scripting/Headers/Script.h"
 
-#include <Test/Test.hpp>
-
-bool PreparePlatform();
-
-namespace Divide {
+namespace Divide
+{
 
 TEST_MEMBER_FUNCTION(ScriptTestClass, eval, Simple)
 {

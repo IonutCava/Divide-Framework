@@ -1,10 +1,7 @@
-#include "Platform/Headers/PlatformDefines.h"
-#include "Platform/Headers/PlatformDefines.h"
 #include "Core/Resources/Headers/ResourceDescriptor.h"
 
-#include <Test/Test.hpp>
-
-namespace Divide {
+namespace Divide
+{
 
 TEST(HashCombineStr)
 {

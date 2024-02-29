@@ -66,7 +66,6 @@ set(COMMON_LIBS ${APP_LIB_DIVIDE}
                 $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>
                 $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>
                 $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main> $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
-                unofficial::pcre::pcre unofficial::pcre::pcre16 unofficial::pcre::pcre32 unofficial::pcre::pcrecpp
                 glslang::OSDependent glslang::glslang glslang::MachineIndependent glslang::GenericCodeGen glslang::glslang-default-resource-limits glslang::OGLCompiler glslang::SPVRemapper glslang::SPIRV glslang::HLSL
 )
 
@@ -100,8 +99,12 @@ endif()
 
 # Unit test setup
 if(BUILD_TESTING)
-    add_executable( ${APP_EXE_TEST_PLATFORM} ${TEST_PLATFORM_SOURCE} )
-    add_executable( ${APP_EXE_TEST_ENGINE}   ${TEST_ENGINE_SOURCE}   )
+    add_executable( ${APP_EXE_TEST_PLATFORM} Test-Platform/main.cpp
+                                             ${TEST_PLATFORM_SOURCE_HEADERS}
+    )
+    add_executable( ${APP_EXE_TEST_ENGINE}  Test-Engine/main.cpp
+                                            ${TEST_ENGINE_SOURCE_HEADERS}
+    )
 
     target_include_directories( ${APP_EXE_TEST_PLATFORM} PRIVATE ${unit_test_framework_SOURCE_DIR} )
     target_include_directories( ${APP_EXE_TEST_ENGINE}   PRIVATE ${unit_test_framework_SOURCE_DIR} )

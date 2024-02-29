@@ -1,8 +1,4 @@
-
-#include "Platform/Headers/PlatformDefines.h"
 #include "Core/Headers/ByteBuffer.h"
-
-#include <Test/Test.hpp>
 
 namespace Divide{
 

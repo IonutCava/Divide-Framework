@@ -1,8 +1,5 @@
-#include "Platform/Headers/PlatformDefines.h"
-
-#include <Test/Test.hpp>
-
-namespace Divide {
+namespace Divide
+{
 
 TEST(vecNSizeTest)
 {   

@@ -111,7 +111,7 @@ void Console::Output(const std::string_view text, const bool newline, const Entr
             ._type = type
         };
 
-        if ( s_flags & to_base( Flags::PRINT_IMMEDIATE ) )
+        if ( IsFlagSet( Flags::PRINT_IMMEDIATE ) )
         {
             PrintToFile(entry);
         }

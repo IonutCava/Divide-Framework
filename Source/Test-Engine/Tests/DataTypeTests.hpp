@@ -1,8 +1,5 @@
-#include "Platform/Headers/PlatformDefines.h"
-
-#include <Test/Test.hpp>
-
-namespace Divide {
+namespace Divide
+{
 
 TEST( FitsInRegisters )
 {
@@ -292,4 +289,5 @@ TEST(I24Conversions)
     CHECK_EQUAL(testD++, inputD - 1);
     CHECK_EQUAL(testD, I24(inputD));
 }
+
 } //namespace Divide

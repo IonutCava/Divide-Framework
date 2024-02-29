@@ -1,10 +1,7 @@
-#include "Platform/Headers/PlatformDefines.h"
-
-#include <Test/Test.hpp>
-
-namespace Divide {
 // make sure mat4 test include separe floating point and integer calls
 // floating point mat4 uses SSE for performance reasons and results might differ
+namespace Divide
+{
 
 TEST(matNSizeTest)
 {
