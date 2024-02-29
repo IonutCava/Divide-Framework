@@ -7,6 +7,10 @@ set(BUILD_TESTING TRUE)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 set(PRINT_ALL_CMAKE_VARIABLES TRUE)
 
+if (BUILD_TESTING)
+    enable_testing()
+endif()
+
 # Enable Hot Reload for MSVC compilers if supported.
 if (POLICY CMP0141)
   cmake_policy(SET CMP0141 NEW)
@@ -35,9 +39,6 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-if (BUILD_TESTING)
-    enable_testing()
-endif()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   add_compile_options(/W4)

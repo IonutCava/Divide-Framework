@@ -1,9 +1,8 @@
 #include "Platform/Headers/PlatformDefines.h"
 
-#include <iostream>
-
 //Using: https://gitlab.com/cppocl/unit_test_framework
 #include <test/Test.hpp>
+#include <iostream>
 
 
 struct ConsoleLogger
@@ -34,24 +33,26 @@ struct SetupTeardown
 
 bool PreparePlatform() 
 {
-    static Divide::ErrorCode err = Divide::ErrorCode::PLATFORM_INIT_ERROR;
-    if (err != Divide::ErrorCode::NO_ERR)
+    using namespace Divide;
+
+    static ErrorCode err = ErrorCode::PLATFORM_INIT_ERROR;
+    if (err != ErrorCode::NO_ERR)
     {
-        if (!Divide::PlatformClose()) 
+        if (!PlatformClose()) 
         {
             NOP();
         }
 
         const char* data[] = { "--disableCopyright" };
-        err = Divide::PlatformInit(1, const_cast<char**>(data));
+        err = PlatformInit(1, const_cast<char**>(data));
 
-        if (err != Divide::ErrorCode::NO_ERR)
+        if (err != ErrorCode::NO_ERR)
         {
             std::cout << "Platform error code: " << static_cast<int>(err) << std::endl;
         }
     }
 
-    return err == Divide::ErrorCode::NO_ERR;
+    return err == ErrorCode::NO_ERR;
 }
 
 #include "Tests/ByteBufferTests.hpp"
@@ -66,24 +67,25 @@ bool PreparePlatform()
 
 int main( [[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 {
-    int state = 0;
+    using namespace Divide;
+
+    SCOPE_EXIT
+    {
+        if ( !PlatformClose() )
+        {
+            std::cout << "Platform close error!" << std::endl;
+        }
+
+        ocl::TestClass::SetLogger( nullptr );
+    };
+
     if (TEST_HAS_FAILED)
     {
         std::cout << "Errors detected!" << std::endl;
-        state = -1;
-    }
-    else
-    {
-        std::cout << "No errors detected!" << std::endl;
+        return -1;
     }
 
-    if (!Divide::PlatformClose())
-    {
-        std::cout << "Platform close error!" << std::endl;
-    }
-
-    ocl::TestClass::SetLogger(nullptr);
-
-    return state;
+    std::cout << "No errors detected!" << std::endl;
+    return 0;
 }
 

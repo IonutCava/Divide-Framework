@@ -1,6 +1,5 @@
 #include "Platform/Headers/PlatformDefines.h"
-#include "Platform/File/Headers/FileManagement.h"
-#include "Core/Headers/StringHelper.h"
+
 //Using: https://gitlab.com/cppocl/unit_test_framework
 #include <test/Test.hpp>
 #include <iostream>
@@ -18,7 +17,7 @@ struct SetupTeardown
 {
     SetupTeardown()
     {
-        std::cout << "Running Engine Unit Tests!" << std::endl;
+        std::cout << "Running Platform Unit Tests!" << std::endl;
         Divide::Console::ToggleFlag( Divide::Console::Flags::PRINT_IMMEDIATE, true );
         TEST_OVERRIDE_LOG( ConsoleLogger, new ConsoleLogger() );
     }
@@ -32,49 +31,50 @@ struct SetupTeardown
 
 bool PreparePlatform()
 {
-    static Divide::ErrorCode err = Divide::ErrorCode::PLATFORM_INIT_ERROR;
-    if (err != Divide::ErrorCode::NO_ERR)
+    using namespace Divide;
+
+    static ErrorCode err = ErrorCode::PLATFORM_INIT_ERROR;
+    if (err != ErrorCode::NO_ERR)
     {
-        if (!Divide::PlatformClose())
+        if (!PlatformClose())
         {
             NOP();
         }
 
         const char* data[] = { "--disableCopyright" };
-        err = Divide::PlatformInit(1, const_cast<char**>(data));
-        if (err != Divide::ErrorCode::NO_ERR)
+        err = PlatformInit(1, const_cast<char**>(data));
+        if (err != ErrorCode::NO_ERR)
         {
             std::cout << "Platform error code: " << static_cast<int>(err) << std::endl;
         }
     }
 
-    return err == Divide::ErrorCode::NO_ERR;
+    return err == ErrorCode::NO_ERR;
 }
 
 #include "Tests/FileManagement.hpp"
 
 int main( [[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 {
-    std::cout << "Running Engine Unit Tests!" << std::endl;
+    using namespace Divide;
 
-    int state = 0;
+    SCOPE_EXIT
+    {
+        if ( !PlatformClose() )
+        {
+            std::cout << "Platform close error!" << std::endl;
+        }
+
+        ocl::TestClass::SetLogger( nullptr );
+    };
+
     if (TEST_HAS_FAILED)
     {
         std::cout << "Errors detected!" << std::endl;
-        state = -1;
+        return -1;
     }
-    else
-    {
-        std::cout << "No errors detected!" << std::endl;
-    }
-
-    if (!Divide::PlatformClose())
-    {
-        std::cout << "Platform close error!" << std::endl;
-    }
-
-    ocl::TestClass::SetLogger( nullptr );
-
-    return state;
+    
+    std::cout << "No errors detected!" << std::endl;
+    return 0;
 }
 

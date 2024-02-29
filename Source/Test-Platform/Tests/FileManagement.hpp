@@ -1,3 +1,6 @@
+#include "Platform/File/Headers/FileManagement.h"
+#include "Core/Headers/StringHelper.h"
+
 namespace Divide
 {
 
