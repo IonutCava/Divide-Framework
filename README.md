@@ -1,3 +1,5 @@
+[![Build + UTs](https://github.com/IonutCava/Divide-Framework/actions/workflows/cmake-multi-platform.yml/badge.svg)](https://github.com/IonutCava/Divide-Framework/actions/workflows/cmake-multi-platform.yml)
+
 # Divide-Framework
 
 Website: [divide-studio.com](http://www.divide-studio.com)
