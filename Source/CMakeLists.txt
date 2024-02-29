@@ -96,15 +96,7 @@ else()
     message(WARNING "GPU acceleration library target not defined - GPU acceleration will NOT be available!")
 endif()
 
-foreach( APP_TARGET ${APP_BUILD_TARGETS} )
-    target_precompile_headers(${APP_TARGET} PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:stdafx.h>")
-endforeach()
 
-foreach( APP_EXE ${APP_BUILD_EXES} )
-    target_link_directories( ${APP_EXE} PRIVATE ${cegui_BINARY_DIR}/lib )
-    set_target_properties(${APP_EXE} PROPERTIES DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
-    set_target_properties(${APP_EXE} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-endforeach()
 
 # Unit test setup
 if(BUILD_TESTING)
@@ -120,3 +112,13 @@ if(BUILD_TESTING)
     add_test(NAME PlatformTest COMMAND  $<TARGET_FILE:${APP_EXE_TEST_PLATFORM}> WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     add_test(NAME EngineTest   COMMAND  $<TARGET_FILE:${APP_EXE_TEST_ENGINE}>   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif()
+
+foreach( APP_TARGET ${APP_BUILD_TARGETS} )
+    target_precompile_headers(${APP_TARGET} PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:stdafx.h>")
+endforeach()
+
+foreach( APP_EXE ${APP_BUILD_EXES} )
+    target_link_directories( ${APP_EXE} PRIVATE ${cegui_BINARY_DIR}/lib )
+    set_target_properties(${APP_EXE} PROPERTIES DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
+    set_target_properties(${APP_EXE} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+endforeach()

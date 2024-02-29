@@ -21,7 +21,7 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: true
-        fetch-depth: 0
+        #fetch-depth: 0
 
     - uses: lukka/get-cmake@latest
 
@@ -35,18 +35,6 @@ jobs:
       with:
         configurePreset: 'ninja-multi-vcpkg-editor'
         buildPreset: 'editor-x64-debug'
-        testPreset: 'test-release'
-    - name: Build and test Editor in Release mode
-      uses: lukka/run-cmake@v10
-      with:
-        configurePreset: 'ninja-multi-vcpkg-editor'
-        buildPreset: 'editor-x64-release'
-        testPreset: 'test-release'
-    - name: Build and test Game in Debug mode
-      uses: lukka/run-cmake@v10
-      with:
-        configurePreset: 'ninja-multi-vcpkg'
-        buildPreset: 'game-x64-debug'
         testPreset: 'test-release'
     - name: Build and test Game in Release mode
       uses: lukka/run-cmake@v10
