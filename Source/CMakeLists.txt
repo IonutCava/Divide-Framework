@@ -1,14 +1,19 @@
 ﻿set(APP_THIRD_PARTY_LIB Divide-ThirdParty-Lib)
 set(APP_LIB_DIVIDE Divide-Framework-Lib)
 set(APP_EXE_DIVIDE Divide-Framework)
-set(APP_EXE_TEST_PLATFORM Divide-Test-Platform)
-set(APP_EXE_TEST_ENGINE Divide-Test-Engine)
 
-set(APP_BUILD_EXES
-    ${APP_EXE_DIVIDE}
-    ${APP_EXE_TEST_PLATFORM}
-    ${APP_EXE_TEST_ENGINE}
-)
+if(BUILD_TESTING)
+    set(APP_EXE_TEST_PLATFORM Divide-Test-Platform)
+    set(APP_EXE_TEST_ENGINE Divide-Test-Engine)
+
+    set(APP_BUILD_EXES
+        ${APP_EXE_DIVIDE}
+        ${APP_EXE_TEST_PLATFORM}
+        ${APP_EXE_TEST_ENGINE}
+    )
+else()
+    set(APP_BUILD_EXES ${APP_EXE_DIVIDE})
+endif()
 
 set(APP_BUILD_TARGETS
     ${APP_THIRD_PARTY_LIB}
@@ -91,16 +96,6 @@ else()
     message(WARNING "GPU acceleration library target not defined - GPU acceleration will NOT be available!")
 endif()
 
-# Unit test setup
-add_executable( ${APP_EXE_TEST_PLATFORM} ${TEST_PLATFORM_SOURCE} )
-add_executable( ${APP_EXE_TEST_ENGINE}   ${TEST_ENGINE_SOURCE}   )
-
-target_include_directories( ${APP_EXE_TEST_PLATFORM} PRIVATE ${unit_test_framework_SOURCE_DIR} )
-target_include_directories( ${APP_EXE_TEST_ENGINE}   PRIVATE ${unit_test_framework_SOURCE_DIR} )
-
-target_link_libraries( ${APP_EXE_TEST_PLATFORM} PRIVATE ${COMMON_LIBS} )
-target_link_libraries( ${APP_EXE_TEST_ENGINE}   PRIVATE ${COMMON_LIBS} )
-
 foreach( APP_TARGET ${APP_BUILD_TARGETS} )
     target_precompile_headers(${APP_TARGET} PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:stdafx.h>")
 endforeach()
@@ -111,6 +106,17 @@ foreach( APP_EXE ${APP_BUILD_EXES} )
     set_target_properties(${APP_EXE} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endforeach()
 
-enable_testing()
-add_test(NAME PlatformTest COMMAND  $<TARGET_FILE:${APP_EXE_TEST_PLATFORM}> WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-add_test(NAME EngineTest   COMMAND  $<TARGET_FILE:${APP_EXE_TEST_ENGINE}>   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+# Unit test setup
+if(BUILD_TESTING)
+    add_executable( ${APP_EXE_TEST_PLATFORM} ${TEST_PLATFORM_SOURCE} )
+    add_executable( ${APP_EXE_TEST_ENGINE}   ${TEST_ENGINE_SOURCE}   )
+
+    target_include_directories( ${APP_EXE_TEST_PLATFORM} PRIVATE ${unit_test_framework_SOURCE_DIR} )
+    target_include_directories( ${APP_EXE_TEST_ENGINE}   PRIVATE ${unit_test_framework_SOURCE_DIR} )
+
+    target_link_libraries( ${APP_EXE_TEST_PLATFORM} PRIVATE ${COMMON_LIBS} )
+    target_link_libraries( ${APP_EXE_TEST_ENGINE}   PRIVATE ${COMMON_LIBS} )
+
+    add_test(NAME PlatformTest COMMAND  $<TARGET_FILE:${APP_EXE_TEST_PLATFORM}> WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    add_test(NAME EngineTest   COMMAND  $<TARGET_FILE:${APP_EXE_TEST_ENGINE}>   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+endif()

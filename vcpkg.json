@@ -54,11 +54,5 @@
         "vulkan-memory-allocator-hpp",
         "glslang"
     ],
-    "builtin-baseline": "3dd44b931481d7a8e9ba412621fa810232b66289",
-    "overrides": [
-        {
-            "name": "glm",
-            "version": "1.0.0"
-        }
-    ]
+    "builtin-baseline": "3dd44b931481d7a8e9ba412621fa810232b66289"
 }

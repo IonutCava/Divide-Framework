@@ -3,6 +3,7 @@ cmake_minimum_required (VERSION 3.18)
 
 # This is required to be before the first project() call of the CMake build.
 set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file.")
+set(BUILD_TESTING TRUE)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 set(PRINT_ALL_CMAKE_VARIABLES TRUE)
 
@@ -33,6 +34,10 @@ set(CMAKE_DEBUG_POSTFIX _d)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+if (BUILD_TESTING)
+    enable_testing()
+endif()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   add_compile_options(/W4)
