@@ -1,4 +1,4 @@
-[![Build + UTs](https://github.com/IonutCava/Divide-Framework/actions/workflows/cmake-multi-platform.yml/badge.svg)](https://github.com/IonutCava/Divide-Framework/actions/workflows/cmake-multi-platform.yml)
+[![Editor + UTs (Debug)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Editor-Debug.yml/badge.svg)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Editor-Debug.yml) [![Game + UTs (Release)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Game-Release.yml/badge.svg)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Game-Release.yml)
 
 # Divide-Framework
 
