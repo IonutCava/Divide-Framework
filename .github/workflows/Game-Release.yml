@@ -35,4 +35,4 @@ jobs:
       with:
         configurePreset: 'ninja-multi-vcpkg'
         buildPreset: 'game-x64-release'
-        testPreset: 'test-release'
+        testPreset: 'test-release-game'

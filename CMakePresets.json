@@ -60,28 +60,51 @@
             "configuration": "Debug"
         }
     ],
-    "testPresets":[
-         {
-            "name": "test-ninja-vcpkg",
+    "testPresets": [
+        {
+            "name": "test-ninja-vcpkg-editor",
+            "configurePreset": "ninja-multi-vcpkg-editor",
+            "hidden": true
+        },
+        {
+            "name": "test-ninja-vcpkg-game",
             "configurePreset": "ninja-multi-vcpkg",
             "hidden": true
         },
         {
-            "name": "test-debug",
-            "description": "Test (Debug)",
-            "displayName": "Test (Debug)",
+            "name": "test-debug-game",
+            "description": "Test (Game Debug)",
+            "displayName": "Test (Game Debug)",
             "configuration": "Debug",
             "inherits": [
-                "test-ninja-vcpkg"
+                "test-ninja-vcpkg-game"
             ]
         },
         {
-            "name": "test-release",
-            "description": "Test (Release)",
-            "displayName": "Test (Release)",
+            "name": "test-debug-editor",
+            "description": "Test (Editor Debug)",
+            "displayName": "Test (Editor Debug)",
+            "configuration": "Debug",
+            "inherits": [
+                "test-ninja-vcpkg-editor"
+            ]
+        },
+        {
+            "name": "test-release-game",
+            "description": "Test (Game Release)",
+            "displayName": "Test (Game Release)",
             "configuration": "Release",
             "inherits": [
-                "test-ninja-vcpkg"
+                "test-ninja-vcpkg-game"
+            ]
+        },
+        {
+            "name": "test-release-editor",
+            "description": "Test (Editor Release)",
+            "displayName": "Test (Editor Release)",
+            "configuration": "Release",
+            "inherits": [
+                "test-ninja-vcpkg-editor"
             ]
         }
     ]

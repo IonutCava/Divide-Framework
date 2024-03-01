@@ -35,4 +35,4 @@ jobs:
       with:
         configurePreset: 'ninja-multi-vcpkg-editor'
         buildPreset: 'editor-x64-debug'
-        testPreset: 'test-debug'
+        testPreset: 'test-debug-editor'
