@@ -64,6 +64,7 @@ namespace Divide {
 
         struct ImportOptions {
             bool _useDDSCache = true;
+            bool _waitForDDSConversion = false; //<If false, we will load the src image and convert to DDS in the background. If true, we will wait for the conversion first and load that instead
             bool _skipMipMaps = false;
             bool _isNormalMap = false;
             bool _fastCompression = false;

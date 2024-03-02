@@ -168,8 +168,8 @@ struct ImageData final : NonCopyable {
 
     [[nodiscard]] bool loadFromMemory(const Byte* data, size_t size, U16 width, U16 height, U16 depth, U8 numComponents);
     /// creates this image instance from the specified data
-    [[nodiscard]] bool loadFromFile(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, const ResourcePath& name);
-    [[nodiscard]] bool loadFromFile(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, const ResourcePath& name, ImportOptions options);
+    [[nodiscard]] bool loadFromFile(PlatformContext& context, bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, const ResourcePath& name);
+    [[nodiscard]] bool loadFromFile( PlatformContext& context, bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, const ResourcePath& name, ImportOptions options);
 
     /// If true, then the source image's alpha channel is used for data and not opacity (so skip mip-filtering for example)
     PROPERTY_RW(bool, ignoreAlphaChannelTransparency, false);

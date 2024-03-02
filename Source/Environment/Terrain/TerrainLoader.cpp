@@ -747,10 +747,12 @@ VegetationDetails& TerrainLoader::initializeVegetationDetails(const Terrain_ptr&
     ImageTools::ImportOptions options{};
     options._alphaChannelTransparency = false;
     options._isNormalMap = false;
-    if (!vegDetails.grassMap->loadFromFile(false, 0, 0, terrainLocation, grassMap, options)) {
+    if (!vegDetails.grassMap->loadFromFile(context, false, 0, 0, terrainLocation, grassMap, options))
+    {
         DIVIDE_UNEXPECTED_CALL();
     }
-    if (!vegDetails.treeMap->loadFromFile(false, 0, 0, terrainLocation, treeMap, options)) {
+    if (!vegDetails.treeMap->loadFromFile( context, false, 0, 0, terrainLocation, treeMap, options))
+    {
         DIVIDE_UNEXPECTED_CALL();
     }
 

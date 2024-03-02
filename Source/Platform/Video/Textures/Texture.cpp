@@ -303,7 +303,7 @@ namespace Divide
         const bool srgb = _descriptor.packing() == GFXImagePacking::NORMALIZED_SRGB;
 
 
-        if ( !fileExists( path + name ) || !fileData.loadFromFile( srgb, _width, _height, path, name, _descriptor.textureOptions() ) )
+        if ( !fileExists( path + name ) || !fileData.loadFromFile( _context.context(), srgb, _width, _height, path, name, _descriptor.textureOptions() ) )
         {
             if ( fileData.layerCount() > 0 )
             {
@@ -315,7 +315,7 @@ namespace Divide
             // missing_texture.jpg must be something that really stands out
             _descriptor.dataType(GFXDataFormat::UNSIGNED_BYTE);
             _descriptor.baseFormat(GFXImageFormat::RGBA);
-            if ( !fileData.loadFromFile( srgb, _width, _height, Paths::g_assetsLocation + Paths::g_texturesLocation, s_missingTextureFileName ) )
+            if ( !fileData.loadFromFile( _context.context(), srgb, _width, _height, Paths::g_assetsLocation + Paths::g_texturesLocation, s_missingTextureFileName ) )
             {
                 DIVIDE_UNEXPECTED_CALL();
             }

@@ -7,6 +7,8 @@
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 
+#include "Core/Headers/PlatformContext.h"
+
 #define STB_IMAGE_IMPLEMENTATION
 #pragma warning(push)
 #pragma warning(disable:4505) //unreferenced local function has been removed
@@ -230,10 +232,10 @@ bool ImageData::loadFromMemory(const Byte* data, const size_t size, const U16 wi
     return layer.allocateMip(data, size, width, height, depth, numComponents);
 }
 
-bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const ResourcePath& name) {
+bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const ResourcePath& name) {
     ImportOptions options{};
     options._useDDSCache = false;
-    return loadFromFile(srgb, refWidth, refHeight, path, name, options);
+    return loadFromFile(context, srgb, refWidth, refHeight, path, name, options);
 }
 
 namespace
@@ -416,7 +418,7 @@ namespace
     }
 }
 
-bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const ResourcePath& name, const ImportOptions options) {
+bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const ResourcePath& name, const ImportOptions options) {
     _path = path;
     _name = name;
     _name.convertToLower();
@@ -473,115 +475,128 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
 
         if (!fileExists(cacheFilePath))
         {
-            LockGuard<Mutex> lock(s_imageLoadingMutex);
-
-            nvtt::Context context;
-            context.enableCudaAcceleration(true);
-
-            nvtt::Surface image;
-            bool hasAlpha = false;
-            if (image.load(fullPath.c_str(), &hasAlpha))
+            Start( *CreateTask( [fullPath, cacheFilePath, options]( const Task& )
             {
-                constexpr bool isGreyScale = false;
-                const nvtt::Format outputFormat = nvttHelpers::getNVTTFormat(options._outputFormat, options._isNormalMap, hasAlpha, isGreyScale);
+                //LockGuard<Mutex> lock(s_imageLoadingMutex);
 
-                // Setup compression options.
-                nvtt::CompressionOptions compressionOptions;
-                compressionOptions.setFormat(outputFormat);
-                compressionOptions.setQuality(options._fastCompression ? nvtt::Quality::Quality_Fastest : nvtt::Quality::Quality_Normal);
-                if (outputFormat == nvtt::Format_BC6)
-                {
-                    compressionOptions.setPixelType(nvtt::PixelType_UnsignedFloat);
-                }
-                else if (outputFormat == nvtt::Format_BC2)
-                {
-                    // Dither alpha when using BC2.
-                    compressionOptions.setQuantization(/*color dithering*/false, /*alpha dithering*/true, /*binary alpha*/false);
-                }
-                else if (outputFormat == nvtt::Format_BC1a)
-                {
-                    // Binary alpha when using BC1a.
-                    compressionOptions.setQuantization(/*color dithering*/false, /*alpha dithering*/true, /*binary alpha*/true, 127);
-                }
+                nvtt::Context context;
+                context.enableCudaAcceleration(true);
 
-                if (nvttHelpers::isBC1n(outputFormat, options._isNormalMap))
+                nvtt::Surface image;
+                bool hasAlpha = false;
+                if (image.load(fullPath.c_str(), &hasAlpha))
                 {
-                    compressionOptions.setColorWeights(1, 1, 0);
-                }
+                    constexpr bool isGreyScale = false;
+                    const nvtt::Format outputFormat = nvttHelpers::getNVTTFormat(options._outputFormat, options._isNormalMap, hasAlpha, isGreyScale);
 
-                nvtt::OutputOptions outputOptions;
-                outputOptions.setFileName(cacheFilePath.c_str());
-                nvttHelpers::ErrorHandler errorHandler;
-                outputOptions.setErrorHandler(&errorHandler);
-                if (outputFormat == nvtt::Format_BC6 || outputFormat == nvtt::Format_BC7)
-                {
-                    outputOptions.setContainer(nvtt::Container_DDS10);
-                }
-                else
-                {
-                    outputOptions.setContainer(nvtt::Container_DDS);
-                }
-                if (options._outputSRGB)
-                {
-                    outputOptions.setSrgbFlag(true);
-                }
-
-                image.setNormalMap(options._isNormalMap);
-
-                if (!context.outputHeader(image, image.countMipmaps(), compressionOptions, outputOptions))
-                {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
-
-                F32 coverage = 0.f;
-                if (options._isNormalMap)
-                {
-                    image.normalizeNormalMap();
-                }
-                else
-                {
-                    if (hasAlpha && options._alphaChannelTransparency)
+                    // Setup compression options.
+                    nvtt::CompressionOptions compressionOptions;
+                    compressionOptions.setFormat(outputFormat);
+                    compressionOptions.setQuality(options._fastCompression ? nvtt::Quality::Quality_Fastest : nvtt::Quality::Quality_Normal);
+                    if (outputFormat == nvtt::Format_BC6)
                     {
-                        coverage = image.alphaTestCoverage(Config::ALPHA_DISCARD_THRESHOLD);
-                        image.setAlphaMode(nvtt::AlphaMode::AlphaMode_Transparency);
+                        compressionOptions.setPixelType(nvtt::PixelType_UnsignedFloat);
+                    }
+                    else if (outputFormat == nvtt::Format_BC2)
+                    {
+                        // Dither alpha when using BC2.
+                        compressionOptions.setQuantization(/*color dithering*/false, /*alpha dithering*/true, /*binary alpha*/false);
+                    }
+                    else if (outputFormat == nvtt::Format_BC1a)
+                    {
+                        // Binary alpha when using BC1a.
+                        compressionOptions.setQuantization(/*color dithering*/false, /*alpha dithering*/true, /*binary alpha*/true, 127);
+                    }
+
+                    if (nvttHelpers::isBC1n(outputFormat, options._isNormalMap))
+                    {
+                        compressionOptions.setColorWeights(1, 1, 0);
+                    }
+
+                    nvtt::OutputOptions outputOptions;
+                    outputOptions.setFileName(cacheFilePath.c_str());
+                    nvttHelpers::ErrorHandler errorHandler;
+                    outputOptions.setErrorHandler(&errorHandler);
+                    if (outputFormat == nvtt::Format_BC6 || outputFormat == nvtt::Format_BC7)
+                    {
+                        outputOptions.setContainer(nvtt::Container_DDS10);
                     }
                     else
                     {
-                        image.setAlphaMode(nvtt::AlphaMode::AlphaMode_None);
+                        outputOptions.setContainer(nvtt::Container_DDS);
                     }
-                }
-                if (!context.compress(image, 0, 0, compressionOptions, outputOptions))
-                {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
-
-                // Build and output mipmaps.
-                if (!options._skipMipMaps)
-                {
-                    I32 m = 1;
-                    while (image.buildNextMipmap(nvttHelpers::getNVTTMipFilter(options._mipFilter)))
+                    if (options._outputSRGB)
                     {
-                        if (options._isNormalMap)
+                        outputOptions.setSrgbFlag(true);
+                    }
+
+                    image.setNormalMap(options._isNormalMap);
+
+                    if (!context.outputHeader(image, image.countMipmaps(), compressionOptions, outputOptions))
+                    {
+                        DIVIDE_UNEXPECTED_CALL();
+                    }
+
+                    F32 coverage = 0.f;
+                    if (options._isNormalMap)
+                    {
+                        image.normalizeNormalMap();
+                    }
+                    else
+                    {
+                        if (hasAlpha && options._alphaChannelTransparency)
                         {
-                            image.normalizeNormalMap();
+                            coverage = image.alphaTestCoverage(Config::ALPHA_DISCARD_THRESHOLD);
+                            image.setAlphaMode(nvtt::AlphaMode::AlphaMode_Transparency);
                         }
                         else
                         {
-                            if (hasAlpha && options._alphaChannelTransparency)
-                            {
-                                image.scaleAlphaToCoverage(coverage, Config::ALPHA_DISCARD_THRESHOLD);
-                            }
+                            image.setAlphaMode(nvtt::AlphaMode::AlphaMode_None);
                         }
-
-                        context.compress(image, 0, m, compressionOptions, outputOptions);
-                        m++;
                     }
-                }
+                    if (!context.compress(image, 0, 0, compressionOptions, outputOptions))
+                    {
+                        DIVIDE_UNEXPECTED_CALL();
+                    }
 
+                    // Build and output mipmaps.
+                    if (!options._skipMipMaps)
+                    {
+                        I32 m = 1;
+                        while (image.buildNextMipmap(nvttHelpers::getNVTTMipFilter(options._mipFilter)))
+                        {
+                            if (options._isNormalMap)
+                            {
+                                image.normalizeNormalMap();
+                            }
+                            else
+                            {
+                                if (hasAlpha && options._alphaChannelTransparency)
+                                {
+                                    image.scaleAlphaToCoverage(coverage, Config::ALPHA_DISCARD_THRESHOLD);
+                                }
+                            }
+
+                            context.compress(image, 0, m, compressionOptions, outputOptions);
+                            m++;
+                        }
+                    }
+
+                }
+            }),
+           context.taskPool( TaskPoolType::HIGH_PRIORITY ), options._waitForDDSConversion  ? TaskPriority::REALTIME : TaskPriority::DONT_CARE  );
+        }
+        else
+        {
+            if (loadDDS_NVTT( srgb, refWidth, refHeight, cachePath, cacheName ))
+            {
+                return true;
+            }
+            else
+            {
+                Console::errorfn(Locale::Get(_ID("ERROR_IMAGE_TOOLS_DDS_LOAD_ERROR")), fullPath.c_str());
             }
         }
-
-        return loadDDS_NVTT(srgb, refWidth, refHeight, cachePath, cacheName);
     }
 
     // If TRUE: flip the image vertically, so the first pixel in the output array is the bottom left
