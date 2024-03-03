@@ -10,6 +10,7 @@ add_compile_definitions(GLM_ENABLE_EXPERIMENTAL)
 add_compile_definitions(EASTL_CUSTOM_FLOAT_CONSTANTS_REQUIRED=1)
 add_compile_definitions(IMGUI_USER_CONFIG=\"${IMGUI_USER_CONFIG_PATH}\")
 
+find_package(Catch2 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(DevIL REQUIRED)
 find_package(PkgConfig REQUIRED)
@@ -112,19 +113,19 @@ set(EXTERNAL_LIBS
 )
 
 set(EXTERNAL_INCLUDES
-    ${cegui_SOURCE_DIR}/cegui/include
-    ${cegui_BINARY_DIR}/cegui/include
-    ${vk_bootstrap_SOURCE_DIR}/src
-    ${skarupke_SOURCE_DIR}
-    ${Stb_INCLUDE_DIR}
-    ${IL_INCLUDE_DIR}
-    ${VULKAN_INCLUDE_DIRS}
-    ${CHAISCRIPT_INCLUDE_DIRS}
-    ${SIMPLEINI_INCLUDE_DIRS}
-    ${PYTHON_INCLUDE_DIRS}
-    ${Boost_INCLUDE_DIRS} 
-    ${spirv-reflect_SOURCE_DIR}
-    ${OMNIVERSE-PHYSX-SDK_INCLUDE_DIRS}
+    "${cegui_SOURCE_DIR}/cegui/include"
+    "${cegui_BINARY_DIR}/cegui/include"
+    "${vk_bootstrap_SOURCE_DIR}/src"
+    "${skarupke_SOURCE_DIR}"
+    "${Stb_INCLUDE_DIR}"
+    "${IL_INCLUDE_DIR}"
+    "${VULKAN_INCLUDE_DIRS}"
+    "${CHAISCRIPT_INCLUDE_DIRS}"
+    "${SIMPLEINI_INCLUDE_DIRS}"
+    "${PYTHON_INCLUDE_DIRS}"
+    "${Boost_INCLUDE_DIRS} "
+    "${spirv-reflect_SOURCE_DIR}"
+    "${OMNIVERSE-PHYSX-SDK_INCLUDE_DIRS}"
     "ThirdParty/EntityComponentSystem/include/ECS"
     "ThirdParty/EntityComponentSystem/include"
 )

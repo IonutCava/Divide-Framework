@@ -1,9 +1,11 @@
+#include "UnitTests/unitTestCommon.h"
+
 #include "Core/Resources/Headers/ResourceDescriptor.h"
 
 namespace Divide
 {
 
-TEST(HashCombineStr)
+TEST_CASE( "String Hash Combine Tests", "[hash_test]" )
 {
     const string inputA = "bla1";
     const string inputB = "bla1";
@@ -16,7 +18,7 @@ TEST(HashCombineStr)
 }
 
 
-TEST(HashCombineResourceDescriptors)
+TEST_CASE( "ResourceDescriptor Hash Combine Tests", "[hash_test]" )
 {
     ResourceDescriptor inputA("testDescriptor");
     inputA.flag(true);

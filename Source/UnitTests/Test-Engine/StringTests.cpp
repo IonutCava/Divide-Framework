@@ -1,3 +1,5 @@
+#include "UnitTests/unitTestCommon.h"
+
 #include "Core/Headers/StringHelper.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include <boost/regex.hpp>
@@ -23,9 +25,10 @@ vector<string> getFiles(const string& input, const boost::regex& pattern) {
     return include_file;
 }
 
-TEST(RegexSuccessTest)
+TEST_CASE("Regex Test", "[string_tests]")
 {
-    if (PreparePlatform()) {
+    SECTION("Success")
+    {
         {
             const string& inputInclude1("#include \"blaBla.h\"");
             const string& inputInclude2("#include <blaBla.h>");
@@ -90,40 +93,40 @@ TEST(RegexSuccessTest)
             }
         }
     }
+
+    SECTION( "Fail" )
+    {
+        {
+            const string& inputInclude1("#include\"blaBla.h\"");
+            const string& inputInclude2("#include<blaBla.h>");
+            const string& inputInclude3("# include \"blaBla.h");
+            const string& inputInclude4("   include <  blaBla.h>");
+
+            const vector<string> temp1 = getFiles(inputInclude1, boost::regex{ Paths::g_includePattern.c_str() });
+            CHECK_FALSE(temp1.size() == 1);
+            const vector<string> temp2 = getFiles(inputInclude2, boost::regex{ Paths::g_includePattern.c_str() });
+            CHECK_FALSE(temp2.size() == 1);
+            const vector<string> temp3 = getFiles(inputInclude3, boost::regex{ Paths::g_includePattern.c_str() });
+            CHECK_FALSE(temp3.size() == 1);
+            const vector<string> temp4 = getFiles(inputInclude4, boost::regex{ Paths::g_includePattern.c_str() });
+            CHECK_FALSE(temp4.size() == 1);
+        }
+        {
+            const string& inputUse1("use(\"blaBla.h)");
+            const string& inputUse2("usadfse( \"blaBla.h\")");
+            const string& inputUse3("      use    ---   (\"blaBla.h\")");
+
+            const vector<string> temp1 = getFiles(inputUse1, boost::regex{ Paths::g_usePattern.c_str() });
+            CHECK_FALSE(temp1.size() == 1);
+            const vector<string> temp2 = getFiles(inputUse2, boost::regex{ Paths::g_usePattern.c_str() });
+            CHECK_FALSE(temp2.size() == 1);
+            const vector<string> temp3 = getFiles(inputUse3, boost::regex{ Paths::g_usePattern.c_str() });
+            CHECK_FALSE(temp3.size() == 1);
+        }
+    }
 }
 
-TEST(RegexFailTest)
-{
-    {
-        const string& inputInclude1("#include\"blaBla.h\"");
-        const string& inputInclude2("#include<blaBla.h>");
-        const string& inputInclude3("# include \"blaBla.h");
-        const string& inputInclude4("   include <  blaBla.h>");
-
-        const vector<string> temp1 = getFiles(inputInclude1, boost::regex{ Paths::g_includePattern.c_str() });
-        CHECK_FALSE(temp1.size() == 1);
-        const vector<string> temp2 = getFiles(inputInclude2, boost::regex{ Paths::g_includePattern.c_str() });
-        CHECK_FALSE(temp2.size() == 1);
-        const vector<string> temp3 = getFiles(inputInclude3, boost::regex{ Paths::g_includePattern.c_str() });
-        CHECK_FALSE(temp3.size() == 1);
-        const vector<string> temp4 = getFiles(inputInclude4, boost::regex{ Paths::g_includePattern.c_str() });
-        CHECK_FALSE(temp4.size() == 1);
-    }
-    {
-        const string& inputUse1("use(\"blaBla.h)");
-        const string& inputUse2("usadfse( \"blaBla.h\")");
-        const string& inputUse3("      use    ---   (\"blaBla.h\")");
-
-        const vector<string> temp1 = getFiles(inputUse1, boost::regex{ Paths::g_usePattern.c_str() });
-        CHECK_FALSE(temp1.size() == 1);
-        const vector<string> temp2 = getFiles(inputUse2, boost::regex{ Paths::g_usePattern.c_str() });
-        CHECK_FALSE(temp2.size() == 1);
-        const vector<string> temp3 = getFiles(inputUse3, boost::regex{ Paths::g_usePattern.c_str() });
-        CHECK_FALSE(temp3.size() == 1);
-    }
-}
-
-TEST(TestBeginsWith)
+TEST_CASE( "Begins With Test", "[string_tests]" )
 {
     const string input1("STRING TO BE TESTED");
     const string input2("    STRING TO BE TESTED");
@@ -134,7 +137,7 @@ TEST(TestBeginsWith)
     CHECK_FALSE(Util::BeginsWith(input2, "STRING", false));
 }
 
-TEST(TestReplaceInPlace)
+TEST_CASE( "Replace In Place Test", "[string_tests]" )
 {
     string input("STRING TO BE TESTED");
 
@@ -146,7 +149,7 @@ TEST(TestReplaceInPlace)
     CHECK_EQUAL(input, output);
 }
 
-TEST(TestPermutations)
+TEST_CASE( "Get Permutations Test", "[string_tests]" )
 {
     const string input("ABC");
     vector<string> permutations;
@@ -154,7 +157,7 @@ TEST(TestPermutations)
     CHECK_TRUE(permutations.size() == 6);
 }
 
-TEST(TestNumberParse)
+TEST_CASE( "Parse Numbers Test", "[string_tests]" )
 {
     const string input1("2");
     const string input2("b");
@@ -162,7 +165,7 @@ TEST(TestNumberParse)
     CHECK_FALSE(Util::IsNumber(input2));
 }
 
-TEST(TestCharTrail)
+TEST_CASE( "Trailing Characters Test", "[string_tests]" )
 {
     const string input("abcdefg");
     const string extension("efg");
@@ -173,7 +176,7 @@ TEST(TestCharTrail)
     CHECK_TRUE(Util::GetTrailingCharacters(input, length).size() == length);
 }
 
-TEST(TestCmpNoCase)
+TEST_CASE( "Compare (case-insensitive) Test", "[string_tests]" )
 {
     const string inputA("aBcdEf");
     const string inputB("ABCdef");
@@ -183,7 +186,8 @@ TEST(TestCmpNoCase)
     CHECK_FALSE(Util::CompareIgnoreCase(inputB, inputC));
 }
 
-TEST(TestExtension) {
+TEST_CASE( "Has Extension Test", "[string_tests]" )
+{
     const char* input = "something.ext";
     const char* ext1 = "ext";
     const char* ext2 = "bak";
@@ -191,7 +195,8 @@ TEST(TestExtension) {
     CHECK_FALSE(hasExtension(input, ext2));
 }
 
-TEST(TestStringSplit) {
+TEST_CASE( "Split Test", "[string_tests]" )
+{
     const string input1("a b c d");
     const vector<string> result = {"a", "b", "c", "d"};
 
@@ -203,7 +208,8 @@ TEST(TestStringSplit) {
     CHECK_EQUAL((Util::Split<vector<string>, string>(input2.c_str(), ',')), result);
 }
 
-TEST(TestFilePathSplit) {
+TEST_CASE( "Path Split Test", "[string_tests]" )
+{
     const char* input = "/path/path2/path4/file.test";
     const string result1("file.test");
     const string result2("/path/path2/path4");
@@ -213,7 +219,8 @@ TEST(TestFilePathSplit) {
     CHECK_EQUAL(name, result1);
 }
 
-TEST(TestLineCount) {
+TEST_CASE( "Line Count Test", "[string_tests]" )
+{
 
     const string input1("bla");
     const string input2("bla\nbla");
@@ -224,7 +231,8 @@ TEST(TestLineCount) {
     CHECK_EQUAL(Util::LineCount(input3), 3u);
 }
 
-TEST(TestStringTrim) {
+TEST_CASE( "Trim Test", "[string_tests]" )
+{
     const string input1("  abc");
     const string input2("abc  ");
     const string input3("  abc  ");
@@ -246,7 +254,8 @@ TEST(TestStringTrim) {
     CHECK_EQUAL(Util::Trim(result), result);
 }
 
-TEST(TestStringFormat) {
+TEST_CASE( "Format Test", "[string_tests]" )
+{
     const char* input1("A %s b is %d %s");
     const char* input2("%2.2f");
     const string result1("A is ok, b is 2 \n");
@@ -256,7 +265,8 @@ TEST(TestStringFormat) {
     CHECK_EQUAL(Util::StringFormat(input2, 12.2111f), result2);
 }
 
-TEST(TestCharRemove) {
+TEST_CASE( "Remove Char Test", "[string_tests]" )
+{
     char input[] = {'a', 'b', 'c', 'b', 'd', '7', 'b', '\0' };
     char result[] = { 'a', 'c', 'd', '7', '\0'};
 
@@ -273,7 +283,7 @@ TEST(TestCharRemove) {
     }
 }
 
-TEST(HashIsConstantExpr)
+TEST_CASE( "Constexpr Hash Test", "[string_tests]" )
 {
     constexpr const char* const str = "TEST test TEST";
     constexpr std::string_view str2 = str;
@@ -287,7 +297,7 @@ TEST(HashIsConstantExpr)
     CHECK_EQUAL(value, "TEST test TEST"_id);
 }
 
-TEST(TestRuntimeID)
+TEST_CASE( "Runtime Hash Test", "[string_tests]" )
 {
     const char* str = "TEST String garbagegarbagegarbage";
     const std::string_view str2 = str;
@@ -301,7 +311,7 @@ TEST(TestRuntimeID)
     CHECK_EQUAL(input1, input2);
 }
 
-TEST(TestStringAllocator)
+TEST_CASE( "Allocator Test", "[string_tests]" )
 {
     const char* input = "TEST test TEST";
     string input1(input);
@@ -311,7 +321,7 @@ TEST(TestStringAllocator)
     }
 }
 
-TEST(TestStringStream)
+TEST_CASE( "Stringstream Test", "[string_tests]" )
 {
     string result1;
     string_fast result2;

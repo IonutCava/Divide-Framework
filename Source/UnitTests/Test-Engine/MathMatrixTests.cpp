@@ -1,9 +1,11 @@
+#include "UnitTests/unitTestCommon.h"
+
 // make sure mat4 test include separe floating point and integer calls
 // floating point mat4 uses SSE for performance reasons and results might differ
 namespace Divide
 {
 
-TEST(matNSizeTest)
+TEST_CASE( "Mat Size Tests", "[math_matrix_test]" )
 {
     const mat2<I8>  a1;
     const mat2<U8>  a2;
@@ -89,7 +91,7 @@ TEST(matNSizeTest)
     CHECK_EQUAL(sizeof(b10), sizeof(b9)  * 2);
 }
 
-TEST(matNUnionTests)
+TEST_CASE( "Mat Union Tests", "[math_matrix_test]" )
 {
     mat2<I32> input1;
     mat3<U8> input2;
@@ -140,7 +142,7 @@ TEST(matNUnionTests)
     }
 }
 
-TEST_CONST_MEMBER_FUNCTION(matN, getCol, NA)
+TEST_CASE( "Mat getCol Tests", "[math_matrix_test]" )
 {
     const mat2<I32> input1(4, 4,
                            10, 8);
@@ -178,7 +180,7 @@ TEST_CONST_MEMBER_FUNCTION(matN, getCol, NA)
 
 }
 
-TEST_CONST_MEMBER_FUNCTION(matN, getRow, NA)
+TEST_CASE( "Mat getRow Tests", "[math_matrix_test]" )
 {
     const mat2<I32> input1(4, 4,
                            10, 8);
@@ -216,7 +218,7 @@ TEST_CONST_MEMBER_FUNCTION(matN, getRow, NA)
     CHECK_EQUAL(input3.getRow(3), result3D);
 }
 
-TEST_CONST_MEMBER_FUNCTION(matN, equalityOperator, NA)
+TEST_CASE( "Mat equalityOperator Tests", "[math_matrix_test]" )
 {
     mat2<I32> input1[2];
     mat3<U8>  input2[2];
@@ -267,7 +269,7 @@ TEST_CONST_MEMBER_FUNCTION(matN, equalityOperator, NA)
     CHECK_FALSE(input4[0] == input4[1]);
 }
 
-TEST_MEMBER_FUNCTION(matN, identity, NA)
+TEST_CASE( "Mat Identity Tests", "[math_matrix_test]" )
 {
     mat2<F32> input1; input1.zero();
     const mat2<F32> result1(1.0f, 0.0f,
@@ -295,7 +297,7 @@ TEST_MEMBER_FUNCTION(matN, identity, NA)
     CHECK_EQUAL(result3, input3);
 }
 
-TEST_MEMBER_FUNCTION(matN, transpose, NA)
+TEST_CASE( "Mat Transpose Tests", "[math_matrix_test]" )
 {
     mat2<F32> input1(1.0f, 2.0f, 3.0f, 4.0f);
     const mat2<F32> result1(1.0f, 3.0f, 2.0f, 4.0f);
@@ -339,7 +341,7 @@ TEST_MEMBER_FUNCTION(matN, transpose, NA)
     CHECK_TRUE(input3 == result6);
 }
 
-TEST_MEMBER_FUNCTION(matN, multiplyOperator, scalar)
+TEST_CASE( "Mat-Scalar Multiply Tests", "[math_matrix_test]" )
 {
     const mat2<I32> input1(-2, -1,
                             1,  2);
@@ -397,7 +399,7 @@ TEST_MEMBER_FUNCTION(matN, multiplyOperator, scalar)
     CHECK_EQUAL((something / 2), result4B);
 }
 
-TEST_MEMBER_FUNCTION(mat4, addSubtractOperator, scalar)
+TEST_CASE( "Mat-Scalar Add-Subtract Tests", "[math_matrix_test]" )
 {
     const mat4<F32> input({1.0f, 2.0f, 3.0f, 4.0f,
                            5.0f, 6.0f, 7.0f, 8.0f,
@@ -419,7 +421,7 @@ TEST_MEMBER_FUNCTION(mat4, addSubtractOperator, scalar)
 }
 
 // this depends on multiply tests!
-TEST_MEMBER_FUNCTION(matN, divideOperator, scalar)
+TEST_CASE( "Mat-Scalar Division Tests", "[math_matrix_test]" )
 {
     const mat2<I32> input1(-2, -2,
                             2,  2);
@@ -448,7 +450,7 @@ TEST_MEMBER_FUNCTION(matN, divideOperator, scalar)
     CHECK_EQUAL((input4 / 2), (input4 * 0.5f));
 }
 
-TEST_MEMBER_FUNCTION(mat4, Reflect, Plane)
+TEST_CASE( "Mat-Plane Reflect Tests", "[math_matrix_test]" )
 {
     const vec3<F32> input(2, 2, 2);
     const vec3<F32> result(2, -2, 2);
@@ -466,7 +468,7 @@ TEST_MEMBER_FUNCTION(mat4, Reflect, Plane)
     CHECK_TRUE(input == reflectMat * input);
 }
 
-TEST_MEMBER_FUNCTION(matN, multiplyOperator, matN)
+TEST_CASE( "Mat-Mat Multiply Tests", "[math_matrix_test]" )
 {
     mat2<I32> inputIdentity2x2;
     inputIdentity2x2.identity();
@@ -581,7 +583,7 @@ TEST_MEMBER_FUNCTION(matN, multiplyOperator, matN)
     CHECK_TRUE(input4A.compare(input4A * inputIdentity4x4f, 0.02f));
 }
 
-TEST_MEMBER_FUNCTION(matN, construct, NA)
+TEST_CASE( "Mat Construct Tests", "[math_matrix_test]" )
 {
     const mat4<F32> input4A({ 24.300f, 92.000f,  1.200f, 4.300f,
                               5.000f,  0.000f, 95.500f, 0.200f,
@@ -598,7 +600,7 @@ TEST_MEMBER_FUNCTION(matN, construct, NA)
     CHECK_EQUAL(input4A, resultB);
 }
 
-TEST_MEMBER_FUNCTION(matN, inverse, NA)
+TEST_CASE( "Mat Inverse Tests", "[math_matrix_test]" )
 {
     //Floating point 2x2 inversion
     mat2<F32> input2x2(4.0f, 3.0f,

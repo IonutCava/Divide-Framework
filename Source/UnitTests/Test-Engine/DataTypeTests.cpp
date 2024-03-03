@@ -1,7 +1,9 @@
+#include "UnitTests/unitTestCommon.h"
+
 namespace Divide
 {
 
-TEST( FitsInRegisters )
+TEST_CASE( "Fits In Registers", "[data_type_tests]" )
 {
     CHECK_TRUE(fits_in_registers<U8>());
     CHECK_TRUE(fits_in_registers<U16>());
@@ -76,7 +78,7 @@ TEST( FitsInRegisters )
     CHECK_TRUE( fits_in_registers<eastl::unique_ptr<mat3<I16>>>() );
 }
 
-TEST( CanBeReturnedByValue )
+TEST_CASE( "Can Be Returned By Value", "[data_type_tests]" )
 {
     CHECK_TRUE( can_be_returned_by_value<U8>() );
     CHECK_TRUE( can_be_returned_by_value<U16>() );
@@ -151,7 +153,7 @@ TEST( CanBeReturnedByValue )
     CHECK_FALSE (can_be_returned_by_value<eastl::unique_ptr<vec3<F32>>>());
 }
 
-TEST( PassByValue )
+TEST_CASE( "Pass By Value", "[data_type_tests]" )
 {
     CHECK_TRUE( pass_by_value<U8>() );
     CHECK_TRUE( pass_by_value<U16>() );
@@ -227,7 +229,7 @@ TEST( PassByValue )
     CHECK_FALSE( pass_by_value<eastl::unique_ptr<vec4<D64>>>() );
 }
 
-TEST(U24Conversions)
+TEST_CASE( "U24 Conversions", "[data_type_tests]" )
 {
     constexpr U32 inputA = 134646u;
     constexpr U32 inputB = 0u;
@@ -258,7 +260,7 @@ TEST(U24Conversions)
 }
 
 
-TEST(I24Conversions)
+TEST_CASE( "I24 Conversions", "[data_type_tests]" )
 {
     constexpr I32 inputA = 134346;
     constexpr I32 inputB = 0;

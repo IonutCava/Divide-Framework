@@ -1,15 +1,13 @@
 # CMakeList.txt : Top-level CMake project file, do global configuration and include sub-projects here.
 cmake_minimum_required (VERSION 3.18)
 
+
+option(BUILD_TESTING "Build and run unit tests" ON)
+option(PRINT_ALL_CMAKE_VARIABLES "Print all of the CMake variables and their values at the end of the configure step. Mostly for debugging." ON)
+
 # This is required to be before the first project() call of the CMake build.
 set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file.")
-set(BUILD_TESTING TRUE)
-set(CMAKE_VERBOSE_MAKEFILE OFF)
-set(PRINT_ALL_CMAKE_VARIABLES TRUE)
 
-if (BUILD_TESTING)
-    enable_testing()
-endif()
 
 # Enable Hot Reload for MSVC compilers if supported.
 if (POLICY CMP0141)
@@ -35,9 +33,9 @@ set(CMAKE_CXX_EXTENSIONS Off)
 set(FETCHCONTENT_QUIET TRUE)
 
 set(CMAKE_DEBUG_POSTFIX _d)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
@@ -60,6 +58,17 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /D_DEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /D_RELEASE")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /D_PROFILE")
 
+if (DIVIDE_STARTUP_TYPE STREQUAL "IN_EDITOR")
+    add_compile_definitions(_START_IN_EDITOR)
+endif()
+
+if (BUILD_TESTING)
+    enable_testing()
+endif()
+add_subdirectory(Source)
+
+set_property(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" PROPERTY VS_STARTUP_PROJECT Divide-Framework)
+
 if (PRINT_ALL_CMAKE_VARIABLES)
     get_cmake_property(_variableNames VARIABLES)
     list (SORT _variableNames)
@@ -67,12 +76,3 @@ if (PRINT_ALL_CMAKE_VARIABLES)
         message(STATUS "${_variableName}=${${_variableName}}")
     endforeach()
 endif()
-
-
-if (DIVIDE_STARTUP_TYPE STREQUAL "IN_EDITOR")
-    add_compile_definitions(_START_IN_EDITOR)
-endif()
-
-add_subdirectory(Source)
-
-set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Divide-Framework)

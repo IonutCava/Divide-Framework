@@ -3,8 +3,8 @@ set(APP_LIB_DIVIDE Divide-Framework-Lib)
 set(APP_EXE_DIVIDE Divide-Framework)
 
 if(BUILD_TESTING)
-    set(APP_EXE_TEST_PLATFORM Divide-Test-Platform)
-    set(APP_EXE_TEST_ENGINE Divide-Test-Engine)
+    set(APP_EXE_TEST_PLATFORM "Divide-Test-Platform")
+    set(APP_EXE_TEST_ENGINE "Divide-Test-Engine")
 
     set(APP_BUILD_EXES
         ${APP_EXE_DIVIDE}
@@ -24,18 +24,14 @@ set(APP_BUILD_TARGETS
 include(CMakeHelpers/ImportPackages.cmake)
 include(CMakeHelpers/GlobSources.cmake)
 
-include_directories( ${CMAKE_SOURCE_DIR}/Source )
-include_directories( ${CMAKE_SOURCE_DIR}/Source/ThirdParty )
+include_directories( "${CMAKE_SOURCE_DIR}/Source" )
+include_directories( "${CMAKE_SOURCE_DIR}/Source/ThirdParty" )
 
-add_library(${APP_THIRD_PARTY_LIB} STATIC ${THIRD_PARTY_LOCAL_SRC_FILES}
-                                          ${THIRD_PARTY_FETCH_SRC_FILES}
-)
+add_library( ${APP_THIRD_PARTY_LIB} STATIC ${THIRD_PARTY_LOCAL_SRC_FILES} ${THIRD_PARTY_FETCH_SRC_FILES} )
 
 target_include_directories( ${APP_THIRD_PARTY_LIB} PUBLIC ${EXTERNAL_INCLUDES} )
 
-add_library(${APP_LIB_DIVIDE} STATIC "engineMain.cpp"
-                                     ${ENGINE_SOURCE_CODE}
-)
+add_library(${APP_LIB_DIVIDE} STATIC "engineMain.cpp" ${ENGINE_SOURCE_CODE} )
 
 target_include_directories( ${APP_LIB_DIVIDE} PUBLIC ${EXTERNAL_INCLUDES} )
 
@@ -99,21 +95,11 @@ endif()
 
 # Unit test setup
 if(BUILD_TESTING)
-    add_executable( ${APP_EXE_TEST_PLATFORM} Test-Platform/main.cpp
-                                             ${TEST_PLATFORM_SOURCE_HEADERS}
-    )
-    add_executable( ${APP_EXE_TEST_ENGINE}  Test-Engine/main.cpp
-                                            ${TEST_ENGINE_SOURCE_HEADERS}
-    )
+    add_executable( ${APP_EXE_TEST_PLATFORM} "UnitTests/main.cpp" ${TEST_PLATFORM_SOURCE} )
+    add_executable( ${APP_EXE_TEST_ENGINE}   "UnitTests/main.cpp" ${TEST_ENGINE_SOURCE} )
 
-    target_include_directories( ${APP_EXE_TEST_PLATFORM} PRIVATE ${unit_test_framework_SOURCE_DIR} )
-    target_include_directories( ${APP_EXE_TEST_ENGINE}   PRIVATE ${unit_test_framework_SOURCE_DIR} )
-
-    target_link_libraries( ${APP_EXE_TEST_PLATFORM} PRIVATE ${COMMON_LIBS} )
-    target_link_libraries( ${APP_EXE_TEST_ENGINE}   PRIVATE ${COMMON_LIBS} )
-
-    add_test(NAME PlatformTest COMMAND  $<TARGET_FILE:${APP_EXE_TEST_PLATFORM}> WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-    add_test(NAME EngineTest   COMMAND  $<TARGET_FILE:${APP_EXE_TEST_ENGINE}>   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    target_link_libraries( ${APP_EXE_TEST_PLATFORM} PRIVATE ${COMMON_LIBS} PRIVATE Catch2::Catch2 Catch2::Catch2WithMain )
+    target_link_libraries( ${APP_EXE_TEST_ENGINE}   PRIVATE ${COMMON_LIBS} PRIVATE Catch2::Catch2 Catch2::Catch2WithMain )
 endif()
 
 foreach( APP_TARGET ${APP_BUILD_TARGETS} )
@@ -121,7 +107,15 @@ foreach( APP_TARGET ${APP_BUILD_TARGETS} )
 endforeach()
 
 foreach( APP_EXE ${APP_BUILD_EXES} )
-    target_link_directories( ${APP_EXE} PRIVATE ${cegui_BINARY_DIR}/lib )
+    target_link_directories( ${APP_EXE} PRIVATE "${cegui_BINARY_DIR}/lib" )
     set_target_properties(${APP_EXE} PROPERTIES DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
-    set_target_properties(${APP_EXE} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_target_properties(${APP_EXE} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endforeach()
+
+# Unit test registration
+if(BUILD_TESTING)
+    include(CTest)
+    include(Catch)
+    catch_discover_tests( ${APP_EXE_TEST_PLATFORM} WORKING_DIRECTORY  "${CMAKE_SOURCE_DIR}" )
+    catch_discover_tests( ${APP_EXE_TEST_ENGINE} WORKING_DIRECTORY  "${CMAKE_SOURCE_DIR}" )
+endif()

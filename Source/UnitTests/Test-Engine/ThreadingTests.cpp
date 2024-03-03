@@ -1,5 +1,8 @@
+#include "UnitTests/unitTestCommon.h"
+
 #include "Core/Time/Headers/ProfileTimer.h"
 #include <atomic>
+#include <iostream>
 
 namespace Divide
 {
@@ -26,7 +29,7 @@ namespace
     }
 };
 
-TEST( TaskPoolContructionTest )
+TEST_CASE( "Task Pool Contruction Test", "[threading_tests]" )
 {
     Console::ToggleFlag( Console::Flags::ENABLE_ERROR_STREAM, false );
 
@@ -45,7 +48,7 @@ TEST( TaskPoolContructionTest )
     CHECK_FALSE( init );
 }
 
-TEST( ParallelForTest )
+TEST_CASE( "Parallel For Test", "[threading_tests]" )
 {
     Console::ToggleFlag( Console::Flags::ENABLE_ERROR_STREAM, false );
 
@@ -77,8 +80,7 @@ TEST( ParallelForTest )
     CHECK_EQUAL( totalCounter, 18u );
 }
 
-
-TEST( TaskCallbackTest )
+TEST_CASE( "Task Callback Test", "[threading_tests]" )
 {
     TaskPool test;
     const bool init = test.init( to_U8( HardwareThreadCount() ) );
@@ -148,41 +150,39 @@ namespace
     };
 }
 
-TEST( TaskClassMemberCallbackTest )
+TEST_CASE_METHOD( ThreadedTest, "Task Class Member Callback Test", "[threading_tests]" )
 {
     TaskPool test;
     const bool init = test.init( to_U8( HardwareThreadCount() ));
     CHECK_TRUE( init );
 
-    ThreadedTest testObj;
-
-    Task* job = CreateTask( [&testObj]( const Task& parentTask )
+    Task* job = CreateTask( [&]( const Task& parentTask )
                             {
-                                testObj.threadedFunction( parentTask );
+                                threadedFunction( parentTask );
                             } );
 
-    CHECK_FALSE( testObj.getTestValue() );
+    CHECK_FALSE( getTestValue() );
 
-    Start( *job, test, TaskPriority::DONT_CARE, [&testObj]() noexcept
+    Start( *job, test, TaskPriority::DONT_CARE, [&]() noexcept
             {
-                testObj.setTestValue( false );
+                setTestValue( false );
             } );
 
-    CHECK_FALSE( testObj.getTestValue() );
+    CHECK_FALSE( getTestValue() );
 
     Wait( *job, test );
 
-    CHECK_TRUE( testObj.getTestValue() );
+    CHECK_TRUE( getTestValue() );
 
     const size_t callbackCount = test.flushCallbackQueue();
     CHECK_EQUAL( callbackCount, 1u );
 
-    const bool finalValue = testObj.getTestValue();
+    const bool finalValue = getTestValue();
 
     CHECK_FALSE( finalValue );
 }
 
-TEST( TaskSpeedTest )
+TEST_CASE( "Task Speed Test", "[threading_tests]" )
 {
     constexpr size_t loopCountA = 60u * 1000u;
     constexpr U32 partitionSize = 256u;
@@ -257,7 +257,7 @@ TEST( TaskSpeedTest )
     }
 }
 
-TEST( TaskPriorityTest )
+TEST_CASE( "Task Priority Test", "[threading_tests]" )
 {
     TaskPool test;
     const bool init = test.init( to_U8( HardwareThreadCount() ) );

@@ -1,3 +1,5 @@
+#include "UnitTests/unitTestCommon.h"
+
 #include "Core/Headers/ByteBuffer.h"
 
 namespace Divide{
@@ -27,7 +29,7 @@ bool compareArrays(const std::array<T, N>& a, const std::array<T, N>& b) noexcep
     return true;
 }
 
-TEST(ByteBufferRWBool)
+TEST_CASE("ByteBuffer RW Bool", "[byte_buffer]")
 {
     constexpr bool input = false;
 
@@ -39,7 +41,7 @@ TEST(ByteBufferRWBool)
     CHECK_EQUAL(output, input);
 }
 
-TEST(ByteBufferRWPOD)
+TEST_CASE( "ByteBuffer RW POD", "[byte_buffer]" )
 {
     constexpr U8  inputU8 = 2;
     constexpr U16 inputU16 = 4;
@@ -88,7 +90,7 @@ TEST(ByteBufferRWPOD)
     CHECK_TRUE(COMPARE(outputD64, inputD64));
 }
 
-TEST(ByteBufferSimpleMarker)
+TEST_CASE( "ByteBuffer Simple Marker", "[byte_buffer]" )
 {
     constexpr std::array<U16, 3> testMarker{ 444u, 555u, 777u };
 
@@ -107,37 +109,40 @@ TEST(ByteBufferSimpleMarker)
     CHECK_EQUAL(input, output);
 }
 
-TEST(ByteBufferEvenNoMarker)
+TEST_CASE( "ByteBuffer No Marker", "[byte_buffer]" )
 {
-    constexpr std::array<U16, 3> testMarker{ 444u, 555u, 777u };
+    SECTION( "EVEN" )
+    {
+        constexpr std::array<U16, 3> testMarker{ 444u, 555u, 777u };
 
-    ByteBuffer test;
-    test << string{ "StringTest Whatever" };
-    test << U32{ 123456u }; //Multiple of our marker size
+        ByteBuffer test;
+        test << string{ "StringTest Whatever" };
+        test << U32{ 123456u }; //Multiple of our marker size
 
-    test.readSkipToMarker(testMarker);
+        test.readSkipToMarker(testMarker);
 
-    // Should just skip to the end
-    CHECK_TRUE(test.bufferEmpty());
+        // Should just skip to the end
+        CHECK_TRUE(test.bufferEmpty());
+    }
+
+    SECTION( "ODD" )
+    {
+        constexpr std::array<U16, 3> testMarker{ 444u, 555u, 777u };
+
+        ByteBuffer test;
+        test << string{ "StringTest Whatever" };
+        test << U32{ 123456u }; //Multiple of our marker size
+        test << U8{ 122u }; //Extra byte to check proper skipping
+
+        test.readSkipToMarker( testMarker );
+
+        // Should just skip to the end, but we use 16bit markers and we have 5 x 8bit values in the buffer
+        // So we will fall short by a single byte. Hopefully, we skip it automatically
+        CHECK_TRUE( test.bufferEmpty() );
+    }
 }
 
-TEST(ByteBufferOddNoMarker)
-{
-    constexpr std::array<U16, 3> testMarker{ 444u, 555u, 777u };
-
-    ByteBuffer test;
-    test << string{ "StringTest Whatever" };
-    test << U32{ 123456u }; //Multiple of our marker size
-    test << U8{ 122u }; //Extra byte to check proper skipping
-
-    test.readSkipToMarker(testMarker);
-
-    // Should just skip to the end, but we use 16bit markers and we have 5 x 8bit values in the buffer
-    // So we will fall short by a single byte. Hopefully, we skip it automatically
-    CHECK_TRUE(test.bufferEmpty());
-}
-
-TEST(ByteBufferWrongMarker)
+TEST_CASE( "ByteBuffer Wrong Marker", "[byte_buffer]" )
 {
     std::array<U16, 3> testMarker{ 444u, 555u, 777u };
 
@@ -154,7 +159,8 @@ TEST(ByteBufferWrongMarker)
     CHECK_TRUE(test.bufferEmpty());
 }
 
-TEST(ByteBufferRWString)
+
+TEST_CASE( "ByteBuffer RW String", "[byte_buffer]" )
 {
     const string input = "StringTest Whatever";
 
@@ -169,66 +175,69 @@ TEST(ByteBufferRWString)
 }
 
 
-TEST(ByteBufferRWVectorInt)
+TEST_CASE( "ByteBuffer RW Vector<Int>", "[byte_buffer]" )
 {
-    const vector<I32> input = { -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 };
 
-    ByteBuffer test;
-    test << input;
+    SECTION("Int")
+    {
+        const vector<I32> input = { -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 };
 
-    vector<I32> output;
+        ByteBuffer test;
+        test << input;
 
-    test >> output;
+        vector<I32> output;
 
-    CHECK_TRUE(compareVectors(input, output));
+        test >> output;
+
+        CHECK_TRUE(compareVectors(input, output));
+    }
+    SECTION("String")
+    {
+        const vector<string> input = { "-5", "-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5" };
+
+        ByteBuffer test;
+        test << input;
+
+        vector<string> output;
+
+        test >> output;
+
+        CHECK_TRUE( compareVectors( input, output ) );
+    }
+}
+
+TEST_CASE( "ByteBuffer RW Array", "[byte_buffer]" )
+{
+    SECTION("Int")
+    {
+        const std::array<I32, 11> input = { -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 };
+
+        ByteBuffer test;
+        test << input;
+
+        std::array<I32, 11> output{};
+
+        test >> output;
+
+        CHECK_TRUE(compareArrays(input, output));
+    }
+    SECTION("String")
+    {
+        const std::array<string, 11> input = { "-5", "-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5" };
+
+        ByteBuffer test;
+        test << input;
+
+        std::array<string, 11> output;
+
+        test >> output;
+
+        CHECK_TRUE(compareArrays(input, output));
+    }
 }
 
 
-TEST(ByteBufferRWVectorString)
-{
-    const vector<string> input = { "-5", "-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5" };
-
-    ByteBuffer test;
-    test << input;
-
-    vector<string> output;
-
-    test >> output;
-
-    CHECK_TRUE(compareVectors(input, output));
-}
-
-TEST(ByteBufferRWArrayInt)
-{
-    const std::array<I32, 11> input = { -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 };
-
-    ByteBuffer test;
-    test << input;
-
-    std::array<I32, 11> output{};
-
-    test >> output;
-
-    CHECK_TRUE(compareArrays(input, output));
-}
-
-
-TEST(ByteBufferRWArrayString)
-{
-    const std::array<string, 11> input = { "-5", "-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5" };
-
-    ByteBuffer test;
-    test << input;
-
-    std::array<string, 11> output;
-
-    test >> output;
-
-    CHECK_TRUE(compareArrays(input, output));
-}
-
-
-TEST(ByteBufferRWMixedData)
+TEST_CASE( "ByteBuffer RW Mixed Data", "[byte_buffer]" )
 {
     constexpr bool inputBool = false;
     const vector<I32> inputVectorInt = { -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 };

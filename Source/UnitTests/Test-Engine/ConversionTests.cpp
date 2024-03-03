@@ -1,7 +1,9 @@
+#include "UnitTests/unitTestCommon.h"
+
 namespace Divide
 {
 
-TEST(TimeDownCast)
+TEST_CASE( "Time Downcast", "[conversion_tests]" )
 {
     constexpr U32 inputSeconds = 4;
     constexpr U32 inputMilliseconds = 5;
@@ -31,7 +33,40 @@ TEST(TimeDownCast)
     CHECK_EQUAL(secondsToNanoResult, secondsToNano);
 }
 
-TEST(MapTest)
+TEST_CASE( "Time Upcast", "[conversion_tests]" )
+{
+    constexpr U32 secondsResult = 4;
+    constexpr U32 millisecondsResult = 5;
+    constexpr U32 microsecondsResult = 6;
+
+    constexpr D64 inputNanoToSeconds = 4e9;
+    constexpr D64 inputNanoToMilli = 5e6;
+    constexpr U32 inputNanoToMicro = 6'000u;
+
+    constexpr D64 inputMicroToSeconds = 4e6;
+    constexpr U32 inputMicroToMilli = 5'000u;
+    constexpr U32 inputMilliToSeconds = 4'000u;
+
+    constexpr U32 nanoToSeconds = Time::NanosecondsToSeconds<U32>(inputNanoToSeconds);
+    constexpr U32 nanoToMilli = Time::NanosecondsToMilliseconds<U32>(inputNanoToMilli);
+    constexpr U32 nanoToMicro = Time::NanosecondsToMicroseconds<U32>(inputNanoToMicro);
+
+    constexpr U32 microToSeconds = Time::MicrosecondsToSeconds<U32>(inputMicroToSeconds);
+    constexpr U32 microToMilli = Time::MicrosecondsToMilliseconds<U32>(inputMicroToMilli);
+
+    constexpr U32 milliToSeconds = Time::MillisecondsToSeconds<U32>(inputMilliToSeconds);
+
+    CHECK_EQUAL(secondsResult, nanoToSeconds);
+    CHECK_EQUAL(millisecondsResult, nanoToMilli);
+    CHECK_EQUAL(microsecondsResult, nanoToMicro);
+
+    CHECK_EQUAL(secondsResult, microToSeconds);
+    CHECK_EQUAL(millisecondsResult, microToMilli);
+
+    CHECK_EQUAL(secondsResult, milliToSeconds);
+}
+
+TEST_CASE( "MAP Range test", "[conversion_tests]" )
 {
     constexpr U32 in_min = 0;
     constexpr U32 in_max = 100;
@@ -42,7 +77,7 @@ TEST(MapTest)
     CHECK_EQUAL(result, MAP(in, in_min, in_max, out_min, out_max));
 }
 
-TEST(FloatToCharConversions)
+TEST_CASE( "Float To Char Conversions", "[conversion_tests]" )
 {
     // We don't expect these to match properly, but we still need a decent level of precision
     constexpr F32 tolerance = 0.005f;
@@ -64,7 +99,7 @@ TEST(FloatToCharConversions)
     CHECK_TRUE(COMPARE_TOLERANCE(result3F, input3, tolerance));
 }
 
-TEST(VecPackingTests)
+TEST_CASE( "Vec Packing Tests", "[conversion_tests]" )
 {
     // We don't expect these to match properly, but we still need a decent level of precision
     constexpr F32 tolerance = 0.05f;
@@ -97,38 +132,5 @@ TEST(VecPackingTests)
     CHECK_EQUAL(result4V, input4);
 }
 
-TEST(TimeUpCast)
-{
-    constexpr U32 secondsResult = 4;
-    constexpr U32 millisecondsResult = 5;
-    constexpr U32 microsecondsResult = 6;
-
-    constexpr D64 inputNanoToSeconds = 4e9;
-    constexpr D64 inputNanoToMilli = 5e6;
-    constexpr U32 inputNanoToMicro = 6'000u;
-
-    constexpr D64 inputMicroToSeconds = 4e6;
-    constexpr U32 inputMicroToMilli = 5'000u;
-    constexpr U32 inputMilliToSeconds = 4'000u;
-
-    constexpr U32 nanoToSeconds = Time::NanosecondsToSeconds<U32>(inputNanoToSeconds);
-    constexpr U32 nanoToMilli = Time::NanosecondsToMilliseconds<U32>(inputNanoToMilli);
-    constexpr U32 nanoToMicro = Time::NanosecondsToMicroseconds<U32>(inputNanoToMicro);
-
-    constexpr U32 microToSeconds = Time::MicrosecondsToSeconds<U32>(inputMicroToSeconds);
-    constexpr U32 microToMilli = Time::MicrosecondsToMilliseconds<U32>(inputMicroToMilli);
-
-    constexpr U32 milliToSeconds = Time::MillisecondsToSeconds<U32>(inputMilliToSeconds);
-
-    CHECK_EQUAL(secondsResult, nanoToSeconds);
-    CHECK_EQUAL(millisecondsResult, nanoToMilli);
-    CHECK_EQUAL(microsecondsResult, nanoToMicro);
-
-    CHECK_EQUAL(secondsResult, microToSeconds);
-    CHECK_EQUAL(millisecondsResult, microToMilli);
-
-    CHECK_EQUAL(secondsResult, milliToSeconds);
-
-}
 
 } //namespace Divide

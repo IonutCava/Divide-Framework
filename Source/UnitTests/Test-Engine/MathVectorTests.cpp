@@ -1,7 +1,9 @@
+#include "UnitTests/unitTestCommon.h"
+
 namespace Divide
 {
 
-TEST(vecNSizeTest)
+TEST_CASE( "Vec Size Tests", "[math_vectors_test]" )
 {   
     const vec2<I8>  a1;
     const vec2<U8>  a2;
@@ -79,7 +81,7 @@ TEST(vecNSizeTest)
     CHECK_EQUAL(sizeof(c10), sizeof(c9)  * 2);
 }
 
-TEST_CONST_MEMBER_FUNCTION(vecN, vecN, NA)
+TEST_CASE( "Vec Constructor Conversions", "[math_vectors_test]" )
 {
     const vec2<F32> input1(1.0f, 2.0f);
     const vec2<I32> input2(1, 2);
@@ -89,7 +91,7 @@ TEST_CONST_MEMBER_FUNCTION(vecN, vecN, NA)
     CHECK_EQUAL(vec2<F32>(vec3<I32>(vec4<U32>(5.0f))), vec2<F32>(vec3<U32>(vec4<I32>(5u))));
 }
 
-TEST_CONST_MEMBER_FUNCTION(vecN, length, NA)
+TEST_CASE( "Vec Length Tests", "[math_vectors_test]" )
 {
     vec2<F32> input1;
     vec3<F32> input2;
@@ -110,7 +112,7 @@ TEST_CONST_MEMBER_FUNCTION(vecN, length, NA)
     CHECK_EQUAL(std::sqrt(input2.lengthSquared()), input3.length());
 }
 
-TEST_CONST_MEMBER_FUNCTION(vecN, mul, coef)
+TEST_CASE( "Vec-Scalar Multiply Tests", "[math_vectors_test]" )
 {
     const vec2<I32> input1(-2);
     const vec3<F32> input2(5.0f, 0.0f, -5.0f);
@@ -125,22 +127,7 @@ TEST_CONST_MEMBER_FUNCTION(vecN, mul, coef)
     CHECK_EQUAL(input3 * 3, result3);
 }
 
-TEST_CONST_MEMBER_FUNCTION(vecN, dot, vecN)
-{
-    const vec2<U32> input1(2);
-    const vec3<I32> input2(5, 0, -5);
-    const vec4<F32> input3(10.0f);
-
-    const vec2<U32> input4(4);
-    const vec3<I32> input5(2, 3, -1);
-    const vec4<F32> input6(1.0f);
-
-    CHECK_EQUAL(input1.dot(input4), (2u * 4u) + (2u * 4u));
-    CHECK_EQUAL(input2.dot(input5), (5 * 2) +( 0 * 3) + (-5 * -1));
-    CHECK_EQUAL(input3.dot(input6), (10.0f * 1.0f) + (10.0f * 1.0f) + (10.0f * 1.0f) + (10.0f * 1.0f));
-}
-
-TEST_CONST_MEMBER_FUNCTION(vecN, mul, vecN)
+TEST_CASE( "Vec-Vec Multiply Tests", "[math_vectors_test]" )
 {
     const vec2<U32> input1(2);
     const vec3<I32> input2(5, 0, -5);
@@ -158,5 +145,21 @@ TEST_CONST_MEMBER_FUNCTION(vecN, mul, vecN)
     CHECK_EQUAL(input2 * input5, result2);
     CHECK_EQUAL(input3 * input6, result3);
 }
+
+TEST_CASE( "Vec Dot Tests", "[math_vectors_test]" )
+{
+    const vec2<U32> input1(2);
+    const vec3<I32> input2(5, 0, -5);
+    const vec4<F32> input3(10.0f);
+
+    const vec2<U32> input4(4);
+    const vec3<I32> input5(2, 3, -1);
+    const vec4<F32> input6(1.0f);
+
+    CHECK_EQUAL(input1.dot(input4), (2u * 4u) + (2u * 4u));
+    CHECK_EQUAL(input2.dot(input5), (5 * 2) +( 0 * 3) + (-5 * -1));
+    CHECK_EQUAL(input3.dot(input6), (10.0f * 1.0f) + (10.0f * 1.0f) + (10.0f * 1.0f) + (10.0f * 1.0f));
+}
+
 
 } //namespace Divide

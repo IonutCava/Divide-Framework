@@ -51,7 +51,8 @@
         "zlib",
         "vulkan-memory-allocator",
         "vulkan-memory-allocator-hpp",
-        "glslang"
+        "glslang",
+        "catch2"
     ],
     "builtin-baseline": "2ac6ba173be85207a7bac4f0f02f5486f9fd4c0f"
 }

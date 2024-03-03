@@ -105,14 +105,6 @@ FetchContent_Declare(
     #GIT_PROGRESS   TRUE
 )
 
-#Unit Test Framework
-FetchContent_Declare(
-    unit_test_framework
-    GIT_REPOSITORY https://gitlab.com/cppocl/unit_test_framework.git
-    GIT_TAG        8ea70dcfc2b684c67b1c9503e202ac3686b4507d
-    #GIT_PROGRESS   TRUE
-)
-
 FetchContent_MakeAvailable(
     spirv_reflect
     optick
@@ -125,7 +117,6 @@ FetchContent_MakeAvailable(
     fcpp
     imgui_club
     icon_font_cpp_headers
-    unit_test_framework
 )
 
 include_directories(
