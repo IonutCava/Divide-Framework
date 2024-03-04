@@ -69,9 +69,15 @@ inline string PRINT_TIMER(const ProfileTimer& timer)
     return timer.print();
 }
 
+inline U64 QUERY_TIMER( const ProfileTimer& timer ) noexcept
+{
+    return timer.get();
+}
+
 inline void REMOVE_TIMER(ProfileTimer*& timer)
 {
     ProfileTimer::removeTimer(*timer);
+    timer = nullptr;
 }
 
 }  // namespace Time

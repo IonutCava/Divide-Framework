@@ -90,6 +90,8 @@ void REMOVE_TIMER(ProfileTimer*& timer);
 
 void START_TIMER(ProfileTimer& timer) noexcept;
 void STOP_TIMER(ProfileTimer& timer) noexcept;
+U64  QUERY_TIMER(const ProfileTimer& timer) noexcept;
+
 string PRINT_TIMER(ProfileTimer& timer);
 
 }  // namespace Time

@@ -91,15 +91,19 @@ else()
     message(WARNING "GPU acceleration library target not defined - GPU acceleration will NOT be available!")
 endif()
 
-
-
-# Unit test setup
 if(BUILD_TESTING)
-    add_executable( ${APP_EXE_TEST_PLATFORM} "UnitTests/main.cpp" ${TEST_PLATFORM_SOURCE} )
-    add_executable( ${APP_EXE_TEST_ENGINE}   "UnitTests/main.cpp" ${TEST_ENGINE_SOURCE} )
+    include(CTest)
+    include(Catch)
 
-    target_link_libraries( ${APP_EXE_TEST_PLATFORM} PRIVATE ${COMMON_LIBS} PRIVATE Catch2::Catch2 Catch2::Catch2WithMain )
-    target_link_libraries( ${APP_EXE_TEST_ENGINE}   PRIVATE ${COMMON_LIBS} PRIVATE Catch2::Catch2 Catch2::Catch2WithMain )
+    add_executable( ${APP_EXE_TEST_PLATFORM} "UnitTests/main.cpp" ${TEST_PLATFORM_SOURCE} )
+    target_link_libraries( ${APP_EXE_TEST_PLATFORM} PRIVATE ${COMMON_LIBS} PRIVATE Catch2::Catch2 )
+    target_compile_definitions( ${APP_EXE_TEST_PLATFORM} PUBLIC PLATFORM_TESTS )
+    catch_discover_tests( ${APP_EXE_TEST_PLATFORM} WORKING_DIRECTORY  "${CMAKE_SOURCE_DIR}" )
+
+    add_executable( ${APP_EXE_TEST_ENGINE} "UnitTests/main.cpp" ${TEST_ENGINE_SOURCE} )
+    target_link_libraries( ${APP_EXE_TEST_ENGINE} PRIVATE ${COMMON_LIBS} PRIVATE Catch2::Catch2 )
+    target_compile_definitions( ${APP_EXE_TEST_ENGINE} PUBLIC ENGINE_TESTS )
+    catch_discover_tests( ${APP_EXE_TEST_ENGINE} WORKING_DIRECTORY  "${CMAKE_SOURCE_DIR}" )
 endif()
 
 foreach( APP_TARGET ${APP_BUILD_TARGETS} )
@@ -111,11 +115,3 @@ foreach( APP_EXE ${APP_BUILD_EXES} )
     set_target_properties(${APP_EXE} PROPERTIES DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
     set_target_properties(${APP_EXE} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endforeach()
-
-# Unit test registration
-if(BUILD_TESTING)
-    include(CTest)
-    include(Catch)
-    catch_discover_tests( ${APP_EXE_TEST_PLATFORM} WORKING_DIRECTORY  "${CMAKE_SOURCE_DIR}" )
-    catch_discover_tests( ${APP_EXE_TEST_ENGINE} WORKING_DIRECTORY  "${CMAKE_SOURCE_DIR}" )
-endif()

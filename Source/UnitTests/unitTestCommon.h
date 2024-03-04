@@ -33,15 +33,26 @@
 #ifndef _UNIT_TEST_COMMON_H
 #define _UNIT_TEST_COMMON_H
 
-#include <catch.hpp>
+#include <catch2/catch_all.hpp>
+
+namespace Divide::Time
+{
+    class ProfileTimer;
+};
 
 class platformInitRunListener : public Catch::EventListenerBase
 {
   public:
     using Catch::EventListenerBase::EventListenerBase;
 
+    static bool PLATFORM_INIT;
+
+    static void PlatformInit();
+
     void testRunStarting( Catch::TestRunInfo const& ) override;
     void testRunEnded( Catch::TestRunStats const& ) override;
+  private:
+     Divide::Time::ProfileTimer* _testTimer = nullptr;
 };
 
 #ifndef CHECK_TRUE

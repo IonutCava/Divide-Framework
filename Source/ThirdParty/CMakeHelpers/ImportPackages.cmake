@@ -149,7 +149,7 @@ set( FCPP_SRC_FILES ${fcpp_SOURCE_DIR}/cpp1.c
                     ${fcpp_SOURCE_DIR}/cpp4.c
                     ${fcpp_SOURCE_DIR}/cpp5.c
                     ${fcpp_SOURCE_DIR}/cpp6.c
-                    ${fcpp_SOURCE_DIR}/usecpp.c
+                    #${fcpp_SOURCE_DIR}/usecpp.c
 )
 
 set( THIRD_PARTY_FETCH_SRC_FILES ${TILEABLE_VOLUME_NOISE_SRC_FILES}
