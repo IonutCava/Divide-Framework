@@ -80,7 +80,7 @@ bool RenderTarget::create()
 
         if (printWarning)
         {
-            Console::d_printfn(Locale::Get(_ID("WARNING_REPLACING_RT_ATTACHMENT")), getGUID(), getAttachmentName(attDesc._type), to_base(attDesc._slot));
+            Console::d_printfn(LOCALE_STR("WARNING_REPLACING_RT_ATTACHMENT"), getGUID(), getAttachmentName(attDesc._type), to_base(attDesc._slot));
         }
 
         return att;

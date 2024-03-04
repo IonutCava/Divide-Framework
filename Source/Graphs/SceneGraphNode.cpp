@@ -105,7 +105,7 @@ SceneGraphNode::SceneGraphNode(SceneGraph* sceneGraph, const SceneGraphNodeDescr
 /// If we are destroying the current graph node
 SceneGraphNode::~SceneGraphNode()
 {
-    Console::printfn(Locale::Get(_ID("REMOVE_SCENEGRAPH_NODE")), name().c_str(), _node->resourceName().c_str());
+    Console::printfn(LOCALE_STR("REMOVE_SCENEGRAPH_NODE"), name().c_str(), _node->resourceName().c_str());
 
     Attorney::SceneGraphSGN::onNodeDestroy(_sceneGraph, this);
     // Bottom up

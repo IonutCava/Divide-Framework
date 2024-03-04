@@ -6,6 +6,7 @@
 #include "Networking/Headers/ASIO.h"
 
 #include "Core/Headers/StringHelper.h"
+#include "Utility/Headers/Localization.h"
 
 #include <boost/asio/read.hpp>
 #include <boost/asio/write.hpp>
@@ -94,7 +95,7 @@ namespace Divide
                 } ) );
     }
 
-    void tcp_session_tpl::handle_read_body( const boost::system::error_code& ec, [[maybe_unused]] size_t bytes_transfered )
+    void tcp_session_tpl::handle_read_body( const boost::system::error_code& ec, [[maybe_unused]] size_t bytes_transferred )
     {
         if ( stopped() )
         {
@@ -118,7 +119,7 @@ namespace Divide
         }
     }
 
-    void tcp_session_tpl::handle_read_packet( const boost::system::error_code& ec, [[maybe_unused]] const size_t bytes_transfered )
+    void tcp_session_tpl::handle_read_packet( const boost::system::error_code& ec, [[maybe_unused]] const size_t bytes_transferred )
     {
 
         if ( stopped() )
@@ -129,7 +130,7 @@ namespace Divide
         if ( !ec )
         {
             _inputBuffer.commit( _header );
-            ASIO::LOG_PRINT( ("Buffer size: " + Util::to_string( _header )).c_str() );
+            ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_BUFFER_SIZE"), _header ).c_str() );
             std::istream is( &_inputBuffer );
             WorldPacket packet;
             try
@@ -139,7 +140,7 @@ namespace Divide
             }
             catch ( const std::exception& e )
             {
-                ASIO::LOG_PRINT( e.what(), true );
+                ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_EXCEPTION"), e.what()).c_str(), true );
             }
 
             handlePacket( packet );
@@ -201,7 +202,7 @@ namespace Divide
                           std::ios_base::binary | std::ios_base::ate );
         if ( !source_file )
         {
-            ASIO::LOG_PRINT( ("failed to open " + filePath).c_str(), true );
+            ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_FAIL_OPEN_FILE"), filePath.c_str()).c_str(), true );
             return;
         }
         const size_t file_size = source_file.tellg();
@@ -209,7 +210,7 @@ namespace Divide
         // first send file name and file size to server
         std::ostream request_stream( &request_ );
         request_stream << filePath << "\n" << file_size << "\n\n";
-        ASIO::LOG_PRINT( ("request size:" + Util::to_string( request_.size() )).c_str() );
+        ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_WRITE_FILE_REQUEST_SIZE"), request_.size()).c_str() );
 
         // Start an asynchronous resolve to translate the server and service names
         // into a list of endpoints.
@@ -312,17 +313,18 @@ namespace Divide
         switch ( p.opcode() )
         {
             case OPCodes::MSG_HEARTBEAT:
-                ASIO::LOG_PRINT( "Received [ MSG_HEARTBEAT ]" );
+                ASIO::LOG_PRINT( LOCALE_STR("ASIO_RECEIVED_HEARTBEAT") );
                 HandleHeartBeatOpCode( p );
                 break;
             case OPCodes::CMSG_PING:
-                ASIO::LOG_PRINT( "Received [ CMSG_PING ]" );
+                ASIO::LOG_PRINT( LOCALE_STR("ASIO_RECEIVED_PING") );
                 HandlePingOpCode( p );
                 break;
             case OPCodes::CMSG_REQUEST_DISCONNECT:
                 HandleDisconnectOpCode( p );
                 break;
             case OPCodes::CMSG_ENTITY_UPDATE:
+                ASIO::LOG_PRINT( LOCALE_STR( "ASIO_RECEIVED_ENTITY_UPDATE" ) );
                 HandleEntityUpdateOpCode( p );
                 break;
             default:
@@ -334,7 +336,7 @@ namespace Divide
     void tcp_session_tpl::HandleHeartBeatOpCode( [[maybe_unused]] WorldPacket& p )
     {
         WorldPacket r( OPCodes::MSG_HEARTBEAT );
-        ASIO::LOG_PRINT( "Sending  [ MSG_HEARTBEAT]" );
+        ASIO::LOG_PRINT( LOCALE_STR("ASIO_SEND_HEARBEAT") );
         r << (I8)0;
         sendPacket( r );
     }
@@ -343,7 +345,7 @@ namespace Divide
     {
         F32 time = 0;
         p >> time;
-        ASIO::LOG_PRINT( ("Sending  [ SMSG_PONG ] with data: " + Util::to_string( time )).c_str() );
+        ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_SEND_PONG"), time ).c_str() );
         WorldPacket r( OPCodes::SMSG_PONG );
         r << time;
         sendPacket( r );
@@ -353,7 +355,7 @@ namespace Divide
     {
         string client;
         p >> client;
-        ASIO::LOG_PRINT( ("Received [ CMSG_REQUEST_DISCONNECT ] from: [ " + client + " ]").c_str() );
+        ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_RECEIVED_REQUEST_DISCONNECT"), client.c_str()).c_str() );
         WorldPacket r( OPCodes::SMSG_DISCONNECT );
         r << (U8)0;  // this will be the error code returned after safely saving
         // client
@@ -362,7 +364,6 @@ namespace Divide
 
     void tcp_session_tpl::HandleEntityUpdateOpCode( WorldPacket& p )
     {
-        ASIO::LOG_PRINT( "Received [ CMSG_ENTITY_UPDATE ] !" );
         UpdateEntities( p );
     }
 

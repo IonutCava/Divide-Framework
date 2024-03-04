@@ -57,7 +57,7 @@ namespace Divide {
             }
             else
             {
-                Console::d_printfn(Locale::Get(_ID("SHADER_MANAGER_GET_INC")), shader_ptr->name().c_str());
+                Console::d_printfn(LOCALE_STR("SHADER_MANAGER_GET_INC"), shader_ptr->name().c_str());
             }
 
             ret._shader = static_cast<vkShader*>(shader_ptr.get());
@@ -96,7 +96,7 @@ namespace Divide {
 
         if (_stageMask == VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM)
         {
-            Console::errorfn(Locale::Get(_ID("ERROR_GLSL_NOT_FOUND")), name().c_str());
+            Console::errorfn(LOCALE_STR("ERROR_GLSL_NOT_FOUND"), name().c_str());
             return false;
         }
 

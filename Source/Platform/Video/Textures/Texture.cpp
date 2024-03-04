@@ -264,7 +264,7 @@ namespace Divide
                 {
                     if ( dataStorage.layerCount() != depth() )
                     {
-                        Console::errorfn( Locale::Get( _ID( "ERROR_TEXTURE_LOADER_ARRAY_INIT_COUNT" ) ), resourceName().c_str() );
+                        Console::errorfn( LOCALE_STR( "ERROR_TEXTURE_LOADER_ARRAY_INIT_COUNT" ), resourceName().c_str() );
                     }
                 }
                 else
@@ -272,11 +272,11 @@ namespace Divide
                     if ( IsCubeTexture( _descriptor.texType()) &&
                          (dataStorage.layerCount() % 6 != 0 || dataStorage.layerCount() / 6 != depth()))
                     {
-                        Console::errorfn(Locale::Get( _ID( "ERROR_TEXTURE_LOADER_CUBMAP_INIT_COUNT" ) ), resourceName().c_str() );
+                        Console::errorfn(LOCALE_STR( "ERROR_TEXTURE_LOADER_CUBMAP_INIT_COUNT" ), resourceName().c_str() );
                     }
                     else if ( IsArrayTexture(_descriptor.texType() ) && dataStorage.layerCount() != depth() )
                     {
-                        Console::errorfn(Locale::Get( _ID( "ERROR_TEXTURE_LOADER_ARRAY_INIT_COUNT" ) ), resourceName().c_str() );
+                        Console::errorfn(LOCALE_STR( "ERROR_TEXTURE_LOADER_ARRAY_INIT_COUNT" ), resourceName().c_str() );
                     }
                 }
             }
@@ -307,11 +307,11 @@ namespace Divide
         {
             if ( fileData.layerCount() > 0 )
             {
-                Console::errorfn( Locale::Get( _ID( "ERROR_TEXTURE_LAYER_LOAD" ) ), name.c_str() );
+                Console::errorfn( LOCALE_STR( "ERROR_TEXTURE_LAYER_LOAD" ), name.c_str() );
                 return false;
             }
 
-            Console::errorfn( Locale::Get( _ID( "ERROR_TEXTURE_LOAD" ) ), name.c_str() );
+            Console::errorfn( LOCALE_STR( "ERROR_TEXTURE_LOAD" ), name.c_str() );
             // missing_texture.jpg must be something that really stands out
             _descriptor.dataType(GFXDataFormat::UNSIGNED_BYTE);
             _descriptor.baseFormat(GFXImageFormat::RGBA);
@@ -527,7 +527,7 @@ namespace Divide
             }
         }
 
-        Console::printfn( Locale::Get( _ID( "TEXTURE_HAS_TRANSPARENCY_TRANSLUCENCY" ) ),
+        Console::printfn( LOCALE_STR( "TEXTURE_HAS_TRANSPARENCY_TRANSLUCENCY" ),
                           name.c_str(),
                           _hasTransparency ? "yes" : "no",
                           _hasTranslucency ? "yes" : "no" );

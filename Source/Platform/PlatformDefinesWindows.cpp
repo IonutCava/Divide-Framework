@@ -24,6 +24,8 @@
 #include <SDL2/SDL_syswm.h>
 #endif
 
+#include <iostream>
+
 extern "C" {
     _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
     _declspec(dllexport) DWORD AmdPowerXpressRequestHighPerformance = 0x00000001;
@@ -95,20 +97,15 @@ namespace Divide {
         return false;
     }
 
-    ErrorCode PlatformInitImpl([[maybe_unused]] int argc, [[maybe_unused]] char** argv) noexcept {
+    void EnforceDPIScaling() noexcept
+    {
         const HRESULT hr = SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
         if (FAILED(hr)) {
             const _com_error err(hr);
             CHAR msgText[256];
             GetLastErrorText(msgText, sizeof(msgText));
-            Console::errorfn(msgText);
+            std::cerr << msgText;
         }
-
-        return ErrorCode::NO_ERR;
-    }
-
-    bool PlatformCloseImpl() noexcept {
-        return true;
     }
 
     bool GetAvailableMemory(SysInfo& info) {

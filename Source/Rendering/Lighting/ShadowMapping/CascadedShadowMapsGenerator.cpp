@@ -43,7 +43,7 @@ namespace Divide
     CascadedShadowMapsGenerator::CascadedShadowMapsGenerator( GFXDevice& context )
         : ShadowMapGenerator( context, ShadowType::CSM )
     {
-        Console::printfn( Locale::Get( _ID( "LIGHT_CREATE_SHADOW_FB" ) ), "EVCSM" );
+        Console::printfn( LOCALE_STR( "LIGHT_CREATE_SHADOW_FB"), "EVCSM" );
 
         const RenderTarget* rt = ShadowMap::getShadowMap( _type )._rt;
 

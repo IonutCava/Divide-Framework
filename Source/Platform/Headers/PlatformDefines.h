@@ -51,7 +51,7 @@ do {                                                \
     static bool seen_this = false;                  \
     if (!seen_this) {                               \
         seen_this = true;                           \
-        Console::errorfn("STUBBED: %s (%s : %d)\n", \
+        Console::errorfn("[STUBBED] %s (%s : %d)\n",\
                          x, __FILE__, __LINE__);    \
     }                                               \
 } while (0);
@@ -211,11 +211,7 @@ bool DebugBreak(bool condition = true) noexcept;
 [[nodiscard]] bool PlatformClose();
 [[nodiscard]] bool GetAvailableMemory(SysInfo& info);
 
-[[nodiscard]] ErrorCode PlatformPreInit(int argc, char** argv);
-[[nodiscard]] ErrorCode PlatformPostInit(int argc, char** argv);
-
-[[nodiscard]] ErrorCode PlatformInitImpl(int argc, char** argv) noexcept;
-[[nodiscard]] bool PlatformCloseImpl() noexcept;
+void EnforceDPIScaling() noexcept;
 
 [[nodiscard]] const char* GetClipboardText(void* user_data) noexcept;
 void SetClipboardText(void* user_data, const char* text) noexcept;

@@ -69,7 +69,7 @@ void AnimEvaluator::save(const AnimEvaluator& evaluator, ByteBuffer& dataOut) {
 }
 
 void AnimEvaluator::load(AnimEvaluator& evaluator, ByteBuffer& dataIn) {
-    Console::d_printfn(Locale::Get(_ID("CREATE_ANIMATION_BEGIN")), evaluator._name.c_str());
+    Console::d_printfn(LOCALE_STR("CREATE_ANIMATION_BEGIN"), evaluator._name.c_str());
 
     auto tempVer = decltype(BYTE_BUFFER_VERSION_EVALUATOR){0};
     dataIn >> tempVer;

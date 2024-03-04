@@ -131,7 +131,7 @@ namespace Divide
 
     void Camera::DestroyPool()
     {
-        Console::printfn( Locale::Get( _ID( "CAMERA_MANAGER_DELETE" ) ) );
+        Console::printfn( LOCALE_STR( "CAMERA_MANAGER_DELETE" ) );
         _utilityCameras.fill( nullptr );
         LockGuard<SharedMutex> w_lock( s_cameraPoolLock );
         s_cameraPool.clear();

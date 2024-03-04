@@ -79,13 +79,13 @@ namespace Divide
         // Read
         void start_read();
         void handle_read_body( const boost::system::error_code& ec,
-                               size_t bytes_transfered );
+                               size_t bytes_transferred );
         void handle_read_packet( const boost::system::error_code& ec,
-                                 size_t bytes_transfered );
+                                 size_t bytes_transferred );
         // File Input
         void receiveFile();
         void handle_read_file( const boost::system::error_code& ec,
-                               size_t bytes_transfered );
+                               size_t bytes_transferred );
 
         // Write
         void start_write();

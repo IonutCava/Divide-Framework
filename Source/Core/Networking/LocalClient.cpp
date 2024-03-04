@@ -49,13 +49,13 @@ void LocalClient::HandlePongOpCode(WorldPacket& p) const
 void LocalClient::HandleDisconnectOpCode(WorldPacket& p) {
     U8 code;
     p >> code;
-    Console::printfn(Locale::Get(_ID("ASIO_CLOSE")));
+    Console::printfn(LOCALE_STR("ASIO_CLOSE"));
     if (code == 0) close();
     // else handleError(code);
 }
 
 void LocalClient::HandleGeometryAppendOpCode(WorldPacket& p) {
-    Console::printfn(Locale::Get(_ID("ASIO_PAK_REC_GEOM_APPEND")));
+    Console::printfn(LOCALE_STR("ASIO_PAK_REC_GEOM_APPEND"));
     U8 size;
     p >> size;
     /*vector<FileData> patch;

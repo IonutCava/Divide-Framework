@@ -29,8 +29,10 @@ namespace
     }
 };
 
-TEST_CASE( "Task Pool Contruction Test", "[threading_tests]" )
+TEST_CASE( "Task Pool Construction Test", "[threading_tests]" )
 {
+    platformInitRunListener::PlatformInit();
+
     Console::ToggleFlag( Console::Flags::ENABLE_ERROR_STREAM, false );
 
     TaskPool test;
@@ -50,6 +52,8 @@ TEST_CASE( "Task Pool Contruction Test", "[threading_tests]" )
 
 TEST_CASE( "Parallel For Test", "[threading_tests]" )
 {
+    platformInitRunListener::PlatformInit();
+
     Console::ToggleFlag( Console::Flags::ENABLE_ERROR_STREAM, false );
 
     TaskPool test;
@@ -82,6 +86,8 @@ TEST_CASE( "Parallel For Test", "[threading_tests]" )
 
 TEST_CASE( "Task Callback Test", "[threading_tests]" )
 {
+    platformInitRunListener::PlatformInit();
+
     TaskPool test;
     const bool init = test.init( to_U8( HardwareThreadCount() ) );
     CHECK_TRUE( init );
@@ -152,6 +158,8 @@ namespace
 
 TEST_CASE_METHOD( ThreadedTest, "Task Class Member Callback Test", "[threading_tests]" )
 {
+    platformInitRunListener::PlatformInit();
+
     TaskPool test;
     const bool init = test.init( to_U8( HardwareThreadCount() ));
     CHECK_TRUE( init );
@@ -184,6 +192,8 @@ TEST_CASE_METHOD( ThreadedTest, "Task Class Member Callback Test", "[threading_t
 
 TEST_CASE( "Task Speed Test", "[threading_tests]" )
 {
+    platformInitRunListener::PlatformInit();
+
     constexpr size_t loopCountA = 60u * 1000u;
     constexpr U32 partitionSize = 256u;
     constexpr U32 loopCountB = partitionSize * 8192u + 2u;
@@ -259,6 +269,8 @@ TEST_CASE( "Task Speed Test", "[threading_tests]" )
 
 TEST_CASE( "Task Priority Test", "[threading_tests]" )
 {
+    platformInitRunListener::PlatformInit();
+
     TaskPool test;
     const bool init = test.init( to_U8( HardwareThreadCount() ) );
     CHECK_TRUE( init );

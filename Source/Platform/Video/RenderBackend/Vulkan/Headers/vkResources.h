@@ -330,7 +330,7 @@ inline std::string VKErrorString(VkResult errorCode)
         VkResult err = x;                                                                      \
         if (err)                                                                               \
         {                                                                                      \
-            Console::errorfn(Locale::Get(_ID("ERROR_GENERIC_VK")), VKErrorString(err).c_str());\
+            Console::errorfn(LOCALE_STR("ERROR_GENERIC_VK"), VKErrorString(err).c_str());\
             DIVIDE_UNEXPECTED_CALL();                                                          \
         }                                                                                      \
     } while (0)

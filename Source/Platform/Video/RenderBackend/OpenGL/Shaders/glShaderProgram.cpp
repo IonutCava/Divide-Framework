@@ -77,21 +77,21 @@ void glShaderProgram::ProcessValidationQueue()
                 if (validationBuffer.size() > g_validationBufferMaxSize)
                 {
                     // On some systems, the program's disassembly is printed, and that can get quite large
-                    validationBuffer.resize(std::strlen(Locale::Get(_ID("GLSL_LINK_PROGRAM_LOG"))) + g_validationBufferMaxSize);
+                    validationBuffer.resize(std::strlen(LOCALE_STR("GLSL_LINK_PROGRAM_LOG")) + g_validationBufferMaxSize);
                     // Use the simple "truncate and inform user" system (a.k.a. add dots and delete the rest)
                     validationBuffer.append(" ... ");
                 }
                 // Return the final message, whatever it may contain
-                Console::errorfn(Locale::Get(_ID("GLSL_VALIDATING_PROGRAM")), s_validationOutputCache._handle, s_validationOutputCache._name.c_str(), validationBuffer.c_str());
+                Console::errorfn(LOCALE_STR("GLSL_VALIDATING_PROGRAM"), s_validationOutputCache._handle, s_validationOutputCache._name.c_str(), validationBuffer.c_str());
             }
             else
             {
-                Console::errorfn(Locale::Get(_ID("GLSL_VALIDATING_PROGRAM")), s_validationOutputCache._handle, s_validationOutputCache._name.c_str(), "[ Couldn't retrieve info log! ]");
+                Console::errorfn(LOCALE_STR("GLSL_VALIDATING_PROGRAM"), s_validationOutputCache._handle, s_validationOutputCache._name.c_str(), "[ Couldn't retrieve info log! ]");
             }
         }
         else
         {
-            Console::d_printfn(Locale::Get(_ID("GLSL_VALIDATING_PROGRAM")), s_validationOutputCache._handle, s_validationOutputCache._name.c_str(), "[ OK! ]");
+            Console::d_printfn(LOCALE_STR("GLSL_VALIDATING_PROGRAM"), s_validationOutputCache._handle, s_validationOutputCache._name.c_str(), "[ OK! ]");
         }
     }
 }

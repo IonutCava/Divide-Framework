@@ -341,7 +341,7 @@ namespace Divide
                 break;
         };
 
-        DIVIDE_ASSERT( _api != nullptr, Locale::Get( _ID( "ERROR_GFX_DEVICE_API" ) ) );
+        DIVIDE_ASSERT( _api != nullptr, LOCALE_STR( "ERROR_GFX_DEVICE_API" ) );
         renderAPI( API );
 
         return err;
@@ -368,12 +368,12 @@ namespace Divide
 
         if ( s_deviceInformation._maxTextureUnits <= 16 )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_INSUFFICIENT_TEXTURE_UNITS" ) ) );
+            Console::errorfn( LOCALE_STR( "ERROR_INSUFFICIENT_TEXTURE_UNITS" ) );
             return ErrorCode::GFX_OLD_HARDWARE;
         }
         if ( to_base( AttribLocation::COUNT ) >= s_deviceInformation._maxVertAttributeBindings )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_INSUFFICIENT_ATTRIB_BINDS" ) ) );
+            Console::errorfn( LOCALE_STR( "ERROR_INSUFFICIENT_ATTRIB_BINDS" ) );
             return ErrorCode::GFX_OLD_HARDWARE;
         }
         DIVIDE_ASSERT( Config::MAX_CLIP_DISTANCES <= s_deviceInformation._maxClipDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts" );
@@ -393,7 +393,7 @@ namespace Divide
         DisplayManager::OutputDisplayProperties prevMode;
         const auto printMode = [&prevMode, &refreshRates]()
         {
-            Console::printfn( Locale::Get( _ID( "CURRENT_DISPLAY_MODE" ) ),
+            Console::printfn( LOCALE_STR( "CURRENT_DISPLAY_MODE" ),
                               prevMode._resolution.width,
                               prevMode._resolution.height,
                               prevMode._bitsPerPixel,
@@ -406,7 +406,7 @@ namespace Divide
             const auto& registeredModes = DisplayManager::GetDisplayModes( idx );
             if ( !registeredModes.empty() )
             {
-                Console::printfn( Locale::Get( _ID( "AVAILABLE_VIDEO_MODES" ) ), idx, registeredModes.size() );
+                Console::printfn( LOCALE_STR( "AVAILABLE_VIDEO_MODES" ), idx, registeredModes.size() );
 
                 prevMode = registeredModes.front();
 
@@ -1184,7 +1184,7 @@ namespace Divide
         _debugViews.clear();
 
         // Delete the renderer implementation
-        Console::printfn( Locale::Get( _ID( "CLOSING_RENDERER" ) ) );
+        Console::printfn( LOCALE_STR( "CLOSING_RENDERER" ) );
         _renderer.reset( nullptr );
 
         GFX::DestroyPools();
@@ -1234,7 +1234,7 @@ namespace Divide
             }
             list.pop_back();
             list += " ]";
-            Console::errorfn( Locale::Get( _ID( "ERROR_GFX_LEAKED_RESOURCES" ) ), _graphicResources.size() );
+            Console::errorfn( LOCALE_STR( "ERROR_GFX_LEAKED_RESOURCES" ), _graphicResources.size() );
             Console::errorfn( list.c_str() );
         }
         _graphicResources.clear();
@@ -1454,7 +1454,7 @@ namespace Divide
         if ( !isValidFB )
         {
             // Future formats must be added later (e.g. cube map arrays)
-            Console::errorfn( Locale::Get( _ID( "ERROR_GFX_DEVICE_INVALID_FB_CUBEMAP" ) ) );
+            Console::errorfn( LOCALE_STR( "ERROR_GFX_DEVICE_INVALID_FB_CUBEMAP" ) );
             return;
         }
 
@@ -1534,7 +1534,7 @@ namespace Divide
         if ( !isValidFB )
         {
             // Future formats must be added later (e.g. cube map arrays)
-            Console::errorfn( Locale::Get( _ID( "ERROR_GFX_DEVICE_INVALID_FB_DP" ) ) );
+            Console::errorfn( LOCALE_STR( "ERROR_GFX_DEVICE_INVALID_FB_DP" ) );
             return;
         }
 

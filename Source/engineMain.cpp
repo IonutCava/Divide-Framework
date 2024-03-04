@@ -23,7 +23,7 @@ ErrorCode Engine::init(const int argc, char** argv)
     if ( errorCode != ErrorCode::NO_ERR)
     {
         // If any error occurred, close the application as details should already be logged
-        Console::errorfn(Locale::Get(_ID("GENERIC_ERROR")), TypeUtil::ErrorCodeToString( errorCode ) );
+        Console::errorfn(LOCALE_STR("GENERIC_ERROR"), TypeUtil::ErrorCodeToString( errorCode ) );
     }
 
     return errorCode;
@@ -39,6 +39,22 @@ ErrorCode Engine::run(const int argc, char** argv)
 
     ErrorCode errorCode = PlatformInit( argc, argv );
 
+    if ( errorCode != ErrorCode::NO_ERR )
+    {
+        return errorCode;
+    }
+
+    //Win32: SetProcessDpiAwareness
+    EnforceDPIScaling();
+
+    // Print a copyright notice in the log file
+    if ( !Util::FindCommandLineArgument( argc, argv, "disableCopyright" ) )
+    {
+        Console::PrintCopyrightNotice();
+    }
+
+    // Read language table
+    errorCode = Locale::Init();
     if ( errorCode == ErrorCode::NO_ERR )
     {
         Profiler::Initialise();
@@ -85,14 +101,13 @@ ErrorCode Engine::run(const int argc, char** argv)
 
         } while (errorCode == ErrorCode::NO_ERR && (result == Application::StepResult::RESTART || result == Application::StepResult::RESTART_CLEAR_CACHE));
 
-        if ( errorCode == ErrorCode::NO_ERR && !PlatformClose() )
-        {
-            errorCode = ErrorCode::PLATFORM_CLOSE_ERROR;
-        }
+        Locale::Clear();
     }
 
-    std::cout << std::endl;
-    std::cerr << std::endl;
+    if ( !PlatformClose() )
+    {
+        errorCode = ErrorCode::PLATFORM_CLOSE_ERROR;
+    }
 
     return errorCode;
 }

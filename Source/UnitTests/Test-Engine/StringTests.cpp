@@ -27,6 +27,8 @@ vector<string> getFiles(const string& input, const boost::regex& pattern) {
 
 TEST_CASE("Regex Test", "[string_tests]")
 {
+    platformInitRunListener::PlatformInit();
+
     SECTION("Success")
     {
         {

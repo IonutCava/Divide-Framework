@@ -44,7 +44,7 @@ namespace Divide
             case PhysicsAPI::Bullet:
             case PhysicsAPI::COUNT:
             {
-                Console::errorfn( Locale::Get( _ID( "ERROR_PFX_DEVICE_API" ) ) );
+                Console::errorfn( LOCALE_STR( "ERROR_PFX_DEVICE_API" ) );
                 return ErrorCode::PFX_NON_SPECIFIED;
             };
         };
@@ -59,7 +59,7 @@ namespace Divide
             return false;
         }
 
-        Console::printfn( Locale::Get( _ID( "STOP_PHYSICS_INTERFACE" ) ) );
+        Console::printfn( LOCALE_STR( "STOP_PHYSICS_INTERFACE" ) );
         const bool state = _api->closePhysicsAPI();
         _api.reset();
 

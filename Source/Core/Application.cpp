@@ -44,11 +44,18 @@ ErrorCode Application::start(const string& entryPoint, const I32 argc, char** ar
     assert( _kernel == nullptr );
 
     Console::ToggleFlag(Console::Flags::PRINT_IMMEDIATE, true);
-    Console::printfn(Locale::Get(_ID("START_APPLICATION")));
-    Console::printfn(Locale::Get(_ID("START_APPLICATION_CMD_ARGUMENTS")));
-    for (I32 i = 1; i < argc; ++i)
+    Console::printfn(LOCALE_STR("START_APPLICATION"));
+    Console::printfn(LOCALE_STR("START_APPLICATION_CMD_ARGUMENTS"));
+    if ( argc > 1 )
     {
-        Console::printfn("%s", argv[i]);
+        for (I32 i = 1; i < argc; ++i)
+        {
+            Console::printfn("%s", argv[i]);
+        }
+    }
+    else
+    {
+        Console::printfn(LOCALE_STR("START_APPLICATION_CMD_ARGUMENTS_NONE" ));
     }
 
     // Create a new kernel
@@ -67,7 +74,7 @@ ErrorCode Application::start(const string& entryPoint, const I32 argc, char** ar
     else
     {
         Attorney::KernelApplication::warmup(_kernel);
-        Console::printfn(Locale::Get(_ID("START_MAIN_LOOP")));
+        Console::printfn(LOCALE_STR("START_MAIN_LOOP"));
         Console::ToggleFlag( Console::Flags::PRINT_IMMEDIATE, false);
         mainLoopActive(true);
     }
@@ -120,7 +127,7 @@ ErrorCode Application::setRenderingAPI( const RenderAPI api )
 
 void Application::stop( const StepResult stepResult )
 {
-    Console::printfn( Locale::Get( _ID( "STOP_APPLICATION" ) ) );
+    Console::printfn( LOCALE_STR( "STOP_APPLICATION" ) );
 
     if ( _kernel == nullptr )
     {
@@ -150,7 +157,7 @@ void Application::stop( const StepResult stepResult )
         const string allocLog = MemoryManager::AllocTracer.Dump(leakDetected, sizeLeaked);
         if (leakDetected)
         {
-            Console::errorfn(Locale::Get(_ID("ERROR_MEMORY_NEW_DELETE_MISMATCH")), to_I32(std::ceil(sizeLeaked / 1024.0f)));
+            Console::errorfn(LOCALE_STR("ERROR_MEMORY_NEW_DELETE_MISMATCH"), to_I32(std::ceil(sizeLeaked / 1024.0f)));
         }
 
         std::ofstream memLog;
@@ -204,22 +211,22 @@ bool Application::onSDLEvent(const SDL_Event event) noexcept
         } break;
         case SDL_APP_TERMINATING:
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_APPLICATION_SYSTEM_CLOSE_REQUEST" ) ) );
+            Console::errorfn( LOCALE_STR( "ERROR_APPLICATION_SYSTEM_CLOSE_REQUEST" ) );
             RequestShutdown( false );
         } break;
         case SDL_RENDER_TARGETS_RESET :
         {
-            Console::warnfn( Locale::Get( _ID( "ERROR_APPLICATION_RENDER_TARGET_RESET" ) ) );
+            Console::warnfn( LOCALE_STR( "ERROR_APPLICATION_RENDER_TARGET_RESET" ) );
             //RequestShutdown( false );
         } break;
         case SDL_RENDER_DEVICE_RESET :
         {
-            Console::errorfn( Locale::Get( _ID("ERROR_APPLICATION_RENDER_DEVICE_RESET") ) );
+            Console::errorfn( LOCALE_STR("ERROR_APPLICATION_RENDER_DEVICE_RESET") );
             RequestShutdown( false );
         } break;
         case SDL_APP_LOWMEMORY :
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_APPLICATION_LOW_MEMORY" ) ) );
+            Console::errorfn( LOCALE_STR( "ERROR_APPLICATION_LOW_MEMORY" ) );
             RequestShutdown( false );
         } break;
         case SDL_DROPFILE:
@@ -227,7 +234,7 @@ bool Application::onSDLEvent(const SDL_Event event) noexcept
         case SDL_DROPBEGIN:
         case SDL_DROPCOMPLETE:
         {
-            Console::warnfn( Locale::Get( _ID("WARN_APPLICATION_DRAG_DROP") ) );
+            Console::warnfn( LOCALE_STR("WARN_APPLICATION_DRAG_DROP") );
         } break;
         case SDL_FINGERDOWN :
         case SDL_FINGERUP :
@@ -236,7 +243,7 @@ bool Application::onSDLEvent(const SDL_Event event) noexcept
         case SDL_DOLLARRECORD :
         case SDL_MULTIGESTURE :
         {
-            Console::warnfn( Locale::Get( _ID( "WARN_APPLICATION_TOUCH_EVENT" ) ) );
+            Console::warnfn( LOCALE_STR( "WARN_APPLICATION_TOUCH_EVENT" ) );
         } break;
         default: break;
     }

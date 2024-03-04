@@ -13,8 +13,10 @@ TEST_CASE("Simple Inline Script Test", "[scripting]")
     CHECK_EQUAL(input.eval<double>(), result);
 }
 
-TEST_CASE( "External Functiopn Script Test", "[scripting]" )
+TEST_CASE( "External Function Script Test", "[scripting]" )
 {
+    platformInitRunListener::PlatformInit();
+
     Script input("use(\"utility.chai\");"
         "var my_fun = fun(x) { return x + 2; };"
         "something(my_fun)");

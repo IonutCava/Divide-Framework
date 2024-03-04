@@ -9,6 +9,7 @@
 #include "Headers/Client.h"
 
 #include "Core/Headers/StringHelper.h"
+#include "Utility/Headers/Localization.h"
 
 namespace Divide
 {
@@ -62,7 +63,7 @@ namespace Divide
         {
             if ( _debugOutput )
             {
-                LOG_PRINT( (string( "[ASIO] Exception: " ) + e.what()).c_str(), true );
+                LOG_PRINT(Util::StringFormat( LOCALE_STR("ASIO_EXCEPTION"), e.what()).c_str(), true );
             }
             _connected = false;
         }
@@ -102,7 +103,7 @@ namespace Divide
 
             if ( _debugOutput )
             {
-                LOG_PRINT( ("[ASIO]: sent opcode [ 0x" + Util::to_string( p.opcode() ) + "]").c_str() );
+                LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_OPCODE"), p.opcode() ).c_str() );
             }
             return true;
         }

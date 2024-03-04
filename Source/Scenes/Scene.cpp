@@ -189,7 +189,7 @@ namespace Divide
         const char* assetsFile = "assets.xml";
         const Str<256> saveSceneName = Str<256>( strlen( sceneNameOverride ) > 0 ? sceneNameOverride : resourceName().c_str() );
 
-        Console::printfn( Locale::Get( _ID( "XML_SAVE_SCENE_START" ) ), saveSceneName.c_str() );
+        Console::printfn( LOCALE_STR( "XML_SAVE_SCENE_START" ), saveSceneName.c_str() );
 
         const ResourcePath scenePath = Paths::g_xmlDataLocation + Paths::g_scenesLocation;
 
@@ -298,7 +298,7 @@ namespace Divide
             }
         }
 
-        Console::printfn( Locale::Get( _ID( "XML_SAVE_SCENE_END" ) ), saveSceneName.c_str() );
+        Console::printfn( LOCALE_STR( "XML_SAVE_SCENE_END" ), saveSceneName.c_str() );
 
         if ( finishCallback )
         {
@@ -314,7 +314,7 @@ namespace Divide
 
         const ResourcePath scenePath = Paths::g_xmlDataLocation + Paths::g_scenesLocation;
 
-        Console::printfn( Locale::Get( _ID( "XML_LOAD_SCENE" ) ), resourceName().c_str() );
+        Console::printfn( LOCALE_STR( "XML_LOAD_SCENE" ), resourceName().c_str() );
         const ResourcePath sceneLocation( scenePath + "/" + resourceName().c_str() );
         const ResourcePath sceneDataFile( sceneLocation + ".xml" );
 
@@ -493,7 +493,7 @@ namespace Divide
                     }
                     else
                     {
-                        Console::errorfn( Locale::Get( _ID( "ERROR_SCENE_UNSUPPORTED_GEOM" ) ), sceneNode.name.c_str() );
+                        Console::errorfn( LOCALE_STR( "ERROR_SCENE_UNSUPPORTED_GEOM" ), sceneNode.name.c_str() );
                     }
                 }
                 if ( ret != nullptr )
@@ -684,7 +684,7 @@ namespace Divide
 
     void Scene::addTerrain( SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName )
     {
-        Console::printfn( Locale::Get( _ID( "XML_LOAD_TERRAIN" ) ), nodeName.c_str() );
+        Console::printfn( LOCALE_STR( "XML_LOAD_TERRAIN" ), nodeName.c_str() );
 
         // Load the rest of the terrain
         TerrainDescriptor ter( (nodeName + "_descriptor").c_str() );
@@ -1314,7 +1314,7 @@ namespace Divide
 
         if ( errorState )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_SCENE_LOAD" ) ), "scene load function" );
+            Console::errorfn( LOCALE_STR( "ERROR_SCENE_LOAD" ), "scene load function" );
             return false;
         }
 
@@ -1642,7 +1642,7 @@ namespace Divide
 
     void Scene::clearTasks()
     {
-        Console::printfn( Locale::Get( _ID( "STOP_SCENE_TASKS" ) ) );
+        Console::printfn( LOCALE_STR( "STOP_SCENE_TASKS" ) );
         // Performance shouldn't be an issue here
         LockGuard<SharedMutex> w_lock( _tasksMutex );
         for ( const Task* task : _tasks )

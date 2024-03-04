@@ -245,7 +245,7 @@ void Kernel::onLoop()
 
             if (err != ErrorCode::NO_ERR)
             {
-                Console::errorfn(Locale::Get(_ID("GENERIC_ERROR")), TypeUtil::ErrorCodeToString(err));
+                Console::errorfn(LOCALE_STR("GENERIC_ERROR"), TypeUtil::ErrorCodeToString(err));
                 keepAlive(false);
             }
         }
@@ -619,7 +619,7 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
 // The first loops compiles all the visible data, so do not render the first couple of frames
 void Kernel::warmup()
 {
-    Console::printfn(Locale::Get(_ID("START_RENDER_LOOP")));
+    Console::printfn(LOCALE_STR("START_RENDER_LOOP"));
 
     _timingData.freezeGameTime(true);
 
@@ -651,8 +651,8 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     // Load info from XML files
     XMLEntryData& entryData = _platformContext.entryData();
     Configuration& config = _platformContext.config();
-    loadFromXML(entryData, (systemInfo._workingDirectory + Paths::g_xmlDataLocation.c_str() + entryPoint).c_str());
-    loadFromXML(config, (systemInfo._workingDirectory + Paths::g_xmlDataLocation.c_str() + "config.xml").c_str());
+    loadFromXML(entryData, (Paths::g_rootPath + Paths::g_xmlDataLocation.c_str() + entryPoint).c_str());
+    loadFromXML(config, (Paths::g_rootPath + Paths::g_xmlDataLocation.c_str() + "config.xml").c_str());
 
     if (Util::FindCommandLineArgument(_argc, _argv, "disableRenderAPIDebugging"))
     {
@@ -689,7 +689,9 @@ ErrorCode Kernel::initialize(const string& entryPoint)
         }
     });
 
-    Console::printfn( Locale::Get( _ID( "START_RENDER_INTERFACE" ) ) );
+    Console::printfn( LOCALE_STR( "START_APPLICATION_WORKING_DIRECTORY" ) , Paths::g_rootPath.c_str() );
+
+    Console::printfn( LOCALE_STR( "START_RENDER_INTERFACE" ) ) ;
 
     _platformContext.server().init(static_cast<U16>(443), "127.0.0.1", true);
 
@@ -703,7 +705,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     Locale::ChangeLanguage(config.language.c_str());
     ECS::Initialize();
 
-    Console::printfn(Locale::Get(_ID("START_RENDER_INTERFACE")));
+    Console::printfn(LOCALE_STR("START_RENDER_INTERFACE"));
 
     const RenderAPI renderingAPI = static_cast<RenderAPI>(config.runtime.targetRenderingAPI);
 
@@ -775,7 +777,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     _renderPassManager->setRenderPass(RenderStage::DISPLAY,      { RenderStage::REFLECTION, RenderStage::REFRACTION });
     _renderPassManager->setRenderPass(RenderStage::NODE_PREVIEW, { RenderStage::REFLECTION, RenderStage::REFRACTION });
 
-    Console::printfn(Locale::Get(_ID("SCENE_ADD_DEFAULT_CAMERA")));
+    Console::printfn(LOCALE_STR("SCENE_ADD_DEFAULT_CAMERA"));
 
     WindowManager& winManager = _platformContext.app().windowManager();
     winManager.mainWindow()->addEventListener(WindowEvent::LOST_FOCUS, [mgr = _sceneManager](const DisplayWindow::WindowEventArgs& ) {
@@ -798,13 +800,13 @@ ErrorCode Kernel::initialize(const string& entryPoint)
 
     startSplashScreen();
 
-    Console::printfn(Locale::Get(_ID("START_SOUND_INTERFACE")));
+    Console::printfn(LOCALE_STR("START_SOUND_INTERFACE"));
     initError = _platformContext.sfx().initAudioAPI();
     if (initError != ErrorCode::NO_ERR) {
         return initError;
     }
 
-    Console::printfn(Locale::Get(_ID("START_PHYSICS_INTERFACE")));
+    Console::printfn(LOCALE_STR("START_PHYSICS_INTERFACE"));
     initError = _platformContext.pfx().initPhysicsAPI(Config::TARGET_FRAME_RATE, config.runtime.simSpeed);
     if (initError != ErrorCode::NO_ERR) {
         return initError;
@@ -828,20 +830,20 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     if constexpr ( Config::Build::IS_EDITOR_BUILD )
     {
         firstLoadedScene = Config::DEFAULT_SCENE_NAME;
-        Console::printfn(Locale::Get(_ID("START_FRAMEWORK_EDITOR")));
+        Console::printfn(LOCALE_STR("START_FRAMEWORK_EDITOR"));
     }
     else
     {
-        Console::printfn( Locale::Get( _ID( "START_FRAMEWORK_EDITOR" ) ), firstLoadedScene );
+        Console::printfn( LOCALE_STR( "START_FRAMEWORK_EDITOR" ), firstLoadedScene );
     }
 
     if (!_sceneManager->switchScene(firstLoadedScene, true, false, false)) {
-        Console::errorfn(Locale::Get(_ID("ERROR_SCENE_LOAD")), firstLoadedScene);
+        Console::errorfn(LOCALE_STR("ERROR_SCENE_LOAD"), firstLoadedScene);
         return ErrorCode::MISSING_SCENE_DATA;
     }
 
     if (!_sceneManager->loadComplete()) {
-        Console::errorfn(Locale::Get(_ID("ERROR_SCENE_LOAD_NOT_CALLED")), firstLoadedScene);
+        Console::errorfn(LOCALE_STR("ERROR_SCENE_LOAD_NOT_CALLED"), firstLoadedScene);
         return ErrorCode::MISSING_SCENE_LOAD_CALL;
     }
 
@@ -857,13 +859,13 @@ ErrorCode Kernel::initialize(const string& entryPoint)
             ctx->editor().selectionChangeCallback(idx, nodes);
         });
     }
-    Console::printfn(Locale::Get(_ID("INITIAL_DATA_LOADED")));
+    Console::printfn(LOCALE_STR("INITIAL_DATA_LOADED"));
 
     return initError;
 }
 
 void Kernel::shutdown() {
-    Console::printfn(Locale::Get(_ID("STOP_KERNEL")));
+    Console::printfn(LOCALE_STR("STOP_KERNEL"));
 
     _platformContext.config().save();
 
@@ -888,7 +890,7 @@ void Kernel::shutdown() {
     resourceCache()->clear();
     MemoryManager::SAFE_DELETE(_resourceCache);
 
-    Console::printfn(Locale::Get(_ID("STOP_ENGINE_OK")));
+    Console::printfn(LOCALE_STR("STOP_ENGINE_OK"));
 }
 
 void Kernel::onWindowSizeChange(const SizeChangeParams & params) {

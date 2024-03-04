@@ -136,7 +136,7 @@ void populatePressRelease(const ptree & attributes, PressReleaseActions::Entry& 
 
 void loadDefaultKeyBindings(const string &file, const Scene* scene) {
     ptree pt;
-    Console::printfn(Locale::Get(_ID("XML_LOAD_DEFAULT_KEY_BINDINGS")), file.c_str());
+    Console::printfn(LOCALE_STR("XML_LOAD_DEFAULT_KEY_BINDINGS"), file.c_str());
     read_xml(file, pt);
 
     for(const auto & [tag, data] : pt.get_child("actions", g_emptyPtree))
@@ -200,7 +200,7 @@ void loadMusicPlaylist(const Str<256>& scenePath, const Str<64>& fileName, const
     if (!fileExists(file.c_str())) {
         return;
     }
-    Console::printfn(Locale::Get(_ID("XML_LOAD_MUSIC")), file.c_str());
+    Console::printfn(LOCALE_STR("XML_LOAD_MUSIC"), file.c_str());
     ptree pt;
     read_xml(file, pt);
 
@@ -223,7 +223,7 @@ void readXML(const string& path, ptree& tree) {
     try {
         read_xml(path, tree);
     } catch (const boost::property_tree::xml_parser_error& e) {
-        Console::errorfn(Locale::Get(_ID("ERROR_XML_INVALID_FILE")), path.c_str(), e.what());
+        Console::errorfn(LOCALE_STR("ERROR_XML_INVALID_FILE"), path.c_str(), e.what());
     }
 }
 }  // namespace Divide::XML

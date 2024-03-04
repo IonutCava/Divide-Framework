@@ -199,7 +199,7 @@ bool Load(PlatformContext& context, Import::ImportData& target) {
     const aiScene* aiScenePointer = importer.ReadFile((filePath.str() + "/" + fileName.str()).c_str(), ppSteps);
 
     if (!aiScenePointer) {
-        Console::errorfn(Locale::Get(_ID("ERROR_IMPORTER_FILE")), fileName.c_str(), importer.GetErrorString());
+        Console::errorfn(LOCALE_STR("ERROR_IMPORTER_FILE"), fileName.c_str(), importer.GetErrorString());
         return false;
     }
 
@@ -265,7 +265,7 @@ bool Load(PlatformContext& context, Import::ImportData& target) {
         for (U32 i = 0u; i < aiScenePointer->mNumAnimations; i++) {
             const aiAnimation* animation = aiScenePointer->mAnimations[i];
             if (IS_ZERO(animation->mDuration)) {
-                Console::errorfn(Locale::Get(_ID("LOADED_0_LENGTH_ANIMATION")), animation->mName.C_Str());
+                Console::errorfn(LOCALE_STR("LOADED_0_LENGTH_ANIMATION"), animation->mName.C_Str());
             } else {
                 target._animations.push_back(MemoryManager_NEW AnimEvaluator(animation, i));
             }
@@ -469,14 +469,14 @@ void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData,
     }
     else
     {
-        Console::d_printfn(Locale::Get(_ID("SUBMESH_NO_TANGENT")), subMeshData.name().c_str());
+        Console::d_printfn(LOCALE_STR("SUBMESH_NO_TANGENT"), subMeshData.name().c_str());
     }
 
     if (source->mNumBones > 0u)
     {
         if (source->mNumBones >= Config::MAX_BONE_COUNT_PER_NODE )
         {
-            Console::errorfn( Locale::Get( _ID( "SUBMESH_TOO_MANY_BONES" ) ), subMeshData.name().c_str(), source->mNumBones, Config::MAX_BONE_COUNT_PER_NODE , Config::MAX_BONE_COUNT_PER_NODE );
+            Console::errorfn( LOCALE_STR( "SUBMESH_TOO_MANY_BONES" ), subMeshData.name().c_str(), source->mNumBones, Config::MAX_BONE_COUNT_PER_NODE , Config::MAX_BONE_COUNT_PER_NODE );
         }
 
         for ( U32 boneIndex = 0u; boneIndex < source->mNumBones; ++boneIndex )
@@ -690,7 +690,7 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
         if (AI_SUCCESS == aiGetMaterialColor(mat, AI_MATKEY_COLOR_DIFFUSE, &diffuse)) {
             material.baseColour(FColour4(diffuse.r, diffuse.g, diffuse.b, diffuse.a));
         } else {
-            Console::d_printfn(Locale::Get(_ID("MATERIAL_NO_DIFFUSE")), materialName.c_str());
+            Console::d_printfn(LOCALE_STR("MATERIAL_NO_DIFFUSE"), materialName.c_str());
         }
         // Load material opacity value. Shouldn't really be used since we can use opacity maps for this
         F32 alpha = 1.0f;
@@ -868,7 +868,7 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
                 // The first texture operation defines how we should mix the diffuse colour with the texture itself
                 loadTexture(TextureSlot::UNIT0, detail::aiTextureOperationTable[op], tName, mode, true);
             } else {
-                Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "0");
+                Console::errorfn(LOCALE_STR("MATERIAL_NO_NAME_TEXTURE"), materialName.c_str(), "0");
             }
         }
     }
@@ -880,14 +880,14 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
                 // The second operation is how we mix the albedo generated from the diffuse and Tex0 with this texture
                 loadTexture(TextureSlot::UNIT1, detail::aiTextureOperationTable[op], tName, mode, true);
             } else {
-                Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "UNIT1");
+                Console::errorfn(LOCALE_STR("MATERIAL_NO_NAME_TEXTURE"), materialName.c_str(), "UNIT1");
             }
         }
     }
     { // Validation
         if (AI_SUCCESS == mat->GetTexture(aiTextureType_BASE_COLOR, 2, &tName, &mapping, &uvInd, &blend, &op, mode) ||
             AI_SUCCESS == mat->GetTexture(aiTextureType_DIFFUSE, 2, &tName, &mapping, &uvInd, &blend, &op, mode)) {
-            Console::errorfn(Locale::Get(_ID("MATERIAL_EXTRA_DIFFUSE")), materialName.c_str());
+            Console::errorfn(LOCALE_STR("MATERIAL_EXTRA_DIFFUSE"), materialName.c_str());
         }
     }
     bool hasNormalMap = false;
@@ -900,7 +900,7 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
                 material.bumpMethod(BumpMethod::NORMAL);
                 hasNormalMap = true;
             } else {
-                Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "NORMALMAP");
+                Console::errorfn(LOCALE_STR("MATERIAL_NO_NAME_TEXTURE"), materialName.c_str(), "NORMALMAP");
             }
         }
     }
@@ -916,7 +916,7 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
                     material.bumpMethod(BumpMethod::PARALLAX);
                 }
             } else {
-                Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "NORMALMAP");
+                Console::errorfn(LOCALE_STR("MATERIAL_NO_NAME_TEXTURE"), materialName.c_str(), "NORMALMAP");
             }
         }
 
@@ -925,7 +925,7 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
                 loadTexture(TextureSlot::HEIGHTMAP, detail::aiTextureOperationTable[op], tName, mode);
                 material.bumpMethod(BumpMethod::PARALLAX);
             } else {
-                Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "HEIGHTMAP");
+                Console::errorfn(LOCALE_STR("MATERIAL_NO_NAME_TEXTURE"), materialName.c_str(), "HEIGHTMAP");
             }
         }
     }
@@ -934,7 +934,7 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
             if (tName.length > 0) {
                 loadTexture(TextureSlot::OPACITY, detail::aiTextureOperationTable[op], tName, mode);
             } else {
-                Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "OPACITY");
+                Console::errorfn(LOCALE_STR("MATERIAL_NO_NAME_TEXTURE"), materialName.c_str(), "OPACITY");
             }
         }
     }
@@ -945,7 +945,7 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
                 // Undo the spec colour and leave only the strength component in!
                 material.specular({ 0.f, 0.f, 0.f, material.specular().a });
             } else {
-                Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "SPECULAR");
+                Console::errorfn(LOCALE_STR("MATERIAL_NO_NAME_TEXTURE"), materialName.c_str(), "SPECULAR");
             }
         }
     }
@@ -955,7 +955,7 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
             if (tName.length > 0) {
                 loadTexture(TextureSlot::EMISSIVE, detail::aiTextureOperationTable[op], tName, mode);
             } else {
-                Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "EMISSIVE");
+                Console::errorfn(LOCALE_STR("MATERIAL_NO_NAME_TEXTURE"), materialName.c_str(), "EMISSIVE");
             }
         }
     }
@@ -963,49 +963,49 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
         if (tName.length > 0) {
             loadTexture(TextureSlot::METALNESS, detail::aiTextureOperationTable[op], tName, mode);
         } else {
-            Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "METALLIC_ROUGHNESS");
+            Console::errorfn(LOCALE_STR("MATERIAL_NO_NAME_TEXTURE"), materialName.c_str(), "METALLIC_ROUGHNESS");
         }
     } else {
         if (AI_SUCCESS == mat->GetTexture(aiTextureType_METALNESS, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
             if (tName.length > 0) {
                 loadTexture(TextureSlot::METALNESS, detail::aiTextureOperationTable[op], tName, mode);
             } else {
-                Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "METALNESS");
+                Console::errorfn(LOCALE_STR("MATERIAL_NO_NAME_TEXTURE"), materialName.c_str(), "METALNESS");
             }
         }
         if (AI_SUCCESS == mat->GetTexture(aiTextureType_DIFFUSE_ROUGHNESS, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
             if (tName.length > 0) {
                 loadTexture(TextureSlot::ROUGHNESS, detail::aiTextureOperationTable[op], tName, mode);
             } else {
-                Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "ROUGHNESS");
+                Console::errorfn(LOCALE_STR("MATERIAL_NO_NAME_TEXTURE"), materialName.c_str(), "ROUGHNESS");
             }
         }
         if (AI_SUCCESS == mat->GetTexture(aiTextureType_AMBIENT_OCCLUSION, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
             if (tName.length > 0) {
                 loadTexture(TextureSlot::OCCLUSION, detail::aiTextureOperationTable[op], tName, mode);
             } else {
-                Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "OCCLUSION");
+                Console::errorfn(LOCALE_STR("MATERIAL_NO_NAME_TEXTURE"), materialName.c_str(), "OCCLUSION");
             }
         }
     }
     if (AI_SUCCESS == mat->GetTexture(aiTextureType_SHEEN, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
         if (tName.length > 0) {
-            Console::warnfn(Locale::Get(_ID("MATERIAL_TEXTURE_NOT_SUPPORTED")), materialName.c_str(), "SHEEN");
+            Console::warnfn(LOCALE_STR("MATERIAL_TEXTURE_NOT_SUPPORTED"), materialName.c_str(), "SHEEN");
         }
     }
     if (AI_SUCCESS == mat->GetTexture(aiTextureType_CLEARCOAT, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
         if (tName.length > 0) {
-            Console::warnfn(Locale::Get(_ID("MATERIAL_TEXTURE_NOT_SUPPORTED")), materialName.c_str(), "CLEARCOAT");
+            Console::warnfn(LOCALE_STR("MATERIAL_TEXTURE_NOT_SUPPORTED"), materialName.c_str(), "CLEARCOAT");
         }
     }
     if (AI_SUCCESS == mat->GetTexture(aiTextureType_TRANSMISSION, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
         if (tName.length > 0) {
-            Console::warnfn(Locale::Get(_ID("MATERIAL_TEXTURE_NOT_SUPPORTED")), materialName.c_str(), "TRANSMISSION");
+            Console::warnfn(LOCALE_STR("MATERIAL_TEXTURE_NOT_SUPPORTED"), materialName.c_str(), "TRANSMISSION");
         }
     }
     if (AI_SUCCESS == mat->GetTexture(aiTextureType_UNKNOWN, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
         if (tName.length > 0) {
-            Console::warnfn(Locale::Get(_ID("MATERIAL_TEXTURE_NOT_SUPPORTED")), materialName.c_str(), "UNKNOWN");
+            Console::warnfn(LOCALE_STR("MATERIAL_TEXTURE_NOT_SUPPORTED"), materialName.c_str(), "UNKNOWN");
         }
     }
 }

@@ -50,7 +50,7 @@ namespace Divide
             default:
             case RenderBinType::COUNT:
             {
-                Console::errorfn( Locale::Get( _ID( "ERROR_INVALID_RENDER_BIN_CREATION" ) ) );
+                Console::errorfn( LOCALE_STR( "ERROR_INVALID_RENDER_BIN_CREATION" ) );
             } break;
         };
 

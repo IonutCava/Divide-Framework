@@ -188,7 +188,7 @@ namespace
             const auto [error, lastCmdIndex] = validate();
             if ( error != GFX::ErrorType::NONE )
             {
-                Console::errorfn( Locale::Get( _ID( "ERROR_GFX_INVALID_COMMAND_BUFFER" ) ), lastCmdIndex, toString().c_str() );
+                Console::errorfn( LOCALE_STR( "ERROR_GFX_INVALID_COMMAND_BUFFER" ), lastCmdIndex, toString().c_str() );
                 DIVIDE_UNEXPECTED_CALL_MSG( Util::StringFormat( "GFX::CommandBuffer::batch error [ %s ]: Invalid command buffer. Check error log!", GFX::Names::errorType[to_base( error )] ).c_str() );
             }
         }

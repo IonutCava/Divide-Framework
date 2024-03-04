@@ -760,7 +760,7 @@ bool Sky::load()
 
     setBounds( BoundingBox( vec3<F32>( -radius ), vec3<F32>( radius ) ) );
 
-    Console::printfn( Locale::Get( _ID( "CREATE_SKY_RES_OK" ) ) );
+    Console::printfn( LOCALE_STR( "CREATE_SKY_RES_OK" ) );
 
     return SceneNode::load();
 }

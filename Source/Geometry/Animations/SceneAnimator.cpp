@@ -46,7 +46,7 @@ void SceneAnimator::release(const bool releaseAnimations)
 }
 
 bool SceneAnimator::init([[maybe_unused]] PlatformContext& context) {
-    Console::d_printfn(Locale::Get(_ID("LOAD_ANIMATIONS_BEGIN")));
+    Console::d_printfn(LOCALE_STR("LOAD_ANIMATIONS_BEGIN"));
 
     constexpr D64 timeStep = 1. / ANIMATION_TICKS_PER_SECOND;
     BoneTransform::Container transforms = {};
@@ -76,7 +76,7 @@ bool SceneAnimator::init([[maybe_unused]] PlatformContext& context) {
         _skeletonLines[i].resize(_maximumAnimationFrames, -1);
     }
 
-    Console::d_printfn(Locale::Get(_ID("LOAD_ANIMATIONS_END")), _skeletonDepthCache);
+    Console::d_printfn(LOCALE_STR("LOAD_ANIMATIONS_END"), _skeletonDepthCache);
 
     return _skeletonDepthCache > 0;
 }

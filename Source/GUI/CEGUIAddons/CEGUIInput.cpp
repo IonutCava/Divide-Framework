@@ -362,7 +362,7 @@ bool CEGUIInput::onTextEvent(const Input::TextEvent& arg)
         cd = SDL_iconv_open(toFormat, "UTF-8");
         if (cd == SDL_iconv_t(-1))
         {
-            Console::errorfn(Locale::Get(_ID("ERROR_CEGUI_SDL_UTF")));
+            Console::errorfn(LOCALE_STR("ERROR_CEGUI_SDL_UTF"));
             return false;
         }
     }
@@ -383,7 +383,7 @@ bool CEGUIInput::onTextEvent(const Input::TextEvent& arg)
 
     if (n == size_t(-1)) // some error occured during iconv
     {
-        Console::errorfn(Locale::Get(_ID("ERROR_CEGUI_UTF_CONVERSION")));
+        Console::errorfn(LOCALE_STR("ERROR_CEGUI_UTF_CONVERSION"));
         return false;
     }
 

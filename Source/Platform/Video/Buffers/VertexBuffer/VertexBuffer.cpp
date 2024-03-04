@@ -112,7 +112,7 @@ VertexBuffer::VertexBuffer(GFXDevice& context, const bool renderIndirect, const 
 
 bool VertexBuffer::create(const bool staticDraw, const bool keepData) {
     const AttributeOffsets offsets = GetAttributeOffsets(_useAttribute, _effectiveEntrySize);
-    DIVIDE_ASSERT(!_data.empty() && _effectiveEntrySize > 0u, Locale::Get(_ID("ERROR_VB_POSITION")));
+    DIVIDE_ASSERT(!_data.empty() && _effectiveEntrySize > 0u, LOCALE_STR("ERROR_VB_POSITION"));
 
     _staticBuffer = staticDraw;
     _keepData = keepData;

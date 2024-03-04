@@ -18,7 +18,7 @@ ByteBufferException::ByteBufferException(const bool add, const size_t pos, const
 
 void ByteBufferException::printPosError() const {
 
-    Console::errorfn(Locale::Get(_ID("BYTE_BUFFER_ERROR")),
+    Console::errorfn(LOCALE_STR("BYTE_BUFFER_ERROR"),
                      _add ? "append" : "read", 
                      _pos,
                      _esize,

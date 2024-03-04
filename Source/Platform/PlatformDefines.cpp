@@ -12,6 +12,8 @@
 
 #include "Platform/File/Headers/FileManagement.h"
 
+#include <iostream>
+
 namespace Divide
 {
 
@@ -82,6 +84,7 @@ namespace Divide
             return expression;
         }
     }; // namespace Assert
+
     SysInfo& sysInfo() noexcept
     {
         return g_sysInfo;
@@ -92,64 +95,24 @@ namespace Divide
         return g_sysInfo;
     }
 
-
-    ErrorCode PlatformPreInit( const int argc, char** argv )
-    {
-        InitSysInfo( sysInfo(), argc, argv );
-        return ErrorCode::NO_ERR;
-    }
-
-    ErrorCode PlatformPostInit( const int argc, char** argv )
+    ErrorCode PlatformInit( const int argc, char** argv )
     {
         Runtime::mainThreadID( std::this_thread::get_id() );
         SeedRandom();
+
+        InitSysInfo( sysInfo(), argc, argv );
         Paths::initPaths( sysInfo() );
-
-        ErrorCode err = ErrorCode::WRONG_WORKING_DIRECTORY;
-        if ( pathExists( Paths::g_rootPath + Paths::g_assetsLocation ) )
-        {
-            // Read language table
-            err = Locale::Init();
-            if ( err == ErrorCode::NO_ERR )
-            {
-                Console::Start();
-                // Print a copyright notice in the log file
-                if ( !Util::FindCommandLineArgument( argc, argv, "disableCopyright" ) )
-                {
-                    Console::PrintCopyrightNotice();
-                }
-            }
-        }
-
-        return err;
-    }
-
-    ErrorCode PlatformInit( const int argc, char** argv )
-    {
-        ErrorCode err = PlatformPreInit( argc, argv );
-        if ( err == ErrorCode::NO_ERR )
-        {
-            err = PlatformInitImpl( argc, argv );
-            if ( err == ErrorCode::NO_ERR )
-            {
-                err = PlatformPostInit( argc, argv );
-            }
-        }
-
-        return err;
+        Console::Start();
+        
+        return ErrorCode::NO_ERR;
     }
 
     bool PlatformClose()
     {
         Runtime::resetMainThreadID();
-        if ( PlatformCloseImpl() )
-        {
-            Console::Stop();
-            Locale::Clear();
-            return true;
-        }
+        Console::Stop();
 
-        return false;
+        return true;
     }
 
     void InitSysInfo( SysInfo& info, [[maybe_unused]] const I32 argc, [[maybe_unused]] char** argv )

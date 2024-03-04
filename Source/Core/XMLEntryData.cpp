@@ -16,7 +16,7 @@ XMLEntryData::XMLEntryData() noexcept : IXMLSerializable()
 }
 
 bool XMLEntryData::fromXML(const char* xmlFile) {
-    Console::printfn(Locale::Get(_ID("XML_LOAD_SCRIPTS")));
+    Console::printfn(LOCALE_STR("XML_LOAD_SCRIPTS"));
 
     if (LoadSave.read(xmlFile, "")) {
         GET_PARAM(config);

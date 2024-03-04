@@ -403,7 +403,7 @@ namespace Divide
     {
         if ( _init )
         {
-            Console::d_errorfn( Locale::Get( _ID( "ERROR_GUI_DOUBLE_INIT" ) ) );
+            Console::d_errorfn( LOCALE_STR( "ERROR_GUI_DOUBLE_INIT" ) );
             return ErrorCode::GUI_INIT_ERROR;
         }
 
@@ -646,7 +646,7 @@ namespace Divide
         _init = true;
         if ( _fonsContext == nullptr )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_FONT_INIT" ) ) );
+            Console::errorfn( LOCALE_STR( "ERROR_FONT_INIT" ) );
             return ErrorCode::FONT_INIT_ERROR;
         }
 
@@ -680,7 +680,7 @@ namespace Divide
             _fonsContext.reset();
             _fonts.clear();
 
-            Console::printfn( Locale::Get( _ID( "STOP_GUI" ) ) );
+            Console::printfn( LOCALE_STR( "STOP_GUI" ) );
             MemoryManager::SAFE_DELETE( _console );
             MemoryManager::SAFE_DELETE( _defaultMsgBox );
             g_assertMsgBox = nullptr;
@@ -707,7 +707,7 @@ namespace Divide
                 }
                 catch ( ... )
                 {
-                    Console::d_errorfn( Locale::Get( _ID( "ERROR_CEGUI_DESTROY" ) ) );
+                    Console::d_errorfn( LOCALE_STR( "ERROR_CEGUI_DESTROY" ) );
                 }
                 CEGUI::CEGUIRenderer::destroy( *_ceguiRenderer );
                 _ceguiRenderer = nullptr;
@@ -899,7 +899,7 @@ namespace Divide
                 // loading an invalid font file on every request
                 if ( _fontCache.second == FONS_INVALID )
                 {
-                    Console::errorfn( Locale::Get( _ID( "ERROR_FONT_FILE" ) ), fontName.c_str() );
+                    Console::errorfn( LOCALE_STR( "ERROR_FONT_FILE" ), fontName.c_str() );
                 }
                 // Save the font in the font cache
                 hashAlg::insert( _fonts, fontNameHash, _fontCache.second );

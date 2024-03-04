@@ -55,7 +55,7 @@ namespace Divide
         _postFXTarget._drawMask.fill(false);
         _postFXTarget._drawMask[to_base( GFXDevice::ScreenTargets::ALBEDO )] = true;
 
-        Console::printfn( Locale::Get( _ID( "START_POST_FX" ) ) );
+        Console::printfn( LOCALE_STR( "START_POST_FX" ) );
 
         ShaderModuleDescriptor vertModule = {};
         vertModule._moduleType = ShaderType::VERTEX;
@@ -131,6 +131,8 @@ namespace Divide
 
     PostFX::~PostFX()
     {
+        // Destroy our post processing system
+        Console::printfn( LOCALE_STR( "STOP_POST_FX" ) );
     }
 
     void PostFX::updateResolution( const U16 newWidth, const U16 newHeight )

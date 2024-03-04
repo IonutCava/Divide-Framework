@@ -22,7 +22,7 @@ namespace {
 CubeShadowMapGenerator::CubeShadowMapGenerator(GFXDevice& context)
     : ShadowMapGenerator(context, ShadowType::CUBEMAP)
 {
-    Console::printfn(Locale::Get(_ID("LIGHT_CREATE_SHADOW_FB")), "Single Shadow Map");
+    Console::printfn(LOCALE_STR("LIGHT_CREATE_SHADOW_FB"), "Single Shadow Map");
     g_shadowSettings = context.context().config().rendering.shadowMapping;
 }
 

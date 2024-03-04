@@ -46,7 +46,7 @@ namespace nvttHelpers {
             };
             static_assert(std::size(nvttErrors) == static_cast<size_t>(nvtt::Error::Error_Count));
 
-            Console::errorfn(Locale::Get(_ID("ERROR_IMAGE_TOOLS_NVT_ERROR")), nvttErrors[to_size(e)]);
+            Console::errorfn(LOCALE_STR("ERROR_IMAGE_TOOLS_NVT_ERROR"), nvttErrors[to_size(e)]);
         }
     };
     struct OutputHandler : public nvtt::OutputHandler {
@@ -105,7 +105,7 @@ namespace nvttHelpers {
                 pixelFormat = GFXImageFormat::BC7;
                 break;
             default:
-                Console::errorfn(Locale::Get(_ID("ERROR_IMAGE_TOOLS_NVT_FORMAT")));
+                Console::errorfn(LOCALE_STR("ERROR_IMAGE_TOOLS_NVT_FORMAT"));
                 return false;
             }
 
@@ -594,7 +594,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
             }
             else
             {
-                Console::errorfn(Locale::Get(_ID("ERROR_IMAGE_TOOLS_DDS_LOAD_ERROR")), fullPath.c_str());
+                Console::errorfn(LOCALE_STR("ERROR_IMAGE_TOOLS_DDS_LOAD_ERROR"), fullPath.c_str());
             }
         }
     }
@@ -608,7 +608,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
         if (stbi_info_from_file(f, &x, &y, &n) && n == 3)
         {
             _hasDummyAlphaChannel = true;
-            Console::warnfn(Locale::Get(_ID("WARN_IMAGETOOLS_RGB_FORMAT")), fullPath.c_str());
+            Console::warnfn(LOCALE_STR("WARN_IMAGETOOLS_RGB_FORMAT"), fullPath.c_str());
         }
     }
 
@@ -635,7 +635,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
 
     if (dataHDR == nullptr && data16Bit == nullptr && dataLDR == nullptr)
     {
-        Console::errorfn(Locale::Get(_ID("ERROR_IMAGETOOLS_INVALID_IMAGE_FILE")), fullPath.c_str());
+        Console::errorfn(LOCALE_STR("ERROR_IMAGETOOLS_INVALID_IMAGE_FILE"), fullPath.c_str());
         return false;
     }
 
@@ -884,7 +884,7 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
 
     if (ilLoadImage(fullPath.c_str()) == IL_FALSE) {
         checkError();
-        Console::errorfn(Locale::Get(_ID("ERROR_IMAGETOOLS_INVALID_IMAGE_FILE")), _name.c_str());
+        Console::errorfn(LOCALE_STR("ERROR_IMAGETOOLS_INVALID_IMAGE_FILE"), _name.c_str());
         return false;
     }
     
@@ -925,7 +925,7 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
     // We don't support paletted images (or RGB8 in Vulkan)
     if (imageInfo.Format == IL_COLOUR_INDEX || (channelCount == 3 && imageInfo.Type == IL_UNSIGNED_BYTE) )
     {
-        Console::warnfn( Locale::Get( _ID( "WARN_IMAGETOOLS_RGB_FORMAT" ) ), fullPath.c_str() );
+        Console::warnfn( LOCALE_STR( "WARN_IMAGETOOLS_RGB_FORMAT" ), fullPath.c_str() );
 
         ilConvertImage(IL_RGBA, IL_UNSIGNED_BYTE);
         imageInfo.Format = IL_RGBA;

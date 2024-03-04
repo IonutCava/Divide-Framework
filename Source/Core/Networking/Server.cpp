@@ -4,6 +4,7 @@
 #include "Headers/Session.h"
 
 #include "Networking/Headers/ASIO.h"
+#include "Utility/Headers/Localization.h"
 
 using namespace boost::asio;
 
@@ -68,7 +69,7 @@ namespace Divide
         }
         catch ( std::exception& e )
         {
-            ASIO::LOG_PRINT( (string( "SERVER: " ) + e.what()).c_str(), true );
+            ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("SERVER_EXCEPTION"), e.what()).c_str(), true );
         }
     }
 
@@ -78,7 +79,7 @@ namespace Divide
         {
             if ( _debugOutput )
             {
-                ASIO::LOG_PRINT( "New TCP session accepted" );
+                ASIO::LOG_PRINT( LOCALE_STR("SERVER_ACCEPT_TCP") );
             }
             session->start();
 
@@ -93,9 +94,7 @@ namespace Divide
         }
         else
         {
-            std::stringstream ss;
-            ss << "Server::handle_accept ERROR: " << ec;
-            ASIO::LOG_PRINT( ss.str().c_str(), true );
+            ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("SERVER_ACCEPT_ERROR"), ec.what()).c_str(), true );
         }
     }
 

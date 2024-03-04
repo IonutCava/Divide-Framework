@@ -31,7 +31,7 @@ namespace {
 
     bool Validate(const I32 errCode) {
         if (errCode != 0) {
-            Console::errorfn(Locale::Get(_ID("SDL_ERROR")), SDL_GetError());
+            Console::errorfn(LOCALE_STR("SDL_ERROR"), SDL_GetError());
             return false;
         }
 
@@ -172,10 +172,9 @@ ErrorCode WindowManager::init(PlatformContext& context,
             // Register the display modes with the GFXDevice object
             for (I32 mode = 0; mode < numberOfDisplayModes[display]; ++mode) {
                 SDL_GetDisplayMode(display, mode, &s_mainDisplayMode );
-                // Register the display modes with the GFXDevice object
+                tempDisplayMode._maxRefreshRate = to_U8( s_mainDisplayMode.refresh_rate);
                 tempDisplayMode._resolution.set( s_mainDisplayMode.w, s_mainDisplayMode.h);
                 tempDisplayMode._bitsPerPixel = SDL_BITSPERPIXEL( s_mainDisplayMode.format);
-                tempDisplayMode._maxRefreshRate = to_U8( s_mainDisplayMode.refresh_rate);
                 tempDisplayMode._formatName = SDL_GetPixelFormatName( s_mainDisplayMode.format);
                 Util::ReplaceStringInPlace(tempDisplayMode._formatName, "SDL_PIXELFORMAT_", "");
                 Attorney::DisplayManagerWindowManager::RegisterDisplayMode(to_U8(display), tempDisplayMode);
@@ -295,7 +294,7 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
 
     if (!descriptor.externalClose) {
         window->addEventListener(WindowEvent::CLOSE_REQUESTED, [this](const DisplayWindow::WindowEventArgs& args) {
-            Console::d_printfn(Locale::Get(_ID("WINDOW_CLOSE_EVENT")), args._windowGUID);
+            Console::d_printfn(LOCALE_STR("WINDOW_CLOSE_EVENT"), args._windowGUID);
 
             if (_mainWindowGUID == args._windowGUID) {
                 _context->app().RequestShutdown(false);
@@ -303,7 +302,7 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
                 for (DisplayWindow*& win : _windows) {
                     if (win->getGUID() == args._windowGUID) {
                         if (!destroyWindow(win)) {
-                            Console::errorfn(Locale::Get(_ID("WINDOW_CLOSE_EVENT_ERROR")), args._windowGUID);
+                            Console::errorfn(LOCALE_STR("WINDOW_CLOSE_EVENT_ERROR"), args._windowGUID);
                             win->hidden(true);
                         }
                         break;
@@ -426,9 +425,9 @@ ErrorCode WindowManager::applyAPISettings(const RenderAPI api, DisplayWindow* wi
     }
 
     if (window->_userData == nullptr) {
-        Console::errorfn(Locale::Get(_ID("ERROR_GFX_DEVICE")), SDL_GetError());
-        Console::warnfn(Locale::Get(_ID("WARN_SWITCH_API")));
-        Console::warnfn(Locale::Get(_ID("WARN_APPLICATION_CLOSE")));
+        Console::errorfn(LOCALE_STR("ERROR_GFX_DEVICE"), SDL_GetError());
+        Console::warnfn(LOCALE_STR("WARN_SWITCH_API"));
+        Console::warnfn(LOCALE_STR("WARN_APPLICATION_CLOSE"));
         return ErrorCode::GL_OLD_HARDWARE;
     }
 
@@ -443,7 +442,7 @@ ErrorCode WindowManager::applyAPISettings(const RenderAPI api, DisplayWindow* wi
             if (_context->config().runtime.adaptiveSync) {
                 vsyncSet = SDL_GL_SetSwapInterval(-1) != -1;
                 if (!vsyncSet) {
-                    Console::warnfn(Locale::Get(_ID("WARN_ADAPTIVE_SYNC_NOT_SUPPORTED")));
+                    Console::warnfn(LOCALE_STR("WARN_ADAPTIVE_SYNC_NOT_SUPPORTED"));
                 }
             }
 

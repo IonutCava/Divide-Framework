@@ -709,43 +709,43 @@ namespace Divide
             {
                 case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
                 {
-                    Console::errorfn( Locale::Get( _ID( "ERROR_RT_ATTACHMENT_INCOMPLETE" ) ) );
+                    Console::errorfn( LOCALE_STR( "ERROR_RT_ATTACHMENT_INCOMPLETE" ) );
                 } break;
                 case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
                 {
-                    Console::errorfn( Locale::Get( _ID( "ERROR_RT_NO_IMAGE" ) ) );
+                    Console::errorfn( LOCALE_STR( "ERROR_RT_NO_IMAGE" ) );
                 } break;
                 case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
                 {
-                    Console::errorfn( Locale::Get( _ID( "ERROR_RT_INCOMPLETE_DRAW_BUFFER" ) ) );
+                    Console::errorfn( LOCALE_STR( "ERROR_RT_INCOMPLETE_DRAW_BUFFER" ) );
                 } break;
                 case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
                 {
-                    Console::errorfn( Locale::Get( _ID( "ERROR_RT_INCOMPLETE_READ_BUFFER" ) ) );
+                    Console::errorfn( LOCALE_STR( "ERROR_RT_INCOMPLETE_READ_BUFFER" ) );
                 } break;
                 case GL_FRAMEBUFFER_UNSUPPORTED:
                 {
-                    Console::errorfn( Locale::Get( _ID( "ERROR_RT_UNSUPPORTED" ) ) );
+                    Console::errorfn( LOCALE_STR( "ERROR_RT_UNSUPPORTED" ) );
                 } break;
                 case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
                 {
-                    Console::errorfn( Locale::Get( _ID( "ERROR_RT_INCOMPLETE_MULTISAMPLE" ) ) );
+                    Console::errorfn( LOCALE_STR( "ERROR_RT_INCOMPLETE_MULTISAMPLE" ) );
                 } break;
                 case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
                 {
-                    Console::errorfn( Locale::Get( _ID( "ERROR_RT_INCOMPLETE_LAYER_TARGETS" ) ) );
+                    Console::errorfn( LOCALE_STR( "ERROR_RT_INCOMPLETE_LAYER_TARGETS" ) );
                 } break;
                 case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT:
                 {
-                    Console::errorfn( Locale::Get( _ID( "ERROR_RT_DIMENSIONS" ) ) );
+                    Console::errorfn( LOCALE_STR( "ERROR_RT_DIMENSIONS" ) );
                 } break;
                 case GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT:
                 {
-                    Console::errorfn( Locale::Get( _ID( "ERROR_RT_FORMAT" ) ) );
+                    Console::errorfn( LOCALE_STR( "ERROR_RT_FORMAT" ) );
                 } break;
                 default:
                 {
-                    Console::errorfn( Locale::Get( _ID( "ERROR_UNKNOWN" ) ) );
+                    Console::errorfn( LOCALE_STR( "ERROR_UNKNOWN" ) );
                 } break;
             }
 

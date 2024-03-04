@@ -73,7 +73,7 @@ namespace Divide
         {
             if ( !lightList.empty() )
             {
-                Console::errorfn( Locale::Get( _ID( "ERROR_LIGHT_POOL_LIGHT_LEAKED" ) ) );
+                Console::errorfn( LOCALE_STR( "ERROR_LIGHT_POOL_LIGHT_LEAKED" ) );
             }
         }
     }
@@ -189,7 +189,7 @@ namespace Divide
         if ( findLightLocked( light.getGUID(), type ) != end( _lights[lightTypeIdx] ) )
         {
 
-            Console::errorfn( Locale::Get( _ID( "ERROR_LIGHT_POOL_DUPLICATE" ) ),
+            Console::errorfn( LOCALE_STR( "ERROR_LIGHT_POOL_DUPLICATE" ),
                              light.getGUID() );
             return false;
         }
@@ -208,7 +208,7 @@ namespace Divide
 
         if ( it == end( _lights[to_U32( light.getLightType() )] ) )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_LIGHT_POOL_REMOVE_LIGHT" ) ),
+            Console::errorfn( LOCALE_STR( "ERROR_LIGHT_POOL_REMOVE_LIGHT" ),
                              light.getGUID() );
             return false;
         }

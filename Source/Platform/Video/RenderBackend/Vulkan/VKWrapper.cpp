@@ -306,7 +306,7 @@ namespace Divide
         VkPipeline newPipeline;
         if ( vkCreateComputePipelines( device, pipelineCache, 1, &pipelineInfo, nullptr, &newPipeline ) != VK_SUCCESS )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_VK_PIPELINE_COMPUTE_FAILED" ) ) );
+            Console::errorfn( LOCALE_STR( "ERROR_VK_PIPELINE_COMPUTE_FAILED" ) );
             return VK_NULL_HANDLE; // failed to create graphics pipeline
         }
 
@@ -379,7 +379,7 @@ namespace Divide
         VkPipeline newPipeline;
         if ( vkCreateGraphicsPipelines( device, pipelineCache, 1, &pipelineInfo, nullptr, &newPipeline ) != VK_SUCCESS )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_VK_PIPELINE_GRAPHICS_FAILED" ) ) );
+            Console::errorfn( LOCALE_STR( "ERROR_VK_PIPELINE_GRAPHICS_FAILED" ) );
             return VK_NULL_HANDLE; // failed to create graphics pipeline
         }
 
@@ -606,7 +606,7 @@ namespace Divide
         {
             if ( result != VK_ERROR_OUT_OF_DATE_KHR && result != VK_SUBOPTIMAL_KHR )
             {
-                Console::errorfn( Locale::Get( _ID( "ERROR_GENERIC_VK" ) ), VKErrorString( result ).c_str() );
+                Console::errorfn( LOCALE_STR( "ERROR_GENERIC_VK" ), VKErrorString( result ).c_str() );
                 DIVIDE_UNEXPECTED_CALL();
             }
 
@@ -650,7 +650,7 @@ namespace Divide
             }
             else
             {
-                Console::errorfn( Locale::Get( _ID( "ERROR_GENERIC_VK" ) ), VKErrorString( result ).c_str() );
+                Console::errorfn( LOCALE_STR( "ERROR_GENERIC_VK" ), VKErrorString( result ).c_str() );
                 DIVIDE_UNEXPECTED_CALL();
             }
         }
@@ -772,7 +772,7 @@ namespace Divide
         auto systemInfoRet = vkb::SystemInfo::get_system_info();
         if ( !systemInfoRet )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_VK_INIT" ) ), systemInfoRet.error().message().c_str() );
+            Console::errorfn( LOCALE_STR( "ERROR_VK_INIT" ), systemInfoRet.error().message().c_str() );
             return ErrorCode::VK_OLD_HARDWARE;
         }
 
@@ -820,7 +820,7 @@ namespace Divide
         auto instanceRet = builder.build();
         if ( !instanceRet )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_VK_INIT" ) ), instanceRet.error().message().c_str() );
+            Console::errorfn( LOCALE_STR( "ERROR_VK_INIT" ), instanceRet.error().message().c_str() );
             return ErrorCode::VK_OLD_HARDWARE;
         }
 
@@ -951,7 +951,7 @@ namespace Divide
                 break;
         }
 
-        Console::printfn( Locale::Get( _ID( "VK_VENDOR_STRING" ) ),
+        Console::printfn( LOCALE_STR( "VK_VENDOR_STRING" ),
                           deviceProperties.deviceName,
                           deviceProperties.vendorID,
                           deviceProperties.deviceID,
@@ -968,7 +968,7 @@ namespace Divide
                 tools.resize( toolCount );
                 VK_CHECK( vkGetPhysicalDeviceToolProperties( physicalDevice, &toolCount, tools.data() ) );
 
-                Console::printfn( Locale::Get( _ID( "VK_TOOL_INFO" ) ), toolCount );
+                Console::printfn( LOCALE_STR( "VK_TOOL_INFO" ), toolCount );
     
                 for ( VkPhysicalDeviceToolPropertiesEXT& tool : tools )
                 {
@@ -1035,15 +1035,15 @@ namespace Divide
         }
         deviceInformation._maxWorgroupInvocations = deviceProperties.limits.maxComputeWorkGroupInvocations;
         deviceInformation._maxComputeSharedMemoryBytes = deviceProperties.limits.maxComputeSharedMemorySize;
-        Console::printfn( Locale::Get( _ID( "MAX_COMPUTE_WORK_GROUP_INFO" ) ),
+        Console::printfn( LOCALE_STR( "MAX_COMPUTE_WORK_GROUP_INFO" ),
                           deviceInformation._maxWorgroupCount[0], deviceInformation._maxWorgroupCount[1], deviceInformation._maxWorgroupCount[2],
                           deviceInformation._maxWorgroupSize[0], deviceInformation._maxWorgroupSize[1], deviceInformation._maxWorgroupSize[2],
                           deviceInformation._maxWorgroupInvocations );
-        Console::printfn( Locale::Get( _ID( "MAX_COMPUTE_SHARED_MEMORY_SIZE" ) ), deviceInformation._maxComputeSharedMemoryBytes / 1024 );
+        Console::printfn( LOCALE_STR( "MAX_COMPUTE_SHARED_MEMORY_SIZE" ), deviceInformation._maxComputeSharedMemoryBytes / 1024 );
 
         // Maximum number of varying components supported as outputs in the vertex shader
         deviceInformation._maxVertOutputComponents = deviceProperties.limits.maxVertexOutputComponents;
-        Console::printfn( Locale::Get( _ID( "MAX_VERTEX_OUTPUT_COMPONENTS" ) ), deviceInformation._maxVertOutputComponents );
+        Console::printfn( LOCALE_STR( "MAX_VERTEX_OUTPUT_COMPONENTS" ), deviceInformation._maxVertOutputComponents );
 
         deviceInformation._UBOffsetAlignmentBytes = deviceProperties.limits.minUniformBufferOffsetAlignment;
         deviceInformation._UBOMaxSizeBytes = deviceProperties.limits.maxUniformBufferRange;
@@ -1052,12 +1052,12 @@ namespace Divide
         deviceInformation._maxSSBOBufferBindings = deviceProperties.limits.maxPerStageDescriptorStorageBuffers;
 
         const bool UBOSizeOver1Mb = deviceInformation._UBOMaxSizeBytes / 1024 > 1024;
-        Console::printfn( Locale::Get( _ID( "GL_VK_UBO_INFO" ) ),
+        Console::printfn( LOCALE_STR( "GL_VK_UBO_INFO" ),
                           deviceProperties.limits.maxDescriptorSetUniformBuffers,
                           (deviceInformation._UBOMaxSizeBytes / 1024) / (UBOSizeOver1Mb ? 1024 : 1),
                           UBOSizeOver1Mb ? "Mb" : "Kb",
                           deviceInformation._UBOffsetAlignmentBytes );
-        Console::printfn( Locale::Get( _ID( "GL_VK_SSBO_INFO" ) ),
+        Console::printfn( LOCALE_STR( "GL_VK_SSBO_INFO" ),
                           deviceInformation._maxSSBOBufferBindings,
                           deviceInformation._SSBOMaxSizeBytes / 1024 / 1024,
                           deviceProperties.limits.maxDescriptorSetStorageBuffers,
@@ -1096,7 +1096,7 @@ namespace Divide
         }
         else
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_VK_PIPELINE_CACHE_LOAD" ) ), Names::fileError[to_base( errCache )] );
+            Console::errorfn( LOCALE_STR( "ERROR_VK_PIPELINE_CACHE_LOAD" ), Names::fileError[to_base( errCache )] );
         }
 
         if ( _context.context().config().runtime.usePipelineCache )
@@ -1207,7 +1207,7 @@ namespace Divide
                 const FileError err = writeFile( PipelineCacheLocation(), PipelineCacheFileName, data.data(), size, FileType::BINARY );
                 if ( err != FileError::NONE )
                 {
-                    Console::errorfn( Locale::Get( _ID( "ERROR_VK_PIPELINE_CACHE_SAVE" ) ), Names::fileError[to_base( err )] );
+                    Console::errorfn( LOCALE_STR( "ERROR_VK_PIPELINE_CACHE_SAVE" ), Names::fileError[to_base( err )] );
                 }
                 vkDestroyPipelineCache( _device->getVKDevice(), _pipelineCache, nullptr );
             }
@@ -1793,7 +1793,7 @@ namespace Divide
             if ( program == nullptr )
             {
                 const auto handle = pipelineDescriptor._shaderProgramHandle;
-                Console::errorfn( Locale::Get( _ID( "ERROR_GLSL_INVALID_HANDLE" ) ), handle._id, handle._generation, handle._tag );
+                Console::errorfn( LOCALE_STR( "ERROR_GLSL_INVALID_HANDLE" ), handle._id, handle._generation, handle._tag );
                 return ShaderResult::Failed;
             }
 
@@ -2438,7 +2438,7 @@ namespace Divide
                 if ( bindPipeline( *pipeline, cmdBuffer ) == ShaderResult::Failed )
                 {
                     const auto handle = pipeline->descriptor()._shaderProgramHandle;
-                    Console::errorfn( Locale::Get( _ID( "ERROR_GLSL_INVALID_BIND" ) ), handle._id, handle._generation, handle._tag );
+                    Console::errorfn( LOCALE_STR( "ERROR_GLSL_INVALID_BIND" ), handle._id, handle._generation, handle._tag );
                 }
             } break;
             case GFX::CommandType::SEND_PUSH_CONSTANTS:

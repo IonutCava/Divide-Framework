@@ -7,7 +7,7 @@
 namespace Divide {
 
 bool Configuration::fromXML(const char* xmlFile) {
-    Console::printfn(Locale::Get(_ID("XML_LOAD_CONFIG")), xmlFile);
+    Console::printfn(LOCALE_STR("XML_LOAD_CONFIG"), xmlFile);
     if (LoadSave.read(xmlFile, "config.")) {
         GET_PARAM(debug.renderer.enableRenderAPIDebugging);
         GET_PARAM(debug.renderer.enableRenderAPIBestPractices);

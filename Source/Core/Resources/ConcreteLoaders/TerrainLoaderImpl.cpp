@@ -15,7 +15,7 @@ CachedResource_ptr ImplResourceLoader<Terrain>::operator()() {
     std::shared_ptr<Terrain> ptr(MemoryManager_NEW Terrain(_context.gfx(), _cache, _loadingDescriptorHash, _descriptor.resourceName()),
                                  DeleteResource(_cache));
 
-    Console::printfn(Locale::Get(_ID("TERRAIN_LOAD_START")), _descriptor.resourceName().c_str());
+    Console::printfn(LOCALE_STR("TERRAIN_LOAD_START"), _descriptor.resourceName().c_str());
     const std::shared_ptr<TerrainDescriptor>& terrain = _descriptor.propertyDescriptor<TerrainDescriptor>();
     
     if (ptr) {
@@ -23,7 +23,7 @@ CachedResource_ptr ImplResourceLoader<Terrain>::operator()() {
     }
 
     if (!ptr || !TerrainLoader::loadTerrain(ptr, terrain, _context, true)) {
-        Console::errorfn(Locale::Get(_ID("ERROR_TERRAIN_LOAD")), _descriptor.resourceName().c_str());
+        Console::errorfn(LOCALE_STR("ERROR_TERRAIN_LOAD"), _descriptor.resourceName().c_str());
         ptr.reset();
     }
 

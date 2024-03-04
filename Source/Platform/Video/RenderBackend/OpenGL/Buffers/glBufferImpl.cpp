@@ -143,7 +143,7 @@ namespace Divide
 
         if ( !waitForLockedRange({offsetInBytes, rangeInBytes} ) ) [[unlikely]]
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_BUFFER_LOCK_MANAGER_WAIT" ) ) );
+            Console::errorfn( LOCALE_STR( "ERROR_BUFFER_LOCK_MANAGER_WAIT" ) );
         }
 
         BufferLock ret = 

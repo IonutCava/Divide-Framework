@@ -54,7 +54,7 @@ T ParamHandler::getParam(HashType nameID, T defaultValue) const {
         return std::any_cast<T>(it->second);
     }
 
-    Console::errorfn(Locale::Get(_ID("ERROR_PARAM_GET")), nameID);
+    Console::errorfn(LOCALE_STR("ERROR_PARAM_GET"), nameID);
     return defaultValue;
 }
 
@@ -70,10 +70,10 @@ void ParamHandler::delParam(HashType nameID) {
         LockGuard<SharedMutex> w_lock(_mutex);
         _params.erase(nameID);
         if (_logState) {
-            Console::printfn(Locale::Get(_ID("PARAM_REMOVE")), nameID);
+            Console::printfn(LOCALE_STR("PARAM_REMOVE"), nameID);
         }
     } else {
-        Console::errorfn(Locale::Get(_ID("ERROR_PARAM_REMOVE")), nameID);
+        Console::errorfn(LOCALE_STR("ERROR_PARAM_REMOVE"), nameID);
     }
 }
 
@@ -85,7 +85,7 @@ inline string ParamHandler::getParam(HashType nameID, string defaultValue) const
         return it->second;
     }
 
-    Console::errorfn(Locale::Get(_ID("ERROR_PARAM_GET")), nameID);
+    Console::errorfn(LOCALE_STR("ERROR_PARAM_GET"), nameID);
     return defaultValue;
 }
 
@@ -112,12 +112,12 @@ template <>
 inline void ParamHandler::delParam<string>(HashType nameID) {
     if (isParam<string>(nameID)) {
         if (_logState) {
-            Console::printfn(Locale::Get(_ID("PARAM_REMOVE")), nameID);
+            Console::printfn(LOCALE_STR("PARAM_REMOVE"), nameID);
         }
         LockGuard<SharedMutex> w_lock(_mutex);
         _paramsStr.erase(nameID);
     } else {
-        Console::errorfn(Locale::Get(_ID("ERROR_PARAM_REMOVE")), nameID);
+        Console::errorfn(LOCALE_STR("ERROR_PARAM_REMOVE"), nameID);
     }
 }
 
@@ -129,7 +129,7 @@ inline bool ParamHandler::getParam(HashType nameID, const bool defaultValue) con
         return it->second;
     }
 
-    Console::errorfn(Locale::Get(_ID("ERROR_PARAM_GET")), nameID);
+    Console::errorfn(LOCALE_STR("ERROR_PARAM_GET"), nameID);
     return defaultValue;
 }
 
@@ -151,10 +151,10 @@ inline void ParamHandler::delParam<bool>(HashType nameID) {
         LockGuard<SharedMutex> w_lock(_mutex);
         _paramBool.erase(nameID);
         if (_logState) {
-            Console::printfn(Locale::Get(_ID("PARAM_REMOVE")), nameID);
+            Console::printfn(LOCALE_STR("PARAM_REMOVE"), nameID);
         }
     } else {
-        Console::errorfn(Locale::Get(_ID("ERROR_PARAM_REMOVE")), nameID);
+        Console::errorfn(LOCALE_STR("ERROR_PARAM_REMOVE"), nameID);
     }
 }
 
@@ -166,7 +166,7 @@ inline F32 ParamHandler::getParam(HashType nameID, const F32 defaultValue) const
         return it->second;
     }
 
-    Console::errorfn(Locale::Get(_ID("ERROR_PARAM_GET")), nameID);
+    Console::errorfn(LOCALE_STR("ERROR_PARAM_GET"), nameID);
     return defaultValue;
 }
 
@@ -188,10 +188,10 @@ inline void ParamHandler::delParam<F32>(HashType nameID) {
         LockGuard<SharedMutex> w_lock(_mutex);
         _paramsFloat.erase(nameID);
         if (_logState) {
-            Console::printfn(Locale::Get(_ID("PARAM_REMOVE")), nameID);
+            Console::printfn(LOCALE_STR("PARAM_REMOVE"), nameID);
         }
     } else {
-        Console::errorfn(Locale::Get(_ID("ERROR_PARAM_REMOVE")), nameID);
+        Console::errorfn(LOCALE_STR("ERROR_PARAM_REMOVE"), nameID);
     }
 }
 

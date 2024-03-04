@@ -10,8 +10,10 @@
 namespace Divide
 {
 
-TEST_CASE( "File Existance Check" "[file_management]" )
+TEST_CASE( "File Existence Check" "[file_management]" )
 {
+    platformInitRunListener::PlatformInit();
+
     const char* invalidFileName = "abc.cba";
 
     const Divide::SysInfo& systemInfo = Divide::const_sysInfo();
@@ -21,8 +23,10 @@ TEST_CASE( "File Existance Check" "[file_management]" )
     CHECK_FALSE(Divide::fileExists(invalidFileName));
 }
 
-TEST_CASE( "Path Existance Check" "[file_management]" )
+TEST_CASE( "Path Existence Check" "[file_management]" )
 {
+    platformInitRunListener::PlatformInit();
+
     const char* invalidPath = "abccba";
 
     CHECK_TRUE(Divide::pathExists(Divide::Paths::g_rootPath + Divide::Paths::g_assetsLocation));

@@ -42,7 +42,7 @@ void threadedMeshLoad(MeshLoadData loadData, ResourcePath modelPath, ResourcePat
     } else {
         loadData._cache->remove(loadData._mesh.get());
         loadData._mesh.reset();
-        Console::errorfn(Locale::Get(_ID("ERROR_IMPORTER_MESH")), modelName.c_str());
+        Console::errorfn(LOCALE_STR("ERROR_IMPORTER_MESH"), modelName.c_str());
         return;
     }
 }

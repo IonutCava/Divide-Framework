@@ -69,7 +69,7 @@ namespace Divide
         // Create the scene
         if ( !gPhysicsSDK )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_PHYSX_SDK" ) ) );
+            Console::errorfn( LOCALE_STR( "ERROR_PHYSX_SDK" ) );
             return false;
         }
 
@@ -80,7 +80,7 @@ namespace Divide
             _cpuDispatcher = physx::PxDefaultCpuDispatcherCreate( std::max( 2u, HardwareThreadCount() - 2u ) );
             if ( !_cpuDispatcher )
             {
-                Console::errorfn( Locale::Get( _ID( "ERROR_PHYSX_INTERFACE_CPU_DISPATCH" ) ) );
+                Console::errorfn( LOCALE_STR( "ERROR_PHYSX_INTERFACE_CPU_DISPATCH" ) );
             }
             sceneDesc.cpuDispatcher = _cpuDispatcher;
         }
@@ -117,7 +117,7 @@ namespace Divide
         _gScene = gPhysicsSDK->createScene( sceneDesc );
         if ( !_gScene )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_PHYSX_INTERFACE_CREATE_SCENE" ) ) );
+            Console::errorfn( LOCALE_STR( "ERROR_PHYSX_INTERFACE_CREATE_SCENE" ) );
             return false;
         }
 
@@ -151,7 +151,7 @@ namespace Divide
 #define SAFE_RELEASE(X) if (X != nullptr) { X->release(); X = nullptr;}
     void PhysXSceneInterface::release()
     {
-        Console::d_printfn( Locale::Get( _ID( "STOP_PHYSX_SCENE_INTERFACE" ) ) );
+        Console::d_printfn( LOCALE_STR( "STOP_PHYSX_SCENE_INTERFACE" ) );
 
         idle();
 

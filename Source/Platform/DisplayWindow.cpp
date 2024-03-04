@@ -87,9 +87,9 @@ ErrorCode DisplayWindow::init(const U32 windowFlags,
                                   windowFlags);
     // Check if we have a valid window
     if (_sdlWindow == nullptr) {
-        Console::errorfn(Locale::Get(_ID("ERROR_GFX_DEVICE")),
-                         Util::StringFormat(Locale::Get(_ID("ERROR_SDL_WINDOW")), SDL_GetError()).c_str());
-        Console::printfn(Locale::Get(_ID("WARN_APPLICATION_CLOSE")));
+        Console::errorfn(LOCALE_STR("ERROR_GFX_DEVICE"),
+                         Util::StringFormat(LOCALE_STR("ERROR_SDL_WINDOW"), SDL_GetError()).c_str());
+        Console::printfn(LOCALE_STR("WARN_APPLICATION_CLOSE"));
         return ErrorCode::SDL_WINDOW_INIT_ERROR;
     }
 

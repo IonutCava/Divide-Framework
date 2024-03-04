@@ -74,7 +74,7 @@ namespace Divide
 
     SceneGraph::~SceneGraph()
     {
-        Console::d_printfn( Locale::Get( _ID( "DELETE_SCENEGRAPH" ) ) );
+        Console::d_printfn( LOCALE_STR( "DELETE_SCENEGRAPH" ) );
         // Should recursively delete the entire scene graph
         unload();
     }
@@ -696,7 +696,7 @@ namespace Divide
             return;
         }
 
-        Console::printfn( Locale::Get( _ID( "XML_LOAD_GEOMETRY" ) ), file.c_str() );
+        Console::printfn( LOCALE_STR( "XML_LOAD_GEOMETRY" ), file.c_str() );
 
         ptree pt = {};
         XML::readXML( file.str(), pt );

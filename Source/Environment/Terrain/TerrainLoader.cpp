@@ -233,7 +233,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     const vec2<U16> terrainDimensions = terrainDescriptor->dimensions();
     const vec2<F32> altitudeRange = terrainDescriptor->altitudeRange();
 
-    Console::d_printfn(Locale::Get(_ID("TERRAIN_INFO")), terrainDimensions.width, terrainDimensions.height);
+    Console::d_printfn(LOCALE_STR("TERRAIN_INFO"), terrainDimensions.width, terrainDimensions.height);
 
     const F32 underwaterTileScale = terrainDescriptor->getVariablef("underwaterTileScale");
     terrainMaterial->properties().shadingMode(ShadingMode::PBR_MR);
@@ -667,7 +667,7 @@ bool TerrainLoader::loadThreadedResources(const Terrain_ptr& terrain,
     const VegetationDetails& vegDetails = initializeVegetationDetails(terrain, context, terrainDescriptor);
     Vegetation::createAndUploadGPUData(context.gfx(), terrain, vegDetails);
 
-    Console::printfn(Locale::Get(_ID("TERRAIN_LOAD_END")), terrain->resourceName().c_str());
+    Console::printfn(LOCALE_STR("TERRAIN_LOAD_END"), terrain->resourceName().c_str());
     return terrain->load();
 }
 

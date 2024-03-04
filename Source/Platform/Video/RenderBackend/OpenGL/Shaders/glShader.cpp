@@ -48,7 +48,7 @@ glShader::~glShader()
 {
     if (_handle != GL_NULL_HANDLE)
     {
-        Console::d_printfn(Locale::Get(_ID("SHADER_DELETE")), name().c_str());
+        Console::d_printfn(LOCALE_STR("SHADER_DELETE"), name().c_str());
         GL_API::DeleteShaderPrograms(1, &_handle);
     }
 }
@@ -80,7 +80,7 @@ ShaderResult glShader::uploadToGPU()
 
         Time::ProfileTimer timers[2];
 
-        Console::d_printfn(Locale::Get(_ID("GLSL_LOAD_PROGRAM")), _name.c_str(), getGUID());
+        Console::d_printfn(LOCALE_STR("GLSL_LOAD_PROGRAM"), _name.c_str(), getGUID());
 
         std::array<U64, to_base(ShaderType::COUNT)> stageCompileTimeGPU{};
 
@@ -97,7 +97,7 @@ ShaderResult glShader::uploadToGPU()
         glProgramParameteri(_handle, GL_PROGRAM_SEPARABLE, GL_TRUE);
 
         if (_handle == 0u || _handle == GL_NULL_HANDLE) {
-            Console::errorfn(Locale::Get(_ID("ERROR_GLSL_CREATE_PROGRAM")), _name.c_str());
+            Console::errorfn(LOCALE_STR("ERROR_GLSL_CREATE_PROGRAM"), _name.c_str());
             _valid = false;
             return ShaderResult::Failed;
         }
@@ -146,12 +146,12 @@ ShaderResult glShader::uploadToGPU()
                     glGetShaderInfoLog(shader, logSize, &logSize, &validationBuffer[0]);
                     if (validationBuffer.size() > g_validationBufferMaxSize) {
                         // On some systems, the program's disassembly is printed, and that can get quite large
-                        validationBuffer.resize(std::strlen(Locale::Get(_ID("ERROR_GLSL_COMPILE"))) * 2 + g_validationBufferMaxSize);
+                        validationBuffer.resize(std::strlen(LOCALE_STR("ERROR_GLSL_COMPILE")) * 2 + g_validationBufferMaxSize);
                         // Use the simple "truncate and inform user" system (a.k.a. add dots and delete the rest)
                         validationBuffer.append(" ... ");
                     }
 
-                    Console::errorfn(Locale::Get(_ID("ERROR_GLSL_COMPILE")), _name.c_str(), shader, Names::shaderTypes[to_base(data._type)], validationBuffer.c_str());
+                    Console::errorfn(LOCALE_STR("ERROR_GLSL_COMPILE"), _name.c_str(), shader, Names::shaderTypes[to_base(data._type)], validationBuffer.c_str());
 
                     glDeleteShader(shader);
                 } else {
@@ -193,16 +193,16 @@ ShaderResult glShader::uploadToGPU()
             glGetProgramInfoLog(_handle, logSize, nullptr, &validationBuffer[0]);
             if (validationBuffer.size() > g_validationBufferMaxSize) {
                 // On some systems, the program's disassembly is printed, and that can get quite large
-                validationBuffer.resize(std::strlen(Locale::Get(_ID("GLSL_LINK_PROGRAM_LOG"))) + g_validationBufferMaxSize);
+                validationBuffer.resize(std::strlen(LOCALE_STR("GLSL_LINK_PROGRAM_LOG")) + g_validationBufferMaxSize);
                 // Use the simple "truncate and inform user" system (a.k.a. add dots and delete the rest)
                 validationBuffer.append(" ... ");
             }
 
-            Console::errorfn(Locale::Get(_ID("GLSL_LINK_PROGRAM_LOG")), _name.c_str(), validationBuffer.c_str(), getGUID());
+            Console::errorfn(LOCALE_STR("GLSL_LINK_PROGRAM_LOG"), _name.c_str(), validationBuffer.c_str(), getGUID());
             glShaderProgram::Idle(_context.context());
         } else {
             if constexpr(Config::ENABLE_GPU_VALIDATION) {
-                Console::printfn(Locale::Get(_ID("GLSL_LINK_PROGRAM_LOG_OK")), _name.c_str(), "[OK]", getGUID(), _handle);
+                Console::printfn(LOCALE_STR("GLSL_LINK_PROGRAM_LOG_OK"), _name.c_str(), "[OK]", getGUID(), _handle);
                 glObjectLabel(GL_PROGRAM, _handle, -1, _name.c_str());
             }
             _valid = true;
@@ -231,7 +231,7 @@ ShaderResult glShader::uploadToGPU()
             }
         }
 
-        Console::printfn(Locale::Get(_ID("SHADER_TIMING_INFO")),
+        Console::printfn(LOCALE_STR("SHADER_TIMING_INFO"),
                          name().c_str(),
                          _handle,
                          Time::MicrosecondsToMilliseconds<F32>(timingData._totalTime),
@@ -263,7 +263,7 @@ bool glShader::load(const ShaderProgram::ShaderLoadData& data) {
     }
 
     if (_stageMask == UseProgramStageMask::GL_NONE_BIT) {
-        Console::errorfn(Locale::Get(_ID("ERROR_GLSL_NOT_FOUND")), name().c_str());
+        Console::errorfn(LOCALE_STR("ERROR_GLSL_NOT_FOUND"), name().c_str());
         return false;
     }
 
@@ -299,7 +299,7 @@ glShaderEntry glShader::LoadShader(GFXDevice& context,
         } 
         else 
         {
-            Console::d_printfn(Locale::Get(_ID("SHADER_MANAGER_GET_INC")), shader_ptr->name().c_str());
+            Console::d_printfn(LOCALE_STR("SHADER_MANAGER_GET_INC"), shader_ptr->name().c_str());
         }
 
         ret._shader = static_cast<glShader*>(shader_ptr.get());

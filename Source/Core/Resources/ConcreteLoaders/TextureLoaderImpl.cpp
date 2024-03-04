@@ -85,7 +85,7 @@ CachedResource_ptr ImplResourceLoader<Texture>::operator()() {
                                                 *_cache);
 
     if (!Load(ptr)) {
-        Console::errorfn(Locale::Get(_ID("ERROR_TEXTURE_LOADER_FILE")),
+        Console::errorfn(LOCALE_STR("ERROR_TEXTURE_LOADER_FILE"),
                          _descriptor.assetLocation().c_str(),
                          _descriptor.assetName().c_str(),
                          _descriptor.resourceName().c_str());

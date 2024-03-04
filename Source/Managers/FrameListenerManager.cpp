@@ -38,7 +38,7 @@ void FrameListenerManager::removeFrameListener(FrameListener* const listener) {
                             return fl->getGUID() == targetGUID;
                        }))
     {
-        Console::errorfn(Locale::Get(_ID("ERROR_FRAME_LISTENER_REMOVE")), listener->name().c_str());
+        Console::errorfn(LOCALE_STR("ERROR_FRAME_LISTENER_REMOVE"), listener->name().c_str());
     }
 }
 

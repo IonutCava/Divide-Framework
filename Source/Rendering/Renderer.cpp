@@ -148,8 +148,6 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
 
 Renderer::~Renderer()
 {
-    // Destroy our post processing system
-    Console::printfn(Locale::Get(_ID("STOP_POST_FX")));
 }
 
 void Renderer::prepareLighting(const RenderStage stage,

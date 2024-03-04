@@ -72,7 +72,7 @@ namespace Divide
         {
             if ( errCode != 0 )
             {
-                Console::errorfn( Locale::Get( _ID( "SDL_ERROR" ) ), SDL_GetError() );
+                Console::errorfn( LOCALE_STR( "SDL_ERROR" ), SDL_GetError() );
                 DIVIDE_UNEXPECTED_CALL();
                 return false;
             }
@@ -255,7 +255,7 @@ namespace Divide
             renderer = GPURenderer::UNKNOWN;
         }
         // GPU info, including vendor, gpu and driver
-        Console::printfn( Locale::Get( _ID( "GL_VENDOR_STRING" ) ), gpuVendorStr, gpuRendererStr, reinterpret_cast<const char*>(glGetString( GL_VERSION )) );
+        Console::printfn( LOCALE_STR( "GL_VENDOR_STRING" ), gpuVendorStr, gpuRendererStr, reinterpret_cast<const char*>(glGetString( GL_VERSION )) );
 
         DeviceInformation deviceInformation{};
         deviceInformation._vendor = vendor;
@@ -296,11 +296,11 @@ namespace Divide
 
         deviceInformation._versionInfo._major = to_U8( GLUtil::getGLValue( GL_MAJOR_VERSION ) );
         deviceInformation._versionInfo._minor = to_U8( GLUtil::getGLValue( GL_MINOR_VERSION ) );
-        Console::printfn( Locale::Get( _ID( "GL_MAX_VERSION" ) ), deviceInformation._versionInfo._major, deviceInformation._versionInfo._minor );
+        Console::printfn( LOCALE_STR( "GL_MAX_VERSION" ), deviceInformation._versionInfo._major, deviceInformation._versionInfo._minor );
 
         if ( deviceInformation._versionInfo._major < 4 || (deviceInformation._versionInfo._major == 4 && deviceInformation._versionInfo._minor < 6) )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_OPENGL_VERSION_TO_OLD" ) ) );
+            Console::errorfn( LOCALE_STR( "ERROR_OPENGL_VERSION_TO_OLD" ) );
             return ErrorCode::GFX_NOT_SUPPORTED;
         }
 
@@ -309,7 +309,7 @@ namespace Divide
 
         glMaxShaderCompilerThreadsARB( 0xFFFFFFFF );
         deviceInformation._shaderCompilerThreads = GLUtil::getGLValue( GL_MAX_SHADER_COMPILER_THREADS_ARB );
-        Console::printfn( Locale::Get( _ID( "GL_SHADER_THREADS" ) ), deviceInformation._shaderCompilerThreads );
+        Console::printfn( LOCALE_STR( "GL_SHADER_THREADS" ), deviceInformation._shaderCompilerThreads );
 
         glEnable( GL_MULTISAMPLE );
         // Line smoothing should almost always be used
@@ -339,14 +339,14 @@ namespace Divide
 
         // Print all of the OpenGL functionality info to the console and log
         // How many uniforms can we send to fragment shaders
-        Console::printfn( Locale::Get( _ID( "GL_MAX_UNIFORM" ) ), GLUtil::getGLValue( GL_MAX_FRAGMENT_UNIFORM_COMPONENTS ) );
+        Console::printfn( LOCALE_STR( "GL_MAX_UNIFORM" ), GLUtil::getGLValue( GL_MAX_FRAGMENT_UNIFORM_COMPONENTS ) );
         // How many uniforms can we send to vertex shaders
-        Console::printfn( Locale::Get( _ID( "GL_MAX_VERT_UNIFORM" ) ), GLUtil::getGLValue( GL_MAX_VERTEX_UNIFORM_COMPONENTS ) );
+        Console::printfn( LOCALE_STR( "GL_MAX_VERT_UNIFORM" ), GLUtil::getGLValue( GL_MAX_VERTEX_UNIFORM_COMPONENTS ) );
         // How many uniforms can we send to vertex + fragment shaders at the same time
-        Console::printfn( Locale::Get( _ID( "GL_MAX_FRAG_AND_VERT_UNIFORM" ) ), GLUtil::getGLValue( GL_MAX_COMBINED_FRAGMENT_UNIFORM_COMPONENTS ) );
+        Console::printfn( LOCALE_STR( "GL_MAX_FRAG_AND_VERT_UNIFORM" ), GLUtil::getGLValue( GL_MAX_COMBINED_FRAGMENT_UNIFORM_COMPONENTS ) );
         // How many attributes can we send to a vertex shader
         deviceInformation._maxVertAttributes = GLUtil::getGLValue( GL_MAX_VERTEX_ATTRIBS );
-        Console::printfn( Locale::Get( _ID( "GL_MAX_VERT_ATTRIB" ) ), deviceInformation._maxVertAttributes );
+        Console::printfn( LOCALE_STR( "GL_MAX_VERT_ATTRIB" ), deviceInformation._maxVertAttributes );
 
         // How many workgroups can we have per compute dispatch
         for ( U8 i = 0u; i < 3; ++i )
@@ -358,22 +358,22 @@ namespace Divide
         deviceInformation._maxWorgroupInvocations = GLUtil::getGLValue( GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS );
         deviceInformation._maxComputeSharedMemoryBytes = GLUtil::getGLValue( GL_MAX_COMPUTE_SHARED_MEMORY_SIZE );
 
-        Console::printfn( Locale::Get( _ID( "MAX_COMPUTE_WORK_GROUP_INFO" ) ),
+        Console::printfn( LOCALE_STR( "MAX_COMPUTE_WORK_GROUP_INFO" ) ,
                           deviceInformation._maxWorgroupCount[0], deviceInformation._maxWorgroupCount[1], deviceInformation._maxWorgroupCount[2],
                           deviceInformation._maxWorgroupSize[0], deviceInformation._maxWorgroupSize[1], deviceInformation._maxWorgroupSize[2],
                           deviceInformation._maxWorgroupInvocations );
-        Console::printfn( Locale::Get( _ID( "MAX_COMPUTE_SHARED_MEMORY_SIZE" ) ), deviceInformation._maxComputeSharedMemoryBytes / 1024 );
+        Console::printfn( LOCALE_STR( "MAX_COMPUTE_SHARED_MEMORY_SIZE" ), deviceInformation._maxComputeSharedMemoryBytes / 1024 );
 
         // Maximum number of texture units we can address in shaders
-        Console::printfn( Locale::Get( _ID( "GL_MAX_TEX_UNITS" ) ),
+        Console::printfn( LOCALE_STR( "GL_MAX_TEX_UNITS" ),
                           GLUtil::getGLValue( GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS ),
                           deviceInformation._maxTextureUnits );
         // Maximum number of varying components supported as outputs in the vertex shader
         deviceInformation._maxVertOutputComponents = GLUtil::getGLValue( GL_MAX_VERTEX_OUTPUT_COMPONENTS );
-        Console::printfn( Locale::Get( _ID( "MAX_VERTEX_OUTPUT_COMPONENTS" ) ), deviceInformation._maxVertOutputComponents );
+        Console::printfn( LOCALE_STR( "MAX_VERTEX_OUTPUT_COMPONENTS" ), deviceInformation._maxVertOutputComponents );
 
         // Query shading language version support
-        Console::printfn( Locale::Get( _ID( "GL_GLSL_SUPPORT" ) ),
+        Console::printfn( LOCALE_STR( "GL_GLSL_SUPPORT" ),
                           reinterpret_cast<const char*>(glGetString( GL_SHADING_LANGUAGE_VERSION ) ));
         // In order: Maximum number of uniform buffer binding points,
         //           maximum size in basic machine units of a uniform block and
@@ -381,7 +381,7 @@ namespace Divide
         GLUtil::getGLValue( GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, deviceInformation._UBOffsetAlignmentBytes );
         GLUtil::getGLValue( GL_MAX_UNIFORM_BLOCK_SIZE, deviceInformation._UBOMaxSizeBytes );
         const bool UBOSizeOver1Mb = deviceInformation._UBOMaxSizeBytes / 1024 > 1024;
-        Console::printfn( Locale::Get( _ID( "GL_VK_UBO_INFO" ) ),
+        Console::printfn( LOCALE_STR( "GL_VK_UBO_INFO" ),
                           GLUtil::getGLValue( GL_MAX_UNIFORM_BUFFER_BINDINGS ),
                           (deviceInformation._UBOMaxSizeBytes / 1024) / (UBOSizeOver1Mb ? 1024 : 1),
                           UBOSizeOver1Mb ? "Mb" : "Kb",
@@ -396,7 +396,7 @@ namespace Divide
         GLUtil::getGLValue( GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, deviceInformation._SSBOffsetAlignmentBytes );
         GLUtil::getGLValue( GL_MAX_SHADER_STORAGE_BLOCK_SIZE, deviceInformation._SSBOMaxSizeBytes );
         deviceInformation._maxSSBOBufferBindings = GLUtil::getGLValue( GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS );
-        Console::printfn( Locale::Get( _ID( "GL_VK_SSBO_INFO" ) ),
+        Console::printfn( LOCALE_STR( "GL_VK_SSBO_INFO" ),
                           deviceInformation._maxSSBOBufferBindings,
                           deviceInformation._SSBOMaxSizeBytes / 1024 / 1024,
                           GLUtil::getGLValue( GL_MAX_COMBINED_SHADER_STORAGE_BLOCKS ),
@@ -404,13 +404,13 @@ namespace Divide
 
         // Maximum number of subroutines and maximum number of subroutine uniform
         // locations usable in a shader
-        Console::printfn( Locale::Get( _ID( "GL_SUBROUTINE_INFO" ) ),
+        Console::printfn( LOCALE_STR( "GL_SUBROUTINE_INFO" ),
                           GLUtil::getGLValue( GL_MAX_SUBROUTINES ),
                           GLUtil::getGLValue( GL_MAX_SUBROUTINE_UNIFORM_LOCATIONS ) );
 
         GLint range[2];
         GLUtil::getGLValue( GL_SMOOTH_LINE_WIDTH_RANGE, range );
-        Console::printfn( Locale::Get( _ID( "GL_LINE_WIDTH_INFO" ) ), range[0], range[1] );
+        Console::printfn( LOCALE_STR( "GL_LINE_WIDTH_INFO" ), range[0], range[1] );
 
         const I32 clipDistanceCount = std::max( GLUtil::getGLValue( GL_MAX_CLIP_DISTANCES ), 0 );
         const I32 cullDistanceCount = std::max( GLUtil::getGLValue( GL_MAX_CULL_DISTANCES ), 0 );
@@ -463,7 +463,7 @@ namespace Divide
                       DefaultColours::BLACK.a );
 
         glCreateVertexArrays( 1, &_dummyVAO );
-        DIVIDE_ASSERT( _dummyVAO != GL_NULL_HANDLE, Locale::Get( _ID( "ERROR_VAO_INIT" ) ) );
+        DIVIDE_ASSERT( _dummyVAO != GL_NULL_HANDLE, LOCALE_STR( "ERROR_VAO_INIT" ) );
 
         if constexpr ( Config::ENABLE_GPU_VALIDATION )
         {
@@ -482,7 +482,7 @@ namespace Divide
         s_stateTracker._assertOnAPIError = &config.debug.renderer.assertOnRenderAPIError;
 
         // That's it. Everything should be ready for draw calls
-        Console::printfn( Locale::Get( _ID( "START_OGL_API_OK" ) ) );
+        Console::printfn( LOCALE_STR( "START_OGL_API_OK" ) );
         return ErrorCode::NO_ERR;
     }
 
@@ -1059,7 +1059,7 @@ namespace Divide
                 if ( BindPipeline(_context, *pipeline ) == ShaderResult::Failed )
                 {
                     const auto handle = pipeline->descriptor()._shaderProgramHandle;
-                    Console::errorfn( Locale::Get( _ID( "ERROR_GLSL_INVALID_BIND" ) ), handle._id, handle._generation, handle._tag );
+                    Console::errorfn( LOCALE_STR( "ERROR_GLSL_INVALID_BIND" ), handle._id, handle._generation, handle._tag );
                 }
             } break;
             case GFX::CommandType::SEND_PUSH_CONSTANTS:
@@ -1068,7 +1068,7 @@ namespace Divide
 
                 const auto dumpLogs = [this]()
                 {
-                    Console::d_errorfn( Locale::Get( _ID( "ERROR_GLSL_INVALID_PUSH_CONSTANTS" ) ) );
+                    Console::d_errorfn( LOCALE_STR( "ERROR_GLSL_INVALID_PUSH_CONSTANTS" ) );
                     if ( Config::ENABLE_GPU_VALIDATION )
                     {
                         // Shader failed to compile probably. Dump all shader caches for inspection.
@@ -1698,7 +1698,7 @@ namespace Divide
         else
         {
             const auto handle = pipelineDescriptor._shaderProgramHandle;
-            Console::errorfn( Locale::Get( _ID( "ERROR_GLSL_INVALID_HANDLE" ) ), handle._id, handle._generation, handle._tag );
+            Console::errorfn( LOCALE_STR( "ERROR_GLSL_INVALID_HANDLE" ), handle._id, handle._generation, handle._tag );
         }
 
         return ret;

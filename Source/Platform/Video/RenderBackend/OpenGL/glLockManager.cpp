@@ -95,7 +95,7 @@ namespace Divide
             {
                 if ( waitRet != GL_TIMEOUT_EXPIRED ) [[unlikely]]
                 {
-                    Console::errorfn(Locale::Get(_ID("ERROR_GL_LOCK_WAIT_TIMEOUT")));
+                    Console::errorfn(LOCALE_STR("ERROR_GL_LOCK_WAIT_TIMEOUT"));
                 }
 
                 break;
@@ -123,7 +123,7 @@ namespace Divide
         {
             if ( retryCount > g_MaxLockWaitRetries - 1 )
             {
-                Console::errorfn(Locale::Get(_ID("ERROR_GL_LOCK_WAIT_RETRY")), testRange._startOffset, testRange._length, retryCount);
+                Console::errorfn(LOCALE_STR("ERROR_GL_LOCK_WAIT_RETRY"), testRange._startOffset, testRange._length, retryCount);
             }
 
             return LockManager::waitForLockedRangeLocked(sync, testRange, lock);

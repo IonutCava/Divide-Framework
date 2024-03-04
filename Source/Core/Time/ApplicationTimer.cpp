@@ -48,7 +48,7 @@ void ApplicationTimer::update() {
         _frameRateHandler.frameRateAndTime(fps, frameTime);
 
         _lastBenchmarkTimeStamp = g_elapsedTimeUs;
-        _benchmarkReport = Util::StringFormat(Locale::Get(_ID("FRAMERATE_FPS_OUTPUT")),
+        _benchmarkReport = Util::StringFormat(LOCALE_STR("FRAMERATE_FPS_OUTPUT"),
                                               fps,
                                               _frameRateHandler.averageFrameRate(),
                                               _frameRateHandler.maxFrameRate(),

@@ -79,9 +79,9 @@ namespace Divide
         // Read Packet;
         virtual void start_read();
         virtual void handle_read_body( const boost::system::error_code& ec,
-                                       size_t bytes_transfered );
+                                       size_t bytes_transferred );
         virtual void handle_read_packet( const boost::system::error_code& ec,
-                                         size_t bytes_transfered );
+                                         size_t bytes_transferred );
 
         // Write Packet
         virtual void start_write();

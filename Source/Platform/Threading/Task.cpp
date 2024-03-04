@@ -12,7 +12,7 @@ namespace Divide
 
         if ( !pool.enqueue( task, priority, task._id, onCompletionFunction ) ) [[unlikely]]
         {
-            Console::errorfn( Locale::Get( _ID( "TASK_SCHEDULE_FAIL" ) ), 1 );
+            Console::errorfn( LOCALE_STR( "TASK_SCHEDULE_FAIL" ), 1 );
             Start( task, pool, TaskPriority::REALTIME, onCompletionFunction );
         }
     }

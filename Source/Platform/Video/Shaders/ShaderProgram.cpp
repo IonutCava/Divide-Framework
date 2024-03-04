@@ -166,12 +166,12 @@ namespace Divide
                 {
                     work->_firstError = false;
                     Console::errorfn( "------------------------------------------" );
-                    Console::errorfn( Locale::Get( _ID( "ERROR_GLSL_PARSE_ERROR_NAME_SHORT" ) ), work->_fileName );
+                    Console::errorfn( LOCALE_STR( "ERROR_GLSL_PARSE_ERROR_NAME_SHORT" ), work->_fileName );
                     firstErrorPrint = false;
                 }
                 if ( strlen( formatted ) != 1 && formatted[0] != '\n' )
                 {
-                    Console::errorfn( Locale::Get( _ID( "ERROR_GLSL_PARSE_ERROR_MSG" ) ), formatted );
+                    Console::errorfn( LOCALE_STR( "ERROR_GLSL_PARSE_ERROR_MSG" ), formatted );
                 }
                 else
                 {
@@ -842,7 +842,7 @@ namespace Divide
                 ShaderModule* shaderModule = it->second.get();
                 if ( !shaderModule->_inUse && shaderModule->_lastUsedFrame + MAX_FRAME_LIFETIME < GFXDevice::FrameCount() )
                 {
-                    Console::warnfn(Locale::Get(_ID("SHADER_MODULE_EXPIRED")), shaderModule->_name.c_str());
+                    Console::warnfn(LOCALE_STR("SHADER_MODULE_EXPIRED"), shaderModule->_name.c_str());
                     it = s_shaderNameMap.erase(it);
                 }
                 else
@@ -955,7 +955,7 @@ namespace Divide
     ShaderProgram::~ShaderProgram()
     {
         _parentCache.remove( this );
-        Console::d_printfn( Locale::Get( _ID( "SHADER_PROGRAM_REMOVE" ) ), resourceName().c_str() );
+        Console::d_printfn( LOCALE_STR( "SHADER_PROGRAM_REMOVE" ), resourceName().c_str() );
         s_shaderCount.fetch_sub( 1, std::memory_order_relaxed );
     }
 
@@ -1041,7 +1041,7 @@ namespace Divide
             ShaderQueueEntry entry = s_recompileQueue.top();
             if ( !entry._program->recompile() )
             {
-                Console::errorfn( Locale::Get( _ID( "ERROR_SHADER_RECOMPILE_FAILED" ) ), entry._program->resourceName().c_str() );
+                Console::errorfn( LOCALE_STR( "ERROR_SHADER_RECOMPILE_FAILED" ), entry._program->resourceName().c_str() );
 
                 // We can delay a recomputation up to an interval of a minute
                 if ( entry._queueDelayHighWaterMark < Config::TARGET_FRAME_RATE * 60)
@@ -1093,7 +1093,7 @@ namespace Divide
         // If no shaders were found, show an error
         if ( !state )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_RECOMPILE_NOT_FOUND" ) ), name.c_str() );
+            Console::errorfn( LOCALE_STR( "ERROR_RECOMPILE_NOT_FOUND" ), name.c_str() );
         }
 
         return state;
@@ -1498,7 +1498,7 @@ namespace Divide
     {
         if ( level > s_maxHeaderRecursionLevel )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_GLSL_INCLUD_LIMIT" ) ) );
+            Console::errorfn( LOCALE_STR( "ERROR_GLSL_INCLUD_LIMIT" ) );
         }
 
         size_t lineNumber = 1;
@@ -1559,7 +1559,7 @@ namespace Divide
                 }
                 if ( includeString.empty() )
                 {
-                    Console::errorfn( Locale::Get( _ID( "ERROR_GLSL_NO_INCLUDE_FILE" ) ), name.c_str(), lineNumber, includeFile.c_str() );
+                    Console::errorfn( LOCALE_STR( "ERROR_GLSL_NO_INCLUDE_FILE" ), name.c_str(), lineNumber, includeFile.c_str() );
                 }
                 if ( wasParsed )
                 {
@@ -1647,7 +1647,7 @@ namespace Divide
 
                     if ( err != FileError::NONE )
                     {
-                        Console::errorfn( Locale::Get( _ID( "ERROR_SHADER_SAVE_TEXT_FAILED" ) ), dataIn._shaderName.c_str() );
+                        Console::errorfn( LOCALE_STR( "ERROR_SHADER_SAVE_TEXT_FAILED" ), dataIn._shaderName.c_str() );
                     }
                     else
                     {
@@ -1667,7 +1667,7 @@ namespace Divide
 
                     if ( err != FileError::NONE )
                     {
-                        Console::errorfn( Locale::Get( _ID( "ERROR_SHADER_SAVE_SPIRV_FAILED" ) ), dataIn._shaderName.c_str() );
+                        Console::errorfn( LOCALE_STR( "ERROR_SHADER_SAVE_SPIRV_FAILED" ), dataIn._shaderName.c_str() );
                     }
                     else
                     {
@@ -1680,7 +1680,7 @@ namespace Divide
                 ret = Reflection::SaveReflectionData( ReflCacheLocation(), ReflTargetName( dataIn._shaderName ), dataIn._reflectionData, atomIDsIn );
                 if ( !ret )
                 {
-                    Console::errorfn( Locale::Get( _ID( "ERROR_SHADER_SAVE_REFL_FAILED" ) ), dataIn._shaderName.c_str() );
+                    Console::errorfn( LOCALE_STR( "ERROR_SHADER_SAVE_REFL_FAILED" ), dataIn._shaderName.c_str() );
                 }
             } break;
             default: return false;
@@ -1809,7 +1809,7 @@ namespace Divide
 
                 if ( !loadSourceCode( data._defines, overwrite, stageData, previousUniforms, blockOffset ) )
                 {
-                    Console::errorfn(Locale::Get(_ID("ERROR_SHADER_LOAD_SOURCE_CODE_FAILED")), stageData._shaderName.c_str(), overwrite ? "TRUE" : "FALSE");
+                    Console::errorfn(LOCALE_STR("ERROR_SHADER_LOAD_SOURCE_CODE_FAILED"), stageData._shaderName.c_str(), overwrite ? "TRUE" : "FALSE");
                     return false;
                 }
 
@@ -2041,7 +2041,7 @@ namespace Divide
                 DIVIDE_ASSERT( !loadDataInOut._sourceCodeGLSL.empty() );
                 if ( !SpirvHelper::GLSLtoSPV( loadDataInOut._type, loadDataInOut._sourceCodeGLSL.c_str(), loadDataInOut._sourceCodeSpirV, s_targetVulkan ) )
                 {
-                    Console::errorfn( Locale::Get( _ID( "ERROR_SHADER_CONVERSION_SPIRV_FAILED" ) ), loadDataInOut._shaderName.c_str() );
+                    Console::errorfn( LOCALE_STR( "ERROR_SHADER_CONVERSION_SPIRV_FAILED" ), loadDataInOut._shaderName.c_str() );
                     // We may fail here for WHATEVER reason so bail
                     if ( !DeleteCache( LoadData::ShaderCacheType::GLSL, loadDataInOut._shaderName ) )
                     {
@@ -2065,7 +2065,7 @@ namespace Divide
             // Well, we failed. Time to build our reflection data again
             if ( !SpirvHelper::BuildReflectionData( loadDataInOut._type, loadDataInOut._sourceCodeSpirV, s_targetVulkan, loadDataInOut._reflectionData ) )
             {
-                Console::errorfn( Locale::Get( _ID( "ERROR_SHADER_REFLECTION_SPIRV_FAILED" ) ), loadDataInOut._shaderName.c_str() );
+                Console::errorfn( LOCALE_STR( "ERROR_SHADER_REFLECTION_SPIRV_FAILED" ), loadDataInOut._shaderName.c_str() );
                 return false;
             }
             // Save reflection data to cache for future use

@@ -29,12 +29,9 @@ namespace Divide {
 #endif
     }
 
-    ErrorCode PlatformInitImpl(int argc, char** argv) noexcept {
-        return ErrorCode::NO_ERR;
-    }
-
-    bool PlatformCloseImpl() noexcept {
-        return true;
+    void EnforceDPIScaling() noexcept
+    {
+        NOP();
     }
 
     bool GetAvailableMemory(SysInfo& info) {

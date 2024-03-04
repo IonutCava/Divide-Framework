@@ -77,7 +77,7 @@ namespace Divide {
 
         if ( !vkbSwapchain )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_VK_INIT" ) ), vkbSwapchain.error().message().c_str() );
+            Console::errorfn( LOCALE_STR( "ERROR_VK_INIT" ), vkbSwapchain.error().message().c_str() );
             return ErrorCode::VK_OLD_HARDWARE;
         }
 

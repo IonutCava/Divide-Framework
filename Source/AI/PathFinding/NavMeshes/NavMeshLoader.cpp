@@ -331,7 +331,7 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
 
         if (nodeType != SceneNodeType::TYPE_WATER && !Is3DObject(nodeType))
         {
-            Console::printfn(Locale::Get(_ID("WARN_NAV_UNSUPPORTED")), resourceName);
+            Console::printfn(LOCALE_STR("WARN_NAV_UNSUPPORTED"), resourceName);
             goto next;
         }
 
@@ -366,7 +366,7 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
             DIVIDE_UNEXPECTED_CALL();
         }
 
-        Console::d_printfn(Locale::Get(_ID("NAV_MESH_CURRENT_NODE")), resourceName, to_base(level));
+        Console::d_printfn(LOCALE_STR("NAV_MESH_CURRENT_NODE"), resourceName, to_base(level));
 
         const U32 currentTriangleIndexOffset = outData.getVertCount();
         VertexBuffer* geometry = nullptr;
@@ -386,13 +386,13 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
 
             const auto& vertices = geometry->getVertices();
             if (vertices.empty()) {
-                Console::printfn(Locale::Get(_ID("NAV_MESH_NODE_NO_DATA")), resourceName);
+                Console::printfn(LOCALE_STR("NAV_MESH_NODE_NO_DATA"), resourceName);
                 goto next;
             }
 
             const auto& triangles = obj->getTriangles(obj->getGeometryPartitionID(0u));
             if (triangles.empty()) {
-                Console::printfn(Locale::Get(_ID("NAV_MESH_NODE_NO_DATA")), resourceName);
+                Console::printfn(LOCALE_STR("NAV_MESH_NODE_NO_DATA"), resourceName);
                 goto next;
             }
 
@@ -424,10 +424,10 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
                 }
             }
         } else {
-            Console::errorfn(Locale::Get(_ID("ERROR_RECAST_LEVEL")), to_base(level));
+            Console::errorfn(LOCALE_STR("ERROR_RECAST_LEVEL"), to_base(level));
         }
 
-        Console::printfn(Locale::Get(_ID("NAV_MESH_ADD_NODE")), resourceName);
+        Console::printfn(LOCALE_STR("NAV_MESH_ADD_NODE"), resourceName);
     }
 
 next: // although labels are bad, skipping here using them is the easiest solution to follow -Ionut

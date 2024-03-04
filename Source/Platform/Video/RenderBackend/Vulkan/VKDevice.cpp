@@ -70,7 +70,7 @@ namespace Divide
 
         if ( !physicalDeviceSelection )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_VK_INIT" ) ), physicalDeviceSelection.error().message().c_str() );
+            Console::errorfn( LOCALE_STR( "ERROR_VK_INIT" ), physicalDeviceSelection.error().message().c_str() );
         }
         else
         {
@@ -88,7 +88,7 @@ namespace Divide
             auto vkbDevice = deviceBuilder.build();
             if ( !vkbDevice )
             {
-                Console::errorfn( Locale::Get( _ID( "ERROR_VK_INIT" ) ), vkbDevice.error().message().c_str() );
+                Console::errorfn( LOCALE_STR( "ERROR_VK_INIT" ), vkbDevice.error().message().c_str() );
                 return;
             }
 
@@ -123,7 +123,7 @@ namespace Divide
             }
             else
             {
-                Console::errorfn( Locale::Get( _ID( "ERROR_VK_INIT" ) ), presentIndex.error().message().c_str() );
+                Console::errorfn( LOCALE_STR( "ERROR_VK_INIT" ), presentIndex.error().message().c_str() );
             }
 
         }
@@ -166,7 +166,7 @@ namespace Divide
 
         if ( getDevice() == nullptr )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_VK_INIT" ), "VKDevice::getQueueInternal error: no valid device found!"));
+            Console::errorfn( LOCALE_STR( "ERROR_VK_INIT" ), "VKDevice::getQueueInternal error: no valid device found!");
             return ret;
         }
 
@@ -183,11 +183,11 @@ namespace Divide
         {
             if ( dedicated )
             {
-                Console::warnfn( Locale::Get( _ID( "WARN_VK_DEDICATED_QUEUE" ) ), QueueName[to_base(type)], index.error().message().c_str() );
+                Console::warnfn( LOCALE_STR( "WARN_VK_DEDICATED_QUEUE" ), QueueName[to_base(type)], index.error().message().c_str() );
             }
             else
             {
-                Console::errorfn( Locale::Get( _ID( "ERROR_VK_DEDICATED_QUEUE" ) ), QueueName[to_base( type )], index.error().message().c_str() );
+                Console::errorfn( LOCALE_STR( "ERROR_VK_DEDICATED_QUEUE" ), QueueName[to_base( type )], index.error().message().c_str() );
             }
 
             return dedicated ? getQueueInternal(type, false) : ret;

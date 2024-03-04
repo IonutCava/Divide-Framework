@@ -9,13 +9,16 @@
 
 #include <SimpleIni.h>
 
-namespace FW {
+namespace FW
+{
     FWD_DECLARE_MANAGED_CLASS(FileWatcher);
 };
 
-namespace Divide::Locale {
+namespace Divide::Locale
+{
 
-namespace detail {
+namespace detail
+{
     /// Default language can be set at compile time
     Str<64> g_localeFile = {};
 
@@ -25,13 +28,16 @@ namespace detail {
     FW::FileWatcher_uptr g_LanguageFileWatcher = nullptr;
 
     /// Callback for external file changes. 
-    UpdateListener g_fileWatcherListener([](const std::string_view languageFile, const FileUpdateEvent evt) {
-        if (evt == FileUpdateEvent::DELETE) {
+    UpdateListener g_fileWatcherListener([](const std::string_view languageFile, const FileUpdateEvent evt)
+    {
+        if (evt == FileUpdateEvent::DELETE)
+        {
             return;
         }
 
-        // If we modify our currently active language, reinit the Locale system
-        if ((g_localeFile + g_languageFileExtension).c_str() == languageFile) {
+        // If we modify our currently active language, re-init the Locale system
+        if ((g_localeFile + g_languageFileExtension).c_str() == languageFile)
+        {
             ChangeLanguage(g_localeFile.c_str());
         }
     });
@@ -40,11 +46,13 @@ namespace detail {
 
 } //detail
 
-void LanguageData::setChangeLanguageCallback(const DELEGATE<void, std::string_view /*new language*/>& cbk) {
+void LanguageData::setChangeLanguageCallback(const DELEGATE<void, std::string_view /*new language*/>& cbk)
+{
     _languageChangeCallback = cbk;
 }
 
-ErrorCode LanguageData::changeLanguage(const std::string_view newLanguage) {
+ErrorCode LanguageData::changeLanguage(const std::string_view newLanguage)
+{
     // Use SimpleIni library for cross-platform INI parsing
     CSimpleIni languageFile(true, false, true);
 
@@ -53,45 +61,65 @@ ErrorCode LanguageData::changeLanguage(const std::string_view newLanguage) {
 
     const ResourcePath file = Paths::g_localisationPath + (detail::g_localeFile + g_languageFileExtension);
 
-    if (languageFile.LoadFile(file.c_str()) != SI_OK) {
+    if (languageFile.LoadFile(file.c_str()) != SI_OK)
+    {
         return ErrorCode::NO_LANGUAGE_INI;
     }
 
     _languageTable.clear();
 
-    // Load all key-value pairs for the "language" section
-    const CSimpleIni::TKeyVal* keyValue = languageFile.GetSection("language");
+    CSimpleIni::TNamesDepend sections{};
+    languageFile.GetAllSections(sections);
 
-    assert(keyValue != nullptr && "Locale::init error: No 'language' section found");
-    // And add all pairs to the language table
-    CSimpleIni::TKeyVal::const_iterator keyValuePairIt = keyValue->begin();
-    for (; keyValuePairIt != keyValue->end(); ++keyValuePairIt) {
-        emplace(_languageTable, _ID(keyValuePairIt->first.pItem), keyValuePairIt->second);
+    for (const auto& section: sections)
+    {
+        // Load all key-value pairs for the current section
+        const CSimpleIni::TKeyVal* keyValue = languageFile.GetSection(section.pItem);
+    
+        // And add all pairs to the language table
+        CSimpleIni::TKeyVal::const_iterator keyValuePairIt = keyValue->begin();
+        for (; keyValuePairIt != keyValue->end(); ++keyValuePairIt)
+        {
+            emplace(_languageTable,
+                    _ID(keyValuePairIt->first.pItem),
+                    LanguageEntry
+                    {
+                        ._value = keyValuePairIt->second, 
+                        ._sectionAndValue = Util::StringFormat( "[ %s ] %s", section.pItem, keyValuePairIt->second )
+                    }
+                 );
+        }
     }
 
-    if (_languageChangeCallback) {
+    if (_languageChangeCallback)
+    {
         _languageChangeCallback(newLanguage);
     }
 
     return ErrorCode::NO_ERR;
 }
 
-const char* LanguageData::get(const U64 key, const char* defaultValue) {
+const char* LanguageData::get(const U64 key, const bool appendSection, const char* defaultValue )
+{
     // When we ask for a string for the given key, we check our language cache first
     const auto& entry = _languageTable.find(key);
-    if (entry != std::cend(_languageTable)) {
+    if (entry != std::cend(_languageTable))
+    {
         // Usually, the entire language table is loaded.
-        return entry->second.c_str();
+        return appendSection ? entry->second._sectionAndValue.c_str() : entry->second._value.c_str();
     }
 
     DIVIDE_UNEXPECTED_CALL_MSG("Locale error: INVALID STRING KEY!");
 
-    return defaultValue;
+    return defaultValue == nullptr ? "MISSING_ENTRY_NO_DEFAULT" : defaultValue;
 }
 
-ErrorCode Init(const char* newLanguage) {
-    if constexpr (!Config::Build::IS_SHIPPING_BUILD && Config::ENABLE_LOCALE_FILE_WATCHER) {
-        if (detail::g_LanguageFileWatcher == nullptr) {
+ErrorCode Init(const char* newLanguage)
+{
+    if constexpr (!Config::Build::IS_SHIPPING_BUILD && Config::ENABLE_LOCALE_FILE_WATCHER)
+    {
+        if (detail::g_LanguageFileWatcher == nullptr)
+        {
             detail::g_LanguageFileWatcher.reset(new FW::FileWatcher());
             detail::g_fileWatcherListener.addIgnoredEndCharacter('~');
             detail::g_fileWatcherListener.addIgnoredExtension("tmp");
@@ -99,54 +127,60 @@ ErrorCode Init(const char* newLanguage) {
         }
     }
 
-    if (!detail::g_data) {
+    if (!detail::g_data)
+    {
         detail::g_data = eastl::make_unique<LanguageData>();
     }
 
     return ChangeLanguage(newLanguage);
 }
 
-void Clear() noexcept {
+void Clear() noexcept
+{
     detail::g_data.reset();
 }
 
-void Idle() {
+void Idle()
+{
     static U32 updateCounter = detail::g_fileWatcherUpdateFrameInterval;
-    if (detail::g_LanguageFileWatcher != nullptr) {
-        if (--updateCounter == 0u) {
+    if (detail::g_LanguageFileWatcher != nullptr)
+    {
+        if (--updateCounter == 0u)
+        {
             detail::g_LanguageFileWatcher->update();
             updateCounter = detail::g_fileWatcherUpdateFrameInterval;
         }
     }
 }
 
-/// Although the language can be set at compile time, in-game options may support language changes
-ErrorCode ChangeLanguage(const char* newLanguage) {
+// Although the language can be set at compile time, in-game options may support language changes
+ErrorCode ChangeLanguage(const char* newLanguage)
+{
     assert(detail::g_data != nullptr);
 
-    /// Set the new language code (override old data)
+    // Set the new language code (override old data)
     return detail::g_data->changeLanguage(newLanguage);
 }
 
-const char* Get(const U64 key, const char* defaultValue) {
-    if (detail::g_data) {
-        return detail::g_data->get(key, defaultValue);
+const char* Get(const U64 key, bool appendSection, const char* defaultValue )
+{
+    if (detail::g_data)
+    {
+        return detail::g_data->get(key, appendSection, defaultValue);
     }
 
     return defaultValue;
 }
 
-const char* Get(const U64 key) {
-    return Get(key, "key not found");
-}
-
-void SetChangeLanguageCallback(const DELEGATE<void, std::string_view /*new language*/>& cbk) {
+void SetChangeLanguageCallback(const DELEGATE<void, std::string_view /*new language*/>& cbk)
+{
     assert(detail::g_data);
 
     detail::g_data->setChangeLanguageCallback(cbk);
 }
 
-const Str<64>& CurrentLanguage() noexcept {
+const Str<64>& CurrentLanguage() noexcept
+{
     return detail::g_localeFile;
 }
 

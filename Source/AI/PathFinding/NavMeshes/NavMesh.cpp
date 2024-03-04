@@ -185,7 +185,7 @@ namespace Divide::AI::Navigation
 
         if ( !loadConfigFromFile() )
         {
-            Console::errorfn( Locale::Get( _ID( "NAV_MESH_CONFIG_NOT_FOUND" ) ) );
+            Console::errorfn( LOCALE_STR( "NAV_MESH_CONFIG_NOT_FOUND" ) );
             return false;
         }
 
@@ -226,7 +226,7 @@ namespace Divide::AI::Navigation
         importTimer.stop();
         if ( state )
         {
-            Console::printfn( Locale::Get( _ID( "NAV_MESH_GENERATION_COMPLETE" ) ),
+            Console::printfn( LOCALE_STR( "NAV_MESH_GENERATION_COMPLETE" ),
                               Time::MicrosecondsToSeconds<F32>( importTimer.get() ) );
 
             {
@@ -257,7 +257,7 @@ namespace Divide::AI::Navigation
         }
         else
         {
-            Console::errorfn( Locale::Get( _ID( "NAV_MESH_GENERATION_INCOMPLETE" ) ),
+            Console::errorfn( LOCALE_STR( "NAV_MESH_GENERATION_INCOMPLETE" ),
                               Time::MicrosecondsToSeconds<F32>( importTimer.get() ) );
         }
     }
@@ -272,12 +272,12 @@ namespace Divide::AI::Navigation
         importTimer.stop();
         if ( !success )
         {
-            Console::errorfn( Locale::Get( _ID( "NAV_MESH_GENERATION_INCOMPLETE" ) ),
+            Console::errorfn( LOCALE_STR( "NAV_MESH_GENERATION_INCOMPLETE" ),
                               Time::MicrosecondsToSeconds<F32>( importTimer.get() ) );
             return false;
         }
 
-        Console::printfn( Locale::Get( _ID( "NAV_MESH_GENERATION_COMPLETE" ) ),
+        Console::printfn( LOCALE_STR( "NAV_MESH_GENERATION_COMPLETE" ),
                           Time::MicrosecondsToSeconds<F32>( importTimer.get() ) );
 
         {
@@ -318,7 +318,7 @@ namespace Divide::AI::Navigation
         // Parse objects from level into RC-compatible format
         _fileName.append( nodeName.c_str() );
         _fileName.append( ".nm" );
-        Console::printfn( Locale::Get( _ID( "NAV_MESH_GENERATION_START" ) ), nodeName.c_str() );
+        Console::printfn( LOCALE_STR( "NAV_MESH_GENERATION_START" ), nodeName.c_str() );
 
         NavModelData data;
         Str<256> geometrySaveFile( _fileName );
@@ -332,7 +332,7 @@ namespace Divide::AI::Navigation
         {
             if ( !NavigationMeshLoader::Parse( _sgn->get<BoundsComponent>()->getBoundingBox(), data, _sgn ) )
             {
-                Console::errorfn( Locale::Get( _ID( "ERROR_NAV_PARSE_FAILED" ) ),
+                Console::errorfn( LOCALE_STR( "ERROR_NAV_PARSE_FAILED" ),
                                   nodeName.c_str() );
             }
         }
@@ -372,7 +372,7 @@ namespace Divide::AI::Navigation
         _saveIntermediates = _configParams.getKeepInterResults();
         rcCalcBounds( data.getVerts(), data.getVertCount(), cfg.bmin, cfg.bmax );
         rcCalcGridSize( cfg.bmin, cfg.bmax, cfg.cs, &cfg.width, &cfg.height );
-        Console::printfn( Locale::Get( _ID( "NAV_MESH_BOUNDS" ) ), cfg.bmax[0], cfg.bmax[1],
+        Console::printfn( LOCALE_STR( "NAV_MESH_BOUNDS" ), cfg.bmax[0], cfg.bmax[1],
                           cfg.bmax[2], cfg.bmin[0], cfg.bmin[1], cfg.bmin[2] );
 
         _extents = vec3<F32>( cfg.bmax[0] - cfg.bmin[0], cfg.bmax[1] - cfg.bmin[1],
@@ -457,7 +457,7 @@ namespace Divide::AI::Navigation
 
         if ( !_heightField )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_NAV_OUT_OF_MEMORY" ) ), "rcAllocHeightfield", _fileName.c_str() );
+            Console::errorfn( LOCALE_STR( "ERROR_NAV_OUT_OF_MEMORY" ), "rcAllocHeightfield", _fileName.c_str() );
             return false;
         }
 
@@ -473,7 +473,7 @@ namespace Divide::AI::Navigation
         if ( !rcCreateHeightfield( ctx, *_heightField, cfg.width, cfg.height,
                                    cfg.bmin, cfg.bmax, cfg.cs, cfg.ch ) )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_NAV_HEIGHTFIELD" ) ), _fileName.c_str() );
+            Console::errorfn( LOCALE_STR( "ERROR_NAV_HEIGHTFIELD" ), _fileName.c_str() );
             return false;
         }
 
@@ -481,7 +481,7 @@ namespace Divide::AI::Navigation
 
         if ( !areas )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_NAV_OUT_OF_MEMORY" ) ), "areaFlag allocation", _fileName.c_str() );
+            Console::errorfn( LOCALE_STR( "ERROR_NAV_OUT_OF_MEMORY" ), "areaFlag allocation", _fileName.c_str() );
             return false;
         }
 
@@ -515,13 +515,13 @@ namespace Divide::AI::Navigation
              !rcBuildCompactHeightfield( ctx, cfg.walkableHeight, cfg.walkableClimb,
                                          *_heightField, *_compactHeightField ) )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_NAV_COMPACT_HEIGHTFIELD" ) ), _fileName.c_str() );
+            Console::errorfn( LOCALE_STR( "ERROR_NAV_COMPACT_HEIGHTFIELD" ), _fileName.c_str() );
             return false;
         }
 
         if ( !rcErodeWalkableArea( ctx, cfg.walkableRadius, *_compactHeightField ) )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_NAV_WALKABLE" ) ), _fileName.c_str() );
+            Console::errorfn( LOCALE_STR( "ERROR_NAV_WALKABLE" ), _fileName.c_str() );
             return false;
         }
 
@@ -529,7 +529,7 @@ namespace Divide::AI::Navigation
         {
             if ( !rcBuildRegionsMonotone( ctx, *_compactHeightField, cfg.borderSize, cfg.minRegionArea, cfg.mergeRegionArea ) )
             {
-                Console::errorfn( Locale::Get( _ID( "ERROR_NAV_REGIONS" ) ), _fileName.c_str() );
+                Console::errorfn( LOCALE_STR( "ERROR_NAV_REGIONS" ), _fileName.c_str() );
                 return false;
             }
         }
@@ -552,7 +552,7 @@ namespace Divide::AI::Navigation
              !rcBuildContours( ctx, *_compactHeightField, cfg.maxSimplificationError,
                                cfg.maxEdgeLen, *_countourSet ) )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_NAV_COUNTOUR" ) ), _fileName.c_str() );
+            Console::errorfn( LOCALE_STR( "ERROR_NAV_COUNTOUR" ), _fileName.c_str() );
             return false;
         }
 
@@ -560,7 +560,7 @@ namespace Divide::AI::Navigation
         if ( !_polyMesh ||
              !rcBuildPolyMesh( ctx, *_countourSet, cfg.maxVertsPerPoly, *_polyMesh ) )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_NAV_POLY_MESH" ) ), _fileName.c_str() );
+            Console::errorfn( LOCALE_STR( "ERROR_NAV_POLY_MESH" ), _fileName.c_str() );
             return false;
         }
 
@@ -570,7 +570,7 @@ namespace Divide::AI::Navigation
                                      cfg.detailSampleDist, cfg.detailSampleMaxError,
                                      *_polyMeshDetail ) )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_NAV_POLY_MESH_DETAIL" ) ), _fileName.c_str() );
+            Console::errorfn( LOCALE_STR( "ERROR_NAV_POLY_MESH_DETAIL" ), _fileName.c_str() );
             return false;
         }
 
@@ -595,21 +595,21 @@ namespace Divide::AI::Navigation
         I32 tileDataSize = 0;
         if ( !dtCreateNavMeshData( &params, &tileData, &tileDataSize ) )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_NAV_MESH_DATA" ) ), _fileName.c_str() );
+            Console::errorfn( LOCALE_STR( "ERROR_NAV_MESH_DATA" ), _fileName.c_str() );
             return false;
         }
 
         _tempNavMesh = dtAllocNavMesh();
         if ( !_tempNavMesh )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_NAV_DT_OUT_OF_MEMORY" ) ), _fileName.c_str() );
+            Console::errorfn( LOCALE_STR( "ERROR_NAV_DT_OUT_OF_MEMORY" ), _fileName.c_str() );
             return false;
         }
 
         const dtStatus s = _tempNavMesh->init( tileData, tileDataSize, DT_TILE_FREE_DATA );
         if ( dtStatusFailed( s ) )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_NAV_DT_INIT" ) ), _fileName.c_str() );
+            Console::errorfn( LOCALE_STR( "ERROR_NAV_DT_INIT" ), _fileName.c_str() );
             return false;
         }
 

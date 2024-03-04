@@ -7,6 +7,7 @@
 #include "Headers/Client.h"
 #include "Headers/ASIO.h"
 #include "Headers/OPCodesTpl.h"
+#include "Utility/Headers/Localization.h"
 
 #include <boost/asio/write.hpp>
 #include <boost/asio/read.hpp>
@@ -71,7 +72,7 @@ namespace Divide
     }
 
     void Client::handle_read_body( const boost::system::error_code& ec,
-                                   [[maybe_unused]] size_t bytes_transfered )
+                                   [[maybe_unused]] size_t bytes_transferred )
     {
         if ( _stopped )
         {
@@ -95,7 +96,7 @@ namespace Divide
     }
 
     void Client::handle_read_packet( const boost::system::error_code& ec,
-                                     [[maybe_unused]] size_t bytes_transfered )
+                                     [[maybe_unused]] size_t bytes_transferred )
     {
 
         if ( _stopped )
@@ -116,8 +117,7 @@ namespace Divide
             {
                 if ( _debugOutput )
                 {
-                    ASIO::LOG_PRINT( e.what(), true );
-                    ASIO::LOG_PRINT( "[ASIO]: Received invalid packet!", true );
+                    ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_PACKET_ERROR"), e.what()).c_str(), true );
                 }
             }
 
@@ -142,16 +142,10 @@ namespace Divide
         }
     }
 
-    void Client::handle_read_file( [[maybe_unused]] const boost::system::error_code& ec, const size_t bytes_transfered )
+    void Client::handle_read_file( [[maybe_unused]] const boost::system::error_code& ec, const size_t bytes_transferred )
     {
 
-        std::stringstream ss;
-        ss << "[ASIO]: "
-            << __FUNCTION__ << "(" << bytes_transfered << ")"
-            << ", in_avail=" << _requestBuf.in_avail()
-            << ", size=" << _requestBuf.size()
-            << ", max_size=" << _requestBuf.max_size() << ".";
-        ASIO::LOG_PRINT( ss.str().c_str() );
+        ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_READ_FILE"), __FUNCTION__, bytes_transferred, _requestBuf.in_avail(), _requestBuf.size(), _requestBuf.max_size()).c_str() );
 
         std::istream request_stream( &_requestBuf );
         string file_path;
@@ -159,26 +153,25 @@ namespace Divide
         request_stream >> _fileSize;
         request_stream.read( _buf.data(), 2 );  // eat the "\n\n"
 
-        ss.clear();
-        ss << "[ASIO]: " << file_path << " size is " << _fileSize
-            << ", tellg=" << request_stream.tellg();
-        ASIO::LOG_PRINT( ss.str().c_str() );
+        {
+            stringstream ss;
+            ss << request_stream.tellg();
+            ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_FILE_INFO"), __FUNCTION__, file_path.c_str(), _fileSize, ss.str().c_str()).c_str() );
+        }
 
         const size_t pos = file_path.find_last_of( '\\' );
         if ( pos != string::npos ) file_path = file_path.substr( pos + 1 );
         _outputFile.open( file_path.c_str(), std::ios_base::binary );
         if ( !_outputFile )
         {
-            ASIO::LOG_PRINT( ("[ASIO]: failed to open " + file_path).c_str(), true );
+            ASIO::LOG_PRINT( Util::StringFormat( LOCALE_STR( "ASIO_FAIL_OPEN_FILE" ), file_path.c_str() ).c_str(), true );
             return;
         }
         // write extra bytes to file
         do
         {
-            ss.clear();
             request_stream.read( _buf.data(), (std::streamsize)_buf.size() );
-            ss << "[ASIO]: " << __FUNCTION__ << " write " << request_stream.gcount() << " bytes.";
-            ASIO::LOG_PRINT( ss.str().c_str() );
+            ASIO::LOG_PRINT( Util::StringFormat( LOCALE_STR( "ASIO_WRITE_BYTES" ), __FUNCTION__, request_stream.gcount() ).c_str() );
 
             _outputFile.write( _buf.data(), request_stream.gcount() );
         }
@@ -196,9 +189,9 @@ namespace Divide
         if ( bytes_transferred > 0 )
         {
             _outputFile.write( _buf.data(), (std::streamsize)bytes_transferred );
-            std::stringstream ss;
-            ss << "[ASIO]: " << __FUNCTION__ << " recv " << _outputFile.tellp() << " bytes.";
-            ASIO::LOG_PRINT( ss.str().c_str() );
+            stringstream ss;
+            ss << _outputFile.tellp();
+            ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_READ_BYTES"), __FUNCTION__ , ss.str().c_str() ).c_str() );
             if ( _outputFile.tellp() >= (std::streamsize)_fileSize )
             {
                 return;
@@ -258,7 +251,7 @@ namespace Divide
         {
             if ( _debugOutput )
             {
-                ASIO::LOG_PRINT( ("[ASIO]: Error on packet: " + ec.message()).c_str(), true );
+                ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_PACKET_ERROR"), ec.message().c_str()).c_str(), true );
                 stop();
             }
         }
@@ -299,8 +292,8 @@ namespace Divide
             if ( _debugOutput )
             {
                 std::stringstream ss;
-                ss << "[ASIO]: Trying endpoint " << endpoint_iter->endpoint() << "...";
-                ASIO::LOG_PRINT( ss.str().c_str() );
+                ss << endpoint_iter->endpoint();
+                ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_CONNECTING_TO_IP"), ss.str().c_str()).c_str() );
             }
             // Set a deadline for the connect operation.
             _deadline.expires_from_now( boost::posix_time::seconds( 60 ) );
@@ -333,7 +326,7 @@ namespace Divide
         {
             if ( _debugOutput )
             {
-                ASIO::LOG_PRINT( "[ASIO]: Connect timed out", true );
+                ASIO::LOG_PRINT( LOCALE_STR("ASIO_CONNECT_TIME_OUT"), true );
             }
             // Try the next available endpoint.
             start_connect( ++endpoint_iter );
@@ -344,7 +337,7 @@ namespace Divide
         {
             if ( _debugOutput )
             {
-                ASIO::LOG_PRINT( ("[ASIO]: Connect error: " + ec.message()).c_str(), true );
+                ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_EXCEPTION"),ec.message().c_str()).c_str(), true );
             }
             // We need to close the socket used in the previous connection attempt
             // before starting a new one.
@@ -360,8 +353,8 @@ namespace Divide
             if ( _debugOutput )
             {
                 std::stringstream ss;
-                ss << "[ASIO]: Connected to " << endpoint_iter->endpoint();
-                ASIO::LOG_PRINT( ss.str().c_str() );
+                ss << endpoint_iter->endpoint();
+                ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_CONNECTED_TO_IP"), ss.str().c_str()).c_str() );
             }
             // Start the input actor.
             start_read();

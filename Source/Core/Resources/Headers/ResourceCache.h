@@ -96,7 +96,7 @@ namespace Divide
                 wasInCache = ptr != nullptr;
                 if ( !wasInCache )
                 {
-                    Console::printfn( Locale::Get( _ID( "RESOURCE_CACHE_GET_RES" ) ), descriptor.resourceName().c_str(), loadingHash );
+                    Console::printfn( LOCALE_STR("RESOURCE_CACHE_GET_RES"), descriptor.resourceName().c_str(), loadingHash );
 
                     Time::ProfileTimer loadTimer = {};
                     loadTimer.start();
@@ -124,16 +124,16 @@ namespace Divide
             // Print load times
             if ( wasInCache )
             {
-                Console::printfn( Locale::Get( _ID( "RESOURCE_CACHE_RETRIEVE" ) ), descriptor.resourceName().c_str() );
+                Console::printfn( LOCALE_STR( "RESOURCE_CACHE_RETRIEVE" ), descriptor.resourceName().c_str() );
             }
             else
             {
-                Console::printfn( Locale::Get( _ID( "RESOURCE_CACHE_LOAD" ) ), descriptor.resourceName().c_str(), timeInMS );
+                Console::printfn( LOCALE_STR( "RESOURCE_CACHE_LOAD" ), descriptor.resourceName().c_str(), timeInMS );
             }
 
             if ( ptr->getState() == ResourceState::RES_UNKNOWN )
             {
-                Console::printfn( Locale::Get( _ID( "ERROR_RESOURCE_CACHE_LOAD_RES_NAME" ) ), descriptor.resourceName().c_str() );
+                Console::printfn( LOCALE_STR( "ERROR_RESOURCE_CACHE_LOAD_RES_NAME" ), descriptor.resourceName().c_str() );
                 return nullptr;
             }
 

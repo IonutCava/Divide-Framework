@@ -9,6 +9,7 @@
 
 #include "Core/Headers/StringHelper.h"
 #include "Core/Resources/Headers/Resource.h"
+#include "Utility/Headers/Localization.h"
 
 namespace Divide
 {
@@ -39,7 +40,7 @@ namespace Divide
         PatchData dataIn;
         p >> dataIn.sceneName;
         p >> dataIn.size;
-        ASIO::LOG_PRINT( ("Received [ CMSG_GEOMERTY_LIST ] with : " + Util::to_string( dataIn.size ) + " models").c_str() );
+        ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_RECEIVE_GEOMETRY_LIST"), dataIn.size ).c_str() );
         for ( U32 i = 0; i < dataIn.size; i++ )
         {
             string name, modelname;
@@ -69,7 +70,8 @@ namespace Divide
                 r << dataOut.Scale.y;
                 r << dataOut.Scale.z;
             }
-            ASIO::LOG_PRINT( ("Sending [SMSG_GEOMETRY_APPEND] with : " + Util::to_string( patchData.size() ) + " models to update").c_str() );
+            ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_SEND_GEOMETRY_APPEND"), patchData.size() ).c_str() );
+
             sendPacket( r );
             Patch::clearModelData();
         }
@@ -80,7 +82,7 @@ namespace Divide
         string file;
         p >> file;
 
-        ASIO::LOG_PRINT( ("Sending SMSG_SEND_FILE with item: " + file).c_str() );
+        ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_SEND_FILE"), file.c_str()).c_str() );
         WorldPacket r( OPCodesEx::SMSG_SEND_FILE );
         r << (U8)0;
         sendPacket( r );

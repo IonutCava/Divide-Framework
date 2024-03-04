@@ -264,24 +264,24 @@ namespace Import {
 
         bool success = false;
         if (!context.config().debug.useGeometryCache || !dataOut.loadFromFile(context, Paths::g_cacheLocation + Paths::g_geometryCacheLocation, dataOut.modelName())) {
-            Console::printfn(Locale::Get(_ID("MESH_NOT_LOADED_FROM_FILE")), dataOut.modelName().c_str());
+            Console::printfn(LOCALE_STR("MESH_NOT_LOADED_FROM_FILE"), dataOut.modelName().c_str());
 
             if (DVDConverter::Load(context, dataOut)) {
                 if (dataOut.saveToFile(context, Paths::g_cacheLocation + Paths::g_geometryCacheLocation, dataOut.modelName())) {
-                    Console::printfn(Locale::Get(_ID("MESH_SAVED_TO_FILE")), dataOut.modelName().c_str());
+                    Console::printfn(LOCALE_STR("MESH_SAVED_TO_FILE"), dataOut.modelName().c_str());
                 } else {
-                    Console::printfn(Locale::Get(_ID("MESH_NOT_SAVED_TO_FILE")), dataOut.modelName().c_str());
+                    Console::printfn(LOCALE_STR("MESH_NOT_SAVED_TO_FILE"), dataOut.modelName().c_str());
                 }
                 success = true;
             }
         } else {
-            Console::printfn(Locale::Get(_ID("MESH_LOADED_FROM_FILE")), dataOut.modelName().c_str());
+            Console::printfn(LOCALE_STR("MESH_LOADED_FROM_FILE"), dataOut.modelName().c_str());
             dataOut.fromFile(true);
             success = true;
         }
 
         importTimer.stop();
-        Console::d_printfn(Locale::Get(_ID("LOAD_MESH_TIME")),
+        Console::d_printfn(LOCALE_STR("LOAD_MESH_TIME"),
                            dataOut.modelName().c_str(),
                            Time::MicrosecondsToMilliseconds<F32>(importTimer.get()));
 
@@ -368,7 +368,7 @@ namespace Import {
         }
 
         importTimer.stop();
-        Console::d_printfn(Locale::Get(_ID("PARSE_MESH_TIME")),
+        Console::d_printfn(LOCALE_STR("PARSE_MESH_TIME"),
                            dataIn.modelName().c_str(),
                            Time::MicrosecondsToMilliseconds<F32>(importTimer.get()));
 

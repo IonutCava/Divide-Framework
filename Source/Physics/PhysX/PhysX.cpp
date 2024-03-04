@@ -58,18 +58,18 @@ namespace Divide
             {
                 switch ( code )
                 {
-                    case physx::PxErrorCode::eNO_ERROR:           Console::printfn( Locale::Get( _ID( "ERROR_PHYSX_GENERIC" ) ), "None", message, file, line ); return;
-                    case physx::PxErrorCode::eDEBUG_INFO:         Console::d_printfn( Locale::Get( _ID( "ERROR_PHYSX_GENERIC" ) ), "Debug Msg", message, file, line ); return;
-                    case physx::PxErrorCode::eDEBUG_WARNING:      Console::d_warnf( Locale::Get( _ID( "ERROR_PHYSX_GENERIC" ) ), "Debug Warn", message, file, line ); return;
-                    case physx::PxErrorCode::eINVALID_PARAMETER:  Console::errorfn( Locale::Get( _ID( "ERROR_PHYSX_GENERIC" ) ), "Invalid Parameter", message, file, line ); return;
-                    case physx::PxErrorCode::eINVALID_OPERATION:  Console::errorfn( Locale::Get( _ID( "ERROR_PHYSX_GENERIC" ) ), "Invalid Operation", message, file, line ); return;
-                    case physx::PxErrorCode::eOUT_OF_MEMORY:      Console::errorfn( Locale::Get( _ID( "ERROR_PHYSX_GENERIC" ) ), "Mem", message, file, line ); return;
-                    case physx::PxErrorCode::eINTERNAL_ERROR:     Console::errorfn( Locale::Get( _ID( "ERROR_PHYSX_GENERIC" ) ), "Internal", message, file, line ); return;
-                    case physx::PxErrorCode::eABORT:              Console::errorfn( Locale::Get( _ID( "ERROR_PHYSX_GENERIC" ) ), "Abort", message, file, line ); return;
-                    case physx::PxErrorCode::ePERF_WARNING:       Console::warnfn( Locale::Get( _ID( "ERROR_PHYSX_GENERIC" ) ), "Perf", message, file, line ); return;
-                    case physx::PxErrorCode::eMASK_ALL:           Console::errorfn( Locale::Get( _ID( "ERROR_PHYSX_GENERIC" ) ), "ALL", message, file, line ); return;
+                    case physx::PxErrorCode::eNO_ERROR:           Console::printfn( LOCALE_STR( "ERROR_PHYSX_GENERIC" ), "None", message, file, line ); return;
+                    case physx::PxErrorCode::eDEBUG_INFO:         Console::d_printfn( LOCALE_STR( "ERROR_PHYSX_GENERIC" ), "Debug Msg", message, file, line ); return;
+                    case physx::PxErrorCode::eDEBUG_WARNING:      Console::d_warnf( LOCALE_STR( "ERROR_PHYSX_GENERIC" ), "Debug Warn", message, file, line ); return;
+                    case physx::PxErrorCode::eINVALID_PARAMETER:  Console::errorfn( LOCALE_STR( "ERROR_PHYSX_GENERIC" ), "Invalid Parameter", message, file, line ); return;
+                    case physx::PxErrorCode::eINVALID_OPERATION:  Console::errorfn( LOCALE_STR( "ERROR_PHYSX_GENERIC" ), "Invalid Operation", message, file, line ); return;
+                    case physx::PxErrorCode::eOUT_OF_MEMORY:      Console::errorfn( LOCALE_STR( "ERROR_PHYSX_GENERIC" ), "Mem", message, file, line ); return;
+                    case physx::PxErrorCode::eINTERNAL_ERROR:     Console::errorfn( LOCALE_STR( "ERROR_PHYSX_GENERIC" ), "Internal", message, file, line ); return;
+                    case physx::PxErrorCode::eABORT:              Console::errorfn( LOCALE_STR( "ERROR_PHYSX_GENERIC" ), "Abort", message, file, line ); return;
+                    case physx::PxErrorCode::ePERF_WARNING:       Console::warnfn( LOCALE_STR( "ERROR_PHYSX_GENERIC" ), "Perf", message, file, line ); return;
+                    case physx::PxErrorCode::eMASK_ALL:           Console::errorfn( LOCALE_STR( "ERROR_PHYSX_GENERIC" ), "ALL", message, file, line ); return;
                 }
-                Console::errorfn( Locale::Get( _ID( "ERROR_PHYSX_GENERIC" ) ), "UNKNOWN", message, file, line );
+                Console::errorfn( LOCALE_STR( "ERROR_PHYSX_GENERIC" ), "UNKNOWN", message, file, line );
             }
         } g_physxErrorCallback;
 
@@ -92,11 +92,11 @@ namespace Divide
         SCOPE_EXIT{
             if ( !init && !closePhysicsAPI() )
             {
-                Console::errorfn( Locale::Get( _ID( "ERROR_START_PHYSX_API" ) ) );
+                Console::errorfn( LOCALE_STR( "ERROR_START_PHYSX_API" ) );
             }
         };
 
-        Console::printfn( Locale::Get( _ID( "START_PHYSX_API" ) ) );
+        Console::printfn( LOCALE_STR( "START_PHYSX_API" ) ) ;
 
         _simulationSpeed = simSpeed;
         // create foundation object with default error and allocator callbacks.
@@ -130,13 +130,13 @@ namespace Divide
 
         if ( _gPhysicsSDK == nullptr )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_START_PHYSX_API" ) ) );
+            Console::errorfn( LOCALE_STR( "ERROR_START_PHYSX_API" ) );
             return ErrorCode::PHYSX_INIT_ERROR;
         }
 
         if ( !PxInitExtensions( *_gPhysicsSDK, _pvd ) )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_EXTENSION_PHYSX_API" ) ) );
+            Console::errorfn( LOCALE_STR( "ERROR_EXTENSION_PHYSX_API" ) );
             return ErrorCode::PHYSX_EXTENSION_ERROR;
         }
 
@@ -146,13 +146,13 @@ namespace Divide
         _defaultMaterial = _gPhysicsSDK->createMaterial( 0.5f, 0.5f, 0.1f );
         if ( _defaultMaterial == nullptr )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_START_PHYSX_API" ) ) );
+            Console::errorfn( LOCALE_STR( "ERROR_START_PHYSX_API" ) );
             return ErrorCode::PHYSX_INIT_ERROR;
         }
 
         init = true;
         updateTimeStep( targetFrameRate, _simulationSpeed );
-        Console::printfn( Locale::Get( _ID( "START_PHYSX_API_OK" ) ) );
+        Console::printfn( LOCALE_STR( "START_PHYSX_API_OK" ) );
 
         return ErrorCode::NO_ERR;
     }
@@ -166,7 +166,7 @@ namespace Divide
             return false;
         }
 
-        Console::printfn( Locale::Get( _ID( "STOP_PHYSX_API" ) ) );
+        Console::printfn( LOCALE_STR( "STOP_PHYSX_API" ) );
 
         DIVIDE_ASSERT( _targetScene == nullptr, "PhysX error: target scene not destroyed before calling closePhysicsAPI." );
 
@@ -195,7 +195,7 @@ namespace Divide
         {
             if ( _pvd->connect( *_transport, _pvdFlags ) )
             {
-                Console::d_printfn( Locale::Get( _ID( "CONNECT_PVD_OK" ) ) );
+                Console::d_printfn( LOCALE_STR( "CONNECT_PVD_OK" ) );
             }
         }
     }
@@ -228,7 +228,7 @@ namespace Divide
         _pvd = physx::PxCreatePvd( *_foundation );
         if ( _pvd->connect( *_transport, _pvdFlags ) )
         {
-            Console::d_printfn( Locale::Get( _ID( "CONNECT_PVD_OK" ) ) );
+            Console::d_printfn( LOCALE_STR( "CONNECT_PVD_OK" ) );
         }
     }
 
@@ -389,7 +389,7 @@ namespace Divide
                 if ( it != s_gMeshCache.end() )
                 {
                     nodeGeometry = it->second;
-                    Console::printfn( Locale::Get( _ID( "COLLISION_MESH_LOADED_FROM_RAM" ) ), meshName.c_str() );
+                    Console::printfn( LOCALE_STR( "COLLISION_MESH_LOADED_FROM_RAM" ), meshName.c_str() );
                 }
             }
 
@@ -401,7 +401,7 @@ namespace Divide
                 if ( it != s_gMeshCache.end() )
                 {
                     nodeGeometry = it->second;
-                    Console::printfn( Locale::Get( _ID( "COLLISION_MESH_LOADED_FROM_RAM" ) ), meshName.c_str() );
+                    Console::printfn( LOCALE_STR( "COLLISION_MESH_LOADED_FROM_RAM" ), meshName.c_str() );
                 }
                 else
                 {
@@ -476,12 +476,12 @@ namespace Divide
                         if ( !PxCookTriangleMesh( params, meshDesc, outputStream, &result ) )
                         {
                             STUBBED( "ToDo: If we fail to build/load a collision mesh, fallback to an AABB aproximation -Ionut" )
-                                Console::errorfn( Locale::Get( _ID( "ERROR_COOK_TRIANGLE_MESH" ) ), getErrorMessage( result ) );
+                                Console::errorfn( LOCALE_STR( "ERROR_COOK_TRIANGLE_MESH" ), getErrorMessage( result ) );
                         }
                     }
                     else
                     {
-                        Console::printfn( Locale::Get( _ID( "COLLISION_MESH_LOADED_FROM_FILE" ) ), meshName.c_str() );
+                        Console::printfn( LOCALE_STR( "COLLISION_MESH_LOADED_FROM_FILE" ), meshName.c_str() );
                     }
 
                     physx::PxDefaultFileInputData inData( cachePath.c_str() );
@@ -492,7 +492,7 @@ namespace Divide
                     }
                     else
                     {
-                        Console::errorfn( Locale::Get( _ID( "ERROR_CREATE_TRIANGLE_MESH" ) ) );
+                        Console::errorfn( LOCALE_STR( "ERROR_CREATE_TRIANGLE_MESH" ) );
                     }
                 }
             }

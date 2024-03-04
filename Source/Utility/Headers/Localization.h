@@ -44,20 +44,26 @@ namespace Locale {
 constexpr const char* DEFAULT_LANG = "enGB";
 constexpr const char* const g_languageFileExtension = ".ini";
 
+struct LanguageEntry
+{
+    string _value;
+    string _sectionAndValue;
+};
+
 class LanguageData {
 public:
     using LangCallback = DELEGATE<void, std::string_view/*new language*/>;
 
     ErrorCode changeLanguage(std::string_view newLanguage);
 
-    const char* get(U64 key, const char* defaultValue);
+    const char* get(U64 key, bool appendSection, const char* defaultValue );
     void setChangeLanguageCallback(const DELEGATE<void, std::string_view /*new language*/>& cbk);
 
 private:
     /// Each string key in the map matches a key in the language ini file
     /// each string value in the map matches the value in the ini file for the given key
     /// Basically, the hashMap is a direct copy of the [language] section of the give ini file
-    hashMap<U64, string> _languageTable{};
+    hashMap<U64, LanguageEntry> _languageTable{};
     LangCallback _languageChangeCallback{};
 };
 
@@ -76,10 +82,14 @@ ErrorCode ChangeLanguage(const char* newLanguage);
 void SetChangeLanguageCallback(const DELEGATE<void, std::string_view /*new language*/>& cbk);
 /// Query the current language code to detect changes
 const Str<64>& CurrentLanguage() noexcept;
-/// usage: Locale::Get(_ID("A_B_C")) or Locale::Get(_ID("A_B_C"),"X") where "A_B_C" is the language key we want
+/// usage: Locale::Get("A_B_C")) or Locale::Get("A_B_C"), true/false, "X") where "A_B_C" is the language key we want
 /// and "X" is a default string in case the key does not exist in the INI file
-const char* Get(U64 key, const char* defaultValue);
-const char* Get(U64 key);
+/// appendSection will add [ sectionName ] in front of the returned string.
+const char* Get(U64 key, bool appendSection = true, const char* defaultValue = nullptr);
+
+#ifndef LOCALE_STR
+#define LOCALE_STR(X) Locale::Get(_ID(X))
+#endif //LOCALE_STR
 
 }  // namespace Locale
 }  // namespace Divide

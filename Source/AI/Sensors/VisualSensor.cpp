@@ -34,7 +34,7 @@ void VisualSensor::followSceneGraphNode(const U32 containerID, SceneGraphNode* n
     if (container != std::end(_nodeContainerMap)) {
         const auto result = insert(container->second, node->getGUID(), node);
         if (!result.second) {
-            Console::errorfn(Locale::Get(_ID("AI_DUPLICATE_SENSOR_INPUT")));
+            Console::errorfn(LOCALE_STR("AI_DUPLICATE_SENSOR_INPUT_ERROR"));
         }
     } else {
         insert(_nodeContainerMap[containerID],

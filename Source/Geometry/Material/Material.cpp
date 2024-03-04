@@ -419,7 +419,7 @@ namespace Divide
                 {
                     // We cannot replace a shader that is still loading in the background
                     WAIT_FOR_CONDITION( oldShader->getState() == ResourceState::RES_LOADED );
-                    Console::printfn( Locale::Get( _ID( "REPLACE_SHADER" ) ),
+                    Console::printfn( LOCALE_STR( "REPLACE_SHADER" ),
                                       oldShader->resourceName().c_str(),
                                       newShaderName != nullptr ? newShaderName : "NULL",
                                       TypeUtil::RenderStageToString( stagePass._stage ),
@@ -450,7 +450,7 @@ namespace Divide
             WAIT_FOR_CONDITION( info._shaderRef->getState() == ResourceState::RES_LOADED );
             if ( info._shaderRef->descriptor().getHash() != shaderDescriptorRef.getHash() )
             {
-                Console::printfn( Locale::Get( _ID( "REPLACE_SHADER" ) ),
+                Console::printfn( LOCALE_STR( "REPLACE_SHADER" ),
                                   info._shaderRef->resourceName().c_str(),
                                   shaderDescriptorRef._name.c_str(),
                                   TypeUtil::RenderStageToString( stagePass._stage ),
@@ -1197,7 +1197,7 @@ namespace Divide
         const size_t detectedVersion = pt.get<size_t>( entryName + ".version", 0 );
         if ( detectedVersion != g_materialXMLVersion )
         {
-            Console::printfn( Locale::Get( _ID( "MATERIAL_WRONG_VERSION" ) ), assetName().c_str(), detectedVersion, g_materialXMLVersion );
+            Console::printfn( LOCALE_STR( "MATERIAL_WRONG_VERSION" ), assetName().c_str(), detectedVersion, g_materialXMLVersion );
             return;
         }
 

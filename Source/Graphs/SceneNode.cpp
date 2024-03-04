@@ -76,7 +76,7 @@ void SceneNode::setMaterialTpl(const Material_ptr& material) {
         if (_materialTemplate != nullptr) {
             // if the old material isn't the same as the new one
             if (_materialTemplate->getGUID() != material->getGUID()) {
-                Console::printfn(Locale::Get(_ID("REPLACE_MATERIAL")),
+                Console::printfn(LOCALE_STR("REPLACE_MATERIAL"),
                                  _materialTemplate->resourceName().c_str(),
                                  material->resourceName().c_str());
                 _materialTemplate = material;  // set the new material

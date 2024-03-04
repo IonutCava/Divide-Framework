@@ -173,7 +173,7 @@ namespace Divide
 
     Vegetation::~Vegetation()
     {
-        Console::printfn( Locale::Get( _ID( "UNLOAD_VEGETATION_BEGIN" ) ), resourceName().c_str() );
+        Console::printfn( LOCALE_STR( "UNLOAD_VEGETATION_BEGIN" ), resourceName().c_str() );
         U32 timer = 0;
         while ( getState() == ResourceState::RES_LOADING )
         {
@@ -191,7 +191,7 @@ namespace Divide
             destroyStaticData();
         }
 
-        Console::printfn( Locale::Get( _ID( "UNLOAD_VEGETATION_END" ) ) );
+        Console::printfn( LOCALE_STR( "UNLOAD_VEGETATION_END" ) );
     }
 
     void Vegetation::destroyStaticData()
@@ -565,7 +565,7 @@ namespace Divide
             }
             else
             {
-                Console::errorfn( Locale::Get( _ID( "ERROR_GFX_BUFFER_FULL" ) ) );
+                Console::errorfn( LOCALE_STR( "ERROR_GFX_BUFFER_FULL" ) );
             }
             _tempGrassData.clear();
         }
@@ -578,7 +578,7 @@ namespace Divide
             }
             else
             {
-                Console::errorfn( Locale::Get( _ID( "ERROR_GFX_BUFFER_FULL" ) ) );
+                Console::errorfn( LOCALE_STR( "ERROR_GFX_BUFFER_FULL" ) );
             }
             _tempTreeData.clear();
         }
@@ -1080,7 +1080,7 @@ namespace Divide
                 DIVIDE_UNEXPECTED_CALL();
             }
         }
-        Console::printfn( Locale::Get( _ID( "CREATE_GRASS_END" ) ) );
+        Console::printfn( LOCALE_STR( "CREATE_GRASS_END" ) );
     }
 
 }

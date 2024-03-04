@@ -87,7 +87,7 @@ bool ECSManager::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) 
     const auto saveSystemCache = [sgn, &outputBuffer](ECS::ISystem* system) {
         ECSSerializerProxy& serializer = static_cast<ECSSerializerProxy&>(system->GetSerializer());
         if (!serializer.saveCache(sgn, outputBuffer)) {
-            Console::errorfn(Locale::Get(_ID("ECS_SAVE_ERROR")), system->GetSystemTypeName());
+            Console::errorfn(LOCALE_STR("ECS_SAVE_ERROR"), system->GetSystemTypeName());
         }
 
         outputBuffer.addMarker(g_cacheMarkerByteValue);
@@ -106,7 +106,7 @@ bool ECSManager::loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer) const {
         const auto loadSystemCache = [sgn, &inputBuffer](ECS::ISystem* system) {
             ECSSerializerProxy& serializer = static_cast<ECSSerializerProxy&>(system->GetSerializer());
             if (!serializer.loadCache(sgn, inputBuffer)) {
-                Console::errorfn(Locale::Get(_ID("ECS_LOAD_ERROR")), system->GetSystemTypeName());
+                Console::errorfn(LOCALE_STR("ECS_LOAD_ERROR"), system->GetSystemTypeName());
             }
             inputBuffer.readSkipToMarker(g_cacheMarkerByteValue);
             return true;

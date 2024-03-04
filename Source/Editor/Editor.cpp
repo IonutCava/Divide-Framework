@@ -2185,8 +2185,8 @@ namespace Divide
         if ( !_context.kernel().sceneManager()->switchScene(
             sceneName.c_str(), true, true, false ) )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_SCENE_LOAD" ) ), sceneName.c_str() );
-            showStatusMessage( Util::StringFormat( Locale::Get( _ID( "ERROR_SCENE_LOAD" ) ),
+            Console::errorfn( LOCALE_STR( "ERROR_SCENE_LOAD" ), sceneName.c_str() );
+            showStatusMessage( Util::StringFormat( LOCALE_STR( "ERROR_SCENE_LOAD" ),
                                                    sceneName.c_str() ),
                                Time::SecondsToMilliseconds<F32>( 3.f ),
                                true );

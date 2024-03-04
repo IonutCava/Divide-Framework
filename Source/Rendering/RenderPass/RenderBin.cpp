@@ -22,7 +22,7 @@ namespace Divide
         {
             if ( renderOrder == RenderingOrder::COUNT )
             {
-                Console::errorfn( Locale::Get( _ID( "ERROR_INVALID_RENDER_BIN_SORT_ORDER" ) ), Names::renderBinType[to_base( type )] );
+                Console::errorfn( LOCALE_STR( "ERROR_INVALID_RENDER_BIN_SORT_ORDER" ), Names::renderBinType[to_base( type )] );
             }
 
             return;

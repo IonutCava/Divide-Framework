@@ -150,9 +150,9 @@ namespace Divide
         if ( _init )
         {
             Vegetation::destroyStaticData();
-            Console::printfn( Locale::Get( _ID( "STOP_SCENE_MANAGER" ) ) );
+            Console::printfn( LOCALE_STR( "STOP_SCENE_MANAGER" ) );
             // Console::printfn(Locale::Get("SCENE_MANAGER_DELETE"));
-            Console::printfn( Locale::Get( _ID( "SCENE_MANAGER_REMOVE_SCENES" ) ) );
+            Console::printfn( LOCALE_STR( "SCENE_MANAGER_REMOVE_SCENES" ) );
             MemoryManager::DELETE( _scenePool );
             _recast.reset();
             _platformContext = nullptr;
@@ -167,7 +167,7 @@ namespace Divide
 
         if ( !loadingScene )
         {
-            Console::errorfn( Locale::Get( _ID( "ERROR_XML_LOAD_INVALID_SCENE" ) ) );
+            Console::errorfn( LOCALE_STR( "ERROR_XML_LOAD_INVALID_SCENE" ) );
             return nullptr;
         }
 
