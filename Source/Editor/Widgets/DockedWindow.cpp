@@ -1,21 +1,16 @@
-
-
 #include "Headers/DockedWindow.h"
-#include "Geometry/Shapes/Headers/Object3D.h"
 
-#include "ECS/Components/Headers/TransformComponent.h"
-#include "ECS/Components/Headers/SpotLightComponent.h"
-#include "ECS/Components/Headers/PointLightComponent.h"
-#include "ECS/Components/Headers/DirectionalLightComponent.h"
-#include "ECS/Components/Headers/EnvironmentProbeComponent.h"
-#include "ECS/Components/Headers/ScriptComponent.h"
-#include "ECS/Components/Headers/UnitComponent.h"
-#include "Dynamics/Entities/Units/Headers/Unit.h"
 #include "Dynamics/Entities/Units/Headers/Character.h"
-#include "Dynamics/Entities/Units/Headers/NPC.h"
-#include "Dynamics/Entities/Units/Headers/Player.h"
+#include "Dynamics/Entities/Units/Headers/Unit.h"
+#include "ECS/Components/Headers/UnitComponent.h"
 
+#include "Core/Headers/Profiler.h"
+#include "ECS/Components/Headers/EditorComponent.h"
+#include "Graphs/Headers/SceneGraphNode.h"
+#include "Graphs/Headers/SceneNodeFwd.h"
 #include <IconsForkAwesome.h>
+#include <IEntity.h>
+#include <imgui.h>
 
 namespace Divide {
 

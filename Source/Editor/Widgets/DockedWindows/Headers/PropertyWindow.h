@@ -54,7 +54,7 @@ class PropertyWindow final : public DockedWindow, public PlatformContextComponen
         void drawInternal() override;
         void backgroundUpdateInternal() override;
 
-        [[nodiscard]] const char* name() const override;
+        [[nodiscard]] string name() const override;
 
         PROPERTY_INTERNAL(bool, skipAutoTooltip, false);
 

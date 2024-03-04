@@ -81,7 +81,7 @@ namespace Util {
     DrawReturnValue DrawVec(ImGuiDataType data_type,
                             const char* label,
                             T* values,
-                            bool readOnly,
+                            ImGuiInputTextFlags flags,
                             T resetValue = 0,
                             const char* format = "%.2f");
 
@@ -90,8 +90,7 @@ namespace Util {
                             const char* label, 
                             const char* const compLabels[],
                             T* values,
-                            bool readOnly,
-                            bool hexadecimal = false,
+                            ImGuiInputTextFlags flags,
                             T resetValue = 0,
                             T minValue = 0,
                             T maxValue = 0,
@@ -108,11 +107,10 @@ namespace Util {
                                      T maxValue,
                                      T step,
                                      T stepFast,
-                                     bool readOnly,
-                                     bool hexadecimal,
                                      ImVec4 buttonColour,
                                      ImVec4 buttonColourHovered,
                                      ImVec4 buttonColourActive,
+                                     ImGuiInputTextFlags flags,
                                      const char* format = "%.2f");
 
     const char* GetFormat(ImGuiDataType dataType, const char* input, bool hex);
@@ -156,9 +154,23 @@ namespace Util {
     void CenterNextWindow();
     void OpenCenteredPopup(const char* name, ImGui::ImGuiPopupFlags popup_flags = 0);
     void PrintColouredText(const std::string_view text, ImVec4 colour);
+
+    [[nodiscard]] ImGuiInputTextFlags GetDefaultFlagsForSettings(bool readOnly, bool hex);
+    [[nodiscard]] ImGuiInputTextFlags GetDefaultFlagsForField(const EditorComponentField& field);
+
 } //namespace Util
 } //namespace Divide
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4127) // conditional expression is constant
+#endif
+
 #include "Utils.inl"
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+
 
 #endif // _EDITOR_UTILS_H_

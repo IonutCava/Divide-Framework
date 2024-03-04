@@ -59,6 +59,8 @@ namespace Divide
             Attorney::EditorSceneViewWindow::editorStepQueue(_parent, Config::TARGET_FRAME_RATE + 1);
         }
 
+        bool readOnly = false;
+
         bool enableGizmo = Attorney::EditorSceneViewWindow::editorEnabledGizmo(_parent);
         TransformSettings settings = _parent.getTransformSettings();
 
@@ -77,6 +79,7 @@ namespace Divide
         if (play)
         {
             PushReadOnly();
+            readOnly = true;
         }
 
         if (button(true, ICON_FK_CAMERA_RETRO, "Copy the player's camera snapshot to the editor camera"))
@@ -154,6 +157,7 @@ namespace Divide
         if (play)
         {
             PopReadOnly();
+            readOnly = false;
         }
 
         const RenderTarget* rt = _parent.context().gfx().renderTargetPool().getRenderTarget(RenderTargetNames::BACK_BUFFER);
@@ -164,6 +168,7 @@ namespace Divide
         if (play || !enableGizmo)
         {
             PushReadOnly();
+            readOnly = true;
         }
         if (ImGui::RadioButton("Local", settings.currentGizmoMode == ImGuizmo::LOCAL))
         {
@@ -312,6 +317,7 @@ namespace Divide
         ImGui::SameLine(0.f, 25.0f);
         ImGui::Checkbox("Snap", &settings.useSnap);
 
+        const ImGuiInputTextFlags flags = Util::GetDefaultFlagsForSettings(readOnly, false);
         if (settings.useSnap)
         {
             ImGui::SameLine();
@@ -334,11 +340,10 @@ namespace Divide
                                     1000.f,
                                     0.f,
                                     0.f,
-                                    false,
-                                    false,
                                     Util::Colours[i],
                                     Util::ColoursHovered[i],
-                                    Util::Colours[i]);
+                                    Util::Colours[i],
+                                    flags);
                                 ImGui::SameLine();
                             }
                             ImGui::Dummy(ImVec2(0, 0));
@@ -352,11 +357,10 @@ namespace Divide
                                 1000.f,
                                 0.f,
                                 0.f,
-                                false,
-                                false,
                                 Util::Colours[0],
                                 Util::ColoursHovered[0],
-                                Util::Colours[0]);
+                                Util::Colours[0],
+                                flags);
                             break;
                         case ImGuizmo::TRANSLATE_Y:
                             Util::DrawVecComponent<F32, false>(ImGuiDataType_Float,
@@ -367,11 +371,10 @@ namespace Divide
                                 1000.f,
                                 0.f,
                                 0.f,
-                                false,
-                                false,
                                 Util::Colours[1],
                                 Util::ColoursHovered[1],
-                                Util::Colours[1]);
+                                Util::Colours[1],
+                                flags);
                             break;
                         case ImGuizmo::TRANSLATE_Z:
                             Util::DrawVecComponent<F32, false>(ImGuiDataType_Float,
@@ -382,11 +385,10 @@ namespace Divide
                                 1000.f,
                                 0.f,
                                 0.f,
-                                false,
-                                false,
                                 Util::Colours[2],
                                 Util::ColoursHovered[2],
-                                Util::Colours[2]);
+                                Util::Colours[2],
+                                flags);
                             break;
                     }
                 }
@@ -405,11 +407,10 @@ namespace Divide
                                     1000.f,
                                     0.f,
                                     0.f,
-                                    false,
-                                    false,
                                     Util::Colours[i],
                                     Util::ColoursHovered[i],
-                                    Util::Colours[i]);
+                                    Util::Colours[i],
+                                    flags);
                                 ImGui::SameLine();
                             }
                             ImGui::Dummy(ImVec2(0, 0));
@@ -423,11 +424,10 @@ namespace Divide
                                 180.f,
                                 0.f,
                                 0.f,
-                                false,
-                                false,
                                 Util::Colours[0],
                                 Util::ColoursHovered[0],
-                                Util::Colours[0]);
+                                Util::Colours[0],
+                                flags);
                             break;
                         case ImGuizmo::ROTATE_Y:
                             Util::DrawVecComponent<F32, false>(ImGuiDataType_Float,
@@ -438,11 +438,10 @@ namespace Divide
                                 180.f,
                                 0.f,
                                 0.f,
-                                false,
-                                false,
                                 Util::Colours[1],
                                 Util::ColoursHovered[1],
-                                Util::Colours[1]);
+                                Util::Colours[1],
+                                flags);
                             break;
                         case ImGuizmo::ROTATE_Z:
                             Util::DrawVecComponent<F32, false>(ImGuiDataType_Float,
@@ -453,11 +452,10 @@ namespace Divide
                                 180.f,
                                 0.f,
                                 0.f,
-                                false,
-                                false,
                                 Util::Colours[2],
                                 Util::ColoursHovered[2],
-                                Util::Colours[2]);
+                                Util::Colours[2],
+                                flags);
                             break;
                     }
                 }
@@ -476,11 +474,10 @@ namespace Divide
                                     1000.f,
                                     0.f,
                                     0.f,
-                                    false,
-                                    false,
                                     Util::Colours[i],
                                     Util::ColoursHovered[i],
-                                    Util::Colours[i]);
+                                    Util::Colours[i],
+                                    flags);
                                 ImGui::SameLine();
                             }
                             ImGui::Dummy(ImVec2(0, 0));
@@ -494,11 +491,10 @@ namespace Divide
                                 1000.f,
                                 0.f,
                                 0.f,
-                                false,
-                                false,
                                 Util::Colours[0],
                                 Util::ColoursHovered[0],
-                                Util::Colours[0]);
+                                Util::Colours[0],
+                                flags);
                             break;
                         case ImGuizmo::SCALE_Y:
                             Util::DrawVecComponent<F32, false>(ImGuiDataType_Float,
@@ -509,11 +505,10 @@ namespace Divide
                                 1000.f,
                                 0.f,
                                 0.f,
-                                false,
-                                false,
                                 Util::Colours[1],
                                 Util::ColoursHovered[1],
-                                Util::Colours[1]);
+                                Util::Colours[1],
+                                flags);
                             break;
                         case ImGuizmo::SCALE_Z:
                             Util::DrawVecComponent<F32, false>(ImGuiDataType_Float,
@@ -524,11 +519,10 @@ namespace Divide
                                 1000.f,
                                 0.f,
                                 0.f,
-                                false,
-                                false,
                                 Util::Colours[2],
                                 Util::ColoursHovered[2],
-                                Util::Colours[2]);
+                                Util::Colours[2],
+                                flags);
                             break;
                     }
                 }
@@ -540,6 +534,7 @@ namespace Divide
         if (play || !enableGizmo)
         {
             PopReadOnly();
+            readOnly = false;
         }
 
         ImGui::SameLine( window->Size.x * 0.95f);

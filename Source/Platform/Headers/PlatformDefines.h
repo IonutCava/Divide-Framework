@@ -46,14 +46,14 @@
 #define GET_6TH_ARG(arg1, arg2, arg3, arg4, arg5, arg6, ...) arg6
 
 #if defined(_DEBUG)
-#define STUBBED(x)                                  \
-do {                                                \
-    static bool seen_this = false;                  \
-    if (!seen_this) {                               \
-        seen_this = true;                           \
-        Console::errorfn("[STUBBED] %s (%s : %d)\n",\
-                         x, __FILE__, __LINE__);    \
-    }                                               \
+#define STUBBED(x)                                    \
+do {                                                  \
+    static bool seen_this = false;                    \
+    if (!seen_this) {                                 \
+        seen_this = true;                             \
+        Console::errorfn("[ STUBBED ] %s (%s : %d)\n",\
+                         x, __FILE__, __LINE__);      \
+    }                                                 \
 } while (0);
 
 #else

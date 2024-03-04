@@ -1,35 +1,41 @@
 ﻿
 
-#include "Headers/PropertyWindow.h"
 #include "Editor/Headers/UndoManager.h"
 #include "Editor/Headers/Utils.h"
+#include "Headers/PropertyWindow.h"
 
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/PlatformContext.h"
 
 #include "Editor/Headers/Editor.h"
-#include "Managers/Headers/SceneManager.h"
-#include "Rendering/Camera/Headers/Camera.h"
 #include "Geometry/Material/Headers/Material.h"
+#include "Graphs/Headers/SceneGraph.h"
+#include "Graphs/Headers/SceneNode.h"
+#include "Managers/Headers/SceneManager.h"
+#include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
-#include "Platform/File/Headers/FileManagement.h"
-#include "Graphs/Headers/SceneNode.h"
-#include "Graphs/Headers/SceneGraph.h"
+#include "Rendering/Camera/Headers/Camera.h"
 
-#include "ECS/Components/Headers/TransformComponent.h"
-#include "ECS/Components/Headers/SpotLightComponent.h"
-#include "ECS/Components/Headers/PointLightComponent.h"
 #include "ECS/Components/Headers/DirectionalLightComponent.h"
 #include "ECS/Components/Headers/EnvironmentProbeComponent.h"
+#include "ECS/Components/Headers/PointLightComponent.h"
+#include "ECS/Components/Headers/SpotLightComponent.h"
+#include "ECS/Components/Headers/TransformComponent.h"
 
 #include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
 #include "Core/Math/BoundingVolumes/Headers/OBB.h"
 #include "Editor/Widgets/Headers/ImGuiExtensions.h"
 
-#include <imgui_internal.h>
 #include <IconsForkAwesome.h>
+#include <imgui_internal.h>
+
+
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4127) // conditional expression is constant
+#endif
 
 namespace Divide
 {
@@ -2408,17 +2414,16 @@ namespace Divide
     bool PropertyWindow::processBasicField( EditorComponentField& field )
     {
         const bool isSlider = field._type == EditorComponentFieldType::SLIDER_TYPE &&
-            field._basicType != PushConstantType::BOOL &&
-            !field.isMatrix();
+                              field._basicType != PushConstantType::BOOL &&
+                              !field.isMatrix();
 
-        const ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue |
-            ImGuiInputTextFlags_CharsNoBlank |
-            (field._hexadecimal ? ImGuiInputTextFlags_CharsHexadecimal : ImGuiInputTextFlags_CharsDecimal) |
-            (field._readOnly ? ImGuiInputTextFlags_ReadOnly : 0u);
+        const ImGuiInputTextFlags flags = Util::GetDefaultFlagsForField(field);
 
         const char* name = field._name.c_str();
+
         ImGui::PushID( name );
         Util::PushTooltip( field._tooltip.c_str() );
+
         const F32 step = field._step;
         bool ret = false;
         switch ( field._basicType )
@@ -2479,7 +2484,7 @@ namespace Divide
                     case PushConstantSize::QWORD: ret = Util::inputOrSlider<I64, I64, 1>( _parent, isSlider, name, step, ImGuiDataType_S64, field, flags, field._format ); break;
                     case PushConstantSize::DWORD: ret = Util::inputOrSlider<I32, I32, 1>( _parent, isSlider, name, step, ImGuiDataType_S32, field, flags, field._format ); break;
                     case PushConstantSize::WORD:  ret = Util::inputOrSlider<I16, I16, 1>( _parent, isSlider, name, step, ImGuiDataType_S16, field, flags, field._format ); break;
-                    case PushConstantSize::BYTE:  ret = Util::inputOrSlider<I8, I8, 1>( _parent, isSlider, name, step, ImGuiDataType_S8, field, flags, field._format ); break;
+                    case PushConstantSize::BYTE:  ret = Util::inputOrSlider<I8,  I8,  1>( _parent, isSlider, name, step, ImGuiDataType_S8,  field, flags, field._format ); break;
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             }break;
@@ -2490,7 +2495,7 @@ namespace Divide
                     case PushConstantSize::QWORD: ret = Util::inputOrSlider<U64, U64, 1>( _parent, isSlider, name, step, ImGuiDataType_U64, field, flags, field._format ); break;
                     case PushConstantSize::DWORD: ret = Util::inputOrSlider<U32, U32, 1>( _parent, isSlider, name, step, ImGuiDataType_U32, field, flags, field._format ); break;
                     case PushConstantSize::WORD:  ret = Util::inputOrSlider<U16, U16, 1>( _parent, isSlider, name, step, ImGuiDataType_U16, field, flags, field._format ); break;
-                    case PushConstantSize::BYTE:  ret = Util::inputOrSlider<U8, U8, 1>( _parent, isSlider, name, step, ImGuiDataType_U8, field, flags, field._format ); break;
+                    case PushConstantSize::BYTE:  ret = Util::inputOrSlider<U8,  U8,  1>( _parent, isSlider, name, step, ImGuiDataType_U8,  field, flags, field._format ); break;
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             }break;
@@ -2509,7 +2514,7 @@ namespace Divide
                     case PushConstantSize::QWORD: ret = Util::inputOrSlider<vec2<I64>, I64, 2>( _parent, isSlider, name, step, ImGuiDataType_S64, field, flags, field._format ); break;
                     case PushConstantSize::DWORD: ret = Util::inputOrSlider<vec2<I32>, I32, 2>( _parent, isSlider, name, step, ImGuiDataType_S32, field, flags, field._format ); break;
                     case PushConstantSize::WORD:  ret = Util::inputOrSlider<vec2<I16>, I16, 2>( _parent, isSlider, name, step, ImGuiDataType_S16, field, flags, field._format ); break;
-                    case PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec2<I8>, I8, 2>( _parent, isSlider, name, step, ImGuiDataType_S8, field, flags, field._format ); break;
+                    case PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec2<I8>,  I8,  2>( _parent, isSlider, name, step, ImGuiDataType_S8,  field, flags, field._format ); break;
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             }break;
@@ -2520,7 +2525,7 @@ namespace Divide
                     case PushConstantSize::QWORD: ret = Util::inputOrSlider<vec3<I64>, I64, 3>( _parent, isSlider, name, step, ImGuiDataType_S64, field, flags, field._format ); break;
                     case PushConstantSize::DWORD: ret = Util::inputOrSlider<vec3<I32>, I32, 3>( _parent, isSlider, name, step, ImGuiDataType_S32, field, flags, field._format ); break;
                     case PushConstantSize::WORD:  ret = Util::inputOrSlider<vec3<I16>, I16, 3>( _parent, isSlider, name, step, ImGuiDataType_S16, field, flags, field._format ); break;
-                    case PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec3<I8>, I8, 3>( _parent, isSlider, name, step, ImGuiDataType_S8, field, flags, field._format ); break;
+                    case PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec3<I8>,  I8,  3>( _parent, isSlider, name, step, ImGuiDataType_S8,  field, flags, field._format ); break;
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             }break;
@@ -2531,7 +2536,7 @@ namespace Divide
                     case PushConstantSize::QWORD: ret = Util::inputOrSlider<vec4<I64>, I64, 4>( _parent, isSlider, name, step, ImGuiDataType_S64, field, flags, field._format ); break;
                     case PushConstantSize::DWORD: ret = Util::inputOrSlider<vec4<I32>, I32, 4>( _parent, isSlider, name, step, ImGuiDataType_S32, field, flags, field._format ); break;
                     case PushConstantSize::WORD:  ret = Util::inputOrSlider<vec4<I16>, I16, 4>( _parent, isSlider, name, step, ImGuiDataType_S16, field, flags, field._format ); break;
-                    case PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec4<I8>, I8, 4>( _parent, isSlider, name, step, ImGuiDataType_S8, field, flags, field._format ); break;
+                    case PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec4<I8>,  I8,  4>( _parent, isSlider, name, step, ImGuiDataType_S8,  field, flags, field._format ); break;
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             }break;
@@ -2542,7 +2547,7 @@ namespace Divide
                     case PushConstantSize::QWORD: ret = Util::inputOrSlider<vec2<U64>, U64, 2>( _parent, isSlider, name, step, ImGuiDataType_U64, field, flags, field._format ); break;
                     case PushConstantSize::DWORD: ret = Util::inputOrSlider<vec2<U32>, U32, 2>( _parent, isSlider, name, step, ImGuiDataType_U32, field, flags, field._format ); break;
                     case PushConstantSize::WORD:  ret = Util::inputOrSlider<vec2<U16>, U16, 2>( _parent, isSlider, name, step, ImGuiDataType_U16, field, flags, field._format ); break;
-                    case PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec2<U8>, U8, 2>( _parent, isSlider, name, step, ImGuiDataType_U8, field, flags, field._format ); break;
+                    case PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec2<U8>,  U8,  2>( _parent, isSlider, name, step, ImGuiDataType_U8,  field, flags, field._format ); break;
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             }break;
@@ -2553,7 +2558,7 @@ namespace Divide
                     case PushConstantSize::QWORD: ret = Util::inputOrSlider<vec3<U64>, U64, 3>( _parent, isSlider, name, step, ImGuiDataType_U64, field, flags, field._format ); break;
                     case PushConstantSize::DWORD: ret = Util::inputOrSlider<vec3<U32>, U32, 3>( _parent, isSlider, name, step, ImGuiDataType_U32, field, flags, field._format ); break;
                     case PushConstantSize::WORD:  ret = Util::inputOrSlider<vec3<U16>, U16, 3>( _parent, isSlider, name, step, ImGuiDataType_U16, field, flags, field._format ); break;
-                    case PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec3<U8>, U8, 3>( _parent, isSlider, name, step, ImGuiDataType_U8, field, flags, field._format ); break;
+                    case PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec3<U8>,  U8,  3>( _parent, isSlider, name, step, ImGuiDataType_U8,  field, flags, field._format ); break;
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             }break;
@@ -2564,7 +2569,7 @@ namespace Divide
                     case PushConstantSize::QWORD: ret = Util::inputOrSlider<vec4<U64>, U64, 4>( _parent, isSlider, name, step, ImGuiDataType_U64, field, flags, field._format ); break;
                     case PushConstantSize::DWORD: ret = Util::inputOrSlider<vec4<U32>, U32, 4>( _parent, isSlider, name, step, ImGuiDataType_U32, field, flags, field._format ); break;
                     case PushConstantSize::WORD:  ret = Util::inputOrSlider<vec4<U16>, U16, 4>( _parent, isSlider, name, step, ImGuiDataType_U16, field, flags, field._format ); break;
-                    case PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec4<U8>, U8, 4>( _parent, isSlider, name, step, ImGuiDataType_U8, field, flags, field._format ); break;
+                    case PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec4<U8>,  U8,  4>( _parent, isSlider, name, step, ImGuiDataType_U8,  field, flags, field._format ); break;
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             }break;
@@ -2599,7 +2604,7 @@ namespace Divide
                     case PushConstantSize::QWORD: ret = Util::inputMatrix<mat2<I64>, 2>( _parent, name, step, ImGuiDataType_S64, field, flags, field._format ); break;
                     case PushConstantSize::DWORD: ret = Util::inputMatrix<mat2<I32>, 2>( _parent, name, step, ImGuiDataType_S32, field, flags, field._format ); break;
                     case PushConstantSize::WORD:  ret = Util::inputMatrix<mat2<I16>, 2>( _parent, name, step, ImGuiDataType_S16, field, flags, field._format ); break;
-                    case PushConstantSize::BYTE:  ret = Util::inputMatrix<mat2<I8>, 2>( _parent, name, step, ImGuiDataType_S8, field, flags, field._format ); break;
+                    case PushConstantSize::BYTE:  ret = Util::inputMatrix<mat2<I8>,  2>( _parent, name, step, ImGuiDataType_S8,  field, flags, field._format ); break;
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             }break;
@@ -2610,7 +2615,7 @@ namespace Divide
                     case PushConstantSize::QWORD: ret = Util::inputMatrix<mat3<I64>, 3>( _parent, name, step, ImGuiDataType_S64, field, flags, field._format ); break;
                     case PushConstantSize::DWORD: ret = Util::inputMatrix<mat3<I32>, 3>( _parent, name, step, ImGuiDataType_S32, field, flags, field._format ); break;
                     case PushConstantSize::WORD:  ret = Util::inputMatrix<mat3<I16>, 3>( _parent, name, step, ImGuiDataType_S16, field, flags, field._format ); break;
-                    case PushConstantSize::BYTE:  ret = Util::inputMatrix<mat3<I8>, 3>( _parent, name, step, ImGuiDataType_S8, field, flags, field._format ); break;
+                    case PushConstantSize::BYTE:  ret = Util::inputMatrix<mat3<I8>,  3>( _parent, name, step, ImGuiDataType_S8,  field, flags, field._format ); break;
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
                 ImGui::Separator();
@@ -2622,7 +2627,7 @@ namespace Divide
                     case PushConstantSize::QWORD: ret = Util::inputMatrix<mat4<I64>, 4>( _parent, name, step, ImGuiDataType_S64, field, flags, field._format ); break;
                     case PushConstantSize::DWORD: ret = Util::inputMatrix<mat4<I32>, 4>( _parent, name, step, ImGuiDataType_S32, field, flags, field._format ); break;
                     case PushConstantSize::WORD:  ret = Util::inputMatrix<mat4<I16>, 4>( _parent, name, step, ImGuiDataType_S16, field, flags, field._format ); break;
-                    case PushConstantSize::BYTE:  ret = Util::inputMatrix<mat4<I8>, 4>( _parent, name, step, ImGuiDataType_S8, field, flags, field._format ); break;
+                    case PushConstantSize::BYTE:  ret = Util::inputMatrix<mat4<I8>,  4>( _parent, name, step, ImGuiDataType_S8,  field, flags, field._format ); break;
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
                 ImGui::Separator();
@@ -2634,7 +2639,7 @@ namespace Divide
                     case PushConstantSize::QWORD: ret = Util::inputMatrix<mat2<U64>, 2>( _parent, name, step, ImGuiDataType_U64, field, flags, field._format ); break;
                     case PushConstantSize::DWORD: ret = Util::inputMatrix<mat2<U32>, 2>( _parent, name, step, ImGuiDataType_U32, field, flags, field._format ); break;
                     case PushConstantSize::WORD:  ret = Util::inputMatrix<mat2<U16>, 2>( _parent, name, step, ImGuiDataType_U16, field, flags, field._format ); break;
-                    case PushConstantSize::BYTE:  ret = Util::inputMatrix<mat2<U8>, 2>( _parent, name, step, ImGuiDataType_U8, field, flags, field._format ); break;
+                    case PushConstantSize::BYTE:  ret = Util::inputMatrix<mat2<U8>,  2>( _parent, name, step, ImGuiDataType_U8,  field, flags, field._format ); break;
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             }break;
@@ -2645,7 +2650,7 @@ namespace Divide
                     case PushConstantSize::QWORD: ret = Util::inputMatrix<mat3<U64>, 3>( _parent, name, step, ImGuiDataType_U64, field, flags, field._format ); break;
                     case PushConstantSize::DWORD: ret = Util::inputMatrix<mat3<U32>, 3>( _parent, name, step, ImGuiDataType_U32, field, flags, field._format ); break;
                     case PushConstantSize::WORD:  ret = Util::inputMatrix<mat3<U16>, 3>( _parent, name, step, ImGuiDataType_U16, field, flags, field._format ); break;
-                    case PushConstantSize::BYTE:  ret = Util::inputMatrix<mat3<U8>, 3>( _parent, name, step, ImGuiDataType_U8, field, flags, field._format ); break;
+                    case PushConstantSize::BYTE:  ret = Util::inputMatrix<mat3<U8>,  3>( _parent, name, step, ImGuiDataType_U8,  field, flags, field._format ); break;
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             }break;
@@ -2656,7 +2661,7 @@ namespace Divide
                     case PushConstantSize::QWORD: ret = Util::inputMatrix<mat4<U64>, 4>( _parent, name, step, ImGuiDataType_U64, field, flags, field._format ); break;
                     case PushConstantSize::DWORD: ret = Util::inputMatrix<mat4<U32>, 4>( _parent, name, step, ImGuiDataType_U32, field, flags, field._format ); break;
                     case PushConstantSize::WORD:  ret = Util::inputMatrix<mat4<U16>, 4>( _parent, name, step, ImGuiDataType_U16, field, flags, field._format ); break;
-                    case PushConstantSize::BYTE:  ret = Util::inputMatrix<mat4<U8>, 4>( _parent, name, step, ImGuiDataType_U8, field, flags, field._format ); break;
+                    case PushConstantSize::BYTE:  ret = Util::inputMatrix<mat4<U8>,  4>( _parent, name, step, ImGuiDataType_U8,  field, flags, field._format ); break;
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             }break;
@@ -2703,18 +2708,23 @@ namespace Divide
         return ret;
     }
 
-    const char* PropertyWindow::name() const
+    string PropertyWindow::name() const
     {
         const Selections& nodes = selections();
         if ( nodes._selectionCount == 0 )
         {
             return DockedWindow::name();
         }
+
         if ( nodes._selectionCount == 1 )
         {
             return node( nodes._selections[0] )->name().c_str();
         }
 
-        return Util::StringFormat( "%s, %s, ...", node( nodes._selections[0] )->name().c_str(), node( nodes._selections[1] )->name().c_str() ).c_str();
+        return Util::StringFormat( "%s, %s, ...", node( nodes._selections[0] )->name().c_str(), node( nodes._selections[1] )->name().c_str() );
     }
 } //namespace Divide
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif

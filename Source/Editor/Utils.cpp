@@ -382,5 +382,18 @@ namespace Divide
             ImGui::TextUnformatted( text.data(), text.data() + text.length());
             ImGui::PopStyleColor();
         }
+
+        ImGuiInputTextFlags GetDefaultFlagsForSettings( const bool readOnly, const bool hex )
+        {
+            return ImGuiInputTextFlags_EnterReturnsTrue |
+                   ImGuiInputTextFlags_CharsNoBlank |
+                   (hex ? ImGuiInputTextFlags_CharsHexadecimal : ImGuiInputTextFlags_CharsDecimal) |
+                   (readOnly ? ImGuiInputTextFlags_ReadOnly : 0u);
+        }
+
+        ImGuiInputTextFlags GetDefaultFlagsForField( const EditorComponentField& field )
+        {
+            return GetDefaultFlagsForSettings( field._readOnly, field._hexadecimal);
+        }
     } //namespace Util
 } //namespace Divide

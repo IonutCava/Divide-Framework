@@ -63,7 +63,7 @@ class DockedWindow : NonCopyable, NonMovable {
         // Always called, even if the editor is not visible
         void backgroundUpdate();
 
-        [[nodiscard]] virtual const char* name() const { return _descriptor.name.c_str(); }
+        [[nodiscard]] virtual string name() const { return _descriptor.name; }
 
 
         [[nodiscard]] const Descriptor& descriptor() const noexcept { return _descriptor; }
