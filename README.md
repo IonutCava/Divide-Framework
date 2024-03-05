@@ -12,23 +12,23 @@ Mastodon: [peoplemaking.games/@KIonutzR](https://peoplemaking.games/@KIonutzR)
 
 ## The How and the Why
 Yup, YAGE. Yet Another Game Engine. A toy engine, mind you, never intended for general release or something people will ever require support with.
-Something I use to experiment on, learn new things, practice, prototype and eventually, try and ship a game or two with.
+It is something I use to experiment on, learn new things, practice, prototype and eventually, try and ship a game or two with.
 
-This code started during my first days in uni. The very first iteration looked like this: [Youtube link](https://www.youtube.com/watch?v=VWNjdmhz-lM).
+This code started during my first days in uni. The first iteration looked like this: [Youtube link](https://www.youtube.com/watch?v=VWNjdmhz-lM).
 
 Next to no programming experience and it shows in the parts of code that survived since then (all the SceneNode and Resource stuff). Started with a lot of OOP and "Clean Code" with C++98 and currently developed using as much DoD as possible (basic structs and enums, inheritance mostly for interfaces or restrictions {NonCopyable, NonMovable, etc}) but with C++20 for ease of use (constexpr and concepts over templates, threading and filesystem builtin, lambdas over function pointers etc).
 
 It got me through learning old-school OpenGL (1.x, 2.x), core GL (3.x, 4.x) and some AZDO techniques (indirect rendering, bindless textures, persistently mapped buffers, etc).
-Currently using it to learn Vulkan 1.3 (why would I learn about framebuffers,subpasses and renderpasses now? Maybe for mobile, but I don't see myself doing that now, and if I did, I'd learn that as required).
+Currently using it to learn Vulkan 1.3 (why would I learn about framebuffers, subpasses and renderpasses now? Maybe for mobile, but I don't see myself doing that now, and if I did, I'd learn that as required).
 
 The reason it's published on GitHub are:
 * so I can store the code somewhere central and keep track of changes.
-* if people do as I do and search for various things (functions, enums, etc) on github, maybe my code can help.
+* if people do as I do and search for various things (functions, enums, etc) on GitHub, maybe my code can help.
 * if anyone is struggling with solving a problem that I already banged my head against, feel free to get inspired by it.
 
 If you plan to use any parts of this code in a commercial product, a couple of things:
 * Are you sure?
-* Please let me know as I'm curios to see where and why and also, I'd highly appreciate it.
+* Please let me know as I'm curious to see where and why and also, I'd highly appreciate it.
 
 
 ## Features:
@@ -84,6 +84,7 @@ I did try to comply with all of them, but I may have missed something.
 * Optick: https://github.com/bombomby/optick
 * ReCast: https://github.com/recastnavigation/recastnavigation
 * UI
+    * CEGUI: http://cegui.org.uk
     * Dear ImGui: https://github.com/ocornut/imgui
     * ImGuizmo: https://github.com/CedricGuillemet/ImGuizmo
     * imgui_club: https://github.com/ocornut/imgui_club
@@ -91,7 +92,6 @@ I did try to comply with all of them, but I may have missed something.
     * imguifilesystem: https://github.com/Flix01/imgui/tree/imgui_with_addons/addons/imguifilesystem
     * imguistyleserializer: https://github.com/Flix01/imgui/tree/imgui_with_addons/addons/imguistyleserializer
     * Node Editor in ImGui: https://github.com/thedmd/imgui-node-editor
-    * CEGUI: http://cegui.org.uk
     * fontstash: https://github.com/memononen/fontstash
     * IconFontCppHeaders: https://github.com/juliettef/IconFontCppHeaders
 * Asset Management:
@@ -101,7 +101,7 @@ I did try to comply with all of them, but I may have missed something.
     * nvtt: https://github.com/castano/nvidia-texture-tool
     * Frexx CPP (C Preprocessor): https://github.com/bagder/fcpp
     * DevIL: https://openil.sourceforge.net
-* OpenAL: https://www.openal.org
+* OpenAL-soft: https://github.com/kcat/openal-soft
 * OpenGL:
     * glbinding: https://github.com/cginternals/glbinding
     * OpenGL Immediate Mode for OpenGL 3.0: https://community.khronos.org/t/glim-opengl-immediate-mode-for-opengl-3-0/56957
@@ -122,9 +122,9 @@ I did try to comply with all of them, but I may have missed something.
 * Tileable Volume Noise: https://github.com/sebh/TileableVolumeNoise/
 * simplefilewatcher: https://code.google.com/archive/p/simplefilewatcher/
 * simpleini: https://github.com/brofield/simpleini
-* glm (mostly for 3rd party libs): https://github.com/g-truc/glm
+* GLM: https://github.com/g-truc/glm
 * skarupke hash maps: https://github.com/skarupke
-* C++ Unit Test Framework: https://github.com/cppocl/unit_test_framework
+* Catch2: https://github.com/catchorg/Catch2
 * various 3rd party parser libs:
     * freetype: https://freetype.org
     * freeimage: https://freeimage.sourceforge.io
