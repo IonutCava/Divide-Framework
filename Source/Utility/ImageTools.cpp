@@ -73,40 +73,20 @@ namespace nvttHelpers {
 
         // create the osg image from the given format
         bool assignImage(ImageLayer& image) {
-            // convert nvtt format to OpenGL pixel format
-            GFXImageFormat pixelFormat = GFXImageFormat::COUNT;
             switch (_format)
             {
-            case nvtt::Format_RGBA:
-                pixelFormat = _discardAlpha ? GFXImageFormat::RGB : GFXImageFormat::RGBA;
-                break;
-            case nvtt::Format_BC1:
-                pixelFormat = GFXImageFormat::BC1;
-                break;
-            case nvtt::Format_BC1a:
-                pixelFormat = GFXImageFormat::BC1a;
-                break;
-            case nvtt::Format_BC2:
-                pixelFormat = GFXImageFormat::BC2;
-                break;
-            case nvtt::Format_BC3:
-                pixelFormat = GFXImageFormat::BC3;
-                break;
-            case nvtt::Format_BC4:
-                pixelFormat = GFXImageFormat::BC4u;
-                break;
-            case nvtt::Format_BC5:
-                pixelFormat = GFXImageFormat::BC5u;
-                break; 
-            case nvtt::Format_BC6:
-                pixelFormat = GFXImageFormat::BC6u;
-                break;
-            case nvtt::Format_BC7:
-                pixelFormat = GFXImageFormat::BC7;
-                break;
-            default:
-                Console::errorfn(LOCALE_STR("ERROR_IMAGE_TOOLS_NVT_FORMAT"));
-                return false;
+                case nvtt::Format_RGBA:
+                case nvtt::Format_BC1:
+                case nvtt::Format_BC1a:
+                case nvtt::Format_BC2:
+                case nvtt::Format_BC3:
+                case nvtt::Format_BC4:
+                case nvtt::Format_BC5:
+                case nvtt::Format_BC6:
+                case nvtt::Format_BC7:
+                default:
+                    Console::errorfn(LOCALE_STR("ERROR_IMAGE_TOOLS_NVT_FORMAT"));
+                    return false;
             }
 
             for (MipMapData& data : _mipmaps) {
@@ -154,15 +134,16 @@ namespace nvttHelpers {
         } else {
             if (outputFormat != ImageOutputFormat::AUTO) {
                 switch (outputFormat) {
-                case ImageOutputFormat::BC1:      return nvtt::Format::Format_BC1;
-                case ImageOutputFormat::BC1a:     return nvtt::Format::Format_BC1a;
-                case ImageOutputFormat::BC2:      return nvtt::Format::Format_BC2;
-                case ImageOutputFormat::BC3:      return isNormalMap ? nvtt::Format::Format_BC3n : nvtt::Format::Format_BC3;
-                case ImageOutputFormat::BC4:      return nvtt::Format::Format_BC4;
-                case ImageOutputFormat::BC5:      return nvtt::Format::Format_BC5;
-                case ImageOutputFormat::BC6:      return nvtt::Format::Format_BC6;
-                case ImageOutputFormat::BC7:      return nvtt::Format::Format_BC7;
+                    case ImageOutputFormat::BC1:      return nvtt::Format::Format_BC1;
+                    case ImageOutputFormat::BC1a:     return nvtt::Format::Format_BC1a;
+                    case ImageOutputFormat::BC2:      return nvtt::Format::Format_BC2;
+                    case ImageOutputFormat::BC3:      return isNormalMap ? nvtt::Format::Format_BC3n : nvtt::Format::Format_BC3;
+                    case ImageOutputFormat::BC4:      return nvtt::Format::Format_BC4;
+                    case ImageOutputFormat::BC5:      return nvtt::Format::Format_BC5;
+                    case ImageOutputFormat::BC6:      return nvtt::Format::Format_BC6;
+                    case ImageOutputFormat::BC7:      return nvtt::Format::Format_BC7;
                     //case ImageOutputFormat::BC3_RGBM: return nvtt::Format::Format_BC3_RGBM; //Not supported
+                    default: break;
                 };
             }
 
@@ -175,6 +156,7 @@ namespace nvttHelpers {
             case MipMapFilter::BOX: return nvtt::MipmapFilter_Box;
             case MipMapFilter::TRIANGLE: return nvtt::MipmapFilter_Triangle;
             case MipMapFilter::KAISER: return nvtt::MipmapFilter_Kaiser;
+            default: break;
         }
 
         return nvtt::MipmapFilter_Box;
@@ -1094,14 +1076,13 @@ UColour4 ImageData::getColour(const I32 x, const I32 y, [[maybe_unused]] U32 lay
     return returnColour;
 }
 
-namespace {
-    constexpr F32 U32_MAX_F = (U32_MAX - 1u) * 1.f;
-    constexpr F32 U16_MAX_F = U16_MAX * 1.f;
-    FORCE_INLINE [[nodiscard]] U8 F32ToU8Colour(const F32 val) noexcept { return to_U8((val / U32_MAX_F) * 255); }
-    FORCE_INLINE [[nodiscard]] U8 U32ToU8Colour(const U32 val) noexcept { return to_U8(CLAMPED(val, 0u, 255u)); }
-    FORCE_INLINE [[nodiscard]] U8 U16ToU8Colour(const U16 val) noexcept { return to_U8((val / U16_MAX_F) * 255); }
-    FORCE_INLINE [[nodiscard]] U8 HalfToU8Colour(const glm::detail::hdata val) noexcept { return F32ToU8Colour(glm::detail::toFloat32(val)); }
-    FORCE_INLINE [[nodiscard]] U8 U8ToU8Colour(const U8 val) noexcept { return val; }
+namespace
+{
+    [[nodiscard]] FORCE_INLINE U8 F32ToU8Colour(const F32 val) noexcept { return to_U8((val / F32_MAX) * 255); }
+    [[nodiscard]] FORCE_INLINE U8 U32ToU8Colour(const U32 val) noexcept { return to_U8(CLAMPED(val, 0u, 255u)); }
+    [[nodiscard]] FORCE_INLINE U8 U16ToU8Colour(const U16 val) noexcept { return to_U8((val / ( U16_MAX * 1.f )) * 255); }
+    [[nodiscard]] FORCE_INLINE U8 HalfToU8Colour(const glm::detail::hdata val) noexcept { return F32ToU8Colour(glm::detail::toFloat32(val)); }
+    [[nodiscard]] FORCE_INLINE U8 U8ToU8Colour(const U8 val) noexcept { return val; }
 };
 
 void ImageData::getColourComponent(const I32 x, const I32 y, const U8 comp, U8& c, const U32 layer, const U8 mipLevel) const {
@@ -1274,6 +1255,7 @@ bool SaveImage(const ResourcePath& filename, const U16 width, const U16 height, 
         case SaveImageFormat::BMP: return stbi_write_bmp(filename.c_str(), width, height, 3, pix.data()) == TRUE;
         case SaveImageFormat::TGA: return stbi_write_tga(filename.c_str(), width, height, 3, pix.data()) == TRUE;
         case SaveImageFormat::JPG: return stbi_write_jpg(filename.c_str(), width, height, 3, pix.data(), 85) == TRUE;
+        default: DIVIDE_UNEXPECTED_CALL(); return false;
     }
 
     return false;

@@ -111,7 +111,7 @@ namespace Attorney
         {
             program.uploadPushConstants(pushConstants);
         }
-        friend class GL_API;
+        friend class Divide::GL_API;
     };
 };  // namespace Attorney
 };  // namespace Divide

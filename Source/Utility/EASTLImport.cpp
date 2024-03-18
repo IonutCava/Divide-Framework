@@ -10,7 +10,7 @@ void* operator new[](const size_t size,
                      [[maybe_unused]] int flags, 
                      [[maybe_unused]] unsigned int debugFlags,
                      [[maybe_unused]] const char* file,
-                     [[maybe_unused]] int line) noexcept
+                     [[maybe_unused]] int line)
 {
     // this allocator doesn't support alignment
     assert(alignment == alignof(void*));
@@ -23,7 +23,7 @@ void* operator new[](const size_t size,
                      [[maybe_unused]] int flags,
                      [[maybe_unused]] unsigned int debugFlags,
                      [[maybe_unused]] const char* file,
-                     [[maybe_unused]] int line) noexcept
+                     [[maybe_unused]] int line)
 {
     return malloc(size);
 }

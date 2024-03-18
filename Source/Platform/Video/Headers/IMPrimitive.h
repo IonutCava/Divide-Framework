@@ -127,6 +127,7 @@ class IMPrimitive final {
    protected:
     template <typename Data, size_t N>
     friend struct DebugPrimitiveHandler;
+    friend void DestroyIMP(IMPrimitive*&);
 
     [[nodiscard]] inline GFXDevice& context() noexcept { return _context; }
 

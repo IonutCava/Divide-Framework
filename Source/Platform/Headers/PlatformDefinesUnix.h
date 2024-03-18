@@ -30,6 +30,7 @@
  */
 
 #pragma once
+
 #ifndef _PLATFORM_DEFINES_UNIX_H_
 #define _PLATFORM_DEFINES_UNIX_H_
 
@@ -42,7 +43,7 @@
 #endif  //NOINITVTABLE
 
 #ifndef FORCE_INLINE
-#define FORCE_INLINE __attribute__((always_inline))
+#define FORCE_INLINE inline __attribute__((always_inline))
 #endif //FORCE_INLINE
 
 #ifndef NO_INLINE
@@ -50,10 +51,28 @@
 #endif //NO_INLINE
 
 #include <sys/time.h>
-#include <X11/Xlib.h>
+#include <X11/X.h>
 #include <strings.h>
 #include <iterator>
 #include <cmath>
+
+namespace std
+{
+    [[nodiscard]] inline float asinf(const float in)
+    {
+        return ::asinf(in);
+    }
+    
+     [[nodiscard]] inline float acosf(const float in)
+    {
+        return ::acosf(in);
+    }
+
+    [[nodiscard]] inline float floorf(const float in)
+    {
+        return ::floorf(in);
+    }
+};
 
 #ifdef None
 #undef None
@@ -70,6 +89,10 @@
 #ifdef Success
 #undef Success
 #endif //Success
+
+#ifdef Always
+#undef Always
+#endif //Always
 
 namespace Divide {
     struct WindowHandle {

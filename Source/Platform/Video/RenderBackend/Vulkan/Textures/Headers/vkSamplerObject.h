@@ -33,7 +33,7 @@
 #ifndef _VK_SAMPLER_H_
 #define _VK_SAMPLER_H_
 
-#include <Vulkan/vulkan_core.h>
+#include <vulkan/vulkan_core.h>
 
 namespace Divide {
 

@@ -110,17 +110,20 @@ namespace Divide {
                                 {
                                     case Character::CharacterType::CHARACTER_TYPE_NPC: return ICON_FK_FEMALE;
                                     case Character::CharacterType::CHARACTER_TYPE_PLAYER: return ICON_FK_GAMEPAD;
+                                    default: break;
                                 }
                             }
                             case UnitType::UNIT_TYPE_VEHICLE:
                             {
                                 return ICON_FK_CAR;
                             }
+                            default: break;
                         }
                     }
                 }
-                    return ICON_FK_ARROWS;
+                return ICON_FK_ARROWS;
             }break;
+            default: break;
         }
 
         return ICON_FK_QUESTION;

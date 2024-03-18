@@ -33,6 +33,6 @@ jobs:
     - name: Build and test Game in Release mode
       uses: lukka/run-cmake@v10
       with:
-        configurePreset: 'ninja-multi-vcpkg'
-        buildPreset: 'game-x64-release'
-        testPreset: 'test-release-game'
+        configurePreset: 'windows-msvc-release'
+        buildPreset: 'windows-msvc-release'
+        testPreset: 'test-windows-msvc-release'

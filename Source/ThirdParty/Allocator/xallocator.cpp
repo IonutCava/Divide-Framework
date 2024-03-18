@@ -1,5 +1,5 @@
 #include "xallocator.h"
-#include "allocator.h"
+#include "Allocator.h"
 #include "Fault.h"
 
 #include <iostream>
@@ -111,7 +111,7 @@ static void lock_init()
 	BOOL success = InitializeCriticalSectionAndSpinCount(&_criticalSection, 0x00000400);
 	ASSERT_TRUE(success != 0);
 #else
-    pthread_mutex_init(&_criticalSection);
+    pthread_mutex_init(&_criticalSection, NULL);
 #endif
 	_xallocInitialized = TRUE;
 }

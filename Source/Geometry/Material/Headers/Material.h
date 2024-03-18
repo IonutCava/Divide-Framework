@@ -57,6 +57,7 @@ namespace Attorney {
     class MaterialRenderBin;
 }
 
+class RenderBin;
 class RenderingComponent;
 class ResourceDescriptor;
 
@@ -384,7 +385,7 @@ class MaterialRenderBin {
         material.getSortKeys(renderStagePass, shaderKey, textureKey, hasTransparency);
     }
 
-    friend class RenderBin;
+    friend class Divide::RenderBin;
 };
 } //namespace Attorney
 

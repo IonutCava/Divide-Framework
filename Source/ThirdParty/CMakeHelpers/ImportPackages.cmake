@@ -68,8 +68,8 @@ FetchContent_Declare(
 #CurlNoise
 FetchContent_Declare(
     curl_noise
-    GIT_REPOSITORY https://github.com/rajabala/CurlNoise.git
-    GIT_TAG        6f05daa05552afdfb7dd9c77d9e5931d1d0aa51d
+    GIT_REPOSITORY https://github.com/IonutCava/CurlNoise.git
+    GIT_TAG        master
     #GIT_PROGRESS   TRUE
 )
 
@@ -105,6 +105,14 @@ FetchContent_Declare(
     #GIT_PROGRESS   TRUE
 )
 
+#chaiscript
+FetchContent_Declare(
+    chaiscript
+    GIT_REPOSITORY https://github.com/ChaiScript/ChaiScript.git
+    GIT_TAG        406a7ba1ef144d67021a68b1ba09224244a761ca
+    #GIT_PROGRESS   TRUE
+)
+
 FetchContent_MakeAvailable(
     spirv_reflect
     optick
@@ -117,10 +125,13 @@ FetchContent_MakeAvailable(
     fcpp
     imgui_club
     icon_font_cpp_headers
+    chaiscript
 )
 
 include_directories(
+    ${spirv-reflect_SOURCE_DIR}
     ${optick_SOURCE_DIR}/src
+    ${vk_bootstrap_SOURCE_DIR}/src
     ${skarupke_SOURCE_DIR}
     ${memory_pool_SOURCE_DIR}
     ${tileable_volume_noise_SOURCE_DIR}
@@ -129,6 +140,7 @@ include_directories(
     ${fcpp_SOURCE_DIR}
     ${imgui_club_SOURCE_DIR}
     ${icon_font_cpp_headers_SOURCE_DIR}
+    ${chaiscript_SOURCE_DIR}/include
 )
 
 set( TILEABLE_VOLUME_NOISE_SRC_FILES ${tileable_volume_noise_SOURCE_DIR}/TileableVolumeNoise.cpp )

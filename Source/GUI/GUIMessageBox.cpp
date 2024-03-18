@@ -2,8 +2,8 @@
 
 #include "Headers/GUIMessageBox.h"
 
-#include <Cegui/WindowManager.h>
-#include <Cegui/widgets/PushButton.h>
+#include <CEGUI/WindowManager.h>
+#include <CEGUI/widgets/PushButton.h>
 
 namespace Divide {
 

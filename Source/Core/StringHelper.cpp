@@ -10,7 +10,7 @@ bool FindCommandLineArgument(const int argc, char** argv, const char* target_arg
     const char* target = tempArg.c_str();
 
     for (int i = 0; i < argc; ++i) {
-        if (_strcmpi(argv[i], target) == 0) {
+        if (strcasecmp(argv[i], target) == 0) {
             return true;
         }
     }

@@ -19,12 +19,17 @@ CachedResource_ptr ImplResourceLoader<Quad3D>::operator()() {
         Util::UINT_TO_FLOAT(sizeIn.y),
         Util::UINT_TO_FLOAT(sizeIn.z)
     };
-    if (sizeIn.x == 0u && sizeIn.y == 0u && sizeIn.z == 0u) {
+    if (sizeIn.x == 0u && sizeIn.y == 0u && sizeIn.z == 0u)
+    {
         targetSize.xy = { s_minSideLength, s_minSideLength };
-    } else if (sizeIn.x == 0u && sizeIn.y == 0u ||
-               sizeIn.x == 0u && sizeIn.z == 0u) {
+    }
+    else if ((sizeIn.x == 0u && sizeIn.y == 0u) ||
+             (sizeIn.x == 0u && sizeIn.z == 0u))
+    {
         targetSize.x = s_minSideLength;
-    } else if (sizeIn.y == 0u && sizeIn.z == 0u) {
+    }
+    else if (sizeIn.y == 0u && sizeIn.z == 0u)
+    {
         targetSize.y = s_minSideLength;
     }
 

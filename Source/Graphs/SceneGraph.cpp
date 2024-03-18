@@ -540,7 +540,6 @@ namespace Divide
             // Data may be bad, so add markers to be able to just jump over the entire node data instead of attempting partial loads
             outputBuffer.addMarker( g_cacheMarkerByteValue );
 
-            bool failedNode = false;
             {
                 const SceneGraphNode::ChildContainer& children = sgn->getChildren();
                 SharedLock<SharedMutex> w_lock( children._lock );
@@ -549,7 +548,7 @@ namespace Divide
                 {
                     if ( !saveNodes( children._data[i], outputBuffer ) )
                     {
-                        failedNode = true;
+                        NOP();
                     }
                 }
             }

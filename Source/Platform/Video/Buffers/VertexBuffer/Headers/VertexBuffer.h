@@ -51,7 +51,7 @@ class VertexBuffer final : public VertexDataInterface {
     constexpr static U16 INVALID_PARTITION_ID = 0xFFFF;
 
     struct Vertex {
-        UColour4  _colour{};
+        UColour4  _colour{0u, 0u, 0u, 1u};
         vec3<F32> _position{};
         vec2<F32> _texcoord{};
         vec4<U8>  _weights{0u};
@@ -68,15 +68,9 @@ class VertexBuffer final : public VertexDataInterface {
     void reserveIndexCount(const size_t size);
 
     void setVertexCount(const size_t size);
-#if !defined(CLANG_COMPILER)
-    void resizeVertexCount(const size_t size, const Vertex& defaultValue = {});
-#else
-    //WHY???
+
     void resizeVertexCount( const size_t size, const Vertex& defaultValue);
-    inline void resizeVertexCount(const size_t size ) {
-        resizeVertexCount( size, {} );
-    }
-#endif
+    inline void resizeVertexCount(const size_t size ) { resizeVertexCount( size, {} ); }
 
     [[nodiscard]] size_t getVertexCount() const noexcept;
 

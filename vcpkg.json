@@ -14,8 +14,6 @@
         "stb",
         "freetype",
         "fmt",
-        "nvtt",
-        "chaiscript",
         "concurrentqueue",
         "devil",
         "eastl",
@@ -49,8 +47,8 @@
         "imgui-node-editor",
         "imguizmo",
         "zlib",
+        "vulkan",
         "vulkan-memory-allocator",
-        "vulkan-memory-allocator-hpp",
         "glslang",
         "catch2"
     ],

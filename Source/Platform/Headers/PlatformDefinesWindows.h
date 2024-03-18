@@ -30,6 +30,7 @@
  */
 
 #pragma once
+
 #ifndef _PLATFORM_DEFINES_WINDOWS_H_
 #define _PLATFORM_DEFINES_WINDOWS_H_
 
@@ -86,6 +87,7 @@
 
 #define strncasecmp _strnicmp
 #define strcasecmp _stricmp
+#define timezone _get_timezone
 
 LRESULT DlgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) noexcept;
 

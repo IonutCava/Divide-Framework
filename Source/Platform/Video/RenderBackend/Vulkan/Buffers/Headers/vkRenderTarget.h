@@ -35,7 +35,7 @@
 
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 
-#include <Vulkan/vulkan_core.h>
+#include <vulkan/vulkan_core.h>
 
 namespace Divide
 {
@@ -44,6 +44,7 @@ namespace Divide
         class VKAPIRenderTarget;
     }
 
+    class VK_API;
     class GFXDevice;
     class vkTexture;
 
@@ -95,7 +96,7 @@ namespace Divide
             {
                 rt.blitFrom(cmdBuffer, source, params );
             }
-            friend class VK_API;
+            friend class Divide::VK_API;
         };
     };  // namespace Attorney
 } //namespace Divide

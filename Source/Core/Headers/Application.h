@@ -44,7 +44,9 @@ struct SizeChangeParams;
 struct DisplayManager;
 
 class Kernel;
-  
+class GL_API;
+class VK_API;
+
 namespace Attorney
 {
     class ApplicationKernel;
@@ -156,7 +158,7 @@ struct DisplayManager
     [[nodiscard]] static U8 MaxMSAASamples() noexcept;
 
 private:
-    [[nodiscard]] static void MaxMSAASamples( const U8 maxSampleCount ) noexcept;
+    static void MaxMSAASamples( const U8 maxSampleCount ) noexcept;
     static void SetActiveDisplayCount( const U8 displayCount );
     static void RegisterDisplayMode( const U8 displayIndex, const OutputDisplayProperties& mode );
 
@@ -179,7 +181,7 @@ namespace Attorney
             return app.setRenderingAPI(api);
         }
 
-        friend class Kernel;
+        friend class Divide::Kernel;
     }; 
     
     class ApplicationProfiler
@@ -204,7 +206,7 @@ namespace Attorney
             DisplayManager::RegisterDisplayMode(displayIndex, mode);
         }
 
-        friend class WindowManager;
+        friend class Divide::WindowManager;
     };
 
     class DisplayManagerRenderingAPI
@@ -214,8 +216,8 @@ namespace Attorney
             DisplayManager::MaxMSAASamples(maxSampleCount);
         }
 
-        friend class GL_API;
-        friend class VK_API;
+        friend class Divide::GL_API;
+        friend class Divide::VK_API;
     };
 
     class DisplayManagerApplication
@@ -225,9 +227,10 @@ namespace Attorney
             DisplayManager::Reset();
         }
 
-        friend class Application;
+        friend class Divide::Application;
     };
 };
+
 };  // namespace Divide
 
 #endif  //_CORE_APPLICATION_H_

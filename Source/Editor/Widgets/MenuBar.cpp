@@ -411,6 +411,7 @@ namespace Divide
                                 Util::DrawVec<F32, 2, false>( ImGuiDataType_Float, "Side length", Util::FieldLabels, sides._v, false, false, 0.1f, 0.001f, 10000.f );
                                 ImGui::Checkbox( "Double Sided", &doubleSided );
                                 break;
+                            default: break;
                         }
                         if ( ImGui::Button( "Cancel", ImVec2( 120, 0 ) ) )
                         {

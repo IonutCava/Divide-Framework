@@ -46,6 +46,7 @@ namespace Divide
 {
 
 class Kernel;
+class ResourceCache;
 
 namespace Attorney
 {
@@ -181,7 +182,7 @@ namespace Attorney
             Texture::s_useDDSCache = state;
         }
 
-        friend class Kernel;
+        friend class Divide::Kernel;
     };
 }
 

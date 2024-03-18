@@ -213,9 +213,6 @@ namespace Divide
 };  // namespace Divide
 
 void* operator new(const size_t size, [[maybe_unused]] const char* zFile, [[maybe_unused]] const size_t nLine)
-#if !defined(_DEBUG)
-noexcept
-#endif //!_DEBUG
 {
     void* ptr = malloc( size );
 #if defined(_DEBUG)
@@ -233,7 +230,7 @@ void operator delete(void* ptr, [[maybe_unused]] const char* zFile, [[maybe_unus
     free( ptr );
 }
 
-void* operator new[]( const size_t size, [[maybe_unused]] const char* zFile, [[maybe_unused]] const size_t nLine ) noexcept
+void* operator new[]( const size_t size, [[maybe_unused]] const char* zFile, [[maybe_unused]] const size_t nLine )
 {
     void* ptr = malloc( size );
 #if defined(_DEBUG)

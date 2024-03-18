@@ -95,7 +95,7 @@ SunInfo SunPosition::CalculateSunPosition(const struct tm &dateTime, const F32 l
     const I32 day = dateTime.tm_mday;
     // clock time just now
     const D64 h = dateTime.tm_hour + dateTime.tm_min / 60.0;
-    const D64 tzone = _timezone;
+    const D64 tzone = timezone;
 
     // year = 1990; m=4; day=19; h=11.99;	// local time
     const D64 UT = h - tzone;	// universal time

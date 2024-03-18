@@ -39,9 +39,6 @@ void NavMeshDebugDraw::beginBatch() {
         _dirty = true;
         _primitive = _context.newIMP("NavMesh Debug Draw");
 
-        // Generate a render state
-        RenderStateBlock navigationDebugStateBlock{};
-
         PipelineDescriptor pipeDesc{};
         pipeDesc._stateBlock._cullMode = CullMode::NONE;
         pipeDesc._stateBlock._depthTestEnabled = _depthMask;
@@ -77,6 +74,9 @@ void NavMeshDebugDraw::begin(const duDebugDrawPrimitives prim, F32 size) {
     }
 
     switch (prim) {
+        case DU_DRAW_QUADS:
+            DIVIDE_UNEXPECTED_CALL();
+            break;
         case DU_DRAW_TRIS:
             _primType = PrimitiveTopology::TRIANGLES;
             break;

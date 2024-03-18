@@ -76,7 +76,7 @@ namespace Divide {
         [[nodiscard]] const std::array<bool, N>& planeState() const noexcept { return _planeState; }
 
     private:
-        PlaneList<N> _planes{};
+        PlaneList<N> _planes;
         std::array<bool, N> _planeState = create_array<N, bool>(false);
     };
     

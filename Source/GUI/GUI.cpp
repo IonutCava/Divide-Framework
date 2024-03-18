@@ -835,7 +835,7 @@ namespace Divide
         return false;
     }
 
-    GUIElement* GUI::getGUIElementImpl( const I64 sceneID, const U64 elementName, const GUIType type ) const
+    GUIElement* GUI::getSceneGUIElementImpl( const I64 sceneID, const U64 elementName, const GUIType type ) const
     {
         if ( sceneID != 0 )
         {
@@ -854,7 +854,7 @@ namespace Divide
         return nullptr;
     }
 
-    GUIElement* GUI::getGUIElementImpl( const I64 sceneID, const I64 elementID, const GUIType type ) const
+    GUIElement* GUI::getSceneGUIElementImpl( const I64 sceneID, const I64 elementID, const GUIType type ) const
     {
         if ( sceneID != 0 )
         {

@@ -129,9 +129,9 @@ private:
     [[nodiscard]] ShaderBuffer_uptr     newSB( const ShaderBufferDescriptor& descriptor ) const override;
 
 public:
-    static [[nodiscard]] GLStateTracker& GetStateTracker() noexcept;
-    static [[nodiscard]] GLUtil::GLMemory::GLMemoryType GetMemoryTypeForUsage(GLenum usage) noexcept;
-    static [[nodiscard]] GLUtil::GLMemory::DeviceAllocator& GetMemoryAllocator(GLUtil::GLMemory::GLMemoryType memoryType) noexcept;
+    [[nodiscard]] static GLStateTracker& GetStateTracker() noexcept;
+    [[nodiscard]] static GLUtil::GLMemory::GLMemoryType GetMemoryTypeForUsage(GLenum usage) noexcept;
+    [[nodiscard]] static GLUtil::GLMemory::DeviceAllocator& GetMemoryAllocator(GLUtil::GLMemory::GLMemoryType memoryType) noexcept;
 
     static void QueueFlush() noexcept;
 
@@ -139,16 +139,16 @@ public:
     static void PushDebugMessage( const char* message, U32 id = U32_MAX );
     static void PopDebugMessage();
 
-    static [[nodiscard]] bool DeleteShaderPrograms(GLuint count, GLuint * programs);
-    static [[nodiscard]] bool DeleteSamplers(GLuint count, GLuint* samplers);
-    static [[nodiscard]] bool DeleteBuffers(GLuint count, GLuint* buffers);
-    static [[nodiscard]] bool DeleteFramebuffers(GLuint count, GLuint* framebuffers);
+    [[nodiscard]] static bool DeleteShaderPrograms(GLuint count, GLuint * programs);
+    [[nodiscard]] static bool DeleteSamplers(GLuint count, GLuint* samplers);
+    [[nodiscard]] static bool DeleteBuffers(GLuint count, GLuint* buffers);
+    [[nodiscard]] static bool DeleteFramebuffers(GLuint count, GLuint* framebuffers);
 
-    static [[nodiscard]] GLuint GetSamplerHandle(SamplerDescriptor sampler, size_t& samplerHashInOut);
+    [[nodiscard]] static GLuint GetSamplerHandle(SamplerDescriptor sampler, size_t& samplerHashInOut);
 
-    static [[nodiscard]] glHardwareQueryPool* GetHardwareQueryPool() noexcept;
+    [[nodiscard]] static glHardwareQueryPool* GetHardwareQueryPool() noexcept;
 
-    static [[nodiscard]] GLsync CreateFenceSync();
+    [[nodiscard]] static GLsync CreateFenceSync();
     static void DestroyFenceSync(GLsync& sync);
 
 protected:

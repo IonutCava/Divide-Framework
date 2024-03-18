@@ -139,7 +139,7 @@ namespace Attorney {
             rt.end( mask );
         }
 
-        friend class GL_API;
+        friend class Divide::GL_API;
     };
 };  // namespace Attorney
 

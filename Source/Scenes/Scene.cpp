@@ -79,8 +79,8 @@ namespace Divide
     Scene::Scene( PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str<256>& name )
         : Resource( ResourceType::DEFAULT, name )
         , PlatformContextComponent( context )
-        , _parent( parent )
         , _resourceCache( cache )
+        , _parent( parent )
     {
         _loadingTasks.store( 0 );
         _flashLight.fill( nullptr );
@@ -1895,7 +1895,6 @@ namespace Divide
             SceneNodeType::TYPE_VEGETATION
         };
 
-        const vec2<U16> windowSize = _context.mainWindow().getDrawableSize();
         const Camera* crtCamera = playerCamera( idx );
         const vec2<U16> renderingResolution = _context.gfx().renderingResolution();
         const vec3<F32> direction = crtCamera->unProject( to_F32( aimPos.x ),

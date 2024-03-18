@@ -65,7 +65,7 @@ namespace Divide
             COUNT
         };
 
-        FrustumClipPlanes _clippingPlanes{};
+        FrustumClipPlanes _clippingPlanes;
         vec3<F32> _minExtents{ 0.f, 0.f };
         // source node is used to determine if the current pass is triggered by a specific node:
         // e.g. a light node for shadow mapping, a reflector for reflection (or refraction), etc

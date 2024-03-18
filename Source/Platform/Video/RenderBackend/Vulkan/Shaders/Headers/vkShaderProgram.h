@@ -36,7 +36,7 @@
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkResources.h"
 
-#include <Vulkan/vulkan_core.h>
+#include <vulkan/vulkan_core.h>
 
 namespace Divide {
     class vkShader;

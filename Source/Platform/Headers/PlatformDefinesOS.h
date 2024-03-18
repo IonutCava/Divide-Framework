@@ -40,4 +40,5 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #else //defined(__linux) || defined (__unix)
 #include "PlatformDefinesUnix.h"
 #endif
+
 #endif //_PLATFORM_DEFINES_OS_H_

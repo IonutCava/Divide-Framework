@@ -784,7 +784,7 @@ namespace Divide
         >::type type;
     };
 
-    template <typename T> struct type_rank;
+    template <typename T, bool override = false> struct type_rank;
     template <> struct type_rank<I32>
     {
         static const I32 rank = 1;
@@ -801,11 +801,11 @@ namespace Divide
     {
         static const I32 rank = 4;
     };
-    template <> struct type_rank<I64>
+    template <> struct type_rank<I64, std::is_same<I64, long>::value>
     {
         static const I32 rank = 5;
     };
-    template <> struct type_rank<U64>
+    template <> struct type_rank<U64, std::is_same<U64, unsigned long>::value>
     {
         static const I32 rank = 6;
     };
@@ -913,12 +913,12 @@ namespace Divide
         return fits_in_registers<T>() && can_be_returned_by_value<T>();
     }
 
-#define GET_RET_TYPE(Type) typename std::conditional<pass_by_value<Type>(), Type, const Type&>::type
-#define GET_PASS_TYPE(Type) typename std::conditional<pass_by_value<Type>(), std::conditional<std::is_move_assignable<Type>::value, Type, const Type>::type, const Type&>::type
+#define GET_RET_TYPE(Type) typename std::conditional<pass_by_value<Type>(), Type, Type const&>::type
+#define GET_PASS_TYPE(Type) typename std::conditional<pass_by_value<Type>(), std::conditional<std::is_move_assignable_v<Type>, Type, const Type>::type, Type const&>::type
 
 #define PROPERTY_GET_SET(Type, Name)                                                         \
 public:                                                                                      \
-    FORCE_INLINE void Name(const GET_PASS_TYPE(Type) val) noexcept { _##Name = val; }        \
+    FORCE_INLINE void Name(GET_PASS_TYPE(Type) val) noexcept { _##Name = val; }        \
     [[nodiscard]] FORCE_INLINE Type& Name() noexcept { return _##Name; }                     \
     [[nodiscard]] FORCE_INLINE GET_RET_TYPE(Type) Name() const noexcept { return _##Name; }
 
@@ -928,7 +928,7 @@ public:                                                                         
 
 #define VIRTUAL_PROPERTY_GET_SET(Type, Name)                                             \
 public:                                                                                  \
-    virtual void Name(const GET_PASS_TYPE(Type) val) noexcept { _##Name = val; }         \
+    virtual void Name(GET_PASS_TYPE(Type) val) noexcept { _##Name = val; }         \
     [[nodiscard]] virtual Type& Name() noexcept { return _##Name; }                      \
     [[nodiscard]] virtual GET_RET_TYPE(Type) Name() const noexcept { return _##Name; }
 
@@ -960,11 +960,11 @@ protected:                                                                      
 
 #define PROPERTY_SET_INTERNAL(Type, Name)                                             \
 protected:                                                                            \
-    FORCE_INLINE void Name(const GET_PASS_TYPE(Type) val) noexcept { _##Name = val; }
+    FORCE_INLINE void Name(GET_PASS_TYPE(Type) val) noexcept { _##Name = val; }
 
 #define VIRTUAL_PROPERTY_SET_INTERNAL(Type, Name)                                \
 protected:                                                                       \
-    virtual void Name(const GET_PASS_TYPE(Type) val) noexcept { _##Name = val; }
+    virtual void Name(GET_PASS_TYPE(Type) val) noexcept { _##Name = val; }
 
 #define POINTER_SET_INTERNAL(Type, Name)                                \
 protected:                                                              \

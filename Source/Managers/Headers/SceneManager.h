@@ -257,7 +257,7 @@ namespace Divide
         // Returns true if the player was previously registered
         // On success, player pointer will be reset
         void removePlayer( Scene& parentScene, SceneGraphNode* playerNode, bool queue );
-        [[nodiscard]] void getNodesInScreenRect( const Rect<I32>& screenRect, const Camera& camera, vector_fast<SceneGraphNode*>& nodesOut ) const;
+        void getNodesInScreenRect( const Rect<I32>& screenRect, const Camera& camera, vector_fast<SceneGraphNode*>& nodesOut ) const;
 
         [[nodiscard]] bool switchSceneInternal();
 

@@ -106,10 +106,10 @@ class GUI final : public GUIInterface,
         void update( U64 deltaTimeUS );
         /// Find a return a gui element by name
         template <typename T> requires std::is_base_of_v<GUIElement, T>
-        [[nodiscard]] T* getGUIElement( const I64 sceneID, const U64 elementName ) { return static_cast<T*>(getGUIElementImpl( sceneID, elementName, T::Type )); }
+        [[nodiscard]] T* getSceneGUIElementImpl( const I64 sceneID, const U64 elementName ) { return static_cast<T*>(getSceneGUIElementImpl( sceneID, elementName, T::Type )); }
         /// Find a return a gui element by ID
         template <typename T> requires std::is_base_of_v<GUIElement, T>
-        [[nodiscard]] T* getGUIElement( const I64 sceneID, const I64 elementID ) { return static_cast<T*>(getGUIElementImpl( sceneID, elementID, T::Type )); }
+        [[nodiscard]] T* getSceneGUIElementImpl( const I64 sceneID, const I64 elementID ) { return static_cast<T*>(getSceneGUIElementImpl( sceneID, elementID, T::Type )); }
         /// Get a reference to our console window
         [[nodiscard]] GUIConsole& getConsole() noexcept { return *_console; }
         /// Get a const reference to our console window
@@ -163,9 +163,9 @@ class GUI final : public GUIInterface,
         //// Try to find the requested FontStash font in the font cache. Load on cache miss.
         [[nodiscard]] I32 getFont( const Str<64>& fontName );
         /// Internal lookup of a GUIElement by name
-        [[nodiscard]] GUIElement* getGUIElementImpl( I64 sceneID, U64 elementName, GUIType type ) const;
+        [[nodiscard]] GUIElement* getSceneGUIElementImpl( I64 sceneID, U64 elementName, GUIType type ) const;
         /// Internal lookup of a GUIElement by ID
-        [[nodiscard]] GUIElement* getGUIElementImpl( I64 sceneID, I64 elementID, GUIType type ) const;
+        [[nodiscard]] GUIElement* getSceneGUIElementImpl( I64 sceneID, I64 elementID, GUIType type ) const;
         /// Used to recreate and re-register the default message box if needed (usually on scene change)
         void recreateDefaultMessageBox();
 

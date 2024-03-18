@@ -76,6 +76,7 @@ namespace Divide
     class Scene;
     class Camera;
     class LightPool;
+    class RenderPass;
     class ECSManager;
     class UndoManager;
     class IMPrimitive;
@@ -373,7 +374,7 @@ namespace Divide
         bool           _isScenePaused = false;
         bool           _gridSettingsDirty = true;
         CircularBuffer<Str<256>> _recentSceneList;
-        CameraSnapshot _render2DSnapshot{};
+        CameraSnapshot _render2DSnapshot;
         RenderTargetHandle _nodePreviewRTHandle{};
         struct QueueModelSpawn
         {
@@ -730,9 +731,9 @@ namespace Divide
                 editor.postRender( stage, cameraSnapshot, target, bufferInOut, memCmdInOut );
             }
 
-            friend class RenderPass;
-            friend class RenderPassExecutor;
-            friend class RenderPassManager;
+            friend class Divide::RenderPass;
+            friend class Divide::RenderPassExecutor;
+            friend class Divide::RenderPassManager;
         };
 
         class EditorEditorComponent
@@ -743,7 +744,7 @@ namespace Divide
                 editor.onRemoveComponent( comp );
             }
 
-            friend class EditorComponent;
+            friend class Divide::EditorComponent;
         };
     } //namespace Attorney
 

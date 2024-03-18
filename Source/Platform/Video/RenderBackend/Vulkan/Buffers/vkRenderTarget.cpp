@@ -255,12 +255,12 @@ namespace Divide
 
                     if ( IsCubeTexture( vkTexRender->descriptor().texType() ) )
                     {
-                        targetView._subRange._layerRange = { targetColourLayer._cubeFace + (targetColourLayer._layer * 6u), descriptor._layeredRendering ? U16_MAX : 1u };
+                        targetView._subRange._layerRange = { to_U16(targetColourLayer._cubeFace + (targetColourLayer._layer * 6u)), descriptor._layeredRendering ? U16_MAX : to_U16(1u) };
                     }
                     else
                     {
                         assert( targetColourLayer._cubeFace == 0u );
-                        targetView._subRange._layerRange = { targetColourLayer._layer, descriptor._layeredRendering ? U16_MAX : 1u };
+                        targetView._subRange._layerRange = { targetColourLayer._layer, descriptor._layeredRendering ? U16_MAX : to_U16(1u) };
                     }
 
                     if ( descriptor._mipWriteLevel > 0u )
@@ -341,11 +341,11 @@ namespace Divide
                 const DrawLayerEntry depthEntry = srcDepthLayer._layer == INVALID_INDEX ? targetDepthLayer : srcDepthLayer;
                 if ( IsCubeTexture( vkTexRender->descriptor().texType() ) )
                 {
-                    targetView._subRange._layerRange = { depthEntry._cubeFace + (depthEntry._layer * 6u), descriptor._layeredRendering ? U16_MAX : 1u };
+                    targetView._subRange._layerRange = { to_U16(depthEntry._cubeFace + (depthEntry._layer * 6u)), descriptor._layeredRendering ? U16_MAX : to_U16(1u) };
                 }
                 else
                 {
-                    targetView._subRange._layerRange = { depthEntry._layer, descriptor._layeredRendering ? U16_MAX : 1u };
+                    targetView._subRange._layerRange = { depthEntry._layer, descriptor._layeredRendering ? U16_MAX : to_U16(1u) };
                 }
             
                 if ( descriptor._mipWriteLevel > 0u )
@@ -458,7 +458,6 @@ namespace Divide
         U16 layerCount = 1u;
 
         U8 stagingIndex = 0u;
-        VkImageMemoryBarrier2 memBarrier{};
 
         {
             PROFILE_SCOPE( "Colour Attachments", Profiler::Category::Graphics );
@@ -474,13 +473,13 @@ namespace Divide
                         targetColourLayer = descriptor._writeLayers[i]._layer == INVALID_INDEX ? targetColourLayer : descriptor._writeLayers[i];
                         if ( IsCubeTexture( vkTexRender->descriptor().texType() ) )
                         {
-                            imageViewDescriptor._subRange._layerRange = { targetColourLayer._cubeFace + (targetColourLayer._layer * 6u), descriptor._layeredRendering ? U16_MAX : 1u };
+                            imageViewDescriptor._subRange._layerRange = { to_U16(targetColourLayer._cubeFace + (targetColourLayer._layer * 6u)), descriptor._layeredRendering ? U16_MAX : to_U16(1u) };
                             layerCount *= 6u;
                         }
                         else
                         {
                             assert( targetColourLayer._cubeFace == 0u );
-                            imageViewDescriptor._subRange._layerRange = { targetColourLayer._layer, descriptor._layeredRendering ? U16_MAX : 1u };
+                            imageViewDescriptor._subRange._layerRange = { targetColourLayer._layer, descriptor._layeredRendering ? U16_MAX : to_U16(1u) };
                         }
                     }
                     else if ( descriptor._mipWriteLevel > 0u )
@@ -569,13 +568,13 @@ namespace Divide
                 targetDepthLayer = descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer == INVALID_INDEX ? targetDepthLayer : descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX];
                 if ( IsCubeTexture( vkTexRender->descriptor().texType() ) )
                 {
-                    imageViewDescriptor._subRange._layerRange = { targetDepthLayer._cubeFace + (targetDepthLayer._layer * 6u), descriptor._layeredRendering ? U16_MAX : 1u };
+                    imageViewDescriptor._subRange._layerRange = { to_U16(targetDepthLayer._cubeFace + (targetDepthLayer._layer * 6u)), descriptor._layeredRendering ? U16_MAX : to_U16(1u) };
                     layerCount *= 6u;
                 }
                 else
                 {
                     assert( targetColourLayer._cubeFace == 0u );
-                    imageViewDescriptor._subRange._layerRange = { targetDepthLayer._layer, descriptor._layeredRendering ? U16_MAX : 1u };
+                    imageViewDescriptor._subRange._layerRange = { targetDepthLayer._layer, descriptor._layeredRendering ? U16_MAX : to_U16(1u) };
                 }
             }
             else if ( descriptor._mipWriteLevel != U16_MAX )

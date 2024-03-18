@@ -15,18 +15,18 @@ goto run_Release
 :run_Release
 ECHO Running Release Mode
 ECHO Launching Executable
-editor-x64-release\bin\Divide-Framework.exe %*
+Build\windows-msvc-release-editor\bin\Divide-Framework.exe %*
 exit/B %errlev%
 
 :run_Profile
 ECHO Running Profile Mode
 ECHO Launching Executable
-editor-x64-profile\bin\Divide-Framework.exe %*
+Build\windows-msvc-profile-editor\bin\Divide-Framework.exe %*
 exit/B %errlev%
 
 :run_Debug
 ECHO Running Debug Mode
 ECHO Launching Executable
-editor-x64-debug\bin\Divide-Framework_d.exe %*
+Build\windows-msvc-debug-editor\bin\Divide-Framework_d.exe %*
 
 exit/B %errlev%

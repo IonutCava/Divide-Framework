@@ -49,6 +49,7 @@ enum class RigidBodyShape : U8;
             case SceneNodeType::TYPE_BOX_3D:
             case SceneNodeType::TYPE_MESH:
             case SceneNodeType::TYPE_SUBMESH: return PrimitiveTopology::TRIANGLES;
+            default: break;
         }
 
         return PrimitiveTopology::TRIANGLE_STRIP;
@@ -72,7 +73,7 @@ class Object3D : public SceneNode {
 
     virtual ~Object3D() = default;
 
-    virtual void setMaterialTpl(const Material_ptr& material);
+    void setMaterialTpl(const Material_ptr& material) override;
 
     void setObjectFlag(const ObjectFlag flag) noexcept {
         _geometryFlagMask |= to_base(flag);

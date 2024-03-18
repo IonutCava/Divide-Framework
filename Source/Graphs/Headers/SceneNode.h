@@ -51,6 +51,7 @@ class Player;
 class SceneGraph;
 class SceneState;
 class WorldPacket;
+class ResourceCache;
 class SceneRenderState;
 class BoundsSystem;
 class BoundsComponent;

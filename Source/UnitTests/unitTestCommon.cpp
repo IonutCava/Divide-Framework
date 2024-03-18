@@ -43,12 +43,12 @@ void platformInitRunListener::testRunStarting( Catch::TestRunInfo const& )
 
     if ( _testTimer == nullptr) 
     {
-        _testTimer = &Time::ADD_TIMER( "Unit Tests" );
+        _testTimer = &Divide::Time::ADD_TIMER( "Unit Tests" );
     }
 
     std::cout << Util::StringFormat( "[%s]: Running unit tests.\n", TARGET_NAME_STR );
 
-    Time::START_TIMER(*_testTimer);
+    Divide::Time::START_TIMER(*_testTimer);
 
 }
 
@@ -56,8 +56,8 @@ void platformInitRunListener::testRunEnded( Catch::TestRunStats const& )
 {
     using namespace Divide;
 
-    Time::STOP_TIMER(*_testTimer);
-    std::cout << Util::StringFormat( "[%s]: Finished running UTs in [%5.2f] ms. \n", TARGET_NAME_STR, Time::MicrosecondsToMilliseconds<float>( Time::QUERY_TIMER( *_testTimer ) ) );
+    Divide::Time::STOP_TIMER(*_testTimer);
+    std::cout << Util::StringFormat( "[%s]: Finished running UTs in [%5.2f] ms. \n", TARGET_NAME_STR, Divide::Time::MicrosecondsToMilliseconds<float>( Divide::Time::QUERY_TIMER( *_testTimer ) ) );
     if ( _testTimer != nullptr )
     {
         Divide::Time::REMOVE_TIMER(_testTimer);

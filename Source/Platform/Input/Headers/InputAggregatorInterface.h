@@ -39,6 +39,7 @@
 
 namespace Divide {
 
+class Kernel;
 class DisplayWindow;
 namespace Input 
 {
@@ -101,7 +102,7 @@ namespace Attorney {
                 return evt._state;
             }
 
-            friend class Kernel;
+            friend class Divide::Kernel;
     };
     
     class MouseEventInputHandler {

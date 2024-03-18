@@ -11,6 +11,8 @@
 //! one direction linked list; base item
 typedef boost::intrusive::slist_base_hook<> slist_item;
 
+class Arena;
+void* operator new (size_t size, Arena& arena);
 
 //! arena allocator (with registered DTORs)
 class Arena
@@ -319,12 +321,17 @@ namespace unitest {
 }
 
 
-
-
 // new operators (should be global)
 
 inline
 	void* operator new (size_t size, Arena& arena)
+{
+	return
+		arena.alloc(size);
+}
+
+inline
+	void* operator new[] (size_t size, Arena& arena)
 {
 	return
 		arena.alloc(size);

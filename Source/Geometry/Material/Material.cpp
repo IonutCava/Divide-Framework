@@ -833,6 +833,7 @@ namespace Divide
                     {
                         add = !properties().usePackedOMR();
                     } break;
+                    default: break;
                 };
             }
         }

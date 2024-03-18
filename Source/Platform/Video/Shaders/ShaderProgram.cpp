@@ -37,7 +37,7 @@ extern "C"
 #pragma warning(pop)
 #endif
 
-#include <Vulkan/vulkan.hpp>
+#include <vulkan/vulkan.hpp>
 
 namespace Divide
 {
@@ -62,8 +62,6 @@ namespace Divide
             return DescriptorSetUsage::COUNT;
         }
     };
-
-    constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
     constexpr I8 s_maxHeaderRecursionLevel = 64;
     
@@ -156,9 +154,8 @@ namespace Divide
                 return result;
             }
 
-            void Error( void* userData, const char* format, const va_list args )
+            void Error( void* userData, const char* format, va_list args )
             {
-                static bool firstErrorPrint = true;
                 WorkData* work = static_cast<WorkData*>(userData);
                 char formatted[1024];
                 vsnprintf( formatted, 1024, format, args );
@@ -167,7 +164,6 @@ namespace Divide
                     work->_firstError = false;
                     Console::errorfn( "------------------------------------------" );
                     Console::errorfn( LOCALE_STR( "ERROR_GLSL_PARSE_ERROR_NAME_SHORT" ), work->_fileName );
-                    firstErrorPrint = false;
                 }
                 if ( strlen( formatted ) != 1 && formatted[0] != '\n' )
                 {
@@ -221,21 +217,24 @@ namespace Divide
                 ++tagHead;
             };
 
+            static bool trueflag = true;
+            static bool falseFlag = false;
+
             setTag( FPPTAG_USERDATA, &workData );
-            setTag( FPPTAG_DEPENDS, Callback::AddDependency );
-            setTag( FPPTAG_INPUT, Callback::Input );
-            setTag( FPPTAG_OUTPUT, Callback::Output );
-            setTag( FPPTAG_ERROR, Callback::Error );
-            setTag( FPPTAG_INPUT_NAME, Callback::Scratch( fileName, workData ) );
-            setTag( FPPTAG_KEEPCOMMENTS, (void*)TRUE );
-            setTag( FPPTAG_IGNOREVERSION, (void*)FALSE );
-            setTag( FPPTAG_LINE, (void*)FALSE );
-            setTag( FPPTAG_OUTPUTBALANCE, (void*)TRUE );
-            setTag( FPPTAG_OUTPUTSPACE, (void*)TRUE );
-            setTag( FPPTAG_NESTED_COMMENTS, (void*)TRUE );
-            //setTag(FPPTAG_IGNORE_CPLUSPLUS, (void*)TRUE);
-            setTag( FPPTAG_RIGHTCONCAT, (void*)TRUE );
-            //setTag(FPPTAG_WARNILLEGALCPP,   (void*)TRUE);
+            setTag( FPPTAG_DEPENDS, (void*)Callback::AddDependency );
+            setTag( FPPTAG_INPUT, (void*)Callback::Input );
+            setTag( FPPTAG_OUTPUT, (void*)Callback::Output );
+            setTag( FPPTAG_ERROR, (void*)Callback::Error );
+            setTag( FPPTAG_INPUT_NAME, (void*)Callback::Scratch( fileName, workData ) );
+            setTag( FPPTAG_KEEPCOMMENTS, &trueflag );
+            setTag( FPPTAG_IGNOREVERSION, &falseFlag );
+            setTag( FPPTAG_LINE, &falseFlag );
+            setTag( FPPTAG_OUTPUTBALANCE, &trueflag );
+            setTag( FPPTAG_OUTPUTSPACE, &trueflag );
+            setTag( FPPTAG_NESTED_COMMENTS, &trueflag );
+            //setTag(FPPTAG_IGNORE_CPLUSPLUS, &trueflag);
+            setTag( FPPTAG_RIGHTCONCAT, &trueflag );
+            //setTag(FPPTAG_WARNILLEGALCPP, &trueflag);
             setTag( FPPTAG_END, nullptr );
 
             if ( fppPreProcess( tags ) != 0 )
@@ -359,10 +358,11 @@ namespace Divide
 
             return true;
         }
+
         [[nodiscard]] bool ValidateCache( const ShaderProgram::LoadData::ShaderCacheType type, const Str<256>& sourceFileName, const Str<256>& fileName )
         {
             LockGuard<Mutex> rw_lock( ShaderProgram::g_cacheLock );
-            return ValidateCache( type, sourceFileName, fileName );
+            return ValidateCacheLocked( type, sourceFileName, fileName );
         }
 
         [[nodiscard]] bool DeleteCacheLocked( const ShaderProgram::LoadData::ShaderCacheType type, const Str<256>& fileName )
@@ -409,7 +409,7 @@ namespace Divide
             glswAddDirectiveToken( type != ShaderType::COUNT ? Names::shaderTypes[to_U8( type )] : "", entry.c_str() );
         };
 
-        const auto AppendResourceBindingSlots = [&AppendToShaderHeader, &gfx]( const bool targetOpenGL )
+        const auto AppendResourceBindingSlots = [&AppendToShaderHeader]( const bool targetOpenGL )
         {
 
             if ( targetOpenGL )
@@ -780,13 +780,13 @@ namespace Divide
     }
 
     ModuleDefine::ModuleDefine( const string& define, const bool addPrefix )
-        : _define( define ),
-        _addPrefix( addPrefix )
+        : _define( define )
+        , _addPrefix( addPrefix )
     {
     }
 
     ShaderModuleDescriptor::ShaderModuleDescriptor( ShaderType type, const Str<64>& file, const Str<64>& variant )
-        : _moduleType( type ), _sourceFile( file ), _variant( variant )
+        : _sourceFile( file ), _moduleType( type ), _variant( variant )
     {
     }
 
@@ -941,9 +941,9 @@ namespace Divide
                                   ResourceCache& parentCache )
         : CachedResource( ResourceType::GPU_OBJECT, descriptorHash, shaderName, ResourcePath( shaderFileName ), shaderFileLocation )
         , GraphicsResource( context, Type::SHADER_PROGRAM, getGUID(), _ID( shaderName.c_str() ) )
-        , _descriptor( MOV( descriptor ) )
-        , _parentCache( parentCache )
         , _useShaderCache( descriptor._useShaderCache )
+        , _parentCache( parentCache )
+        , _descriptor( MOV( descriptor ) )
     {
         if ( shaderFileName.empty() )
         {
@@ -1748,6 +1748,7 @@ namespace Divide
             {
                 return Reflection::LoadReflectionData( ReflCacheLocation(), ReflTargetName( dataInOut._shaderName ), dataInOut._reflectionData, atomIDsOut );
             } break;
+            default: break;
         }
 
         return false;
@@ -1826,24 +1827,6 @@ namespace Divide
 
         return true;
     }
-
-    namespace
-    {
-        [[nodiscard]] ShaderStageVisibility GetShaderStageVisibility( const ShaderType type ) noexcept
-        {
-            switch ( type )
-            {
-                case ShaderType::FRAGMENT: return ShaderStageVisibility::FRAGMENT;
-                case ShaderType::VERTEX: return ShaderStageVisibility::VERTEX;
-                case ShaderType::GEOMETRY: return ShaderStageVisibility::GEOMETRY;
-                case ShaderType::TESSELLATION_CTRL: return ShaderStageVisibility::TESS_CONTROL;
-                case ShaderType::TESSELLATION_EVAL: return ShaderStageVisibility::TESS_EVAL;
-                case ShaderType::COMPUTE: return ShaderStageVisibility::COMPUTE;
-            };
-
-            return ShaderStageVisibility::NONE;
-        }
-    };
 
     void ShaderProgram::initDrawDescriptorSetLayout( const PerFileShaderData& loadData )
     {
@@ -1981,19 +1964,6 @@ namespace Divide
         loadDataInOut._sourceCodeSpirV.resize( 0 );
 
         eastl::set<U64> atomIDs;
-
-        vk::ShaderStageFlagBits type = vk::ShaderStageFlagBits::eVertex;
-
-        switch ( loadDataInOut._type )
-        {
-            default:
-            case ShaderType::VERTEX:            type = vk::ShaderStageFlagBits::eVertex;                 break;
-            case ShaderType::TESSELLATION_CTRL: type = vk::ShaderStageFlagBits::eTessellationControl;    break;
-            case ShaderType::TESSELLATION_EVAL: type = vk::ShaderStageFlagBits::eTessellationEvaluation; break;
-            case ShaderType::GEOMETRY:          type = vk::ShaderStageFlagBits::eGeometry;               break;
-            case ShaderType::FRAGMENT:          type = vk::ShaderStageFlagBits::eFragment;               break;
-            case ShaderType::COMPUTE:           type = vk::ShaderStageFlagBits::eCompute;                break;
-        };
 
         bool needGLSL = !s_targetVulkan;
         if ( reloadExisting )

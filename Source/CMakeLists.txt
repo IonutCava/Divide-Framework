@@ -21,19 +21,16 @@ set(APP_BUILD_TARGETS
     ${APP_BUILD_EXES}
 )
 
-include(CMakeHelpers/ImportPackages.cmake)
-include(CMakeHelpers/GlobSources.cmake)
-
 include_directories( "${CMAKE_SOURCE_DIR}/Source" )
 include_directories( "${CMAKE_SOURCE_DIR}/Source/ThirdParty" )
 
+include(CMakeHelpers/ImportPackages.cmake)
+include(CMakeHelpers/GlobSources.cmake)
+
 add_library( ${APP_THIRD_PARTY_LIB} STATIC ${THIRD_PARTY_LOCAL_SRC_FILES} ${THIRD_PARTY_FETCH_SRC_FILES} )
 
-target_include_directories( ${APP_THIRD_PARTY_LIB} PUBLIC ${EXTERNAL_INCLUDES} )
 
 add_library(${APP_LIB_DIVIDE} STATIC "engineMain.cpp" ${ENGINE_SOURCE_CODE} )
-
-target_include_directories( ${APP_LIB_DIVIDE} PUBLIC ${EXTERNAL_INCLUDES} )
 
 target_link_libraries(${APP_LIB_DIVIDE} ${APP_THIRD_PARTY_LIB})
 
@@ -56,7 +53,6 @@ set(COMMON_LIBS ${APP_LIB_DIVIDE}
                 vk-bootstrap::vk-bootstrap
                 Freetype::Freetype
                 unofficial::omniverse-physx-sdk::sdk
-                unofficial::VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp
                 Vulkan::Vulkan GPUOpen::VulkanMemoryAllocator
                 RecastNavigation::Detour RecastNavigation::Recast RecastNavigation::DebugUtils RecastNavigation::DetourCrowd
                 $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>

@@ -2,13 +2,13 @@
 
 #include "Headers/CEGUIFormattedListBox.h"
 
-#include <Cegui/Image.h>
-#include <Cegui/CentredRenderedString.h>
-#include <Cegui/LeftAlignedRenderedString.h>
-#include <Cegui/RightAlignedRenderedString.h>
-#include <Cegui/JustifiedRenderedString.h>
-#include <Cegui/widgets/Listbox.h>
-#include <Cegui/RenderedStringWordWrapper.h>
+#include <CEGUI/Image.h>
+#include <CEGUI/CentredRenderedString.h>
+#include <CEGUI/LeftAlignedRenderedString.h>
+#include <CEGUI/RightAlignedRenderedString.h>
+#include <CEGUI/JustifiedRenderedString.h>
+#include <CEGUI/widgets/Listbox.h>
+#include <CEGUI/RenderedStringWordWrapper.h>
 
 namespace CEGUI {
 //----------------------------------------------------------------------------//

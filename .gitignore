@@ -1,6 +1,7 @@
 .vs
 out/
 Build/
+build/
 /Logs/*.log
 /Cache/
 html

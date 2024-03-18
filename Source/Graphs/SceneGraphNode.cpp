@@ -606,7 +606,6 @@ void SceneGraphNode::processEvents()
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-    const ECS::EntityId id = GetEntityID();
     for (size_t idx = 0u; idx < Events.EVENT_QUEUE_SIZE; ++idx)
     {
         if (Events._eventsFreeList[idx])

@@ -34,15 +34,14 @@
 
 namespace Divide {
 
+void DestroyIMP(IMPrimitive*& primitive);
+
 template <typename Data, size_t N>
 void DebugPrimitiveHandler<Data, N>::reset() {
     LockGuard<Mutex> w_lock(_dataLock);
 
     for (IMPrimitive*& primitive : _debugPrimitives) {
-        if (primitive != nullptr) {
-            primitive->context().destroyIMP(primitive);
-        }
-        primitive = nullptr;
+        DestroyIMP(primitive);
     }
     for (auto& data : _debugData) {
         data = {};

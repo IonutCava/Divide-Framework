@@ -17,7 +17,6 @@ constexpr D64 DESTINATION_RADIUS = 2;
 constexpr D64 DESTINATION_RADIUS_SQ = DESTINATION_RADIUS *
                                       DESTINATION_RADIUS;
 constexpr F32 DESTINATION_RADIUS_F = to_F32(DESTINATION_RADIUS);
-constexpr F32 DESTINATION_RADIUS_SQ_F = to_F32(DESTINATION_RADIUS_SQ);
 
 AIEntity::AIEntity(const vec3<F32>& currentPosition, string name)
     : GUIDWrapper(),

@@ -52,7 +52,7 @@ namespace ECS
 			LogInfo("System %s released.", typeid(T).name());
 		}
 
-		virtual inline const SystemTypeId GetStaticSystemTypeID() const
+		virtual inline const SystemTypeId GetStaticSystemTypeID() const override
 		{
 			return STATIC_SYSTEM_TYPE_ID;
 		}
@@ -84,19 +84,19 @@ namespace ECS
 			this->m_SystemManagerInstance->AddSystemDependency(this, std::forward<Dependencies>(dependencies)...);
 		}
 
-		virtual void PreUpdate( [[maybe_unused]] f32 dt )
+		virtual void PreUpdate( [[maybe_unused]] f32 dt ) override
 		{}
 
-		virtual void Update( [[maybe_unused]] f32 dt )
+		virtual void Update( [[maybe_unused]] f32 dt ) override
 		{}
 
-		virtual void PostUpdate( [[maybe_unused]]f32 dt )
+		virtual void PostUpdate( [[maybe_unused]]f32 dt ) override
 		{}
 
-		virtual void OnFrameStart()
+		virtual void OnFrameStart() override
 		{}
 
-		virtual void OnFrameEnd()
+		virtual void OnFrameEnd() override
 		{}
 
 	}; // class System<T>

@@ -84,7 +84,7 @@ namespace GLMemory{
         PROPERTY_RW(GLenum, usage, GL_NONE);
         PROPERTY_RW(size_t, alignment, 0u);
 
-        FORCE_INLINE [[nodiscard]] bool poolAllocations() const noexcept { return _poolAllocations;  }
+        [[nodiscard]] FORCE_INLINE bool poolAllocations() const noexcept { return _poolAllocations;  }
 
     protected:
         vector_fast<Block> _blocks;
@@ -128,7 +128,7 @@ namespace GLMemory{
         void deallocate(const Block &block) const;
         void deallocate();
 
-        FORCE_INLINE [[nodiscard]] GLMemoryType glMemoryType() const noexcept { return _memoryType; }
+        [[nodiscard]] FORCE_INLINE GLMemoryType glMemoryType() const noexcept { return _memoryType; }
 
     private:
         mutable Mutex _chunkAllocatorLock;

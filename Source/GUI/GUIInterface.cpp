@@ -17,8 +17,8 @@
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Audio/Headers/AudioDescriptor.h"
 
-#include <Cegui/Window.h>
-#include <Cegui/WindowManager.h>
+#include <CEGUI/Window.h>
+#include <CEGUI/WindowManager.h>
 
 namespace Divide {
 

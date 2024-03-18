@@ -103,7 +103,7 @@ class NavMeshDebugDraw final : public duDebugDraw {
         vertex(x, y, z, colour);
     }
 
-    [[nodiscard]] void toCommandBuffer(GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut ) const;
+    void toCommandBuffer(GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut ) const;
 
    private:
     GFXDevice& _context;

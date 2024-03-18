@@ -60,7 +60,7 @@ namespace Divide {
         if (descriptor._iterCount > g_parallelPartitionSize * 3)
         {
             descriptor._partitionSize = g_parallelPartitionSize;
-            descriptor._cbk = [this, interpFactor](const Task*, const U32 start, const U32 end)
+            descriptor._cbk = [interpFactor](const Task*, const U32 start, const U32 end)
             {
                 for (U32 i = start; i < end; ++i)
                 {

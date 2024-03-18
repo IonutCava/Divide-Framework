@@ -72,8 +72,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma warning(pop)
 #endif
 
-#include "Core/TemplateLibraries/Headers/TemplateAllocator.h"
-
 #include <EASTL/set.h>
 #include <EASTL/map.h>
 #include <EASTL/list.h>
@@ -93,10 +91,13 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <random>
 #include <stack>
 #include <any>
+#include <list>
 #include <limits>
 #include <execution>
 #include <fstream>
+#include <condition_variable>
 
+#include "Core/TemplateLibraries/Headers/TemplateAllocator.h"
 #include "Core/TemplateLibraries/Headers/HashMap.h"
 #include "Core/TemplateLibraries/Headers/Vector.h"
 #include "Core/TemplateLibraries/Headers/String.h"
@@ -132,8 +133,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <ArenaAllocator/arena_allocator.h>
 
-#include <ConcurrentQueue/concurrentqueue.h>
-#include <ConcurrentQueue/blockingconcurrentqueue.h>
+#include <concurrentqueue/concurrentqueue.h>
+#include <concurrentqueue/blockingconcurrentqueue.h>
 
 #include <fmt/format.h>
 #include <fmt/printf.h>

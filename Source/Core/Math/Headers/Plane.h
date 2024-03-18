@@ -66,8 +66,6 @@ class Plane {
         NEGATIVE_SIDE
     };
 
-    Plane() noexcept = default;
-
     Plane(const Plane& rhs) noexcept
         : _normal(rhs._normal), _distance(rhs._distance)
     {
@@ -100,6 +98,11 @@ class Plane {
         redefine(point0, point1, point2);
     }
 
+    Plane() noexcept
+        : Plane(0, 0, 0, 0)
+    {
+    }
+    
     Plane& operator=(const Plane& other) noexcept {
         _normal.set(other._normal);
         _distance = other._distance;
@@ -174,11 +177,11 @@ class Plane {
 
      union {
           struct {
-              vec3<T> _normal;
-              T _distance;
+              vec3<T> _normal{0.f, 0.f, 0.f};
+              T _distance{0.f};
           };
 
-          vec4<T> _equation = {0.f, 0.f, 0.f, 0.f};
+          vec4<T> _equation;
      };
 };
 

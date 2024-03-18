@@ -223,7 +223,7 @@ private:
     /// Changing from one window type to another
     /// should also change display dimensions and position
     void handleChangeWindowType(WindowType newWindowType);
-    [[nodiscard]] void updateDrawableSize() noexcept;
+    void updateDrawableSize() noexcept;
 
 private:
     using EventListeners = vector<DELEGATE<bool, WindowEventArgs>>;

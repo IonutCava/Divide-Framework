@@ -20,12 +20,12 @@
 	#define DEFINE_STATIC_LOGGER_TEMPLATE(clazz, T, name)	template<class T> Log::Logger* clazz<T>::LOGGER = ECS::Log::Internal::GetLogger(name);
 
 
-	#define LogTrace(format, ...)							LOGGER->LogTrace(format, __VA_ARGS__);
-	#define LogDebug(format, ...)							LOGGER->LogDebug(format, __VA_ARGS__);
-	#define LogInfo(format, ...)							LOGGER->LogInfo(format, __VA_ARGS__);
-	#define LogWarning(format, ...)							LOGGER->LogWarning(format, __VA_ARGS__);
-	#define LogError(format, ...)							LOGGER->LogError(format, __VA_ARGS__);
-	#define LogFatal(format, ...)							LOGGER->LogFatal(format, __VA_ARGS__);
+	#define LogTrace(format, ...)							LOGGER->LogTrace(format, ##__VA_ARGS__);
+	#define LogDebug(format, ...)							LOGGER->LogDebug(format, ##__VA_ARGS__);
+	#define LogInfo(format, ...)							LOGGER->LogInfo(format, ##__VA_ARGS__);
+	#define LogWarning(format, ...)							LOGGER->LogWarning(format, ##__VA_ARGS__);
+	#define LogError(format, ...)							LOGGER->LogError(format, ##__VA_ARGS__);
+	#define LogFatal(format, ...)							LOGGER->LogFatal(format, ##__VA_ARGS__);
 #else
 
 	#define DECLARE_LOGGER

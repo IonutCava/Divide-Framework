@@ -35,6 +35,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "TemplateAllocator.h"
 #include <string>
+#include <memory.h>
 
 namespace Divide
 {
@@ -42,46 +43,6 @@ namespace Divide
     template<bool Fast, class Elem>
     using string_allocator = typename std::conditional<Fast, dvd_allocator<Elem>, std::allocator<Elem>>::type;
 
-    //ref: http://www.gotw.ca/gotw/029.htm
-    struct ci_char_traits : std::char_traits<char>
-        // just inherit all the other functions that we don't need to override
-    {
-        static bool eq( const char c1, const char c2 ) noexcept
-        {
-            return toupper( c1 ) == toupper( c2 );
-        }
-
-        static bool ne( const char c1, const char c2 ) noexcept
-        {
-            return toupper( c1 ) != toupper( c2 );
-        }
-
-        static bool lt( const char c1, const char c2 ) noexcept
-        {
-            return toupper( c1 ) < toupper( c2 );
-        }
-
-        static int compare( const char* s1, const char* s2, const size_t n ) noexcept
-        {
-            return _memicmp( s1, s2, n );
-            // if available on your compiler,
-            //  otherwise you can roll your own
-        }
-
-        static const char* find( const char* s, int n, const char a ) noexcept
-        {
-            while ( n-- > 0 && toupper( *s ) != toupper( a ) )
-            {
-                ++s;
-            }
-            return s;
-        }
-    }; //ci_string
-
-    template<bool Fast>
-    using string_ignore_case_impl = std::basic_string<char, ci_char_traits, string_allocator<Fast, char>>;
-    template<bool Fast>
-    using wstring_ignore_case_impl = std::basic_string<wchar_t, ci_char_traits, string_allocator<Fast, wchar_t>>;
     template<bool Fast>
     using string_impl = std::basic_string<char, std::char_traits<char>, string_allocator<Fast, char>>;
     template<bool Fast>
@@ -105,10 +66,6 @@ namespace Divide
 
     using string = string_impl<false>;
     using string_fast = string_impl<true>;
-    using string_ignore_case = string_ignore_case_impl<false>;
-    using string_ignore_case_fast = string_ignore_case_impl<true>;
-    using wstring_ignore_case = wstring_ignore_case_impl<false>;
-    using wstring_ignore_case_fast = wstring_ignore_case_impl<true>;
     using wstring = wstring_impl<false>;
     using wstring_fast = wstring_impl<true>;
     using stringstream = stringstream_impl<false>;
@@ -129,23 +86,19 @@ namespace Divide
     using wstringbuf_fast = wstringbuf_imp<true>;
 
     template<typename T>
-    concept is_stl_wide_string = std::is_same_v<T, wstring_ignore_case> ||
-                                 std::is_same_v<T, wstring_ignore_case_fast> ||
-                                 std::is_same_v<T, wstring> ||
+    concept is_stl_wide_string = std::is_same_v<T, wstring> ||
                                  std::is_same_v<T, wstring_fast>;
 
     template<typename T>
     concept is_stl_non_wide_string = std::is_same_v<T, string> ||
-                                     std::is_same_v<T, string_fast> ||
-                                     std::is_same_v<T, string_ignore_case> ||
-                                     std::is_same_v<T, string_ignore_case_fast>;
+                                     std::is_same_v<T, string_fast>;
 
     template<typename T>
     concept is_stl_string = is_stl_wide_string<T> ||
                             is_stl_non_wide_string<T>;
 
     template <typename T>
-    concept is_fixed_string = requires(T c) { []<typename X, size_t N, bool overflow>(eastl::fixed_string<X, N, overflow>&) {}(c); };
+    concept is_fixed_string = requires(T c) { []<typename X, int N, bool overflow>(eastl::fixed_string<X, N, overflow>&) {}(c); };
 
     template<typename T>
     concept is_eastl_string = std::is_same_v<T, eastl::string> ||

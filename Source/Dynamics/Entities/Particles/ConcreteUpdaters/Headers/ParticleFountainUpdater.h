@@ -28,7 +28,7 @@
 namespace Divide
 {
 
-class ParticleFountainUpdater : public ParticleUpdater
+struct ParticleFountainUpdater : public ParticleUpdater
 {
 public:
     /// particles per second
@@ -44,10 +44,6 @@ public:
     I32 _lifetime;                  
     /// liftime variance (_lifetime + rand(-_lifetimeVariance, _lifetimeVariance))
     I32 _lifetimeVariance;       
-
-public:
-    ParticleFountainUpdater() = default;
-    ~ParticleFountainUpdater() = default;
 
     void update(const U64 deltaTime, ParticleData &p) override; 
 };

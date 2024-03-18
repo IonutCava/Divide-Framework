@@ -7,8 +7,8 @@
 namespace Divide
 {
     AudioAPIWrapper::AudioAPIWrapper( const Str<64>& name, PlatformContext& context )
-        : FrameListener( name, context.kernel().frameListenerMgr(), 1u )
-        , PlatformContextComponent(context)
+        : PlatformContextComponent(context)
+        , FrameListener( name, context.kernel().frameListenerMgr(), 1u )
     {
     }
 } //namespace Divide

@@ -38,6 +38,9 @@
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Rendering/Camera/Headers/Camera.h"
 
+#include <string.h>
+#include <type_traits>
+
 namespace Divide
 {
     namespace
@@ -2286,7 +2289,7 @@ namespace Divide
                         {
                             const ImageView texView = data->_texture->getView( TextureType::TEXTURE_2D_ARRAY,
                                                                               { 0u, data->_texture->mipCount() },
-                                                                              { 0u, data->_texture->depth() * 6u });
+                                                                              { 0u, to_U16(data->_texture->depth() * 6u) });
 
                             Set( binding._data, texView, defaultSampler );
                         }
@@ -2527,7 +2530,9 @@ namespace Divide
 
         static bool wasClosed = false;
         static vec3<F32> rotation( 0.0f );
-        static char inputBuf[256] = {};
+
+        using ReturnTypeOfName = std::remove_cvref_t<std::invoke_result_t<decltype(&Resource::resourceName), Resource>>;
+        static char inputBuf[ReturnTypeOfName::kMaxSize + 2] = {};
 
         Util::OpenCenteredPopup( "Spawn Entity" );
         if ( ImGui::BeginPopupModal( "Spawn Entity", nullptr, ImGuiWindowFlags_AlwaysAutoResize ) )
@@ -2540,11 +2545,7 @@ namespace Divide
             assert( _queuedModelSpawn._mesh != nullptr );
             if ( Util::IsEmptyOrNull( inputBuf ) )
             {
-                strcpy_s( &inputBuf[0],
-                          std::min( to_size( 254 ),
-                                    _queuedModelSpawn._mesh->resourceName().length() )
-                          + 1,
-                          _queuedModelSpawn._mesh->resourceName().c_str() );
+                strcpy( &inputBuf[0], _queuedModelSpawn._mesh->resourceName().c_str() );
             }
             ImGui::Text( "Spawn [ %s ]?", _queuedModelSpawn._mesh->resourceName().c_str() );
             ImGui::Separator();

@@ -45,7 +45,7 @@ struct ResourcePath
 {
     ResourcePath() = default;
 
-    template<size_t N>
+    template<int N>
     ResourcePath(const Str<N>& string) : ResourcePath(string.c_str()) {}
 
     ResourcePath(std::string_view path);

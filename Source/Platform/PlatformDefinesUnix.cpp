@@ -4,17 +4,17 @@
 
 #include "Headers/PlatformDefinesUnix.h"
 
-#include <SDL_syswm.h>
+#include <SDL2/SDL_syswm.h>
 #include <malloc.h>
 #include <unistd.h>
-#include <signal.h
+#include <signal.h>
 
-void* malloc_aligned(const size_t size, size_t alignment, size_t offset) {
+void* malloc_aligned(const size_t size, size_t alignment, size_t offset) noexcept {
     (void)offset;
     return _mm_malloc(size, alignment);
 }
 
-void  free_aligned(void*& ptr) {
+void  free_aligned(void*& ptr) noexcept {
     _mm_free(ptr);
 }
 
@@ -29,15 +29,16 @@ int _vscprintf (const char * format, va_list pargs) {
 
 namespace Divide {
 
-    void DebugBreak(const bool condition) noexcept {
+    bool DebugBreak(const bool condition) noexcept {
         if (!condition) {
-            return;
+            return false;
         }
 #if defined(SIGTRAP)
-        raise(SIGTRAP)
+        raise(SIGTRAP);
 #else
-        raise(SIGABRT)
+        raise(SIGABRT);
 #endif
+        return true;
     }
 
     void EnforceDPIScaling() noexcept
@@ -56,7 +57,7 @@ namespace Divide {
         return 96.f;
     }
 
-    void getWindowHandle(void* window, WindowHandle& handleOut) noexcept {
+    void GetWindowHandle(void* window, WindowHandle& handleOut) noexcept {
         SDL_SysWMinfo wmInfo;
         SDL_VERSION(&wmInfo.version);
         SDL_GetWindowWMInfo(static_cast<SDL_Window*>(window), &wmInfo);
@@ -73,6 +74,7 @@ namespace Divide {
         pthread_getschedparam(thread, &policy, &sch_params);
 
         switch (priority) {
+            default:
             case ThreadPriority::IDLE: {
                 sch_params.sched_priority = 10;
             } break;
@@ -106,7 +108,7 @@ namespace Divide {
         SetThreadPriorityInternal(static_cast<pthread_t>(thread->native_handle()), priority);
     }
 
-    void SetThreadName(std::thread* thread, const char* threadName) noexcept {
+    void SetThreadName(std::thread* thread, const char* threadName) {
         auto handle = thread->native_handle();
         pthread_setname_np(handle, threadName);
     }

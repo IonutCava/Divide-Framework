@@ -134,6 +134,8 @@ inline bool IsBGRTexture( GFXImageFormat format ) noexcept
         case GFXImageFormat::BGR:
         case GFXImageFormat::BGRA:
             return true;
+
+        default: break;
     }; 
     return false;
 }

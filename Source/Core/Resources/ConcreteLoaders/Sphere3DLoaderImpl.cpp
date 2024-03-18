@@ -8,7 +8,9 @@
 
 namespace Divide {
 
-CachedResource_ptr ImplResourceLoader<Sphere3D>::operator()() {
+template<>
+CachedResource_ptr ImplResourceLoader<Sphere3D>::operator()()
+{
     constexpr F32 s_minRadius = 0.0001f;
 
     std::shared_ptr<Sphere3D> ptr(MemoryManager_NEW Sphere3D(_context.gfx(),

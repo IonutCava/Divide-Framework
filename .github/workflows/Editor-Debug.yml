@@ -33,6 +33,6 @@ jobs:
     - name: Build and test Editor in Debug mode
       uses: lukka/run-cmake@v10
       with:
-        configurePreset: 'ninja-multi-vcpkg-editor'
-        buildPreset: 'editor-x64-debug'
-        testPreset: 'test-debug-editor'
+        configurePreset: 'windows-msvc-debug-editor'
+        buildPreset: 'windows-msvc-debug-editor'
+        testPreset: 'test-windows-msvc-debug-editor'

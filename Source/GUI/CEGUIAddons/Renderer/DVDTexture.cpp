@@ -63,8 +63,8 @@ DVDTexture::DVDTexture( CEGUIRenderer& owner, const String& name, const Sizef& s
 }
 
 DVDTexture::DVDTexture( CEGUIRenderer& owner, const String& name, const Divide::Texture_ptr& tex, const Sizef& size )
-    : _texture(tex)
-    , _size(size)
+    : _size(size)
+    , _texture(tex)
     , _dataSize(size)
     , _owner(owner)
     , _name(name)

@@ -30,6 +30,7 @@
  */
 
 #pragma once
+
 #ifndef _PLATFORM_DEFINES_APPLE_H_
 #define _PLATFORM_DEFINES_APPLE_H_
 

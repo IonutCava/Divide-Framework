@@ -93,7 +93,7 @@ namespace vke {
     public:
         ~DescriptorAllocatorPool();
 
-        static [[nodiscard]] DescriptorAllocatorPool* Create(const VkDevice& device, Divide::I32 nFrames = 3);
+        [[nodiscard]] static DescriptorAllocatorPool* Create(const VkDevice& device, Divide::I32 nFrames = 3);
 
         /// Not thread safe! Switches default allocators to the next frame. When frames loop it will reset the descriptors of that frame.
         void Flip();

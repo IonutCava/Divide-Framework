@@ -120,8 +120,8 @@ private:
 
     static bool Draw(const GenericDrawCommand& cmd, VkCommandBuffer cmdBuffer);
 public:
-    static [[nodiscard]] VKStateTracker& GetStateTracker() noexcept;
-    static [[nodiscard]] VkSampler GetSamplerHandle(SamplerDescriptor sampler, size_t& samplerHashInOut);
+    [[nodiscard]] static VKStateTracker& GetStateTracker() noexcept;
+    [[nodiscard]] static VkSampler GetSamplerHandle(SamplerDescriptor sampler, size_t& samplerHashInOut);
 
     static void RegisterCustomAPIDelete(DELEGATE<void, VkDevice>&& cbk, bool isResourceTransient);
     static void RegisterTransferRequest(const VKTransferQueue::TransferRequest& request);

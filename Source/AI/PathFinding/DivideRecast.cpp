@@ -4,9 +4,7 @@
 
 namespace Divide::AI::Navigation {
 
-constexpr U8 DT_TILECACHE_NULL_AREA = 0;
 constexpr U8 DT_TILECACHE_WALKABLE_AREA = 63;
-constexpr U16 DT_TILECACHE_NULL_IDX = 0xffff;
 
 DivideRecast::DivideRecast()
 {

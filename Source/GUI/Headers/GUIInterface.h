@@ -42,6 +42,7 @@ namespace CEGUI {
 
 namespace Divide {
 
+class GUI;
 class GUIText;
 class GUIFlash;
 class GUIButton;

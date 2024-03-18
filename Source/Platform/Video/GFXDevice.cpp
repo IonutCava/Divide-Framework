@@ -513,7 +513,7 @@ namespace Divide
             bufferDescriptor._bufferParams._elementSize = sizeof( GFXShaderData::CamData );
             bufferDescriptor._initialData = { (Byte*)&_gpuBlock._camData, bufferDescriptor._bufferParams._elementSize };
 
-            for ( U8 i = 0u; i < GFXBuffers::PerFrameBufferCount; ++i )
+            for ( U8 i = 0u; i < GFXBuffers::PER_FRAME_BUFFER_COUNT; ++i )
             {
                 bufferDescriptor._name = Util::StringFormat( "DVD_GPU_CAM_DATA_%d", i );
                 _gfxBuffers._perFrameBuffers[i]._camDataBuffer = newSB( bufferDescriptor );
@@ -534,7 +534,7 @@ namespace Divide
             bufferDescriptor._bufferParams._flags._updateUsage = BufferUpdateUsage::GPU_TO_CPU;
             bufferDescriptor._separateReadWrite = true;
             bufferDescriptor._initialData = { (bufferPtr)&VECTOR4_ZERO._v[0], 4 * sizeof( U32 ) };
-            for ( U8 i = 0u; i < GFXBuffers::PerFrameBufferCount; ++i )
+            for ( U8 i = 0u; i < GFXBuffers::PER_FRAME_BUFFER_COUNT; ++i )
             {
                 bufferDescriptor._name = Util::StringFormat( "CULL_COUNTER_%d", i );
                 _gfxBuffers._perFrameBuffers[i]._cullCounter = newSB( bufferDescriptor );
@@ -2203,7 +2203,7 @@ namespace Divide
                     PROFILE_SCOPE( "PUSH_CAMERA", Profiler::Category::Graphics );
 
                     const GFX::PushCameraCommand* crtCmd = commandBuffer.get<GFX::PushCameraCommand>( cmd );
-                    DIVIDE_ASSERT( _cameraSnapshots.size() < _cameraSnapshots._Get_container().max_size(), "GFXDevice::flushCommandBuffer error: PUSH_CAMERA stack too deep!" );
+                    DIVIDE_ASSERT( _cameraSnapshots.size() < MAX_CAMERA_SNAPSHOTS, "GFXDevice::flushCommandBuffer error: PUSH_CAMERA stack too deep!" );
 
                     _cameraSnapshots.push( _activeCameraSnapshot );
                     renderFromCamera( crtCmd->_cameraSnapshot );
@@ -2295,7 +2295,7 @@ namespace Divide
             ImageView outImage = HiZTex->getView( { i, 1u } );
 
             const ImageView inImage = i == 0u ? SrcAtt->texture()->getView( ) 
-                                              : HiZTex->getView( { i - 1u, 1u }, { 0u, 1u });
+                                              : HiZTex->getView( { to_U16(i - 1u), 1u }, { 0u, 1u });
 
             
             GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( cmdBufferInOut )->_textureLayoutChanges.emplace_back(TextureLayoutChange
@@ -3090,6 +3090,14 @@ namespace Divide
         }
 
         return &it->second;
+    }
+
+    void DestroyIMP(IMPrimitive*& primitive)
+    {
+        if (primitive != nullptr) {
+            primitive->context().destroyIMP(primitive);
+        }
+        primitive = nullptr;
     }
 
     VertexBuffer_ptr GFXDevice::newVB(const bool renderIndirect, const Str<256>& name )

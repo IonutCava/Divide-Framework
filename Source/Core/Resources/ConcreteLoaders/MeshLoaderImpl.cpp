@@ -64,7 +64,7 @@ CachedResource_ptr ImplResourceLoader<Mesh>::operator()() {
     MeshLoadData loadingData(ptr, _cache, &_context, _descriptor);
     const ResourcePath assetLocaltion = _descriptor.assetLocation();
     const ResourcePath assetName = _descriptor.assetName();
-    Task* task = CreateTask([this, assetLocaltion, assetName, loadingData](const Task &) {
+    Task* task = CreateTask([assetLocaltion, assetName, loadingData](const Task &) {
                                 threadedMeshLoad(loadingData, assetLocaltion, assetName);
                             });
 

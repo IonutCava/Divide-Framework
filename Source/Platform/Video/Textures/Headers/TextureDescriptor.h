@@ -102,6 +102,6 @@ bool operator!=(const TextureDescriptor& lhs, const TextureDescriptor& rhs) noex
 
 }  // namespace Divide
 
-#endif  _TEXTURE_DESCRIPTOR_H_
+#endif //_TEXTURE_DESCRIPTOR_H_
 
 #include "TextureDescriptor.inl"

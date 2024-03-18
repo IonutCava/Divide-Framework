@@ -108,7 +108,7 @@ namespace DVDConverter {
                                  GeometryFormat format,
                                  bool convertHeightToBumpMap);
 
-        static void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target);
+        void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target);
     }; //namespace Detail
 }; //namespace DVDConverter
 

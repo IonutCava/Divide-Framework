@@ -191,7 +191,7 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut, GFX::Me
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("EnvironmentProbePass Id: [ %d ]", rtLayerIndex()).c_str(), to_U32(rtLayerIndex())));
 
-    RenderPassParams params = {};
+    RenderPassParams params;
 
     params._target = SceneEnvironmentProbePool::ReflectionTarget()._targetID;
     params._sourceNode = findNodeToIgnore();

@@ -58,13 +58,11 @@ namespace Divide
             }
             DIVIDE_ASSERT( comp->_materialInstance != nullptr );
 
-            bool packagesCleared = false;
             if ( comp->_materialUpdateMask & to_base(MaterialUpdateResult::NEW_SHADER ) ||
                  comp->_materialUpdateMask & to_base(MaterialUpdateResult::NEW_CULL ) )
             {
                 comp->clearDrawPackages();
                 comp->_materialInstance->clearRenderStates();
-                packagesCleared = true;
             }
 
             if ( comp->_materialUpdateMask & to_base(MaterialUpdateResult::NEW_CULL ) )

@@ -746,4 +746,4 @@ namespace Divide {
     }; //namespace vk
 }; //namespace Divide
 
-#endif _VK_INITIALIZERS_H_
+#endif //_VK_INITIALIZERS_H_

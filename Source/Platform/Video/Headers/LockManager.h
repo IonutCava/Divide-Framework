@@ -100,11 +100,11 @@ namespace Divide {
         /// Returns false if we encountered an error
         bool lockRange(size_t lockBeginBytes, size_t lockLength, SyncObjectHandle syncObj);
 
-        static [[nodiscard]] SyncObjectHandle CreateSyncObject(RenderAPI api, U8 flag = DEFAULT_SYNC_FLAG_INTERNAL);
+        [[nodiscard]] static SyncObjectHandle CreateSyncObject(RenderAPI api, U8 flag = DEFAULT_SYNC_FLAG_INTERNAL);
 
     protected:
-        static [[nodiscard]] bool InitLockPoolEntry( RenderAPI api, BufferLockPoolEntry& entry, U8 flag, U64 frameIdx );
-        static [[nodiscard]] SyncObjectHandle CreateSyncObjectLocked( RenderAPI api, U8 flag);
+        [[nodiscard]] static bool InitLockPoolEntry( RenderAPI api, BufferLockPoolEntry& entry, U8 flag, U64 frameIdx );
+        [[nodiscard]] static SyncObjectHandle CreateSyncObjectLocked( RenderAPI api, U8 flag);
 
         virtual bool waitForLockedRangeLocked(const SyncObject_uptr& sync, const BufferRange& testRange, const BufferLockInstance& lock);
 

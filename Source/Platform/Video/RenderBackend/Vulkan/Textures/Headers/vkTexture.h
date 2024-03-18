@@ -170,11 +170,11 @@ namespace Divide
         PROPERTY_R_IW( VkFormat, vkFormat, VK_FORMAT_MAX_ENUM );
         PROPERTY_R_IW( VkSampleCountFlagBits, sampleFlagBits, VK_SAMPLE_COUNT_1_BIT );
 
-        [[nodiscard]] ImageReadbackData readData(U8 mipLevel, const PixelAlignment& pixelPackAlignment) const noexcept;
+        [[nodiscard]] ImageReadbackData readData(U8 mipLevel, const PixelAlignment& pixelPackAlignment) const noexcept override;
         [[nodiscard]] ImageReadbackData readData( VkCommandBuffer cmdBuffer, U8 mipLevel, const PixelAlignment& pixelPackAlignment) const noexcept;
         [[nodiscard]] VkImageView getImageView( const CachedImageView::Descriptor& descriptor ) const;
 
-        static [[nodiscard]] VkImageAspectFlags GetAspectFlags( const TextureDescriptor& descriptor ) noexcept;
+        [[nodiscard]] static VkImageAspectFlags GetAspectFlags( const TextureDescriptor& descriptor ) noexcept;
 
         static void Copy( VkCommandBuffer cmdBuffer, const vkTexture* source, const U8 sourceSamples, const vkTexture* destination, const U8 destinationSamples, CopyTexParams params );
 

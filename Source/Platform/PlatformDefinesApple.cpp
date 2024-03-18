@@ -5,7 +5,7 @@
 #include "Headers/PlatformDefinesApple.h"
 
 #include <SDL_syswm.h>
-#include <signal.h
+#include <signal.h>
 
 void* malloc_aligned(const size_t size, size_t alignment, size_t offset) {
     (void)offset;
@@ -18,15 +18,17 @@ void  free_aligned(void*& ptr) {
 
 namespace Divide {
 
-    void DebugBreak(const bool condition) noexcept {
+    bool DebugBreak(const bool condition) noexcept {
         if (!condition) {
-            return;
+            return false;
         }
 #if defined(SIGTRAP)
-        raise(SIGTRAP)
+        raise(SIGTRAP);
 #else
-        raise(SIGABRT)
+        raise(SIGABRT);
 #endif
+
+        return true;
     }
 
     void EnforceDPIScaling() noexcept
@@ -52,7 +54,7 @@ namespace Divide {
         return 72.f;
     }
 
-    void getWindowHandle(void* window, WindowHandle& handleOut) noexcept {
+    void GetWindowHandle(void* window, WindowHandle& handleOut) noexcept {
         SDL_SysWMinfo wmInfo;
         SDL_VERSION(&wmInfo.version);
         SDL_GetWindowWMInfo(static_cast<SDL_Window*>(window), &wmInfo);

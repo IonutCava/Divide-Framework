@@ -80,6 +80,7 @@ class ResourceCache;
 class SceneGraphNode;
 class SceneShaderData;
 class SceneRenderState;
+class KernelApplication;
 class ShaderComputeQueue;
 class CascadedShadowMapsGenerator;
 
@@ -531,7 +532,7 @@ private:
     RenderStateBlock _state2DRendering{};
     RenderStateBlock _stateDepthOnlyRendering{};
     /// The interpolation factor between the current and the last frame
-    FrustumClipPlanes _clippingPlanes{};
+    FrustumClipPlanes _clippingPlanes;
 
     /// shader used to preview the depth buffer
     ShaderProgram_ptr _previewDepthMapShader = nullptr;
@@ -576,7 +577,7 @@ private:
     DisplayWindow* _activeWindow{nullptr};
 
     struct GFXBuffers {
-        static constexpr U8 PerFrameBufferCount = 3u;
+        static constexpr U8 PER_FRAME_BUFFER_COUNT = 3u;
 
         struct PerFrameBuffers {
             BufferRange _camBufferWriteRange;
@@ -584,14 +585,14 @@ private:
             ShaderBuffer_uptr _cullCounter = nullptr;
             size_t _camWritesThisFrame = 0u;
             size_t _renderWritesThisFrame = 0u;
-        } _perFrameBuffers[PerFrameBufferCount];
+        } _perFrameBuffers[PER_FRAME_BUFFER_COUNT];
         size_t _perFrameBufferIndex = 0u;
         bool _needsResizeCam = false;
         [[nodiscard]] inline PerFrameBuffers& crtBuffers() noexcept { return _perFrameBuffers[_perFrameBufferIndex]; }
         [[nodiscard]] inline const PerFrameBuffers& crtBuffers() const noexcept { return _perFrameBuffers[_perFrameBufferIndex]; }
 
         inline void reset(const bool camBuffer, const bool cullBuffer) noexcept {
-            for (U8 i = 0u; i < PerFrameBufferCount; ++i) {
+            for (U8 i = 0u; i < PER_FRAME_BUFFER_COUNT; ++i) {
                 if (camBuffer) {
                     _perFrameBuffers[i]._camDataBuffer.reset();
                 }
@@ -605,7 +606,7 @@ private:
 
         inline void onEndFrame() noexcept
         {
-            _perFrameBufferIndex = (_perFrameBufferIndex + 1u) % PerFrameBufferCount;
+            _perFrameBufferIndex = (_perFrameBufferIndex + 1u) % PER_FRAME_BUFFER_COUNT;
             crtBuffers()._camWritesThisFrame = 0u;
             crtBuffers()._renderWritesThisFrame = 0u;
         }
@@ -615,7 +616,8 @@ private:
     Mutex _pipelineCacheLock;
     hashMap<size_t, Pipeline, NoHash<size_t>> _pipelineCache;
 
-    std::stack<CameraSnapshot, eastl::fixed_vector<CameraSnapshot, 32, false>> _cameraSnapshots;
+    static constexpr U8 MAX_CAMERA_SNAPSHOTS = 32u;
+    std::stack<CameraSnapshot, eastl::fixed_vector<CameraSnapshot, MAX_CAMERA_SNAPSHOTS, false>> _cameraSnapshots;
 
     std::array<CameraSnapshot, Config::MAX_LOCAL_PLAYER_COUNT> _cameraSnapshotHistory;
 
@@ -647,8 +649,8 @@ namespace Attorney {
             device.update(deltaTimeUSFixed, deltaTimeUSApp);
         }
 
-        friend class Kernel;
-        friend class KernelApplication;
+        friend class Divide::Kernel;
+        friend class Divide::KernelApplication;
     };
 
     class GFXDeviceGraphicsResource {
@@ -670,7 +672,7 @@ namespace Attorney {
            DIVIDE_ASSERT(success);
    
        }
-       friend class GraphicsResource;
+       friend class Divide::GraphicsResource;
     };
 
     class GFXDeviceGFXRTPool {
@@ -678,7 +680,7 @@ namespace Attorney {
             return device.newRT(descriptor);
         };
 
-        friend class GFXRTPool;
+        friend class Divide::GFXRTPool;
     }; 
     
     class GFXDeviceSceneManager {

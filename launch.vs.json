@@ -5,42 +5,42 @@
     {
         "type": "default",
         "project": "CMakeLists.txt",
-        "projectTarget": "Divide-Framework_d.exe (bin\\Debug\\Divide-Framework_d.exe)",
+        "projectTarget": "Divide-Framework_d.exe (bin\\Divide-Framework_d.exe)",
         "name": "Divide-Framework (Debug)",
         "currentDir": "${workspaceRoot}"
     },
     {
         "type": "default",
         "project": "CMakeLists.txt",
-        "projectTarget": "Divide-Test-Engine_d.exe (bin\\Debug\\Divide-Test-Engine_d.exe)",
+        "projectTarget": "Divide-Test-Engine_d.exe (bin\\Divide-Test-Engine_d.exe)",
         "name": "Divide-Test-Engine (Debug)",
         "currentDir": "${workspaceRoot}"
     },
     {
         "type": "default",
         "project": "CMakeLists.txt",
-        "projectTarget": "Divide-Test-Platform_d.exe (bin\\Debug\\Divide-Test-Platform_d.exe)",
+        "projectTarget": "Divide-Test-Platform_d.exe (bin\\Divide-Test-Platform_d.exe)",
         "name": "Divide-Test-Platform (Debug)",
         "currentDir": "${workspaceRoot}"
     },
     {
         "type": "default",
         "project": "CMakeLists.txt",
-        "projectTarget": "Divide-Framework.exe (bin\\Release\\Divide-Framework.exe)",
+        "projectTarget": "Divide-Framework.exe (bin\\Divide-Framework.exe)",
         "name": "Divide-Framework.exe (Release)",
         "currentDir": "${workspaceRoot}"
     },
     {
         "type": "default",
         "project": "CMakeLists.txt",
-        "projectTarget": "Divide-Test-Engine.exe (bin\\Release\\Divide-Test-Engine.exe)",
+        "projectTarget": "Divide-Test-Engine.exe (bin\\Divide-Test-Engine.exe)",
         "name": "Divide-Test-Engine.exe (Release)",
         "currentDir": "${workspaceRoot}"
     },
     {
         "type": "default",
         "project": "CMakeLists.txt",
-        "projectTarget": "Divide-Test-Platform.exe (bin\\Release\\Divide-Test-Platform.exe)",
+        "projectTarget": "Divide-Test-Platform.exe (bin\\Divide-Test-Platform.exe)",
         "name": "Divide-Test-Platform.exe (Release)",
         "currentDir": "${workspaceRoot}"
     },

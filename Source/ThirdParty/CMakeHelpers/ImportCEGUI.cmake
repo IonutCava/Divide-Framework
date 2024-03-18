@@ -8,7 +8,6 @@ if(BUILD_STATIC_CEGUI)
     add_compile_definitions(CEGUI_BUILD_STATIC_FACTORY_MODULE)
 endif()
 
-add_compile_definitions(_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING)
 FetchContent_Declare(
   cegui
   GIT_REPOSITORY https://github.com/cegui/cegui.git
@@ -57,8 +56,6 @@ set(CEGUI_BUILD_XMLPARSER_EXPAT TRUE)
 
 FetchContent_MakeAvailable(cegui)
 
-remove_definitions(_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING)
-
 if(BUILD_STATIC_CEGUI)
     add_compile_definitions(CEGUI_STATIC)
 endif()
@@ -71,5 +68,15 @@ foreach(TARGET_LIB ${CEGUI_LIBRARY_NAMES})
     if(BUILD_STATIC_CEGUI)
         set(TARGET_LIB "${TARGET_LIB}_Static")
     endif()
+    if(CMAKE_BUILD_TYPE MATCHES Debug)
+        set(TARGET_LIB "${TARGET_LIB}_d")
+    endif()
+
     list(APPEND CEGUI_LIBRARIES ${TARGET_LIB})
 endforeach()
+
+
+include_directories(
+    "${cegui_SOURCE_DIR}/cegui/include"
+    "${cegui_BINARY_DIR}/cegui/include"
+)

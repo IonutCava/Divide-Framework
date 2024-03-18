@@ -66,7 +66,7 @@ constexpr size_t MemoryPoolSize()
 template<typename T>
 struct CmdAllocator
 {
-    static thread_local MemoryPool<T, MemoryPoolSize<T>()> s_Pool;
+    static inline thread_local MemoryPool<T, MemoryPoolSize<T>()> s_Pool;
 };
 
 enum class CommandType : U8;
@@ -87,7 +87,7 @@ struct CommandBase
 
 protected:
     friend void DELETE_CMD(CommandBase*& cmd);
-    [[nodiscard]] virtual void DeleteCmd( CommandBase*& cmd ) const noexcept = 0;
+    virtual void DeleteCmd( CommandBase*& cmd ) const noexcept = 0;
 
 protected:
     CommandType EType;
@@ -113,6 +113,7 @@ protected:
 string ToString(const CommandBase& cmd, U16 indent);
 
 #define IMPLEMENT_COMMAND(Command) \
+template<> \
 thread_local decltype(CmdAllocator<Command>::s_Pool) CmdAllocator<Command>::s_Pool;
 
 #define DEFINE_COMMAND_BEGIN(Name, Enum) struct Name final : public Command<Name, Enum> { \

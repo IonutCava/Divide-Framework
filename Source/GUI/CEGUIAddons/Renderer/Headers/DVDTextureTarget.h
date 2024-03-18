@@ -53,8 +53,8 @@ public:
     virtual ~DVDTextureTarget();
 
     // implementation of TextureTarget interface
-    void clear();
-    void declareRenderSize(const Sizef& sz);
+    void clear() override;
+    void declareRenderSize(const Sizef& sz) override;
 
     [[nodiscard]] Divide::Texture* getAttachmentTex() const;
     [[nodiscard]] Divide::SamplerDescriptor getSampler() const noexcept;

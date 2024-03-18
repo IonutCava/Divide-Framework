@@ -6,7 +6,7 @@ set( AI_SOURCE_HEADERS AI/ActionInterface/CustomGOAP/Action.h
                        AI/ActionInterface/Headers/AITeam.h
                        AI/ActionInterface/Headers/GOAPInterface.h
                        AI/PathFinding/NavMeshes/DetourTileCache/Headers/DivideTileCache.h
-                       AI/PathFinding/NavMeshes/DetourTileCache/Headers/ReCastconvexHull.h
+                       AI/PathFinding/NavMeshes/DetourTileCache/Headers/ReCastConvexHull.h
                        AI/PathFinding/NavMeshes/Headers/NavMesh.h
                        AI/PathFinding/NavMeshes/Headers/NavMeshConfig.h
                        AI/PathFinding/NavMeshes/Headers/NavMeshContext.h

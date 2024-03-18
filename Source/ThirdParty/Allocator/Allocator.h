@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _ALLOCATOR_H
-#define _ALLOCATOR_H
+#ifndef _FIXED_BLOCK_ALLOCATOR_H_
+#define _FIXED_BLOCK_ALLOCATOR_H_
 
 #include "DataTypes.h"
 #include <stddef.h>
@@ -122,7 +122,7 @@ private:
 #define IMPLEMENT_ALLOCATOR(class, objects, memory) \
 	Allocator class::_allocator(sizeof(class), objects, memory, #class);
 
-#endif
+#endif //_FIXED_BLOCK_ALLOCATOR_H_
 
 
 

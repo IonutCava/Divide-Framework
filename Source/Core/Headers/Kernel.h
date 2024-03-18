@@ -156,7 +156,6 @@ class Kernel final : public Input::InputAggregatorInterface,
 
     vector<Rect<I32>> _targetViewports{};
 
-    std::atomic_bool _splashScreenUpdating{};
     Task* _splashTask = nullptr;
 
     Time::ProfileTimer& _appLoopTimerMain;
@@ -171,6 +170,8 @@ class Kernel final : public Input::InputAggregatorInterface,
     Time::ProfileTimer& _preRenderTimer;
     Time::ProfileTimer& _postRenderTimer;
     vector<Time::ProfileTimer*> _renderTimer{};
+
+    std::atomic_bool _splashScreenUpdating{};
 
     // Command line arguments
     I32 _argc;

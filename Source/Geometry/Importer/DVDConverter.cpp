@@ -720,6 +720,7 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
                 case GeometryFormat::FBX:  specShininess *= 10.f;                         break; // percentage (0-100%)
                 case GeometryFormat::OBJ:  specShininess *= 1.f;                          break; // 0...1000.f
                 case GeometryFormat::DAE:  REMAP(specShininess, 0.f, 511.f, 0.f, 1000.f); break; // 511.f
+                default:
                 case GeometryFormat::X:    specShininess = 1.f;                           break; // not supported. 0 = gouraud shading. If this ever changes (somehow) we need to handle it.
             };
             CLAMP(specShininess, 0.f, 1000.f);

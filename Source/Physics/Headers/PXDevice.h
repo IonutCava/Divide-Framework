@@ -77,8 +77,8 @@ public:
     [[nodiscard]] bool frameEnded( const FrameEvent& evt ) noexcept override;
 
 protected:
-    [[nodiscard]] void frameStarted( U64 deltaTimeGameUS ) override;
-    [[nodiscard]] void frameEnded( U64 deltaTimeGameUS ) noexcept override;
+    void frameStarted( U64 deltaTimeGameUS ) override;
+    void frameEnded( U64 deltaTimeGameUS ) noexcept override;
 
 private:
     F32 _simulationSpeed = 1.0f;

@@ -54,8 +54,8 @@ String CEGUIRenderer::s_rendererID("Divide CEGUI Renderer");
 
 CEGUIRenderer::CEGUIRenderer( Divide::GFXDevice& context, Divide::ShaderProgram_ptr shader, const CEGUI::Sizef resolution )
     : _context(context)
-    , _displaySize(resolution)
     , _flipClippingHeight(context.renderAPI() == Divide::RenderAPI::Vulkan)
+    , _displaySize(resolution)
 {
     using namespace Divide;
 
