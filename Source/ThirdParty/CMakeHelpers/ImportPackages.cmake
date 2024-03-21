@@ -1,5 +1,7 @@
 include(FetchContent)
 
+set(BUILD_TESTING OFF)
+
 #CEGUI
 include(ThirdParty/CMakeHelpers/ImportCEGUI.cmake)
 
@@ -107,12 +109,14 @@ FetchContent_Declare(
 #chaiscript
 set(UNIT_TEST_LIGHT TRUE)
 set(BUILD_SAMPLES FALSE)
+
 FetchContent_Declare(
     chaiscript
     GIT_REPOSITORY https://github.com/ChaiScript/ChaiScript.git
     GIT_TAG        406a7ba1ef144d67021a68b1ba09224244a761ca
     #GIT_PROGRESS   TRUE
 )
+
 
 FetchContent_MakeAvailable(
     spirv_reflect
@@ -128,6 +132,10 @@ FetchContent_MakeAvailable(
     icon_font_cpp_headers
     chaiscript
 )
+
+if (BUILD_TESTING_INTERNAL)
+    set(BUILD_TESTING ON)
+endif()
 
 include_directories(
     ${spirv-reflect_SOURCE_DIR}

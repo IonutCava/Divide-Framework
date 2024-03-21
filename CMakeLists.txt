@@ -2,7 +2,7 @@
 cmake_minimum_required (VERSION 3.18)
 
 
-option(BUILD_TESTING "Build and run unit tests" ON)
+option(BUILD_TESTING_INTERNAL "Build and run unit tests" ON)
 option(PRINT_ALL_CMAKE_VARIABLES "Print all of the CMake variables and their values at the end of the configure step. Mostly for debugging." ON)
 option(ENABLE_AVX2 "Toggle AVX2 specific compiler flags" ON)
 
@@ -98,7 +98,7 @@ if (DIVIDE_STARTUP_TYPE STREQUAL "IN_EDITOR")
     add_compile_definitions(_START_IN_EDITOR)
 endif()
 
-if (BUILD_TESTING)
+if (BUILD_TESTING_INTERNAL)
     list(APPEND CMAKE_CTEST_ARGUMENTS "--output-on-failure")
     enable_testing()
 endif()

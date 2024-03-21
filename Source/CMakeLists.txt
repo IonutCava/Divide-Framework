@@ -2,7 +2,7 @@
 set(APP_LIB_DIVIDE Divide-Framework-Lib)
 set(APP_EXE_DIVIDE Divide-Framework)
 
-if(BUILD_TESTING)
+if(BUILD_TESTING_INTERNAL)
     set(APP_EXE_TEST_PLATFORM "Divide-Test-Platform")
     set(APP_EXE_TEST_ENGINE "Divide-Test-Engine")
 
@@ -86,7 +86,7 @@ else()
     message(WARNING "GPU acceleration library target not defined - GPU acceleration will NOT be available!")
 endif()
 
-if(BUILD_TESTING)
+if(BUILD_TESTING_INTERNAL)
     include(CTest)
     include(Catch)
 
