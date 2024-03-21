@@ -989,7 +989,7 @@ namespace Divide
 
         deviceInformation._shaderCompilerThreads = 0xFFFFFFFF;
         CLAMP( config.rendering.maxAnisotropicFilteringLevel,
-               to_U8( 0 ),
+               U8_ZERO,
                to_U8( deviceProperties.limits.maxSamplerAnisotropy ) );
         deviceInformation._maxAnisotropy = config.rendering.maxAnisotropicFilteringLevel;
 
@@ -1045,23 +1045,23 @@ namespace Divide
         deviceInformation._maxVertOutputComponents = deviceProperties.limits.maxVertexOutputComponents;
         Console::printfn( LOCALE_STR( "MAX_VERTEX_OUTPUT_COMPONENTS" ), deviceInformation._maxVertOutputComponents );
 
-        deviceInformation._UBOffsetAlignmentBytes = deviceProperties.limits.minUniformBufferOffsetAlignment;
-        deviceInformation._UBOMaxSizeBytes = deviceProperties.limits.maxUniformBufferRange;
-        deviceInformation._SSBOffsetAlignmentBytes = deviceProperties.limits.minStorageBufferOffsetAlignment;
-        deviceInformation._SSBOMaxSizeBytes = deviceProperties.limits.maxStorageBufferRange;
+        deviceInformation._offsetAlignmentBytesUBO = deviceProperties.limits.minUniformBufferOffsetAlignment;
+        deviceInformation._maxSizeBytesUBO = deviceProperties.limits.maxUniformBufferRange;
+        deviceInformation._offsetAlignmentBytesSSBO = deviceProperties.limits.minStorageBufferOffsetAlignment;
+        deviceInformation._maxSizeBytesSSBO = deviceProperties.limits.maxStorageBufferRange;
         deviceInformation._maxSSBOBufferBindings = deviceProperties.limits.maxPerStageDescriptorStorageBuffers;
 
-        const bool UBOSizeOver1Mb = deviceInformation._UBOMaxSizeBytes / 1024 > 1024;
+        const bool UBOSizeOver1Mb = deviceInformation._maxSizeBytesUBO / 1024 > 1024;
         Console::printfn( LOCALE_STR( "GL_VK_UBO_INFO" ),
                           deviceProperties.limits.maxDescriptorSetUniformBuffers,
-                          (deviceInformation._UBOMaxSizeBytes / 1024) / (UBOSizeOver1Mb ? 1024 : 1),
+                          (deviceInformation._maxSizeBytesUBO / 1024) / (UBOSizeOver1Mb ? 1024 : 1),
                           UBOSizeOver1Mb ? "Mb" : "Kb",
-                          deviceInformation._UBOffsetAlignmentBytes );
+                          deviceInformation._offsetAlignmentBytesUBO );
         Console::printfn( LOCALE_STR( "GL_VK_SSBO_INFO" ),
                           deviceInformation._maxSSBOBufferBindings,
-                          deviceInformation._SSBOMaxSizeBytes / 1024 / 1024,
+                          deviceInformation._maxSizeBytesSSBO / 1024 / 1024,
                           deviceProperties.limits.maxDescriptorSetStorageBuffers,
-                          deviceInformation._SSBOffsetAlignmentBytes );
+                          deviceInformation._offsetAlignmentBytesSSBO );
 
         deviceInformation._maxClipAndCullDistances = deviceProperties.limits.maxCombinedClipAndCullDistances;
         deviceInformation._maxClipDistances = deviceProperties.limits.maxClipDistances;

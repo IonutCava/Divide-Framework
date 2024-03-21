@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _COMMAND_BUFFER_H_
-#define _COMMAND_BUFFER_H_
+#ifndef DVD_COMMAND_BUFFER_H_
+#define DVD_COMMAND_BUFFER_H_
 
 #include "CommandsImpl.h"
 #include "Core/TemplateLibraries/Headers/PolyContainer.h"
@@ -104,7 +104,7 @@ class CommandBuffer : private NonCopyable
     template<typename T> requires std::is_base_of_v<CommandBase, T>
     T* add(const T& command);
     template<typename T> requires std::is_base_of_v<CommandBase, T>
-    T* add(const T&& command);
+    T* add(T&& command);
 
     [[nodiscard]] std::pair<ErrorType, size_t> validate() const;
 
@@ -186,6 +186,6 @@ FORCE_INLINE T* EnqueueCommand(CommandBuffer& buffer, T&& cmd) { return buffer.a
 }; //namespace GFX
 }; //namespace Divide
 
-#endif //_COMMAND_BUFFER_H_
+#endif //DVD_COMMAND_BUFFER_H_
 
 #include "CommandBuffer.inl"

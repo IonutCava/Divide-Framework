@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _CAMERA_INL_
-#define _CAMERA_INL_
+#ifndef DVD_CAMERA_INL_
+#define DVD_CAMERA_INL_
 
 namespace Divide
 {
@@ -295,4 +295,5 @@ namespace Divide
     }
 
 }; //namespace Divide
-#endif //_CAMERA_INL_
+
+#endif //DVD_CAMERA_INL_

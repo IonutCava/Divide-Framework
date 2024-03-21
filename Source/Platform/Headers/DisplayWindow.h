@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _DISPLAY_WINDOW_H_
-#define _DISPLAY_WINDOW_H_
+#ifndef DVD_DISPLAY_WINDOW_H_
+#define DVD_DISPLAY_WINDOW_H_
 
 #include "Core/Headers/PlatformContextComponent.h"
 
@@ -122,7 +122,7 @@ public:
 
     using EventListener = DELEGATE<bool, const WindowEventArgs&>;
 
-    virtual ~DisplayWindow();
+    virtual ~DisplayWindow() override;
 
 protected:
     SET_SAFE_DELETE_FRIEND
@@ -260,5 +260,4 @@ private:
 
 #include "DisplayWindow.inl"
 
-#endif //_DISPLAY_WINDOW_H_
-
+#endif //DVD_DISPLAY_WINDOW_H_

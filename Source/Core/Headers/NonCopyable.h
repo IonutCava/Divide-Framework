@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _CORE_NON_COPYABLE_H_
-#define _CORE_NON_COPYABLE_H_
+#ifndef DVD_CORE_NON_COPYABLE_H_
+#define DVD_CORE_NON_COPYABLE_H_
 
 namespace Divide {
 
@@ -52,4 +52,4 @@ protected:
 
 }  // namespace Divide
 
-#endif  //_CORE_NON_COPYABLE_H_
+#endif  //DVD_CORE_NON_COPYABLE_H_

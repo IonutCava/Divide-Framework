@@ -72,7 +72,6 @@ namespace Divide
         static F32 XButtonWidth = 10.0f;
         static F32 YButtonWidth = 10.0f;
         static F32 ZButtonWidth = 10.0f;
-        static F32 AButtonWidth = 10.0f;
 
         ImGuiWindow* window = ImGui::GetCurrentWindow();
         ImGui::SameLine(window->Size.x * 0.49f);
@@ -309,7 +308,6 @@ namespace Divide
             };
         }
         Util::PopBoldFont();
-        AButtonWidth = ImGui::GetItemRectSize().x;
 
         ImGui::SameLine();
         ImGui::Text(" ]");

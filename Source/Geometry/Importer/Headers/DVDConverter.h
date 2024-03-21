@@ -61,8 +61,8 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #pragma once
-#ifndef _DIVIDE_FORMAT_CONVERTER_H_
-#define _DIVIDE_FORMAT_CONVERTER_H_
+#ifndef DVD_FORMAT_CONVERTER_H_
+#define DVD_FORMAT_CONVERTER_H_
 
 #include "Geometry/Material/Headers/Material.h"
 #include "Platform/Video/GLIM/Declarations.h"
@@ -114,4 +114,4 @@ namespace DVDConverter {
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_FORMAT_CONVERTER_H_

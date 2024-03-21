@@ -29,8 +29,8 @@
 
  */
 
-#ifndef _HARDWARE_VIDEO_GFX_DEVICE_INL_H_
-#define _HARDWARE_VIDEO_GFX_DEVICE_INL_H_
+#ifndef DVD_HARDWARE_VIDEO_GFX_DEVICE_INL_
+#define DVD_HARDWARE_VIDEO_GFX_DEVICE_INL_
 
 namespace Divide {
 
@@ -159,4 +159,4 @@ inline Texture_ptr GFXDevice::newTexture( const size_t descriptorHash,
 }
 };  // namespace Divide
 
-#endif
+#endif //DVD_HARDWARE_VIDEO_GFX_DEVICE_INL_

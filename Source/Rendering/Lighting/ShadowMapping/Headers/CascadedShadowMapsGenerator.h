@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _CSM_GENERATOR_H_
-#define _CSM_GENERATOR_H_
+#ifndef DVD_CSM_GENERATOR_H_
+#define DVD_CSM_GENERATOR_H_
 
 #include "ShadowMap.h"
 #include "Platform/Video/Headers/CommandsImpl.h"
@@ -83,4 +83,5 @@ class CascadedShadowMapsGenerator final : public ShadowMapGenerator {
 };
 
 };  // namespace Divide
-#endif //_CSM_GENERATOR_H_
+
+#endif //DVD_CSM_GENERATOR_H_

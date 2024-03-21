@@ -3,6 +3,8 @@
 #include "Headers/glHardwareQuery.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 
+using namespace gl;
+
 namespace Divide {
 
 glHardwareQuery::glHardwareQuery() noexcept
@@ -40,7 +42,7 @@ I64 glHardwareQuery::getResultNoWait() const {
     return res;
 }
 
-glHardwareQueryRing::glHardwareQueryRing(GFXDevice& context, const GLenum queryType, const U32 queueLength, const U32 id)
+glHardwareQueryRing::glHardwareQueryRing(GFXDevice& context, const GLenum queryType, const U16 queueLength, const U32 id)
     : RingBufferSeparateWrite(queueLength, true),
       _context(context),
       _id(id),
@@ -66,7 +68,7 @@ const glHardwareQuery& glHardwareQueryRing::writeQuery() const {
     return _queries[queueWriteIndex()];
 }
 
-void glHardwareQueryRing::resize(const U32 queueLength) {
+void glHardwareQueryRing::resize(const U16 queueLength) {
     RingBufferSeparateWrite::resize(queueLength);
 
     const size_t crtCount = _queries.size();

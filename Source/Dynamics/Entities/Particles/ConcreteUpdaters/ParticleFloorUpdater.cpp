@@ -11,7 +11,7 @@ void ParticleFloorUpdater::update( [[maybe_unused]] const U64 deltaTimeUS, Parti
     constexpr U32 s_particlesPerThread = 1024;
     const U32 endID = p.aliveCount();
 
-    STUBBED("ToDo: add proper orientation support! -Ionut")
+    STUBBED("ToDo: add proper orientation support! -Ionut");
 
     const F32 floorY = _floorY;
     const F32 bounce = _bounceFactor;

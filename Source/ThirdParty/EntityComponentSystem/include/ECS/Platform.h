@@ -4,8 +4,8 @@
 /// Summary:	Declares the platform specifics.
 
 #pragma once
-#ifndef __PLATFORM_H__
-#define __PLATFORM_H__
+#ifndef ECS__PLATFORM_H__
+#define ECS__PLATFORM_H__
 
 
 #ifndef ECS_STATIC
@@ -94,4 +94,4 @@ namespace ECS
 } // namespace ECS
 	
 
-#endif // __PLATFORM_H__
+#endif // ECS__PLATFORM_H__

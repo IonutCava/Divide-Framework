@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _GUI_MESSAGE_BOX_H_
-#define _GUI_MESSAGE_BOX_H_
+#ifndef DVD_GUI_MESSAGE_BOX_H_
+#define DVD_GUI_MESSAGE_BOX_H_
 
 #include "GUIElement.h"
 #include "GUIText.h"
@@ -55,7 +55,7 @@ class GUIMessageBox final : public GUIElementBase<GUIType::GUI_MESSAGE_BOX> {
         MESSAGE_WARNING = 1,
         MESSAGE_ERROR = 2
     };
-    virtual ~GUIMessageBox();
+    virtual ~GUIMessageBox() override;
 
     bool onConfirm(const CEGUI::EventArgs& /*e*/) noexcept;
     void setTitle(const string& titleText);
@@ -86,4 +86,4 @@ class GUIMessageBox final : public GUIElementBase<GUIType::GUI_MESSAGE_BOX> {
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_GUI_MESSAGE_BOX_H_

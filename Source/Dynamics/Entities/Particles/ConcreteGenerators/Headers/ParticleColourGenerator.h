@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _PARTICLE_COLOUR_GENERATOR_H_
-#define _PARTICLE_COLOUR_GENERATOR_H_
+#ifndef DVD_PARTICLE_COLOUR_GENERATOR_H_
+#define DVD_PARTICLE_COLOUR_GENERATOR_H_
 
 #include "Dynamics/Entities/Particles/Headers/ParticleGenerator.h"
 #include "Utility/Headers/Colours.h"
@@ -52,4 +52,4 @@ struct ParticleColourGenerator final : ParticleGenerator {
 };
 }
 
-#endif
+#endif //DVD_PARTICLE_COLOUR_GENERATOR_H_

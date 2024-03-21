@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _PARTICLE_UPDATER_H_
-#define _PARTICLE_UPDATER_H_
+#ifndef DVD_PARTICLE_UPDATER_H_
+#define DVD_PARTICLE_UPDATER_H_
 
 #include "ParticleData.h"
 #include "Core/Headers/PlatformContextComponent.h"
@@ -45,9 +45,8 @@ class ParticleUpdater : public PlatformContextComponent{
     {
     }
 
-    virtual ~ParticleUpdater() = default;
-
     virtual void update(U64 deltaTimeUS, ParticleData& p) = 0;
 };
 }
-#endif
+
+#endif //DVD_PARTICLE_UPDATER_H_

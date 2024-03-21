@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _EDITOR_SOLUTION_EXPLORER_H_
-#define _EDITOR_SOLUTION_EXPLORER_H_
+#ifndef DVD_EDITOR_SOLUTION_EXPLORER_H_
+#define DVD_EDITOR_SOLUTION_EXPLORER_H_
 
 #include "Editor/Widgets/Headers/DockedWindow.h"
 #include "Core/Headers/PlatformContextComponent.h"
@@ -78,4 +78,4 @@ class SolutionExplorerWindow final : public DockedWindow, public PlatformContext
 };
 } //namespace Divide
 
-#endif //_EDITOR_SOLUTION_EXPLORER_H_
+#endif //DVD_EDITOR_SOLUTION_EXPLORER_H_

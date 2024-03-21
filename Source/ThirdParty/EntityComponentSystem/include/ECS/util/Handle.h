@@ -5,8 +5,8 @@
 ///-------------------------------------------------------------------------------------------------
 
 #pragma once
-#ifndef __HANDLE_H__
-#define __HANDLE_H__
+#ifndef ECS__HANDLE_H__
+#define ECS__HANDLE_H__
 
 #include "API.h"
 
@@ -238,4 +238,4 @@ namespace ECS { namespace util {
 
 #pragma warning(pop)
 
-#endif // ! __HANDLE_H__
+#endif // ! ECS__HANDLE_H__

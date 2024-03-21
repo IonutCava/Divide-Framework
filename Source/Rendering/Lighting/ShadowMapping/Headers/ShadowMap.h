@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _SHADOW_MAP_H_
-#define _SHADOW_MAP_H_
+#ifndef DVD_SHADOW_MAP_H_
+#define DVD_SHADOW_MAP_H_
 
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 
@@ -151,4 +151,4 @@ class NOINITVTABLE ShadowMap {
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_SHADOW_MAP_H_

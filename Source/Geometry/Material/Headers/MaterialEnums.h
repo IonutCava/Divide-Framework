@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _MATERIAL_ENUMS_H_
-#define _MATERIAL_ENUMS_H_
+#ifndef DVD_MATERIAL_ENUMS_H_
+#define DVD_MATERIAL_ENUMS_H_
 
 namespace Divide {
     enum class MaterialDebugFlag : U8 {
@@ -180,4 +180,4 @@ namespace Divide {
 
 }; //namespace Divide
 
-#endif //_MATERIAL_ENUMS_H_
+#endif //DVD_MATERIAL_ENUMS_H_

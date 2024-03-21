@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _EDITOR_GIZMO_H_
-#define _EDITOR_GIZMO_H_
+#ifndef DVD_EDITOR_GIZMO_H_
+#define DVD_EDITOR_GIZMO_H_
 
 #include "ECS/Components/Headers/TransformComponent.h"
 #include "Platform/Input/Headers/InputAggregatorInterface.h"
@@ -166,4 +166,4 @@ namespace Divide {
     }
 } //namespace Divide
 
-#endif //_EDITOR_GIZMO_H_
+#endif //DVD_EDITOR_GIZMO_H_

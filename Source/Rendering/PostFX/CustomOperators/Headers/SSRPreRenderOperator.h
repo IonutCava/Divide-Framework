@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _SSR_PRE_RENDER_OPERATOR_H_
-#define _SSR_PRE_RENDER_OPERATOR_H_
+#ifndef DVD_SSR_PRE_RENDER_OPERATOR_H_
+#define DVD_SSR_PRE_RENDER_OPERATOR_H_
 
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/PostFX/Headers/PreRenderOperator.h"
@@ -66,4 +66,4 @@ class SSRPreRenderOperator final : public PreRenderOperator {
 
 }  // namespace Divide
 
-#endif //_SSR_PRE_RENDER_OPERATOR_H_
+#endif //DVD_SSR_PRE_RENDER_OPERATOR_H_

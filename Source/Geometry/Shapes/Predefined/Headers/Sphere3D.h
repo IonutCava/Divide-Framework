@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _SPHERE_3D_H_
-#define _SPHERE_3D_H_
+#ifndef DVD_SPHERE_3D_H_
+#define DVD_SPHERE_3D_H_
 
 #include "Geometry/Shapes/Headers/Object3D.h"
 
@@ -58,4 +58,4 @@ TYPEDEF_SMART_POINTERS_FOR_TYPE(Sphere3D);
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_SPHERE_3D_H_

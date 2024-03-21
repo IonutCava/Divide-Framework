@@ -9,8 +9,8 @@
 */
 
 #pragma once
-#ifndef __EVENT_DELEGATE_H__
-#define __EVENT_DELEGATE_H__
+#ifndef ECS__EVENT_DELEGATE_H__
+#define ECS__EVENT_DELEGATE_H__
 
 #include "Platform.h"
 
@@ -94,4 +94,4 @@ namespace ECS { namespace Event {
 	}
 }} // namespace ECS::Event::Internal
 
-#endif // __EVENT_DELEGATE_H__
+#endif // ECS__EVENT_DELEGATE_H__

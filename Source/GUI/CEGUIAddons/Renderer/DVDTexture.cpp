@@ -137,7 +137,6 @@ void DVDTexture::setTextureSize_impl(const Sizef& sz, PixelFormat format)
         case PF_PVRTC4:
         {
             DIVIDE_UNEXPECTED_CALL_MSG( "DVDTexture::setTextureSize_impl: PVRTC textures not supported!" );
-            return;
         } break;
     }
 

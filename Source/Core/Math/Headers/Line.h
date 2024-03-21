@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _CORE_MATH_LINE_H_
-#define _CORE_MATH_LINE_H_
+#ifndef DVD_CORE_MATH_LINE_H_
+#define DVD_CORE_MATH_LINE_H_
 
 #include "Utility/Headers/Colours.h"
 
@@ -60,5 +60,4 @@ struct Line {
 
 } //namespace Divide
 
-#endif //_CORE_MATH_LINE_H_
-
+#endif //DVD_CORE_MATH_LINE_H_

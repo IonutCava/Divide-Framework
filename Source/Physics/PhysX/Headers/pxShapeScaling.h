@@ -35,8 +35,8 @@
 /*****************************************************/
 
 #pragma once
-#ifndef _PHYSX_SCALING_H_
-#define _PHYSX_SCALING_H_
+#ifndef DVD_PHYSX_SCALING_H_
+#define DVD_PHYSX_SCALING_H_
 
 #include "Physics/PhysX/Headers/PhysX.h"
 
@@ -61,4 +61,4 @@ void Scale(physx::PxTriangleMeshGeometry &geometry, physx::PxTransform &pose, co
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_PHYSX_SCALING_H_

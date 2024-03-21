@@ -30,8 +30,8 @@
    */
 
 #pragma once
-#ifndef _SCENE_GRAPH_NODE_INL_
-#define _SCENE_GRAPH_NODE_INL_
+#ifndef DVD_SCENE_GRAPH_NODE_INL_
+#define DVD_SCENE_GRAPH_NODE_INL_
 
 #include "SceneNode.h"
 
@@ -121,4 +121,4 @@ namespace Divide {
     }
 }; //namespace Divide
 
-#endif //_SCENE_GRAPH_NODE_INL_
+#endif //DVD_SCENE_GRAPH_NODE_INL_

@@ -121,7 +121,6 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
 
     for (U8 i = 0u; i < layerCount; ++i) {
         layerOffsetStr = Util::to_string(i);
-        U8 j = 0u;
         for (const auto& [channelName, channel] : channels) {
             currentMaterial = terrainDescriptor->getVariable(channelName + layerOffsetStr + "_mat");
             if (currentMaterial.empty()) {
@@ -131,8 +130,6 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
             for (U8 k = 0u; k < to_base(TerrainTextureType::COUNT); ++k) {
                 FindOrInsert(textureQuality, textures[k], Util::StringFormat("%s.%s", textureNames[k], k == to_base(TerrainTextureType::ALBEDO_ROUGHNESS) ? "png" : "jpg"), currentMaterial);
             }
-
-            ++j;
         }
     }
 

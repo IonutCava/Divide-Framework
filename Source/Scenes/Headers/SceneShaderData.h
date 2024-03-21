@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _SCENE_SHADER_DATA_H_
-#define _SCENE_SHADER_DATA_H_
+#ifndef DVD_SCENE_SHADER_DATA_H_
+#define DVD_SCENE_SHADER_DATA_H_
 
 #include "Scenes/Headers/SceneState.h"
 #include "Utility/Headers/Colours.h"
@@ -200,4 +200,4 @@ class SceneShaderData
 };
 } //namespace Divide
 
-#endif //_SCENE_SHADER_DATA_H_
+#endif //DVD_SCENE_SHADER_DATA_H_

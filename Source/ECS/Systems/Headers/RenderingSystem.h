@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _RENDERING_SYSTEM_H_
-#define _RENDERING_SYSTEM_H_
+#ifndef DVD_RENDERING_SYSTEM_H_
+#define DVD_RENDERING_SYSTEM_H_
 
 #include "ECSSystem.h"
 #include "Core/Headers/PlatformContextComponent.h"
@@ -53,4 +53,4 @@ namespace Divide {
     };
 }
 
-#endif //_RENDERING_SYSTEM_H_
+#endif //DVD_RENDERING_SYSTEM_H_

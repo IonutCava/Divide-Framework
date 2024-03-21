@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _NETWORKING_COMPONENT_H_
-#define _NETWORKING_COMPONENT_H_
+#ifndef DVD_NETWORKING_COMPONENT_H_
+#define DVD_NETWORKING_COMPONENT_H_
 
 
 #include "SGNComponent.h"
@@ -44,7 +44,7 @@ class LocalClient;
 BEGIN_COMPONENT(Networking, ComponentType::NETWORKING)
 public:
     NetworkingComponent(SceneGraphNode* parentSGN, PlatformContext& context);
-    ~NetworkingComponent();
+    ~NetworkingComponent() override;
 
     void onNetworkSend(U32 frameCountIn);
 
@@ -73,4 +73,4 @@ END_COMPONENT(Networking);
 
 } //namespace Divide
 
-#endif //_NETWORKING_COMPONENT_H_
+#endif //DVD_NETWORKING_COMPONENT_H_

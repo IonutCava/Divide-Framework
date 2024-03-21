@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _DISPLAY_WINDOW_INL_
-#define _DISPLAY_WINDOW_INL_
+#ifndef DVD_DISPLAY_WINDOW_INL_
+#define DVD_DISPLAY_WINDOW_INL_
 
 #include "Core/Headers/StringHelper.h"
 
@@ -133,4 +133,4 @@ namespace Divide {
     }
 }; //namespace Divide
 
-#endif //_DISPLAY_WINDOW_INL_
+#endif //DVD_DISPLAY_WINDOW_INL_

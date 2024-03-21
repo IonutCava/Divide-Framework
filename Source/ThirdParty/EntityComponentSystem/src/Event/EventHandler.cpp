@@ -17,7 +17,7 @@ namespace ECS { namespace Event {
 	EventHandler::EventHandler()
 	{
 		DEFINE_LOGGER("EventHandler")
-		LogInfo("Initialize EventHandler!","");
+		LOG_INFO("Initialize EventHandler!","");
 	
 		// allocate memory from global memory manager
 		this->m_EventMemoryAllocator = new EventMemoryAllocator(ECS_EVENT_MEMORY_BUFFER_SIZE, Allocate(ECS_EVENT_MEMORY_BUFFER_SIZE, "EventHandler"));
@@ -41,7 +41,7 @@ namespace ECS { namespace Event {
 		delete this->m_EventMemoryAllocator;
 		this->m_EventMemoryAllocator = nullptr;
 	
-		LogInfo("Release EventHandler!","");
+		LOG_INFO("Release EventHandler!","");
 	}
 
 }} // namespace ECS::Event

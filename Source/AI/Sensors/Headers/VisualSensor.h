@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _AI_VISUAL_SENSOR_H_
-#define _AI_VISUAL_SENSOR_H_
+#ifndef DVD_AI_VISUAL_SENSOR_H_
+#define DVD_AI_VISUAL_SENSOR_H_
 
 #include "Sensor.h"
 
@@ -57,7 +57,7 @@ using NodePositionsMap = hashMap<U32, NodePositions>;
 class VisualSensor final : public Sensor {
     friend class Attorney::VisualSensorConstructor;
    public:
-     ~VisualSensor();
+     ~VisualSensor() override;
 
     void update(U64 deltaTimeUS) override;
 
@@ -98,4 +98,4 @@ class VisualSensorConstructor {
 }  // namespace AI
 }  // namespace Divide
 
-#endif
+#endif //DVD_AI_VISUAL_SENSOR_H_

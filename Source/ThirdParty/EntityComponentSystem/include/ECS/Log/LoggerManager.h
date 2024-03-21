@@ -6,8 +6,8 @@
 #if !defined(ECS_DISABLE_LOGGING)
 
 #pragma once
-#ifndef __LOGGER_MANAGER_H__
-#define __LOGGER_MANAGER_H__
+#ifndef ECS__LOGGER_MANAGER_H__
+#define ECS__LOGGER_MANAGER_H__
 
 
 #include "Platform.h"
@@ -49,5 +49,5 @@ namespace ECS { namespace Log {
 }}} // namespace ECS::Log::Internal
 
 
-#endif // __LOGGER_MANAGER_H__
+#endif // ECS__LOGGER_MANAGER_H__
 #endif // !ECS_DISABLE_LOGGING

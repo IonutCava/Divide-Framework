@@ -29,8 +29,8 @@
 
  */
 
-#ifndef _CORE_CONSOLE_INL_
-#define _CORE_CONSOLE_INL_
+#ifndef DVD_CORE_CONSOLE_INL_
+#define DVD_CORE_CONSOLE_INL_
 
 #include "StringHelper.h"
 
@@ -270,4 +270,4 @@ NO_INLINE void Console::d_errorf(std::ofstream& outStream, const char* format, A
 }
 }
 
-#endif  //_CORE_CONSOLE_INL_
+#endif  //DVD_CORE_CONSOLE_INL_

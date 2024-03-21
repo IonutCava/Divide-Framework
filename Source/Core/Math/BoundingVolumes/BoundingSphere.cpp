@@ -63,7 +63,7 @@ RayResult BoundingSphere::intersect(const Ray& r, const F32 tMin, const F32 tMax
     const F32 b = Dot(m, d);
     const F32 c = Dot(m, m) - SQUARED(_radius);
 
-    // Exit if r’s origin outside s (c > 0) and r pointing away from s (b > 0) 
+    // Exit if r's origin outside s (c > 0) and r pointing away from s (b > 0) 
     if (c > 0.0f && b > 0.0f) {
         return {};
     }
@@ -88,7 +88,9 @@ RayResult BoundingSphere::intersect(const Ray& r, const F32 tMin, const F32 tMax
     return ret;
 }
 
-void BoundingSphere::fromOBB(const OBB& box) noexcept {
+void BoundingSphere::fromOBB(const OBB& box) noexcept
+{
     *this = box.toEnclosingSphere();
 }
+
 }  // namespace Divide

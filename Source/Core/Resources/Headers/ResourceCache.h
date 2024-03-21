@@ -68,7 +68,7 @@ namespace Divide
     {
         public:
         explicit ResourceCache( PlatformContext& context );
-        ~ResourceCache();
+        ~ResourceCache() override;
 
         /// Each resource entity should have a 'resource name'Loader implementation.
         template <typename T, bool UseAtomicCounter> requires std::is_base_of_v<CachedResource, T>

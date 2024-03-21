@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _GFX_COMMAND_IMPL_H_
-#define _GFX_COMMAND_IMPL_H_
+#ifndef DVD_GFX_COMMAND_IMPL_H_
+#define DVD_GFX_COMMAND_IMPL_H_
 
 #include "Commands.h"
 #include "ClipPlanes.h"
@@ -285,4 +285,4 @@ DEFINE_COMMAND_END(ClearBufferDataCommand);
 }; //namespace GFX
 }; //namespace Divide
 
-#endif //_GFX_COMMAND_H_
+#endif //DVD_GFX_COMMAND_IMPL_H_

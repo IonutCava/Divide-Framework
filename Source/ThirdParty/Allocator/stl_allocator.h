@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _STL_ALLOCATOR_H
-#define _STL_ALLOCATOR_H
+#ifndef STL_ALLOCATOR_H
+#define STL_ALLOCATOR_H
 
 // See http://www.codeproject.com/Articles/1089905/A-Custom-STL-std-allocator-Replacement-Improves-Performance-
 
@@ -139,4 +139,4 @@ namespace std
 	}
 }
 
-#endif 
+#endif //STL_ALLOCATOR_H

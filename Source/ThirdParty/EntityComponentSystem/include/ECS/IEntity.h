@@ -5,8 +5,8 @@
 ///-------------------------------------------------------------------------------------------------
 
 #pragma once
-#ifndef __I_ENTITY_H__
-#define __I_ENTITY_H__
+#ifndef ECS__I_ENTITY_H__
+#define ECS__I_ENTITY_H__
 
 #include "util/Handle.h"
 
@@ -96,4 +96,4 @@ namespace ECS
 
 } // namespace ECS
 
-#endif // __I_ENTITY_H__
+#endif // ECS__I_ENTITY_H__

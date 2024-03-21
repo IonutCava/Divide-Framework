@@ -9,6 +9,8 @@
 
 #include "Core/Headers/StringHelper.h"
 
+using namespace gl;
+
 namespace Divide
 {
     namespace

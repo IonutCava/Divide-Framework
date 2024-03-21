@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _TRANSFORM_COMPONENT_H_
-#define _TRANSFORM_COMPONENT_H_
+#ifndef DVD_TRANSFORM_COMPONENT_H_
+#define DVD_TRANSFORM_COMPONENT_H_
 
 #include "SGNComponent.h"
 #include "Core/Math/Headers/Transform.h"
@@ -261,4 +261,4 @@ namespace Attorney {
 
 } //namespace Divide
 
-#endif //_TRANSFORM_COMPONENT_H_
+#endif //DVD_TRANSFORM_COMPONENT_H_

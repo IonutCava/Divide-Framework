@@ -106,8 +106,8 @@ smasherprog@gmail.com or visit www.nolimitsdesigns.com
  */
 
 #pragma once
-#ifndef _MATH_MATRICES_H_
-#define _MATH_MATRICES_H_
+#ifndef DVD_MATH_MATRICES_H_
+#define DVD_MATH_MATRICES_H_
 
 #include "Plane.h"
 
@@ -744,6 +744,6 @@ static const mat4<F32> MAT4_INITIAL_TRANSFORM {
 
 }  // namespace Divide
 
-#endif //_MATH_MATRICES_H_
+#endif //DVD_MATH_MATRICES_H_
 
 #include "MathMatrices.inl"

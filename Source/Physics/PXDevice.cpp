@@ -7,7 +7,7 @@
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/PlatformContext.h"
 
-#ifndef _PHYSICS_API_FOUND_
+#ifndef DVD_PHYSICS_API_FOUND_
 #error "No physics library implemented!"
 #endif
 

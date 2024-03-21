@@ -29,11 +29,11 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 #pragma once
-#ifndef _HOT_RELOADING_UNIX_H_
-#define _HOT_RELOADING_UNIX_H_
+#ifndef DVD_HOT_RELOADING_UNIX_H_
+#define DVD_HOT_RELOADING_UNIX_H_
 
 struct run;
 static void run_unload(struct run *run);
 static void run_load_if_new_lib(struct run *run, const char *fn);
 
-#endif //_HOT_RELOADING_UNIX_H_
+#endif //DVD_HOT_RELOADING_UNIX_H_

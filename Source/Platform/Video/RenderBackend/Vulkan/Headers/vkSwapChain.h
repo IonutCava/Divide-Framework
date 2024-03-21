@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _VK_SWAP_CHAIN_H_
-#define _VK_SWAP_CHAIN_H_
+#ifndef DVD_VK_SWAP_CHAIN_H_
+#define DVD_VK_SWAP_CHAIN_H_
 
 #include "vkResources.h"
 
@@ -91,4 +91,5 @@ namespace Divide {
 
     FWD_DECLARE_MANAGED_CLASS(VKSwapChain);
 }; //namespace Divide
-#endif //_VK_SWAP_CHAIN_H_
+
+#endif //DVD_VK_SWAP_CHAIN_H_

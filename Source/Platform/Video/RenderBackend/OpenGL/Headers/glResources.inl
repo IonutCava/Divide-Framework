@@ -30,82 +30,108 @@
  */
 
 #pragma once
-#ifndef _GL_RESOURCES_INL_
-#define _GL_RESOURCES_INL_
+#ifndef DVD_GL_RESOURCES_INL_
+#define DVD_GL_RESOURCES_INL_
 
 namespace Divide {
 namespace GLUtil {
 
 template<typename T>
-void getGLValue(const GLenum param, T& value, const GLint index) {
-    GLint valueTemp = 0;
-    if (index < 0) {
-        glGetIntegerv(param, &valueTemp);
-    } else {
-        glGetIntegeri_v(param, static_cast<GLuint>(index), &valueTemp);
+void getGLValue(const gl::GLenum param, T& value, const gl::GLint index)
+{
+    gl::GLint valueTemp = 0;
+    if (index < 0)
+    {
+        gl::glGetIntegerv(param, &valueTemp);
     }
+    else
+    {
+        gl::glGetIntegeri_v(param, static_cast<gl::GLuint>(index), &valueTemp);
+    }
+
     value = static_cast<T>(valueTemp);
 }
 
 template<typename T>
-void getGLValue(const GLenum param, T* value) {
-    glGetIntegerv(param, value);
+void getGLValue(const gl::GLenum param, T* value)
+{
+    gl::glGetIntegerv(param, value);
 }
 
 template<>
-inline void getGLValue(const GLenum param, U32& value, const GLint index) {
-    value = static_cast<U32>(getGLValueIndexed<GLint>(param, index));
+inline void getGLValue(const gl::GLenum param, U32& value, const gl::GLint index)
+{
+    value = static_cast<U32>(getGLValueIndexed<gl::GLint>(param, index));
 }
 
 template<>
-inline void getGLValue(const GLenum param, F32& value, const GLint index) {
-    if (index < 0) {
-        glGetFloatv(param, &value);
-    } else {
-        glGetFloati_v(param, static_cast<GLuint>(index), &value);
+inline void getGLValue(const gl::GLenum param, F32& value, const gl::GLint index)
+{
+    if (index < 0)
+    {
+        gl::glGetFloatv(param, &value);
+    }
+    else
+    {
+        gl::glGetFloati_v(param, static_cast<gl::GLuint>(index), &value);
     }
 }
 
 template<>
-inline void getGLValue(const GLenum param, GLboolean& value, const GLint index) {
-    if (index < 0) {
-        glGetBooleanv(param, &value);
-    } else {
-        glGetBooleani_v(param, static_cast<GLuint>(index), &value);
+inline void getGLValue(const gl::GLenum param, gl::GLboolean& value, const gl::GLint index)
+{
+    if (index < 0)
+    {
+        gl::glGetBooleanv(param, &value);
+    }
+    else
+    {
+        gl::glGetBooleani_v(param, static_cast<gl::GLuint>(index), &value);
     }
 }
 
 template<>
-inline void getGLValue(const GLenum param, D64& value, const GLint index) {
-    if (index < 0) {
-        glGetDoublev(param, &value);
-    } else {
-        glGetDoublei_v(param, static_cast<GLuint>(index), &value);
+inline void getGLValue(const gl::GLenum param, D64& value, const gl::GLint index)
+{
+    if (index < 0)
+    {
+        gl::glGetDoublev(param, &value);
+    }
+    else
+    {
+        gl::glGetDoublei_v(param, static_cast<gl::GLuint>(index), &value);
     }
 }
 
 template<>
-inline void getGLValue(const GLenum param, GLint64& value, const GLint index) {
-    if (index < 0) {
-        glGetInteger64v(param, &value);
-    } else {
-        glGetInteger64i_v(param, static_cast<GLuint>(index), &value);
+inline void getGLValue(const gl::GLenum param, gl::GLint64& value, const gl::GLint index)
+{
+    if (index < 0)
+    {
+        gl::glGetInteger64v(param, &value);
+    }
+    else
+    {
+        gl::glGetInteger64i_v(param, static_cast<gl::GLuint>(index), &value);
     }
 }
 
 template<typename T>
-T getGLValue(GLenum param) {
+T getGLValue( gl::GLenum param)
+{
     T ret = {};
     getGLValue(param, ret, -1);
     return ret;
 }
 
 template<typename T>
-T getGLValueIndexed(GLenum param, GLint index) {
+T getGLValueIndexed( gl::GLenum param, gl::GLint index)
+{
     T ret = {};
     getGLValue(param, ret, index);
     return ret;
 }
 }; // namespace GLUtil
 }; // namespace Divide
-#endif  //_GL_RESOURCES_INL_
+
+#endif  //DVD_GL_RESOURCES_INL_

@@ -29,13 +29,13 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 
-#ifndef _HARDWARE_VIDEO_GFX_SHADER_DATA_INL_
-#define _HARDWARE_VIDEO_GFX_SHADER_DATA_INL_
+#ifndef DVD_HARDWARE_VIDEO_GFX_SHADER_DATA_INL_
+#define DVD_HARDWARE_VIDEO_GFX_SHADER_DATA_INL_
 
 namespace Divide {
 
 inline F32 AspectRatio(const GFXShaderData::CamData& dataIn) noexcept {
-    return dataIn._ViewPort.z / dataIn._ViewPort.w;
+    return dataIn._viewPort.z / dataIn._viewPort.w;
 }
 
 inline vec2<F32> CameraZPlanes(const GFXShaderData::CamData& dataIn) noexcept {
@@ -47,4 +47,4 @@ inline F32 FoV(const GFXShaderData::CamData& dataIn) noexcept {
 }
 
 }; //namespace Divide
-#endif //_HARDWARE_VIDEO_GFX_SHADER_DATA_INL_
+#endif //DVD_HARDWARE_VIDEO_GFX_SHADER_DATA_INL_

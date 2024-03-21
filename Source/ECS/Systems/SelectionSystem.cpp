@@ -23,7 +23,7 @@ namespace Divide
 
         for ( SelectionComponent* comp : _componentCache )
         {
-            SceneGraphNode* sgn = comp->parentSGN();
+            const SceneGraphNode* sgn = comp->parentSGN();
 
             comp->_selectionType = SelectionComponent::SelectionType::NONE;
 

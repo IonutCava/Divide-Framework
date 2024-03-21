@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _GL_SAMPLER_H_
-#define _GL_SAMPLER_H_
+#ifndef DVD_GL_SAMPLER_H_
+#define DVD_GL_SAMPLER_H_
 
 #include "Platform/Video/RenderBackend/OpenGL/Headers/glResources.h"
 
@@ -41,9 +41,10 @@ struct SamplerDescriptor;
 
 class glSamplerObject {
    public:
-    static GLuint Construct(const SamplerDescriptor& descriptor);
-    static void Destruct(GLuint& handle);
+    static gl::GLuint Construct(const SamplerDescriptor& descriptor);
+    static void Destruct( gl::GLuint& handle);
 };
 
 };  // namespace Divide
-#endif //_GL_SAMPLER_H_
+
+#endif //DVD_GL_SAMPLER_H_

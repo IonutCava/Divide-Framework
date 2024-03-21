@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _CORE_APPLICATION_H_
-#define _CORE_APPLICATION_H_
+#ifndef DVD_CORE_APPLICATION_H_
+#define DVD_CORE_APPLICATION_H_
 
 #include "WindowManager.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
@@ -77,7 +77,7 @@ public:
 
 public:
      Application() noexcept;
-     ~Application();
+     ~Application() override;
 
     [[nodiscard]] ErrorCode  start(const string& entryPoint, I32 argc, char** argv);
                   void       stop( const StepResult stepResult );
@@ -142,7 +142,7 @@ struct DisplayManager
         string _formatName{};
         vec2<U16> _resolution{ 1u };
         U8 _bitsPerPixel{ 8u };
-        U8 _maxRefreshRate{ 24u }; //< As returned by SDL_GetPixelFormatName
+        U8 _maxRefreshRate{ 24u }; ///< As returned by SDL_GetPixelFormatName
     };
 
     friend class Attorney::DisplayManagerWindowManager;
@@ -233,6 +233,6 @@ namespace Attorney
 
 };  // namespace Divide
 
-#endif  //_CORE_APPLICATION_H_
+#endif  //DVD_CORE_APPLICATION_H_
 
 #include "Application.inl"

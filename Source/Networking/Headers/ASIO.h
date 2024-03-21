@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _DIVIDE_BOOST_ASIO_TPL_H_
-#define _DIVIDE_BOOST_ASIO_TPL_H_
+#ifndef DVD_DIVIDE_BOOST_ASIO_TPL_H_
+#define DVD_DIVIDE_BOOST_ASIO_TPL_H_
 
 #include "WorldPacket.h"
 
@@ -94,4 +94,5 @@ namespace Divide
     };
 
 };  // namespace Divide
-#endif
+
+#endif //DVD_DIVIDE_BOOST_ASIO_TPL_H_

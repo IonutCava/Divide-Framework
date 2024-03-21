@@ -25,8 +25,8 @@
  *   OTHER DEALINGS IN THE SOFTWARE.
  ***************************************************************************/
 #pragma once
-#ifndef _CEGUIDVDGeometryBuffer_h_
-#define _CEGUIDVDGeometryBuffer_h_
+#ifndef DVD_CEGUIDVDGeometryBuffer_h_
+#define DVD_CEGUIDVDGeometryBuffer_h_
 
 #include "CEGUI/GeometryBuffer.h"
 #include "CEGUI/Rect.h"
@@ -142,6 +142,6 @@ protected:
 
 }
 
-#endif
+#endif //DVD_CEGUIDVDGeometryBuffer_h_
 
 #include "DVDGeometryBuffer.inl"

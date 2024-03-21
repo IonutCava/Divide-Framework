@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _PRE_RENDER_OPERATOR_H_
-#define _PRE_RENDER_OPERATOR_H_
+#ifndef DVD_PRE_RENDER_OPERATOR_H_
+#define DVD_PRE_RENDER_OPERATOR_H_
 
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
@@ -85,4 +85,5 @@ class NOINITVTABLE PreRenderOperator {
 FWD_DECLARE_MANAGED_CLASS(PreRenderOperator);
 
 };  // namespace Divide
-#endif
+
+#endif //DVD_PRE_RENDER_OPERATOR_H_

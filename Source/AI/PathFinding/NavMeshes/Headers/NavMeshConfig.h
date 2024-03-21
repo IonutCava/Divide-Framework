@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _NAV_MESH_CONFIG_H_
-#define _NAV_MESH_CONFIG_H_
+#ifndef DVD_NAV_MESH_CONFIG_H_
+#define DVD_NAV_MESH_CONFIG_H_
 
 #include "NavMeshDefines.h"
 
@@ -509,4 +509,4 @@ class NavigationMeshConfig {
 }  // namespace AI
 }  // namespace Divide
 
-#endif
+#endif //DVD_NAV_MESH_CONFIG_H_

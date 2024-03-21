@@ -41,7 +41,7 @@ FWD_DECLARE_MANAGED_STRUCT(vkBufferImpl);
 
 class vkGenericVertexData final : public GenericVertexData {
     public:
-        vkGenericVertexData(GFXDevice& context, const U32 ringBufferLength, bool renderIndirect, const Str<256>& name);
+        vkGenericVertexData(GFXDevice& context, const U16 ringBufferLength, bool renderIndirect, const Str<256>& name);
         ~vkGenericVertexData() = default;
 
         void reset() override;

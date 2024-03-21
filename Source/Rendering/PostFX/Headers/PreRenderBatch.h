@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _PRE_RENDER_BATCH_H_
-#define _PRE_RENDER_BATCH_H_
+#ifndef DVD_PRE_RENDER_BATCH_H_
+#define DVD_PRE_RENDER_BATCH_H_
 
 #include "PreRenderOperator.h"
 #include "Platform/Video/Headers/CommandsImpl.h"
@@ -202,6 +202,6 @@ class PreRenderBatch {
 };
 
 }  // namespace Divide
-#endif //_PRE_RENDER_BATCH_H_
+#endif //DVD_PRE_RENDER_BATCH_H_
 
 #include "PreRenderBatch.inl"

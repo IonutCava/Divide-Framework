@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _SCRIPTING_SCRIPT_BINDINGS_H_
-#define _SCRIPTING_SCRIPT_BINDINGS_H_
+#ifndef DVD_SCRIPTING_SCRIPT_BINDINGS_H_
+#define DVD_SCRIPTING_SCRIPT_BINDINGS_H_
 
 #include <chaiscript/chaiscript_stdlib.hpp>
 
@@ -49,4 +49,4 @@ namespace Divide {
 
 } //namespace Divide
 
-#endif //_SCRIPTING_SCRIPT_BINDINGS_H_
+#endif //DVD_SCRIPTING_SCRIPT_BINDINGS_H_

@@ -11,8 +11,8 @@ All Rights Reserved. (c) Copyright 2016.
 #if !defined(ECS_DISABLE_LOGGING)
 
 #pragma once
-#ifndef __LOGGER_H__
-#define __LOGGER_H__
+#ifndef ECS__LOGGER_H__
+#define ECS__LOGGER_H__
 
 #include "Platform.h"
 
@@ -86,5 +86,5 @@ namespace ECS { namespace Log {
 #include "Log/LoggerMacro.h"
 
 
-#endif // __LOGGER_H__
+#endif // ECS__LOGGER_H__
 #endif // !ECS_DISABLE_LOGGING

@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _EDITOR_OPTIONS_WINDOW_H
-#define _EDITOR_OPTIONS_WINDOW_H
+#ifndef DVD_EDITOR_OPTIONS_WINDOW_H
+#define DVD_EDITOR_OPTIONS_WINDOW_H
 
 #include "Core/Headers/PlatformContextComponent.h"
 #include <ImGuiMisc/imguifilesystem/imguifilesystem.h>
@@ -54,4 +54,4 @@ FWD_DECLARE_MANAGED_CLASS(EditorOptionsWindow);
 
 } //namespace Divide
 
-#endif //_EDITOR_OPTIONS_WINDOW_H
+#endif //DVD_EDITOR_OPTIONS_WINDOW_H

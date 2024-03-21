@@ -25,8 +25,8 @@
  *   OTHER DEALINGS IN THE SOFTWARE.
  ***************************************************************************/
 #pragma once
-#ifndef _CEGUIDVDGeometryBuffer_inl_
-#define _CEGUIDVDGeometryBuffer_inl_
+#ifndef DVD_CEGUIDVDGeometryBuffer_inl_
+#define DVD_CEGUIDVDGeometryBuffer_inl_
 
 #include "DVDTexture.h"
 
@@ -106,4 +106,4 @@ inline bool DVDGeometryBuffer::isClippingActive() const
 
 }
 
-#endif
+#endif //DVD_CEGUIDVDGeometryBuffer_inl_

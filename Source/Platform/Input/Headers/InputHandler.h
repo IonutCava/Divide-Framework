@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _INPUT_EVENT_HANDLER_H_
-#define _INPUT_EVENT_HANDLER_H_
+#ifndef DVD_INPUT_EVENT_HANDLER_H_
+#define DVD_INPUT_EVENT_HANDLER_H_
 
 #include "Platform/Headers/SDLEventListener.h"
 
@@ -57,4 +57,5 @@ class InputHandler final : public SDLEventListener {
 
 };  // namespace Input
 };  // namespace Divide;
-#endif
+
+#endif //DVD_INPUT_EVENT_HANDLER_H_

@@ -30,11 +30,11 @@
  */
 
 #pragma once
-#ifndef _VERTEX_DATA_INTERFACE_INL_
-#define _VERTEX_DATA_INTERFACE_INL_
+#ifndef DVD_VERTEX_DATA_INTERFACE_INL_
+#define DVD_VERTEX_DATA_INTERFACE_INL_
 
 namespace Divide {
 
 } //namespce Divide
 
-#endif //_VERTEX_DATA_INTERFACE_INL_
+#endif //DVD_VERTEX_DATA_INTERFACE_INL_

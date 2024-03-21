@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _SCENE_GRAPH_H_
-#define _SCENE_GRAPH_H_
+#ifndef DVD_SCENE_GRAPH_H_
+#define DVD_SCENE_GRAPH_H_
 
 #include "SceneNode.h"
 #include "IntersectionRecord.h"
@@ -65,7 +65,7 @@ class SceneGraph final : NonCopyable,
 
    public:
     explicit SceneGraph(Scene& parentScene);
-    ~SceneGraph();
+    ~SceneGraph() override;
 
     void unload();
 
@@ -211,4 +211,5 @@ class SceneGraphSGN {
 };  // namespace Attorney
 
 };  // namespace Divide
-#endif
+
+#endif //DVD_SCENE_GRAPH_H_

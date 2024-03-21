@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _PUSH_CONSTANTS_INL_
-#define _PUSH_CONSTANTS_INL_
+#ifndef DVD_PUSH_CONSTANTS_INL_
+#define DVD_PUSH_CONSTANTS_INL_
 
 namespace Divide {
     template<typename T>
@@ -83,4 +83,4 @@ namespace Divide {
     }
 } //namespace Divide
 
-#endif //_PUSH_CONSTANTS_INL_
+#endif //DVD_PUSH_CONSTANTS_INL_

@@ -127,9 +127,9 @@ namespace Divide
         info._workingDirectory.append( "/" );
     }
 
-    U32 HardwareThreadCount() noexcept
+    U16 HardwareThreadCount() noexcept
     {
-        return std::max( std::thread::hardware_concurrency(), 2u );
+        return to_U16(std::max( std::thread::hardware_concurrency(), 2u ));
     }
 
     bool CreateDirectories( const ResourcePath& path )

@@ -29,8 +29,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 
-#ifndef _MATH_MATRICES_INL_
-#define _MATH_MATRICES_INL_
+#ifndef DVD_MATH_MATRICES_INL_
+#define DVD_MATH_MATRICES_INL_
 namespace Divide
 {
 
@@ -2848,4 +2848,4 @@ namespace Divide
     }
 
 } //namespace Divide
-#endif //_MATH_MATRICES_INL_
+#endif //DVD_MATH_MATRICES_INL_

@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _CORE_XML_ENTRY_DATA_H_
-#define _CORE_XML_ENTRY_DATA_H_
+#ifndef DVD_CORE_XML_ENTRY_DATA_H_
+#define DVD_CORE_XML_ENTRY_DATA_H_
 
 #include "Utility/Headers/XMLParser.h"
 
@@ -55,4 +55,4 @@ public:
 };
 }; //namespace Divide
 
-#endif //_CORE_XML_ENTRY_DATA_H_
+#endif //DVD_CORE_XML_ENTRY_DATA_H_

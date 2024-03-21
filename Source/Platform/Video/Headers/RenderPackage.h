@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _RENDER_PACKAGE_H_
-#define _RENDER_PACKAGE_H_
+#ifndef DVD_RENDER_PACKAGE_H_
+#define DVD_RENDER_PACKAGE_H_
 
 #include "Platform/Video/Headers/CommandBuffer.h"
 
@@ -59,4 +59,4 @@ void Clear(RenderPackage& pkg) noexcept;
 GFX::CommandBuffer* GetCommandBuffer(RenderPackage& pkg);
 }; // namespace Divide
 
-#endif //_RENDER_PACKAGE_H_
+#endif //DVD_RENDER_PACKAGE_H_

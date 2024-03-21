@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _CORE_WINDOW_MANAGER_H_
-#define _CORE_WINDOW_MANAGER_H_
+#ifndef DVD_CORE_WINDOW_MANAGER_H_
+#define DVD_CORE_WINDOW_MANAGER_H_
 
 #include "Platform/Headers/DisplayWindow.h"
 #include "Utility/Headers/Colours.h"
@@ -178,6 +178,6 @@ struct SizeChangeParams
 };
 
 } //namespace Divide
-#endif //_CORE_WINDOW_MANAGER_H_
+#endif //DVD_CORE_WINDOW_MANAGER_H_
 
 #include "WindowManager.inl"

@@ -29,8 +29,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 
-#ifndef _TRANSFORM_INL_
-#define _TRANSFORM_INL_
+#ifndef DVD_TRANSFORM_INL_
+#define DVD_TRANSFORM_INL_
 
 namespace Divide {
 
@@ -213,4 +213,4 @@ FORCE_INLINE bool Transform::operator!=(const Transform& other) const {
 }
 }
 
-#endif //_TRANSFORM_INL_
+#endif //DVD_TRANSFORM_INL_ 

@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _PHYSICS_API_WRAPPER_H_
-#define _PHYSICS_API_WRAPPER_H_
+#ifndef DVD_PHYSICS_API_WRAPPER_H_
+#define DVD_PHYSICS_API_WRAPPER_H_
 
 #include "Core/Headers/FrameListener.h"
 #include "Core/Headers/PlatformContextComponent.h"
@@ -67,8 +67,6 @@ class NOINITVTABLE PhysicsAPIWrapper : public PlatformContextComponent
    public:
     explicit PhysicsAPIWrapper( PlatformContext& context );
 
-    virtual ~PhysicsAPIWrapper() = default;
-
     virtual bool convertActor(PhysicsAsset* actor, PhysicsGroup newGroup) = 0;
 
    protected:
@@ -92,4 +90,4 @@ FWD_DECLARE_MANAGED_CLASS(PhysicsAPIWrapper);
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_PHYSICS_API_WRAPPER_H_

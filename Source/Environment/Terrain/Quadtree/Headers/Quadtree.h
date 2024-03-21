@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _QUAD_TREE
-#define _QUAD_TREE
+#ifndef DVD_QUAD_TREE
+#define DVD_QUAD_TREE
 
 namespace Divide {
 
@@ -80,4 +80,4 @@ class Quadtree {
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_QUAD_TREE

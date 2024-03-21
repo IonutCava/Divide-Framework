@@ -30,6 +30,7 @@
 #include "Platform/Video/Headers/fontstash.h"
 
 #include <CEGUI/CEGUI.h>
+#include <CEGUI/WindowRendererSets/Core/Module.h>
 
 namespace Divide
 {

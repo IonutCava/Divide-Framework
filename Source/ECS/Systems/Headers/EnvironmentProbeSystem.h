@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _ENVIRONMENT_PROBE_SYSTEM_H_
-#define _ENVIRONMENT_PROBE_SYSTEM_H_
+#ifndef DVD_ENVIRONMENT_PROBE_SYSTEM_H_
+#define DVD_ENVIRONMENT_PROBE_SYSTEM_H_
 
 #include "ECSSystem.h"
 #include "Core/Headers/PlatformContextComponent.h"
@@ -49,4 +49,4 @@ namespace Divide {
     };
 }
 
-#endif //_ENVIRONMENT_PROBE_SYSTEM_H_
+#endif //DVD_ENVIRONMENT_PROBE_SYSTEM_H_

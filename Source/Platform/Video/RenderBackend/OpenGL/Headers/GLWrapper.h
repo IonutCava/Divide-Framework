@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _GL_WRAPPER_H_
-#define _GL_WRAPPER_H_
+#ifndef DVD_GL_WRAPPER_H_
+#define DVD_GL_WRAPPER_H_
 
 #include "GLStateTracker.h"
 #include "glHardwareQuery.h"
@@ -108,7 +108,7 @@ private:
 
     [[nodiscard]] bool bindShaderResources( const DescriptorSetEntries& descriptorSetEntries ) override;
 
-    [[nodiscard]] bool makeTextureViewResident( GLubyte bindingSlot, const ImageView& imageView, SamplerDescriptor sampler, size_t& samplerHashInOut ) const;
+    [[nodiscard]] bool makeTextureViewResident( gl::GLubyte bindingSlot, const ImageView& imageView, SamplerDescriptor sampler, size_t& samplerHashInOut ) const;
 
     bool setViewportInternal(const Rect<I32>& viewport) override;
     bool setScissorInternal( const Rect<I32>& scissor ) override;
@@ -116,7 +116,7 @@ private:
 
     void flushTextureBindQueue();
 
-    [[nodiscard]] GLuint getGLTextureView(ImageView srcView, U8 lifetimeInFrames) const;
+    [[nodiscard]] gl::GLuint getGLTextureView(ImageView srcView, U8 lifetimeInFrames) const;
 
     void initDescriptorSets() override;
 
@@ -130,7 +130,7 @@ private:
 
 public:
     [[nodiscard]] static GLStateTracker& GetStateTracker() noexcept;
-    [[nodiscard]] static GLUtil::GLMemory::GLMemoryType GetMemoryTypeForUsage(GLenum usage) noexcept;
+    [[nodiscard]] static GLUtil::GLMemory::GLMemoryType GetMemoryTypeForUsage(gl::GLenum usage) noexcept;
     [[nodiscard]] static GLUtil::GLMemory::DeviceAllocator& GetMemoryAllocator(GLUtil::GLMemory::GLMemoryType memoryType) noexcept;
 
     static void QueueFlush() noexcept;
@@ -139,17 +139,17 @@ public:
     static void PushDebugMessage( const char* message, U32 id = U32_MAX );
     static void PopDebugMessage();
 
-    [[nodiscard]] static bool DeleteShaderPrograms(GLuint count, GLuint * programs);
-    [[nodiscard]] static bool DeleteSamplers(GLuint count, GLuint* samplers);
-    [[nodiscard]] static bool DeleteBuffers(GLuint count, GLuint* buffers);
-    [[nodiscard]] static bool DeleteFramebuffers(GLuint count, GLuint* framebuffers);
+    [[nodiscard]] static bool DeleteShaderPrograms( gl::GLuint count, gl::GLuint * programs);
+    [[nodiscard]] static bool DeleteSamplers( gl::GLuint count, gl::GLuint* samplers);
+    [[nodiscard]] static bool DeleteBuffers( gl::GLuint count, gl::GLuint* buffers);
+    [[nodiscard]] static bool DeleteFramebuffers( gl::GLuint count, gl::GLuint* framebuffers);
 
-    [[nodiscard]] static GLuint GetSamplerHandle(SamplerDescriptor sampler, size_t& samplerHashInOut);
+    [[nodiscard]] static gl::GLuint GetSamplerHandle(SamplerDescriptor sampler, size_t& samplerHashInOut);
 
     [[nodiscard]] static glHardwareQueryPool* GetHardwareQueryPool() noexcept;
 
-    [[nodiscard]] static GLsync CreateFenceSync();
-    static void DestroyFenceSync(GLsync& sync);
+    [[nodiscard]] static gl::GLsync CreateFenceSync();
+    static void DestroyFenceSync( gl::GLsync& sync);
 
 protected:
     static ShaderResult BindPipeline(GFXDevice& context, const Pipeline& pipeline);
@@ -173,15 +173,15 @@ private:
     };
 
     struct TexBindEntry {
-        GLubyte _slot{ INVALID_TEXTURE_BINDING };
-        GLuint _handle{ GL_NULL_HANDLE };
-        GLuint _sampler{ GL_NULL_HANDLE };
+        gl::GLubyte _slot{ INVALID_TEXTURE_BINDING };
+        gl::GLuint _handle{ GL_NULL_HANDLE };
+        gl::GLuint _sampler{ GL_NULL_HANDLE };
     };
 
     static eastl::fixed_vector<TexBindEntry, 32, false> s_TexBindQueue;
 
     using HardwareQueryContext = std::array<glHardwareQueryEntry, to_base(QueryType::COUNT)>;
-    using SamplerObjectMap = hashMap<size_t, GLuint>;
+    using SamplerObjectMap = hashMap<size_t, gl::GLuint>;
 
 private:
     GFXDevice& _context;
@@ -197,7 +197,7 @@ private:
     bool _pushConstantsNeedLock{false};
     GFX::MemoryBarrierCommand _pushConstantsMemCommand{};
 
-    GLuint _dummyVAO{ GL_NULL_HANDLE };
+    gl::GLuint _dummyVAO{ GL_NULL_HANDLE };
 
 private:
 
@@ -218,4 +218,5 @@ private:
 };
 
 };  // namespace Divide
-#endif
+
+#endif //DVD_GL_WRAPPER_H_

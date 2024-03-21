@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _UTILITY_TEXT_LABEL_H_
-#define _UTILITY_TEXT_LABEL_H_
+#ifndef DVD_UTILITY_TEXT_LABEL_H_
+#define DVD_UTILITY_TEXT_LABEL_H_
 
 #include "Colours.h"
 #include "Core/Math/Headers/Dimension.h"
@@ -103,4 +103,4 @@ struct TextElementBatch {
 
 }  // namespace Divide
 
-#endif //_UTILITY_TEXT_LABEL_H_
+#endif //DVD_UTILITY_TEXT_LABEL_H_

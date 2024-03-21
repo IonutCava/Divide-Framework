@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _IM_EMULATION_DESCRIPTORS_H_
-#define _IM_EMULATION_DESCRIPTORS_H_
+#ifndef DVD_IM_EMULATION_DESCRIPTORS_H_
+#define DVD_IM_EMULATION_DESCRIPTORS_H_
 
 #include "Core/Math/Headers/Line.h"
 #include "Core/Math/BoundingVolumes/Headers/OBB.h"
@@ -81,4 +81,4 @@ namespace IM {
 } //namespace IM
 } //namespace Divide
 
-#endif //_IM_EMULATION_DESCRIPTORS_H_
+#endif //DVD_IM_EMULATION_DESCRIPTORS_H_

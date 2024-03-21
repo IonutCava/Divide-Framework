@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _PLATFORM_DEFINES_OS_H_
-#define _PLATFORM_DEFINES_OS_H_
+#ifndef DVD_PLATFORM_DEFINES_OS_H_
+#define DVD_PLATFORM_DEFINES_OS_H_
 
 #if defined(_WIN32)
 #include "PlatformDefinesWindows.h"
@@ -41,4 +41,4 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "PlatformDefinesUnix.h"
 #endif
 
-#endif //_PLATFORM_DEFINES_OS_H_
+#endif //DVD_PLATFORM_DEFINES_OS_H_

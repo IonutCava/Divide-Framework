@@ -29,8 +29,8 @@
 
  */
 
-#ifndef _CORE_TIME_APPLICATION_TIMER_INL_
-#define _CORE_TIME_APPLICATION_TIMER_INL_
+#ifndef DVD_CORE_TIME_APPLICATION_TIMER_INL_
+#define DVD_CORE_TIME_APPLICATION_TIMER_INL_
 
 namespace Divide {
 namespace Time {
@@ -54,4 +54,4 @@ inline void ApplicationTimer::getFrameRateAndTime(F32& fpsOut, F32& frameTimeOut
 }  // namespace Time
 }  // namespace Divide
 
-#endif  //_CORE_TIME_APPLICATION_TIMER_INL_
+#endif  //DVD_CORE_TIME_APPLICATION_TIMER_INL_

@@ -29,8 +29,8 @@
 
  */
 
-#ifndef _CORE_APPLICATION_INL_
-#define _CORE_APPLICATION_INL_
+#ifndef DVD_CORE_APPLICATION_INL_
+#define DVD_CORE_APPLICATION_INL_
 
 namespace Divide {
 
@@ -110,4 +110,4 @@ inline void Application::freezeRendering( const bool state ) noexcept
 }
 };  // namespace Divide
 
-#endif  //_CORE_APPLICATION_INL_
+#endif  //DVD_CORE_APPLICATION_INL_

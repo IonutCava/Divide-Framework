@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _WRAPPER_AL_H_
-#define _WRAPPER_AL_H_
+#ifndef DVD_WRAPPER_AL_H_
+#define DVD_WRAPPER_AL_H_
 
 #include "Platform/Audio/Headers/AudioAPIWrapper.h"
 
@@ -63,4 +63,4 @@ private:
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_WRAPPER_AL_H_

@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _NONE_WRAPPER_H_
-#define _NONE_WRAPPER_H_
+#ifndef DVD_NONE_WRAPPER_H_
+#define DVD_NONE_WRAPPER_H_
 
 #include "NonePlaceholderObjects.h"
 
@@ -77,4 +77,5 @@ private:
 };
 
 };  // namespace Divide
-#endif //_NONE_WRAPPER_H_
+
+#endif //DVD_NONE_WRAPPER_H_

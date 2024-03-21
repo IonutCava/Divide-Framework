@@ -472,7 +472,7 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
             const SpvReflectDescriptorBinding& refl_binding = *(refl_set.bindings[i_binding]);
             if ( refl_binding.set == Divide::to_base(Divide::DescriptorSetUsage::PER_DRAW) && refl_binding.accessed == 0u )
             {
-                STUBBED("ToDo: Figure out why refl_binding::accessed reports 0 in certain cases even though the binding is used (e.g. texScreen in FXAA.glsl). -Ionut")
+                STUBBED("ToDo: Figure out why refl_binding::accessed reports 0 in certain cases even though the binding is used (e.g. texScreen in FXAA.glsl). -Ionut");
                 //continue;
             }
 

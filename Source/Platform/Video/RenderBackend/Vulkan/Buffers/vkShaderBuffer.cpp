@@ -39,7 +39,7 @@ namespace Divide
                                                         bufferName.c_str() );
     }
 
-    BufferLock vkShaderBuffer::writeBytesInternal( const BufferRange range, bufferPtr data ) noexcept
+    BufferLock vkShaderBuffer::writeBytesInternal( const BufferRange range, const bufferPtr data ) noexcept
     {
         if ( !_bufferImpl->waitForLockedRange( range ) )
         {

@@ -12,6 +12,13 @@
 #include "Utility/Headers/Localization.h"
 #include "Physics/Headers/PXDevice.h"
 
+#include <physx/PxSceneDesc.h>
+#include <physx/PxSceneLock.h>
+#include <physx/PxPhysics.h>
+
+#include <physx/extensions/PxDefaultCpuDispatcher.h>
+#include <physx/extensions/PxDefaultSimulationFilterShader.h>
+
 namespace Divide
 {
     namespace

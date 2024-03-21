@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _RENDER_TARGET_H_
-#define _RENDER_TARGET_H_
+#ifndef DVD_RENDER_TARGET_H_
+#define DVD_RENDER_TARGET_H_
 
 #include "RTDrawDescriptor.h"
 #include "RTAttachment.h"
@@ -69,8 +69,6 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
     explicit RenderTarget(GFXDevice& context, const RenderTargetDescriptor& descriptor);
 
    public:
-    virtual ~RenderTarget() = default;
-
     /// Init all attachments. Returns false if already called
     [[nodiscard]] virtual bool create();
 
@@ -110,4 +108,4 @@ FWD_DECLARE_MANAGED_CLASS(RenderTarget);
 
 };  // namespace Divide
 
-#endif //_RENDER_TARGET_H_
+#endif //DVD_RENDER_TARGET_H_

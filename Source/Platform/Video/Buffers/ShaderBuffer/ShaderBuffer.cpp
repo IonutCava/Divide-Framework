@@ -9,8 +9,8 @@ size_t ShaderBuffer::AlignmentRequirement(const BufferUsageType usage) noexcept 
     switch ( usage )
     {
         case BufferUsageType::UNBOUND_BUFFER :
-        case BufferUsageType::COMMAND_BUFFER : return GFXDevice::GetDeviceInformation()._SSBOffsetAlignmentBytes;
-        case BufferUsageType::CONSTANT_BUFFER: return GFXDevice::GetDeviceInformation()._UBOffsetAlignmentBytes;
+        case BufferUsageType::COMMAND_BUFFER : return GFXDevice::GetDeviceInformation()._offsetAlignmentBytesSSBO;
+        case BufferUsageType::CONSTANT_BUFFER: return GFXDevice::GetDeviceInformation()._offsetAlignmentBytesUBO;
     };
 
     return sizeof(U32);
@@ -26,7 +26,7 @@ ShaderBuffer::ShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& des
 {
     assert(descriptor._bufferParams._flags._usageType != BufferUsageType::COUNT);
     assert(descriptor._bufferParams._elementSize * descriptor._bufferParams._elementCount > 0 && "ShaderBuffer::Create error: Invalid buffer size!");
-    _maxSize = descriptor._bufferParams._flags._usageType == BufferUsageType::CONSTANT_BUFFER ? GFXDevice::GetDeviceInformation()._UBOMaxSizeBytes : GFXDevice::GetDeviceInformation()._SSBOMaxSizeBytes;
+    _maxSize = descriptor._bufferParams._flags._usageType == BufferUsageType::CONSTANT_BUFFER ? GFXDevice::GetDeviceInformation()._maxSizeBytesUBO : GFXDevice::GetDeviceInformation()._maxSizeBytesSSBO;
 }
 
 BufferLock ShaderBuffer::clearData(const BufferRange range) {
@@ -72,7 +72,7 @@ BufferLock ShaderBuffer::clearBytes(const BufferRange range) {
     return writeBytes(range, nullptr);
 }
 
-BufferLock ShaderBuffer::writeBytes(BufferRange range, bufferPtr data) {
+BufferLock ShaderBuffer::writeBytes(BufferRange range, const bufferPtr data) {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     DIVIDE_ASSERT(range._length > 0 &&

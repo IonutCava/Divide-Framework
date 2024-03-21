@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _AI_AUDIO_SENSOR_H_
-#define _AI_AUDIO_SENSOR_H_
+#ifndef DVD_AI_AUDIO_SENSOR_H_
+#define DVD_AI_AUDIO_SENSOR_H_
 
 #include "Sensor.h"
 
@@ -66,4 +66,4 @@ class AudioSensorConstructor {
 }  // namespace AI
 }  // namespace Divide
 
-#endif
+#endif //DVD_AI_AUDIO_SENSOR_H_

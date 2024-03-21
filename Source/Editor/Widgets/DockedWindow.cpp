@@ -122,7 +122,8 @@ namespace Divide {
                     }
                 }
                 return ICON_FK_ARROWS;
-            }break;
+            }
+
             default: break;
         }
 

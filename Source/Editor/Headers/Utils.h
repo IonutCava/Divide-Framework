@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _EDITOR_UTILS_H_
-#define _EDITOR_UTILS_H_
+#ifndef DVD_EDITOR_UTILS_H_
+#define DVD_EDITOR_UTILS_H_
 
 #include "UndoManager.h"
 #include "Platform/Video/Headers/PushConstant.h"
@@ -172,5 +172,4 @@ namespace Util {
 #pragma warning(pop)
 #endif
 
-
-#endif // _EDITOR_UTILS_H_
+#endif // DVD_EDITOR_UTILS_H_

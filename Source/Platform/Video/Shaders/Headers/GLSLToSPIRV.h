@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _GLSL_TO_SPIR_V_H_
-#define _GLSL_TO_SPIR_V_H_
+#ifndef DVD_GLSL_TO_SPIR_V_H_
+#define DVD_GLSL_TO_SPIR_V_H_
 
 typedef uint32_t VkFlags;
 typedef VkFlags VkShaderStageFlags;
@@ -64,4 +64,4 @@ struct SpirvHelper
     static bool s_isInit;
 };
 
-#endif //_GLSL_TO_SPIR_V_H_
+#endif //DVD_GLSL_TO_SPIR_V_H_

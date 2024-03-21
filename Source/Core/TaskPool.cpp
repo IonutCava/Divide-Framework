@@ -192,7 +192,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
-        task._callback = {}; //<Needed to cleanup any stale resources (e.g. captured by lambdas)
+        task._callback = {}; ///<Needed to cleanup any stale resources (e.g. captured by lambdas)
         if ( hasOnCompletionFunction )
         {
             _threadedCallbackBuffer.enqueue( task._id );

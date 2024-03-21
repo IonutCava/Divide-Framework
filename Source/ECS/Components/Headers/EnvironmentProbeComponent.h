@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _ENVIRONMENT_PROBE_COMPONENT_H_
-#define _ENVIRONMENT_PROBE_COMPONENT_H_
+#ifndef DVD_ENVIRONMENT_PROBE_COMPONENT_H_
+#define DVD_ENVIRONMENT_PROBE_COMPONENT_H_
 
 #include "SGNComponent.h"
 
@@ -76,7 +76,7 @@ public:
 
 public:
     explicit EnvironmentProbeComponent(SceneGraphNode* sgn, PlatformContext& context);
-    ~EnvironmentProbeComponent();
+    ~EnvironmentProbeComponent() override;
 
     /// Returns true if the probe was updated, false if skipped
     bool refresh(GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
@@ -136,4 +136,4 @@ namespace TypeUtil {
 
 } //namespace Divide
 
-#endif //_ENVIRONMENT_PROBE_COMPONENT_H_
+#endif //DVD_ENVIRONMENT_PROBE_COMPONENT_H_

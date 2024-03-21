@@ -46,8 +46,8 @@ namespace Divide {
         [[nodiscard]] LockableBuffer* getBufferImpl() override final;
 
     protected:
-        BufferLock writeBytesInternal(BufferRange range, [[maybe_unused]] bufferPtr data) noexcept override;
-        void readBytesInternal(BufferRange range, [[maybe_unused]] std::pair<bufferPtr, size_t> outData) noexcept override;
+        BufferLock writeBytesInternal(BufferRange range, const bufferPtr data) noexcept override;
+        void readBytesInternal(BufferRange range, std::pair<bufferPtr, size_t> outData) noexcept override;
 
     private:
         vkBufferImpl_uptr  _bufferImpl{ nullptr };

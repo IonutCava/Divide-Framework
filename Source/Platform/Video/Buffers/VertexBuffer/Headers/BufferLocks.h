@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _BUFFER_LOCKS_H_
-#define _BUFFER_LOCKS_H_
+#ifndef DVD_BUFFER_LOCKS_H_
+#define DVD_BUFFER_LOCKS_H_
 
 #include "BufferRange.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/BufferParams.h"
@@ -66,4 +66,4 @@ namespace Divide {
 
 } //namespace Divide
 
-#endif //_BUFFER_LOCKS_H_
+#endif //DVD_BUFFER_LOCKS_H_

@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _EDITOR_DOCKED_WINDOW_H_
-#define _EDITOR_DOCKED_WINDOW_H_
+#ifndef DVD_EDITOR_DOCKED_WINDOW_H_
+#define DVD_EDITOR_DOCKED_WINDOW_H_
 
 #ifndef IMGUI_API
 #include <imgui.h>
@@ -88,4 +88,4 @@ class DockedWindow : NonCopyable, NonMovable {
 };
 } //namespace Divide
 
-#endif //_EDITOR_DOCKED_WINDOW_H_
+#endif //DVD_EDITOR_DOCKED_WINDOW_H_

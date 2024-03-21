@@ -5,8 +5,10 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 
+using namespace gl;
 
 namespace Divide {
+
 namespace {
     [[nodiscard]] inline GLenum getMagFilterMode(const TextureFilter magFilter) {
         assert(magFilter != TextureFilter::COUNT);

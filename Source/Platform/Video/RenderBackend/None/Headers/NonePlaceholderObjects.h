@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _NONE_PLACEHOLDER_OBJECTS_H_
-#define _NONE_PLACEHOLDER_OBJECTS_H_
+#ifndef DVD_NONE_PLACEHOLDER_OBJECTS_H_
+#define DVD_NONE_PLACEHOLDER_OBJECTS_H_
 
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
@@ -50,7 +50,7 @@ namespace Divide {
 
     class noGenericVertexData final : public GenericVertexData {
      public:
-        noGenericVertexData(GFXDevice& context, const U32 ringBufferLength, const bool renderIndirect, const Str<256>& name)
+        noGenericVertexData(GFXDevice& context, const U16 ringBufferLength, const bool renderIndirect, const Str<256>& name)
             : GenericVertexData(context, ringBufferLength, renderIndirect, name)
         {}
 
@@ -102,11 +102,12 @@ namespace Divide {
             : ShaderBuffer(context, descriptor)
         {}
 
-        BufferLock writeBytesInternal([[maybe_unused]] BufferRange range, [[maybe_unused]] bufferPtr data) noexcept override { return {}; }
+        BufferLock writeBytesInternal([[maybe_unused]] BufferRange range, [[maybe_unused]] const bufferPtr data) noexcept override { return {}; }
         void readBytesInternal([[maybe_unused]] BufferRange range, [[maybe_unused]] std::pair<bufferPtr, size_t> outData) noexcept override {}
 
         [[nodiscard]] LockableBuffer* getBufferImpl() override { return nullptr; }
     };
 
 };  // namespace Divide
-#endif //_NONE_PLACEHOLDER_OBJECTS_H_
+
+#endif //DVD_NONE_PLACEHOLDER_OBJECTS_H_

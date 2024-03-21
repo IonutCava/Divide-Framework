@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _SCENE_COMPONENT_H_
-#define _SCENE_COMPONENT_H_
+#ifndef DVD_SCENE_COMPONENT_H_
+#define DVD_SCENE_COMPONENT_H_
 
 namespace Divide {
 
@@ -56,4 +56,4 @@ class SceneComponent {
 };
 } // namespace Divide
 
-#endif //_SCENE_COMPONENT_H_
+#endif //DVD_SCENE_COMPONENT_H_

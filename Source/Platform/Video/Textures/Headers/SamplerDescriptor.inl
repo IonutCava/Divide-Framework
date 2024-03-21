@@ -30,17 +30,17 @@
  */
 
 #pragma once
-#ifndef _SAMPLER_DESCRIPTOR_INL_
-#define _SAMPLER_DESCRIPTOR_INL_
+#ifndef DVD_SAMPLER_DESCRIPTOR_INL_
+#define DVD_SAMPLER_DESCRIPTOR_INL_
 
 namespace Divide
 {
     inline bool operator==( const SamplerDescriptor& lhs, const SamplerDescriptor& rhs ) noexcept
     {
         return lhs._customBorderColour == rhs._customBorderColour &&
-               lhs._minLOD == rhs._minLOD &&
-               lhs._maxLOD == rhs._maxLOD &&
-               lhs._biasLOD == rhs._biasLOD &&
+               COMPARE(lhs._minLOD, rhs._minLOD) &&
+               COMPARE(lhs._maxLOD, rhs._maxLOD) &&
+               COMPARE(lhs._biasLOD, rhs._biasLOD) &&
                lhs._minFilter == rhs._minFilter &&
                lhs._magFilter == rhs._magFilter &&
                lhs._mipSampling == rhs._mipSampling &&
@@ -55,9 +55,9 @@ namespace Divide
     inline bool operator!=( const SamplerDescriptor& lhs, const SamplerDescriptor& rhs ) noexcept
     {
         return lhs._customBorderColour != rhs._customBorderColour ||
-               lhs._minLOD != rhs._minLOD ||
-               lhs._maxLOD != rhs._maxLOD ||
-               lhs._biasLOD != rhs._biasLOD ||
+               !COMPARE(lhs._minLOD, rhs._minLOD) ||
+               !COMPARE(lhs._maxLOD, rhs._maxLOD) ||
+               !COMPARE(lhs._biasLOD, rhs._biasLOD) ||
                lhs._minFilter != rhs._minFilter ||
                lhs._magFilter != rhs._magFilter ||
                lhs._mipSampling != rhs._mipSampling ||
@@ -94,4 +94,4 @@ namespace Divide
 
 } //namespace Divide 
 
-#endif //_SAMPLER_DESCRIPTOR_INL_
+#endif //DVD_SAMPLER_DESCRIPTOR_INL_

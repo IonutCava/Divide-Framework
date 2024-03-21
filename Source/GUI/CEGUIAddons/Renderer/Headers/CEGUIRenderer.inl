@@ -26,8 +26,8 @@
  *   OTHER DEALINGS IN THE SOFTWARE.
  ***************************************************************************/
 #pragma once
-#ifndef _CEGUIRenderer_inl_
-#define _CEGUIRenderer_inl_
+#ifndef DVD_CEGUIRenderer_inl_
+#define DVD_CEGUIRenderer_inl_
 
 namespace CEGUI
 {
@@ -89,4 +89,4 @@ inline void CEGUIRenderer::setActiveRenderTarget( RenderTarget* renderTarget )
 
 }
 
-#endif
+#endif //DVD_CEGUIRenderer_inl_

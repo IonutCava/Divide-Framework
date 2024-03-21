@@ -17,7 +17,8 @@ size_t PropertyDescriptor::getHash() const noexcept {
 }
 
 ResourceDescriptor::ResourceDescriptor(const Str<256>& resourceName)
-    : _resourceName(resourceName)
+    : Hashable()
+    , _resourceName(resourceName)
 {
 }
 

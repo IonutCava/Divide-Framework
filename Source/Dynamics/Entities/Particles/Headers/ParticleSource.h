@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _PARTICLE_SOURCE_H_
-#define _PARTICLE_SOURCE_H_
+#ifndef DVD_PARTICLE_SOURCE_H_
+#define DVD_PARTICLE_SOURCE_H_
 
 #include "ParticleGenerator.h"
 
@@ -65,4 +65,5 @@ class ParticleSource {
     vector<std::shared_ptr<ParticleGenerator> > _particleGenerators;
 };
 }
-#endif
+
+#endif //DVD_PARTICLE_SOURCE_H_

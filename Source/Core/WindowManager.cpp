@@ -465,7 +465,7 @@ void WindowManager::CaptureMouse(const bool state) noexcept {
 }
 
 bool WindowManager::setCursorPosition(I32 x, I32 y) noexcept {
-    DisplayWindow* focusedWindow = getFocusedWindow();
+    const DisplayWindow* focusedWindow = getFocusedWindow();
     if (focusedWindow == nullptr) {
         focusedWindow = mainWindow();
     }

@@ -33,8 +33,8 @@
 /// http://www.geeks3d.com/20110405/fxaa-fast-approximate-anti-aliasing-demo-glsl-opengl-test-radeon-geforce/
 
 #pragma once
-#ifndef _POST_AA_PRE_RENDER_OPERATOR_H_
-#define _POST_AA_PRE_RENDER_OPERATOR_H_
+#ifndef DVD_POST_AA_PRE_RENDER_OPERATOR_H_
+#define DVD_POST_AA_PRE_RENDER_OPERATOR_H_
 
 #include "Rendering/PostFX/Headers/PreRenderOperator.h"
 #include "Platform/Video/Headers/CommandsImpl.h"
@@ -74,4 +74,4 @@ class PostAAPreRenderOperator final : public PreRenderOperator {
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_POST_AA_PRE_RENDER_OPERATOR_H_

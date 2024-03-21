@@ -72,8 +72,8 @@ class glShader final : public ShaderModule
                                                   U32 targetGeneration,
                                                   ShaderProgram::ShaderLoadData& data);
 
-    PROPERTY_R_IW(UseProgramStageMask, stageMask, UseProgramStageMask::GL_NONE_BIT);
-    PROPERTY_R_IW(GLuint, handle, GL_NULL_HANDLE);
+    PROPERTY_R_IW( gl::UseProgramStageMask, stageMask, gl::UseProgramStageMask::GL_NONE_BIT);
+    PROPERTY_R_IW( gl::GLuint, handle, GL_NULL_HANDLE);
 
    private:
     friend class glShaderProgram;
@@ -85,9 +85,9 @@ class glShader final : public ShaderModule
 
   private:
     ShaderProgram::ShaderLoadData _loadData;
-    vector<GLuint> _shaderIDs;
+    vector<gl::GLuint> _shaderIDs;
     bool _linked = false;
-    GLint _pushConstantsLocation{-2};
+    gl::GLint _pushConstantsLocation{-2};
 };
 
 };  // namespace Divide

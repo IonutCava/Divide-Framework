@@ -30,21 +30,26 @@ struct MeshLoadData {
 
 };
 
-void threadedMeshLoad(MeshLoadData loadData, ResourcePath modelPath, ResourcePath modelName) {
-    PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
+namespace 
+{
 
-    Import::ImportData tempMeshData(modelPath, modelName);
-    if (MeshImporter::loadMeshDataFromFile(*loadData._context, tempMeshData) &&
-        MeshImporter::loadMesh(tempMeshData.loadedFromFile(), loadData._mesh.get(), *loadData._context, loadData._cache, tempMeshData) &&
-        loadData._mesh->load())
-    {
-        NOP();
-    } else {
-        loadData._cache->remove(loadData._mesh.get());
-        loadData._mesh.reset();
-        Console::errorfn(LOCALE_STR("ERROR_IMPORTER_MESH"), modelName.c_str());
-        return;
+    void threadedMeshLoad(MeshLoadData loadData, ResourcePath modelPath, ResourcePath modelName) {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
+
+        Import::ImportData tempMeshData(modelPath, modelName);
+        if (MeshImporter::loadMeshDataFromFile(*loadData._context, tempMeshData) &&
+            MeshImporter::loadMesh(tempMeshData.loadedFromFile(), loadData._mesh.get(), *loadData._context, loadData._cache, tempMeshData) &&
+            loadData._mesh->load())
+        {
+            NOP();
+        } else {
+            loadData._cache->remove(loadData._mesh.get());
+            loadData._mesh.reset();
+            Console::errorfn(LOCALE_STR("ERROR_IMPORTER_MESH"), modelName.c_str());
+            return;
+        }
     }
+
 }
 
 template<>

@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _CIRCULAR_BUFFER_H_
-#define _CIRCULAR_BUFFER_H_
+#ifndef DVD_CIRCULAR_BUFFER_H_
+#define DVD_CIRCULAR_BUFFER_H_
 
 //ref: https://github.com/embeddedartistry/embedded-resources/blob/master/examples/cpp/circular_buffer.cpp
 namespace Divide {
@@ -113,4 +113,4 @@ private:
 
 }; //namespace Divide
 
-#endif //_CIRCULAR_BUFFER_H_
+#endif //DVD_CIRCULAR_BUFFER_H_

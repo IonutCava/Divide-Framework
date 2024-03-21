@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _UNIT_H_
-#define _UNIT_H_
+#ifndef DVD_UNIT_H_
+#define DVD_UNIT_H_
 
 #include "Core/Headers/FrameListener.h"
 
@@ -73,7 +73,6 @@ class Unit : public GUIDWrapper {
    public:
 
     explicit Unit(UnitType type);
-    virtual ~Unit() = default;
 
     /// moveTo makes the unit follow a path from it's current position to the
     /// targets position
@@ -151,4 +150,4 @@ namespace Attorney {
 }
 }  // namespace Divide
 
-#endif
+#endif //DVD_UNIT_H_

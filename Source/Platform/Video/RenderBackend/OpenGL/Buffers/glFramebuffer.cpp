@@ -12,6 +12,8 @@
 
 #include "Utility/Headers/Localization.h"
 
+using namespace gl;
+
 namespace Divide
 {
     bool operator==( const glFramebuffer::BindingState& lhs, const glFramebuffer::BindingState& rhs ) noexcept
@@ -56,11 +58,17 @@ namespace Divide
 
     glFramebuffer::~glFramebuffer()
     {
-        GL_API::DeleteFramebuffers( 1, &_framebufferHandle );
+        if (!GL_API::DeleteFramebuffers( 1, &_framebufferHandle ))
+        {
+            DIVIDE_UNEXPECTED_CALL();
+        }
 
         if ( _framebufferResolveHandle != GL_NULL_HANDLE )
         {
-            GL_API::DeleteFramebuffers( 1, &_framebufferResolveHandle );
+            if (!GL_API::DeleteFramebuffers( 1, &_framebufferResolveHandle ))
+            {
+                DIVIDE_UNEXPECTED_CALL();
+            }
         }
     }
 
@@ -204,7 +212,11 @@ namespace Divide
         }
         else if ( !needsAutoResolve && _framebufferResolveHandle != GL_NULL_HANDLE )
         {
-            GL_API::DeleteFramebuffers( 1, &_framebufferResolveHandle );
+            if (!GL_API::DeleteFramebuffers( 1, &_framebufferResolveHandle ))
+            {
+                DIVIDE_UNEXPECTED_CALL();
+            }
+
             _framebufferResolveHandle = GL_NULL_HANDLE;
         }
 

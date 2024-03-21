@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _SCENE_INPUT_H_
-#define _SCENE_INPUT_H_
+#ifndef DVD_SCENE_INPUT_H_
+#define DVD_SCENE_INPUT_H_
 
 #include "SceneInputActions.h"
 #include "Platform/Input/Headers/InputAggregatorInterface.h"
@@ -191,4 +191,4 @@ namespace Divide
     FWD_DECLARE_MANAGED_CLASS( SceneInput );
 
 }  // namespace Divide
-#endif  //_SCENE_INPUT_H_
+#endif  //DVD_SCENE_INPUT_H_

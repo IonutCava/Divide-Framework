@@ -1,23 +1,74 @@
-
-
 #include "Headers/PhysX.h"
-#include "Graphs/Headers/SceneGraphNode.h"
+#include "Headers/PhysXActor.h"
 #include "Headers/PhysXSceneInterface.h"
-#include "Platform/Video/Buffers/VertexBuffer/Headers/VertexBuffer.h"
-#include "Utility/Headers/Localization.h"
+
+#include "Graphs/Headers/SceneGraphNode.h"
 #include "Scenes/Headers/Scene.h"
+#include "Utility/Headers/Localization.h"
 
 
 #include "ECS/Components/Headers/BoundsComponent.h"
 #include "ECS/Components/Headers/RigidBodyComponent.h"
 #include "ECS/Components/Headers/TransformComponent.h"
-#include "Environment/Terrain/Headers/Terrain.h"
-#include "Geometry/Shapes/Headers/Object3D.h"
 #include "Platform/File/Headers/FileManagement.h"
+#include "Platform/File/Headers/ResourcePath.h"
+#include "Platform/Headers/PlatformDataTypes.h"
+#include "Platform/Headers/PlatformDefines.h"
+#include "Platform/Headers/PlatformMemoryDefines.h"
+#include "Platform/Threading/Headers/SharedMutex.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/VertexBuffer.h"
+#include "Core/Headers/ErrorCodes.h"
+#include "Core/Headers/PlatformContextComponent.h"
+#include "Core/Headers/Profiler.h"
+#include "Core/Math/Headers/Ray.h"
+#include "Geometry/Shapes/Headers/Object3D.h"
+#include "Environment/Terrain/Headers/Terrain.h"
+#include "Environment/Vegetation/Headers/Vegetation.h"
+
+#include <cassert>
+#include <common/PxBase.h>
+#include <config.h>
+#include <cooking/PxCooking.h>
+#include <cooking/PxTriangleMeshDesc.h>
+#include <extensions/PxDefaultAllocator.h>
+#include <extensions/PxDefaultStreams.h>
+#include <extensions/PxRigidActorExt.h>
+#include <foundation/Px.h>
+#include <foundation/PxErrorCallback.h>
+#include <foundation/PxErrors.h>
+#include <foundation/PxFoundation.h>
+#include <foundation/PxPreprocessor.h>
+#include <foundation/PxSimpleTypes.h>
+#include <geometry/PxBoxGeometry.h>
+#include <geometry/PxGeometry.h>
+#include <geometry/PxMeshScale.h>
+#include <geometry/PxTriangleMesh.h>
+#include <geometry/PxTriangleMeshGeometry.h>
+#include <Graphs/Headers/SceneNodeFwd.h>
+#include <Physics/Headers/PhysicsAPIWrapper.h>
+#include <Physics/Headers/PhysicsAsset.h>
+
+#include <PxPhysics.h>
+#include <PxRigidBody.h>
+#include <PxRigidDynamic.h>
+#include <PxRigidStatic.h>
+#include <PxShape.h>
+#include <utility>
 
 // Connecting the SDK to Visual Debugger
-#include <physx/extensions/PxDefaultAllocator.h>
-#include <physx/pvd/PxPvd.h>
+#if PX_SUPPORT_GPU_PHYSX
+#include <physx/gpu/PxGpu.h>
+#endif
+
+#include <extensions/PxExtensionsAPI.h>
+#include <pvd/PxPvd.h>
+#include <pvd/PxPvdTransport.h>
+
+#include <foundation/PxPhysicsVersion.h>
+#include <cudamanager/PxCudaContextManager.h>
+#include <common/PxTolerancesScale.h>
+#include <PxDeletionListener.h>
+
 // PhysX includes //
 
 namespace Divide
@@ -27,7 +78,9 @@ namespace Divide
         constexpr bool g_recordMemoryAllocations = false;
         const char* g_collisionMeshExtension = "DVDColMesh";
 
-        const physx::PxTolerancesScale toleranceScale{};
+        const physx::PxTolerancesScale g_toleranceScale{};
+        physx::PxPvdInstrumentationFlags  g_pvdFlags{};
+        physx::PxDefaultAllocator g_gDefaultAllocatorCallback;
 
         const char* g_pvd_target_ip = "127.0.0.1";
         physx::PxU32 g_pvd_target_port = 5425;
@@ -75,7 +128,6 @@ namespace Divide
 
     };
 
-    physx::PxDefaultAllocator PhysX::_gDefaultAllocatorCallback;
     hashMap<U64, physx::PxTriangleMesh*> PhysX::s_gMeshCache;
     SharedMutex PhysX::s_meshCacheLock;
 
@@ -100,7 +152,7 @@ namespace Divide
 
         _simulationSpeed = simSpeed;
         // create foundation object with default error and allocator callbacks.
-        _foundation = PxCreateFoundation( PX_PHYSICS_VERSION, _gDefaultAllocatorCallback, g_physxErrorCallback );
+        _foundation = PxCreateFoundation( PX_PHYSICS_VERSION, g_gDefaultAllocatorCallback, g_physxErrorCallback );
         if ( _foundation == nullptr )
         {
             return ErrorCode::PHYSX_INIT_ERROR;
@@ -126,7 +178,7 @@ namespace Divide
                                  Config::Build::IS_DEBUG_BUILD );
         }
 
-        _gPhysicsSDK = PxCreatePhysics( PX_PHYSICS_VERSION, *_foundation, toleranceScale, g_recordMemoryAllocations, _pvd );
+        _gPhysicsSDK = PxCreatePhysics( PX_PHYSICS_VERSION, *_foundation, g_toleranceScale, g_recordMemoryAllocations, _pvd );
 
         if ( _gPhysicsSDK == nullptr )
         {
@@ -157,7 +209,7 @@ namespace Divide
         return ErrorCode::NO_ERR;
     }
 
-#define SAFE_RELEASE(X) if (X != nullptr) { X->release(); X = nullptr;}
+    #define SAFE_RELEASE(X) if (X != nullptr) { X->release(); X = nullptr;} static_assert(true, "")
 
     bool PhysX::closePhysicsAPI()
     {
@@ -193,7 +245,7 @@ namespace Divide
         }
         else
         {
-            if ( _pvd->connect( *_transport, _pvdFlags ) )
+            if ( _pvd->connect( *_transport, g_pvdFlags ) )
             {
                 Console::d_printfn( LOCALE_STR( "CONNECT_PVD_OK" ) );
             }
@@ -224,9 +276,9 @@ namespace Divide
         //are taken care of by the PVD SDK.
 
         //Use these flags for a clean profile trace with minimal overhead
-        _pvdFlags = useFullConnection ? physx::PxPvdInstrumentationFlag::eALL : physx::PxPvdInstrumentationFlag::ePROFILE;
+        g_pvdFlags = useFullConnection ? physx::PxPvdInstrumentationFlag::eALL : physx::PxPvdInstrumentationFlag::ePROFILE;
         _pvd = physx::PxCreatePvd( *_foundation );
-        if ( _pvd->connect( *_transport, _pvdFlags ) )
+        if ( _pvd->connect( *_transport, g_pvdFlags ) )
         {
             Console::d_printfn( LOCALE_STR( "CONNECT_PVD_OK" ) );
         }
@@ -341,7 +393,7 @@ namespace Divide
             {
                 ret = _gPhysicsSDK->createRigidDynamic( pose );
                 assert( ret != nullptr );
-                auto dynamicActor = static_cast<physx::PxRigidDynamic*>(ret);
+                auto dynamicActor = static_cast<physx::PxRigidBody*>(ret);
                 dynamicActor->setRigidBodyFlag( physx::PxRigidBodyFlag::Enum::eKINEMATIC, true );
             }break;
             default: DIVIDE_UNEXPECTED_CALL(); break; //Not implemented yet
@@ -457,12 +509,13 @@ namespace Divide
                                     return "A triangle is too large for well-conditioned results. Tessellate the mesh for better behavior, see the user guide section on cooking for more details.";
                                 case physx::PxTriangleMeshCookingResult::Enum::eFAILURE:
                                     return "Something unrecoverable happened. Check the error stream to find out what.";
+                                default: break;
                             }
 
                             return "UNKNWOWN";
                         };
 
-                        physx::PxCookingParams params( toleranceScale );
+                        physx::PxCookingParams params( g_toleranceScale );
                         params.meshWeldTolerance = 0.001f;
                         params.meshPreprocessParams = physx::PxMeshPreprocessingFlags( physx::PxMeshPreprocessingFlag::eWELD_VERTICES );
 #if PX_SUPPORT_GPU_PHYSX
@@ -475,8 +528,8 @@ namespace Divide
                         physx::PxTriangleMeshCookingResult::Enum result;
                         if ( !PxCookTriangleMesh( params, meshDesc, outputStream, &result ) )
                         {
-                            STUBBED( "ToDo: If we fail to build/load a collision mesh, fallback to an AABB aproximation -Ionut" )
-                                Console::errorfn( LOCALE_STR( "ERROR_COOK_TRIANGLE_MESH" ), getErrorMessage( result ) );
+                            STUBBED( "ToDo: If we fail to build/load a collision mesh, fallback to an AABB aproximation -Ionut" );
+                            Console::errorfn( LOCALE_STR( "ERROR_COOK_TRIANGLE_MESH" ), getErrorMessage( result ) );
                         }
                     }
                     else

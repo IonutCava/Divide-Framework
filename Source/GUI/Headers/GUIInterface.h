@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _GUI_INTERFACE_H_
-#define _GUI_INTERFACE_H_
+#ifndef DVD_GUI_INTERFACE_H_
+#define DVD_GUI_INTERFACE_H_
 
 #include "GUIElement.h"
 #include "Core/Math/Headers/Dimension.h"
@@ -113,4 +113,5 @@ protected:
 };
 
 }; //namespace Divide
-#endif //_GUI_INTERFACE_H_
+
+#endif //DVD_GUI_INTERFACE_H_

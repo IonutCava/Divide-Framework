@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _SKY_H_
-#define _SKY_H_
+#ifndef DVD_SKY_H_
+#define DVD_SKY_H_
 
 #include "Sun.h"
 #include "Graphs/Headers/SceneNode.h"
@@ -78,7 +78,7 @@ class Sky final : public SceneNode {
     PROPERTY_R(Atmosphere, defaultAtmosphere);
     PROPERTY_R(Atmosphere, initialAtmosphere);
     PROPERTY_R(bool, enableProceduralClouds, true);
-    PROPERTY_R(bool, use)
+    PROPERTY_R(bool, use);
     PROPERTY_R(bool, useDaySkybox, true);
     PROPERTY_R(bool, useNightSkybox, true);
     PROPERTY_R(F32,  moonScale, 0.5f);
@@ -143,4 +143,4 @@ TYPEDEF_SMART_POINTERS_FOR_TYPE(Sky);
 
 }  // namespace Divide
 
-#endif //_SKY_H_
+#endif //DVD_SKY_H_

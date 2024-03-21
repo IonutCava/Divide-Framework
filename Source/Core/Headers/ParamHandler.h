@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _CORE_PARAM_HANDLER_H_
-#define _CORE_PARAM_HANDLER_H_
+#ifndef DVD_CORE_PARAM_HANDLER_H_
+#define DVD_CORE_PARAM_HANDLER_H_
 
 namespace Divide {
 
@@ -80,6 +80,6 @@ public:
 
 }  // namespace Divide
 
-#endif  //_CORE_PARAM_HANDLER_H_
+#endif  //DVD_CORE_PARAM_HANDLER_H_
 
 #include "ParamHandler.inl"

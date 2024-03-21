@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _LOCALE_H_
-#define _LOCALE_H_
+#ifndef DVD_LOCALE_H_
+#define DVD_LOCALE_H_
 
 #include "Platform/Headers/PlatformDefines.h"
 
@@ -94,4 +94,4 @@ const char* Get(U64 key, bool appendSection = true, const char* defaultValue = n
 }  // namespace Locale
 }  // namespace Divide
 
-#endif
+#endif //DVD_LOCALE_H_

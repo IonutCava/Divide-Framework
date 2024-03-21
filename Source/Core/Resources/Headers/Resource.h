@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _RESOURCE_H_
-#define _RESOURCE_H_
+#ifndef DVD_RESOURCE_H_
+#define DVD_RESOURCE_H_
 
 namespace Divide
 {
@@ -163,4 +163,4 @@ namespace Divide
 
 }  // namespace Divide
 
-#endif //_RESOURCE_H_
+#endif //DVD_RESOURCE_H_

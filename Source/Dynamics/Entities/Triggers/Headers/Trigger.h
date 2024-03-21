@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _TRIGGER_H_
-#define _TRIGGER_H_
+#ifndef DVD_TRIGGER_H_
+#define DVD_TRIGGER_H_
 
 #include "Graphs/Headers/SceneNode.h"
 #include "Platform/Threading/Headers/Task.h"
@@ -67,4 +67,4 @@ TYPEDEF_SMART_POINTERS_FOR_TYPE(Trigger);
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_TRIGGER_H_

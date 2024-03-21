@@ -9,8 +9,8 @@
 */
 
 #pragma once
-#ifndef __FAMILY_TYPE_ID_H__
-#define __FAMILY_TYPE_ID_H__
+#ifndef ECS__FAMILY_TYPE_ID_H__
+#define ECS__FAMILY_TYPE_ID_H__
 
 
 #include "API.h"
@@ -39,4 +39,4 @@ namespace ECS { namespace util { namespace Internal {
 
 }}} // namespace ECS::util::Internal
 
-#endif // __FAMILY_TYPE_ID_H__
+#endif // ECS__FAMILY_TYPE_ID_H__

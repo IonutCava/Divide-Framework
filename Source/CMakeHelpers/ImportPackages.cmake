@@ -36,15 +36,16 @@ find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(glslang CONFIG REQUIRED)
 find_package(unofficial-omniverse-physx-sdk CONFIG REQUIRED)
 
-set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_NO_WARN_NEW_VERSIONS 1)
-find_package(Boost COMPONENTS date_time
-                              regex
-                              serialization
-                              unit_test_framework
-                              timer
-                    REQUIRED
+set(Boost_USE_STATIC_LIBS ON)
+
+find_package(Boost REQUIRED COMPONENTS date_time
+                                       regex
+                                       serialization 
+                                       unit_test_framework
+                                       timer
+                    
 )
 
 find_path(SIMPLEINI_INCLUDE_DIRS "ConvertUTF.c")
@@ -52,31 +53,50 @@ find_path(expat_INCLUDE_DIR "expat.h")
 
 find_path(NVTT_INCLUDE_DIRS NAMES nvtt.h PATH_SUFFIXES nvtt)
 
-find_library(NVTT_LIBRARY NAMES nvtt PATH_SUFFIXES nvtt static shared)
+find_library(NVTT_LIBRARY_RELEASE NAMES nvtt PATH_SUFFIXES nvtt static shared)
+find_library(NVTT_LIBRARY_DEBUG NAMES nvtt_d PATH_SUFFIXES nvtt static shared)
 
-find_library(NVIMAGE_LIBRARY NAMES nvimage PATH_SUFFIXES nvtt static shared)
+find_library(NVIMAGE_LIBRARY_RELEASE NAMES nvimage PATH_SUFFIXES nvtt static shared)
+find_library(NVIMAGE_LIBRARY_DEBUG NAMES nvimage_d PATH_SUFFIXES nvtt static shared)
 
-find_library(NVMATH_LIBRARY NAMES nvmath PATH_SUFFIXES nvtt static shared)
+find_library(NVMATH_LIBRARY_RELEASE NAMES nvmath PATH_SUFFIXES nvtt static shared)
+find_library(NVMATH_LIBRARY_DEBUG NAMES nvmath_d PATH_SUFFIXES nvtt static shared)
 
-find_library(NVCORE_LIBRARY NAMES nvcore PATH_SUFFIXES nvtt static shared)
+find_library(NVCORE_LIBRARY_RELEASE NAMES nvcore PATH_SUFFIXES nvtt static shared)
+find_library(NVCORE_LIBRARY_DEBUG NAMES nvcore_d PATH_SUFFIXES nvtt static shared)
 
-find_library(NVTHREAD_LIBRARY NAMES nvthread PATH_SUFFIXES nvtt static shared)
+find_library(NVTHREAD_LIBRARY_RELEASE NAMES nvthread PATH_SUFFIXES nvtt static shared)
+find_library(NVTHREAD_LIBRARY_DEBUG NAMES nvthread_d PATH_SUFFIXES nvtt static shared)
 
-find_library(NVSQUISH_LIBRARY NAMES nvsquish squish PATH_SUFFIXES nvtt static shared)
+find_library(NVSQUISH_LIBRARY_RELEASE NAMES nvsquish squish PATH_SUFFIXES nvtt static shared)
+find_library(NVSQUISH_LIBRARY_DEBUG NAMES nvsquish_d squish_d PATH_SUFFIXES nvtt static shared)
 
-find_library(NVBC6H_LIBRARY NAMES bc6h PATH_SUFFIXES nvtt static shared)
+find_library(NVBC6H_LIBRARY_RELEASE NAMES bc6h PATH_SUFFIXES nvtt static shared)
+find_library(NVBC6H_LIBRARY_DEBUG NAMES bc6h_d PATH_SUFFIXES nvtt static shared)
 
-find_library(NVBC7_LIBRARY NAMES bc7 PATH_SUFFIXES nvtt static shared)
+find_library(NVBC7_LIBRARY_RELEASE NAMES bc7 PATH_SUFFIXES nvtt static shared)
+find_library(NVBC7_LIBRARY_DEBUG NAMES bc7_d PATH_SUFFIXES nvtt static shared)
+
+set(LIBS_TO_SETUP "NVTT" "NVIMAGE" "NVCORE" "NVTHREAD" "NVBC7" "NVBC6H" "NVSQUISH" "NVMATH")
+
+foreach(LIB ${LIBS_TO_SETUP})
+    if(${LIB}_LIBRARY_DEBUG)
+       set(${LIB}_LIBRARIES  optimized ${${LIB}_LIBRARY_RELEASE} debug ${${LIB}_LIBRARY_DEBUG})
+    else(${LIB}_LIBRARY_DEBUG)
+       set(${LIB}_LIBRARY_DEBUG ${${LIB}_LIBRARY_RELEASE})
+       set(${LIB}_LIBRARIES  optimized  ${${LIB}_LIBRARY_RELEASE} debug ${${LIB}_LIBRARY_DEBUG}) 
+    endif(${LIB}_LIBRARY_DEBUG)
+endforeach(LIB ${LIBS_TO_SETUP})
 
 set(NVTT_LIBRARIES
-    ${NVTT_LIBRARY}
-    ${NVIMAGE_LIBRARY}
-    ${NVCORE_LIBRARY}
-    ${NVTHREAD_LIBRARY}
-    ${NVBC7_LIBRARY}
-    ${NVBC6H_LIBRARY}
-    ${NVSQUISH_LIBRARY}
-    ${NVMATH_LIBRARY}
+    ${NVTT_LIBRARIES}
+    ${NVIMAGE_LIBRARIES}
+    ${NVCORE_LIBRARIES}
+    ${NVTHREAD_LIBRARIES}
+    ${NVBC7_LIBRARIES}
+    ${NVBC6H_LIBRARIES}
+    ${NVSQUISH_LIBRARIES}
+    ${NVMATH_LIBRARIES}
 )
 
 find_library(JASPER_LIBRARY NAMES jasper)
@@ -116,3 +136,5 @@ set(EXTERNAL_LIBS
     ${IMAGE_LIBRARIES}
     ${LZMA_LIBRARY}
 )
+
+add_compile_definitions(CEGUI_STATIC)

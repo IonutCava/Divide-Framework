@@ -67,8 +67,8 @@
 */
 
 #pragma once
-#ifndef _DIVIDE_CROWD_H_
-#define _DIVIDE_CROWD_H_
+#ifndef DVD_CROWD_H_
+#define DVD_CROWD_H_
 
 #include "recastnavigation/DetourCrowd.h"
 #include "AI/PathFinding/NavMeshes/Headers/NavMesh.h"
@@ -163,12 +163,12 @@ class DivideDtCrowd final : public NonCopyable {
     /// height, and height is
     /// determined by the agent height parameter with which the navmesh is
     /// build.
-    [[nodiscard]] D64 getAgentHeight() const noexcept { return Attorney::NavigationMeshCrowd::getConfigParams(*_recast).getAgentHeight(); }
+    [[nodiscard]] F32 getAgentHeight() const noexcept { return Attorney::NavigationMeshCrowd::getConfigParams(*_recast).getAgentHeight(); }
     /// The radius of agents in this crowd. All agents in a crowd have the same
     /// radius, and radius
     /// determined by the agent radius parameter with which the navmesh is
     /// build.
-    [[nodiscard]] D64 getAgentRadius() const  noexcept { return Attorney::NavigationMeshCrowd::getConfigParams(*_recast).getAgentRadius(); }
+    [[nodiscard]] F32 getAgentRadius() const  noexcept { return Attorney::NavigationMeshCrowd::getConfigParams(*_recast).getAgentRadius(); }
     /// The number of (active) agents in this crowd.
     [[nodiscard]] I32 getNbAgents() const noexcept { return _activeAgents; }
     /// Get the navigation mesh associated with this crowd
@@ -240,4 +240,5 @@ class DivideDtCrowd final : public NonCopyable {
 }  // Navigation
 }  // namespace AI
 }  // namespace Divide
-#endif
+
+#endif //DVD_CROWD_H_

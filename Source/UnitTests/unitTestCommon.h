@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _UNIT_TEST_COMMON_H
-#define _UNIT_TEST_COMMON_H
+#ifndef DVD_UNIT_TEST_COMMON_H
+#define DVD_UNIT_TEST_COMMON_H
 
 #include <catch2/catch_all.hpp>
 
@@ -76,4 +76,4 @@ class platformInitRunListener : public Catch::EventListenerBase
 #endif //CHECK_NOT_ZERO
 
 
-#endif //_UNIT_TEST_COMMON_H
+#endif //DVD_UNIT_TEST_COMMON_H

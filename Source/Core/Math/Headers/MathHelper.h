@@ -37,8 +37,8 @@
 */
 
 #pragma once
-#ifndef _CORE_MATH_MATH_HELPER_H_
-#define _CORE_MATH_MATH_HELPER_H_
+#ifndef DVD_CORE_MATH_MATH_HELPER_H_
+#define DVD_CORE_MATH_MATH_HELPER_H_
 
 #include <numbers>
 
@@ -498,7 +498,8 @@ void ToByteColour(const FColour4& floatColour, UColour4& colourOut) noexcept;
 void ToByteColour(const FColour3& floatColour, UColour3& colourOut) noexcept;
 void ToFloatColour(const UColour4& byteColour, FColour4& colourOut) noexcept;
 void ToFloatColour(const UColour3& byteColour, FColour3& colourOut) noexcept;
-
+void ToFloatColour( const vec4<U32>& uintColour, FColour4& colourOut ) noexcept;
+void ToFloatColour( const vec3<U32>& uintColour, FColour3& colourOut ) noexcept;
 
 bool decomposeMatrix(const mat4<F32>& transform,
                      vec3<F32>& translationOut,
@@ -590,6 +591,6 @@ namespace std {
     };
 }
 
-#endif  //_CORE_MATH_MATH_HELPER_H_
+#endif  //DVD_CORE_MATH_MATH_HELPER_H_
 
 #include "MathHelper.inl"

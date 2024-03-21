@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _PLATFORM_RUNTIME_H_
-#define _PLATFORM_RUNTIME_H_
+#ifndef DVD_PLATFORM_RUNTIME_H_
+#define DVD_PLATFORM_RUNTIME_H_
 
 namespace Divide {
 namespace Runtime {
@@ -46,6 +46,6 @@ inline bool isMainThread() noexcept;
 }; //namespace Runtime
 }; // namespace Divide
 
-#endif //_PLATFORM_RUNTIME_H_
+#endif //DVD_PLATFORM_RUNTIME_H_
 
 #include "PlatformRuntime.inl"

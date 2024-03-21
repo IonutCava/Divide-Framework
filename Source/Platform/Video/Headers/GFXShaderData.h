@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _HARDWARE_VIDEO_GFX_SHADER_DATA_H_
-#define _HARDWARE_VIDEO_GFX_SHADER_DATA_H_
+#ifndef DVD_HARDWARE_VIDEO_GFX_SHADER_DATA_H_
+#define DVD_HARDWARE_VIDEO_GFX_SHADER_DATA_H_
 
 #include "config.h"
 
@@ -42,11 +42,11 @@ enum class RenderStage : U8;
 struct GFXShaderData {
 #pragma pack(push, 1)
       struct CamData {
-          mat4<F32> _ProjectionMatrix = MAT4_IDENTITY;
-          mat4<F32> _ViewMatrix = MAT4_IDENTITY;
-          mat4<F32> _InvViewMatrix = MAT4_IDENTITY;
-          mat4<F32> _WorldAOVPMatrix = MAT4_IDENTITY;
-          vec4<F32> _ViewPort = { 0.0f, 0.0f, 1.0f, 1.0f };
+          mat4<F32> _projectionMatrix = MAT4_IDENTITY;
+          mat4<F32> _viewMatrix = MAT4_IDENTITY;
+          mat4<F32> _invViewMatrix = MAT4_IDENTITY;
+          mat4<F32> _worldAOVPMatrix = MAT4_IDENTITY;
+          vec4<F32> _viewPort = { 0.0f, 0.0f, 1.0f, 1.0f };
           // x - scale, y - bias, z - light bleed bias, w - min shadow variance
           vec4<F32> _lightingTweakValues = { 1.f, 1.f, 0.2f, 0.001f};
           //x - nearPlane, y - farPlane, z - FoV, w - clip plane count
@@ -60,9 +60,9 @@ struct GFXShaderData {
 
     struct PrevFrameData
     {
-        mat4<F32> _PreviousViewMatrix = MAT4_IDENTITY;
-        mat4<F32> _PreviousProjectionMatrix = MAT4_IDENTITY;
-        mat4<F32> _PreviousViewProjectionMatrix = MAT4_IDENTITY;
+        mat4<F32> _previousViewMatrix = MAT4_IDENTITY;
+        mat4<F32> _previousProjectionMatrix = MAT4_IDENTITY;
+        mat4<F32> _previousViewProjectionMatrix = MAT4_IDENTITY;
     } _prevFrameData;
 
     bool _camNeedsUpload = true;
@@ -75,6 +75,6 @@ struct GFXShaderData {
 [[nodiscard]] bool ValidateGPUDataStructure() noexcept;
 }; //namespace Divide
 
-#endif //_HARDWARE_VIDEO_GFX_SHADER_DATA_H_
+#endif //DVD_HARDWARE_VIDEO_GFX_SHADER_DATA_H_
 
 #include "GFXShaderData.inl"

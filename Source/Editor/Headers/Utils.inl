@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _EDITOR_UTILS_INL_
-#define _EDITOR_UTILS_INL_
+#ifndef DVD_EDITOR_UTILS_INL_
+#define DVD_EDITOR_UTILS_INL_
 
 #include "Core/Headers/StringHelper.h"
 #include "Core/Math/Headers/MathHelper.h"
@@ -424,4 +424,4 @@ inline bool inputMatrix(Editor & parent, const char* label, const F32 stepIn, co
 
 } //namespace Divide::Util
 
-#endif //_EDITOR_UTILS_INL_
+#endif //DVD_EDITOR_UTILS_INL_

@@ -30,8 +30,9 @@
  */
 
 #pragma once
-#ifndef _PLATFORM_MEMORY_DEFINES_H_
-#define _PLATFORM_MEMORY_DEFINES_H_
+#ifndef DVD_PLATFORM_MEMORY_DEFINES_H_
+#define DVD_PLATFORM_MEMORY_DEFINES_H_
+
 #include "PlatformDataTypes.h"
 
 void* malloc_aligned(size_t size, size_t alignment, size_t offset = 0u) noexcept;
@@ -160,4 +161,4 @@ namespace Divide {
     };  // namespace MemoryManager
 }; //namespace Divide
 
-#endif //_PLATFORM_MEMORY_DEFINES_H_
+#endif //DVD_PLATFORM_MEMORY_DEFINES_H_

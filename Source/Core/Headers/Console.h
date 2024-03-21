@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _CORE_CONSOLE_H_
-#define _CORE_CONSOLE_H_
+#ifndef DVD_CORE_CONSOLE_H_
+#define DVD_CORE_CONSOLE_H_
 
 #include "Core/Headers/NonCopyable.h"
 #include "Platform/Headers/PlatformDefines.h"
@@ -157,6 +157,6 @@ struct Console : NonCopyable
 
 }  // namespace Divide
 
-#endif  //_CORE_CONSOLE_H_
+#endif  //DVD_CORE_CONSOLE_H_
 
 #include "Console.inl"

@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _COLOURS_H_
-#define _COLOURS_H_
+#ifndef DVD_COLOURS_H_
+#define DVD_COLOURS_H_
 
 namespace Divide {
 namespace DefaultColours {
@@ -58,4 +58,4 @@ vec4<F32> RANDOM_NORMALIZED();
 }  // namespace DefaultColours
 }  // namespace Divide
 
-#endif
+#endif //DVD_COLOURS_H_

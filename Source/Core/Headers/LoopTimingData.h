@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _CORE_LOOP_TIMING_DATA_H_
-#define _CORE_LOOP_TIMING_DATA_H_
+#ifndef DVD_CORE_LOOP_TIMING_DATA_H_
+#define DVD_CORE_LOOP_TIMING_DATA_H_
 
 namespace Divide
 {
@@ -61,4 +61,5 @@ struct LoopTimingData
 };
 
 } //namespace Divide
-#endif //_CORE_LOOP_TIMING_DATA_H_
+
+#endif //DVD_CORE_LOOP_TIMING_DATA_H_

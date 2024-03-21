@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _EDITOR_OUTPUT_WINDOW_H_
-#define _EDITOR_OUTPUT_WINDOW_H_
+#ifndef DVD_EDITOR_OUTPUT_WINDOW_H_
+#define DVD_EDITOR_OUTPUT_WINDOW_H_
 
 #include "Editor/Widgets/Headers/DockedWindow.h"
 
@@ -41,7 +41,7 @@ class ApplicationOutput;
 class OutputWindow final : public DockedWindow {
     public:
         OutputWindow(Editor& parent, const Descriptor& descriptor);
-        ~OutputWindow();
+        ~OutputWindow() override;
 
         void drawInternal() override;
         static void PrintText(const Console::OutputEntry& entry);
@@ -61,4 +61,4 @@ class OutputWindow final : public DockedWindow {
 };
 } //namespace Divide
 
-#endif //_EDITOR_OUTPUT_WINDOW_H_
+#endif //DVD_EDITOR_OUTPUT_WINDOW_H_

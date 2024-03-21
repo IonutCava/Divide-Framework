@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _WAYPOINT_GRAPH_H_
-#define _WAYPOINT_GRAPH_H_
+#ifndef DVD_WAYPOINT_GRAPH_H_
+#define DVD_WAYPOINT_GRAPH_H_
 #include "Waypoint.h"
 
 namespace Divide {
@@ -67,4 +67,4 @@ class WaypointGraph {
 }  // namespace Navigation
 }  // namespace Divide
 
-#endif
+#endif //DVD_WAYPOINT_GRAPH_H_

@@ -29,8 +29,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _SGN_EDITOR_COMPONENT_H_
-#define _SGN_EDITOR_COMPONENT_H_
+#ifndef DVD_SGN_EDITOR_COMPONENT_H_
+#define DVD_SGN_EDITOR_COMPONENT_H_
 
 namespace Divide
 {
@@ -105,7 +105,7 @@ namespace Divide
         SLIDER_TYPE,
         SEPARATOR,
         BUTTON,
-        DROPDOWN_TYPE, //<Only U8 types supported!
+        DROPDOWN_TYPE, ///<Only U8 types supported!
         BOUNDING_BOX,
         BOUNDING_SPHERE,
         ORIENTED_BOUNDING_BOX,
@@ -165,7 +165,7 @@ namespace Divide
       public:
 
         explicit EditorComponent(SGNComponent* parentComp, Editor* editor, ComponentType parentComponentType, const Str<128>& name);
-        ~EditorComponent();
+        ~EditorComponent() override;
 
         void addHeader(const Str<32>& name) {
             EditorComponentField field = {};
@@ -236,6 +236,6 @@ namespace Divide
     };  // namespace Attorney
 
 };  // namespace Divide
-#endif //_SGN_EDITOR_COMPONENT_H_
+#endif //DVD_SGN_EDITOR_COMPONENT_H_
 
 #include "EditorComponent.inl"

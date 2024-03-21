@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _DIVIDE_CONFIG_H_
-#define _DIVIDE_CONFIG_H_
+#ifndef DVD_CONFIG_H_
+#define DVD_CONFIG_H_
 
 namespace Divide {
 namespace Config {
@@ -203,4 +203,4 @@ constexpr char OUTPUT_LOG_FILE[] = "console.log";
 constexpr char ERROR_LOG_FILE[] = "errors.log";
 constexpr char MEM_LOG_FILE[] = "mem.log";
 
-#endif  //_DIVIDE_CONFIG_H_
+#endif  //DVD_CONFIG_H_

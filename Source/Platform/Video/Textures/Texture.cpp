@@ -537,7 +537,7 @@ namespace Divide
 
     void Texture::setSampleCount( U8 newSampleCount )
     {
-        CLAMP( newSampleCount, to_U8( 0u ), DisplayManager::MaxMSAASamples() );
+        CLAMP( newSampleCount, U8_ZERO, DisplayManager::MaxMSAASamples() );
         if ( _descriptor.msaaSamples() != newSampleCount )
         {
             _descriptor.msaaSamples( newSampleCount );

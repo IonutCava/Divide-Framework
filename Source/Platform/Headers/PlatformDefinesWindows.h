@@ -31,8 +31,8 @@
 
 #pragma once
 
-#ifndef _PLATFORM_DEFINES_WINDOWS_H_
-#define _PLATFORM_DEFINES_WINDOWS_H_
+#ifndef DVD_PLATFORM_DEFINES_WINDOWS_H_
+#define DVD_PLATFORM_DEFINES_WINDOWS_H_
 
 #define NOGDI
 
@@ -73,6 +73,7 @@
 #define NO_INLINE __declspec(noinline)
 #endif //NO_INLINE
 
+
 #include <Windows.h>
 
 #if defined(DELETE)
@@ -87,7 +88,6 @@
 
 #define strncasecmp _strnicmp
 #define strcasecmp _stricmp
-#define timezone _get_timezone
 
 LRESULT DlgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) noexcept;
 
@@ -98,4 +98,4 @@ namespace Divide {
 }; //namespace Divide
 
 
-#endif //_PLATFORM_DEFINES_WINDOWS_H_
+#endif //DVD_PLATFORM_DEFINES_WINDOWS_H_

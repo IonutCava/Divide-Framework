@@ -46,8 +46,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 #pragma once
-#ifndef _CORE_BYTE_BUFFER_H_
-#define _CORE_BYTE_BUFFER_H_
+#ifndef DVD_CORE_BYTE_BUFFER_H_
+#define DVD_CORE_BYTE_BUFFER_H_
 
 namespace Divide {
 
@@ -194,6 +194,6 @@ class ByteBuffer {
 };
 
 }  // namespace Divide
-#endif //_CORE_BYTE_BUFFER_H_
+#endif //DVD_CORE_BYTE_BUFFER_H_
 
 #include "ByteBuffer.inl"

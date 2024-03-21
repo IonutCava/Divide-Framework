@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _KERNEL_COMPONENT_H_
-#define _KERNEL_COMPONENT_H_
+#ifndef DVD_KERNEL_COMPONENT_H_
+#define DVD_KERNEL_COMPONENT_H_
 
 namespace Divide {
 
@@ -55,4 +55,4 @@ protected:
 
 }; //namespace Divide
 
-#endif //_KERNEL_COMPONENT_H_
+#endif //DVD_KERNEL_COMPONENT_H_

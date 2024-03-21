@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _HASH_MAP_H_
-#define _HASH_MAP_H_
+#ifndef DVD_HASH_MAP_H_
+#define DVD_HASH_MAP_H_
 
 #include <EASTL/unordered_map.h>
 #include <EASTL/intrusive_hash_map.h>
@@ -145,4 +145,4 @@ Divide::hashPairReturn<K, V, HashFun> insert(Divide::hashMap<K, V, HashFun, Pred
 
 } //namespace hashAlg
 
-#endif //_HASH_MAP_H_
+#endif //DVD_HASH_MAP_H_

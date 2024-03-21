@@ -59,8 +59,8 @@
 //
 
 #pragma once
-#ifndef _NAVIGATION_MESH_H_
-#define _NAVIGATION_MESH_H_
+#ifndef DVD_NAVIGATION_MESH_H_
+#define DVD_NAVIGATION_MESH_H_
 
 #include "Platform/Threading/Headers/Task.h"
 #include "Core/Headers/PlatformContextComponent.h"
@@ -161,7 +161,7 @@ class NavigationMesh : public GUIDWrapper, public PlatformContextComponent /*,pu
                                    U8 maxIters = 15) const;
 
     NavigationMesh(PlatformContext& context, DivideRecast& recastInterface);
-    ~NavigationMesh();
+    ~NavigationMesh() override;
 
    private:
     /// Initiates the build process in a separate thread.
@@ -251,4 +251,4 @@ class NavigationMeshCrowd {
 }  // namespace AI
 }  // namespace Divide
 
-#endif //_NAVIGATION_MESH_H_
+#endif //DVD_NAVIGATION_MESH_H_

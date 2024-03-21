@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _RENDER_TARGET_ATTACHMENT_H_
-#define _RENDER_TARGET_ATTACHMENT_H_
+#ifndef DVD_RENDER_TARGET_ATTACHMENT_H_
+#define DVD_RENDER_TARGET_ATTACHMENT_H_
 
 #include "Platform/Video/Textures/Headers/TextureDescriptor.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
@@ -141,4 +141,4 @@ FWD_DECLARE_MANAGED_CLASS(RTAttachment);
 
 }; //namespace Divide
 
-#endif //_RENDER_TARGET_ATTACHMENT_H_
+#endif //DVD_RENDER_TARGET_ATTACHMENT_H_

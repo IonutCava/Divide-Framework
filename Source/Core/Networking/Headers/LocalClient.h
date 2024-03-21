@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _CORE_NETWORK_LOCAL_CLIENT_H_
-#define _CORE_NETWORK_LOCAL_CLIENT_H_
+#ifndef DVD_CORE_NETWORK_LOCAL_CLIENT_H_
+#define DVD_CORE_NETWORK_LOCAL_CLIENT_H_
 
 #include "Networking/Headers/ASIO.h"
 #include "Core/Headers/KernelComponent.h"
@@ -57,4 +57,4 @@ private:
 };
 }; //namespace Divide
 
-#endif //_CORE_NETWORK_LOCAL_CLIENT_H_
+#endif //DVD_CORE_NETWORK_LOCAL_CLIENT_H_

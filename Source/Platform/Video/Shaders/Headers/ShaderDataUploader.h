@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _SHADER_DATA_UPLOADER_H_
-#define _SHADER_DATA_UPLOADER_H_
+#ifndef DVD_SHADER_DATA_UPLOADER_H_
+#define DVD_SHADER_DATA_UPLOADER_H_
 
 #include "Platform/Video/Headers/PushConstant.h"
 #include "Platform/Video/Headers/DescriptorSetsFwd.h"
@@ -141,7 +141,7 @@ namespace Divide
 class UniformBlockUploader
 {
 public:
-    constexpr static U32 RingBufferLength = 6u;
+    constexpr static U16 RingBufferLength = 6u;
 
     struct BlockMember
     {
@@ -183,10 +183,10 @@ private:
     bool _needsQueueIncrement{ false };
 
     bool _needsResize{ false };
-    U32 _bufferWritesThisFrame{ 0u };
-    U32 _bufferSizeFactor{ 0u };
+    U16 _bufferWritesThisFrame{ 0u };
+    U16 _bufferSizeFactor{ 0u };
 };
 
 }; // namespace Divide
 
-#endif //_SHADER_DATA_UPLOADER_H_
+#endif //DVD_SHADER_DATA_UPLOADER_H_

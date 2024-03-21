@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _AI_TEAM_H_
-#define _AI_TEAM_H_
+#ifndef DVD_AI_TEAM_H_
+#define DVD_AI_TEAM_H_
 
 #include "AI/Headers/AIEntity.h"
 
@@ -73,7 +73,7 @@ class AITeam final : public GUIDWrapper {
 
    public:
     AITeam(U32 id, AIManager& parentManager);
-    ~AITeam();
+    ~AITeam() override;
 
     CrowdPtr getCrowd(const AIEntity::PresetAgentRadius radius) const {
         SharedLock<SharedMutex> r_lock(_crowdMutex);
@@ -175,4 +175,4 @@ class AITeam final : public GUIDWrapper {
 }  // namespace AI
 }  // namespace Divide
 
-#endif
+#endif //DVD_AI_TEAM_H_

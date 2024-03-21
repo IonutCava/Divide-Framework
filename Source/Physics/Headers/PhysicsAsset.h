@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _PHYSICS_ASSET_H_
-#define _PHYSICS_ASSET_H_
+#ifndef DVD_PHYSICS_ASSET_H_
+#define DVD_PHYSICS_ASSET_H_
 
 #include "Core/Math/Headers/TransformInterface.h"
 
@@ -43,7 +43,6 @@ class RigidBodyComponent;
 class PhysicsAsset : public ITransform {
 public:
     explicit PhysicsAsset(RigidBodyComponent& parent) noexcept;
-    virtual ~PhysicsAsset() = default;
 
     virtual void physicsCollisionGroup(PhysicsGroup group);
 
@@ -58,4 +57,4 @@ FWD_DECLARE_MANAGED_CLASS(PhysicsAsset);
 
 };
 
-#endif //_PHYSICS_ASSET_H_
+#endif //DVD_PHYSICS_ASSET_H_

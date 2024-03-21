@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _RIGID_BODY_COMPONENT_H_
-#define _RIGID_BODY_COMPONENT_H_
+#ifndef DVD_RIGID_BODY_COMPONENT_H_
+#define DVD_RIGID_BODY_COMPONENT_H_
 
 #include "SGNComponent.h"
 #include "Physics/Headers/PhysicsAsset.h"
@@ -51,7 +51,7 @@ namespace Divide {
     BEGIN_COMPONENT(RigidBody, ComponentType::RIGID_BODY)
       public:
         RigidBodyComponent(SceneGraphNode* parentSGN, PlatformContext& context);
-        ~RigidBodyComponent();
+        ~RigidBodyComponent() override;
 
         void physicsCollisionGroup(PhysicsGroup group);
 
@@ -74,4 +74,4 @@ namespace Divide {
 
 } //namespace Divide
 
-#endif //_RIGID_BODY_COMPONENT_H_
+#endif //DVD_RIGID_BODY_COMPONENT_H_

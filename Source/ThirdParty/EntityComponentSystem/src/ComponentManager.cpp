@@ -17,7 +17,7 @@ namespace ECS {
 	ComponentManager::ComponentManager()
 	{
 		DEFINE_LOGGER("ComponentManager")
-		LogInfo("Initialize ComponentManager!","");
+		LOG_INFO("Initialize ComponentManager!","");
 
 		const size_t NUM_COMPONENTS { util::Internal::FamilyTypeID<IComponent>::Get() };
 
@@ -30,12 +30,12 @@ namespace ECS {
 	{
 		for (auto cc : this->m_ComponentContainerRegistry)
 		{
-			LogDebug("Releasing remaining entities of type '%s' ...", cc.second->GetComponentContainerTypeName());
+			LOG_DEBUG("Releasing remaining entities of type '%s' ...", cc.second->GetComponentContainerTypeName());
 			delete cc.second;
 			cc.second = nullptr;
 		}
 	
-		LogInfo("Release ComponentManager!","");
+		LOG_INFO("Release ComponentManager!","");
 	}
 
 	ComponentId ComponentManager::AqcuireComponentId(IComponent* component)

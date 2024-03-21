@@ -67,8 +67,8 @@
 */
 
 #pragma once
-#ifndef _NAVIGATION_PATH_H_
-#define _NAVIGATION_PATH_H_
+#ifndef DVD_NAVIGATION_PATH_H_
+#define DVD_NAVIGATION_PATH_H_
 
 #include "../NavMeshes/Headers/NavMesh.h"
 
@@ -163,4 +163,4 @@ class DivideRecast {
 }  // namespace AI
 }  // namespace Divide
 
-#endif //_NAVIGATION_PATH_H_
+#endif //DVD_NAVIGATION_PATH_H_

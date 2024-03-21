@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _STL_STRING_H_
-#define _STL_STRING_H_
+#ifndef DVD_STL_STRING_H_
+#define DVD_STL_STRING_H_
 
 #include "TemplateAllocator.h"
 #include <string>
@@ -108,5 +108,5 @@ namespace Divide
     concept is_non_wide_string = is_stl_non_wide_string<T> ||
                                  is_eastl_string<T>;
 }; //namespace Divide
-#endif //_STL_STRING_H_
 
+#endif //DVD_STL_STRING_H_

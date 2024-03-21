@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _ECS_SYSTEM_H_
-#define _ECS_SYSTEM_H_
+#ifndef DVD_ECS_SYSTEM_H_
+#define DVD_ECS_SYSTEM_H_
 
 #include <ECS/ComponentManager.h>
 #include <ECS/System.h>
@@ -71,7 +71,7 @@ namespace Divide {
     public:
 
         explicit ECSSystem(ECS::ECSEngine& engine);
-        virtual ~ECSSystem() = default;
+        virtual ~ECSSystem() override = default;
 
         virtual bool saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer);
         virtual bool loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer);
@@ -95,6 +95,6 @@ namespace Divide {
 
 }
 
-#endif //_ECS_SYSTEM_H_
+#endif //DVD_ECS_SYSTEM_H_
 
 #include "ECSSystem.inl"

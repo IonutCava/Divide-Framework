@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _PLATFORM_CONTEXT_H_
-#define _PLATFORM_CONTEXT_H_
+#ifndef DVD_PLATFORM_CONTEXT_H_
+#define DVD_PLATFORM_CONTEXT_H_
 
 namespace Divide {
 
@@ -199,4 +199,4 @@ namespace Attorney
 
 }; //namespace Divide
 
-#endif //_PLATFORM_CONTEXT_H_
+#endif //DVD_PLATFORM_CONTEXT_H_

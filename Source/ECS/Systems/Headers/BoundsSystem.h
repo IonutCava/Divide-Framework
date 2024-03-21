@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _BOUNDS_SYSTEM_H_
-#define _BOUNDS_SYSTEM_H_
+#ifndef DVD_BOUNDS_SYSTEM_H_
+#define DVD_BOUNDS_SYSTEM_H_
 
 #include "ECSSystem.h"
 
@@ -45,7 +45,7 @@ class BoundsSystem final : public PlatformContextComponent,
     using Parent = ECSSystem<BoundsSystem, BoundsComponent>;
 public:
     BoundsSystem(ECS::ECSEngine& parentEngine, PlatformContext& context);
-    virtual ~BoundsSystem();
+    virtual ~BoundsSystem() override;
 
     void PreUpdate(F32 dt) override;
     void Update(F32 dt) override;
@@ -53,4 +53,4 @@ public:
 };
 }
 
-#endif //_BOUNDS_SYSTEM_H_
+#endif //DVD_BOUNDS_SYSTEM_H_

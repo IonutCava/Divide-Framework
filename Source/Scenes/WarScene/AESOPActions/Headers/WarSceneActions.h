@@ -29,8 +29,8 @@
 
  */
 #pragma once
-#ifndef _WAR_SCENE_AESOP_ACTION_INTERFACE_H_
-#define _WAR_SCENE_AESOP_ACTION_INTERFACE_H_
+#ifndef DVD_WAR_SCENE_AESOP_ACTION_INTERFACE_H_
+#define DVD_WAR_SCENE_AESOP_ACTION_INTERFACE_H_
 
 #include "AI/ActionInterface/Headers/GOAPInterface.h"
 #include "Core/Headers/StringHelper.h"
@@ -99,4 +99,4 @@ class WarSceneAction final : public GOAPAction {
 }  // namespace AI
 }  // namespace Divide
 
-#endif
+#endif //DVD_WAR_SCENE_AESOP_ACTION_INTERFACE_H_

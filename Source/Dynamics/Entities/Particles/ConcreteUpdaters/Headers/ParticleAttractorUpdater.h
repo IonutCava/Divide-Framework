@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _PARTICLE_ATTRACTOR_UPDATER_H_
-#define _PARTICLE_ATTRACTOR_UPDATER_H_
+#ifndef DVD_PARTICLE_ATTRACTOR_UPDATER_H_
+#define DVD_PARTICLE_ATTRACTOR_UPDATER_H_
 
 #include "Dynamics/Entities/Particles/Headers/ParticleUpdater.h"
 
@@ -54,4 +54,5 @@ class ParticleAttractorUpdater final : public ParticleUpdater {
     [[nodiscard]] vec4<F32>& get(const U32 id) { return _attractors[id]; }
 };
 }
-#endif
+
+#endif //DVD_PARTICLE_ATTRACTOR_UPDATER_H_

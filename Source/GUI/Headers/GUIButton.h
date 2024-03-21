@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _GUI_BUTTON_H_
-#define _GUI_BUTTON_H_
+#ifndef DVD_GUI_BUTTON_H_
+#define DVD_GUI_BUTTON_H_
 
 #include "GUIElement.h"
 #include "GUIText.h"
@@ -89,7 +89,7 @@ class GUIButton final : public GUIElementBase<GUIType::GUI_BUTTON> {
               const RelativeScale2D& size,
               CEGUI::Window* parent);
 
-    ~GUIButton();
+    ~GUIButton() override;
 
     bool onEvent(Event event, const CEGUI::EventArgs& /*e*/);
 
@@ -106,4 +106,4 @@ class GUIButton final : public GUIElementBase<GUIType::GUI_BUTTON> {
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_GUI_BUTTON_H_

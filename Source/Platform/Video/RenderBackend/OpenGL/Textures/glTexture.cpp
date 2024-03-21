@@ -9,6 +9,8 @@
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 
+using namespace gl;
+
 namespace Divide {
 
 glTexture::glTexture(GFXDevice& context,

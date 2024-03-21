@@ -30,7 +30,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _ENUM_TO_STRING_H_
-#define _ENUM_TO_STRING_H_
+#ifndef DVD_ENUM_TO_STRING_H_
+#define DVD_ENUM_TO_STRING_H_
 
-#endif //_ENUM_TO_STRING_H_
+#endif //DVD_ENUM_TO_STRING_H_

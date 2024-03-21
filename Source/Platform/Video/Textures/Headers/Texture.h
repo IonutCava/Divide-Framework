@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _TEXTURE_H_
-#define _TEXTURE_H_
+#ifndef DVD_TEXTURE_H_
+#define DVD_TEXTURE_H_
 
 #include "Core/Resources/Headers/Resource.h"
 #include "Platform/Video/Headers/TextureData.h"
@@ -96,7 +96,7 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource
                           const TextureDescriptor& texDescriptor,
                           ResourceCache& parentCache );
 
-        virtual ~Texture();
+        virtual ~Texture() override;
 
         static void OnStartup( GFXDevice& gfx );
         static void OnShutdown() noexcept;
@@ -187,4 +187,4 @@ namespace Attorney
 }
 
 };  // namespace Divide
-#endif // _TEXTURE_H_
+#endif // DVD_TEXTURE_H_

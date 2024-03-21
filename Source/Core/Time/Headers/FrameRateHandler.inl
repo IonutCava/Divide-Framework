@@ -29,8 +29,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 
-#ifndef _CORE_TIME_FRAMERATE_HANDLER_INL_
-#define _CORE_TIME_FRAMERATE_HANDLER_INL_
+#ifndef DVD_CORE_TIME_FRAMERATE_HANDLER_INL_
+#define DVD_CORE_TIME_FRAMERATE_HANDLER_INL_
 
 namespace Divide {
 namespace Time {
@@ -57,7 +57,7 @@ inline void FrameRateHandler::frameRateAndTime(F32& fpsOut, F32& frameTimeOut) c
 }
 
 inline F32 FrameRateHandler::averageFrameRate() const noexcept {
-    return _averageFPS / _frameCount;
+    return _averageFPS / to_F32(_frameCount);
 }
 
 inline void FrameRateHandler::frameStates(F32& avgFPSOut, F32& minFPSOut, F32& maxFPSOut) const noexcept {
@@ -70,4 +70,4 @@ inline void FrameRateHandler::frameStates(F32& avgFPSOut, F32& minFPSOut, F32& m
 } //namespace Divide
 
 
-#endif //_CORE_TIME_FRAMERATE_HANDLER_INL_
+#endif //DVD_CORE_TIME_FRAMERATE_HANDLER_INL_

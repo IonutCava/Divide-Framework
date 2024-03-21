@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _SCENE_NODE_H_
-#define _SCENE_NODE_H_
+#ifndef DVD_SCENE_NODE_H_
+#define DVD_SCENE_NODE_H_
 
 #include "SceneNodeFwd.h"
 #include "SceneNodeRenderState.h"
@@ -93,7 +93,7 @@ class SceneNode : public CachedResource {
 
   public:
     explicit SceneNode(ResourceCache* parentCache, size_t descriptorHash, const Str<256>& name, const ResourcePath& resourceName, const ResourcePath& resourceLocation, SceneNodeType type, U32 requiredComponentMask);
-    virtual ~SceneNode();
+    virtual ~SceneNode() override;
 
     /// Perform any pre-draw operations POST-command build
     /// If the node isn't ready for rendering and should be skipped this frame, the return value is false
@@ -248,4 +248,6 @@ class SceneNodePlayer {
 
 };  // namespace Attorney
 };  // namespace Divide
-#endif
+
+#endif //DVD_SCENE_NODE_H_
+

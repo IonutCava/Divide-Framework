@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _DESCRIPTOR_SETS_INL_
-#define _DESCRIPTOR_SETS_INL_
+#ifndef DVD_DESCRIPTOR_SETS_INL_
+#define DVD_DESCRIPTOR_SETS_INL_
 
 namespace Divide
 {
@@ -211,4 +211,5 @@ namespace Divide
         return AddBinding( setInOut, slot, to_U16( stageVisibility ) );
     }
 } //namespace Divide
-#endif //_DESCRIPTOR_SETS_INL_
+
+#endif //DVD_DESCRIPTOR_SETS_INL_

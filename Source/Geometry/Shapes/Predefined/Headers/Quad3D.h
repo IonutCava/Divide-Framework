@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _QUAD_3D_H_
-#define _QUAD_3D_H_
+#ifndef DVD_QUAD_3D_H_
+#define DVD_QUAD_3D_H_
 
 #include "Geometry/Shapes/Headers/Object3D.h"
 
@@ -74,4 +74,4 @@ TYPEDEF_SMART_POINTERS_FOR_TYPE(Quad3D);
 
 };  // namespace Divide
 
-#endif // _QUAD_3D_H_
+#endif // DVD_QUAD_3D_H_

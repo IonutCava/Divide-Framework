@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _SHADER_PROGRAM_INFO_H_
-#define _SHADER_PROGRAM_INFO_H_
+#ifndef DVD_SHADER_PROGRAM_INFO_H_
+#define DVD_SHADER_PROGRAM_INFO_H_
 
 namespace Divide {
 
@@ -54,4 +54,4 @@ struct ShaderProgramInfo {
 
 }; //namespace Divide
 
-#endif //_SHADER_PROGRAM_INFO_H_
+#endif //DVD_SHADER_PROGRAM_INFO_H_

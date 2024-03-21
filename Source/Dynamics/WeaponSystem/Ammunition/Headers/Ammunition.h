@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _AMMUNITION_H_
-#define _AMMUNITION_H_
+#ifndef DVD_AMMUNITION_H_
+#define DVD_AMMUNITION_H_
 
 namespace Divide {
 
@@ -56,4 +56,4 @@ class Ammunition {
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_AMMUNITION_H_

@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _RENDER_API_H_
-#define _RENDER_API_H_
+#ifndef DVD_RENDER_API_H_
+#define DVD_RENDER_API_H_
 
 #include "Platform/Video/Headers/DescriptorSetsFwd.h"
 
@@ -115,12 +115,12 @@ struct DeviceInformation
 
     U32 _maxWorgroupCount[3] = {65535u, 65535u, 65535u};
     U32 _maxWorgroupSize[3] = {1024u, 1024u, 64u};
-    size_t _UBOMaxSizeBytes = 64 * 1024;
-    size_t _SSBOMaxSizeBytes = 1024 * 1024 * 1024u;
+    size_t _maxSizeBytesUBO = 64 * 1024;
+    size_t _maxSizeBytesSSBO = 1024 * 1024 * 1024u;
     size_t _maxComputeSharedMemoryBytes = 1024 * 1024 * 1024;
-    size_t _UBOffsetAlignmentBytes = 256u;
-    size_t _SSBOffsetAlignmentBytes = 16u;
-    size_t _VBOffsetAlignmentBytes = 4u;
+    size_t _offsetAlignmentBytesUBO = 256u;
+    size_t _offsetAlignmentBytesSSBO = 16u;
+    size_t _offsetAlignmentBytesVBO = 4u;
     U32 _maxWorgroupInvocations = 1024u;
     U32 _maxVertAttributeBindings = 16u;
     U32 _maxVertAttributes = 16u;
@@ -182,4 +182,4 @@ FWD_DECLARE_MANAGED_CLASS(RenderAPIWrapper);
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_RENDER_API_H_

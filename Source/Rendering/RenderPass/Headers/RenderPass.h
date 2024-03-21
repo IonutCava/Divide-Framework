@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _RENDERING_RENDER_PASS_RENDERPASS_H_
-#define _RENDERING_RENDER_PASS_RENDERPASS_H_
+#ifndef DVD_RENDERING_RENDER_PASS_RENDERPASS_H_
+#define DVD_RENDERING_RENDER_PASS_RENDERPASS_H_
 
 namespace Divide {
 
@@ -98,4 +98,4 @@ class RenderPass final : NonCopyable {
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_RENDERING_RENDER_PASS_RENDERPASS_H_

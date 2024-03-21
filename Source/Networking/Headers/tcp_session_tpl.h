@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _SESSION_TPL_H_
-#define _SESSION_TPL_H_
+#ifndef DVD_SESSION_TPL_H_
+#define DVD_SESSION_TPL_H_
 
 #include "WorldPacket.h"
 
@@ -142,4 +142,5 @@ namespace Divide
     };
 
 };  // namespace Divide
-#endif
+
+#endif //DVD_SESSION_TPL_H_

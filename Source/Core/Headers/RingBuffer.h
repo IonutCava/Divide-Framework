@@ -30,26 +30,27 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _CORE_RING_BUFFER_H_
-#define _CORE_RING_BUFFER_H_
+#ifndef DVD_CORE_RING_BUFFER_H_
+#define DVD_CORE_RING_BUFFER_H_
 
 namespace Divide {
 
 class RingBufferSeparateWrite : public NonCopyable {
 public:
     // If separateReadWrite is true, this behaves exactly like a RingBuffer
-    explicit RingBufferSeparateWrite(U32 queueLength, bool separateReadWrite, bool writeAhead = true) noexcept;
+    explicit RingBufferSeparateWrite(U16 queueLength, bool separateReadWrite, bool writeAhead = true) noexcept;
     virtual ~RingBufferSeparateWrite() = default;
 
-    virtual void resize(U32 queueLength);
+    virtual void resize(U16 queueLength);
 
-    [[nodiscard]] U32 queueLength() const noexcept { return _queueLength; }
+    [[nodiscard]] U16 queueLength() const noexcept { return _queueLength; }
 
     [[nodiscard]] I32 queueWriteIndex() const noexcept {
         const I32 ret = _queueIndex.load();
 
-        if (_separateReadWrite) {
-            return (ret + (_writeAhead ? 1 : _queueLength - 1)) % _queueLength;
+        if (_separateReadWrite)
+        {
+            return (ret + (_writeAhead ? 1 : to_I32(_queueLength) - 1)) % to_I32(_queueLength);
         }
         
         return ret;
@@ -59,7 +60,7 @@ public:
 
     I32 incQueue() noexcept {
         if (queueLength() > 1) {
-            _queueIndex = (_queueIndex + 1) % _queueLength;
+            _queueIndex = (_queueIndex + 1) % to_I32( _queueLength );
         }
 
         return queueWriteIndex();
@@ -68,17 +69,17 @@ public:
     I32 decQueue() noexcept {
         if (queueLength() > 1) {
             if (_queueIndex == 0) {
-                _queueIndex = _queueLength;
+                _queueIndex = to_I32( _queueLength );
             }
 
-            _queueIndex = (_queueIndex - 1) % _queueLength;
+            _queueIndex = (_queueIndex - 1) % to_I32( _queueLength );
         }
 
         return queueWriteIndex();
     }
 
 private:
-    U32 _queueLength = 1u;
+    U16 _queueLength = 1u;
     const bool _writeAhead = false;
     const bool _separateReadWrite = false;
     std::atomic_int _queueIndex = 0;
@@ -86,31 +87,35 @@ private:
 
 class RingBuffer : public NonCopyable {
 public:
-    explicit RingBuffer(U32 queueLength) noexcept;
+    explicit RingBuffer(U16 queueLength) noexcept;
     virtual ~RingBuffer() = default;
 
-    virtual void resize(U32 queueLength) noexcept;
+    virtual void resize(U16 queueLength) noexcept;
 
-    [[nodiscard]] U32 queueLength() const noexcept { return _queueLength; }
+    [[nodiscard]] U16 queueLength() const noexcept { return _queueLength; }
     [[nodiscard]] I32 queueIndex() const noexcept { return _queueIndex; }
 
-    void incQueue() noexcept {
-        if (queueLength() > 1) {
-            _queueIndex = (_queueIndex + 1) % _queueLength;
+    void incQueue() noexcept
+    {
+        if (queueLength() > 1)
+        {
+            _queueIndex = (_queueIndex + 1) % to_I32(_queueLength);
         }
     }
 
-    void decQueue() noexcept {
-        if (queueLength() > 1) {
-            _queueIndex = (_queueIndex - 1) % _queueLength;
+    void decQueue() noexcept
+    {
+        if (queueLength() > 1)
+        {
+            _queueIndex = (_queueIndex - 1) % to_I32(_queueLength);
         }
     }
 
 private:
-    U32 _queueLength = 1u;
+    U16 _queueLength = 1u;
     std::atomic_int _queueIndex;
 };
 
 } //namespace Divide
 
-#endif //_CORE_RING_BUFFER_H_
+#endif //DVD_CORE_RING_BUFFER_H_

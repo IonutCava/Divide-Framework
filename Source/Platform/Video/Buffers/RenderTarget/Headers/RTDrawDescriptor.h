@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _RENDER_TARGET_DRAW_DESCRIPTOR_H_
-#define _RENDER_TARGET_DRAW_DESCRIPTOR_H_
+#ifndef DVD_RENDER_TARGET_DRAW_DESCRIPTOR_H_
+#define DVD_RENDER_TARGET_DRAW_DESCRIPTOR_H_
 
 #include "RTAttachment.h"
 #include "Platform/Video/Headers/BlendingProperties.h"
@@ -95,7 +95,6 @@ bool operator==(const BlitEntry& lhs, const BlitEntry& rhs) noexcept;
 
 }; //namespace Divide
 
-#endif //_RENDER_TARGET_DRAW_DESCRIPTOR_H_
-
+#endif //DVD_RENDER_TARGET_DRAW_DESCRIPTOR_H_
 
 #include "RTDrawDescriptor.inl"

@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _BOX_3D_H_
-#define _BOX_3D_H_
+#ifndef DVD_BOX_3D_H_
+#define DVD_BOX_3D_H_
 
 #include "Geometry/Shapes/Headers/Object3D.h"
 
@@ -61,4 +61,4 @@ TYPEDEF_SMART_POINTERS_FOR_TYPE(Box3D);
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_BOX_3D_H_

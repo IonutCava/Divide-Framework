@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _CORE_CONFIGURATION_H_
-#define _CORE_CONFIGURATION_H_
+#ifndef DVD_CORE_CONFIGURATION_H_
+#define DVD_CORE_CONFIGURATION_H_
 
 #include "Utility/Headers/XMLParser.h"
 
@@ -240,5 +240,4 @@ protected:
 };
 }; //namespace Divide
 
-#endif//_CORE_CONFIGURATION_H_
-
+#endif//DVD_CORE_CONFIGURATION_H_

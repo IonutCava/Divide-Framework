@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _UTILITY_IMAGETOOLS_FWD_H
-#define _UTILITY_IMAGETOOLS_FWD_H
+#ifndef DVD_UTILITY_IMAGETOOLS_FWD_H
+#define DVD_UTILITY_IMAGETOOLS_FWD_H
 
 namespace Divide {
     namespace ImageTools {
@@ -64,12 +64,12 @@ namespace Divide {
 
         struct ImportOptions {
             bool _useDDSCache = true;
-            bool _waitForDDSConversion = false; //<If false, we will load the src image and convert to DDS in the background. If true, we will wait for the conversion first and load that instead
+            bool _waitForDDSConversion = false; ///<If false, we will load the src image and convert to DDS in the background. If true, we will wait for the conversion first and load that instead
             bool _skipMipMaps = false;
             bool _isNormalMap = false;
             bool _fastCompression = false;
             bool _outputSRGB = false;
-            bool _alphaChannelTransparency = true; //< If false, the alpha channel represents arbitrary data (e.g. in splatmaps)
+            bool _alphaChannelTransparency = true; ///< If false, the alpha channel represents arbitrary data (e.g. in splatmaps)
             MipMapFilter _mipFilter = MipMapFilter::KAISER;
             ImageOutputFormat _outputFormat = ImageOutputFormat::AUTO;
         };
@@ -94,4 +94,4 @@ namespace Divide {
     } //namespace ImageTools
 } //namespace Divide
 
-#endif //_UTILITY_IMAGETOOLS_FWD_H
+#endif //DVD_UTILITY_IMAGETOOLS_FWD_H

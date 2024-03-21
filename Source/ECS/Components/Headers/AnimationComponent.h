@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _ANIMATION_COMPONENT_H_
-#define _ANIMATION_COMPONENT_H_
+#ifndef DVD_ANIMATION_COMPONENT_H_
+#define DVD_ANIMATION_COMPONENT_H_
 
 #include "SGNComponent.h"
 #include "Core/Math/Headers/Line.h"
@@ -78,7 +78,7 @@ BEGIN_COMPONENT(Animation, ComponentType::ANIMATION)
     PROPERTY_R(bool, showSkeleton, false);
     PROPERTY_RW(F32, animationSpeed, 1.f);
     /// Pointer to the mesh's animator. Owned by the mesh!
-    PROPERTY_RW(SceneAnimator_ptr, animator, nullptr)
+    PROPERTY_RW(SceneAnimator_ptr, animator, nullptr);
 
                   void playAnimations(const bool state)       noexcept { _playAnimations = state;}
     [[nodiscard]] bool playAnimations()                 const noexcept { return _playAnimations && s_globalAnimationState; }
@@ -105,4 +105,5 @@ BEGIN_COMPONENT(Animation, ComponentType::ANIMATION)
 END_COMPONENT(Animation)
 
 }  // namespace Divide
-#endif //_ANIMATION_COMPONENT_H_
+
+#endif //DVD_ANIMATION_COMPONENT_H_

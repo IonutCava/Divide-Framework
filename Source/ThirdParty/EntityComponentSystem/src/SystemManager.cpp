@@ -21,7 +21,7 @@ namespace ECS
 	{
 		DEFINE_LOGGER("SystemManager")
 
-		LogInfo("Initialize SystemManager!","");
+		LOG_INFO("Initialize SystemManager!","");
 
 		// acquire global memory
 		this->m_SystemAllocator = new SystemAllocator(ECS_SYSTEM_MEMORY_BUFFER_SIZE, Allocate(ECS_SYSTEM_MEMORY_BUFFER_SIZE, "SystemManager"));
@@ -43,7 +43,7 @@ namespace ECS
 		delete this->m_SystemAllocator;
 		this->m_SystemAllocator = nullptr;
 		
-		LogInfo("Release SystemManager!","");
+		LOG_INFO("Release SystemManager!","");
 	}
 
     void SystemManager::PreUpdate(f32 dt_ms)
@@ -211,7 +211,7 @@ namespace ECS
 
 
 
-		LogInfo("Update system work order:", "")
+		LOG_INFO("Update system work order:", "")
 
 		// re-build system work order
 		this->m_SystemWorkOrder.clear();
@@ -223,7 +223,7 @@ namespace ECS
 				if (sys != nullptr)
 				{
 					this->m_SystemWorkOrder.push_back(sys);
-					LogInfo("\t%s", sys->GetSystemTypeName())
+					LOG_INFO("\t%s", sys->GetSystemTypeName())
 				}
 			}
 		}

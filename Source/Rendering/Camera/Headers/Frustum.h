@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _FRUSTUM_H_
-#define _FRUSTUM_H_
+#ifndef DVD_FRUSTUM_H_
+#define DVD_FRUSTUM_H_
 
 namespace Divide {
 
@@ -111,4 +111,4 @@ class Frustum {
 
 };  // namespace Divide
 
-#endif //_FRUSTUM_H_
+#endif //DVD_FRUSTUM_H_

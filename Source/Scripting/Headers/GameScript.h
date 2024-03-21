@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _SCRIPTING_GAME_SCRIPT_H_
-#define _SCRIPTING_GAME_SCRIPT_H_
+#ifndef DVD_SCRIPTING_GAME_SCRIPT_H_
+#define DVD_SCRIPTING_GAME_SCRIPT_H_
 
 #include "Scripting/Headers/Script.h"
 #include "Core/Headers/FrameListener.h"
@@ -65,4 +65,4 @@ public:
 
 } //namespace Divide
 
-#endif //_SCRIPTING_GAME_SCRIPT_H_
+#endif //DVD_SCRIPTING_GAME_SCRIPT_H_

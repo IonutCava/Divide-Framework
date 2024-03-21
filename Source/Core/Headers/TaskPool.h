@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _TASK_POOL_H_
-#define _TASK_POOL_H_
+#ifndef DVD_TASK_POOL_H_
+#define DVD_TASK_POOL_H_
 
 #include "Platform/Threading/Headers/Task.h"
 
@@ -121,6 +121,6 @@ void parallel_for(TaskPool& pool, const ParallelForDescriptor& descriptor);
 
 } //namespace Divide
 
-#endif //_TASK_POOL_H_
+#endif //DVD_TASK_POOL_H_
 
 #include "TaskPool.inl"

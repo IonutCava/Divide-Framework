@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _PHYSICS_SCENE_INTERFACE_H_
-#define _PHYSICS_SCENE_INTERFACE_H_
+#ifndef DVD_PHYSICS_SCENE_INTERFACE_H_
+#define DVD_PHYSICS_SCENE_INTERFACE_H_
 
 #include "Scenes/Headers/SceneComponent.h"
 
@@ -44,7 +44,6 @@ class PhysicsSceneInterface : public SceneComponent,
    public:
     explicit PhysicsSceneInterface(Scene& parentScene);
 
-    virtual ~PhysicsSceneInterface() = default;
     /// Pre PHYSICS_DEVICE initialisation call
     virtual bool init() = 0;
     /// Should return true if init() was called successfully.
@@ -61,4 +60,5 @@ class PhysicsSceneInterface : public SceneComponent,
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_PHYSICS_SCENE_INTERFACE_H_
+

@@ -29,8 +29,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _ECS_MANAGER_H_
-#define _ECS_MANAGER_H_
+#ifndef DVD_ECS_MANAGER_H_
+#define DVD_ECS_MANAGER_H_
 
 #include "ECS/Engine.h"
 #include "Core/Headers/PlatformContextComponent.h"
@@ -45,11 +45,11 @@ namespace Divide {
             [[nodiscard]] bool saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) const;
             [[nodiscard]] bool loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer) const;
 
-            REFERENCE_R(ECS::ECSEngine, ecsEngine)
+            REFERENCE_R(ECS::ECSEngine, ecsEngine);
     };
 
     FWD_DECLARE_MANAGED_CLASS(ECSManager);
 
 } //namespace Divide
 
-#endif //_ECS_MANAGER_H_
+#endif //DVD_ECS_MANAGER_H_

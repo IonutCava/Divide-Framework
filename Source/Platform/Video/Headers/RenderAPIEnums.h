@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _GFX_ENUMS_H
-#define _GFX_ENUMS_H
+#ifndef DVD_GFX_ENUMS_H
+#define DVD_GFX_ENUMS_H
 
 namespace Divide {
 
@@ -888,4 +888,4 @@ using AttributeOffsets = std::array<size_t, to_base(AttribLocation::COUNT)>;
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_GFX_ENUMS_H

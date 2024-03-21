@@ -25,8 +25,8 @@
  *   OTHER DEALINGS IN THE SOFTWARE.
  ***************************************************************************/
 #pragma once
-#ifndef _CEGUIDVDTexture_inl_
-#define _CEGUIDVDTexture_inl_
+#ifndef DVD_CEGUIDVDTexture_inl_
+#define DVD_CEGUIDVDTexture_inl_
 
 namespace CEGUI
 {
@@ -64,5 +64,4 @@ inline Divide::Texture_ptr DVDTexture::getDVDTexture() const
 
 }
 
-#endif
-
+#endif //DVD_CEGUIDVDTexture_inl_

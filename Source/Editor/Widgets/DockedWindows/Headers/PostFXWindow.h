@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _EDITOR_POSTFX_WINDOW_H_
-#define _EDITOR_POSTFX_WINDOW_H_
+#ifndef DVD_EDITOR_POSTFX_WINDOW_H_
+#define DVD_EDITOR_POSTFX_WINDOW_H_
 
 #include "Editor/Widgets/Headers/DockedWindow.h"
 #include "Core/Headers/PlatformContextComponent.h"
@@ -51,4 +51,4 @@ private:
 };
 } //namespace Divide
 
-#endif //_EDITOR_POSTFX_WINDOW_H_
+#endif //DVD_EDITOR_POSTFX_WINDOW_H_

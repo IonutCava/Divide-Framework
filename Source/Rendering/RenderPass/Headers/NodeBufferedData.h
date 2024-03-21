@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _RENDER_PASS_NODE_BUFFERED_DATA_H_
-#define _RENDER_PASS_NODE_BUFFERED_DATA_H_
+#ifndef DVD_RENDER_PASS_NODE_BUFFERED_DATA_H_
+#define DVD_RENDER_PASS_NODE_BUFFERED_DATA_H_
 
 namespace Divide {
 
@@ -75,4 +75,4 @@ namespace Divide {
 
 } //namespace Divide
 
-#endif //_RENDER_PASS_NODE_BUFFERED_DATA_H_
+#endif //DVD_RENDER_PASS_NODE_BUFFERED_DATA_H_

@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _POLY_CONTAINER_H_
-#define _POLY_CONTAINER_H_
+#ifndef DVD_POLY_CONTAINER_H_
+#define DVD_POLY_CONTAINER_H_
 
 namespace Divide
 {
@@ -46,18 +46,19 @@ namespace Divide
         }
 
         PolyContainerEntry( const U8 typeIndex, const U24 elementIndex ) noexcept
-            : _typeIndex( typeIndex )
-            , _elementIndex( elementIndex )
+            : _idx{ typeIndex, elementIndex }
         {
         }
 
+        struct IDX
+        {
+            U8 _type;
+            U24 _element;
+        };
+
         union
         {
-            struct
-            {
-                U8 _typeIndex;
-                U24 _elementIndex;
-            };
+            IDX _idx;
             U32 _data{ INVALID_ENTRY_ID };
         };
     };
@@ -139,8 +140,8 @@ namespace Divide
 
         [[nodiscard]] T* get( const PolyContainerEntry& entry ) const
         {
-            const EntryList& collection = _collection[entry._typeIndex];
-            const U32 elementIndex = to_U32( entry._elementIndex );
+            const EntryList& collection = _collection[entry._idx._type];
+            const U32 elementIndex = to_U32( entry._idx._element );
             if ( elementIndex < collection.size() )
             {
                 return collection[elementIndex];
@@ -151,7 +152,7 @@ namespace Divide
 
         [[nodiscard]] bool exists( const PolyContainerEntry& entry ) const noexcept
         {
-            return entry._typeIndex < N&& entry._elementIndex < _collection[entry._typeIndex].size();
+            return entry._idx._type < N&& entry._idx._element < _collection[entry._idx._type].size();
         }
 
         void reserveAdditional( const PolyContainer<T, N, DEL, RES>& other )
@@ -198,4 +199,5 @@ namespace Divide
     };
 
 } //namespace Divide
-#endif //_POLY_CONTAINER_H_
+
+#endif //DVD_POLY_CONTAINER_H_

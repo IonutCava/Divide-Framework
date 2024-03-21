@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _SHARED_MUTEX_BOOST_H_
-#define _SHARED_MUTEX_BOOST_H_
+#ifndef DVD_SHARED_MUTEX_BOOST_H_
+#define DVD_SHARED_MUTEX_BOOST_H_
 
 #include <shared_mutex>
 
@@ -57,4 +57,4 @@ using ScopedLock = std::scoped_lock<mutexes...>;
 
 };  // namespace Divide
 
-#endif //_SHARED_MUTEX_BOOST_H_
+#endif //DVD_SHARED_MUTEX_BOOST_H_

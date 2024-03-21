@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _GFX_COMMAND_H_
-#define _GFX_COMMAND_H_
+#ifndef DVD_GFX_COMMAND_H_
+#define DVD_GFX_COMMAND_H_
 
 
 #ifndef TO_STR
@@ -43,40 +43,18 @@ namespace Divide {
 
 namespace GFX {
 
-struct DrawCommand;
-struct BindShaderResourcesCommand;
-
-template<typename T>
-constexpr size_t MemoryPoolSize()
-{
-    constexpr size_t g_commandPoolSizeFactor = prevPOW2( sizeof( T ) ) * (1u << 17);
-
-    if constexpr ( std::is_same<T, GFX::BindShaderResourcesCommand>::value )
-    {
-        return g_commandPoolSizeFactor * 3;
-    }
-    else if constexpr ( std::is_same<T, GFX::DrawCommand>::value )
-    {
-        return g_commandPoolSizeFactor * 2;
-    }
-    
-    return g_commandPoolSizeFactor;
-}
-
-template<typename T>
-struct CmdAllocator
-{
-    static inline thread_local MemoryPool<T, MemoryPoolSize<T>()> s_Pool;
-};
-
 enum class CommandType : U8;
-
-struct CommandBase;
-
 class CommandBuffer;
+
 struct CommandBase
 {
-    explicit CommandBase(const CommandType type) noexcept : EType(type) {}
+    explicit CommandBase(const CommandType type) noexcept
+        : EType( type )
+    {
+    }
+
+    virtual ~CommandBase() = default;
+    CommandBase& operator=( const CommandBase& ) = default;
 
     virtual void addToBuffer(CommandBuffer* buffer) const = 0;
 
@@ -86,8 +64,8 @@ struct CommandBase
     [[nodiscard]] FORCE_INLINE T* As() { return static_cast<T*>(this); }
 
 protected:
-    friend void DELETE_CMD(CommandBase*& cmd);
-    virtual void DeleteCmd( CommandBase*& cmd ) const noexcept = 0;
+    friend void DELETE_CMD( CommandBase*& );
+    virtual void DeleteCmd( CommandBase*& cmd ) const = 0;
 
 protected:
     CommandType EType;
@@ -96,37 +74,30 @@ protected:
 template<typename T, CommandType EnumVal>
 struct Command : CommandBase {
     static constexpr CommandType EType = EnumVal;
+    using CType = T;
 
     Command() noexcept : CommandBase(EnumVal) {}
-    virtual ~Command() = default;
 
     void addToBuffer(CommandBuffer* buffer) const final;
 
 protected:
-    void DeleteCmd(CommandBase*& cmd) const noexcept final
-    {
-        CmdAllocator<T>::s_Pool.deleteElement( (T*&)cmd );
-        cmd = nullptr;
-    }
+    void DeleteCmd(CommandBase*& cmd) const final;
+
 };
 
 string ToString(const CommandBase& cmd, U16 indent);
 
-#define IMPLEMENT_COMMAND(Command) \
-template<> \
-thread_local decltype(CmdAllocator<Command>::s_Pool) CmdAllocator<Command>::s_Pool;
-
 #define DEFINE_COMMAND_BEGIN(Name, Enum) struct Name final : public Command<Name, Enum> { \
 using Base = Command<Name, Enum>; \
-PROPERTY_RW(bool, flag, false); \
+PROPERTY_RW(bool, flag, false) \
 
 #define DEFINE_COMMAND_END(Name) }
 
 #define DEFINE_COMMAND(Name, Enum) \
-DEFINE_COMMAND_BEGIN(Name, Enum)\
+DEFINE_COMMAND_BEGIN(Name, Enum);\
 DEFINE_COMMAND_END(Name)
 
 }; //namespace GFX
 }; //namespace Divide
 
-#endif //_GFX_COMMAND_H_
+#endif //DVD_GFX_COMMAND_H_

@@ -9,8 +9,8 @@
 */
 
 #pragma once
-#ifndef __I_EVENT_DISPATCHER_H__
-#define __I_EVENT_DISPATCHER_H__
+#ifndef ECS__I_EVENT_DISPATCHER_H__
+#define ECS__I_EVENT_DISPATCHER_H__
 
 #include <unordered_map>
 
@@ -43,4 +43,4 @@ namespace ECS { namespace Event {
 
 }} // namespace ECS::Event
 
-#endif // __I_EVENT_DISPATCHER_H__
+#endif // ECS__I_EVENT_DISPATCHER_H__

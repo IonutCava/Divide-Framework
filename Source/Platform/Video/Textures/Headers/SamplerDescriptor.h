@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _SAMPLER_DESCRIPTOR_H_
-#define _SAMPLER_DESCRIPTOR_H_
+#ifndef DVD_SAMPLER_DESCRIPTOR_H_
+#define DVD_SAMPLER_DESCRIPTOR_H_
 
 #include "Utility/Headers/Colours.h"
 
@@ -79,6 +79,6 @@ namespace XMLParser
 
 } //namespace Divide 
 
-#endif //_SAMPLER_DESCRIPTOR_H_
+#endif //DVD_SAMPLER_DESCRIPTOR_H_
 
 #include "SamplerDescriptor.inl"

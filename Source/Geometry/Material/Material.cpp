@@ -1084,7 +1084,7 @@ namespace Divide
 
     void Material::getData( const U32 bestProbeID, NodeMaterialData& dataOut )
     {
-        const FColour3& specColour = properties().specular(); //< For PHONG_SPECULAR
+        const FColour3& specColour = properties().specular(); ///< For PHONG_SPECULAR
         const F32 shininess = CLAMPED( properties().shininess(), 0.f, MAX_SHININESS );
 
         const bool useOpacityAlphaChannel = properties().translucencySource() == TranslucencySource::OPACITY_MAP_A;

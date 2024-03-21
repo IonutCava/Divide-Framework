@@ -9,8 +9,8 @@
 */
 
 #pragma once
-#ifndef __I_EVENT_H__
-#define __I_EVENT_H__
+#ifndef ECS__I_EVENT_H__
+#define ECS__I_EVENT_H__
 
 #include "API.h"
 #include "util/Handle.h"
@@ -46,4 +46,4 @@ namespace ECS {
 
 }} // namespace ECS::Event
 
-#endif // __I_EVENT_H__
+#endif // ECS__I_EVENT_H__

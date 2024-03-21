@@ -9,8 +9,8 @@
 */
 
 #pragma once
-#ifndef __I_ALLOC_H__
-#define __I_ALLOC_H__
+#ifndef ECS__I_ALLOC_H__
+#define ECS__I_ALLOC_H__
 
 #include "API.h"
 
@@ -96,4 +96,4 @@ namespace ECS { namespace Memory { namespace Allocator {
 
 }}} // ECS::Memory::Allocator
 
-#endif // __I_ALLOC_H__ 
+#endif // ECS__I_ALLOC_H__ 

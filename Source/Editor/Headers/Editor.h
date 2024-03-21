@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _DIVIDE_EDITOR_H_
-#define _DIVIDE_EDITOR_H_
+#ifndef DVD_EDITOR_H_
+#define DVD_EDITOR_H_
 
 #include "UndoManager.h"
 
@@ -449,7 +449,7 @@ namespace Divide
                 editor.selectedCamera( camera );
             }
 
-            [[nodiscard]] static Camera* getSelectedCamera( const Editor& editor )  noexcept
+            [[nodiscard]] static const Camera* getSelectedCamera( const Editor& editor )  noexcept
             {
                 return editor.selectedCamera();
             }
@@ -764,6 +764,6 @@ namespace Divide
     };
 } //namespace Divide
 
-#endif //_DIVIDE_EDITOR_H_
+#endif //DVD_EDITOR_H_
 
 #include "Editor.inl"

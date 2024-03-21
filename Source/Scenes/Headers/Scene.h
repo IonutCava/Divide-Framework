@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _SCENE_H_
-#define _SCENE_H_
+#ifndef DVD_SCENE_H_
+#define DVD_SCENE_H_
 
 #include "SceneState.h"
 #include "SceneInput.h"
@@ -145,7 +145,7 @@ class Scene : public Resource, public PlatformContextComponent {
     public:
 
         explicit Scene(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str<256>& name);
-        virtual ~Scene();
+        virtual ~Scene() override;
 
         /// Scene is rendering, so add intensive tasks here to save CPU cycles
         [[nodiscard]] bool idle();
@@ -541,4 +541,4 @@ class SceneName final : public Scene { \
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_SCENE_H

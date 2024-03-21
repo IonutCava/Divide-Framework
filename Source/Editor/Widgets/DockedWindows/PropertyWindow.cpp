@@ -293,7 +293,7 @@ namespace Divide
                     }
                     else
                     {
-                        cam->setProjection( cam->snapshot()._aspectRatio, cam->snapshot()._FoV, *static_cast<const vec2<F32>*>(planes) );
+                        cam->setProjection( cam->snapshot()._aspectRatio, cam->snapshot()._fov, *static_cast<const vec2<F32>*>(planes) );
                     }
                 };
                 sceneChanged = processField( camField ) || sceneChanged;
@@ -1479,7 +1479,7 @@ namespace Divide
                 tempField._data = &zBias;
                 tempField._range = { 0.0f, 1000.0f };
                 const RenderStagePass tempPass = currentStagePass;
-                tempField._dataSetter = [material, &stateBlock, tempPass, zUnits]( const void* data )
+                tempField._dataSetter = [material, &stateBlock, tempPass]( const void* data )
                 {
                     stateBlock._zBias = *static_cast<const F32*>(data);
                     material->setRenderStateBlock( stateBlock, tempPass._stage, tempPass._passType, tempPass._variant );
@@ -1495,7 +1495,7 @@ namespace Divide
                 tempField._data = &zUnits;
                 tempField._range = { 0.0f, 65536.0f };
                 const RenderStagePass tempPass = currentStagePass;
-                tempField._dataSetter = [material, &stateBlock, tempPass, zBias]( const void* data )
+                tempField._dataSetter = [material, &stateBlock, tempPass]( const void* data )
                 {
                     stateBlock._zUnits = *static_cast<const F32*>(data);
                     material->setRenderStateBlock( stateBlock, tempPass._stage, tempPass._passType, tempPass._variant );
@@ -2125,7 +2125,7 @@ namespace Divide
                     ret = processBasicField( tempField ) || ret;
                     ImGui::PopItemWidth();
                     ImGui::SameLine();
-                    ApplyAllButton( id, fromTexture || readOnly, *material, [&specular]( const Material& baseMaterial, Material* matInstance )
+                    ApplyAllButton( id, fromTexture || readOnly, *material, []( const Material& baseMaterial, Material* matInstance )
                                     {
                                         matInstance->properties().shininess( baseMaterial.properties().shininess() );
                                     } );

@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _SHADER_COMPUTE_QUEUE_H_
-#define _SHADER_COMPUTE_QUEUE_H_
+#ifndef DVD_SHADER_COMPUTE_QUEUE_H_
+#define DVD_SHADER_COMPUTE_QUEUE_H_
 
 #include "ShaderProgramInfo.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
@@ -83,4 +83,4 @@ private:
 
 }; //namespace Divide
 
-#endif //_SHADER_COMPUTE_QUEUE_H_
+#endif //DVD_SHADER_COMPUTE_QUEUE_H_

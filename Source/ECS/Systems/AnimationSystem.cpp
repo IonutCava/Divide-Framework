@@ -33,7 +33,7 @@ namespace Divide {
         for (AnimationComponent* comp : _componentCache) {
             const SceneAnimator_ptr animator = comp->animator();
 
-            if (!animator || comp->_parentTimeStamp == comp->_currentTimeStamp) {
+            if (!animator || COMPARE(comp->_parentTimeStamp, comp->_currentTimeStamp)) {
                 return;
             }
 

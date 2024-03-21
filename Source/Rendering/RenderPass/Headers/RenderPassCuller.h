@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _RENDER_PASS_CULLER_H_
-#define _RENDER_PASS_CULLER_H_
+#ifndef DVD_RENDER_PASS_CULLER_H_
+#define DVD_RENDER_PASS_CULLER_H_
 
 #include "Platform/Video/Headers/ClipPlanes.h"
 
@@ -166,4 +166,5 @@ private:
 };
 
 }  // namespace Divide
-#endif
+
+#endif //DVD_RENDER_PASS_CULLER_H_

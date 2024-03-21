@@ -49,7 +49,7 @@ class FormattedListboxTextItem final : public ListboxTextItem {
         bool disabled = false, bool auto_delete = true);
 
     ///! Destructor.
-    ~FormattedListboxTextItem();
+    ~FormattedListboxTextItem() override;
 
     ///! Return the current formatting set.
     HorizontalTextFormatting getFormatting() const noexcept;

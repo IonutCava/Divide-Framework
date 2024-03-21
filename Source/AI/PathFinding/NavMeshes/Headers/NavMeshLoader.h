@@ -51,8 +51,8 @@
 // The above license is fully inherited.
 
 #pragma once
-#ifndef _NAVIGATION_MESH_LOADER_H_
-#define _NAVIGATION_MESH_LOADER_H_
+#ifndef DVD_NAVIGATION_MESH_LOADER_H_
+#define DVD_NAVIGATION_MESH_LOADER_H_
 
 #include "NavMeshConfig.h"
 #include "Core/Math/BoundingVolumes/Headers/BoundingBox.h"
@@ -150,4 +150,4 @@ void AddTriangle(NavModelData* modelData, const vec3<U32>& triangleIndices,
 }  // namespace AI
 }  // namespace Divide
 
-#endif //_NAVIGATION_MESH_LOADER_H_
+#endif //DVD_NAVIGATION_MESH_LOADER_H_

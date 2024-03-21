@@ -631,8 +631,8 @@ void SceneGraphNode::processEvents()
                     RenderingComponent* rComp = get<RenderingComponent>();
                     if (rComp != nullptr)
                     {
-                        const bool state = evt._dataFirst == 1u;
-                        const bool recursive = evt._dataSecond == 1u;
+                        const bool state = evt._dataPair._first == 1u;
+                        const bool recursive = evt._dataPair._second == 1u;
                         rComp->toggleRenderOption(RenderingComponent::RenderOptions::RENDER_SELECTION, state, recursive);
                     }
                 }
@@ -1162,8 +1162,8 @@ void SceneGraphNode::setFlag(const Flags flag, const bool recursive)
            nullptr,
            to_U32(flag)
         };
-        evt._dataFirst = 1u;
-        evt._dataSecond = recursive ? 1u : 0u;
+        evt._dataPair._first = 1u;
+        evt._dataPair._second = recursive ? 1u : 0u;
 
         SendEvent(MOV(evt));
     }
@@ -1190,8 +1190,8 @@ void SceneGraphNode::clearFlag(const Flags flag, const bool recursive)
             nullptr,
             to_U32(flag)
         };
-        evt._dataFirst = 0u;
-        evt._dataSecond = recursive ? 1u : 0u;
+        evt._dataPair._first = 0u;
+        evt._dataPair._second = recursive ? 1u : 0u;
 
         SendEvent(MOV(evt));
     }

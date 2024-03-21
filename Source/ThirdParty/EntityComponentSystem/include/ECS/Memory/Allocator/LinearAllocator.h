@@ -9,8 +9,8 @@
 */
 
 #pragma once
-#ifndef __LINEAR_ALLOC_H__
-#define __LINEAR_ALLOC_H__
+#ifndef ECS__LINEAR_ALLOC_H__
+#define ECS__LINEAR_ALLOC_H__
 
 #include "Memory/Allocator/IAllocator.h"
 
@@ -48,4 +48,4 @@ namespace ECS { namespace Memory { namespace Allocator {
 
 } } } // namespace ECS::Memory::Allocator
 
-#endif // __LINEAR_ALLOC_H__
+#endif // ECS__LINEAR_ALLOC_H__

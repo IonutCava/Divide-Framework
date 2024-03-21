@@ -10,6 +10,8 @@
 
 #include "Utility/Headers/Localization.h"
 
+using namespace gl;
+
 namespace Divide
 {
 
@@ -52,7 +54,7 @@ namespace Divide
         }
     }
 
-    BufferLock glShaderBuffer::writeBytesInternal( const BufferRange range, bufferPtr data )
+    BufferLock glShaderBuffer::writeBytesInternal( const BufferRange range, const bufferPtr data )
     {
         return bufferImpl()->writeOrClearBytes( range._startOffset, range._length, data );
     }

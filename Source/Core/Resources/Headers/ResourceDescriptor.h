@@ -66,8 +66,8 @@ class ResourceDescriptor final : public Hashable {
     using CBK = DELEGATE<void, CachedResource_wptr>;
 
     ///resourceName is the name of the resource instance, not an actual asset name! Use "assetName" for that
-    explicit ResourceDescriptor(const string& resourceName) : ResourceDescriptor(resourceName.c_str()) {};
-    explicit ResourceDescriptor(const char* resourceName)  : ResourceDescriptor(Str<256>(resourceName)) {};
+    explicit ResourceDescriptor(const string& resourceName) : ResourceDescriptor(resourceName.c_str()) {}
+    explicit ResourceDescriptor(const char* resourceName)  : ResourceDescriptor(Str<256>(resourceName)) {}
     explicit ResourceDescriptor(const Str<256>& resourceName);
 
     template <typename T> requires std::is_base_of_v<PropertyDescriptor, T>

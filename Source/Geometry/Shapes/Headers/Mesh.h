@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _MESH_H_
-#define _MESH_H_
+#ifndef DVD_MESH_H_
+#define DVD_MESH_H_
 
 /**
 DIVIDE-Engine: 21.10.2010 (Ionut Cava)
@@ -64,7 +64,7 @@ class SceneAnimator;
 
 struct MeshNodeData {
     mat4<F32> _transform;
-    vector<U32> _meshIndices; //<Index into Mesh::MeshData
+    vector<U32> _meshIndices; ///<Index into Mesh::MeshData
     vector<MeshNodeData> _children;
     string _name;
 
@@ -88,8 +88,6 @@ class Mesh final : public Object3D {
                   const Str<256>& name,
                   const ResourcePath& resourceName,
                   const ResourcePath& resourceLocation);
-
-    virtual ~Mesh() = default;
 
     void postLoad(SceneGraphNode* sgn) override;
 
@@ -138,4 +136,4 @@ TYPEDEF_SMART_POINTERS_FOR_TYPE(Mesh);
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_MESH_H_

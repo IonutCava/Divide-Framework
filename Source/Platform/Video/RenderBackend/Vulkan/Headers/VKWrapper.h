@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _VK_WRAPPER_H_
-#define _VK_WRAPPER_H_
+#ifndef DVD_VK_WRAPPER_H_
+#define DVD_VK_WRAPPER_H_
 
 #include "vkDevice.h"
 #include "vkSwapChain.h"
@@ -186,4 +186,4 @@ public:
 
 };  // namespace Divide
 
-#endif //_VK_WRAPPER_H_
+#endif //DVD_VK_WRAPPER_H_

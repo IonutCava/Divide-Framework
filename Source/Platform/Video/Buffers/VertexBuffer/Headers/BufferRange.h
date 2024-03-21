@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _BUFFER_RANGE_H_
-#define _BUFFER_RANGE_H_
+#ifndef DVD_BUFFER_RANGE_H_
+#define DVD_BUFFER_RANGE_H_
 
 namespace Divide {
 
@@ -50,6 +50,6 @@ namespace Divide {
 
 } //namespace Divide
 
-#endif //_BUFFER_RANGE_H_
+#endif //DVD_BUFFER_RANGE_H_
 
 #include "BufferRange.inl"

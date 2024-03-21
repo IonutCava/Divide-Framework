@@ -30,13 +30,18 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _CORE_HASHABLE_H_
-#define _CORE_HASHABLE_H_
+#ifndef DVD_CORE_HASHABLE_H_
+#define DVD_CORE_HASHABLE_H_
 
 namespace Divide {
 
 struct Hashable
 {
+    Hashable() = default;
+    virtual ~Hashable() = default;
+
+    Hashable( const Hashable& other ) : _hash(other._hash) {}
+
     [[nodiscard]] virtual size_t getHash() const { return _hash; }
 
   protected:
@@ -45,4 +50,4 @@ struct Hashable
 
 }  // namespace Divide
 
-#endif  //_CORE_HASHABLE_H_
+#endif  //DVD_CORE_HASHABLE_H_

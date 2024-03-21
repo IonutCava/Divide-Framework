@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _SHADER_PROGRAM_H_
-#define _SHADER_PROGRAM_H_
+#ifndef DVD_SHADER_PROGRAM_H_
+#define DVD_SHADER_PROGRAM_H_
 
 #include "ShaderProgramFwd.h"
 #include "ShaderDataUploader.h"
@@ -78,7 +78,7 @@ namespace Divide
 
     public:
         explicit ShaderModule( GFXDevice& context, const Str<256>& name, U32 generation );
-        virtual ~ShaderModule();
+        virtual ~ShaderModule() override;
 
         void registerParent(ShaderProgram* parent);
         void deregisterParent(ShaderProgram* parent);
@@ -349,4 +349,5 @@ namespace Divide
     };
 
 };  // namespace Divide
-#endif //_SHADER_PROGRAM_H_
+
+#endif //DVD_SHADER_PROGRAM_H_

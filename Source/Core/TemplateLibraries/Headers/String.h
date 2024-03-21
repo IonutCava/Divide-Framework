@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _STRING_H_
-#define _STRING_H_
+#ifndef DVD_STRING_H_
+#define DVD_STRING_H_
 
 #include "STLString.h"
 
@@ -43,4 +43,5 @@ namespace Divide
     template<typename T>
     concept is_string = is_stl_string<T> || is_eastl_string<T>;
 }//namespace Divide
-#endif //_STRING_H_
+
+#endif //DVD_STRING_H_

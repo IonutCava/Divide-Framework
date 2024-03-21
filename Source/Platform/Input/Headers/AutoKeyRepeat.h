@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _AUTO_KEY_REPEAT_H_
-#define _AUTO_KEY_REPEAT_H_
+#ifndef DVD_AUTO_KEY_REPEAT_H_
+#define DVD_AUTO_KEY_REPEAT_H_
 
 // Adapted from:
 // http://www.ogre3d.org/tikiwiki/tiki-index.php?page=Auto+Repeat+Key+Input
@@ -74,4 +74,5 @@ class AutoRepeatKey {
 };
 };  // namespace Input
 };  // namespace Divide
-#endif
+
+#endif //DVD_AUTO_KEY_REPEAT_H_

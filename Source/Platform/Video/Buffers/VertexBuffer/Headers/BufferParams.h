@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _BUFFER_PARAMS_H_
-#define _BUFFER_PARAMS_H_
+#ifndef DVD_BUFFER_PARAMS_H_
+#define DVD_BUFFER_PARAMS_H_
 
 namespace Divide {
     struct BufferFlags
@@ -55,6 +55,6 @@ namespace Divide {
     bool operator!=(const BufferParams& lhs, const BufferParams& rhs) noexcept;
 } //namespace Divide
 
-#endif //_BUFFER_PARAMS_H_
+#endif //DVD_BUFFER_PARAMS_H_
 
 #include "BufferParams.inl"

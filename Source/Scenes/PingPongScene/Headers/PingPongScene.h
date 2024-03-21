@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _PINGPONG_SCENE_H
-#define _PINGPONG_SCENE_H
+#ifndef DVD_PINGPONG_SCENE_H
+#define DVD_PINGPONG_SCENE_H
 
 #include "Scenes/Headers/Scene.h"
 
@@ -77,4 +77,4 @@ namespace Divide
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_PINGPONG_SCENE_H

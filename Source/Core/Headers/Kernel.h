@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _CORE_KERNEL_H_
-#define _CORE_KERNEL_H_
+#ifndef DVD_CORE_KERNEL_H_
+#define DVD_CORE_KERNEL_H_
 
 #include "PlatformContext.h"
 #include "LoopTimingData.h"
@@ -85,7 +85,7 @@ class Kernel final : public Input::InputAggregatorInterface,
 
    public:
     Kernel(I32 argc, char** argv, Application& parentApp);
-    ~Kernel();
+    ~Kernel() override;
 
     /// Our main application rendering loop: Call input requests, physics calculations, pre-rendering, rendering,post-rendering etc
     void onLoop();
@@ -120,7 +120,7 @@ class Kernel final : public Input::InputAggregatorInterface,
     PROPERTY_RW(LoopTimingData, timingData);
     PROPERTY_RW(bool, keepAlive, true);
     POINTER_R(ResourceCache, resourceCache, nullptr);
-    POINTER_R(SceneManager, sceneManager, nullptr)
+    POINTER_R(SceneManager, sceneManager, nullptr);
     POINTER_R(RenderPassManager, renderPassManager, nullptr);
 
     PROPERTY_R_IW(size_t, totalThreadCount, 0u);
@@ -221,4 +221,4 @@ namespace Attorney {
 
 };  // namespace Divide
 
-#endif  //_CORE_KERNEL_H_
+#endif  //DVD_CORE_KERNEL_H_

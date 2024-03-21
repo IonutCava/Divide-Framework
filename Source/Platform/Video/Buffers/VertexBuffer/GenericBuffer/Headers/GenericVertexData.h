@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _GENERIC_VERTEX_DATA_H
-#define _GENERIC_VERTEX_DATA_H
+#ifndef DVD_GENERIC_VERTEX_DATA_H
+#define DVD_GENERIC_VERTEX_DATA_H
 
 #include "Core/Headers/RingBuffer.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/BufferParams.h"
@@ -76,8 +76,7 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
      };
 
    public:
-    GenericVertexData(GFXDevice& context, U32 ringBufferLength, const bool renderIndirect, const Str<256>& name);
-    virtual ~GenericVertexData() = default;
+    GenericVertexData(GFXDevice& context, U16 ringBufferLength, const bool renderIndirect, const Str<256>& name);
 
     virtual BufferLock setIndexBuffer(const IndexBuffer& indices) = 0;
 
@@ -100,4 +99,4 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_GENERIC_VERTEX_DATA_H

@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _POINT_LIGHT_COMPONENT_H_
-#define _POINT_LIGHT_COMPONENT_H_
+#ifndef DVD_POINT_LIGHT_COMPONENT_H_
+#define DVD_POINT_LIGHT_COMPONENT_H_
 
 #include "Rendering/Lighting/Headers/Light.h"
 
@@ -48,4 +48,4 @@ END_COMPONENT(PointLight);
 
 }  // namespace Divide
 
-#endif //_POINT_LIGHT_COMPONENT_H_
+#endif //DVD_POINT_LIGHT_COMPONENT_H_

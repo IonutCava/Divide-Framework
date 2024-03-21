@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _EDITOR_STATUS_BAR_H_
-#define _EDITOR_STATUS_BAR_H_
+#ifndef DVD_EDITOR_STATUS_BAR_H_
+#define DVD_EDITOR_STATUS_BAR_H_
 
 #include "Core/Headers/PlatformContextComponent.h"
 
@@ -57,4 +57,4 @@ namespace Divide {
     FWD_DECLARE_MANAGED_CLASS(StatusBar);
 } //namespace Divide
 
-#endif //_EDITOR_STATUS_BAR_H_
+#endif //DVD_EDITOR_STATUS_BAR_H_

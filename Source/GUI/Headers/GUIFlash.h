@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _GUI_FLASH_H
-#define _GUI_FLASH_H
+#ifndef DVD_GUI_FLASH_H
+#define DVD_GUI_FLASH_H
 
 #include "GUIElement.h"
 
@@ -44,4 +44,4 @@ class GUIFlash final : public GUIElementBase<GUIType::GUI_FLASH> {
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_GUI_FLASH_H

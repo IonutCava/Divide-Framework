@@ -420,7 +420,7 @@ namespace Divide
     void UniformBlockUploader::resizeBlockBuffer( const bool increaseSize )
     {
 
-        const U32 newSize = _buffer == nullptr ? RingBufferLength : _bufferSizeFactor;
+        const U16 newSize = _buffer == nullptr ? RingBufferLength : _bufferSizeFactor;
 
         ShaderBufferDescriptor bufferDescriptor{};
         bufferDescriptor._name = _uniformBlock._name.c_str();

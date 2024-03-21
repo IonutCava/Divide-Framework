@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _WAYPOINT_H_
-#define _WAYPOINT_H_
+#ifndef DVD_WAYPOINT_H_
+#define DVD_WAYPOINT_H_
 
 #include "Core/Math/Headers/Ray.h"
 
@@ -59,4 +59,4 @@ struct WaypointPath {
 }  // namespace Navigation
 }  // namespace Divide
 
-#endif
+#endif //DVD_WAYPOINT_H_

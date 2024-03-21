@@ -54,8 +54,8 @@ SOFTWARE.
 */
 
 #pragma once
-#ifndef _VK_DESCRIPTORS_H_
-#define _VK_DESCRIPTORS_H_
+#ifndef DVD_VK_DESCRIPTORS_H_
+#define DVD_VK_DESCRIPTORS_H_
 
 #include "vkResources.h"
 
@@ -108,4 +108,4 @@ private:
 };
 } //namespace Divide
 
-#endif //_VK_DESCRIPTORS_H_
+#endif //DVD_VK_DESCRIPTORS_H_

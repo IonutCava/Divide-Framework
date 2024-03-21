@@ -6,8 +6,8 @@
 ///-------------------------------------------------------------------------------------------------
 
 #pragma once
-#ifndef __MEMORY_CHUNK_ALLOCATOR_H__
-#define __MEMORY_CHUNK_ALLOCATOR_H__
+#ifndef ECS__MEMORY_CHUNK_ALLOCATOR_H__
+#define ECS__MEMORY_CHUNK_ALLOCATOR_H__
 
 #include "API.h"
 #include "Memory/Allocator/PoolAllocator.h"
@@ -279,5 +279,5 @@ namespace ECS { namespace Memory {
 
 }} // namespace ECS::Memory
 
-#endif // __MEMORY_CHUNK_ALLOCATOR_H__
+#endif // ECS__MEMORY_CHUNK_ALLOCATOR_H__
 

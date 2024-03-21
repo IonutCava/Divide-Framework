@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _PUSH_CONSTANTS_H_
-#define _PUSH_CONSTANTS_H_
+#ifndef DVD_PUSH_CONSTANTS_H_
+#define DVD_PUSH_CONSTANTS_H_
 
 #include "PushConstant.h"
 
@@ -86,6 +86,6 @@ bool Merge(PushConstants& lhs, const PushConstants& rhs, bool& partial);
 
 }; //namespace Divide
 
-#endif //_PUSH_CONSTANTS_H_
+#endif //DVD_PUSH_CONSTANTS_H_
 
 #include "PushConstants.inl"

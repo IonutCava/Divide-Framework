@@ -28,8 +28,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 
-#ifndef _SGN_COMPONENT_INL_
-#define _SGN_COMPONENT_INL_
+#ifndef DVD_SGN_COMPONENT_INL_
+#define DVD_SGN_COMPONENT_INL_
 
 #include "Graphs/Headers/SceneGraphNode.h"
 
@@ -37,4 +37,4 @@ namespace Divide {
   
 }//namespace Divide
 
-#endif
+#endif //DVD_SGN_COMPONENT_INL_

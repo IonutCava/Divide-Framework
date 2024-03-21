@@ -32,7 +32,6 @@ set(OPTICK_USE_D3D12 FALSE)
 set(OPTICK_USE_VULKAN TRUE)
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
-
 #VK-Bootstrap
 FetchContent_Declare(
     vk_bootstrap
@@ -106,6 +105,8 @@ FetchContent_Declare(
 )
 
 #chaiscript
+set(UNIT_TEST_LIGHT TRUE)
+set(BUILD_SAMPLES FALSE)
 FetchContent_Declare(
     chaiscript
     GIT_REPOSITORY https://github.com/ChaiScript/ChaiScript.git

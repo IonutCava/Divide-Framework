@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _EDITOR_IMGUI_EXTENSIONS_H_
-#define _EDITOR_IMGUI_EXTENSIONS_H_
+#ifndef DVD_EDITOR_IMGUI_EXTENSIONS_H_
+#define DVD_EDITOR_IMGUI_EXTENSIONS_H_
 
 struct ImVec2;
 
@@ -48,4 +48,4 @@ namespace ImGui {
     bool ImageZoomAndPan( ImTextureID user_texture_id, const ImVec2& size,float aspectRatio,float& zoom, ImVec2& zoomCenter,int panMouseButtonDrag,int resetZoomAndPanMouseButton,const ImVec2& zoomMaxAndZoomStep);
 } //namespace ImGui
 
-#endif //_EDITOR_IMGUI_EXTENSIONS_H_
+#endif //DVD_EDITOR_IMGUI_EXTENSIONS_H_

@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _SDL_EVENT_MANAGER_H_
-#define _SDL_EVENT_MANAGER_H_
+#ifndef DVD_SDL_EVENT_MANAGER_H_
+#define DVD_SDL_EVENT_MANAGER_H_
 
 #include "Core/TemplateLibraries/Headers/Vector.h"
 
@@ -52,4 +52,4 @@ namespace Divide {
 
 }; //namespace Divide
 
-#endif //_SDL_EVENT_MANAGER_H_
+#endif //DVD_SDL_EVENT_MANAGER_H_

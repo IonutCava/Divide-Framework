@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _SCENE_POOL_H_
-#define _SCENE_POOL_H_
+#ifndef DVD_SCENE_POOL_H_
+#define DVD_SCENE_POOL_H_
 
 namespace Divide {
 
@@ -72,4 +72,4 @@ private:
 };
 } //namespace Divide
 
-#endif //_SCENE_POOL_H_
+#endif //DVD_SCENE_POOL_H_

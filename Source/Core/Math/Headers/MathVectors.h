@@ -52,8 +52,8 @@
  */
 
 #pragma once
-#ifndef _MATH_VECTORS_H_
-#define _MATH_VECTORS_H_
+#ifndef DVD_MATH_VECTORS_H_
+#define DVD_MATH_VECTORS_H_
 
 #include "MathHelper.h"
 
@@ -1515,4 +1515,4 @@ namespace Divide
 // Inline definitions
 #include "MathVectors.inl"
 
-#endif
+#endif //DVD_MATH_VECTORS_H_

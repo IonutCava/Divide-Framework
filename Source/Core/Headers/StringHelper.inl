@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _CORE_STRING_HELPER_INL_
-#define _CORE_STRING_HELPER_INL_
+#ifndef DVD_CORE_STRING_HELPER_INL_
+#define DVD_CORE_STRING_HELPER_INL_
 
 #ifndef FMT_EXCEPTIONS
 #define FMT_EXCEPTIONS 0
@@ -388,4 +388,5 @@ namespace Divide
 
     } //namespace Util
 } //namespace Divide
-#endif //_CORE_STRING_HELPER_INL_
+
+#endif //DVD_CORE_STRING_HELPER_INL_

@@ -29,8 +29,8 @@
 
  */
 
-#ifndef _CORE_PARAM_HANDLER_INL_
-#define _CORE_PARAM_HANDLER_INL_
+#ifndef DVD_CORE_PARAM_HANDLER_INL_
+#define DVD_CORE_PARAM_HANDLER_INL_
 
 #include "Utility/Headers/Localization.h"
 
@@ -197,4 +197,4 @@ inline void ParamHandler::delParam<F32>(HashType nameID) {
 
 }  // namespace Divide
 
-#endif  //_CORE_PARAM_HANDLER_INL_
+#endif  //DVD_CORE_PARAM_HANDLER_INL_

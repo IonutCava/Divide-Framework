@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _INPUT_VARIABLES_H_
-#define _INPUT_VARIABLES_H_
+#ifndef DVD_INPUT_VARIABLES_H_
+#define DVD_INPUT_VARIABLES_H_
 
 namespace Divide {
 namespace Input {
@@ -207,4 +207,5 @@ class VariableEffect {
 
 };  // namespace Input
 };  // namespace Divide
-#endif
+
+#endif //DVD_INPUT_VARIABLES_H_

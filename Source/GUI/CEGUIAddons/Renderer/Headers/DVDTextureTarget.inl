@@ -25,8 +25,8 @@
  *   OTHER DEALINGS IN THE SOFTWARE.
  ***************************************************************************/
 #pragma once
-#ifndef _CEGUIDVDTextureTarget_inl_
-#define _CEGUIDVDTextureTarget_inl_
+#ifndef DVD_CEGUIDVDTextureTarget_inl_
+#define DVD_CEGUIDVDTextureTarget_inl_
 
 #include "DVDTexture.h"
 
@@ -59,4 +59,4 @@ inline Divide::SamplerDescriptor DVDTextureTarget::getSampler() const noexcept
 }
 }
 
-#endif
+#endif //DVD_CEGUIDVDTextureTarget_inl_

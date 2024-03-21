@@ -211,7 +211,7 @@ namespace Divide
         if ( _packetQueue.empty() )
         {
             WorldPacket heart( OPCodes::MSG_HEARTBEAT );
-            heart << to_I8( 0 );
+            heart << I8_ZERO;
             _packetQueue.push_back( heart );
         }
 

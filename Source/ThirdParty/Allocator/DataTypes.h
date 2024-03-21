@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _DATA_TYPES_H
-#define _DATA_TYPES_H
+#ifndef DATA_TYPES_H
+#define DATA_TYPES_H
 
 	typedef signed char INT8;
 	typedef unsigned char UINT8;
@@ -35,4 +35,4 @@
 	#ifndef TRUE
 	#define TRUE                1
 	#endif
-#endif
+#endif //DATA_TYPES_H

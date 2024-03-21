@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _EDITOR_NODE_PREVIEW_WINDOW_H_
-#define _EDITOR_NODE_PREVIEW_WINDOW_H_
+#ifndef DVD_EDITOR_NODE_PREVIEW_WINDOW_H_
+#define DVD_EDITOR_NODE_PREVIEW_WINDOW_H_
 
 #include "Editor/Widgets/Headers/DockedWindow.h"
 
@@ -59,4 +59,4 @@ namespace Divide
     };
 } //namespace Divide
 
-#endif //_EDITOR_NODE_PREVIEW_WINDOW_H_
+#endif //DVD_EDITOR_NODE_PREVIEW_WINDOW_H_

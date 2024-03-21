@@ -30,8 +30,8 @@
    */
 
 #pragma once
-#ifndef _VECTOR_H_
-#define _VECTOR_H_
+#ifndef DVD_VECTOR_H_
+#define DVD_VECTOR_H_
 
 #include "TemplateAllocator.h"
 
@@ -215,4 +215,4 @@ namespace Divide
     }
 }; //namespace Divide
 
-#endif
+#endif //DVD_VECTOR_H_

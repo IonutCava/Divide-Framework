@@ -9,8 +9,8 @@
 */
 
 #pragma once
-#ifndef __EVENT_DISPATCHER_H__
-#define __EVENT_DISPATCHER_H__
+#ifndef ECS__EVENT_DISPATCHER_H__
+#define ECS__EVENT_DISPATCHER_H__
 
 #include "API.h"
 #include "IEventDispatcher.h"
@@ -55,7 +55,7 @@ namespace ECS { namespace Event { namespace Internal {
 		{
 			this->m_Locked = true;
 			{
-				LogInfo("Dispatch event %s", typeid(T).name());
+				LOG_INFO("Dispatch event %s", typeid(T).name());
 
 				// remove pending delegates
 				if (this->m_PendingRemoveDelegates.empty() == false)
@@ -149,4 +149,4 @@ namespace ECS { namespace Event { namespace Internal {
 
 }}} // namespace ECS::Event::Internal
 
-#endif // __EVENT_DISPATCHER_H__
+#endif // ECS__EVENT_DISPATCHER_H__

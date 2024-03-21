@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _GL_STATE_TRACKER_H_
-#define _GL_STATE_TRACKER_H_
+#ifndef DVD_GL_STATE_TRACKER_H_
+#define DVD_GL_STATE_TRACKER_H_
 
 #include "glResources.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
@@ -61,8 +61,8 @@ namespace Divide {
         void setBlending(const BlendingSettings& blendingProperties);
         void resetBlending() { setBlending(_blendPropertiesGlobal); setBlendColour({ 0u, 0u, 0u, 0u }); }
         /// Set the blending properties for the specified draw buffer
-        void setBlending(GLuint drawBufferIdx, const BlendingSettings& blendingProperties);
-        void resetBlending(const GLuint drawBufferIdx) { setBlending(drawBufferIdx, _blendProperties[drawBufferIdx]); }
+        void setBlending(gl::GLuint drawBufferIdx, const BlendingSettings& blendingProperties);
+        void resetBlending(const gl::GLuint drawBufferIdx) { setBlending(drawBufferIdx, _blendProperties[drawBufferIdx]); }
         void setBlendColour(const UColour4& blendColour);
         /// A state block should contain all rendering state changes needed for the next draw call.
         /// Some may be redundant, so we check each one individually
@@ -72,41 +72,41 @@ namespace Divide {
         void setVertexFormat(const AttributeMap& attributes, const size_t attributeHash);
 
         /// Single place to change buffer objects for every target available
-        [[nodiscard]] BindResult setActiveBuffer(GLenum target, GLuint bufferHandle);
+        [[nodiscard]] BindResult setActiveBuffer( gl::GLenum target, gl::GLuint bufferHandle);
         /// Single place to change buffer objects for every target available
-        [[nodiscard]] BindResult setActiveBuffer(GLenum target, GLuint bufferHandle, GLuint& previousID);
+        [[nodiscard]] BindResult setActiveBuffer( gl::GLenum target, gl::GLuint bufferHandle, gl::GLuint& previousID);
 
-        [[nodiscard]] BindResult setActiveBufferIndex(GLenum target, GLuint bufferHandle, GLuint bindIndex);
-        [[nodiscard]] BindResult setActiveBufferIndex(GLenum target, GLuint bufferHandle, GLuint bindIndex, GLuint& previousID);
+        [[nodiscard]] BindResult setActiveBufferIndex( gl::GLenum target, gl::GLuint bufferHandle, gl::GLuint bindIndex );
+        [[nodiscard]] BindResult setActiveBufferIndex( gl::GLenum target, gl::GLuint bufferHandle, gl::GLuint bindIndex, gl::GLuint& previousID);
         /// Same as normal setActiveBuffer but handles proper binding of different ranges
-        [[nodiscard]] BindResult setActiveBufferIndexRange(GLenum target, GLuint bufferHandle, GLuint bindIndex, size_t offsetInBytes, size_t rangeInBytes);
-        [[nodiscard]] BindResult setActiveBufferIndexRange(GLenum target, GLuint bufferHandle, GLuint bindIndex, size_t offsetInBytes, size_t rangeInBytes, GLuint& previousID);
+        [[nodiscard]] BindResult setActiveBufferIndexRange( gl::GLenum target, gl::GLuint bufferHandle, gl::GLuint bindIndex, size_t offsetInBytes, size_t rangeInBytes );
+        [[nodiscard]] BindResult setActiveBufferIndexRange( gl::GLenum target, gl::GLuint bufferHandle, gl::GLuint bindIndex, size_t offsetInBytes, size_t rangeInBytes, gl::GLuint& previousID);
         /// Switch the current framebuffer by binding it as either a R/W buffer, read
         /// buffer or write buffer
-        [[nodiscard]] BindResult setActiveFB(RenderTarget::Usage usage, GLuint ID);
+        [[nodiscard]] BindResult setActiveFB(RenderTarget::Usage usage, gl::GLuint ID);
         /// Switch the current framebuffer by binding it as either a R/W buffer, read
         /// buffer or write buffer
-        [[nodiscard]] BindResult setActiveFB(RenderTarget::Usage usage, GLuint ID, GLuint& previousID);
+        [[nodiscard]] BindResult setActiveFB(RenderTarget::Usage usage, gl::GLuint ID, gl::GLuint& previousID);
         /// Change the currently active shader program. Returns false if the program was already bound
-        [[nodiscard]] BindResult setActiveProgram(GLuint programHandle);
+        [[nodiscard]] BindResult setActiveProgram( gl::GLuint programHandle);
         /// Change the currently active shader pipeline. Returns false if the pipeline was already bound
-        [[nodiscard]] BindResult setActiveShaderPipeline(GLuint pipelineHandle);
+        [[nodiscard]] BindResult setActiveShaderPipeline( gl::GLuint pipelineHandle);
         /// Returns true if the texture was bound. If the texture was not bound, no state is changed.
-        [[nodiscard]] bool      unbindTexture(TextureType type, GLuint handle);
+        [[nodiscard]] bool      unbindTexture(TextureType type, gl::GLuint handle);
         [[nodiscard]] bool      unbindTextures();
         /// Bind a texture specified by a GL handle and GL type to the specified unit
         /// using the sampler object defined by handle value
-        [[nodiscard]] BindResult bindTexture(GLubyte unit, GLuint handle, GLuint samplerHandle = 0u);
-        [[nodiscard]] BindResult bindTextureImage(GLubyte unit, GLuint handle, GLint level, bool layered, GLint layer, GLenum access, GLenum format);
+        [[nodiscard]] BindResult bindTexture( gl::GLubyte unit, gl::GLuint handle, gl::GLuint samplerHandle = 0u);
+        [[nodiscard]] BindResult bindTextureImage( gl::GLubyte unit, gl::GLuint handle, gl::GLint level, bool layered, gl::GLint layer, gl::GLenum access, gl::GLenum format);
         /// Bind multiple textures specified by an array of handles and an offset unit
-        [[nodiscard]] BindResult bindTextures(GLubyte unitOffset, GLuint textureCount, const GLuint* textureHandles, const GLuint* samplerHandles);
+        [[nodiscard]] BindResult bindTextures( gl::GLubyte unitOffset, gl::GLuint textureCount, const gl::GLuint* textureHandles, const gl::GLuint* samplerHandles);
         [[nodiscard]] BindResult setStateBlock(const RenderStateBlock& stateBlock);
         /// Bind multiple samplers described by the array of hash values to the
         /// consecutive texture units starting from the specified offset
-        [[nodiscard]] BindResult bindSamplers(GLubyte unitOffset, GLuint samplerCount, const GLuint* samplerHandles);
+        [[nodiscard]] BindResult bindSamplers( gl::GLubyte unitOffset, gl::GLuint samplerCount, const gl::GLuint* samplerHandles);
         /// Modify buffer bindings for the active vao
-        [[nodiscard]] BindResult bindActiveBuffer(GLuint location, GLuint bufferID, size_t offset, size_t stride);
-        [[nodiscard]] BindResult bindActiveBuffers(GLuint location, GLsizei count, GLuint* bufferIDs, GLintptr* offset, GLsizei* strides);
+        [[nodiscard]] BindResult bindActiveBuffer( gl::GLuint location, gl::GLuint bufferID, size_t offset, size_t stride);
+        [[nodiscard]] BindResult bindActiveBuffers( gl::GLuint location, gl::GLsizei count, gl::GLuint* bufferIDs, gl::GLintptr* offset, gl::GLsizei* strides);
 
         /// Pixel pack alignment is usually changed by textures, PBOs, etc
         bool setPixelPackAlignment( const PixelAlignment& pixelPackAlignment );
@@ -126,11 +126,11 @@ namespace Divide {
         bool setAlphaToCoverage(bool state);
         bool setDepthWrite(bool state);
 
-        [[nodiscard]] GLuint getBoundTextureHandle(U8 slot) const noexcept;
-        [[nodiscard]] GLuint getBoundSamplerHandle(U8 slot) const noexcept;
-        [[nodiscard]] GLuint getBoundProgramHandle() const noexcept;
-        [[nodiscard]] GLuint getBoundBuffer(GLenum target, GLuint bindIndex) const noexcept;
-        [[nodiscard]] GLuint getBoundBuffer(GLenum target, GLuint bindIndex, size_t& offsetOut, size_t& rangeOut) const noexcept;
+        [[nodiscard]] gl::GLuint getBoundTextureHandle(U8 slot) const noexcept;
+        [[nodiscard]] gl::GLuint getBoundSamplerHandle(U8 slot) const noexcept;
+        [[nodiscard]] gl::GLuint getBoundProgramHandle() const noexcept;
+        [[nodiscard]] gl::GLuint getBoundBuffer( gl::GLenum target, gl::GLuint bindIndex) const noexcept;
+        [[nodiscard]] gl::GLuint getBoundBuffer( gl::GLenum target, gl::GLuint bindIndex, size_t& offsetOut, size_t& rangeOut) const noexcept;
 
         void getActiveViewport(Rect<I32>& viewportOut) const noexcept;
 
@@ -161,22 +161,22 @@ namespace Divide {
         RenderTargetID _activeRenderTargetID{ INVALID_RENDER_TARGET_ID };
         vec2<U16> _activeRenderTargetDimensions{1u};
         /// 0 - current framebuffer, 1 - current read only framebuffer, 2 - current write only framebuffer
-        GLuint _activeFBID[3] { GL_NULL_HANDLE,
-                                GL_NULL_HANDLE,
-                                GL_NULL_HANDLE };
+        gl::GLuint _activeFBID[3] { GL_NULL_HANDLE,
+                                    GL_NULL_HANDLE,
+                                    GL_NULL_HANDLE };
         /// VB, IB, SB, TB, UB, PUB, DIB
-        std::array<GLuint, 13> _activeBufferID = create_array<13, GLuint>(GL_NULL_HANDLE);
-        GLuint _activeVAOIB{GL_NULL_HANDLE};
+        std::array<gl::GLuint, 13> _activeBufferID = create_array<13, gl::GLuint>(GL_NULL_HANDLE);
+        gl::GLuint _activeVAOIB{GL_NULL_HANDLE};
         size_t _drawIndirectBufferOffset{0u};
 
         PixelAlignment _packAlignment{};
         PixelAlignment _unpackAlignment{};
 
-        GLuint _activeShaderProgramHandle{ 0u }; //GLUtil::_invalidObjectID;
-        GLuint _activeShaderPipelineHandle{ 0u };//GLUtil::_invalidObjectID;
+        gl::GLuint _activeShaderProgramHandle{ 0u }; //GLUtil::_invalidObjectID;
+        gl::GLuint _activeShaderPipelineHandle{ 0u };//GLUtil::_invalidObjectID;
         bool _alphaToCoverageEnabled{ false };
         BlendingSettings _blendPropertiesGlobal;
-        GLboolean _blendEnabledGlobal{ GL_FALSE };
+        gl::GLboolean _blendEnabledGlobal{ gl::GL_FALSE };
 
         // 32 buffer bindings for now
         using BindConfig = std::array<BindConfigEntry, 32>;
@@ -184,24 +184,24 @@ namespace Divide {
         PerBufferConfig _currentBindConfig;
 
         vector<BlendingSettings> _blendProperties;
-        vector<GLboolean> _blendEnabled;
+        vector<gl::GLboolean> _blendEnabled;
         UColour4  _blendColour{ 0, 0, 0, 0 };
         Rect<I32> _activeViewport{ -1, -1, -1, -1 };
         Rect<I32> _activeScissor{ -1, -1, -1, -1 };
         FColour4  _activeClearColour{ DefaultColours::BLACK_U8 };
         F32       _clearDepthValue{ 1.f };
 
-        using TextureBoundMapDef = std::array<GLuint, MAX_BOUND_TEXTURE_UNITS>;
+        using TextureBoundMapDef = std::array<gl::GLuint, MAX_BOUND_TEXTURE_UNITS>;
         TextureBoundMapDef _textureBoundMap;
 
         using ImageBoundMapDef = vector<ImageBindSettings>;
         ImageBoundMapDef _imageBoundMap;
 
-        using SamplerBoundMapDef = std::array<GLuint, MAX_BOUND_TEXTURE_UNITS>;
+        using SamplerBoundMapDef = std::array<gl::GLuint, MAX_BOUND_TEXTURE_UNITS>;
         SamplerBoundMapDef _samplerBoundMap;
 
         VAOBindings _vaoBufferData;
-        eastl::queue<std::pair<GLsync, U64>> _endFrameFences;
+        eastl::queue<std::pair<gl::GLsync, U64>> _endFrameFences;
         U64 _lastSyncedFrameNumber{ 0u };
 
         size_t _attributeHash{ 0u };
@@ -212,4 +212,4 @@ namespace Divide {
 }; //namespace Divide
 
 
-#endif //_GL_STATE_TRACKER_H_
+#endif //DVD_GL_STATE_TRACKER_H_

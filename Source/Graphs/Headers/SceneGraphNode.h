@@ -30,8 +30,8 @@
    */
 
 #pragma once
-#ifndef _SCENE_GRAPH_NODE_H_
-#define _SCENE_GRAPH_NODE_H_
+#ifndef DVD_SCENE_GRAPH_NODE_H_
+#define DVD_SCENE_GRAPH_NODE_H_
 
 #include "SceneNodeFwd.h"
 #include "SGNRelationshipCache.h"
@@ -133,10 +133,10 @@ namespace Divide
         public:
         /// Avoid creating SGNs directly. Use the "addChildNode" on an existing node (even root) or "addNode" on the existing SceneGraph
         explicit SceneGraphNode( SceneGraph* sceneGraph, const SceneGraphNodeDescriptor& descriptor );
-        ~SceneGraphNode();
+        ~SceneGraphNode() override;
 
         /// Return a reference to the parent graph. Operator= should be disabled
-        SceneGraph* sceneGraph() noexcept
+        inline SceneGraph* sceneGraph() noexcept
         {
             return _sceneGraph;
         }
@@ -230,13 +230,13 @@ namespace Divide
 
         /// Sends a global event but dispatched is handled between update steps
         template<class E, class... ARGS>
-        void SendEvent( ARGS&&... eventArgs )
+        void SendEvent( ARGS&&... eventArgs ) const
         {
             GetECSEngine().SendEvent<E>( FWD( eventArgs )... );
         }
         /// Sends a global event with dispatched happening immediately. Avoid using often. Bad for performance.
         template<class E, class... ARGS>
-        void SendAndDispatchEvent( ARGS&&... eventArgs )
+        void SendAndDispatchEvent( ARGS&&... eventArgs ) const
         {
             GetECSEngine().SendEventAndDispatch<E>( FWD( eventArgs )... );
         }
@@ -391,7 +391,7 @@ namespace Divide
                 node->getAllNodes( nodeList );
             }
 
-            ;        static void processDeleteQueue( SceneGraphNode* node, vector<size_t>& childList )
+            static void processDeleteQueue( SceneGraphNode* node, vector<size_t>& childList )
             {
                 node->processDeleteQueue( childList );
             }
@@ -485,6 +485,6 @@ namespace Divide
 
 
 };  // namespace Divide
-#endif
+#endif //DVD_SCENE_GRAPH_NODE_H_
 
 #include "SceneGraphNode.inl"

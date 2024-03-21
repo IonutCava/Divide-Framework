@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _PLATFORM_FILE_FILE_MANAGEMENT_H_
-#define _PLATFORM_FILE_FILE_MANAGEMENT_H_
+#ifndef DVD_PLATFORM_FILE_FILE_MANAGEMENT_H_
+#define DVD_PLATFORM_FILE_FILE_MANAGEMENT_H_
 
 namespace Divide {
 
@@ -231,6 +231,6 @@ template<typename T> requires has_assign<T> || is_vector<T>
 
 }; //namespace Divide
 
-#endif //_PLATFORM_FILE_FILE_MANAGEMENT_H_
+#endif //DVD_PLATFORM_FILE_FILE_MANAGEMENT_H_
 
 #include "FileManagement.inl"

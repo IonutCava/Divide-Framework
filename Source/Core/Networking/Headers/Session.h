@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _SESSION_IMPL_H_
-#define _SESSION_IMPL_H_
+#ifndef DVD_SESSION_IMPL_H_
+#define DVD_SESSION_IMPL_H_
 
 #include "Networking/Headers/tcp_session_tpl.h"
 
@@ -49,4 +49,5 @@ namespace Divide
     };
 
 };  // namespace Divide
-#endif
+
+#endif //DVD_SESSION_IMPL_H_

@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _IK_COMPONENT_H_
-#define _IK_COMPONENT_H_
+#ifndef DVD_IK_COMPONENT_H_
+#define DVD_IK_COMPONENT_H_
 
 
 #include "SGNComponent.h"
@@ -43,4 +43,4 @@ BEGIN_COMPONENT(IK, ComponentType::INVERSE_KINEMATICS)
 END_COMPONENT(IK);
 } //namespace Divide
 
-#endif //_IK_COMPONENT_H_
+#endif //DVD_IK_COMPONENT_H_

@@ -47,24 +47,24 @@ namespace Divide
                                       const U16 passIndex,
                                       const U8 passVariant,
                                       Camera* camera ) noexcept
-        : _context( context ),
-        _sgn( sgn ),
-        _sceneRenderState( sceneRenderState ),
-        _renderTarget( renderTarget ),
-        _camera( camera ),
-        _passIndex( passIndex ),
-        _passVariant( passVariant )
+        : _context( context )
+        , _sgn( sgn )
+        , _sceneRenderState( sceneRenderState )
+        , _renderTarget( renderTarget )
+        , _camera( camera )
+        , _passIndex( passIndex )
+        , _passVariant( passVariant )
     {
     }
 
     RenderingComponent::RenderingComponent( SceneGraphNode* parentSGN, PlatformContext& context )
         : BaseComponentType<RenderingComponent, ComponentType::RENDERING>( parentSGN, context ),
-        _context( context.gfx() ),
+        _gfxContext( context.gfx() ),
         _config( context.config() ),
         _reflectionProbeIndex( SceneEnvironmentProbePool::SkyProbeLayerIndex() )
     {
         _lodLevels.fill( 0u );
-        _lodLockLevels.fill( { false, to_U8( 0u ) } );
+        _lodLockLevels.fill( { false, U8_ZERO } );
         _renderRange.min = 0.f;
         _renderRange.max = g_renderRangeLimit;
 
@@ -378,7 +378,7 @@ namespace Divide
     U8 RenderingComponent::getLoDLevel( const RenderStage renderStage ) const noexcept
     {
         const auto& [_, level] = _lodLockLevels[to_base( renderStage )];
-        return CLAMPED( level, to_U8( 0u ), MAX_LOD_LEVEL );
+        return CLAMPED( level, U8_ZERO, MAX_LOD_LEVEL );
     }
 
     U8 RenderingComponent::getLoDLevel( const F32 distSQtoCenter, const RenderStage renderStage, const vec4<U16> lodThresholds )
@@ -392,7 +392,7 @@ namespace Divide
 
         if ( state )
         {
-            return CLAMPED( level, to_U8( 0u ), MAX_LOD_LEVEL );
+            return CLAMPED( level, U8_ZERO, MAX_LOD_LEVEL );
         }
 
         const F32 distSQtoCenterClamped = std::max( distSQtoCenter, EPSILON_F32 );
@@ -517,7 +517,7 @@ namespace Divide
                 else
                 {
                     pipelineDescriptor._stateBlock = {};
-                    pipelineDescriptor._shaderProgramHandle = _context.imShaders()->imWorldShader()->handle();
+                    pipelineDescriptor._shaderProgramHandle = _gfxContext.imShaders()->imWorldShader()->handle();
                     pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
                 }
                 if ( renderStagePass._passType == RenderPassType::TRANSPARENCY_PASS )
@@ -550,7 +550,7 @@ namespace Divide
                 }
 
                 pipelineDescriptor._stateBlock._primitiveRestartEnabled = primitiveRestartRequired();
-                pkg.pipelineCmd()._pipeline = _context.newPipeline( pipelineDescriptor );
+                pkg.pipelineCmd()._pipeline = _gfxContext.newPipeline( pipelineDescriptor );
             }
 
             if ( !IsDepthPass( renderStagePass ) )
@@ -718,15 +718,15 @@ namespace Divide
 
             if ( inBudget )
             {
-                RenderPassManager* passManager = _context.context().kernel().renderPassManager();
-                RenderCbkParams params{ _context, _parentSGN, renderState, reflectRTID, reflectionIndex, to_U8( _reflectorType ), camera };
+                RenderPassManager* passManager = _gfxContext.context().kernel().renderPassManager();
+                RenderCbkParams params{ _gfxContext, _parentSGN, renderState, reflectRTID, reflectionIndex, to_U8( _reflectorType ), camera };
                 _reflectionCallback( passManager, params, bufferInOut, memCmdInOut );
                 ret = true;
             }
 
             if ( _reflectorType == ReflectorType::PLANAR )
             {
-                RTAttachment* targetAtt = _context.renderTargetPool().getRenderTarget( reflectRTID )->getAttachment( RTAttachmentType::COLOUR );
+                RTAttachment* targetAtt = _gfxContext.renderTargetPool().getRenderTarget( reflectRTID )->getAttachment( RTAttachmentType::COLOUR );
                 temp = { targetAtt->texture().get(), targetAtt->_descriptor._sampler };
             }
         }
@@ -760,13 +760,13 @@ namespace Divide
 
             if ( inBudget )
             {
-                RenderPassManager* passManager = _context.context().kernel().renderPassManager();
-                RenderCbkParams params{ _context, _parentSGN, renderState, refractRTID, refractionIndex, 0u, camera };
+                RenderPassManager* passManager = _gfxContext.context().kernel().renderPassManager();
+                RenderCbkParams params{ _gfxContext, _parentSGN, renderState, refractRTID, refractionIndex, 0u, camera };
                 _refractionCallback( passManager, params, bufferInOut, memCmdInOut );
                 ret = true;
             }
 
-            RTAttachment* targetAtt = _context.renderTargetPool().getRenderTarget( refractRTID )->getAttachment( RTAttachmentType::COLOUR );
+            RTAttachment* targetAtt = _gfxContext.renderTargetPool().getRenderTarget( refractRTID )->getAttachment( RTAttachmentType::COLOUR );
             temp = { targetAtt->texture().get(), targetAtt->_descriptor._sampler };
         }
 
@@ -784,7 +784,7 @@ namespace Divide
         _envProbes.resize( 0 );
         _reflectionProbeIndex = SceneEnvironmentProbePool::SkyProbeLayerIndex();
 
-        const SceneEnvironmentProbePool* probePool = _context.context().kernel().sceneManager()->getEnvProbes();
+        const SceneEnvironmentProbePool* probePool = _context.kernel().sceneManager()->getEnvProbes();
         if ( probePool != nullptr )
         {
             probePool->lockProbeList();
@@ -835,7 +835,7 @@ namespace Divide
             UColour4 colour = UColour4( 64, 255, 128, 255 );
             if constexpr( Config::Build::ENABLE_EDITOR )
             {
-                if ( _context.context().editor().inEditMode() )
+                if ( _context.editor().inEditMode() )
                 {
                     colour = UColour4( 255, 255, 255, 255 );
                 }
@@ -847,7 +847,7 @@ namespace Divide
             _selectionGizmoDescriptor.colour = colour;
         }
 
-        _context.debugDrawOBB( _parentSGN->getGUID() + 12345, _selectionGizmoDescriptor );
+        _gfxContext.debugDrawOBB( _parentSGN->getGUID() + 12345, _selectionGizmoDescriptor );
     }
 
     /// Draw the axis arrow gizmo
@@ -883,7 +883,7 @@ namespace Divide
             _axisGizmoLinesDescriptor.worldMatrix = worldOffsetMatrixCache;
         }
 
-        _context.debugDrawLines( _parentSGN->getGUID() + 321, _axisGizmoLinesDescriptor );
+        _gfxContext.debugDrawLines( _parentSGN->getGUID() + 321, _axisGizmoLinesDescriptor );
     }
 
     void RenderingComponent::drawSkeleton()
@@ -901,7 +901,7 @@ namespace Divide
             _skeletonLinesDescriptor._lines = _parentSGN->get<AnimationComponent>()->skeletonLines();
             _skeletonLinesDescriptor.worldMatrix.set( _parentSGN->get<TransformComponent>()->getWorldMatrix() );
             // Submit the skeleton lines to the GPU for rendering
-            _context.debugDrawLines( _parentSGN->getGUID() + 213, _skeletonLinesDescriptor );
+            _gfxContext.debugDrawLines( _parentSGN->getGUID() + 213, _skeletonLinesDescriptor );
         }
     }
 
@@ -922,7 +922,7 @@ namespace Divide
             descriptor.min = bb.getMin();
             descriptor.max = bb.getMax();
             descriptor.colour = isSubMesh ? UColour4( 0, 0, 255, 255 ) : UColour4( 255, 0, 255, 255 );
-            _context.debugDrawBox( _parentSGN->getGUID() + 123, descriptor );
+            _gfxContext.debugDrawBox( _parentSGN->getGUID() + 123, descriptor );
         }
 
         if ( OBB )
@@ -932,7 +932,7 @@ namespace Divide
             descriptor.box = obb;
             descriptor.colour = isSubMesh ? UColour4( 128, 0, 255, 255 ) : UColour4( 255, 0, 128, 255 );
 
-            _context.debugDrawOBB( _parentSGN->getGUID() + 123, descriptor );
+            _gfxContext.debugDrawOBB( _parentSGN->getGUID() + 123, descriptor );
         }
 
         if ( Sphere )
@@ -944,7 +944,7 @@ namespace Divide
             descriptor.colour = isSubMesh ? UColour4( 0, 255, 0, 255 ) : UColour4( 255, 255, 0, 255 );
             descriptor.slices = 16u;
             descriptor.stacks = 16u;
-            _context.debugDrawSphere( _parentSGN->getGUID() + 123, descriptor );
+            _gfxContext.debugDrawSphere( _parentSGN->getGUID() + 123, descriptor );
         }
     }
 

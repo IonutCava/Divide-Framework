@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _CORE_MATH_DIMENSION_H
-#define _CORE_MATH_DIMENSION_H
+#ifndef DVD_CORE_MATH_DIMENSION_H
+#define DVD_CORE_MATH_DIMENSION_H
 
 namespace Divide {
     struct RelativeValue
@@ -89,4 +89,4 @@ namespace Divide {
 
 } //namespace Divide 
 
-#endif //_CORE_MATH_DIMENSION_H
+#endif //DVD_CORE_MATH_DIMENSION_H

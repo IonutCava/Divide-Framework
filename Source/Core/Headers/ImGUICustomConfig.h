@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _IMGUI_CUSTOM_CONFIG_H_
-#define _IMGUI_CUSTOM_CONFIG_H_
+#ifndef DVD_IMGUI_CUSTOM_CONFIG_H_
+#define DVD_IMGUI_CUSTOM_CONFIG_H_
 
 namespace Divide {
 	bool DebugBreak(const bool condition) noexcept;
@@ -57,4 +57,4 @@ namespace ImGui {
 #define IMGUI_DISABLE_OBSOLETE_FUNCTIONS
 #define AddBezierCurve AddBezierCubic
 
-#endif //_IMGUI_CUSTOM_CONFIG_H_
+#endif //DVD_IMGUI_CUSTOM_CONFIG_H_

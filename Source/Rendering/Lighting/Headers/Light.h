@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _DIVIDE_LIGHT_COMPONENT_H_
-#define _DIVIDE_LIGHT_COMPONENT_H_
+#ifndef DVD_LIGHT_COMPONENT_H_
+#define DVD_LIGHT_COMPONENT_H_
 
 #include "ECS/Components/Headers/SGNComponent.h"
 #include "Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h"
@@ -72,7 +72,7 @@ public:
 
     /// Create a new light assigned to the specified slot with the specified range
     explicit Light(SceneGraphNode* sgn, F32 range, LightType type, LightPool& parentPool);
-    virtual ~Light();
+    virtual ~Light() override;
 
     [[nodiscard]] FColour3 getDiffuseColour()                    const noexcept;
                     void   getDiffuseColour(FColour3& colourOut) const noexcept;
@@ -145,6 +145,6 @@ public:
 
 };  // namespace Divide
 
-#endif //_DIVIDE_LIGHT_COMPONENT_H_
+#endif //DVD_LIGHT_COMPONENT_H_
 
 #include "Light.inl"

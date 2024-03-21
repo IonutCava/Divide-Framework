@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _XALLOCATOR_H
-#define _XALLOCATOR_H
+#ifndef XALLOCATOR_H
+#define XALLOCATOR_H
 
 #include <stddef.h>
 #include "DataTypes.h"
@@ -88,4 +88,4 @@ void lock_release();
 }
 #endif
 
-#endif 
+#endif //XALLOCATOR_H

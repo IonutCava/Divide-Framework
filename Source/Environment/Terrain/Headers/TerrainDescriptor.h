@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _TERRAIN_DESCRIPTOR_H_
-#define _TERRAIN_DESCRIPTOR_H_
+#ifndef DVD_TERRAIN_DESCRIPTOR_H_
+#define DVD_TERRAIN_DESCRIPTOR_H_
 
 #include "Core/Resources/Headers/ResourceDescriptor.h"
 #include "Utility/Headers/XMLParser.h"
@@ -41,7 +41,7 @@ namespace Divide {
 class TerrainDescriptor final : public PropertyDescriptor {
    public:
     explicit TerrainDescriptor(std::string_view name) noexcept;
-    virtual ~TerrainDescriptor();
+    virtual ~TerrainDescriptor() override;
 
     bool loadFromXML(const boost::property_tree::ptree& pt, const string& name);
 
@@ -123,4 +123,4 @@ protected:
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_TERRAIN_DESCRIPTOR_H_

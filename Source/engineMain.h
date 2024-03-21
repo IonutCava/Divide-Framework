@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _ENGINE_MAIN_HEADER_
-#define _ENGINE_MAIN_HEADER_
+#ifndef DVD_ENGINE_MAIN_HEADER_
+#define DVD_ENGINE_MAIN_HEADER_
 
 #include "Core/Headers/Application.h"
 
@@ -46,6 +46,6 @@ private:
     Application_uptr _app{};
 };
 
-}
+} // namespace Divide
 
-#endif  //_ENGINE_MAIN_HEADER_
+#endif  //DVD_ENGINE_MAIN_HEADER_

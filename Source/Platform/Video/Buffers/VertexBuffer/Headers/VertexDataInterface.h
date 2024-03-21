@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _VERTEX_DATA_INTERFACE_H_
-#define _VERTEX_DATA_INTERFACE_H_
+#ifndef DVD_VERTEX_DATA_INTERFACE_H_
+#define DVD_VERTEX_DATA_INTERFACE_H_
 
 #include "BufferLocks.h"
 #include "Core/Headers/ObjectPool.h"
@@ -50,7 +50,7 @@ class NOINITVTABLE VertexDataInterface : public GUIDWrapper, public GraphicsReso
     static constexpr Handle INVALID_VDI_HANDLE{U16_MAX, 0u};
 
     explicit VertexDataInterface(GFXDevice& context, const Str<256>& name);
-    virtual ~VertexDataInterface();
+    virtual ~VertexDataInterface() override;
 
     virtual void draw(const GenericDrawCommand& command, VDIUserData* data) = 0;
 
@@ -65,6 +65,6 @@ class NOINITVTABLE VertexDataInterface : public GUIDWrapper, public GraphicsReso
 
 };  // namespace Divide
 
-#endif //_VERTEX_DATA_INTERFACE_H_
+#endif //DVD_VERTEX_DATA_INTERFACE_H_
 
 #include "VertexDataInterface.inl"

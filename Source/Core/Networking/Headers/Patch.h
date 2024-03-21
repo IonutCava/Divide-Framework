@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _PATCH_H_
-#define _PATCH_H_
+#ifndef DVD_PATCH_H_
+#define DVD_PATCH_H_
 
 namespace Divide {
 
@@ -59,4 +59,4 @@ namespace Patch {
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_PATCH_H_

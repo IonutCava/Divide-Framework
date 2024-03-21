@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _SUN_H_
-#define _SUN_H_
+#ifndef DVD_SUN_H_
+#define DVD_SUN_H_
 
 //ref: https://gist.github.com/paulhayes/54a7aa2ee3cccad4d37bb65977eb19e2
 //ref: https://github.com/jarmol/suncalcs
@@ -87,4 +87,4 @@ namespace Divide {
     };
 }  // namespace Divide
 
-#endif //_SUN_H_
+#endif //DVD_SUN_H_

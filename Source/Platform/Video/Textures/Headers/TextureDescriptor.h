@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _TEXTURE_DESCRIPTOR_H_
-#define _TEXTURE_DESCRIPTOR_H_
+#ifndef DVD_TEXTURE_DESCRIPTOR_H_
+#define DVD_TEXTURE_DESCRIPTOR_H_
 
 #include "Core/Resources/Headers/ResourceDescriptor.h"
 #include "Utility/Headers/ImageToolsFwd.h"
@@ -102,6 +102,6 @@ bool operator!=(const TextureDescriptor& lhs, const TextureDescriptor& rhs) noex
 
 }  // namespace Divide
 
-#endif //_TEXTURE_DESCRIPTOR_H_
+#endif //DVD_TEXTURE_DESCRIPTOR_H_
 
 #include "TextureDescriptor.inl"

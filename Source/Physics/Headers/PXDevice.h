@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _PHYSICS_DEVICE_H_
-#define _PHYSICS_DEVICE_H_
+#ifndef DVD_PHYSICS_DEVICE_H_
+#define DVD_PHYSICS_DEVICE_H_
 
 #include "Core/Headers/Application.h"
 #include "Core/Headers/KernelComponent.h"
@@ -89,4 +89,4 @@ private:
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_PHYSICS_DEVICE_H_

@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _VEHICLE_H_
-#define _VEHICLE_H_
+#ifndef DVD_VEHICLE_H_
+#define DVD_VEHICLE_H_
 
 #include "Unit.h"
 
@@ -55,7 +55,6 @@ class Vehicle : public Unit {
     };
 
     explicit Vehicle();
-    virtual ~Vehicle() = default;
 
     /// A vehicle can be of multiple types at once
     void setVehicleTypeMask(U32 mask);
@@ -70,4 +69,4 @@ class Vehicle : public Unit {
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_VEHICLE_H_

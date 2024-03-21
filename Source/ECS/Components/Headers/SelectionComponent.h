@@ -30,9 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _SELECTION_COMPONENT_H_
-#define _SELECTION_COMPONENT_H_
-
+#ifndef DVD_SELECTION_COMPONENT_H_
+#define DVD_SELECTION_COMPONENT_H_
 
 #include "SGNComponent.h"
 
@@ -57,4 +56,4 @@ END_COMPONENT(Selection);
 
 } //namespace Divide
 
-#endif //_SELECTION_COMPONENT_H_
+#endif //DVD_SELECTION_COMPONENT_H_

@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _WAR_SCENE_H
-#define _WAR_SCENE_H
+#ifndef DVD_WAR_SCENE_H
+#define DVD_WAR_SCENE_H
 
 #include "Scenes/Headers/Scene.h"
 
@@ -102,4 +102,4 @@ END_SCENE(WarScene)
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_WAR_SCENE_H

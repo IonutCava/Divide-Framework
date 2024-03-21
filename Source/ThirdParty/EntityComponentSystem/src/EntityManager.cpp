@@ -16,19 +16,19 @@ namespace ECS
 		m_ComponentManagerInstance(componentManagerInstance)
 	{
 		DEFINE_LOGGER("EntityManager")
-		LogInfo("Initialize EntityManager!","")
+		LOG_INFO("Initialize EntityManager!","")
 	}
 
 	EntityManager::~EntityManager()
 	{
 		for (auto ec : this->m_EntityRegistry)
 		{
-			LogDebug("Releasing remaining entities of type '%s' ...", ec.second->GetEntityContainerTypeName());
+			LOG_DEBUG("Releasing remaining entities of type '%s' ...", ec.second->GetEntityContainerTypeName());
 			delete ec.second;
 			ec.second = nullptr;
 		}
 
-		LogInfo("Release EntityManager!","")
+		LOG_INFO("Release EntityManager!","")
 	}
 
 	EntityId EntityManager::AqcuireEntityId(IEntity* entity)

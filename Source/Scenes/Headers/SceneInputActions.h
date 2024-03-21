@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _SCENE_INPUT_ACTIONS_H_
-#define _SCENE_INPUT_ACTIONS_H_
+#ifndef DVD_SCENE_INPUT_ACTIONS_H_
+#define DVD_SCENE_INPUT_ACTIONS_H_
 
 #include "Platform/Input/Headers/Input.h"
 
@@ -143,4 +143,4 @@ class InputActionList {
 
 } //namespace Divide
 
-#endif //_SCENE_INPUT_ACTIONS_H_
+#endif //DVD_SCENE_INPUT_ACTIONS_H_

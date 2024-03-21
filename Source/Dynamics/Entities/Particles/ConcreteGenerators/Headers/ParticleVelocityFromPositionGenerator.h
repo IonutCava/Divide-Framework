@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _PARTICLE_VELOCITY_FROM_POSITION_GENERATOR_H_
-#define _PARTICLE_VELOCITY_FROM_POSITION_GENERATOR_H_
+#ifndef DVD_PARTICLE_VELOCITY_FROM_POSITION_GENERATOR_H_
+#define DVD_PARTICLE_VELOCITY_FROM_POSITION_GENERATOR_H_
 
 #include "Dynamics/Entities/Particles/Headers/ParticleGenerator.h"
 
@@ -50,4 +50,4 @@ struct ParticleVelocityFromPositionGenerator final : ParticleGenerator {
 };
 }
 
-#endif
+#endif //DVD_PARTICLE_VELOCITY_FROM_POSITION_GENERATOR_H_

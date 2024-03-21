@@ -31,8 +31,8 @@
 
 #pragma once
 
-#ifndef _PLATFORM_DEFINES_APPLE_H_
-#define _PLATFORM_DEFINES_APPLE_H_
+#ifndef DVD_PLATFORM_DEFINES_APPLE_H_
+#define DVD_PLATFORM_DEFINES_APPLE_H_
 
 #ifndef _RESTRICT_
 #define _RESTRICT_ __restrict__
@@ -60,4 +60,4 @@ namespace Divide {
     };
 }; //namespace Divide
 
-#endif //_PLATFORM_DEFINES_APPLE_H_
+#endif //DVD_PLATFORM_DEFINES_APPLE_H_

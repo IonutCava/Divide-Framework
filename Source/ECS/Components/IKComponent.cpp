@@ -9,4 +9,4 @@ IKComponent::IKComponent(SceneGraphNode* parentSGN, PlatformContext& context)
 {
 }
 
-}
+} //namespace Divide

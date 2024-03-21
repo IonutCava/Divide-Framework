@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _SHADER_BUFFER_H_
-#define _SHADER_BUFFER_H_
+#ifndef DVD_SHADER_BUFFER_H_
+#define DVD_SHADER_BUFFER_H_
 
 #include "Core/Headers/RingBuffer.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/BufferLocks.h"
@@ -55,25 +55,23 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
    public:
     explicit ShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor);
 
-    virtual ~ShaderBuffer() = default;
-
                   void       readData(BufferRange range, std::pair<bufferPtr, size_t> outData);
                   void       readBytes(BufferRange range, std::pair<bufferPtr, size_t> outData);
     [[nodiscard]] BufferLock clearData(BufferRange range);
     [[nodiscard]] BufferLock clearBytes(BufferRange range);
-    [[nodiscard]] BufferLock writeData(BufferRange range, bufferPtr data);
-    [[nodiscard]] BufferLock writeBytes(BufferRange range, bufferPtr data);
+    [[nodiscard]] BufferLock writeData(BufferRange range, const bufferPtr data);
+    [[nodiscard]] BufferLock writeBytes(BufferRange range, const bufferPtr data);
 
     [[nodiscard]] BufferUpdateUsage getUpdateUsage() const noexcept;
     [[nodiscard]] BufferUpdateFrequency getUpdateFrequency() const noexcept;
     
     [[nodiscard]] FORCE_INLINE I32              getStartIndex(const bool read)  const noexcept { return (read ? queueReadIndex() : queueWriteIndex()); }
-    [[nodiscard]] FORCE_INLINE size_t           getStartOffset(const bool read) const noexcept { return getStartIndex(read) * _alignedBufferSize; }
+    [[nodiscard]] FORCE_INLINE size_t           getStartOffset(const bool read) const noexcept { return std::max(0, getStartIndex(read)) * _alignedBufferSize; }
     [[nodiscard]] FORCE_INLINE U32              getPrimitiveCount()             const noexcept { return _params._elementCount; }
     [[nodiscard]] FORCE_INLINE size_t           getPrimitiveSize()              const noexcept { return _params._elementSize; }
     [[nodiscard]] FORCE_INLINE BufferUsageType  getUsage()                      const noexcept { return _params._flags._usageType;  }
 
-    FORCE_INLINE BufferLock writeData(bufferPtr data) { return writeData({ 0u, _params._elementCount }, data); }
+    FORCE_INLINE BufferLock writeData(const bufferPtr data) { return writeData({ 0u, _params._elementCount }, data); }
     FORCE_INLINE BufferLock clearData() { return clearData({ 0u, _params._elementCount }); }
 
     [[nodiscard]] virtual LockableBuffer* getBufferImpl() = 0;
@@ -88,7 +86,7 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
     PROPERTY_R(U64, lastReadFrame, 0u);
    protected:
      virtual void       readBytesInternal(BufferRange range, std::pair<bufferPtr, size_t> outData) = 0;
-     virtual BufferLock writeBytesInternal(BufferRange range, bufferPtr data) = 0;
+     virtual BufferLock writeBytesInternal(BufferRange range, const bufferPtr data) = 0;
 
    protected:
     BufferParams _params;
@@ -104,11 +102,11 @@ struct ShaderBufferDescriptor {
     BufferParams _bufferParams;
     std::pair<bufferPtr, size_t> _initialData{nullptr, 0u};
     string _name{ "" };
-    U32 _ringBufferLength{ 1u };
+    U16 _ringBufferLength{ 1u };
     bool _separateReadWrite{ false }; ///< Use a separate read/write index based on queue length
 };
 
 FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
 
 };  // namespace Divide
-#endif //_SHADER_BUFFER_H_
+#endif //DVD_SHADER_BUFFER_H_

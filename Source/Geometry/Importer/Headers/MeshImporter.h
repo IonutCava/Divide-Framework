@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _MESH_IMPORTER_H_
-#define _MESH_IMPORTER_H_
+#ifndef DVD_MESH_IMPORTER_H_
+#define DVD_MESH_IMPORTER_H_
 
 #include "Geometry/Material/Headers/Material.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
@@ -184,4 +184,4 @@ namespace Divide {
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_MESH_IMPORTER_H_

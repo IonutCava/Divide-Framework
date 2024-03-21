@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _PRE_RENDER_BATCH_INL_
-#define _PRE_RENDER_BATCH_INL_
+#ifndef DVD_PRE_RENDER_BATCH_INL_
+#define DVD_PRE_RENDER_BATCH_INL_
 
 namespace Divide {
 
@@ -68,4 +68,5 @@ namespace Divide {
     }
 
 }; //namespace Divide
-#endif //_PRE_RENDER_BATCH_INL_
+
+#endif //DVD_PRE_RENDER_BATCH_INL_

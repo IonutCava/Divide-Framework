@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _IM_EMULATION_H_
-#define _IM_EMULATION_H_
+#ifndef DVD_IM_EMULATION_H_
+#define DVD_IM_EMULATION_H_
 
 #include "IMPrimitiveDescriptors.h"
 #include "DescriptorSetsFwd.h"
@@ -152,4 +152,4 @@ class IMPrimitive final {
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_IM_EMULATION_H_

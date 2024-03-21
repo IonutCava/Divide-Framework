@@ -9,8 +9,8 @@
 */
 
 #pragma once
-#ifndef __POOL_ALLOC_H__
-#define __POOL_ALLOC_H__
+#ifndef ECS__POOL_ALLOC_H__
+#define ECS__POOL_ALLOC_H__
 
 
 #include "Memory/Allocator/IAllocator.h"
@@ -40,4 +40,4 @@ namespace ECS { namespace Memory { namespace Allocator {
 
 }}} // namespace ECS::Memory::Allocator
 
-#endif // __POOL_ALLOC_H__
+#endif // ECS__POOL_ALLOC_H__

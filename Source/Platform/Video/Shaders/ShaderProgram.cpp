@@ -250,7 +250,7 @@ namespace Divide
     namespace
     {
 
-        U64 s_newestShaderAtomWriteTime = 0u; //< Used to detect modified shader atoms to validate/invalidate shader cache
+        U64 s_newestShaderAtomWriteTime = 0u; ///< Used to detect modified shader atoms to validate/invalidate shader cache
         bool s_useShaderCache = true;
         bool s_targetVulkan = false;
 

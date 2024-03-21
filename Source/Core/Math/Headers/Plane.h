@@ -39,8 +39,8 @@
 
 
 #pragma once
-#ifndef _CORE_MATH_PLANE_H_
-#define _CORE_MATH_PLANE_H_
+#ifndef DVD_CORE_MATH_PLANE_H_
+#define DVD_CORE_MATH_PLANE_H_
 
 #include "MathUtil.h"
 
@@ -177,11 +177,11 @@ class Plane {
 
      union {
           struct {
-              vec3<T> _normal{0.f, 0.f, 0.f};
-              T _distance{0.f};
+              vec3<T> _normal;
+              T _distance;
           };
 
-          vec4<T> _equation;
+          vec4<T> _equation{0,0,0,0};
      };
 };
 
@@ -199,4 +199,4 @@ FORCE_INLINE vec3<T> GetIntersection(const Plane<T>& a, const Plane<T>& b, const
 }
 }  // namespace Divide
 
-#endif
+#endif //DVD_CORE_MATH_PLANE_H_

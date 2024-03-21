@@ -29,8 +29,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 
-#ifndef _CORE_WINDOW_MANAGER_INL_
-#define _CORE_WINDOW_MANAGER_INL_
+#ifndef DVD_CORE_WINDOW_MANAGER_INL_
+#define DVD_CORE_WINDOW_MANAGER_INL_
 
 namespace Divide {
 
@@ -130,4 +130,4 @@ inline const vector<WindowManager::MonitorData>& WindowManager::monitorData() co
 
 } //namespace Divide
 
-#endif //_CORE_WINDOW_MANAGER_INL_
+#endif //DVD_CORE_WINDOW_MANAGER_INL_

@@ -29,12 +29,53 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 
-#ifndef _COMMAND_BUFFER_INL_
-#define _COMMAND_BUFFER_INL_
-
+#ifndef DVD_COMMAND_BUFFER_INL_
+#define DVD_COMMAND_BUFFER_INL_
 
 namespace Divide {
 namespace GFX {
+
+struct DrawCommand;
+struct BindShaderResourcesCommand;
+
+namespace
+{
+    template<typename T>
+    constexpr size_t MemoryPoolSize()
+    {
+        constexpr size_t g_commandPoolSizeFactor = prevPOW2( sizeof( T ) ) * (1u << 17);
+
+        if constexpr ( std::is_same<T, GFX::BindShaderResourcesCommand>::value )
+        {
+            return g_commandPoolSizeFactor * 3;
+        }
+        else if constexpr ( std::is_same<T, GFX::DrawCommand>::value )
+        {
+            return g_commandPoolSizeFactor * 2;
+        }
+
+        return g_commandPoolSizeFactor;
+    }
+
+    template<typename T> requires std::is_base_of_v<CommandBase, T>
+    struct CmdAllocator
+    {
+        using Pool = MemoryPool<T, MemoryPoolSize<T>()>;
+
+        static Pool& GetPool()
+        {
+            NO_DESTROY thread_local Pool pool;
+            return pool;
+        }
+    };
+}
+
+template <typename T, CommandType EnumVal>
+inline void Command<T, EnumVal>::DeleteCmd( CommandBase*& cmd ) const
+{
+    CmdAllocator<T>::GetPool().deleteElement(cmd->As<T>());
+    cmd = nullptr;
+}
 
 template <typename T, CommandType EnumVal>
 void Command<T, EnumVal>::addToBuffer(CommandBuffer* buffer) const
@@ -49,7 +90,8 @@ FORCE_INLINE void DELETE_CMD(CommandBase*& cmd)
 
 FORCE_INLINE size_t RESERVE_CMD(const U8 typeIndex) noexcept
 {
-    switch (static_cast<CommandType>(typeIndex)) {
+    switch (static_cast<CommandType>(typeIndex))
+    {
         case CommandType::BIND_SHADER_RESOURCES: return 2;
         case CommandType::SEND_PUSH_CONSTANTS  : return 3;
         case CommandType::DRAW_COMMANDS        : return 4;
@@ -75,7 +117,7 @@ T* CommandBuffer::add()
     if (mem != nullptr) {
         *mem = {};
     } else {
-        mem = CmdAllocator<T>::s_Pool.newElement();
+        mem = CmdAllocator<T>::GetPool().newElement();
         _commands.insert<T>(to_base(mem->Type()), mem);
     }
 
@@ -90,7 +132,7 @@ T* CommandBuffer::add(const T& command) {
     if (mem != nullptr) {
         *mem = command;
     } else {
-        mem = CmdAllocator<T>::s_Pool.newElement(command);
+        mem = CmdAllocator<T>::GetPool().newElement(command);
         _commands.insert<T>(to_base(mem->Type()), mem);
     }
 
@@ -99,13 +141,13 @@ T* CommandBuffer::add(const T& command) {
 }
 
 template<typename T> requires std::is_base_of_v<CommandBase, T>
-T* CommandBuffer::add(const T&& command) {
+T* CommandBuffer::add(T&& command) {
     T* mem = allocateCommand<T>();
 
     if (mem != nullptr) {
         *mem = MOV(command);
     } else {
-        mem = CmdAllocator<T>::s_Pool.newElement(MOV(command));
+        mem = CmdAllocator<T>::GetPool().newElement(MOV(command));
         _commands.insert<T>(to_base(mem->Type()), mem);
     }
 
@@ -209,5 +251,4 @@ bool CommandBuffer::tryMergeCommands(const CommandType type, T* prevCommand, T* 
 }; //namespace GFX
 }; //namespace Divide
 
-
-#endif //_COMMAND_BUFFER_INL_
+#endif //DVD_COMMAND_BUFFER_INL_

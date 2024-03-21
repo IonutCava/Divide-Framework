@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _RENDERING_COMPONENT_H_
-#define _RENDERING_COMPONENT_H_
+#ifndef DVD_RENDERING_COMPONENT_H_
+#define DVD_RENDERING_COMPONENT_H_
 
 #include "SGNComponent.h"
 
@@ -129,7 +129,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
    public:
     explicit RenderingComponent(SceneGraphNode* parentSGN, PlatformContext& context);
-    ~RenderingComponent();
+    ~RenderingComponent() override;
 
     /// Returns true if the specified render option is enabled
     [[nodiscard]] bool renderOptionEnabled(RenderOptions option) const noexcept;
@@ -142,9 +142,9 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
     [[nodiscard]] inline bool lodLocked(const RenderStage stage)   const noexcept { return _lodLockLevels[to_base(stage)].first; }
                   inline void lockLoD(const U8 level)                             { _lodLockLevels.fill({ true, level }); }
-                  inline void unlockLoD()                                         { _lodLockLevels.fill({ false, to_U8(0u) }); }
+                  inline void unlockLoD()                                         { _lodLockLevels.fill({ false, U8_ZERO }); }
                   inline void lockLoD(const RenderStage stage, U8 level) noexcept { _lodLockLevels[to_base(stage)] = { true, level }; }
-                  inline void unlockLoD(const RenderStage stage)         noexcept { _lodLockLevels[to_base(stage)] = { false, to_U8(0u) }; }
+                  inline void unlockLoD(const RenderStage stage)         noexcept { _lodLockLevels[to_base(stage)] = { false, U8_ZERO }; }
     [[nodiscard]]          U8 getLoDLevel(RenderStage renderStage) const noexcept;
     [[nodiscard]]          U8 getLoDLevel(const F32 distSQtoCenter, RenderStage renderStage, vec4<U16> lodThresholds);
                          void setLoDIndexOffset(U8 lodIndex, size_t indexOffset, size_t indexCount) noexcept;
@@ -223,7 +223,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     void OnData(const ECS::CustomEvent& data) override;
 
    protected:
-    GFXDevice& _context;
+    GFXDevice& _gfxContext;
     const Configuration& _config;
 
     struct PackageEntry 
@@ -380,4 +380,4 @@ class RenderingComponentSGN {
 }  // namespace Attorney
 }  // namespace Divide
 
-#endif
+#endif //DVD_RENDERING_COMPONENT_H_

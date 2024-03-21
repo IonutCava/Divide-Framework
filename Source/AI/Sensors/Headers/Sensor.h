@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _AI_SENSOR_H_
-#define _AI_SENSOR_H_
+#ifndef DVD_AI_SENSOR_H_
+#define DVD_AI_SENSOR_H_
 
 namespace Divide {
 namespace AI {
@@ -65,4 +65,4 @@ class NOINITVTABLE Sensor {
 }  // namespace AI
 }  // namespace Divide
 
-#endif
+#endif //DVD_AI_SENSOR_H_

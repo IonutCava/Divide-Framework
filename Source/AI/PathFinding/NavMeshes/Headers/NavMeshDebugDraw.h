@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _NAV_MESH_DEBUG_DRAW_H_
-#define _NAV_MESH_DEBUG_DRAW_H_
+#ifndef DVD_NAV_MESH_DEBUG_DRAW_H_
+#define DVD_NAV_MESH_DEBUG_DRAW_H_
 
 #include <recastnavigation/DebugDraw.h>
 
@@ -65,7 +65,7 @@ inline void rcCol(U32 col, U8& r, U8& g, U8& b, U8& a) noexcept {
 class NavMeshDebugDraw final : public duDebugDraw {
    public:
     NavMeshDebugDraw(GFXDevice& context) noexcept;
-    virtual ~NavMeshDebugDraw();
+    virtual ~NavMeshDebugDraw() override;
 
     void paused(bool state) noexcept;
     void overrideColour(U32 col) noexcept;
@@ -119,4 +119,4 @@ class NavMeshDebugDraw final : public duDebugDraw {
 }  // namespace AI
 }  // namespace Divide
 
-#endif
+#endif //DVD_NAV_MESH_DEBUG_DRAW_H_

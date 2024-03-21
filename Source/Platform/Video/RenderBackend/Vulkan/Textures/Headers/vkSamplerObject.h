@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _VK_SAMPLER_H_
-#define _VK_SAMPLER_H_
+#ifndef DVD_VK_SAMPLER_H_
+#define DVD_VK_SAMPLER_H_
 
 #include <vulkan/vulkan_core.h>
 
@@ -46,4 +46,5 @@ namespace Divide {
     };
 
 };  // namespace Divide
-#endif //_VK_SAMPLER_H_
+
+#endif //DVD_VK_SAMPLER_H_

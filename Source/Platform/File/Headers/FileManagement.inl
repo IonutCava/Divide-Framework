@@ -29,8 +29,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 
-#ifndef _PLATFORM_FILE_FILE_MANAGEMENT_INL_
-#define _PLATFORM_FILE_FILE_MANAGEMENT_INL_
+#ifndef DVD_PLATFORM_FILE_FILE_MANAGEMENT_INL_
+#define DVD_PLATFORM_FILE_FILE_MANAGEMENT_INL_
 
 #include "Core/Headers/StringHelper.h"
 
@@ -114,4 +114,4 @@ inline FileError readFile(const char* filePath, const char* fileName, vector<Byt
 
 }; //namespace Divide
 
-#endif //_PLATFORM_FILE_FILE_MANAGEMENT_INL_
+#endif //DVD_PLATFORM_FILE_FILE_MANAGEMENT_INL_

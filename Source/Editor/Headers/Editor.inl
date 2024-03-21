@@ -29,8 +29,8 @@
 
  */
 
-#ifndef _DIVIDE_EDITOR_INL_
-#define _DIVIDE_EDITOR_INL_
+#ifndef DVD_EDITOR_INL_
+#define DVD_EDITOR_INL_
 
 namespace Divide {
 
@@ -81,4 +81,4 @@ inline const RenderTargetHandle& Editor::getNodePreviewTarget() const noexcept {
 
 } //namespace Divide
 
-#endif //_DIVIDE_EDITOR_INL_
+#endif //DVD_EDITOR_INL_

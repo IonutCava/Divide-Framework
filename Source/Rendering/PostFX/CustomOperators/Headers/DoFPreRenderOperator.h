@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _DOF_PRE_RENDER_OPERATOR_H_
-#define _DOF_PRE_RENDER_OPERATOR_H_
+#ifndef DVD_DOF_PRE_RENDER_OPERATOR_H_
+#define DVD_DOF_PRE_RENDER_OPERATOR_H_
 
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/PostFX/Headers/PreRenderOperator.h"
@@ -58,4 +58,5 @@ class DoFPreRenderOperator final : public PreRenderOperator {
 
 }  // namespace Divide
 
-#endif //_DOF_PRE_RENDER_OPERATOR_H_
+#endif //DVD_DOF_PRE_RENDER_OPERATOR_H_
+

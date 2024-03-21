@@ -99,7 +99,7 @@ namespace
                 CommandType prevType = CommandType::COUNT;
                 for ( CommandEntry& entry : _commandOrder )
                 {
-                    const CommandType cmdType = static_cast<CommandType>(entry._typeIndex);
+                    const CommandType cmdType = static_cast<CommandType>(entry._idx._type);
                     if ( entry._data == PolyContainerEntry::INVALID_ENTRY_ID || ShouldSkipBatch( cmdType ) )
                     {
                         continue;
@@ -113,7 +113,7 @@ namespace
                          prevType == cmdType &&
                          tryMergeCommands( cmdType, prevCommand, crtCommand ) )
                     {
-                        --_commandCount[entry._typeIndex];
+                        --_commandCount[entry._idx._type];
                         entry._data = PolyContainerEntry::INVALID_ENTRY_ID;
                         tryMerge = true;
                     }
@@ -136,7 +136,7 @@ namespace
                 break;
             }
 
-            switch ( static_cast<CommandType>(cmd._typeIndex) )
+            switch ( static_cast<CommandType>(cmd._idx._type) )
             {
                 case CommandType::BEGIN_RENDER_PASS:
                 case CommandType::READ_BUFFER_DATA:
@@ -222,7 +222,7 @@ namespace
         {
             bool erase = false;
 
-            switch ( static_cast<CommandType>(cmd._typeIndex) )
+            switch ( static_cast<CommandType>(cmd._idx._type) )
             {
                 case CommandType::DRAW_COMMANDS:
                 {
@@ -325,7 +325,7 @@ namespace
             if ( erase )
             {
                 keepGoing = true;
-                --_commandCount[cmd._typeIndex];
+                --_commandCount[cmd._idx._type];
                 cmd._data = PolyContainerEntry::INVALID_ENTRY_ID;
             }
         }
@@ -337,10 +337,10 @@ namespace
             auto* entry = eastl::next( begin( _commandOrder ) );
             for ( ; entry != cend( _commandOrder ); ++entry )
             {
-                const U8 typeIndex = entry->_typeIndex;
+                const U8 typeIndex = entry->_idx._type;
 
                 if ( static_cast<CommandType>(typeIndex) == CommandType::BIND_PIPELINE &&
-                        eastl::prev( entry )->_typeIndex == typeIndex )
+                        eastl::prev( entry )->_idx._type == typeIndex )
                 {
                     --_commandCount[typeIndex];
                     entry->_data = PolyContainerEntry::INVALID_ENTRY_ID;
@@ -377,14 +377,14 @@ namespace
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         size_t cmdIndex = 0u;
-        bool pushedPass = false, pushedQuery = false;
-        bool hasPipeline = false, hasShaderResources = false;
+        bool pushedPass = false, pushedQuery = false, hasPipeline = false;
+
         I32 pushedDebugScope = 0, pushedCamera = 0, pushedViewport = 0;
 
         for ( const CommandEntry& cmd : _commandOrder )
         {
             cmdIndex++;
-            switch ( static_cast<CommandType>(cmd._typeIndex) )
+            switch ( static_cast<CommandType>(cmd._idx._type) )
             {
                 case CommandType::BEGIN_RENDER_PASS:
                 {
@@ -501,7 +501,6 @@ namespace
                             return { ErrorType::INVALID_DESCRIPTOR_SET, cmdIndex };
                         }
                     }
-                    hasShaderResources = true;
                 }break;
                 default:
                 {
@@ -570,7 +569,7 @@ namespace
         for ( const CommandEntry& cmd : _commandOrder )
         {
             out.append( "[ " + std::to_string( idx++ ) + " ]: " );
-            ToString( *get<CommandBase>( cmd ), static_cast<CommandType>(cmd._typeIndex), crtIndent, out );
+            ToString( *get<CommandBase>( cmd ), static_cast<CommandType>(cmd._idx._type), crtIndent, out );
             out.append( "\n" );
         }
         out.append( "\n\n\n\n" );

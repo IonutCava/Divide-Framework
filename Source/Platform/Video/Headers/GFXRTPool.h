@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _HARDWARE_VIDEO_GFX_RT_POOL_H_
-#define _HARDWARE_VIDEO_GFX_RT_POOL_H_
+#ifndef DVD_HARDWARE_VIDEO_GFX_RT_POOL_H_
+#define DVD_HARDWARE_VIDEO_GFX_RT_POOL_H_
 
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 
@@ -60,4 +60,4 @@ protected:
 };
 }; //namespace Divide
 
-#endif //_HARDWARE_VIDEO_GFX_RT_POOL_H_
+#endif //DVD_HARDWARE_VIDEO_GFX_RT_POOL_H_

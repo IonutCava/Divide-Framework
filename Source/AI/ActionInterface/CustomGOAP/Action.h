@@ -43,7 +43,7 @@ namespace goap {
         /**
          Act on the given worldstate. Will not check for "eligiblity" and will happily
          act on whatever worldstate you provide it.
-         @param the worldstate to act on
+         @param ws the worldstate to act on
          @return a copy worldstate, with effects applied
          */
         WorldState actOn(const WorldState& ws) const;

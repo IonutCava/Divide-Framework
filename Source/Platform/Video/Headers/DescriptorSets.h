@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _DESCRIPTOR_SETS_H_
-#define _DESCRIPTOR_SETS_H_
+#ifndef DVD_DESCRIPTOR_SETS_H_
+#define DVD_DESCRIPTOR_SETS_H_
 
 #include "DescriptorSetsFwd.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/BufferRange.h"
@@ -157,6 +157,6 @@ namespace Divide
 
 }; //namespace Divide
 
-#endif //_DESCRIPTOR_SETS_H_
+#endif //DVD_DESCRIPTOR_SETS_H_
 
 #include "DescriptorSets.inl"

@@ -14,35 +14,6 @@
 namespace Divide {
 namespace GFX {
 
-IMPLEMENT_COMMAND(BindPipelineCommand);
-IMPLEMENT_COMMAND(SendPushConstantsCommand);
-IMPLEMENT_COMMAND(DrawCommand);
-IMPLEMENT_COMMAND(SetViewportCommand);
-IMPLEMENT_COMMAND(PushViewportCommand);
-IMPLEMENT_COMMAND(PopViewportCommand);
-IMPLEMENT_COMMAND(BeginRenderPassCommand);
-IMPLEMENT_COMMAND(EndRenderPassCommand);
-IMPLEMENT_COMMAND(BeginGPUQueryCommand);
-IMPLEMENT_COMMAND(EndGPUQueryCommand);
-IMPLEMENT_COMMAND(BlitRenderTargetCommand);
-IMPLEMENT_COMMAND(CopyTextureCommand);
-IMPLEMENT_COMMAND(ReadTextureCommand);
-IMPLEMENT_COMMAND(ClearTextureCommand);
-IMPLEMENT_COMMAND(ComputeMipMapsCommand);
-IMPLEMENT_COMMAND(SetScissorCommand);
-IMPLEMENT_COMMAND(SetCameraCommand);
-IMPLEMENT_COMMAND(PushCameraCommand);
-IMPLEMENT_COMMAND(PopCameraCommand);
-IMPLEMENT_COMMAND(SetClipPlanesCommand);
-IMPLEMENT_COMMAND(BindShaderResourcesCommand);
-IMPLEMENT_COMMAND(BeginDebugScopeCommand);
-IMPLEMENT_COMMAND(EndDebugScopeCommand);
-IMPLEMENT_COMMAND(AddDebugMessageCommand);
-IMPLEMENT_COMMAND(DispatchComputeCommand);
-IMPLEMENT_COMMAND(MemoryBarrierCommand);
-IMPLEMENT_COMMAND(ReadBufferDataCommand);
-IMPLEMENT_COMMAND(ClearBufferDataCommand);
-
 string ToString(const BindPipelineCommand& cmd, U16 indent) {
     assert(cmd._pipeline != nullptr);
 

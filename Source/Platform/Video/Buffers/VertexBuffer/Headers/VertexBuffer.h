@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _VERTEX_BUFFER_OBJECT_H
-#define _VERTEX_BUFFER_OBJECT_H
+#ifndef DVD_VERTEX_BUFFER_OBJECT_H
+#define DVD_VERTEX_BUFFER_OBJECT_H
 
 #include "VertexDataInterface.h"
 #include "Platform/Video/Headers/AttributeDescriptor.h"
@@ -61,7 +61,6 @@ class VertexBuffer final : public VertexDataInterface {
     };
 
     VertexBuffer(GFXDevice& context, bool renderIndirect, const Str<256>& name);
-    ~VertexBuffer() = default;
 
     bool create(bool staticDraw, bool keepData);
 
@@ -192,4 +191,5 @@ class VertexBuffer final : public VertexDataInterface {
 FWD_DECLARE_MANAGED_CLASS(VertexBuffer);
 
 };  // namespace Divide
-#endif
+
+#endif //DVD_VERTEX_BUFFER_OBJECT_H

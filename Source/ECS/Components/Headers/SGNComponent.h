@@ -29,8 +29,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _SGN_COMPONENT_H_
-#define _SGN_COMPONENT_H_
+#ifndef DVD_SGN_COMPONENT_H_
+#define DVD_SGN_COMPONENT_H_
 
 #include "EditorComponent.h"
 #include "Core/Headers/PlatformContextComponent.h"
@@ -65,14 +65,17 @@ namespace ECS {
         Type _type = Type::COUNT;
         Divide::SGNComponent* _sourceCmp = nullptr;
         Divide::U32 _flag = 0u;
+
+        struct DataPair
+        {
+            Divide::U16 _first;
+            Divide::U16 _second;
+        };
+
         union
         {
+            DataPair _dataPair;
             Divide::U32 _data = 0u;
-            struct
-            {
-                Divide::U16 _dataFirst;
-                Divide::U16 _dataSecond;
-            };
         };
     };
 }
@@ -113,13 +116,19 @@ struct Factory {
 
         void OnData([[maybe_unused]] const ECS::CustomEvent& data) override {}
 
-        static bool RegisterComponentType() {
-            Factory::constructData().emplace(C, [](SceneGraphNode* node, Args... args) -> void {
-                AddSGNComponent<T, Args...>(node, FWD(args)...);
-            });
-            Factory::destructData().emplace(C, [](SceneGraphNode* node) -> void {
-                RemoveSGNComponent<T>(node);
-            });
+        static bool RegisterComponentType()
+        {
+            Factory::constructData().emplace(C, 
+                                             []( SceneGraphNode* node, Args... args ) -> void
+                                             {
+                                                 AddSGNComponent<T, Args...>(node, FWD(args)...);
+                                             });
+
+            Factory::destructData().emplace(C,
+                                            []( SceneGraphNode* node ) -> void
+                                            {
+                                                 RemoveSGNComponent<T>( node );
+                                            } );
             return true;
         }
 
@@ -164,7 +173,6 @@ class SGNComponent : protected PlatformContextComponent,
 {
     public:
         explicit SGNComponent(Key key, ComponentType type, SceneGraphNode* parentSGN, PlatformContext& context);
-        virtual ~SGNComponent() = default;
 
         virtual void OnData(const ECS::CustomEvent& data);
 
@@ -195,22 +203,23 @@ using BaseComponentType = SGNComponent::Registrar<T, C>;
 
 #define INIT_COMPONENT(X) static bool X##_registered = X::s_registered
 
-#define _COMPONENT_SIGNATURE(Name, Enum) class Name##Component final : public BaseComponentType<Name##Component, Enum>
-#define _COMPONENT_PARENT(Name, Enum) using Parent = BaseComponentType<Name##Component, Enum>; \
-                                      friend class Name##System;
+#define DVD_COMPONENT_SIGNATURE(Name, Enum) class Name##Component final : public BaseComponentType<Name##Component, Enum>
+
+#define DVD_COMPONENT_PARENT(Name, Enum) using Parent = BaseComponentType<Name##Component, Enum>; \
+                                         friend class Name##System;
 #define BEGIN_COMPONENT(Name, Enum) \
-    _COMPONENT_SIGNATURE(Name, Enum) { \
-    _COMPONENT_PARENT(Name, Enum)
+    DVD_COMPONENT_SIGNATURE(Name, Enum) { \
+    DVD_COMPONENT_PARENT(Name, Enum)
 
 #define BEGIN_COMPONENT_EXT1(Name, Enum, Base1) \
-    _COMPONENT_SIGNATURE(Name, Enum) , public Base1 {  \
-    _COMPONENT_PARENT(Name, Enum)
+    DVD_COMPONENT_SIGNATURE(Name, Enum) , public Base1 {  \
+    DVD_COMPONENT_PARENT(Name, Enum)
     
 #define END_COMPONENT(Name) \
     }; \
     INIT_COMPONENT(Name##Component);
 
 }  // namespace Divide
-#endif //_SGN_COMPONENT_H_
+#endif //DVD_SGN_COMPONENT_H_
 
 #include "SGNComponent.inl"

@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _CORE_MATH_BOUNDINGVOLUMES_BOUNDINGBOX_H_
-#define _CORE_MATH_BOUNDINGVOLUMES_BOUNDINGBOX_H_
+#ifndef DVD_CORE_MATH_BOUNDINGVOLUMES_BOUNDINGBOX_H_
+#define DVD_CORE_MATH_BOUNDINGVOLUMES_BOUNDINGBOX_H_
 
 #include "Core/Math/Headers/Ray.h"
 
@@ -146,6 +146,6 @@ namespace Attorney {
 
 }  // namespace Divide
 
-#endif  //_CORE_MATH_BOUNDINGVOLUMES_BOUNDINGBOX_H_
+#endif  //DVD_CORE_MATH_BOUNDINGVOLUMES_BOUNDINGBOX_H_
 
 #include "BoundingBox.inl"

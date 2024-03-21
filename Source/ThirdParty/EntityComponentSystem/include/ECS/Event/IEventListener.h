@@ -9,8 +9,8 @@
 */
 
 #pragma once
-#ifndef __I_EVENT_LISTENER_H__
-#define __I_EVENT_LISTENER_H__
+#ifndef ECS__I_EVENT_LISTENER_H__
+#define ECS__I_EVENT_LISTENER_H__
 
 #include "ECS/API.h"
 
@@ -113,4 +113,4 @@ namespace ECS
 	} // namespace Event
 } // namespace ECS
 
-#endif // __I_EVENT_LISTENER_H__
+#endif // ECS__I_EVENT_LISTENER_H__

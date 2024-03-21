@@ -37,8 +37,8 @@
 */
 
 #pragma once
-#ifndef _CORE_MATH_MATH_UTIL_H_
-#define _CORE_MATH_MATH_UTIL_H_
+#ifndef DVD_CORE_MATH_MATH_UTIL_H_
+#define DVD_CORE_MATH_MATH_UTIL_H_
 
 #include "MathVectors.h"
 
@@ -89,4 +89,5 @@ struct GraphPlot3D final : GraphPlot {
 
 }  // namespace Util
 }  // namespace Divide
-#endif
+
+#endif //DVD_CORE_MATH_MATH_UTIL_H_

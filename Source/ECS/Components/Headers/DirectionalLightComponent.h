@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _DIRECTIONAL_LIGHT_COMPONENT_H_
-#define _DIRECTIONAL_LIGHT_COMPONENT_H_
+#ifndef DVD_DIRECTIONAL_LIGHT_COMPONENT_H_
+#define DVD_DIRECTIONAL_LIGHT_COMPONENT_H_
 
 #include "Rendering/Lighting/Headers/Light.h"
 #include "Rendering/RenderPass/Headers/RenderPassCuller.h"
@@ -73,4 +73,4 @@ END_COMPONENT(DirectionalLight);
 
 }  // namespace Divide
 
-#endif //_DIRECTIONAL_LIGHT_COMPONENT_H_
+#endif //DVD_DIRECTIONAL_LIGHT_COMPONENT_H_

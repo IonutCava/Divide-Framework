@@ -34,8 +34,8 @@
 */
 
 #pragma once
-#ifndef BONE_H_
-#define BONE_H_
+#ifndef DVD_BONE_H_
+#define DVD_BONE_H_
 
 namespace Divide {
 
@@ -100,4 +100,4 @@ public:
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_BONE_H_

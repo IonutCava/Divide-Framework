@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _WAR_SCENE_AI_ACTION_LIST_H_
-#define _WAR_SCENE_AI_ACTION_LIST_H_
+#ifndef DVD_WAR_SCENE_AI_ACTION_LIST_H_
+#define DVD_WAR_SCENE_AI_ACTION_LIST_H_
 
 #include "AI/ActionInterface/Headers/AITeam.h"
 #include "AI/ActionInterface/Headers/AIProcessor.h"
@@ -300,4 +300,4 @@ class WarAISceneWarAction {
 }  // namespace AI
 }  // namespace Divide
 
-#endif
+#endif //DVD_WAR_SCENE_AI_ACTION_LIST_H_

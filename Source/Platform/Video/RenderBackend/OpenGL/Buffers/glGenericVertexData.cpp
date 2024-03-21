@@ -10,10 +10,12 @@
 #include "Core/Headers/StringHelper.h"
 #include "Utility/Headers/Localization.h"
 
+using namespace gl;
+
 namespace Divide
 {
 
-    glGenericVertexData::glGenericVertexData( GFXDevice& context, const U32 ringBufferLength, const bool renderIndirect, const Str<256>& name )
+    glGenericVertexData::glGenericVertexData( GFXDevice& context, const U16 ringBufferLength, const bool renderIndirect, const Str<256>& name )
         : GenericVertexData( context, ringBufferLength, renderIndirect, name )
     {
     }

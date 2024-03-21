@@ -29,8 +29,8 @@
 
  */
 
-#ifndef _CORE_MATH_MATH_HELPER_INL_
-#define _CORE_MATH_MATH_HELPER_INL_
+#ifndef DVD_CORE_MATH_MATH_HELPER_INL_
+#define DVD_CORE_MATH_MATH_HELPER_INL_
 
 namespace Divide
 {
@@ -801,4 +801,4 @@ namespace Divide
     }  // namespace Util
 }  // namespace Divide
 
-#endif  //_CORE_MATH_MATH_HELPER_INL_
+#endif  //DVD_CORE_MATH_MATH_HELPER_INL_

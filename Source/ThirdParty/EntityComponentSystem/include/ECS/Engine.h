@@ -5,8 +5,8 @@
 ///-------------------------------------------------------------------------------------------------
 
 #pragma once
-#ifndef __ECS_ENGINE_H__
-#define __ECS_ENGINE_H__
+#ifndef ECS__ECS_ENGINE_H__
+#define ECS__ECS_ENGINE_H__
 
 #include "API.h"
 
@@ -104,13 +104,13 @@ namespace ECS
 		///-------------------------------------------------------------------------------------------------
 
 		template<class E, class... ARGS>
-		void SendEvent(ARGS&&... eventArgs)
+		void SendEvent(ARGS&&... eventArgs) const
 		{
 			ECS_EventHandler->Send<E>(this, FWD(eventArgs)...);
 		}
 
         template<class E, class... ARGS>
-        void SendEventAndDispatch(ARGS&&... eventArgs)
+        void SendEventAndDispatch(ARGS&&... eventArgs) const
         {
             ECS_EventHandler->SendAndDispatchEvent<E>(this, FWD(eventArgs)...);
         }
@@ -135,4 +135,4 @@ namespace ECS
 
 } // namespace ECS
 
-#endif // __ECS_ENGINE_H__
+#endif // ECS__ECS_ENGINE_H__

@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _DESCRIPTOR_SETS_FWD_H_
-#define _DESCRIPTOR_SETS_FWD_H_
+#ifndef DVD_DESCRIPTOR_SETS_FWD_H_
+#define DVD_DESCRIPTOR_SETS_FWD_H_
 
 namespace Divide
 {
@@ -64,5 +64,4 @@ namespace Divide
     using DescriptorSetEntries = std::array<DescriptorSetEntry, to_base( DescriptorSetUsage::COUNT )>;
 } // namespace Divide
 
-
-#endif //_DESCRIPTOR_SETS_FWD_H_
+#endif //DVD_DESCRIPTOR_SETS_FWD_H_

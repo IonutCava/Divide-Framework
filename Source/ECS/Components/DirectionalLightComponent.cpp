@@ -94,7 +94,7 @@ void DirectionalLightComponent::OnData(const ECS::CustomEvent& data) {
     } else if (data._type == ECS::CustomEvent::Type::EntityFlagChanged) {
         const SceneGraphNode::Flags flag = static_cast<SceneGraphNode::Flags>(data._flag);
         if (flag == SceneGraphNode::Flags::SELECTED) {
-            const bool state = data._dataFirst == 1u;
+            const bool state = data._dataPair._first == 1u;
             drawImpostor(state);
         }
     }

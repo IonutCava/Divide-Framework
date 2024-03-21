@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _DIVIDE_LIGHT_COMPONENT_INL_
-#define _DIVIDE_LIGHT_COMPONENT_INL_
+#ifndef DVD_LIGHT_COMPONENT_INL_
+#define DVD_LIGHT_COMPONENT_INL_
 
 namespace Divide
 {
@@ -88,4 +88,4 @@ namespace Divide
 
 } //namespace Divide
 
-#endif //_DIVIDE_LIGHT_COMPONENT_INL_
+#endif //DVD_LIGHT_COMPONENT_INL_

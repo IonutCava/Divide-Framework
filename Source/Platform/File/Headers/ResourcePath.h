@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _FILE_WITH_PATH_H_
-#define _FILE_WITH_PATH_H_
+#ifndef DVD_FILE_WITH_PATH_H_
+#define DVD_FILE_WITH_PATH_H_
 
 namespace Divide {
 
@@ -102,4 +102,4 @@ using FileAndPath = std::pair<ResourcePath, ResourcePath>;
 
 }; //namespace Divide
 
-#endif //_FILE_WITH_PATH_H_
+#endif //DVD_FILE_WITH_PATH_H_

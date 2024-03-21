@@ -9,8 +9,8 @@
 */
 
 #pragma once
-#ifndef __COMPONENT_MANAGER_H__
-#define __COMPONENT_MANAGER_H__
+#ifndef ECS__COMPONENT_MANAGER_H__
+#define ECS__COMPONENT_MANAGER_H__
 
 
 #include "API.h"
@@ -378,4 +378,4 @@ namespace ECS
 
 } // namespace ECS
 
-#endif // __COMPONENT_MANAGER_H__
+#endif // ECS__COMPONENT_MANAGER_H__

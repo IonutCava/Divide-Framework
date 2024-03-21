@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _ATTRIBUTE_DESCRIPTOR_H_
-#define _ATTRIBUTE_DESCRIPTOR_H_
+#ifndef DVD_ATTRIBUTE_DESCRIPTOR_H_
+#define DVD_ATTRIBUTE_DESCRIPTOR_H_
 
 namespace Divide {
 
@@ -73,4 +73,4 @@ namespace Divide {
 
 }; //namespace Divide
 
-#endif //_ATTRIBUTE_DESCRIPTOR_H_
+#endif //DVD_ATTRIBUTE_DESCRIPTOR_H_

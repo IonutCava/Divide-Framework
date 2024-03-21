@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _GUI_ELEMENT_H_
-#define _GUI_ELEMENT_H_
+#ifndef DVD_GUI_ELEMENT_H_
+#define DVD_GUI_ELEMENT_H_
 
 #include <CEGUI/Event.h>
 
@@ -67,7 +67,6 @@ class GUIElement : public GUIDWrapper {
     friend class GUI;
   public:
     GUIElement(string name, CEGUI::Window* parent) noexcept;
-    virtual ~GUIElement() = default;
     
     virtual void setTooltip([[maybe_unused]] const string& tooltipText) {}
 
@@ -91,8 +90,6 @@ struct GUIElementBase : GUIElement {
         : GUIElement(name, parent)
     {}
 
-    virtual ~GUIElementBase() = default;
-
     static constexpr GUIType Type = EnumVal;
 
     [[nodiscard]] GUIType type() const noexcept override { return Type; }
@@ -100,4 +97,4 @@ struct GUIElementBase : GUIElement {
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_GUI_ELEMENT_H_

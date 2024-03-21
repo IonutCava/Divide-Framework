@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _SELECTION_SYSTEM_H_
-#define _SELECTION_SYSTEM_H_
+#ifndef DVD_SELECTION_SYSTEM_H_
+#define DVD_SELECTION_SYSTEM_H_
 
 #include "ECSSystem.h"
 #include "Core/Headers/PlatformContextComponent.h"
@@ -55,4 +55,4 @@ namespace Divide
     };
 }
 
-#endif //_SELECTION_SYSTEM_H_
+#endif //DVD_SELECTION_SYSTEM_H_

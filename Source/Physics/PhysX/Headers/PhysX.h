@@ -30,16 +30,22 @@
  */
 
 #pragma once
-#ifndef PHYSX_H_
-#define PHYSX_H_
+#ifndef DVD_PHYSX_H_
+#define DVD_PHYSX_H_
 
-#ifndef _PHYSICS_API_FOUND_
-#define _PHYSICS_API_FOUND_
+#ifndef DVD_PHYSICS_API_FOUND_
+#define DVD_PHYSICS_API_FOUND_
 #endif
 
 #include "PhysXActor.h"
 #include "PhysXSceneInterface.h"
 #include "Physics/Headers/PhysicsAPIWrapper.h"
+
+namespace physx
+{
+    class PxPvd;
+    class PxPvdTransport;
+}
 
 constexpr auto MAX_ACTOR_QUEUE = 30;
 
@@ -101,9 +107,6 @@ private:
     physx::PxReal _accumulator = 0.0f;
     physx::PxPvd* _pvd = nullptr;
     physx::PxPvdTransport* _transport = nullptr;
-    physx::PxPvdInstrumentationFlags  _pvdFlags{};
-
-    static physx::PxDefaultAllocator _gDefaultAllocatorCallback;
 
     static SharedMutex s_meshCacheLock;
     static hashMap<U64, physx::PxTriangleMesh*> s_gMeshCache;
@@ -111,4 +114,4 @@ private:
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_PHYSX_H_

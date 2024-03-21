@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _QUATERNION_H_
-#define _QUATERNION_H_
+#ifndef DVD_QUATERNION_H_
+#define DVD_QUATERNION_H_
 
 /*
 http://gpwiki.org/index.php/OpenGL:Tutorials:Using_Quaternions_to_represent_rotation
@@ -204,6 +204,6 @@ template <typename T>
 vec3<T> DirectionFromEuler(vec3<Angle::DEGREES<T>> const & euler, const vec3<T>& FORWARD_DIRECTION);
 }  // namespace Divide
 
-#endif
+#endif //DVD_QUATERNION_H_
 
 #include "Quaternion.inl"

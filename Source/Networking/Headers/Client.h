@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _CLIENT_H_
-#define _CLIENT_H_
+#ifndef DVD_CLIENT_H_
+#define DVD_CLIENT_H_
 
 #include "WorldPacket.h"
 
@@ -114,4 +114,5 @@ namespace Divide
     };
 
 };  // namespace Divide
-#endif
+
+#endif //DVD_CLIENT_H_

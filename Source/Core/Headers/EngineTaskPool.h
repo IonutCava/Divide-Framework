@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _ENGINE_TASK_POOL_H_
-#define _ENGINE_TASK_POOL_H_
+#ifndef DVD_ENGINE_TASK_POOL_H_
+#define DVD_ENGINE_TASK_POOL_H_
 
 #include "Core/Headers/PlatformContext.h"
 
@@ -46,6 +46,6 @@ void WaitForAllTasks(PlatformContext& context, bool flushCallbacks);
 
 }; //namespace Divide
 
-#endif //_ENGINE_TASK_POOL_H_
+#endif //DVD_ENGINE_TASK_POOL_H_
 
 #include "EngineTaskPool.inl"

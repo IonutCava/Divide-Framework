@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _TRANSFORM_INTERFACE_H_
-#define _TRANSFORM_INTERFACE_H_
+#ifndef DVD_TRANSFORM_INTERFACE_H_
+#define DVD_TRANSFORM_INTERFACE_H_
 
 namespace Divide
 {
@@ -152,6 +152,6 @@ public:
 };
 
 }
-#endif //_TRANSFORM_INTERFACE_H_
+#endif //DVD_TRANSFORM_INTERFACE_H_
 
 #include "TransformInterface.inl"

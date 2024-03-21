@@ -29,7 +29,6 @@ include(CMakeHelpers/GlobSources.cmake)
 
 add_library( ${APP_THIRD_PARTY_LIB} STATIC ${THIRD_PARTY_LOCAL_SRC_FILES} ${THIRD_PARTY_FETCH_SRC_FILES} )
 
-
 add_library(${APP_LIB_DIVIDE} STATIC "engineMain.cpp" ${ENGINE_SOURCE_CODE} )
 
 target_link_libraries(${APP_LIB_DIVIDE} ${APP_THIRD_PARTY_LIB})
@@ -91,14 +90,18 @@ if(BUILD_TESTING)
     include(CTest)
     include(Catch)
 
-    add_executable( ${APP_EXE_TEST_PLATFORM} "UnitTests/main.cpp" ${TEST_PLATFORM_SOURCE} )
+    add_custom_target(${APP_EXE_DIVIDE}BinGenerated DEPENDS ${APP_EXE_DIVIDE})
+
+    add_executable( ${APP_EXE_TEST_PLATFORM} "UnitTests/main.cpp" ${TEST_PLATFORM_SOURCE})
     target_link_libraries( ${APP_EXE_TEST_PLATFORM} PRIVATE ${COMMON_LIBS} PRIVATE Catch2::Catch2 )
     target_compile_definitions( ${APP_EXE_TEST_PLATFORM} PUBLIC PLATFORM_TESTS )
+    add_dependencies(${APP_EXE_TEST_PLATFORM} ${APP_EXE_DIVIDE}BinGenerated)
     catch_discover_tests( ${APP_EXE_TEST_PLATFORM} WORKING_DIRECTORY  "${CMAKE_SOURCE_DIR}" )
 
-    add_executable( ${APP_EXE_TEST_ENGINE} "UnitTests/main.cpp" ${TEST_ENGINE_SOURCE} )
+    add_executable( ${APP_EXE_TEST_ENGINE} "UnitTests/main.cpp" ${TEST_ENGINE_SOURCE})
     target_link_libraries( ${APP_EXE_TEST_ENGINE} PRIVATE ${COMMON_LIBS} PRIVATE Catch2::Catch2 )
     target_compile_definitions( ${APP_EXE_TEST_ENGINE} PUBLIC ENGINE_TESTS )
+    add_dependencies(${APP_EXE_TEST_ENGINE} ${APP_EXE_DIVIDE}BinGenerated)
     catch_discover_tests( ${APP_EXE_TEST_ENGINE} WORKING_DIRECTORY  "${CMAKE_SOURCE_DIR}" )
 endif()
 

@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _GL_HARDWARE_QUERY_H_
-#define _GL_HARDWARE_QUERY_H_
+#ifndef DVD_GL_HARDWARE_QUERY_H_
+#define DVD_GL_HARDWARE_QUERY_H_
 
 #include "glResources.h"
 
@@ -46,7 +46,7 @@ class glHardwareQuery {
 public:
     explicit glHardwareQuery() noexcept;
 
-    void create(GLenum queryType);
+    void create( gl::GLenum queryType);
     void destroy();
 
     [[nodiscard]] bool isResultAvailable() const;
@@ -65,10 +65,10 @@ protected:
 class glHardwareQueryRing final : public RingBufferSeparateWrite {
 
 public:
-    explicit glHardwareQueryRing(GFXDevice& context, GLenum queryType, U32 queueLength, U32 id = 0);
+    explicit glHardwareQueryRing(GFXDevice& context, gl::GLenum queryType, U16 queueLength, U32 id = 0);
     ~glHardwareQueryRing();
 
-    void resize(U32 queueLength) override;
+    void resize(U16 queueLength) override;
 
     U32 id() const noexcept { return _id; }
 
@@ -87,7 +87,7 @@ public:
         return readQuery().getResultNoWait();
     }
 
-    GLenum type() const noexcept {
+    gl::GLenum type() const noexcept {
         return _queryType;
     }
 protected:
@@ -98,7 +98,7 @@ protected:
     GFXDevice& _context;
     vector<glHardwareQuery> _queries;
     U32 _id = 0u;
-    GLenum _queryType = GL_NONE;
+    gl::GLenum _queryType = gl::GL_NONE;
 };
 
 FWD_DECLARE_MANAGED_CLASS(glHardwareQueryRing);
@@ -108,18 +108,19 @@ public:
     explicit glHardwareQueryPool(GFXDevice& context);
     ~glHardwareQueryPool();
 
-    void init(const hashMap<GLenum, U32>& sizes);
+    void init(const hashMap<gl::GLenum, U32>& sizes);
     void destroy();
 
-    glHardwareQueryRing& allocate(GLenum queryType);
+    glHardwareQueryRing& allocate( gl::GLenum queryType);
     void deallocate(const glHardwareQueryRing& query);
 
 private:
-    hashMap<GLenum, vector<glHardwareQueryRing*>> _queryPool;
-    hashMap<GLenum, U32> _index;
+    hashMap<gl::GLenum, vector<glHardwareQueryRing*>> _queryPool;
+    hashMap<gl::GLenum, U32> _index;
 
     GFXDevice& _context;
 };
 
-};
-#endif //_GL_HARDWARE_QUERY_H_
+}; //namespace Divide
+
+#endif //DVD_GL_HARDWARE_QUERY_H_

@@ -66,8 +66,8 @@
 */
 
 #pragma once
-#ifndef _CHARACTER_H_
-#define _CHARACTER_H_
+#ifndef DVD_CHARACTER_H_
+#define DVD_CHARACTER_H_
 
 #include "Unit.h"
 
@@ -89,7 +89,6 @@ class Character : public Unit {
     };
 
     explicit Character(CharacterType type);
-    virtual ~Character() = default;
 
     /**
       * Update this character for drawing a new frame.
@@ -140,4 +139,4 @@ class Character : public Unit {
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_CHARACTER_H_

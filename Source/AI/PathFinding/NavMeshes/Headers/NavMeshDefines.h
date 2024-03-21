@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _NAVIGATION_MESH_DEFINES_H_
-#define _NAVIGATION_MESH_DEFINES_H_
+#ifndef DVD_NAVIGATION_MESH_DEFINES_H_
+#define DVD_NAVIGATION_MESH_DEFINES_H_
 
 #ifndef RECAST_UTIL_PROPERTIES
 #define RECAST_UTIL_PROPERTIES
@@ -93,4 +93,4 @@ enum class PathErrorCode : I8 {
 }  // namespace AI
 }  // namespace Divide
 
-#endif
+#endif //DVD_NAVIGATION_MESH_DEFINES_H_

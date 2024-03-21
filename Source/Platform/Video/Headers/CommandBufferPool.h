@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _COMMAND_BUFFER_POOL_H_
-#define _COMMAND_BUFFER_POOL_H_
+#ifndef DVD_COMMAND_BUFFER_POOL_H_
+#define DVD_COMMAND_BUFFER_POOL_H_
 
 #include "CommandBuffer.h"
 
@@ -75,6 +75,6 @@ void DeallocateCommandBuffer(CommandBuffer*& buffer);
 }; //namespace GFX
 }; //namespace Divide
 
-#endif //_COMMAND_BUFFER_POOL_H_
+#endif //DVD_COMMAND_BUFFER_POOL_H_
 
 #include "CommandBufferPool.inl"

@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _SCENE_ENVIRONMENT_PROBE_POOL_H_
-#define _SCENE_ENVIRONMENT_PROBE_POOL_H_
+#ifndef DVD_SCENE_ENVIRONMENT_PROBE_POOL_H_
+#define DVD_SCENE_ENVIRONMENT_PROBE_POOL_H_
 
 #include "Scenes/Headers/SceneComponent.h"
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
@@ -148,4 +148,4 @@ FWD_DECLARE_MANAGED_CLASS(SceneEnvironmentProbePool);
 
 } //namespace Divide
 
-#endif //_SCENE_ENVIRONMENT_PROBE_POOL_H_
+#endif //DVD_SCENE_ENVIRONMENT_PROBE_POOL_H_

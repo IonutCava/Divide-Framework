@@ -30,11 +30,16 @@
  */
 
 #pragma once
-#ifndef _PHYSX_SCENE_INTERFACE_H_
-#define _PHYSX_SCENE_INTERFACE_H_
+#ifndef DVD_PHYSX_SCENE_INTERFACE_H_
+#define DVD_PHYSX_SCENE_INTERFACE_H_
 
 #include "PhysXActor.h"
 #include "Physics/Headers/PhysicsSceneInterface.h"
+
+namespace physx
+{
+    class PxDefaultCpuDispatcher;
+}
 
 namespace Divide {
 struct SGNRayResult;
@@ -46,7 +51,7 @@ class PhysXSceneInterface final : public PhysicsSceneInterface {
 
    public:
     PhysXSceneInterface(Scene& parentScene);
-    virtual ~PhysXSceneInterface();
+    virtual ~PhysXSceneInterface() override;
 
     [[nodiscard]] bool init() override;
     [[nodiscard]] bool isInit() const noexcept override;
@@ -80,4 +85,4 @@ FWD_DECLARE_MANAGED_CLASS(PhysXSceneInterface);
 
 };  // namespace Divide
 
-#endif //_PHYSX_SCENE_INTERFACE_H_
+#endif //DVD_PHYSX_SCENE_INTERFACE_H_

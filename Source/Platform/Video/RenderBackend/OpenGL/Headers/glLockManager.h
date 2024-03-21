@@ -29,8 +29,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _GL_LOCK_MANAGER_H_
-#define _GL_LOCK_MANAGER_H_
+#ifndef DVD_GL_LOCK_MANAGER_H_
+#define DVD_GL_LOCK_MANAGER_H_
 
 #include "glResources.h"
 #include "Platform/Video/Headers/LockManager.h"
@@ -44,7 +44,7 @@ struct glSyncObject final : SyncObject
     ~glSyncObject();
     void reset() override;
 
-    GLsync _syncObject{ nullptr };
+    gl::GLsync _syncObject{ nullptr };
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -61,4 +61,4 @@ class glLockManager final : public LockManager {
 
 };  // namespace Divide
 
-#endif  //_GL_LOCK_MANAGER_H_
+#endif  //DVD_GL_LOCK_MANAGER_H_

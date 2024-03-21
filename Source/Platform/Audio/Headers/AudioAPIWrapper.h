@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _AUDIO_API_H
-#define _AUDIO_API_H
+#ifndef DVD_AUDIO_API_H
+#define DVD_AUDIO_API_H
 
 #include "AudioDescriptor.h"
 #include "Core/Headers/FrameListener.h"
@@ -59,7 +59,6 @@ class NOINITVTABLE AudioAPIWrapper : public PlatformContextComponent, public Fra
 
    public:
      explicit AudioAPIWrapper( const Str<64>& name, PlatformContext& context );
-     virtual ~AudioAPIWrapper() = default;
 
    protected:
     [[nodiscard]] virtual bool frameStarted( const FrameEvent& evt ) override { DIVIDE_UNUSED(evt); return true; }
@@ -89,4 +88,4 @@ FWD_DECLARE_MANAGED_CLASS(AudioAPIWrapper);
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_AUDIO_API_H

@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _MANAGERS_RENDER_PASS_MANAGER_H_
-#define _MANAGERS_RENDER_PASS_MANAGER_H_
+#ifndef DVD_MANAGERS_RENDER_PASS_MANAGER_H_
+#define DVD_MANAGERS_RENDER_PASS_MANAGER_H_
 
 #include "Core/Headers/KernelComponent.h"
 
@@ -178,4 +178,4 @@ namespace Divide
 
 } // namespace Divide
 
-#endif
+#endif //DVD_MANAGERS_RENDER_PASS_MANAGER_H_

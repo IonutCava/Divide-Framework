@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _PARTICLE_DATA_H_
-#define _PARTICLE_DATA_H_
+#ifndef DVD_PARTICLE_DATA_H_
+#define DVD_PARTICLE_DATA_H_
 
 #include "Graphs/Headers/SceneNode.h"
 
@@ -134,4 +134,4 @@ class ParticleData {
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_PARTICLE_DATA_H_

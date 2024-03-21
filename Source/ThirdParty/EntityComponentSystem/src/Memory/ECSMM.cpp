@@ -17,17 +17,17 @@ namespace ECS { namespace Memory { namespace Internal {
 	MemoryManager::MemoryManager()
 	{	
 		DEFINE_LOGGER("MemoryManager")
-		LogInfo("Initialize MemoryManager!","");
+		LOG_INFO("Initialize MemoryManager!","");
 
 		// allocate global memory
 		this->m_GlobalMemory = malloc(MemoryManager::MEMORY_CAPACITY);
 		if (this->m_GlobalMemory != nullptr)
 		{
-			LogInfo("%d bytes of memory allocated.", MemoryManager::MEMORY_CAPACITY);
+			LOG_INFO("%d bytes of memory allocated.", MemoryManager::MEMORY_CAPACITY);
 		}
 		else
 		{
-			LogFatal("Failed to allocate %d bytes of memory!", MemoryManager::MEMORY_CAPACITY);
+			LOG_FATAL("Failed to allocate %d bytes of memory!", MemoryManager::MEMORY_CAPACITY);
 			assert(this->m_GlobalMemory != nullptr && "Failed to allocate global memory.");
 		}
 
@@ -41,7 +41,7 @@ namespace ECS { namespace Memory { namespace Internal {
 
 	MemoryManager::~MemoryManager()
 	{
-		LogInfo("Releasing MemoryManager!","");
+		LOG_INFO("Releasing MemoryManager!","");
 
 		this->m_MemoryAllocator->clear();
 
@@ -58,9 +58,9 @@ namespace ECS { namespace Memory { namespace Internal {
 
 		if (this->m_PendingMemory.size() > 0)
 		{
-			LogFatal("!!!  M E M O R Y   L E A K   D E T E C T E D  !!!","")
-			LogFatal("!!!  M E M O R Y   L E A K   D E T E C T E D  !!!","")
-			LogFatal("!!!  M E M O R Y   L E A K   D E T E C T E D  !!!","")
+			LOG_FATAL("!!!  M E M O R Y   L E A K   D E T E C T E D  !!!","")
+			LOG_FATAL("!!!  M E M O R Y   L E A K   D E T E C T E D  !!!","")
+			LOG_FATAL("!!!  M E M O R Y   L E A K   D E T E C T E D  !!!","")
 
 			for (auto i : this->m_PendingMemory)
 			{
@@ -77,13 +77,13 @@ namespace ECS { namespace Memory { namespace Internal {
 
 				if (isFreed == false)
 				{
-					LogFatal("\'%s\' memory user didn't release allocated memory %p!", i.first, i.second)
+					LOG_FATAL("\'%s\' memory user didn't release allocated memory %p!", i.first, i.second)
 				}
 			}
 		}
 		else
 		{
-			LogInfo("No memory leaks detected.","")
+			LOG_INFO("No memory leaks detected.","")
 		}
 	}
 

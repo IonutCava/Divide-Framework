@@ -9,8 +9,8 @@
 */
 
 #pragma once
-#ifndef __EVENT_HANDLER_H__
-#define __EVENT_HANDLER_H__
+#ifndef ECS__EVENT_HANDLER_H__
+#define ECS__EVENT_HANDLER_H__
 
 
 #include "API.h"
@@ -115,11 +115,11 @@ namespace ECS { namespace Event {
 			{
 				this->m_EventStorage.push_back(new (pMem)E(engine, FWD(eventArgs)...));
 
-				LogInfo("\'%s\' event buffered.", typeid(E).name());
+				LOG_INFO("\'%s\' event buffered.", typeid(E).name());
 			}
 			else
 			{
-				LogWarning("Event buffer is full! Cut off new incoming events !!!");
+				LOG_WARNING("Event buffer is full! Cut off new incoming events !!!");
 			}
 		}
 
@@ -153,7 +153,7 @@ namespace ECS { namespace Event {
                         lastIndex = this->m_EventStorage.size();
                     }
                 } else {
-					LogError("Skip corrupted event [ %zu ]", event->GetEventTypeID());
+					LOG_ERROR("Skip corrupted event [ %zu ]", event->GetEventTypeID());
                     continue;
                 }
 			}
@@ -165,4 +165,4 @@ namespace ECS { namespace Event {
 
 }} // namespace ECS::Event
 
-#endif // __EVENT_HANDLER_H__ 
+#endif // ECS__EVENT_HANDLER_H__ 

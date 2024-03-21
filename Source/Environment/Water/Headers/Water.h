@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _WATER_PLANE_H_
-#define _WATER_PLANE_H_
+#ifndef DVD_WATER_PLANE_H_
+#define DVD_WATER_PLANE_H_
 
 #include "Geometry/Shapes/Predefined/Headers/Quad3D.h"
 
@@ -46,7 +46,7 @@ class ShaderProgram;
 class WaterPlane : public SceneNode {
    public:
     explicit WaterPlane(ResourceCache* parentCache, size_t descriptorHash, const Str<256>& name);
-    ~WaterPlane();
+    ~WaterPlane() override;
 
     static bool PointUnderwater(const SceneGraphNode* sgn, const vec3<F32>& point) noexcept;
 
@@ -109,4 +109,4 @@ TYPEDEF_SMART_POINTERS_FOR_TYPE(WaterPlane);
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_WATER_PLANE_H_

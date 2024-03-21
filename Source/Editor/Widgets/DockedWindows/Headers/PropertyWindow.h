@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _EDITOR_PROPERTY_WINDOW_H_
-#define _EDITOR_PROPERTY_WINDOW_H_
+#ifndef DVD_EDITOR_PROPERTY_WINDOW_H_
+#define DVD_EDITOR_PROPERTY_WINDOW_H_
 
 #include "Editor/Widgets/Headers/DockedWindow.h"
 #include "Core/Headers/PlatformContextComponent.h"
@@ -62,7 +62,7 @@ class PropertyWindow final : public DockedWindow, public PlatformContextComponen
         void onRemoveComponent(const EditorComponent& comp) override;
         [[nodiscard]] bool printComponent(SceneGraphNode* sgnNode, EditorComponent* comp, F32 xOffset, F32 smallButtonWidth);
 
-        [[nodiscard]] bool drawCamera(Camera* cam);
+        [[nodiscard]] bool drawCamera( Camera* cam);
 
         [[nodiscard]] const Selections& selections() const;
         [[nodiscard]] SceneGraphNode* node(I64 guid) const;
@@ -85,4 +85,4 @@ class PropertyWindow final : public DockedWindow, public PlatformContextComponen
 
 } //namespace Divide
 
-#endif //_EDITOR_PROPERTY_WINDOW_H_
+#endif //DVD_EDITOR_PROPERTY_WINDOW_H_

@@ -35,20 +35,20 @@
 
 
 #pragma once
-#ifndef _GUID_WRAPPER_H_
-#define _GUID_WRAPPER_H_
+#ifndef DVD_GUID_WRAPPER_H_
+#define DVD_GUID_WRAPPER_H_
 
 namespace Divide {
 
 /// Utility class that adds basic GUID management to objects
 class GUIDWrapper {
    public:
-    GUIDWrapper() noexcept : _GUID(generateGUID()) {}
-    GUIDWrapper([[maybe_unused]] const GUIDWrapper& old) noexcept : _GUID(generateGUID()) { }
-    GUIDWrapper(GUIDWrapper&& old) noexcept : _GUID(old._GUID) {}
+    GUIDWrapper() noexcept : _guid(generateGUID()) {}
+    GUIDWrapper([[maybe_unused]] const GUIDWrapper& old) noexcept : _guid(generateGUID()) { }
+    GUIDWrapper(GUIDWrapper&& old) noexcept : _guid(old._guid) {}
     virtual ~GUIDWrapper() = default;
 
-    [[nodiscard]] FORCE_INLINE I64 getGUID() const noexcept { return _GUID; }
+    [[nodiscard]] FORCE_INLINE I64 getGUID() const noexcept { return _guid; }
 
     static I64 generateGUID() noexcept;
 
@@ -56,7 +56,7 @@ class GUIDWrapper {
     GUIDWrapper& operator=(GUIDWrapper&& other) = delete;
 
    protected:
-    const I64 _GUID;
+    const I64 _guid;
 };
 
 FORCE_INLINE bool operator==(const GUIDWrapper& lhs, const GUIDWrapper& rhs) noexcept {
@@ -79,4 +79,4 @@ FORCE_INLINE bool Compare(const GUIDWrapper* const lhs, const GUIDWrapper* const
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_GUID_WRAPPER_H_

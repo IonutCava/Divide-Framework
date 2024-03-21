@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _RENDER_STAGE_PASS_H_
-#define _RENDER_STAGE_PASS_H_
+#ifndef DVD_RENDER_STAGE_PASS_H_
+#define DVD_RENDER_STAGE_PASS_H_
 
 namespace Divide {
 
@@ -103,12 +103,11 @@ struct RenderStagePass {
                        Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS * 6 +
                        Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS +
                        1u /*WORLD AO*/;
-            default:
-                DIVIDE_UNEXPECTED_CALL();
+            default: break;
         }
 
         DIVIDE_UNEXPECTED_CALL();
-        return to_U8(1u);
+        return U8_ONE;
     }
 
     inline bool operator==(const RenderStagePass lhs, const RenderStagePass rhs) noexcept {
@@ -128,4 +127,4 @@ struct RenderStagePass {
     }
 }; //namespace Divide
 
-#endif //_RENDER_STAGE_PASS_H_
+#endif //DVD_RENDER_STAGE_PASS_H_

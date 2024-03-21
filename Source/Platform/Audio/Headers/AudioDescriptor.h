@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _AUDIO_DESCRIPTOR_H_
-#define _AUDIO_DESCRIPTOR_H_
+#ifndef DVD_AUDIO_DESCRIPTOR_H_
+#define DVD_AUDIO_DESCRIPTOR_H_
 
 #include "Core/Resources/Headers/Resource.h"
 #include "Platform/File/Headers/FileManagement.h"
@@ -44,8 +44,6 @@ class AudioDescriptor final : public CachedResource {
         : CachedResource(ResourceType::DEFAULT, descriptorHash, name, audioFileName, audioFilePath)
     {
     }
-
-    virtual ~AudioDescriptor() = default;
 
     bool unload() noexcept override {
         return true;
@@ -75,4 +73,4 @@ TYPEDEF_SMART_POINTERS_FOR_TYPE(AudioDescriptor);
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_AUDIO_DESCRIPTOR_H_

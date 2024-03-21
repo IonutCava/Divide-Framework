@@ -323,38 +323,35 @@ namespace unitest {
 
 // new operators (should be global)
 
-inline
-	void* operator new (size_t size, Arena& arena)
+inline void* operator new (size_t size, Arena& arena)
 {
-	return
-		arena.alloc(size);
+	return arena.alloc(size);
 }
 
-inline
-	void* operator new[] (size_t size, Arena& arena)
+inline void* operator new[] (size_t size, Arena& arena)
 {
-	return
-		arena.alloc(size);
+	return arena.alloc(size);
 }
 
 template <typename Type, Type* P, typename = typename std::enable_if<(P != nullptr)>::type> inline
-    void* operator new (size_t size, Arena* arena)
+void* operator new (size_t size, Arena* arena)
 {
-	return
-		arena->alloc(size);
+	return arena->alloc(size);
 }
 
-
 // delete operators (should be global)
+inline void operator delete ([[maybe_unused]] void* ptr, [[maybe_unused]] Arena& alctr)
+{
+}
 
-inline
-	void operator delete (void* ptr, Arena& alctr)
-{(void)ptr;(void)alctr;}
+inline void operator delete[]([[maybe_unused]] void* ptr, [[maybe_unused]] Arena& alctr)
+{
+}
 
+inline void operator delete ([[maybe_unused]] void* ptr, [[maybe_unused]] Arena* alctr)
+{
 
-inline
-	void operator delete (void* ptr, Arena* alctr)
-{(void)ptr;(void)alctr;}
+}
 
 
 

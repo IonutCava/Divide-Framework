@@ -26,8 +26,8 @@
  *   OTHER DEALINGS IN THE SOFTWARE.
  ***************************************************************************/
 #pragma once
-#ifndef _CEGUIRenderer_Divide_h_
-#define _CEGUIRenderer_Divide_h_
+#ifndef DVD_CEGUIRenderer_Divide_h_
+#define DVD_CEGUIRenderer_Divide_h_
 
 #include "CEGUI/Base.h"
 #include "CEGUI/Renderer.h"
@@ -182,6 +182,6 @@ private:
 #   pragma warning(pop)
 #endif
 
-#endif
+#endif //DVD_CEGUIRenderer_Divide_h_
 
 #include "CEGUIRenderer.inl"

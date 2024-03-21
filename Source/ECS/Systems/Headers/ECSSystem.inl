@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _ECS_SYSTEM_INL_
-#define _ECS_SYSTEM_INL_
+#ifndef DVD_ECS_SYSTEM_INL_
+#define DVD_ECS_SYSTEM_INL_
 
 #include "Core/Headers/ByteBuffer.h"
 
@@ -104,4 +104,5 @@ namespace Divide {
 
     }
 }
-#endif //_ECS_SYSTEM_INL_
+
+#endif //DVD_ECS_SYSTEM_INL_

@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _GUI_TEXT_H_
-#define _GUI_TEXT_H_
+#ifndef DVD_GUI_TEXT_H_
+#define DVD_GUI_TEXT_H_
 
 #include "GUIElement.h"
 #include "Utility/Headers/TextLabel.h"
@@ -56,4 +56,4 @@ class GUIText final : public GUIElementBase<GUIType::GUI_TEXT>, public TextEleme
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_GUI_TEXT_H_

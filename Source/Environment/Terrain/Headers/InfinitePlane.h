@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _INFINITE_PLANE_H_
-#define _INFINITE_PLANE_H_
+#ifndef DVD_INFINITE_PLANE_H_
+#define DVD_INFINITE_PLANE_H_
 
 #include "Graphs/Headers/SceneNode.h"
 
@@ -67,4 +67,5 @@ private:
     size_t _planeRenderStateHashPrePass = 0u;
 }; //InfinitePlane
 } //namespace Divide
-#endif
+
+#endif //DVD_INFINITE_PLANE_H_

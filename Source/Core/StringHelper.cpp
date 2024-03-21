@@ -47,8 +47,8 @@ char *commaprint(U64 number) noexcept {
 
     if (comma == '\0') {
         struct lconv *lcp = localeconv();
-        if (lcp != NULL) {
-            if (lcp->thousands_sep != NULL &&
+        if (lcp != nullptr) {
+            if (lcp->thousands_sep != nullptr &&
                 *lcp->thousands_sep != '\0')
                 comma = *lcp->thousands_sep;
             else	comma = ',';

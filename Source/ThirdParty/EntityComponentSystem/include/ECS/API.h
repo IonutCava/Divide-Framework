@@ -14,8 +14,8 @@ Preprocessor defines:
 */
 
 #pragma once
-#ifndef __ECS_API_H__
-#define __ECS_API_H__
+#ifndef ECS__ECS_API_H__
+#define ECS__ECS_API_H__
 
 #define ENITY_LUT_GROW						1024
 
@@ -122,4 +122,4 @@ namespace ECS
 
 } // namespace ECS
 
-#endif // __ECS_API_H__
+#endif // ECS__ECS_API_H__

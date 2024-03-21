@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _GUI_SPLASH_H
-#define _GUI_SPLASH_H
+#ifndef DVD_GUI_SPLASH_H
+#define DVD_GUI_SPLASH_H
 
 namespace Divide {
 
@@ -54,4 +54,4 @@ class GUISplash {
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_GUI_SPLASH_H

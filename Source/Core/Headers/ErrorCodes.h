@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _CORE_ERROR_CODES_H_
-#define _CORE_ERROR_CODES_H_
+#ifndef DVD_CORE_ERROR_CODES_H_
+#define DVD_CORE_ERROR_CODES_H_
 
 namespace Divide {
     enum class ErrorCode : I8 {
@@ -124,4 +124,4 @@ namespace Divide {
     }
 }
 
-#endif //_CORE_ERROR_CODES_H_
+#endif //DVD_CORE_ERROR_CODES_H_

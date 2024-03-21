@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _PIPELINE_H_
-#define _PIPELINE_H_
+#ifndef DVD_PIPELINE_H_
+#define DVD_PIPELINE_H_
 
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Headers/BlendingProperties.h"
@@ -74,4 +74,4 @@ bool operator!=(const Pipeline& lhs, const Pipeline& rhs) noexcept;
 
 }; //namespace Divide
 
-#endif //_PIPELINE_H_
+#endif //DVD_PIPELINE_H_

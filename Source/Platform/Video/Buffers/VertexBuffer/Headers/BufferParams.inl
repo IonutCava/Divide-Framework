@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _BUFFER_PARAMS_INL_
-#define _BUFFER_PARAMS_INL_
+#ifndef DVD_BUFFER_PARAMS_INL_
+#define DVD_BUFFER_PARAMS_INL_
 
 namespace Divide {
 
@@ -61,4 +61,4 @@ namespace Divide {
 
 } //namespace Divide
 
-#endif //_BUFFER_PARAMS_INL_
+#endif //DVD_BUFFER_PARAMS_INL_

@@ -31,8 +31,8 @@
 
 #pragma once
 
-#ifndef _PLATFORM_DEFINES_UNIX_H_
-#define _PLATFORM_DEFINES_UNIX_H_
+#ifndef DVD_PLATFORM_DEFINES_UNIX_H_
+#define DVD_PLATFORM_DEFINES_UNIX_H_
 
 #ifndef _RESTRICT_
 #define _RESTRICT_ __restrict__
@@ -114,4 +114,4 @@ inline int _stricmp(const char* str1, const char* str2) {
     return strcasecmp(str1, str2);
 }
 
-#endif //_PLATFORM_DEFINES_UNIX_H_
+#endif //DVD_PLATFORM_DEFINES_UNIX_H_

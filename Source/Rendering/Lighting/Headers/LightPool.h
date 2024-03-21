@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _LIGHT_POOL_H_
-#define _LIGHT_POOL_H_
+#ifndef DVD_LIGHT_POOL_H_
+#define DVD_LIGHT_POOL_H_
 
 #include "config.h"
 
@@ -98,7 +98,7 @@ class LightPool final : public FrameListener,
           std::array<SpotShadowProperties, Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS> _spotLights{};
           std::array<CSMShadowProperties, Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS> _dirLights{};
 
-          [[nodiscard]] Byte* data() const noexcept { return (Byte*)_pointLights.data(); }
+          [[nodiscard]] bufferPtr data() const noexcept { return (bufferPtr)_pointLights.data(); }
       };
 #pragma pack(pop)
 
@@ -115,7 +115,7 @@ class LightPool final : public FrameListener,
     using LightList = eastl::fixed_vector<Light*, 32u, true, eastl::dvd_allocator>;
 
     explicit LightPool(Scene& parentScene, PlatformContext& context);
-    ~LightPool();
+    ~LightPool() override;
 
     /// Add a new light to the manager
     [[nodiscard]] bool addLight(Light& light);
@@ -244,4 +244,4 @@ FWD_DECLARE_MANAGED_CLASS(LightPool);
 
 };  // namespace Divide
 
-#endif //_LIGHT_POOL_H_
+#endif //DVD_LIGHT_POOL_H_

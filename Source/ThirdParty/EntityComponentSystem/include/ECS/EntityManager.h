@@ -9,8 +9,8 @@
 */
 
 #pragma once
-#ifndef __ENTITY_MANAGER_H__
-#define __ENTITY_MANAGER_H__
+#ifndef ECS__ENTITY_MANAGER_H__
+#define ECS__ENTITY_MANAGER_H__
 
 #include "API.h"
 #include "Engine.h"
@@ -307,4 +307,4 @@ namespace ECS
 #pragma warning(pop)
 #endif //_MSC_VER
 
-#endif // __ENTITY_MANAGER_H__
+#endif // ECS__ENTITY_MANAGER_H__

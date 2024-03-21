@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _POOL_HANDLE_INL_
-#define _POOL_HANDLE_INL_
+#ifndef DVD_POOL_HANDLE_INL_
+#define DVD_POOL_HANDLE_INL_
 
 namespace Divide {
 
@@ -49,4 +49,4 @@ namespace Divide {
 
 } //namespace Divide
 
-#endif //_POOL_HANDLE_INL_
+#endif //DVD_POOL_HANDLE_INL_

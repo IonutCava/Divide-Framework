@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _FRAME_LISTENER_H_
-#define _FRAME_LISTENER_H_
+#ifndef DVD_FRAME_LISTENER_H_
+#define DVD_FRAME_LISTENER_H_
 
 /// As you might of guessed it, it's the same system used in Ogre3D
 /// (http://www.ogre3d.org/docs/api/html/OgreFrameListener_8h_source.html)
@@ -71,7 +71,7 @@ class FrameListener : public GUIDWrapper {
    public:
     /// Either give it a name
     explicit FrameListener(const Str<64>& name, FrameListenerManager& parent, U32 callOrder);
-    virtual ~FrameListener();
+    virtual ~FrameListener() override;
 
     bool operator<(FrameListener& that) const noexcept {
         return this->_callOrder < that._callOrder;
@@ -111,4 +111,4 @@ class FrameListener : public GUIDWrapper {
 };
 
 }  // namespace Divide
-#endif
+#endif //DVD_FRAME_LISTENER_H_

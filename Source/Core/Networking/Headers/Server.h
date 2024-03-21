@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _SERVER_H_
-#define _SERVER_H_
+#ifndef DVD_SERVER_H_
+#define DVD_SERVER_H_
 
 #include "Networking/Headers/WorldPacket.h"
 
@@ -65,4 +65,5 @@ class Server {
 };
 
 };  // namespace Divide
-#endif
+
+#endif //DVD_SERVER_H_

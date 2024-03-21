@@ -119,10 +119,10 @@ namespace Divide
             sampler._borderColour = TypeUtil::StringToTextureBorderColour(pt.get<string>(entryName + ".Sampler.borderColour", TypeUtil::TextureBorderColourToString(TextureBorderColour::OPAQUE_BLACK_F32)));
             sampler._customBorderColour = UColour4
             {
-                pt.get(entryName + ".Sampler.customBorderColour.<xmlattr>.r", to_U8(0u)),
-                pt.get(entryName + ".Sampler.customBorderColour.<xmlattr>.g", to_U8(0u)),
-                pt.get(entryName + ".Sampler.customBorderColour.<xmlattr>.b", to_U8(0u)),
-                pt.get(entryName + ".Sampler.customBorderColour.<xmlattr>.a", to_U8(1u))
+                pt.get(entryName + ".Sampler.customBorderColour.<xmlattr>.r", U8_ZERO),
+                pt.get(entryName + ".Sampler.customBorderColour.<xmlattr>.g", U8_ZERO),
+                pt.get(entryName + ".Sampler.customBorderColour.<xmlattr>.b", U8_ZERO),
+                pt.get(entryName + ".Sampler.customBorderColour.<xmlattr>.a", U8_ONE)
             };
 
             return sampler;

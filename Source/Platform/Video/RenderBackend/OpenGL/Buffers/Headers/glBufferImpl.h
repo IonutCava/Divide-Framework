@@ -43,7 +43,7 @@ namespace Divide {
 
 struct BufferImplParams {
     BufferParams _bufferParams;
-    GLenum _target{ GL_NONE };
+    gl::GLenum _target{ gl::GL_NONE };
     size_t _dataSize{0};
     bool _useChunkAllocation{ false };
 };
@@ -64,10 +64,10 @@ inline bool operator!=(const BufferImplParams& lhs, const BufferImplParams& rhs)
 
 class glBufferImpl final : public LockableBuffer {
 public:
-    explicit glBufferImpl(GFXDevice& context, const BufferImplParams& params, const std::pair<bufferPtr, size_t>& initialData, const char* name);
+    explicit glBufferImpl(GFXDevice& context, const BufferImplParams& params, const std::pair<const bufferPtr, size_t>& initialData, const char* name);
     virtual ~glBufferImpl();
 
-    BufferLock writeOrClearBytes(size_t offsetInBytes, size_t rangeInBytes, bufferPtr data, bool firstWrite = false);
+    BufferLock writeOrClearBytes(size_t offsetInBytes, size_t rangeInBytes, const bufferPtr data, bool firstWrite = false);
     void readBytes(size_t offsetInBytes, size_t rangeInBytes, std::pair<bufferPtr, size_t> outData);
 
 
@@ -78,7 +78,7 @@ public:
 protected:
     GFXDevice& _context;
 
-    GLuint _copyBufferTarget{ GL_NULL_HANDLE };
+    gl::GLuint _copyBufferTarget{ GL_NULL_HANDLE };
     size_t _copyBufferSize{ 0u };
     mutable Mutex _mapLock;
 };

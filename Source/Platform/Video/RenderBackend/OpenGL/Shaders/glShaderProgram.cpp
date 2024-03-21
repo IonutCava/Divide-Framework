@@ -9,6 +9,8 @@
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 #include "Utility/Headers/Localization.h"
 
+using namespace gl;
+
 namespace Divide {
 
 namespace {

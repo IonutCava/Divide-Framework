@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _CONDITIONAL_WAIT_H_
-#define _CONDITIONAL_WAIT_H_
+#ifndef DVD_CONDITIONAL_WAIT_H_
+#define DVD_CONDITIONAL_WAIT_H_
 
 namespace Divide {
 class PlatformContext;
@@ -149,5 +149,4 @@ constexpr void assert_type( const U& )
 
 };
 
-#endif
-
+#endif //DVD_CONDITIONAL_WAIT_H_

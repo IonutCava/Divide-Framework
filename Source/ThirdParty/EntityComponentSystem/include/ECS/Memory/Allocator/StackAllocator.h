@@ -9,8 +9,8 @@
 */
 
 #pragma once
-#ifndef __STACK_ALLOC_H__
-#define __STACK_ALLOC_H__
+#ifndef ECS__STACK_ALLOC_H__
+#define ECS__STACK_ALLOC_H__
 
 #include "Memory/Allocator/IAllocator.h"
 
@@ -41,4 +41,4 @@ namespace ECS { namespace Memory { namespace Allocator {
 
 } } } // namespace ECS::Memory::Allocator
 
-#endif // __STACK_ALLOC_H__
+#endif // ECS__STACK_ALLOC_H__

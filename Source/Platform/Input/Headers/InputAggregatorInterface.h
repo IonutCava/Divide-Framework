@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _INPUT_AGGREGATOR_INIT_H_
-#define _INPUT_AGGREGATOR_INIT_H_
+#ifndef DVD_INPUT_AGGREGATOR_INIT_H_
+#define DVD_INPUT_AGGREGATOR_INIT_H_
 
 #include "Input.h"
 
@@ -167,4 +167,4 @@ class InputAggregatorInterface {
 };  // namespace Input
 };  // namespace Divide
 
-#endif
+#endif //DVD_INPUT_AGGREGATOR_INIT_H_

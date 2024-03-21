@@ -9,8 +9,8 @@
 */
 
 #pragma once
-#ifndef __I_COMPONENT_H__
-#define __I_COMPONENT_H__
+#ifndef ECS__I_COMPONENT_H__
+#define ECS__I_COMPONENT_H__
 
 #include "IEntity.h"
 
@@ -65,4 +65,4 @@ namespace ECS
 	};
 }
 
-#endif // __I_COMPONENT_H__
+#endif // ECS__I_COMPONENT_H__

@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _DIVIDE_PCH_
-#define _DIVIDE_PCH_
+#ifndef DVD_PCH_
+#define DVD_PCH_
 
 #define _ENFORCE_MATCHING_ALLOCATORS 0
 #define _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
@@ -160,5 +160,4 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Headers/TaskPool.h"
 #include "Platform/Video/Headers/RenderAPIEnums.h"
 
-
-#endif //_DIVIDE_PCH_
+#endif //DVD_PCH_

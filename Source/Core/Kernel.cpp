@@ -442,7 +442,7 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
     return presentToScreen(evt);
 }
 
-void ComputeViewports(const Rect<I32>& mainViewport, vector<Rect<I32>>& targetViewports, const U8 count) {
+static void ComputeViewports(const Rect<I32>& mainViewport, vector<Rect<I32>>& targetViewports, const U8 count) {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     const I32 xOffset = mainViewport.x;
@@ -542,7 +542,7 @@ void ComputeViewports(const Rect<I32>& mainViewport, vector<Rect<I32>>& targetVi
     }
 }
 
-Time::ProfileTimer& getTimer(Time::ProfileTimer& parentTimer, vector<Time::ProfileTimer*>& timers, const U8 index, const char* name) {
+static Time::ProfileTimer& GetTimer(Time::ProfileTimer& parentTimer, vector<Time::ProfileTimer*>& timers, const U8 index, const char* name) {
     while (timers.size() < to_size(index) + 1) {
         timers.push_back(&Time::ADD_TIMER(Util::StringFormat("%s %d", name, timers.size()).c_str()));
         parentTimer.addChildTimer(*timers.back());
@@ -590,7 +590,7 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
         renderParams._targetViewport = _targetViewports[i];
 
         {
-            Time::ProfileTimer& timer = getTimer(_flushToScreenTimer, _renderTimer, i, "Render Timer");
+            Time::ProfileTimer& timer = GetTimer(_flushToScreenTimer, _renderTimer, i, "Render Timer");
             renderParams._parentTimer = &timer;
             Time::ScopedTimer time2(timer);
             _renderPassManager->render(renderParams);
@@ -675,7 +675,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
 
     DIVIDE_ASSERT(g_backupThreadPoolSize >= 2u, "Backup thread pool needs at least 2 threads to handle background tasks without issues!");
 
-    const I32 threadCount = config.runtime.maxWorkerThreads > 0 ? config.runtime.maxWorkerThreads : HardwareThreadCount();
+    const I32 threadCount = config.runtime.maxWorkerThreads > 0 ? config.runtime.maxWorkerThreads : to_I32(HardwareThreadCount());
     totalThreadCount(std::max(threadCount, to_I32(g_minimumGeneralPurposeThreadCount)));
 
     _platformContext.pfx().setAPI(PXDevice::PhysicsAPI::PhysX);
@@ -813,8 +813,16 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     }
 
     _platformContext.gui().addText("ProfileData",                                 // Unique ID
-                                    RelativePosition2D(RelativeValue(0.75f, 0.0f),
-                                                       RelativeValue(0.2f, 0.0f)), // Position
+                                    RelativePosition2D{
+                                         ._x = RelativeValue{
+                                             ._scale = 0.75f, 
+                                             ._offset = 0.0f
+                                         },
+                                         ._y = RelativeValue{
+                                             ._scale = 0.2f,
+                                             ._offset = 0.0f
+                                         }
+                                    }, // Position
                                     Font::DROID_SERIF_BOLD,                        // Font
                                     UColour4(255,  50, 0, 255),                    // Colour
                                     "",                                            // Text

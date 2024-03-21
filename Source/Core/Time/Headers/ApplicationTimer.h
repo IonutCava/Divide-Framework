@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _CORE_TIME_APPLICATION_TIMER_H_
-#define _CORE_TIME_APPLICATION_TIMER_H_
+#ifndef DVD_CORE_TIME_APPLICATION_TIMER_H_
+#define DVD_CORE_TIME_APPLICATION_TIMER_H_
 
 #include "FrameRateHandler.h"
 
@@ -82,6 +82,6 @@ namespace App {
 }  // namespace Time
 }  // namespace Divide
 
-#endif  //_CORE_TIME_APPLICATION_TIMER_H_
+#endif  //DVD_CORE_TIME_APPLICATION_TIMER_H_
 
 #include "ApplicationTimer.inl"

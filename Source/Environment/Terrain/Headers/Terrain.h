@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _TERRAIN_H_
-#define _TERRAIN_H_
+#ifndef DVD_TERRAIN_H_
+#define DVD_TERRAIN_H_
 
 #include "TerrainDescriptor.h"
 #include "Geometry/Shapes/Headers/Object3D.h"
@@ -237,4 +237,4 @@ class TerrainLoader {
 }  // namespace Attorney
 }  // namespace Divide
 
-#endif
+#endif //DVD_TERRAIN_H_

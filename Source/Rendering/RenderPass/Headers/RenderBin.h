@@ -36,8 +36,8 @@
   */
 
 #pragma once
-#ifndef _RENDER_BIN_H_
-#define _RENDER_BIN_H_
+#ifndef DVD_RENDER_BIN_H_
+#define DVD_RENDER_BIN_H_
 
 namespace Divide {
 
@@ -139,4 +139,4 @@ FWD_DECLARE_MANAGED_CLASS(RenderBin);
 
 };  // namespace Divide
 
-#endif //_RENDER_BIN_H_
+#endif //DVD_RENDER_BIN_H_

@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _GUI_CONSOLE_H_
-#define _GUI_CONSOLE_H_
+#ifndef DVD_GUI_CONSOLE_H_
+#define DVD_GUI_CONSOLE_H_
 
 constexpr size_t CEGUI_MAX_INPUT_HISTORY = 5;
 
@@ -53,7 +53,7 @@ class GUIConsoleCommandParser;
 class GUIConsole final : public PlatformContextComponent {
    public:
     explicit GUIConsole(GUI& parent, PlatformContext& context, ResourceCache* cache);
-    ~GUIConsole();
+    ~GUIConsole() override;
 
     /// Hide or show the console
     void setVisible(bool visible);
@@ -107,4 +107,4 @@ class GUIConsole final : public PlatformContextComponent {
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_GUI_CONSOLE_H_

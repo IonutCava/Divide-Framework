@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _RENDER_PASS_EXECUTOR_H_
-#define _RENDER_PASS_EXECUTOR_H_
+#ifndef DVD_RENDER_PASS_EXECUTOR_H_
+#define DVD_RENDER_PASS_EXECUTOR_H_
 
 #include "NodeBufferedData.h"
 #include "RenderPass.h"
@@ -235,4 +235,4 @@ FWD_DECLARE_MANAGED_CLASS(RenderPassExecutor);
 
 } //namespace Divide
 
-#endif //_RENDER_PASS_EXECUTOR_H_
+#endif //DVD_RENDER_PASS_EXECUTOR_H_

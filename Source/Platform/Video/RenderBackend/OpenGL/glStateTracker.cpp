@@ -10,6 +10,8 @@
 
 #include "Utility/Headers/Localization.h"
 
+using namespace gl;
+
 namespace Divide
 {
 

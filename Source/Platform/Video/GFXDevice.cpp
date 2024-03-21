@@ -509,7 +509,7 @@ namespace Divide
             bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::CONSTANT_BUFFER;
             bufferDescriptor._bufferParams._flags._updateFrequency = BufferUpdateFrequency::OFTEN;
             bufferDescriptor._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
-            bufferDescriptor._ringBufferLength = to_U32( targetSizeCam );
+            bufferDescriptor._ringBufferLength = to_U16( targetSizeCam );
             bufferDescriptor._bufferParams._elementSize = sizeof( GFXShaderData::CamData );
             bufferDescriptor._initialData = { (Byte*)&_gpuBlock._camData, bufferDescriptor._bufferParams._elementSize };
 
@@ -526,7 +526,7 @@ namespace Divide
             // Atomic counter for occlusion culling
             ShaderBufferDescriptor bufferDescriptor = {};
             bufferDescriptor._bufferParams._elementCount = 1;
-            bufferDescriptor._ringBufferLength = to_U32( targetSizeCullCounter );
+            bufferDescriptor._ringBufferLength = to_U16( targetSizeCullCounter );
             bufferDescriptor._bufferParams._hostVisible = true;
             bufferDescriptor._bufferParams._elementSize = 4 * sizeof( U32 );
             bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::UNBOUND_BUFFER;
@@ -877,15 +877,15 @@ namespace Divide
             ResourceDescriptor descriptor1( "HiZConstruct" );
             descriptor1.waitForReady( false );
             descriptor1.propertyDescriptor( shaderDescriptor );
-            _HIZConstructProgram = CreateResource<ShaderProgram>( cache, descriptor1, loadTasks );
-            _HIZConstructProgram->addStateCallback( ResourceState::RES_LOADED, [this]( CachedResource* )
+            _hIZConstructProgram = CreateResource<ShaderProgram>( cache, descriptor1, loadTasks );
+            _hIZConstructProgram->addStateCallback( ResourceState::RES_LOADED, [this]( CachedResource* )
                                                     {
                                                         PipelineDescriptor pipelineDesc{};
-                                                        pipelineDesc._shaderProgramHandle = _HIZConstructProgram->handle();
+                                                        pipelineDesc._shaderProgramHandle = _hIZConstructProgram->handle();
                                                         pipelineDesc._primitiveTopology = PrimitiveTopology::COMPUTE;
                                                         pipelineDesc._stateBlock = getNoDepthTestBlock();
 
-                                                        _HIZPipeline = newPipeline( pipelineDesc );
+                                                        _hIZPipeline = newPipeline( pipelineDesc );
                                                     } );
         }
         {
@@ -900,13 +900,13 @@ namespace Divide
             ResourceDescriptor descriptor2( "HiZOcclusionCull" );
             descriptor2.waitForReady( false );
             descriptor2.propertyDescriptor( shaderDescriptor );
-            _HIZCullProgram = CreateResource<ShaderProgram>( cache, descriptor2, loadTasks );
-            _HIZCullProgram->addStateCallback( ResourceState::RES_LOADED, [this]( CachedResource* )
+            _hIZCullProgram = CreateResource<ShaderProgram>( cache, descriptor2, loadTasks );
+            _hIZCullProgram->addStateCallback( ResourceState::RES_LOADED, [this]( CachedResource* )
                                                {
                                                    PipelineDescriptor pipelineDescriptor = {};
-                                                   pipelineDescriptor._shaderProgramHandle = _HIZCullProgram->handle();
+                                                   pipelineDescriptor._shaderProgramHandle = _hIZCullProgram->handle();
                                                    pipelineDescriptor._primitiveTopology = PrimitiveTopology::COMPUTE;
-                                                   _HIZCullPipeline = newPipeline( pipelineDescriptor );
+                                                   _hIZCullPipeline = newPipeline( pipelineDescriptor );
                                                } );
         }
         {
@@ -1193,8 +1193,8 @@ namespace Divide
         _previewRenderTargetColour = nullptr;
         _previewRenderTargetDepth = nullptr;
         _renderTargetDraw = nullptr;
-        _HIZConstructProgram = nullptr;
-        _HIZCullProgram = nullptr;
+        _hIZConstructProgram = nullptr;
+        _hIZCullProgram = nullptr;
         _displayShader = nullptr;
         _depthShader = nullptr;
         _blurBoxShaderSingle = nullptr;
@@ -1754,7 +1754,7 @@ namespace Divide
 
     void GFXDevice::setScreenMSAASampleCountInternal( U8 sampleCount )
     {
-        CLAMP( sampleCount, to_U8( 0u ), DisplayManager::MaxMSAASamples() );
+        CLAMP( sampleCount, U8_ZERO, DisplayManager::MaxMSAASamples() );
         if ( _context.config().rendering.MSAASamples != sampleCount )
         {
             _context.config().rendering.MSAASamples = sampleCount;
@@ -1766,7 +1766,7 @@ namespace Divide
 
     void GFXDevice::setShadowMSAASampleCountInternal( const ShadowType type, U8 sampleCount )
     {
-        CLAMP( sampleCount, to_U8( 0u ), DisplayManager::MaxMSAASamples() );
+        CLAMP( sampleCount, U8_ZERO, DisplayManager::MaxMSAASamples() );
         ShadowMap::setMSAASampleCount( type, sampleCount );
     }
 
@@ -1871,9 +1871,9 @@ namespace Divide
         // needed for rendering (e.g. changed by RenderTarget::End())
 
         const vec4<F32> tempViewport{ activeViewport() };
-        if ( _gpuBlock._camData._ViewPort != tempViewport )
+        if ( _gpuBlock._camData._viewPort != tempViewport )
         {
-            _gpuBlock._camData._ViewPort.set( tempViewport );
+            _gpuBlock._camData._viewPort.set( tempViewport );
             const U32 clustersX = to_U32( std::ceil( to_F32( tempViewport.sizeX ) / Config::Lighting::ClusteredForward::CLUSTERS_X ) );
             const U32 clustersY = to_U32( std::ceil( to_F32( tempViewport.sizeY ) / Config::Lighting::ClusteredForward::CLUSTERS_Y ) );
             if ( clustersX != to_U32( _gpuBlock._camData._renderTargetInfo.z ) ||
@@ -1966,13 +1966,13 @@ namespace Divide
 
         bool projectionDirty = false, viewDirty = false;
 
-        if ( cameraSnapshot._projectionMatrix != data._ProjectionMatrix )
+        if ( cameraSnapshot._projectionMatrix != data._projectionMatrix )
         {
             const F32 zNear = cameraSnapshot._zPlanes.min;
             const F32 zFar = cameraSnapshot._zPlanes.max;
 
-            data._ProjectionMatrix.set( cameraSnapshot._projectionMatrix );
-            data._cameraProperties.xyz.set( zNear, zFar, cameraSnapshot._FoV );
+            data._projectionMatrix.set( cameraSnapshot._projectionMatrix );
+            data._cameraProperties.xyz.set( zNear, zFar, cameraSnapshot._fov );
 
             if ( cameraSnapshot._isOrthoCamera )
             {
@@ -1991,10 +1991,10 @@ namespace Divide
             projectionDirty = true;
         }
 
-        if ( cameraSnapshot._viewMatrix != data._ViewMatrix )
+        if ( cameraSnapshot._viewMatrix != data._viewMatrix )
         {
-            data._ViewMatrix.set( cameraSnapshot._viewMatrix );
-            data._InvViewMatrix.set( cameraSnapshot._invViewMatrix );
+            data._viewMatrix.set( cameraSnapshot._viewMatrix );
+            data._invViewMatrix.set( cameraSnapshot._invViewMatrix );
             viewDirty = true;
         }
 
@@ -2020,7 +2020,7 @@ namespace Divide
     void GFXDevice::worldAOViewProjectionMatrix( const mat4<F32>& vpMatrix ) noexcept
     {
         GFXShaderData::CamData& data = _gpuBlock._camData;
-        data._WorldAOVPMatrix = vpMatrix;
+        data._worldAOVPMatrix = vpMatrix;
         _gpuBlock._camNeedsUpload = true;
     }
 
@@ -2030,20 +2030,20 @@ namespace Divide
 
 
         bool projectionDirty = false, viewDirty = false;
-        if ( _gpuBlock._prevFrameData._PreviousViewMatrix != prevViewMatrix )
+        if ( _gpuBlock._prevFrameData._previousViewMatrix != prevViewMatrix )
         {
-            _gpuBlock._prevFrameData._PreviousViewMatrix = prevViewMatrix;
+            _gpuBlock._prevFrameData._previousViewMatrix = prevViewMatrix;
             viewDirty = true;
         }
-        if ( _gpuBlock._prevFrameData._PreviousProjectionMatrix != prevProjectionMatrix )
+        if ( _gpuBlock._prevFrameData._previousProjectionMatrix != prevProjectionMatrix )
         {
-            _gpuBlock._prevFrameData._PreviousProjectionMatrix = prevProjectionMatrix;
+            _gpuBlock._prevFrameData._previousProjectionMatrix = prevProjectionMatrix;
             projectionDirty = true;
         }
 
         if ( projectionDirty || viewDirty )
         {
-            mat4<F32>::Multiply( _gpuBlock._prevFrameData._PreviousProjectionMatrix, _gpuBlock._prevFrameData._PreviousViewMatrix, _gpuBlock._prevFrameData._PreviousViewProjectionMatrix );
+            mat4<F32>::Multiply( _gpuBlock._prevFrameData._previousProjectionMatrix, _gpuBlock._prevFrameData._previousViewMatrix, _gpuBlock._prevFrameData._previousViewProjectionMatrix );
         }
     }
 
@@ -2137,7 +2137,7 @@ namespace Divide
         const GFX::CommandBuffer::CommandOrderContainer& commands = commandBuffer();
         for ( const GFX::CommandBuffer::CommandEntry& cmd : commands )
         {
-            const GFX::CommandType cmdType = static_cast<GFX::CommandType>(cmd._typeIndex);
+            const GFX::CommandType cmdType = static_cast<GFX::CommandType>(cmd._idx._type);
             if ( IsSubmitCommand( cmdType ) )
             {
                 validateAndUploadDescriptorSets();
@@ -2277,7 +2277,7 @@ namespace Divide
         DIVIDE_ASSERT( HiZTex->descriptor().mipMappingState() == TextureDescriptor::MipMappingState::MANUAL );
 
         GFX::EnqueueCommand( cmdBufferInOut, GFX::BeginDebugScopeCommand{ "Construct Hi-Z" } );
-        GFX::EnqueueCommand( cmdBufferInOut, GFX::BindPipelineCommand{ _HIZPipeline } );
+        GFX::EnqueueCommand( cmdBufferInOut, GFX::BindPipelineCommand{ _hIZPipeline } );
 
         U32 twidth = HiZTex->width();
         U32 theight = HiZTex->height();
@@ -2368,7 +2368,7 @@ namespace Divide
         GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Occlusion Cull" } );
 
         // Not worth the overhead for a handful of items and the Pre-Z pass should handle overdraw just fine
-        GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ _HIZCullPipeline } );
+        GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ _hIZCullPipeline } );
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -2647,12 +2647,6 @@ namespace Divide
         }
 
         labelStack.resize( 0 );
-
-        I32 rowCount = viewCount / columnCount;
-        if ( viewCount % columnCount > 0 )
-        {
-            rowCount++;
-        }
 
         const I32 screenWidth = targetViewport.z - targetViewport.x;
         const I32 screenHeight = targetViewport.w - targetViewport.y;

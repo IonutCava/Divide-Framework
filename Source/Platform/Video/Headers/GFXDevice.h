@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _HARDWARE_VIDEO_GFX_DEVICE_H_
-#define _HARDWARE_VIDEO_GFX_DEVICE_H_
+#ifndef DVD_HARDWARE_VIDEO_GFX_DEVICE_H_
+#define DVD_HARDWARE_VIDEO_GFX_DEVICE_H_
 
 #include "config.h"
 
@@ -151,7 +151,7 @@ struct DebugPrimitiveHandler
 
     struct DataEntry {
         Descriptor _descriptor;
-        I64 _Id = 0u;
+        I64 _id = 0u;
         U8 _frameLifeTime = 0u;
     };
 
@@ -179,7 +179,7 @@ struct DebugPrimitiveHandler
 
         for (U32 i = 0u; i < count; ++i) {
             DataEntry& entry = _debugData[i];
-            if (entry._Id == ID) {
+            if (entry._id == ID) {
                 entry._descriptor = data;
                 entry._frameLifeTime = g_maxFrameLifetime;
                 return;
@@ -188,7 +188,7 @@ struct DebugPrimitiveHandler
         for (U32 i = 0u; i < count; ++i) {
             DataEntry& entry = _debugData[i];
             if (entry._frameLifeTime == 0u) {
-                entry._Id = ID;
+                entry._id = ID;
                 entry._descriptor = data;
                 entry._frameLifeTime = g_maxFrameLifetime;
                 return;
@@ -271,7 +271,7 @@ public:
 
 public:  // GPU interface
     explicit GFXDevice( PlatformContext& context );
-    ~GFXDevice();
+    ~GFXDevice() override;
 
     ErrorCode initRenderingAPI(I32 argc, char** argv, RenderAPI API);
     ErrorCode postInitRenderingAPI(vec2<U16> renderResolution);
@@ -539,8 +539,8 @@ private:
     ShaderProgram_ptr _previewRenderTargetColour = nullptr;
     ShaderProgram_ptr _previewRenderTargetDepth = nullptr;
     ShaderProgram_ptr _renderTargetDraw = nullptr;
-    ShaderProgram_ptr _HIZConstructProgram = nullptr;
-    ShaderProgram_ptr _HIZCullProgram = nullptr;
+    ShaderProgram_ptr _hIZConstructProgram = nullptr;
+    ShaderProgram_ptr _hIZCullProgram = nullptr;
     ShaderProgram_ptr _displayShader = nullptr;
     ShaderProgram_ptr _depthShader = nullptr;
     ShaderProgram_ptr _blurBoxShaderSingle = nullptr;
@@ -549,8 +549,8 @@ private:
     ShaderProgram_ptr _blurGaussianShaderLayered = nullptr;
 
 
-    Pipeline* _HIZPipeline = nullptr;
-    Pipeline* _HIZCullPipeline = nullptr;
+    Pipeline* _hIZPipeline = nullptr;
+    Pipeline* _hIZCullPipeline = nullptr;
     PipelineDescriptor _debugGizmoPipeline;
     PipelineDescriptor _debugGizmoPipelineNoDepth;
     PipelineDescriptor _debugGizmoPipelineNoCull;
@@ -676,15 +676,17 @@ namespace Attorney {
     };
 
     class GFXDeviceGFXRTPool {
-        static RenderTarget_uptr newRT(GFXDevice& device, const RenderTargetDescriptor& descriptor) {
+        static RenderTarget_uptr newRT(GFXDevice& device, const RenderTargetDescriptor& descriptor)
+        {
             return device.newRT(descriptor);
-        };
+        }
 
         friend class Divide::GFXRTPool;
     }; 
     
     class GFXDeviceSceneManager {
-        static void shadowingSettings(GFXDevice& device, const F32 lightBleedBias, const F32 minShadowVariance) noexcept {
+        static void shadowingSettings(GFXDevice& device, const F32 lightBleedBias, const F32 minShadowVariance) noexcept
+        {
             device.shadowingSettings(lightBleedBias, minShadowVariance);
         }
 
@@ -707,4 +709,4 @@ namespace Attorney {
 
 #include "GFXDevice.inl"
 
-#endif
+#endif //DVD_HARDWARE_VIDEO_GFX_DEVICE_H_

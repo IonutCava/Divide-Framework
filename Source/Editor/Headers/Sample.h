@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _DIVIDE_EDITOR_SAMPLE_H_
-#define _DIVIDE_EDITOR_SAMPLE_H_
+#ifndef DVD_EDITOR_SAMPLE_H_
+#define DVD_EDITOR_SAMPLE_H_
 
 namespace Divide {
 
@@ -41,4 +41,4 @@ namespace Divide {
 
 } //namespace Divide
 
-#endif //_DIVIDE_EDITOR_SAMPLE_H_
+#endif //DVD_EDITOR_SAMPLE_H_

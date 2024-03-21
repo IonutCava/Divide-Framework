@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _NETWORKING_OPCODES_IMPL_H_
-#define _NETWORKING_OPCODES_IMPL_H_
+#ifndef DVD_NETWORKING_OPCODES_IMPL_H_
+#define DVD_NETWORKING_OPCODES_IMPL_H_
 
 #include "Networking/Headers/OPCodesTpl.h"
 
@@ -46,4 +46,4 @@ public:
 
 };  // namespace Divide
 
-#endif //_NETWORKING_OPCODES_IMPL_H_
+#endif //DVD_NETWORKING_OPCODES_IMPL_H_

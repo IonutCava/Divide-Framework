@@ -40,8 +40,8 @@
  */
 
 #pragma once
-#ifndef _RAY_H_
-#define _RAY_H_
+#ifndef DVD_RAY_H_
+#define DVD_RAY_H_
 
 namespace Divide {
 struct RayResult
@@ -91,4 +91,4 @@ struct Ray {
 
 }  // namespace Divide
 
-#endif //_RAY_H_
+#endif //DVD_RAY_H_

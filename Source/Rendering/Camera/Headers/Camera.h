@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _CAMERA_H_
-#define _CAMERA_H_
+#ifndef DVD_CAMERA_H_
+#define DVD_CAMERA_H_
 
 #include "CameraSnapshot.h"
 #include "Frustum.h"
@@ -114,7 +114,6 @@ namespace Divide
         };
 
         public:
-        ~Camera() = default;
         explicit Camera( const Str<256>& name, Mode mode, const vec3<F32>& eye = VECTOR3_ZERO );
 
         /// Copies all of the internal data from the specified camera to the current one
@@ -331,6 +330,6 @@ namespace Divide
     };
 
 };  // namespace Divide
-#endif //_CAMERA_H_
+#endif //DVD_CAMERA_H_
 
 #include "Camera.inl"

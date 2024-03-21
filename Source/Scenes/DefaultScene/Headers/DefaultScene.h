@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _DEFAULT_SCENE_H_
-#define _DEFAULT_SCENE_H_
+#ifndef DVD_DEFAULT_SCENE_H_
+#define DVD_DEFAULT_SCENE_H_
 
 #include "Scenes/Headers/Scene.h"
 
@@ -47,4 +47,4 @@ END_SCENE(DefaultScene)
 
 } // namespace Divide
 
-#endif //_DEFAULT_SCENE_H_
+#endif //DVD_DEFAULT_SCENE_H_

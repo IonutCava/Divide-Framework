@@ -29,8 +29,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 
-#ifndef _MATERIAL_INL_
-#define _MATERIAL_INL_
+#ifndef DVD_MATERIAL_INL_
+#define DVD_MATERIAL_INL_
 
 namespace Divide {
 
@@ -121,4 +121,4 @@ inline const ModuleDefines& Material::shaderDefines(const ShaderType type) const
 
 }; //namespace Divide
 
-#endif //_MATERIAL_INL_
+#endif //DVD_MATERIAL_INL_

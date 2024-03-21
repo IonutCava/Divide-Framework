@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _AI_PROCESSOR_H_
-#define _AI_PROCESSOR_H_
+#ifndef DVD_AI_PROCESSOR_H_
+#define DVD_AI_PROCESSOR_H_
 
 #include "GOAPInterface.h"
 #include "AI/Headers/AIEntity.h"
@@ -244,4 +244,4 @@ class NOINITVTABLE AIProcessor : NonCopyable {
 }  // namespace AI
 }  // namespace Divide
 
-#endif //_AI_PROCESSOR_H_
+#endif //DVD_AI_PROCESSOR_H_

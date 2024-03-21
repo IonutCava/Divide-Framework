@@ -215,7 +215,7 @@ namespace Divide
     BufferLock vkBufferImpl::writeBytes( const BufferRange range,
                                          VkAccessFlags2 dstAccessMask,
                                          VkPipelineStageFlags2 dstStageMask,
-                                         bufferPtr data)
+                                         const bufferPtr data)
     {
 
         Byte* mappedRange = nullptr;

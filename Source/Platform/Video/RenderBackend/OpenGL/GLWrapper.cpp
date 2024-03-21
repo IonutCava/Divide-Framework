@@ -34,6 +34,8 @@
 #include <glbinding-aux/ContextInfo.h>
 #include <glbinding/Binding.h>
 
+using namespace gl;
+
 namespace Divide
 {
 
@@ -323,7 +325,7 @@ namespace Divide
 
         // Cap max anisotropic level to what the hardware supports
         CLAMP( config.rendering.maxAnisotropicFilteringLevel,
-               to_U8( 0 ),
+               U8_ZERO,
                to_U8( GLUtil::getGLValue( GL_MAX_TEXTURE_MAX_ANISOTROPY ) ) );
 
         deviceInformation._maxAnisotropy = config.rendering.maxAnisotropicFilteringLevel;
@@ -378,14 +380,14 @@ namespace Divide
         // In order: Maximum number of uniform buffer binding points,
         //           maximum size in basic machine units of a uniform block and
         //           minimum required alignment for uniform buffer sizes and offset
-        GLUtil::getGLValue( GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, deviceInformation._UBOffsetAlignmentBytes );
-        GLUtil::getGLValue( GL_MAX_UNIFORM_BLOCK_SIZE, deviceInformation._UBOMaxSizeBytes );
-        const bool UBOSizeOver1Mb = deviceInformation._UBOMaxSizeBytes / 1024 > 1024;
+        GLUtil::getGLValue( GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, deviceInformation._offsetAlignmentBytesUBO );
+        GLUtil::getGLValue( GL_MAX_UNIFORM_BLOCK_SIZE, deviceInformation._maxSizeBytesUBO );
+        const bool UBOSizeOver1Mb = deviceInformation._maxSizeBytesUBO / 1024 > 1024;
         Console::printfn( LOCALE_STR( "GL_VK_UBO_INFO" ),
                           GLUtil::getGLValue( GL_MAX_UNIFORM_BUFFER_BINDINGS ),
-                          (deviceInformation._UBOMaxSizeBytes / 1024) / (UBOSizeOver1Mb ? 1024 : 1),
+                          (deviceInformation._maxSizeBytesUBO / 1024) / (UBOSizeOver1Mb ? 1024 : 1),
                           UBOSizeOver1Mb ? "Mb" : "Kb",
-                          deviceInformation._UBOffsetAlignmentBytes );
+                          deviceInformation._offsetAlignmentBytesUBO );
 
         // In order: Maximum number of shader storage buffer binding points,
         //           maximum size in basic machine units of a shader storage block,
@@ -393,14 +395,14 @@ namespace Divide
         //           be accessed by all active shaders and
         //           minimum required alignment for shader storage buffer sizes and
         //           offset.
-        GLUtil::getGLValue( GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, deviceInformation._SSBOffsetAlignmentBytes );
-        GLUtil::getGLValue( GL_MAX_SHADER_STORAGE_BLOCK_SIZE, deviceInformation._SSBOMaxSizeBytes );
+        GLUtil::getGLValue( GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, deviceInformation._offsetAlignmentBytesSSBO );
+        GLUtil::getGLValue( GL_MAX_SHADER_STORAGE_BLOCK_SIZE, deviceInformation._maxSizeBytesSSBO );
         deviceInformation._maxSSBOBufferBindings = GLUtil::getGLValue( GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS );
         Console::printfn( LOCALE_STR( "GL_VK_SSBO_INFO" ),
                           deviceInformation._maxSSBOBufferBindings,
-                          deviceInformation._SSBOMaxSizeBytes / 1024 / 1024,
+                          deviceInformation._maxSizeBytesSSBO / 1024 / 1024,
                           GLUtil::getGLValue( GL_MAX_COMBINED_SHADER_STORAGE_BLOCKS ),
-                          deviceInformation._SSBOffsetAlignmentBytes );
+                          deviceInformation._offsetAlignmentBytesSSBO );
 
         // Maximum number of subroutines and maximum number of subroutine uniform
         // locations usable in a shader
@@ -472,11 +474,13 @@ namespace Divide
         glBindVertexArray( _dummyVAO );
         s_stateTracker.setDefaultState();
 
-        _performanceQueries[to_base( GlobalQueryTypes::VERTICES_SUBMITTED )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_VERTICES_SUBMITTED, 6 );
-        _performanceQueries[to_base( GlobalQueryTypes::PRIMITIVES_GENERATED )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_PRIMITIVES_GENERATED, 6 );
-        _performanceQueries[to_base( GlobalQueryTypes::TESSELLATION_PATCHES )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_TESS_CONTROL_SHADER_PATCHES, 6 );
-        _performanceQueries[to_base( GlobalQueryTypes::TESSELLATION_EVAL_INVOCATIONS )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_TESS_EVALUATION_SHADER_INVOCATIONS, 6 );
-        _performanceQueries[to_base( GlobalQueryTypes::GPU_TIME )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_TIME_ELAPSED, 6 );
+        constexpr U16 ringLength = 6u;
+
+        _performanceQueries[to_base( GlobalQueryTypes::VERTICES_SUBMITTED )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_VERTICES_SUBMITTED, ringLength );
+        _performanceQueries[to_base( GlobalQueryTypes::PRIMITIVES_GENERATED )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_PRIMITIVES_GENERATED, ringLength );
+        _performanceQueries[to_base( GlobalQueryTypes::TESSELLATION_PATCHES )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_TESS_CONTROL_SHADER_PATCHES, ringLength );
+        _performanceQueries[to_base( GlobalQueryTypes::TESSELLATION_EVAL_INVOCATIONS )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_TESS_EVALUATION_SHADER_INVOCATIONS, ringLength );
+        _performanceQueries[to_base( GlobalQueryTypes::GPU_TIME )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_TIME_ELAPSED, ringLength );
 
         s_stateTracker._enabledAPIDebugging = &config.debug.renderer.enableRenderAPIDebugging;
         s_stateTracker._assertOnAPIError = &config.debug.renderer.assertOnRenderAPIError;

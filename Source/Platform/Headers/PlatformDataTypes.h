@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _PLATFORM_DATA_TYPES_H_
-#define _PLATFORM_DATA_TYPES_H_
+#ifndef DVD_PLATFORM_DATA_TYPES_H_
+#define DVD_PLATFORM_DATA_TYPES_H_
 
 #include <cassert>
 
@@ -137,8 +137,30 @@ namespace Divide
 #define F32_LOWEST std::numeric_limits<F32>::lowest()
 #define I64_LOWEST std::numeric_limits<I64>::lowest()
 
-    //ref: https://foonathan.net/2020/09/move-forward/
-    // static_cast to rvalue reference
+#define U8_ONE U8(1u)
+#define U16_ONE U16(1u)
+#define U32_ONE 1u
+#define U64_ONE 1u
+#define I8_ONE I8(1)
+#define I16_ONE I16(1)
+#define I32_ONE 1
+#define I64_ONE 1
+#define F32_ONE 1.f
+#define D64_ONE 1.0
+
+#define U8_ZERO U8(0u)
+#define U16_ZERO U16(0u)
+#define U32_ZERO 0u
+#define U64_ZERO 0u
+#define I8_ZERO I8(0)
+#define I16_ZERO I16(0)
+#define I32_ZERO 0
+#define I64_ZERO 0
+#define F32_ZERO 0.f
+#define D64_ZERO 0.0
+
+//ref: https://foonathan.net/2020/09/move-forward/
+// static_cast to rvalue reference
 #define MOV(...) static_cast<std::remove_reference_t<decltype(__VA_ARGS__)>&&>(__VA_ARGS__)
 
 // static_cast to identity
@@ -884,8 +906,7 @@ namespace Divide
 #pragma region PROPERTY_SETTERS_GETTERS
 
 #if !defined(EXP)
-#define EXP( x ) x
-
+#define EXP( x ) x 
 #define GET_3RD_ARG(arg1, arg2, arg3, ...) arg3
 #define GET_4TH_ARG(arg1, arg2, arg3, arg4, ...) arg4
 #define GET_5TH_ARG(arg1, arg2, arg3, arg4, arg5, ...) arg5
@@ -939,12 +960,11 @@ public:                                                                         
 #define POINTER_GET_SET(Type, Name)                                                  \
 public:                                                                              \
     FORCE_INLINE void Name(Type* const val) noexcept { _##Name = val; }              \
-    [[nodiscard]] FORCE_INLINE Type* Name() noexcept { return _##Name; }             \
-    [[nodiscard]] FORCE_INLINE Type* const Name() const noexcept { return _##Name; }
+    [[nodiscard]] FORCE_INLINE Type* Name() const noexcept { return _##Name; }
 
 #define POINTER_GET(Type, Name)                                                     \
 public:                                                                             \
-   [[nodiscard]] FORCE_INLINE Type* const Name() const noexcept { return _##Name; }
+   [[nodiscard]] FORCE_INLINE Type* Name() const noexcept { return _##Name; }
 
 #define PROPERTY_GET_INTERNAL(Type, Name)                                                  \
 protected:                                                                                 \
@@ -956,7 +976,7 @@ protected:                                                                      
 
 #define POINTER_GET_INTERNAL(Type, Name)                                             \
 protected:                                                                           \
-    [[nodiscard]] FORCE_INLINE Type* const Name() const noexcept { return _##Name; }
+    [[nodiscard]] FORCE_INLINE Type* Name() noexcept { return _##Name; }
 
 #define PROPERTY_SET_INTERNAL(Type, Name)                                             \
 protected:                                                                            \
@@ -1007,176 +1027,203 @@ protected: \
 protected: \
     Type _##Name = Val; \
     PROPERTY_GET(Type, Name) \
-public:
+public:\
+    static_assert(true, "")
 
 #define PROPERTY_R_IW_3_ARGS(Type, Name, Val) \
 protected: \
     Type _##Name = Val; \
     PROPERTY_GET(Type, Name) \
     PROPERTY_SET_INTERNAL(Type, Name) \
-public:
+public: \
+    static_assert(true, "")
 
 #define PROPERTY_RW_3_ARGS(Type, Name, Val) \
 protected: \
     Type _##Name = Val; \
     PROPERTY_GET_SET(Type, Name) \
-public:
+public: \
+    static_assert(true, "")
 
 #define PROPERTY_R_2_ARGS(Type, Name) \
 protected: \
     Type _##Name; \
     PROPERTY_GET(Type, Name) \
-public:
+public:\
+    static_assert(true, "")
 
 #define PROPERTY_R_IW_2_ARGS(Type, Name) \
 protected: \
     Type _##Name; \
     PROPERTY_GET(Type, Name) \
     PROPERTY_SET_INTERNAL(Type, Name) \
-public:
+public: \
+    static_assert(true, "")
 
 #define PROPERTY_RW_2_ARGS(Type, Name) \
 protected: \
     Type _##Name; \
     PROPERTY_GET_SET(Type, Name) \
-public:
+public: \
+    static_assert(true, "")
 
 //------------- PROPERTY_RW_INTERNAL
 #define PROPERTY_RW_3_ARGS_INTERNAL(Type, Name, Val) \
 protected: \
     Type _##Name = Val; \
     PROPERTY_GET_SET_INTERNAL(Type, Name) \
-public:
+public: \
+    static_assert(true, "")
 
 #define PROPERTY_RW_2_ARGS_INTERNAL(Type, Name) \
 protected: \
     Type _##Name; \
     PROPERTY_GET_SET_INTERNAL(Type, Name)\
-public:
+public: \
+    static_assert(true, "")
 
 //------------------- VIRTUAL_PROPERTY_RW
 #define VIRTUAL_PROPERTY_R_3_ARGS(Type, Name, Val) \
 protected: \
     Type _##Name = Val; \
     VIRTUAL_PROPERTY_GET(Type, Name) \
-public:
+public: \
+    static_assert(true, "")
 
 #define VIRTUAL_PROPERTY_R_IW_3_ARGS(Type, Name, Val) \
 protected: \
     Type _##Name = Val; \
     VIRTUAL_PROPERTY_GET(Type, Name) \
     VIRTUAL_PROPERTY_SET_INTERNAL(Type, Name) \
-public:
+public: \
+    static_assert(true, "")
 
 #define VIRTUAL_PROPERTY_RW_3_ARGS(Type, Name, Val) \
 protected: \
     Type _##Name = Val; \
     VIRTUAL_PROPERTY_GET_SET(Type, Name) \
-public:
+public: \
+    static_assert(true, "")
 
 #define VIRTUAL_PROPERTY_R_2_ARGS(Type, Name) \
 protected: \
     Type _##Name; \
     VIRTUAL_PROPERTY_GET(Type, Name) \
-public:
+public: \
+    static_assert(true, "")
 
 #define VIRTUAL_PROPERTY_R_IW_2_ARGS(Type, Name) \
 protected: \
     Type _##Name; \
     VIRTUAL_PROPERTY_GET(Type, Name) \
     VIRTUAL_PROPERTY_SET_INTERNAL(Type, Name) \
-public:
+public:\
+    static_assert(true, "")
 
 #define VIRTUAL_PROPERTY_RW_2_ARGS(Type, Name) \
 protected: \
     Type _##Name; \
     VIRTUAL_PROPERTY_GET_SET(Type, Name) \
-public:
+public: \
+    static_assert(true, "")
 
 //------------------- VIRTUAL_PROPERTY_RW_INTERNAL
 #define VIRTUAL_PROPERTY_RW_3_ARGS_INTERNAL(Type, Name, Val) \
 protected: \
     Type _##Name = Val; \
     VIRTUAL_PROPERTY_GET_SET_INTERNAL(Type, Name) \
-public:
+public: \
+    static_assert(true, "")
 
 #define VIRTUAL_PROPERTY_RW_2_ARGS_INTERNAL(Type, Name) \
 protected: \
     Type _##Name; \
     VIRTUAL_PROPERTY_GET_SET_INTERNAL(Type, Name) \
-public:
+public: \
+    static_assert(true, "")
 
 //-------------------- POINTER_RW
 #define POINTER_R_3_ARGS(Type, Name, Val) \
 protected: \
     Type* _##Name = Val; \
     POINTER_GET(Type, Name) \
-public:
+public: \
+    static_assert(true, "")
 
 #define POINTER_R_IW_3_ARGS(Type, Name, Val) \
 protected: \
     Type* _##Name = Val; \
     POINTER_GET(Type, Name) \
     POINTER_SET_INTERNAL(Type, Name) \
-public:
+public: \
+    static_assert(true, "")
 
 #define POINTER_RW_3_ARGS(Type, Name, Val) \
 protected: \
     Type* _##Name = Val; \
     POINTER_GET_SET(Type, Name) \
-public:
+public: \
+    static_assert(true, "")
 
 #define POINTER_R_2_ARGS(Type, Name) \
 protected: \
     Type* _##Name{nullptr}; \
     POINTER_GET(Type, Name) \
-public:
+public: \
+    static_assert(true, "")
 
 #define POINTER_R_IW_2_ARGS(Type, Name) \
 protected: \
     Type* _##Name{nullptr}; \
     POINTER_GET(Type, Name) \
     POINTER_SET_INTERNAL(Type, Name) \
-public:
+public: \
+    static_assert(true, "")
 
 #define POINTER_RW_2_ARGS(Type, Name) \
 protected: \
     Type* _##Name{nullptr}; \
     POINTER_GET_SET(Type, Name) \
-public:
+public: \
+    static_assert(true, "")
 
 //-------------------- POINTER_RW_INTERNAL
 #define POINTER_RW_3_ARGS_INTERNAL(Type, Name, Val) \
 protected: \
     Type* _##Name = Val; \
     POINTER_GET_SET_INTERNAL(Type, Name) \
-public:
+public: \
+    static_assert(true, "")
 
 #define POINTER_RW_2_ARGS_INTERNAL(Type, Name) \
 protected: \
     Type* _##Name{nullptr}; \
     POINTER_GET_SET_INTERNAL(Type, Name) \
-public:
+public: \
+    static_assert(true, "")
 
 //-------------------- REFERENCE_RW
 #define REFERENCE_R_2_ARGS(Type, Name) \
 protected: \
     Type& _##Name; \
     PROPERTY_GET(Type, Name) \
-public:
+public: \
+    static_assert(true, "")
 
 #define REFERENCE_RW_2_ARGS(Type, Name) \
 protected: \
     Type& _##Name; \
     PROPERTY_GET_SET(Type, Name) \
-public:
+public: \
+    static_assert(true, "")
 
 //-------------------- REFERENCE_RW_INTERNAL
 #define REFERENCE_RW_2_ARGS_INTERNAL(Type, Name) \
 protected: \
     Type& _##Name; \
     PROPERTY_GET_SET_INTERNAL(Type, Name) \
-public:
+public: \
+    static_assert(true, "")
 
 #define ___DETAIL_PROPERTY_RW_INTERNAL(...) EXP(GET_4TH_ARG(__VA_ARGS__, PROPERTY_RW_3_ARGS_INTERNAL, PROPERTY_RW_2_ARGS_INTERNAL, PROPERTY_RW_1_ARGS_INTERNAL, ))
 #define ___DETAIL_VIRTUAL_PROPERTY_RW_INTERNAL(...) EXP(GET_4TH_ARG(__VA_ARGS__, VIRTUAL_PROPERTY_RW_3_ARGS_INTERNAL, VIRTUAL_PROPERTY_RW_2_ARGS_INTERNAL, VIRTUAL_PROPERTY_RW_1_ARGS_INTERNAL, ))
@@ -1245,4 +1292,4 @@ public:
 #pragma endregion
 }; //namespace Divide;
 
-#endif //_PLATFORM_DATA_TYPES_H_
+#endif //DVD_PLATFORM_DATA_TYPES_H_

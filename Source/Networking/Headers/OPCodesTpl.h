@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _OPCODES_H_INFO_
-#define _OPCODES_H_INFO_
+#ifndef DVD_OPCODES_H_INFO_
+#define DVD_OPCODES_H_INFO_
 
 #ifndef OPCODE_ENUM
 #define OPCODE_ENUM
@@ -32,7 +32,7 @@ public:
 
 /*To create new OPCodes follow this convention:
 
-class OPCodesEx : public OPCodes { //<Or whaterver name you wish
+class OPCodesEx : public OPCodes { ///<Or whaterver name you wish
     static const ValueType CMSG_EXAMPLE = OPCODE_ID(1);
     static const ValueType SMSG_EXAMPLE2 = OPCODE_ID(2);
 };
@@ -41,4 +41,5 @@ And use OPCodesEx for switch statements and packet handling
 */
 
 };  // namespace Divide
-#endif
+
+#endif //DVD_OPCODES_H_INFO_

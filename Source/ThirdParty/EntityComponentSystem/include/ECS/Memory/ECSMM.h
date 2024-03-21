@@ -9,8 +9,8 @@
 */
 
 #pragma once
-#ifndef __ECSSMM_H__
-#define __ECSSMM_H__
+#ifndef ECS__ECSSMM_H__
+#define ECS__ECSSMM_H__
 
 #define ECS_GLOBAL_MEMORY_CAPACITY 134217728 // 128 MB
 
@@ -61,7 +61,7 @@ namespace Internal {
 
 		inline void* Allocate(size_t memSize, const char* user = nullptr)
 		{
-			LogDebug("%s allocated %d bytes of global memory.", user != nullptr ? user : "Unknown", memSize);
+			LOG_DEBUG("%s allocated %d bytes of global memory.", user != nullptr ? user : "Unknown", memSize);
 			void* pMemory = m_MemoryAllocator->allocate(memSize, alignof(u8));
 
 			this->m_PendingMemory.push_back(std::pair<const char*, void*>(user, pMemory));
@@ -109,4 +109,4 @@ namespace Internal {
 
 }}} // namespace ECS::Memory::Internal
 
-#endif // __ECSSMM_H__
+#endif // ECS__ECSSMM_H__

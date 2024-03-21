@@ -120,7 +120,7 @@ namespace Divide
                 params._targetDescriptorPrePass._keepMSAADataAfterResolve = true;
 
                 params._targetDescriptorMainPass._drawMask[to_base( GFXDevice::ScreenTargets::ALBEDO )] = true;
-                params._targetDescriptorMainPass._autoResolveMSAA = false; //< We use a custom GBuffer resolve for this
+                params._targetDescriptorMainPass._autoResolveMSAA = false; ///< We use a custom GBuffer resolve for this
                 params._targetDescriptorMainPass._keepMSAADataAfterResolve = true;
 
                 params._targetHIZ = RenderTargetNames::HI_Z;
@@ -128,7 +128,7 @@ namespace Divide
 
                 if constexpr (true)
                 {
-                    STUBBED("TODO: Figure out why we need to clear the main render target in order to avoid NAN/INF issues in SSR -Ionut")
+                    STUBBED("TODO: Figure out why we need to clear the main render target in order to avoid NAN/INF issues in SSR -Ionut");
                     params._clearDescriptorMainPass[to_base( GFXDevice::ScreenTargets::ALBEDO )] = { DefaultColours::DIVIDE_BLUE, true };
                 }
 
@@ -150,7 +150,7 @@ namespace Divide
 
                 GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
                 beginRenderPassCmd->_name = "DO_POST_RENDER_PASS";
-                beginRenderPassCmd->_target = RenderTargetNames::SCREEN; //< Resolve here since rendering should be done
+                beginRenderPassCmd->_target = RenderTargetNames::SCREEN; ///< Resolve here since rendering should be done
                 beginRenderPassCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::ALBEDO )] = true;
 
                 GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Debug Draw Pass";
@@ -187,7 +187,7 @@ namespace Divide
                         params._clearDescriptorPrePass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
                         params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = {editor.nodePreviewBGColour(), true};
                         params._targetDescriptorPrePass._keepMSAADataAfterResolve = true;
-                        params._targetDescriptorMainPass._autoResolveMSAA = false; //< We use a custom GBuffer resolve for this
+                        params._targetDescriptorMainPass._autoResolveMSAA = false; ///< We use a custom GBuffer resolve for this
                         params._targetDescriptorMainPass._keepMSAADataAfterResolve = true;
 
                         _parent.doCustomPass( editor.nodePreviewCamera(), params, bufferInOut, memCmdInOut );
@@ -197,7 +197,7 @@ namespace Divide
 
                         GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
                         beginRenderPassCmd->_name = "DO_POST_RENDER_PASS";
-                        beginRenderPassCmd->_target = params._target; //< Resolve here since rendering should be done
+                        beginRenderPassCmd->_target = params._target; ///< Resolve here since rendering should be done
                         beginRenderPassCmd->_descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
                         Attorney::EditorRenderPassExecutor::postRender( _context.context().editor(), RenderStage::NODE_PREVIEW, camSnapshot, params._target, bufferInOut, memCmdInOut );

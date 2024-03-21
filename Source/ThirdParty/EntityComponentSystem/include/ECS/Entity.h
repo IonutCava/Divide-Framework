@@ -9,8 +9,8 @@
 */
 
 #pragma once
-#ifndef __ENTITY_H__
-#define __ENTITY_H__
+#ifndef ECS__ENTITY_H__
+#define ECS__ENTITY_H__
 
 
 #include "IEntity.h"
@@ -60,4 +60,4 @@ namespace ECS {
 	const EntityTypeId Entity<E>::STATIC_ENTITY_TYPE_ID = util::Internal::FamilyTypeID<IEntity>::Get<E>();
 }
 
-#endif // __ENTITY_H__
+#endif // ECS__ENTITY_H__

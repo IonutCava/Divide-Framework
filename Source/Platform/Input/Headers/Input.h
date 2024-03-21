@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _INPUT_H_
-#define _INPUT_H_
+#ifndef DVD_INPUT_H_
+#define DVD_INPUT_H_
 
 namespace Divide {
 namespace Input {
@@ -290,4 +290,4 @@ namespace Input {
 
     }; //namespace Input
 }; //namespace Divide
-#endif //_SCENE_H_
+#endif //DVD_INPUT_H_

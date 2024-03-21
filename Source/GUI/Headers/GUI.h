@@ -84,7 +84,7 @@ class GUI final : public GUIInterface,
 
     public:
         explicit GUI( Kernel& parent );
-        ~GUI();
+        ~GUI() override;
 
         /// Create the GUI
         [[nodiscard]] ErrorCode init( PlatformContext& context, ResourceCache* cache );

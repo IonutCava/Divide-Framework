@@ -29,8 +29,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 
-#ifndef _GENERIC_DRAW_COMMAND_INL_
-#define _GENERIC_DRAW_COMMAND_INL_
+#ifndef DVD_GENERIC_DRAW_COMMAND_INL_
+#define DVD_GENERIC_DRAW_COMMAND_INL_
 
 namespace Divide {
 
@@ -78,4 +78,5 @@ namespace Divide {
         cmd._renderOptions = to_base(CmdRenderOptions::RENDER_GEOMETRY);
     }
 }; //namespace Divide
-#endif //_GENERIC_DRAW_COMMAND_INL
+
+#endif //DVD_GENERIC_DRAW_COMMAND_INL_

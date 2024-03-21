@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _SCENE_NODE_FWD_H_
-#define _SCENE_NODE_FWD_H_
+#ifndef DVD_SCENE_NODE_FWD_H_
+#define DVD_SCENE_NODE_FWD_H_
 
 #include "Core/Math/Headers/Ray.h"
 
@@ -119,4 +119,4 @@ namespace Divide {
     }
 }; //namespace Divide
 
-#endif //_SCENE_NODE_FWD_H_
+#endif //DVD_SCENE_NODE_FWD_H_

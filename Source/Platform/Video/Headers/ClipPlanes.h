@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _CLIP_PLANES_H_
-#define _CLIP_PLANES_H_
+#ifndef DVD_CLIP_PLANES_H_
+#define DVD_CLIP_PLANES_H_
 
 namespace Divide {
     enum class ClipPlaneIndex : U8 {
@@ -83,4 +83,4 @@ namespace Divide {
     using FrustumClipPlanes = ClipPlaneList<to_base(ClipPlaneIndex::COUNT)>;
 }; //namespace Divide
 
-#endif //_CLIP_PLANES_H_
+#endif //DVD_CLIP_PLANES_H_

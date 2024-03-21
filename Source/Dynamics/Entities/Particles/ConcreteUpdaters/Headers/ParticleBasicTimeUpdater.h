@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _PARTICLE_BASIC_TIME_UPDATER_H_
-#define _PARTICLE_BASIC_TIME_UPDATER_H_
+#ifndef DVD_PARTICLE_BASIC_TIME_UPDATER_H_
+#define DVD_PARTICLE_BASIC_TIME_UPDATER_H_
 
 #include "Dynamics/Entities/Particles/Headers/ParticleUpdater.h"
 
@@ -46,4 +46,5 @@ class ParticleBasicTimeUpdater final : public ParticleUpdater {
     void update(U64 deltaTimeUS, ParticleData& p) override;
 };
 }
-#endif
+
+#endif //DVD_PARTICLE_BASIC_TIME_UPDATER_H_

@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _SCENE_NODE_RENDER_STATE_H_
-#define _SCENE_NODE_RENDER_STATE_H_
+#ifndef DVD_SCENE_NODE_RENDER_STATE_H_
+#define DVD_SCENE_NODE_RENDER_STATE_H_
 
 #include "Platform/Video/Headers/RenderStagePass.h"
 
@@ -31,4 +31,4 @@ struct SceneNodeRenderState {
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_SCENE_NODE_RENDER_STATE_H_

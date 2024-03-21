@@ -25,8 +25,8 @@
  *   OTHER DEALINGS IN THE SOFTWARE.
  ***************************************************************************/
 #pragma once
-#ifndef _CEGUIDVDTextureTarget_h_
-#define _CEGUIDVDTextureTarget_h_
+#ifndef DVD_CEGUIDVDTextureTarget_h_
+#define DVD_CEGUIDVDTextureTarget_h_
 
 #include "CEGUIRenderer.h"
 #include "CEGUI/TextureTarget.h"
@@ -112,6 +112,6 @@ private:
 #   pragma warning(pop)
 #endif
 
-#endif  // end of guard _CEGUIDVDTextureTarget_h_
+#endif  // DVD_CEGUIDVDTextureTarget_h_
 
 #include "DVDTextureTarget.inl"

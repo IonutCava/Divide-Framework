@@ -48,9 +48,9 @@ namespace goap {
 
         /**
          Moves the given Node (an rvalue reference) into the 'open' list.
-         @param an rvalue reference to a Node that will be moved to the open list
+         @param node an rvalue reference to a Node that will be moved to the open list
          */
-        void addToOpenList(Node&&);
+        void addToOpenList(Node&& node);
 
         /**
          Given two worldstates, calculates an estimated distance (the A* 'heuristic')

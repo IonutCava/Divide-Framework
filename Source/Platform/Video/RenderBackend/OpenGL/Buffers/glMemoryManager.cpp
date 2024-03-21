@@ -6,6 +6,8 @@
 #include "Core/Headers/StringHelper.h"
 #include "Platform/Headers/PlatformRuntime.h"
 
+using namespace gl;
+
 namespace Divide {
 namespace GLUtil {
 
@@ -353,7 +355,11 @@ void freeBuffer(GLuint& bufferId, bufferPtr mappedPtr)
             mappedPtr = nullptr;
         }
 
-        GL_API::DeleteBuffers(1, &bufferId);
+        if ( !GL_API::DeleteBuffers(1, &bufferId) )
+        {
+            DIVIDE_UNEXPECTED_CALL();
+        }
+
         bufferId = GL_NULL_HANDLE;
     }
 }

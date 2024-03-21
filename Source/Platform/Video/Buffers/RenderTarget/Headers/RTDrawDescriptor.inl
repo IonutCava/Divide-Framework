@@ -30,12 +30,11 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _RENDER_TARGET_DRAW_DESCRIPTOR_INL_
-#define _RENDER_TARGET_DRAW_DESCRIPTOR_INL_
+#ifndef DVD_RENDER_TARGET_DRAW_DESCRIPTOR_INL_
+#define DVD_RENDER_TARGET_DRAW_DESCRIPTOR_INL_
 
 namespace Divide
 {
-
     inline bool IsValid( const RTBlitParams& params ) noexcept
     {
         for ( const auto& it : params )
@@ -58,4 +57,5 @@ namespace Divide
     }
 
 }; //namespace Divide
-#endif// _RENDER_TARGET_DRAW_DESCRIPTOR_INL_
+
+#endif// DVD_RENDER_TARGET_DRAW_DESCRIPTOR_INL_

@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _CORE_MATH_BOUNDINGVOLUMES_OOBB_H_
-#define _CORE_MATH_BOUNDINGVOLUMES_OOBB_H_
+#ifndef DVD_CORE_MATH_BOUNDINGVOLUMES_OOBB_H_
+#define DVD_CORE_MATH_BOUNDINGVOLUMES_OOBB_H_
 
 #include "Core/Math/Headers/Ray.h"
 
@@ -99,4 +99,4 @@ public:
 
 }  // namespace Divide
 
-#endif  //_CORE_MATH_BOUNDINGVOLUMES_OOBB_H_
+#endif  //DVD_CORE_MATH_BOUNDINGVOLUMES_OOBB_H_

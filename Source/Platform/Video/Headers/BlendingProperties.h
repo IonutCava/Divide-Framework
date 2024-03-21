@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _BLENDING_PROPERTIES_H_
-#define _BLENDING_PROPERTIES_H_
+#ifndef DVD_BLENDING_PROPERTIES_H_
+#define DVD_BLENDING_PROPERTIES_H_
 
 namespace Divide {
 
@@ -62,4 +62,4 @@ bool operator!=(const RTBlendStates& lhs, const RTBlendStates& rhs) noexcept;
 
 }; //namespace Divide
 
-#endif //_BLENDING_PROPERTIES_H_
+#endif //DVD_BLENDING_PROPERTIES_H_

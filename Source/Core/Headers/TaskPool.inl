@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _TASK_POOL_INL_
-#define _TASK_POOL_INL_
+#ifndef DVD_TASK_POOL_INL_
+#define DVD_TASK_POOL_INL_
 
 namespace Divide {
 
@@ -50,4 +50,4 @@ namespace Divide {
     }
 } //namespace Divide
 
-#endif //_TASK_POOL_INL_
+#endif //DVD_TASK_POOL_INL_

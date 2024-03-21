@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _GENERIC_DRAW_COMMAND_H_
-#define _GENERIC_DRAW_COMMAND_H_
+#ifndef DVD_GENERIC_DRAW_COMMAND_H_
+#define DVD_GENERIC_DRAW_COMMAND_H_
 
 #include "Core/Headers/PoolHandle.h"
 
@@ -108,6 +108,6 @@ bool Compatible(const GenericDrawCommand& lhs, const GenericDrawCommand& rhs) no
 
 }; //namespace Divide
 
-#endif //_GENERIC_DRAW_COMMAND_H_
+#endif //DVD_GENERIC_DRAW_COMMAND_H_
 
 #include "GenericDrawCommand.inl"

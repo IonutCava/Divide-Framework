@@ -29,8 +29,8 @@
 
  */
 #pragma once
-#ifndef _AI_ENTITY_H_
-#define _AI_ENTITY_H_
+#ifndef DVD_AI_ENTITY_H_
+#define DVD_AI_ENTITY_H_
 
 #include "AI/Sensors/Headers/VisualSensor.h"
 
@@ -69,7 +69,7 @@ class AIEntity final : public GUIDWrapper {
     };
 
     AIEntity(const vec3<F32>& currentPosition, string name);
-    ~AIEntity();
+    ~AIEntity() override;
 
     void load(const vec3<F32>& position);
     void unload();
@@ -229,4 +229,4 @@ class AIEntityAITeam {
 }  // namespace AI
 }  // namespace Divide
 
-#endif
+#endif //DVD_AI_ENTITY_H_

@@ -30,11 +30,11 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _ENGINE_TASK_POOL_INL_
-#define _ENGINE_TASK_POOL_INL_
+#ifndef DVD_ENGINE_TASK_POOL_INL_
+#define DVD_ENGINE_TASK_POOL_INL_
 
 namespace Divide {
 
 }; //namespace Divide
 
-#endif //_ENGINE_TASK_POOL_INL_
+#endif //DVD_ENGINE_TASK_POOL_INL_

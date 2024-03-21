@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _TEMPLATE_ALLOCATOR_H_
-#define _TEMPLATE_ALLOCATOR_H_
+#ifndef DVD_TEMPLATE_ALLOCATOR_H_
+#define DVD_TEMPLATE_ALLOCATOR_H_
 
 #ifndef EASTL_USER_DEFINED_ALLOCATOR
 #define EASTL_USER_DEFINED_ALLOCATOR
@@ -166,4 +166,4 @@ namespace eastl {
     EASTL_API aligned_allocator* SetDefaultAllocator(aligned_allocator* pAllocator) noexcept;
 } //namespace eastl
 
-#endif //_TEMPLATE_ALLOCATOR_H_
+#endif //DVD_TEMPLATE_ALLOCATOR_H_

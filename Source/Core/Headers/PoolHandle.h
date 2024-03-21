@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _POOL_HANDLE_H_
-#define _POOL_HANDLE_H_
+#ifndef DVD_POOL_HANDLE_H_
+#define DVD_POOL_HANDLE_H_
 
 #include "Platform/Headers/PlatformDataTypes.h"
 
@@ -48,6 +48,6 @@ namespace Divide {
 
 } //namespace Divide
 
-#endif //_POOL_HANDLE_H_
+#endif //DVD_POOL_HANDLE_H_
 
 #include "PoolHandle.inl"

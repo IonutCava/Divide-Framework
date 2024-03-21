@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _PARTICLE_SPHERE_VELOCITY_GENERATOR_H_
-#define _PARTICLE_SPHERE_VELOCITY_GENERATOR_H_
+#ifndef DVD_PARTICLE_SPHERE_VELOCITY_GENERATOR_H_
+#define DVD_PARTICLE_SPHERE_VELOCITY_GENERATOR_H_
 
 #include "Dynamics/Entities/Particles/Headers/ParticleGenerator.h"
 
@@ -49,4 +49,4 @@ struct ParticleSphereVelocityGenerator final : ParticleGenerator {
 };
 }
 
-#endif
+#endif //DVD_PARTICLE_SPHERE_VELOCITY_GENERATOR_H_

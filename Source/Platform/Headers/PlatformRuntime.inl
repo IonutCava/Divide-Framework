@@ -29,8 +29,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 
-#ifndef _PLATFORM_RUNTIME_INL_
-#define _PLATFORM_RUNTIME_INL_
+#ifndef DVD_PLATFORM_RUNTIME_INL_
+#define DVD_PLATFORM_RUNTIME_INL_
 
 namespace Divide {
 namespace Runtime {
@@ -40,4 +40,4 @@ namespace Runtime {
 }; //namespace Runtime
 }; //namespace Divide
 
-#endif //_PLATFORM_RUNTIME_INL_
+#endif //DVD_PLATFORM_RUNTIME_INL_

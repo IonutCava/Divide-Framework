@@ -29,8 +29,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 #pragma once
-#ifndef _SCENE_GUI_ELEMENTS_H_
-#define _SCENE_GUI_ELEMENTS_H_
+#ifndef DVD_SCENE_GUI_ELEMENTS_H_
+#define DVD_SCENE_GUI_ELEMENTS_H_
 
 #include "GUIInterface.h"
 #include "Scenes/Headers/SceneComponent.h"
@@ -59,4 +59,4 @@ FWD_DECLARE_MANAGED_CLASS(SceneGUIElements);
 
 } //namespace Divide;
 
-#endif //_SCENE_GUI_ELEMENTS_H_
+#endif //DVD_SCENE_GUI_ELEMENTS_H_

@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _OBJECT_POOL_H_
-#define _OBJECT_POOL_H_
+#ifndef DVD_OBJECT_POOL_H_
+#define DVD_OBJECT_POOL_H_
 
 #include "PoolHandle.h"
 #include "Platform/Threading/Headers/SharedMutex.h"
@@ -62,6 +62,6 @@ protected:
 
 } //namespace Divide
 
-#endif //_OBJECT_POOL_H_
+#endif //DVD_OBJECT_POOL_H_
 
 #include "ObjectPool.inl"

@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _MATERIAL_H_
-#define _MATERIAL_H_
+#ifndef DVD_MATERIAL_H_
+#define DVD_MATERIAL_H_
 
 #include "MaterialEnums.h"
 
@@ -200,7 +200,7 @@ class Material final : public CachedResource {
         PROPERTY_RW(Overrides, overrides);
 
         PROPERTY_R_IW(bool, cullUpdated, false);
-        PROPERTY_R_IW(bool, transparencyUpdated, false)
+        PROPERTY_R_IW(bool, transparencyUpdated, false);
         PROPERTY_R_IW(bool, needsNewShader, true);
 
     public:
@@ -229,7 +229,7 @@ class Material final : public CachedResource {
         SamplerDescriptor _sampler{};
         TextureOperation _operation{ TextureOperation::NONE };
         bool _srgb{false};
-        bool _useInGeometryPasses{false}; //< Setting this to false will fallback to auto-usage selection (e.g. opacity tex will be used for alpha testing in shadow passes)
+        bool _useInGeometryPasses{false}; ///< Setting this to false will fallback to auto-usage selection (e.g. opacity tex will be used for alpha testing in shadow passes)
     };
 
    public:
@@ -312,7 +312,7 @@ class Material final : public CachedResource {
     PROPERTY_R_IW(DescriptorSet, descriptorSetPrePass);
     PROPERTY_R_IW(DescriptorSet, descriptorSetShadow);
     PROPERTY_RW(bool, ignoreXMLData, false);
-    PROPERTY_RW(bool, ignoreShaderCache, false); //< Useful for debugging
+    PROPERTY_RW(bool, ignoreShaderCache, false); ///< Useful for debugging
     PROPERTY_R_IW(AttributeMap, shaderAttributes);
     PROPERTY_R_IW(PrimitiveTopology, topology, PrimitiveTopology::COUNT);
    private:
@@ -391,6 +391,6 @@ class MaterialRenderBin {
 
 };  // namespace Divide
 
-#endif //_MATERIAL_H_
+#endif //DVD_MATERIAL_H_
 
 #include "Material.inl"

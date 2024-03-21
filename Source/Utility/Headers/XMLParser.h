@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _XML_PARSER_H_
-#define _XML_PARSER_H_
+#ifndef DVD_XML_PARSER_H_
+#define DVD_XML_PARSER_H_
 
 #include "Platform/Headers/PlatformDefines.h"
 
@@ -120,4 +120,4 @@ namespace Divide
     }  // namespace XML
 }  // namespace Divide
 
-#endif
+#endif //DVD_XML_PARSER_H_

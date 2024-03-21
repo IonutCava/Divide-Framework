@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _AI_MANAGER_H_
-#define _AI_MANAGER_G_
+#ifndef DVD_AI_MANAGER_H_
+#define DVD_AI_MANAGER_H_
 
 #include "AI/Headers/AIEntity.h"
 #include "Scenes/Headers/SceneComponent.h"
@@ -154,4 +154,5 @@ FWD_DECLARE_MANAGED_CLASS(AIManager);
 
 }  // namespace AI
 }  // namespace Divide
-#endif
+
+#endif //DVD_AI_MANAGER_H_

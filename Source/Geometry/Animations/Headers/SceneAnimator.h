@@ -194,7 +194,7 @@ class SceneAnimator {
     }
 
     U8 boneCount() const noexcept {
-        return _skeletonDepthCache > -1 ? to_U8(_skeletonDepthCache) : to_U8(0);
+        return _skeletonDepthCache > -1 ? to_U8(_skeletonDepthCache) : U8_ZERO;
     }
 
    private:

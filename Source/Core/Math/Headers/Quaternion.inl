@@ -29,8 +29,8 @@
 
  */
 
-#ifndef _QUATERNION_INL_
-#define _QUATERNION_INL_
+#ifndef DVD_QUATERNION_INL_
+#define DVD_QUATERNION_INL_
 
 namespace Divide {
 
@@ -752,4 +752,4 @@ vec3<T> DirectionFromEuler(vec3<Angle::DEGREES<T>> const & euler, const vec3<T>&
 }
 }  // namespace Divide
 
-#endif  //_QUATERNION_INL_
+#endif  //DVD_QUATERNION_INL_

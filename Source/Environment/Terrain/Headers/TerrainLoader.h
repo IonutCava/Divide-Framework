@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _TERRAIN_LOADER_H_
-#define _TERRAIN_LOADER_H_
+#ifndef DVD_TERRAIN_LOADER_H_
+#define DVD_TERRAIN_LOADER_H_
 
 namespace Divide {
 
@@ -73,4 +73,4 @@ class TerrainLoader final : NonCopyable {
 
 }  // namespace Divide
 
-#endif //_TERRAIN_LOADER_H_
+#endif //DVD_TERRAIN_LOADER_H_

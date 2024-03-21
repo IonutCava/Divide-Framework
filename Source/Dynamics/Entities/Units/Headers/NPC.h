@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _NON_PLAYER_CHARACTER_H_
-#define _NON_PLAYER_CHARACTER_H_
+#ifndef DVD_NON_PLAYER_CHARACTER_H_
+#define DVD_NON_PLAYER_CHARACTER_H_
 
 #include "Character.h"
 
@@ -47,7 +47,7 @@ class NPC final : public Character {
    public:
     /// NPCs don't need AI by default
     explicit NPC(AI::AIEntity* aiEntity);
-    ~NPC() = default;
+    ~NPC() override = default;
     void update(U64 deltaTimeUS) override;
     
     [[nodiscard]] AI::AIEntity* getAIEntity() const noexcept;
@@ -58,4 +58,4 @@ protected:
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_NON_PLAYER_CHARACTER_H_

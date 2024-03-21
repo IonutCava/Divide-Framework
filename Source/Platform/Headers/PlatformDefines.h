@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _PLATFORM_DEFINES_H_
-#define _PLATFORM_DEFINES_H_
+#ifndef DVD_PLATFORM_DEFINES_H_
+#define DVD_PLATFORM_DEFINES_H_
 
 #include "config.h"
 #include "PlatformMemoryDefines.h"
@@ -54,10 +54,10 @@ do {                                                  \
         Console::errorfn("[ STUBBED ] %s (%s : %d)\n",\
                          x, __FILE__, __LINE__);      \
     }                                                 \
-} while (0);
+} while (0)
 
 #else
-#define STUBBED(x)
+#define STUBBED(x) static_assert(true, "")
 #endif
 
 #ifndef TO_STRING
@@ -80,11 +80,11 @@ do {                                                  \
 
 #define FWD_DECLARE_MANAGED_CLASS(T)      \
     class T;                              \
-    TYPEDEF_SMART_POINTERS_FOR_TYPE(T);
+    TYPEDEF_SMART_POINTERS_FOR_TYPE(T)
 
 #define FWD_DECLARE_MANAGED_STRUCT(T)     \
     struct T;                             \
-    TYPEDEF_SMART_POINTERS_FOR_TYPE(T);
+    TYPEDEF_SMART_POINTERS_FOR_TYPE(T)
 
 
 #define CONCATENATE_IMPL(s1, s2) s1##s2
@@ -103,6 +103,14 @@ do {                                                  \
 #else
 #define _FUNCTION_NAME_AND_SIG_ __FUNCTION__
 #endif
+
+#ifndef NO_DESTROY
+#if defined(USING_CLANG)
+#define NO_DESTROY [[clang::no_destroy]]
+#else //CLANG_COMPILER
+#define NO_DESTROY
+#endif
+#endif //NO_DESTROY
 
 #define ALIAS_TEMPLATE_FUNCTION(highLevelF, lowLevelF)                         \
 template<typename... Args>                                                     \
@@ -711,7 +719,7 @@ using DELEGATE_STD = std::function< Ret(Args...) >;
 template <typename Ret, typename... Args >
 using DELEGATE = DELEGATE_STD<Ret, Args...>;
 
-[[nodiscard]] U32 HardwareThreadCount() noexcept;
+[[nodiscard]] U16 HardwareThreadCount() noexcept;
 
 /// Wrapper that allows usage of atomic variables in containers
 /// Copy is not atomic! (e.g. push/pop from containers is not threadsafe!)
@@ -743,4 +751,4 @@ struct AtomicWrapper : private NonMovable
 
 };  // namespace Divide
 
-#endif //_PLATFORM_DEFINES_H_
+#endif //DVD_PLATFORM_DEFINES_H_

@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _RENDER_STATE_BLOCK_H
-#define _RENDER_STATE_BLOCK_H
+#ifndef DVD_RENDER_STATE_BLOCK_H_
+#define DVD_RENDER_STATE_BLOCK_H_
 
 #include "Core/Headers/Hashable.h"
 
@@ -85,4 +85,4 @@ void SaveToXML( const RenderStateBlock& block, const string& entryName, boost::p
 void LoadFromXML( const string& entryName, const boost::property_tree::ptree& pt, RenderStateBlock& blockInOut );
 
 };  // namespace Divide
-#endif
+#endif //DVD_RENDER_STATE_BLOCK_H_

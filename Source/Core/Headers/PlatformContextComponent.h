@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _PLATFORM_CONTEXT_COMPONENT_H_
-#define _PLATFORM_CONTEXT_COMPONENT_H_
+#ifndef DVD_PLATFORM_CONTEXT_COMPONENT_H_
+#define DVD_PLATFORM_CONTEXT_COMPONENT_H_
 
 namespace Divide {
 
@@ -55,4 +55,4 @@ class PlatformContextComponent : public NonCopyable {
 
 }; //namespace Divide
 
-#endif //_PLATFORM_CONTEXT_COMPONENT_H_
+#endif //DVD_PLATFORM_CONTEXT_COMPONENT_H_

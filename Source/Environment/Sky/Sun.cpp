@@ -94,11 +94,11 @@ SunInfo SunPosition::CalculateSunPosition(const struct tm &dateTime, const F32 l
     const I32 m = dateTime.tm_mon + 1;
     const I32 day = dateTime.tm_mday;
     // clock time just now
-    const D64 h = dateTime.tm_hour + dateTime.tm_min / 60.0;
-    const D64 tzone = timezone;
+    const auto h = dateTime.tm_hour + dateTime.tm_min / 60.0;
+    const auto tzone = std::chrono::current_zone()->get_info( std::chrono::system_clock::now() ).offset.count();
 
     // year = 1990; m=4; day=19; h=11.99;	// local time
-    const D64 UT = h - tzone;	// universal time
+    const auto UT = h - tzone;	// universal time
 
     //   Get the days to J2000
     //   h is UT in decimal hours

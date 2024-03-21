@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _BOUNDS_COMPONENT_H_
-#define _BOUNDS_COMPONENT_H_
+#ifndef DVD_BOUNDS_COMPONENT_H_
+#define DVD_BOUNDS_COMPONENT_H_
 
 #include "SGNComponent.h"
 #include "Core/Math/BoundingVolumes/Headers/OBB.h"
@@ -51,7 +51,7 @@ BEGIN_COMPONENT_EXT1(Bounds, ComponentType::BOUNDS, GUIDWrapper)
         void updateBoundingBoxTransform();
         void appendChildBBs();
         void appendChildRefBBs();
-        [[nodiscard]] FORCE_INLINE const bool isClean() const noexcept { return _transformUpdatedMask.load() == 0u; }
+        [[nodiscard]] FORCE_INLINE bool isClean() const noexcept { return _transformUpdatedMask.load() == 0u; }
 
         PROPERTY_R(bool, showAABB, false);
         PROPERTY_R(bool, showOBB, false);
@@ -89,4 +89,4 @@ END_COMPONENT(Bounds)
 
 }; //namespace Divide
 
-#endif //_BOUNDS_COMPONENT_H_
+#endif //DVD_BOUNDS_COMPONENT_H_

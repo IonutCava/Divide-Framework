@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _BLOOM_PRE_RENDER_OPERATOR_H_
-#define _BLOOM_PRE_RENDER_OPERATOR_H_
+#ifndef DVD_BLOOM_PRE_RENDER_OPERATOR_H_
+#define DVD_BLOOM_PRE_RENDER_OPERATOR_H_
 
 #include "Rendering/PostFX/Headers/PreRenderOperator.h"
 #include "Platform/Video/Headers/PushConstants.h"
@@ -44,7 +44,7 @@ class ShaderProgram;
 class BloomPreRenderOperator final : public PreRenderOperator {
    public:
     BloomPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, ResourceCache* cache);
-    ~BloomPreRenderOperator();
+    ~BloomPreRenderOperator() override;
 
     [[nodiscard]] bool execute(PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) override;
     void reshape(U16 width, U16 height) override;
@@ -69,4 +69,4 @@ class BloomPreRenderOperator final : public PreRenderOperator {
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_BLOOM_PRE_RENDER_OPERATOR_H_

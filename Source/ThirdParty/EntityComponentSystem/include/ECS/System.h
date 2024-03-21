@@ -9,8 +9,8 @@
 */
 
 #pragma once
-#ifndef __SYSTEM_H__
-#define __SYSTEM_H__
+#ifndef ECS__SYSTEM_H__
+#define ECS__SYSTEM_H__
 
 #include "API.h"
 
@@ -42,17 +42,17 @@ namespace ECS
 		System()
 		{
 			DEFINE_LOGGER(typeid(T).name())
-			LogInfo("System %s created.", typeid(T).name());
+			LOG_INFO("System %s created.", typeid(T).name());
 		}
 
 	public:
 
-		virtual ~System()
+		virtual ~System() override
 		{
-			LogInfo("System %s released.", typeid(T).name());
+			LOG_INFO("System %s released.", typeid(T).name());
 		}
 
-		virtual inline const SystemTypeId GetStaticSystemTypeID() const override
+		virtual inline SystemTypeId GetStaticSystemTypeID() const override
 		{
 			return STATIC_SYSTEM_TYPE_ID;
 		}
@@ -106,4 +106,4 @@ namespace ECS
 
 } // namespace ECS
 
-#endif // __SYSTEM_H__
+#endif // ECS__SYSTEM_H__

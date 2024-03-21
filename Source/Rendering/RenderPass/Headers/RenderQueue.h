@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _RENDER_QUEUE_H_
-#define _RENDER_QUEUE_H_
+#ifndef DVD_RENDER_QUEUE_H_
+#define DVD_RENDER_QUEUE_H_
 
 #include "RenderBin.h"
 #include "Core/Headers/KernelComponent.h"
@@ -87,4 +87,4 @@ class RenderQueue final : public KernelComponent {
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_RENDER_QUEUE_H_

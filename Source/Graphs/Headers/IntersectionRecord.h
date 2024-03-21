@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _OCTREE_INTERSECTION_RECORD_H_
-#define _OCTREE_INTERSECTION_RECORD_H_
+#ifndef DVD_OCTREE_INTERSECTION_RECORD_H_
+#define DVD_OCTREE_INTERSECTION_RECORD_H_
 
 #include "Core/Math/Headers/Ray.h"
 
@@ -81,4 +81,5 @@ class IntersectionRecord
 using IntersectionContainer = eastl::fixed_vector<IntersectionRecord, 32u, true, eastl::dvd_allocator>;
 
 }; //namespace Divide
-#endif //_OCTREE_INTERSECTION_RECORD_H_
+
+#endif //DVD_OCTREE_INTERSECTION_RECORD_H_

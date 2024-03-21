@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _TEXTURE_DESCRIPTOR_INL_
-#define _TEXTURE_DESCRIPTOR_INL_
+#ifndef DVD_TEXTURE_DESCRIPTOR_INL_
+#define DVD_TEXTURE_DESCRIPTOR_INL_
 
 namespace Divide {
 
@@ -119,7 +119,6 @@ inline U8 NumChannels(const GFXImageFormat format) noexcept
             return 4u;
 
         default:
-        case GFXImageFormat::COUNT:
             DIVIDE_UNEXPECTED_CALL();
             break;
     }
@@ -136,9 +135,10 @@ inline bool IsBGRTexture( GFXImageFormat format ) noexcept
             return true;
 
         default: break;
-    }; 
+    }
+
     return false;
 }
 } //namespace Divide
 
-#endif //_TEXTURE_DESCRIPTOR_INL_
+#endif //DVD_TEXTURE_DESCRIPTOR_INL_

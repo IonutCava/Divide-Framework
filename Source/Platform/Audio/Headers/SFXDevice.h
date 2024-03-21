@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _SFX_DEVICE_H
-#define _SFX_DEVICE_H
+#ifndef DVD_SFX_DEVICE_H
+#define DVD_SFX_DEVICE_H
 
 #include "AudioAPIWrapper.h"
 #include "Core/Headers/KernelComponent.h"
@@ -49,7 +49,7 @@ public:
 
     explicit SFXDevice( PlatformContext& context );
 
-    ~SFXDevice();
+    ~SFXDevice() override;
 
     [[nodiscard]] ErrorCode initAudioAPI() override;
     void closeAudioAPI() override;
@@ -96,4 +96,4 @@ private:
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_SFX_DEVICE_H

@@ -30,8 +30,9 @@
  */
 
 #pragma once
-#ifndef _CEGUI_INPUT_H_
-#define _CEGUI_INPUT_H_
+#ifndef DVD_CEGUI_INPUT_H_
+#define DVD_CEGUI_INPUT_H_
+
 #include "Platform/Input/Headers/AutoKeyRepeat.h"
 #include "Platform/Input/Headers/InputAggregatorInterface.h"
 
@@ -80,4 +81,5 @@ class CEGUIInput final : public Input::InputAggregatorInterface,
 };
 
 };  // namespace Divide
-#endif
+
+#endif //DVD_CEGUI_INPUT_H_

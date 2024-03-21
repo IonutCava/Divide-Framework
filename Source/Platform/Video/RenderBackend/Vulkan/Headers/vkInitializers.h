@@ -40,8 +40,8 @@
  */
 
 #pragma once
-#ifndef _VK_INITIALIZERS_H_
-#define _VK_INITIALIZERS_H_
+#ifndef DVD_VK_INITIALIZERS_H_
+#define DVD_VK_INITIALIZERS_H_
 
 #include <VkBootstrap.h>
 
@@ -746,4 +746,4 @@ namespace Divide {
     }; //namespace vk
 }; //namespace Divide
 
-#endif //_VK_INITIALIZERS_H_
+#endif //DVD_VK_INITIALIZERS_H_

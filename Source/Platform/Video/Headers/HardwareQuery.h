@@ -29,8 +29,8 @@
 
  */
 
-#ifndef _HARDWARE_QUERY_H_
-#define _HARDWARE_QUERY_H_
+#ifndef DVD_HARDWARE_QUERY_H_
+#define DVD_HARDWARE_QUERY_H_
 
 #include "Platform/Video/Headers/RenderAPIEnums.h"
 
@@ -45,4 +45,4 @@ public:
 
 };  // namespace Divide
 
-#endif //_HARDWARE_QUERY_H_
+#endif //DVD_HARDWARE_QUERY_H_

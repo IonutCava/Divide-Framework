@@ -71,7 +71,7 @@ namespace Divide {
         BufferLock writeBytes( BufferRange range,
                                VkAccessFlags2 dstAccessMask,
                                VkPipelineStageFlags2 dstStageMask,
-                               bufferPtr data );
+                               const bufferPtr data );
 
         void readBytes( BufferRange range,
                         std::pair<bufferPtr,

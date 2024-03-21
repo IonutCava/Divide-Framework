@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _GRAPHICS_RESOURCE_H_
-#define _GRAPHICS_RESOURCE_H_
+#ifndef DVD_GRAPHICS_RESOURCE_H_
+#define DVD_GRAPHICS_RESOURCE_H_
 
 namespace Divide {
 
@@ -60,7 +60,7 @@ protected:
     GFXDevice& _context;
 
 private:
-    I64 _GUID;
+    I64 _guid;
     U64 _nameHash;
     Type _type;
 };
@@ -73,4 +73,4 @@ namespace Names {
 
 }; //namespace Divide
 
-#endif //_GRAPHICS_RESOURCE_H_
+#endif //DVD_GRAPHICS_RESOURCE_H_

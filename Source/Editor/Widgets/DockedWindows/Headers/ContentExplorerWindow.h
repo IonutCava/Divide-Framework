@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _EDITOR_CONTENT_EXPLORER_WINDOW_H_
-#define _EDITOR_CONTENT_EXPLORER_WINDOW_H_
+#ifndef DVD_EDITOR_CONTENT_EXPLORER_WINDOW_H_
+#define DVD_EDITOR_CONTENT_EXPLORER_WINDOW_H_
 
 #include "Editor/Widgets/Headers/DockedWindow.h"
 #include "Geometry/Importer/Headers/MeshImporter.h"
@@ -85,4 +85,4 @@ namespace Divide {
     };
 } //namespace Divide
 
-#endif //_EDITOR_CONTENT_EXPLORER_WINDOW_H_
+#endif //DVD_EDITOR_CONTENT_EXPLORER_WINDOW_H_

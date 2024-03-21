@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _TASKS_H_
-#define _TASKS_H_
+#ifndef DVD_TASKS_H_
+#define DVD_TASKS_H_
 
 #include "Platform/Threading/Headers/ThreadPool.h"
 
@@ -65,6 +65,6 @@ void Wait(const Task& task, TaskPool& pool);
 
 };  // namespace Divide
 
-#endif //_TASKS_H_
+#endif //DVD_TASKS_H_
 
 #include "Task.inl"

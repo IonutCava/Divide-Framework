@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _RIGID_BODY_SYSTEM_H_
-#define _RIGID_BODY_SYSTEM_H_
+#ifndef DVD_RIGID_BODY_SYSTEM_H_
+#define DVD_RIGID_BODY_SYSTEM_H_
 
 #include "ECSSystem.h"
 #include "Core/Headers/PlatformContextComponent.h"
@@ -50,4 +50,4 @@ namespace Divide {
     };
 }
 
-#endif //_RIGID_BODY_SYSTEM_H_
+#endif //DVD_RIGID_BODY_SYSTEM_H_

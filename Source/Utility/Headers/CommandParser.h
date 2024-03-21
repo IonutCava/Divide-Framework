@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _COMMAND_PARSER_H_
-#define _COMMAND_PARSER_H_
+#ifndef DVD_COMMAND_PARSER_H_
+#define DVD_COMMAND_PARSER_H_
 
 namespace Divide {
 
@@ -48,4 +48,4 @@ class NOINITVTABLE CommandParser {
 };
 }
 
-#endif
+#endif //DVD_COMMAND_PARSER_H_

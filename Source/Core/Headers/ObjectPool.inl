@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _OBJECT_POOL_INL_
-#define _OBJECT_POOL_INL_
+#ifndef DVD_OBJECT_POOL_INL_
+#define DVD_OBJECT_POOL_INL_
 
 namespace Divide {
 
@@ -120,4 +120,4 @@ namespace eastl {
     };
 };
 
-#endif //_OBJECT_POOL_INL_
+#endif //DVD_OBJECT_POOL_INL_

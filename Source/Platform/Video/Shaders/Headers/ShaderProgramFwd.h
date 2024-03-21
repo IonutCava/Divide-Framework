@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _SHADER_PROGRAM_FWD_H_
-#define _SHADER_PROGRAM_FWD_H_
+#ifndef DVD_SHADER_PROGRAM_FWD_H_
+#define DVD_SHADER_PROGRAM_FWD_H_
 
 #include "Core/Resources/Headers/ResourceDescriptor.h"
 
@@ -91,4 +91,4 @@ namespace Divide {
 
 }; //namespace Divide
 
-#endif //_SHADER_PROGRAM_FWD_H_
+#endif //DVD_SHADER_PROGRAM_FWD_H_

@@ -261,7 +261,7 @@ U8 RenderTarget::getSampleCount() const noexcept
 
 bool RenderTarget::updateSampleCount(U8 newSampleCount)
 {
-    CLAMP( newSampleCount, to_U8(0u), DisplayManager::MaxMSAASamples() );
+    CLAMP( newSampleCount, U8_ZERO, DisplayManager::MaxMSAASamples() );
 
     if (_descriptor._msaaSamples != newSampleCount)
     {

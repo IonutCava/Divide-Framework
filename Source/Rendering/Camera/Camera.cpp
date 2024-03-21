@@ -207,7 +207,7 @@ namespace Divide
          _mode( mode )
     {
         _data._eye.set( eye );
-        _data._FoV = 60.0f;
+        _data._fov = 60.0f;
         _data._aspectRatio = 1.77f;
         _data._viewMatrix.identity();
         _data._invViewMatrix.identity();
@@ -249,7 +249,7 @@ namespace Divide
         setEye( snapshot._eye );
         setRotation( snapshot._orientation );
         setAspectRatio( snapshot._aspectRatio );
-        setVerticalFoV( snapshot._FoV );
+        setVerticalFoV( snapshot._fov );
         if ( _data._isOrthoCamera )
         {
             setProjection( _orthoRect, snapshot._zPlanes );
@@ -257,7 +257,7 @@ namespace Divide
         else
         {
 
-            setProjection( snapshot._aspectRatio, snapshot._FoV, snapshot._zPlanes );
+            setProjection( snapshot._aspectRatio, snapshot._fov, snapshot._zPlanes );
         }
         updateLookAt();
     }
@@ -447,7 +447,7 @@ namespace Divide
             }
             else
             {
-                _data._projectionMatrix = Perspective( _data._FoV,
+                _data._projectionMatrix = Perspective( _data._fov,
                                                        _data._aspectRatio,
                                                        _data._zPlanes.x,
                                                        _data._zPlanes.y );
@@ -463,7 +463,7 @@ namespace Divide
 
     const mat4<F32>& Camera::setProjection( const vec2<F32> zPlanes )
     {
-        return setProjection( _data._FoV, zPlanes );
+        return setProjection( _data._fov, zPlanes );
     }
 
     const mat4<F32>& Camera::setProjection( const F32 verticalFoV, const vec2<F32> zPlanes )
@@ -521,19 +521,19 @@ namespace Divide
 
     void Camera::setVerticalFoV( const Angle::DEGREES<F32> verticalFoV ) noexcept
     {
-        _data._FoV = verticalFoV;
+        _data._fov = verticalFoV;
         _projectionDirty = true;
     }
 
     void Camera::setHorizontalFoV( const Angle::DEGREES<F32> horizontalFoV ) noexcept
     {
-        _data._FoV = Angle::to_VerticalFoV( horizontalFoV, to_D64( _data._aspectRatio ) );
+        _data._fov = Angle::to_VerticalFoV( horizontalFoV, to_D64( _data._aspectRatio ) );
         _projectionDirty = true;
     }
 
     Angle::DEGREES<F32> Camera::getHorizontalFoV() const noexcept
     {
-        const Angle::RADIANS<F32> halfFoV = Angle::to_RADIANS( _data._FoV ) * 0.5f;
+        const Angle::RADIANS<F32> halfFoV = Angle::to_RADIANS( _data._fov ) * 0.5f;
         return Angle::to_DEGREES( 2.0f * std::atan( tan( halfFoV ) * _data._aspectRatio ) );
     }
 
@@ -937,7 +937,7 @@ namespace Divide
         pt.put( savePath + ".aspectRatio", _data._aspectRatio );
         pt.put( savePath + ".zPlanes.<xmlattr>.min", _data._zPlanes.min );
         pt.put( savePath + ".zPlanes.<xmlattr>.max", _data._zPlanes.max );
-        pt.put( savePath + ".FoV", _data._FoV );
+        pt.put( savePath + ".FoV", _data._fov );
         pt.put( savePath + ".speedFactor.<xmlattr>.turn", _speedFactor.turn );
         pt.put( savePath + ".speedFactor.<xmlattr>.move", _speedFactor.move );
         pt.put( savePath + ".speedFactor.<xmlattr>.zoom", _speedFactor.zoom );
@@ -996,7 +996,7 @@ namespace Divide
             pt.get( savePath + ".zPlanes.<xmlattr>.max", _data._zPlanes.max )
         );
         _data._aspectRatio = pt.get( savePath + ".aspectRatio", _data._aspectRatio );
-        _data._FoV = pt.get( savePath + ".FoV", _data._FoV );
+        _data._fov = pt.get( savePath + ".FoV", _data._fov );
 
 
         _speedFactor.turn = pt.get( savePath + ".speedFactor.<xmlattr>.turn", _speedFactor.turn );

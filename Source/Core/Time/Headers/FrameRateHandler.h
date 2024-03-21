@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _CORE_TIME_FRAMERATE_HANDLER_H_
-#define _CORE_TIME_FRAMERATE_HANDLER_H_
+#ifndef DVD_CORE_TIME_FRAMERATE_HANDLER_H_
+#define DVD_CORE_TIME_FRAMERATE_HANDLER_H_
 
 namespace Divide {
 namespace Time {
@@ -66,6 +66,6 @@ private:
 } //namespace Time
 } //namespace Divide
 
-#endif //_CORE_TIME_FRAMERATE_HANDLER_H_
+#endif //DVD_CORE_TIME_FRAMERATE_HANDLER_H_
 
 #include "FrameRateHandler.inl"

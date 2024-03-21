@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _PLATFORM_TASK_POOL_H_
-#define _PLATFORM_TASK_POOL_H_
+#ifndef DVD_PLATFORM_TASK_POOL_H_
+#define DVD_PLATFORM_TASK_POOL_H_
 
 namespace Divide {
 
@@ -76,4 +76,4 @@ protected:
 
 }; //namespace Divide
 
-#endif //_PLATFORM_TASK_POOL_H_
+#endif //DVD_PLATFORM_TASK_POOL_H_

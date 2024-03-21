@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _PLAYER_H_
-#define _PLAYER_H_
+#ifndef DVD_PLAYER_H_
+#define DVD_PLAYER_H_
 
 #include "Character.h"
 
@@ -45,7 +45,7 @@ namespace Divide
     {
         public:
         explicit Player( U8 index );
-        ~Player();
+        ~Player() override;
 
         /// Do not allow or allow the user again to control this player
         PROPERTY_R( bool, lockedControls, false );
@@ -59,4 +59,4 @@ namespace Divide
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_PLAYER_H_

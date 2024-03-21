@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _PARTICLE_EMITTER_H_
-#define _PARTICLE_EMITTER_H_
+#ifndef DVD_PARTICLE_EMITTER_H_
+#define DVD_PARTICLE_EMITTER_H_
 
 #include "ParticleSource.h"
 #include "ParticleUpdater.h"
@@ -48,7 +48,7 @@ FWD_DECLARE_MANAGED_CLASS(GenericVertexData);
 class ParticleEmitter final : public SceneNode {
    public:
     explicit ParticleEmitter(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str<256>& name);
-    ~ParticleEmitter();
+    ~ParticleEmitter() override;
 
     void prepareRender(SceneGraphNode* sgn,
                        RenderingComponent& rComp,
@@ -121,4 +121,4 @@ TYPEDEF_SMART_POINTERS_FOR_TYPE(ParticleEmitter);
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_PARTICLE_EMITTER_H_

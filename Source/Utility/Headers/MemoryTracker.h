@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _MEMORY_TRACKER_H_
-#define _MEMORY_TRACKER_H_
+#ifndef DVD_MEMORY_TRACKER_H_
+#define DVD_MEMORY_TRACKER_H_
 
 #include "Core/Headers/StringHelper.h"
 
@@ -188,4 +188,5 @@ class MemoryTracker {
 extern MemoryTracker AllocTracer;
 }  // namespace MemoryManager
 }  // namespace Divide
-#endif  //_MEMORY_TRACKER_H_
+
+#endif  //DVD_MEMORY_TRACKER_H_

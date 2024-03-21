@@ -29,8 +29,8 @@
 
  */
 #pragma once
-#ifndef _AESOP_ACTION_INTERFACE_H_
-#define _AESOP_ACTION_INTERFACE_H_
+#ifndef DVD_AESOP_ACTION_INTERFACE_H_
+#define DVD_AESOP_ACTION_INTERFACE_H_
 
 
 
@@ -90,4 +90,4 @@ using GOAPGoalList = vector<GOAPGoal>;
 } // namespace AI
 } // namespace Divide
 
-#endif
+#endif //DVD_AESOP_ACTION_INTERFACE_H_

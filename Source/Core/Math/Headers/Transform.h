@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _TRANSFORM_H_
-#define _TRANSFORM_H_
+#ifndef DVD_TRANSFORM_H_
+#define DVD_TRANSFORM_H_
 
 #include "TransformInterface.h"
 
@@ -102,6 +102,6 @@ class Transform final : public TransformValues, public ITransform, public GUIDWr
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_TRANSFORM_H_
 
 #include "Transform.inl"

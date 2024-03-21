@@ -128,9 +128,9 @@ bool SSRPreRenderOperator::execute( [[maybe_unused]] const PlayerIndex idx, cons
     _constantsCmd._constants.set(_ID("projectionMatrix"), PushConstantType::MAT4, cameraSnapshot._projectionMatrix);
     _constantsCmd._constants.set(_ID("invProjectionMatrix"), PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix);
     _constantsCmd._constants.set(_ID("invViewMatrix"), PushConstantType::MAT4, cameraSnapshot._invViewMatrix);
-    _constantsCmd._constants.set(_ID("previousViewMatrix"), PushConstantType::MAT4, prevFrameData._PreviousViewMatrix);
-    _constantsCmd._constants.set(_ID("previousProjectionMatrix"), PushConstantType::MAT4, prevFrameData._PreviousProjectionMatrix);
-    _constantsCmd._constants.set(_ID("previousViewProjectionMatrix"), PushConstantType::MAT4, prevFrameData._PreviousViewProjectionMatrix);
+    _constantsCmd._constants.set(_ID("previousViewMatrix"), PushConstantType::MAT4, prevFrameData._previousViewMatrix);
+    _constantsCmd._constants.set(_ID("previousProjectionMatrix"), PushConstantType::MAT4, prevFrameData._previousProjectionMatrix);
+    _constantsCmd._constants.set(_ID("previousViewProjectionMatrix"), PushConstantType::MAT4, prevFrameData._previousViewProjectionMatrix);
     _constantsCmd._constants.set(_ID("screenDimensions"), PushConstantType::VEC2, vec2<F32>(screenAtt->texture()->width(), screenAtt->texture()->height()));
     _constantsCmd._constants.set(_ID("maxScreenMips"), PushConstantType::UINT, screenMipCount);
     _constantsCmd._constants.set(_ID("_zPlanes"), PushConstantType::VEC2, cameraSnapshot._zPlanes);

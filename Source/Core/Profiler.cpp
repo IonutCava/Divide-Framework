@@ -20,7 +20,8 @@ namespace Divide::Profiler
         return true;
     }
 
-    bool OnOptickStateChanged( const Optick::State::Type state )
+    static constexpr bool g_TrackOptickStateChange = false;
+    static bool OnOptickStateChanged( const Optick::State::Type state )
     {
         switch(state)
         {
@@ -69,8 +70,10 @@ namespace Divide::Profiler
                                              // Thread allocator
                                              NOP();
                                          })
-
-            //OPTICK_SET_STATE_CHANGED_CALLBACK( OnOptickStateChanged );
+            if constexpr (g_TrackOptickStateChange)
+            {
+                OPTICK_SET_STATE_CHANGED_CALLBACK( OnOptickStateChanged );
+            }
         }
     }
 

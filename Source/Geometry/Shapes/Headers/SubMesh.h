@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _SUB_MESH_H_
-#define _SUB_MESH_H_
+#ifndef DVD_SUB_MESH_H_
+#define DVD_SUB_MESH_H_
 
 #include "Object3D.h"
 
@@ -135,4 +135,4 @@ class SubMeshMeshImporter {
 };  // namespace Attorney
 };  // namespace Divide
 
-#endif
+#endif //DVD_SUB_MESH_H_

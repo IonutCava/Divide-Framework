@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _PARTICLE_BOX_GENERATOR_H_
-#define _PARTICLE_BOX_GENERATOR_H_
+#ifndef DVD_PARTICLE_BOX_GENERATOR_H_
+#define DVD_PARTICLE_BOX_GENERATOR_H_
 
 #include "Dynamics/Entities/Particles/Headers/ParticleGenerator.h"
 
@@ -64,4 +64,4 @@ private:
 };
 }
 
-#endif
+#endif //DVD_PARTICLE_BOX_GENERATOR_H_

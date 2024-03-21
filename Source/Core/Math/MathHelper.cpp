@@ -343,7 +343,7 @@ U32 FLOAT_TO_UINT(const F32 src) {
     return glm::floatBitsToUint(src);
 }
 
-F32 UINT_TO_FLOAT(const I32 src) {
+F32 INT_TO_FLOAT(const I32 src) {
     return glm::intBitsToFloat(src);
 }
 

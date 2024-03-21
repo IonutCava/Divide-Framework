@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _VK_DEVICE_H_
-#define _VK_DEVICE_H_
+#ifndef DVD_VK_DEVICE_H_
+#define DVD_VK_DEVICE_H_
 
 #include "vkResources.h"
 
@@ -79,4 +79,5 @@ class VKDevice final : NonCopyable, NonMovable
 FWD_DECLARE_MANAGED_CLASS(VKDevice);
 
 }; //namespace Divide
-#endif //_VK_DEVICE_H_
+
+#endif //DVD_VK_DEVICE_H_

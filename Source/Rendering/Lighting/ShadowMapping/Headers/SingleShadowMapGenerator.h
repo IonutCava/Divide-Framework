@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _SINGLE_SHADOW_MAP_GENERATOR_H_
-#define _SINGLE_SHADOW_MAP_GENERATOR_H_
+#ifndef DVD_SINGLE_SHADOW_MAP_GENERATOR_H_
+#define DVD_SINGLE_SHADOW_MAP_GENERATOR_H_
 
 #include "ShadowMap.h"
 #include "Platform/Video/Headers/PushConstants.h"
@@ -66,4 +66,4 @@ class SingleShadowMapGenerator final : public ShadowMapGenerator {
 
 };  // namespace Divide
 
-#endif //_SINGLE_SHADOW_MAP_GENERATOR_H_
+#endif //DVD_SINGLE_SHADOW_MAP_GENERATOR_H_

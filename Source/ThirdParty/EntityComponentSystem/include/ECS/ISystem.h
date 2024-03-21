@@ -9,8 +9,8 @@
 */
 
 #pragma once
-#ifndef __I_SYSTEM_H__
-#define __I_SYSTEM_H__
+#ifndef ECS__I_SYSTEM_H__
+#define ECS__I_SYSTEM_H__
 
 #include "API.h"
 
@@ -75,7 +75,7 @@ namespace ECS
 
 		virtual ~ISystem();
 
-		virtual inline const SystemTypeId GetStaticSystemTypeID() const = 0;
+		virtual inline SystemTypeId GetStaticSystemTypeID() const = 0;
 		virtual inline const char* GetSystemTypeName() const = 0;
 
 		virtual void PreUpdate(f32 dt)	= 0;
@@ -89,4 +89,4 @@ namespace ECS
 	};
 }
 
-#endif // __I_SYSTEM_H__
+#endif // ECS__I_SYSTEM_H__

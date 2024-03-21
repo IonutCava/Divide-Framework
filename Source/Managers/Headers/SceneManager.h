@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _SCENE_MANAGER_H
-#define _SCENE_MANAGER_H
+#ifndef DVD_SCENE_MANAGER_H
+#define DVD_SCENE_MANAGER_H
 
 #include "Scenes/Headers/Scene.h"
 
@@ -123,7 +123,7 @@ namespace Divide
         static bool OnShutdown( PlatformContext& context );
 
         explicit SceneManager( Kernel& parentKernel );
-        ~SceneManager();
+        ~SceneManager() override;
 
         void idle();
 
@@ -522,4 +522,4 @@ namespace Divide
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_SCENE_MANAGER_H

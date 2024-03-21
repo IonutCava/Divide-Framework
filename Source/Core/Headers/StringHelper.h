@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _CORE_STRING_HELPER_H_
-#define _CORE_STRING_HELPER_H_
+#ifndef DVD_CORE_STRING_HELPER_H_
+#define DVD_CORE_STRING_HELPER_H_
 
 namespace Divide {
     namespace Util {
@@ -120,6 +120,6 @@ namespace Divide {
     } //namespace Util
 } //namespace Divide
 
-#endif //_CORE_STRING_HELPER_H_
+#endif //DVD_CORE_STRING_HELPER_H_
 
 #include "StringHelper.inl"

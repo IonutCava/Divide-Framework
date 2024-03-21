@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _MAIN_SCENE_H
-#define _MAIN_SCENE_H
+#ifndef DVD_MAIN_SCENE_H
+#define DVD_MAIN_SCENE_H
 
 #include "Scenes/Headers/Scene.h"
 
@@ -64,4 +64,4 @@ namespace Divide
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_MAIN_SCENE_H

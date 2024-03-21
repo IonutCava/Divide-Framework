@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _NAVIGATION_COMPONENT_H_
-#define _NAVIGATION_COMPONENT_H_
+#ifndef DVD_NAVIGATION_COMPONENT_H_
+#define DVD_NAVIGATION_COMPONENT_H_
 
 #include "SGNComponent.h"
 
@@ -63,4 +63,5 @@ public:
 END_COMPONENT(Navigation);
 
 }  // namespace Divide
-#endif
+
+#endif //DVD_NAVIGATION_COMPONENT_H_

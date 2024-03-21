@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _UNDO_MANAGER_H_
-#define _UNDO_MANAGER_H_
+#ifndef DVD_UNDO_MANAGER_H_
+#define DVD_UNDO_MANAGER_H_
 
 #include "Platform/Video/Headers/PushConstant.h"
 
@@ -104,4 +104,5 @@ namespace Divide {
     FWD_DECLARE_MANAGED_CLASS(UndoManager);
 
 } //namespace Divide
-#endif //_UNDO_MANAGER_H_
+
+#endif //DVD_UNDO_MANAGER_H_

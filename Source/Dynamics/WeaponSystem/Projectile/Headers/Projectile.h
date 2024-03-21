@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _PROJECTILE_H_
-#define _PROJECTILE_H_
+#ifndef DVD_PROJECTILE_H_
+#define DVD_PROJECTILE_H_
 
 namespace Divide {
 
@@ -72,4 +72,4 @@ class Projectile {
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_PROJECTILE_H_

@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _RENDERER_H_
-#define _RENDERER_H_
+#ifndef DVD_RENDERER_H_
+#define DVD_RENDERER_H_
 
 #include "Core/Headers/PlatformContextComponent.h"
 #include "Platform/Video/Headers/CommandsImpl.h"
@@ -50,7 +50,7 @@ FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 class Renderer final : public PlatformContextComponent {
    public:
     Renderer(PlatformContext& context, ResourceCache* cache);
-    ~Renderer();
+    ~Renderer() override;
 
     void prepareLighting(RenderStage stage, const Rect<I32>& viewport, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut);
 
@@ -96,4 +96,4 @@ FWD_DECLARE_MANAGED_CLASS(Renderer);
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_RENDERER_H_

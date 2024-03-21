@@ -29,8 +29,8 @@
 
  */
 
-#ifndef VEGETATION_H_
-#define VEGETATION_H_
+#ifndef DVD_VEGETATION_H_
+#define DVD_VEGETATION_H_
 
 #include "Utility/Headers/ImageTools.h"
 #include "Graphs/Headers/SceneNode.h"
@@ -98,7 +98,7 @@ struct VegetationData {
 class Vegetation final : public SceneNode {
    public:
     explicit Vegetation(GFXDevice& context, TerrainChunk& parentChunk, const VegetationDetails& details);
-    ~Vegetation();
+    ~Vegetation() override;
 
     void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) override;
 
@@ -185,4 +185,4 @@ TYPEDEF_SMART_POINTERS_FOR_TYPE(Vegetation);
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_VEGETATION_H_

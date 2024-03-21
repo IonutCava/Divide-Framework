@@ -30,9 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _RAGDOLL_COMPONENT_H_
-#define _RAGDOLL_COMPONENT_H_
-
+#ifndef DVD_RAGDOLL_COMPONENT_H_
+#define DVD_RAGDOLL_COMPONENT_H_
 
 #include "SGNComponent.h"
 
@@ -43,4 +42,4 @@ BEGIN_COMPONENT(Ragdoll, ComponentType::RAGDOLL)
 END_COMPONENT(Ragdoll);
 } //namespace Divide
 
-#endif //_RAGDOLL_COMPONENT_H_
+#endif //DVD_RAGDOLL_COMPONENT_H_

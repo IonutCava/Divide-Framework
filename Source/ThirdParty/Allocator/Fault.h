@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _FAULT_H
-#define _FAULT_H
+#ifndef FAULT_H
+#define FAULT_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -21,4 +21,4 @@ extern "C" {
 }
 #endif
 
-#endif 
+#endif //FAULT_H

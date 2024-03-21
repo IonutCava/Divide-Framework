@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _POST_EFFECTS_H
-#define _POST_EFFECTS_H
+#ifndef DVD_POST_EFFECTS_H_
+#define DVD_POST_EFFECTS_H_
 
 #include "PreRenderBatch.h"
 #include "Core/Headers/PlatformContextComponent.h"
@@ -64,7 +64,7 @@ private:
 
 public:
     explicit PostFX(PlatformContext& context, ResourceCache* cache);
-    ~PostFX();
+    ~PostFX() override;
 
     void prePass(PlayerIndex idx, const CameraSnapshot& cameraSnapshot,GFX::CommandBuffer& bufferInOut);
     void apply(PlayerIndex idx, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut);
@@ -177,4 +177,4 @@ FWD_DECLARE_MANAGED_CLASS(PostFX);
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_POST_EFFECTS_H_

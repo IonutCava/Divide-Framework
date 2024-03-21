@@ -13,6 +13,8 @@
 
 #include "Utility/Headers/Localization.h"
 
+using namespace gl;
+
 namespace Divide {
 
 namespace {
@@ -49,7 +51,10 @@ glShader::~glShader()
     if (_handle != GL_NULL_HANDLE)
     {
         Console::d_printfn(LOCALE_STR("SHADER_DELETE"), name().c_str());
-        GL_API::DeleteShaderPrograms(1, &_handle);
+        if (!GL_API::DeleteShaderPrograms(1, &_handle))
+        {
+            DIVIDE_UNEXPECTED_CALL();
+        }
     }
 }
 
@@ -88,8 +93,12 @@ ShaderResult glShader::uploadToGPU()
             timers[0].start();
         }
 
-        if (_handle != GL_NULL_HANDLE) {
-            GL_API::DeleteShaderPrograms(1, &_handle);
+        if (_handle != GL_NULL_HANDLE)
+        {
+            if (!GL_API::DeleteShaderPrograms(1, &_handle))
+            {
+                DIVIDE_UNEXPECTED_CALL();
+            }
         }
 
         _handle = glCreateProgram();
@@ -249,8 +258,12 @@ bool glShader::load(const ShaderProgram::ShaderLoadData& data) {
 
     _valid = false; _linked = false; 
 
-    if (_handle != GL_NULL_HANDLE) {
-        GL_API::DeleteShaderPrograms(1, &_handle);
+    if (_handle != GL_NULL_HANDLE)
+    {
+        if (!GL_API::DeleteShaderPrograms(1, &_handle))
+        {
+            DIVIDE_UNEXPECTED_CALL();
+        }
     }
 
     _stageMask = UseProgramStageMask::GL_NONE_BIT;

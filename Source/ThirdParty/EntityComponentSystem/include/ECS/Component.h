@@ -9,8 +9,8 @@
 */
 
 #pragma once
-#ifndef __COMPONENT_H__
-#define __COMPONENT_H__
+#ifndef DVD_COMPONENT_H_
+#define DVD_COMPONENT_H_
 
 #include "API.h"
 
@@ -30,7 +30,7 @@ namespace ECS
 		Component() 
 		{}
 
-		virtual ~Component()
+		virtual ~Component() override
 		{}		
 
 		inline ComponentTypeId GetStaticComponentTypeID() const
@@ -45,4 +45,4 @@ namespace ECS
 	const ComponentTypeId Component<T>::STATIC_COMPONENT_TYPE_ID = util::Internal::FamilyTypeID<IComponent>::Get<T>();
 }
 
-#endif // __COMPONENT_H__
+#endif // DVD_COMPONENT_H_

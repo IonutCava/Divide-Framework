@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _PARTICLE_GENERATOR_H_
-#define _PARTICLE_GENERATOR_H_
+#ifndef DVD_PARTICLE_GENERATOR_H_
+#define DVD_PARTICLE_GENERATOR_H_
 
 #include "ParticleData.h"
 
@@ -54,4 +54,4 @@ class NOINITVTABLE ParticleGenerator {
      Quaternion<F32> _sourceOrientation;
 };
 }
-#endif
+#endif //DVD_PARTICLE_GENERATOR_H_

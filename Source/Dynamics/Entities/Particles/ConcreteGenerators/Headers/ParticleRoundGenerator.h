@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _PARTICLE_ROUND_GENERATOR_H_
-#define _PARTICLE_ROUND_GENERATOR_H_
+#ifndef DVD_PARTICLE_ROUND_GENERATOR_H_
+#define DVD_PARTICLE_ROUND_GENERATOR_H_
 
 #include "Dynamics/Entities/Particles/Headers/ParticleGenerator.h"
 
@@ -50,4 +50,4 @@ struct ParticleRoundGenerator final : ParticleGenerator {
 };
 }
 
-#endif
+#endif //DVD_PARTICLE_ROUND_GENERATOR_H_

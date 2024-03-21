@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _GUI_CONSOLE_COMMAND_PARSER_H_
-#define _GUI_CONSOLE_COMMAND_PARSER_H_
+#ifndef DVD_GUI_CONSOLE_COMMAND_PARSER_H_
+#define DVD_GUI_CONSOLE_COMMAND_PARSER_H_
 
 #include "Core/Headers/PlatformContextComponent.h"
 #include "Utility/Headers/CommandParser.h"
@@ -73,4 +73,4 @@ class GUIConsoleCommandParser final : public CommandParser, public PlatformConte
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_GUI_CONSOLE_COMMAND_PARSER_H_

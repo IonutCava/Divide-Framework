@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _FRAME_LISTENER_MANAGER_H_
-#define _FRAME_LISTENER_MANAGER_H_
+#ifndef DVD_FRAME_LISTENER_MANAGER_H_
+#define DVD_FRAME_LISTENER_MANAGER_H_
 
 /// Add this include here so that any FrameListener derived class only needs to include the manager
 
@@ -70,4 +70,4 @@ class FrameListenerManager {
 
 };  // namespace Divide
 
-#endif //_FRAME_LISTENER_MANAGER_H_
+#endif //DVD_FRAME_LISTENER_MANAGER_H_

@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _TRANSFORM_SYSTEM_H_
-#define _TRANSFORM_SYSTEM_H_
+#ifndef DVD_TRANSFORM_SYSTEM_H_
+#define DVD_TRANSFORM_SYSTEM_H_
 
 #include "ECSSystem.h"
 #include "Core/Headers/PlatformContextComponent.h"
@@ -54,4 +54,4 @@ namespace Divide {
     };
 }
 
-#endif //_TRANSFORM_SYSTEM_H_
+#endif //DVD_TRANSFORM_SYSTEM_H_    

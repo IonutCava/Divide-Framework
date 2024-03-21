@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _SCRIPT_COMPONENT_H_
-#define _SCRIPT_COMPONENT_H_
+#ifndef DVD_SCRIPT_COMPONENT_H_
+#define DVD_SCRIPT_COMPONENT_H_
 
 #include "SGNComponent.h"
 
@@ -43,4 +43,5 @@ BEGIN_COMPONENT(Script, ComponentType::SCRIPT)
 END_COMPONENT(Script);
 
 }  // namespace Divide
-#endif //_SCRIPT_COMPONENT_H_
+
+#endif //DVD_SCRIPT_COMPONENT_H_

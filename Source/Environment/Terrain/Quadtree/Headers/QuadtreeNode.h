@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _QUAD_TREE_NODE
-#define _QUAD_TREE_NODE
+#ifndef DVD_QUAD_TREE_NODE
+#define DVD_QUAD_TREE_NODE
 
 #include "Core/Math/BoundingVolumes/Headers/BoundingBox.h"
 #include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
@@ -105,4 +105,4 @@ FWD_DECLARE_MANAGED_CLASS(QuadtreeNode);
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_QUAD_TREE_NODE

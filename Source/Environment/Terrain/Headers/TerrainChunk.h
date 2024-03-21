@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _TERRAIN_CHUNK_H
-#define _TERRAIN_CHUNK_H
+#ifndef DVD_TERRAIN_CHUNK_H
+#define DVD_TERRAIN_CHUNK_H
 
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexBuffer.h"
 
@@ -108,4 +108,4 @@ class TerrainChunkTerrain {
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_TERRAIN_CHUNK_H

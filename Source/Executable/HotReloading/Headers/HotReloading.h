@@ -29,8 +29,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 #pragma once
-#ifndef _HOT_RELOADING_H_
-#define _HOT_RELOADING_H_
+#ifndef DVD_HOT_RELOADING_H_
+#define DVD_HOT_RELOADING_H_
 
 /*
 * Hot reloading experimental code from: http://nullprogram.com/blog/2014/12/23/
@@ -43,4 +43,4 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "HotReloadingUnix.h"
 #endif
 
-#endif //_HOT_RELOADING_H_
+#endif //DVD_HOT_RELOADING_H_

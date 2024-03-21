@@ -51,8 +51,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _TILE_RING_H_
-#define _TILE_RING_H_
+#ifndef DVD_TILE_RING_H_
+#define DVD_TILE_RING_H_
 
 namespace Divide {
 
@@ -123,4 +123,4 @@ FWD_DECLARE_MANAGED_CLASS(TileRing);
 
 }  // namespace Divide
 
-#endif //_TILE_RING_H_
+#endif //DVD_TILE_RING_H_

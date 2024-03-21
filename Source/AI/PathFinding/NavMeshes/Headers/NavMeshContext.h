@@ -29,8 +29,8 @@
 
  */
 #pragma once
-#ifndef _NAV_MESH_CTX_H_
-#define _NAV_MESH_CTX_H_
+#ifndef DVD_NAV_MESH_CTX_H_
+#define DVD_NAV_MESH_CTX_H_
 
 #include "NavMeshDefines.h"
 
@@ -54,7 +54,7 @@ class rcContextDivide final : public rcContext {
     ///  @param[in]        category    The category of the message.
     ///  @param[in]        msg            The formatted message.
     ///  @param[in]        len            The length of the formatted message.
-    void doLog(rcLogCategory /*category*/, const char* /*msg*/, I32 /*len*/) override;
+    void doLog(rcLogCategory category, const char* msg, I32 len) override;
     void doResetTimers() noexcept override;
     void doStartTimer(rcTimerLabel /*label*/) noexcept override;
     void doStopTimer(rcTimerLabel /*label*/) override;
@@ -68,4 +68,4 @@ class rcContextDivide final : public rcContext {
 }  // namespace AI
 }  // namespace Divide
 
-#endif
+#endif //DVD_NAV_MESH_CTX_H_

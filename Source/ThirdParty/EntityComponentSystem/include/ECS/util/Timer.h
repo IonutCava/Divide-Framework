@@ -5,8 +5,8 @@
 ///-------------------------------------------------------------------------------------------------
 
 #pragma once
-#ifndef __TIMER_H___
-#define __TIMER_H___
+#ifndef ECS__TIMER_H___
+#define ECS__TIMER_H___
 
 #include "API.h"
 
@@ -73,5 +73,5 @@ namespace ECS { namespace util {
 
 }} // namespace ECS::util
 
-#endif // __TIMER_H___
+#endif // ECS__TIMER_H___
 

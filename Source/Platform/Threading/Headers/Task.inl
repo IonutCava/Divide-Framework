@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _TASKS_INL_
-#define _TASKS_INL_
+#ifndef DVD_TASKS_INL_
+#define DVD_TASKS_INL_
 
 namespace Divide
 {
@@ -42,4 +42,4 @@ namespace Divide
 
 }; //namespace Divide
 
-#endif //_TASKS_INL_
+#endif //DVD_TASKS_INL_

@@ -24,8 +24,8 @@
 */
 
 #pragma once
-#ifndef _DESCRIPTOR_ALLOCATOR_H_
-#define _DESCRIPTOR_ALLOCATOR_H_
+#ifndef DVD_DESCRIPTOR_ALLOCATOR_H_
+#define DVD_DESCRIPTOR_ALLOCATOR_H_
 
 #include <vulkan/vulkan_core.h>
 
@@ -121,4 +121,4 @@ namespace vke {
     };
 }
 
-#endif //_DESCRIPTOR_ALLOCATOR_H_
+#endif //DVD_DESCRIPTOR_ALLOCATOR_H_

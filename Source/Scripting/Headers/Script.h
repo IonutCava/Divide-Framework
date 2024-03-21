@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _SCRIPTING_SCRIPT_H_
-#define _SCRIPTING_SCRIPT_H_
+#ifndef DVD_SCRIPTING_SCRIPT_H_
+#define DVD_SCRIPTING_SCRIPT_H_
 
 namespace FW {
     FWD_DECLARE_MANAGED_CLASS(FileWatcher);
@@ -48,7 +48,7 @@ enum class FileUpdateEvent : U8;
 class Script : public GUIDWrapper {
 public:
     explicit Script(const string& scriptPathOrCode, FileType fileType = FileType::TEXT);
-    virtual ~Script();
+    virtual ~Script() override;
 
     static void idle();
     static bool OnStartup(PlatformContext& context);
@@ -95,6 +95,6 @@ protected:
 
 } //namespace Divide
 
-#endif //_SCRIPTING_SCRIPT_H_
+#endif //DVD_SCRIPTING_SCRIPT_H_
 
 #include "Script.inl"

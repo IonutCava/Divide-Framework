@@ -30,14 +30,14 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _PHYSX_ACTOR_H_
-#define _PHYSX_ACTOR_H_
+#ifndef DVD_PHYSX_ACTOR_H_
+#define DVD_PHYSX_ACTOR_H_
 
 // PhysX includes
 
 #include "Physics/Headers/PhysicsAsset.h"
 
-#include <physx/PxPhysicsAPI.h>
+#include <physx/PxRigidActor.h>
 
 namespace Divide {
 
@@ -49,7 +49,7 @@ namespace Util {
 class PhysXActor final : public PhysicsAsset {
 public:
     explicit PhysXActor(RigidBodyComponent& parent) noexcept;
-    ~PhysXActor();
+    ~PhysXActor() override;
 
     void setPosition(const vec3<F32>& position) override;
     void setPosition(F32 x, F32 y, F32 z) override;
@@ -105,4 +105,4 @@ protected:
 };
 }; //namespace Divide
 
-#endif //_PHYSX_ACTOR_H_
+#endif //DVD_PHYSX_ACTOR_H_

@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _SCENE_STATE_H_
-#define _SCENE_STATE_H_
+#ifndef DVD_SCENE_STATE_H_
+#define DVD_SCENE_STATE_H_
 
 #include "Scenes/Headers/SceneComponent.h"
 
@@ -231,4 +231,4 @@ FWD_DECLARE_MANAGED_CLASS(SceneState);
 
 }  // namespace Divide
 
-#endif //_SCENE_STATE_H_
+#endif //DVD_SCENE_STATE_H_

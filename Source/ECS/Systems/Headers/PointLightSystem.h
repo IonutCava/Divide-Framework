@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _POINT_LIGHT_SYSTEM_H_
-#define _POINT_LIGHT_SYSTEM_H_
+#ifndef DVD_POINT_LIGHT_SYSTEM_H_
+#define DVD_POINT_LIGHT_SYSTEM_H_
 
 #include "ECSSystem.h"
 #include "Core/Headers/PlatformContextComponent.h"
@@ -49,4 +49,4 @@ namespace Divide {
     };
 }
 
-#endif //_POINT_LIGHT_SYSTEM_H_
+#endif //DVD_POINT_LIGHT_SYSTEM_H_

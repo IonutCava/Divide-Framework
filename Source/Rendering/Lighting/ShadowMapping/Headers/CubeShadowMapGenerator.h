@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _CUBE_SHADOW_MAP_GENERATOR_H_
-#define _CUBE_SHADOW_MAP_GENERATOR_H_
+#ifndef DVD_CUBE_SHADOW_MAP_GENERATOR_H_
+#define DVD_CUBE_SHADOW_MAP_GENERATOR_H_
 
 #include "ShadowMap.h"
 
@@ -48,4 +48,4 @@ class CubeShadowMapGenerator final : public ShadowMapGenerator {
 
 }  // namespace Divide
 
-#endif //_CUBE_SHADOW_MAP_GENERATOR_H_
+#endif //DVD_CUBE_SHADOW_MAP_GENERATOR_H_

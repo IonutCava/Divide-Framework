@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _SDL_EVENT_LISTENER_H_
-#define _SDL_EVENT_LISTENER_H_
+#ifndef DVD_SDL_EVENT_LISTENER_H_
+#define DVD_SDL_EVENT_LISTENER_H_
 
 #include <SDL2/SDL_events.h>
 
@@ -54,4 +54,4 @@ namespace Divide {
 
 }; //namespace Divide
 
-#endif //_SDL_EVENT_LISTENER_H_
+#endif //DVD_SDL_EVENT_LISTENER_H_

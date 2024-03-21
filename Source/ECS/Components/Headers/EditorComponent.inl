@@ -29,8 +29,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _SGN_EDITOR_COMPONENT_INL_
-#define _SGN_EDITOR_COMPONENT_INL_
+#ifndef DVD_SGN_EDITOR_COMPONENT_INL_
+#define DVD_SGN_EDITOR_COMPONENT_INL_
 
 namespace Divide
 {
@@ -138,4 +138,4 @@ namespace Divide
     }
 } // namespace Divide
 
-#endif //_SGN_EDITOR_COMPONENT_INL_
+#endif //DVD_SGN_EDITOR_COMPONENT_INL_

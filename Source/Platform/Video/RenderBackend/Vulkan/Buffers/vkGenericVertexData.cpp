@@ -11,7 +11,7 @@
 #include "Utility/Headers/Localization.h"
 
 namespace Divide {
-    vkGenericVertexData::vkGenericVertexData(GFXDevice& context, const U32 ringBufferLength, const bool renderIndirect, const Str<256>& name)
+    vkGenericVertexData::vkGenericVertexData(GFXDevice& context, const U16 ringBufferLength, const bool renderIndirect, const Str<256>& name)
         : GenericVertexData(context, ringBufferLength, renderIndirect, name)
     {
     }

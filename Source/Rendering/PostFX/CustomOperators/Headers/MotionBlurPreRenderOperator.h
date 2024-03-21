@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _MOTION_BLUR_PRE_RENDER_OPERATOR_H_
-#define _MOTION_BLUR_PRE_RENDER_OPERATOR_H_
+#ifndef DVD_MOTION_BLUR_PRE_RENDER_OPERATOR_H_
+#define DVD_MOTION_BLUR_PRE_RENDER_OPERATOR_H_
 
 #include "Rendering/PostFX/Headers/PreRenderOperator.h"
 #include "Platform/Video/Headers/CommandsImpl.h"
@@ -56,4 +56,4 @@ class MotionBlurPreRenderOperator final : public PreRenderOperator {
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_MOTION_BLUR_PRE_RENDER_OPERATOR_H_

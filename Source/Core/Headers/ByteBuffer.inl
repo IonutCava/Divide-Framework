@@ -46,8 +46,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 
-#ifndef _CORE_BYTE_BUFFER_INL_
-#define _CORE_BYTE_BUFFER_INL_
+#ifndef DVD_CORE_BYTE_BUFFER_INL_
+#define DVD_CORE_BYTE_BUFFER_INL_
 
 namespace Divide {
 
@@ -109,7 +109,7 @@ ByteBuffer& ByteBuffer::operator>>(T& value) {
 
 template<>
 inline ByteBuffer& ByteBuffer::operator>>(bool& value) {
-    value = read<I8>() == to_I8(1);
+    value = read<I8>() == I8_ONE;
     return *this;
 }
 
@@ -119,7 +119,7 @@ inline ByteBuffer& ByteBuffer::operator>>(string& value) {
     // prevent crash at wrong string format in packet
     while (rpos() < storageSize()) {
         const char c = read<char>();
-        if (c == to_U8(0)) {
+        if (c == U8_ZERO ) {
             break;
         }
         value += c;
@@ -134,7 +134,7 @@ void ByteBuffer::readNoSkip(T& value) {
 
 template <>
 inline void ByteBuffer::readNoSkip(bool& value) {
-    value = readNoSkipFrom<I8>(_rpos) == to_I8(1);
+    value = readNoSkipFrom<I8>(_rpos) == I8_ONE;
 }
 
 template <>
@@ -144,7 +144,7 @@ inline void ByteBuffer::readNoSkip(string& value) {
     // prevent crash at wrong string format in packet
     while (rpos() < storageSize()) {
         const char c = read<char>(); ++inc;
-        if (c == to_U8(0)) {
+        if (c == U8_ZERO ) {
             break;
         }
         value += c;
@@ -234,7 +234,7 @@ inline U64 ByteBuffer::readPackGUID() {
     *this >> guidmark;
 
     for (I32 i = 0; i < 8; ++i) {
-        if (guidmark & to_U8(1) << i) {
+        if (guidmark & U8_ONE << i) {
             U8 bit;
             *this >> bit;
             guid |= static_cast<U64>(bit) << i * 8;
@@ -259,7 +259,7 @@ inline void ByteBuffer::appendPackGUID(U64 guid) {
     size_t size = 1;
     for (U8 i = 0; guid != 0; ++i) {
         if (guid & 0xFF) {
-            packGUID[0] |= to_U8(1 << i);
+            packGUID[0] |= U8_ONE << i;
             packGUID[size] = to_U8(guid & 0xFF);
             ++size;
         }
@@ -345,18 +345,18 @@ void ByteBuffer::append(const T* src, const size_t cnt) {
 template<>
 inline void ByteBuffer::append(const string& str) {
     append(str.c_str(), str.length());
-    append(to_U8(0));
+    append(U8_ZERO);
 }
 
 template<>
 inline void ByteBuffer::append(const ResourcePath& str) {
     append(str.c_str(), str.str().length());
-    append(to_U8(0));
+    append( U8_ZERO );
 }
 
 template<>
 inline void ByteBuffer::append(const bool& value) {
-    append(value ? to_I8(1) : to_I8(0));
+    append(value ? I8_ONE : I8_ZERO);
 }
 
 template<>
@@ -650,4 +650,4 @@ inline ByteBuffer& operator>>( ByteBuffer& b, Str<N>& s )
 
 }
 
-#endif //_CORE_BYTE_BUFFER_INL_
+#endif //DVD_CORE_BYTE_BUFFER_INL_

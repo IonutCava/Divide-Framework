@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _DEBUG_INTERFACE_H_
-#define _DEBUG_INTERFACE_H_
+#ifndef DVD_DEBUG_INTERFACE_H_
+#define DVD_DEBUG_INTERFACE_H_
 
 #include "Core/Headers/KernelComponent.h"
 
@@ -46,4 +46,4 @@ struct DebugInterface
 };
 
 } //namespace Divide
-#endif //_DEBUG_INTERFACE_H_
+#endif //DVD_DEBUG_INTERFACE_H_

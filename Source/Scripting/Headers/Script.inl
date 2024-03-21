@@ -29,8 +29,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 
-#ifndef _SCRIPTING_SCRIPT_INL_
-#define _SCRIPTING_SCRIPT_INL_
+#ifndef DVD_SCRIPTING_SCRIPT_INL_
+#define DVD_SCRIPTING_SCRIPT_INL_
 
 #include <chaiscript/utility/utility.hpp>
 #include <chaiscript/chaiscript.hpp>
@@ -85,4 +85,4 @@ inline void Script::eval() {
 
 } //namespace Divide
 
-#endif //_SCRIPTING_SCRIPT_INL_
+#endif //DVD_SCRIPTING_SCRIPT_INL_

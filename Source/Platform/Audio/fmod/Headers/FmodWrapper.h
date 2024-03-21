@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _WRAPPER_FMOD_H_
-#define _WRAPPER_FMOD_H_
+#ifndef DVD_WRAPPER_FMOD_H_
+#define DVD_WRAPPER_FMOD_H_
 
 #include "Platform/Audio/Headers/AudioAPIWrapper.h"
 
@@ -69,4 +69,4 @@ protected:
 
 };  // namespace Divide
 
-#endif
+#endif //DVD_WRAPPER_FMOD_H_

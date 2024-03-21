@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _DIVIDE_ASIO_UTILS_H_
-#define _DIVIDE_ASIO_UTILS_H_
+#ifndef DVD_DIVIDE_ASIO_UTILS_H_
+#define DVD_DIVIDE_ASIO_UTILS_H_
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -50,4 +50,4 @@ namespace Divide
     using udp_resolver = boost::asio::ip::basic_resolver<boost::asio::ip::udp, boost::asio::io_context::executor_type>;
 } // namespace Divide
 
-#endif //_DIVIDE_ASIO_UTILS_H_
+#endif //DVD_DIVIDE_ASIO_UTILS_H_

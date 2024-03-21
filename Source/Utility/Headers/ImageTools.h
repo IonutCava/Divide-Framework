@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _UTILITY_IMAGETOOLS_H
-#define _UTILITY_IMAGETOOLS_H
+#ifndef DVD_UTILITY_IMAGETOOLS_H
+#define DVD_UTILITY_IMAGETOOLS_H
 
 #include "ImageToolsFwd.h"
 
@@ -211,4 +211,5 @@ struct ImageData final : NonCopyable {
 }  // namespace ImageTools
 }  // namespace Divide
 
-#endif
+#endif //DVD_UTILITY_IMAGETOOLS_H
+

@@ -51,8 +51,8 @@
 // responsibility to update it.
 
 #pragma once
-#ifndef _ClipRegion_h_
-#define _ClipRegion_h_
+#ifndef DVD_CLIP_REGION_H_
+#define DVD_CLIP_REGION_H_
 
 namespace Divide {
 
@@ -129,4 +129,4 @@ vec4<F32> computeClipRegion(const vec3<F32> &lightPosView, F32 lightRadius,
     return clipRegion;
 }
 }
-#endif  // _ClipRegion_h_
+#endif  // DVD_CLIP_REGION_H_

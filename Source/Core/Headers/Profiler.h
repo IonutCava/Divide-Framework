@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _PROFILER_H_
-#define _PROFILER_H_
+#ifndef DVD_PROFILER_H_
+#define DVD_PROFILER_H_
 
 #include "config.h"
 
@@ -112,4 +112,4 @@ bool OnProfilerStateChanged( const Profiler::State state );
 
 #endif
 
-#endif //_PROFILER_H_
+#endif //DVD_PROFILER_H_

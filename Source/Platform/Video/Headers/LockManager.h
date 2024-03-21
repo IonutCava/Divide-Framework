@@ -29,8 +29,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _LOCK_MANAGER_H_
-#define _LOCK_MANAGER_H_
+#ifndef DVD_LOCK_MANAGER_H_
+#define DVD_LOCK_MANAGER_H_
 
 #include "Platform/Video/Buffers/VertexBuffer/Headers/BufferRange.h"
 
@@ -119,4 +119,4 @@ namespace Divide {
 
 }; //namespace Divide
 
-#endif //_LOCK_MANAGER_H_
+#endif //DVD_LOCK_MANAGER_H_

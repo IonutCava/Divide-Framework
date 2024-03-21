@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _PUSH_CONSTANT_INL_
-#define _PUSH_CONSTANT_INL_
+#ifndef DVD_PUSH_CONSTANT_INL_
+#define DVD_PUSH_CONSTANT_INL_
 
 namespace Divide {
 namespace GFX {
@@ -100,4 +100,5 @@ namespace GFX {
     }
 } //namespace GFX
 } //namespace Divide
-#endif //_PUSH_CONSTANT_INL_
+
+#endif //DVD_PUSH_CONSTANT_INL_

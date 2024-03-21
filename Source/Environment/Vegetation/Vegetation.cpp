@@ -590,8 +590,8 @@ namespace Divide
         {
             sgn->get<RenderingComponent>()->primitiveRestartRequired( true );
             sgn->get<RenderingComponent>()->instantiateMaterial( s_vegetationMaterial );
-            sgn->get<RenderingComponent>()->occlusionCull( false ); //< We handle our own culling
-            sgn->get<BoundsComponent>()->collisionsEnabled( false );//< Grass collision detection should be handled in shaders (for now)
+            sgn->get<RenderingComponent>()->occlusionCull( false ); ///< We handle our own culling
+            sgn->get<BoundsComponent>()->collisionsEnabled( false );///< Grass collision detection should be handled in shaders (for now)
 
             WAIT_FOR_CONDITION( s_cullShaderGrass->getState() == ResourceState::RES_LOADED &&
                                 s_cullShaderTrees->getState() == ResourceState::RES_LOADED );
