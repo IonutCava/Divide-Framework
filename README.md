@@ -1,4 +1,4 @@
-[![Editor + UTs (Debug)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Editor-Debug.yml/badge.svg)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Editor-Debug.yml) [![Game + UTs (Release)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Game-Release.yml/badge.svg)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Game-Release.yml)
+[![Editor + UTs (Debug - Win64 - MSVC)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Editor-Debug-MSVC-Win64.yml/badge.svg)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Editor-Debug-MSVC-Win64.yml) [![Game + UTs (Debug - Clang - MSVC)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Game-Debug-Clang-Win64.yml/badge.svg)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Game-Debug-Clang-Win64.yml)
 
 # Divide-Framework
 
