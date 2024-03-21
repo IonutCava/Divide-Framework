@@ -46,13 +46,13 @@ set(CEGUI_BUILD_XMLPARSER_EXPAT TRUE)
 
 FetchContent_MakeAvailable(Cegui)
 
-set(CEGUI_LIBRARY_NAMES "CEGUIBase-0;CEGUICommonDialogs-0;CEGUICoreWindowRendererSet;${CEGUI_IMAGE_CODEC_LIB};${CEGUI_XML_PARSER_LIB}")
+set(CEGUI_LIBRARY_NAMES "CEGUIBase-0_Static;CEGUICommonDialogs-0_Static;CEGUICoreWindowRendererSet_Static;${CEGUI_IMAGE_CODEC_LIB}_Static;${CEGUI_XML_PARSER_LIB}_Static")
 
 set(CEGUI_LIBRARIES "")
 
 foreach(TARGET_LIB ${CEGUI_LIBRARY_NAMES})
     if(CMAKE_BUILD_TYPE MATCHES Debug)
-        set(TARGET_LIB "${TARGET_LIB}_Static_d")
+        set(TARGET_LIB "${TARGET_LIB}_d")
     endif()
 
     list(APPEND CEGUI_LIBRARIES ${TARGET_LIB})
