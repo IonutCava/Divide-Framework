@@ -3,14 +3,9 @@
     "version-string": "0.1",
     "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
     "dependencies": [
-        "boost-date-time",
-        "boost-regex",
         "boost-serialization",
         "boost-property-tree",
         "boost-asio",
-        "boost-python",
-        "boost-test",
-        "boost-timer",
         "stb",
         "freetype",
         "fmt",
@@ -50,6 +45,7 @@
         "vulkan",
         "vulkan-memory-allocator",
         "glslang",
+        "ctre",
         "catch2"
     ],
     "builtin-baseline": "2ac6ba173be85207a7bac4f0f02f5486f9fd4c0f"

@@ -27,16 +27,6 @@ extern "C"
     #include <fpp.h>
 }
 
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable:4458)
-#pragma warning(disable:4706)
-#endif
-#include <boost/regex.hpp>
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
-
 #include <vulkan/vulkan.hpp>
 
 namespace Divide
@@ -216,9 +206,29 @@ namespace Divide
                 tagHead->data = value;
                 ++tagHead;
             };
+            const auto setFlag = [&tagHead, &setTag]( const int tag, bool flag )
+            {
+                static bool data = true;
+                setTag(tag, flag ? &data : nullptr);
+            };
 
-            static bool trueflag = true;
-            static bool falseFlag = false;
+
+            setFlag( FPPTAG_KEEPCOMMENTS, true );
+            setFlag( FPPTAG_IGNORE_NONFATAL, false );
+            setFlag( FPPTAG_IGNORE_CPLUSPLUS, false);
+            setFlag( FPPTAG_LINE, false );
+            setFlag( FPPTAG_WARNILLEGALCPP, false );
+            setFlag( FPPTAG_OUTPUTLINE, false );
+            setFlag( FPPTAG_IGNOREVERSION, false );
+            setFlag( FPPTAG_OUTPUTINCLUDES, false );
+            setFlag( FPPTAG_OUTPUTBALANCE, true );
+            setFlag( FPPTAG_OUTPUTSPACE, true );
+            setFlag( FPPTAG_NESTED_COMMENTS, true );
+            setFlag( FPPTAG_WARN_NESTED_COMMENTS, false );
+            setFlag( FPPTAG_WARNMISSINCLUDE, false );
+            setFlag( FPPTAG_RIGHTCONCAT, true );
+            setFlag( FPPTAG_DISPLAYFUNCTIONS, false );
+            setFlag( FPPTAG_WEBMODE, false );
 
             setTag( FPPTAG_USERDATA, &workData );
             setTag( FPPTAG_DEPENDS, (void*)Callback::AddDependency );
@@ -226,15 +236,6 @@ namespace Divide
             setTag( FPPTAG_OUTPUT, (void*)Callback::Output );
             setTag( FPPTAG_ERROR, (void*)Callback::Error );
             setTag( FPPTAG_INPUT_NAME, (void*)Callback::Scratch( fileName, workData ) );
-            setTag( FPPTAG_KEEPCOMMENTS, &trueflag );
-            setTag( FPPTAG_IGNOREVERSION, &falseFlag );
-            setTag( FPPTAG_LINE, &falseFlag );
-            setTag( FPPTAG_OUTPUTBALANCE, &trueflag );
-            setTag( FPPTAG_OUTPUTSPACE, &trueflag );
-            setTag( FPPTAG_NESTED_COMMENTS, &trueflag );
-            //setTag(FPPTAG_IGNORE_CPLUSPLUS, &trueflag);
-            setTag( FPPTAG_RIGHTCONCAT, &trueflag );
-            //setTag(FPPTAG_WARNILLEGALCPP, &trueflag);
             setTag( FPPTAG_END, nullptr );
 
             if ( fppPreProcess( tags ) != 0 )
@@ -249,7 +250,6 @@ namespace Divide
 
     namespace
     {
-
         U64 s_newestShaderAtomWriteTime = 0u; ///< Used to detect modified shader atoms to validate/invalidate shader cache
         bool s_useShaderCache = true;
         bool s_targetVulkan = false;
@@ -1502,73 +1502,78 @@ namespace Divide
         }
 
         size_t lineNumber = 1;
-        boost::smatch matches;
 
         string line;
         eastl::string output, includeString;
         istringstream input( source.c_str() );
 
-        const boost::regex searchPatern = boost::regex{ Paths::g_includePattern.c_str() };
-
         while ( std::getline( input, line ) )
         {
             const std::string_view directive = !line.empty() ? std::string_view{ line }.substr( 1 ) : "";
 
-            const bool isInclude = Util::BeginsWith( line, "#", true ) &&
-                !Util::BeginsWith( directive, "version", true ) &&
-                !Util::BeginsWith( directive, "extension", true ) &&
-                !Util::BeginsWith( directive, "define", true ) &&
-                !Util::BeginsWith( directive, "if", true ) &&
-                !Util::BeginsWith( directive, "else", true ) &&
-                !Util::BeginsWith( directive, "elif", true ) &&
-                !Util::BeginsWith( directive, "endif", true ) &&
-                !Util::BeginsWith( directive, "pragma", true ) &&
-                boost::regex_search( line, matches, searchPatern );
-            if ( !isInclude )
-            {
-                output.append( line.c_str() );
-            }
-            else
-            {
-                const ResourcePath includeFile = ResourcePath( Util::Trim( matches[1].str() ) );
-                foundAtomIDsInOut.insert( _ID( includeFile.c_str() ) );
+            bool isInclude = Util::BeginsWith( line, "#", true ) &&
+                            !Util::BeginsWith( directive, "version", true ) &&
+                            !Util::BeginsWith( directive, "extension", true ) &&
+                            !Util::BeginsWith( directive, "define", true ) &&
+                            !Util::BeginsWith( directive, "if", true ) &&
+                            !Util::BeginsWith( directive, "else", true ) &&
+                            !Util::BeginsWith( directive, "elif", true ) &&
+                            !Util::BeginsWith( directive, "endif", true ) &&
+                            !Util::BeginsWith( directive, "pragma", true );
 
-                ShaderType typeIndex = ShaderType::COUNT;
-                bool found = false;
-                // switch will throw warnings due to promotion to int
-                const U64 extHash = _ID( Util::GetTrailingCharacters( includeFile.str(), 4 ).c_str() );
-                for ( U8 i = 0; i < to_base( ShaderType::COUNT ) + 1; ++i )
+            bool skip = false;
+            if ( isInclude )
+            {
+                if ( auto m = ctre::match<Paths::g_includePattern>( line ) )
                 {
-                    if ( extHash == shaderAtomExtensionHash[i] )
+                    skip = true;
+
+                    const ResourcePath includeFile = ResourcePath( Util::Trim( m.get<1>().str() ) );
+
+                    foundAtomIDsInOut.insert( _ID( includeFile.c_str() ) );
+
+                    ShaderType typeIndex = ShaderType::COUNT;
+                    bool found = false;
+                    // switch will throw warnings due to promotion to int
+                    const U64 extHash = _ID( Util::GetTrailingCharacters( includeFile.str(), 4 ).c_str() );
+                    for ( U8 i = 0; i < to_base( ShaderType::COUNT ) + 1; ++i )
                     {
-                        typeIndex = static_cast<ShaderType>(i);
-                        found = true;
-                        break;
+                        if ( extHash == shaderAtomExtensionHash[i] )
+                        {
+                            typeIndex = static_cast<ShaderType>(i);
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    DIVIDE_ASSERT( found, "Invalid shader include type" );
+                    bool wasParsed = false;
+                    if ( lock )
+                    {
+                        includeString = ShaderFileRead( shaderAtomLocationPrefix[to_U32( typeIndex )], includeFile, true, foundAtomIDsInOut, wasParsed ).c_str();
+                    }
+                    else
+                    {
+                        includeString = ShaderFileReadLocked( shaderAtomLocationPrefix[to_U32( typeIndex )], includeFile, true, foundAtomIDsInOut, wasParsed ).c_str();
+                    }
+                    if ( includeString.empty() )
+                    {
+                        Console::errorfn( LOCALE_STR( "ERROR_GLSL_NO_INCLUDE_FILE" ), name.c_str(), lineNumber, includeFile.c_str() );
+                    }
+                    if ( wasParsed )
+                    {
+                        output.append( includeString );
+                    }
+                    else
+                    {
+                        output.append( PreprocessIncludes( name, includeString, level + 1, foundAtomIDsInOut, lock ) );
                     }
                 }
+            }
 
-                DIVIDE_ASSERT( found, "Invalid shader include type" );
-                bool wasParsed = false;
-                if ( lock )
-                {
-                    includeString = ShaderFileRead( shaderAtomLocationPrefix[to_U32( typeIndex )], includeFile, true, foundAtomIDsInOut, wasParsed ).c_str();
-                }
-                else
-                {
-                    includeString = ShaderFileReadLocked( shaderAtomLocationPrefix[to_U32( typeIndex )], includeFile, true, foundAtomIDsInOut, wasParsed ).c_str();
-                }
-                if ( includeString.empty() )
-                {
-                    Console::errorfn( LOCALE_STR( "ERROR_GLSL_NO_INCLUDE_FILE" ), name.c_str(), lineNumber, includeFile.c_str() );
-                }
-                if ( wasParsed )
-                {
-                    output.append( includeString );
-                }
-                else
-                {
-                    output.append( PreprocessIncludes( name, includeString, level + 1, foundAtomIDsInOut, lock ) );
-                }
+            if (!skip)
+            {
+                output.append( line.c_str() );
             }
 
             output.append( "\n" );

@@ -76,11 +76,8 @@ ResourcePath Paths::Shaders::GLSL::g_teseAtomLoc;
 ResourcePath Paths::Shaders::GLSL::g_compAtomLoc;
 ResourcePath Paths::Shaders::GLSL::g_comnAtomLoc;
 
-eastl::string Paths::g_includePattern;
-eastl::string Paths::g_definePattern;
-eastl::string Paths::g_usePattern;
-
-void Paths::initPaths(const SysInfo& info) {
+void Paths::initPaths(const SysInfo& info) 
+{
     g_rootPath = ResourcePath(info._workingDirectory);
     g_logPath = ResourcePath("Logs/");
     g_xmlDataLocation = ResourcePath("XML/");
@@ -154,10 +151,6 @@ void Paths::initPaths(const SysInfo& info) {
     Shaders::GLSL::g_teseAtomLoc = ResourcePath("TessellationEAtoms/");
     Shaders::GLSL::g_compAtomLoc = ResourcePath("ComputeAtoms/");
     Shaders::GLSL::g_comnAtomLoc = ResourcePath("Common/");
-
-    g_includePattern = R"(^\s*#\s*include\s+["<]([^">]+)*[">])";
-    g_definePattern = R"(([#!][A-z]{2,}[\s]{1,}?([A-z]{2,}[\s]{1,}?)?)([\\(]?[^\s\\)]{1,}[\\)]?)?)";
-    g_usePattern = R"(^\s*use\s*\(\s*\"(.*)\"\s*\))";
 }
 
 void Paths::updatePaths(const PlatformContext& context) {

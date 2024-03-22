@@ -138,12 +138,13 @@ struct Paths {
     }; //class Shaders
 
     // include command regex pattern
-    static eastl::string g_includePattern;
+    static constexpr auto g_includePattern = ctll::fixed_string{ R"(^\s*#\s*include\s+["<]([^">]+)*[">])" };
     // define regex pattern
-    static eastl::string g_definePattern;
+    static constexpr auto g_definePattern = ctll::fixed_string{ R"(([#!][A-z]{2,}[\s]{1,}?([A-z]{2,}[\s]{1,}?)?)([\\(]?[^\s\\)]{1,}[\\)]?)?)" };
     // use command regex pattern
-    static eastl::string g_usePattern;
-
+    static constexpr auto g_usePattern = ctll::fixed_string{ R"(^\s*use\s*\(\s*\"(.*)\"\s*\))" };
+    // shader uniform patter
+    static constexpr auto g_uniformPattern = ctll::fixed_string{ R"(^\s*uniform\s+\s*([^),^;^\s]*)\s+([^),^;^\s]*\[*\s*\]*)\s*(?:=*)\s*(?:\d*.*)\s*(?:;+).*)" };
     
     static void initPaths(const SysInfo& info);
     static void updatePaths(const PlatformContext& context);

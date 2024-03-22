@@ -139,6 +139,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fmt/format.h>
 #include <fmt/printf.h>
 
+#include <ctre.hpp>
+
 #include "Platform/Threading/Headers/SharedMutex.h"
 
 #include "Core/Headers/Console.h"

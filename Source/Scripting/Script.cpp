@@ -9,8 +9,6 @@
 #include "Platform/File/Headers/FileUpdateMonitor.h"
 #include "Platform/File/Headers/FileWatcherManager.h"
 
-#include <boost/regex.hpp>
-
 namespace Divide {
 
 namespace {
@@ -122,14 +120,15 @@ void Script::preprocessIncludes(const string& source, const I32 level /*= 0 */) 
         Console::errorfn(LOCALE_STR("ERROR_SCRIPT_INCLUD_LIMIT"));
     }
 
-    boost::smatch matches;
     string line, include_string;
 
     istringstream input(source);
-    const boost::regex usePatern = boost::regex(Paths::g_usePattern.c_str());
-    while (std::getline(input, line)) {
-        if (boost::regex_search(line, matches, usePatern)) {
-            ResourcePath include_file = ResourcePath{ Util::Trim(matches[1].str()).c_str() };
+
+    while (std::getline(input, line))
+    {
+        if (auto m = ctre::match< Paths::g_usePattern>(line))
+        {
+            ResourcePath include_file = ResourcePath{ Util::Trim(m.get<1>().str()).c_str() };
             _usedAtoms.push_back(include_file);
 
             // Open the atom file and add the code to the atom cache for future reference

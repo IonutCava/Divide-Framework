@@ -200,7 +200,7 @@ bool SpirvHelper::GLSLtoSPV( const Divide::ShaderType shader_type, const char* p
         Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY,  false );
 
         Console::errorfn( "-------------------------------------------------------\n\n" );
-        Console::errorfn( pshader );
+        Console::errorfn( "%s", pshader );
         Console::errorfn( "\n\n-------------------------------------------------------" );
 
         Console::ToggleFlag( Console::Flags::DECORATE_TIMESTAMP, decorations[0] );

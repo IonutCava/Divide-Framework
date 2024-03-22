@@ -38,26 +38,6 @@ add_executable( ${APP_EXE_DIVIDE} "Executable/main.cpp" )
 set(COMMON_LIBS ${APP_LIB_DIVIDE} 
                 ${APP_THIRD_PARTY_LIB}
                 ${EXTERNAL_LIBS}
-                fmt::fmt
-                OptickCore
-                EASTL
-                OpenAL::OpenAL
-                expat::expat
-                imgui::imgui
-                assimp::assimp
-                imguizmo::imguizmo
-                spirv-reflect-static
-                meshoptimizer::meshoptimizer
-                glbinding::glbinding glbinding::glbinding-aux
-                vk-bootstrap::vk-bootstrap
-                Freetype::Freetype
-                unofficial::omniverse-physx-sdk::sdk
-                Vulkan::Vulkan GPUOpen::VulkanMemoryAllocator
-                RecastNavigation::Detour RecastNavigation::Recast RecastNavigation::DebugUtils RecastNavigation::DetourCrowd
-                $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>
-                $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>
-                $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main> $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
-                glslang::OSDependent glslang::glslang glslang::MachineIndependent glslang::GenericCodeGen glslang::glslang-default-resource-limits glslang::OGLCompiler glslang::SPVRemapper glslang::SPIRV glslang::HLSL
 )
 
 target_link_libraries( ${APP_EXE_DIVIDE} PRIVATE ${COMMON_LIBS}

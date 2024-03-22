@@ -35,18 +35,13 @@ find_package(Vulkan)
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(glslang CONFIG REQUIRED)
 find_package(unofficial-omniverse-physx-sdk CONFIG REQUIRED)
+find_package(ctre CONFIG REQUIRED)
 
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_NO_WARN_NEW_VERSIONS 1)
 set(Boost_USE_STATIC_LIBS ON)
 
-find_package(Boost REQUIRED COMPONENTS date_time
-                                       regex
-                                       serialization 
-                                       unit_test_framework
-                                       timer
-                    
-)
+find_package(Boost REQUIRED COMPONENTS serialization )
 
 find_path(SIMPLEINI_INCLUDE_DIRS "ConvertUTF.c")
 find_path(expat_INCLUDE_DIR "expat.h")
@@ -135,6 +130,27 @@ set(EXTERNAL_LIBS
     ${CEGUI_LIBRARIES}
     ${IMAGE_LIBRARIES}
     ${LZMA_LIBRARY}
+    fmt::fmt
+    OptickCore
+    EASTL
+    OpenAL::OpenAL
+    expat::expat
+    imgui::imgui
+    assimp::assimp
+    ctre::ctre
+    imguizmo::imguizmo
+    spirv-reflect-static
+    meshoptimizer::meshoptimizer
+    glbinding::glbinding glbinding::glbinding-aux
+    vk-bootstrap::vk-bootstrap
+    Freetype::Freetype
+    unofficial::omniverse-physx-sdk::sdk
+    Vulkan::Vulkan GPUOpen::VulkanMemoryAllocator
+    RecastNavigation::Detour RecastNavigation::Recast RecastNavigation::DebugUtils RecastNavigation::DetourCrowd
+    $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>
+    $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>
+    $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main> $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
+    glslang::OSDependent glslang::glslang glslang::MachineIndependent glslang::GenericCodeGen glslang::glslang-default-resource-limits glslang::OGLCompiler glslang::SPVRemapper glslang::SPIRV glslang::HLSL
 )
 
 add_compile_definitions(CEGUI_STATIC)

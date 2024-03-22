@@ -5,17 +5,7 @@
 #include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/StringHelper.h"
 #include "Platform/Video/Headers/GFXDevice.h"
-
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable:4458)
-#pragma warning(disable:4706)
-#endif
-#include <boost/regex.hpp>
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
-
+#include "Platform/File/Headers/FileManagement.h"
 namespace Divide
 {
 
@@ -260,29 +250,32 @@ namespace Divide
 
         eastl::string GatherUniformDeclarations( const eastl::string& source, Reflection::UniformsSet& foundUniforms )
         {
-            static const boost::regex uniformPattern{ R"(^\s*uniform\s+\s*([^),^;^\s]*)\s+([^),^;^\s]*\[*\s*\]*)\s*(?:=*)\s*(?:\d*.*)\s*(?:;+))" };
-
             eastl::string ret;
             ret.reserve( source.size() );
 
             string line;
-            boost::smatch matches;
             istringstream input( source.c_str() );
             while ( std::getline( input, line ) )
             {
-                if ( Util::BeginsWith( line, "uniform", true ) &&
-                     boost::regex_search( line, matches, uniformPattern ) )
-                {
-                    const Str<64> type = Util::Trim( matches[1].str() ).c_str();
+                bool skip = line.length() < 6u;
 
-                    foundUniforms.insert( Reflection::UniformDeclaration
+                if ( !skip )
+                {
+                    if ( auto m = ctre::match<Paths::g_uniformPattern>(line) )
                     {
-                        ._name = Util::Trim( matches[2].str() ).c_str(),
-                        ._type = type,
-                        ._typeHash = _ID( type.c_str() ),
-                    });
+                        Reflection::UniformDeclaration declaration; 
+                        declaration._type = Util::Trim( m.get<1>().str() ).c_str();
+                        declaration._name = Util::Trim( m.get<2>().str() ).c_str();
+                        declaration._typeHash = _ID( declaration._type.c_str() ),
+                        foundUniforms.emplace( declaration );
+                    }
+                    else
+                    {
+                        skip = true;
+                    }
                 }
-                else
+
+                if ( skip )
                 {
                     ret.append( line.c_str() );
                     ret.append( "\n" );
