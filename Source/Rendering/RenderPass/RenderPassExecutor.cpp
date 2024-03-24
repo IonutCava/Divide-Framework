@@ -591,8 +591,7 @@ namespace Divide
 
         constexpr bool doMainPass = true;
 
-        RenderStagePass stagePass = params._stagePass;
-        RenderPass::BufferData bufferData = _parent.getPassForStage( _stage ).getBufferData( stagePass );
+        RenderPass::BufferData bufferData = _parent.getPassForStage( _stage ).getBufferData();
 
         efficient_clear( _drawCommands );
 
@@ -685,6 +684,7 @@ namespace Divide
             Wait( *updateTask, pool );
         }
 
+        RenderStagePass stagePass = params._stagePass;
         const U32 startOffset = Config::MAX_VISIBLE_NODES * IndexForStage( stagePass );
         const auto retrieveCommands = [&]()
         {
@@ -973,15 +973,11 @@ namespace Divide
     void RenderPassExecutor::occlusionPass( [[maybe_unused]] const PlayerIndex idx,
                                             const CameraSnapshot& cameraSnapshot,
                                             [[maybe_unused]] const size_t visibleNodeCount,
-                                            RenderStagePass stagePass,
                                             const RenderTargetID& sourceDepthBuffer,
                                             const RenderTargetID& targetHiZBuffer,
                                             GFX::CommandBuffer& bufferInOut ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
-
-        //ToDo: Find a way to skip occlusion culling for low number of nodes in view but also keep light culling up and running -Ionut
-        assert( stagePass._passType == RenderPassType::PRE_PASS );
 
         GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "HiZ Construct & Cull" } );
 
@@ -995,7 +991,7 @@ namespace Divide
         // Update HiZ Target
         const auto [hizTexture, hizSampler] = _context.constructHIZ( sourceDepthBuffer, targetHiZBuffer, bufferInOut );
         // Run occlusion culling CS
-        _context.occlusionCull( _parent.getPassForStage( _stage ).getBufferData( stagePass ),
+        _context.occlusionCull( _parent.getPassForStage( _stage ).getBufferData(),
                                 hizTexture,
                                 hizSampler,
                                 cameraSnapshot,
@@ -1328,8 +1324,11 @@ namespace Divide
 #   pragma region HI_Z
         if ( doOcclusionPass )
         {
+            //ToDo: Find a way to skip occlusion culling for low number of nodes in view but also keep light culling up and running -Ionut
+            assert( params._stagePass._passType == RenderPassType::PRE_PASS );
+
             // This also renders into our HiZ texture that we may want to use later in PostFX
-            occlusionPass( playerIdx, camSnapshot, visibleNodeCount, params._stagePass, RenderTargetNames::SCREEN, params._targetHIZ, bufferInOut );
+            occlusionPass( playerIdx, camSnapshot, visibleNodeCount, RenderTargetNames::SCREEN, params._targetHIZ, bufferInOut );
         }
 #   pragma endregion
 

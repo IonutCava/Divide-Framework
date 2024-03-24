@@ -72,6 +72,7 @@ else ()
   add_compile_options(-Wno-unsafe-buffer-usage)
   add_compile_options(-Wno-zero-as-null-pointer-constant)
   add_compile_options(-Wno-old-style-cast)
+  add_compile_options(-Wno-global-constructors)
   #<<<
 
   if( ENABLE_AVX2 )

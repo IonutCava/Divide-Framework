@@ -27,7 +27,8 @@ SFXDevice::~SFXDevice()
 ErrorCode SFXDevice::initAudioAPI() {
     assert(_api == nullptr && "SFXDevice error: initAudioAPI called twice!");
 
-    switch (_API_ID) {
+    switch (_API_ID)
+    {
         case AudioAPI::FMOD: {
             _api = eastl::make_unique<FMOD_API>(_context );
         } break;
@@ -41,7 +42,7 @@ ErrorCode SFXDevice::initAudioAPI() {
             Console::errorfn(LOCALE_STR("ERROR_SFX_DEVICE_API"));
             return ErrorCode::SFX_NON_SPECIFIED;
         };
-    };
+    }
 
     return _api->initAudioAPI();
 }

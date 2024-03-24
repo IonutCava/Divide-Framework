@@ -90,14 +90,13 @@ namespace Divide
         }
     }
 
-    RenderPass::BufferData RenderPass::getBufferData( const RenderStagePass stagePass ) const noexcept
+    RenderPass::BufferData RenderPass::getBufferData() const noexcept
     {
-        assert( _stageFlag == stagePass._stage );
-
-        BufferData ret{};
-        ret._lastCommandCount = &_lastCmdCount;
-        ret._lastNodeCount = &_lastNodeCount;
-        return ret;
+        return
+        {
+            ._lastCommandCount = &_lastCmdCount,
+            ._lastNodeCount = &_lastNodeCount
+        };
     }
 
     void RenderPass::render( [[maybe_unused]] const PlayerIndex idx, [[maybe_unused]] const Task& parentTask, const SceneRenderState& renderState, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut ) const

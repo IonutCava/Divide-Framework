@@ -2,8 +2,8 @@ include(FetchContent)
 
 FetchContent_Declare(
   Cegui
-  GIT_REPOSITORY https://github.com/cegui/cegui.git
-  GIT_TAG e6c5f755efe499051fd59ad7edf0a6f83c475c5a
+  GIT_REPOSITORY https://github.com/IonutCava/cegui.git
+  GIT_TAG origin/v0-8
 )
 
 set(CEGUI_BUILD_STATIC_CONFIGURATION TRUE)

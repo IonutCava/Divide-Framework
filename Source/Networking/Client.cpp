@@ -12,17 +12,15 @@
 #include <boost/asio/write.hpp>
 #include <boost/asio/read.hpp>
 #include <boost/asio/read_until.hpp>
-#include <boost/archive/text_iarchive.hpp>
-#include <boost/archive/text_oarchive.hpp>
 
 namespace Divide
 {
     Client::Client( ASIO* asioPointer, boost::asio::io_context& io_context, const bool debugOutput )
-        : _debugOutput( debugOutput ),
-        _socket( io_context.get_executor() ),
-        _deadline( io_context.get_executor() ),
-        _heartbeatTimer( io_context.get_executor() ),
-        _asioPointer( asioPointer )
+        : _debugOutput( debugOutput )
+        , _socket( io_context.get_executor() )
+        , _deadline( io_context.get_executor() )
+        , _heartbeatTimer( io_context.get_executor() )
+        , _asioPointer( asioPointer )
     {
     }
 
@@ -106,21 +104,13 @@ namespace Divide
         if ( !ec )
         {
             _inputBuffer.commit( _header );
-            std::istream is( &_inputBuffer );
-            WorldPacket packet;
-            try
-            {
-                boost::archive::text_iarchive ar( is );
-                ar& packet;
-            }
-            catch ( const std::exception& e )
-            {
-                if ( _debugOutput )
-                {
-                    ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_PACKET_ERROR"), e.what()).c_str(), true );
-                }
-            }
 
+            WorldPacket packet;
+            if (!packet.loadFromBuffer(_inputBuffer))
+            {
+            	ASIO::LOG_PRINT( Util::StringFormat( LOCALE_STR( "ASIO_EXCEPTION" ), "WorldPacket::loadFromBuffer" ).c_str(), true );
+            }
+            
             if ( packet.opcode() == OPCodes::SMSG_SEND_FILE )
             {
                 async_read_until(
@@ -215,11 +205,11 @@ namespace Divide
             _packetQueue.push_back( heart );
         }
 
-        const WorldPacket& p = _packetQueue.front();
         boost::asio::streambuf buf;
-        std::ostream os( &buf );
-        boost::archive::text_oarchive ar( os );
-        ar& p;
+        if (!_packetQueue.front().saveToBuffer(buf))
+        {
+        	ASIO::LOG_PRINT( Util::StringFormat( LOCALE_STR( "ASIO_EXCEPTION" ), "WorldPacket::saveToBuffer" ).c_str(), true );
+        }
 
         size_t header = buf.size();
         vector<boost::asio::const_buffer> buffers;

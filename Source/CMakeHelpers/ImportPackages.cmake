@@ -37,12 +37,6 @@ find_package(glslang CONFIG REQUIRED)
 find_package(unofficial-omniverse-physx-sdk CONFIG REQUIRED)
 find_package(ctre CONFIG REQUIRED)
 
-set(Boost_USE_MULTITHREADED ON)
-set(Boost_NO_WARN_NEW_VERSIONS 1)
-set(Boost_USE_STATIC_LIBS ON)
-
-find_package(Boost REQUIRED COMPONENTS serialization )
-
 find_path(SIMPLEINI_INCLUDE_DIRS "ConvertUTF.c")
 find_path(expat_INCLUDE_DIR "expat.h")
 
@@ -126,7 +120,6 @@ set(EXTERNAL_LIBS
     ${ILU_LIBRARIES}
     ${ILUT_LIBRARIES}
     ${PYTHON_LIBRARIES}
-    ${Boost_LIBRARIES}
     ${CEGUI_LIBRARIES}
     ${IMAGE_LIBRARIES}
     ${LZMA_LIBRARY}

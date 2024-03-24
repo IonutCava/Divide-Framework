@@ -144,7 +144,6 @@ private:
     void occlusionPass(PlayerIndex idx, 
                        const CameraSnapshot& cameraSnapshot,
                        size_t visibleNodeCount,
-                       RenderStagePass stagePass,
                        const RenderTargetID& sourceDepthBuffer,
                        const RenderTargetID& targetHiZBuffer,
                        GFX::CommandBuffer& bufferInOut) const;

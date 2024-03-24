@@ -74,26 +74,31 @@ FileError readFile(const char* filePath, const char* fileName, T& contentOut, co
 }
 
 template<typename T> requires has_assign<T> || is_vector<T>
-FileError readFile(const ResourcePath& filePath, const ResourcePath& fileName, T& contentOut, FileType fileType) {
+FileError readFile(const ResourcePath& filePath, const ResourcePath& fileName, T& contentOut, FileType fileType)
+{
     return readFile(filePath.c_str(), fileName.c_str(), contentOut, fileType);
 }
 
 //Optimized variant for vectors
 template<>
-inline FileError readFile(const char* filePath, const char* fileName, vector<Byte>& contentOut, const FileType fileType) {
-    if (!Util::IsEmptyOrNull(filePath) && !Util::IsEmptyOrNull(fileName) && pathExists(filePath)) {
+inline FileError readFile(const char* filePath, const char* fileName, vector<Byte>& contentOut, const FileType fileType)
+{
+    if (!Util::IsEmptyOrNull(filePath) && !Util::IsEmptyOrNull(fileName) && pathExists(filePath))
+    {
         std::ifstream streamIn(string{ filePath } +fileName,
                                fileType == FileType::BINARY
                                          ? std::ios::in | std::ios::binary
                                          : std::ios::in);
 
-        if (!streamIn.eof() && !streamIn.fail()) {
+        if (!streamIn.eof() && !streamIn.fail())
+        {
             streamIn.seekg(0, std::ios::end);
             const auto fileSize = streamIn.tellg();
-            if (fileSize > 0) {
+            if (fileSize > 0)
+            {
                 streamIn.seekg(0, std::ios::beg);
 
-                contentOut.resize(fileSize);
+                contentOut.resize(to_size(fileSize));
 
                 static_assert(sizeof(char) == sizeof(Byte), "readFile: Platform error!");
                 Byte* outBuffer = contentOut.data();

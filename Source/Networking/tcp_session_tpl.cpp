@@ -10,8 +10,6 @@
 
 #include <boost/asio/read.hpp>
 #include <boost/asio/write.hpp>
-#include <boost/archive/text_iarchive.hpp>
-#include <boost/archive/text_oarchive.hpp>
 
 ///////////////////////////////////////////////////////////////////////////////////////
 //                                     TCP                                           //
@@ -21,14 +19,14 @@ namespace Divide
 {
 
     tcp_session_tpl::tcp_session_tpl( boost::asio::io_context& io_context, channel& ch )
-        : _header( 0 ),
-        _channel( ch ),
-        _socket( io_context ),
-        _inputDeadline( io_context.get_executor() ),
-        _nonEmptyOutputQueue( io_context.get_executor() ),
-        _outputDeadline( io_context.get_executor() ),
-        _startTime( time( nullptr ) ),
-        _strand( eastl::make_unique<boost::asio::io_context::strand>( io_context ) )
+        : _header( 0 )
+        , _channel( ch )
+        , _socket( io_context )
+        , _inputDeadline( io_context.get_executor() )
+        , _nonEmptyOutputQueue( io_context.get_executor() )
+        , _outputDeadline( io_context.get_executor() )
+        , _startTime( time( nullptr ) )
+        , _strand( eastl::make_unique<boost::asio::io_context::strand>( io_context ) )
     {
         _inputDeadline.expires_at( boost::posix_time::pos_infin );
         _outputDeadline.expires_at( boost::posix_time::pos_infin );
@@ -131,16 +129,11 @@ namespace Divide
         {
             _inputBuffer.commit( _header );
             ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_BUFFER_SIZE"), _header ).c_str() );
-            std::istream is( &_inputBuffer );
             WorldPacket packet;
-            try
+
+            if (!packet.loadFromBuffer(_inputBuffer))
             {
-                boost::archive::text_iarchive ar( is );
-                ar& packet;
-            }
-            catch ( const std::exception& e )
-            {
-                ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_EXCEPTION"), e.what()).c_str(), true );
+                ASIO::LOG_PRINT( Util::StringFormat( LOCALE_STR( "ASIO_EXCEPTION" ), "WorldPacket::loadFromBuffer" ).c_str(), true );
             }
 
             handlePacket( packet );
@@ -154,17 +147,21 @@ namespace Divide
 
     void tcp_session_tpl::start_write()
     {
-        if ( _outputQueue.empty() ) await_output();
-
-        boost::asio::streambuf buf;
-        std::ostream os( &buf );
+        if ( _outputQueue.empty() ) 
+        {
+            await_output();
+        }
 
         // Set a deadline for the write operation.
         _outputDeadline.expires_from_now( boost::posix_time::seconds( 30 ) );
 
-        const WorldPacket& p = _outputQueue.front();
-        boost::archive::text_oarchive ar( os );
-        ar& p;  // Archive the packet
+        boost::asio::streambuf buf;
+
+        WorldPacket& p = _outputQueue.front();
+        if (!p.saveToBuffer(buf))
+        {
+            ASIO::LOG_PRINT( Util::StringFormat( LOCALE_STR( "ASIO_EXCEPTION" ), "WorldPacket::saveToBuffer" ).c_str(), true );
+        }
 
         size_t header = buf.size();
         vector<boost::asio::const_buffer> buffers;
@@ -296,9 +293,10 @@ namespace Divide
     void udp_broadcaster::sendPacket( const WorldPacket& p )
     {
         boost::asio::streambuf buf;
-        std::ostream os( &buf );
-        boost::archive::text_oarchive ar( os );
-        ar& p;  // Archive the packet
+        if (!p.saveToBuffer(buf))
+        {
+			ASIO::LOG_PRINT( Util::StringFormat( LOCALE_STR( "ASIO_EXCEPTION" ), "WorldPacket::saveToBuffer" ).c_str(), true );
+        }
 
         size_t header = buf.size();
         vector<boost::asio::const_buffer> buffers;

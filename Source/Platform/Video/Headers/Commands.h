@@ -54,7 +54,11 @@ struct CommandBase
     }
 
     virtual ~CommandBase() = default;
+
+    CommandBase( const CommandBase& ) = default;
+    CommandBase( CommandBase&& ) = default;
     CommandBase& operator=( const CommandBase& ) = default;
+    CommandBase& operator=( CommandBase&& ) = default;
 
     virtual void addToBuffer(CommandBuffer* buffer) const = 0;
 

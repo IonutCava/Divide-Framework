@@ -496,6 +496,7 @@ set( NETWORKING_SOURCE_HEADERS Networking/Headers/ASIO.h
 set( NETWORKING_SOURCE Networking/ASIO.cpp
                        Networking/Client.cpp
                        Networking/tcp_session_tpl.cpp
+                       Networking/WorldPacket.cpp
 )
 
 set( PHYSICS_SOURCE_HEADERS Physics/Headers/PhysicsAPIWrapper.h
