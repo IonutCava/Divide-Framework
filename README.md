@@ -1,5 +1,6 @@
 [![Editor + UTs (Debug - Win64 - MSVC)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Editor-Debug-MSVC-Win64.yml/badge.svg)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Editor-Debug-MSVC-Win64.yml) [![Game + UTs (Release - Win64 - MSVC)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Game-Release-MSVC-Win64.yml/badge.svg)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Game-Release-MSVC-Win64.yml)
 
+[![Editor + UTs (Release - Win64 - Clang)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Editor-Release-Clang-Win64.yml/badge.svg)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Editor-Release-Clang-Win64.yml) [![Game + UTs (Debug - Win64 - Clang)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Game-Debug-Clang-Win64.yml/badge.svg)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Game-Debug-Clang-Win64.yml)
 # Divide-Framework
 
 Website: [divide-studio.com](http://www.divide-studio.com)
