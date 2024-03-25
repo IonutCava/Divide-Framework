@@ -503,6 +503,27 @@
             "configurePreset": "windows-clang-release"
         },
         {
+            "name": "test-windows-clang-debug-editor",
+            "displayName": "Strict",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "windows-clang-debug-editor"
+        },
+        {
+            "name": "test-windows-clang-profile-editor",
+            "displayName": "Strict",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "windows-clang-profile-editor"
+        },
+        {
+            "name": "test-windows-clang-release-editor",
+            "displayName": "Strict",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "windows-clang-release-editor"
+        },
+        {
             "name": "test-unixlike-gcc-debug",
             "displayName": "Strict",
             "description": "Enable output and stop on failure",
