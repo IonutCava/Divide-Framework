@@ -49,6 +49,7 @@ namespace nvttHelpers {
             Console::errorfn(LOCALE_STR("ERROR_IMAGE_TOOLS_NVT_ERROR"), nvttErrors[to_size(e)]);
         }
     };
+
     struct OutputHandler : public nvtt::OutputHandler {
         struct MipMapData {
             vector<U8> _pixelData;
@@ -62,8 +63,8 @@ namespace nvttHelpers {
         nvtt::Format _format = nvtt::Format::Format_BC1;
         bool _discardAlpha = false;
 
-        OutputHandler(nvtt::Format format, bool discardAlpha, U8 numComponents)
-            : _format(format), _discardAlpha(discardAlpha), _numComponents(numComponents)
+        OutputHandler(nvtt::Format format, bool discardAlpha, const U8 numComponents)
+            : _format(format), _numComponents(numComponents), _discardAlpha( discardAlpha )
         {
         }
 
@@ -99,7 +100,7 @@ namespace nvttHelpers {
         }
 
         /// Indicate the start of a new compressed image that's part of the final texture.
-        virtual void beginImage(int size, int width, int height, int depth, [[maybe_unused]] int face, int miplevel)
+        virtual void beginImage(int size, int width, int height, int depth, [[maybe_unused]] int face, int miplevel) override
         {
             MipMapData& data = _mipmaps.push_back();
             data._width = width;
@@ -109,12 +110,12 @@ namespace nvttHelpers {
             _currentMipLevel = miplevel;
         }
 
-        virtual void endImage()
+        virtual void endImage() override
         {
         }
 
         /// Output data. Compressed data is output as soon as it's generated to minimize memory allocations.
-        virtual bool writeData(const void* data, int size)
+        virtual bool writeData(const void* data, int size) override
         {
             // Copy mipmap data
             memcpy(&_mipmaps[_currentMipLevel]._pixelData, data, size);
@@ -122,7 +123,8 @@ namespace nvttHelpers {
         }
     };
 
-    [[nodiscard]] bool isBC1n(const nvtt::Format format, const bool isNormalMap) noexcept {
+    [[nodiscard]] static bool isBC1n(const nvtt::Format format, const bool isNormalMap) noexcept
+    {
         return isNormalMap && format == nvtt::Format_BC1;
     }
 
@@ -785,11 +787,12 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                     }break;
                     case SourceDataType::FLOAT: break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
-                };
+                }
                 _sourceDataType = SourceDataType::FLOAT;
             } break;
             default: DIVIDE_UNEXPECTED_CALL_MSG("Invalid requested texture format!"); break;
-        };
+        }
+
         _dataType = _requestedDataFormat;
     }
 
@@ -941,9 +944,8 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
             _sourceDataType = SourceDataType::FLOAT;
             storageSizeFactor = 4;
             break;
-        default: {
-            return false;
-        } break;
+
+        default: return false;
     };
 
     // Resize if needed
@@ -998,7 +1000,7 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
             case IL_BGRA:
                 _format = GFXImageFormat::BGRA;
                 break;
-        };
+        }
     }
 
     const ILint numImages = ilGetInteger(IL_NUM_IMAGES) + 1;
@@ -1255,7 +1257,7 @@ bool SaveImage(const ResourcePath& filename, const U16 width, const U16 height, 
         case SaveImageFormat::BMP: return stbi_write_bmp(filename.c_str(), width, height, 3, pix.data()) == TRUE;
         case SaveImageFormat::TGA: return stbi_write_tga(filename.c_str(), width, height, 3, pix.data()) == TRUE;
         case SaveImageFormat::JPG: return stbi_write_jpg(filename.c_str(), width, height, 3, pix.data(), 85) == TRUE;
-        default: DIVIDE_UNEXPECTED_CALL(); return false;
+        default: DIVIDE_UNEXPECTED_CALL(); break;
     }
 
     return false;

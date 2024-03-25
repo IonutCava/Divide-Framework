@@ -30,7 +30,7 @@ jobs:
       with:
         vcpkgJsonGlob: 'vcpkg.json'
 
-    - name: Build and test Editor in Debug mode
+    - name: Build and test Editor in Release mode
       uses: lukka/run-cmake@v10
       with:
         configurePreset: 'windows-clang-release-editor'

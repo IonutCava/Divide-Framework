@@ -2895,13 +2895,10 @@ namespace Divide
         return false;
     }
 
-    namespace Util
+    namespace Util::detail
     {
-        namespace detail
-        {
-            std::stack<bool> g_readOnlyFaded;
-        };
-    }; // namespace Util
+        static std::stack<bool> g_readOnlyFaded;
+    }; // namespace Util::detail
 
     void PushReadOnly( const bool fade )
     {

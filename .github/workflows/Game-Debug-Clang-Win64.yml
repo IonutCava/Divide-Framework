@@ -30,7 +30,7 @@ jobs:
       with:
         vcpkgJsonGlob: 'vcpkg.json'
 
-    - name: Build and test Game in Release mode
+    - name: Build and test Game in Debug mode
       uses: lukka/run-cmake@v10
       with:
         configurePreset: 'windows-clang-debug'
