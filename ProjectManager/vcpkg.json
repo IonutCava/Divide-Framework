@@ -1,0 +1,12 @@
+{
+    "name": "divide-framework-project-manager",
+    "version-string": "0.1",
+    "dependencies": [
+        {
+            "name": "imgui",
+            "features": [ "docking-experimental", "sdl2-binding", "sdl2-renderer-binding" ]
+        },
+        "fmt",
+        "sdl2-image"
+    ]
+}

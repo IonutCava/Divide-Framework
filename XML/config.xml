@@ -26,6 +26,10 @@
 		<useTextureDDSCache>true</useTextureDDSCache>
 	</debug>
 	<language>enGB</language>
+	<scenesLocation>Scenes</scenesLocation>
+	<assetsLocation>Assets</assetsLocation>
+	<serverAddress>127.0.0.1</serverAddress>
+	<startupProject>Default</startupProject>
 	<!-- RUNTIME: Values use by the application after loading is complete -->
 	<runtime>
 		<title>DIVIDE Framework - (C) Ionut Cava 2023</title>

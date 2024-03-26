@@ -44,7 +44,6 @@ class SFXDevice;
 class PXDevice;
 class Application;
 class LocalClient;
-class XMLEntryData;
 class ParamHandler;
 class DisplayWindow;
 
@@ -111,9 +110,6 @@ class PlatformContext final {
     [[nodiscard]] PXDevice& pfx() noexcept { return *_pfx; }
     [[nodiscard]] const PXDevice& pfx() const noexcept { return *_pfx; }
 
-    [[nodiscard]] XMLEntryData& entryData() noexcept { return *_entryData; }
-    [[nodiscard]] const XMLEntryData& entryData() const noexcept { return *_entryData; }
-
     [[nodiscard]] Configuration& config() noexcept { return *_config; }
     [[nodiscard]] const Configuration& config() const noexcept { return *_config; }
 
@@ -161,8 +157,6 @@ class PlatformContext final {
     ParamHandler* _paramHandler{ nullptr };
     /// User configured settings
     Configuration* _config{ nullptr };
-    /// XML startup data
-    XMLEntryData* _entryData{ nullptr };
     /// Debugging interface: read only / editable variables
     DebugInterface* _debug{ nullptr };
     /// Input handler

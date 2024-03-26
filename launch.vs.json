@@ -7,7 +7,8 @@
         "project": "CMakeLists.txt",
         "projectTarget": "Divide-Framework_d.exe (bin\\Divide-Framework_d.exe)",
         "name": "Divide-Framework (Debug)",
-        "currentDir": "${workspaceRoot}"
+        "currentDir": "${workspaceRoot}",
+        "args": ["--project=Default"]
     },
     {
         "type": "default",
@@ -28,7 +29,8 @@
         "project": "CMakeLists.txt",
         "projectTarget": "Divide-Framework.exe (bin\\Divide-Framework.exe)",
         "name": "Divide-Framework.exe (Release)",
-        "currentDir": "${workspaceRoot}"
+        "currentDir": "${workspaceRoot}",
+        "args": [ "--project=Default" ]
     },
     {
         "type": "default",

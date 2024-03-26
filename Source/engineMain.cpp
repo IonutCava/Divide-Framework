@@ -18,7 +18,7 @@ ErrorCode Engine::init(const int argc, char** argv)
 
     // Start our application based on XML configuration.
     // If it fails to start, it should automatically clear up all of its data
-    const ErrorCode errorCode = _app->start("main.xml", argc, argv);
+    const ErrorCode errorCode = _app->start("config.xml", argc, argv);
 
     if ( errorCode != ErrorCode::NO_ERR)
     {

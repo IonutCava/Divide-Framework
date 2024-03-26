@@ -1,6 +1,4 @@
 
-
-#include "Core/Headers/XMLEntryData.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Headers/FileManagement.h"
@@ -22,6 +20,7 @@ ResourcePath Paths::g_climatesMedResLocation;
 ResourcePath Paths::g_climatesHighResLocation;
 ResourcePath Paths::g_xmlDataLocation;
 ResourcePath Paths::g_scenesLocation;
+ResourcePath Paths::g_projectsLocation;
 
 ResourcePath Paths::g_saveLocation;
 ResourcePath Paths::g_imagesLocation;
@@ -92,6 +91,7 @@ void Paths::initPaths(const SysInfo& info)
     g_climatesMedResLocation = ResourcePath("Climates_1k/");
     g_climatesHighResLocation = ResourcePath("Climates_4k/");
     g_scenesLocation = ResourcePath("Scenes/");
+    g_projectsLocation = ResourcePath("Projects/");
 
     g_saveLocation = ResourcePath("SaveData/");
     g_imagesLocation = ResourcePath("MiscImages/");
@@ -153,14 +153,14 @@ void Paths::initPaths(const SysInfo& info)
     Shaders::GLSL::g_comnAtomLoc = ResourcePath("Common/");
 }
 
-void Paths::updatePaths(const PlatformContext& context) {
+void Paths::updatePaths(const PlatformContext& context)
+{
     const Configuration& config = context.config();
-    const XMLEntryData& entryData = context.entryData();
-        
-    g_assetsLocation = ResourcePath(entryData.assetsLocation + "/");
+
+    g_assetsLocation = ResourcePath(config.assetsLocation + "/");
     g_shadersLocation = ResourcePath(config.defaultAssetLocation.shaders + "/");
     g_texturesLocation = ResourcePath(config.defaultAssetLocation.textures + "/");
-    g_scenesLocation = ResourcePath(entryData.scenesLocation + "/");
+    g_scenesLocation = ResourcePath(Paths::g_projectsLocation + config.startupProject + "/" + config.scenesLocation + "/");
     Scripts::g_scriptsLocation = g_assetsLocation + "Scripts/";
     Scripts::g_scriptsAtomsLocation = Scripts::g_scriptsLocation + "Atoms/";
 }

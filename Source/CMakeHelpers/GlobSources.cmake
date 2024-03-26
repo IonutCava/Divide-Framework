@@ -81,7 +81,6 @@ set( CORE_SOURCE_HEADERS Core/Debugging/Headers/DebugInterface.h
                          Core/Headers/TaskPool.inl
                          Core/Headers/WindowManager.h
                          Core/Headers/WindowManager.inl
-                         Core/Headers/XMLEntryData.h
                          Core/Math/BoundingVolumes/Headers/BoundingBox.h
                          Core/Math/BoundingVolumes/Headers/BoundingBox.inl
                          Core/Math/BoundingVolumes/Headers/BoundingSphere.h
@@ -145,7 +144,6 @@ set( CORE_SOURCE Core/Application.cpp
                  Core/StringHelper.cpp
                  Core/TaskPool.cpp
                  Core/WindowManager.cpp
-                 Core/XMLEntryData.cpp
                  Core/Debugging/DebugInterface.cpp
                  Core/Math/MathClasses.cpp
                  Core/Math/MathHelper.cpp

@@ -28,6 +28,9 @@ bool Configuration::fromXML(const char* xmlFile) {
         GET_PARAM(debug.renderFilter.decals);
         GET_PARAM(debug.useTextureDDSCache);
         GET_PARAM(language);
+        GET_PARAM(assetsLocation);
+        GET_PARAM(scenesLocation);
+        GET_PARAM(startupProject);
         GET_PARAM(runtime.title);
         GET_PARAM(runtime.targetDisplay);
         GET_PARAM(runtime.targetRenderingAPI);
@@ -187,6 +190,9 @@ bool Configuration::toXML(const char* xmlFile) const {
         PUT_PARAM(debug.renderFilter.decals);
         PUT_PARAM(debug.useTextureDDSCache);
         PUT_PARAM(language);
+        PUT_PARAM(assetsLocation);
+        PUT_PARAM(scenesLocation);
+        PUT_PARAM(startupProject);
         PUT_PARAM(runtime.title);
         PUT_PARAM(runtime.targetDisplay);
         PUT_PARAM(runtime.targetRenderingAPI);

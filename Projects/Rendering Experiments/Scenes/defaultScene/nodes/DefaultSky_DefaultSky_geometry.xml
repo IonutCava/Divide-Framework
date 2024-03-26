@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<static>false</static>
+<radius>500</radius>
+<resolution>4</resolution>
+<model>SPHERE_3D</model>
+<NAVIGATION/>
+<TRANSFORM>
+    <Transform>
+        <position x="0" y="0" z="0"/>
+        <orientation x="0" y="0" z="0"/>
+        <scale x="1" y="1" z="1"/>
+    </Transform>
+    <WorldMat 00="1" 01="0" 02="0" 03="0" 10="0" 11="1" 12="0" 13="0" 20="0" 21="0" 22="1" 23="0" 30="0" 31="0" 32="0" 33="1"/>
+</TRANSFORM>
+<BOUNDS/>
+<RENDERING>
+    <Material>
+        <colour r="0.666666687" g="0.666666687" b="0.666666687" a="1"/>
+        <emissive r="0" g="0" b="0" a="1"/>
+        <specular r="0.800000012" g="0.800000012" b="0.800000012" a="1"/>
+        <shininess>5</shininess>
+        <doubleSided>false</doubleSided>
+        <bumpMethod>NONE</bumpMethod>
+        <shadingMode>BLINN_PHONG</shadingMode>
+        <parallaxFactor>1</parallaxFactor>
+    </Material>
+</RENDERING>

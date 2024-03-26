@@ -39,6 +39,7 @@ namespace Divide {
         concept valid_replace_string = is_string<T> || std::is_same_v<T, ResourcePath>;
 
         bool FindCommandLineArgument(int argc, char** argv, const char* target_arg, const char* arg_prefix = "--");
+        bool ExtractStartupProject(int argc, char** argv, string& projectOut, const char* arg_prefix = "--");
 
         template<size_t N, typename T_str = string>  requires valid_replace_string<T_str>
         bool ReplaceStringInPlace(T_str& subject, const std::array<std::string_view, N>& search, std::string_view replace, bool recursive = false);

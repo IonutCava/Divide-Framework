@@ -6,7 +6,6 @@
 #include "Headers/Configuration.h"
 #include "Headers/EngineTaskPool.h"
 #include "Headers/PlatformContext.h"
-#include "Headers/XMLEntryData.h"
 
 #include "Core/Debugging/Headers/DebugInterface.h"
 #include "Core/Headers/ParamHandler.h"
@@ -649,10 +648,8 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     // Don't log parameter requests
     _platformContext.paramHandler().setDebugOutput(false);
     // Load info from XML files
-    XMLEntryData& entryData = _platformContext.entryData();
     Configuration& config = _platformContext.config();
-    loadFromXML(entryData, (Paths::g_rootPath + Paths::g_xmlDataLocation.c_str() + entryPoint).c_str());
-    loadFromXML(config, (Paths::g_rootPath + Paths::g_xmlDataLocation.c_str() + "config.xml").c_str());
+    loadFromXML( config, (Paths::g_rootPath + Paths::g_xmlDataLocation.c_str() + entryPoint).c_str());
 
     if (Util::FindCommandLineArgument(_argc, _argv, "disableRenderAPIDebugging"))
     {
@@ -668,10 +665,16 @@ ErrorCode Kernel::initialize(const string& entryPoint)
         config.debug.renderer.useExtensions = false;
     }
 
+    if ( Util::ExtractStartupProject( _argc, _argv, config.startupProject ) )
+    {
+        Console::printfn( LOCALE_STR( "START_APPLICATION_PROJECT_ARGUMENT" ) , config.startupProject.c_str() );
+    }
+
     if (config.runtime.targetRenderingAPI >= to_U8(RenderAPI::COUNT))
     {
         config.runtime.targetRenderingAPI = to_U8(RenderAPI::OpenGL);
     }
+
 
     DIVIDE_ASSERT(g_backupThreadPoolSize >= 2u, "Backup thread pool needs at least 2 threads to handle background tasks without issues!");
 
@@ -695,7 +698,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
 
     _platformContext.server().init(static_cast<U16>(443), "127.0.0.1", true);
 
-    if (!_platformContext.client().connect(entryData.serverAddress, 443))
+    if (!_platformContext.client().connect(config.serverAddress, 443))
     {
         _platformContext.client().connect("127.0.0.1", 443);
     }
@@ -833,25 +836,25 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     _sceneManager->init(_platformContext, resourceCache());
     _platformContext.gfx().idle(true, 0u, 0u);
 
-    const char* firstLoadedScene = entryData.startupScene.c_str();
+    const char* startupProject = config.startupProject.c_str();
 
     if constexpr ( Config::Build::IS_EDITOR_BUILD )
     {
-        firstLoadedScene = Config::DEFAULT_SCENE_NAME;
-        Console::printfn(LOCALE_STR("START_FRAMEWORK_EDITOR"));
+        startupProject = Config::DEFAULT_PROJECT_NAME;
+        Console::printfn(LOCALE_STR("START_FRAMEWORK_EDITOR"), startupProject );
     }
     else
     {
-        Console::printfn( LOCALE_STR( "START_FRAMEWORK_EDITOR" ), firstLoadedScene );
+        Console::printfn( LOCALE_STR( "START_FRAMEWORK_GAME" ), startupProject );
     }
 
-    if (!_sceneManager->switchScene(firstLoadedScene, true, false, false)) {
-        Console::errorfn(LOCALE_STR("ERROR_SCENE_LOAD"), firstLoadedScene);
+    if (!_sceneManager->switchScene( Config::DEFAULT_SCENE_NAME, true, false, false)) {
+        Console::errorfn(LOCALE_STR("ERROR_SCENE_LOAD"), startupProject );
         return ErrorCode::MISSING_SCENE_DATA;
     }
 
     if (!_sceneManager->loadComplete()) {
-        Console::errorfn(LOCALE_STR("ERROR_SCENE_LOAD_NOT_CALLED"), firstLoadedScene);
+        Console::errorfn(LOCALE_STR("ERROR_SCENE_LOAD_NOT_CALLED"), startupProject );
         return ErrorCode::MISSING_SCENE_LOAD_CALL;
     }
 

@@ -2,7 +2,6 @@
 
 #include "Headers/PlatformContext.h"
 #include "Headers/Configuration.h"
-#include "Headers/XMLEntryData.h"
 
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/ParamHandler.h"
@@ -26,7 +25,6 @@ PlatformContext::PlatformContext(Application& app, Kernel& kernel)
   , _taskPool{}
   , _paramHandler(MemoryManager_NEW ParamHandler())
   , _config(MemoryManager_NEW Configuration())         // XML based configuration
-  , _entryData(MemoryManager_NEW XMLEntryData())       // Initial XML data
   , _debug(MemoryManager_NEW DebugInterface())         // Debug Interface
   , _inputHandler(MemoryManager_NEW Input::InputHandler(_kernel, _app))
   , _gfx(MemoryManager_NEW GFXDevice(*this))           // Video
@@ -65,7 +63,6 @@ void PlatformContext::terminate()
     MemoryManager::DELETE(_gfx);
     MemoryManager::DELETE(_inputHandler);
     MemoryManager::DELETE(_debug);
-    MemoryManager::DELETE(_entryData);
     MemoryManager::DELETE(_config);
     MemoryManager::DELETE(_paramHandler);
 }

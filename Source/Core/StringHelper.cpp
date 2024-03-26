@@ -4,7 +4,8 @@
 
 namespace Divide::Util {
 
-bool FindCommandLineArgument(const int argc, char** argv, const char* target_arg, const char* arg_prefix) {
+bool FindCommandLineArgument(const int argc, char** argv, const char* target_arg, const char* arg_prefix)
+{
     string tempArg(arg_prefix);
     tempArg += target_arg;
     const char* target = tempArg.c_str();
@@ -14,6 +15,22 @@ bool FindCommandLineArgument(const int argc, char** argv, const char* target_arg
             return true;
         }
     }
+    return false;
+}
+
+bool ExtractStartupProject( int argc, char** argv, string& projectOut, const char* arg_prefix)
+{
+    string tempArg( arg_prefix );
+
+    for(int i = 0; i < argc; ++i)
+    {
+        if (auto m = ctre::match<"(--project\s*=\s*)([0-9a-zA-Z]*)">(argv[i]))
+        {
+            projectOut = m.get<2>();
+            return true;
+        }
+    }
+
     return false;
 }
 

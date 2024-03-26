@@ -219,7 +219,7 @@ namespace Divide
 
     bool SceneManager::switchScene( const Str<256>& name, bool unloadPrevious, bool deferToIdle, const bool threaded )
     {
-        const ResourcePath scenePath = Paths::g_xmlDataLocation + Paths::g_scenesLocation + name;
+        const ResourcePath scenePath = Paths::g_scenesLocation + name;
         const ResourcePath sceneFile = scenePath + ".xml";
         if ( !pathExists( scenePath ) || !fileExists( sceneFile ) )
         {
@@ -373,7 +373,7 @@ namespace Divide
 
             {
                 boost::property_tree::ptree pt;
-                const ResourcePath scenePath = Paths::g_xmlDataLocation + Paths::g_scenesLocation;
+                const ResourcePath scenePath = Paths::g_scenesLocation;
                 const ResourcePath sceneLocation( scenePath + "/" + parentScene.resourceName().c_str() );
                 const ResourcePath sceneDataFile( sceneLocation + ".xml" );
                 XML::readXML( sceneDataFile.c_str(), pt );

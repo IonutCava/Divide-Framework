@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<entities>
+    <node name="ROOT" type="TRANSFORM">
+        <node name="DefaultSky" type="SKY">
+            <node name="DefaultSky_geometry" type="SPHERE_3D"/>
+        </node>
+        <node name="DefaultLight" type="TRANSFORM"/>
+    </node>
+</entities>

@@ -11,8 +11,8 @@
             "description": "General settings that apply to all configurations",
             "hidden": true,
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/${presetName}",
-            "installDir": "${sourceDir}/install/${presetName}"
+            "binaryDir": "${sourceDir}/Build/${presetName}",
+            "installDir": "${sourceDir}/Install/${presetName}"
         },
         {
             "name": "conf-windows-common",

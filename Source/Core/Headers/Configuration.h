@@ -68,7 +68,10 @@ struct Configuration final : XML::IXMLSerializable {
     } debug = {};
     
     string language = "enGB";
-    
+    string assetsLocation = "Assets";
+    string scenesLocation = "Scenes";
+    string serverAddress = "127.0.0.1";
+    string startupProject = "Default";
     struct Runtime
     {
         string title = "DIVIDE Framework";

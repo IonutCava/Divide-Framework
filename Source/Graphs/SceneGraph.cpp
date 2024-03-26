@@ -644,8 +644,7 @@ namespace Divide
 
     void SceneGraph::saveToXML( const char* assetsFile, DELEGATE<void, std::string_view> msgCallback, const char* overridePath ) const
     {
-        const ResourcePath scenePath = Paths::g_xmlDataLocation + Paths::g_scenesLocation;
-        ResourcePath sceneLocation = (scenePath + (strlen( overridePath ) > 0 ? Str<256>( overridePath ) : parentScene().resourceName()));
+        ResourcePath sceneLocation = (Paths::g_scenesLocation + (strlen( overridePath ) > 0 ? Str<256>( overridePath ) : parentScene().resourceName()));
 
         {
             boost::property_tree::ptree pt;
@@ -685,8 +684,7 @@ namespace Divide
     void SceneGraph::loadFromXML( const char* assetsFile, const char* overridePath )
     {
         using boost::property_tree::ptree;
-        static const ResourcePath scenePath = Paths::g_xmlDataLocation + Paths::g_scenesLocation;
-        ResourcePath sceneLocation = (scenePath + (strlen( overridePath ) > 0 ? Str<256>( overridePath ) : parentScene().resourceName()));
+        ResourcePath sceneLocation = (Paths::g_scenesLocation + (strlen( overridePath ) > 0 ? Str<256>( overridePath ) : parentScene().resourceName()));
 
         const ResourcePath file = sceneLocation + "/" + assetsFile;
 
@@ -748,16 +746,14 @@ namespace Divide
 
     bool SceneGraph::saveNodeToXML( const SceneGraphNode* node ) const
     {
-        const ResourcePath scenePath = Paths::g_xmlDataLocation + Paths::g_scenesLocation;
-        const ResourcePath sceneLocation( scenePath + "/" + parentScene().resourceName() );
+        const ResourcePath sceneLocation( Paths::g_scenesLocation + "/" + parentScene().resourceName() );
         node->saveToXML( sceneLocation.c_str() );
         return true;
     }
 
     bool SceneGraph::loadNodeFromXML( [[maybe_unused]] const char* assetsFile, SceneGraphNode* node ) const
     {
-        const ResourcePath scenePath = Paths::g_xmlDataLocation + Paths::g_scenesLocation;
-        const ResourcePath sceneLocation( scenePath + "/" + parentScene().resourceName() );
+        const ResourcePath sceneLocation( Paths::g_scenesLocation + "/" + parentScene().resourceName() );
         node->loadFromXML( sceneLocation.c_str() );
         return true;
     }

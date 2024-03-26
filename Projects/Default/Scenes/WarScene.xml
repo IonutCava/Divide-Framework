@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<assets>assets.xml</assets>
+<musicPlaylist>musicPlaylist.xml</musicPlaylist>
+<vegetation>
+    <grassVisibility>150</grassVisibility>
+    <treeVisibility>500</treeVisibility>
+</vegetation>
+<wind>
+    <windDirX>1</windDirX>
+    <windDirZ>-1</windDirZ>
+    <windSpeed>1</windSpeed>
+</wind>
+<options>
+    <visibility>1000</visibility>
+</options>
+<camera>
+    <Player_Cam_0>
+        <reflectionPlane>
+            <normal x="0" y="0" z="0"/>
+            <distance>0</distance>
+            <active>false</active>
+        </reflectionPlane>
+        <accumPitchDegrees>-34.5784607</accumPitchDegrees>
+        <frustumLocked>false</frustumLocked>
+        <euler x="119.77916" y="87.2938995" z="154.341064"/>
+        <eye x="416.361237" y="754.723999" z="18.4800644"/>
+        <orientation x="0.198663205" y="-0.687172472" z="-0.221321329" w="-0.662823439"/>
+        <aspectRatio>1.76999998</aspectRatio>
+        <zPlanes min="0.100000001" max="1000"/>
+        <FoV>77.7975693</FoV>
+        <speedFactor turn="50" move="40" zoom="35"/>
+        <fixedYawAxis x="0" y="1" z="0"/>
+        <yawFixed>true</yawFixed>
+        <rotationLocked>false</rotationLocked>
+        <movementLocked>false</movementLocked>
+    </Player_Cam_0>
+</camera>
+<fog>
+    <fogDensity>0.0700000003</fogDensity>
+    <fogScatter>0.00700000022</fogScatter>
+    <fogColour r="0.699999988" g="0.699999988" b="0.800000012"/>
+</fog>
+<lod>
+    <lodThresholds x="15" y="45" z="85" w="165"/>
+</lod>
+<shadowing lightBleedBias="0.0199999996" minShadowVariance="9.99999975e-06"/>
+<dayNight enabled="false">
+    <timeOfDay hour="12" minute="35" timeFactor="24"/>
+    <location latitude="-12.1804504" longitude="8.12028503"/>
+</dayNight>

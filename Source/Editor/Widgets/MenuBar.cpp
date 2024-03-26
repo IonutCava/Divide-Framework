@@ -88,7 +88,7 @@ namespace Divide
         _sceneOpenDialog( true, true ),
         _sceneSaveDialog( true )
     {
-        g_scenePath = Paths::g_rootPath + Paths::g_xmlDataLocation + Paths::g_scenesLocation;
+        g_scenePath = Paths::g_rootPath + Paths::g_scenesLocation;
     }
 
     void MenuBar::draw( )

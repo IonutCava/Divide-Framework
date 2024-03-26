@@ -191,9 +191,7 @@ namespace Divide
 
         Console::printfn( LOCALE_STR( "XML_SAVE_SCENE_START" ), saveSceneName.c_str() );
 
-        const ResourcePath scenePath = Paths::g_xmlDataLocation + Paths::g_scenesLocation;
-
-        const ResourcePath sceneLocation( scenePath + saveSceneName );
+        const ResourcePath sceneLocation( Paths::g_scenesLocation + saveSceneName );
         const ResourcePath sceneDataFile( sceneLocation + ".xml" );
 
         if ( msgCallback )
@@ -261,7 +259,7 @@ namespace Divide
             pt.put( "dayNight.location.<xmlattr>.longitude", _dayNightData._location._longitude );
             pt.put( "dayNight.timeOfDay.<xmlattr>.timeFactor", _dayNightData._speedFactor );
 
-            const FileError backupReturnCode = copyFile( scenePath.c_str(), (saveSceneName + ".xml").c_str(), scenePath.c_str(), (saveSceneName + ".xml.bak").c_str(), true );
+            const FileError backupReturnCode = copyFile( Paths::g_scenesLocation.c_str(), (saveSceneName + ".xml").c_str(), Paths::g_scenesLocation.c_str(), (saveSceneName + ".xml.bak").c_str(), true );
             if ( backupReturnCode != FileError::NONE &&
                 backupReturnCode != FileError::FILE_NOT_FOUND &&
                 backupReturnCode != FileError::FILE_EMPTY )
@@ -312,10 +310,8 @@ namespace Divide
     {
         const Configuration& config = _context.config();
 
-        const ResourcePath scenePath = Paths::g_xmlDataLocation + Paths::g_scenesLocation;
-
         Console::printfn( LOCALE_STR( "XML_LOAD_SCENE" ), resourceName().c_str() );
-        const ResourcePath sceneLocation( scenePath + "/" + resourceName().c_str() );
+        const ResourcePath sceneLocation( Paths::g_scenesLocation + "/" + resourceName().c_str() );
         const ResourcePath sceneDataFile( sceneLocation + ".xml" );
 
         // A scene does not necessarily need external data files
@@ -402,8 +398,7 @@ namespace Divide
     {
         assert( parent != nullptr );
 
-        const ResourcePath scenePath = Paths::g_xmlDataLocation + Paths::g_scenesLocation;
-        const ResourcePath sceneLocation( scenePath + "/" + resourceName().c_str() );
+        const ResourcePath sceneLocation( Paths::g_scenesLocation + "/" + resourceName().c_str() );
         ResourcePath savePath{ sceneLocation.c_str() };
         savePath.append( "/nodes/" );
 
