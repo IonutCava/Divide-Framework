@@ -1,41 +1,34 @@
 ﻿// ProjectManager.cpp : Defines the entry point for the application.
-//
 
 #include "ProjectManager.h"
 
 #include "imgui.h"
 #include "imgui_internal.h"
-
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_sdlrenderer2.h"
-#include <stdio.h>
-#include <SDL.h>
 
-#if defined(_WIN32)
-#pragma comment(linker, "/subsystem:\"windows\" /entry:\"mainCRTStartup\"")
-#endif
-
-#include <filesystem>
-#include <fmt/format.h>
 #include <regex>
 #include <stack>
-#include <cstdint>
-#include <array>
 
-namespace
-{
-    std::string g_globalMessage = "";
-}
+#include <vector>
+#include <exception>
+#include <optional>
+#include <stdio.h>
+#include <cassert>
+#include <SDL_image.h>
+#include <SDL_surface.h>
+#include <SDL.h>
+#include "fmt/core.h"
 
 #if defined(IS_WINDOWS_BUILD)
+#pragma comment(linker, "/subsystem:\"windows\" /entry:\"mainCRTStartup\"")
+
 constexpr const char* OS_PREFIX = "windows";
 constexpr bool WINDOWS_BUILD = true;
 
 #define _WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
-#include <SDL_surface.h>
-#include <SDL_image.h>
 
 //Returns the last Win32 error, in string format. Returns an empty string if there is no error.
 std::string GetLastErrorAsString()
@@ -63,31 +56,47 @@ std::string GetLastErrorAsString()
     return message;
 }
 
-void Startup( const char* lpApplicationName, const char* params, const char* workingDir )
+[[nodiscard]] std::string Startup( const char* lpApplicationName, const char* params, const char* workingDir )
 {
-    int ret = (int)ShellExecute( NULL, "open", lpApplicationName, params, workingDir , SW_SHOWNORMAL );
-    if (ret <= 32)
+    const auto ret = ShellExecute( NULL, "open", lpApplicationName, params, workingDir , SW_SHOWNORMAL );
+    if (int(ret) <= 32)
     {
-        g_globalMessage = fmt::format( "Error: ShellExecute({}): {}", lpApplicationName, GetLastErrorAsString() );
+        return fmt::format( "Error: ShellExecute({}): {}", lpApplicationName, GetLastErrorAsString() );
     }
-    else
-    {
-        g_globalMessage = fmt::format( "Launching application: {}", lpApplicationName );
-    }
-
+    
+    return fmt::format( "Launching application: {}", lpApplicationName );
 }
 
 #else //IS_WINDOWS_BUILD
 constexpr const char* OS_PREFIX = "unixlike";
 constexpr bool WINDOWS_BUILD = false;
+std::string Startup( [[maybe_unused]] const char* lpApplicationName, [[maybe_unused]] const char* params, [[maybe_unused]] const char* workingDir )
+{
+    return "Not implemented!";
+}
 #endif //IS_WINDOWS_BUILD
 
-constexpr const char* CLANG_PREFIX = "clang";
-constexpr const char* MSVC_PREFIX = "msvc";
-
-namespace 
+Image::Image( const std::filesystem::path& path, SDL_Renderer* renderer )
 {
-void HelpMarker( const char* desc )
+    _surface = IMG_Load( path.string().c_str() );
+    assert( _surface );
+    _texture = SDL_CreateTextureFromSurface( renderer, _surface );
+    assert( _texture );
+    SDL_QueryTexture( _texture, &_format, &_access, &_width, &_height );
+    _aspectRatio = _width / float( _height );
+}
+
+Image::~Image()
+{
+    SDL_DestroyTexture( _texture );
+    SDL_FreeSurface( _surface );
+}
+
+
+static std::string g_globalMessage = "";
+static std::stack<bool> g_readOnlyFaded;
+
+static void HelpMarker( const char* desc )
 {
     ImGui::TextDisabled( "(?)" );
     if ( ImGui::BeginItemTooltip() )
@@ -99,9 +108,8 @@ void HelpMarker( const char* desc )
     }
 }
 
-static std::stack<bool> g_readOnlyFaded;
 
-void PushReadOnly( const bool fade )
+static void PushReadOnly( const bool fade )
 {
     ImGui::PushItemFlag( ImGuiItemFlags_Disabled, true );
     if ( fade )
@@ -111,7 +119,7 @@ void PushReadOnly( const bool fade )
     g_readOnlyFaded.push( fade );
 }
 
-void PopReadOnly()
+static void PopReadOnly()
 {
     ImGui::PopItemFlag();
     if ( g_readOnlyFaded.top() )
@@ -121,7 +129,7 @@ void PopReadOnly()
     g_readOnlyFaded.pop();
 }
 
-void SetTooltip( const char* text )
+static void SetTooltip( const char* text )
 {
     if ( ImGui::IsItemHovered() )
     {
@@ -131,37 +139,7 @@ void SetTooltip( const char* text )
     }
 }
 
-enum class BuildTarget : uint8_t
-{
-    Release,
-    Profile,
-    Debug,
-    COUNT
-};
-
-static const char* BuildTargetNames[] = { "release", "profile", "debug", "COUNT" };
-static_assert(std::size( BuildTargetNames ) == uint8_t( BuildTarget::COUNT ) + 1u, "BuildTarget name array out of sync!");
-
-enum class BuildType : uint8_t
-{
-    Editor,
-    Game,
-    COUNT
-};
-
-static const char* BuildTypetNames[] = { "Editor", "Game", "COUNT" };
-static_assert(std::size( BuildTypetNames ) == uint8_t( BuildType::COUNT ) + 1u, "BuildType name array out of sync!");
-
-struct BuildConfig
-{
-    using Builds = std::array<bool, uint8_t(BuildType::COUNT)>;
-    using Targets = std::array<Builds, uint8_t( BuildTarget::COUNT )>;
-    
-    std::string _toolchainName;
-    Targets _targets;
-};
-
-[[nodiscard]] std::optional<std::string> find_directory( const std::string& search_path, const std::regex& regex )
+[[nodiscard]] static std::optional<std::string> find_directory( const std::filesystem::path& search_path, const std::regex& regex )
 {
     const std::filesystem::directory_iterator end;
     try
@@ -179,20 +157,21 @@ struct BuildConfig
     }
     catch ( std::exception& )
     {
-        g_globalMessage = fmt::format( "Error finding directory: {}", std::filesystem::current_path().string().c_str() );
+        g_globalMessage = fmt::format( MISSING_DIRECTORY_ERROR, std::filesystem::current_path().string().c_str() );
     }
+
     return std::nullopt;
 }
 
 
-[[nodiscard]] std::pair<bool, bool> InitBuildConfigs(BuildConfig& config)
+[[nodiscard]] static std::pair<bool, bool> InitBuildConfigs( BuildConfig& config )
 {
     auto buildFolderExists = []( const BuildTarget target, const std::string_view toolchain, const bool editor )
-    {
-        const std::string buildName = editor ? fmt::format( "{}-editor", BuildTargetNames[uint8_t( target )] ) : BuildTargetNames[uint8_t( target )];
+        {
+            const std::string buildName = editor ? fmt::format( "{}-editor", BuildTargetNames[uint8_t( target )] ) : BuildTargetNames[uint8_t( target )];
 
-        return find_directory( "../Build", std::regex( fmt::format( "\\{}-{}-{}", OS_PREFIX, toolchain, buildName ) ) ).has_value();
-    };
+            return find_directory(std::filesystem::current_path().parent_path() / BUILD_FOLDER_NAME, std::regex( fmt::format( "\\{}-{}-{}", OS_PREFIX, toolchain, buildName ) ) ).has_value();
+        };
 
     bool haveGame = false, haveEditor = false;
     for ( uint8_t i = 0; i < uint8_t( BuildTarget::COUNT ); ++i )
@@ -200,7 +179,7 @@ struct BuildConfig
         for ( uint8_t j = 0; j < uint8_t( BuildType::COUNT ); ++j )
         {
             const bool exists = buildFolderExists( static_cast<BuildTarget>(i), config._toolchainName, j == uint8_t( BuildType::Editor ) );;
-            if (exists)
+            if ( exists )
             {
                 j == uint8_t( BuildType::Editor ) ? haveEditor = true : haveGame = true;
             }
@@ -211,66 +190,57 @@ struct BuildConfig
     return { haveGame, haveEditor };
 }
 
-}
-
-struct Image
-{
-    explicit Image( const std::string& path, SDL_Renderer* renderer )
-    {
-        _surface = IMG_Load( path.c_str() );
-        assert( _surface );
-        _texture = SDL_CreateTextureFromSurface( renderer, _surface );
-        assert( _texture );
-        SDL_QueryTexture( _texture, &_format, &_access, &_width, &_height );
-        _aspectRatio = _width / float( _height );
-    }
-
-    ~Image()
-    {
-        SDL_DestroyTexture( _texture );
-        SDL_FreeSurface( _surface );
-    }
-
-    SDL_Surface* _surface = nullptr;
-    SDL_Texture* _texture = nullptr;
-    int _width = 1, _height = 1, _access = 0;
-    Uint32 _format = 0u;
-    float _aspectRatio = 1.f;
-};
-
-struct ProjectEntry
-{
-    bool _selected{ false };
-    bool _isDefault{ false };
-    std::string _name;
-    std::string _path;
-};
-
-
-void populateProjects( std::vector<ProjectEntry>& projects )
+static void populateProjects( std::vector<ProjectEntry>& projects )
 {
     projects.resize(0);
 
     try
     {
         const std::filesystem::directory_iterator end;
-        for ( std::filesystem::directory_iterator iter{ "../Projects" }; iter != end; iter++ )
+        for ( std::filesystem::directory_iterator iter{ std::filesystem::path{".."} / PROJECTS_FOLDER_NAME }; iter != end; iter++ )
         {
-            if ( !std::filesystem::is_directory( *iter ) )
+            if ( !std::filesystem::is_directory( *iter ) ||
+                 iter->path().filename().string().compare( DELETED_FOLDER_NAME ) == 0 )
             {
                 continue;
             }
 
             ProjectEntry& entry = projects.emplace_back();
             entry._name = iter->path().filename().string();
-            entry._path = iter->path().string();
-            entry._isDefault = entry._name.compare( "Default" ) == 0;
+            entry._path = iter->path().parent_path().string();
+            entry._isDefault = entry._name.compare( DEFAULT_PROJECT_NAME ) == 0;
         }
     }
     catch ( std::exception& )
     {
         g_globalMessage = fmt::format( "Error listing project directory: {}", std::filesystem::current_path().string().c_str() );
     }
+}
+
+static ProjectEntry* getProjectByName( std::vector<ProjectEntry>& projects, const char* name)
+{
+    for ( ProjectEntry& entry : projects )
+    {
+        if ( entry._name.compare( name ) == 0 )
+        {
+            return &entry;
+        }
+    }
+
+    return nullptr;
+}
+
+static ProjectEntry* getDefaultProject(std::vector<ProjectEntry>& projects)
+{
+    for (ProjectEntry& entry : projects)
+    {
+        if (entry._isDefault)
+        {
+            return &entry;
+        }
+    }
+
+    return nullptr;
 }
 
 int main( int, char** )
@@ -315,6 +285,27 @@ int main( int, char** )
     ImGui_ImplSDL2_InitForSDLRenderer( window, renderer );
     ImGui_ImplSDLRenderer2_Init( renderer );
 
+    constexpr uint8_t iconImageSize = 32u;
+    constexpr uint8_t logoImageSize = 96u;
+    constexpr uint8_t projectImageSize = 128u;
+
+    const std::filesystem::path iconsPath = std::filesystem::current_path().parent_path() / "Assets" / "Icons";
+    std::unique_ptr<Image> existingProjectIcon = std::make_unique<Image> ( (iconsPath / "box-unpacking.png").c_str(), renderer );
+    std::unique_ptr<Image> newProjectIcon = std::make_unique<Image> ( (iconsPath / "cardboard-box-closed.png").c_str(), renderer );
+    std::unique_ptr<Image> divideLogo = std::make_unique<Image> ( (iconsPath / "divide.png").c_str(), renderer );
+    std::unique_ptr<Image> deleteIcon = std::make_unique<Image> ( (iconsPath / "trash-can.png").c_str(), renderer );
+    std::unique_ptr<Image> duplicateIcon = std::make_unique<Image> ( (iconsPath / "checkbox-tree.png").c_str(), renderer );
+    std::unique_ptr<Image> launchIcon = std::make_unique<Image> ( (iconsPath / "play-button.png").c_str(), renderer );
+    std::unique_ptr<Image> closeIcon = std::make_unique<Image> ( (iconsPath / "cancel.png").c_str(), renderer );
+
+    const ImVec2 iconSize = ImVec2( iconImageSize, iconImageSize / deleteIcon->_aspectRatio );
+    const ImVec2 logoSize = ImVec2( logoImageSize, logoImageSize / divideLogo->_aspectRatio );
+    const ImVec2 projectSize = ImVec2( projectImageSize, projectImageSize / existingProjectIcon->_aspectRatio );
+
+    std::vector<ProjectEntry> projects;
+    populateProjects( projects );
+    ProjectEntry* defaultProject = getDefaultProject( projects );
+
     ProjectEntry* selectedProject = nullptr;
     const auto setSelected = [&selectedProject]( ProjectEntry* project )
     {
@@ -331,25 +322,6 @@ int main( int, char** )
         }
     };
 
-    std::vector<ProjectEntry> projects;
-    populateProjects(projects );
-
-    constexpr uint8_t iconImageSize = 32u;
-    constexpr uint8_t logoImageSize = 96u;
-    constexpr uint8_t projectImageSize = 128u;
-
-    std::unique_ptr<Image> existingProjectIcon = std::make_unique<Image> ( (std::filesystem::current_path().string() + "/../Assets/Icons/box-unpacking.png").c_str(), renderer );
-    std::unique_ptr<Image> newProjectIcon = std::make_unique<Image> ( (std::filesystem::current_path().string() + "/../Assets/Icons/cardboard-box-closed.png").c_str(), renderer );
-    std::unique_ptr<Image> divideLogo = std::make_unique<Image> ( (std::filesystem::current_path().string() + "/../Assets/Icons/divide.png").c_str(), renderer );
-    std::unique_ptr<Image> deleteIcon = std::make_unique<Image> ( (std::filesystem::current_path().string() + "/../Assets/Icons/trash-can.png").c_str(), renderer );
-    std::unique_ptr<Image> duplicateIcon = std::make_unique<Image> ( (std::filesystem::current_path().string() + "/../Assets/Icons/checkbox-tree.png").c_str(), renderer );
-    std::unique_ptr<Image> launchIcon = std::make_unique<Image> ( (std::filesystem::current_path().string() + "/../Assets/Icons/play-button.png").c_str(), renderer );
-    std::unique_ptr<Image> closeIcon = std::make_unique<Image> ( (std::filesystem::current_path().string() + "/../Assets/Icons/cancel.png").c_str(), renderer );
-
-    const ImVec2 iconSize = ImVec2( iconImageSize, iconImageSize / deleteIcon->_aspectRatio );
-    const ImVec2 logoSize = ImVec2( logoImageSize, logoImageSize / divideLogo->_aspectRatio );
-    const ImVec2 projectSize = ImVec2( projectImageSize, projectImageSize / existingProjectIcon->_aspectRatio );
-
 
     BuildConfig MSVCConfig = { MSVC_PREFIX };
     BuildConfig CLANGConfig = { CLANG_PREFIX };
@@ -359,10 +331,6 @@ int main( int, char** )
     const bool haveMSVCBuilds = haveClangEditor || haveMSVCGame;
     const bool haveClangBuilds = haveMSVCEditor || haveClangGame;
     
-    const bool haveBuilds = haveMSVCBuilds || haveClangBuilds;
-
-    ImVec4 clear_color = ImVec4( 0.45f, 0.55f, 0.60f, 1.00f );
-
     int launch_mode = 0;
     int build_toolset = haveMSVCBuilds ? 0 : 1;
     BuildTarget selectedTarget = BuildTarget::Debug;
@@ -404,6 +372,13 @@ int main( int, char** )
 
     OnSelectionChanged();
 
+    const auto OnProjectsUpdated = [&projects, &defaultProject, setSelected]()
+    {
+        populateProjects( projects );
+        defaultProject = getDefaultProject( projects );
+        setSelected(nullptr);
+    };
+
     // Main loop
     bool done = false;
     while ( !done )
@@ -441,6 +416,74 @@ int main( int, char** )
 
         bool p_open = true;
         {
+            static char InputBuf[256];
+            static size_t InputLen = 0u;
+
+            const auto DuplicateProject = [&projects, &defaultProject, setSelected, OnProjectsUpdated]( const ProjectEntry srcProject, const char* targetProjectName )
+            {
+                const auto targetPath = std::filesystem::path(srcProject._path) / targetProjectName;
+                if (!std::filesystem::exists( targetPath ))
+                {
+                    std::filesystem::create_directories( targetPath );
+                    std::filesystem::copy( std::filesystem::path(srcProject._path) / srcProject._name, targetPath, std::filesystem::copy_options::recursive );
+                    OnProjectsUpdated();
+                    setSelected( getProjectByName(projects, targetProjectName) );
+                    memset( InputBuf, 0, sizeof( InputBuf ) );
+                    InputLen = 0u;
+                    return true;
+                }
+
+                g_globalMessage = fmt::format(DUPLICATE_ENTRY_ERROR, InputBuf);
+                memset( InputBuf, 0, sizeof( InputBuf ) );
+                InputLen = 0u;
+                return false;
+            };
+
+
+            const auto ShowYesNoModal = []( const char* name, const char* text, bool showNameInput )
+            {
+                bool confirmed = false;
+                if ( ImGui::BeginPopupModal( name, NULL, ImGuiWindowFlags_AlwaysAutoResize ) )
+                {
+
+                    ImGui::Text( text );
+                    ImGui::Separator();
+
+                    if ( showNameInput )
+                    {
+                        ImGui::Text("Target project name:"); ImGui::SameLine();
+                        if ( ImGui::InputText( "##targetName", InputBuf, IM_ARRAYSIZE( InputBuf ) ) )
+                        {
+                            InputLen = strlen( InputBuf );
+                        }
+                    }
+
+                    if ( ImGui::Button( "Cancel", ImVec2( 120, 0 ) ) )
+                    {
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::SetItemDefaultFocus();
+                    ImGui::SameLine();
+                    if ( showNameInput && InputLen == 0 )
+                    {
+                        PushReadOnly( true );
+                    }
+                    if ( ImGui::Button( "YES!", ImVec2( 120, 0 ) ) )
+                    {
+                        confirmed = true;
+                        ImGui::CloseCurrentPopup();
+                    }
+                    if ( showNameInput && InputLen == 0 )
+                    {
+                        PopReadOnly();
+                    }
+
+                    ImGui::EndPopup();
+                }
+
+                return confirmed;
+            };
+
             static bool use_work_area = true;
             static ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
 
@@ -480,6 +523,7 @@ int main( int, char** )
 
                     }
 
+                    const bool haveBuilds = haveMSVCBuilds || haveClangBuilds;
                     if ( launch_mode == 0 || !haveBuilds) { PushReadOnly(true); }
                     {
                         { // Toolset for Editor and Game launch modes only
@@ -487,11 +531,11 @@ int main( int, char** )
 
                             if ( !haveMSVCBuilds ) { PushReadOnly( true ); }
                             if (ImGui::RadioButton( "MSVC", &build_toolset, 0 )) { OnSelectionChanged(); } ImGui::SameLine();
-                            if ( !haveMSVCBuilds ) { PopReadOnly(); }
+                            if ( !haveMSVCBuilds ) { PopReadOnly(); HelpMarker( "No prebuild MSVC executables detected! Build a MSVC configuration first!" ); }
 
                             if ( !haveClangBuilds ) { PushReadOnly(true); }
                             if (ImGui::RadioButton( "Clang", &build_toolset, 1 )) { OnSelectionChanged(); }
-                            if ( !haveClangBuilds ) { PopReadOnly(); }
+                            if ( !haveClangBuilds ) { PopReadOnly(); ImGui::SameLine(); HelpMarker( "No prebuild Clang executables detected! Build a Clang configuration first!" ); }
 
                         }
 
@@ -598,11 +642,17 @@ int main( int, char** )
                         if ( SelectedImgButton( "New Project", (ImTextureID)(intptr_t)newProjectIcon->_texture, { button_size, button_size } ) )
                         {
                             setSelected(nullptr);
+                            ImGui::OpenPopup( CREATE_MODAL_NAME );
                         }
-
                         SetTooltip("Create a new project.\nThis will automatically add a default empty scene to the project!");
                         CenteredText( "New Project" );
                         EndGroup();
+
+                        if ( ShowYesNoModal( CREATE_MODAL_NAME, CREATE_DESCRIPTION, true ) &&
+                            !DuplicateProject(*defaultProject, InputBuf))
+                        {
+                            ImGui::OpenPopup( CREATE_MODAL_NAME );
+                        }
                     }
                     for ( ProjectEntry& project : projects)
                     {
@@ -658,24 +708,49 @@ int main( int, char** )
                 ImGui::SetNextWindowPos( ImVec2(center.x, ImGui::GetCursorPosY() ), ImGuiCond_Always, ImVec2( 0.495f, 0.f ) );
                 if ( ImGui::BeginChild( "Controls", ImVec2( ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y * 0.975f ), ImGuiChildFlags_None, ImGuiWindowFlags_None ) )
                 {
-                    if ( selectedProject == nullptr )
+                    const bool isReadOnly = selectedProject == nullptr || selectedProject->_isDefault;
+                    if ( isReadOnly )
                     {
                         PushReadOnly( true );
                     }
 
                     if ( ImGui::ImageButton( "Delete Project", (ImTextureID)(intptr_t)deleteIcon->_texture, iconSize ) )
                     {
+                        ImGui::OpenPopup( DELETE_MODAL_NAME );
                     }
                     SetTooltip( "Delete selected project" );
+
+                    if( selectedProject != nullptr &&
+                        ShowYesNoModal( DELETE_MODAL_NAME, fmt::format( DELETE_DESCRIPTION, selectedProject->_name.c_str() ).c_str(), false ))
+                    {
+                        const std::filesystem::path srcPath( selectedProject->_path );
+                        const std::filesystem::path deletedProjectPath = srcPath / DELETED_FOLDER_NAME;
+
+                        if (!std::filesystem::exists( deletedProjectPath ))
+                        {
+                            std::filesystem::create_directory( deletedProjectPath );
+                        }
+
+                        std::filesystem::rename( srcPath / selectedProject->_name, deletedProjectPath / selectedProject->_name );
+                        OnProjectsUpdated();
+                    }
 
                     ImGui::SameLine();
 
                     if ( ImGui::ImageButton( "Duplicate Project", (ImTextureID)(intptr_t)duplicateIcon->_texture, iconSize ) )
                     {
+                        ImGui::OpenPopup( DUPLICATE_MODAL_NAME );
                     }
-                    SetTooltip( "Duplicate selected project" );
 
-                    if ( selectedProject == nullptr )
+                    SetTooltip( "Duplicate selected project" );
+                    if ( selectedProject != nullptr &&
+                         ShowYesNoModal( DUPLICATE_MODAL_NAME, fmt::format( DUPLICATE_DESCRIPTION, selectedProject->_name.c_str() ).c_str(), true ) &&
+                         !DuplicateProject(*selectedProject, InputBuf))
+                    {
+                        ImGui::OpenPopup( DUPLICATE_MODAL_NAME );
+                    }
+
+                    if ( isReadOnly )
                     {
                         PopReadOnly();
                     }
@@ -697,9 +772,9 @@ int main( int, char** )
                         const auto cmdLine = fmt::format( "--project={}", selectedProject->_name );
                         switch(launch_mode)
                         {
-                            case 0: Startup("devenv.exe", workingDir.c_str() , workingDir.c_str()); break;
+                            case 0: g_globalMessage = Startup("devenv.exe", workingDir.c_str() , workingDir.c_str()); break;
                             case 1: 
-                            case 2: Startup( GetExecutablePath( launch_mode, build_toolset, selectedTarget, workingDir ).c_str(), cmdLine.c_str(), workingDir.c_str() ); break;
+                            case 2: g_globalMessage = Startup( GetExecutablePath( launch_mode, build_toolset, selectedTarget, workingDir ).c_str(), cmdLine.c_str(), workingDir.c_str() ); break;
                             default: break;
                         }
                         p_open = false;
@@ -724,8 +799,11 @@ int main( int, char** )
         }
 
         if ( !p_open )
+        {
             done = true;
+        }
 
+        const ImVec4 clear_color( 0.45f, 0.55f, 0.60f, 1.00f );
         // Rendering
         ImGui::Render();
         SDL_RenderSetScale( renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y );
@@ -751,5 +829,6 @@ int main( int, char** )
     SDL_DestroyRenderer( renderer );
     SDL_DestroyWindow( window );
     SDL_Quit();
+
 	return 0;
 }
