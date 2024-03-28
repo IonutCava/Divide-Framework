@@ -91,6 +91,5 @@ endforeach()
 
 foreach( APP_EXE ${APP_BUILD_EXES} )
     target_link_directories( ${APP_EXE} PRIVATE "${cegui_BINARY_DIR}/lib" )
-    set_target_properties(${APP_EXE} PROPERTIES DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
     set_target_properties(${APP_EXE} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endforeach()

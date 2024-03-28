@@ -121,6 +121,16 @@ void PopReadOnly()
     g_readOnlyFaded.pop();
 }
 
+void SetTooltip( const char* text )
+{
+    if ( ImGui::IsItemHovered() )
+    {
+        ImGui::BeginTooltip();
+        ImGui::Text( text );
+        ImGui::EndTooltip();
+    }
+}
+
 enum class BuildTarget : uint8_t
 {
     Release,
@@ -203,6 +213,66 @@ struct BuildConfig
 
 }
 
+struct Image
+{
+    explicit Image( const std::string& path, SDL_Renderer* renderer )
+    {
+        _surface = IMG_Load( path.c_str() );
+        assert( _surface );
+        _texture = SDL_CreateTextureFromSurface( renderer, _surface );
+        assert( _texture );
+        SDL_QueryTexture( _texture, &_format, &_access, &_width, &_height );
+        _aspectRatio = _width / float( _height );
+    }
+
+    ~Image()
+    {
+        SDL_DestroyTexture( _texture );
+        SDL_FreeSurface( _surface );
+    }
+
+    SDL_Surface* _surface = nullptr;
+    SDL_Texture* _texture = nullptr;
+    int _width = 1, _height = 1, _access = 0;
+    Uint32 _format = 0u;
+    float _aspectRatio = 1.f;
+};
+
+struct ProjectEntry
+{
+    bool _selected{ false };
+    bool _isDefault{ false };
+    std::string _name;
+    std::string _path;
+};
+
+
+void populateProjects( std::vector<ProjectEntry>& projects )
+{
+    projects.resize(0);
+
+    try
+    {
+        const std::filesystem::directory_iterator end;
+        for ( std::filesystem::directory_iterator iter{ "../Projects" }; iter != end; iter++ )
+        {
+            if ( !std::filesystem::is_directory( *iter ) )
+            {
+                continue;
+            }
+
+            ProjectEntry& entry = projects.emplace_back();
+            entry._name = iter->path().filename().string();
+            entry._path = iter->path().string();
+            entry._isDefault = entry._name.compare( "Default" ) == 0;
+        }
+    }
+    catch ( std::exception& )
+    {
+        g_globalMessage = fmt::format( "Error listing project directory: {}", std::filesystem::current_path().string().c_str() );
+    }
+}
+
 int main( int, char** )
 {
 
@@ -218,8 +288,7 @@ int main( int, char** )
 #endif
 
     // Create window with SDL_Renderer graphics context
-    SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALLOW_HIGHDPI);
-    SDL_Window* window = SDL_CreateWindow( "Divide-Framework project manager", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags );
+    SDL_Window* window = SDL_CreateWindow( "Divide-Framework project manager", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALLOW_HIGHDPI );
     if ( window == nullptr )
     {
         printf( "Error: SDL_CreateWindow(): %s\n", SDL_GetError() );
@@ -228,7 +297,7 @@ int main( int, char** )
     SDL_Renderer* renderer = SDL_CreateRenderer( window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED );
     if ( renderer == nullptr )
     {
-        SDL_Log( "Error creating SDL_Renderer!" );
+        printf( "Error creating SDL_Renderer!" );
         return 0;
     }
 
@@ -246,24 +315,41 @@ int main( int, char** )
     ImGui_ImplSDL2_InitForSDLRenderer( window, renderer );
     ImGui_ImplSDLRenderer2_Init( renderer );
 
-    auto logoSurface = SDL_LoadBMP( (std::filesystem::current_path().string() + "/../Assets/MiscImages/divideLogo.bmp").c_str() );
-    auto logoManager = IMG_Load( (std::filesystem::current_path().string() + "/../Assets/Icons/divide.png").c_str() );
-    
-
-    if ( logoSurface == nullptr || logoManager == nullptr)
+    ProjectEntry* selectedProject = nullptr;
+    const auto setSelected = [&selectedProject]( ProjectEntry* project )
     {
-        return 0;
-    }
+        if ( selectedProject != nullptr )
+        {
+            selectedProject->_selected = false;
+        }
 
-    auto projectBtnTexture = SDL_CreateTextureFromSurface( renderer, logoSurface );
-    auto projectLogoTexture = SDL_CreateTextureFromSurface( renderer, logoManager );
+        selectedProject = project;
 
-    int w, h, access;
-    Uint32 format;
-    SDL_QueryTexture( projectBtnTexture, &format, &access, &w, &h);
+        if ( selectedProject != nullptr )
+        {
+            selectedProject->_selected = true;
+        }
+    };
+
+    std::vector<ProjectEntry> projects;
+    populateProjects(projects );
+
+    constexpr uint8_t iconImageSize = 32u;
     constexpr uint8_t logoImageSize = 96u;
     constexpr uint8_t projectImageSize = 128u;
-    const float aspect = w / float( h );
+
+    std::unique_ptr<Image> existingProjectIcon = std::make_unique<Image> ( (std::filesystem::current_path().string() + "/../Assets/Icons/box-unpacking.png").c_str(), renderer );
+    std::unique_ptr<Image> newProjectIcon = std::make_unique<Image> ( (std::filesystem::current_path().string() + "/../Assets/Icons/cardboard-box-closed.png").c_str(), renderer );
+    std::unique_ptr<Image> divideLogo = std::make_unique<Image> ( (std::filesystem::current_path().string() + "/../Assets/Icons/divide.png").c_str(), renderer );
+    std::unique_ptr<Image> deleteIcon = std::make_unique<Image> ( (std::filesystem::current_path().string() + "/../Assets/Icons/trash-can.png").c_str(), renderer );
+    std::unique_ptr<Image> duplicateIcon = std::make_unique<Image> ( (std::filesystem::current_path().string() + "/../Assets/Icons/checkbox-tree.png").c_str(), renderer );
+    std::unique_ptr<Image> launchIcon = std::make_unique<Image> ( (std::filesystem::current_path().string() + "/../Assets/Icons/play-button.png").c_str(), renderer );
+    std::unique_ptr<Image> closeIcon = std::make_unique<Image> ( (std::filesystem::current_path().string() + "/../Assets/Icons/cancel.png").c_str(), renderer );
+
+    const ImVec2 iconSize = ImVec2( iconImageSize, iconImageSize / deleteIcon->_aspectRatio );
+    const ImVec2 logoSize = ImVec2( logoImageSize, logoImageSize / divideLogo->_aspectRatio );
+    const ImVec2 projectSize = ImVec2( projectImageSize, projectImageSize / existingProjectIcon->_aspectRatio );
+
 
     BuildConfig MSVCConfig = { MSVC_PREFIX };
     BuildConfig CLANGConfig = { CLANG_PREFIX };
@@ -281,7 +367,6 @@ int main( int, char** )
     int build_toolset = haveMSVCBuilds ? 0 : 1;
     BuildTarget selectedTarget = BuildTarget::Debug;
     const char* current_build_cfg = BuildTargetNames[uint8_t(selectedTarget)];
-    std::string selectedProject = "Default";
 
     bool haveMissingBuildTargets = false;
     auto OnSelectionChanged = [&](bool isComboBox = false)
@@ -293,6 +378,7 @@ int main( int, char** )
             return;
         }
 
+        setSelected(nullptr);
         if ( launch_mode == 0)
         {
             selectedTarget = static_cast<BuildTarget>(BuildTarget::Debug);
@@ -366,8 +452,7 @@ int main( int, char** )
 
             if ( ImGui::Begin( "Project Manager", &p_open, flags ) )
             {
-                ImVec2 logoSize = ImVec2( logoImageSize, logoImageSize / aspect );
-                ImGui::Image( (ImTextureID)(intptr_t)projectLogoTexture, logoSize );
+                ImGui::Image( (ImTextureID)(intptr_t)divideLogo->_texture, logoSize );
                 ImGui::SameLine();
 
                 ImVec2 center = ImGui::GetMainViewport()->GetCenter();
@@ -445,109 +530,197 @@ int main( int, char** )
 
                     ImGui::EndChild();
                 }
+                ImGui::SameLine( ImGui::GetContentRegionAvail().x - iconImageSize - 5.f );
+                ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.2f, 0.2f, 0.2f, 0.5f ) );
+                ImGui::PushStyleColor( ImGuiCol_ButtonActive, ImVec4( 0.3f, 0.3f, 0.3f, 0.5f ) );
+                ImGui::PushStyleColor( ImGuiCol_ButtonHovered, ImVec4( 0.4f, 0.4f, 0.4f, 0.5f ) );
+                if ( ImGui::ImageButton( "Cancel", (ImTextureID)(intptr_t)closeIcon->_texture, iconSize ) )
                 {
-                    ImGuiWindowFlags window_flags = ImGuiWindowFlags_HorizontalScrollbar;
-                    ImGui::SetNextWindowPos( center, ImGuiCond_Always, ImVec2( 0.5f, 0.45f ) );
-                    if (ImGui::BeginChild( "Project List", ImVec2( ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y * 0.9f ), ImGuiChildFlags_Border, window_flags ))
-                    {
-                        if ( ImGui::BeginTable( "Projects", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_NoBordersInBody ) )
-                        {
-
-                            const std::filesystem::directory_iterator end;
-                            ImVec2 size = ImVec2( projectImageSize, projectImageSize / aspect );
-                            try
-                            {
-                                for ( std::filesystem::directory_iterator iter{ "../Projects" }; iter != end; iter++ )
-                                {
-                                    if ( std::filesystem::is_directory( *iter ) )
-                                    {
-                                        const auto projectName = iter->path().filename().string();
-
-                                        ImGui::TableNextColumn();
-                                        if ( ImGui::ImageButton( projectName.c_str(), (ImTextureID)(intptr_t)projectBtnTexture, size ) )
-                                        {
-                                            g_globalMessage = fmt::format("Selected project ( {} )", projectName );
-                                            selectedProject = projectName;
-                                        }
-
-                                        ImGui::Text( projectName.c_str() ); 
-                                        if (projectName.compare("Default") != 0)
-                                        {
-                                            ImGui::Button( "Delete" );
-                                        }
-                                    }
-                                }
-                            }
-                            catch ( std::exception& )
-                            {
-                                g_globalMessage = fmt::format( "Error listing project directory: {}", std::filesystem::current_path().string().c_str() );
-                            }
-                            ImGui::TableNextColumn();
-                            if ( ImGui::ImageButton( "New Project", (ImTextureID)(intptr_t)projectBtnTexture, size ) )
-                            {
-                                
-                            }
-                            ImGui::Text( "New Project" );
-                            ImGui::EndTable();
-                        }
-                        ImGui::EndChild();
-                    }
+                    p_open = false;
                 }
+                ImGui::PopStyleColor( 3 );
+                static const float scaleWidth = ImGui::CalcTextSize( "123" ).x;
+                
+                if (launch_mode == 0)
+                {
+                    PushReadOnly(true);
+                }
+                static float button_size = 120.f, button_distance = 15.f;
+                ImGui::SetNextWindowPos( center, ImGuiCond_Always, ImVec2( 0.51f, 0.45f ) );
+                if (ImGui::BeginChild( "Project List", ImVec2( ImGui::GetContentRegionAvail().x - scaleWidth * 1.5f, ImGui::GetContentRegionAvail().y * 0.9f ), ImGuiChildFlags_Border, ImGuiWindowFlags_HorizontalScrollbar ))
+                {
+                    float spacing_x = -button_size + ImGui::GetStyle().FramePadding.x;
+                    const float& win_x = ImGui::GetWindowSize().x;
+
+                    const auto CenteredText = []( const char* text )
+                    {
+                        ImVec2 text_size = ImGui::CalcTextSize( text );
+                        ImGui::SetCursorPosX( ImGui::GetCursorPosX() + (button_size - text_size.x) * 0.5f );
+                        ImGui::Text( text );
+                    };
+
+                    const auto EndGroup = [&]()
+                    {
+                        ImGui::EndGroup();
+                        spacing_x += button_size + button_distance;
+                        if ( spacing_x > win_x - (button_size) * 2 )
+                        {
+                            spacing_x = -button_size + ImGui::GetStyle().FramePadding.x;
+                        }
+                        else
+                        {
+                            ImGui::SameLine( spacing_x, button_size );
+                        }
+                    };
+
+                    const auto SelectedImgButton = []( const char* str_id, ImTextureID user_texture_id, const ImVec2& image_size, const bool isSelected = false)
+                    {
+                        if ( isSelected )
+                        {
+                            static const ImVec4 selectedColour {0.25f, 0.75f, 0.25f, 1.0f};
+                            ImGui::PushStyleColor( ImGuiCol_Button, selectedColour );
+                            ImGui::PushStyleColor( ImGuiCol_ButtonActive, selectedColour );
+                            ImGui::PushStyleColor( ImGuiCol_ButtonHovered, selectedColour );
+                        }
+
+                        const bool released = ImGui::ImageButton( str_id, user_texture_id, image_size );
+
+                        if ( isSelected )
+                        {
+                            ImGui::PopStyleColor( 3 );
+                        }
+
+                        return released;
+                    };
+
+                    {
+                        ImGui::BeginGroup();
+                        if ( SelectedImgButton( "New Project", (ImTextureID)(intptr_t)newProjectIcon->_texture, { button_size, button_size } ) )
+                        {
+                            setSelected(nullptr);
+                        }
+
+                        SetTooltip("Create a new project.\nThis will automatically add a default empty scene to the project!");
+                        CenteredText( "New Project" );
+                        EndGroup();
+                    }
+                    for ( ProjectEntry& project : projects)
+                    {
+                        ImGui::BeginGroup();
+                        const bool isSelected = &project == selectedProject;
+
+                        if ( SelectedImgButton( project._name.c_str(), (ImTextureID)(intptr_t)existingProjectIcon->_texture, { button_size, button_size }, isSelected ))
+                        {
+                            g_globalMessage = fmt::format("Selected project ( {} )", project._name );
+                            if ( selectedProject != nullptr)
+                            {
+                                selectedProject->_selected = false;
+                            }
+                            selectedProject = &project;
+                            selectedProject->_selected = true;
+                        }
+
+                        SetTooltip( fmt::format("Open project [ {} ]", project._name ).c_str() );
+                        CenteredText( project._name.c_str());
+                        EndGroup();
+                    }
+
+                    ImGui::EndChild();
+                }
+                if ( launch_mode == 0 )
+                {
+                    PopReadOnly();
+                }
+                ImGui::SameLine();
+
+                ImGui::VSliderFloat( "##Icon Size", ImVec2(scaleWidth, ImGui::GetContentRegionAvail().y - 55), &button_size, 100.f, 500.f );
+                SetTooltip( "Change the size of the icons in the project list" );
 
                 auto GetExecutablePath = [&](int launch_mode, int build_toolset, BuildTarget selectedTarget, std::string_view workingDir)
                 {
-                        const std::string toolset = build_toolset == 0 ? MSVCConfig._toolchainName : CLANGConfig._toolchainName;
-                        const std::string editor_flag = launch_mode == 1 ? "-editor" : "";
+                    const std::string toolset = build_toolset == 0 ? MSVCConfig._toolchainName : CLANGConfig._toolchainName;
+                    const std::string editor_flag = launch_mode == 1 ? "-editor" : "";
 
-                        std::string build_type = "";
-                        std::string debug_suffix = "";
+                    std::string build_type = "";
 
-                        switch(selectedTarget)
-                        {
-                            case BuildTarget::Debug:   build_type = "debug"; debug_suffix = "_d"; break;
-                            case BuildTarget::Profile: build_type = "profile"; break;
-                            case BuildTarget::Release: build_type = "release"; break;
-                            default: break;
-                        }
-                        
-                        const std::string name = fmt::format("{}\\Build\\{}-{}-{}{}\\bin\\Divide-Framework{}.exe", workingDir, OS_PREFIX, toolset, build_type, editor_flag, debug_suffix);
-                        return name;
-                };
-
-                float buttonWidth1 = ImGui::CalcTextSize( "Launch" ).x + ImGui::GetStyle().FramePadding.x * 2.f;
-                float buttonWidth2 = ImGui::CalcTextSize( "Cancel" ).x + ImGui::GetStyle().FramePadding.x * 2.f;
-                float widthNeeded = buttonWidth1 + ImGui::GetStyle().ItemSpacing.x + buttonWidth2;
-                if ( ImGui::BeginChild( "Status", ImVec2( ImGui::GetContentRegionAvail().x * 0.85f, ImGui::GetContentRegionAvail().y * 0.9f ), ImGuiChildFlags_Border, ImGuiWindowFlags_None ) )
-                {
-                    ImGui::Text( g_globalMessage.c_str() );
-                    ImGui::EndChild();
-                }
-                ImGui::SameLine();
-                ImGui::SetCursorPosX( ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - widthNeeded * 1.5f);
-                ImGui::SetCursorPosY( ImGui::GetCursorPosY() + 10);
-                if (ImGui::Button( "Launch" ))
-                {
-                    const auto workingDir = std::filesystem::current_path().string() + "\\..\\";
-                    const auto cmdLine = fmt::format( "--project={}", selectedProject );
-                    switch(launch_mode)
+                    switch(selectedTarget)
                     {
-                        case 0: Startup("devenv.exe", workingDir.c_str() , workingDir.c_str()); break;
-                        case 1: 
-                        case 2: Startup( GetExecutablePath( launch_mode, build_toolset, selectedTarget, workingDir ).c_str(), cmdLine.c_str(), workingDir.c_str() ); break;
+                        case BuildTarget::Debug:   build_type = "debug";   break;
+                        case BuildTarget::Profile: build_type = "profile"; break;
+                        case BuildTarget::Release: build_type = "release"; break;
                         default: break;
                     }
-                    p_open = false;
-                }
-                ImGui::SameLine();
-                ImGui::SetCursorPosX( ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - widthNeeded * 0.85f);
-                ImGui::SetCursorPosY( ImGui::GetCursorPosY() + 10 );
-                if (ImGui::Button( "Cancel" ))
-                {
-                    p_open = false;
-                }
-            }
+                        
+                    const std::string name = fmt::format("{}\\Build\\{}-{}-{}{}\\bin\\Divide-Framework.exe", workingDir, OS_PREFIX, toolset, build_type, editor_flag);
+                    return name;
+                };
 
-            ImGui::End();
+                ImGui::SetNextWindowPos( ImVec2(center.x, ImGui::GetCursorPosY() ), ImGuiCond_Always, ImVec2( 0.495f, 0.f ) );
+                if ( ImGui::BeginChild( "Controls", ImVec2( ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y * 0.975f ), ImGuiChildFlags_None, ImGuiWindowFlags_None ) )
+                {
+                    if ( selectedProject == nullptr )
+                    {
+                        PushReadOnly( true );
+                    }
+
+                    if ( ImGui::ImageButton( "Delete Project", (ImTextureID)(intptr_t)deleteIcon->_texture, iconSize ) )
+                    {
+                    }
+                    SetTooltip( "Delete selected project" );
+
+                    ImGui::SameLine();
+
+                    if ( ImGui::ImageButton( "Duplicate Project", (ImTextureID)(intptr_t)duplicateIcon->_texture, iconSize ) )
+                    {
+                    }
+                    SetTooltip( "Duplicate selected project" );
+
+                    if ( selectedProject == nullptr )
+                    {
+                        PopReadOnly();
+                    }
+
+                    ImGui::SameLine();
+                    
+                    if ( ImGui::BeginChild( "Status", ImVec2( ImGui::GetContentRegionAvail().x * 0.95f, ImGui::GetContentRegionAvail().y * 0.8), ImGuiChildFlags_Border, ImGuiWindowFlags_None ) )
+                    {
+                        ImGui::Text( g_globalMessage.c_str() );
+                        ImGui::EndChild();
+                    }
+                    ImGui::SameLine();
+
+                    if ( ImGui::ImageButton( "Launch", (ImTextureID)(intptr_t)launchIcon->_texture, iconSize ) )
+                    {
+                        const auto workingDir = std::filesystem::current_path().string() + "\\..\\";
+                        assert(selectedProject != nullptr || launch_mode == 0 );
+
+                        const auto cmdLine = fmt::format( "--project={}", selectedProject->_name );
+                        switch(launch_mode)
+                        {
+                            case 0: Startup("devenv.exe", workingDir.c_str() , workingDir.c_str()); break;
+                            case 1: 
+                            case 2: Startup( GetExecutablePath( launch_mode, build_toolset, selectedTarget, workingDir ).c_str(), cmdLine.c_str(), workingDir.c_str() ); break;
+                            default: break;
+                        }
+                        p_open = false;
+                    }
+                    if ( launch_mode == 0 )
+                    {
+                        SetTooltip( "Open the Divide-Framework source code in Visual Studio.");
+                    }
+                    else if (launch_mode == 1)
+                    {
+                        SetTooltip("Launch the selected project in the editor.");
+                    }
+                    else
+                    {
+                        SetTooltip("Play the selected project.");
+                    }
+                    ImGui::EndChild();
+                }
+
+                ImGui::End();
+            }
         }
 
         if ( !p_open )
@@ -563,10 +736,14 @@ int main( int, char** )
     }
 
     // Cleanup
-    SDL_DestroyTexture( projectLogoTexture );
-    SDL_DestroyTexture( projectBtnTexture );
-    SDL_FreeSurface( logoManager );
-    SDL_FreeSurface( logoSurface );
+    closeIcon.reset();
+    launchIcon.reset();
+    duplicateIcon.reset();
+    deleteIcon.reset();
+    divideLogo.reset();
+    newProjectIcon.reset();
+    existingProjectIcon.reset();
+
     ImGui_ImplSDLRenderer2_Shutdown();
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
