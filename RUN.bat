@@ -1,5 +1,7 @@
 @echo off
 
+set /a x=0
+
 if "%~1"=="" goto run_Default
 if "%~1"=="-D" goto run_Debug
 if "%~1"=="Debug" goto run_Debug
@@ -27,9 +29,22 @@ if exist "ProjectManager\Build\x64-debug\bin\ProjectManager.exe" (
 	echo Launching Executable
 	ProjectManager\Build\x64-debug\bin\ProjectManager.exe %*
 ) else (
-	echo No executable found. Exiting ...
-	goto exit
+	if %x% EQU 0 (
+		echo No executable found. Trying to configure and build ...
+		goto build
+	) else (
+		echo No executable found and build failed.
+		goto exit
+	)
 )
+
+:build
+cd ProjectManager\
+cmake --preset x64-release
+cmake --build Build/x64-release
+cd ..
+set /a x+=1
+goto run_Release
 
 :exit
 echo Exiting ...
