@@ -56,9 +56,9 @@ std::string GetLastErrorAsString()
     return message;
 }
 
-[[nodiscard]] std::string Startup( const char* lpApplicationName, const char* params, const char* workingDir )
+[[nodiscard]] std::string Startup( const char* lpApplicationName, const char* params, const std::filesystem::path& workingDir )
 {
-    const auto ret = ShellExecute( NULL, "open", lpApplicationName, params, workingDir , SW_SHOWNORMAL );
+    const auto ret = ShellExecute( NULL, "open", lpApplicationName, params, workingDir.string().c_str() , SW_SHOWNORMAL );
     if (int(ret) <= 32)
     {
         return fmt::format( "Error: ShellExecute({}): {}", lpApplicationName, GetLastErrorAsString() );
@@ -70,7 +70,7 @@ std::string GetLastErrorAsString()
 #else //IS_WINDOWS_BUILD
 constexpr const char* OS_PREFIX = "unixlike";
 constexpr bool WINDOWS_BUILD = false;
-std::string Startup( [[maybe_unused]] const char* lpApplicationName, [[maybe_unused]] const char* params, [[maybe_unused]] const char* workingDir )
+std::string Startup( [[maybe_unused]] const char* lpApplicationName, [[maybe_unused]] const char* params, [[maybe_unused]] const std::filesystem::path& workingDir )
 {
     return "Not implemented!";
 }
@@ -95,6 +95,7 @@ Image::~Image()
 
 static std::string g_globalMessage = "";
 static std::stack<bool> g_readOnlyFaded;
+static std::filesystem::path g_projectPath;
 
 static void HelpMarker( const char* desc )
 {
@@ -107,7 +108,6 @@ static void HelpMarker( const char* desc )
         ImGui::EndTooltip();
     }
 }
-
 
 static void PushReadOnly( const bool fade )
 {
@@ -157,7 +157,7 @@ static void SetTooltip( const char* text )
     }
     catch ( std::exception& )
     {
-        g_globalMessage = fmt::format( MISSING_DIRECTORY_ERROR, std::filesystem::current_path().string().c_str() );
+        g_globalMessage = fmt::format( MISSING_DIRECTORY_ERROR, search_path.string().c_str() );
     }
 
     return std::nullopt;
@@ -170,7 +170,7 @@ static void SetTooltip( const char* text )
         {
             const std::string buildName = editor ? fmt::format( "{}-editor", BuildTargetNames[uint8_t( target )] ) : BuildTargetNames[uint8_t( target )];
 
-            return find_directory(std::filesystem::current_path().parent_path() / BUILD_FOLDER_NAME, std::regex( fmt::format( "\\{}-{}-{}", OS_PREFIX, toolchain, buildName ) ) ).has_value();
+            return find_directory( g_projectPath / BUILD_FOLDER_NAME, std::regex( fmt::format( "\\{}-{}-{}", OS_PREFIX, toolchain, buildName ) ) ).has_value();
         };
 
     bool haveGame = false, haveEditor = false;
@@ -197,7 +197,7 @@ static void populateProjects( std::vector<ProjectEntry>& projects )
     try
     {
         const std::filesystem::directory_iterator end;
-        for ( std::filesystem::directory_iterator iter{ std::filesystem::path{".."} / PROJECTS_FOLDER_NAME }; iter != end; iter++ )
+        for ( std::filesystem::directory_iterator iter{ g_projectPath / PROJECTS_FOLDER_NAME }; iter != end; iter++ )
         {
             if ( !std::filesystem::is_directory( *iter ) ||
                  iter->path().filename().string().compare( DELETED_FOLDER_NAME ) == 0 )
@@ -213,7 +213,7 @@ static void populateProjects( std::vector<ProjectEntry>& projects )
     }
     catch ( std::exception& )
     {
-        g_globalMessage = fmt::format( "Error listing project directory: {}", std::filesystem::current_path().string().c_str() );
+        g_globalMessage = fmt::format( "Error listing project directory: {}", (g_projectPath / PROJECTS_FOLDER_NAME).string().c_str() );
     }
 }
 
@@ -245,6 +245,11 @@ static ProjectEntry* getDefaultProject(std::vector<ProjectEntry>& projects)
 
 int main( int, char** )
 {
+    g_projectPath = std::filesystem::current_path();
+    while ( !std::filesystem::exists( g_projectPath / PROJECTS_FOLDER_NAME ))
+    {
+        g_projectPath = g_projectPath.parent_path();
+    }
 
     // Setup SDL
     if ( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER ) != 0 )
@@ -289,7 +294,7 @@ int main( int, char** )
     constexpr uint8_t logoImageSize = 96u;
     constexpr uint8_t projectImageSize = 128u;
 
-    const std::filesystem::path iconsPath = std::filesystem::current_path().parent_path() / "Assets" / "Icons";
+    const std::filesystem::path iconsPath = g_projectPath / "Assets" / "Icons";
     std::unique_ptr<Image> existingProjectIcon = std::make_unique<Image> ( (iconsPath / "box-unpacking.png").c_str(), renderer );
     std::unique_ptr<Image> newProjectIcon = std::make_unique<Image> ( (iconsPath / "cardboard-box-closed.png").c_str(), renderer );
     std::unique_ptr<Image> divideLogo = std::make_unique<Image> ( (iconsPath / "divide.png").c_str(), renderer );
@@ -339,7 +344,7 @@ int main( int, char** )
     bool haveMissingBuildTargets = false;
     auto OnSelectionChanged = [&](bool isComboBox = false)
     {
-        g_globalMessage = fmt::format( "Current working dir: {}", std::filesystem::current_path().string().c_str() );
+        g_globalMessage = fmt::format( "Current working dir: {}", g_projectPath.string().c_str() );
 
         if (isComboBox)
         {
@@ -766,15 +771,14 @@ int main( int, char** )
 
                     if ( ImGui::ImageButton( "Launch", (ImTextureID)(intptr_t)launchIcon->_texture, iconSize ) )
                     {
-                        const auto workingDir = std::filesystem::current_path().string() + "\\..\\";
                         assert(selectedProject != nullptr || launch_mode == 0 );
 
                         const auto cmdLine = fmt::format( "--project={}", selectedProject->_name );
                         switch(launch_mode)
                         {
-                            case 0: g_globalMessage = Startup("devenv.exe", workingDir.c_str() , workingDir.c_str()); break;
+                            case 0: g_globalMessage = Startup("devenv.exe", g_projectPath.string().c_str() , g_projectPath); break;
                             case 1: 
-                            case 2: g_globalMessage = Startup( GetExecutablePath( launch_mode, build_toolset, selectedTarget, workingDir ).c_str(), cmdLine.c_str(), workingDir.c_str() ); break;
+                            case 2: g_globalMessage = Startup( GetExecutablePath( launch_mode, build_toolset, selectedTarget, g_projectPath.string() ).c_str(), cmdLine.c_str(),g_projectPath ); break;
                             default: break;
                         }
                         p_open = false;
