@@ -30,7 +30,28 @@ The reason it's published on GitHub are:
 If you plan to use any parts of this code in a commercial product, a couple of things:
 * Are you sure?
 * Please let me know as I'm curious to see where and why and also, I'd highly appreciate it.
-
+  
+## How to build & run
+### All:
+- Clone with recursive submodules (e.g. git clone --recurse-submodules). Needed for vcpkg.
+### Visual Studio Code:
+- Open the root folder in VSCode (with CMake and C++ extensions installed).
+- Under CMake Project Status view, select the desired Configure preset followed by the desired Build preset.
+- Build and Run as needed.
+- Works on both Windows and Linux.
+### Windows:
+- Engine / Game builds:
+   - Open the root folder in Visual Studio (with CMake tools installed).
+   - Select the desired preset from the Build Preset dropdown.
+   - Build and Run as needed.
+- Project Manager:
+   - Same as above (VS/VSCode) but with the ProjectManager subfolder as a root.
+   - Alternatively. RUN.bat will attempt to build a release version and launch that.
+      - The Project Manager has an option to launch Visual Studio with the proper path set.
+### Linux: 
+- Only tested the VSCode steps outlined above.
+### MacOS: 
+- ToDo
 
 ## Features:
 
