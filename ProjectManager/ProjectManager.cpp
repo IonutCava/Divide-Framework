@@ -237,10 +237,26 @@ static std::weak_ptr<Image> loadImage( const std::string& imagePath, const std::
     return imageDB.emplace_back( std::make_unique<Image>( targetPath, renderer ) );
 }
 
-static void loadConfig()
+static boost::property_tree::iptree GetXmlTree(std::filesystem::path filePath)
 {
     boost::property_tree::iptree XmlTree;
-    boost::property_tree::read_xml( (g_projectPath / PROJECT_MANAGER_FOLDER_NAME / MANAGER_CONFIG_FILE_NAME).string(), XmlTree, boost::property_tree::xml_parser::trim_whitespace );
+    try
+    {
+        boost::property_tree::read_xml( (g_projectPath / PROJECT_MANAGER_FOLDER_NAME / MANAGER_CONFIG_FILE_NAME).string(), XmlTree );
+    }
+    catch ( boost::property_tree::xml_parser_error& e )
+    {
+        g_globalMessage = fmt::format( ERRORS[7], (g_projectPath / PROJECT_MANAGER_FOLDER_NAME / MANAGER_CONFIG_FILE_NAME).string().c_str(), e.what() );
+    }
+
+    return XmlTree;
+}
+
+static void loadConfig()
+{
+    const std::filesystem::path configPath = g_projectPath / PROJECT_MANAGER_FOLDER_NAME / MANAGER_CONFIG_FILE_NAME;
+    boost::property_tree::iptree XmlTree = GetXmlTree(configPath);
+
     if ( !XmlTree.empty() )
     {
         g_ideName = XmlTree.get<std::string>( CONFIG_IDE_NAME_TAG, EDITOR_NAME );
@@ -254,14 +270,20 @@ static void loadConfig()
 static void saveConfig()
 {
     const std::filesystem::path configPath = g_projectPath / PROJECT_MANAGER_FOLDER_NAME / MANAGER_CONFIG_FILE_NAME;
-
-    boost::property_tree::iptree XmlTree;
-    boost::property_tree::read_xml( configPath.string(), XmlTree, boost::property_tree::xml_parser::trim_whitespace );
+    boost::property_tree::iptree XmlTree = GetXmlTree( configPath );
 
     XmlTree.put<std::string>( CONFIG_IDE_NAME_TAG, g_ideName );
     XmlTree.put<std::string>( CONFIG_IDE_CMD_TAG, g_ideLaunchCommand);
 
-    boost::property_tree::write_xml( configPath.string(), XmlTree );
+    static boost::property_tree::xml_writer_settings<std::string> settings( ' ', 4 );
+    try
+    {
+        boost::property_tree::write_xml( configPath.string(), XmlTree, std::locale(), settings );
+    }
+    catch ( boost::property_tree::xml_parser_error& e )
+    {
+        g_globalMessage = fmt::format( ERRORS[8], (g_projectPath / PROJECT_MANAGER_FOLDER_NAME / MANAGER_CONFIG_FILE_NAME).string().c_str(), e.what() );
+    }
 }
 
 static void populateProjects( ProjectDB& projects, SDL_Renderer* renderer, ImageDB& imageDB, bool retry = false )
