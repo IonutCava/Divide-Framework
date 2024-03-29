@@ -154,6 +154,8 @@ constexpr const char* ERRORS[] =
     /*4*/ "Error: SDL_CreateWindow(): %s\n",
     /*5*/ "Error creating SDL_Renderer: %s\n",
     /*6*/ "Failed to duplicate project [ {} ]\n{}",
+    /*7*/ "Failed to parse XML file: [ {} ]\n{}",
+    /*8*/ "Failed to save to XML file: [ {} ]\n{}",
 };
 
 enum class BuildTarget : uint8_t
