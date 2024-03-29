@@ -7,6 +7,7 @@
             "features": [ "docking-experimental", "sdl2-binding", "sdl2-renderer-binding" ]
         },
         "fmt",
-        "sdl2-image"
+        "sdl2-image",
+        "boost-property-tree"
     ]
 }

@@ -13,7 +13,7 @@
         "type": "default",
         "project": "CMakeLists.txt",
         "projectTarget": "ProjectManager.exe (bin\\ProjectManager.exe)",
-        "name": "ProjectManager.exe (Release)",
+        "name": "ProjectManager (Release)",
         "currentDir": "${workspaceRoot}"
     }
   ]

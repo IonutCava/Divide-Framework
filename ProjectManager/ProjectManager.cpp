@@ -10,15 +10,22 @@
 #include <regex>
 #include <stack>
 
-#include <vector>
 #include <exception>
 #include <optional>
 #include <stdio.h>
 #include <cassert>
+#include <memory>
+#include <string.h>
+#include <thread>
+
 #include <SDL_image.h>
 #include <SDL_surface.h>
 #include <SDL.h>
-#include "fmt/core.h"
+#include <fmt/core.h>
+
+#include <boost/property_tree/xml_parser.hpp>
+
+#include <ImGuiMisc/imguistyleserializer/ImGuiStyleSerializer.cpp>
 
 #if defined(IS_WINDOWS_BUILD)
 #pragma comment(linker, "/subsystem:\"windows\" /entry:\"mainCRTStartup\"")
@@ -31,7 +38,7 @@ constexpr bool WINDOWS_BUILD = true;
 #include <windows.h>
 
 //Returns the last Win32 error, in string format. Returns an empty string if there is no error.
-std::string GetLastErrorAsString()
+static std::string GetLastErrorAsString()
 {
     //Get the error message ID, if any.
     DWORD errorMessageID = ::GetLastError();
@@ -61,10 +68,10 @@ std::string GetLastErrorAsString()
     const auto ret = ShellExecute( NULL, "open", lpApplicationName, params, workingDir.string().c_str() , SW_SHOWNORMAL );
     if (int(ret) <= 32)
     {
-        return fmt::format( "Error: ShellExecute({}): {}", lpApplicationName, GetLastErrorAsString() );
+        return fmt::format( ERRORS[0], lpApplicationName, GetLastErrorAsString() );
     }
     
-    return fmt::format( "Launching application: {}", lpApplicationName );
+    return fmt::format( LAUNCH_MSG, lpApplicationName );
 }
 
 #else //IS_WINDOWS_BUILD
@@ -77,6 +84,7 @@ std::string Startup( [[maybe_unused]] const char* lpApplicationName, [[maybe_unu
 #endif //IS_WINDOWS_BUILD
 
 Image::Image( const std::filesystem::path& path, SDL_Renderer* renderer )
+    : _path( path )
 {
     _surface = IMG_Load( path.string().c_str() );
     assert( _surface );
@@ -92,10 +100,15 @@ Image::~Image()
     SDL_FreeSurface( _surface );
 }
 
+bool Image::operator==( const Image& other ) const noexcept
+{
+    return _path == other._path;
+}
 
 static std::string g_globalMessage = "";
 static std::stack<bool> g_readOnlyFaded;
 static std::filesystem::path g_projectPath;
+static std::filesystem::path g_iconsPath;
 
 static void HelpMarker( const char* desc )
 {
@@ -157,7 +170,7 @@ static void SetTooltip( const char* text )
     }
     catch ( std::exception& )
     {
-        g_globalMessage = fmt::format( MISSING_DIRECTORY_ERROR, search_path.string().c_str() );
+        g_globalMessage = fmt::format( ERRORS[1], search_path.string().c_str() );
     }
 
     return std::nullopt;
@@ -190,14 +203,45 @@ static void SetTooltip( const char* text )
     return { haveGame, haveEditor };
 }
 
-static void populateProjects( std::vector<ProjectEntry>& projects )
+static Image* getImage( const std::string& imagePath, const std::string& imageName, const ImageDB& imageDB )
+{
+    const std::filesystem::path targetPath = std::filesystem::path( imagePath ) / imageName;
+    assert( std::filesystem::is_regular_file( targetPath ) );
+    for ( const Image_ptr& image : imageDB )
+    {
+        if ( image->_path == targetPath )
+        {
+            return image.get();
+        }
+    }
+    return nullptr;
+}
+
+static std::weak_ptr<Image> loadImage( const std::string& imagePath, const std::string& imageName, SDL_Renderer* renderer,ImageDB& imageDB)
+{
+    const std::filesystem::path targetPath = std::filesystem::path( imagePath ) / imageName;
+    assert( std::filesystem::is_regular_file( targetPath ) );
+    for ( const Image_ptr& image : imageDB )
+    {
+        if ( image->_path == targetPath )
+        {
+            return image;
+        }
+    }
+
+    return imageDB.emplace_back( std::make_unique<Image>( targetPath, renderer ) );
+}
+
+static void populateProjects( ProjectDB& projects, SDL_Renderer* renderer, ImageDB& imageDB, bool retry = false )
 {
     projects.resize(0);
 
     try
     {
+        boost::property_tree::iptree XmlTree;
+
         const std::filesystem::directory_iterator end;
-        for ( std::filesystem::directory_iterator iter{ g_projectPath / PROJECTS_FOLDER_NAME }; iter != end; iter++ )
+        for ( std::filesystem::directory_iterator iter{ g_projectPath / PROJECTS_FOLDER_NAME }; iter != end; ++iter )
         {
             if ( !std::filesystem::is_directory( *iter ) ||
                  iter->path().filename().string().compare( DELETED_FOLDER_NAME ) == 0 )
@@ -209,15 +253,46 @@ static void populateProjects( std::vector<ProjectEntry>& projects )
             entry._name = iter->path().filename().string();
             entry._path = iter->path().parent_path().string();
             entry._isDefault = entry._name.compare( DEFAULT_PROJECT_NAME ) == 0;
+            entry._logoPath = g_iconsPath.string();
+
+            if ( std::filesystem::is_regular_file( iter->path() / PROJECT_CONFIG_FILE_NAME ) )
+            {
+                XmlTree.clear();
+                boost::property_tree::read_xml( (iter->path() / PROJECT_CONFIG_FILE_NAME).string(), XmlTree, boost::property_tree::xml_parser::trim_whitespace);
+                if (!XmlTree.empty() )
+                {
+                    const std::string logoName = XmlTree.get<std::string>( CONFIG_LOGO_TAG, "" );
+                    if (!logoName.empty())
+                    {
+                        entry._logoName = logoName;
+                        entry._logoPath = iter->path().string();
+                    }
+                }
+            }
+            entry._logo = loadImage( entry._logoPath, entry._logoName, renderer, imageDB );
+
+            for ( std::filesystem::directory_iterator sceneIter{ iter->path() / SCENES_FOLDER_NAME }; sceneIter != end; ++sceneIter )
+            {
+                if (std::filesystem::is_directory(*sceneIter))
+                {
+                    entry._sceneList.emplace_back( sceneIter->path().filename().string() );
+                }
+            }
+
         }
     }
-    catch ( std::exception& )
+    catch ( std::exception& e)
     {
-        g_globalMessage = fmt::format( "Error listing project directory: {}", (g_projectPath / PROJECTS_FOLDER_NAME).string().c_str() );
+        g_globalMessage = fmt::format( ERRORS[2], (g_projectPath / PROJECTS_FOLDER_NAME).string().c_str(), e.what() );
+        if (!retry)
+        {
+            std::this_thread::sleep_for( std::chrono::seconds( 1 ) );
+            populateProjects( projects, renderer, imageDB, true );
+        }
     }
 }
 
-static ProjectEntry* getProjectByName( std::vector<ProjectEntry>& projects, const char* name)
+static ProjectEntry* getProjectByName( ProjectDB& projects, const char* name)
 {
     for ( ProjectEntry& entry : projects )
     {
@@ -230,7 +305,7 @@ static ProjectEntry* getProjectByName( std::vector<ProjectEntry>& projects, cons
     return nullptr;
 }
 
-static ProjectEntry* getDefaultProject(std::vector<ProjectEntry>& projects)
+static ProjectEntry* getDefaultProject( ProjectDB& projects)
 {
     for (ProjectEntry& entry : projects)
     {
@@ -243,6 +318,16 @@ static ProjectEntry* getDefaultProject(std::vector<ProjectEntry>& projects)
     return nullptr;
 }
 
+static char IDE_CMD[512] = { 0 };
+static size_t IDE_CMD_LEN = 0u;
+
+static void SetDefaultIDECommand()
+{
+    strncpy( IDE_CMD, EDITOR_LAUNCH_COMMAND, sizeof( IDE_CMD ) - 1 );
+    IDE_CMD_LEN = strlen( EDITOR_LAUNCH_COMMAND );
+    IDE_CMD[IDE_CMD_LEN] = '\0';
+}
+
 int main( int, char** )
 {
     g_projectPath = std::filesystem::current_path();
@@ -250,11 +335,14 @@ int main( int, char** )
     {
         g_projectPath = g_projectPath.parent_path();
     }
+    g_iconsPath = g_projectPath / ASSESTS_FOLDER_NAME / ICONS_FOLDER_NAME;
+
+    SetDefaultIDECommand();
 
     // Setup SDL
     if ( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER ) != 0 )
     {
-        printf( "Error: %s\n", SDL_GetError() );
+        printf( ERRORS[3], SDL_GetError() );
         return -1;
     }
     // From 2.0.18: Enable native IME.
@@ -263,16 +351,16 @@ int main( int, char** )
 #endif
 
     // Create window with SDL_Renderer graphics context
-    SDL_Window* window = SDL_CreateWindow( "Divide-Framework project manager", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALLOW_HIGHDPI );
+    SDL_Window* window = SDL_CreateWindow( WINDOW_TITLE, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALLOW_HIGHDPI );
     if ( window == nullptr )
     {
-        printf( "Error: SDL_CreateWindow(): %s\n", SDL_GetError() );
+        printf( ERRORS[4], SDL_GetError() );
         return -1;
     }
     SDL_Renderer* renderer = SDL_CreateRenderer( window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED );
     if ( renderer == nullptr )
     {
-        printf( "Error creating SDL_Renderer!" );
+        printf( ERRORS[5], SDL_GetError() );
         return 0;
     }
 
@@ -285,7 +373,7 @@ int main( int, char** )
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
-
+    ImGui::ResetStyle( ImGuiStyle_Dracula );
     // Setup Platform/Renderer backends
     ImGui_ImplSDL2_InitForSDLRenderer( window, renderer );
     ImGui_ImplSDLRenderer2_Init( renderer );
@@ -294,21 +382,30 @@ int main( int, char** )
     constexpr uint8_t logoImageSize = 96u;
     constexpr uint8_t projectImageSize = 128u;
 
-    const std::filesystem::path iconsPath = g_projectPath / "Assets" / "Icons";
-    std::unique_ptr<Image> existingProjectIcon = std::make_unique<Image> ( (iconsPath / "box-unpacking.png").c_str(), renderer );
-    std::unique_ptr<Image> newProjectIcon = std::make_unique<Image> ( (iconsPath / "cardboard-box-closed.png").c_str(), renderer );
-    std::unique_ptr<Image> divideLogo = std::make_unique<Image> ( (iconsPath / "divide.png").c_str(), renderer );
-    std::unique_ptr<Image> deleteIcon = std::make_unique<Image> ( (iconsPath / "trash-can.png").c_str(), renderer );
-    std::unique_ptr<Image> duplicateIcon = std::make_unique<Image> ( (iconsPath / "checkbox-tree.png").c_str(), renderer );
-    std::unique_ptr<Image> launchIcon = std::make_unique<Image> ( (iconsPath / "play-button.png").c_str(), renderer );
-    std::unique_ptr<Image> closeIcon = std::make_unique<Image> ( (iconsPath / "cancel.png").c_str(), renderer );
+    ImageDB imageDB = {
+        std::make_shared<Image>( (g_iconsPath / ICONS[0]).c_str(), renderer ),
+        std::make_shared<Image>( (g_iconsPath / ICONS[1]).c_str(), renderer ),
+        std::make_shared<Image>( (g_iconsPath / ICONS[2]).c_str(), renderer ),
+        std::make_shared<Image>( (g_iconsPath / ICONS[3]).c_str(), renderer ),
+        std::make_shared<Image>( (g_iconsPath / ICONS[4]).c_str(), renderer ),
+        std::make_shared<Image>( (g_iconsPath / ICONS[5]).c_str(), renderer ),
+        std::make_shared<Image>( (g_iconsPath / ICONS_INV_FOLDER_NAME / ICONS[5]).c_str(), renderer ),
+        std::make_shared<Image>( (g_iconsPath / ICONS[6]).c_str(), renderer ),
+        std::make_shared<Image>( (g_iconsPath / ICONS_INV_FOLDER_NAME / ICONS[6]).c_str(), renderer )
+    };
 
-    const ImVec2 iconSize = ImVec2( iconImageSize, iconImageSize / deleteIcon->_aspectRatio );
-    const ImVec2 logoSize = ImVec2( logoImageSize, logoImageSize / divideLogo->_aspectRatio );
-    const ImVec2 projectSize = ImVec2( projectImageSize, projectImageSize / existingProjectIcon->_aspectRatio );
+    Image* newProjectIcon  = imageDB[0].get();
+    Image* divideLogo      = imageDB[1].get();
+    Image* deleteIcon      = imageDB[2].get();
+    Image* duplicateIcon   = imageDB[3].get();
+    Image* launchIcon      = imageDB[4].get();
+    Image* closeIcon       = imageDB[5].get();
+    Image* closeInvIcon    = imageDB[6].get();
+    Image* settingsIcon    = imageDB[7].get();
+    Image* settingsInvIcon = imageDB[8].get();
 
-    std::vector<ProjectEntry> projects;
-    populateProjects( projects );
+    ProjectDB projects;
+    populateProjects( projects, renderer, imageDB);
     ProjectEntry* defaultProject = getDefaultProject( projects );
 
     ProjectEntry* selectedProject = nullptr;
@@ -344,7 +441,7 @@ int main( int, char** )
     bool haveMissingBuildTargets = false;
     auto OnSelectionChanged = [&](bool isComboBox = false)
     {
-        g_globalMessage = fmt::format( "Current working dir: {}", g_projectPath.string().c_str() );
+        g_globalMessage = fmt::format( CURRENT_DIR_MSG, g_projectPath.string().c_str() );
 
         if (isComboBox)
         {
@@ -377,9 +474,9 @@ int main( int, char** )
 
     OnSelectionChanged();
 
-    const auto OnProjectsUpdated = [&projects, &defaultProject, setSelected]()
+    const auto OnProjectsUpdated = [&projects, &defaultProject, &imageDB, renderer, setSelected]()
     {
-        populateProjects( projects );
+        populateProjects( projects, renderer, imageDB);
         defaultProject = getDefaultProject( projects );
         setSelected(nullptr);
     };
@@ -427,21 +524,31 @@ int main( int, char** )
             const auto DuplicateProject = [&projects, &defaultProject, setSelected, OnProjectsUpdated]( const ProjectEntry srcProject, const char* targetProjectName )
             {
                 const auto targetPath = std::filesystem::path(srcProject._path) / targetProjectName;
-                if (!std::filesystem::exists( targetPath ))
+
+                bool ret = false;
+                try
                 {
-                    std::filesystem::create_directories( targetPath );
-                    std::filesystem::copy( std::filesystem::path(srcProject._path) / srcProject._name, targetPath, std::filesystem::copy_options::recursive );
-                    OnProjectsUpdated();
-                    setSelected( getProjectByName(projects, targetProjectName) );
-                    memset( InputBuf, 0, sizeof( InputBuf ) );
-                    InputLen = 0u;
-                    return true;
+                    if (!std::filesystem::exists( targetPath ))
+                    {
+                        std::filesystem::create_directories( targetPath );
+                        std::filesystem::copy( std::filesystem::path(srcProject._path) / srcProject._name, targetPath, std::filesystem::copy_options::recursive );
+                        OnProjectsUpdated();
+                        setSelected( getProjectByName(projects, targetProjectName) );
+                        ret = true;
+                    }
+                    else
+                    {
+                        g_globalMessage = fmt::format( DUPLICATE_ENTRY_ERROR, InputBuf );
+                    }
+                }
+                catch (const std::exception& e)
+                {
+                    g_globalMessage = fmt::format( ERRORS[6],srcProject._name.c_str(), e.what() );
                 }
 
-                g_globalMessage = fmt::format(DUPLICATE_ENTRY_ERROR, InputBuf);
                 memset( InputBuf, 0, sizeof( InputBuf ) );
                 InputLen = 0u;
-                return false;
+                return ret;
             };
 
 
@@ -456,14 +563,16 @@ int main( int, char** )
 
                     if ( showNameInput )
                     {
-                        ImGui::Text("Target project name:"); ImGui::SameLine();
+                        ImGui::Text( TARGET_PROJECT_NAME ); ImGui::SameLine();
                         if ( ImGui::InputText( "##targetName", InputBuf, IM_ARRAYSIZE( InputBuf ) ) )
                         {
                             InputLen = strlen( InputBuf );
                         }
                     }
 
-                    if ( ImGui::Button( "Cancel", ImVec2( 120, 0 ) ) )
+                    ImGui::Separator();
+
+                    if ( ImGui::Button( MODEL_NO_BUTTON_LABEL, ImVec2( 120, 0 ) ) )
                     {
                         ImGui::CloseCurrentPopup();
                     }
@@ -473,7 +582,7 @@ int main( int, char** )
                     {
                         PushReadOnly( true );
                     }
-                    if ( ImGui::Button( "YES!", ImVec2( 120, 0 ) ) )
+                    if ( ImGui::Button( MODEL_YES_BUTTON_LABEL, ImVec2( 120, 0 ) ) )
                     {
                         confirmed = true;
                         ImGui::CloseCurrentPopup();
@@ -498,33 +607,35 @@ int main( int, char** )
             ImGui::SetNextWindowPos( use_work_area ? viewport->WorkPos : viewport->Pos );
             ImGui::SetNextWindowSize( use_work_area ? viewport->WorkSize : viewport->Size );
 
-            if ( ImGui::Begin( "Project Manager", &p_open, flags ) )
+            if ( ImGui::Begin( "##projectManager", &p_open, flags ) )
             {
+                const ImVec2 logoSize = ImVec2( logoImageSize, logoImageSize / divideLogo->_aspectRatio );
                 ImGui::Image( (ImTextureID)(intptr_t)divideLogo->_texture, logoSize );
+                SetTooltip( COPYRIGHT_NOTICE );
                 ImGui::SameLine();
 
                 ImVec2 center = ImGui::GetMainViewport()->GetCenter();
                 ImGui::SetNextWindowPos( ImVec2(center.x, 0.f), ImGuiCond_Always, ImVec2( 0.5f, -0.2f ) );
-                if ( ImGui::BeginChild( "Options", ImVec2( ImGui::GetContentRegionAvail().x * 0.45f, ImGui::GetContentRegionAvail().y * 0.125f ), ImGuiChildFlags_Border, ImGuiWindowFlags_None ) )
+                if ( ImGui::BeginChild( "##options", ImVec2( ImGui::GetContentRegionAvail().x * 0.45f, ImGui::GetContentRegionAvail().y * 0.125f ), ImGuiChildFlags_Border, ImGuiWindowFlags_None ) )
                 {
-                    ImGui::Text( "Launch Config:" ); ImGui::SameLine();
+                    ImGui::Text( LAUNCH_CONFIG ); ImGui::SameLine();
 
                     { // Launch mode: VS, Editor, Game
                         if constexpr ( !WINDOWS_BUILD ) { PushReadOnly( true ); }
-                        if (ImGui::RadioButton( "Visual Studio", &launch_mode, 0 )) { OnSelectionChanged(); }
+                        if (ImGui::RadioButton( OPERATION_MODES[0], &launch_mode, 0 )) { OnSelectionChanged(); }
                         if constexpr ( !WINDOWS_BUILD ) { PopReadOnly( ); }
 
                         ImGui::SameLine();
 
                         if ( !haveMSVCEditor && !haveClangEditor) { PushReadOnly(true); }
-                        if (ImGui::RadioButton( "Editor Mode", &launch_mode, 1 )) { OnSelectionChanged(); }
-                        if ( !haveMSVCEditor && !haveClangEditor) { PopReadOnly(); ImGui::SameLine(); HelpMarker("No prebuild editor executables detected! Build a configuration first!"); }
+                        if (ImGui::RadioButton( OPERATION_MODES[1], &launch_mode, 1 )) { OnSelectionChanged(); }
+                        if ( !haveMSVCEditor && !haveClangEditor) { PopReadOnly(); ImGui::SameLine(); HelpMarker( TOOLTIPS[0] ); }
 
                         ImGui::SameLine();
 
                         if ( !haveMSVCGame && !haveClangGame) { PushReadOnly(true); }
-                        if (ImGui::RadioButton( "Game Mode", &launch_mode, 2 )) { OnSelectionChanged(); }
-                        if ( !haveMSVCGame && !haveClangGame) { PopReadOnly(); ImGui::SameLine(); HelpMarker( "No prebuild game executables detected! Build a configuration first!" ); }
+                        if (ImGui::RadioButton( OPERATION_MODES[2], &launch_mode, 2 )) { OnSelectionChanged(); }
+                        if ( !haveMSVCGame && !haveClangGame) { PopReadOnly(); ImGui::SameLine(); HelpMarker( TOOLTIPS[1] ); }
 
                     }
 
@@ -532,20 +643,20 @@ int main( int, char** )
                     if ( launch_mode == 0 || !haveBuilds) { PushReadOnly(true); }
                     {
                         { // Toolset for Editor and Game launch modes only
-                            ImGui::Text("Build Toolset:"); ImGui::SameLine();
+                            ImGui::Text( BUILD_TOOLSET ); ImGui::SameLine();
 
                             if ( !haveMSVCBuilds ) { PushReadOnly( true ); }
-                            if (ImGui::RadioButton( "MSVC", &build_toolset, 0 )) { OnSelectionChanged(); } ImGui::SameLine();
-                            if ( !haveMSVCBuilds ) { PopReadOnly(); HelpMarker( "No prebuild MSVC executables detected! Build a MSVC configuration first!" ); }
+                            if (ImGui::RadioButton( MSVC_NAME, &build_toolset, 0 )) { OnSelectionChanged(); } ImGui::SameLine();
+                            if ( !haveMSVCBuilds ) { PopReadOnly(); HelpMarker( TOOLTIPS[2] ); }
 
                             if ( !haveClangBuilds ) { PushReadOnly(true); }
-                            if (ImGui::RadioButton( "Clang", &build_toolset, 1 )) { OnSelectionChanged(); }
-                            if ( !haveClangBuilds ) { PopReadOnly(); ImGui::SameLine(); HelpMarker( "No prebuild Clang executables detected! Build a Clang configuration first!" ); }
+                            if (ImGui::RadioButton( CLANG_NAME, &build_toolset, 1 )) { OnSelectionChanged(); }
+                            if ( !haveClangBuilds ) { PopReadOnly(); ImGui::SameLine(); HelpMarker( TOOLTIPS[3] ); }
 
                         }
 
                         { // Build preset for Editor and Game launch modes only
-                            ImGui::Text( "Build Type:"); ImGui::SameLine();
+                            ImGui::Text( BUILD_TYPE ); ImGui::SameLine();
                             ImGui::SetNextItemWidth( ImGui::GetFontSize() * 15 );
                             if (ImGui::BeginCombo( "##configCombo", current_build_cfg ))
                             {
@@ -571,7 +682,7 @@ int main( int, char** )
                             if ( haveMissingBuildTargets )
                             {
                                 ImGui::SameLine();
-                                HelpMarker("Some build types are not available for this toolset!");
+                                HelpMarker( TOOLTIPS[4] );
                             }
                         }
                     }
@@ -579,16 +690,98 @@ int main( int, char** )
 
                     ImGui::EndChild();
                 }
-                ImGui::SameLine( ImGui::GetContentRegionAvail().x - iconImageSize - 5.f );
-                ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.2f, 0.2f, 0.2f, 0.5f ) );
-                ImGui::PushStyleColor( ImGuiCol_ButtonActive, ImVec4( 0.3f, 0.3f, 0.3f, 0.5f ) );
-                ImGui::PushStyleColor( ImGuiCol_ButtonHovered, ImVec4( 0.4f, 0.4f, 0.4f, 0.5f ) );
-                if ( ImGui::ImageButton( "Cancel", (ImTextureID)(intptr_t)closeIcon->_texture, iconSize ) )
+
+                const ImVec2 iconSize = ImVec2( iconImageSize, iconImageSize / deleteIcon->_aspectRatio );
+
+                const auto drawActiveButton = [iconSize](const char* id, SDL_Texture* icon, SDL_Texture* iconInv, const bool isHovered, const bool isActive)
+                {
+                    bool ret = false;
+                    
+                    auto activeIcon = icon;
+                    float sizeFactor = 1.f;
+
+             if ( isHovered )
+                    {
+                        if ( isActive )
+                        {
+                            sizeFactor = 0.9f;
+                            const ImVec2 pos = ImGui::GetCursorPos();
+                            const ImVec2 diff ={ iconSize.x - iconSize.x * sizeFactor, iconSize.y - iconSize.y * sizeFactor};
+                            const ImVec2 spacing = { diff.x * 0.5f, diff.y * 0.5f };
+                            ImGui::SetCursorPos( {pos.x + spacing.x, pos.y + spacing.y });
+                        }
+                        activeIcon = iconInv;
+                    }
+                    ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.0f, 0.0f, 0.0f, 0.0f ) );
+                    ImGui::PushStyleColor( ImGuiCol_ButtonActive, ImVec4( 0.0f, 0.0f, 0.0f, 0.0f ) );
+                    ImGui::PushStyleColor( ImGuiCol_ButtonHovered, ImVec4( 0.0f, 0.0f, 0.0f, 0.0f ) );
+
+                    ret = ImGui::ImageButton( id, (ImTextureID)(intptr_t)activeIcon, { iconSize.x * sizeFactor, iconSize.y * sizeFactor } );
+                    
+                    ImGui::PopStyleColor( 3 );
+
+                    return ret;
+                };
+
+                float btnOffset = ImGui::GetContentRegionAvail().x - (iconImageSize * 2.f) - 15.f;
+                ImGui::SameLine( btnOffset );
+
+                static bool isSettingsButtonActive = false, isSettingsButtonHovered = false;
+                if ( drawActiveButton( "##settings", settingsIcon->_texture, settingsInvIcon->_texture, isSettingsButtonHovered, isSettingsButtonActive ) )
+                {
+                    ImGui::OpenPopup( SETTINGS_MODAL_NAME );
+                }
+                isSettingsButtonActive = ImGui::IsItemActive();
+                isSettingsButtonHovered = ImGui::IsItemHovered();
+
+                btnOffset += iconImageSize + 15.f;
+                ImGui::SameLine( btnOffset );
+
+                static bool isCloseButtonActive = false, isCloseButtonHovered = false;
+                if ( drawActiveButton( "##cancel", closeIcon->_texture, closeInvIcon->_texture, isCloseButtonHovered, isCloseButtonActive ) )
                 {
                     p_open = false;
                 }
-                ImGui::PopStyleColor( 3 );
-                static const float scaleWidth = ImGui::CalcTextSize( "123" ).x;
+                isCloseButtonActive = ImGui::IsItemActive();
+                isCloseButtonHovered = ImGui::IsItemHovered();
+
+
+                if ( ImGui::BeginPopupModal( SETTINGS_MODAL_NAME, NULL, ImGuiWindowFlags_AlwaysAutoResize ) )
+                {
+                    ImGui::Text( IDE_FIELD_NAME ); ImGui::SameLine();
+                    if ( ImGui::InputText( "##targetName", IDE_CMD, IM_ARRAYSIZE(IDE_CMD) - 1 ) )
+                    {
+                        IDE_CMD_LEN = strlen( IDE_CMD );
+                    }
+
+                    ImGui::Separator();
+
+                    if ( ImGui::Button( MODEL_CLOSE_BUTTON_LABEL, ImVec2( 120, 0 ) ) )
+                    {
+                        SetDefaultIDECommand();
+                        ImGui::CloseCurrentPopup();
+                    }
+
+                    ImGui::SetItemDefaultFocus();
+                    ImGui::SameLine();
+                    if ( IDE_CMD_LEN == 0 )
+                    {
+                        PushReadOnly( true );
+                    }
+                    if ( ImGui::Button( MODEL_SAVE_BUTTON_LABEL, ImVec2( 120, 0 ) ) )
+                    {
+                        ImGui::CloseCurrentPopup();
+                    }
+                    if ( IDE_CMD_LEN == 0 )
+                    {
+                        PopReadOnly();
+                    }
+
+                    ImGui::EndPopup();
+                }
+
+
+                static const float scaleWidth = ImGui::CalcTextSize( "###" ).x;
                 
                 if (launch_mode == 0)
                 {
@@ -596,7 +789,7 @@ int main( int, char** )
                 }
                 static float button_size = 120.f, button_distance = 15.f;
                 ImGui::SetNextWindowPos( center, ImGuiCond_Always, ImVec2( 0.51f, 0.45f ) );
-                if (ImGui::BeginChild( "Project List", ImVec2( ImGui::GetContentRegionAvail().x - scaleWidth * 1.5f, ImGui::GetContentRegionAvail().y * 0.9f ), ImGuiChildFlags_Border, ImGuiWindowFlags_HorizontalScrollbar ))
+                if (ImGui::BeginChild( "##projectList", ImVec2( ImGui::GetContentRegionAvail().x - scaleWidth * 1.5f, ImGui::GetContentRegionAvail().y * 0.9f ), ImGuiChildFlags_Border, ImGuiWindowFlags_HorizontalScrollbar ))
                 {
                     float spacing_x = -button_size + ImGui::GetStyle().FramePadding.x;
                     const float& win_x = ImGui::GetWindowSize().x;
@@ -644,13 +837,13 @@ int main( int, char** )
 
                     {
                         ImGui::BeginGroup();
-                        if ( SelectedImgButton( "New Project", (ImTextureID)(intptr_t)newProjectIcon->_texture, { button_size, button_size } ) )
+                        if ( SelectedImgButton( NEW_PROJECT_LABEL, (ImTextureID)(intptr_t)newProjectIcon->_texture, { button_size, button_size } ) )
                         {
                             setSelected(nullptr);
                             ImGui::OpenPopup( CREATE_MODAL_NAME );
                         }
-                        SetTooltip("Create a new project.\nThis will automatically add a default empty scene to the project!");
-                        CenteredText( "New Project" );
+                        SetTooltip( TOOLTIPS[5] );
+                        CenteredText( NEW_PROJECT_LABEL );
                         EndGroup();
 
                         if ( ShowYesNoModal( CREATE_MODAL_NAME, CREATE_DESCRIPTION, true ) &&
@@ -659,14 +852,20 @@ int main( int, char** )
                             ImGui::OpenPopup( CREATE_MODAL_NAME );
                         }
                     }
+                    
                     for ( ProjectEntry& project : projects)
                     {
+                        const bool sceneListEmpty = project._sceneList.empty();
                         ImGui::BeginGroup();
-                        const bool isSelected = &project == selectedProject;
-
-                        if ( SelectedImgButton( project._name.c_str(), (ImTextureID)(intptr_t)existingProjectIcon->_texture, { button_size, button_size }, isSelected ))
+                        if ( sceneListEmpty )
                         {
-                            g_globalMessage = fmt::format("Selected project ( {} )", project._name );
+                            PushReadOnly(true);
+                        }
+
+                        const bool isSelected = &project == selectedProject;
+                        if ( SelectedImgButton( project._name.c_str(), (ImTextureID)(intptr_t)project._logo.lock()->_texture, { button_size, button_size }, isSelected ))
+                        {
+                            g_globalMessage = fmt::format( SELECTED_PROJECT_MSG, project._name );
                             if ( selectedProject != nullptr)
                             {
                                 selectedProject->_selected = false;
@@ -675,8 +874,33 @@ int main( int, char** )
                             selectedProject->_selected = true;
                         }
 
-                        SetTooltip( fmt::format("Open project [ {} ]", project._name ).c_str() );
+                        if ( sceneListEmpty ) 
+                        {
+                            SetTooltip( fmt::format( TOOLTIPS[7], project._name ).c_str() );
+                        }
+                        else
+                        {
+                            if ( ImGui::IsItemHovered() && ImGui::BeginItemTooltip() )
+                            {
+                                ImGui::Text(fmt::format( TOOLTIPS[6], project._name, TOOLTIPS[14] ).c_str());
+                                for ( const std::string& scene : project._sceneList )
+                                {
+                                    ImGui::Bullet(); ImGui::Text( scene.c_str() );
+                                }
+                                ImGui::EndTooltip();
+                            }
+                        }
+                        
                         CenteredText( project._name.c_str());
+                        if ( sceneListEmpty )
+                        {
+                            PopReadOnly();
+                        }
+                        if ( sceneListEmpty )
+                        {
+                            ImGui::SameLine();
+                            HelpMarker( TOOLTIPS[7] );
+                        }
                         EndGroup();
                     }
 
@@ -688,8 +912,8 @@ int main( int, char** )
                 }
                 ImGui::SameLine();
 
-                ImGui::VSliderFloat( "##Icon Size", ImVec2(scaleWidth, ImGui::GetContentRegionAvail().y - 55), &button_size, 100.f, 500.f );
-                SetTooltip( "Change the size of the icons in the project list" );
+                ImGui::VSliderFloat( "##iconSize", ImVec2(scaleWidth, ImGui::GetContentRegionAvail().y - 55), &button_size, 100.f, 500.f );
+                SetTooltip( TOOLTIPS[8] );
 
                 auto GetExecutablePath = [&](int launch_mode, int build_toolset, BuildTarget selectedTarget, std::string_view workingDir)
                 {
@@ -705,13 +929,13 @@ int main( int, char** )
                         case BuildTarget::Release: build_type = "release"; break;
                         default: break;
                     }
-                        
+
                     const std::string name = fmt::format("{}\\Build\\{}-{}-{}{}\\bin\\Divide-Framework.exe", workingDir, OS_PREFIX, toolset, build_type, editor_flag);
                     return name;
                 };
 
                 ImGui::SetNextWindowPos( ImVec2(center.x, ImGui::GetCursorPosY() ), ImGuiCond_Always, ImVec2( 0.495f, 0.f ) );
-                if ( ImGui::BeginChild( "Controls", ImVec2( ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y * 0.975f ), ImGuiChildFlags_None, ImGuiWindowFlags_None ) )
+                if ( ImGui::BeginChild( "##controls", ImVec2( ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y * 0.975f ), ImGuiChildFlags_None, ImGuiWindowFlags_None ) )
                 {
                     const bool isReadOnly = selectedProject == nullptr || selectedProject->_isDefault;
                     if ( isReadOnly )
@@ -719,11 +943,11 @@ int main( int, char** )
                         PushReadOnly( true );
                     }
 
-                    if ( ImGui::ImageButton( "Delete Project", (ImTextureID)(intptr_t)deleteIcon->_texture, iconSize ) )
+                    if ( ImGui::ImageButton( "##deleteProject", (ImTextureID)(intptr_t)deleteIcon->_texture, iconSize ) )
                     {
                         ImGui::OpenPopup( DELETE_MODAL_NAME );
                     }
-                    SetTooltip( "Delete selected project" );
+                    SetTooltip( TOOLTIPS[9] );
 
                     if( selectedProject != nullptr &&
                         ShowYesNoModal( DELETE_MODAL_NAME, fmt::format( DELETE_DESCRIPTION, selectedProject->_name.c_str() ).c_str(), false ))
@@ -742,12 +966,12 @@ int main( int, char** )
 
                     ImGui::SameLine();
 
-                    if ( ImGui::ImageButton( "Duplicate Project", (ImTextureID)(intptr_t)duplicateIcon->_texture, iconSize ) )
+                    if ( ImGui::ImageButton( "##duplicateProject", (ImTextureID)(intptr_t)duplicateIcon->_texture, iconSize ) )
                     {
                         ImGui::OpenPopup( DUPLICATE_MODAL_NAME );
                     }
 
-                    SetTooltip( "Duplicate selected project" );
+                    SetTooltip( TOOLTIPS[10] );
                     if ( selectedProject != nullptr &&
                          ShowYesNoModal( DUPLICATE_MODAL_NAME, fmt::format( DUPLICATE_DESCRIPTION, selectedProject->_name.c_str() ).c_str(), true ) &&
                          !DuplicateProject(*selectedProject, InputBuf))
@@ -762,14 +986,16 @@ int main( int, char** )
 
                     ImGui::SameLine();
                     
-                    if ( ImGui::BeginChild( "Status", ImVec2( ImGui::GetContentRegionAvail().x * 0.95f, ImGui::GetContentRegionAvail().y * 0.8), ImGuiChildFlags_Border, ImGuiWindowFlags_None ) )
+                    if ( ImGui::BeginChild( "##status", ImVec2( ImGui::GetContentRegionAvail().x * 0.95f, ImGui::GetContentRegionAvail().y * 0.8), ImGuiChildFlags_Border, ImGuiWindowFlags_None ) )
                     {
                         ImGui::Text( g_globalMessage.c_str() );
                         ImGui::EndChild();
                     }
+                    SetTooltip(g_globalMessage.c_str());
+
                     ImGui::SameLine();
 
-                    if ( ImGui::ImageButton( "Launch", (ImTextureID)(intptr_t)launchIcon->_texture, iconSize ) )
+                    if ( ImGui::ImageButton( "##launch", (ImTextureID)(intptr_t)launchIcon->_texture, iconSize ) )
                     {
                         assert(selectedProject != nullptr || launch_mode == 0 );
 
@@ -785,15 +1011,15 @@ int main( int, char** )
                     }
                     if ( launch_mode == 0 )
                     {
-                        SetTooltip( "Open the Divide-Framework source code in Visual Studio.");
+                        SetTooltip( TOOLTIPS[11] );
                     }
                     else if (launch_mode == 1)
                     {
-                        SetTooltip("Launch the selected project in the editor.");
+                        SetTooltip( TOOLTIPS[12] );
                     }
                     else
                     {
-                        SetTooltip("Play the selected project.");
+                        SetTooltip( TOOLTIPS[13] );
                     }
                     ImGui::EndChild();
                 }
@@ -818,14 +1044,7 @@ int main( int, char** )
     }
 
     // Cleanup
-    closeIcon.reset();
-    launchIcon.reset();
-    duplicateIcon.reset();
-    deleteIcon.reset();
-    divideLogo.reset();
-    newProjectIcon.reset();
-    existingProjectIcon.reset();
-
+    imageDB.clear();
     ImGui_ImplSDLRenderer2_Shutdown();
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();

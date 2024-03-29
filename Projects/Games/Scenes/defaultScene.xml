@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<assets>assets.xml</assets>
+<musicPlaylist>musicPlaylist.xml</musicPlaylist>
+<vegetation>
+    <grassVisibility>1000</grassVisibility>
+    <treeVisibility>1000</treeVisibility>
+</vegetation>
+<wind>
+    <windDirX>1</windDirX>
+    <windDirZ>1</windDirZ>
+    <windSpeed>1</windSpeed>
+</wind>
+<options>
+    <visibility>1000</visibility>
+</options>
+<fog>
+    <fogDensity>0.0700000003</fogDensity>
+    <fogScatter>0.00700000022</fogScatter>
+    <fogColour r="0.699999988" g="0.699999988" b="0.800000012"/>
+</fog>
