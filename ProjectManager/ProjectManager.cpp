@@ -26,6 +26,7 @@
 #include <boost/property_tree/xml_parser.hpp>
 
 #include <ImGuiMisc/imguistyleserializer/ImGuiStyleSerializer.cpp>
+#include <imgui_stdlib.h>
 
 #if defined(IS_WINDOWS_BUILD)
 #pragma comment(linker, "/subsystem:\"windows\" /entry:\"mainCRTStartup\"")
@@ -63,23 +64,23 @@ static std::string GetLastErrorAsString()
     return message;
 }
 
-[[nodiscard]] std::string Startup( const char* lpApplicationName, const char* params, const std::filesystem::path& workingDir )
+[[nodiscard]] std::pair<std::string, bool> Startup( const char* lpApplicationName, const char* params, const std::filesystem::path& workingDir )
 {
     const auto ret = ShellExecute( NULL, "open", lpApplicationName, params, workingDir.string().c_str() , SW_SHOWNORMAL );
     if (int(ret) <= 32)
     {
-        return fmt::format( ERRORS[0], lpApplicationName, GetLastErrorAsString() );
+        return {fmt::format( ERRORS[0], lpApplicationName, GetLastErrorAsString() ), true };
     }
     
-    return fmt::format( LAUNCH_MSG, lpApplicationName );
+    return {fmt::format( LAUNCH_MSG, lpApplicationName ), false };
 }
 
 #else //IS_WINDOWS_BUILD
 constexpr const char* OS_PREFIX = "unixlike";
 constexpr bool WINDOWS_BUILD = false;
-std::string Startup( [[maybe_unused]] const char* lpApplicationName, [[maybe_unused]] const char* params, [[maybe_unused]] const std::filesystem::path& workingDir )
+std::pair<std::string, bopol> Startup( [[maybe_unused]] const char* lpApplicationName, [[maybe_unused]] const char* params, [[maybe_unused]] const std::filesystem::path& workingDir )
 {
-    return "Not implemented!";
+    return {"Not implemented!", false};
 }
 #endif //IS_WINDOWS_BUILD
 
@@ -106,6 +107,10 @@ bool Image::operator==( const Image& other ) const noexcept
 }
 
 static std::string g_globalMessage = "";
+static std::string g_ideName = EDITOR_NAME;
+static std::string g_ideNamedOriginal = EDITOR_NAME;
+static std::string g_ideLaunchCommand = EDITOR_LAUNCH_COMMAND;
+static std::string g_ideLaunchCommandOriginal = EDITOR_LAUNCH_COMMAND;
 static std::stack<bool> g_readOnlyFaded;
 static std::filesystem::path g_projectPath;
 static std::filesystem::path g_iconsPath;
@@ -232,6 +237,33 @@ static std::weak_ptr<Image> loadImage( const std::string& imagePath, const std::
     return imageDB.emplace_back( std::make_unique<Image>( targetPath, renderer ) );
 }
 
+static void loadConfig()
+{
+    boost::property_tree::iptree XmlTree;
+    boost::property_tree::read_xml( (g_projectPath / PROJECT_MANAGER_FOLDER_NAME / MANAGER_CONFIG_FILE_NAME).string(), XmlTree, boost::property_tree::xml_parser::trim_whitespace );
+    if ( !XmlTree.empty() )
+    {
+        g_ideName = XmlTree.get<std::string>( CONFIG_IDE_NAME_TAG, EDITOR_NAME );
+        g_ideLaunchCommand = XmlTree.get<std::string>( CONFIG_IDE_CMD_TAG, EDITOR_LAUNCH_COMMAND );
+
+        g_ideNamedOriginal = g_ideName;
+        g_ideLaunchCommandOriginal = g_ideLaunchCommand;
+    }
+}
+
+static void saveConfig()
+{
+    const std::filesystem::path configPath = g_projectPath / PROJECT_MANAGER_FOLDER_NAME / MANAGER_CONFIG_FILE_NAME;
+
+    boost::property_tree::iptree XmlTree;
+    boost::property_tree::read_xml( configPath.string(), XmlTree, boost::property_tree::xml_parser::trim_whitespace );
+
+    XmlTree.put<std::string>( CONFIG_IDE_NAME_TAG, g_ideName );
+    XmlTree.put<std::string>( CONFIG_IDE_CMD_TAG, g_ideLaunchCommand);
+
+    boost::property_tree::write_xml( configPath.string(), XmlTree );
+}
+
 static void populateProjects( ProjectDB& projects, SDL_Renderer* renderer, ImageDB& imageDB, bool retry = false )
 {
     projects.resize(0);
@@ -318,15 +350,6 @@ static ProjectEntry* getDefaultProject( ProjectDB& projects)
     return nullptr;
 }
 
-static char IDE_CMD[512] = { 0 };
-static size_t IDE_CMD_LEN = 0u;
-
-static void SetDefaultIDECommand()
-{
-    strncpy( IDE_CMD, EDITOR_LAUNCH_COMMAND, sizeof( IDE_CMD ) - 1 );
-    IDE_CMD_LEN = strlen( EDITOR_LAUNCH_COMMAND );
-    IDE_CMD[IDE_CMD_LEN] = '\0';
-}
 
 int main( int, char** )
 {
@@ -337,7 +360,7 @@ int main( int, char** )
     }
     g_iconsPath = g_projectPath / ASSESTS_FOLDER_NAME / ICONS_FOLDER_NAME;
 
-    SetDefaultIDECommand();
+    loadConfig();
 
     // Setup SDL
     if ( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER ) != 0 )
@@ -622,7 +645,7 @@ int main( int, char** )
 
                     { // Launch mode: VS, Editor, Game
                         if constexpr ( !WINDOWS_BUILD ) { PushReadOnly( true ); }
-                        if (ImGui::RadioButton( OPERATION_MODES[0], &launch_mode, 0 )) { OnSelectionChanged(); }
+                        if (ImGui::RadioButton( g_ideName.c_str(), &launch_mode, 0 )) { OnSelectionChanged(); }
                         if constexpr ( !WINDOWS_BUILD ) { PopReadOnly( ); }
 
                         ImGui::SameLine();
@@ -700,7 +723,7 @@ int main( int, char** )
                     auto activeIcon = icon;
                     float sizeFactor = 1.f;
 
-             if ( isHovered )
+                    if ( isHovered )
                     {
                         if ( isActive )
                         {
@@ -729,6 +752,8 @@ int main( int, char** )
                 static bool isSettingsButtonActive = false, isSettingsButtonHovered = false;
                 if ( drawActiveButton( "##settings", settingsIcon->_texture, settingsInvIcon->_texture, isSettingsButtonHovered, isSettingsButtonActive ) )
                 {
+                    g_ideLaunchCommandOriginal = g_ideLaunchCommand;
+                    g_ideNamedOriginal = g_ideName;
                     ImGui::OpenPopup( SETTINGS_MODAL_NAME );
                 }
                 isSettingsButtonActive = ImGui::IsItemActive();
@@ -748,38 +773,47 @@ int main( int, char** )
 
                 if ( ImGui::BeginPopupModal( SETTINGS_MODAL_NAME, NULL, ImGuiWindowFlags_AlwaysAutoResize ) )
                 {
-                    ImGui::Text( IDE_FIELD_NAME ); ImGui::SameLine();
-                    if ( ImGui::InputText( "##targetName", IDE_CMD, IM_ARRAYSIZE(IDE_CMD) - 1 ) )
+                    ImGui::Text( IDE_FIELD_TITLE_NAME ); ImGui::SameLine();
+
+                    if ( ImGui::InputText( "##targetName", &g_ideName ) )
                     {
-                        IDE_CMD_LEN = strlen( IDE_CMD );
+                        // TODO: Validate command
+                    }
+
+                    ImGui::Text( IDE_FIELD_COMMAND_NAME ); ImGui::SameLine();
+
+                    if ( ImGui::InputText( "##targetCommnad", &g_ideLaunchCommand ) )
+                    {
+                        // TODO: Validate command
                     }
 
                     ImGui::Separator();
 
                     if ( ImGui::Button( MODEL_CLOSE_BUTTON_LABEL, ImVec2( 120, 0 ) ) )
                     {
-                        SetDefaultIDECommand();
+                        g_ideLaunchCommand = g_ideLaunchCommandOriginal;
+                        g_ideName = g_ideNamedOriginal;
                         ImGui::CloseCurrentPopup();
                     }
 
                     ImGui::SetItemDefaultFocus();
                     ImGui::SameLine();
-                    if ( IDE_CMD_LEN == 0 )
+                    if ( g_ideLaunchCommand.empty() || g_ideName.empty() )
                     {
                         PushReadOnly( true );
                     }
                     if ( ImGui::Button( MODEL_SAVE_BUTTON_LABEL, ImVec2( 120, 0 ) ) )
                     {
+                        saveConfig();
                         ImGui::CloseCurrentPopup();
                     }
-                    if ( IDE_CMD_LEN == 0 )
+                    if ( g_ideLaunchCommand.empty() || g_ideName.empty() )
                     {
                         PopReadOnly();
                     }
 
                     ImGui::EndPopup();
                 }
-
 
                 static const float scaleWidth = ImGui::CalcTextSize( "###" ).x;
                 
@@ -999,15 +1033,30 @@ int main( int, char** )
                     {
                         assert(selectedProject != nullptr || launch_mode == 0 );
 
-                        const auto cmdLine = fmt::format( "--project={}", selectedProject->_name );
                         switch(launch_mode)
                         {
-                            case 0: g_globalMessage = Startup("devenv.exe", g_projectPath.string().c_str() , g_projectPath); break;
+                            case 0:
+                            {
+                                 const auto[msg, error] = Startup( g_ideLaunchCommand.c_str(), g_projectPath.string().c_str(), g_projectPath ); 
+                                 g_globalMessage = msg;
+                                 if (!error)
+                                 {
+                                     p_open = false;
+                                 }
+                            } break;
                             case 1: 
-                            case 2: g_globalMessage = Startup( GetExecutablePath( launch_mode, build_toolset, selectedTarget, g_projectPath.string() ).c_str(), cmdLine.c_str(),g_projectPath ); break;
+                            case 2: 
+                            {
+                                const auto cmdLine = fmt::format( "--project={}", selectedProject->_name );
+                                const auto [msg, error] = Startup( GetExecutablePath( launch_mode, build_toolset, selectedTarget, g_projectPath.string() ).c_str(), cmdLine.c_str(), g_projectPath );
+                                g_globalMessage = msg;
+                                if ( !error )
+                                {
+                                    p_open = false;
+                                }
+                            } break;
                             default: break;
                         }
-                        p_open = false;
                     }
                     if ( launch_mode == 0 )
                     {
@@ -1042,6 +1091,8 @@ int main( int, char** )
         ImGui_ImplSDLRenderer2_RenderDrawData( ImGui::GetDrawData() );
         SDL_RenderPresent( renderer );
     }
+
+    saveConfig();
 
     // Cleanup
     imageDB.clear();

@@ -51,6 +51,8 @@ constexpr const char* CLANG_NAME = "Clang";
 constexpr const char* MSVC_PREFIX = "msvc";
 constexpr const char* MSVC_NAME = "MSVC";
 
+constexpr const char* MANAGER_CONFIG_FILE_NAME = "config.xml";
+
 //@ToDo(Ionut): Save these to a config file
 #if defined(IS_WINDOWS_BUILD)
 constexpr const char* EDITOR_NAME = "Visual Studio";
@@ -60,7 +62,8 @@ constexpr const char* EDITOR_NAME = "Visual Studio Code";
 constexpr const char* EDITOR_LAUNCH_COMMAND = "code";
 #endif //IS_WINDOWS_BUILD
 
-constexpr const char* IDE_FIELD_NAME = "IDE Launch command:";
+constexpr const char* IDE_FIELD_TITLE_NAME = "IDE Display Name:";
+constexpr const char* IDE_FIELD_COMMAND_NAME = "IDE Launch command:";
 
 constexpr const char* LAUNCH_MSG = "Launching application: {}";
 constexpr const char* CURRENT_DIR_MSG = "Current working dir: {}";
@@ -72,6 +75,7 @@ constexpr const char* ICONS_FOLDER_NAME = "Icons";
 constexpr const char* BUILD_FOLDER_NAME = "Build";
 constexpr const char* DELETED_FOLDER_NAME = "Deleted";
 constexpr const char* PROJECTS_FOLDER_NAME = "Projects";
+constexpr const char* PROJECT_MANAGER_FOLDER_NAME = "ProjectManager";
 constexpr const char* SCENES_FOLDER_NAME = "Scenes";
 constexpr const char* DEFAULT_PROJECT_NAME = "Default";
 constexpr const char* DELETE_MODAL_NAME = "Delete selected project?";
@@ -85,6 +89,8 @@ constexpr const char* MODEL_SAVE_BUTTON_LABEL = "Save";
 constexpr const char* PROJECT_CONFIG_FILE_NAME = "config.xml";
 
 constexpr const char* CONFIG_LOGO_TAG = "logo";
+constexpr const char* CONFIG_IDE_CMD_TAG = "IDECommand";
+constexpr const char* CONFIG_IDE_NAME_TAG = "IDEName";
 
 //Source: game-icons.net
 constexpr const char* ICONS[] =
