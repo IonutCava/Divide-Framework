@@ -48,6 +48,7 @@ find_package(SDL2_image CONFIG REQUIRED)
 
 # Add source to this project's executable.
 add_executable (ProjectManager "ProjectManager.cpp" "ProjectManager.h")
+target_include_directories(ProjectManager PRIVATE "${CMAKE_SOURCE_DIR}/../Source")
 target_include_directories(ProjectManager PRIVATE "${CMAKE_SOURCE_DIR}/../Source/ThirdParty")
 target_link_libraries(ProjectManager PRIVATE 
                                      imgui::imgui

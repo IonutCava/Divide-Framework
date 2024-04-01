@@ -1,6 +1,7 @@
 ﻿// ProjectManager.cpp : Defines the entry point for the application.
 
 #include "ProjectManager.h"
+#include "config.h"
 
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -298,7 +299,7 @@ static void populateProjects( ProjectDB& projects, SDL_Renderer* renderer, Image
         for ( std::filesystem::directory_iterator iter{ g_projectPath / PROJECTS_FOLDER_NAME }; iter != end; ++iter )
         {
             if ( !std::filesystem::is_directory( *iter ) ||
-                 iter->path().filename().string().compare( DELETED_FOLDER_NAME ) == 0 )
+                 iter->path().filename().string().compare( Divide::Config::DELETED_FOLDER_NAME ) == 0 )
             {
                 continue;
             }
@@ -306,7 +307,7 @@ static void populateProjects( ProjectDB& projects, SDL_Renderer* renderer, Image
             ProjectEntry& entry = projects.emplace_back();
             entry._name = iter->path().filename().string();
             entry._path = iter->path().parent_path().string();
-            entry._isDefault = entry._name.compare( DEFAULT_PROJECT_NAME ) == 0;
+            entry._isDefault = entry._name.compare( Divide::Config::DEFAULT_PROJECT_NAME ) == 0;
             entry._logoPath = g_iconsPath.string();
 
             if ( std::filesystem::is_regular_file( iter->path() / PROJECT_CONFIG_FILE_NAME ) )
@@ -1009,7 +1010,7 @@ int main( int, char** )
                         ShowYesNoModal( DELETE_MODAL_NAME, fmt::format( DELETE_DESCRIPTION, selectedProject->_name.c_str() ).c_str(), false ))
                     {
                         const std::filesystem::path srcPath( selectedProject->_path );
-                        const std::filesystem::path deletedProjectPath = srcPath / DELETED_FOLDER_NAME;
+                        const std::filesystem::path deletedProjectPath = srcPath / Divide::Config::DELETED_FOLDER_NAME;
 
                         if (!std::filesystem::exists( deletedProjectPath ))
                         {
